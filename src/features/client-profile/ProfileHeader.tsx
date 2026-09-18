@@ -69,6 +69,12 @@ export interface ProfileHeaderProps {
   sessions: WorkoutSession[];
   scheduledSessions: ScheduleEntry[];
   completedCount: number;
+  /**
+   * "412 before Journey · FileMaker", when there is history Journey cannot
+   * see. The split is not a footnote: it is what stops a two-month trend
+   * being read as a twelve-year client's whole story.
+   */
+  priorLabel?: string | null;
   topTrainer: TopTrainerState;
   /** Everyone on the studio's list, to name the trainers in the tally. */
   trainers?: Trainer[];
@@ -216,6 +222,7 @@ export function ProfileHeader({
   sessions,
   scheduledSessions,
   completedCount,
+  priorLabel,
   topTrainer,
   trainers = [],
   pkg,
@@ -563,6 +570,11 @@ export function ProfileHeader({
           }
         >
           <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">{completedCount}</span>
+          {priorLabel && (
+            <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {priorLabel}
+            </span>
+          )}
         </Stat>
       </div>
 

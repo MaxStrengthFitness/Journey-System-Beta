@@ -5,6 +5,7 @@ import type { RenewalSnapshot } from "./features/renewals/types";
 import type { InBodySummary } from "./features/inbody/types";
 import type { StoredLearningRef } from "./features/learning/ref";
 import type { SetOutcome, SkipReason } from "./lib/set-outcome";
+import type { PriorHistory } from "./lib/prior-history";
 import type {
   ClientSubjectiveSnapshot,
   SubjectiveAssessment,
@@ -842,7 +843,24 @@ export interface Client {
   /** Trainer-entered SMART goal. Was written via a cast; now typed. */
   smartGoal?: string;
   completedSessions?: number;
+  /**
+   * The number a trainer would say out loud: sessions Journey can see PLUS
+   * the prior history it cannot. Reconciled on every profile open — never
+   * type a total into it, put the offset in `priorHistory` instead.
+   */
   sessionCount?: number;
+  /**
+   * What this client did BEFORE Journey — FileMaker, paper, another system.
+   * The studios are mid-migration and most long-standing clients have one.
+   * `src/lib/prior-history.ts`; docs/business/migration-and-prior-history.md.
+   */
+  priorHistory?: PriorHistory;
+  /**
+   * Set only when somebody has confirmed Journey holds this client's WHOLE
+   * story. Absent is "nobody has said", which during the migration looks
+   * exactly like a brand-new client — see `historyCoverage`.
+   */
+  historyIsComplete?: boolean;
 
   /* ------------------------------------------------------------------ *
    * TOP TRAINER — a tracked field, not a calculation (Sep 2026).

@@ -20,6 +20,15 @@ import {
 import { db } from "../firebase";
 import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
 import {
+  PRIOR_SOURCES,
+  PRIOR_SOURCE_LABEL,
+  priorHistoryLabel,
+  priorHistoryOf,
+  priorUncounted,
+  totalSessions,
+  type PriorHistorySource,
+} from "../lib/prior-history";
+import {
   User,
   Phone,
   Mail,
@@ -281,6 +290,9 @@ export function ClientProfileView({
   );
   const [isEditingSessionCount, setIsEditingSessionCount] = useState(false);
   const [sessionCountInput, setSessionCountInput] = useState("");
+  const [priorSource, setPriorSource] = useState<PriorHistorySource>("filemaker");
+  const [priorThrough, setPriorThrough] = useState("");
+  const [priorNote, setPriorNote] = useState("");
   const [selectedTimingSessionId, setSelectedTimingSessionId] = useState<
     string | null
   >(null);
@@ -452,6 +464,16 @@ export function ClientProfileView({
    * changed the client document, which changed the prop, which re-ran the
    * effect, which queried again.
    */
+  /*
+   * What this client did before Journey — FileMaker, paper, another studio's
+   * records. The studios are mid-migration and most long-standing clients have
+   * one; see docs/business/migration-and-prior-history.md.
+   */
+  const priorHistory = useMemo(() => priorHistoryOf(client), [client]);
+  const priorLabel = priorHistoryLabel(priorHistory);
+  /* A primitive, so the reconciler's deps are stable across snapshot churn. */
+  const priorOffset = priorUncounted(priorHistory);
+
   const clientSessionCountRef = useRef<number | undefined>(client?.sessionCount);
   useEffect(() => {
     clientSessionCountRef.current = client?.sessionCount;
@@ -463,17 +485,26 @@ export function ClientProfileView({
 
     (async () => {
       // Cached + de-duplicated + quota-aware; see lib/session-count-cache.ts.
-      const actualCount = await getCompletedSessionCount(clientId);
+      const journeyCount = await getCompletedSessionCount(clientId);
       // null means "could not determine right now" — never treat that as zero.
-      if (cancelled || actualCount === null) return;
+      if (cancelled || journeyCount === null) return;
 
-      setCalculatedSessionCount(actualCount);
+      /*
+       * THE ONE ARITHMETIC RULE: what Journey can see, plus the part of the
+       * prior history that exists only as a number. The reconciler owns the
+       * first half and the prior record owns the second, so the trainer's
+       * edit and this query can no longer overwrite each other — which they
+       * did, silently, every time the profile opened.
+       */
+      const total = totalSessions(journeyCount, priorHistory);
+      if (total === null) return;
 
-      // Keep the client document in step with the real history length.
-      if (clientSessionCountRef.current !== actualCount) {
-        clientSessionCountRef.current = actualCount;
+      setCalculatedSessionCount(total);
+
+      if (clientSessionCountRef.current !== total) {
+        clientSessionCountRef.current = total;
         updateDoc(doc(db, "clients", clientId), {
-          sessionCount: actualCount,
+          sessionCount: total,
         }).catch(console.error);
       }
     })();
@@ -481,7 +512,9 @@ export function ClientProfileView({
     return () => {
       cancelled = true;
     };
-  }, [clientId, loadedCompletedCount]);
+    // priorOffset, not priorHistory: a stable primitive across snapshot churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, loadedCompletedCount, priorOffset]);
 
   useEffect(() => {
     const handleOpenImport = () => setView("chart-importer" as any);
@@ -564,14 +597,50 @@ export function ClientProfileView({
   const [matrixRoutineFilter, setMatrixRoutineFilter] = useState<string>("all");
   const SESSIONS_PER_PAGE = 3;
 
+  /**
+   * Opening the dialog seeds it from whatever is on the client, so an edit is
+   * a correction rather than a re-entry.
+   */
+  const openSessionCountEditor = (open: boolean) => {
+    if (open) {
+      setSessionCountInput(String(priorHistory?.sessions ?? ""));
+      setPriorSource(priorHistory?.source ?? "filemaker");
+      setPriorThrough(priorHistory?.through ?? studioTodayKey());
+      setPriorNote(priorHistory?.note ?? "");
+    }
+    setIsEditingSessionCount(open);
+  };
+
+  /**
+   * Writes the OFFSET, never the total.
+   *
+   * `sessionCount` belongs to the reconciler above; a number typed into it was
+   * reverted the next time anyone opened this profile. What a trainer actually
+   * knows is how many sessions happened before Journey — so that is what they
+   * are asked for, and the app adds the two.
+   *
+   * `importedCount` is deliberately preserved: a historical import may already
+   * have turned some of those sessions into real rows, and re-stating the
+   * total must not un-count them.
+   */
   const handleSaveSessionCount = async () => {
     if (!clientId) return;
     const num = parseInt(sessionCountInput, 10);
-    if (isNaN(num)) return;
+    if (isNaN(num) || num < 0) return;
 
     try {
       await updateDoc(doc(db, "clients", clientId), {
-        sessionCount: num,
+        priorHistory: {
+          sessions: num,
+          importedCount: priorHistory?.importedCount ?? 0,
+          from: priorHistory?.from ?? null,
+          through: priorThrough || studioTodayKey(),
+          source: priorSource,
+          note: priorNote.trim() || null,
+          recordedAt: serverTimestamp(),
+          recordedById: authTrainer?.id ?? null,
+          recordedByName: authTrainer?.fullName ?? null,
+        },
         updatedAt: serverTimestamp(),
       });
       setIsEditingSessionCount(false);
@@ -1457,6 +1526,7 @@ export function ClientProfileView({
         sessions={sessions}
         scheduledSessions={scheduledSessions}
         completedCount={calculatedSessionCount}
+        priorLabel={priorLabel}
         topTrainer={topTrainer}
         trainers={trainers}
         pkg={clientPackage}
@@ -1928,7 +1998,7 @@ export function ClientProfileView({
 
       <Dialog
         open={isEditingSessionCount}
-        onOpenChange={setIsEditingSessionCount}
+        onOpenChange={openSessionCountEditor}
       >
         <DialogContent
           showCloseButton={false}
@@ -1936,23 +2006,82 @@ export function ClientProfileView({
         >
           <DialogHeader>
             <DialogTitle className="text-xl font-bold uppercase italic tracking-tighter">
-              Edit Session Count
+              Sessions before Journey
             </DialogTitle>
             <DialogDescription className="text-xs uppercase tracking-widest text-[#38BDF8] font-bold">
-              Adjust {client.firstName}'s total sessions.
+              What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase tracking-widest">
-                Total Sessions completed
+                Sessions completed before Journey
               </Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
                 className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
                 placeholder="0"
+              />
+              {/* The app adds its own count on top, so the trainer is never
+                  asked for a total they would have to work out — and the
+                  reconciler can no longer overwrite what they typed. */}
+              <p className="text-[11px] text-muted-foreground">
+                Journey adds the sessions it has recorded itself. Leave this at 0
+                for a client who started here.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase tracking-widest">
+                Where that number comes from
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {PRIOR_SOURCES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setPriorSource(s)}
+                    aria-pressed={priorSource === s}
+                    className={cn(
+                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors",
+                      priorSource === s
+                        ? "border-[#38BDF8] bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#8cc4f2]"
+                        : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
+                    )}
+                  >
+                    {PRIOR_SOURCE_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase tracking-widest">
+                Counted up to
+              </Label>
+              <Input
+                type="date"
+                value={priorThrough}
+                onChange={(e) => setPriorThrough(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8]"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Journey owns everything after this day.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase tracking-widest">
+                Note <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                value={priorNote}
+                onChange={(e) => setPriorNote(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8]"
+                placeholder="Counted from the FileMaker export"
               />
             </div>
             <div className="flex gap-3">

@@ -1,0 +1,125 @@
+import { describe, expect, it } from "vitest";
+import {
+  COVERAGE_CAVEAT,
+  historyCoverage,
+  isPriorHistory,
+  priorHistoryLabel,
+  priorHistoryOf,
+  priorUncounted,
+  recordImportedSessions,
+  totalSessions,
+  type PriorHistory,
+} from "./prior-history";
+
+const base: PriorHistory = {
+  sessions: 412,
+  through: "2026-09-12",
+  source: "filemaker",
+};
+
+describe("priorUncounted", () => {
+  it("is the whole stated total when nothing has been imported", () => {
+    expect(priorUncounted(base)).toBe(412);
+    expect(priorUncounted({ ...base, importedCount: 0 })).toBe(412);
+  });
+
+  it("takes off what the import has already turned into real rows", () => {
+    expect(priorUncounted({ ...base, importedCount: 50 })).toBe(362);
+  });
+
+  it("never goes negative when more was imported than was stated", () => {
+    expect(priorUncounted({ ...base, importedCount: 500 })).toBe(0);
+  });
+
+  it("is zero without a record, and survives rubbish", () => {
+    expect(priorUncounted(null)).toBe(0);
+    expect(priorUncounted(undefined)).toBe(0);
+    expect(priorUncounted({ ...base, sessions: NaN })).toBe(0);
+  });
+});
+
+describe("totalSessions", () => {
+  it("adds what Journey can see to what only exists as a number", () => {
+    expect(totalSessions(6, base)).toBe(418);
+  });
+
+  it("is the Journey count alone for a genuinely new client", () => {
+    expect(totalSessions(3, null)).toBe(3);
+  });
+
+  it("does not double-count an imported session", () => {
+    // 50 of the 412 were imported: they are now rows, so Journey counts them.
+    const imported = recordImportedSessions(base, 50);
+    expect(totalSessions(56, imported)).toBe(56 + 362);
+    expect(totalSessions(56, imported)).toBe(418); // same client, same answer
+  });
+
+  it("stays unknown when the Journey count could not be read", () => {
+    expect(totalSessions(null, base)).toBeNull();
+    expect(totalSessions(undefined, base)).toBeNull();
+  });
+});
+
+describe("recordImportedSessions", () => {
+  it("never moves the stated total", () => {
+    const after = recordImportedSessions(base, 50);
+    expect(after.sessions).toBe(412);
+    expect(after.importedCount).toBe(50);
+  });
+
+  it("accumulates across runs and ignores rubbish", () => {
+    let p = recordImportedSessions(base, 30);
+    p = recordImportedSessions(p, 20);
+    expect(p.importedCount).toBe(50);
+    expect(recordImportedSessions(p, -5).importedCount).toBe(50);
+    expect(recordImportedSessions(p, NaN).importedCount).toBe(50);
+  });
+});
+
+describe("isPriorHistory / priorHistoryOf", () => {
+  it("accepts a real record", () => {
+    expect(isPriorHistory(base)).toBe(true);
+    expect(priorHistoryOf({ priorHistory: base })).toEqual(base);
+  });
+
+  it("refuses anything that would put a wrong number on screen", () => {
+    expect(isPriorHistory(null)).toBe(false);
+    expect(isPriorHistory({ sessions: 5 })).toBe(false); // no through
+    expect(isPriorHistory({ ...base, sessions: -1 })).toBe(false);
+    expect(isPriorHistory({ ...base, source: "vibes" })).toBe(false);
+    expect(priorHistoryOf({ priorHistory: { sessions: 5 } })).toBeNull();
+    expect(priorHistoryOf(null)).toBeNull();
+  });
+});
+
+describe("priorHistoryLabel", () => {
+  it("names the count and where it came from", () => {
+    expect(priorHistoryLabel(base)).toBe("412 before Journey · FileMaker");
+  });
+
+  it("says nothing once every prior session has been imported", () => {
+    expect(priorHistoryLabel(recordImportedSessions(base, 412))).toBeNull();
+    expect(priorHistoryLabel(null)).toBeNull();
+  });
+});
+
+describe("historyCoverage", () => {
+  it("is partial while any prior session is only a number", () => {
+    expect(historyCoverage({ priorHistory: base })).toBe("partial");
+    expect(COVERAGE_CAVEAT.partial).toBeTruthy();
+  });
+
+  it("is complete once the whole prior history is imported, or declared", () => {
+    expect(historyCoverage({ priorHistory: recordImportedSessions(base, 412) })).toBe("complete");
+    expect(historyCoverage({ historyIsComplete: true })).toBe("complete");
+    expect(COVERAGE_CAVEAT.complete).toBeNull();
+  });
+
+  it("is UNKNOWN when nobody has said — the migration's dangerous case", () => {
+    // Indistinguishable from a brand-new client, which is exactly why it has
+    // its own state rather than defaulting to "complete".
+    expect(historyCoverage({})).toBe("unknown");
+    expect(historyCoverage(null)).toBe("unknown");
+    expect(COVERAGE_CAVEAT.unknown).toBeTruthy();
+  });
+});
