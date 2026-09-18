@@ -80,6 +80,8 @@ interface PostSessionSnapshot {
   logs: ExerciseLog[];
   lines: TodayLine[];
   journey: JourneyRead;
+  /** A mid-session note the trainer started and never saved (fluidity round). */
+  draft: SessionNoteDraft | null;
 }
 
 const LOG_WRITE_DEBOUNCE_MS = 600;
@@ -164,6 +166,14 @@ import {
 import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { traineeLevelOf } from "../lib/progression-cue";
 import { createJournalEntry } from "../hooks/useClientJournal";
+import { NOTE_CATEGORY_META } from "../features/notes/note-catalog";
+import {
+  clearSessionDraft,
+  hasDraftText,
+  readSessionDraft,
+  writeSessionDraft,
+  type SessionNoteDraft,
+} from "../features/notes/session-draft";
 import { ActiveSessionTimer } from "./ActiveSessionTimer";
 import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
@@ -1351,6 +1361,29 @@ export function WorkoutTrackerView({
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [isPostSessionMode, setIsPostSessionMode] = useState(false);
   const [postSession, setPostSession] = useState<PostSessionSnapshot | null>(null);
+
+  /*
+   * THE NOTE DRAFT BELONGS TO THE SESSION (fluidity round, Sep 18 2026).
+   *
+   * It used to live inside the composer, which was unmounted when the sheet
+   * closed — so "close the note to look at the chart, come back" meant an
+   * empty box. Now the tracker holds it, mirrors it into sessionStorage under
+   * the session id (a crash and a resume keep it), and carries it onto the
+   * post-session screen. features/notes/session-draft.ts.
+   */
+  const [noteDraft, setNoteDraft] = useState<SessionNoteDraft | null>(null);
+  const draftSessionRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    const id = currentSession?.id ?? null;
+    if (draftSessionRef.current === id) return;
+    draftSessionRef.current = id;
+    setNoteDraft(id ? readSessionDraft(id) : null);
+  }, [currentSession?.id]);
+  const handleDraftChange = React.useCallback((d: SessionNoteDraft) => {
+    const next = hasDraftText(d) ? d : null;
+    setNoteDraft(next);
+    writeSessionDraft(currentSessionIdRef.current, d);
+  }, []);
   const currentSessionIdRef = React.useRef<string | null>(null);
   useEffect(() => {
     currentSessionIdRef.current = currentSession?.id ?? null;
@@ -2392,6 +2425,31 @@ export function WorkoutTrackerView({
         sessionExtras,
       );
 
+      /* The wrap-up note is labelled "something the next trainer should
+         know" — and until now it reached only the session document, which
+         the next trainer's briefing never reads. It still goes there (the
+         History list and the export read it); it ALSO files to the journal
+         as a Heads up, which is the one loudness the briefing shows for the
+         next three weeks. Outside the batch, like every journal write. */
+      const wrap = (currentSessionNotes || "").trim();
+      if (wrap) {
+        createJournalEntry(
+          selectedClient.id,
+          contextActiveStudioId || authTrainer?.primaryHomeStudioId || selectedClient.homeStudioId || "",
+          { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
+          {
+            kind: "general",
+            category: null,
+            body: wrap.slice(0, 5000),
+            importance: "elevated",
+            machineId: null,
+            focusId: null,
+            sessionId: currentSession.id ?? null,
+            origin: "post_session",
+          },
+        ).catch(() => toastError("Session saved. The wrap-up note could not reach the journal — add it from Notes."));
+      }
+
       /* The read the post-session screen shows: today against the last
          performed set per machine, and the journey since the first
          session — computed here, once, from the grid's view of history. */
@@ -2431,7 +2489,10 @@ export function WorkoutTrackerView({
         logs: finalLogs,
         lines,
         journey,
+        draft: hasDraftText(noteDraft) ? noteDraft : null,
       });
+      clearSessionDraft(currentSession?.id);
+      setNoteDraft(null);
       forgetLiveSession(currentSession?.id);
       setCurrentSession(null);
       setCurrentSessionNotes("");
@@ -2455,9 +2516,45 @@ export function WorkoutTrackerView({
     }
   };
 
+  /** Files the session's unsaved draft as a note — from the post-session card, or on the way out. */
+  const fileSessionDraft = async (text: string, importance: JournalImportance = "standard") => {
+    const snap = postSession;
+    const body = text.trim();
+    if (!snap || !body || !user?.uid) return;
+    const d = snap.draft;
+    const kind = d?.category && d.category !== "ford" && d.category !== "admin"
+      ? NOTE_CATEGORY_META[d.category].kind
+      : "general";
+    try {
+      const id = await createJournalEntry(
+        snap.client.id,
+        contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
+        { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
+        {
+          kind: kind || "general",
+          category: d?.category === "coaching" ? d.p : null,
+          body: body.slice(0, 5000),
+          importance: d?.importance ?? importance,
+          machineId: d?.aboutMachine ? d?.machineId ?? null : null,
+          focusId: null,
+          sessionId: snap.session.id ?? null,
+          origin: "in_session",
+        },
+      );
+      if (!id) toastError("That note could not be saved — add it from the Journal.");
+    } catch {
+      toastError("That note could not be saved — add it from the Journal.");
+    }
+    setPostSession((s) => (s ? { ...s, draft: null } : s));
+  };
+  const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
+
   /** Leaving the post-session screen files the closing note, if any, and goes home. */
   const leavePostSession = async (closing?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
+    // A draft the trainer neither saved nor dropped is filed, unfiled, on the
+    // way out. The To-file tray exists for exactly this; losing it does not.
+    if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
     const body = closing?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
       try {
@@ -3197,6 +3294,9 @@ export function WorkoutTrackerView({
         authTrainer={authTrainer}
         onDose={savePostSessionDose}
         onLeave={leavePostSession}
+        unsavedDraft={postSession.draft}
+        onSaveDraft={fileSessionDraft}
+        onDropDraft={dropSessionDraft}
         machines={machines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
@@ -4169,6 +4269,8 @@ export function WorkoutTrackerView({
             defaultMachineId={gridFocusMachineId}
             client={selectedClient}
             trainer={authTrainer}
+            draft={noteDraft}
+            onDraftChange={handleDraftChange}
             onClose={() => setIsShowingSessionNotes(false)}
           />
         )}

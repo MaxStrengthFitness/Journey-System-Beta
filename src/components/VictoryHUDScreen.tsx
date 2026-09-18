@@ -20,6 +20,7 @@ import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
 import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/notes";
 import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
+import type { SessionNoteDraft } from "../features/notes/session-draft";
 import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
@@ -95,6 +96,14 @@ export interface VictoryHUDScreenProps {
   onDose: (dose: DialValue | null) => void | Promise<void>;
   /** Leaves the screen; the closing note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (closing: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
+  /**
+   * A note the trainer started mid-session and never saved (fluidity round,
+   * Sep 2026). The screen says so and offers to finish it or drop it; a
+   * draft still here on leave is filed by the host, never lost.
+   */
+  unsavedDraft?: SessionNoteDraft | null;
+  onSaveDraft?: (text: string) => void | Promise<void>;
+  onDropDraft?: () => void;
   machines?: Machine[];
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
@@ -184,6 +193,9 @@ export function VictoryHUDScreen({
   authTrainer,
   onDose,
   onLeave,
+  unsavedDraft = null,
+  onSaveDraft,
+  onDropDraft,
   machines = [],
   rightControls,
   trainerDropdown,
@@ -196,6 +208,9 @@ export function VictoryHUDScreen({
   const [effectiveUntil, setEffectiveUntil] = useState("");
   const [showPulse, setShowPulse] = useState(false);
   const todayKey = useMemo(() => studioTodayKey(), []);
+  // The unfinished mid-session note, editable here so a last word can be added.
+  const [draftText, setDraftText] = useState(unsavedDraft?.body ?? "");
+  const [draftBusy, setDraftBusy] = useState(false);
 
   // This session's journal entries, for the To-file tray: one single-field
   // equality query (no composite index), the same stream the Active Session
@@ -413,6 +428,56 @@ export function VictoryHUDScreen({
                 {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
               </span>
             </div>
+
+            {/* A note started during the session and never saved. Said
+                plainly, above everything else on this card, because the
+                trainer is about to walk the client out and this is the last
+                moment it is still theirs to finish. */}
+            {unsavedDraft && (
+              <div
+                className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3"
+                role="region"
+                aria-label="Unsaved note from this session"
+                data-testid="unsaved-draft"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquareText size={16} className="text-amber-400 shrink-0" aria-hidden="true" />
+                  <span className="text-[13px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
+                </div>
+                <textarea
+                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 resize-none outline-none focus:border-cyan transition-colors"
+                  value={draftText}
+                  onChange={(e) => setDraftText(e.target.value)}
+                  aria-label="Unsaved note"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="min-h-10 flex-1 rounded-xl bg-cyan text-bg-dark-1 text-[12px] font-bold uppercase tracking-wider disabled:opacity-50"
+                    disabled={draftBusy || !draftText.trim()}
+                    onClick={async () => {
+                      setDraftBusy(true);
+                      try {
+                        await onSaveDraft?.(draftText);
+                      } finally {
+                        setDraftBusy(false);
+                      }
+                    }}
+                  >
+                    Save note
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[12px] font-bold uppercase tracking-wider"
+                    disabled={draftBusy}
+                    onClick={onDropDraft}
+                  >
+                    Drop it
+                  </button>
+                </div>
+                <span className="text-[11px] text-ink-d3">Left as it is, it is saved unfiled when you leave — nothing you wrote is lost.</span>
+              </div>
+            )}
 
             <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · closing note · Pulse</div>
 

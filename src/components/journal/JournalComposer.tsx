@@ -35,7 +35,7 @@
  * Session sheet's "Remember this"). Whatever was typed in the note box is
  * kept if the coach switches back.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import {
   FOCUS_BLURBS,
@@ -56,6 +56,7 @@ import { Loudness } from "../../features/rating";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import type { FordAuthor } from "../../features/ford/ford-write";
 import type { FordOrigin } from "../../features/ford/types";
+import { EMPTY_SESSION_DRAFT, type SessionNoteDraft } from "../../features/notes/session-draft";
 import "../../features/notes/notes.css";
 
 const PLACEHOLDERS: Record<FilingCategory, string> = {
@@ -98,6 +99,15 @@ export interface JournalComposerProps {
   onPickFord?: () => void;
   /** Offered beside the inline FORD capture: jump to the Life section. */
   onOpenFord?: () => void;
+  /**
+   * A draft the HOST owns (the Active Session, fluidity round Sep 2026).
+   * The composer seeds itself from it once and reports every change back,
+   * so closing the sheet, switching to Remember this, or a focus change no
+   * longer throws the words away. Without it the composer keeps its own
+   * state, as before. See features/notes/session-draft.ts.
+   */
+  draft?: SessionNoteDraft | null;
+  onDraftChange?: (draft: SessionNoteDraft) => void;
 }
 
 const isFiling = (c: NoteCategory | null): c is FilingCategory =>
@@ -113,15 +123,35 @@ export function JournalComposer({
   ford = null,
   onPickFord,
   onOpenFord,
+  draft = null,
+  onDraftChange,
 }: JournalComposerProps) {
-  // Nothing pre-selected: the same rule everywhere a note is written.
-  const [category, setCategory] = useState<NoteCategory | null>(null);
-  const [p, setP] = useState<FocusCategory | null>(null);
-  const [body, setBody] = useState("");
-  const [importance, setImportance] = useState<JournalImportance>("standard");
+  // Nothing pre-selected: the same rule everywhere a note is written — unless
+  // the host is handing back a draft the trainer already started.
+  const seed = draft ?? EMPTY_SESSION_DRAFT;
+  const [category, setCategory] = useState<NoteCategory | null>(draft ? seed.category : null);
+  const [p, setP] = useState<FocusCategory | null>(draft ? seed.p : null);
+  const [body, setBody] = useState(draft ? seed.body : "");
+  const [importance, setImportance] = useState<JournalImportance>(draft ? seed.importance : "standard");
   const [importanceTouched, setImportanceTouched] = useState(false);
-  const [machineId, setMachineId] = useState<string>(defaultMachineId ?? "");
-  const [aboutMachine, setAboutMachine] = useState(true);
+  const [machineId, setMachineId] = useState<string>(
+    draft?.machineId ?? defaultMachineId ?? "",
+  );
+  const [aboutMachine, setAboutMachine] = useState(draft ? seed.aboutMachine : true);
+
+  /* Report the draft up. The first render is skipped: seeding from the
+     host's own copy and immediately echoing it back would be a no-op write
+     into sessionStorage on every mount. */
+  const reportRef = useRef(onDraftChange);
+  reportRef.current = onDraftChange;
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    reportRef.current?.({ body, category, p, importance, machineId: machineId || null, aboutMachine });
+  }, [body, category, p, importance, machineId, aboutMachine]);
   const [occurredOn, setOccurredOn] = useState("");
   const [effectiveUntil, setEffectiveUntil] = useState("");
   const [isSaving, setIsSaving] = useState(false);

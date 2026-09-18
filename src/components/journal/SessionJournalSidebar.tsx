@@ -41,7 +41,7 @@
  * (`NoteSweep`) — one tap files it between machines — and the filed notes
  * of the session are listed beneath.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X, NotebookPen, Loader2, Heart, HeartPulse } from "lucide-react";
 import { motion } from "motion/react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
@@ -59,6 +59,7 @@ import { NoteSweep } from "../../features/notes/NoteSweep";
 import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/notes/file-unfiled";
 import { splitUnfiled } from "../../features/notes/note-catalog";
 import { PulseQuickLog } from "../../features/subjective-report";
+import type { SessionNoteDraft } from "../../features/notes/session-draft";
 
 export interface SessionJournalSidebarProps {
   session: WorkoutSession;
@@ -69,6 +70,12 @@ export interface SessionJournalSidebarProps {
   machines: Machine[];
   /** The machine being performed right now — pre-selected in the composer. */
   defaultMachineId?: string | null;
+  /**
+   * The session's note draft, owned by the tracker (fluidity round, Sep
+   * 2026) so it survives this sheet closing, a tab switch and a focus change.
+   */
+  draft?: SessionNoteDraft | null;
+  onDraftChange?: (draft: SessionNoteDraft) => void;
   /** Which mode to land on. The session bar's Notes button opens on "note". */
   defaultMode?: SidebarMode;
   /** For the Pulse tab. Without them the tab says "Open the client to update Pulse". */
@@ -90,6 +97,8 @@ export function SessionJournalSidebar({
   defaultMode = "note",
   client = null,
   trainer = null,
+  draft = null,
+  onDraftChange,
   onClose,
 }: SessionJournalSidebarProps) {
   const [mode, setMode] = useState<SidebarMode>(defaultMode);
@@ -270,17 +279,21 @@ export function SessionJournalSidebar({
           </div>
         ) : (
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
-          {/* keyed so a new focused machine re-seeds the machine picker */}
-          <React.Fragment key={defaultMachineId ?? "none"}>
-            <JournalComposer
-              clientFirstName={clientFirstName}
-              machines={machines}
-              defaultMachineId={defaultMachineId ?? undefined}
-              origin="in_session"
-              onSubmit={handleSubmit}
-              onPickFord={() => setMode("ford")}
-            />
-          </React.Fragment>
+          {/* Not keyed on the focused machine any more. It used to be, "so a
+              new focused machine re-seeds the machine picker" — and every
+              focus change destroyed whatever the trainer was typing. The
+              "About <machine>" toggle reads the current machine live; the
+              draft belongs to the session. */}
+          <JournalComposer
+            clientFirstName={clientFirstName}
+            machines={machines}
+            defaultMachineId={defaultMachineId ?? undefined}
+            origin="in_session"
+            onSubmit={handleSubmit}
+            onPickFord={() => setMode("ford")}
+            draft={draft}
+            onDraftChange={onDraftChange}
+          />
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
