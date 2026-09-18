@@ -7,6 +7,7 @@ import {
   legacyLocation,
   profileNavReducer,
   readStoredLocation,
+  takeStoredLocation,
   writeStoredLocation,
   type ProfileNavState,
 } from "./profile-nav";
@@ -211,6 +212,20 @@ describe("stored location", () => {
     writeStoredLocation("marcus", { tab: "clinical", view: "trends" });
     expect(readStoredLocation("judy")).toEqual({ tab: "programming", view: "routine-b" });
     expect(readStoredLocation("marcus")).toEqual({ tab: "clinical", view: "trends" });
+  });
+
+  it("takes a handoff once and leaves the next visit on Journey", () => {
+    writeStoredLocation("judy", { tab: "programming", view: "setup" });
+    expect(takeStoredLocation("judy")).toEqual({ tab: "programming", view: "setup" });
+    // Consumed: the deep link landed, and Judy opens on Journey from here on.
+    expect(takeStoredLocation("judy")).toBeNull();
+    expect(readStoredLocation("judy")).toBeNull();
+  });
+
+  it("takes nothing without a client, and survives storage throwing", () => {
+    expect(takeStoredLocation(null)).toBeNull();
+    delete (globalThis as { window?: unknown }).window;
+    expect(() => takeStoredLocation("judy")).not.toThrow();
   });
 
   it("returns null for an unknown client, no client, and rubbish", () => {

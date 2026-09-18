@@ -585,6 +585,16 @@ export function JourneyGrid({
   const prevScrollWidth = useRef(0);
   const userTouched = useRef(false);
   /**
+   * The trainer has scrolled BACK into history and should be left there.
+   *
+   * Separate from `userTouched` since the fluidity round (Sep 2026). The two
+   * were one flag, and a `pointerdown` set it — so tapping a machine name to
+   * open its window (the profile's main gesture) silently switched off the
+   * pin, and the grid never returned to the newest session for the rest of
+   * that client's visit. Touching is not scrolling.
+   */
+  const userScrolled = useRef(false);
+  /**
    * The first session id at the moment older sessions were last asked for;
    * `undefined` when nothing is pending. A request that does not change the
    * timeline (an empty page, a failed read) must not repeat on every frame.
@@ -605,7 +615,7 @@ export function JourneyGrid({
     if (prevFirstId.current && firstId !== prevFirstId.current && sessions.some((s) => s.id === prevFirstId.current)) {
       // Older columns were prepended: keep the same cells under the thumb.
       el.scrollLeft += el.scrollWidth - prevScrollWidth.current;
-    } else if (!userTouched.current) {
+    } else if (!userScrolled.current) {
       // Chronological flow: newest is on the right, so open the grid there.
       scrollToEnd();
     }
@@ -618,22 +628,41 @@ export function JourneyGrid({
   // the latest session through those resizes.
   useEffect(() => {
     const el = scrollerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
+    if (!el) return;
+    // Any interaction arms the older-page autoload — that flag only ever
+    // needed to know the first frame was behind it (older-autoload.ts, rule 1).
     const touch = () => {
       userTouched.current = true;
+    };
+    // The pin comes off only when the grid is actually parked away from the
+    // newest column. Gesture-agnostic on purpose: a drag on an iPad, a
+    // trackpad swipe and an arrow key all arrive here as one scroll event,
+    // and `scrollToEnd()` lands ON the edge so it never trips this.
+    const onScroll = () => {
+      const colW =
+        el.querySelector<HTMLElement>(".jg-head[data-session-id]")?.offsetWidth ||
+        DEFAULT_COLUMN_WIDTH;
+      if (el.scrollWidth - el.clientWidth - el.scrollLeft > colW / 2) {
+        userScrolled.current = true;
+      }
     };
     el.addEventListener("pointerdown", touch, { passive: true });
     el.addEventListener("wheel", touch, { passive: true });
     el.addEventListener("keydown", touch);
-    const ro = new ResizeObserver(() => {
-      if (!userTouched.current) scrollToEnd();
-    });
-    ro.observe(el);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro =
+      typeof ResizeObserver === "function"
+        ? new ResizeObserver(() => {
+            if (!userScrolled.current) scrollToEnd();
+          })
+        : null;
+    ro?.observe(el);
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       el.removeEventListener("pointerdown", touch);
       el.removeEventListener("wheel", touch);
       el.removeEventListener("keydown", touch);
+      el.removeEventListener("scroll", onScroll);
     };
   }, [scrollToEnd]);
 
@@ -840,6 +869,16 @@ export function JourneyGrid({
       ro?.disconnect();
     };
   }, [fit, layout, viewportReserve, rowCount, dividerCount, showStats, hasOlderColumn, cols, targetColumns, settingsDisplay]);
+
+  /*
+   * The fit above re-measures AFTER the scroll effect has run in the same
+   * commit, and a measure that WIDENS the columns leaves the grid short of
+   * the newest session. Re-pin on the solved size — unless the trainer has
+   * scrolled into history themselves. Fluidity round, Sep 2026.
+   */
+  useLayoutEffect(() => {
+    if (!userScrolled.current) scrollToEnd();
+  }, [fitVars, scrollToEnd]);
 
   const effectiveMaxH = layout === "page" ? undefined : layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {

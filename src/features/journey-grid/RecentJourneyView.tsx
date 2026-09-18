@@ -212,6 +212,14 @@ export function RecentJourneyView({
           </div>
         )}
       <JourneyGrid
+        /* One grid per client. The profile is not remounted between clients,
+           and the grid keeps its scroll position, its measured column width
+           and its "which session was first" marker in refs — all of which
+           belong to the client that was on screen a moment ago. Remounting on
+           the client id is cheaper than keeping five refs honest, and it is
+           what makes every client open pinned to their own newest session.
+           Fluidity round, Sep 2026. */
+        key={resetKey ?? undefined}
         sessions={visibleSessions}
         historySessions={sessions}
         sections={sections}

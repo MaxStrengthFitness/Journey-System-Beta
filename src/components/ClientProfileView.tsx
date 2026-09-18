@@ -795,6 +795,29 @@ export function ClientProfileView({
     return fetchedLogs;
   };
 
+  /*
+   * A different client is a different history.
+   *
+   * The initial fetch MERGES into what is already loaded, so that re-entering
+   * the Journey tab does not throw away the pages a trainer scrolled back
+   * through. But this view is not remounted per client, so without this the
+   * merge would hand the next client the previous one's sessions and logs —
+   * and the grid, seeing its old first session still in the array, would
+   * treat the change as "older columns were prepended" and stay parked on
+   * them. Clear first, in an effect declared ABOVE the fetch so it is queued
+   * first. Fluidity round, Sep 2026.
+   */
+  const historyLoadedFor = useRef(clientId);
+  useEffect(() => {
+    if (historyLoadedFor.current === clientId) return;
+    historyLoadedFor.current = clientId;
+    setSessions([]);
+    setAllLogs([]);
+    setSessionNotes([]);
+    setLastVisibleSession(null);
+    setHasMoreSessions(false);
+  }, [clientId]);
+
   useEffect(() => {
     if (!clientId || hasQuotaError) return;
 

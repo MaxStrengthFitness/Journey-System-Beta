@@ -16,8 +16,7 @@ import {
   DEFAULT_LOCATION,
   initialNavState,
   profileNavReducer,
-  readStoredLocation,
-  writeStoredLocation,
+  takeStoredLocation,
   type ClinicalView,
   type ProfileLocation,
   type ProfileNavAction,
@@ -73,21 +72,21 @@ export function useProfileNav(
   const [state, rawDispatch] = useReducer(
     profileNavReducer,
     clientId,
-    (id) => initialNavState(readStoredLocation(id) ?? DEFAULT_LOCATION),
+    (id) => initialNavState(takeStoredLocation(id) ?? DEFAULT_LOCATION),
   );
 
-  // A different client is a different screen. Resume theirs, or start on
-  // Journey; never inherit the last client's segment.
+  /*
+   * A different client is a different screen: Journey, unless a screen
+   * deliberately handed this client off somewhere (takeStoredLocation, which
+   * consumes the intent). Nothing writes that key on the way OUT any more —
+   * the profile no longer remembers a tab, by design. Fluidity round, Sep 2026.
+   */
   const lastClient = useRef(clientId);
   useEffect(() => {
     if (lastClient.current === clientId) return;
     lastClient.current = clientId;
-    rawDispatch({ type: "go", to: readStoredLocation(clientId) ?? DEFAULT_LOCATION });
+    rawDispatch({ type: "go", to: takeStoredLocation(clientId) ?? DEFAULT_LOCATION });
   }, [clientId]);
-
-  useEffect(() => {
-    writeStoredLocation(clientId, state.location);
-  }, [clientId, state.location]);
 
   const setTab = useCallback(
     (tab: ProfileTab) =>

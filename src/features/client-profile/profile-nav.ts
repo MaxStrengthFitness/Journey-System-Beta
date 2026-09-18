@@ -312,6 +312,32 @@ export function readStoredLocation(clientId: string | null | undefined): Profile
   }
 }
 
+/**
+ * The handoff, consumed.
+ *
+ * Fluidity round, Sep 2026 — AJ's call: **a client always opens on Journey.**
+ * The stored location stopped being a memory of where the trainer was and
+ * became a one-shot INTENT written by a screen that is deliberately sending
+ * them somewhere else (Operations -> Machine fit is the only one today). It
+ * is read once and removed, so the deep link lands and the next visit to that
+ * client is Journey again, like every other visit.
+ *
+ * Resuming per client read well on paper and badly on a floor: a trainer who
+ * had glanced at Programming last Tuesday walked up to the iPad, tapped the
+ * client, and got a screen they had not asked for. Predictable beats clever
+ * when the thing is held in one hand.
+ */
+export function takeStoredLocation(clientId: string | null | undefined): ProfileLocation | null {
+  const loc = readStoredLocation(clientId);
+  if (!clientId) return loc;
+  try {
+    window.sessionStorage.removeItem(STORE_PREFIX + clientId);
+  } catch {
+    /* nothing to clear, or storage threw — the location is still honoured. */
+  }
+  return loc;
+}
+
 export function writeStoredLocation(
   clientId: string | null | undefined,
   location: ProfileLocation,
