@@ -7,7 +7,6 @@ import {
   SKIP_REASON_SHORT,
   type SkipReason,
 } from "../../lib/set-outcome";
-import { progressionCue } from "../../lib/progression-cue";
 import type { TraineeLevel } from "../routine-builder/academy";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, orderedSets } from "./stats";
@@ -31,7 +30,17 @@ export interface SessionNowBarProps {
   /** Next machine in the routine, and the handler that advances to it. */
   nextName?: string;
   onNext?: () => void;
-  /** The client's training level — picks the rep window the progression cue reads (REP_RANGE_BY_LEVEL). */
+  /**
+   * On the last machine the Next slot is not a dead end: it offers to add
+   * another machine, because trainers do — a neck that hurts, an arm that
+   * is fine after all. Opens the add-from-the-floor list.
+   */
+  onAddMachine?: () => void;
+  /**
+   * The client's training level. Unused since the progression cue left the
+   * bar (fluidity round, Sep 18) — kept so callers need not change; a future
+   * analytics reader may want it.
+   */
   level?: TraineeLevel;
   /**
    * Seconds this machine has been the focused machine (lib/machine-clock.ts).
@@ -236,8 +245,8 @@ function SessionNowBarImpl({
   step = 2,
   nextName,
   onNext,
-  level = "novice",
   onMachineSeconds,
+  onAddMachine,
   layout = "bar",
 }: SessionNowBarProps) {
   const machine = row?.machine;
@@ -248,21 +257,30 @@ function SessionNowBarImpl({
   // The strip belongs to one machine; moving on closes it.
   useEffect(() => setSkipOpen(false), [machine?.id]);
 
-  /* --- what to expect: the last set, the best set, the cue --------------- */
+  /* --- what to expect: the last set and the best set ---------------------
+     No progression cue. The bar used to say "▲ Up" against the last set;
+     AJ (docs/business/the-floor.md): "the goal of this app is not to come up
+     with a system that tells the trainer when they should be progressing —
+     that's the trainer's job and will always be the trainer's job." The app
+     shows what happened; the trainer decides what happens next. */
   const expect = useMemo(() => {
     if (!row) return null;
     const sets = orderedSets(row, history);
     const last = sets[sets.length - 1];
     const stats = computeRowStats(row, history);
     const best = stats.mostReps ?? stats.high;
-    // Up / hold / down against the last PERFORMED set, in the Academy's
-    // order: form, then reps, then resistance (lib/progression-cue.ts).
-    const cue = progressionCue(last, level, step);
-    return { last, best: best?.set, cue };
-  }, [row, history, level, step]);
-  // The cue's reason is a tap away, never hover-only.
-  const [cueOpen, setCueOpen] = useState(false);
-  useEffect(() => setCueOpen(false), [machine?.id]);
+    return { last, best: best?.set };
+  }, [row, history]);
+  /* The ghost in the count field: what she did last time, in grey, so the
+     eye can stay at the bottom of the iPad instead of climbing the chart.
+     A placeholder, never a value — tapping Next with it showing logs
+     nothing. */
+  const ghost = useMemo(() => {
+    const last = expect?.last;
+    if (!last) return "";
+    if (last.isTSC) return last.seconds != null && last.seconds > 0 ? formatSeconds(last.seconds) : "";
+    return last.reps != null && last.reps > 0 ? String(last.reps) : "";
+  }, [expect]);
 
   const parseNum = (raw: string): number | null => {
     const n = Number(raw.replace(/[^\d.]/g, ""));
@@ -274,9 +292,13 @@ function SessionNowBarImpl({
     onChange(machine.id, { weight: Math.max(0, (weight ?? 0) + dir * step) });
   };
 
+  /* Tapping the mark that is on takes it OFF — back to plain "completed"
+     (2), which is what a set with reps is unless a trainer says otherwise.
+     It used to send null, which the writer dropped on the floor, so a red
+     ring tapped by mistake was permanent for the rest of the session. */
   const setQuality = (q: RepQuality) => {
     if (!machine) return;
-    onChange(machine.id, { quality: v.quality === q ? null : q });
+    onChange(machine.id, { quality: v.quality === q ? 2 : q });
   };
 
   /* --- Practice / Skip: what the set WAS when it was not a set ---------- *
@@ -331,7 +353,7 @@ function SessionNowBarImpl({
           aria-label={`${sides ? (side === "R" ? "Right side " : "Left side ") : ""}${
             v.isTSC ? "seconds under tension" : "reps to failure"
           }`}
-          placeholder="–"
+          placeholder={ghost || "–"}
           value={val ?? ""}
           onChange={(e) => {
             const n = parseNum(e.target.value);
@@ -424,24 +446,8 @@ function SessionNowBarImpl({
                   </em>
                 </>
               )}
-              {expect.cue.direction !== "none" && (
-                <button
-                  type="button"
-                  className={`jg-nb__cue jg-nb__cue--${expect.cue.direction}`}
-                  aria-pressed={cueOpen}
-                  aria-label={`Progression cue: ${expect.cue.label}. ${expect.cue.reason}`}
-                  onClick={() => setCueOpen((o) => !o)}
-                >
-                  <span aria-hidden="true">
-                    {expect.cue.direction === "up" ? "▲ " : expect.cue.direction === "down" ? "▼ " : ""}
-                  </span>
-                  {expect.cue.label}
-                </button>
-              )}
             </span>
-            {cueOpen && expect.cue.direction !== "none" ? (
-              <span className="jg-nb__readout">{expect.cue.reason}</span>
-            ) : onMachineSeconds != null && onMachineSeconds > 0 ? (
+            {onMachineSeconds != null && onMachineSeconds > 0 ? (
               <span className="jg-nb__readout" title="Time this machine has been the current machine, session pauses excluded">
                 On machine {onMachineSeconds >= 60 ? formatSeconds(onMachineSeconds) : `${onMachineSeconds}s`}
               </span>
@@ -573,12 +579,29 @@ function SessionNowBarImpl({
         </div>
       )}
 
-      {/* --- line 3 · what is next -------------------------------------- */}
-      <button type="button" className="jg-nb__next" onClick={onNext} disabled={!nextName}>
-        <span className="jg-nb__nextlbl">{nextName ? "Next" : "Last machine"}</span>
-        {nextName && <span className="jg-nb__nextname">{nextName}</span>}
-        {nextName && <ChevronRight size={17} strokeWidth={2.5} />}
-      </button>
+      {/* --- line 3 · what is next --------------------------------------
+          On the last machine this used to go dim and read "Last machine" — a
+          dead end in the loudest slot on the bar. Now it offers the one thing
+          a trainer might still want to do here. End Session stays at the top
+          of the screen, where a thumb reaching for this cannot hit it. */}
+      {nextName ? (
+        <button type="button" className="jg-nb__next" onClick={onNext}>
+          <span className="jg-nb__nextlbl">Next</span>
+          <span className="jg-nb__nextname">{nextName}</span>
+          <ChevronRight size={17} strokeWidth={2.5} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="jg-nb__next jg-nb__next--add"
+          onClick={onAddMachine}
+          disabled={!onAddMachine}
+        >
+          <span className="jg-nb__nextlbl">Last in today's order</span>
+          <span className="jg-nb__nextname">Add another machine</span>
+          <Plus size={17} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }

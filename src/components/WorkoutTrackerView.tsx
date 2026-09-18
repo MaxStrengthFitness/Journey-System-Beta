@@ -2526,9 +2526,12 @@ export function WorkoutTrackerView({
           ? "Enter the hold duration before setting a quality."
           : "Enter reps before setting a quality.",
       );
-      // Open the entry dialog so the count can be filled in straight away.
-      setIsStaticHoldOverride(needsSeconds);
-      setEditingWeightMachineId(machineId);
+      // No dialog. This used to open the legacy PerformanceEntryDialog over
+      // the tracker — a modal in the middle of a set, whose rep stepper was
+      // based on LAST session's reps, so one tap of + logged last time's
+      // number plus one as today's. The toast is enough: the count field is
+      // right there on the bar. (docs/business/the-floor.md — ghost, never
+      // pre-filled.)
       return;
     }
 
@@ -4054,6 +4057,7 @@ export function WorkoutTrackerView({
           step={2}
           nextName={gridNextRow?.machine.name}
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
+          onAddMachine={() => setIsOrderSheetOpen(true)}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
           onMachineSeconds={machineTimeElapsed}
