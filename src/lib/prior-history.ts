@@ -165,12 +165,37 @@ export function priorHistoryLabel(prior: PriorHistory | null | undefined): strin
  */
 export type HistoryCoverage = "complete" | "partial" | "unknown";
 
+export interface CoverageInput {
+  priorHistory?: unknown;
+  historyIsComplete?: boolean;
+  /**
+   * The client's FIRST session in Journey, as a studio day (yyyy-mm-dd).
+   * A string, not a Timestamp: this module stays pure, and a date-only key
+   * compares safely as text without ever being handed to `new Date()` — see
+   * the date trap in CLAUDE.md.
+   */
+  firstJourneyDay?: string | null;
+}
+
+/**
+ * @param cutover the studio's `journeyCutoverDate` — the day THAT studio moved
+ * onto Journey (yyyy-mm-dd), or null when nobody has set it yet.
+ */
 export function historyCoverage(
-  client: { priorHistory?: unknown; historyIsComplete?: boolean } | null | undefined,
+  client: CoverageInput | null | undefined,
+  cutover?: string | null,
 ): HistoryCoverage {
   const prior = priorHistoryOf(client);
   if (prior) return priorUncounted(prior) > 0 ? "partial" : "complete";
   if (client?.historyIsComplete === true) return "complete";
+  /*
+   * No record, but the studio has said when it moved over: a client whose
+   * first session here predates that day was training before Journey existed,
+   * so their history is partial whether or not anyone has written the number
+   * down. A client who started after it began here, so Journey has all of it.
+   */
+  const first = client?.firstJourneyDay;
+  if (cutover && first) return first >= cutover ? "complete" : "partial";
   return "unknown";
 }
 
@@ -180,3 +205,42 @@ export const COVERAGE_CAVEAT: Record<HistoryCoverage, string | null> = {
   partial: "Earlier sessions are counted but not detailed here.",
   unknown: "Sessions before this studio moved onto Journey may not be recorded.",
 };
+
+/**
+ * "This client has not used this machine" — said two different ways, because
+ * they are two different facts (AJ, Sep 2026).
+ *
+ * Machine-level history is NOT coming across from FileMaker. A client may have
+ * used a machine four hundred times and `machineStats` will say zero, so the
+ * app never claims they have not. "Never attempted" is a fact about the
+ * CLIENT and may only be said when Journey holds their whole story; "Nothing
+ * recorded" is a fact about our RECORDS and is what unknown gets too — when
+ * the two look identical, only one of the wordings is safe.
+ */
+export const NEVER_LABEL: Record<HistoryCoverage, string> = {
+  complete: "Never attempted",
+  partial: "Nothing recorded",
+  unknown: "Nothing recorded",
+};
+
+/** The same distinction, lower-case, for the middle of a sentence. */
+export const NEVER_PHRASE: Record<HistoryCoverage, string> = {
+  complete: "never attempted",
+  partial: "nothing recorded",
+  unknown: "nothing recorded",
+};
+
+/**
+ * May a screen quote a lifetime figure off `client.machineStats` as though it
+ * were the client's whole story? Only when it IS.
+ *
+ * This replaces `machineStatsBackfilledAt` as the gate. That marker existed
+ * because the running totals only count sessions since they started being
+ * kept — which is exactly the migration client, and a migration client is now
+ * never quoted a number in the first place. For a client whose whole history
+ * postdates their studio's cutover the rollup is complete on its own, and no
+ * longer waits for a backfill somebody has to remember to run.
+ */
+export function canQuoteLifetime(coverage: HistoryCoverage): boolean {
+  return coverage === "complete";
+}

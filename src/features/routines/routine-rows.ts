@@ -10,6 +10,7 @@
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Routine, RoutineAdjustment, Trainer, WorkoutSession } from "../../types";
 import { orderMachineSettings, parseSessionDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
+import { canQuoteLifetime, type HistoryCoverage } from "../../lib/prior-history";
 import { machineWatchOuts, type WatchOut } from "../../lib/clinical-watchouts";
 
 export interface RoutineRow {
@@ -92,6 +93,15 @@ export function buildRoutineRows(
   clientSettings: Record<string, ClientMachineSetting>,
   allLogs: ExerciseLog[],
   sessions: WorkoutSession[],
+  /**
+   * How much of this client's story Journey holds (`lib/prior-history.ts`).
+   * Lifetime figures are quoted only when it holds ALL of it — for a client
+   * who trained before their studio moved onto Journey, `timesPerformed` is a
+   * count of what happened HERE, not of their life, and printing it as the
+   * latter is exactly the confident wrong number the app refuses to show.
+   * Defaults to the cautious answer.
+   */
+  coverage: HistoryCoverage = "unknown",
 ): RoutineRow[] {
   const byId = new Map(machines.filter((m) => !!m.id).map((m) => [m.id as string, m]));
   // Newest session first, so the first log we meet for a machine is its latest.
@@ -113,8 +123,7 @@ export function buildRoutineRows(
 
   return routine.machineIds.map((machineId, i) => {
     const machine = byId.get(machineId);
-    // Lifetime figures only once the backfill has run (programming-summary.ts).
-    const stat = client?.machineStatsBackfilledAt ? client.machineStats?.[machineId] : undefined;
+    const stat = canQuoteLifetime(coverage) ? client?.machineStats?.[machineId] : undefined;
     const metric = client?.currentMachineMetrics?.[machineId];
     const setting = clientSettings[machineId];
     const log = latestLog.get(machineId);

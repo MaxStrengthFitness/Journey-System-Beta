@@ -45,6 +45,7 @@
  * Journey grid and back.
  */
 import { rosterCoverage } from "./programming-summary";
+import { NEVER_PHRASE, type HistoryCoverage } from "../../lib/prior-history";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Client,
@@ -85,6 +86,13 @@ export interface ProgrammingTabProps {
   activeStudioId?: string | null;
   selectedRoutineTodayId: string | null;
   isBActive: boolean;
+  /**
+   * How much of this client's story Journey holds. Decides whether a lifetime
+   * figure may be quoted at all, and whether a machine with no rows reads
+   * "never attempted" (a fact about her) or "nothing recorded" (a fact about
+   * our records). See lib/prior-history.ts.
+   */
+  coverage?: HistoryCoverage;
   view: ProgrammingView;
   onViewChange: (view: ProgrammingView) => void;
   onEdit: (name: RoutineName) => void;
@@ -110,6 +118,7 @@ export function ProgrammingTab({
   activeStudioId,
   selectedRoutineTodayId,
   isBActive,
+  coverage: historyCoverage = "unknown",
   view,
   onViewChange,
   onEdit,
@@ -161,9 +170,13 @@ export function ProgrammingTab({
     trainers,
     selectedRoutineTodayId,
     isBActive,
+    coverage: historyCoverage,
   });
 
-  const coverage = useMemo(() => rosterCoverage(machines, client), [machines, client]);
+  const coverage = useMemo(
+    () => rosterCoverage(machines, client, historyCoverage),
+    [machines, client, historyCoverage],
+  );
   const prescribedWatch = useMemo(() => {
     const ids = new Set<string>();
     for (const r of [...model.rowsA, ...(isBActive ? model.rowsB : [])]) {
@@ -265,7 +278,7 @@ export function ProgrammingTab({
         <>
           <span className="psub-context__dot" aria-hidden="true" />
           <span>
-            <b>{coverage.neverTried}</b> studio {coverage.neverTried === 1 ? "machine" : "machines"} never tried
+            <b>{coverage.neverTried}</b> studio {coverage.neverTried === 1 ? "machine" : "machines"} with {NEVER_PHRASE[coverage.coverage]}
           </span>
         </>
       ) : null}

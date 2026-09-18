@@ -33,6 +33,7 @@ import {
   type RoutineName,
   type RoutineRow,
 } from "./routine-rows";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 export interface RoutinesModelInput {
   client: Client | null | undefined;
@@ -46,6 +47,8 @@ export interface RoutinesModelInput {
   trainers: Trainer[];
   selectedRoutineTodayId: string | null;
   isBActive: boolean;
+  /** How much of this client's story Journey holds. See lib/prior-history.ts. */
+  coverage?: HistoryCoverage;
 }
 
 export interface RoutinesModel {
@@ -78,6 +81,7 @@ export function useRoutinesModel(input: RoutinesModelInput): RoutinesModel {
     trainers,
     selectedRoutineTodayId,
     isBActive,
+    coverage = "unknown",
   } = input;
 
   const studioId = client?.homeStudioId || "";
@@ -90,12 +94,12 @@ export function useRoutinesModel(input: RoutinesModelInput): RoutinesModel {
     [routines, clientId, studioId],
   );
   const rowsA = useMemo(
-    () => buildRoutineRows(a, machines, client, clientSettings, allLogs, sessions),
-    [a, machines, client, clientSettings, allLogs, sessions],
+    () => buildRoutineRows(a, machines, client, clientSettings, allLogs, sessions, coverage),
+    [a, machines, client, clientSettings, allLogs, sessions, coverage],
   );
   const rowsB = useMemo(
-    () => buildRoutineRows(b, machines, client, clientSettings, allLogs, sessions),
-    [b, machines, client, clientSettings, allLogs, sessions],
+    () => buildRoutineRows(b, machines, client, clientSettings, allLogs, sessions, coverage),
+    [b, machines, client, clientSettings, allLogs, sessions, coverage],
   );
   const changes = useMemo(
     () => buildRoutineChanges(adjustments, routines, machines, trainers),

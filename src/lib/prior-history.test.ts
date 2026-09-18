@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   COVERAGE_CAVEAT,
+  NEVER_LABEL,
+  canQuoteLifetime,
   historyCoverage,
   isPriorHistory,
   priorHistoryLabel,
@@ -121,5 +123,48 @@ describe("historyCoverage", () => {
     expect(historyCoverage({})).toBe("unknown");
     expect(historyCoverage(null)).toBe("unknown");
     expect(COVERAGE_CAVEAT.unknown).toBeTruthy();
+  });
+});
+
+describe("historyCoverage against the studio's cutover", () => {
+  const CUTOVER = "2027-09-18"; // the day that studio moved onto Journey
+
+  it("is complete for a client whose first session is on or after the cutover", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-09-18" }, CUTOVER)).toBe("complete");
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02" }, CUTOVER)).toBe("complete");
+  });
+
+  it("is partial for a client who was training before it", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-06-01" }, CUTOVER)).toBe("partial");
+  });
+
+  it("stays unknown without a cutover, or without a first session", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-06-01" }, null)).toBe("unknown");
+    expect(historyCoverage({}, CUTOVER)).toBe("unknown");
+  });
+
+  it("lets an explicit prior record beat the date either way", () => {
+    // Recorded history wins: a date cannot overrule someone who wrote it down.
+    expect(historyCoverage({ priorHistory: base, firstJourneyDay: "2027-11-02" }, CUTOVER)).toBe("partial");
+    expect(historyCoverage({ historyIsComplete: true, firstJourneyDay: "2020-01-01" }, CUTOVER)).toBe("complete");
+  });
+});
+
+describe("the two things a screen may say about an unused machine", () => {
+  it("only claims 'never attempted' when Journey holds the whole story", () => {
+    expect(NEVER_LABEL.complete).toBe("Never attempted");
+  });
+
+  it("says 'nothing recorded' for partial AND unknown — they look identical", () => {
+    // Machine history is not coming across from FileMaker, so a client may
+    // have used it four hundred times. Never claim otherwise.
+    expect(NEVER_LABEL.partial).toBe("Nothing recorded");
+    expect(NEVER_LABEL.unknown).toBe("Nothing recorded");
+  });
+
+  it("quotes a lifetime figure only when it is one", () => {
+    expect(canQuoteLifetime("complete")).toBe(true);
+    expect(canQuoteLifetime("partial")).toBe(false);
+    expect(canQuoteLifetime("unknown")).toBe(false);
   });
 });

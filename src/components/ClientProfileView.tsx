@@ -18,10 +18,11 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
+import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
 import {
   PRIOR_SOURCES,
   PRIOR_SOURCE_LABEL,
+  historyCoverage,
   priorHistoryLabel,
   priorHistoryOf,
   priorUncounted,
@@ -473,6 +474,34 @@ export function ClientProfileView({
   const priorLabel = priorHistoryLabel(priorHistory);
   /* A primitive, so the reconciler's deps are stable across snapshot churn. */
   const priorOffset = priorUncounted(priorHistory);
+
+  /*
+   * How much of this client's story Journey actually holds.
+   *
+   * The studio's `journeyCutoverDate` is the day IT moved onto Journey — the
+   * rollout is staggered, so it is per studio. A client whose first session
+   * here predates it was training before Journey existed, and machine-level
+   * history is not coming across from FileMaker: the app therefore says
+   * "nothing recorded" about a machine rather than "never attempted", and
+   * quotes no lifetime figure. Unset cutover means unknown, which reads the
+   * same cautious way. docs/business/migration-and-prior-history.md.
+   */
+  const journeyCutover =
+    studios?.find((st) => st.id === activeStudioId)?.journeyCutoverDate ?? null;
+  const clientCoverage = useMemo(
+    () =>
+      historyCoverage(
+        {
+          priorHistory: client?.priorHistory,
+          historyIsComplete: client?.historyIsComplete,
+          firstJourneyDay: client?.firstSessionDate
+            ? studioDayKeyOf(client.firstSessionDate)
+            : null,
+        },
+        journeyCutover,
+      ),
+    [client, journeyCutover],
+  );
 
   const clientSessionCountRef = useRef<number | undefined>(client?.sessionCount);
   useEffect(() => {
@@ -1666,6 +1695,7 @@ export function ClientProfileView({
         >
           <ProgrammingTab
             client={client}
+            coverage={clientCoverage}
             clientId={clientId || ""}
             routines={routines}
             machines={machines}

@@ -1691,6 +1691,17 @@ export interface TrainerFocus {
 export interface Studio {
   id?: string;
   name: string;
+  /**
+   * The day THIS studio moved onto Journey (yyyy-mm-dd, the studio's own day).
+   *
+   * The rollout is staggered, so it is per studio, and it is expected to move
+   * while beta runs. A client whose first session predates it was training
+   * before Journey existed: their machine history is in FileMaker and is not
+   * coming across, so the app says "nothing recorded" rather than "never
+   * attempted". Unset means every client here reads as unknown, which gets the
+   * same cautious wording. docs/business/migration-and-prior-history.md.
+   */
+  journeyCutoverDate?: string | null;
   ownerId: string;
   headTrainerId?: string;
   contactEmail?: string;

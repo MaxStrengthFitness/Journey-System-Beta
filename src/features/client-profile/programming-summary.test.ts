@@ -2,31 +2,52 @@ import { describe, expect, it } from "vitest";
 import { rosterCoverage } from "./programming-summary";
 
 const roster = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: undefined }];
+const stats = {
+  machineStats: { a: { timesPerformed: 4 }, b: { timesPerformed: 0 }, z: { timesPerformed: 9 } },
+};
 
 describe("rosterCoverage", () => {
-  it("counts roster machines performed at least once", () => {
-    const client = {
-      machineStatsBackfilledAt: "2026-09-01",
-      machineStats: { a: { timesPerformed: 4 }, b: { timesPerformed: 0 }, z: { timesPerformed: 9 } },
-    };
-    expect(rosterCoverage(roster, client)).toEqual({ total: 3, performed: 1, neverTried: 2 });
-  });
-
-  it("is unknown, not zero, before the backfill — even with some running totals", () => {
-    expect(rosterCoverage(roster, { machineStats: { a: { timesPerformed: 1 } } })).toEqual({
+  it("counts roster machines performed at least once when Journey holds the whole story", () => {
+    expect(rosterCoverage(roster, stats, "complete")).toEqual({
       total: 3,
-      performed: null,
-      neverTried: null,
+      performed: 1,
+      neverTried: 2,
+      coverage: "complete",
     });
-    expect(rosterCoverage(roster, {})).toEqual({ total: 3, performed: null, neverTried: null });
-    expect(rosterCoverage(roster, null)).toEqual({ total: 3, performed: null, neverTried: null });
   });
 
-  it("trusts an empty rollup once the backfill has run", () => {
-    expect(rosterCoverage(roster, { machineStats: {}, machineStatsBackfilledAt: "2026-09-01" })).toEqual({
+  it("trusts an empty rollup for a client who started here", () => {
+    expect(rosterCoverage(roster, { machineStats: {} }, "complete")).toEqual({
       total: 3,
       performed: 0,
       neverTried: 3,
+      coverage: "complete",
+    });
+  });
+
+  it("quotes nothing for a client who trained before the cutover", () => {
+    // Their machine history is in FileMaker and is not coming across: the
+    // count here is not their lifetime, so it is not a number we may show.
+    expect(rosterCoverage(roster, stats, "partial")).toEqual({
+      total: 3,
+      performed: null,
+      neverTried: null,
+      coverage: "partial",
+    });
+  });
+
+  it("defaults to the cautious answer when nobody has said", () => {
+    expect(rosterCoverage(roster, stats)).toEqual({
+      total: 3,
+      performed: null,
+      neverTried: null,
+      coverage: "unknown",
+    });
+    expect(rosterCoverage(roster, null)).toEqual({
+      total: 3,
+      performed: null,
+      neverTried: null,
+      coverage: "unknown",
     });
   });
 });
