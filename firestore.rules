@@ -1948,6 +1948,40 @@ service cloud.firestore {
       }
 
       /*
+       * THE WATCHLIST (Operations overhaul, Sep 2026) -- one document per
+       * client, keyed by client id: a leader's disposition of an attendance
+       * anomaly. Snooze ("remind me again on this date") or dismiss ("I know
+       * why they are out"). AJ, Sep 19: leaders clear people off the list.
+       * Read by the studio's people; written by whoever runs the studio, a
+       * franchise owner or an administrator. Deleting it puts the client
+       * back on normal watch -- that is what "Got it" on a back-again row
+       * does. features/admin/attention.
+       */
+      match /watchlist/{clientId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create, update, delete: if isSuperAdmin() || isFranchiseOwner()
+                                      || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      /*
+       * ACKNOWLEDGEMENTS (Operations overhaul, Sep 2026) -- one document per
+       * thing acknowledged on the Overview (an incident, a critical note, a
+       * pain report on the Dial), keyed by its source. Who saw it, and when
+       * -- beside the studio rather than on the trainer's note, so
+       * acknowledging never rewrites what was written. Anyone who works here
+       * may acknowledge (AJ: pain is visible to anyone who can open the
+       * Overview, not leadership only), and only as themselves. Nothing is
+       * ever deleted.
+       */
+      match /acknowledgements/{ackId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer()
+                              && writesForStudio(studioId)
+                              && request.resource.data.acknowledgedBy == request.auth.uid;
+        allow delete: if false;
+      }
+
+      /*
        * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
        * was last wiped and deep cleaned, by whom, and a flag. Written from
        * the Floor Map's care sheet by anyone who works at the studio; a wipe

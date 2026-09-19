@@ -2315,4 +2315,50 @@ describe("Firestore Security Rules", () => {
     const ownerB = testEnv.authenticatedContext("ownerB", { email: "ownerb@test.com" }).firestore();
     await assertFails(getDoc(doc(ownerB, "catalogSubmissions", "sub1")));
   });
+
+  // ── OPERATIONS OVERHAUL (Sep 19 2026) ───────────────────────────────────
+  it("the watchlist: the studio's leader snoozes, dismisses and clears a client; a trainer only reads; another studio's trainer reads nothing", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const ref = (db: typeof owner) => doc(db, "studios", "studioA", "watchlist", "clientA");
+    await assertSucceeds(
+      setDoc(ref(owner), {
+        clientId: "clientA",
+        snoozedUntil: "2026-10-01",
+        dismissedAt: null,
+        dismissedBy: null,
+        dismissedByName: null,
+        lastVisitAtDismissal: null,
+        nextBookingAtDismissal: null,
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(updateDoc(ref(owner), { snoozedUntil: null, dismissedAt: "2026-09-19", dismissedBy: "ownerA", dismissedByName: "Owner A" }));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDoc(ref(trainer)));
+    await assertFails(updateDoc(ref(trainer), { snoozedUntil: "2026-12-01" }));
+    await assertFails(deleteDoc(ref(trainer)));
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(ref(other)));
+    await assertSucceeds(deleteDoc(ref(owner)));
+  });
+
+  it("acknowledgements: anyone who works at the studio may acknowledge, only as themselves, and nobody deletes one", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const ack = (by: string) => ({
+      sourceKind: "incident",
+      clientId: "clientA",
+      acknowledgedAt: serverTimestamp(),
+      acknowledgedBy: by,
+      acknowledgedByName: "Trainer A",
+    });
+    await assertSucceeds(setDoc(doc(trainer, "studios", "studioA", "acknowledgements", "incident:inc1"), ack("trainerA")));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "acknowledgements", "incident:inc2"), ack("ownerA")));
+    await assertFails(deleteDoc(doc(trainer, "studios", "studioA", "acknowledgements", "incident:inc1")));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(owner, "studios", "studioA", "acknowledgements", "incident:inc1")));
+    await assertFails(deleteDoc(doc(owner, "studios", "studioA", "acknowledgements", "incident:inc1")));
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(other, "studios", "studioA", "acknowledgements", "incident:inc1")));
+    await assertFails(setDoc(doc(other, "studios", "studioA", "acknowledgements", "incident:inc3"), ack("trainerB")));
+  });
 });
