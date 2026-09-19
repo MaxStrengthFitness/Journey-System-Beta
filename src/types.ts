@@ -1416,6 +1416,20 @@ export interface ScheduleEntry {
   importId?: string;
   ical_uid?: string;
   createdAt: any;
+  /**
+   * The change stamps (Operations overhaul, Sep 2026) — written by the
+   * schedule pull-sync (`lib/mindbody-api-sync.ts`, `changeStamps`) and read
+   * by Operations → Overview → Changes. A cancelled row keeps its startTime,
+   * so the day it was FOR is the day it belongs to; a moved row remembers the
+   * day and start it left. Absent on rows written before the round, and on
+   * cancellations the webhook delivered.
+   */
+  cancelledAt?: any | null;
+  cancelSource?: "mindbody" | "sweep" | null;
+  /** `YYYY-MM-DD` in the studio's zone. */
+  movedFromDay?: string | null;
+  movedFromStart?: any | null;
+  movedAt?: any | null;
 }
 
 export type HighlightMetricType =

@@ -752,6 +752,97 @@ describe("syncMindbodySchedules — studio isolation", () => {
   });
 });
 
+describe("syncMindbodySchedules — the change stamps (Operations overhaul, Sep 2026)", () => {
+  // An existing row for the appointment the mock reports, keyed the canonical
+  // way (doc id = Mindbody appointment id) so the sync takes the update path.
+  const existingRow = (data: Record<string, unknown>) => ({
+    id: "5001",
+    data: () => ({
+      mindbodyAppointmentId: "5001",
+      studioId: "studio-solon",
+      clientId: "mb-client-1",
+      clientName: "Alice Smith",
+      trainerId: "t-marina",
+      status: "Scheduled",
+      // Two days out: inside the window, so the sweep would otherwise act.
+      startTime: { toMillis: () => Date.now() + 2 * 24 * 60 * 60 * 1000 },
+      ...data,
+    }),
+  });
+
+  const run = () =>
+    syncMindbodySchedules(SITE, TRAINERS, CLIENTS, SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2");
+
+  const updateOf = (id: string) => batchOps.find((op) => op.kind === "update" && op.id === id)?.data;
+
+  it("stamps a moved booking with the day and start it left", async () => {
+    mockAppointments([appointment({ Id: 5001, LocationId: 2 })]);
+    const oldStart = { toMillis: () => Date.now() + 2 * 24 * 60 * 60 * 1000 };
+    snapshots.schedules = [existingRow({ startTime: oldStart })];
+
+    await run();
+
+    const update = updateOf("5001");
+    expect(update).toBeTruthy();
+    expect(update.movedFromStart).toBe(oldStart);
+    expect(update.movedFromDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(update.movedAt).toBeTruthy();
+    // Not a cancellation.
+    expect(update.cancelledAt).toBeUndefined();
+  });
+
+  it("stamps a booking Mindbody now reports cancelled, and says Mindbody said so", async () => {
+    mockAppointments([appointment({ Id: 5001, LocationId: 2, Status: "Cancelled" })]);
+    // Same start as the sync will compute, so nothing reads as a move — only
+    // the status differs.
+    snapshots.schedules = [existingRow({})];
+
+    await run();
+
+    const update = updateOf("5001");
+    expect(update.status).toBe("Cancelled");
+    expect(update.cancelledAt).toBeTruthy();
+    expect(update.cancelSource).toBe("mindbody");
+  });
+
+  it("clears the cancellation when a cancelled booking comes back as booked", async () => {
+    mockAppointments([appointment({ Id: 5001, LocationId: 2 })]);
+    snapshots.schedules = [existingRow({ status: "Cancelled", cancelledAt: { __ms: 1 }, cancelSource: "sweep" })];
+
+    await run();
+
+    const update = updateOf("5001");
+    expect(update.status).toBe("Scheduled");
+    expect(update.cancelledAt).toBeNull();
+    expect(update.cancelSource).toBeNull();
+    // A cancelled row that is re-booked at a new time is a fresh booking,
+    // not a move: nothing to say about where it came from.
+    expect(update.movedFromDay).toBeUndefined();
+  });
+
+  it("the sweep stamps what vanished from Mindbody's answer as its own finding", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })]);
+    snapshots.schedules = [
+      {
+        id: "gone",
+        data: () => ({
+          mindbodyAppointmentId: "999",
+          studioId: "studio-solon",
+          status: "Scheduled",
+          startTime: { toMillis: () => Date.now() + 24 * 60 * 60 * 1000 },
+        }),
+      },
+    ];
+
+    await run();
+
+    const update = updateOf("gone");
+    expect(update.status).toBe("Cancelled");
+    expect(update.cancelledAt).toBeTruthy();
+    expect(update.cancelSource).toBe("sweep");
+  });
+});
+
 describe("syncMindbodySchedules — phase 1 never overwrites an existing client", () => {
   it("does not read the whole clients collection", async () => {
     mockAppointments([appointment({ ClientId: "mb-new", LocationId: 2 })]);

@@ -21,6 +21,7 @@ import {
   DEFAULT_TIME_ZONE,
   studioTodayKey,
   studioDayBoundsForKey,
+  studioDateKey,
   toDate,
 } from "./studio-time";
 
@@ -298,6 +299,61 @@ export async function checkClientIds(ids: readonly string[]): Promise<ClientIdCh
 /** A schedule row's start, whatever shape the read gave it. */
 function rowStartMs(value: unknown): number | null {
   return toDate(value as Parameters<typeof toDate>[0])?.getTime() ?? null;
+}
+
+/**
+ * THE CHANGE STAMPS (Operations overhaul, Sep 2026).
+ *
+ * The sync already noticed when a booking's time moved or Mindbody reported
+ * it cancelled — `hasChanged` — and then wrote the new state over the old
+ * with no record of what the old state was. The day's Changes list needs
+ * exactly that record: a Wednesday cancellation of a Friday session belongs
+ * to Friday's list, and "moved from 10:00" is only sayable if someone wrote
+ * 10:00 down before overwriting it.
+ *
+ * Additive fields only, written once per event:
+ *   movedFromDay / movedFromStart / movedAt — the studio day and start the
+ *     booking was on before Mindbody moved it (the list for THAT day reads
+ *     `movedFromDay`; one composite index, studioId + movedFromDay);
+ *   cancelledAt / cancelSource — when, and who noticed: "mindbody" here
+ *     (its answer said cancelled), "sweep" below (it vanished from the
+ *     answer). Cleared when a cancelled booking comes back as Scheduled, so a
+ *     restored booking does not keep reading as a cancellation.
+ * The webhook (functions/src) still writes `status` alone; a cancellation it
+ * delivers shows on the list with no time until it, too, stamps.
+ */
+export function changeStamps(
+  curr: Record<string, any>,
+  next: Record<string, any>,
+  nextStart: { toMillis: () => number },
+  tz: string,
+): Record<string, unknown> {
+  const stamps: Record<string, unknown> = {};
+  const prevStartMs = rowStartMs(curr.startTime);
+  if (
+    prevStartMs !== null &&
+    prevStartMs !== nextStart.toMillis() &&
+    curr.status !== "Cancelled"
+  ) {
+    // The day the OLD start fell on, in the studio's zone, not UTC's: an
+    // 8 PM Eastern booking is tomorrow in UTC.
+    stamps.movedFromDay = studioDayKeyOfInstant(prevStartMs, tz);
+    stamps.movedFromStart = curr.startTime;
+    stamps.movedAt = Timestamp.now();
+  }
+  if (next.status === "Cancelled" && curr.status !== "Cancelled") {
+    stamps.cancelledAt = Timestamp.now();
+    stamps.cancelSource = "mindbody";
+  } else if (next.status === "Scheduled" && curr.status === "Cancelled") {
+    stamps.cancelledAt = null;
+    stamps.cancelSource = null;
+  }
+  return stamps;
+}
+
+/** `YYYY-MM-DD` of an instant in the studio's zone. */
+function studioDayKeyOfInstant(ms: number, tz: string): string {
+  return studioDateKey(new Date(ms), tz) ?? new Date(ms).toISOString().slice(0, 10);
 }
 
 export async function syncMindbodySchedules(
@@ -900,7 +956,10 @@ export async function syncMindbodySchedules(
             curr.startTime?.toMillis?.() !== startTime.toMillis();
 
           if (hasChanged) {
-            batch.update(doc(db, "schedules", existing.docId), payload);
+            batch.update(doc(db, "schedules", existing.docId), {
+              ...payload,
+              ...changeStamps(curr, payload, startTime, studioTimeZone),
+            });
             result.updated++;
           } else {
             result.skipped++;
@@ -929,6 +988,12 @@ export async function syncMindbodySchedules(
         batch.update(doc(db, "schedules", existing.docId), {
           status: "Cancelled",
           lastSyncAt: Timestamp.now(),
+          // The Changes list (Operations overhaul, Sep 2026): WHEN it went,
+          // and that it was the sweep that noticed rather than Mindbody
+          // saying so. The calendar hides a cancelled row; the day's
+          // changes list reads these two fields.
+          cancelledAt: Timestamp.now(),
+          cancelSource: "sweep",
         });
         result.updated++;
         batchCount++;
