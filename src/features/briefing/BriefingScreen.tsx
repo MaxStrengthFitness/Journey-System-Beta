@@ -101,6 +101,7 @@ import { PulseQuickLogDialog } from "../subjective-report";
 import { FordBriefingCue } from "../ford/FordBriefingCue";
 import { useClientJournal } from "../../hooks/useClientJournal";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
+import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
@@ -377,6 +378,10 @@ export function BriefingScreen({
   const clientFlags = (client.clinicalFlags || [])
     .map((flagId) => CLINICAL_FLAGS_MATRIX.find((f) => f.id === flagId))
     .filter(Boolean) as typeof CLINICAL_FLAGS_MATRIX;
+  // Which condition chip is open, showing the matrix's instruction beneath.
+  const [openFlagId, setOpenFlagId] = useState<string | null>(null);
+  const openFlag = openFlagId ? clientFlags.find((f) => f.id === openFlagId) ?? null : null;
+  const [showAllHeadsUp, setShowAllHeadsUp] = useState(false);
 
   const severityOrder = {
     "Absolute Contraindication": 0,
@@ -526,42 +531,70 @@ export function BriefingScreen({
               </span>
               {!hasBefore && <p className="br__before-clear">Nothing flagged — clear to go.</p>}
 
+              {/* Conditions as chips, and the chip is a TAP: it used to be a
+                  bare span that named the condition and nothing else, while
+                  the matrix's actual instruction ("no Valsalva, keep the
+                  head up") sat unread. A small marker, tappable for more —
+                  AJ: "I really don't want clutter." Fluidity round, Sep 2026. */}
               {clientFlags.length > 0 && (
                 <div className="br__flags">
-                  {clientFlags.map((cond, i) => (
-                    <ConditionChip
-                      key={i}
-                      label={cond.conditionName || (cond as any).label}
-                      severity={
-                        cond.severity === "High Risk" ||
-                        cond.severity === "Absolute Contraindication"
-                          ? "critical"
-                          : "standard"
-                      }
-                    />
+                  {clientFlags.map((cond, i) => {
+                    const open = openFlagId === cond.id;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        className="br__flagbtn"
+                        aria-expanded={open}
+                        onClick={() => setOpenFlagId(open ? null : cond.id)}
+                      >
+                        <ConditionChip
+                          label={cond.conditionName || (cond as any).label}
+                          severity={
+                            cond.severity === "High Risk" ||
+                            cond.severity === "Absolute Contraindication"
+                              ? "critical"
+                              : "standard"
+                          }
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {openFlag && (
+                <div className="br__flagdetail" data-testid="briefing-flag-detail">
+                  <span className="br__label">{openFlag.conditionName}</span>
+                  {(openFlag.protocolHandling || []).map((rule, i) => (
+                    <p key={i} className="br__flagrule">
+                      {(rule.affectedMachineIds || []).length > 0 ? (
+                        <b>{(rule.affectedMachineIds || []).join(", ")}: </b>
+                      ) : (
+                        <b>Every machine: </b>
+                      )}
+                      {rule.instruction}
+                      {rule.setupModification?.trim() ? ` — set-up: ${rule.setupModification.trim()}` : ""}
+                    </p>
                   ))}
                 </div>
               )}
 
+              {/* Critical notes, three at a time. `CriticalStrip` is the one
+                  component built for "a small marker, tappable for more"; it
+                  was on the Notes catalog and not on the screen that needed
+                  it most. */}
               {criticalEntries.length > 0 && (
                 <div className="br__critical">
-                  {criticalEntries.map((entry) => (
-                    <JournalEntryCard
-                      key={entry.id}
-                      entry={entry}
-                      machines={machines}
-                      dense
-                    />
-                  ))}
+                  <CriticalStrip entries={criticalEntries} machines={machines} title="Critical" />
                 </div>
               )}
 
               {/* Heads ups: under the critical ones, and quieter. Reporting
-                  round, Sep 2026. */}
+                  round, Sep 2026. Three, then "N more". */}
               {headsUpEntries.length > 0 && (
                 <div className="br__headsup" data-testid="briefing-headsup">
                   <span className="br__label">Heads up</span>
-                  {headsUpEntries.map((entry) => (
+                  {(showAllHeadsUp ? headsUpEntries : headsUpEntries.slice(0, 3)).map((entry) => (
                     <JournalEntryCard
                       key={entry.id}
                       entry={entry}
@@ -569,6 +602,15 @@ export function BriefingScreen({
                       dense
                     />
                   ))}
+                  {headsUpEntries.length > 3 && (
+                    <button
+                      type="button"
+                      className="br__more"
+                      onClick={() => setShowAllHeadsUp((v) => !v)}
+                    >
+                      {showAllHeadsUp ? "Show fewer" : `${headsUpEntries.length - 3} more`}
+                    </button>
+                  )}
                 </div>
               )}
 

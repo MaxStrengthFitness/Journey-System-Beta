@@ -174,6 +174,39 @@
 .br__close:focus-visible { outline: 2px solid var(--br-focus-ring); outline-offset: 2px; }
 
 .br__flags { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A condition chip is a tap (fluidity round, Sep 2026): 40px of target
+   around the chip, the instruction opens beneath the row. */
+.br__flagbtn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.br__flagbtn[aria-expanded="true"] > * { box-shadow: 0 0 0 2px var(--br-hero); }
+.br__flagdetail { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 10px; background: var(--br-surface-2); }
+.br__flagrule { margin: 0; font-size: 12.5px; line-height: 1.4; }
+.br__flagrule b { font-weight: 800; }
+.br__more {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 40px;
+  align-self: flex-start;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--br-ink-muted);
+  cursor: pointer;
+}
 
 /* An inset panel inside the hero: the goal, and each coaching focus. */
 .br__inset {

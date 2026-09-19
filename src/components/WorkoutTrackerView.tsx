@@ -22,6 +22,7 @@ import {
   TriangleAlert,
   HeartPulse,
   X,
+  ShieldAlert,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -165,7 +166,10 @@ import {
 } from "../lib/post-session";
 import { NOW_BAR_SIDE_QUERY, useMediaQuery } from "../hooks/useMediaQuery";
 import { traineeLevelOf } from "../lib/progression-cue";
-import { createJournalEntry } from "../hooks/useClientJournal";
+import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal";
+import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
+import { SessionFlagsSheet } from "../features/journey-grid/SessionFlagsSheet";
+import { formatStudioDate } from "../lib/studio-time";
 import { NOTE_CATEGORY_META } from "../features/notes/note-catalog";
 import {
   clearSessionDraft,
@@ -1372,6 +1376,30 @@ export function WorkoutTrackerView({
    * post-session screen. features/notes/session-draft.ts.
    */
   const [noteDraft, setNoteDraft] = useState<SessionNoteDraft | null>(null);
+
+  /*
+   * RED FLAGS FOR THE WHOLE TWENTY MINUTES (fluidity round, Sep 18 2026).
+   * The briefing read the journal and showed the client's conditions and
+   * critical notes; the moment Start was pressed every one of them was gone.
+   * The same hook the briefing uses, here for the session's whole life; the
+   * Firestore client shares the listener with the briefing's while both are
+   * mounted. features/journey-grid/session-flags.ts decides what to show.
+   */
+  const [isShowingFlags, setIsShowingFlags] = useState(false);
+  const flagJournal = useClientJournal({
+    clientId: selectedClient?.id || null,
+    client: selectedClient ?? null,
+    trainers,
+  });
+  const flagSources = useMemo(
+    () => ({
+      clinicalFlags: selectedClient?.clinicalFlags ?? null,
+      criticalEntries: flagJournal.criticalEntries,
+      headsUpEntries: flagJournal.headsUpEntries ?? [],
+    }),
+    [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries],
+  );
+  const flags = useMemo(() => sessionFlags(flagSources), [flagSources]);
   const draftSessionRef = React.useRef<string | null>(null);
   useEffect(() => {
     const id = currentSession?.id ?? null;
@@ -3493,6 +3521,20 @@ export function WorkoutTrackerView({
               )}
             </div>
           </div>
+          {/* The marker: small, red when something is critical, one tap for
+              the whole of it, never a dialog that has to be dismissed. */}
+          {flags.count > 0 && (
+            <button
+              type="button"
+              className={cn("jg-sbar__flag", flags.severe && "jg-sbar__flag--severe")}
+              onClick={() => setIsShowingFlags(true)}
+              aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientNameDisplay}. Open.`}
+              title="What to know before you touch the machine"
+            >
+              <ShieldAlert size={14} strokeWidth={2.75} aria-hidden="true" />
+              <span>{flags.count}</span>
+            </button>
+          )}
           {currentSession && (
             <ActiveSessionTimer
               variant="bar"
@@ -4158,6 +4200,14 @@ export function WorkoutTrackerView({
           nextName={gridNextRow?.machine.name}
           onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
           onAddMachine={() => setIsOrderSheetOpen(true)}
+          flagLine={
+            gridFocusRow
+              ? flagLineOf(machineFlags(gridFocusRow.machine, flagSources), (e) =>
+                  e.occurredAt ? formatStudioDate(e.occurredAt, { month: "short", day: "numeric" }) : "",
+                )
+              : null
+          }
+          onOpenFlag={gridFocusMachineId ? () => setSheetMachineId(gridFocusMachineId) : undefined}
           level={traineeLevelOf(selectedClient)}
           layout={nowBarSide ? "side" : "bar"}
           onMachineSeconds={machineTimeElapsed}
@@ -4250,6 +4300,17 @@ export function WorkoutTrackerView({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isShowingFlags && selectedClient && (
+          <SessionFlagsSheet
+            clientFirstName={clientFirstName(selectedClient)}
+            flags={flags}
+            machines={machines}
+            onClose={() => setIsShowingFlags(false)}
+          />
         )}
       </AnimatePresence>
 

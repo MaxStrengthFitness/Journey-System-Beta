@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, X } from "lucide-react";
+import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, ShieldAlert, X } from "lucide-react";
+import type { FlagLine } from "./session-flags";
 import {
   OUTCOME_GLOSS,
   PICKABLE_SKIP_REASONS,
@@ -36,6 +37,14 @@ export interface SessionNowBarProps {
    * is fine after all. Opens the add-from-the-floor list.
    */
   onAddMachine?: () => void;
+  /**
+   * What is tied to THIS machine for THIS client — a critical note written on
+   * it, a heads-up, a condition's instruction that names it. One line under
+   * the settings, red or amber, a tap opens the machine sheet where the whole
+   * of it lives (fluidity round, Sep 2026). Null when nothing is tied.
+   */
+  flagLine?: FlagLine | null;
+  onOpenFlag?: () => void;
   /**
    * The client's training level. Unused since the progression cue left the
    * bar (fluidity round, Sep 18) — kept so callers need not change; a future
@@ -247,6 +256,8 @@ function SessionNowBarImpl({
   onNext,
   onMachineSeconds,
   onAddMachine,
+  flagLine = null,
+  onOpenFlag,
   layout = "bar",
 }: SessionNowBarProps) {
   const machine = row?.machine;
@@ -577,6 +588,21 @@ function SessionNowBarImpl({
             </div>
           )}
         </div>
+      )}
+
+      {/* --- the flag · what a previous trainer needs this one to know --- */}
+      {flagLine && (
+        <button
+          type="button"
+          className={`jg-nb__flag jg-nb__flag--${flagLine.tone}`}
+          onClick={onOpenFlag}
+          disabled={!onOpenFlag}
+          aria-label={`Watch out on this machine: ${flagLine.text}${flagLine.more > 0 ? `, and ${flagLine.more} more` : ""}. Opens the machine sheet.`}
+        >
+          <ShieldAlert size={14} strokeWidth={2.5} aria-hidden="true" />
+          <span className="jg-nb__flagtext">{flagLine.text}</span>
+          {flagLine.more > 0 && <span className="jg-nb__flagmore">+{flagLine.more}</span>}
+        </button>
       )}
 
       {/* --- line 3 · what is next --------------------------------------

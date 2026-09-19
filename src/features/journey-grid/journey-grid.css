@@ -1148,13 +1148,14 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   font-family: var(--jg-font);
   color: var(--jg-ink);
   grid-template-columns: 1fr;
-  grid-template-areas: "head" "controls" "next";
+  grid-template-areas: "head" "flag" "controls" "next";
 }
 @media (min-width: 900px) {
   .jg-nb--bar {
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "head head"
+      "flag flag"
       "controls next";
     align-items: end;
   }
@@ -1581,6 +1582,35 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   touch-action: manipulation;
 }
 .jg-nb__next:disabled { opacity: 0.45; cursor: default; }
+
+/* The flag line (fluidity round, Sep 2026): what a previous trainer needs
+   this one to know about THIS machine. Red is reserved for rep quality in
+   the grid; here the tone tokens are the rating system's own, so a critical
+   note and the kaizen ring never read as the same thing. Full width, one
+   line, 40px tall - a target, not a label. */
+.jg-nb__flag {
+  grid-area: flag;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--jg-radius-sm);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-nb__flag:disabled { cursor: default; }
+.jg-nb__flag--critical { background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10)); border-color: var(--jg-q-poor-text, #e11d48); color: var(--jg-q-poor-text, #e11d48); }
+.jg-nb__flag--elevated { background: rgba(245, 158, 11, 0.10); border-color: rgba(245, 158, 11, 0.55); color: var(--jg-ink); }
+.jg-nb__flagtext { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jg-nb__flagmore { flex: none; font-size: 11px; font-weight: 800; opacity: 0.8; }
 /* The last machine's offer. An outline, not the filled orange of Next: it is
    a door left open, not the primary action, and it must never read as
    "press me to finish" — End Session lives at the top for exactly that. The
@@ -2238,6 +2268,34 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 .jg-sbar__meter i { display: block; height: 100%; background: var(--jg-hero); border-radius: inherit; transition: width 240ms ease; }
 
 .jg-sbar__sp { flex: 1; min-width: 6px; }
+/* The red-flag marker (fluidity round, Sep 2026). 40px tall, a count, a
+   shield. Amber when there are only heads-ups and moderate conditions; red
+   the moment anything is critical. */
+.jg-sbar__flag {
+  flex: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 10px;
+  margin-left: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--jg-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.jg-sbar__flag--severe {
+  border-color: var(--jg-q-poor-text, #e11d48);
+  background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10));
+  color: var(--jg-q-poor-text, #e11d48);
+}
 
 .jg-sbar__btn,
 .jg-sbar__trash,
@@ -2513,8 +2571,8 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   border-top: 0;
   border-left: 2px solid var(--jg-hero);
   grid-template-columns: 1fr;
-  grid-template-areas: "head" "controls" "next";
-  grid-template-rows: auto auto auto;
+  grid-template-areas: "head" "flag" "controls" "next";
+  grid-template-rows: auto auto auto auto;
   align-content: start;
   gap: 12px;
   padding: 12px 12px 14px;
