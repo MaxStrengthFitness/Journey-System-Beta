@@ -705,7 +705,9 @@ service cloud.firestore {
           // their own notices; the Operations tab's people, any; a studio's
           // leaders, their studio's own (My Studio round). The author and
           // the reach stay what they were allowed to be.
-          (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner'
+          // Same narrowing as create: a studio owner takes down notices at
+          // the studio they run, not at any studio.
+          (roleIsSuper(r) || roleIsFranchise(r)
               || studioNoticeOfMine(r, resource.data))
           && (resource.data.get('authorId', '') == request.auth.uid
               || roleIsSuper(r) || roleIsFranchise(r)
@@ -733,9 +735,13 @@ service cloud.firestore {
      */
     function hubAnnouncementCreateAllowed() {
       let r = getRole();
-      return (roleIsSuper(r) || roleIsFranchise(r) || r == 'StudioOwner'
-              // My Studio round (Sep 2026): a studio's leaders post to their
-              // own studio -- My Studio -> Studio -> Announcements.
+      // StudioOwner is NOT here on its own. It used to be, from when it was
+      // a company-tier role; the My Studio round (Sep 18 2026) made it a
+      // STUDIO-tier role -- one studio -- and this line kept the old blanket,
+      // so an owner at studio A could post a notice into studio B. They reach
+      // their own studio through studioNoticeOfMine, which is what a studio's
+      // leaders use: My Studio -> Studio -> Announcements.
+      return (roleIsSuper(r) || roleIsFranchise(r)
               || studioNoticeOfMine(r, request.resource.data))
           // Posted as yourself (review fix: the author was free text).
           && request.resource.data.authorId == request.auth.uid
@@ -934,6 +940,28 @@ service cloud.firestore {
           && (!('closingNote' in d) || d.closingNote == null
               || (d.closingNote is string && d.closingNote.size() <= 1000))
           && (!('dueOn' in d) || d.dueOn == null || d.dueOn is string);
+    }
+
+    /* WHO MAY POST, EDIT OR CALL OFF A TEAM JOB.
+       Extracted for the same reason as the hub_announcement rules above, and
+       it is the same failure: the inline version asked isSuperAdmin(), then
+       isFranchiseOwnerOnly(), then isStudioOwnerOrHeadTrainer(studioId), and
+       every one of those calls getRole() -- which reads the trainer document
+       TWICE on the document-backed path -- while isStudioOwnerOrHeadTrainerOnly
+       calls getRole() three more times and getTrainerData() five. One update
+       evaluated its way through Firestore's 1000-expression budget and came
+       back "Unable to evaluate the expression as the maximum of 1000
+       expressions to evaluate has been reached", which reads as a permission
+       error and is not one. Resolving the role and the trainer document once
+       is the whole fix.
+
+       trainerLeads() is also the RIGHT question: it is the one app-side answer
+       to "runs this studio" (features/relay/leads.ts mirrors it), and it counts
+       Trainer.managedStudioIds -- the grant the My Studio round added. */
+    function teamJobLeaderAllowed(studioId) {
+      let r = getRole();
+      return roleIsSuper(r) || roleIsFranchise(r)
+          || trainerLeads(r, callerTrainer(), studioId);
     }
 
     /* MACHINE CARE (Relay, Sep 2026). Shape only; limits match
@@ -2274,7 +2302,7 @@ service cloud.firestore {
                       && request.resource.data.createdBy.id == request.auth.uid
                       && request.resource.data.status == 'open'
                       && teamJobValid(request.resource.data, studioId)
-                      && (isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer(studioId));
+                      && teamJobLeaderAllowed(studioId);
 
         allow update: if isAuthenticated()
                       && teamJobValid(request.resource.data, studioId)
@@ -2288,14 +2316,11 @@ service cloud.firestore {
                              && resource.data.status != 'cancelled'
                              && writesForStudio(studioId)
                            )
-                        || isSuperAdmin()
-                        || isFranchiseOwnerOnly()
-                        || isStudioOwnerOrHeadTrainer(studioId)
+                        || teamJobLeaderAllowed(studioId)
                       );
 
-        allow delete: if isSuperAdmin()
-                      || resource.data.createdBy.id == request.auth.uid
-                      || isStudioOwnerOrHeadTrainer(studioId);
+        allow delete: if resource.data.createdBy.id == request.auth.uid
+                      || teamJobLeaderAllowed(studioId);
       }
 
       // NOTES SHARED WITH COLLEAGUES (Planner rework, Sep 2026) -- a COPY of

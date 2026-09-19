@@ -133,7 +133,7 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 - **Studio content writes need `writesForStudio(studioId)`** since the Learning + Planner round: machine notes, the upkeep log, playbook, wiki blocks and comments. `writesForStudioPerRules` (`src/features/learning/permissions.ts`) mirrors it for buttons.
 - **Use the Auth uid, not `authTrainer.id`, for anything a rule pins to the signed-in person** — note paths, comment authors, `readBy`, personal tasks. The two differ on older accounts.
 - **Shared lists are collection-group reads.** Each needs a `{path=**}` rule its filters satisfy (`shared == true`) and a collection-group index. Until a new index finishes building, the screen says it couldn't load the shared part.
-- **Announcements** can be posted only by `canPostAnnouncements()` (administrators, founders, franchise owners, studio owners) — and, since My Studio (Sep 19), by a studio's leaders to their own studio only (`studioNoticeOfMine`) — as themselves; only the Operations tab's people (owners and administrators) reach every studio, and Take down confirms first. Everyone else may only add their own uid to `readBy`.
+- **Announcements** are posted by administrators, founders and franchise owners to anywhere, and by **a studio's leaders — studio owner included — to the one studio they run** (`studioNoticeOfMine` -> `trainerLeads`, which counts the grant), as themselves. **`StudioOwner` is not a blanket poster**: it was one until the My Studio round made it a studio-tier role, and the rule kept the old clause until Sep 19 2026, when `test:rules` caught an owner at studio A posting into studio B. Only the Operations tab's people (franchise owners and administrators) reach every studio, and Take down confirms first. Everyone else may only add their own uid to `readBy`.
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
 - **Sessions still use the app-wide machine list**, not each studio's roster, so a studio's own or adopted machines aren't in the session picker yet (ROADMAP).
 - **A reducer passed to `useReducer` must close over NOTHING declared below it.** React calls a reducer while processing a QUEUED action, and it does that during the next render at the point of the `useReducer` call — so a wrapper arrow reading a `const` declared a few lines further down reads it in its temporal dead zone. The four-tab profile shipped exactly this: it opened fine and threw `Cannot access 'ctxRef' before initialization` on the first tab tap. `profileNavReducer` now takes two arguments, lives at module scope and gets everything from the ACTION, assembled at dispatch time. Same rule for anything else React may call mid-render.
@@ -292,6 +292,22 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 ## Security rules and permissions
 
+- **The 1000-expression budget bites twice now, and it reads as a permission error.**
+  Firestore refuses a rule that evaluates more than 1000 expressions with
+  "Unable to evaluate the expression as the maximum of 1000 expressions to
+  evaluate has been reached" — which surfaces as PERMISSION_DENIED and looks
+  like a rule saying no. `getRole()` reads the trainer document TWICE on its
+  document-backed path, and `isStudioOwnerOrHeadTrainerOnly()` calls
+  `getRole()` three times and `getTrainerData()` five, so stacking
+  `isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer()`
+  in one condition is enough on its own. It took the sessions read rule down
+  (Sep 9), the hub_announcement rules (fixed with `let r = getRole()`), and
+  `teamJobs` (Sep 19, `teamJobLeaderAllowed`). **The fix is always the same:
+  extract the condition into a function, `let r = getRole()` and
+  `callerTrainer()` once, and ask `trainerLeads(r, t, studioId)` rather than
+  the helper that re-reads.** `let` is legal in a function body and not in an
+  `allow` condition, which is why these are functions.
+
 - **The role lives on the token now (cost round, Sep 16).** `syncTrainerClaims` (`functions/src/claims.ts`) mirrors `trainers/{id}.role` onto the auth user's custom claims; the rules read `request.auth.token.role` first and fall back to the document only when it is absent. Consequences: a role change reaches the rules at the next sign-in or within an hour (the token is checked first, so the OLD claim wins until then); **never set a `studioId` claim** (as written it grants studio-leader access with no role check); a new trainer role must be added to `TRAINER_ROLES` in `claims-logic.ts` as well as `UserRole`; the function has to be deployed (`firebase deploy --only functions:syncTrainerClaims`) and `scripts/backfill-trainer-claims.ts --commit` run once — until then it just costs the read it always did.
 
 - **Closed Sep 16 (cost round):** a trainer can no longer edit their own `role`, `ownedStudioIds`, `accessibleStudioIds`, `activeGuestStudioIds` or `primaryHomeStudioId` (`writesAccessFields()` in the `trainers` update rule); the rest of their own document is still theirs. **Still open, needs AJ's OK:** any trainer can edit any `studios/{id}` document, including `mindbodySiteId`.
@@ -306,7 +322,6 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **Shared lists are collection-group reads.** Each needs a `{path=**}` rule its filters satisfy (`shared == true`) and a collection-group index. Until a new index finishes building, the screen says it couldn't load the shared part.
 
-- **Announcements** can be posted only by `canPostAnnouncements()` (administrators, founders, franchise owners, studio owners), as themselves; only the Operations tab's people reach every studio. Everyone else may only add their own uid to `readBy`.
 
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
 

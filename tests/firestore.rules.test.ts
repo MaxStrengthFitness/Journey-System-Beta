@@ -2167,7 +2167,10 @@ describe("Firestore Security Rules", () => {
         createdAt: serverTimestamp(),
         status: "open",
         parts: { p1: { label: "Leg press", order: 1 } },
-        people: [],
+        // jobFields() always writes both (features/relay/jobs); teamJobValid
+        // requires them, and `people` was never a field on a team job.
+        assignees: [],
+        assigneeIds: [],
       }),
     );
   });
