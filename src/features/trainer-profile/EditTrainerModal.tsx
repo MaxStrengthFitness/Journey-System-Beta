@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import {
   Building2,
-  Key,
   Users2,
   Shield,
   Eye,
@@ -60,7 +59,6 @@ export function EditTrainerModal({
   const [mindbodyLinked, setMindbodyLinked] = useState(false);
 
   const [role, setRole] = useState<UserRole>("LifeTransformer");
-  const [requiresPinReset, setRequiresPinReset] = useState(false);
   const [primaryHomeStudioId, setPrimaryHomeStudioId] = useState("");
   const [accessibleStudioIds, setAccessibleStudioIds] = useState<string[]>([]);
   const [activeGuestStudioIds, setActiveGuestStudioIds] = useState<string[]>(
@@ -141,7 +139,6 @@ export function EditTrainerModal({
       setMindbodyLinked(trainer.mindbodyLinked || false);
 
       setRole(trainer.role || "LifeTransformer");
-      setRequiresPinReset(trainer.requiresPinReset || false);
       setPrimaryHomeStudioId(trainer.primaryHomeStudioId || "");
       setAccessibleStudioIds(trainer.accessibleStudioIds || []);
       setActiveGuestStudioIds(trainer.activeGuestStudioIds || []);
@@ -293,7 +290,6 @@ export function EditTrainerModal({
         );
 
         payload.role = role;
-        payload.requiresPinReset = requiresPinReset;
         payload.primaryHomeStudioId = primaryHomeStudioId;
         payload.accessibleStudioIds = finalAccessible;
         payload.activeGuestStudioIds = finalGuest;
@@ -756,25 +752,6 @@ export function EditTrainerModal({
                   checked={isVisibleOnCalendar}
                   onCheckedChange={setIsVisibleOnCalendar}
                 />
-              </div>
-
-              {/* PIN Lock Security */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Key className="w-4 h-4 text-[#F06C22]" /> Force PIN Reset
-                    </span>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                      Trainer will be prompted to choose a new PIN code on next
-                      login
-                    </p>
-                  </div>
-                  <Switch
-                    checked={requiresPinReset}
-                    onCheckedChange={setRequiresPinReset}
-                  />
-                </div>
               </div>
 
               {/* Complex Studio Involvements */}

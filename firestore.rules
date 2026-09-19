@@ -563,6 +563,10 @@ service cloud.firestore {
     }
 
     function isValidTrainer(data) {
+      // Trainer PINs were removed in Sep 2026 and `pinHash` is no longer a
+      // field anywhere in the app. The refusal stays as a belt: a client that
+      // somehow still writes one is refused rather than quietly storing a
+      // credential nothing will ever check.
       return !('pinHash' in data) &&
              hasRequiredFields(['fullName', 'initials', 'primaryHomeStudioId']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
@@ -1083,13 +1087,6 @@ service cloud.firestore {
                       (ownsTrainerDoc(trainerId) && !writesAccessFields()))
                       &&
                       roleChangeAllowed(getRole()) && grantChangeAllowed(getRole())
-                    ) ||
-                    (
-                      isAuthenticated() &&
-                      request.auth.uid == trainerId &&
-                      resource.data.requiresPinReset == true &&
-                      request.resource.data.requiresPinReset == false &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPinReset', 'updatedAt'])
                     );
       allow delete: if isSuperAdmin();
 

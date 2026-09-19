@@ -9,7 +9,7 @@
  * ------------------------------------
  * A trainer document holds two very different kinds of fact:
  *
- *   Journey-owned   role, pinHash, brandColor, initials, studio access,
+ *   Journey-owned   role, brandColor, initials, studio access,
  *                   bio, certifications, kaizenRoster, rollups
  *   Mindbody-owned  legal name, work email, staff photo, active flag
  *

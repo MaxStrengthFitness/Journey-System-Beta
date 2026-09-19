@@ -887,7 +887,7 @@ export async function handleMindbodyWebhook(
         if (resolution.kind === "matched") {
           const { mindbody, deactivated } = mapStaffEventToPatch(parsed, eventType);
 
-          // ONLY the `mindbody` map. Not role, not pinHash, not studio access,
+          // ONLY the `mindbody` map. Not role, not studio access,
           // not the Kaizen Roster. Mindbody owns the staff member's name,
           // work email and photo; the Journey System owns everything that
           // decides what they can do.

@@ -74,7 +74,6 @@ export default function AccessRequestView({
             .substring(0, 2)
             .toUpperCase(),
           role: "Trainer",
-          pin: "",
           primaryHomeStudioId: selectedStudioId,
           accessibleStudioIds: [selectedStudioId],
           activeGuestStudioIds: [],

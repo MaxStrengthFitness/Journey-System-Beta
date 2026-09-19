@@ -273,13 +273,6 @@ service cloud.firestore {
                       (!('role' in request.resource.data) || 
                        request.resource.data.role == resource.data.role || 
                        (request.resource.data.role != 'Founder' && request.resource.data.role != 'Admin' && request.resource.data.role != 'Overseer'))
-                    ) ||
-                    (
-                      isAuthenticated() &&
-                      request.auth.uid == trainerId &&
-                      resource.data.requiresPinReset == true &&
-                      request.resource.data.requiresPinReset == false &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPinReset', 'updatedAt'])
                     );
       allow delete: if isSuperAdmin();
 

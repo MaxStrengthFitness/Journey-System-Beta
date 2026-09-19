@@ -335,12 +335,10 @@ export default function AppContent({
 
     setActiveStudioId(pinned);
     localStorage.setItem("max_strength_trainer_id", authTrainer.id!);
-    const hasPin = authTrainer.pin || authTrainer.pinHash;
-    localStorage.setItem(
-      "max_strength_authenticated",
-      hasPin ? "false" : "true",
-    );
-    setIsAuthenticated(!hasPin);
+    // Trainer PINs are gone (Sep 2026): the iPad's own device lock is the
+    // gate, so choosing a studio completes the sign-in.
+    localStorage.setItem("max_strength_authenticated", "true");
+    setIsAuthenticated(true);
   }, [
     activeStudioId,
     isChangingStudio,
@@ -884,7 +882,6 @@ export default function AppContent({
           id: "owner-temp",
           fullName: "Owner Tim",
           initials: "TD",
-          pin: "0000",
           role: "Owner",
         } as any);
         setCurrentView("trainer-hub");
@@ -1169,14 +1166,8 @@ export default function AppContent({
           setActiveStudioId(studioId);
           setAuthTrainer(selectedTrainer);
           localStorage.setItem("max_strength_trainer_id", selectedTrainer.id!);
-          const hasPin = selectedTrainer.pin || selectedTrainer.pinHash;
-          if (!hasPin) {
-            localStorage.setItem("max_strength_authenticated", "true");
-            setIsAuthenticated(true);
-          } else {
-            localStorage.setItem("max_strength_authenticated", "false");
-            setIsAuthenticated(false);
-          }
+          localStorage.setItem("max_strength_authenticated", "true");
+          setIsAuthenticated(true);
           setIsChangingStudio(false);
         }}
         onGoToAdmin={() => {

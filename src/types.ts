@@ -202,7 +202,7 @@ export interface Owner {
  *
  * Written only by the Mindbody sync (webhook + scheduled refresh) and never
  * edited in the app. Kept in its own map on purpose: a trainer document also
- * carries `role`, `pinHash` and studio access, and no external system should
+ * carries `role` and studio access, and no external system should
  * ever be one field-name collision away from changing those.
  */
 export interface MindbodyStaffSnapshot {
@@ -347,9 +347,6 @@ export interface Trainer {
   initials: string;
   brandColor?: string;
   mindbodyLinked?: boolean;
-  pin?: string;
-  pinHash?: string;
-  requiresPinReset?: boolean;
   role: UserRole;
   ownedStudioIds?: string[];
   primaryHomeStudioId: string;
@@ -398,9 +395,6 @@ export type NewTrainerPayload = CreateTrainerPayload;
 export interface CreateTrainerPayload {
   fullName: string;
   initials: string;
-  pin?: string;
-  pinHash?: string;
-  requiresPinReset?: boolean;
   role?: UserRole;
   email?: string;
   primaryHomeStudioId: string;
@@ -423,8 +417,6 @@ export interface UpdateTrainerPayload {
   initials?: string;
   brandColor?: string;
   mindbodyLinked?: boolean;
-  pin?: string;
-  pinHash?: string;
   primaryHomeStudioId?: string;
   accessibleStudioIds?: string[];
   activeGuestStudioIds?: string[];

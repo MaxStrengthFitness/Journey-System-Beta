@@ -15,7 +15,7 @@
  *
  * `ensureCanonicalClient` may create a client, and that is safe: a client
  * document grants nothing. A trainer document is an RBAC principal -- it
- * carries `role`, `pinHash` and studio access -- so letting an external system
+ * carries `role` and studio access -- so letting an external system
  * mint one is precisely the privilege-escalation shape the rules audit already
  * caught once. An unmatched staff member goes to the limbo queue and waits for
  * a human to link them in Edit Trainer.
