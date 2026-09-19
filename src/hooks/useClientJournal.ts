@@ -68,7 +68,8 @@ import {
   type JournalImportance,
 } from "../types/journal";
 import { adaptClientEvents as adaptFordEvents } from "../features/ford/ford-rollup";
-import { startOfStudioDay } from "../lib/studio-time";
+import { studioDateKey } from "../lib/studio-time";
+import { mattersOn } from "../features/client-notes/mattering";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -107,13 +108,19 @@ export const HEADS_UP_WINDOW_DAYS = 21;
  * Pure; `src/features/briefing/heads-up.test.ts` pins it.
  */
 export function isHeadsUpLive(
-  entry: Pick<JournalEntry, "importance" | "resolvedAt" | "effectiveUntil" | "occurredAt">,
+  entry: Pick<JournalEntry, "importance" | "resolvedAt" | "effectiveUntil" | "occurredAt"> &
+    Partial<Pick<JournalEntry, "effectiveFrom" | "repeat" | "isArchived">>,
   nowMs: number,
 ): boolean {
   if (entry.importance !== "elevated") return false;
   if (entry.resolvedAt) return false;
-  const until = toDate(entry.effectiveUntil);
-  if (until) return until.getTime() >= startOfStudioDay(new Date(nowMs)).getTime();
+  // A note with a window of its own (Operations overhaul, Sep 2026) is read
+  // by the one mattering rule: a range ends on its day, a DAY note shows on
+  // its day only, a pushed-ahead start waits.
+  if (entry.effectiveUntil || entry.effectiveFrom) {
+    const today = studioDateKey(new Date(nowMs));
+    return today !== null && mattersOn({ ...entry, effectiveFrom: entry.effectiveFrom ?? null, isArchived: entry.isArchived ?? false }, today);
+  }
   const occurred = toDate(entry.occurredAt);
   if (!occurred) return false;
   // A note dated ahead ("away from the 20th") is younger than zero and live.
@@ -189,6 +196,9 @@ export async function createJournalEntry(
     effectiveUntil: draft.effectiveUntil
       ? Timestamp.fromDate(draft.effectiveUntil)
       : null,
+    // The mattering window's third field (features/client-notes/mattering.ts).
+    repeat: draft.repeat ?? null,
+    reviewedAt: null,
     resolvedAt: null,
     isArchived: false,
     searchTags: buildSearchTags({
@@ -236,6 +246,8 @@ export async function updateJournalEntry(
       | "machineId"
       | "effectiveFrom"
       | "effectiveUntil"
+      | "repeat"
+      | "reviewedAt"
     >
   >,
 ): Promise<void> {
@@ -255,6 +267,23 @@ export async function archiveJournalEntry(entryId: string): Promise<void> {
   try {
     await updateDoc(doc(db, "journalEntries", entryId), {
       isArchived: true,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `journalEntries/${entryId}`);
+    throw err;
+  }
+}
+
+/**
+ * "Still matters" on the 60-day review (Operations → Overview): stamps the
+ * note as looked at, which restarts its review clock. See
+ * features/client-notes/mattering.ts, needsReview.
+ */
+export async function reviewJournalEntry(entryId: string): Promise<void> {
+  try {
+    await updateDoc(doc(db, "journalEntries", entryId), {
+      reviewedAt: Timestamp.now(),
       updatedAt: serverTimestamp(),
     });
   } catch (err) {
@@ -1105,14 +1134,12 @@ export function useClientJournal({
    * shouting at anyone.
    */
   const criticalEntries = useMemo(() => {
-    const now = Date.now();
-    return entries.filter((e) => {
-      if (e.importance !== "critical") return false;
-      if (e.resolvedAt) return false;
-      const until = toDate(e.effectiveUntil);
-      if (until && until.getTime() < now) return false;
-      return true;
-    });
+    // One rule for "does this matter today" (features/client-notes/mattering.ts):
+    // a note with no window matters until resolved, exactly as before; a
+    // range ends on its day; a DAY note shows on its day only; a start pushed
+    // ahead waits.
+    const today = studioDateKey(new Date());
+    return entries.filter((e) => e.importance === "critical" && today !== null && mattersOn(e, today));
   }, [entries]);
 
   const headsUpEntries = useMemo(() => {

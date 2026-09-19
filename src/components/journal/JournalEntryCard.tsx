@@ -40,6 +40,8 @@ import {
 } from "../../types/journal";
 import type { Machine } from "../../types";
 import { isUnfiled, noteCardLabel } from "../../features/client-notes/note-catalog";
+import { describeWindow, mattersOn, shapeOf } from "../../features/client-notes/mattering";
+import { studioDateKey } from "../../lib/studio-time";
 import "../../features/client-notes/notes.css";
 
 const ICONS: Record<string, React.ElementType> = {
@@ -94,7 +96,9 @@ export function JournalEntryCard({
   const importance = IMPORTANCE_META[entry.importance] || IMPORTANCE_META.standard;
 
   const occurred = toDate(entry.occurredAt);
-  const until = toDate(entry.effectiveUntil);
+  // The mattering window (Operations overhaul, Sep 2026): a chip only when
+  // the note carries one — a range, a day, or a start pushed ahead.
+  const hasWindow = !!entry.effectiveUntil || !!entry.effectiveFrom;
   const machine = entry.machineId
     ? machines.find((m) => m.id === entry.machineId)
     : null;
@@ -107,7 +111,9 @@ export function JournalEntryCard({
   const unfiled = isUnfiled(entry);
 
   // A window that has already closed: keep the record, drop the shouting.
-  const isExpired = !!until && until.getTime() < Date.now();
+  // A yearly day never "ends"; it is simply between occurrences.
+  const today = studioDateKey(new Date()) ?? "";
+  const isExpired = hasWindow && !isResolved && !mattersOn(entry, today) && shapeOf(entry) !== "day";
 
   return (
     <article
@@ -175,7 +181,7 @@ export function JournalEntryCard({
             </span>
           )}
 
-          {until && (
+          {hasWindow && (
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-wide",
@@ -185,13 +191,11 @@ export function JournalEntryCard({
               )}
             >
               <CalendarClock className="h-3 w-3" />
-              {/* The composer's "matters until" day: after it the note
-                  leaves the briefing on its own (reporting round). */}
-              {isExpired ? "Ended" : "Until"}{" "}
-              {until.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
+              {/* The mattering window, in one line: "Matters until Oct 3",
+                  "Only on Nov 5, every year". After it the note leaves the
+                  briefing on its own. */}
+              {isExpired ? "Ended — " : ""}
+              {describeWindow(entry)}
             </span>
           )}
         </div>

@@ -100,9 +100,23 @@ export interface JournalEntry {
   createdAt: any;
   updatedAt: any;
 
-  /** Window during which the entry is live — vacations, post-op restrictions. */
+  /**
+   * THE MATTERING WINDOW (Operations overhaul, Sep 2026) — when the note
+   * matters, in one of three shapes read by `features/client-notes/
+   * mattering.ts`: ALWAYS (no until; from may be pushed ahead), RANGE (from
+   * until), DAY (from and until on the same day; `repeat: "yearly"` brings
+   * it back — birthdays, anniversaries). Vacations and post-op restrictions
+   * were the first ranges.
+   */
   effectiveFrom: any | null;
   effectiveUntil: any | null;
+  repeat?: "yearly" | null;
+  /**
+   * The 60-day review: an ALWAYS note that has mattered this long surfaces
+   * on Operations → Overview until someone says it still matters (this is
+   * stamped, the clock restarts) or resolves it.
+   */
+  reviewedAt?: any | null;
   /** Incidents and temporary restrictions get closed out rather than deleted. */
   resolvedAt: any | null;
 
@@ -139,6 +153,7 @@ export type JournalDraft = Pick<
   occurredAt?: Date | null;
   effectiveFrom?: Date | null;
   effectiveUntil?: Date | null;
+  repeat?: "yearly" | null;
   sessionId?: string | null;
 };
 
@@ -527,12 +542,15 @@ export const DOSSIER_SECTIONS: {
   blurb: string;
   icon: string;
 }[] = [
+  // Notes first (Operations overhaul, Sep 2026): the tab is Notes & Profile,
+  // so the notes sit above the profile — AJ, Sep 19. The dossier renders its
+  // sections in this order and the rail follows it.
+  { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
   { id: "general", label: "Who they are", blurb: "The ID card — what they go by, and what Mindbody knows", icon: "User" },
   { id: "life", label: "Life", blurb: "Family, occupation, recreation, dreams", icon: "Heart" },
   { id: "medical", label: "Body", blurb: "What the load has to work around", icon: "HeartPulse" },
   { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
   { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
-  { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
   { id: "reports", label: "Pulse", blurb: "How life is going, filled a little at a time — write it here, read the filed reports in the Activity Archive", icon: "TrendingUp" },
   { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
 ];

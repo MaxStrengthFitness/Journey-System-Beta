@@ -16,8 +16,10 @@
  *   4. HOW LOUD — the shared Loudness control (Note · Heads up · Critical),
  *      always there, always optional. A category pre-sets it (an incident
  *      starts Critical, an injury Heads up) until the trainer touches it.
- *   5. MATTERS UNTIL — offered for any Heads up or Critical note, of any
- *      category: after that day it stops showing on the briefing.
+ *   5. WHEN DOES THIS MATTER — the mattering picker (features/client-notes/
+ *      MatteringPicker), offered for any Heads up or Critical note, of any
+ *      category, and for a plain note dated to one day (a birthday). Always
+ *      · From – until · Only on a day; see mattering.ts for the rules.
  *   6. SAVE.
  *
  * CAPTURE NOW, TAG AT TEARDOWN (reporting round). No category is required.
@@ -57,6 +59,8 @@ import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import type { FordAuthor } from "../../features/ford/ford-write";
 import type { FordOrigin } from "../../features/ford/types";
 import { EMPTY_SESSION_DRAFT, type SessionNoteDraft } from "../../features/client-notes/session-draft";
+import { EMPTY_MATTERING, MatteringPicker } from "../../features/client-notes/MatteringPicker";
+import { windowFromChoice, type MatteringChoice } from "../../features/client-notes/mattering";
 import "../../features/client-notes/notes.css";
 
 const PLACEHOLDERS: Record<FilingCategory, string> = {
@@ -153,7 +157,7 @@ export function JournalComposer({
     reportRef.current?.({ body, category, p, importance, machineId: machineId || null, aboutMachine });
   }, [body, category, p, importance, machineId, aboutMachine]);
   const [occurredOn, setOccurredOn] = useState("");
-  const [effectiveUntil, setEffectiveUntil] = useState("");
+  const [matters, setMatters] = useState<MatteringChoice>(EMPTY_MATTERING);
   const [isSaving, setIsSaving] = useState(false);
 
   const name = clientFirstName || "this client";
@@ -189,7 +193,7 @@ export function JournalComposer({
     setMachineId(defaultMachineId ?? "");
     setAboutMachine(true);
     setOccurredOn("");
-    setEffectiveUntil("");
+    setMatters(EMPTY_MATTERING);
   };
 
   /** Which machine the note is about, if any, for the chosen kind. */
@@ -224,8 +228,9 @@ export function JournalComposer({
         // Date inputs give yyyy-mm-dd; read at local noon / end of day, never
         // as UTC midnight (which is the previous day in Ohio).
         occurredAt: dated && occurredOn ? new Date(`${occurredOn}T12:00:00`) : null,
-        effectiveUntil:
-          importance !== "standard" && effectiveUntil ? new Date(`${effectiveUntil}T23:59:59`) : null,
+        // The window is only written when the picker was offered: a plain
+        // note keeps no window unless it was pinned to one day.
+        ...(importance !== "standard" || matters.shape === "day" ? windowFromChoice(matters) : {}),
       });
       reset();
     } finally {
@@ -388,18 +393,13 @@ export function JournalComposer({
               }}
             />
 
-            {importance !== "standard" && (
-              <label className="flex flex-col gap-1.5">
-                <span className="nc-kicker">Matters until (optional)</span>
-                <input
-                  type="date"
-                  className="nc-input"
-                  value={effectiveUntil}
-                  aria-label="Matters until"
-                  onChange={(e) => setEffectiveUntil(e.target.value)}
-                />
-                <span className="nc-muted text-[11px]">After this it stops showing on the briefing.</span>
-              </label>
+            {(importance !== "standard" || matters.shape === "day") && (
+              <MatteringPicker value={matters} onChange={setMatters} compact={origin === "in_session"} />
+            )}
+            {importance === "standard" && matters.shape !== "day" && (
+              <button type="button" className="nc-btn nc-btn--quiet self-start" onClick={() => setMatters({ ...EMPTY_MATTERING, shape: "day" })}>
+                Pin to a date (a birthday, an anniversary)
+              </button>
             )}
           </div>
 

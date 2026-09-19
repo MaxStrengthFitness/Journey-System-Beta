@@ -16,7 +16,7 @@
  *    button, so the eye has nowhere to go but Start Session.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronLeft, Clock, History, Maximize, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { ChevronLeft, Clock, History, Maximize, NotebookPen, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -88,6 +88,11 @@ export interface ProfileHeaderProps {
   onDiscardSession: () => void;
   kaizen?: KaizenToggleState;
   sync?: MasterSyncState;
+  /**
+   * Quick note (Operations overhaul, Sep 2026): opens the note box over the
+   * profile, whatever tab it is on. AJ, Sep 19: a note took too many taps.
+   */
+  onQuickNote?: () => void;
   /**
    * The renewal line (Renewals round, Sep 2026), from the nightly snapshot.
    * When present, the package tile shows it and opens the Renewal card.
@@ -229,6 +234,7 @@ export function ProfileHeader({
   isCheckingActiveSession = false,
   onBack,
   onStartSession,
+  onQuickNote,
   onTakeOverSession,
   onViewCurrentSession,
   onDiscardSession,
@@ -390,6 +396,21 @@ export function ProfileHeader({
               <polyline points="6,13 10,9 14,13" />
             </svg>
             <span className="hidden sm:inline">{kaizen.isOn ? "Tracking" : "Track"}</span>
+          </button>
+        )}
+        {onQuickNote && (
+          <button
+            type="button"
+            onClick={onQuickNote}
+            title="Add a note — it goes to their Notes"
+            aria-label="Add a note"
+            className={cn(
+              "shrink-0 inline-flex items-center justify-center gap-1.5 h-12 min-w-12 px-3 rounded-2xl border text-[11px] font-bold uppercase tracking-widest transition-colors",
+              "border-slate-200 dark:border-slate-800 text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <NotebookPen className="w-4 h-4" aria-hidden />
+            <span className="hidden sm:inline">Note</span>
           </button>
         )}
         {sync && (

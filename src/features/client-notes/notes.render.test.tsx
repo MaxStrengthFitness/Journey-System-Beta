@@ -292,11 +292,15 @@ describe("the Notes catalog mounts", () => {
     expect(buttonByText(composer, "Save — file later")).toBeTruthy();
 
     await click(buttonByText(composer, "Injury"));
-    // Injury starts as Heads up (the shared Loudness control), which reveals "Matters until".
+    // Injury starts as Heads up (the shared Loudness control), which reveals the mattering picker.
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     expect(Array.from(loud.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Note", "Heads up", "Critical"]);
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Heads up");
-    expect(composer.querySelector('input[aria-label="Matters until"]')).toBeTruthy();
+    const when = composer.querySelector('[role="group"][aria-label="When does this matter"]')!;
+    expect(when).toBeTruthy();
+    expect(Array.from(when.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Always", "From – until", "Only on a day"]);
+    expect(when.querySelector('[aria-pressed="true"]')!.textContent).toBe("Always");
+    expect(composer.querySelector('input[aria-label="Starts mattering on"]')).toBeTruthy();
     await typeInto(composer.querySelector("textarea"), "Sore right shoulder since Tuesday");
     await click(buttonByText(composer, "Save injury"));
 
@@ -335,24 +339,50 @@ describe("the Notes catalog mounts", () => {
     expect(isUnfiled({ kind: "general", isLegacy: undefined })).toBe(true);
   });
 
-  it("offers Matters until for any Heads up, of any category, and writes it as end of day", async () => {
+  it("offers the mattering picker for any Heads up, of any category, and writes a range's end as end of day", async () => {
     const host = await mount(<NotesArea />);
     const composer = host.querySelector('[data-testid="note-composer"]')!;
     await click(buttonByText(composer, "Preference"));
     await typeInto(composer.querySelector("textarea"), "On a trip — no sessions");
-    expect(composer.querySelector('input[aria-label="Matters until"]')).toBeNull();
+    // A plain note has no picker — only the offer to pin it to a date.
+    expect(composer.querySelector('[role="group"][aria-label="When does this matter"]')).toBeNull();
+    expect(buttonByText(composer, "Pin to a date (a birthday, an anniversary)")).toBeTruthy();
 
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     await click(buttonByText(loud, "Heads up"));
-    const until = composer.querySelector('input[aria-label="Matters until"]');
+    const when = composer.querySelector('[role="group"][aria-label="When does this matter"]')!;
+    expect(when).toBeTruthy();
+    await click(buttonByText(when, "From – until"));
+    const until = composer.querySelector('input[aria-label="Stops mattering on"]');
     expect(until).toBeTruthy();
-    expect(composer.textContent).toContain("After this it stops showing on the briefing.");
+    expect(composer.textContent).toContain("After the last day it stops showing on the briefing.");
     await typeInto(until, "2026-09-20");
     await click(buttonByText(composer, "Save preference"));
 
-    expect(writes[0].data).toMatchObject({ kind: "preference", importance: "elevated" });
+    expect(writes[0].data).toMatchObject({ kind: "preference", importance: "elevated", repeat: null, effectiveFrom: null });
     const stored = writes[0].data.effectiveUntil.toDate() as Date;
     expect([stored.getFullYear(), stored.getMonth(), stored.getDate(), stored.getHours()]).toEqual([2026, 8, 20, 23]);
+  });
+
+  it("pins a plain note to one day, every year — a birthday", async () => {
+    const host = await mount(<NotesArea />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "Preference"));
+    await typeInto(composer.querySelector("textarea"), "Birthday — brings the good coffee");
+    await click(buttonByText(composer, "Pin to a date (a birthday, an anniversary)"));
+    const on = composer.querySelector('input[aria-label="Only matters on"]');
+    expect(on).toBeTruthy();
+    await typeInto(on, "2026-11-05");
+    const every = composer.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    every.click();
+    await new Promise((r) => setTimeout(r, 0));
+    await click(buttonByText(composer, "Save preference"));
+
+    expect(writes[0].data).toMatchObject({ kind: "preference", importance: "standard", repeat: "yearly" });
+    const from = writes[0].data.effectiveFrom.toDate() as Date;
+    const until = writes[0].data.effectiveUntil.toDate() as Date;
+    expect([from.getMonth(), from.getDate(), from.getHours()]).toEqual([10, 5, 12]);
+    expect([until.getMonth(), until.getDate(), until.getHours()]).toEqual([10, 5, 23]);
   });
 
   it("keeps the incident's Critical default until the trainer touches loudness", async () => {
@@ -469,7 +499,7 @@ describe("the entry card says the Loudness words", () => {
     expect(cards[0].querySelector('[data-testid="to-file-mark"]')!.textContent).toContain("To file");
     expect(cards[1].querySelector('[data-testid="to-file-mark"]')).toBeNull();
     expect(cards[1].textContent).toContain("Heads up");
-    expect(cards[1].textContent).toContain("Until Sep 20");
+    expect(cards[1].textContent).toContain("Matters until Sep 20");
     expect(cards[2].querySelector('[data-testid="to-file-mark"]')).toBeNull();
   });
 });

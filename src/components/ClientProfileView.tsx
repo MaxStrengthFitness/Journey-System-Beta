@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuickNoteDialog } from "../features/client-notes/QuickNoteDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
 import {
@@ -220,6 +221,7 @@ export function ClientProfileView({
   const [toggleBReason, setToggleBReason] = useState<string>("");
   const [isSavingToggle, setIsSavingToggle] = useState(false);
   const [showFullChart, setShowFullChart] = useState(false);
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -1250,6 +1252,19 @@ export function ClientProfileView({
       {/* Header (Sep 2026 redesign) — identity, four facts, one action.
           Lives in src/features/client-profile/ProfileHeader.tsx; this view
           only hands it data and the session-start wiring. */}
+      {/* Quick note (Operations overhaul, Sep 2026): the note box, one tap
+          from the header, over whatever tab is open. */}
+      <QuickNoteDialog
+        open={quickNoteOpen}
+        onOpenChange={setQuickNoteOpen}
+        client={client}
+        machines={machines}
+        authTrainer={authTrainer ?? null}
+        onOpenFord={() => {
+          setQuickNoteOpen(false);
+          nav.openSection("life");
+        }}
+      />
       <ProfileHeader
         client={client}
         studioName={studios?.find((s) => s.id === client.homeStudioId)?.name}
@@ -1295,6 +1310,7 @@ export function ClientProfileView({
           localStorage.removeItem("max_strength_active_session_id");
           setView("workouts");
         }}
+        onQuickNote={() => setQuickNoteOpen(true)}
         onTakeOverSession={() => {
           if (activeInProgressSession?.id) {
             localStorage.setItem(
@@ -1586,7 +1602,7 @@ export function ClientProfileView({
               onOpenChange={() => nav.setTab("journey")}
               client={client}
               authTrainer={authTrainer ?? null}
-              defaultTab={nav.recordSection || "identity"}
+              defaultTab={nav.recordSection || "notes"}
               machines={machines}
               trainers={trainers}
               progressReports={progressReports}

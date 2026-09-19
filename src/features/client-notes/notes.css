@@ -376,3 +376,31 @@ textarea.nc-input { resize: vertical; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* ------------------------------------------------------------------ */
+/* WHEN DOES THIS MATTER (Operations overhaul, Sep 2026)               */
+/* The mattering picker: three chips, then only the dates that shape   */
+/* needs. Full-width row under Loudness, like "matters until" was.     */
+/* ------------------------------------------------------------------ */
+
+.nc-matters { display: flex; flex-direction: column; gap: 0.5rem; }
+.nc-matters__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem 0.75rem;
+  align-items: end;
+}
+.nc-matters__row--two { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.nc-matters__row > .nc-muted { grid-column: 1 / -1; }
+.nc-matters__field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.nc-matters__check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--eq-ink-2);
+}
+.nc-matters__check input { width: 20px; height: 20px; accent-color: var(--eq-live); }
+.nc-matters[data-compact="true"] .nc-matters__row { gap: 0.4rem 0.5rem; }

@@ -112,7 +112,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     }),
     [authTrainer],
   );
-  const [activeTab, setActiveTab] = useState("identity");
+  const [activeTab, setActiveTab] = useState("notes");
 
   // Initialize form state. Inline, the sheet stays mounted for as long as the
   // Details tab is open, and the `client` object is rebuilt on every
@@ -124,7 +124,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   useEffect(() => {
     if ((isOpen || inline) && client) {
       if (inline && dirtyRef.current.size > 0) return;
-      setActiveTab(defaultTab || "identity");
+      setActiveTab(defaultTab || "notes");
       setFormData({
         firstName: client.firstName || "",
         lastName: client.lastName || "",

@@ -309,6 +309,36 @@ export function ClientDossier({
             )}
           >
 
+            {/* ---------------- NOTES ---------------- */}
+            {/* FIRST on the spine (Operations overhaul, Sep 2026): the tab is
+                called Notes & Profile, so notes sit above the profile — AJ,
+                Sep 19. The order of DOSSIER_SECTIONS in types/journal.ts is
+                the rail's order and matches this. */}
+            <DossierSectionShell
+              id="notes"
+              title="Notes"
+              blurb={sectionBlurb("notes")}
+              icon={SECTION_ICONS.notes}
+            >
+              {/* Notes catalog round, Sep 2026: a category-first composer and
+                  a catalog (tiles, shelves, search) instead of one feed. FORD /
+                  Life notes hand off to the Life section. See features/client-notes. */}
+              <ClientJournalTab
+                areas={["notes"]}
+                journal={journal}
+                onOpenFord={() => jump("life")}
+                clientId={client.id || null}
+                client={client}
+                machines={machines}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                progressReports={progressReports}
+                onSelectReport={onSelectReport ?? noop}
+                onDeleteReport={onDeleteReport ?? noop}
+                onNewReport={onNewReport ?? noop}
+              />
+            </DossierSectionShell>
+
             {/* ---------------- WHO THEY ARE ---------------- */}
             {/* The client's ID card (client-profile audit, Sep 2026). Mindbody
                 owns who a client is, so once a client is linked every identity
@@ -657,32 +687,6 @@ export function ClientDossier({
               <ClientJournalTab
                 areas={["focus"]}
                 journal={journal}
-                clientId={client.id || null}
-                client={client}
-                machines={machines}
-                trainers={trainers}
-                authTrainer={authTrainer}
-                progressReports={progressReports}
-                onSelectReport={onSelectReport ?? noop}
-                onDeleteReport={onDeleteReport ?? noop}
-                onNewReport={onNewReport ?? noop}
-              />
-            </DossierSectionShell>
-
-            {/* ---------------- NOTES ---------------- */}
-            <DossierSectionShell
-              id="notes"
-              title="Notes"
-              blurb={sectionBlurb("notes")}
-              icon={SECTION_ICONS.notes}
-            >
-              {/* Notes catalog round, Sep 2026: a category-first composer and
-                  a catalog (tiles, shelves, search) instead of one feed. FORD /
-                  Life notes hand off to the Life section. See features/client-notes. */}
-              <ClientJournalTab
-                areas={["notes"]}
-                journal={journal}
-                onOpenFord={() => jump("life")}
                 clientId={client.id || null}
                 client={client}
                 machines={machines}
