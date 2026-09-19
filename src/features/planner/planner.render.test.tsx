@@ -174,6 +174,9 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Renewals due");
     expect(h.textContent).toContain("The vault");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
+    // The studio's staff, under the cockpit (My Studio round).
+    expect(h.textContent).toContain("Solon's staff");
+    expect(h.textContent).toContain("Temporary");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
     expect(tab("Floor")).toBeUndefined();
     await click(tab("Relay"));

@@ -6,7 +6,7 @@ import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { ClientTaskAction } from "../studio-tasks/types";
 import { PlannerView } from "../planner/PlannerView";
-import { TeamPanel } from "../planner/team/TeamPanel";
+import { TeamSection } from "./TeamSection";
 import { StudioSection } from "./StudioSection";
 import { MachinesSection } from "./MachinesSection";
 import { peekPlannerIntent } from "../planner/intent";
@@ -38,7 +38,9 @@ import "./my-studio.css";
  *              the Now Bar, Capture (features/planner/PlannerView)
  *   Machines   the floor and what the studio has done to it — everyone reads
  *              it and leaves machine notes; leaders edit it (phase 3)
- *   Team       the Team cockpit and this studio's staff (was Relay's Team tab)
+ *   Team       the Team cockpit (was Relay's Team tab) and this studio's
+ *              staff: who is waiting to be let in, roles up to studio
+ *              leader, the grant, the Mindbody link, temporary profiles
  *   Studio     the studio's own record: details, the cutover date, hours,
  *              renewal settings, announcements (phase 2)
  *
@@ -219,7 +221,7 @@ export function MyStudioView({
 
         {shown === "team" && (
           <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
-            <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
+            <TeamSection authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
           </SectionFrame>
         )}
 

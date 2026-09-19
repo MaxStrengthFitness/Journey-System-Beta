@@ -50,3 +50,29 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* The Team section: the Team cockpit (planner/team/TeamPanel, which brings
+   its own .st__scroll) and the studio's staff below it, as ONE page. The
+   cockpit's scroller is unwound here so the whole section scrolls together;
+   .ms__team is the scroller instead. */
+.ms__team {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+.ms__team > .st { flex: none; }
+.ms__team .st__scroll {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+}
+.ms__staff {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 6rem;
+}

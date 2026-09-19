@@ -43,6 +43,8 @@ export interface AccessRequest {
   status?: string;
   userId?: string;
   roleRequested?: string;
+  /** The studio they asked to join (My Studio round, Sep 2026) — older requests have none. */
+  requestedStudioId?: string | null;
   createdAt?: string;
 }
 

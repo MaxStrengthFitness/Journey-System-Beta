@@ -94,6 +94,7 @@ export default function AccessRequestView({
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
           roleRequested,
+          requestedStudioId: selectedStudioId || null,
           reason: reason.trim(),
           status: "Pending",
           userId: authenticatedUser?.uid || null,
@@ -307,6 +308,29 @@ export default function AccessRequestView({
                       </select>
                     </div>
                   </div>
+
+                  {/* Which studio (My Studio round, Sep 2026): the request lands
+                      with that studio's leaders under My Studio → Team. */}
+                  {studios.length > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="text-slate-400 text-[11px] font-bold uppercase tracking-wider block">
+                        Which studio?
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <select
+                          value={selectedStudioId}
+                          onChange={(e) => setSelectedStudioId(e.target.value)}
+                          className="w-full bg-[#1b1c1e] text-white pl-12 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-action transition-colors text-sm appearance-none cursor-pointer"
+                        >
+                          <option value="">Not sure yet</option>
+                          {studios.map((studio) => (
+                            <option key={studio.id} value={studio.id}>{studio.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Reason */}
                   <div className="space-y-1.5">
