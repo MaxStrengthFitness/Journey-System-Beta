@@ -59,6 +59,7 @@ import {
 } from "./registry";
 import { useMindbodyLocations } from "./useMindbodyLocations";
 import { LINK_BADGE, StudioDetailPanel, type StudioForm } from "./StudioDetailPanel";
+import { studioPatchPayload } from "./studio-writes";
 import { ProvisionalPanel } from "../provisional/ProvisionalPanel";
 
 export interface AdminStudiosTabProps {
@@ -136,16 +137,9 @@ export function AdminStudiosTab({
   const saveStudio = async (patch: Partial<StudioForm>) => {
     if (!selected?.id) return;
     // Only the fields the form actually rendered and the user actually
-    // changed reach this object — which is the whole point of the diff.
-    const payload: Record<string, unknown> = { ...patch };
-    if ("mindbodyLocationId" in payload) {
-      const v = String(payload.mindbodyLocationId ?? "").trim();
-      payload.mindbodyLocationId = v ? v : deleteField();
-    }
-    if ("mindbodySiteId" in payload) {
-      payload.mindbodySiteId = String(payload.mindbodySiteId ?? "").trim();
-    }
-    await updateDoc(doc(db, "studios", selected.id), payload);
+    // changed reach this object — which is the whole point of the diff. The
+    // conversions live in studio-writes.ts, shared with My Studio → Studio.
+    await updateDoc(doc(db, "studios", selected.id), studioPatchPayload(patch));
     await onRefresh?.("studios");
   };
 

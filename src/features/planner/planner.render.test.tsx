@@ -172,7 +172,6 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Open loops");
     expect(h.textContent).toContain("This month");
     expect(h.textContent).toContain("Renewals due");
-    expect(h.textContent).toContain("The studio's day");
     expect(h.textContent).toContain("The vault");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
@@ -180,6 +179,26 @@ describe("My Studio", () => {
     await click(tab("Relay"));
     await click(tab("Floor"));
     expect(h.textContent).toContain("Next up");
+  });
+
+  it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {
+    const h = await mount(lead);
+    await click(tab("Studio"));
+    expect(h.textContent).toContain("Studio details");
+    expect(h.textContent).toContain("Journey cutover date");
+    expect(h.textContent).toContain("Mindbody Site ID");
+    expect(h.textContent).toContain("Mindbody");
+    expect(h.textContent).toContain("The studio's day");
+    expect(h.textContent).toContain("Deep clean every");
+    expect(h.textContent).toContain("Announcements");
+    expect(h.textContent).toContain("Everyone at Solon.");
+    // The studio's own notices: no audience picker, the audience is fixed.
+    expect(h.textContent).not.toContain("Who gets it");
+  });
+
+  it("never offers the Studio section to a trainer", async () => {
+    await mount(trainer);
+    expect(tab("Studio")).toBeUndefined();
   });
 
   it("shows the Team section to a trainer the studio's leadership granted the studio (My Studio, Sep 2026)", async () => {

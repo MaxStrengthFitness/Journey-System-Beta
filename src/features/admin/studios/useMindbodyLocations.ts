@@ -22,6 +22,14 @@ export interface MindbodyLocationsState {
   loading: boolean;
   /** Plain-English status for the field's hint line. Empty when idle. */
   status: string;
+  /**
+   * What the last lookup came back with (My Studio round, Sep 2026): a site
+   * id is only saved once Mindbody has answered for it, because a wrong id
+   * parks every booking in Limbo and makes the studio's trainers blind.
+   * "idle" below the minimum length, "ok" when Mindbody answered (even with
+   * no locations), "error" when it refused or could not be reached.
+   */
+  outcome: "idle" | "loading" | "ok" | "error";
 }
 
 function friendlyError(status: number | null, message?: string, code?: string): string {
@@ -40,6 +48,7 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
     locations: [],
     loading: false,
     status: "",
+    outcome: "idle",
   });
 
   // Responses can land out of order once someone edits a site id quickly, so
@@ -51,12 +60,12 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
     const reqId = ++seq.current;
 
     if (trimmed.length < MIN_SITE_ID_LENGTH) {
-      setState({ locations: [], loading: false, status: "" });
+      setState({ locations: [], loading: false, status: "", outcome: "idle" });
       return;
     }
 
     const timer = setTimeout(async () => {
-      setState((s) => ({ ...s, loading: true, status: "Looking up locations…" }));
+      setState((s) => ({ ...s, loading: true, status: "Looking up locations…", outcome: "loading" }));
       try {
         const res = await authedFetch("/api/mindbody/locations", {
           method: "POST",
@@ -71,6 +80,7 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
             locations: [],
             loading: false,
             status: friendlyError(res.status, err?.error, err?.code),
+            outcome: "error",
           });
           return;
         }
@@ -84,6 +94,7 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
             locations.length === 0
               ? "No locations on this site yet."
               : `${locations.length} location${locations.length === 1 ? "" : "s"} found.`,
+          outcome: "ok",
         });
       } catch (e: any) {
         if (reqId !== seq.current) return;
@@ -91,6 +102,7 @@ export function useMindbodyLocations(siteId: string): MindbodyLocationsState {
           locations: [],
           loading: false,
           status: friendlyError(null, e?.message),
+          outcome: "error",
         });
       }
     }, DEBOUNCE_MS);

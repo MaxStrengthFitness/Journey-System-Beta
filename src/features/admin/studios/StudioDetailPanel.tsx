@@ -12,91 +12,27 @@
  * — so a field this panel does not render cannot be written by it at all.
  */
 
-import React, { useMemo, useState } from "react";
-import { Building2, Link2, Trash2, Users } from "lucide-react";
+import React, { useState } from "react";
+import { Link2, Trash2, Users } from "lucide-react";
 import type { FranchiseNetwork, Studio, Trainer } from "../../../types";
 import {
   AdminBadge,
   AdminButton,
   AdminField,
-  AdminGrid,
-  AdminInput,
   AdminNotice,
   AdminPanel,
   AdminRow,
   AdminRows,
   AdminSelect,
   ConfirmDialog,
-  SaveBar,
 } from "../primitives";
-import { useDirtyForm } from "../useDirtyForm";
 import { StudioEquipmentPanel } from "../equipment/StudioEquipmentPanel";
-import { useMindbodyLocations } from "./useMindbodyLocations";
-import {
-  mindbodyLinkState,
-  validateStudioIdentity,
-  type MindbodyLinkState,
-} from "./registry";
+import { StudioDetailsForm, type StudioForm } from "./StudioDetailsForm";
 
-/** Timezones the studios actually operate in, plus room to grow. */
-const TIME_ZONES = [
-  { id: "America/New_York", label: "Eastern" },
-  { id: "America/Chicago", label: "Central" },
-  { id: "America/Denver", label: "Mountain" },
-  { id: "America/Phoenix", label: "Arizona (no DST)" },
-  { id: "America/Los_Angeles", label: "Pacific" },
-];
-
-export const LINK_BADGE: Record<
-  MindbodyLinkState,
-  { label: string; tone: "ok" | "warn" | "alert" | "neutral" }
-> = {
-  linked: { label: "Mindbody linked", tone: "ok" },
-  "linked-shared": { label: "Linked · shared site", tone: "ok" },
-  "needs-location": { label: "Needs a location", tone: "alert" },
-  // Deliberately offline reads differently from unconfigured. A demo floor
-  // running without Mindbody on purpose should not look broken.
-  offline: { label: "Runs offline", tone: "neutral" },
-  unlinked: { label: "Not linked", tone: "warn" },
-};
-
-/**
- * The document, flattened into form shape.
- *
- * Every field defaults to a string so the baseline and the draft are built the
- * same way — otherwise a studio with no phone number reports itself dirty the
- * moment it loads, and people learn to ignore the unsaved-changes warning.
- */
-export interface StudioForm {
-  name: string;
-  contactEmail: string;
-  phone: string;
-  address: string;
-  timezone: string;
-  mindbodySiteId: string;
-  mindbodyLocationId: string;
-  locationType: string;
-  brandColor: string;
-  mindbodyMode: "linked" | "offline";
-}
-
-export function studioToForm(studio: Studio): StudioForm {
-  return {
-    name: studio.name ?? "",
-    contactEmail: studio.contactEmail ?? "",
-    phone: studio.phone ?? "",
-    address: studio.address ?? "",
-    timezone: studio.timezone || "America/New_York",
-    mindbodySiteId: studio.mindbodySiteId ? String(studio.mindbodySiteId) : "",
-    mindbodyLocationId:
-      studio.mindbodyLocationId !== undefined && studio.mindbodyLocationId !== null
-        ? String(studio.mindbodyLocationId)
-        : "",
-    locationType: studio.locationType ?? "franchise",
-    brandColor: studio.brandColor ?? "#F37427",
-    mindbodyMode: studio.mindbodyMode ?? "linked",
-  };
-}
+// The details form itself moved to StudioDetailsForm in the My Studio round
+// (Sep 2026) so My Studio → Studio edits the same fields the same way; these
+// re-exports keep the Operations tab's imports where they were.
+export { LINK_BADGE, studioToForm, type StudioForm } from "./StudioDetailsForm";
 
 export interface StudioDetailPanelProps {
   studio: Studio;
@@ -123,24 +59,8 @@ export function StudioDetailPanel({
   onDelete,
   onChangeNetwork,
 }: StudioDetailPanelProps) {
-  const external = useMemo(() => studioToForm(studio), [studio]);
-  const form = useDirtyForm(external, (patch) => onSave(patch));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const locations = useMindbodyLocations(form.value.mindbodySiteId);
-
-  const offline = form.value.mindbodyMode === "offline";
-  const problem = validateStudioIdentity({
-    siteId: form.value.mindbodySiteId,
-    locationId: form.value.mindbodyLocationId,
-    studios,
-    excludeStudioId: studio.id,
-    mode: form.value.mindbodyMode,
-  });
-
-  const linkState = mindbodyLinkState(studio, studios);
-  const badge = LINK_BADGE[linkState];
 
   const team = trainers.filter(
     (t) =>
@@ -153,164 +73,7 @@ export function StudioDetailPanel({
 
   return (
     <div className="adm-ov__stack">
-      <AdminPanel
-        title="Studio details"
-        icon={<Building2 className="w-3.5 h-3.5" />}
-        subtitle="Everything Mindbody needs to file this location's bookings correctly."
-        actions={<AdminBadge tone={badge.tone}>{badge.label}</AdminBadge>}
-        footer={
-          <SaveBar
-            status={problem && form.dirty ? "error" : form.status}
-            error={problem?.message ?? form.error}
-            onSave={() => {
-              if (problem) return;
-              void form.save();
-            }}
-            onDiscard={form.discard}
-          />
-        }
-      >
-        <AdminGrid>
-          <AdminField label="Studio name" required htmlFor="studio-name">
-            <AdminInput
-              id="studio-name"
-              value={form.value.name}
-              onChange={(e) => form.setField("name", e.target.value)}
-            />
-          </AdminField>
-
-          <AdminField label="Time zone" hint="Drives every date the studio sees.">
-            <AdminSelect
-              value={form.value.timezone}
-              onChange={(e) => form.setField("timezone", e.target.value)}
-            >
-              {TIME_ZONES.map((tz) => (
-                <option key={tz.id} value={tz.id}>
-                  {tz.label} — {tz.id}
-                </option>
-              ))}
-            </AdminSelect>
-          </AdminField>
-
-          <AdminField
-            label="Mindbody"
-            hint="Offline is for a pre-launch floor, a demo area, or an account that is not provisioned yet. Everything still works; nothing syncs."
-          >
-            <AdminSelect
-              value={form.value.mindbodyMode}
-              onChange={(e) =>
-                form.setField("mindbodyMode", e.target.value as "linked" | "offline")
-              }
-            >
-              <option value="linked">Linked — bookings arrive from Mindbody</option>
-              <option value="offline">Offline — this studio runs on its own</option>
-            </AdminSelect>
-          </AdminField>
-
-          <AdminField
-            label="Mindbody Site ID"
-            required={!offline}
-            error={problem?.code === "no-site" ? problem.message : null}
-            hint={
-              offline
-                ? "Not needed while this studio runs offline. Fill it in when the account exists."
-                : "Locations load automatically once this is entered."
-            }
-          >
-            <AdminInput
-              inputMode="numeric"
-              value={form.value.mindbodySiteId}
-              invalid={problem?.code === "no-site"}
-              onChange={(e) => form.setField("mindbodySiteId", e.target.value)}
-              placeholder="e.g. 29068"
-            />
-          </AdminField>
-
-          <AdminField
-            label="Mindbody location"
-            error={
-              problem && problem.code !== "no-site" ? problem.message : null
-            }
-            hint={locations.status || "Only needed when a site holds more than one studio."}
-          >
-            {locations.locations.length > 0 ? (
-              <AdminSelect
-                value={form.value.mindbodyLocationId}
-                invalid={!!problem && problem.code !== "no-site"}
-                onChange={(e) =>
-                  form.setField("mindbodyLocationId", e.target.value)
-                }
-              >
-                <option value="">No location — this site has one studio</option>
-                {locations.locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.id})
-                  </option>
-                ))}
-              </AdminSelect>
-            ) : (
-              <AdminInput
-                inputMode="numeric"
-                value={form.value.mindbodyLocationId}
-                invalid={!!problem && problem.code !== "no-site"}
-                onChange={(e) =>
-                  form.setField("mindbodyLocationId", e.target.value)
-                }
-                placeholder={locations.loading ? "Loading…" : "Location ID"}
-              />
-            )}
-          </AdminField>
-
-          <AdminField label="Business email">
-            <AdminInput
-              type="email"
-              value={form.value.contactEmail}
-              onChange={(e) => form.setField("contactEmail", e.target.value)}
-            />
-          </AdminField>
-
-          <AdminField label="Phone">
-            <AdminInput
-              type="tel"
-              value={form.value.phone}
-              onChange={(e) => form.setField("phone", e.target.value)}
-            />
-          </AdminField>
-
-          <AdminField label="Address" wide>
-            <AdminInput
-              value={form.value.address}
-              onChange={(e) => form.setField("address", e.target.value)}
-            />
-          </AdminField>
-
-          <AdminField label="Location type">
-            <AdminSelect
-              value={form.value.locationType}
-              onChange={(e) => form.setField("locationType", e.target.value)}
-            >
-              <option value="corporate">Corporate</option>
-              <option value="franchise">Franchise</option>
-            </AdminSelect>
-          </AdminField>
-
-          <AdminField label="Accent colour" hint="Used on this studio's schedule blocks.">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                aria-label="Accent colour"
-                value={form.value.brandColor}
-                onChange={(e) => form.setField("brandColor", e.target.value)}
-                className="w-10 h-10 rounded-lg border-0 bg-transparent p-0 cursor-pointer"
-              />
-              <AdminInput
-                value={form.value.brandColor}
-                onChange={(e) => form.setField("brandColor", e.target.value)}
-              />
-            </div>
-          </AdminField>
-        </AdminGrid>
-      </AdminPanel>
+      <StudioDetailsForm studio={studio} studios={studios} onSave={onSave} />
 
       <AdminPanel
         title="Franchise"

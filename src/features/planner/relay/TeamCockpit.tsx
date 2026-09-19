@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, Clock, Flag, Hand, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../../firebase";
-import { useActiveStudio } from "../../../ActiveStudioContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { cn } from "../../../lib/utils";
 import { createRequest, type TaskRequest } from "../../studio-tasks/requests";
@@ -17,8 +14,6 @@ import { useRelay } from "./RelayContext";
 import { COHORT_DEFAULT_ASK, COHORT_HINT, COHORT_LABEL, COHORT_ORDER, cohortsOf, type CohortKey, type CohortMember } from "./cohorts";
 import { entryIsTrainers, minutesToClock, mySessionsToday } from "./now-context";
 import { useMachineCare } from "./machine-care-store";
-import { clockToMinutes, DEFAULT_SHIFT_HOURS, shiftHoursOf } from "./now-context";
-import { DEFAULT_DEEP_CLEAN_DAYS } from "./machine-care";
 
 /**
  * THE TEAM COCKPIT — what a leader sees first on the Team tab.
@@ -368,90 +363,10 @@ export function OpenLoops({ requests, jobs, machineNames }: { requests: TaskRequ
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Standards: the studio's day and its deep-clean interval
- * ------------------------------------------------------------------ */
-
-export function StandardsHours() {
-  const relay = useRelay();
-  const { activeStudio } = useActiveStudio();
-  const { success: toastSuccess, error: toastError } = useToast();
-  const current = shiftHoursOf(activeStudio?.shiftHours ?? null);
-  const toClock = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-  const [open, setOpen] = useState(toClock(current.open));
-  const [mid, setMid] = useState(toClock(current.mid));
-  const [closing, setClosing] = useState(toClock(current.closing));
-  const [close, setClose] = useState(toClock(current.close));
-  const [deep, setDeep] = useState(String(activeStudio?.deepCleanIntervalDays ?? DEFAULT_DEEP_CLEAN_DAYS));
-  const [busy, setBusy] = useState(false);
-
-  const dirty =
-    open !== toClock(current.open) ||
-    mid !== toClock(current.mid) ||
-    closing !== toClock(current.closing) ||
-    close !== toClock(current.close) ||
-    Number(deep) !== (activeStudio?.deepCleanIntervalDays ?? DEFAULT_DEEP_CLEAN_DAYS);
-
-  const save = async () => {
-    if (!relay.studioId) return;
-    const bad = [open, mid, closing, close].some((v) => clockToMinutes(v) === null);
-    const days = Math.max(1, Math.min(365, Math.round(Number(deep) || DEFAULT_DEEP_CLEAN_DAYS)));
-    if (bad) {
-      toastError("Every time needs to be a clock time, like 05:30.");
-      return;
-    }
-    setBusy(true);
-    try {
-      await updateDoc(doc(db, "studios", relay.studioId), { shiftHours: { open, mid, closing, close }, deepCleanIntervalDays: days });
-      toastSuccess("Saved — the Now Bar and the rings follow it.");
-    } catch (err) {
-      console.warn("[relay] standards save failed:", err);
-      toastError("Could not save the studio's day.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <section className="tc" aria-labelledby="tc-hours">
-      <header className="rl-h">
-        <h3 className="rl-h__title" id="tc-hours">
-          <Clock size={13} aria-hidden /> The studio's day
-        </h3>
-        <span className="rl-h__sub">
-          Opening until {minutesToClock(current.mid)}, Mid until {minutesToClock(current.closing)}, then Closing
-        </span>
-      </header>
-      <div className="tc__hours">
-        {[
-          ["Opens", open, setOpen],
-          ["Mid shift from", mid, setMid],
-          ["Closing from", closing, setClosing],
-          ["Closes", close, setClose],
-        ].map(([label, value, set]) => (
-          <label key={label as string} className="pk-field">
-            <span className="pk-label">{label as string}</span>
-            <input type="time" className="pk-input tw-narrow" value={value as string} onChange={(e) => (set as (v: string) => void)(e.target.value)} />
-          </label>
-        ))}
-        <label className="pk-field">
-          <span className="pk-label">Deep clean every</span>
-          <span className="tc__days">
-            <input type="number" className="pk-input tw-day" min={1} max={365} value={deep} onChange={(e) => setDeep(e.target.value)} /> days
-          </span>
-        </label>
-      </div>
-      <p className="pk-hint">
-        Defaults are {minutesToClock(DEFAULT_SHIFT_HOURS.open)} / {minutesToClock(DEFAULT_SHIFT_HOURS.mid)} / {minutesToClock(DEFAULT_SHIFT_HOURS.closing)} / {minutesToClock(DEFAULT_SHIFT_HOURS.close)} and {DEFAULT_DEEP_CLEAN_DAYS} days.
-      </p>
-      <div className="pl__panel-actions">
-        <button type="button" className="pl__btn pl__btn--primary" disabled={!dirty || busy} onClick={() => void save()}>
-          {busy ? "Saving…" : "Save the studio's day"}
-        </button>
-      </div>
-    </section>
-  );
-}
+/* The studio's day and its deep-clean interval used to be edited here
+   (StandardsHours). They are My Studio → Studio's now (My Studio round,
+   Sep 2026, features/my-studio/StudioSection), on the same dirty-tracked save
+   bar as the rest of the studio's record. */
 
 // Re-exported for the Team tab's own use of the schedule matcher.
 export { entryIsTrainers };

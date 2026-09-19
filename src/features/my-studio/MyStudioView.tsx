@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { Building2, Plus, Users, Zap } from "lucide-react";
+import { Building2, Plus, Settings2, Users, Zap } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { auth } from "../../firebase";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
@@ -7,6 +7,7 @@ import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "..
 import type { ClientTaskAction } from "../studio-tasks/types";
 import { PlannerView } from "../planner/PlannerView";
 import { TeamPanel } from "../planner/team/TeamPanel";
+import { StudioSection } from "./StudioSection";
 import { peekPlannerIntent } from "../planner/intent";
 import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../planner/relay/RelayContext";
 import { reachesTier } from "../planner/relay/RoleGate";
@@ -61,6 +62,7 @@ export type MyStudioSection = "relay" | "machines" | "team" | "studio";
 const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" }[] = [
   { id: "relay", label: "Relay", icon: Zap },
   { id: "team", label: "Team", icon: Users, tier: "leads" },
+  { id: "studio", label: "Studio", icon: Settings2, tier: "leads" },
 ];
 
 let rememberedSection: MyStudioSection = "relay";
@@ -213,6 +215,12 @@ export function MyStudioView({
         {shown === "team" && (
           <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
             <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
+          </SectionFrame>
+        )}
+
+        {shown === "studio" && (
+          <SectionFrame id="ms-panel" labelledBy="ms-tab-studio">
+            <StudioSection authTrainer={authTrainer} trainers={trainers} />
           </SectionFrame>
         )}
 

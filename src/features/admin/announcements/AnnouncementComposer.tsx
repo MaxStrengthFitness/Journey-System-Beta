@@ -80,6 +80,12 @@ export interface AnnouncementComposerProps {
   /** Panel heading. The two callers describe their reach differently. */
   title?: string;
   subtitle?: string;
+  /**
+   * My Studio round (Sep 2026): the studio's own announcements. The audience
+   * is THIS studio and nothing else — the draft starts on it, the picker is
+   * not drawn, and a publish resets back to it. Pass with `scopes: ["studio"]`.
+   */
+  fixedStudioId?: string;
 }
 
 const SCOPE_LABELS: Record<AnnouncementScope, string> = {
@@ -115,13 +121,16 @@ export function AnnouncementComposer({
   onArchived,
   title = "Post an announcement",
   subtitle = "Goes to the alerts bell, for everyone it reaches.",
+  fixedStudioId,
 }: AnnouncementComposerProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { activeStudioId } = useActiveStudio();
-  const [draft, setDraft] = useState<AnnouncementDraft>({
+  const freshDraft = (): AnnouncementDraft => ({
     ...EMPTY_DRAFT,
     scope: scopes[0] ?? "universal",
+    studioId: fixedStudioId,
   });
+  const [draft, setDraft] = useState<AnnouncementDraft>(freshDraft);
   const [lifespan, setLifespan] = useState<Lifespan>("24h");
   const [publishing, setPublishing] = useState(false);
   const [archiving, setArchiving] = useState<string | null>(null);
@@ -172,7 +181,7 @@ export function AnnouncementComposer({
         ...body,
         createdAt: serverTimestamp(),
       });
-      setDraft({ ...EMPTY_DRAFT, scope: scopes[0] ?? "universal" });
+      setDraft(freshDraft());
       setShowProblems(false);
       toastSuccess("Published. It is in the alerts bell now.");
       onPublished?.(ref.id);
@@ -299,7 +308,7 @@ export function AnnouncementComposer({
             </AdminField>
           )}
 
-          {draft.scope === "studio" && (
+          {draft.scope === "studio" && !fixedStudioId && (
             <AdminField label="Which studio" required htmlFor="ann-studio">
               <AdminSelect
                 id="ann-studio"

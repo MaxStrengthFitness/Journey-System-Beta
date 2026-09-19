@@ -19,7 +19,7 @@ import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
 import { useRelayMaybe } from "../relay/RelayContext";
-import { CohortPanel, OpenLoops, StandardsHours, WhosInToday } from "../relay/TeamCockpit";
+import { CohortPanel, OpenLoops, WhosInToday } from "../relay/TeamCockpit";
 import { VaultPanel } from "../relay/VaultPanel";
 import { kudosReceived } from "../relay/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
@@ -245,7 +245,9 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           )}
         </section>
 
-        {relay && <StandardsHours />}
+        {/* The studio's day (shift hours, the deep-clean interval) moved to
+            My Studio → Studio in the My Studio round (Sep 2026), beside the
+            rest of the studio's own record. */}
 
         <section className="tm-manage" aria-labelledby="tm-manage">
           <h3 className="pl__list-head" id="tm-manage">
