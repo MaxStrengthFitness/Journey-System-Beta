@@ -9,7 +9,7 @@ The Relay tab became **My Studio** (AJ, Sep 18): "each studio should have full i
 | Section | Who | What |
 | --- | --- | --- |
 | **Relay** | everyone at the studio | the board, untouched: Floor · Mine · Notes · Network, the Now Bar, Capture (`features/planner/PlannerView`) |
-| **Machines** | everyone reads and leaves machine notes; leaders edit | the floor, what is new in the MSF standard, All MSF machines, custom machines and "Submit to MSF", local set-up, the studio's standard settings, upkeep |
+| **Machines** | everyone reads and leaves machine notes; leaders edit | the floor, what is new in the MSF standard (adopted, never pushed), the machine's door (the studio's standard settings, the floor's notes, local set-up, upkeep), "Offer to the MSF catalog" on the studio's own machines, machines shared by other MSF studios |
 | **Team** | the studio tier | the Team cockpit (was Relay's Team tab) and this studio's staff: who is waiting for an account, roles up to studio leader, the grant, the Mindbody link, temporary profiles |
 | **Studio** | the studio tier | the studio's own record: details, the Mindbody link, the Journey cutover date, shift hours and the deep-clean interval, renewal settings and packages, the studio's announcements, sync status |
 

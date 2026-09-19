@@ -424,6 +424,117 @@ really be judged on one. Use a **test client** for anything that saves.
 
 ---
 
+## Round 10 — My Studio · *Sep 18–19 2026 round, branch `my-studio`*
+
+The round is `docs/rounds/2026-09-19-my-studio.md`. None of it has been on
+an iPad. Two iPads at the same studio: one signed in as a **head trainer**
+(or studio owner) of that studio, one as a **trainer**. A third sign-in as
+a **franchise owner or administrator** for the Operations checks. Use a test
+studio's record for anything that saves — the Studio section writes the real
+`studios/{id}` document.
+
+**At the keyboard first**
+
+- [ ] **Rules.** `npm run test:rules` — 115 tests, the last ten under "MY
+  STUDIO". *If any fail:* stop, send the output; nothing else in this round
+  depends on a deploy, but the leader's writes below will be refused until
+  the rules are live. Then `firebase deploy --only firestore:rules`.
+- [ ] **Typecheck and suite.** `npx tsc --noEmit` (11 on a clean clone) and
+  `TZ=America/New_York npx vitest run src` (3,323 in 210 files — on Windows
+  PowerShell: `$env:TZ="America/New_York"; npx vitest run src`).
+
+**The shell**
+
+- [ ] **The bottom bar says My Studio**, and opens on **Relay** with four tabs
+  (Floor · Mine · Notes · Network) under the studio's name — no Team tab.
+  Everything from the Relay walkthrough (Round 3) still works from here:
+  Capture, the Now Bar, Next up, swipe, the Floor Map.
+- [ ] **The trainer's iPad shows Relay and Machines only.** The head trainer's
+  shows all four. Switch section, go to the Hub, come back: **it reopens on
+  the section you left**. Tap a notification that links to Relay: it lands on
+  Relay whatever section was open.
+- [ ] **Capture from another section.** On Machines, tap the orange button and
+  relay a task: it lands on Mine → Today as it would from Relay.
+
+**Studio**
+
+- [ ] **Details.** Change the studio's name and tap Save: the masthead and
+  the studio picker say the new name on both iPads. Set the **Journey cutover
+  date**: a client's history coverage wording changes from "unknown" to the
+  cautious or complete reading (Round 3's fluidity checks). Clear it and
+  Save: it is removed, not stored as an empty string.
+- [ ] **The Mindbody guard.** Change the Site ID to a number that does not
+  exist: Save is refused with a sentence until the lookup answers; put the
+  real one back and Save works. *As a trainer* (in the browser, since the
+  section is hidden on the iPad): a write to `studios/{id}` is refused by the
+  rules — the schedule sync still runs (the Hub keeps filling).
+- [ ] **The studio's day.** Move the Mid hour: the Now Bar on the trainer's
+  iPad names the new phase within a minute. Team → Standards no longer has
+  an hours card — this is its only home.
+- [ ] **Renewals.** The same panel as Operations → Renewals → Settings; change
+  a threshold here and it shows there.
+- [ ] **Announcements.** Post a notice: the trainer's bell rings once at THIS
+  studio; an iPad signed in at another studio never sees it; there is no
+  "Which studio" picker and no "All studios" choice. Take it down: it leaves
+  both bells.
+
+**Machines**
+
+- [ ] **New in the MSF standard** lists only standard machines the floor does
+  not have. Adopt one: it appears on the floor and leaves the list. Switch a
+  floor machine off (We don't have this): it does **not** reappear under New.
+- [ ] **An empty test studio** shows "The MSF standard set" with **Adopt the
+  MSF standard**: one tap rosters the standard twenty, in the catalog's order,
+  and a second tap adds nothing.
+- [ ] **The floor as a trainer**: the list, read-only — no toolbar, no
+  switches, no unrostered machines — and **Open** on every row. As the head
+  trainer: search, reorder, on/off, out of service, a custom machine.
+- [ ] **The machine's door.** Open the Leg Press: the studio's standard
+  settings card (the same one Learning → Catalog shows — change a value here,
+  find it there), the floor's notes (the trainer's iPad can add one), Local
+  set-up, Upkeep (log a wipe: Operations → Equipment shows it). The panel is a
+  right column in landscape and a bottom sheet in portrait.
+- [ ] **Offer to the MSF catalog** is on the studio's **own** machine only —
+  not on an MSF machine, not on one adopted from another studio. Send one
+  with a note: the row reads "waiting on corporate"; as an administrator the
+  document is in `catalogSubmissions` with your name on it; as the head
+  trainer you can withdraw it and nothing else.
+- [ ] **Shared by other MSF studios.** A machine another studio shared can be
+  adopted from here as a copy; the All MSF machines page now points here.
+
+**Team**
+
+- [ ] **The cockpit** is what Relay → Team was (Round 3's Team checks: who's
+  in today, cohorts, open loops, the vault).
+- [ ] **Letting someone in.** From a fresh browser, request access naming
+  this studio. On the head trainer's iPad: the request shows under the
+  studio's staff with a waiting badge; the role list stops at Studio Leader
+  (no Owner, no Admin); "Can manage My Studio" is a switch; if the person is on the Mindbody staff list, they are linked.
+  Approve: they can sign in, the Team and Studio sections show for them only
+  if the grant was ticked, and Operations does **not** open for a trainer
+  with the grant.
+- [ ] **A request naming another studio** does not show here; one that named
+  no studio does.
+- [ ] **The grant on an existing trainer.** Tick "Can manage My Studio" on
+  the trainer's row and save. Their iPad now shows Team and Studio, and a
+  team job they post is accepted. Untick it: gone. *As the trainer*, editing
+  their own profile cannot add it (refused by the rules).
+- [ ] **Operations → Staff & Roles** (as a franchise owner): the same editor,
+  with Studio Owner and Owner on offer and the home studio changeable; as an
+  administrator, Admin too. A head trainer never sees this tab.
+- [ ] **Temporary profile.** Make one from Team; it appears in the directory
+  as before.
+
+**Two iPads**
+
+- [ ] The head trainer changes shift hours while the trainer is on Relay: the
+  Now Bar follows without a reload. Two leaders save Details at once: the
+  second save writes only its own changed fields (the first's name change
+  survives).
+- [ ] **Old iPad (iPadOS 15/16) cold load**: My Studio draws, every section.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.

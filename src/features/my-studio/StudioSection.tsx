@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { CalendarClock, Clock, Zap } from "lucide-react";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { useActiveStudio } from "../../ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
@@ -331,12 +331,16 @@ function StudioAnnouncements({
       .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
   }, [all]);
 
-  if (!authTrainer?.id) return null;
+  // The rules pin the author to the signed-in person (authorId ==
+  // request.auth.uid), and authTrainer.id differs from the uid on older
+  // accounts (CLAUDE.md) -- so the uid first.
+  const authorId = auth.currentUser?.uid || authTrainer?.id;
+  if (!authTrainer || !authorId) return null;
 
   return (
     <div className="ms__announce">
       <AnnouncementComposer
-        author={{ id: authTrainer.id, fullName: authTrainer.fullName }}
+        author={{ id: authorId, fullName: authTrainer.fullName }}
         studios={[{ id: studioId, name: studioName }]}
         networks={[]}
         scopes={["studio"]}
