@@ -21,12 +21,25 @@
  *
  * Undated ideas are deliberately kept. "Wishes they had help with the garden"
  * has no date and is one of the best gestures on the list.
+ *
+ * ROW ACTIONS (Operations round, Sep 2026). The audit's one finding about
+ * this screen was that it was the only Operations tab with nothing to do
+ * on it — the owner and the status were set on the client's Life section,
+ * so "Needs an owner" had no way to give it one. Now a row offers: Take it
+ * (make it mine, planned), hand it to someone at the studio, Done (with
+ * what actually happened — the part worth reading a year later), Pass.
+ * Every write goes through setGestureStatus, the same writer the client's
+ * record uses, so the rollup on the client document follows. The "Passed"
+ * bucket — a dated gesture the team missed — shows at the top, and the
+ * finished ones can be shown with a switch.
  */
 
-import { useMemo } from "react";
-import { Gift, TriangleAlert, CheckCheck } from "lucide-react";
-import type { Client } from "../../types";
-import { GESTURE_STATUS_LABEL, type FordUrgency } from "./types";
+import { useMemo, useState } from "react";
+import { Gift, TriangleAlert, CheckCheck, Check, Hand, X } from "lucide-react";
+import type { Client, Trainer } from "../../types";
+import { worksAt } from "../renewals/permissions";
+import { GESTURE_STATUS_LABEL, type FordOpportunity, type FordUrgency } from "./types";
+import { setGestureStatus } from "./ford-write";
 import { useDelightQueue, type DelightRow } from "./useClientFord";
 import { FordMark, WhenChip } from "./ui";
 import "./ford.css";
@@ -37,36 +50,52 @@ export interface DelightQueueProps {
   clients: Client[];
   onOpenClient?: (clientId: string) => void;
   includeDone?: boolean;
+  /** The signed-in person — "Take it" makes them the owner. Sign with the Auth uid. */
+  me?: { id: string; name: string } | null;
+  /** Everyone; the hand-off list is those who work at the studio. */
+  trainers?: Trainer[];
 }
 
 /** Days -> the bucket a row is filed under. */
 function bucketOf(daysAway: number | null): FordUrgency {
   if (daysAway === null) return "none";
+  if (daysAway < 0) return "past";
   if (daysAway <= 7) return "now";
   if (daysAway <= 30) return "soon";
   return "later";
 }
 
 const GROUP_LABEL: Record<FordUrgency, string> = {
+  past: "Passed — still open",
   now: "This week",
   soon: "This month",
   later: "Later",
   none: "No date — whenever the moment is right",
-  past: "Passed",
 };
 
-const GROUP_ORDER: FordUrgency[] = ["now", "soon", "later", "none"];
+const GROUP_ORDER: FordUrgency[] = ["past", "now", "soon", "later", "none"];
 
 export function DelightQueue({
   studioId,
   clients,
   onOpenClient,
   includeDone = false,
+  me = null,
+  trainers = [],
 }: DelightQueueProps) {
+  const [showDone, setShowDone] = useState(includeDone);
   const { rows, isLoading, needsIndex } = useDelightQueue({
     studioId,
-    includeDone,
+    includeDone: showDone,
   });
+  const staff = useMemo(
+    () =>
+      trainers
+        .filter((t) => t.id && !t.supersededByUid && worksAt(t, studioId))
+        .map((t) => ({ id: t.authUid ?? t.id, name: t.fullName }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [trainers, studioId],
+  );
 
   const nameOf = useMemo(() => {
     const map = new Map<string, string>();
@@ -105,18 +134,31 @@ export function DelightQueue({
     return <p className="ford-empty">Reading the studio’s list…</p>;
   }
 
+  const toolbar = (
+    <div className="ford-queue__toolbar">
+      <label className="ford-queue__toggle">
+        <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
+        Show what is done
+      </label>
+    </div>
+  );
+
   if (rows.length === 0) {
     return (
-      <p className="ford-empty">
-        Nothing on the list yet. A detail becomes a gesture from a client’s
-        <strong> Life</strong> section — tap the gift on any detail and say what
-        you would do about it.
-      </p>
+      <div className="ford-queue">
+        {toolbar}
+        <p className="ford-empty">
+          Nothing on the list yet. A detail becomes a gesture from a client’s
+          <strong> Life</strong> section — tap the gift on any detail and say what
+          you would do about it.
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="ford-queue">
+      {toolbar}
       {GROUP_ORDER.map((key) => {
         const list = groups.get(key);
         if (!list?.length) return null;
@@ -172,6 +214,9 @@ export function DelightQueue({
                         <span className="ford-queue__owner">{opp.ownerName}</span>
                       ) : null}
                     </div>
+                    {opp && opp.status !== "done" && opp.status !== "declined" && (
+                      <RowActions entry={{ id: entry.id, clientId: entry.clientId }} opp={opp} me={me} staff={staff} />
+                    )}
                   </article>
                 );
               })}
@@ -179,6 +224,109 @@ export function DelightQueue({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Row actions
+ * ------------------------------------------------------------------ */
+
+function RowActions({
+  entry,
+  opp,
+  me,
+  staff,
+}: {
+  entry: { id: string; clientId: string };
+  opp: FordOpportunity;
+  me: { id: string; name: string } | null;
+  staff: Array<{ id: string; name: string }>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [outcome, setOutcome] = useState("");
+  const mine = Boolean(me && opp.ownerTrainerId === me.id);
+
+  const run = async (fn: () => Promise<boolean>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="ford-queue__actions">
+      {closing ? (
+        <div className="ford-queue__close">
+          <input
+            className="ford-capture__field"
+            style={{ minHeight: 40 }}
+            value={outcome}
+            onChange={(e) => setOutcome(e.target.value)}
+            placeholder="What actually happened? Worth a sentence."
+            autoFocus
+          />
+          <div className="ford-queue__buttons">
+            <button
+              type="button"
+              className="ford-btn ford-btn--primary"
+              disabled={busy}
+              onClick={() => void run(() => setGestureStatus(entry.clientId, entry.id, opp, "done", { outcome, owner: opp.ownerTrainerId ? undefined : me }))}
+            >
+              <Check size={14} /> Done
+            </button>
+            <button type="button" className="ford-btn ford-btn--ghost" disabled={busy} onClick={() => setClosing(false)}>
+              Not yet
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="ford-queue__buttons">
+          {me && !mine && (
+            <button
+              type="button"
+              className="ford-btn"
+              disabled={busy}
+              onClick={() => void run(() => setGestureStatus(entry.clientId, entry.id, opp, opp.status === "idea" ? "planned" : opp.status, { owner: me }))}
+            >
+              <Hand size={14} /> Take it
+            </button>
+          )}
+          {staff.length > 0 && (
+            <select
+              className="ford-queue__owner-select"
+              aria-label="Hand it to"
+              value=""
+              disabled={busy}
+              onChange={(e) => {
+                const who = staff.find((t) => t.id === e.target.value);
+                if (who) void run(() => setGestureStatus(entry.clientId, entry.id, opp, opp.status === "idea" ? "planned" : opp.status, { owner: who }));
+              }}
+            >
+              <option value="">Hand it to…</option>
+              {staff.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button type="button" className="ford-btn" disabled={busy} onClick={() => setClosing(true)}>
+            <Check size={14} /> Done
+          </button>
+          <button
+            type="button"
+            className="ford-btn ford-btn--ghost"
+            disabled={busy}
+            onClick={() => void run(() => setGestureStatus(entry.clientId, entry.id, opp, "declined"))}
+          >
+            <X size={14} /> Pass
+          </button>
+        </div>
+      )}
     </div>
   );
 }

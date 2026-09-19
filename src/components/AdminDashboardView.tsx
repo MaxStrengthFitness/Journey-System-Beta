@@ -8,6 +8,7 @@ import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dum
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
+import { auth } from "../firebase";
 
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "../features/admin-data";
@@ -359,6 +360,8 @@ function AdminDashboardShell({
                 key={tabKey}
                 studioId={activeStudioId ?? null}
                 clients={clients}
+                trainers={trainers}
+                me={{ id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id, name: authTrainer.fullName }}
                 onOpenClient={onNavigateProfile}
               />
             )}

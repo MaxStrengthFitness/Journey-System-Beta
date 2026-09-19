@@ -547,6 +547,48 @@
   flex: 0 0 auto;
 }
 
+/* Row actions (Operations round, Sep 2026): a full-width line under the
+   row's three columns, so the buttons are 40px tall and never squeezed
+   beside the date chip. */
+.ford-queue__row { flex-wrap: wrap; }
+.ford-queue__actions {
+  flex: 1 0 100%;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--ford-border);
+}
+.ford-queue__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ford-queue__close { display: flex; flex-direction: column; gap: 0.4rem; }
+.ford-queue__owner-select {
+  min-height: 40px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-surface);
+  color: var(--ford-ink);
+  font: inherit;
+  font-size: 0.8125rem;
+}
+.ford-queue__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.ford-queue__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ford-ink-muted);
+  cursor: pointer;
+}
+.ford-queue__toggle input { width: 18px; height: 18px; }
+
 @media (prefers-reduced-motion: reduce) {
   .ford-btn,
   .ford-letter { transition: none; }

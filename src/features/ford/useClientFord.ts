@@ -24,7 +24,7 @@ import {
   upcomingFord,
   type FordPillarBucket,
 } from "./ford-rollup";
-import type { FordEntry } from "./types";
+import { toDate, type FordEntry } from "./types";
 
 /**
  * A client's whole personal history fits in one read. Twelve years of a
@@ -195,6 +195,17 @@ export function useDelightQueue(args: {
     const dated = upcomingFord(live);
     const datedIds = new Set(dated.map((d) => d.entry.id));
 
+    // A one-off whose date has passed is not "undated" — it is a gesture the
+    // team missed, and the queue's "Passed" bucket exists for it (Operations
+    // round, Sep 2026: the bucket was in the type and could never show,
+    // because upcomingFord drops past dates and the rest fell into undated).
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const passed = (entry: FordEntry): number | null => {
+      const when = toDate(entry.eventDate);
+      if (!when || when >= startOfToday) return null;
+      return Math.round((new Date(when.getFullYear(), when.getMonth(), when.getDate()).getTime() - startOfToday.getTime()) / 86_400_000);
+    };
     return {
       rows: [
         ...dated.map((d) => ({ entry: d.entry, when: d.when, daysAway: d.daysAway })),
@@ -202,7 +213,10 @@ export function useDelightQueue(args: {
         // the garden" has no date and is one of the best gestures on the list.
         ...live
           .filter((e) => !datedIds.has(e.id))
-          .map((entry) => ({ entry, when: null, daysAway: null })),
+          .map((entry) => {
+            const daysAway = passed(entry);
+            return { entry, when: daysAway === null ? null : toDate(entry.eventDate), daysAway };
+          }),
       ],
       isLoading,
       needsIndex,
