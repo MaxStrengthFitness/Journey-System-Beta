@@ -295,12 +295,13 @@ export function StudioSelectionView({
     releaseUiScrollLock();
   }, []);
 
-  const isAdminUser =
-    isStudioLeader(authTrainer || null) ||
-    authTrainer?.role === "Admin" ||
-    authTrainer?.role === "Founder" ||
-    authTrainer?.role === "Overseer" ||
-    authTrainer?.email === "jurgensaj@gmail.com";
+  /**
+   * Who sees "Go to Operations" here: the same people AppContent's menu
+   * offers it to. isStudioLeader already includes the owner and company
+   * tiers. A hard-coded e-mail that used to sit in this test — a bootstrap
+   * bypass from before roles existed — is gone (fix pile, Sep 2026).
+   */
+  const isAdminUser = isStudioLeader(authTrainer || null);
 
   const hasAccessToStudio = React.useCallback(
     (studioId: string) => {

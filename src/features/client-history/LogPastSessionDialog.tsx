@@ -249,7 +249,10 @@ export function LogPastSessionDialog({
         // this session would look like every backfill written before Sep 17
         // 2026 — which counted for nothing.
         countsTowardTotals: true,
-        createdAt: new Date().toISOString(),
+        // A Timestamp like every other writer of sessions (fix pile, Sep
+        // 2026): as an ISO string this session fell outside every createdAt
+        // range query — Insights, Hours, the Monday page — for good.
+        createdAt: serverTimestamp(),
       };
       if (routine) {
         session.routineId = routine.id;

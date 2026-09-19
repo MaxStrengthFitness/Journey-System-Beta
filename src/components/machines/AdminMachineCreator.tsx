@@ -25,6 +25,7 @@ import {
   emptyMachineDefinition,
   normalizeMachineDefinition,
 } from "./MachineDefinitionForm";
+import { ConfirmDialog } from "../../features/admin/primitives";
 
 /**
  * ADMIN MACHINE CREATOR — the "Machines" tab.
@@ -129,40 +130,24 @@ export function AdminMachineCreator({ canEdit = true }: { canEdit?: boolean } = 
   };
 
   /**
-   * Retire, but tell the admin how many locations still run it first.
-   * Uses the roster collection-group index on `basedOn`.
+   * Retire — through the house confirm, every time (fix pile, Sep 2026: it
+   * used to ask with window.confirm only when a studio still ran the
+   * machine, and a count of zero or a failed count retired with no
+   * question). The count of studios still running it comes from the roster
+   * collection-group index on `basedOn`; a failed count says so rather than
+   * pretending nobody has it. Restore asks nothing — it undoes.
    */
-  const handleRetire = async (m: MachineCatalogEntry) => {
+  const [askRetire, setAskRetire] = useState<{ machine: MachineCatalogEntry; inUse: number } | null>(null);
+
+  const setStatus = async (m: MachineCatalogEntry, status: "active" | "retired") => {
     setRetiring(m.id);
     try {
-      let inUse = 0;
-      try {
-        const snap = await getCountFromServer(
-          query(collectionGroup(db, "roster"), where("basedOn", "==", m.id)),
-        );
-        inUse = snap.data().count;
-      } catch {
-        // Index still building — retire anyway, just without the count.
-        inUse = -1;
-      }
-
-      if (inUse > 0) {
-        const ok = window.confirm(
-          `${inUse} studio roster${inUse === 1 ? "" : "s"} still reference ${m.name}.\n\n` +
-            `Retiring hides it from the picker for new studios. Locations that ` +
-            `already have it keep it, and their logs are unaffected.\n\nRetire anyway?`,
-        );
-        if (!ok) { setRetiring(null); return; }
-      }
-
       await updateDoc(doc(db, "machines", m.id), {
-        status: m.status === "retired" ? "active" : "retired",
+        status,
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       });
-      toastSuccess(
-        m.status === "retired" ? `${m.name} restored.` : `${m.name} retired.`,
-      );
+      toastSuccess(status === "active" ? `${m.name} restored.` : `${m.name} retired.`);
     } catch (err) {
       console.error(err);
       toastError("Could not change status.");
@@ -170,6 +155,34 @@ export function AdminMachineCreator({ canEdit = true }: { canEdit?: boolean } = 
       setRetiring(null);
     }
   };
+
+  const handleRetire = async (m: MachineCatalogEntry) => {
+    if (m.status === "retired") {
+      await setStatus(m, "active");
+      return;
+    }
+    setRetiring(m.id);
+    let inUse = -1;
+    try {
+      const snap = await getCountFromServer(
+        query(collectionGroup(db, "roster"), where("basedOn", "==", m.id)),
+      );
+      inUse = snap.data().count;
+    } catch {
+      // Index still building — ask anyway, without the count.
+      inUse = -1;
+    }
+    setRetiring(null);
+    setAskRetire({ machine: m, inUse });
+  };
+
+  const retireBody = (inUse: number) =>
+    (inUse > 0
+      ? `${inUse} studio floor${inUse === 1 ? "" : "s"} still ${inUse === 1 ? "has" : "have"} it. `
+      : inUse === 0
+        ? "No studio floor has it today. "
+        : "How many floors have it could not be counted just now. ") +
+    "Retiring takes it out of the standard a new floor starts with and marks it retired in All MSF machines, where no floor can add it; a floor that already has it keeps it, and every set ever logged on it stays. Restore brings it back.";
 
   const toggleStandardSet = async (m: MachineCatalogEntry) => {
     try {
@@ -320,6 +333,20 @@ export function AdminMachineCreator({ canEdit = true }: { canEdit?: boolean } = 
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={askRetire !== null}
+        title={askRetire ? `Retire ${askRetire.machine.name}?` : ""}
+        body={askRetire ? retireBody(askRetire.inUse) : undefined}
+        confirmLabel="Retire"
+        destructive
+        onCancel={() => setAskRetire(null)}
+        onConfirm={() => {
+          const ask = askRetire;
+          setAskRetire(null);
+          if (ask) void setStatus(ask.machine, "retired");
+        }}
+      />
     </div>
   );
 }

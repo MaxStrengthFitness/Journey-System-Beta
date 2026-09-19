@@ -26,6 +26,7 @@ import { AdminMachineFitTab } from "../features/admin/machine-fit/AdminMachineFi
 import { AdminHoursTab } from "../features/admin/hours/AdminHoursTab";
 import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperationsScope } from "../features/admin/scope-context";
 import { DelightQueue } from "../features/ford/DelightQueue";
+import { rememberMyStudioSection } from "../features/my-studio/section-memory";
 
 interface Props {
   authTrainer: Trainer;
@@ -98,9 +99,9 @@ function AdminDashboardShell({
   isAdmin,
   onRefresh,
   clients = [],
-  // `sessions` (the 24-hour stream) and `onOpenStudioTasks` were the
-  // Overview's; the Monday page reads its own window and Relay has the tasks.
-  // Still accepted so AppContent's call site needs no change this round.
+  // `sessions` (the 24-hour stream) was the Overview's; the Monday page reads
+  // its own window. Still accepted so AppContent's call site needs no change
+  // this round. `onOpenStudioTasks` opens My Studio — Renewals points there.
   sessions: _sessions = [],
   machines = [],
   schedules = [],
@@ -113,7 +114,7 @@ function AdminDashboardShell({
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
-  onOpenStudioTasks: _onOpenStudioTasks,
+  onOpenStudioTasks,
 }: Props) {
   // "This studio" is the studio the app is in; "All my studios" is null here
   // and the tabs that can span read the list from the scope themselves.
@@ -375,6 +376,14 @@ function AdminDashboardShell({
             activeStudioId={activeStudioId ?? null}
             trainers={trainers}
             machines={machines}
+            onOpenMyStudio={
+              onOpenStudioTasks
+                ? () => {
+                    rememberMyStudioSection("studio");
+                    onOpenStudioTasks();
+                  }
+                : undefined
+            }
           />
         )}
         {activeTab === "users" && (
@@ -465,9 +474,7 @@ function AdminDashboardShell({
             trainers={trainers}
             clients={clients}
             studios={studios}
-            machines={machines}
             activeStudioId={activeStudioId}
-            authTrainer={authTrainer}
           />
         )}
 

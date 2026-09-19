@@ -12,22 +12,24 @@
  * is standing. (It was also the most expensive control here — an unbounded
  * exerciseLogs range query across the whole studio.)
  *
- * The legacy importer stays, because it works and studios need it, but it is
- * described honestly: it handles one file at a time while the client schema
- * migration is pending, and the full migration — the one that moves a client
- * with eighty-plus historical sessions — is not this. That gets its own
- * placeholder rather than being quietly implied by the button that exists.
+ * The one-file legacy importer is gone from this screen (Operations round,
+ * Sep 2026 — audit item 11.5). It created clients by exact name with no home
+ * studio, so an imported client was invisible to every studio-scoped screen,
+ * and it never raised `priorHistory.importedCount`, so every count it fed
+ * was wrong (docs/business/migration-and-prior-history.md). The real
+ * migration — a whole roster at once, a dry run first — is the `scripts/`
+ * importer on the roadmap, and until it exists this screen says so rather
+ * than offering a button that makes a mess.
  */
 
-import React, { useRef } from "react";
+import React from "react";
 import {
-  Database,
   Download,
   FileSpreadsheet,
   HardDriveUpload,
   Users,
 } from "lucide-react";
-import { Client, Machine, Studio, Trainer } from "../../types";
+import { Client, Studio, Trainer } from "../../types";
 import {
   AdminBadge,
   AdminButton,
@@ -40,15 +42,12 @@ import {
   AdminScreen,
 } from "../admin/primitives";
 import { useStudioExports } from "./useStudioExports";
-import { useLegacyImport } from "./useLegacyImport";
 
 export interface AdminDataReportsTabProps {
   trainers: Trainer[];
   clients: Client[];
   studios: Studio[];
-  machines: Machine[];
   activeStudioId: string | null;
-  authTrainer: Trainer | null;
 }
 
 function ExportCard({
@@ -85,12 +84,8 @@ export function AdminDataReportsTab({
   trainers,
   clients,
   studios,
-  machines,
   activeStudioId,
-  authTrainer,
 }: AdminDataReportsTabProps) {
-  const fileInput = useRef<HTMLInputElement>(null);
-
   const {
     exportStartDate,
     setExportStartDate,
@@ -101,9 +96,6 @@ export function AdminDataReportsTab({
     handleExportPayroll,
     handleExportAttendance,
   } = useStudioExports({ trainers, clients, studios, activeStudioId });
-
-  const { isLegacyImporting, legacyStats, legacyError, handleLegacyFileUpload } =
-    useLegacyImport({ machines, activeStudioId, authTrainer });
 
   const studioName =
     studios.find((s) => s.id === activeStudioId)?.name ?? "all studios";
@@ -165,86 +157,25 @@ export function AdminDataReportsTab({
       </AdminPanel>
 
       <AdminPanel
-        title="Legacy import"
-        icon={<Database className="w-3.5 h-3.5" />}
-        subtitle="Historical FileMaker client logs, one file at a time."
-        actions={<AdminBadge tone="warn">Limited</AdminBadge>}
-      >
-        <AdminNotice tone="warn">
-          This writes clients, sessions and exercise logs straight into{" "}
-          <b>{studioName}</b>. The client schema migration is still pending, so
-          import one file and check the result before running another.
-        </AdminNotice>
-
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".csv"
-          onChange={handleLegacyFileUpload}
-          disabled={isLegacyImporting}
-          className="hidden"
-        />
-        <div style={{ marginTop: 12 }}>
-          <AdminButton
-            variant="quiet"
-            busy={isLegacyImporting}
-            onClick={() => fileInput.current?.click()}
-          >
-            <Database className="w-3.5 h-3.5" />
-            {isLegacyImporting ? "Processing" : "Choose a CSV"}
-          </AdminButton>
-        </div>
-
-        {legacyStats && (
-          <div className="adm-tiles" style={{ marginTop: 14 }}>
-            {[
-              ["Clients", legacyStats.clients],
-              ["Sessions", legacyStats.sessions],
-              ["Logs", legacyStats.logs],
-              ["Failed", legacyStats.failed],
-            ].map(([label, n]) => (
-              <div key={String(label)} className="adm-tile">
-                <span className="adm-tile__label">{label}</span>
-                <span
-                  className={
-                    label === "Failed" && Number(n) > 0
-                      ? "adm-tile__value adm-tile__value--alert"
-                      : "adm-tile__value"
-                  }
-                >
-                  {n}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {legacyError && (
-          <div style={{ marginTop: 12 }}>
-            <AdminNotice tone="alert">{legacyError}</AdminNotice>
-          </div>
-        )}
-      </AdminPanel>
-
-      <AdminPanel
         title="Full historical migration"
         icon={<HardDriveUpload className="w-3.5 h-3.5" />}
         subtitle="Moving a whole studio off FileMaker in one pass."
         actions={<AdminBadge tone="hero">Coming soon</AdminBadge>}
       >
         <p className="adm-hint" style={{ margin: 0, fontSize: "13px" }}>
-          The importer above takes one file at a time and is meant for a handful
-          of clients. What is coming is the other thing: a whole roster at once,
-          including clients carrying eighty or more historical sessions, with a
-          dry run you can read before anything is written and a report of what
-          matched and what did not.
+          What is coming: a whole roster at once, including clients carrying
+          eighty or more historical sessions, with a dry run you can read
+          before anything is written and a report of what matched and what did
+          not. It runs from the PC as a script, not from a button here.
         </p>
         <div style={{ marginTop: 12 }}>
           <AdminNotice tone="info">
-            It waits on the client schema migration, because a bulk import that
-            writes into a schema still being changed is a bulk import you have
-            to undo. Nothing here is blocked in the meantime — the one-file
-            importer above works today.
+            The old one-file CSV importer that sat here is gone: it created
+            clients with no home studio, so they were invisible to every studio
+            screen, and it never told the client's record how many sessions it
+            had imported. Until the migration exists, a client's pre-Journey
+            history is <b>Sessions before Journey</b> on their profile, and a
+            single past session is logged from the client's History tab.
           </AdminNotice>
         </div>
       </AdminPanel>

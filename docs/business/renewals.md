@@ -42,7 +42,7 @@ Every client gets a **renewal snapshot** each night: both clocks (billing and se
   - **Pipeline:** before the charge, talk now, coming up by month, lapsed, and away.
   - **Renewal Brief:** one screen per client, health first.
   - **Outcomes:** what happened to the packages that closed each quarter.
-  - **Settings:** when to talk, the package table, and name matching.
+  - **Settings** — when to talk, the package table, and name matching — are on **My Studio → Studio → Renewals** (since the Operations round, Sep 19 2026); Operations → Renewals says how many Mindbody names are waiting to be matched and points there.
 - **Outcomes** are recorded overnight when Mindbody shows the answer:
   - A newer package means **renewed**, **upgraded** or **downgraded**, judged by commitment length.
   - The studio's lost rule means **lost**.

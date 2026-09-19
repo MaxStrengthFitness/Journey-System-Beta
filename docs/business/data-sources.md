@@ -19,7 +19,7 @@ Journey is one of four places client information lives. This page says which sys
 | 90-day progress report | Journey | Progress report editor | `progressReports`, summary on `client.subjectiveSnapshot` |
 | InBody body composition | InBody (LookinBody) | Typed in from the printout: Profile → Details → Medical → Body composition | `clients/{id}/inbodyScans`; the first-to-latest change on `client.inbodySummary` |
 | History before Journey | FileMaker | The legacy CSV importer now; a full import after beta launch | `sessions`, `exerciseLogs` |
-| Package prices, renewal timing, Mindbody names | Each studio | Operations → Renewals → Settings (leaders) | `studios/{id}/config/renewals` |
+| Package prices, renewal timing, Mindbody names | Each studio | My Studio → Studio → Renewals (leaders) | `studios/{id}/config/renewals` |
 | Training method | MSF Academy | `docs/msf-academy/`, the Learning tab | Bundled content |
 
 ## Which source wins

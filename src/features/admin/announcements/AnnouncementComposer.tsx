@@ -49,6 +49,7 @@ import {
   AdminPanel,
   AdminSelect,
   AdminTextarea,
+  ConfirmDialog,
 } from "../primitives";
 import {
   EMPTY_DRAFT,
@@ -134,6 +135,8 @@ export function AnnouncementComposer({
   const [lifespan, setLifespan] = useState<Lifespan>("24h");
   const [publishing, setPublishing] = useState(false);
   const [archiving, setArchiving] = useState<string | null>(null);
+  /** The notice whose Take down is waiting on a second tap (fix pile, Sep 2026: it committed on one). */
+  const [takingDown, setTakingDown] = useState<HubAnnouncement | null>(null);
   const [showProblems, setShowProblems] = useState(false);
 
   const set = <K extends keyof AnnouncementDraft>(
@@ -445,7 +448,7 @@ export function AnnouncementComposer({
                     size="sm"
                     variant="quiet"
                     busy={archiving === a.id}
-                    onClick={() => a.id && handleArchive(a.id)}
+                    onClick={() => a.id && setTakingDown(a)}
                   >
                     Take down
                   </AdminButton>
@@ -455,6 +458,24 @@ export function AnnouncementComposer({
           </ul>
         )}
       </AdminPanel>
+
+      <ConfirmDialog
+        open={takingDown !== null}
+        title={takingDown ? `Take down "${takingDown.title}"?` : ""}
+        body={
+          takingDown
+            ? `It leaves every Hub it is on — ${audienceLabel(takingDown, studios, networks)} — now. There is no putting it back; post it again if it was a mistake.`
+            : undefined
+        }
+        confirmLabel="Take it down"
+        destructive
+        onCancel={() => setTakingDown(null)}
+        onConfirm={() => {
+          const a = takingDown;
+          setTakingDown(null);
+          if (a?.id) void handleArchive(a.id);
+        }}
+      />
     </div>
   );
 }

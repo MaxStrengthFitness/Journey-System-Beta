@@ -143,6 +143,27 @@ describe("Operations → Catalog", () => {
     expect(el.textContent).toContain("--from sm-solon-sled --to m-sled");
   });
 
+  it("Retire asks first, every time — with the count of floors that have it — and writes on the second tap", async () => {
+    const el = await mount(true);
+    // The Retire button on the Row card: the last one (the creator lists the
+    // catalog in defaultOrder, Row is third) and, to be sure, the one whose
+    // nearest ancestor with a machine id in it says m-row.
+    const retire = [...el.querySelectorAll("button")].filter((b) => b.textContent?.trim() === "Retire");
+    expect(retire).toHaveLength(3);
+    const rowRetire = retire.find((b) => {
+      let node: HTMLElement | null = b.parentElement;
+      while (node && !node.textContent?.includes("m-")) node = node.parentElement;
+      return node?.textContent?.includes("m-row") && !node.textContent.includes("m-chest");
+    })!;
+    await click(rowRetire);
+    expect(writes).toEqual([]);
+    const dialog = el.querySelector('[role="alertdialog"]')!;
+    expect(dialog.getAttribute("aria-label")).toBe("Retire Row?");
+    expect(dialog.textContent).toContain("No studio floor has it today.");
+    await click([...dialog.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Retire")!);
+    expect(writes).toEqual([{ path: "machines/m-row", data: { status: "retired", updatedAt: "now", updatedBy: "admin" } }]);
+  });
+
   it("gives a franchise owner the set to read and no queue, no switches, no New machine", async () => {
     const el = await mount(false);
     expect(el.textContent).not.toContain("Submitted by studios");

@@ -110,6 +110,8 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [truncated, setTruncated] = useState(false);
+  /** A refused or failed read is "unknown", never a quiet studio (fix pile, Sep 2026). */
+  const [failed, setFailed] = useState(false);
 
   const window = useMemo(() => {
     const end = Date.now();
@@ -123,6 +125,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
     }
     let cancelled = false;
     setLoading(true);
+    setFailed(false);
     (async () => {
       try {
         const result = await fetchSessionsInRange({ studioId, startMs: window.start, max: MAX_SESSIONS });
@@ -133,6 +136,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         if (!cancelled) {
           handleFirestoreError(err, OperationType.GET, "sessions");
           setSessions([]);
+          setFailed(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -217,6 +221,10 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
       >
         {loading ? (
           <AdminEmpty title="Reading the floor…" />
+        ) : failed ? (
+          <AdminEmpty title="The sessions could not be loaded">
+            The read was refused or failed, so nothing here is known — this is not a quiet studio. Try again in a moment; if it keeps happening, the studio may be one you are not allowed to read.
+          </AdminEmpty>
         ) : !summary.enoughToJudge ? (
           <AdminEmpty title="Not enough to say anything yet">
             {summary.sessions === 0
@@ -245,25 +253,25 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
       </AdminPanel>
 
       <AdminTiles>
-        <AdminStatTile label="Sessions" value={summary.sessions} loading={loading} />
+        <AdminStatTile label="Sessions" value={failed ? "—" : summary.sessions} loading={loading} />
         <AdminStatTile
           label="Never closed out"
-          value={summary.unclosed}
-          tone={summary.unclosed > 0 ? "attention" : undefined}
+          value={failed ? "—" : summary.unclosed}
+          tone={!failed && summary.unclosed > 0 ? "attention" : undefined}
           foot="No end time recorded"
           loading={loading}
         />
         <AdminStatTile
           label="Clients seen"
-          value={summary.clients}
-          foot={`${summary.newClients} on their first session`}
+          value={failed ? "—" : summary.clients}
+          foot={failed ? undefined : `${summary.newClients} on their first session`}
           loading={loading}
         />
         <AdminStatTile
           label="Typical session"
-          value={mins(summary.medianMinutes)}
+          value={failed ? "—" : mins(summary.medianMinutes)}
           foot={
-            summary.medianMachinesPerSession
+            !failed && summary.medianMachinesPerSession
               ? `${summary.medianMachinesPerSession} machines`
               : undefined
           }
@@ -271,16 +279,18 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         />
         <AdminStatTile
           label="Sessions with a note"
-          value={pct(summary.noteRate)}
+          value={failed ? "—" : pct(summary.noteRate)}
           loading={loading}
         />
         <AdminStatTile
           label="Client return rate"
-          value={retention ? pct(retention.rate) : "—"}
+          value={!failed && retention ? pct(retention.rate) : "—"}
           foot={
-            retention
-              ? `${retention.returned} of ${retention.eligible} came back`
-              : "Needs a longer window"
+            failed
+              ? undefined
+              : retention
+                ? `${retention.returned} of ${retention.eligible} came back`
+                : "Needs a longer window"
           }
           loading={loading}
         />
@@ -291,7 +301,9 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         subtitle="Volume is a rota fact, not a ranking. The rates are the part worth reading."
         flush
       >
-        {perTrainer.length === 0 ? (
+        {failed ? (
+          <AdminEmpty title="Could not be loaded" />
+        ) : perTrainer.length === 0 ? (
           <AdminEmpty title="No sessions to break down" />
         ) : (
           <div className="adm-ins-table-wrap">

@@ -41,8 +41,9 @@ import "../admin/admin.css";
  *                     administrator
  *   The studio's day  shift hours and the deep-clean interval (from Relay's
  *                     Standards), on the dirty-tracked save bar
- *   Renewals          the studio's thresholds and packages (the same panel
- *                     Operations → Renewals → Settings draws)
+ *   Renewals          the studio's thresholds and packages (the one editor —
+ *                     Operations → Renewals only points here since the
+ *                     Operations round)
  *   Announcements     the studio's own notices, pinned to this studio
  *
  * Everything writes only the diff to studios/{id} (or the renewal config /

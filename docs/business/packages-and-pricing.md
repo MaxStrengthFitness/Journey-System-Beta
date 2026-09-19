@@ -66,6 +66,6 @@ From AJ's screenshots, Sep 11 2026:
 
 So **sessions left = the sessions on hand (pricing options) + 8 for each payment still to come.** That is how the renewals engine counts them (`src/features/renewals/engine.ts`).
 
-Names differ by location. Each studio matches its own Mindbody names to its packages in **Operations → Renewals → Settings**; the nightly job lists every name it met there, with a count of clients. Until a name is matched, those sessions aren't counted, and the client shows up under "Missing Mindbody data".
+Names differ by location. Each studio matches its own Mindbody names to its packages in **My Studio → Studio → Renewals** (Operations → Renewals says how many names are waiting and points there); the nightly job lists every name it met there, with a count of clients. Until a name is matched, those sessions aren't counted, and the client shows up under "Missing Mindbody data".
 
 Still open: whether a "12-month" package really bills 12 times. The settings default to 6 / 12 / 18 payments, and each studio can change them.

@@ -1755,6 +1755,15 @@ export interface Studio {
   createdAt?: any;
   networkId?: string; // Newly added to associate with a FranchiseNetwork
   machineSettings?: Record<string, Record<string, string>>; // studioStandardSettings per machine
+  /**
+   * No screen writes or reads this, on purpose — nothing contacts clients or
+   * trainers (docs/ARCHITECTURE.md). It is kept in the type because two
+   * backend readers gate on it (functions/src/index.ts' booking-reminder
+   * queue and server/cron-daily-reminders.ts), and both stay dormant while
+   * nothing sets it true. The operations audit (Sep 2026, 18.5) had it as
+   * dead; it is a backend switch with no UI, which is different. Don't add
+   * an editor for it without deciding the outreach question first.
+   */
   notificationSettings?: {
     bookingRemindersEnabled?: boolean;
     dailySummaryEnabled?: boolean;

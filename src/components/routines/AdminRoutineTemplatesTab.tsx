@@ -25,6 +25,7 @@ import {
   AdminRows,
   AdminScreen,
   AdminSelect,
+  ConfirmDialog,
 } from "../../features/admin/primitives";
 
 /**
@@ -71,6 +72,8 @@ export function AdminRoutineTemplatesTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** The template whose delete is waiting on a second tap (fix pile, Sep 2026: it committed on one). */
+  const [deleting, setDeleting] = useState<RoutinePreset | null>(null);
 
   // Live, unfiltered: the tiers are split in memory rather than with three
   // separate queries, because the collection is small and one listener keeps
@@ -339,7 +342,8 @@ export function AdminRoutineTemplatesTab({
                     variant="danger"
                     busy={busyId === p.id}
                     disabled={!canEditHere || busyId === p.id}
-                    onClick={() => handleDelete(p)}
+                    aria-label={`Delete ${p.name}`}
+                    onClick={() => setDeleting(p)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </AdminButton>
@@ -410,6 +414,24 @@ export function AdminRoutineTemplatesTab({
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title={deleting ? `Delete "${deleting.name}"?` : ""}
+        body={
+          subTab === "company"
+            ? "Every studio loses this standard. Routines already built from it on clients' records are not touched."
+            : "This studio loses the template. Routines already built from it on clients' records are not touched."
+        }
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setDeleting(null)}
+        onConfirm={() => {
+          const p = deleting;
+          setDeleting(null);
+          if (p) void handleDelete(p);
+        }}
+      />
     </AdminScreen>
   );
 }

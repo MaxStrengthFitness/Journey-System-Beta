@@ -1,6 +1,8 @@
 /**
- * Operations → Renewals → Settings: when each studio starts the renewal
- * conversation, and its own package table.
+ * My Studio → Studio → Renewals: when each studio starts the renewal
+ * conversation, and its own package table. (It was Operations → Renewals →
+ * Settings until the Operations round, Sep 2026 — My Studio is where you run
+ * the studio; Operations only points here now.)
  *
  * AJ, Sep 10 2026: "each studio should be able to customize anything that
  * relates to knowing." Everything the renewal engine measures against is

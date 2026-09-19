@@ -22,6 +22,7 @@ import "../planner/kit.css";
 import "../planner/planner.css";
 import "../planner/relay/relay.css";
 import "./my-studio.css";
+import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
 
 /**
  * MY STUDIO — the studio's home on the bottom bar.
@@ -60,7 +61,7 @@ import "./my-studio.css";
  * notifications already stored in trainers' bells link to it.
  */
 
-export type MyStudioSection = "relay" | "machines" | "team" | "studio";
+export type { MyStudioSection };
 
 const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" }[] = [
   { id: "relay", label: "Relay", icon: Zap },
@@ -69,7 +70,6 @@ const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?:
   { id: "studio", label: "Studio", icon: Settings2, tier: "leads" },
 ];
 
-let rememberedSection: MyStudioSection = "relay";
 
 export interface MyStudioViewProps {
   authTrainer?: Trainer | null;
@@ -104,13 +104,13 @@ export function MyStudioView({
   // board (PlannerView reads and clears it); a plain open returns to where
   // this iPad last was.
   const [section, setSection] = useState<MyStudioSection>(() =>
-    peekPlannerIntent() ? "relay" : rememberedSection,
+    peekPlannerIntent() ? "relay" : rememberedMyStudioSection(),
   );
   // A shared iPad: the last person was a leader on Team; this one is not.
   const shown: MyStudioSection = sections.some((s) => s.id === section) ? section : "relay";
 
   const choose = (next: MyStudioSection) => {
-    rememberedSection = next;
+    rememberMyStudioSection(next);
     setSection(next);
     setPanel(null);
   };

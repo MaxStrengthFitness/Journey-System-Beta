@@ -2,11 +2,16 @@
  * Operations → Renewals.
  *
  * Round: Renewals (Sep 2026). See OPERATIONS-RENEWALS-PROPOSAL.md §4.2 and
- * docs/business/renewals.md. Three views of one studio: the Pipeline (who is
- * coming up, and what to do next — tap anyone for their Renewal Brief),
+ * docs/business/renewals.md. Two views of one studio: the Pipeline (who is
+ * coming up, and what to do next — tap anyone for their Renewal Brief) and
  * Outcomes (what happened to the packages that closed, by package, trainer
- * and studio) and the studio's Settings (when to talk, the package table,
- * name matching).
+ * and studio). The studio's Settings (when to talk, the package table, name
+ * matching) were a third view here until the Operations round (Sep 2026):
+ * "My Studio is where you run the studio; Operations is where you look at
+ * it" (AJ, Sep 18), so they are on My Studio → Studio only, and this screen
+ * points there — with the count of Mindbody package names still waiting to
+ * be matched, because that is the one settings fact a pipeline reader needs
+ * to know about.
  *
  * One studio at a time — the studio the dashboard is working in, or, for
  * someone who runs several, the one picked here. Every leader sees their own
@@ -16,9 +21,8 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
-import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
-import { RenewalSettingsPanel } from "./RenewalSettingsPanel";
 import { RenewalsPipeline } from "./RenewalsPipeline";
 import { RenewalBrief } from "./RenewalBrief";
 import { RenewalOutcomesPanel } from "./RenewalOutcomesPanel";
@@ -35,11 +39,13 @@ export interface AdminRenewalsTabProps {
   trainers: Trainer[];
   /** Machine names for the Brief's strength lines. */
   machines: Machine[];
+  /** Opens My Studio → Studio, where the settings live. */
+  onOpenMyStudio?: () => void;
 }
 
-type RenewalsView = "pipeline" | "outcomes" | "settings";
+type RenewalsView = "pipeline" | "outcomes";
 
-export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainers, machines }: AdminRenewalsTabProps) {
+export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainers, machines, onOpenMyStudio }: AdminRenewalsTabProps) {
   const manageable = useMemo(
     () => studios.filter((s) => s.id && canManageRenewals(authTrainer, s.id)),
     [studios, authTrainer],
@@ -51,11 +57,11 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
   const studioId = activeStudioId && manageable.some((s) => s.id === activeStudioId) ? activeStudioId : null;
   const studio = studios.find((s) => s.id === studioId) ?? null;
 
-  const { settings, saved, loading, error } = useRenewalSettings(studioId);
+  const { settings, loading, error } = useRenewalSettings(studioId);
   const namesSeen = useRenewalNamesSeen(studioId);
   const [view, setView] = useState<RenewalsView>("pipeline");
   // Mindbody names the package table doesn't recognize yet: those clients
-  // can't be placed, so the Settings switch says how many are waiting.
+  // can't be placed, so the pointer to the settings says how many are waiting.
   const toMatch = useMemo(
     () => (namesSeen ? unmatchedNames(namesSeen.names ?? {}, buildPackageNameIndex(settings)).length : 0),
     [namesSeen, settings],
@@ -113,18 +119,22 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
               <BarChart3 className="w-3.5 h-3.5" />
               Outcomes
             </button>
-            <button
-              type="button"
-              role="tab"
-              className="adm-seg"
-              aria-selected={view === "settings"}
-              onClick={() => setView("settings")}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Settings
-              {toMatch > 0 ? ` · ${toMatch} to match` : ""}
-            </button>
           </div>
+
+          <AdminNotice tone={toMatch > 0 ? "warn" : "info"}>
+            <SlidersHorizontal className="w-4 h-4 shrink-0" />
+            <div className="flex-1">
+              {toMatch > 0
+                ? `${toMatch} Mindbody package name${toMatch === 1 ? "" : "s"} ${toMatch === 1 ? "is" : "are"} waiting to be matched, so those clients cannot be placed in the pipeline. `
+                : ""}
+              When to talk, the package table and name matching are set on <b>My Studio → Studio</b>, not here.
+            </div>
+            {onOpenMyStudio && (
+              <AdminButton size="sm" variant="quiet" onClick={onOpenMyStudio}>
+                Open My Studio
+              </AdminButton>
+            )}
+          </AdminNotice>
 
           {error && <AdminNotice tone="warn">{error}</AdminNotice>}
           {/* Both views stay mounted, so unsaved settings survive a look at
@@ -148,19 +158,6 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
               studios={manageable}
               trainers={trainers}
             />
-          )}
-          {!loading && (
-            <div hidden={view !== "settings"}>
-              <RenewalSettingsPanel
-                key={studioId}
-                studioId={studioId}
-                studioName={studio.name}
-                settings={settings}
-                saved={saved}
-                namesSeen={namesSeen}
-                canEdit={canManageRenewals(authTrainer, studioId)}
-              />
-            </div>
           )}
 
           {briefClient && (
