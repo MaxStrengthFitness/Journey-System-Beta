@@ -23,35 +23,6 @@ export interface ValidationSession {
   hasConflict?: boolean;
 }
 
-export interface ExecutionGuideResult {
-  gradualLoadUp: string;
-  turnaroundRules: {
-    lowerTurn: string;
-    upperTurn: string;
-  };
-  activeSetCues: string[];
-  failureAndExit: string;
-}
-
-export interface ClinicalStrategyResult {
-  contraindications: string[];
-  dynamicModifications: string;
-  staticAlternativeProtocol: {
-    isRecommended: boolean;
-    setupAndExecution: string;
-  };
-  approvedSubstitutions: string[];
-  progressionAdvice: string;
-}
-
-export interface SetupWizardResult {
-  targetMuscles: string[];
-  initialAdjustments: string[];
-  entryAndSafety: string[];
-  alignmentAndPosture: string[];
-  clientModifications: string;
-}
-
 export interface ExtractedSessionHeader {
   sessionNumber: number;
   date?: string;
@@ -100,33 +71,6 @@ async function handleResponse(res: Response) {
     throw new Error(String(errorMsg));
   }
   return res.json();
-}
-
-export async function generateExecutionGuide(machineName: string, referenceText: string): Promise<ExecutionGuideResult> {
-  const res = await fetch('/api/gemini/executionGuide', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ machineName, referenceText })
-  });
-  return handleResponse(res);
-}
-
-export async function generateClinicalStrategy(machineName: string, clientDetails: string, referenceText: string, clientAilments: string = "", machineContraindications: string = ""): Promise<ClinicalStrategyResult> {
-  const res = await fetch('/api/gemini/clinicalStrategy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ machineName, clientDetails, referenceText, clientAilments, machineContraindications })
-  });
-  return handleResponse(res);
-}
-
-export async function generateMachineSetupGuide(machineName: string, clientDetails: string, referenceText: string, clientAilments: string = "", machineContraindications: string = ""): Promise<SetupWizardResult> {
-  const res = await fetch('/api/gemini/machineSetup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ machineName, clientDetails, referenceText, clientAilments, machineContraindications })
-  });
-  return handleResponse(res);
 }
 
 export async function processLegacyChart(images: { base64: string; mimeType: string }[], expectedSessions: number, pageIndex?: number, totalPages?: number): Promise<OCRResult> {

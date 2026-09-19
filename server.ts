@@ -1,17 +1,12 @@
 import fs from "fs";
 import express from "express";
 import compression from "compression";
-import ical from "node-ical";
-import axios from "axios";
 import path from "path";
 import dotenv from "dotenv";
 
 dotenv.config({ quiet: true }); // quiet: dotenv 17 otherwise prints a sponsored "tip" line on every boot
 
 import {
-  generateExecutionGuide,
-  generateClinicalStrategy,
-  generateMachineSetupGuide,
   processLegacyChart,
   extractMachineSettingsFromImage,
 } from "./server/gemini.ts";
@@ -89,63 +84,6 @@ async function startServer() {
     res.json({ ok: true, uptime: process.uptime() });
   });
 
-  app.post("/api/gemini/executionGuide", async (req, res) => {
-    try {
-      const { machineName, referenceText } = req.body;
-      const data = await generateExecutionGuide(machineName, referenceText);
-      res.json(data);
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/api/gemini/clinicalStrategy", async (req, res) => {
-    try {
-      const {
-        machineName,
-        clientDetails,
-        referenceText,
-        clientAilments,
-        machineContraindications,
-      } = req.body;
-      const data = await generateClinicalStrategy(
-        machineName,
-        clientDetails,
-        referenceText,
-        clientAilments,
-        machineContraindications,
-      );
-      res.json(data);
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/api/gemini/machineSetup", async (req, res) => {
-    try {
-      const {
-        machineName,
-        clientDetails,
-        referenceText,
-        clientAilments,
-        machineContraindications,
-      } = req.body;
-      const data = await generateMachineSetupGuide(
-        machineName,
-        clientDetails,
-        referenceText,
-        clientAilments,
-        machineContraindications,
-      );
-      res.json(data);
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
   app.post("/api/gemini/processChart", async (req, res) => {
     try {
       const { images, expectedSessions, pageIndex, totalPages } = req.body;
@@ -219,22 +157,6 @@ async function startServer() {
   });
   */
 
-  app.post("/api/parse-ical", async (req, res) => {
-    try {
-      const { url } = req.body;
-      if (!url) return res.status(400).json({ error: "URL is required" });
-      const response = await axios.get(url);
-      const data = ical.parseICS(response.data);
-      const events = Object.values(data).filter(
-        (ev: any) => ev.type === "VEVENT",
-      );
-      res.json({ events });
-    } catch (e: any) {
-      console.error("iCal fetch error:", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
   // API Route for Triggering Master Sync Manually
   app.post("/api/trigger-master-sync", async (req, res) => {
     try {
@@ -253,92 +175,6 @@ async function startServer() {
   });
 
   // Removed diagnostic endpoint that depended on backend sync-logic.ts
-
-  // API Route for Individual Calendar Sync (legacy/on-demand)
-  app.post("/api/sync-calendar", async (req, res) => {
-    try {
-      const { url, trainerId, trainerName } = req.body;
-      if (!url) return res.status(400).json({ error: "URL is required" });
-
-      const response = await axios.get(url);
-      const data = ical.parseICS(response.data);
-
-      const events = [];
-
-      // MindBody RegEx patterns for Client Names
-      const patterns = [
-        /Client:\s*([^(\r\n]+)/i, // Description: Client: John Doe
-        /\(([^)]+)\)/, // Summary: Personal Training (John Doe)
-        /^([^(:|\n]+)[:|-]/, // Summary: John Doe: Personal Training
-        /for\s+([^(\r\n]+)/i, // Summary: Training for John Doe
-      ];
-
-      const extractClientName = (summary: string, description: string) => {
-        const fullText = `${summary}\n${description}`;
-
-        for (const pattern of patterns) {
-          const match = fullText.match(pattern);
-          if (match && match[1]) {
-            const name = match[1].trim();
-            // Basic validation to avoid matching service names
-            if (
-              name.length > 2 &&
-              !name.toLowerCase().includes("training") &&
-              !name.toLowerCase().includes("workout")
-            ) {
-              return name;
-            }
-          }
-        }
-
-        // Fallback: use summary but strip common prefixes
-        return summary
-          .replace(/Personal Training|Workout|Session/gi, "")
-          .trim();
-      };
-
-      for (const k in data) {
-        if (data.hasOwnProperty(k)) {
-          const ev = data[k];
-          if (ev.type === "VEVENT") {
-            const rawSummary = ev.summary;
-            const summary =
-              typeof rawSummary === "object" && rawSummary !== null
-                ? (rawSummary as any).val
-                : rawSummary || "";
-
-            const rawDescription = ev.description;
-            const description =
-              typeof rawDescription === "object" && rawDescription !== null
-                ? (rawDescription as any).val
-                : rawDescription || "";
-
-            const clientName = extractClientName(summary, description);
-
-            events.push({
-              clientName,
-              startTime: ev.start,
-              endTime: ev.end,
-              trainerName: trainerName || description || "Assigned Staff",
-              trainerId: trainerId || null,
-              serviceName: summary.includes("(")
-                ? summary.split("(")[0].trim()
-                : ev.location || "Training Session",
-              status: "Scheduled",
-              source: "Subscription",
-            });
-          }
-        }
-      }
-
-      res.json({ events });
-    } catch (error: any) {
-      console.error("Sync error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to sync calendar" });
-    }
-  });
 
   // Every Mindbody route needs a signed-in staff member at a studio on the
   // site it names (Renewals round, Sep 2026). The two testing tools are for
