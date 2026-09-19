@@ -1,0 +1,165 @@
+/* ==================================================================== *
+ * THE CATALOG'S STANDARD SET AND SUBMISSIONS (Operations round, Sep 2026)
+ * ==================================================================== */
+
+.adm-std__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-std__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+}
+
+.adm-std__row + .adm-std__row {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-std__pos {
+  flex: none;
+  width: 24px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--adm-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-std__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.adm-std__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-std__meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.adm-std__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.adm-std__outside {
+  border-top: 2px solid var(--adm-border);
+  background: var(--adm-surface-2);
+}
+
+.adm-std__outside-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 4px;
+}
+
+.adm-std__outside-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.adm-std__none {
+  padding: 4px 14px 12px;
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+/* The queue */
+.adm-sub__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-sub__row + .adm-sub__row {
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-sub__head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.adm-sub__head:hover {
+  background: var(--adm-surface-2);
+}
+
+.adm-sub__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-sub__meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.adm-sub__note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--adm-ink-2);
+}
+
+.adm-sub__decide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 14px 14px;
+  border-top: 1px dashed var(--adm-border);
+  background: var(--adm-surface-2);
+}
+
+.adm-sub__why {
+  margin: -4px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--adm-alert);
+}
+
+.adm-sub__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-sub__cmd {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--adm-surface-3);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}

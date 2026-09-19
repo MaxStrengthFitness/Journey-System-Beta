@@ -49,7 +49,7 @@ function catalogId(name: string): string {
   );
 }
 
-export function AdminMachineCreator() {
+export function AdminMachineCreator({ canEdit = true }: { canEdit?: boolean } = {}) {
   const { catalog, loading } = useMachineCatalog();
   const { success: toastSuccess, error: toastError } = useToast();
 
@@ -194,9 +194,11 @@ export function AdminMachineCreator() {
             for their own location.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="mr-1.5 h-4 w-4" /> New machine
-        </Button>
+        {canEdit && (
+          <Button onClick={openNew}>
+            <Plus className="mr-1.5 h-4 w-4" /> New machine
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -253,31 +255,37 @@ export function AdminMachineCreator() {
                   </p>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <label className="mr-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Switch
-                      checked={m.inStandardSet}
-                      onCheckedChange={() => toggleStandardSet(m)}
-                    />
-                    Standard set
-                  </label>
-                  <Button variant="outline" size="sm" onClick={() => openEdit(m)}>
-                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-                  </Button>
-                  <Button
-                    variant="ghost" size="sm"
-                    disabled={retiring === m.id}
-                    onClick={() => handleRetire(m)}
-                  >
-                    {retiring === m.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : m.status === "retired" ? (
-                      <><RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restore</>
-                    ) : (
-                      <><Archive className="mr-1.5 h-3.5 w-3.5" /> Retire</>
-                    )}
-                  </Button>
-                </div>
+                {canEdit ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <label className="mr-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Switch
+                        checked={m.inStandardSet}
+                        onCheckedChange={() => toggleStandardSet(m)}
+                      />
+                      Standard set
+                    </label>
+                    <Button variant="outline" size="sm" onClick={() => openEdit(m)}>
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+                    </Button>
+                    <Button
+                      variant="ghost" size="sm"
+                      disabled={retiring === m.id}
+                      onClick={() => handleRetire(m)}
+                    >
+                      {retiring === m.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : m.status === "retired" ? (
+                        <><RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restore</>
+                      ) : (
+                        <><Archive className="mr-1.5 h-3.5 w-3.5" /> Retire</>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
+                    {m.inStandardSet ? "In the standard set" : "Not in the standard set"}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
