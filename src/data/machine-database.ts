@@ -1143,68 +1143,10 @@ export const MACHINE_DATABASE: Record<string, MachineKnowledge> = {
   }
 };
 
-export const MACHINE_LIST = Object.values(MACHINE_DATABASE);
-
-export type Gender = 'Male' | 'Female' | 'Other';
-export type SkillLevel = 'Novice' | 'Intermediate' | 'Advanced';
-
-export function calculateStartingWeight(
-  machineId: string,
-  gender: Gender | string,
-  age: number,
-  skill: SkillLevel | string
-): number {
-  const machine = MACHINE_DATABASE[machineId];
-  if (!machine) return 0;
-
-  // Base weight
-  const baseWeight = gender === 'Female' ? machine.baseFemale : machine.baseMale;
-
-  // Age Multiplier
-  let ageMultiplier = 1.0;
-  if (age < 40) ageMultiplier = 1.2;
-  else if (age >= 40 && age <= 60) ageMultiplier = 1.0;
-  else if (age > 60) ageMultiplier = 0.8;
-
-  // Skill Multiplier
-  let skillMultiplier = 1.0;
-  if (skill === 'Novice') skillMultiplier = 1.0;
-  else if (skill === 'Intermediate') skillMultiplier = 1.15;
-  else if (skill === 'Advanced') skillMultiplier = 1.3;
-
-  const rawWeight = baseWeight * ageMultiplier * skillMultiplier;
-
-  // Round to nearest even number
-  const rounded = Math.round(rawWeight / 2) * 2;
-
-  /*
-   * A CEILING FOR MACHINES THE ACADEMY GIVES A FIXED STARTING LOAD FOR.
-   *
-   * The multipliers above are a reasonable heuristic for most of the floor,
-   * but they are not doctrine, and on the Cervical Extension they were
-   * producing a number the Academy contradicts outright:
-   *
-   *   "Most clients will start with 20 pounds, the lightest increment
-   *    available on this exercise."
-   *   - Comprehensive Equipment Overview / Cervical Extension.txt
-   *
-   * A 35-year-old male novice came out at 36 lb, and an advanced client at
-   * 46 lb, on the one exercise the Academy says must never be taken to
-   * failure. Where a document states the starting load, the document wins.
-   */
-  const stated = ACADEMY_STARTING_WEIGHT[machineId];
-  if (stated !== undefined) return Math.min(rounded, stated);
-
-  return rounded;
-}
-
-/**
- * Starting loads the Academy states outright, as a hard ceiling on the
- * calculation above. Add to this only with a quotable sentence.
+/*
+ * Starting weights are NOT calculated here. There used to be a second
+ * calculateStartingWeight in this file, carrying the Academy's 20 lb ceiling
+ * for the Cervical Extension - and nothing called it, so the rule never
+ * reached a trainer. The one function, with the ceiling, is
+ * src/lib/consultation-utils.ts (beta-prep trim, Sep 17 2026).
  */
-const ACADEMY_STARTING_WEIGHT: Record<string, number> = {
-  // "Most clients will start with 20 pounds, the lightest increment available
-  // on this exercise." Also the lightest the machine offers, so the app must
-  // not go below it either - see the clamp in the caller.
-  cervical_extension: 20,
-};

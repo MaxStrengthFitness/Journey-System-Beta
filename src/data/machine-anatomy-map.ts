@@ -308,19 +308,3 @@ export const MOVEMENT_PATTERN_ORDER: MovementPattern[] = [
   'Core: Spine Extension',
   'Core: Rotary',
 ];
-
-/**
- * Helper: ordered anatomical regions matching the existing
- * Machine.anatomicalRegion field convention.
- */
-export const ANATOMICAL_REGION_ORDER = [
-  'Chest',
-  'Back',
-  'Shoulder',
-  'Arm / Upper Extremity',
-  'Thigh / Quad',
-  'Hamstring / Glute',
-  'Hip',
-  'Core',
-  'Neck',
-] as const;

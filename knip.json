@@ -9,7 +9,7 @@
     "scripts/**/*.ts",
     "tests/**/*.ts"
   ],
-  "project": ["src/**/*.{ts,tsx}", "server/**/*.ts", "functions/src/**/*.ts", "scripts/**/*.ts", "components/**/*.tsx", "lib/**/*.ts"],
+  "project": ["src/**/*.{ts,tsx}", "server/**/*.ts", "functions/src/**/*.ts", "scripts/**/*.ts"],
   "ignore": ["harness/**", "dist/**", "functions/lib/**"],
   "ignoreDependencies": []
 }

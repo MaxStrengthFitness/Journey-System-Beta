@@ -14,7 +14,7 @@
  * different about THIS unit.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Dumbbell, Sparkles, Wrench } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
@@ -24,12 +24,11 @@ import {
   OperationType,
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
-import { StudioInventoryManager } from "../../../components/machines/StudioInventoryManager";
+import { StudioInventoryManager } from "../machines/StudioInventoryManager";
 import {
   AdminBadge,
   AdminButton,
   AdminEmpty,
-  AdminNotice,
   AdminPanel,
   AdminRow,
   AdminRows,

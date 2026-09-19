@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { LoadingMark } from "./LoadingMark";
 import { createPortal } from "react-dom";
 import {
@@ -30,68 +30,15 @@ import {
   type PriorHistorySource,
 } from "../lib/prior-history";
 import {
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Activity,
-  Contact,
-  ChevronLeft,
-  ChevronRight,
-  Edit3,
-  Plus,
   Trash2,
-  Save,
-  Clock,
-  Dumbbell,
-  TrendingUp,
   AlertCircle,
-  Play,
-  Maximize,
-  Calendar,
-  Maximize2,
-  Battery,
-  CalendarDays,
-  Star,
-  Database,
-  AlertTriangle,
-  UserCheck,
-  Target,
-  Check,
-  Search,
   Loader2,
 } from "lucide-react";
-import { generateMockClientWithHistory } from "../lib/mockDataGenerator";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  ReferenceLine,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  Legend,
-} from "recharts";
+import { motion } from "motion/react";
 import { ClientMachineWindow } from "../features/equipment";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -99,23 +46,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
 import {
   ClinicalHistoryTab,
@@ -137,9 +70,7 @@ import {
   Trainer,
   ScheduleEntry,
   ProgressReport,
-  ClinicalSafetyFlag,
   Studio,
-  SessionNote,
 } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 import { WorkoutChartGrid } from "./WorkoutChartGrid";
@@ -149,21 +80,11 @@ import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
-import { getErgonomicRisk } from "../data/occupational-matrix";
 import {
   cn,
   parseSessionDate,
-  getMillis,
-  calculateExerciseVolume,
-  getMuscleGroupColor,
   orderMachineSettings,
 } from "../lib/utils";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
 import { resolveMachineOrder } from "../data/machine-display-order";
@@ -172,8 +93,6 @@ import {
   toJourneyRows,
   toJourneySessions,
 } from "../features/journey-grid";
-import { isOwner as checkIsOwner } from "../lib/permissions";
-import { isPerformedLog } from "../lib/set-outcome";
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import {
   ProfileHeader,
@@ -187,7 +106,6 @@ import {
   chipText,
   renewalPromptDue,
 } from "../features/renewals";
-
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
 /* Fifty at a time (audit, Sep 13): "Older really needs to show us their
@@ -238,7 +156,6 @@ export function ClientProfileView({
     Record<string, ClientMachineSetting>
   >({});
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
-  const [showMockConfirm, setShowMockConfirm] = useState(false);
 
   /*
    * KAIZEN ROSTER.
@@ -270,22 +187,6 @@ export function ClientProfileView({
     }
   };
 
-  const performMockGeneration = async () => {
-    if (!authTrainer) return;
-    try {
-      const { clientName } = await generateMockClientWithHistory(
-        authTrainer.id!,
-        authTrainer.initials,
-      );
-      toastSuccess(`Success: Created ${clientName}`);
-      window.location.reload();
-    } catch (err: any) {
-      toastError(err.message);
-    } finally {
-      setShowMockConfirm(false);
-    }
-  };
-
   const [scheduledSessions, setScheduledSessions] = useState<ScheduleEntry[]>(
     [],
   );
@@ -294,17 +195,6 @@ export function ClientProfileView({
   const [priorSource, setPriorSource] = useState<PriorHistorySource>("filemaker");
   const [priorThrough, setPriorThrough] = useState("");
   const [priorNote, setPriorNote] = useState("");
-  const [selectedTimingSessionId, setSelectedTimingSessionId] = useState<
-    string | null
-  >(null);
-  const [isEditingRoutine, setIsEditingRoutine] = useState<string | null>(null);
-  const [routineEditData, setRoutineEditData] = useState<{
-    name: string;
-    machineIds: string[];
-  }>({ name: "", machineIds: [] });
-  const [highlightRoutine, setHighlightRoutine] = useState<"A" | "B" | null>(
-    null,
-  );
 
   // Routines Redesign additions
   const [routineAdjustments, setRoutineAdjustments] = useState<
@@ -329,7 +219,6 @@ export function ClientProfileView({
   >(null);
   const [toggleBReason, setToggleBReason] = useState<string>("");
   const [isSavingToggle, setIsSavingToggle] = useState(false);
-  const [historyPage, setHistoryPage] = useState(0);
   const [showFullChart, setShowFullChart] = useState(false);
   const [lastVisibleSession, setLastVisibleSession] = useState<any>(null);
   const [hasMoreSessions, setHasMoreSessions] = useState(true);
@@ -595,36 +484,9 @@ export function ClientProfileView({
     [client, scheduledSessions],
   );
 
-  function getTrainerChipStyles(initials: string) {
-    if (!initials) return "bg-ink-l2 text-white";
-    const colors = [
-      "bg-cyan text-white",
-      "bg-cta text-white",
-      "bg-green text-ink-l1",
-      "bg-amber text-white",
-      "bg-ink-l2 text-white",
-    ];
-    let hash = 0;
-    for (let i = 0; i < initials.length; i++) {
-      hash = initials.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  }
-
-  const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
-
-  const [activeMachine, setActiveMachine] = useState<string | null>(null);
-  const [selectedChartMachines, setSelectedChartMachines] = useState<string[]>(
-    [],
-  );
-  const [hasInitializedChartMachines, setHasInitializedChartMachines] =
-    useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
-  const [matrixRoutineFilter, setMatrixRoutineFilter] = useState<string>("all");
-  const SESSIONS_PER_PAGE = 3;
 
   /**
    * Opening the dialog seeds it from whatever is on the client, so an edit is
@@ -673,18 +535,6 @@ export function ClientProfileView({
         updatedAt: serverTimestamp(),
       });
       setIsEditingSessionCount(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
-    }
-  };
-
-  const handleToggleRoutineB = async (checked: boolean) => {
-    if (!clientId) return;
-    try {
-      await updateDoc(doc(db, "clients", clientId), {
-        isRoutineBActive: checked,
-        updatedAt: serverTimestamp(),
-      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `clients/${clientId}`);
     }
@@ -982,27 +832,7 @@ export function ClientProfileView({
       }
     };
 
-    const fetchSessionNotesObj = async () => {
-      if (!clientId) return;
-      try {
-        const notesQ = query(
-          collection(db, "sessionNotes"),
-          where("clientId", "==", clientId),
-          orderBy("createdAt", "desc"),
-          limit(50),
-        );
-        const snap = await getDocs(notesQ);
-        const notesData = snap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() }) as SessionNote,
-        );
-        setSessionNotes(notesData);
-      } catch (error) {
-        console.warn("Could not fetch session notes:", error);
-      }
-    };
-
     fetchInitialSessions();
-    fetchSessionNotesObj();
   }, [clientId, activeTab, hasQuotaError]);
 
   const handleLoadMoreHistory = async () => {
@@ -1263,134 +1093,6 @@ export function ClientProfileView({
     };
     fetchSchedules();
   }, [clientId, user?.uid]);
-
-  const handleSaveRoutine = async () => {
-    if (!clientId || !isEditingRoutine) return;
-
-    const original = routines.find((r) => r.id === isEditingRoutine);
-    if (!original) return;
-
-    try {
-      // 1. Update existing routine
-      await updateDoc(doc(db, "routines", isEditingRoutine), {
-        name: routineEditData.name,
-        machineIds: routineEditData.machineIds,
-        updatedAt: serverTimestamp(),
-      });
-
-      // 2. Log adjustment in backend for history
-      await addDoc(collection(db, "routineAdjustments"), {
-        routineId: isEditingRoutine,
-        clientId,
-        previousMachineIds: original.machineIds,
-        newMachineIds: routineEditData.machineIds,
-        trainerId: authTrainer?.id || "unknown",
-        createdAt: serverTimestamp(),
-        studioId: clients.find((c) => c.id === clientId)?.homeStudioId || "",
-      });
-
-      setIsEditingRoutine(null);
-    } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.UPDATE,
-        `routines/${isEditingRoutine}`,
-      );
-    }
-  };
-
-  const startEditRoutine = (routine: Routine) => {
-    setIsEditingRoutine(routine.id!);
-    setRoutineEditData({
-      name: routine.name,
-      machineIds: [...routine.machineIds],
-    });
-  };
-
-  // Task 3: Aggressive Memoization
-  const memoizedCompletedSessionsAsc = useMemo(() => {
-    return [...sessions]
-      .filter((s) => s.status === "Completed")
-      .sort((a, b) => parseSessionDate(a.date) - parseSessionDate(b.date));
-  }, [sessions]);
-
-  const memoizedCompletedSessionsDesc = useMemo(() => {
-    return [...memoizedCompletedSessionsAsc].reverse();
-  }, [memoizedCompletedSessionsAsc]);
-
-  const memoizedEfficiencySessions = useMemo(() => {
-    return memoizedCompletedSessionsAsc.filter((s) => s.startTime && s.endTime);
-  }, [memoizedCompletedSessionsAsc]);
-
-  const memoizedMachineStatsByDate = useMemo(() => {
-    const machineStatsByDate: Record<string, Record<string, number>> = {};
-    const machineWeightsByDate: Record<string, Record<string, number>> = {};
-    const machineBaselines: Record<string, number> = {};
-
-    // Performed sets only (lib/set-outcome.ts): a practice load is not a
-    // baseline and not a progression point.
-    allLogs
-      .filter(isPerformedLog)
-      .sort(
-        (a, b) =>
-          (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
-      )
-      .forEach((l) => {
-        if (!l.weight) return;
-        const w = parseInt(l.weight.toString() || "0");
-        if (w > 0) {
-          if (!machineBaselines[l.machineId]) {
-            machineBaselines[l.machineId] = w;
-          }
-          const session = sessions.find((s) => s.id === l.sessionId);
-          if (session && session.date) {
-            const dateStr = new Date(
-              parseSessionDate(session.date),
-            ).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-            if (!machineStatsByDate[dateStr]) {
-              machineStatsByDate[dateStr] = {};
-            }
-            if (!machineWeightsByDate[dateStr]) {
-              machineWeightsByDate[dateStr] = {};
-            }
-            const base = machineBaselines[l.machineId];
-            machineStatsByDate[dateStr][l.machineId] =
-              ((w - base) / base) * 100;
-            machineWeightsByDate[dateStr][l.machineId] = w;
-          }
-        }
-      });
-    return { machineStatsByDate, machineWeightsByDate, machineBaselines };
-  }, [allLogs, sessions]);
-
-  const memoizedVolumeByDate = useMemo(() => {
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    const volumeByDate: Record<string, number> = {};
-
-    memoizedCompletedSessionsAsc.forEach((session) => {
-      const time =
-        session.createdAt?.toMillis?.() || parseSessionDate(session.date);
-      if (time >= sixtyDaysAgo.getTime()) {
-        const sLogs = allLogs.filter((l) => l.sessionId === session.id && isPerformedLog(l));
-        const totalVol = sLogs.reduce((acc, log) => {
-          const w = parseInt(log.weight?.toString() || "0");
-          const r = parseInt(log.reps?.toString() || "0");
-          return acc + w * r;
-        }, 0);
-        const dateStr = session.date
-          ? new Date(parseSessionDate(session.date)).toLocaleDateString(
-              "en-US",
-              { month: "short", day: "numeric" },
-            )
-          : "";
-        if (dateStr) {
-          volumeByDate[dateStr] = (volumeByDate[dateStr] || 0) + totalVol;
-        }
-      }
-    });
-    return volumeByDate;
-  }, [memoizedCompletedSessionsAsc, allLogs]);
 
   if (!client) {
     // Three different situations used to collapse into one "select a client"
@@ -2140,15 +1842,6 @@ export function ClientProfileView({
         confirmationPhrase="DELETE REPORT"
         onConfirm={performReportDelete}
         onCancel={() => setReportToDelete(null)}
-      />
-
-      <StrongConfirmationModal
-        isOpen={showMockConfirm}
-        title="Provision Mock Client Data"
-        description="Are you sure you want to generate a new mock client with 60 days of historical workout data? This will create a temporary member record for validation."
-        confirmationPhrase="GENERATE MOCK"
-        onConfirm={performMockGeneration}
-        onCancel={() => setShowMockConfirm(false)}
       />
     </motion.div>
   );

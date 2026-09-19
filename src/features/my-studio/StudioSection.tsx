@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { CalendarClock, Clock, Zap } from "lucide-react";
 import { auth, db } from "../../firebase";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import type { HubAnnouncement, Trainer } from "../../types";
@@ -15,8 +15,8 @@ import { RenewalSettingsPanel } from "../admin/renewals/RenewalSettingsPanel";
 import { AnnouncementComposer } from "../admin/announcements/AnnouncementComposer";
 import { DEFAULT_SESSION_MINUTES, MAX_SESSION_MINUTES, MIN_SESSION_MINUTES, sessionMinutesOf } from "../admin/hours/hours";
 import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalSettings";
-import { DEFAULT_DEEP_CLEAN_DAYS } from "../planner/relay/machine-care";
-import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../planner/relay/now-context";
+import { DEFAULT_DEEP_CLEAN_DAYS } from "../relay/board/machine-care";
+import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../relay/board/now-context";
 import "../admin/admin.css";
 
 /**

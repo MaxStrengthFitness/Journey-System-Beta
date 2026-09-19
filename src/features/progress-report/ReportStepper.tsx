@@ -11,7 +11,6 @@
  * label per step that is never truncated, 56px tabs, tokens instead of hex
  * (progress-report.css).
  */
-import React from "react";
 import { ArrowLeft, ArrowRight, Check, Info } from "lucide-react";
 import { REPORT_STEPS, STEP_INDEX, type ReportStepId } from "./steps";
 import "./progress-report.css";

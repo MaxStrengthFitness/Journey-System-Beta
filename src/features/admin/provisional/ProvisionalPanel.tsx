@@ -7,7 +7,7 @@
  * relationship with Mindbody, not a global mode.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { CloudOff, UserPlus } from "lucide-react";
 import { db } from "../../../firebase";

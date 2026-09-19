@@ -5,7 +5,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { Client, Machine, ProgressReport, Trainer } from "../types";
 import type { DossierSection } from "../types/journal";
-import { useActiveStudio } from "../ActiveStudioContext";
+import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { useScrollerPad } from "../features/client-profile/use-scroller-pad";
 import { clientDisplayName } from "../lib/client-name";

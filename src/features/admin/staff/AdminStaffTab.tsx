@@ -19,7 +19,7 @@
  * access control.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CircleUserRound, TriangleAlert } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { ROLE_LABELS } from "../../../types";

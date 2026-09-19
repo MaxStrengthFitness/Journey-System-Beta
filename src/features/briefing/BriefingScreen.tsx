@@ -58,14 +58,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Activity,
-  ArrowUpDown,
-  Check,
-  GripVertical,
   HeartPulse,
   Info,
   Lightbulb,
   Play,
-  Plus,
   Target,
   X,
 } from "lucide-react";
@@ -87,11 +83,9 @@ import { useTheme } from "../../components/ThemeProvider";
 import {
   Machine,
   Routine,
-  SessionNote,
   Trainer,
   Client,
   WorkoutSession,
-  FocusRecord,
   ExerciseLog,
   PreSessionCheckIn,
   BodyStateTag,
@@ -128,8 +122,6 @@ export interface BriefingScreenProps {
   onClose: () => void;
   machines: Machine[];
   routines: Routine[];
-  focusRecords?: FocusRecord[];
-  sessionNotes: SessionNote[];
   /** Used to resolve initials on legacy journal rows. */
   trainers?: Trainer[];
   /**
@@ -153,8 +145,6 @@ export function BriefingScreen({
   onClose,
   machines,
   routines,
-  focusRecords = [],
-  sessionNotes,
   trainers = [],
   sessions = [],
   logs = [],
@@ -244,17 +234,6 @@ export function BriefingScreen({
       setAdjustedMachineIds([]);
     }
   }, [targetRoutine, routineA, routineB, routinePickedByTrainer, isIntroSession, routines]);
-
-  const getCurrentBaseSequence = () => {
-    if (
-      isAdjusting ||
-      ["Free", "Create_A", "Create_B"].includes(selectedRoutineType)
-    )
-      return adjustedMachineIds;
-    return selectedRoutineType === "A"
-      ? routineA?.machineIds || []
-      : routineB?.machineIds || [];
-  };
 
   /**
    * Any change to the sequence — reorder, add, remove, a one-tap rule fix —
@@ -445,7 +424,6 @@ export function BriefingScreen({
     ? { id: uid, initials: (authTrainer?.initials || "TR").toUpperCase(), fullName: authTrainer?.fullName || "Coach" }
     : null;
 
-
   const lastRoutineName = lastSession
     ? routines.find((r) => r.id === lastSession.routineId)?.name ||
       ((lastSession.sessionType as string) === "Free"
@@ -463,12 +441,6 @@ export function BriefingScreen({
 
   // Follows the trainer's selection, not the original suggestion — otherwise the
   // card keeps naming the auto-picked routine after they switch.
-  const isBSelected = ["B", "Create_B"].includes(selectedRoutineType);
-  const scheduledRoutineName = isBSelected
-    ? routineB?.name || "Routine B"
-    : routineA?.name || "Routine A";
-
-
 
   const selectedRoutineIds =
     isAdjusting ||

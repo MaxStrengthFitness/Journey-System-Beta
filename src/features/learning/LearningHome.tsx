@@ -12,7 +12,7 @@ import {
   Type,
 } from "lucide-react";
 import type { Machine } from "../../types";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import {
   ACCENT_ICON,
   PAGE_SECTION_LABEL,

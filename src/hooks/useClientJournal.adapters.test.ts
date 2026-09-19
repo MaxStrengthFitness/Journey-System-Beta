@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../firebase", () => ({ db: { __fake: true }, auth: {} }));
 
 import { adaptEventsToJournal, adaptProfileFields } from "./useClientJournal";
-import { noteCategoryOf } from "../features/notes/note-catalog";
+import { noteCategoryOf } from "../features/client-notes/note-catalog";
 import { sectionForEntry } from "../types/journal";
 import type { Client, ClientEvent } from "../types";
 

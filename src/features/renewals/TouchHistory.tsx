@@ -1,4 +1,3 @@
-import React from "react";
 import { studioDateKey, studioTodayKey } from "../../lib/studio-time";
 import { concernLabel, interestLabel, leaningLabel } from "./conversation";
 import { dayLabel } from "./sentences";

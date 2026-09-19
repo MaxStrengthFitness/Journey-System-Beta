@@ -20,7 +20,7 @@ const spy = vi.hoisted(() => ({
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-1" } } }));
 vi.mock("../../../hooks/useMachineCatalog", () => ({ useMachineCatalog: () => ({ catalog: [], byId: {}, loading: false }) }));
-vi.mock("../../../ActiveStudioContext", () => ({ useActiveStudio: () => ({ activeStudio: { id: "solon" }, activeStudioId: "solon" }) }));
+vi.mock("../../../contexts/ActiveStudioContext", () => ({ useActiveStudio: () => ({ activeStudio: { id: "solon" }, activeStudioId: "solon" }) }));
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ success: (m: string) => spy.toasts.push(m), error: (m: string) => spy.toasts.push(`! ${m}`) }),
 }));

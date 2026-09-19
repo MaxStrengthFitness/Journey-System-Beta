@@ -10,7 +10,7 @@
  * documents for just the clients on screen. Nothing here writes.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, ChevronRight, Users } from "lucide-react";
 import {
   AdminBadge,

@@ -7,7 +7,6 @@
  * never drawn — `reportCards` drops it — so an old report with blank slots
  * prints cleanly too.
  */
-import React from "react";
 import { Award, Compass, Sparkles, TrendingUp, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -21,7 +21,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { Building2 } from "lucide-react";
 import type { FranchiseNetwork, Studio, Trainer } from "../../types";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { AdminButton, AdminEmpty, AdminSelect } from "./primitives";
 import { operationsStudios, studiosInScope, type OperationsScope } from "./scope";
 

@@ -28,7 +28,7 @@
  *      passed in, so three sections of journal UI cost one set of Firestore
  *      listeners rather than three.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Crosshair,
   Heart,
@@ -63,8 +63,8 @@ import { ClinicalFlagPicker } from "../../features/clinical-flags/ClinicalFlagPi
 import { BodyWatchOuts } from "../../features/clinical-flags/BodyWatchOuts";
 import { ContractPanel } from "../../features/client-admin/ContractPanel";
 import { InBodyCard } from "../../features/inbody/InBodyCard";
-import { SharedNotesCard } from "../../features/planner/notes/SharedNotesCard";
-import { ClientJotStrip } from "../../features/planner/notes/ClientJotStrip";
+import { SharedNotesCard } from "../../features/relay/notes/SharedNotesCard";
+import { ClientJotStrip } from "../../features/relay/notes/ClientJotStrip";
 import { ClientSnapshot } from "./ClientSnapshot";
 import { JournalRail } from "./JournalRail";
 import { ClientJournalTab } from "../journal/ClientJournalTab";
@@ -622,7 +622,7 @@ export function ClientDossier({
               </FieldGroup>
 
               {/* Learning + Planner round, Sep 2026: plans trainers shared
-                  from their Planner. Read-only here — see features/planner/notes. */}
+                  from their Planner. Read-only here — see features/relay/notes. */}
               <SharedNotesCard
                 client={client}
                 authTrainer={authTrainer ?? null}
@@ -678,7 +678,7 @@ export function ClientDossier({
             >
               {/* Notes catalog round, Sep 2026: a category-first composer and
                   a catalog (tiles, shelves, search) instead of one feed. FORD /
-                  Life notes hand off to the Life section. See features/notes. */}
+                  Life notes hand off to the Life section. See features/client-notes. */}
               <ClientJournalTab
                 areas={["notes"]}
                 journal={journal}

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Client, ExerciseLog, Machine, Routine, Trainer } from "../../types";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { HistoryView, type HistoryViewMode } from "./HistoryView";
 import { LogPastSessionDialog } from "./LogPastSessionDialog";
 import { SessionDetailDialog } from "./SessionDetailDialog";

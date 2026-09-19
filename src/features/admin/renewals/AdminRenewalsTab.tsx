@@ -18,7 +18,7 @@
  * studio's numbers; franchise owners and administrators can pick any.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";

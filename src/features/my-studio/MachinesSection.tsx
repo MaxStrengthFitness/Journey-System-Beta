@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Dumbbell, Network, Sparkles, Upload } from "lucide-react";
 import { auth, db } from "../../firebase";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
@@ -25,8 +25,8 @@ import { buildDatabase, planAdoption } from "../machine-db/database";
 import { useSharedMachines } from "../machine-db/hooks";
 import { adoptMachine } from "../machine-db/mutations";
 import { writesForStudioPerRules } from "../learning/permissions";
-import { ContextPanel } from "../planner/relay/ContextPanel";
-import { useRelay } from "../planner/relay/RelayContext";
+import { ContextPanel } from "../relay/board/ContextPanel";
+import { useRelay } from "../relay/board/RelayContext";
 import {
   buildSubmission,
   standardGaps,

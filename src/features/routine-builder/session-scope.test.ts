@@ -33,7 +33,7 @@
  * someone has to re-state the rule rather than quietly lose it.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -63,6 +63,18 @@ function bodyOf(source: string, name: string): string {
 const MUTATORS = ["updateDoc", "setDoc", "addDoc", "deleteDoc", "writeBatch", "runTransaction"];
 
 const WTV = code(read("src/components/WorkoutTrackerView.tsx"));
+/*
+ * The Active Session screen is being split up: pieces of WorkoutTrackerView
+ * move into src/features/tracker/ (the three dialogs did, in the beta-prep
+ * trim, Sep 17 2026). The two whole-screen rules below - no `permanentSave`,
+ * no rewriting a saved routine - are about the SESSION PATH, not one file, so
+ * they scan that folder too. A piece moved there must not escape them.
+ */
+const TRACKER_PIECES = readdirSync(resolve(root, "src/features/tracker"))
+  .filter((f) => /\.tsx?$/.test(f) && !/\.test\./.test(f))
+  .map((f) => code(read(`src/features/tracker/${f}`)))
+  .join("\n");
+const SESSION_PATH = WTV + "\n" + TRACKER_PIECES;
 const BRIEFING = code(read("src/features/briefing/BriefingScreen.tsx"));
 
 describe("the shared builder never persists anything", () => {
@@ -100,7 +112,7 @@ describe("the pre-session briefing hands its sequence upward", () => {
     // caller ever set it, which is what made it dangerous: a dead branch
     // enabling exactly the forbidden thing, one argument away from firing.
     expect(
-      /permanentSave/.test(WTV),
+      /permanentSave/.test(SESSION_PATH),
       "permanentSave is gone on purpose — do not reintroduce a way to save a " +
         "routine from the session path",
     ).toBe(false);
@@ -150,7 +162,7 @@ describe("mid-session changes stay in session state", () => {
     // a client's first routine comes into existence. Rewriting an existing
     // one from here is not.
     const writes = [
-      ...WTV.matchAll(/\b(updateDoc|setDoc|deleteDoc)\s*\(\s*doc\([^)]*?["']routines["']/g),
+      ...SESSION_PATH.matchAll(/\b(updateDoc|setDoc|deleteDoc)\s*\(\s*doc\([^)]*?["']routines["']/g),
     ];
     expect(
       writes.map((m) => m[0]),

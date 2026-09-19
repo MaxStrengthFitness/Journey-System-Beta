@@ -14,20 +14,19 @@
  *   · saving a studio silently rewrote a trainer's role
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
   deleteDoc,
   deleteField,
   doc,
-  getDocs,
   serverTimestamp,
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
 import { Building2, Plus, ShieldCheck, Wrench } from "lucide-react";
-import { auth, db } from "../../../firebase";
+import { db } from "../../../firebase";
 import type { Client, FranchiseNetwork, Studio, Trainer } from "../../../types";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { useToast } from "../../../contexts/ToastContext";

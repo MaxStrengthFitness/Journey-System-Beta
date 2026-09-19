@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Building2 } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
 import { auth } from "../../firebase";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
 import { isStudioLeader } from "../../lib/permissions";

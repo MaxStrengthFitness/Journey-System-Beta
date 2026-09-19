@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import { completedSessionRollup } from "../../lib/client-rollups";
 import { cn } from "../../lib/utils";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { CoverageStrip, MachinePicker, SequenceMachineRow, analyzeRoutine } from "../routine-builder";
 import "../routine-builder/routine-builder.css";
 import { EARLIEST_PLACEABLE_DAY, todayKey } from "./model";

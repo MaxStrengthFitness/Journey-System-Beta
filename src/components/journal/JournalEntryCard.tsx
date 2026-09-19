@@ -39,8 +39,8 @@ import {
   type JournalEntry,
 } from "../../types/journal";
 import type { Machine } from "../../types";
-import { isUnfiled, noteCardLabel } from "../../features/notes/note-catalog";
-import "../../features/notes/notes.css";
+import { isUnfiled, noteCardLabel } from "../../features/client-notes/note-catalog";
+import "../../features/client-notes/notes.css";
 
 const ICONS: Record<string, React.ElementType> = {
   PersonStanding,

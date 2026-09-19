@@ -31,7 +31,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ClipboardPaste, Keyboard, SlidersHorizontal, Sparkles, Undo2 } from "lucide-react";
-import { useActiveStudio } from "../../../ActiveStudioContext";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { LoadingMark } from "../../../components/LoadingMark";
 import { useToast } from "../../../contexts/ToastContext";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";

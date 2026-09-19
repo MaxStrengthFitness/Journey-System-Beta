@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { CircleUserRound, TriangleAlert, UserPlus } from "lucide-react";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, Trainer } from "../../types";
 import { ROLE_LABELS } from "../../types";
 import { AdminBadge, AdminEmpty, AdminInput, AdminNotice, AdminPanel, AdminRows } from "../admin/primitives";
 import { STATE_BADGE, STUDIO_TIER_ROLES, StaffEditor } from "../admin/staff/StaffEditor";
 import { useStaffRoster } from "../admin/staff/useStaffRoster";
 import { ProvisionalPanel } from "../admin/provisional/ProvisionalPanel";
-import { TeamPanel } from "../planner/team/TeamPanel";
+import { TeamPanel } from "../relay/team/TeamPanel";
 import "../admin/admin.css";
 
 /**

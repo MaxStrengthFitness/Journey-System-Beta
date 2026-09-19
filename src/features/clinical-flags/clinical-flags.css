@@ -47,7 +47,7 @@
  * takes whatever the badge leaves, and the badge is a short word, so nothing
  * can ever run over the name again — which is what "ABSOLUTE CONTRAINDICATION"
  * did on an iPad. Alignment lives here, not in a Tailwind class: a <button>
- * centres its own text (CLAUDE.md, FORD round).
+ * centres its own text (docs/KNOWN-TRAPS.md, Layout and CSS; FORD round).
  */
 .cfl-toggle {
   display: grid;

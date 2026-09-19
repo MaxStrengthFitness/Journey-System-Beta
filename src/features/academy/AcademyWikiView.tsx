@@ -46,7 +46,7 @@ import {
   type WikiSearchGroup,
 } from "../wiki";
 import { CommentsPanel } from "../comments";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
   ACADEMY_INDEX,
@@ -70,7 +70,8 @@ import type { LearningRef } from "../learning/ref";
  *
  * Round: Wiki Redesign Phase 3, Sep 2026. Reordered after a flow review the
  * same day. Replaces AcademyView's role as a pane inside the Catalog;
- * AcademyView itself stays on disk as the rollback.
+ * AcademyView stayed on disk for a week as the rollback and was deleted,
+ * unused, in the beta-prep trim (Sep 17 2026).
  *
  * WHY IT IS A TAB
  * ---------------

@@ -12,7 +12,7 @@
  * — so a field this panel does not render cannot be written by it at all.
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link2, Trash2, Users } from "lucide-react";
 import type { FranchiseNetwork, Studio, Trainer } from "../../../types";
 import {

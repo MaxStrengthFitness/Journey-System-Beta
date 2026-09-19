@@ -11,7 +11,6 @@
  * old object edited in place. Rendering is pure (no effects, no
  * measurement); `FourPs.render.test.tsx` mounts it.
  */
-import React from "react";
 import { CheckCircle2 } from "lucide-react";
 import type { ProgressReport } from "../../types";
 import { Dial, MASTERY_SCALE, type DialValue } from "../rating";

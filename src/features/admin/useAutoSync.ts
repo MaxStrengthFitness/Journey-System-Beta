@@ -14,7 +14,6 @@ import type { Client, Studio, Trainer } from "../../types";
 import {
   claimIsStillDue,
   decideSync,
-  intervalWithBackoff,
   type SyncVerdict,
 } from "./syncPolicy";
 
@@ -201,18 +200,4 @@ export function useAutoSync({
   }, [enabled, activeStudioId, attempt]);
 
   return { verdict, running, lastError };
-}
-
-/** For the Integrations screen: when the next automatic pull is due. */
-export function nextSyncLabel(studio: Studio | null | undefined): string {
-  if (!studio) return "—";
-  if (studio.autoSyncEnabled === false) return "Off";
-  if (!studio.lastScheduleSyncAt) return "On the next visit";
-  const due =
-    studio.lastScheduleSyncAt +
-    intervalWithBackoff(studio.syncIntervalMinutes, studio.scheduleSyncFailures);
-  const mins = Math.round((due - Date.now()) / 60_000);
-  if (mins <= 0) return "Due now";
-  if (mins < 60) return `In ${mins} min`;
-  return `In ${Math.round(mins / 60)} h`;
 }

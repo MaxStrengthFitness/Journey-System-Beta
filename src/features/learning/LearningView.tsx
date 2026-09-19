@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Dumbbell, GraduationCap, LayoutGrid } from "lucide-react";
 import type { Machine, Trainer } from "../../types";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import { CommentsProvider, mentionablePeople, type CommentsContextValue } from "../comments";
 import { WikiSectionsProvider, type WikiSectionsValue } from "../wiki";

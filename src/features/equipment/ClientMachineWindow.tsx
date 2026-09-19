@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { clientDisplayName } from "../../lib/client-name";
-import { useActiveStudio } from "../../ActiveStudioContext";
+import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import type { Client, ClientMachineSetting, ExerciseLog, Machine, Trainer, WorkoutSession } from "../../types";
 import { toEquipmentMachines } from "./adapters";

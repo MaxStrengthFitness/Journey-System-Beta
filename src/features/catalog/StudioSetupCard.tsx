@@ -35,7 +35,7 @@
  * every existing reader (the journey grid, the session table) keeps working.
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Check, Lock, Plus, X } from "lucide-react";
 import { db } from "../../firebase";

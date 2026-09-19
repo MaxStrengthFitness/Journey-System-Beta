@@ -38,7 +38,7 @@ on `fluidity-round`, one per phase.
 - **6** `docs/business/the-floor.md` — the floor in AJ's words, pointed at from `CLAUDE.md`.
 - **7** The Now Bar: ghost reps; no progression cue; the ring clears; the last machine offers "Add another machine" (dashed, quiet — End Session stays at the top); no modal mid-set.
 - **8** `machineTimeFields`: time on machine is never written as time under load.
-- **9** `features/notes/session-draft.ts`: the draft belongs to the session. The wrap-up note reaches the journal.
+- **9** `features/client-notes/session-draft.ts`: the draft belongs to the session. The wrap-up note reaches the journal.
 
 ## Open phases
 

@@ -15,9 +15,8 @@ import {
   MapPin
 } from "lucide-react";
 import { collection, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Studio, Trainer } from "../types";
 
 interface AccessRequestViewProps {

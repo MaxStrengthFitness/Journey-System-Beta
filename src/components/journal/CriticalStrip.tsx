@@ -9,7 +9,7 @@
  * still inside its effective window — so the Journal and the briefing can
  * never disagree about what matters.
  */
-import React, { useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { JournalEntryCard } from "./JournalEntryCard";

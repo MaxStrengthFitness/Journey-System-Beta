@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useActiveStudio } from "../ActiveStudioContext";
+import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { Client, Trainer } from "../types";
 import { db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";

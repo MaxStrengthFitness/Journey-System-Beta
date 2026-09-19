@@ -15,8 +15,6 @@ import {
   where,
   limit,
   getDocs,
-  updateDoc,
-  doc,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
@@ -36,7 +34,6 @@ import {
 import {
   safeToDate,
   getMillis,
-  isSessionValid,
   parseSessionDate,
 } from "../lib/utils";
 
@@ -55,14 +52,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { openProfileAt } from "../features/client-profile/profile-nav";
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
 const SLOT_MINUTES = 30;
@@ -142,7 +132,6 @@ function DayStat({
 
 export function ClientsView({
   clients,
-  trainers,
   sortedTrainers,
   activeStudioId,
   onSelectClient,
@@ -154,10 +143,8 @@ export function ClientsView({
   formData,
   setFormData,
   onSubmit,
-  setSelectedSessionId,
   authTrainer,
   searchTerm,
-  onSearchTermChange,
   rosterLoading = false,
 }: {
   clients: Client[];
@@ -177,7 +164,6 @@ export function ClientsView({
   onSubmit: (e: React.FormEvent) => void;
   startEdit: (c: Client) => void;
   updateSessions: (id: string, current: number, delta: number) => void;
-  setSelectedSessionId: (id: string | null) => void;
   onSelectTrainer?: (id: string) => void;
   /** Search term owned by the app shell (the input lives in the header). */
   searchTerm: string;
@@ -515,20 +501,6 @@ export function ClientsView({
     return clients.find((c) => c.id && String(c.id).trim() === target) || null;
   };
 
-  const hasUnassignedAnywhereInGrid =
-    todaysSchedules.some(
-      (s) =>
-        !s.trainerName ||
-        s.trainerName.toLowerCase().includes("select") ||
-        s.trainerName === "",
-    ) ||
-    sessions.some(
-      (s) =>
-        s.status === "In-Progress" &&
-        (s as any).isUnassigned &&
-        isSessionValid(s),
-    ); // check for active unassigned sessions
-
   const getClientSessions = (client: Client) => {
     const clientName = `${client.firstName} ${client.lastName}`;
     const next = schedules
@@ -636,7 +608,6 @@ export function ClientsView({
     dateKey: calendarLabelKey(selectedDate),
   });
   const openTaskCount = Math.max(0, taskCounts.total - taskCounts.done);
-
 
   return (
     <motion.div
@@ -1503,9 +1474,11 @@ export function ClientsView({
                               variant="outline"
                               className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
                               onClick={() => {
-                                setSelectedSessionId(null);
+                                // The client's history lives on their profile:
+                                // Activity Archive -> Sessions.
                                 onSelectClient(client.id!);
-                                setView("history");
+                                openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
+                                setView("profile");
                               }}
                             >
                               <History className="w-6 h-6" />

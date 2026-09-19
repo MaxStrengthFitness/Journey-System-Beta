@@ -338,7 +338,7 @@ instead of not seeing the button. **Restore the gate when RBAC lands.**
 The To-Do screen rebuilt as a community hub: *what the team is doing, what the
 team needs to do, and how the team has solved this before.*
 
-**Routing.** The Planner (`features/planner`) renders for
+**Routing.** The Planner (`features/relay`) renders for
 `currentView === "studio-tasks"`; `StudioHubView` is its Studio lane. The
 original `StudioTasksView` and its `?classic-todo` escape hatch were deleted
 in the cost round (Sep 2026) once the hub had had its week on the floor.

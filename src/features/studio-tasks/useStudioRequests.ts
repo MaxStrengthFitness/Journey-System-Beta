@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { onSnapshot, query, where } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 import { studioDateKey } from "../../lib/studio-time";
 import { isExpired, repliesRef, requestsRef } from "./requests";
 import type { TaskRequest, TaskRequestReply } from "./requests";

@@ -15,7 +15,7 @@
  * Both take the raw assessment and recompute; the cached `summary` on the
  * report is not trusted for rendering.
  */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { CategoryComparison, PainPoint, SubjectiveAssessment } from "./types";
 import {
   BODY_REGION_LABELS,

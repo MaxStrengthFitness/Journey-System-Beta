@@ -246,9 +246,9 @@ eight fields that search for a person:
 | --- | --- |
 | The header search | `src/AppContent.tsx` |
 | The client directory | `src/components/ClientDirectoryView.tsx` |
-| Relay's client picker | `src/features/planner/ClientPicker.tsx` |
-| The note editor's client search | `src/features/planner/notes/NoteEditor.tsx` |
-| The notes panel | `src/features/planner/notes/NotesPanel.tsx` |
+| Relay's client picker | `src/features/relay/ClientPicker.tsx` |
+| The note editor's client search | `src/features/relay/notes/NoteEditor.tsx` |
+| The notes panel | `src/features/relay/notes/NotesPanel.tsx` |
 | Reconcile (provisional records) | `src/features/admin/provisional/ReconcileDialog.tsx` |
 | The admin clients tab | `src/features/admin/clients/AdminClientsTab.tsx` |
 | Add to roster (trainers) | `src/features/trainer-profile/AddToRosterDialog.tsx` |

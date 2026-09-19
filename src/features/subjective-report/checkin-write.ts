@@ -9,30 +9,21 @@
  * check-in becomes step 5 of that report instead of being re-asked.
  */
 import {
-  addDoc,
   collection,
-  doc,
   getDocs,
   limit,
   orderBy,
   query,
-  serverTimestamp,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { Client, ProgressReport, Trainer } from "../../types";
-import type { SubjectiveAssessment } from "./types";
-import { snapshotForClient, summarize, type PreviousAssessmentRef } from "./scoring";
+import { type PreviousAssessmentRef } from "./scoring";
 import {
   ASSESSMENT_HISTORY_LIMIT,
-  finalizedSubjective,
   historyFromDocs,
   type AssessmentHistory,
 } from "./assessment-history";
-import { studioTodayKey } from "../../lib/studio-time";
-
-export type CheckInOrigin = "pre_session" | "post_session" | "report";
 
 /** The most recent FINALIZED report for the client that carries a check-in. */
 export async function loadPreviousCheckIn(
@@ -129,48 +120,3 @@ const stripUndefined = (obj: any): any => {
   }
   return out;
 };
-
-/**
- * Save a quick check-in as a finalized, check-in-only report and stamp the
- * client's snapshot so the hub flag updates. Returns the new report id.
- */
-export async function saveQuickCheckIn(opts: {
-  client: Client;
-  trainer: Trainer;
-  assessment: SubjectiveAssessment;
-  previous: PreviousAssessmentRef | null;
-  origin: CheckInOrigin;
-  sessionId?: string | null;
-}): Promise<string> {
-  const { client, trainer, assessment, previous, origin, sessionId } = opts;
-  const date = assessment.completedAt || studioTodayKey();
-  const summary = summarize(assessment, previous);
-  const shell = emptyReportShell(client, trainer, date);
-
-  const payload = stripUndefined({
-    ...shell,
-    status: "Finalized",
-    isCheckInOnly: true,
-    checkInOrigin: origin,
-    checkInSessionId: sessionId ?? null,
-    previousReportId: previous?.reportId ?? null,
-    sessionNumber: client.sessionCount || 0,
-    // Keeps `changeLog` if the caller built one (the quick dialog starts
-    // empty and has none; the history derives its changes instead).
-    subjective: finalizedSubjective(assessment, date, summary),
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-
-  const ref = await addDoc(collection(db, "progressReports"), payload);
-
-  // Best-effort: the report is saved either way.
-  try {
-    await updateDoc(doc(db, "clients", client.id!), {
-      subjectiveSnapshot: snapshotForClient(ref.id, date, summary),
-    });
-  } catch (err) {
-    console.error("subjectiveSnapshot update failed", err);
-  }
-  return ref.id;
-}

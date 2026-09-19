@@ -6,7 +6,7 @@
  * which is where the policy is tested; this file is the screen.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
   getCountFromServer,

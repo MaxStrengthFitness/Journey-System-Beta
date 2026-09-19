@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
-import { signOut, User as FirebaseUser } from "firebase/auth";
+import { useEffect } from "react";
+import { signOut } from "firebase/auth";
 import { motion } from "motion/react";
 import { auth } from "./firebase";
-import { ActiveStudioProvider } from "./ActiveStudioContext";
+import { ActiveStudioProvider } from "./contexts/ActiveStudioContext";
 import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import AppContent from "./AppContent";

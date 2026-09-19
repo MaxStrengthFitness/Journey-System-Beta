@@ -1,6 +1,6 @@
 # Roles and permissions
 
-Sources: `ROLE_LABELS` in `src/types.ts`, `src/lib/permissions.ts`, `AdminDashboardView.tsx`, `features/planner/leads.ts`, AJ on Sep 10 2026, and AJ's four Operations-audit sittings on Sep 18 2026 (`docs/rounds/2026-09-18-operations-audit-prep.md` §E).
+Sources: `ROLE_LABELS` in `src/types.ts`, `src/lib/permissions.ts`, `AdminDashboardView.tsx`, `features/relay/leads.ts`, AJ on Sep 10 2026, and AJ's four Operations-audit sittings on Sep 18 2026 (`docs/rounds/2026-09-18-operations-audit-prep.md` §E).
 
 ## The vocabulary
 
@@ -27,7 +27,7 @@ The app stores a role code on each trainer document; people see the label. Sever
 
 **The grant** is `managedStudioIds` on the trainer document — one entry per studio the person helps run, whatever their role. "To allow studios to develop their trainers into leadership we need to allow leadership to be able to give trainers access to these menus" (AJ, Sep 18). It is handed out on My Studio → Team (or Operations → Staff & Roles), never by the person themselves, and only for a studio the giver runs. It opens My Studio's leader sections; it does **not** open the Operations dashboard.
 
-`leadsHere(trainer, studioId)` in `src/features/planner/leads.ts` is the app's one answer to "does this person run this studio", and `trainerLeads` in `firestore.rules` is the same answer for writes.
+`leadsHere(trainer, studioId)` in `src/features/relay/leads.ts` is the app's one answer to "does this person run this studio", and `trainerLeads` in `firestore.rules` is the same answer for writes.
 
 **What a studio's leaders may hand out** (AJ, Sep 18: "trainer, head trainer, and can manage the studio grant — but never owner and admin"): Life Transformer, Studio Leader, and the grant for their own studio. A franchise owner may also hand out Studio Owner and Owner. Only an administrator hands out Admin, Founder or Overseer. The rules refuse anything above the giver's reach (`mayHandOut`).
 

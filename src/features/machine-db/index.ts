@@ -4,16 +4,11 @@
  * shared about each machine. See ./README.md.
  */
 
-export { MachineDatabase, type MachineDatabaseProps } from "./MachineDatabase";
+export { MachineDatabase } from "./MachineDatabase";
 export { NetworkNotes } from "./NetworkNotes";
 export { ScopeSwitch, type CatalogScope } from "./ScopeSwitch";
 export { ShareToggle } from "./ShareToggle";
 export {
-  buildDatabase,
-  lineageKeyOf,
-  planAdoption,
   sharedKeysFor,
-  type DatabaseEntry,
-  type SharedStudioMachine,
 } from "./database";
 export { setMachineShared, setNoteShared, setTipShared } from "./mutations";

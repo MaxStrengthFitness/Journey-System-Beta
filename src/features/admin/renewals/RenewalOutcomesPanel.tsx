@@ -13,7 +13,7 @@
  * writes.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, Info } from "lucide-react";
 import {
   AdminField,

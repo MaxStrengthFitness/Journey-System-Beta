@@ -10,7 +10,7 @@
  * histories together cannot be undone by pressing anything.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Check, Search } from "lucide-react";
 import type { Client } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";

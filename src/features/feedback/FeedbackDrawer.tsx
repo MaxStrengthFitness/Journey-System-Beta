@@ -8,7 +8,7 @@
  * inside thumb reach, where a centred dialog puts them under the far hand.
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bug, Check, Lightbulb, Palette, Send } from "lucide-react";
 import {
   Sheet,

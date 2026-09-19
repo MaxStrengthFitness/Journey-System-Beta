@@ -4,5 +4,5 @@
  */
 
 export { CommentsPanel } from "./CommentsPanel";
-export { CommentsProvider, useCommentsContext, type CommentsContextValue } from "./CommentsContext";
-export { mentionablePeople, type MentionPerson } from "./comments";
+export { CommentsProvider, type CommentsContextValue } from "./CommentsContext";
+export { mentionablePeople } from "./comments";

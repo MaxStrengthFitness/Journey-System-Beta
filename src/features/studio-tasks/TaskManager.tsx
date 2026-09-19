@@ -134,9 +134,6 @@ export function TaskManager({
     [templates],
   );
 
-  const set = <K extends keyof TaskTemplate>(k: K, v: TaskTemplate[K]) =>
-    setDraft((d) => (d ? { ...d, [k]: v } : d));
-
   const startNew = (scope: TaskScope, preset?: Partial<TaskTemplate>) => {
     if (!studioId) return;
     if (scope === "studio" && !canManageStudio) return;

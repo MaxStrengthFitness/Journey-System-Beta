@@ -299,7 +299,7 @@ export interface TaskTemplate {
    * PERSONAL TASKS ONLY (Planner rework, Sep 2026): ring the owner's bell
    * this many minutes before `timeOfDay` on each day the task is due. 0 is
    * "at the time"; null or absent is no reminder. In-app only — the bell is
-   * written by the owner's own iPad (features/planner/reminders), so it rings
+   * written by the owner's own iPad (features/relay/reminders), so it rings
    * while the app is open somewhere they are signed in, never by text or
    * email.
    */

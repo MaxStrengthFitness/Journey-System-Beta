@@ -350,6 +350,23 @@ export function writeStoredLocation(
   }
 }
 
+/**
+ * Open a client's profile AT a location, from a screen outside the profile.
+ *
+ * The profile always mounts fresh when it is reached from another view (the
+ * Hub, a search result), and on mount it resumes whatever is stored for that
+ * client - so storing the location first IS the navigation. Call this, then
+ * switch the view to "profile". Used by the Hub's History button, which used
+ * to open a separate legacy History screen (deleted in the beta-prep trim,
+ * Sep 17 2026) and now lands on Activity Archive -> Sessions.
+ */
+export function openProfileAt(
+  clientId: string | null | undefined,
+  location: ProfileLocation,
+): void {
+  writeStoredLocation(clientId, location);
+}
+
 /** Defensive: sessionStorage is user-writable and survives a deploy. */
 export function isLocation(v: unknown): v is ProfileLocation {
   if (!v || typeof v !== "object") return false;

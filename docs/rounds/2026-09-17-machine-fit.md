@@ -480,7 +480,7 @@ src/features/equipment/useMachineTrend.ts         a failed read is told from an 
 src/features/machine-trends/trends.ts             "2.", "2.0" and "02" are one value
 src/features/client-profile/ProgrammingTab.tsx    the fourth segment
 src/features/client-profile/profile-nav.ts        the `setup` view
-src/components/AdminDashboardView.tsx             the Machine fit tab
+src/features/admin/AdminDashboardView.tsx             the Machine fit tab
 src/components/client-dossier/ClientDossier.tsx   Wingspan, beside Height
 src/types.ts                                      wingspan, sources, fitAcks
 ```

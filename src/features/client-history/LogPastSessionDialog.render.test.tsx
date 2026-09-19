@@ -18,7 +18,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Machine, Routine, Trainer } from "../../types";
 
-vi.mock("../../ActiveStudioContext", () => ({
+vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({ activeStudioId: "westlake", activeStudio: null }),
 }));
 

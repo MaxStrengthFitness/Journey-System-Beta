@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { Trainer } from "../types";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";

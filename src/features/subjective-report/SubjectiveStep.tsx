@@ -18,7 +18,7 @@
  * State: this component owns nothing. `value` in, `onChange(next)` out, and
  * the parent (ClientProgressReportView) keeps it on `report.subjective`.
  */
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   BodyRegion,
   BodySide,

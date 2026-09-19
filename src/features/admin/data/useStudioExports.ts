@@ -1,0 +1,271 @@
+/**
+ * STUDIO DATA EXPORTS — sessions by trainer, attendance and client progress CSVs.
+ *
+ * Round: Settings tiers & Task Board, Sep 2026. (Operations round, Sep 19:
+ * "no payroll on the app for now" — the sessions CSV keeps its shape and
+ * loses the word; the on-screen totals are Operations → Hours.)
+ *
+ * Lifted verbatim out of TrainerControlHubView, where these three exports sat
+ * behind a trainer-visible "Data & Reports" tab. They are admin work now (D):
+ * a sessions CSV lists every trainer's session count and a progress CSV
+ * carries client data across the whole studio, neither of which belongs to
+ * whoever happens to be on the floor.
+ *
+ * MOVED AS A HOOK, NOT REWRITTEN
+ * ------------------------------
+ * The export bodies are unchanged. They were working, they are the kind of
+ * code that is tedious rather than clever, and retyping 280 lines of CSV
+ * column mapping to relocate it would only introduce transcription bugs in
+ * exchange for nothing. What changed is the wrapper: the state and the toasts
+ * that used to live in a 2,963-line component now live here, so the admin tab
+ * is a layout and this file is the behaviour.
+ */
+
+import { useState } from "react";
+import Papa from "papaparse";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../../../firebase";
+import { useToast } from "../../../contexts/ToastContext";
+import {
+  Client,
+  ScheduleEntry,
+  Studio,
+  Trainer,
+  WorkoutSession,
+} from "../../../types";
+import { studioDateKey, studioTodayKey } from "../../../lib/studio-time";
+
+export interface StudioExportDeps {
+  trainers: Trainer[];
+  clients: Client[];
+  studios: Studio[];
+  activeStudioId: string | null;
+}
+
+export function useStudioExports(deps: StudioExportDeps) {
+  const { trainers, clients, studios, activeStudioId } = deps;
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  const [exportStartDate, setExportStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return studioTodayKey(d);
+  });
+  const [exportEndDate, setExportEndDate] = useState(
+    () => studioTodayKey(),
+  );
+
+  const [isExportingPayroll, setIsExportingPayroll] = useState(false);
+  const [isExportingAttendance, setIsExportingAttendance] = useState(false);
+
+  const fetchSessionsForExport = async (
+    startDateStr: string,
+    endDateStr: string,
+  ) => {
+    try {
+      const start = new Date(startDateStr);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDateStr);
+      end.setHours(23, 59, 59, 999);
+
+      /*
+       * The studio filter moved from JavaScript into the query (tenancy pass,
+       * Sep 2026). It used to fetch every session in the platform for the date
+       * range and then drop the ones from other studios in memory — which was
+       * already the wrong shape (a month of network-wide sessions to export
+       * one studio's payroll) and is now also unreadable: `sessions` is scoped
+       * by rule, and Firestore rejects the whole query rather than filtering.
+       *
+       * An export with no studio selected exports nothing, deliberately. The
+       * alternative is asking for the network and being denied.
+       */
+      if (!activeStudioId) return [];
+
+      const q = query(
+        collection(db, "sessions"),
+        where("hostedAtStudioId", "==", activeStudioId),
+        where("createdAt", ">=", Timestamp.fromDate(start)),
+        where("createdAt", "<=", Timestamp.fromDate(end)),
+      );
+
+      const snap = await getDocs(q);
+      const data = snap.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
+      );
+
+      return data.filter((s) => s.status === "Completed");
+    } catch (err: any) {
+      console.error(err);
+      toastError("Failed to fetch sessions: " + err.message);
+      return [];
+    }
+  };
+
+  const fetchSchedulesForExport = async (
+    startDateStr: string,
+    endDateStr: string,
+  ) => {
+    try {
+      const start = new Date(startDateStr);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDateStr);
+      end.setHours(23, 59, 59, 999);
+
+      let q = query(
+        collection(db, "schedules"),
+        where("startTime", ">=", Timestamp.fromDate(start)),
+        where("startTime", "<=", Timestamp.fromDate(end)),
+      );
+
+      const snap = await getDocs(q);
+      let data = snap.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
+      );
+
+      // Filter by activeStudioId if not 'all'
+      if (activeStudioId) {
+        data = data.filter((s) => s.studioId === activeStudioId);
+      }
+
+      return data;
+    } catch (err: any) {
+      console.error(err);
+      toastError("Failed to fetch schedule data: " + err.message);
+      return [];
+    }
+  };
+
+  const handleExportPayroll = async () => {
+    setIsExportingPayroll(true);
+    try {
+      const allSessions = await fetchSessionsForExport(
+        exportStartDate,
+        exportEndDate,
+      );
+      if (allSessions.length === 0) {
+        toastError("No completed sessions found in the selected date range.");
+        return;
+      }
+
+      const payrollData = allSessions.map((s) => {
+        const trainerObj = trainers.find(
+          (t) => t.id === s.trainerId || t.initials === s.trainerInitials,
+        );
+        const clientObj = clients.find((c) => c.id === s.clientId);
+        const studioObj = studios.find((std) => std.id === s.hostedAtStudioId);
+
+        const dateObj = s.createdAt?.toDate?.() || new Date(s.createdAt);
+
+        return {
+          "Trainer Initials": s.trainerInitials || "N/A",
+          "Trainer Name": trainerObj?.fullName || "Unknown Trainer",
+          "Studio ID": s.hostedAtStudioId || "N/A",
+          "Studio Name": studioObj?.name || "Unknown Studio",
+          "Client Name": clientObj
+            ? `${clientObj.firstName} ${clientObj.lastName}`
+            : "Unknown Client",
+          "Session Date": studioDateKey(dateObj) ?? "",
+          "Session Type": s.sessionType || "Standard",
+          "Session Notes": s.notes || "",
+        };
+      });
+
+      const filename = `sessions_by_trainer_${exportStartDate}_to_${exportEndDate}.csv`;
+      const csv = Papa.unparse(payrollData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toastSuccess(`Sessions CSV (${filename}) downloaded.`);
+    } catch (err: any) {
+      console.error(err);
+      toastError("Failed to export the sessions: " + err.message);
+    } finally {
+      setIsExportingPayroll(false);
+    }
+  };
+
+  const handleExportAttendance = async () => {
+    setIsExportingAttendance(true);
+    try {
+      const schedules = await fetchSchedulesForExport(
+        exportStartDate,
+        exportEndDate,
+      );
+      if (schedules.length === 0) {
+        toastError("No attendance logs found in the selected date range.");
+        return;
+      }
+
+      const attendanceData = schedules.map((s) => {
+        const dateObj = s.startTime?.toDate?.() || new Date(s.startTime);
+        return {
+          Date: studioDateKey(dateObj) ?? "",
+          "Start Time": dateObj.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          "Client ID": s.clientId || "Unassigned",
+          "Client Name": s.clientName || "Unknown Client",
+          "Trainer ID": s.trainerId || "Unassigned",
+          "Trainer Name": s.trainerName || "Unknown Trainer",
+          Status: s.status || "Scheduled",
+          Service: s.serviceName || "Workout",
+          Source: s.source || "Manual",
+          "Studio ID": s.studioId || "",
+        };
+      });
+
+      const filename = `client_attendance_${exportStartDate}_to_${exportEndDate}.csv`;
+      const csv = Papa.unparse(attendanceData);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toastSuccess(`Attendance CSV (${filename}) downloaded successfully.`);
+    } catch (err: any) {
+      console.error(err);
+      toastError("Failed to export attendance summary: " + err.message);
+    } finally {
+      setIsExportingAttendance(false);
+    }
+  };
+
+  /**
+   * The per-client progress export used to live here. It is gone, not moved:
+   * a progress report is a coaching document about ONE person, and generating
+   * eighty of them from an admin date-picker is how a client's report gets
+   * written by somebody who has never met them. It is now triggered from the
+   * client's own profile, where the coach who knows them is standing.
+   *
+   * It was also the most expensive control on this screen — an unbounded
+   * exerciseLogs range query across every client at the studio.
+   */
+
+  return {
+    exportStartDate,
+    setExportStartDate,
+    exportEndDate,
+    setExportEndDate,
+    isExportingPayroll,
+    isExportingAttendance,
+    handleExportPayroll,
+    handleExportAttendance,
+  };
+}

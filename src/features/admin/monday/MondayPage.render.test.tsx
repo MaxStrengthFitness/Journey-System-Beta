@@ -12,7 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead" } }, functions: {} }));
 
-vi.mock("../../../ActiveStudioContext", () => ({
+vi.mock("../../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({
     activeStudioId: "solon",
     activeStudio: { id: "solon", name: "Solon" },

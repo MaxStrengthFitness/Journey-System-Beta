@@ -12,7 +12,7 @@
  * on this screen contacts the client.
  */
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { MessageSquarePlus, Search, X } from "lucide-react";
 import {
