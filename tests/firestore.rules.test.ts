@@ -19,6 +19,7 @@ import {
   query,
   where,
   arrayUnion,
+  arrayRemove,
   deleteField,
   FieldPath,
 } from "firebase/firestore";
@@ -2123,5 +2124,171 @@ describe("Firestore Security Rules", () => {
     await assertFails(deleteDoc(doc(b, "sessions", "sessionA")));
     const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertSucceeds(deleteDoc(doc(a, "sessions", "sessionA")));
+  });
+
+  // ── MY STUDIO (Sep 19 2026) ─────────────────────────────────────────────
+  // A studio is written by its own leaders (a role there, or the grant),
+  // franchise owners and administrators — never by any trainer anywhere, which
+  // is the hole CLAUDE.md carried since Sep 12. The one thing every iPad still
+  // writes is the schedule sync's lease.
+  it("lets a studio's own leader edit the studio, and refuses a trainer and another studio's leader", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA"), { name: "Studio A — West", journeyCutoverDate: "2026-09-01" }));
+    await assertFails(updateDoc(doc(owner, "studios", "studioB"), { name: "Not mine" }));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { name: "Renamed by a trainer" }));
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { mindbodySiteId: "999" }));
+  });
+
+  it("still lets any trainer's iPad write the schedule sync lease, and nothing beside it", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(trainer, "studios", "studioA"), { lastScheduleSyncAt: 1, scheduleSyncFailures: 0 }));
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { lastScheduleSyncAt: 2, name: "Sneaked in" }));
+  });
+
+  it("refuses a studio create to anyone below a franchise owner", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertFails(setDoc(doc(owner, "studios", "studioC"), { name: "Studio C", ownerId: "ownerA", timezone: "America/New_York" }));
+  });
+
+  it("counts the grant: a trainer given managedStudioIds leads that studio in the rules", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), "trainers", "trainerA"), { managedStudioIds: ["studioA"] });
+    });
+    const granted = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(granted, "studios", "studioA"), { name: "Studio A, run by a trainer" }));
+    await assertFails(updateDoc(doc(granted, "studios", "studioB"), { name: "Not granted here" }));
+    // The grant reaches the other leader-only writes too: a team job.
+    await assertSucceeds(
+      setDoc(doc(granted, "studios", "studioA", "teamJobs", "g1"), {
+        studioId: "studioA",
+        title: "Deep clean",
+        createdBy: { id: "trainerA", name: "Trainer A" },
+        createdAt: serverTimestamp(),
+        status: "open",
+        parts: { p1: { label: "Leg press", order: 1 } },
+        people: [],
+      }),
+    );
+  });
+
+  it("never lets a trainer grant themselves, and lets their studio's leader grant them", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(trainer, "trainers", "trainerA"), { managedStudioIds: ["studioA"] }));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "trainers", "trainerA"), { managedStudioIds: arrayUnion("studioA") }));
+    // The grant is for the leader's OWN studio: a studio they do not run may
+    // neither enter nor leave the list.
+    await assertFails(updateDoc(doc(owner, "trainers", "trainerA"), { managedStudioIds: arrayUnion("studioB") }));
+    await assertFails(updateDoc(doc(owner, "trainers", "trainerA"), { managedStudioIds: ["studioA", "studioB"] }));
+    await assertSucceeds(updateDoc(doc(owner, "trainers", "trainerA"), { managedStudioIds: arrayRemove("studioA") }));
+  });
+
+  it("caps what an approval hands out: a studio's leader mints a trainer or a leader, never an owner or an administrator", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const fresh = (role: string, extra: Record<string, unknown> = {}) => ({
+      fullName: "New Hire",
+      initials: "NH",
+      role,
+      primaryHomeStudioId: "studioA",
+      accessibleStudioIds: ["studioA"],
+      activeGuestStudioIds: [],
+      email: "new@test.com",
+      ...extra,
+    });
+    await assertSucceeds(setDoc(doc(owner, "trainers", "hire1"), fresh("LifeTransformer")));
+    await assertSucceeds(setDoc(doc(owner, "trainers", "hire2"), fresh("StudioLeader", { managedStudioIds: ["studioA"] })));
+    await assertFails(setDoc(doc(owner, "trainers", "hire3"), fresh("Owner")));
+    await assertFails(setDoc(doc(owner, "trainers", "hire4"), fresh("Admin")));
+    // A grant for a studio the new person is not joining.
+    await assertFails(setDoc(doc(owner, "trainers", "hire5"), fresh("LifeTransformer", { managedStudioIds: ["studioB"] })));
+  });
+
+  it("caps a role change the same way", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "trainers", "trainerA"), { role: "HeadTrainer" }));
+    await assertFails(updateDoc(doc(owner, "trainers", "trainerA"), { role: "FranchiseOwner" }));
+    await assertFails(updateDoc(doc(owner, "trainers", "trainerA"), { role: "Admin" }));
+  });
+
+  it("lets a studio's leader mark an access request approved", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "access_requests", "req1"), {
+        fullName: "New Hire",
+        email: "new@test.com",
+        status: "Pending",
+        userId: "hire1",
+      });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(owner, "access_requests", "req1"), { status: "Approved", approvedTrainerId: "hire1" }));
+    const trainer = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(updateDoc(doc(trainer, "access_requests", "req1"), { status: "Approved" }));
+  });
+
+  it("lets a studio's leader post a notice to their own studio, and nothing wider", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const notice = (extra: Record<string, unknown>) => ({
+      title: "Deep clean Friday",
+      shortContent: "Floor closes at 3.",
+      longContent: "",
+      authorId: "ownerA",
+      authorName: "Owner A",
+      isActive: true,
+      priority: "normal",
+      ...extra,
+    });
+    await assertSucceeds(
+      addDoc(collection(owner, "hub_announcements"), notice({ targetScope: "studio", targetId: "studioA", studioId: "studioA", targetStudioIds: ["studioA"] })),
+    );
+    await assertFails(
+      addDoc(collection(owner, "hub_announcements"), notice({ targetScope: "studio", targetId: "studioB", studioId: "studioB", targetStudioIds: ["studioB"] })),
+    );
+    await assertFails(addDoc(collection(owner, "hub_announcements"), notice({ targetScope: "universal", targetId: "", studioId: "all", targetStudioIds: [] })));
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(
+      addDoc(collection(trainer, "hub_announcements"), notice({ authorId: "trainerA", targetScope: "studio", targetId: "studioA", studioId: "studioA", targetStudioIds: ["studioA"] })),
+    );
+  });
+
+  it("lets a studio's leader offer one of its machines to the catalog, as themselves, pending — and only withdraw it afterwards", async () => {
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const offer = (extra: Record<string, unknown> = {}) => ({
+      studioId: "studioA",
+      studioName: "Studio A",
+      machineId: "sm-studioA-sled",
+      definition: { name: "Sled" },
+      basedOn: "m-leg-press",
+      submittedBy: "ownerA",
+      submittedByName: "Owner A",
+      note: "Everyone loves it.",
+      status: "pending",
+      submittedAt: serverTimestamp(),
+      ...extra,
+    });
+    await assertSucceeds(setDoc(doc(owner, "catalogSubmissions", "sub1"), offer()));
+    await assertFails(setDoc(doc(owner, "catalogSubmissions", "sub2"), offer({ status: "published" })));
+    await assertFails(setDoc(doc(owner, "catalogSubmissions", "sub3"), offer({ submittedBy: "someone-else" })));
+    await assertFails(setDoc(doc(owner, "catalogSubmissions", "sub4"), offer({ studioId: "studioB" })));
+    await assertFails(setDoc(doc(owner, "catalogSubmissions", "sub5"), offer({ extra: "field" })));
+    // Corporate decides: the studio may withdraw, never publish.
+    await assertFails(updateDoc(doc(owner, "catalogSubmissions", "sub1"), { status: "published" }));
+    await assertSucceeds(updateDoc(doc(owner, "catalogSubmissions", "sub1"), { status: "withdrawn" }));
+    // A trainer at the studio may not offer.
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(setDoc(doc(trainer, "catalogSubmissions", "sub6"), offer({ submittedBy: "trainerA" })));
+    // The studio reads its own; another studio's leader does not.
+    await assertSucceeds(getDoc(doc(owner, "catalogSubmissions", "sub1")));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "trainers", "ownerB"), {
+        fullName: "Owner B",
+        initials: "OB",
+        role: "StudioOwner",
+        primaryHomeStudioId: "studioB",
+        accessibleStudioIds: ["studioB"],
+      });
+    });
+    const ownerB = testEnv.authenticatedContext("ownerB", { email: "ownerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(ownerB, "catalogSubmissions", "sub1")));
   });
 });
