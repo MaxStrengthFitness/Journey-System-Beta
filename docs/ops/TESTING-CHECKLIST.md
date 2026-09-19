@@ -58,7 +58,7 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 
 - [ ] Sign in, land on the Hub, see today's real schedule with real client names.
 - [ ] No block reads "Not synced" that should be linked. *If some do:* run `scripts/diagnose-schedule-links.ts` before theorising — it tells you whether it is a missing clientId, a missing document, or a UI problem.
-- [ ] Open a client profile. All seven tabs render.
+- [ ] Open a client profile. All FOUR tabs render — Journey, Programming, Notes & Profile, Activity Archive — and the sub-toggle inside each one.
 - [ ] Start a session, log one set, finish it. The set is still there on reopen.
 - [ ] Switch to dark mode. Nothing becomes unreadable.
 - [ ] Rotate the tablet on each of those. Nothing overlaps or clips.
@@ -652,6 +652,95 @@ no queue, no switches, no New machine)
 
 ---
 
+## Round 12 — The master merge · *Sep 19 2026, `master` after `beta-prep` came in*
+
+The round is `docs/rounds/2026-09-19-master-merge-and-trim.md`. **This round
+is different from the others: almost nothing here was deliberately changed.**
+The beta-prep trim renamed two feature folders (`features/planner` ->
+`features/relay`, its inner `relay/` -> `board/`; `features/notes` ->
+`features/client-notes`), moved every Operations screen out of
+`src/components`, moved `ActiveStudioContext` into `src/contexts`, and deleted
+~9,200 lines. Then My Studio and Operations, both built on the OLD paths, were
+merged on top of it.
+
+So the screens most likely to be broken are the ones **nobody touched on
+purpose**. A typecheck, a full suite and a production build all passed while
+two dialogs would have opened to a blank pane — see the first item.
+
+Walk this BEFORE Rounds 10 and 11. It is short, and if the app does not boot
+there is no point testing the Monday page.
+
+- [ ] **"Log past session" and the session pop-up open and draw their
+  machine picker.** Client profile -> Activity Archive -> Sessions -> "Log
+  past session", then tap an existing session to open the pop-up. Both must
+  show the picker, the coverage strip and the routine rows. *If it fails:*
+  this is the merge's near-miss and it is back — the trim closed
+  `CoverageStrip`, `MachinePicker`, `SequenceMachineRow` and `analyzeRoutine`
+  on `features/routine-builder/index.ts`, and both dialogs render all four.
+  Fixed in `111dc8a`; a white pane here means something reopened it.
+- [ ] **Every bottom-bar tab opens, once, in order.** Hub, Clients, My
+  Studio, Learning, and the Operations dashboard if your sign-in reaches it.
+  *If one is blank:* a lazy import is pointing at a renamed folder. The
+  console names the chunk; it will be a `features/planner`,
+  `features/notes` or `src/components/Admin*` path that should have moved.
+- [ ] **The client profile's four tabs and the sub-toggle inside each.**
+  *Why:* `ClientProfileView` lost four `useState` declarations the trim found
+  dead, and a `setSessionNotes` call for state that no longer exists. *If it
+  fails:* it will throw on the first tab tap, the way the four-tab round did
+  in September — error boundary, whole screen gone.
+- [ ] **Start a session and open all three tracker dialogs** (the machine
+  sheet, the performance entry, the history). *Why:* the trim moved all three
+  into their own files.
+- [ ] **Write a mid-session note, leave the machine, come back.** The draft
+  survives. *Why:* `features/notes` became `features/client-notes` and the
+  session-draft module moved with it.
+- [ ] **Relay's four tabs** — Floor, Mine, Notes, Network — from My Studio ->
+  Relay. *Why:* the folder is `features/relay/` now and its inner pieces are
+  in `board/`.
+- [ ] **The red-flag sheet, in BOTH themes.** Start a session on a client
+  with a condition or a critical note, tap the flag marker. *Why:* its scrim
+  and alert icon were changed to satisfy the palette ratchet
+  (`bg-foreground/20`, `dark:text-rose-400`). *Known and not yet fixed:* its
+  rose and amber tints are still Tailwind palette colours rather than
+  equipment tokens — if they look wrong in one theme, that is why, and it is
+  already on the list.
+
+**Machine Trends — the new screen**
+
+Learning -> Catalog -> a machine -> **How it's used**. Folded closed by
+default; opening it is what triggers the read.
+
+- [ ] **It says something true on a busy machine.** Compound Row or Leg
+  Press. Expect a sentence with clients / sets / sessions and a 90-day
+  window, a load sentence in quartiles, a table per setting and a table by
+  height. *If it says "Nobody has trained on this machine recently"
+  everywhere:* `machineTrends/*` has never been written in production — run
+  `npx tsx scripts/run-machine-trends.ts --commit` from the PC. That is the
+  likely state, not a bug.
+- [ ] **A quiet machine says so, in the right words.** A machine with fewer
+  than five clients must read "not enough to say anything about loads yet",
+  never a load. A setting value with fewer than five clients shows its count
+  and "fewer than 5" where the median would be. *If a number appears
+  instead:* the minimum-sample rule is broken and that is a blocker, not
+  polish.
+- [ ] **Open it, close it, open it again, then open another machine.** The
+  read happens once per machine per session — the second open should be
+  instant.
+- [ ] **Both orientations, both themes.** The tables scroll sideways inside
+  their own box; the PAGE must never scroll sideways.
+
+**The permission that got narrower**
+
+- [ ] **As a studio owner, post a notice to your own studio.** My Studio ->
+  Studio -> Announcements. It must still work. *If it fails:* the narrowing
+  went too far — `studioNoticeOfMine` should let a studio owner post to the
+  studio they run.
+- [ ] **As that same owner, confirm you cannot reach another studio.** There
+  should be no picker offering one. *Why:* until Sep 19 an owner at studio A
+  could post into studio B; the rules now refuse it.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -687,4 +776,5 @@ Screenshot:
 | 9 — Machine fit (Sep 17) | 19 | | |
 | 10 — My Studio (Sep 18–19) | 24 | | |
 | 11 — Operations (Sep 19) | 24 | | |
-| **Total** | **182** | | |
+| 12 — The master merge (Sep 19) | 13 | | |
+| **Total** | **195** | | |
