@@ -1733,6 +1733,13 @@ export interface Studio {
   shiftHours?: { open?: string; mid?: string; closing?: string; close?: string };
   /** Relay: how often a machine wants a deep clean, for the Floor Map's bar. Default 14. */
   deepCleanIntervalDays?: number;
+  /**
+   * Operations round (Sep 2026): the booked length of one session, in
+   * minutes — "Strength 30" is a 30-minute slot. Operations → Hours counts a
+   * completed session as this many minutes, whatever the stopwatch said.
+   * Set on My Studio → Studio → The studio's day. Default 30.
+   */
+  sessionMinutes?: number;
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   /** MindBody Location ID for location-specific filtering when site IDs are shared */

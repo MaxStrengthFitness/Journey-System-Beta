@@ -1,13 +1,15 @@
 /**
- * STUDIO DATA EXPORTS — payroll, attendance and client progress CSVs.
+ * STUDIO DATA EXPORTS — sessions by trainer, attendance and client progress CSVs.
  *
- * Round: Settings tiers & Task Board, Sep 2026.
+ * Round: Settings tiers & Task Board, Sep 2026. (Operations round, Sep 19:
+ * "no payroll on the app for now" — the sessions CSV keeps its shape and
+ * loses the word; the on-screen totals are Operations → Hours.)
  *
  * Lifted verbatim out of TrainerControlHubView, where these three exports sat
  * behind a trainer-visible "Data & Reports" tab. They are admin work now (D):
- * a payroll CSV lists every trainer's session count and a progress CSV carries
- * client data across the whole studio, neither of which belongs to whoever
- * happens to be on the floor.
+ * a sessions CSV lists every trainer's session count and a progress CSV
+ * carries client data across the whole studio, neither of which belongs to
+ * whoever happens to be on the floor.
  *
  * MOVED AS A HOOK, NOT REWRITTEN
  * ------------------------------
@@ -174,7 +176,7 @@ export function useStudioExports(deps: StudioExportDeps) {
         };
       });
 
-      const filename = `payroll_details_${exportStartDate}_to_${exportEndDate}.csv`;
+      const filename = `sessions_by_trainer_${exportStartDate}_to_${exportEndDate}.csv`;
       const csv = Papa.unparse(payrollData);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -185,10 +187,10 @@ export function useStudioExports(deps: StudioExportDeps) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toastSuccess(`Payroll CSV (${filename}) downloaded successfully.`);
+      toastSuccess(`Sessions CSV (${filename}) downloaded.`);
     } catch (err: any) {
       console.error(err);
-      toastError("Failed to export payroll summary: " + err.message);
+      toastError("Failed to export the sessions: " + err.message);
     } finally {
       setIsExportingPayroll(false);
     }

@@ -4,7 +4,7 @@ import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, Sch
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
 import { AdminLimboQueue } from "./AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift, Ruler } from "lucide-react";
+import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift, Ruler, Clock3 } from "lucide-react";
 import { AdminRoutineTemplatesTab } from "./routines/AdminRoutineTemplatesTab";
 import { cn } from "@/lib/utils";
 import "../features/admin/admin.css";
@@ -22,6 +22,7 @@ import { AdminBugReportsTab } from "../features/admin/bugs/AdminBugReportsTab";
 import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
 import { AdminMachineFitTab } from "../features/admin/machine-fit/AdminMachineFitTab";
+import { AdminHoursTab } from "../features/admin/hours/AdminHoursTab";
 import { DelightQueue } from "../features/ford/DelightQueue";
 
 interface Props {
@@ -104,6 +105,7 @@ export function AdminDashboardView({
     | "bugs"
     | "insights"
     | "machine-fit"
+    | "hours"
     | "mindbody"
     | "system"
     | "limbo";
@@ -125,10 +127,12 @@ export function AdminDashboardView({
     if (id === "limbo") return isAdmin;
     if (id === "bugs") return isAdmin;
     if (id === "announcements") return isFranchiseOwnerOrAdmin;
-    // Relocated out of the trainer hub this round. A payroll CSV covers every
-    // trainer at the studio and the legacy importer writes thousands of
-    // documents from one file picker, so both sit at the same tier as staff
-    // management rather than one tap from a trainer's settings screen.
+    // Relocated out of the trainer hub this round. A sessions-by-trainer CSV
+    // covers every trainer at the studio and the legacy importer writes
+    // thousands of documents from one file picker, so both sit at the same
+    // tier as staff management rather than one tap from a trainer's settings
+    // screen. (Hours, the on-screen version, is every leader's — Operations
+    // round, Sep 2026.)
     if (id === "data") return isFranchiseOwnerOrAdmin;
     if (id === "machines") return isFranchiseOwnerOrAdmin;
     // Studio leaders author their own location's templates, so this is
@@ -174,6 +178,10 @@ export function AdminDashboardView({
         // every machine. Every leader sees their own studio's, live; the
         // company-wide report inside it is administrators only.
         { id: "machine-fit", label: "Machine fit", icon: <Ruler className="w-4 h-4" /> },
+        // Operations round, Sep 2026. Training hours by trainer, by week and
+        // month, with the studio's total — AJ: "no payroll on the app for
+        // now, but do track training hours". Every leader, their own studios.
+        { id: "hours", label: "Hours", icon: <Clock3 className="w-4 h-4" /> },
         { id: "data", label: "Exports", icon: <Download className="w-4 h-4" /> },
       ],
     },
@@ -374,6 +382,15 @@ export function AdminDashboardView({
             activeStudioId={activeStudioId ?? null}
             isAdmin={isAdmin}
             onNavigateProfile={onNavigateProfile}
+          />
+        )}
+        {activeTab === "hours" && (
+          <AdminHoursTab
+            authTrainer={authTrainer}
+            studios={studios}
+            trainers={trainers}
+            activeStudioId={activeStudioId ?? null}
+            isAdmin={isAdmin}
           />
         )}
         {/* "retention" tab removed — see the commented import at the top. */}

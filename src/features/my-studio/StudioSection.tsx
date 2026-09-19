@@ -13,6 +13,7 @@ import { studioPatchPayload } from "../admin/studios/studio-writes";
 import { auditStudios, formatAge } from "../admin/mindbody/diagnostics";
 import { RenewalSettingsPanel } from "../admin/renewals/RenewalSettingsPanel";
 import { AnnouncementComposer } from "../admin/announcements/AnnouncementComposer";
+import { DEFAULT_SESSION_MINUTES, MAX_SESSION_MINUTES, MIN_SESSION_MINUTES, sessionMinutesOf } from "../admin/hours/hours";
 import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalSettings";
 import { DEFAULT_DEEP_CLEAN_DAYS } from "../planner/relay/machine-care";
 import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../planner/relay/now-context";
@@ -156,6 +157,8 @@ interface HoursForm {
   closing: string;
   close: string;
   deepCleanDays: string;
+  /** The booked length of a session — what Operations → Hours counts (Operations round). */
+  sessionMinutes: string;
 }
 
 const toClock = (min: number) =>
@@ -172,21 +175,24 @@ function HoursPanel() {
       closing: toClock(current.closing),
       close: toClock(current.close),
       deepCleanDays: String(activeStudio?.deepCleanIntervalDays ?? DEFAULT_DEEP_CLEAN_DAYS),
+      sessionMinutes: String(sessionMinutesOf(activeStudio)),
     }),
-    [current.open, current.mid, current.closing, current.close, activeStudio?.deepCleanIntervalDays],
+    [current.open, current.mid, current.closing, current.close, activeStudio?.deepCleanIntervalDays, activeStudio?.sessionMinutes],
   );
 
   const form = useDirtyForm(external, async () => {
     if (!activeStudioId) return;
     const v = form.value;
     const days = Math.max(1, Math.min(365, Math.round(Number(v.deepCleanDays) || DEFAULT_DEEP_CLEAN_DAYS)));
+    const slot = sessionMinutesOf({ sessionMinutes: Number(v.sessionMinutes) });
     // The four are written together, whichever changed: the Now Bar reads
     // them as one day, and shiftHoursOf forces them into order on read.
     await updateDoc(doc(db, "studios", activeStudioId), {
       shiftHours: { open: v.open, mid: v.mid, closing: v.closing, close: v.close },
       deepCleanIntervalDays: days,
+      sessionMinutes: slot,
     });
-    toastSuccess("Saved — the Now Bar and the rings follow it.");
+    toastSuccess("Saved — the Now Bar, the rings and Operations → Hours follow it.");
   });
 
   const bad = [form.value.open, form.value.mid, form.value.closing, form.value.close].some(
@@ -241,6 +247,21 @@ function HoursPanel() {
             max={365}
             value={form.value.deepCleanDays}
             onChange={(e) => form.setField("deepCleanDays", e.target.value)}
+          />
+        </AdminField>
+        <AdminField
+          label="A session is"
+          hint={`Minutes per booked session — the slot Operations → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
+          htmlFor="ms-session-minutes"
+        >
+          <AdminInput
+            id="ms-session-minutes"
+            type="number"
+            inputMode="numeric"
+            min={MIN_SESSION_MINUTES}
+            max={MAX_SESSION_MINUTES}
+            value={form.value.sessionMinutes}
+            onChange={(e) => form.setField("sessionMinutes", e.target.value)}
           />
         </AdminField>
       </AdminGrid>

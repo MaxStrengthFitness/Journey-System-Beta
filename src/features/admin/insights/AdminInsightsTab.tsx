@@ -30,27 +30,18 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  collection,
-  getDocs,
-  limit as fsLimit,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-import { Timestamp } from "firebase/firestore";
-import {
   CircleCheck,
   CircleAlert,
   Info,
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
-import { db } from "../../../firebase";
 import type { Studio, Trainer, WorkoutSession } from "../../../types";
 import {
   OperationType,
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
+import { MAX_SESSIONS_IN_RANGE, fetchSessionsInRange } from "../sessions-range";
 import {
   AdminButton,
   AdminEmpty,
@@ -75,12 +66,13 @@ import {
 } from "./metrics";
 
 /**
- * A month of one studio's sessions is a few hundred documents. The cap exists
- * so a busy studio and a long window cannot quietly turn this screen into a
- * five-thousand-read page; when it bites, the screen says so rather than
- * showing a number computed from a truncated set.
+ * A month of one studio's sessions is a few hundred documents. The cap
+ * (MAX_SESSIONS_IN_RANGE, shared with Hours — Operations round, Sep 2026)
+ * exists so a busy studio and a long window cannot quietly turn this screen
+ * into a five-thousand-read page; when it bites, the screen says so rather
+ * than showing a number computed from a truncated set.
  */
-const MAX_SESSIONS = 1500;
+const MAX_SESSIONS = MAX_SESSIONS_IN_RANGE;
 
 const WINDOWS = [
   { days: 7, label: "Last 7 days" },
@@ -131,20 +123,10 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
     setLoading(true);
     (async () => {
       try {
-        const snap = await getDocs(
-          query(
-            collection(db, "sessions"),
-            where("hostedAtStudioId", "==", studioId),
-            where("createdAt", ">=", Timestamp.fromMillis(window.start)),
-            orderBy("createdAt", "desc"),
-            fsLimit(MAX_SESSIONS),
-          ),
-        );
+        const result = await fetchSessionsInRange({ studioId, startMs: window.start, max: MAX_SESSIONS });
         if (cancelled) return;
-        setSessions(
-          snap.docs.map((d) => ({ ...(d.data() as WorkoutSession), id: d.id })),
-        );
-        setTruncated(snap.size >= MAX_SESSIONS);
+        setSessions(result.sessions);
+        setTruncated(result.truncated);
       } catch (err) {
         if (!cancelled) {
           handleFirestoreError(err, OperationType.GET, "sessions");

@@ -140,8 +140,8 @@ export function AdminDataReportsTab({
         <div className="adm-tiles" style={{ marginTop: 14 }}>
           <ExportCard
             icon={FileSpreadsheet}
-            title="Trainer & payroll"
-            description="Every completed session in the range with trainer, studio, client, date and type — the sheet payroll is actually built from."
+            title="Sessions by trainer"
+            description="Every completed session in the range with trainer, studio, client, date and type. The totals are on Operations → Hours; this is the sheet behind them, for anything done outside the app."
             onDownload={handleExportPayroll}
             busy={isExportingPayroll}
           />

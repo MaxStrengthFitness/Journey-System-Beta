@@ -1858,3 +1858,96 @@
     justify-content: center;
   }
 }
+
+/* ==================================================================== *
+ * HOURS (Operations round, Sep 2026)
+ * ==================================================================== */
+
+/* The month picker sits where a select would, at the select's height, so
+   the header's controls read as one row. */
+.adm-hrs-month {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 1px solid var(--adm-border);
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+}
+
+.adm-hrs-month__label {
+  min-width: 132px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-hrs-table td {
+  vertical-align: top;
+}
+
+.adm-hrs-hours {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-hrs-count {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.adm-hrs-empty {
+  color: var(--adm-ink-muted);
+}
+
+.adm-hrs-strong .adm-hrs-hours {
+  color: var(--adm-hero-text);
+}
+
+.adm-hrs-month-col {
+  border-left: 1px solid var(--adm-border);
+}
+
+.adm-hrs-table tbody td:last-child,
+.adm-hrs-table tfoot td:last-child {
+  border-left: 1px solid var(--adm-border);
+}
+
+.adm-hrs-total th,
+.adm-hrs-total td {
+  border-top: 2px solid var(--adm-border);
+  background: var(--adm-surface-2);
+}
+
+.adm-hrs-total th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink);
+}
+
+/* The measured floor time sits under the name in the row header, so the
+   two kinds of minutes are never in the same column. */
+.adm-hrs-measured {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.adm-hrs-foot {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--adm-ink-muted);
+}
