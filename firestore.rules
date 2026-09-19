@@ -1910,6 +1910,19 @@ service cloud.firestore {
       }
 
       /*
+       * THE WATCH (Operations round, Sep 2026) -- what the weekly job noticed
+       * for this studio's Monday page: watch/performance is the clients whose
+       * reps fell at the same weight (client id, machine id, the numbers, the
+       * day -- no name, no body data; features/admin/monday/performance.ts).
+       * Written only by the job (Admin SDK); read by the studio's people, as
+       * the machineFit index is. Nothing in the app writes here.
+       */
+      match /watch/{watchId} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow write: if false;
+      }
+
+      /*
        * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
        * was last wiped and deep cleaned, by whom, and a flag. Written from
        * the Floor Map's care sheet by anyone who works at the studio; a wipe

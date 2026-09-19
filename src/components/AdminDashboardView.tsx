@@ -12,7 +12,7 @@ import "../features/admin/admin.css";
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "../features/admin-data";
 import { AdminSystemToolsTab } from "./AdminSystemToolsTab";
-import { AdminOverviewTab } from "../features/admin/AdminOverviewTab";
+import { MondayPage } from "../features/admin/monday/MondayPage";
 import { AdminStudiosTab } from "../features/admin/studios/AdminStudiosTab";
 import { AdminStaffTab } from "../features/admin/staff/AdminStaffTab";
 import { AdminClientsTab } from "../features/admin/clients/AdminClientsTab";
@@ -97,7 +97,10 @@ function AdminDashboardShell({
   isAdmin,
   onRefresh,
   clients = [],
-  sessions = [],
+  // `sessions` (the 24-hour stream) and `onOpenStudioTasks` were the
+  // Overview's; the Monday page reads its own window and Relay has the tasks.
+  // Still accepted so AppContent's call site needs no change this round.
+  sessions: _sessions = [],
   machines = [],
   schedules = [],
   newClientsCount = 0,
@@ -109,7 +112,7 @@ function AdminDashboardShell({
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
-  onOpenStudioTasks,
+  onOpenStudioTasks: _onOpenStudioTasks,
 }: Props) {
   // "This studio" is the studio the app is in; "All my studios" is null here
   // and the tabs that can span read the list from the scope themselves.
@@ -190,7 +193,9 @@ function AdminDashboardShell({
       label: "Studio Management",
       tier: "primary",
       tabs: [
-        { id: "metrics", label: "Overview", icon: <Activity className="w-4 h-4" /> },
+        // Operations round, Sep 2026: the Monday page — the four questions a
+        // leader asks first — replaces the Overview as the first screen.
+        { id: "metrics", label: "Monday", icon: <Activity className="w-4 h-4" /> },
         // Renewals round, Sep 2026. Every leader runs their own studio's.
         { id: "renewals", label: "Renewals", icon: <CalendarClock className="w-4 h-4" /> },
         // FORD round, Sep 2026. The gestures the studio has promised itself,
@@ -321,18 +326,17 @@ function AdminDashboardShell({
       <div className="adm-shell__main">
         <ScopeBar />
         {activeTab === "metrics" && (
-          <AdminOverviewTab
+          <MondayPage
             key={tabKey}
             authTrainer={authTrainer}
             studios={studios}
             trainers={trainers}
-            activeStudioId={activeStudioId}
-            schedules={schedules}
-            sessions={sessions}
+            machines={machines}
             clients={clients}
-            onManageStudios={isFranchiseOwnerOrAdmin ? () => setActiveTab("studios") : undefined}
-            onOpenStudioTasks={onOpenStudioTasks}
+            schedules={schedules}
+            activeStudioId={activeStudioId}
             onNavigateProfile={onNavigateProfile}
+            onOpen={(tab) => setActiveTab(tab)}
           />
         )}
         {activeTab === "delight" && (

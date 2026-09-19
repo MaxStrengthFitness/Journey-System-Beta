@@ -28,6 +28,15 @@
  * If that step fails, last week's blocks are carried over and the reports are
  * left as they were: a failed read is unknown, never empty.
  *
+ * THE PERFORMANCE WATCH (Operations round, Sep 19 2026). The same window of
+ * sets answers the leader's third Monday question — "who dropped from ten
+ * reps to five" (src/features/admin/monday/performance.ts) — and the answer
+ * is written per studio at studios/{s}/watch/performance: client id, machine
+ * id, the numbers, the day. No name, no body data. The Monday page reads
+ * that one document; nothing is computed on a screen. AJ chose this over a
+ * per-open read. A studio with nothing to report gets an empty document, so
+ * "the job ran and found nothing" reads differently from "never ran".
+ *
  * READS PER RUN: every client (the trends use the active ones; a past
  * client's settings are still evidence of how a body fits a machine) + logs
  * in the window + the small machineFit indexes + 0 sessions. Machines are not
@@ -47,6 +56,7 @@ import {
 import { buildCompany, type CompanyBuild, type CompanyClientRecord } from "../src/features/machine-fit/company.ts";
 import type { CompanyFitBlock } from "../src/features/machine-fit/fit-index.ts";
 import { readStudioFitDocs } from "./machine-fit-company.ts";
+import { performanceDrops, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/monday/performance.ts";
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;
@@ -73,6 +83,8 @@ export interface MachineTrendsRunSummary {
   machinesRetired: number;
   /** Machine fit: machines with a company block, the clients in them, and the Kaizen reports written. null when that step failed. */
   fit: { machines: number; clients: number; reports: number; rowsSkipped: number } | null;
+  /** The performance watch: studios written and rows across them. null when that step failed. */
+  watch: { studios: number; rows: number } | null;
 }
 
 /** What machineTrends/{machineId} holds. */
@@ -161,10 +173,12 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
     .get();
   const clients = new Map<string, TrendClientInput>();
   const fitClients: (CompanyClientRecord & { id: string })[] = [];
+  const clientHomes = new Map<string, string | null>();
   clientsSnap.docs.forEach((d) => {
     const c = d.data() as Record<string, unknown>;
     const height = typeof c.height === "string" ? c.height : null;
     const homeStudioId = typeof c.homeStudioId === "string" ? c.homeStudioId : null;
+    clientHomes.set(d.id, homeStudioId);
     if (c.isActive === true) clients.set(d.id, { id: d.id, height, homeStudioId, isActive: true });
     fitClients.push({
       id: d.id,
@@ -287,6 +301,29 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
     writes.push({ run: (batch) => batch.set(db.collection("kaizenReports").doc("_summary"), kaizenSummary), bytes: sizeOf(kaizenSummary) });
   }
 
+  // 7. The performance watch, one document per studio (Operations round).
+  //    Caught like the fit step: the trends must not be lost to it. Every
+  //    studio anyone calls home, or any set was logged at, gets a document.
+  let watch: MachineTrendsRunSummary["watch"] = null;
+  try {
+    const drops = performanceDrops(logs as PerformanceLogInput[], { now, clientHomes });
+    const studioIds = new Set<string>();
+    for (const home of clientHomes.values()) if (home) studioIds.add(home);
+    for (const l of logs as PerformanceLogInput[]) if (l.studioId) studioIds.add(l.studioId);
+    for (const id of Object.keys(drops)) studioIds.add(id);
+    let rowCount = 0;
+    for (const studioId of [...studioIds].sort()) {
+      const rows = drops[studioId] ?? [];
+      rowCount += rows.length;
+      const doc = performanceWatchDocument(studioId, rows, { start: windowStart, end: windowEnd, builtAt: computedAt });
+      writes.push({ run: (batch) => batch.set(db.collection("studios").doc(studioId).collection("watch").doc("performance"), doc), bytes: sizeOf(doc) });
+    }
+    watch = { studios: studioIds.size, rows: rowCount };
+    log(`Performance watch: ${rowCount} client-machine drops across ${studioIds.size} studios.`);
+  } catch (err) {
+    log(`Performance watch step FAILED — last week's documents are kept. ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   if (!dryRun) await commitInBatches(db, writes);
 
   for (const id of machineIds.slice(0, 12)) {
@@ -323,5 +360,6 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
           rowsSkipped: company.rowsSkipped,
         }
       : null,
+    watch,
   };
 }

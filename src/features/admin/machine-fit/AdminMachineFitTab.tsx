@@ -27,19 +27,17 @@
  * words, never as a coefficient. Studios are described, never ranked.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Ruler } from "lucide-react";
 import type { Client, Machine, Studio } from "../../../types";
-import type { MachineCatalogEntry } from "../../../types/machines";
 import { LoadingArea } from "../../../components/LoadingMark";
-import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { clientDisplayName } from "../../../lib/client-name";
 import { writeStoredLocation } from "../../client-profile/profile-nav";
-import { toEquipmentMachines } from "../../equipment/adapters";
 import { displayValue } from "../../equipment/setting-suggestions";
 import type { KaizenReport, SubjectFinding } from "../../machine-fit/kaizen";
 import { MIN_CLIENTS } from "../../machine-fit/match-spec";
-import { fieldByNk, shownValue, stepsByNk, toFitFields, type FitField } from "../../machine-fit/ui/field-values";
+import { fieldByNk, shownValue } from "../../machine-fit/ui/field-values";
+import { useFitFloor } from "./useFitFloor";
 import {
   NOT_ENOUGH,
   bandLabel,
@@ -69,7 +67,6 @@ import {
   useCompanyFitReport,
   useCompanyFitSummary,
   useStudioFitReports,
-  type MachineFieldInfo,
 } from "./useMachineFitReports";
 import "./machine-fit-admin.css";
 import { PickOneStudio, useOperationsScope } from "../scope-context";
@@ -87,13 +84,6 @@ interface Props {
   onNavigateProfile?: (clientId: string) => void;
 }
 
-interface FloorMachine {
-  id: string;
-  name: string;
-  order: number;
-  fields: FitField[];
-}
-
 /** "back-pad" → "Back pad": for a setting the catalog does not know (an old label still on file). */
 const plainKey = (key: string) => {
   const words = key.replace(/[-_]+/g, " ").trim();
@@ -101,7 +91,6 @@ const plainKey = (key: string) => {
 };
 
 export function AdminMachineFitTab({ machines, clients, studios, activeStudioId, isAdmin, onNavigateProfile }: Props) {
-  const { catalog } = useMachineCatalog();
   const [scope, setScope] = useState<Scope>("studio");
   // Under "All my studios" (Operations round) the studio half is a prompt;
   // the company half is the weekly report and needs no studio.
@@ -109,33 +98,9 @@ export function AdminMachineFitTab({ machines, clients, studios, activeStudioId,
   const [machineId, setMachineId] = useState<string | null>(null);
   const activeStudio = studios.find((s) => s.id === activeStudioId) ?? null;
 
-  /* ---------------- the floor: every machine, its fields, the floor's order ---------------- */
+  /* ---------------- the floor: every machine, its fields, the floor's order (useFitFloor) ---------------- */
 
-  const floor = useMemo<FloorMachine[]>(() => {
-    const catalogById: Record<string, MachineCatalogEntry> = {};
-    for (const c of catalog) catalogById[c.id] = c;
-    return toEquipmentMachines({
-      machines,
-      clientSettings: {},
-      allLogs: [],
-      catalogById,
-      studioMachineSettings: activeStudio?.machineSettings,
-      machineStats: null,
-    })
-      .map((m) => ({ id: m.id, name: m.name, order: m.order, fields: toFitFields(m.fields) }))
-      .filter((m) => m.fields.length > 0)
-      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
-  }, [machines, catalog, activeStudio?.machineSettings]);
-
-  const floorById = useMemo(() => new Map(floor.map((m) => [m.id, m])), [floor]);
-
-  const fieldsOf = useCallback(
-    (id: string): MachineFieldInfo | null => {
-      const m = floorById.get(id);
-      return m ? { fieldKeys: m.fields.map((f) => f.nk), fieldSteps: stepsByNk(m.fields) } : null;
-    },
-    [floorById],
-  );
+  const { floor, floorById, fieldsOf } = useFitFloor(machines, activeStudio);
 
   /* ---------------- data ---------------- */
 

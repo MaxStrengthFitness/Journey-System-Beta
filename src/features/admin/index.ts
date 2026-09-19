@@ -147,8 +147,8 @@ export {
   type RegistryWrite,
 } from "./studios/registry";
 
-export { AdminOverviewTab } from "./AdminOverviewTab";
-export type { AdminOverviewTabProps } from "./AdminOverviewTab";
+export { MondayPage } from "./monday/MondayPage";
+export type { MondayPageProps, MondayLink } from "./monday/MondayPage";
 
 export {
   attentionItems,

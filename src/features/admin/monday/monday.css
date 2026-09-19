@@ -1,0 +1,144 @@
+/* ==================================================================== *
+ * THE MONDAY PAGE (Operations round, Sep 2026)
+ * ==================================================================== */
+
+.adm-mon__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-mon__row + .adm-mon__row {
+  border-top: 1px solid var(--adm-border);
+}
+
+/* The whole row opens the client. A <button> centres its own text, so the
+   alignment lives here. 44px at least. */
+.adm-mon__row-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.adm-mon__row-btn:disabled {
+  cursor: default;
+}
+
+.adm-mon__row-btn:not(:disabled):hover {
+  background: var(--adm-surface-2);
+}
+
+.adm-mon__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adm-mon__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-mon__sentence {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink-2);
+}
+
+.adm-mon__proof {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--adm-ink-muted);
+}
+
+.adm-mon__more {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+  border-top: 1px solid var(--adm-border);
+}
+
+/* The four lines: one row each, tappable, opening their tab. */
+.adm-mon__lines {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.adm-mon__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.adm-mon__line--tappable {
+  cursor: pointer;
+}
+
+.adm-mon__line--tappable:hover {
+  background: var(--adm-surface-2);
+}
+
+.adm-mon__line-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--adm-ink-muted);
+}
+
+.adm-mon__line-icon--warn {
+  color: var(--adm-warn);
+}
+
+.adm-mon__line-icon--alert {
+  color: var(--adm-alert);
+}
+
+.adm-mon__line-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.adm-mon__line-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.adm-mon__line-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink);
+}
+
+.adm-mon__line-chev {
+  flex: none;
+  align-self: center;
+  color: var(--adm-ink-muted);
+}

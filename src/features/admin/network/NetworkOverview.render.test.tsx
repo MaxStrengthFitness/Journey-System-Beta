@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 /**
- * THE OVERVIEW UNDER "ALL MY STUDIOS" — the scope bar switches the Overview
- * from one studio's day to the network view (the folded Franchise
- * dashboard), and back, without a throw. Firestore answers every stream
- * with nothing.
+ * THE MONDAY PAGE UNDER "ALL MY STUDIOS" — the scope bar switches the page
+ * from one studio's Monday to the network view (the folded Franchise
+ * dashboard) without a throw. Firestore answers every read with nothing.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -26,8 +25,14 @@ vi.mock("../../../ActiveStudioContext", () => ({
 }));
 
 vi.mock("firebase/firestore", () => {
-  const ref = (...parts: unknown[]) => ({ path: parts.filter((p) => typeof p === "string").join("/"), id: "id" });
+  const ref = (...parts: unknown[]) => {
+    const first = parts[0] as { path?: string } | undefined;
+    const base = first && typeof first === "object" && typeof first.path === "string" ? [first.path] : [];
+    const path = [...base, ...parts.filter((p) => typeof p === "string")].join("/");
+    return { path, id: path.split("/").pop() ?? "id" };
+  };
   const emptySnap = { docs: [], size: 0, empty: true, forEach: () => {}, docChanges: () => [], metadata: { fromCache: false } };
+  const emptyDoc = { exists: () => false, data: () => undefined, id: "id", metadata: { fromCache: false } };
   return {
     collection: ref,
     collectionGroup: ref,
@@ -36,13 +41,14 @@ vi.mock("firebase/firestore", () => {
     where: () => ({}),
     orderBy: () => ({}),
     limit: () => ({}),
-    onSnapshot: (_t: unknown, a: unknown, b?: unknown) => {
+    onSnapshot: (target: { path: string }, a: unknown, b?: unknown) => {
       const next = (typeof a === "function" ? a : b) as (s: unknown) => void;
-      const t = setTimeout(() => next(emptySnap), 0);
+      const isDoc = target.path.split("/").length % 2 === 0;
+      const t = setTimeout(() => next(isDoc ? emptyDoc : emptySnap), 0);
       return () => clearTimeout(t);
     },
     getDocs: async () => emptySnap,
-    getDoc: async () => ({ exists: () => false, data: () => undefined }),
+    getDoc: async () => emptyDoc,
     updateDoc: async () => {},
     setDoc: async () => {},
     serverTimestamp: () => new Date(),
@@ -50,7 +56,7 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { AdminOverviewTab } from "../AdminOverviewTab";
+import { MondayPage } from "../monday/MondayPage";
 import { OperationsScopeProvider, ScopeBar } from "../scope-context";
 import type { Studio, Trainer } from "../../../types";
 
@@ -84,7 +90,7 @@ async function mount() {
       <StrictMode>
         <OperationsScopeProvider authTrainer={owner} studios={studios} networks={[]} isAdmin={false} activeStudioId="solon">
           <ScopeBar />
-          <AdminOverviewTab authTrainer={owner} studios={studios} trainers={trainers} activeStudioId="solon" schedules={[]} sessions={[]} clients={[]} />
+          <MondayPage authTrainer={owner} studios={studios} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
         </OperationsScopeProvider>
       </StrictMode>,
     );
@@ -114,9 +120,9 @@ afterEach(() => {
 });
 
 describe("the Overview under the Operations scope", () => {
-  it("shows one studio's day, then every studio's tiles under All my studios, and a location switches the app", async () => {
+  it("shows one studio's Monday, then every studio's tiles under All my studios, and a location switches the app", async () => {
     const el = await mount();
-    expect(el.textContent).toContain("Solon — today");
+    expect(el.textContent).toContain("Solon — Monday");
 
     await choose(el, "all");
     const text = el.textContent ?? "";

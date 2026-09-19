@@ -147,6 +147,25 @@ describe("the weekly job — machine trends plus machine fit", () => {
     expect((store.kaizenReports._summary as { machines: Record<string, unknown> }).machines["m-abs"]).toMatchObject({ onFile: 8 });
   });
 
+  it("writes the performance watch per studio — a drop with its evidence, no name, and an empty document where there is nothing", async () => {
+    const data = base();
+    // c1 on the leg press at 100 lb: five earlier sets of ten, then four reps yesterday.
+    // Milliseconds, because the fake store is a JSON round-trip and a Timestamp's methods would not survive it.
+    const day = (n: number) => NOW.getTime() - n * 86_400_000;
+    [30, 26, 22, 18, 14].forEach((n, i) => {
+      data.exerciseLogs[`p${i}`] = { clientId: "c1", machineId: "m-leg-press", studioId: "solon", weight: 100, reps: 10, outcome: "performed", createdAt: day(n) };
+    });
+    data.exerciseLogs.p9 = { clientId: "c1", machineId: "m-leg-press", studioId: "solon", weight: 100, reps: 4, outcome: "performed", createdAt: day(1) };
+    const { db, store } = fakeDb(data);
+    const summary = await runMachineTrends({ db, now: NOW, log: quiet });
+    const solon = store["studios/solon/watch"].performance as { rows: Array<Record<string, unknown>>; clients: number; builtAt: string };
+    expect(solon.rows).toHaveLength(1);
+    expect(solon.rows[0]).toMatchObject({ clientId: "c1", machineId: "m-leg-press", weight: 100, reps: 4, medianReps: 10, priorSets: 5 });
+    expect(solon.clients).toBe(1);
+    expect(JSON.stringify(solon)).not.toContain("Female");
+    expect(summary.watch).toEqual({ studios: 1, rows: 1 });
+  });
+
   it("writes nothing on a dry run", async () => {
     const { db, written, deleted } = fakeDb(base());
     await runMachineTrends({ db, now: NOW, dryRun: true, log: quiet });

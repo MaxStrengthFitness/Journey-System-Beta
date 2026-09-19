@@ -2251,6 +2251,27 @@ describe("Firestore Security Rules", () => {
     );
   });
 
+  // ── OPERATIONS (Sep 19 2026) ────────────────────────────────────────────
+  it("lets the studio's people read the weekly performance watch, refuses another studio's trainer, and lets nobody write it", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", "studioA", "watch", "performance"), {
+        version: 1,
+        studioId: "studioA",
+        builtAt: "2026-09-20T07:00:00.000Z",
+        rows: [{ clientId: "clientA", machineId: "m-leg-press", weight: 100, reps: 4, medianReps: 10, priorSets: 5, day: "2026-09-19", drop: 0.6 }],
+        clients: 1,
+      });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(trainer, "studios", "studioA", "watch", "performance")));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(owner, "studios", "studioA", "watch", "performance")));
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDoc(doc(other, "studios", "studioA", "watch", "performance")));
+    await assertFails(updateDoc(doc(owner, "studios", "studioA", "watch", "performance"), { rows: [] }));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "watch", "anything"), { rows: [] }));
+  });
+
   it("lets a studio's leader offer one of its machines to the catalog, as themselves, pending — and only withdraw it afterwards", async () => {
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     const offer = (extra: Record<string, unknown> = {}) => ({
