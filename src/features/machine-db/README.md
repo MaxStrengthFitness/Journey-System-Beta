@@ -48,7 +48,7 @@ The Learning Overview links to All MSF machines under the Catalog's tiles, and L
 - **What the copy keeps.** Its lineage (`basedOn`), so cross-studio roll-ups still compare like with like, and so anything shared about the original shows on the copy (see Lineage below).
 - **A machine the studio switched off comes back on.** It is still on the roster, inactive. Adding it again (**Put it back on {studio}'s floor**) switches it back on with its local setup — for an MSF machine, a copy or the studio's own machine alike — instead of making a second copy (`existingRosterEntry`).
 - **Nothing is decided while the floor loads.** Until the studio's roster and the catalog have both loaded, a page says "Checking {studio}'s floor…", the count reads "…", and no machine is called on or off the floor.
-- **Refused when the studio has no roster yet.** Until a roster exists, the Catalog shows every MSF machine as the studio's own. Adding one machine would make that one the whole floor and hide the rest, so the page instead points to Operations → Studios → Equipment.
+- **Refused when the studio has no roster yet.** Until a roster exists, the Catalog shows every MSF machine as the studio's own. Adding one machine would make that one the whole floor and hide the rest, so the page instead points to My Studio → Machines (My Studio round, Sep 2026; it used to say Operations → Studios → Equipment).
 - **Refused for a retired MSF machine.** Its page can still be read.
 
 ## Lineage — how shared notes find a machine
@@ -65,7 +65,7 @@ A machine page queries its own lineage. So a tip about Westlake's copy of Solon'
 
 ## Also in this round's rules
 
-Before this round, the machine notes, upkeep log, playbook and wiki blocks accepted writes from **any** signed-in trainer at **any** studio. Their comments said "the path enforces tenancy", but nothing checked the path. Writes there now need `writesForStudio(studioId)`: someone who works at or runs the studio, or an administrator or franchise owner. `writesForStudioPerRules` in `features/learning/permissions.ts` mirrors it for buttons — Operations → Studios → Equipment offers **Upkeep** only on studios the viewer can log for.
+Before this round, the machine notes, upkeep log, playbook and wiki blocks accepted writes from **any** signed-in trainer at **any** studio. Their comments said "the path enforces tenancy", but nothing checked the path. Writes there now need `writesForStudio(studioId)`: someone who works at or runs the studio, or an administrator or franchise owner. `writesForStudioPerRules` in `features/learning/permissions.ts` mirrors it for buttons — My Studio → Machines (and Operations → Studios → Equipment) offer **Upkeep** only on studios the viewer can log for.
 
 ## Not in this round
 

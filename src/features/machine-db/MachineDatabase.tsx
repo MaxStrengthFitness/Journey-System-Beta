@@ -445,7 +445,7 @@ export function MachineDatabase({
       {canAdopt && (
         <p className="mdb-note">
           <Info size={14} aria-hidden />
-          A machine the catalog doesn't have? Add it under Operations → Studios → {studioName} → Equipment, then open
+          A machine the catalog doesn't have? Add it under My Studio → Machines (Custom machine), then open
           its page in {studioName}'s Catalog and switch on Share to list it here for every studio.
         </p>
       )}

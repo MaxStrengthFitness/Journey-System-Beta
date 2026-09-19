@@ -15,9 +15,7 @@
  */
 
 import React, { useMemo, useState } from "react";
-import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
 import { Dumbbell, Sparkles, Wrench } from "lucide-react";
-import { auth, db } from "../../../firebase";
 import type { Studio, Trainer } from "../../../types";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
@@ -36,7 +34,7 @@ import {
   AdminRow,
   AdminRows,
 } from "../primitives";
-import { standardSetSeed } from "../studios/registry";
+import { seedStandardSet } from "./seed";
 import { describeOverrides, overriddenSafetyFields } from "./clone";
 import { LocalSetupDialog } from "./LocalSetupDialog";
 import { UpkeepDialog } from "../upkeep/UpkeepDialog";
@@ -120,7 +118,7 @@ export function StudioEquipmentPanel({
     [rosterEntries, catalogById, upkeepEvents, todayKey],
   );
 
-  const seedStandardSet = async () => {
+  const runSeed = async () => {
     if (!studioId) return;
     // Refuse rather than write nothing and call it success. An empty catalog
     // is a real state (a fresh database, or rules refusing /machines), and it
@@ -137,30 +135,9 @@ export function StudioEquipmentPanel({
     }
     setSeeding(true);
     try {
-      const snap = await getDocs(collection(db, "studios", studioId, "roster"));
-      const { seed, duplicates, alreadyPresent } = standardSetSeed(
-        catalog as any[],
-        snap.docs.map((d) => d.id),
-      );
-      const batch = writeBatch(db);
-      for (const machine of seed) {
-        batch.set(
-          doc(db, "studios", studioId, "roster", machine.id),
-          {
-            machineId: machine.id,
-            studioId,
-            source: "catalog",
-            basedOn: machine.id,
-            status: "active",
-            updatedAt: serverTimestamp(),
-            updatedBy: auth.currentUser?.uid ?? null,
-          },
-          { merge: true },
-        );
-      }
-      await batch.commit();
-      const dupes = Object.values(duplicates).flat();
-      if (seed.length === 0 && alreadyPresent === 0) {
+      // One implementation for every "Add the standard set" (equipment/seed.ts).
+      const { added, alreadyPresent, duplicates: dupes } = await seedStandardSet(studioId, catalog);
+      if (added === 0 && alreadyPresent === 0) {
         // Catalog had entries but none qualified. Almost always a status
         // value the filter does not recognise, so name the cause instead of
         // reporting a bare zero.
@@ -171,14 +148,14 @@ export function StudioEquipmentPanel({
         return;
       }
       setSeedSummary(
-        `${seed.length} added${alreadyPresent ? `, ${alreadyPresent} already on the floor` : ""}.${
+        `${added} added${alreadyPresent ? `, ${alreadyPresent} already on the floor` : ""}.${
           dupes.length
             ? ` ${dupes.length} duplicate catalog ${dupes.length === 1 ? "entry" : "entries"} collapsed — delete ${dupes.join(", ")} from the catalog.`
             : ""
         }`,
       );
-      if (seed.length > 0) {
-        toastSuccess(`Added ${seed.length} machines to ${studio.name}.`);
+      if (added > 0) {
+        toastSuccess(`Added ${added} machines to ${studio.name}.`);
       }
     } catch (err) {
       handleFirestoreError(
@@ -208,7 +185,7 @@ export function StudioEquipmentPanel({
         <AdminButton
           variant="primary"
           busy={seeding || catalogLoading}
-          onClick={() => void seedStandardSet()}
+          onClick={() => void runSeed()}
         >
           <Sparkles className="w-3.5 h-3.5" />
           Add the standard set

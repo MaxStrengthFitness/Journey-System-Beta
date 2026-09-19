@@ -22,3 +22,31 @@
   gap: 0.875rem;
 }
 .ms__page > * { flex: none; }
+
+/* The machine's door (Machines section): the settings card and the notes
+   box stacked in the Context Panel, with the three actions under them. The
+   catalog cards bring their own look (catalog.css, global). */
+.ms__door {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.ms__door-h {
+  margin: 0 0 0.25rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.ms__door-sub {
+  margin: 0 0 0.625rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--st-ink-muted);
+}
+.ms__door-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

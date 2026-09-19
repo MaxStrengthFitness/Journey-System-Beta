@@ -196,6 +196,23 @@ describe("My Studio", () => {
     expect(h.textContent).not.toContain("Who gets it");
   });
 
+  it("mounts the Machines section for a trainer: the floor and what other studios shared, nothing that writes", async () => {
+    const h = await mount(trainer);
+    await click(tab("Machines"));
+    expect(h.textContent).toContain("The floor");
+    expect(h.textContent).toContain("Shared by other MSF studios");
+    expect(h.textContent).not.toContain("Custom machine");
+    expect(h.textContent).not.toContain("Adopt the MSF standard");
+  });
+
+  it("mounts the Machines section for a leader without pushing anything onto an empty floor", async () => {
+    const h = await mount(lead);
+    await click(tab("Machines"));
+    expect(h.textContent).toContain("The floor");
+    // An empty floor and an empty catalog: nothing to adopt yet, nothing pushed.
+    expect(h.textContent).not.toContain("New in the MSF standard");
+  });
+
   it("never offers the Studio section to a trainer", async () => {
     await mount(trainer);
     expect(tab("Studio")).toBeUndefined();

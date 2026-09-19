@@ -25,7 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { db, auth } from "../../firebase";
-import { isStandardSetMachine } from "../../features/admin/studios/registry";
+import { seedStandardSet } from "../../features/admin/equipment/seed";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -113,9 +113,26 @@ function SortableFloorRow({
 export function StudioInventoryManager({
   studioId,
   studioName,
+  readOnly = false,
+  flags,
+  onOpenMachine,
+  hideHeading = false,
 }: {
   studioId: string | null;
   studioName?: string;
+  /**
+   * My Studio round (Sep 2026): the same list for a trainer — the floor as
+   * it is, with nothing that writes (no reorder, no standard set, no custom
+   * machine, no We have this / We don't). The rules refuse those writes to a
+   * trainer anyway; this keeps the button off the screen.
+   */
+  readOnly?: boolean;
+  /** A line under a machine's name: "No longer in the MSF standard", a submission's state. */
+  flags?: Record<string, string>;
+  /** Every card gets an Open button that hands the machine to the caller (My Studio's door). */
+  onOpenMachine?: (machineId: string) => void;
+  /** The caller draws its own panel title. */
+  hideHeading?: boolean;
 }) {
   const { machines, byId, catalog, rosterEntries, loading } = useStudioMachines(studioId, {
     includeInactive: true,
@@ -148,8 +165,14 @@ export function StudioInventoryManager({
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return machines.filter((m) => !q || m.name.toLowerCase().includes(q));
-  }, [machines, search]);
+    return machines.filter(
+      (m) =>
+        (!q || m.name.toLowerCase().includes(q)) &&
+        // Read-only is the floor, not the picker: what is not on the roster
+        // is nobody's to add from here.
+        (!readOnly || rosteredIds.has(m.machineId)),
+    );
+  }, [machines, search, readOnly, rosteredIds]);
 
   const ownedCount = machines.filter(
     (m) => rosteredIds.has(m.machineId) && m.rosterStatus !== "inactive",
@@ -305,34 +328,18 @@ export function StudioInventoryManager({
   const adoptStandardSet = async () => {
     setBusy("__standard__");
     try {
-      /*
-       * Was `c.inStandardSet && c.status === "active"`, which is the OPPOSITE
-       * default to the Studios screen's version of the same button: a catalog
-       * document written before the flag existed has no `inStandardSet`, so
-       * this filter matched nothing and the button reported "Added 0 machines"
-       * as a success. Both now share isStandardSetMachine().
-       */
-      const targets = catalog.filter(
-        (c) => isStandardSetMachine(c) && !rosteredIds.has(c.id),
+      // One implementation for every "Add the standard set" (My Studio round,
+      // Sep 2026): features/admin/equipment/seed.ts. This button and the
+      // Studios tab's used to be two copies that once disagreed about the
+      // default for a missing inStandardSet flag.
+      const { added, alreadyPresent } = await seedStandardSet(studioId, catalog);
+      toastSuccess(
+        added > 0
+          ? `Added ${added} machines to ${studioName ?? "this studio"}.`
+          : alreadyPresent > 0
+            ? `${studioName ?? "This studio"} already has every standard machine.`
+            : "Nothing in the catalog qualifies for the standard set.",
       );
-      await Promise.all(
-        targets.map((c) =>
-          setDoc(
-            doc(db, "studios", studioId, "roster", c.id),
-            {
-              machineId: c.id,
-              studioId,
-              source: "catalog",
-              basedOn: c.id,
-              status: "active",
-              updatedAt: serverTimestamp(),
-              updatedBy: auth.currentUser?.uid ?? null,
-            },
-            { merge: true },
-          ),
-        ),
-      );
-      toastSuccess(`Added ${targets.length} machines to ${studioName ?? "this studio"}.`);
     } catch (err) {
       console.error(err);
       toastError("Could not add the standard set.");
@@ -379,14 +386,17 @@ export function StudioInventoryManager({
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight">
-            Equipment {studioName ? `· ${studioName}` : ""}
-          </h2>
+          {!hideHeading && (
+            <h2 className="text-2xl font-black uppercase tracking-tight">
+              Equipment {studioName ? `· ${studioName}` : ""}
+            </h2>
+          )}
           <p className="text-sm text-muted-foreground">
             {ownedCount} machine{ownedCount === 1 ? "" : "s"} in service. Trainers running a
             session here see exactly this list.
           </p>
         </div>
+        {!readOnly && (
         <div className="flex flex-wrap gap-2">
           {reorderIds ? (
             <>
@@ -435,6 +445,7 @@ export function StudioInventoryManager({
             </>
           )}
         </div>
+        )}
       </div>
 
       {!reorderIds && (
@@ -524,10 +535,18 @@ export function StudioInventoryManager({
                     <p className="mt-1 truncate text-xs text-muted-foreground">
                       {m.movementPattern} · gap {m.universalBaseline?.startingWeightStackGap || "—"}
                     </p>
+                    {flags?.[m.machineId] && (
+                      <p className="mt-1 text-xs font-semibold text-muted-foreground">{flags[m.machineId]}</p>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {owned && (
+                    {onOpenMachine && rostered && (
+                      <Button variant="outline" size="sm" onClick={() => onOpenMachine(m.machineId)}>
+                        Open
+                      </Button>
+                    )}
+                    {owned && !readOnly && (
                       <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <Switch
                           checked={m.rosterStatus === "maintenance"}
@@ -539,7 +558,7 @@ export function StudioInventoryManager({
                       </label>
                     )}
 
-                    {owned ? (
+                    {readOnly ? null : owned ? (
                       <Button
                         variant="ghost" size="sm"
                         disabled={busy === m.machineId}

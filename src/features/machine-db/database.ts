@@ -296,7 +296,7 @@ export function planAdoption(
   if (ctx.floorSource === "global") {
     return {
       ok: false,
-      reason: `${ctx.studioName}'s equipment list hasn't been set up, so every MSF machine shows as yours for now. A studio leader sets it up under Operations → Studios → Equipment; then machines can be added from here.`,
+      reason: `${ctx.studioName}'s equipment list hasn't been set up, so every MSF machine shows as yours for now. A studio leader sets it up under My Studio → Machines ("Adopt the MSF standard"); then machines can be added from here.`,
     };
   }
   if (e.retired) return { ok: false, reason: "Retired from the MSF catalog, so it can't be added to a floor." };
