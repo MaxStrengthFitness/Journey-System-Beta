@@ -22,7 +22,8 @@ const LEADER = new Set(["StudioLeader", "HeadTrainer", "StudioOwner"]);
 type TrainerLike = Pick<
   Trainer,
   "role" | "primaryHomeStudioId" | "accessibleStudioIds" | "activeGuestStudioIds" | "ownedStudioIds"
->;
+> &
+  Partial<Pick<Trainer, "managedStudioIds">>;
 
 export function isEveryStudioRole(t: TrainerLike | null | undefined): boolean {
   return Boolean(t && (SUPER.has(t.role) || FRANCHISE.has(t.role)));
@@ -38,9 +39,15 @@ export function worksAt(t: TrainerLike | null | undefined, studioId: string | nu
   );
 }
 
-/** Runs this studio. Mirrors trainerLeads(). */
+/**
+ * Runs this studio. Mirrors trainerLeads(): a studio-leader role at their
+ * home or an owned studio -- or, since the My Studio round (Sep 2026), any
+ * trainer the studio's leadership has granted `managedStudioIds` for it.
+ */
 export function leadsStudio(t: TrainerLike | null | undefined, studioId: string | null | undefined): boolean {
-  if (!t || !studioId || !LEADER.has(t.role)) return false;
+  if (!t || !studioId) return false;
+  if ((t.managedStudioIds ?? []).includes(studioId)) return true;
+  if (!LEADER.has(t.role)) return false;
   return t.primaryHomeStudioId === studioId || (t.ownedStudioIds ?? []).includes(studioId);
 }
 

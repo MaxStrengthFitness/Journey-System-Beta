@@ -21,7 +21,7 @@ import type { Trainer } from "../../types";
 
 type TrainerLike =
   | (Pick<Trainer, "role" | "primaryHomeStudioId" | "ownedStudioIds"> &
-      Partial<Pick<Trainer, "accessibleStudioIds" | "activeGuestStudioIds">>)
+      Partial<Pick<Trainer, "accessibleStudioIds" | "activeGuestStudioIds" | "managedStudioIds">>)
   | null
   | undefined;
 
@@ -36,10 +36,13 @@ export function isSuperRole(trainer: TrainerLike): boolean {
 
 /**
  * firestore.rules isStudioOwnerOrHeadTrainerOnly(studioId): a studio-leader
- * role, AT that studio (home or owned). Franchise owners are not in it.
+ * role, AT that studio (home or owned), or -- My Studio round, Sep 2026 -- a
+ * trainer granted `managedStudioIds` for it. Franchise owners are not in it.
  */
 export function leadsStudioPerRules(trainer: TrainerLike, studioId: string | null | undefined): boolean {
-  if (!trainer || !studioId || !trainer.role || !STUDIO_LEADER_ROLES.has(trainer.role)) return false;
+  if (!trainer || !studioId) return false;
+  if ((trainer.managedStudioIds ?? []).includes(studioId)) return true;
+  if (!trainer.role || !STUDIO_LEADER_ROLES.has(trainer.role)) return false;
   return (
     trainer.primaryHomeStudioId === studioId || (trainer.ownedStudioIds ?? []).includes(studioId)
   );

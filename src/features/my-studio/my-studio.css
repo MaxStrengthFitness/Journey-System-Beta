@@ -1,0 +1,24 @@
+/* ==========================================================================
+   MY STUDIO — the studio's home on the bottom bar (My Studio round, Sep 2026)
+   --------------------------------------------------------------------------
+   The shell reuses Relay's masthead, frame, Context Panel and Capture button
+   (features/planner/planner.css, relay/relay.css) so the four sections read
+   as one screen. What is here is only what the other sections add: a plain
+   scrolling body for a section that has no scroller of its own. Tokens are
+   the Studio Hub's --st-*; nothing here writes a hex value.
+   ========================================================================== */
+
+/* A section body that scrolls as one page (the Team panel brings .st__scroll
+   of its own; Machines and Studio use this). */
+.ms__page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 1rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.ms__page > * { flex: none; }

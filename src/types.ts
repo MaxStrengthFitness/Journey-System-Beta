@@ -32,7 +32,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   // Legacy mappings
   FranchiseOwner: "Franchise Owner",
   Overseer: "Founder / Overseer",
-  StudioOwner: "Franchise Owner",
+  // My Studio round (Sep 2026): a Studio Owner is a studio-tier role -- the
+  // same level as a head trainer or studio leader AT THAT STUDIO (AJ, Sep 18)
+  // -- so the label says so. The multi-studio owner keeps "Franchise Owner".
+  StudioOwner: "Studio Owner",
   HeadTrainer: "Studio Leader",
   Trainer: "Life Transformer",
 };
@@ -352,6 +355,19 @@ export interface Trainer {
   primaryHomeStudioId: string;
   accessibleStudioIds: string[];
   activeGuestStudioIds: string[];
+  /**
+   * THE GRANT (My Studio round, Sep 2026). Studios grow their own leaders:
+   * a studio's leadership can let a trainer help run the studio -- open the
+   * leader sections of My Studio and do what a head trainer does there --
+   * without changing their role. One entry per studio it applies to. Set by
+   * that studio's leaders and administrators only (it is an access field in
+   * firestore.rules' writesAccessFields, so nobody grants themselves), and
+   * read beside the role by every "leads this studio" check: leadsStudio()
+   * in features/renewals/permissions.ts, leadsStudioPerRules() in
+   * features/learning/permissions.ts, and trainerLeads() in the rules.
+   * It does NOT open the Operations dashboard (AJ, Sep 18).
+   */
+  managedStudioIds?: string[];
   bio?: string;
   email?: string;
   thirdPartyCalendarUrl?: string;

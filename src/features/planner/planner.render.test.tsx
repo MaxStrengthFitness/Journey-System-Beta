@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 /**
- * THE PLANNER MOUNTS — every tab, and the dialogs a tap opens.
+ * MY STUDIO MOUNTS — every section and every Relay tab, and the dialogs a
+ * tap opens.
  *
- * Round: Planner rework, Sep 2026. A clean typecheck, a green suite and a
+ * Round: Planner rework, Sep 2026; My Studio round, Sep 2026 (the shell is
+ * MyStudioView now, with Relay as its first section and Team as a section
+ * of its own). A clean typecheck, a green suite and a
  * production build all passed while the four-tab profile crashed on its first
  * tap (see client-profile/profile-nav.render.test.tsx), so the Planner's four
  * tabs are mounted here for real, over a Firestore that answers every read
@@ -76,7 +79,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { ToastProvider } from "../../contexts/ToastContext";
-import { PlannerView } from "./PlannerView";
+import { MyStudioView } from "../my-studio/MyStudioView";
 
 const lead = {
   id: "t-lead",
@@ -97,12 +100,17 @@ async function mount(authTrainer: unknown) {
     mounted!.render(
       <StrictMode>
         <ToastProvider>
-          <PlannerView authTrainer={authTrainer as never} clients={[]} trainers={[lead]} />
+          <MyStudioView authTrainer={authTrainer as never} clients={[]} trainers={[lead]} />
         </ToastProvider>
       </StrictMode>,
     );
   });
   await settle();
+  // The shell remembers the last section on this iPad (module memory), so a
+  // test that ended on Team would hand the next one a board with no tabs.
+  // Start each test on Relay, the way a person would tap back to it.
+  const relay = tab("Relay");
+  if (relay && relay.getAttribute("aria-selected") !== "true") await click(relay);
   return host;
 }
 
@@ -130,9 +138,10 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("Relay", () => {
-  it("mounts the Floor with the Now Bar, Next up, the shift rings and an empty team-jobs lane", async () => {
+describe("My Studio", () => {
+  it("mounts on Relay's Floor with the Now Bar, Next up, the shift rings and an empty team-jobs lane", async () => {
     const h = await mount(lead);
+    expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
     expect(h.textContent).toContain("Pulse");
     expect(h.textContent).toContain("No sessions on your schedule");
@@ -150,7 +159,7 @@ describe("Relay", () => {
     expect(h.textContent).toContain("The whole day is a gap");
   });
 
-  it("shows the Team tab to a leader and walks every tab without throwing", async () => {
+  it("shows the Team section to a leader and walks every tab and section without throwing", async () => {
     const h = await mount(lead);
     await click(tab("Mine"));
     expect(h.textContent).toContain("Your list");
@@ -166,8 +175,18 @@ describe("Relay", () => {
     expect(h.textContent).toContain("The studio's day");
     expect(h.textContent).toContain("The vault");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
+    // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
+    expect(tab("Floor")).toBeUndefined();
+    await click(tab("Relay"));
     await click(tab("Floor"));
     expect(h.textContent).toContain("Next up");
+  });
+
+  it("shows the Team section to a trainer the studio's leadership granted the studio (My Studio, Sep 2026)", async () => {
+    const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
+    expect(tab("Team")).toBeTruthy();
+    await click(tab("Team"));
+    expect(h.textContent).toContain("Your team");
   });
 
   it("offers the Network tab only to a franchise or super role, and it mounts", async () => {
@@ -180,7 +199,7 @@ describe("Relay", () => {
     expect(h.textContent).toContain("Studios are ranked here; people never are.");
   });
 
-  it("never offers the Team tab to a trainer", async () => {
+  it("never offers the Team section to a trainer", async () => {
     await mount(trainer);
     expect(tab("Team")).toBeUndefined();
     expect(document.body.textContent).not.toContain("Post a job");

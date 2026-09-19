@@ -25,6 +25,13 @@ describe("canWriteStudioPages — mirrors the studios/{s}/wiki page rule", () =>
     expect(canWriteStudioPages(t("StudioOwner", "solon", ["westlake"]), "westlake")).toBe(true);
   });
 
+  it("counts a granted trainer as a leader of that studio only (My Studio, Sep 2026)", () => {
+    const granted = { ...t("LifeTransformer"), managedStudioIds: ["solon"] };
+    expect(leadsStudioPerRules(granted, "solon")).toBe(true);
+    expect(canWriteStudioPages(granted, "solon")).toBe(true);
+    expect(leadsStudioPerRules(granted, "westlake")).toBe(false);
+  });
+
   it("refuses franchise owners, whom the rule leaves out (the old button did not)", () => {
     expect(canWriteStudioPages(t("FranchiseOwner"), "solon")).toBe(false);
     expect(canWriteStudioPages(t("Owner"), "solon")).toBe(false);

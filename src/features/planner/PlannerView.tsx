@@ -1,22 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Globe, LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users, Zap } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Globe, LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../ActiveStudioContext";
-import { auth } from "../../firebase";
-import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
-import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
+import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
 import type { ClientTaskAction } from "../studio-tasks/types";
 import { MyTasksPanel } from "./MyTasksPanel";
 import { NotesPanel } from "./notes/NotesPanel";
-import { TeamPanel } from "./team/TeamPanel";
 import { clearPlannerIntent, peekPlannerIntent, type PlannerIntent } from "./intent";
-import { RelayProvider, type PanelContent, type RelayContextValue } from "./relay/RelayContext";
-import { reachesTier } from "./relay/RoleGate";
-import { NowBar, useNowContext } from "./relay/NowBar";
+import { useRelay } from "./relay/RelayContext";
+import { NowBar } from "./relay/NowBar";
 import { ContextPanel } from "./relay/ContextPanel";
-import { CaptureSheet } from "./relay/CaptureSheet";
 import { NetworkView } from "./relay/NetworkView";
-import type { CapturePreset } from "./relay/capture";
 import { useClosedRings } from "./relay/rings";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
@@ -25,14 +19,16 @@ import "./planner.css";
 import "./relay/relay.css";
 
 /**
- * RELAY — the Planner, rebuilt as the studio's asynchronous board and each
- * trainer's second brain.
+ * RELAY — the studio's asynchronous board and each trainer's second brain.
  *
- * Round: Relay, Sep 2026. The Sep 16 Planner had the right THINGS (studio
- * tasks, team jobs, asks, the playbook, private notes, reminders) and was
- * built like a form-filling app: five composers, three-step wizards, and a
- * screen that never knew what time it was. Relay keeps the documents and
- * the rules of who may do what, and changes how the work is SEEN and CAPTURED:
+ * Round: Relay, Sep 2026; a section of My Studio since the My Studio round
+ * (features/my-studio/MyStudioView, which owns the masthead, the Relay
+ * context and the Capture sheet — this file draws the board under it). The
+ * Sep 16 Planner had the right THINGS (studio tasks, team jobs, asks, the
+ * playbook, private notes, reminders) and was built like a form-filling app:
+ * five composers, three-step wizards, and a screen that never knew what time
+ * it was. Relay keeps the documents and the rules of who may do what, and
+ * changes how the work is SEEN and CAPTURED:
  *
  *   the Now Bar      pinned on every tab — the shift phase, the trainer's next
  *                    session and minutes free, and the Pulse (relay/NowBar)
@@ -41,12 +37,14 @@ import "./relay/relay.css";
  *   Mine             the trainer's own list: today, handed to you, follow-ups,
  *                    growth (MyTasksPanel)
  *   Notes            working notes beside the note, publish with an audience
- *   Team             leaders of THIS studio: who's in, cohorts, open loops,
- *                    standards, the vault (team/TeamPanel)
  *   Network          franchise owners and administrators: focus, initiatives
  *                    across studios, the studio leaderboard (relay/NetworkView)
  *   Capture          one composer for all of it, under the right thumb
  *   Context Panel    detail beside the board, never a modal over it
+ *
+ * Team — who's in, cohorts, open loops, the vault — was Relay's fourth tab
+ * and is My Studio's Team section now, beside this studio's staff (My Studio
+ * round, Sep 2026).
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
@@ -59,7 +57,7 @@ import "./relay/relay.css";
  * imports point here and none of them care what the sign says.
  */
 
-export type PlannerTab = "floor" | "mine" | "notes" | "team" | "network";
+export type PlannerTab = "floor" | "mine" | "notes" | "network";
 
 let rememberedTab: PlannerTab = "floor";
 
@@ -67,20 +65,13 @@ export interface PlannerViewProps {
   authTrainer?: Trainer | null;
   clients?: Client[];
   trainers?: Trainer[];
-  /** The Calendar's rows (AppContent's useLiveSchedule): the Now Bar's clock. */
-  schedules?: ScheduleEntry[];
-  /** Today's sessions at this studio (AppContent's useSessions): machine wear. */
-  sessions?: WorkoutSession[];
-  /** The app-wide machine list, the Floor Map's fallback before a roster exists. */
-  machines?: Machine[];
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
 }
 
-const TABS: { id: PlannerTab; label: string; icon: typeof Users; tier?: "leads" | "network" }[] = [
+const TABS: { id: PlannerTab; label: string; icon: typeof Users; tier?: "network" }[] = [
   { id: "floor", label: "Floor", icon: LayoutGrid },
   { id: "mine", label: "Mine", icon: UserRound },
   { id: "notes", label: "Notes", icon: StickyNote },
-  { id: "team", label: "Team", icon: Users, tier: "leads" },
   { id: "network", label: "Network", icon: Globe, tier: "network" },
 ];
 
@@ -91,21 +82,10 @@ function tabFor(intent: PlannerIntent): PlannerTab {
   return "notes";
 }
 
-const NONE: never[] = [];
-
-export function PlannerView({
-  authTrainer,
-  clients,
-  trainers,
-  schedules,
-  sessions,
-  machines,
-  onOpenClientTask,
-}: PlannerViewProps) {
-  const { activeStudio, activeStudioId } = useActiveStudio();
-  const canLead = reachesTier(authTrainer, activeStudioId, "leads");
-  const canNetwork = reachesTier(authTrainer, activeStudioId, "network");
-  const tabs = TABS.filter((t) => !t.tier || (t.tier === "leads" ? canLead : canNetwork));
+export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }: PlannerViewProps) {
+  const { activeStudioId } = useActiveStudio();
+  const { now, canNetwork, panel, openCapture, closePanel } = useRelay();
+  const tabs = TABS.filter((t) => !t.tier || canNetwork);
 
   // A request from a client's profile or a notification, read on arrival —
   // see ./intent.ts. Held until the trainer changes tab, so it acts once.
@@ -117,163 +97,87 @@ export function PlannerView({
     if (intent) rememberedTab = tabFor(intent);
     return rememberedTab;
   });
-  // A shared iPad: the last person was a leader on Team; this one is not.
-  const shown: PlannerTab =
-    (tab === "team" && !canLead) || (tab === "network" && !canNetwork) ? "floor" : tab;
+  // A shared iPad: the last person was a franchise owner on Network; this one is not.
+  const shown: PlannerTab = tab === "network" && !canNetwork ? "floor" : tab;
 
   const clearIntent = useCallback(() => setIntent(null), []);
   const choose = (next: PlannerTab) => {
     rememberedTab = next;
     setTab(next);
     setIntent(null);
-    setPanel(null);
+    closePanel();
   };
 
-  const todayKey = studioDateKey(new Date()) ?? "";
-  const today = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-
   const openClient = onOpenClientTask ? (clientId: string) => onOpenClientTask(clientId) : undefined;
-
-  /* The clock. */
-  const now = useNowContext(schedules ?? NONE, authTrainer, activeStudio?.shiftHours ?? null);
-  const closedRings = useClosedRings(activeStudioId);
-
-  /* The two doors any card can open. */
-  const [panel, setPanel] = useState<PanelContent | null>(null);
-  const [capture, setCapture] = useState<{ preset: CapturePreset } | null>(null);
-  const openCapture = useCallback((preset: CapturePreset = {}) => setCapture({ preset }), []);
-  const openPanel = useCallback((content: PanelContent) => setPanel(content), []);
-  const closePanel = useCallback(() => setPanel(null), []);
-
-  const relay = useMemo<RelayContextValue>(
-    () => ({
-      studioId: activeStudioId ?? null,
-      studioName: activeStudio?.name ?? "Studio",
-      authTrainer: authTrainer ?? null,
-      uid: auth.currentUser?.uid ?? null,
-      trainers: trainers ?? NONE,
-      clients: clients ?? NONE,
-      schedules: schedules ?? NONE,
-      sessions: sessions ?? NONE,
-      machines: machines ?? NONE,
-      now,
-      canLead,
-      canNetwork,
-      openCapture,
-      openPanel,
-      closePanel,
-      onOpenClientTask,
-    }),
-    [
-      activeStudioId,
-      activeStudio?.name,
-      authTrainer,
-      trainers,
-      clients,
-      schedules,
-      sessions,
-      machines,
-      now,
-      canLead,
-      canNetwork,
-      openCapture,
-      openPanel,
-      closePanel,
-      onOpenClientTask,
-    ],
-  );
+  const closedRings = useClosedRings(activeStudioId ?? null);
 
   return (
-    <RelayProvider value={relay}>
-      <div className="pl" data-tab={shown}>
-        <header className="pl__mast">
-          <div className="pl__brand">
-            <Zap size={19} aria-hidden />
-            <span className="pl__title">Relay</span>
-          </div>
-
-          <div className="pl__tabs" role="tablist" aria-label="Relay">
-            {tabs.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`pl-tab-${id}`}
-                aria-selected={shown === id}
-                aria-controls="pl-panel"
-                aria-label={label}
-                className="pl__tab"
-                onClick={() => choose(id)}
-              >
-                <Icon size={14} aria-hidden />
-                <span className="pl__tab-label">{label}</span>
-              </button>
-            ))}
-          </div>
-
-          <span className="pl__where">
-            {activeStudio?.name ?? "Studio"} · {today}
-          </span>
-        </header>
-
-        <NowBar now={now} studioId={activeStudioId ?? null} closedRings={closedRings} />
-
-        <div className="pl__frame">
-          <div className="pl__body" role="tabpanel" id="pl-panel" aria-labelledby={`pl-tab-${shown}`}>
-            {shown === "floor" && (
-              <StudioHubView
-                embedded
-                authTrainer={authTrainer}
-                clients={clients}
-                trainers={trainers}
-                onOpenClientTask={onOpenClientTask}
-                openJobId={intent?.kind === "open-job" ? intent.jobId : null}
-                onOpenedJob={clearIntent}
-              />
-            )}
-            {shown === "mine" && (
-              <MyTasksPanel
-                authTrainer={authTrainer}
-                clients={clients}
-                trainers={trainers}
-                onOpenClientTask={onOpenClientTask}
-              />
-            )}
-            {shown === "notes" && (
-              <NotesPanel
-                authTrainer={authTrainer}
-                clients={clients}
-                trainers={trainers}
-                intent={intent && tabFor(intent) === "notes" ? intent : null}
-                onOpenClient={openClient}
-              />
-            )}
-            {shown === "team" && (
-              <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
-            )}
-            {shown === "network" && <NetworkView />}
-          </div>
-          <ContextPanel content={panel} onClose={closePanel} />
+    <>
+      <div className="pl__subbar">
+        <div className="pl__tabs" role="tablist" aria-label="Relay">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`pl-tab-${id}`}
+              aria-selected={shown === id}
+              aria-controls="pl-panel"
+              aria-label={label}
+              className="pl__tab"
+              onClick={() => choose(id)}
+            >
+              <Icon size={14} aria-hidden />
+              <span className="pl__tab-label">{label}</span>
+            </button>
+          ))}
         </div>
-
-        {shown !== "notes" && (
-          <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
-            <Plus size={22} aria-hidden />
-            <span className="cf__label">Capture</span>
-          </button>
-        )}
-
-        <CaptureSheet
-          open={capture !== null}
-          preset={capture?.preset ?? null}
-          onOpenChange={(o) => !o && setCapture(null)}
-        />
       </div>
-    </RelayProvider>
+
+      <NowBar now={now} studioId={activeStudioId ?? null} closedRings={closedRings} />
+
+      <div className="pl__frame">
+        <div className="pl__body" role="tabpanel" id="pl-panel" aria-labelledby={`pl-tab-${shown}`}>
+          {shown === "floor" && (
+            <StudioHubView
+              embedded
+              authTrainer={authTrainer}
+              clients={clients}
+              trainers={trainers}
+              onOpenClientTask={onOpenClientTask}
+              openJobId={intent?.kind === "open-job" ? intent.jobId : null}
+              onOpenedJob={clearIntent}
+            />
+          )}
+          {shown === "mine" && (
+            <MyTasksPanel
+              authTrainer={authTrainer}
+              clients={clients}
+              trainers={trainers}
+              onOpenClientTask={onOpenClientTask}
+            />
+          )}
+          {shown === "notes" && (
+            <NotesPanel
+              authTrainer={authTrainer}
+              clients={clients}
+              trainers={trainers}
+              intent={intent && tabFor(intent) === "notes" ? intent : null}
+              onOpenClient={openClient}
+            />
+          )}
+          {shown === "network" && <NetworkView />}
+        </div>
+        <ContextPanel content={panel} onClose={closePanel} />
+      </div>
+
+      {shown !== "notes" && (
+        <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
+          <Plus size={22} aria-hidden />
+          <span className="cf__label">Capture</span>
+        </button>
+      )}
+    </>
   );
 }
 

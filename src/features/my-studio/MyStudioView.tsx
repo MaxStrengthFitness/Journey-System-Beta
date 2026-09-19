@@ -1,0 +1,261 @@
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { Building2, Plus, Users, Zap } from "lucide-react";
+import { useActiveStudio } from "../../ActiveStudioContext";
+import { auth } from "../../firebase";
+import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
+import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
+import type { ClientTaskAction } from "../studio-tasks/types";
+import { PlannerView } from "../planner/PlannerView";
+import { TeamPanel } from "../planner/team/TeamPanel";
+import { peekPlannerIntent } from "../planner/intent";
+import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../planner/relay/RelayContext";
+import { reachesTier } from "../planner/relay/RoleGate";
+import { useNowContext } from "../planner/relay/NowBar";
+import { ContextPanel } from "../planner/relay/ContextPanel";
+import { CaptureSheet } from "../planner/relay/CaptureSheet";
+import type { CapturePreset } from "../planner/relay/capture";
+import "../studio-tasks/studio-tasks.css";
+import "../studio-tasks/studio-hub.css";
+import "../planner/kit.css";
+import "../planner/planner.css";
+import "../planner/relay/relay.css";
+import "./my-studio.css";
+
+/**
+ * MY STUDIO — the studio's home on the bottom bar.
+ *
+ * Round: My Studio, Sep 2026. AJ's audit of the Operations dashboard found a
+ * studio's own settings scattered across three screens (Operations → Studios,
+ * the Studio setup card under Learning, Relay → Team → Standards) and the
+ * Studios tab shaped as a company registry — every studio, listed to every
+ * leader. His answer (Sep 18): "each studio should have full insight and
+ * control over its own studio", so the Relay tab becomes **My Studio**, with
+ * Relay as a section inside it, and the studio's own world beside it:
+ *
+ *   Relay      the board, exactly as it was: Floor · Mine · Notes · Network,
+ *              the Now Bar, Capture (features/planner/PlannerView)
+ *   Machines   the floor and what the studio has done to it — everyone reads
+ *              it and leaves machine notes; leaders edit it (phase 3)
+ *   Team       the Team cockpit and this studio's staff (was Relay's Team tab)
+ *   Studio     the studio's own record: details, the cutover date, hours,
+ *              renewal settings, announcements (phase 2)
+ *
+ * Who sees what: everyone at the studio gets Relay and Machines; Team and
+ * Studio are the studio tier — head trainer, studio leader, studio owner AT
+ * THIS STUDIO, or a trainer its leadership granted `managedStudioIds`
+ * (planner/leads.ts → leadsHere, the same answer the rules give). Hiding a
+ * section is a convenience; the rules are the boundary.
+ *
+ * The Relay context (RelayContext) is owned HERE now rather than by
+ * PlannerView, so a card on any section — a machine flag on Team, a note
+ * from Studio — can open Capture or the Context Panel through the same two
+ * doors the board uses. "My Studio is where you run the studio; Operations
+ * is where you look at it" (AJ, Sep 18).
+ *
+ * The view id stays "studio-tasks" and the bottom-bar button is the same one:
+ * notifications already stored in trainers' bells link to it.
+ */
+
+export type MyStudioSection = "relay" | "machines" | "team" | "studio";
+
+const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" }[] = [
+  { id: "relay", label: "Relay", icon: Zap },
+  { id: "team", label: "Team", icon: Users, tier: "leads" },
+];
+
+let rememberedSection: MyStudioSection = "relay";
+
+export interface MyStudioViewProps {
+  authTrainer?: Trainer | null;
+  clients?: Client[];
+  trainers?: Trainer[];
+  /** The Calendar's rows (AppContent's useLiveSchedule): the Now Bar's clock. */
+  schedules?: ScheduleEntry[];
+  /** Today's sessions at this studio (AppContent's useSessions): machine wear. */
+  sessions?: WorkoutSession[];
+  /** The app-wide machine list, the Floor Map's fallback before a roster exists. */
+  machines?: Machine[];
+  onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+}
+
+const NONE: never[] = [];
+
+export function MyStudioView({
+  authTrainer,
+  clients,
+  trainers,
+  schedules,
+  sessions,
+  machines,
+  onOpenClientTask,
+}: MyStudioViewProps) {
+  const { activeStudio, activeStudioId } = useActiveStudio();
+  const canLead = reachesTier(authTrainer, activeStudioId, "leads");
+  const canNetwork = reachesTier(authTrainer, activeStudioId, "network");
+  const sections = SECTIONS.filter((s) => !s.tier || canLead);
+
+  // A request from a client's profile or a notification always lands on the
+  // board (PlannerView reads and clears it); a plain open returns to where
+  // this iPad last was.
+  const [section, setSection] = useState<MyStudioSection>(() =>
+    peekPlannerIntent() ? "relay" : rememberedSection,
+  );
+  // A shared iPad: the last person was a leader on Team; this one is not.
+  const shown: MyStudioSection = sections.some((s) => s.id === section) ? section : "relay";
+
+  const choose = (next: MyStudioSection) => {
+    rememberedSection = next;
+    setSection(next);
+    setPanel(null);
+  };
+
+  const todayKey = studioDateKey(new Date()) ?? "";
+  const today = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  const openClient = onOpenClientTask ? (clientId: string) => onOpenClientTask(clientId) : undefined;
+
+  /* The clock. */
+  const now = useNowContext(schedules ?? NONE, authTrainer, activeStudio?.shiftHours ?? null);
+
+  /* The two doors any card can open. */
+  const [panel, setPanel] = useState<PanelContent | null>(null);
+  const [capture, setCapture] = useState<{ preset: CapturePreset } | null>(null);
+  const openCapture = useCallback((preset: CapturePreset = {}) => setCapture({ preset }), []);
+  const openPanel = useCallback((content: PanelContent) => setPanel(content), []);
+  const closePanel = useCallback(() => setPanel(null), []);
+
+  const relay = useMemo<RelayContextValue>(
+    () => ({
+      studioId: activeStudioId ?? null,
+      studioName: activeStudio?.name ?? "Studio",
+      authTrainer: authTrainer ?? null,
+      uid: auth.currentUser?.uid ?? null,
+      trainers: trainers ?? NONE,
+      clients: clients ?? NONE,
+      schedules: schedules ?? NONE,
+      sessions: sessions ?? NONE,
+      machines: machines ?? NONE,
+      now,
+      canLead,
+      canNetwork,
+      panel,
+      openCapture,
+      openPanel,
+      closePanel,
+      onOpenClientTask,
+    }),
+    [
+      activeStudioId,
+      activeStudio?.name,
+      authTrainer,
+      trainers,
+      clients,
+      schedules,
+      sessions,
+      machines,
+      now,
+      canLead,
+      canNetwork,
+      panel,
+      openCapture,
+      openPanel,
+      closePanel,
+      onOpenClientTask,
+    ],
+  );
+
+  return (
+    <RelayProvider value={relay}>
+      <div className="pl ms" data-section={shown}>
+        <header className="pl__mast">
+          <div className="pl__brand">
+            <Building2 size={19} aria-hidden />
+            <span className="pl__title">My Studio</span>
+          </div>
+
+          <div className="pl__tabs" role="tablist" aria-label="My Studio">
+            {sections.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`ms-tab-${id}`}
+                aria-selected={shown === id}
+                aria-controls="ms-panel"
+                aria-label={label}
+                className="pl__tab"
+                onClick={() => choose(id)}
+              >
+                <Icon size={14} aria-hidden />
+                <span className="pl__tab-label">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          <span className="pl__where">
+            {activeStudio?.name ?? "Studio"} · {today}
+          </span>
+        </header>
+
+        {shown === "relay" && (
+          <PlannerView
+            authTrainer={authTrainer}
+            clients={clients}
+            trainers={trainers}
+            onOpenClientTask={onOpenClientTask}
+          />
+        )}
+
+        {shown === "team" && (
+          <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
+            <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
+          </SectionFrame>
+        )}
+
+        {shown !== "relay" && (
+          <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
+            <Plus size={22} aria-hidden />
+            <span className="cf__label">Capture</span>
+          </button>
+        )}
+
+        <CaptureSheet
+          open={capture !== null}
+          preset={capture?.preset ?? null}
+          onOpenChange={(o) => !o && setCapture(null)}
+        />
+      </div>
+    </RelayProvider>
+  );
+}
+
+/**
+ * A section's frame: the body and, beside it, the Context Panel — a right
+ * column in landscape, a bottom sheet in portrait (relay.css, .pl__frame /
+ * .cp). Relay's own frame is drawn by PlannerView with its tabs and the Now
+ * Bar above; the other sections use this one. The panel's content comes from
+ * the shell's context, so a card on any section can open it.
+ */
+export function SectionFrame({
+  id,
+  labelledBy,
+  children,
+}: {
+  id: string;
+  labelledBy: string;
+  children: ReactNode;
+}) {
+  const { panel, closePanel } = useRelay();
+  return (
+    <div className="pl__frame">
+      <div className="pl__body" role="tabpanel" id={id} aria-labelledby={labelledBy}>
+        {children}
+      </div>
+      <ContextPanel content={panel} onClose={closePanel} />
+    </div>
+  );
+}

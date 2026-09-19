@@ -180,14 +180,14 @@ import { PlannerReminders } from "./features/planner/reminders/PlannerReminders"
 import type { ClientTaskAction } from "./features/studio-tasks/types";
 import { NAME_SEARCH_PROPS } from "./lib/name-search-input";
 /**
- * Relay (Relay round, Sep 2026; the Planner before that) — what was the To-Do
- * screen: the studio hub as its Studio tab, plus My tasks and Notes. The view
- * id is still "studio-tasks", because notifications already stored in
- * trainers' bells link to it.
+ * My Studio (My Studio round, Sep 2026; Relay before that, the Planner and
+ * the To-Do screen before those) — the studio's home: Relay (the board),
+ * Machines, Team and Studio. The view id is still "studio-tasks", because
+ * notifications already stored in trainers' bells link to it.
  */
-const PlannerView = lazy(() =>
-  import("./features/planner").then((m) => ({
-    default: m.PlannerView,
+const MyStudioView = lazy(() =>
+  import("./features/my-studio").then((m) => ({
+    default: m.MyStudioView,
   })),
 );
 
@@ -2185,7 +2185,7 @@ export default function AppContent({
                       );
                     };
                     return (
-                      <PlannerView
+                      <MyStudioView
                         authTrainer={authTrainer}
                         clients={clients}
                         trainers={trainers}
@@ -2472,7 +2472,7 @@ export default function AppContent({
                 active={currentView === "studio-tasks"}
                 onClick={() => setCurrentView("studio-tasks")}
                 icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Relay"
+                label="My Studio"
               />
               <NavButton
                 active={currentView === "calendar"}

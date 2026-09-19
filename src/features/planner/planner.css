@@ -104,6 +104,18 @@
   overflow-wrap: anywhere;
 }
 
+/* My Studio round (Sep 2026): the masthead above is My Studio's — its
+   sections are Relay · Machines · Team · Studio — and Relay's own tabs sit
+   on a second, quieter row under it. Same segmented control, no brand, no
+   border below (the Now Bar draws its own edge). */
+.pl__subbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem 0.375rem;
+  background: var(--st-surface);
+}
+
 @media (max-width: 640px) {
   .pl__mast { gap: 0.5rem; }
   .pl__title { display: none; }

@@ -7,8 +7,10 @@ import type { CapturePreset } from "./capture";
 /**
  * RELAY CONTEXT — what every Relay tab can reach without prop-threading.
  *
- * Round: Relay, Sep 2026. The shell (PlannerView) owns the things that are
- * the same on every tab — who is signed in, where the iPad is, the schedule
+ * Round: Relay, Sep 2026; owned by the My Studio shell since the My Studio
+ * round (features/my-studio/MyStudioView), so the Machines, Team and Studio
+ * sections reach the same doors as the board. The shell owns the things that
+ * are the same on every tab — who is signed in, where the iPad is, the schedule
  * and today's sessions from AppContent, the clock (NowContext, ticking once a
  * minute) — and the two doors any card can open: the Capture sheet and the
  * Context Panel. A lane deep inside the Floor can say "open Capture with this
@@ -38,6 +40,8 @@ export interface RelayContextValue {
   now: NowContext;
   canLead: boolean;
   canNetwork: boolean;
+  /** What the Context Panel is showing, so each section's frame can draw it. */
+  panel: PanelContent | null;
   openCapture: (preset?: CapturePreset) => void;
   openPanel: (content: PanelContent) => void;
   closePanel: () => void;

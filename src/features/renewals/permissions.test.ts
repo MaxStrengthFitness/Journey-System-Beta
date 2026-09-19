@@ -29,6 +29,15 @@ describe("renewal permissions", () => {
     expect(canManageRenewals(admin, "anything")).toBe(true);
   });
 
+  it("counts the grant: a trainer given managedStudioIds leads that studio and no other (My Studio, Sep 2026)", () => {
+    const granted = { ...trainer, managedStudioIds: ["solon"] };
+    expect(leadsStudio(granted, "solon")).toBe(true);
+    expect(canManageRenewals(granted, "solon")).toBe(true);
+    expect(leadsStudio(granted, "westlake")).toBe(false);
+    // The grant is per studio, never a role: nothing about the other studios changes.
+    expect(canTakePartInRenewals(granted, "westlake")).toBe(false);
+  });
+
   it("says no to nobody", () => {
     expect(canTakePartInRenewals(null, "solon")).toBe(false);
     expect(canManageRenewals(leader, null)).toBe(false);
