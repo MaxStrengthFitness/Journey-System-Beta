@@ -1,0 +1,139 @@
+/* ==========================================================================
+   Machine trends — the panel on a machine's Catalog page
+   --------------------------------------------------------------------------
+   Round: the Machine Trends screen, Sep 19 2026.
+
+   No hex values here. The panel sits inside a Catalog foldable, so it borrows
+   that feature's tokens (--cat-*, defined in catalog.tokens.css, which main.tsx
+   already loads for the whole app) and therefore follows the theme for free:
+   the light and dark ladders are both defined there.
+
+   iPad rules that shaped this file:
+     - the tables scroll horizontally inside their own box rather than making
+       the page scroll sideways; a machine with six settings is common;
+     - row height stays at 40px so a value can be tapped without a stylus even
+       though nothing here is interactive yet;
+     - numbers are tabular so a column of loads lines up.
+   ========================================================================== */
+
+.mt__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.mt__lead {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cat-ink-2);
+}
+
+.mt__quiet {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--cat-ink-muted);
+}
+
+.mt__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mt__head {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cat-ink-muted);
+}
+
+.mt__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--cat-border);
+  border-radius: var(--cat-radius);
+  background: var(--cat-surface);
+  /* A card with overflow hidden in a flex column must not be shrunk by a short
+     container — it scrolls instead. Same rule as the machine sheet. */
+  flex: none;
+  overflow: hidden;
+}
+
+.mt__group-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--cat-ink);
+}
+
+.mt__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.mt__table thead th {
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cat-ink-faint);
+  padding: 0.25rem 0.75rem 0.25rem 0;
+  border-bottom: 1px solid var(--cat-border);
+}
+
+.mt__table tbody th,
+.mt__table tbody td {
+  height: 40px;
+  padding: 0 0.75rem 0 0;
+  text-align: left;
+  font-weight: 500;
+  color: var(--cat-ink-2);
+  border-bottom: 1px solid var(--cat-border);
+}
+
+.mt__table tbody th {
+  font-weight: 700;
+  color: var(--cat-ink);
+}
+
+.mt__table tbody tr:last-child th,
+.mt__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The count column carries a bar so the shape of the floor reads at a glance.
+   It is a proportion of the busiest value, never a score. */
+.mt__bar {
+  display: inline-block;
+  width: 3.5rem;
+  height: 0.375rem;
+  margin-right: 0.5rem;
+  border-radius: 999px;
+  background: var(--cat-surface-3);
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.mt__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--cat-live);
+}
+
+.mt__withheld {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--cat-ink-faint);
+}

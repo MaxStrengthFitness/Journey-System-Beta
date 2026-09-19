@@ -59,6 +59,7 @@ import {
   upkeepByMachine,
   upkeepEventsFrom,
 } from "./grouping";
+import { MachineTrendsPanel } from "../machine-trends/MachineTrendsPanel";
 import { MachineArticle } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
 import { StudioNotesCard } from "./StudioNotesCard";
@@ -607,6 +608,9 @@ export function CatalogWikiView({
           upkeepStatus={upkeepStatusById[selected.id]}
           onOpenMachine={openMachine}
           related={related}
+          /* The panel reads machineTrends/{id} only once the foldable is open,
+             and the read is cached per machine for the session. */
+          trends={<MachineTrendsPanel machineId={selected.id} active={isOpen("trends", false)} />}
           academy={{
             onOpenCard:
               card && onOpenAcademy

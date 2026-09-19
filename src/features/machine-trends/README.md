@@ -13,6 +13,28 @@ displayed the result. AJ's actual question was about the machine, not the
 ranking: how do clients compare on the Compound Row, and which chest-pad
 setting do clients around 5'7" tend to use.
 
+## The screen (Sep 19 2026)
+
+`MachineTrendsPanel.tsx`, folded into a machine's Catalog page as **How it's
+used** (`Learning -> Catalog -> a machine`). `present.ts` is the pure half: it
+decides what may be said and the panel only draws it, so the "sentences, not
+scores" rule is testable without a DOM.
+
+Three answers, kept apart on purpose — `unreadable` (the read failed),
+`none` (read fine, nobody trained here) and `thin` (below `MIN_CLIENTS`).
+Collapsing the first two into one empty state is the "unknown is never empty"
+rule being broken quietly.
+
+It names nobody and cannot: there are no client rows in this document. It is
+not a ranking either - values are ordered by how many people use them. Below
+`MIN_CLIENTS` the job writes a null median and the panel prints "fewer than 5".
+
+Cost: one read per machine per app session, through `useMachineTrend.ts`'s
+module cache, and only once the foldable is open.
+
+`studios[]` is deliberately NOT shown. A studio-vs-studio table outside the
+Network tab is the ranking the house rules keep out of a studio's own screens.
+
 ## The document
 
 For each machine with at least one performed set in the window:

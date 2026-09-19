@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   Sparkles,
   Target,
+  TrendingUp,
   UserCog,
   Users,
   Wrench,
@@ -117,6 +118,13 @@ export interface MachineArticleProps {
   extraBadges?: ReactNode;
   /** This studio's comments on the machine, at the foot of the page. */
   comments?: ReactNode;
+  /**
+   * How this machine is used across every MSF studio — a MachineTrendsPanel,
+   * from features/machine-trends. Folded away and closed by default: it is a
+   * look-up, not part of reading the page, and closed means the weekly
+   * document is never read for a trainer who does not ask for it.
+   */
+  trends?: ReactNode;
 
   /** Which foldables are open, persisted per section by the host. */
   isOpen: (id: string, fallback: boolean) => boolean;
@@ -140,6 +148,7 @@ export function MachineArticle({
   notice,
   extraBadges,
   comments,
+  trends,
   isOpen,
   setOpen,
 }: MachineArticleProps) {
@@ -319,6 +328,17 @@ export function MachineArticle({
         <WikiSeeAlso title="Related machines">
           <WikiChips items={related} onPick={onOpenMachine} />
         </WikiSeeAlso>
+      )}
+
+      {trends && (
+        <WikiFoldable
+          id="trends"
+          title="How it's used"
+          icon={<TrendingUp size={13} aria-hidden />}
+          {...fold("trends", false)}
+        >
+          {trends}
+        </WikiFoldable>
       )}
 
       {studioSetup && (
