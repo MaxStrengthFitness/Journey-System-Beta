@@ -14,4 +14,11 @@ export { RoutineBuilder } from "./RoutineBuilder";
 
 export type { MachineHistoryEntry } from "./types";
 
+// The client-history dialogs ("Log past session", the session pop-up) render
+// these three directly and run the analysis themselves, so they stay public.
+export { CoverageStrip } from "./CoverageStrip";
+export { MachinePicker } from "./MachinePicker";
+export { SequenceMachineRow } from "./SequenceMachineRow";
+export { analyzeRoutine } from "./engine";
+
 export * from "./academy";

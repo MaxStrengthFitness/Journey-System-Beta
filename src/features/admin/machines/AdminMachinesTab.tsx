@@ -1,7 +1,7 @@
 import { Dumbbell, Info } from "lucide-react";
 import { AdminMachineCreator } from "./AdminMachineCreator";
-import { StandardSetPanel } from "../../features/admin/catalog/StandardSetPanel";
-import { SubmissionsQueue } from "../../features/admin/catalog/SubmissionsQueue";
+import { StandardSetPanel } from "../catalog/StandardSetPanel";
+import { SubmissionsQueue } from "../catalog/SubmissionsQueue";
 import {
   AdminHeader,
   AdminNotice,

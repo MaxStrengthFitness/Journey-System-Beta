@@ -2558,7 +2558,7 @@ export function WorkoutTrackerView({
               type="button"
               className={cn("jg-sbar__flag", flags.severe && "jg-sbar__flag--severe")}
               onClick={() => setIsShowingFlags(true)}
-              aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientNameDisplay}. Open.`}
+              aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientFirstName(selectedClient)}. Open.`}
               title="What to know before you touch the machine"
             >
               <ShieldAlert size={14} strokeWidth={2.75} aria-hidden="true" />

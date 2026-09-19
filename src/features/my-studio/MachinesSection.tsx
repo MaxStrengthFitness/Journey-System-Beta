@@ -10,7 +10,7 @@ import { OperationType, handleFirestoreError } from "../../lib/firestore-errors"
 import { studioDateKey } from "../../lib/studio-time";
 import type { Trainer } from "../../types";
 import type { MachineCatalogEntry, StudioMachineRosterEntry } from "../../types/machines";
-import { StudioInventoryManager } from "../../components/machines/StudioInventoryManager";
+import { StudioInventoryManager } from "../admin/machines/StudioInventoryManager";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminBadge, AdminButton, AdminEmpty, AdminNotice, AdminPanel, AdminRow, AdminRows, AdminTextarea } from "../admin/primitives";
 import { adoptCatalogMachine, seedStandardSet } from "../admin/equipment/seed";

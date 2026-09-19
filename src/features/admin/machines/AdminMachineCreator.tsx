@@ -25,7 +25,7 @@ import {
   emptyMachineDefinition,
   normalizeMachineDefinition,
 } from "./MachineDefinitionForm";
-import { ConfirmDialog } from "../../features/admin/primitives";
+import { ConfirmDialog } from "../primitives";
 
 /**
  * ADMIN MACHINE CREATOR — the "Machines" tab.

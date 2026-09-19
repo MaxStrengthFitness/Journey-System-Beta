@@ -761,7 +761,6 @@ export function ClientProfileView({
     historyLoadedFor.current = clientId;
     setSessions([]);
     setAllLogs([]);
-    setSessionNotes([]);
     setLastVisibleSession(null);
     setHasMoreSessions(false);
   }, [clientId]);

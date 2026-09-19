@@ -76,7 +76,7 @@ vi.mock("firebase/firestore", () => {
 
 vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 
-import { AdminMachinesTab } from "../../../components/machines/AdminMachinesTab";
+import { AdminMachinesTab } from "../machines/AdminMachinesTab";
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
