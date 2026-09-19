@@ -60,7 +60,7 @@ Log "ship-fluidity $Stage" 'White'
 # ---- where are we -----------------------------------------------------------
 $cur = (& git rev-parse --abbrev-ref HEAD).Trim()
 if ($cur -ne $Branch) { Log "STOP: on '$cur', expected '$Branch'. git checkout $Branch first." 'Red'; exit 1 }
-$dirty = (& git status --porcelain -- src docs firestore.rules CLAUDE.md) | Where-Object { $_ }
+$dirty = (& git status --porcelain --untracked-files=no -- src docs firestore.rules CLAUDE.md) | Where-Object { $_ }
 if ($dirty) { Log "STOP: uncommitted changes under src/docs/rules:" 'Red'; $dirty | ForEach-Object { Log "   $_" 'Red' }; exit 1 }
 & git merge-base --is-ancestor master $Branch 2>$null
 if ($LASTEXITCODE -ne 0) { Log "STOP: master is not an ancestor of $Branch - not a fast-forward. Rebase or merge master in first." 'Red'; exit 1 }
