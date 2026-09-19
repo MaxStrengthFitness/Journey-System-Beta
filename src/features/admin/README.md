@@ -98,3 +98,33 @@ The app runs on 10"–13" iPads on a gym floor. Nothing interactive is under
 40px tall (`--adm-btn` min-height), hover is never the only affordance, and
 `:focus-visible` is always styled — a Bluetooth keyboard is how studio leaders
 do admin work at the desk.
+
+---
+
+## Scope (the Operations round, Sep 19 2026)
+
+A thirteenth axis the audit found after the twelve: **which studio am I
+looking at.** Four screens answered it four ways (a picker inside the tab,
+the app's studio, "every studio to everyone", the Franchise screen). The
+house answer is one control in the shell — **Looking at: this studio · All
+my studios** — read through `useOperationsScope()` (`scope.ts`,
+`scope-context.tsx`):
+
+- **This studio is the app's active studio.** Picking a studio on the bar
+  calls `setActiveStudioId`, so the roster, the schedule and today's
+  sessions a tab already receives as props follow it. A tab never keeps a
+  studio of its own.
+- **All my studios** is `operationsStudios(trainer, studios, networks,
+  isAdmin)` — the company tier every studio, the owner tier the studios
+  that reach them, the studio tier the studios they run. A tab that can
+  aggregate reads `ops.studios` and spans them (Hours, Staff & Roles,
+  Clients, the Monday page); a tab that reads one studio renders
+  `<PickOneStudio what="…" />` under "all" and nothing else.
+- Tabs are keyed on `scopeKey(ops.scope)` in the shell, so a switch
+  remounts them clean. `useOperationsScope()` outside the provider returns
+  a standalone value (the app's studio), never throws.
+- **Operations looks; My Studio edits.** A studio's own settings — details,
+  its day, renewal settings, its notices — have one editor, on My Studio →
+  Studio. An Operations tab that needs one points there
+  (`rememberMyStudioSection` from `my-studio/section-memory.ts`, then the
+  view switch) rather than rendering the form a second time.

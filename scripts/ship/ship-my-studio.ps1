@@ -2,6 +2,11 @@
  ship-my-studio.ps1  -  the My Studio round (Round A of the Operations audit) to master
  SCRIPT-VERSION: v1  (Sep 19 2026)
 
+ SUPERSEDED the same day: Round B (operations-round) branched off my-studio,
+ and scripts/ship/ship-operations.ps1 ships both rounds in one fast-forward,
+ with the index deploy and the watch-list run Round B needs. Use that one
+ unless Round B is being held back on purpose.
+
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-my-studio.ps1 check
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-my-studio.ps1 golive
 

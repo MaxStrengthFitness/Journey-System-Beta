@@ -18,7 +18,7 @@ turns into a gesture has failed.
 | Mid-session | **Remember this** — the second mode of the Notes sheet. One box, one button, no category required (`FordQuickCapture`) |
 | Post-session | The sweep. Unfiled captures come back as cards with four big buttons (`FordSweep`) |
 | Client profile → Life | The hub: what is coming up, what is unfiled, the four pillars (`FordSection`) |
-| Operations → Delight queue | Every gesture the studio owes, across every client, in date order (`DelightQueue`) |
+| Operations → Delight queue | Every gesture the studio owes, across every client, in date order (`DelightQueue`) — with row actions since the Operations round (Sep 19): Take it, Hand it to… (the studio's people, by Auth uid), Done with what happened, Pass; a passed one-off files under "Passed — still open"; a switch shows what is done. Every write is `setGestureStatus`, the client record's own writer |
 
 ## Where the data sits, and why
 

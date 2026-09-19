@@ -471,8 +471,9 @@ studio's record for anything that saves — the Studio section writes the real
 - [ ] **The studio's day.** Move the Mid hour: the Now Bar on the trainer's
   iPad names the new phase within a minute. Team → Standards no longer has
   an hours card — this is its only home.
-- [ ] **Renewals.** The same panel as Operations → Renewals → Settings; change
-  a threshold here and it shows there.
+- [ ] **Renewals.** The studio's renewal settings live here only (since the
+  Operations round): change a threshold and Operations → Renewals' pipeline
+  follows; Operations → Renewals has no Settings view, just the pointer.
 - [ ] **Announcements.** Post a notice: the trainer's bell rings once at THIS
   studio; an iPad signed in at another studio never sees it; there is no
   "Which studio" picker and no "All studios" choice. Take it down: it leaves
@@ -535,6 +536,122 @@ studio's record for anything that saves — the Studio section writes the real
 
 ---
 
+## Round 11 — Operations · *Sep 19 2026 round, branch `operations-round`*
+
+The round is `docs/rounds/2026-09-19-operations.md`. None of it has been on
+an iPad. Sign-ins: a **head trainer** of one studio, a **franchise owner**
+who owns two, an **administrator**. The Monday page and Hours read real
+sessions, so use the studio with the most Journey history.
+
+**At the keyboard first**
+
+- [ ] **Index, rules, suite.** `firebase deploy --only firestore:indexes`
+  (one new `journalEntries` index; the console shows it building). `npm run
+  test:rules` — 116 tests, the last one under "OPERATIONS". *If any fail:*
+  stop, send the output. Then `firebase deploy --only firestore:rules`.
+  `npx tsc --noEmit` (11 on a clean clone) and `$env:TZ="America/New_York";
+  npx vitest run src` (3,372 in 220 files).
+- [ ] **The watch list.** The ship script's golive runs `npx tsx
+  scripts/run-machine-trends.ts --commit` last (by hand: the same line
+  without `--commit` is a dry run whose summary names the studios and the
+  rows it would write). In the console, `studios/{id}/watch/performance`
+  exists for every studio afterwards, some with an empty `rows`.
+
+**The scope**
+
+- [ ] **Looking at.** Open Operations as the head trainer: the bar says the
+  studio's name and offers no "All my studios" (one studio). As the
+  franchise owner: **All my studios** lists their two, and no other. As the
+  administrator: every studio.
+- [ ] **Picking a studio switches the app.** Choose the other studio on the
+  bar: the header's studio name changes, the Hub (back in trainer mode)
+  shows that studio's clients. Back to Operations: still that studio.
+- [ ] **Under "All my studios"**: Monday is the network view (tiles and
+  tappable locations — tap one and the app switches); Hours shows a block
+  per studio and a company total; Renewals, Delight, Insights, Machine fit
+  and Exports each say "pick a studio" with the studios one tap away. No
+  tab has a studio picker of its own any more.
+- [ ] **The Franchise screen is gone** from the bottom bar; nothing it did
+  is missing (its tiles are Monday under "All my studios", its team editor
+  is Staff & Roles, its composer is Announcements).
+
+**Monday**
+
+- [ ] **The four questions, in order**: Renewals · Attendance · Performance ·
+  Pain and incidents. Each has a sentence with numbers or "not enough data
+  yet" / "nothing to report"; every row opens the client's profile.
+- [ ] **Renewals** agrees with the Renewals tab's pipeline (the same
+  "talk now" count).
+- [ ] **Attendance**: a client on a break twice their usual gap shows;
+  a client marked away or lapsed does not; a client with no measured rhythm
+  is not claimed.
+- [ ] **Performance** shows the watch rows the script wrote (machine,
+  weight, reps vs median, day) — or "the weekly read has not run yet"
+  before the script ran.
+- [ ] **Pain**: log a session with a body region at the worst Dial position
+  for a test client: they appear within the day. A critical note on a
+  client shows while it is live. Before the index is built the panel says
+  "part of this could not be read just now" — after, it does not.
+- [ ] **The lines**: Delight (how many gestures this week), Insights (the
+  14-day observations), Machine fit (worth a look), Hours this week — each
+  opens its tab.
+
+**Hours**
+
+- [ ] **This month** shows a column per Monday–Sunday week, a row per
+  trainer, the studio's total, and beside the slot hours the measured floor
+  time — smaller and never added in. Change `sessionMinutes` on My Studio →
+  Studio → The studio's day from 30 to 45: every figure grows by half.
+- [ ] **Log a past session** for a date earlier this month: it appears in
+  that week's column (not today's). One logged for last month does not
+  appear this month; go back a month and it does.
+- [ ] **A session with no trainer** is counted under "unattributed" and not
+  in any row; an in-progress one under "open".
+
+**Catalog** (as the administrator; as the franchise owner it is read-only —
+no queue, no switches, no New machine)
+
+- [ ] **The standard set** is a numbered list in order. Move one up: the
+  list reorders and a new floor's "Adopt the MSF standard" follows that
+  order. Take one out: it asks first; the floor that has it keeps it; it
+  shows under "In the catalog, not in the standard" and under "No longer
+  in the standard" on My Studio → Machines. Put it back in.
+- [ ] **Submitted by studios**: the offer made in Round 10 is waiting. Open
+  it: the catalog id is suggested from the name. **Publish**: the machine is
+  in the catalog outside the standard set, the studio's row on My Studio →
+  Machines reads "published", and the panel prints the migration command.
+  Run it from the PC (dry run, then `--commit`): the studio's floor now
+  shows the catalog machine, with its history.
+- [ ] **Pass** on a second offer with a note: the studio's row reads
+  "corporate passed" with the note.
+- [ ] **Retire** asks every time, saying how many floors have the machine;
+  Cancel changes nothing. Restore does not ask.
+
+**Delight**
+
+- [ ] A one-off gesture whose date has passed is at the top under **Passed —
+  still open**. **Take it**: the row shows your name and "Planned". **Hand
+  it to…** lists this studio's people only; pick one: their name. **Done**
+  asks what happened; the sentence shows on the row once "Show what is done"
+  is on, and on the client's Life section. **Pass** removes it from the
+  list.
+
+**The fix pile**
+
+- [ ] **Routines**: Delete asks first. **Announcements**: Take down asks
+  first, naming the audience. **Insights** with a studio the sign-in cannot
+  read (an owner on a studio outside their list, in the browser): "could not
+  be loaded", not "no sessions were recorded".
+- [ ] **Exports** has no CSV importer; the historical-migration panel says
+  where past history goes instead.
+- [ ] **Renewals** has Pipeline and Outcomes only; the notice says how many
+  Mindbody names are waiting and **Open My Studio** lands on My Studio →
+  Studio.
+- [ ] **Old iPad (iPadOS 15/16) cold load**: Operations draws, every tab,
+  both scopes.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -567,4 +684,7 @@ Screenshot:
 | 6 — Performance | 4 | | |
 | 7 — Cleanup decisions | 9 | | |
 | 8 — History editing (Sep 17) | 12 | | |
-| **Total** | **115** | | |
+| 9 — Machine fit (Sep 17) | 19 | | |
+| 10 — My Studio (Sep 18–19) | 24 | | |
+| 11 — Operations (Sep 19) | 24 | | |
+| **Total** | **182** | | |

@@ -40,7 +40,8 @@ AJ, Sep 10 2026: **studio leaders and head trainers** run each studio's operatio
 ## What each role reaches today
 
 - **Operations (admin) mode** — the App Mode switch in the profile menu and the "Go to Operations" button — is available to studio leaders and above. Life Transformers never enter it, so anything a trainer needs has to appear on the screens they already use.
-- Inside the dashboard, most tabs are open to everyone who can reach it. Staff & Roles, Catalog, Exports and Announcements need a franchise owner or administrator. Mindbody, Limbo, Bug Reports and System Tools are for system administrators only.
+- Inside the dashboard, most tabs are open to everyone who can reach it. Staff & Roles, All locations, Catalog, Exports and Announcements need a franchise owner or administrator (a franchise owner reads the Catalog; only administrators change it or decide the studios' submissions). Mindbody, Limbo, Bug Reports and System Tools are for system administrators only.
+- **How far Operations sees** (the Operations round, Sep 19 2026): one control — **Looking at: this studio · All my studios** — that every tab reads. "This studio" is the studio the app is in. "All my studios" is the reader's list: the company tier every studio; the owner tier the studios they own or whose network they own; the studio tier the studios they run (the grant counts here, too). Hours, Staff & Roles, Clients and the Monday page span the list; Renewals, Delight, Insights, Machine fit and Exports read one studio at a time and offer the list. A studio's own settings — its details, its day, its renewal settings, its notices — are edited on My Studio → Studio only; Operations shows and points, it does not edit them twice.
 - **My Studio** (the bottom-bar tab, Sep 18) is where a studio is run: Relay for everyone at the studio; Machines for everyone to read and leave notes, leaders to change; Team and Studio for the studio tier. **A studio's own record (`studios/{id}`) is written by its own leaders, franchise owners and administrators** — any trainer's iPad may write only the schedule sync's lease fields. A studio's leaders may also post announcements to their own studio; company-wide notices stay with the Operations tab's people.
 - The Firestore rules are the real enforcement; hiding a tab is only a convenience.
 
@@ -54,7 +55,7 @@ AJ, Sep 10 2026: **studio leaders and head trainers** run each studio's operatio
 | The studio's renewal pipeline | — | ✓ | ✓ |
 | Set a renewal's stage, who is leading it, the outcome | — | ✓ | ✓ |
 | Per-trainer renewal rates | — | ✓ | ✓ |
-| Change the studio's renewal settings and package prices | — | ✓ | ✓ |
+| Change the studio's renewal settings and package prices (My Studio → Studio → Renewals since Sep 19) | — | ✓ | ✓ |
 | The Renewal Brief, with the package-options table | — | ✓ | ✓ |
 | Record or correct an outcome (renewed, upgraded, pay-as-you-go, lost…) | — | ✓ | ✓ |
 
