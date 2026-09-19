@@ -1,5 +1,7 @@
 /**
- * Studios — the whole registry on one screen.
+ * All locations — the whole registry on one screen. (Operations round, Sep
+ * 2026: the tab is the owner tier's and the company's; a studio's leaders
+ * run their own record from My Studio → Studio, on the same form.)
  *
  * Replaces AdminStudioManager (1,723 lines, two sub-tabs, uncontrolled forms,
  * and copy like "Cross-Studio Infrastructure & Role Mapping Matrix"). The
@@ -184,8 +186,8 @@ export function AdminStudiosTab({
     <AdminScreen>
       <AdminHeader
         icon={<Building2 className="w-5 h-5" />}
-        title="Studios"
-        subtitle="Every location, its Mindbody link and its franchise. Set the Site ID here and bookings file themselves against the right studio."
+        title="All locations"
+        subtitle="The registry: every location, its Mindbody link and its franchise. A studio's own record — its hours, cutover date, renewals and notices — is run from My Studio → Studio by its leaders."
         actions={
           <AdminBadge tone="neutral">
             {studios.length} {studios.length === 1 ? "location" : "locations"}

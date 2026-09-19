@@ -1828,7 +1828,6 @@ export type View =
   | "client-directory"
   | "chart-importer"
   | "admin-dashboard"
-  | "franchise-dashboard"
   | "mindbody";
 
 export interface AuditLogEntry {

@@ -247,7 +247,6 @@ export {
   type ReportView,
 } from "./bugs/reportView";
 
-export { FranchiseHub } from "./franchise/FranchiseHub";
 export {
   attentionCounts,
   isSuperAdminRole,

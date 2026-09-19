@@ -42,6 +42,7 @@ import {
   handleFirestoreError,
 } from "../../../lib/firestore-errors";
 import { MAX_SESSIONS_IN_RANGE, fetchSessionsInRange } from "../sessions-range";
+import { PickOneStudio, useOperationsScope } from "../scope-context";
 import {
   AdminButton,
   AdminEmpty,
@@ -101,9 +102,10 @@ interface Props {
 }
 
 export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
-  const [studioId, setStudioId] = useState<string | null>(
-    activeStudioId ?? studios[0]?.id ?? null,
-  );
+  // The Operations scope decides the studio (Operations round, Sep 2026);
+  // this tab reads one at a time, so "All my studios" is a prompt.
+  const ops = useOperationsScope();
+  const studioId = activeStudioId ?? ops.studioId;
   const [days, setDays] = useState<number>(30);
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -177,19 +179,6 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         subtitle="What this window says about the floor, and what to do about it."
         actions={
           <div className="adm-ins-controls">
-            <AdminField label="Studio" htmlFor="ins-studio">
-              <AdminSelect
-                id="ins-studio"
-                value={studioId ?? ""}
-                onChange={(e) => setStudioId(e.target.value || null)}
-              >
-                {studios.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </AdminSelect>
-            </AdminField>
             <AdminField label="Window" htmlFor="ins-window">
               <AdminSelect
                 id="ins-window"
@@ -207,6 +196,10 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         }
       />
 
+      {ops.scope.kind === "all" && !studioId ? (
+        <PickOneStudio what="Insights" />
+      ) : (
+      <>
       {truncated && (
         <AdminNotice tone="warn">
           More than {MAX_SESSIONS} sessions fall in this window, so these
@@ -323,6 +316,8 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
           </div>
         )}
       </AdminPanel>
+      </>
+      )}
     </AdminScreen>
   );
 }

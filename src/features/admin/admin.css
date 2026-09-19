@@ -1412,6 +1412,32 @@
   color: var(--adm-ink-muted);
 }
 
+/* A location the reader can switch the app to is a button (Operations
+   round): the whole row, 44px at least, text kept left — a <button> centres
+   its own text, so the alignment lives here, not in a utility class. */
+.adm-fr-row--tappable {
+  padding: 0;
+}
+
+.adm-fr-row__btn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.adm-fr-row__btn:hover {
+  background: var(--adm-surface-2);
+}
+
 /* ==================================================================== *
  * INSIGHTS (Section 6)
  * ==================================================================== */
@@ -1950,4 +1976,46 @@
   font-size: 11px;
   line-height: 1.5;
   color: var(--adm-ink-muted);
+}
+
+/* ==================================================================== *
+ * THE OPERATIONS SCOPE (Operations round, Sep 2026)
+ * ==================================================================== */
+
+/* One row above every tab: "Looking at  [Solon ▾]". Reads as part of the
+   shell, not of the tab, so it is quieter than a tab's own header. */
+.adm-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface-2);
+}
+
+.adm-scope__icon {
+  color: var(--adm-ink-muted);
+  flex: none;
+}
+
+.adm-scope__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+  white-space: nowrap;
+}
+
+.adm-scope__select {
+  max-width: 260px;
+}
+
+.adm-scope__pick {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }

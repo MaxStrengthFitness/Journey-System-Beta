@@ -16,7 +16,8 @@
 import React, { useMemo, useState } from "react";
 import { BarChart3, CalendarClock, ListChecks, SlidersHorizontal } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
-import { AdminHeader, AdminNotice, AdminScreen, AdminSelect } from "../primitives";
+import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { PickOneStudio, useOperationsScope } from "../scope-context";
 import { RenewalSettingsPanel } from "./RenewalSettingsPanel";
 import { RenewalsPipeline } from "./RenewalsPipeline";
 import { RenewalBrief } from "./RenewalBrief";
@@ -43,12 +44,11 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
     () => studios.filter((s) => s.id && canManageRenewals(authTrainer, s.id)),
     [studios, authTrainer],
   );
-  const [picked, setPicked] = useState<string | null>(null);
-  const studioId =
-    picked ??
-    (activeStudioId && manageable.some((s) => s.id === activeStudioId)
-      ? activeStudioId
-      : manageable[0]?.id ?? null);
+  // The Operations scope decides the studio (Operations round, Sep 2026):
+  // the studio the app is in, when the reader runs it. "All my studios" is
+  // a prompt — a pipeline is one studio's.
+  const ops = useOperationsScope();
+  const studioId = activeStudioId && manageable.some((s) => s.id === activeStudioId) ? activeStudioId : null;
   const studio = studios.find((s) => s.id === studioId) ?? null;
 
   const { settings, saved, loading, error } = useRenewalSettings(studioId);
@@ -74,37 +74,21 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
     [trainers, studioId],
   );
 
-  const pickStudio = (id: string | null) => {
-    setPicked(id);
-    setBriefClient(null);
-  };
-
   return (
     <AdminScreen>
       <AdminHeader
         icon={<CalendarClock className="w-5 h-5" />}
         title="Renewals"
         subtitle="Get ahead of renewals: who is coming up, and when your studio starts the conversation."
-        actions={
-          manageable.length > 1 ? (
-            <AdminSelect
-              aria-label="Studio"
-              value={studioId ?? ""}
-              onChange={(e) => pickStudio(e.target.value || null)}
-            >
-              {manageable.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </AdminSelect>
-          ) : undefined
-        }
       />
 
-      {!studio || !studioId ? (
+      {ops.scope.kind === "all" ? (
+        <PickOneStudio what="Renewals" />
+      ) : !studio || !studioId ? (
         <AdminNotice tone="info">
-          Renewals are run by each studio's leaders. Your account doesn't lead a studio yet.
+          {manageable.length === 0
+            ? "Renewals are run by each studio's leaders. Your account doesn't lead a studio yet."
+            : "Renewals are run by each studio's leaders. Switch to a studio you run to see its pipeline."}
         </AdminNotice>
       ) : (
         <>

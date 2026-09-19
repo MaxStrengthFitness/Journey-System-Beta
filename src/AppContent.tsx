@@ -34,7 +34,6 @@ import {
   PlayCircle,
   ChevronDown,
   ChevronUp,
-  Network,
   Building2,
   Search,
   RefreshCw,
@@ -158,12 +157,6 @@ const AdminDashboardView = lazy(() =>
     default: m.AdminDashboardView,
   })),
 );
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const FranchiseDashboardView = lazy(() =>
-  import("./components/FranchiseDashboardView").then((m) => ({
-    default: m.FranchiseDashboardView,
-  })),
-);
 import { CreateClientModal } from "./components/CreateClientModal";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const ClientProgressReportView = lazy(() =>
@@ -203,7 +196,6 @@ const LearningView = lazy(() =>
 import { MaxStrengthLogo } from "./components/MaxStrengthLogo";
 import { ThemeToggle } from "./components/ThemeToggle";
 import {
-  isAdmin as checkIsAdmin,
   isOwner,
   isStudioLeader,
 } from "./lib/permissions";
@@ -2297,14 +2289,6 @@ export default function AppContent({
                       authTrainer={authTrainer}
                     />
                   )}
-                {currentView === "franchise-dashboard" && authTrainer && (
-                  <FranchiseDashboardView
-                    authTrainer={authTrainer}
-                    allStudios={studios}
-                    allTrainers={trainers}
-                    networks={networks}
-                  />
-                )}
                 {currentView === "admin-dashboard" && authTrainer && (
                   <AdminDashboardView
                     authTrainer={authTrainer}
@@ -2492,18 +2476,13 @@ export default function AppContent({
                 activeBg="bg-orange-500/10 dark:bg-orange-600/10"
                 activeIndicator="bg-orange-500 dark:bg-orange-600"
               />
-              {(isOwner(authTrainer) ||
-                checkIsAdmin(authTrainer, user.email || undefined)) && (
-                <NavButton
-                  active={currentView === "franchise-dashboard"}
-                  onClick={() => setCurrentView("franchise-dashboard" as any)}
-                  icon={<Network className="w-5 h-5 sm:w-6 sm:h-6" />}
-                  label="Franchise"
-                  activeColor="text-indigo-500"
-                  activeBg="bg-indigo-500/10 dark:bg-indigo-600/10"
-                  activeIndicator="bg-indigo-500 dark:bg-indigo-600"
-                />
-              )}
+              {/*
+                The Franchise screen that sat here (owners and admins) folded
+                into Operations on Sep 19 2026: its tiles and locations are the
+                Overview under "All my studios", its team editor was a second
+                Staff & Roles, its composer a second Announcements. One
+                dashboard, one scope.
+              */}
               {/*
                 "Customize Studio" used to be a third NavButton here. It went to
                 `trainer-hub` - the same place the gear in the header goes, from

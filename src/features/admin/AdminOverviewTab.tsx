@@ -58,10 +58,14 @@ import {
   AdminStatTile,
   AdminTiles,
 } from "./primitives";
+import { NetworkOverview } from "./network/NetworkOverview";
+import { useOperationsScope } from "./scope-context";
 
 export interface AdminOverviewTabProps {
   authTrainer: Trainer;
   studios: Studio[];
+  /** Everyone, for the network view's people counts (Operations round). */
+  trainers?: Trainer[];
   activeStudioId: string | null;
   /** Everything the live schedule hook has loaded — today plus a week ahead. */
   schedules: ScheduleEntry[];
@@ -84,6 +88,7 @@ const PREVIEW_ROWS = 6;
 export function AdminOverviewTab({
   authTrainer,
   studios,
+  trainers = [],
   activeStudioId,
   schedules,
   sessions,
@@ -153,6 +158,22 @@ export function AdminOverviewTab({
   const liveLane = lanes.find((l) => l.live || l.nowWith);
   const maxDayLoad = Math.max(1, ...week.map((d) => d.booked));
 
+  // Under "All my studios" (Operations round, Sep 2026) the Overview is the
+  // network view — the Franchise dashboard's tiles and locations, folded in.
+  const ops = useOperationsScope();
+  if (ops.scope.kind === "all") {
+    return (
+      <AdminScreen>
+        <AdminHeader
+          icon={<Activity className="w-5 h-5" />}
+          title="All my studios"
+          subtitle={`${ops.studios.length} studios. Is anything wrong at any of them this morning?`}
+        />
+        <NetworkOverview studios={ops.studios} trainers={trainers} now={now.getTime()} />
+      </AdminScreen>
+    );
+  }
+
   return (
     <AdminScreen>
       <AdminHeader
@@ -169,7 +190,7 @@ export function AdminOverviewTab({
           onManageStudios && (
             <AdminButton variant="quiet" onClick={onManageStudios}>
               <Settings className="w-3.5 h-3.5" />
-              Manage studios
+              All locations
             </AdminButton>
           )
         }

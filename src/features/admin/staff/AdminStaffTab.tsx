@@ -32,12 +32,12 @@ import {
   AdminPanel,
   AdminRows,
   AdminScreen,
-  AdminSelect,
   AdminStatTile,
   AdminTiles,
 } from "../primitives";
 import { ADMIN_TIER_ROLES, OWNER_TIER_ROLES, STATE_BADGE, StaffEditor } from "./StaffEditor";
 import { useStaffRoster } from "./useStaffRoster";
+import { useOperationsScope } from "../scope-context";
 
 export interface AdminStaffTabProps {
   trainers: Trainer[];
@@ -55,17 +55,21 @@ export function AdminStaffTab({
   onRefresh,
 }: AdminStaffTabProps) {
   const [search, setSearch] = useState("");
-  const [scope, setScope] = useState<"studio" | "all">("studio");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const activeStudio = studios.find((s) => s.id === activeStudioId) ?? null;
+  // The Operations scope decides the studio (Operations round, Sep 2026):
+  // the studio the app is in, or everyone at all the reader's studios.
+  const ops = useOperationsScope();
+  const scopedStudioId = activeStudioId ?? ops.studioId;
+  const scope = scopedStudioId ? "studio" : "all";
+  const activeStudio = studios.find((s) => s.id === scopedStudioId) ?? null;
 
   // The merge of trainers, Mindbody's staff list and the pending requests —
   // the same hook My Studio → Team uses (My Studio round, Sep 2026).
   const { rows, summary, staffStatus } = useStaffRoster({
     trainers,
     studio: activeStudio,
-    studioId: scope === "studio" ? activeStudioId : null,
+    studioId: scope === "studio" ? scopedStudioId : null,
   });
 
   const visible = useMemo(() => {
@@ -83,18 +87,10 @@ export function AdminStaffTab({
       <AdminHeader
         icon={<CircleUserRound className="w-5 h-5" />}
         title="Staff & roles"
-        subtitle="Mindbody decides who is on the schedule. Approving someone here is what gives them an account and a role."
-        actions={
-          <AdminSelect
-            value={scope}
-            onChange={(e) => setScope(e.target.value as "studio" | "all")}
-            style={{ width: "auto" }}
-          >
-            <option value="studio">
-              {activeStudio?.name ?? "This studio"} only
-            </option>
-            <option value="all">Everyone in the network</option>
-          </AdminSelect>
+        subtitle={
+          scope === "studio"
+            ? `${activeStudio?.name ?? "This studio"} only. Mindbody decides who is on the schedule; approving someone here is what gives them an account and a role.`
+            : "Everyone at all your studios. Mindbody decides who is on the schedule; approving someone here is what gives them an account and a role."
         }
       />
 
@@ -191,7 +187,7 @@ export function AdminStaffTab({
               key={selected.key}
               row={selected}
               studios={studios}
-              activeStudioId={activeStudioId}
+              activeStudioId={scopedStudioId}
               // An administrator hands out anything; a franchise owner the
               // studio and owner tiers — never an administrator (audit fix,
               // Sep 2026: a new hire could be approved straight in as Admin).

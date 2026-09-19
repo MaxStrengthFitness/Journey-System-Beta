@@ -11,6 +11,19 @@ import { createRoot, type Root } from "react-dom/client";
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "owner" } } }));
 
+vi.mock("../../../ActiveStudioContext", () => ({
+  useActiveStudio: () => ({
+    activeStudioId: "solon",
+    activeStudio: { id: "solon", name: "Solon" },
+    availableStudios: [
+      { id: "solon", name: "Solon" },
+      { id: "westlake", name: "Westlake" },
+    ],
+    setActiveStudioId: () => {},
+    isChangingStudio: false,
+  }),
+}));
+
 const sessionsByStudio: Record<string, unknown[]> = {
   solon: [
     { trainerId: "t1", trainerInitials: "AJ", status: "Completed", date: "2026-09-14", hostedAtStudioId: "solon" },
@@ -41,6 +54,7 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { AdminHoursTab } from "./AdminHoursTab";
+import { OperationsScopeProvider, ScopeBar } from "../scope-context";
 import type { Studio, Trainer } from "../../../types";
 
 const studios = [
@@ -52,7 +66,7 @@ const trainers = [
   { id: "t2", fullName: "Lee Brown", initials: "LB" },
   { id: "t3", fullName: "Mo Khan", initials: "MK" },
 ] as Trainer[];
-const owner = { id: "owner", fullName: "Own Er", initials: "OE", role: "Owner", primaryHomeStudioId: "solon", accessibleStudioIds: [] } as unknown as Trainer;
+const owner = { id: "owner", fullName: "Own Er", initials: "OE", role: "Owner", primaryHomeStudioId: "solon", accessibleStudioIds: [], ownedStudioIds: ["solon", "westlake"] } as unknown as Trainer;
 const leader = { id: "t1", fullName: "AJ Jurgens", initials: "AJ", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
 
 let root: Root | null = null;
@@ -65,7 +79,10 @@ async function mount(who: Trainer, isAdmin = false) {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminHoursTab authTrainer={who} studios={studios} trainers={trainers} activeStudioId="solon" isAdmin={isAdmin} />
+        <OperationsScopeProvider authTrainer={who} studios={studios} networks={[]} isAdmin={isAdmin} activeStudioId="solon">
+          <ScopeBar />
+          <AdminHoursTab trainers={trainers} />
+        </OperationsScopeProvider>
       </StrictMode>,
     );
   });
@@ -94,14 +111,14 @@ describe("Operations → Hours", () => {
     // 3 completed × 30 min = 1.5 h; the open one is reported, not counted.
     expect(text).toContain("1.5 h");
     expect(text).toContain("1 session is still open");
-    // A head trainer of one studio gets no "All my studios".
-    expect(el.querySelector("option[value=all]")).toBeNull();
+    // A head trainer of one studio gets no scope bar at all.
+    expect(el.querySelector("#ops-scope")).toBeNull();
   });
 
   it("gives an owner every studio, with a company total that adds the studios up", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-19T15:00:00Z") });
     const el = await mount(owner);
-    const select = el.querySelector<HTMLSelectElement>("#hrs-studio")!;
+    const select = el.querySelector<HTMLSelectElement>("#ops-scope")!;
     expect(select.querySelector("option[value=all]")).not.toBeNull();
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;

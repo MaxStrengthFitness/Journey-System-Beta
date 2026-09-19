@@ -23,6 +23,7 @@ import { AdminInsightsTab } from "../features/admin/insights/AdminInsightsTab";
 import { AdminRenewalsTab } from "../features/admin/renewals/AdminRenewalsTab";
 import { AdminMachineFitTab } from "../features/admin/machine-fit/AdminMachineFitTab";
 import { AdminHoursTab } from "../features/admin/hours/AdminHoursTab";
+import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperationsScope } from "../features/admin/scope-context";
 import { DelightQueue } from "../features/ford/DelightQueue";
 
 interface Props {
@@ -68,7 +69,27 @@ interface Props {
   onOpenStudioTasks?: () => void;
 }
 
-export function AdminDashboardView({
+/**
+ * The Operations screen. The scope — "this studio" (the studio the app is
+ * in) or "all my studios" — is decided once here and read by every tab
+ * (Operations round, Sep 2026; features/admin/scope-context.tsx). The
+ * provider needs the active-studio context, so the shell is a child of it.
+ */
+export function AdminDashboardView(props: Props) {
+  return (
+    <OperationsScopeProvider
+      authTrainer={props.authTrainer}
+      studios={props.studios}
+      networks={props.networks}
+      isAdmin={props.isAdmin}
+      activeStudioId={props.activeStudioId ?? null}
+    >
+      <AdminDashboardShell {...props} />
+    </OperationsScopeProvider>
+  );
+}
+
+function AdminDashboardShell({
   authTrainer,
   studios,
   networks,
@@ -84,13 +105,17 @@ export function AdminDashboardView({
   onUpdateStudio,
   onUpdateClient,
   onNavigateProfile,
-  activeStudioId = null,
   onSeedDemoClient,
   onRestoreMachines,
   onReorderTrainers,
   onAppCleanse,
   onOpenStudioTasks,
 }: Props) {
+  // "This studio" is the studio the app is in; "All my studios" is null here
+  // and the tabs that can span read the list from the scope themselves.
+  const ops = useOperationsScope();
+  const activeStudioId = ops.studioId;
+  const tabKey = scopeKey(ops.scope);
   type AdminTab =
     | "metrics"
     | "renewals"
@@ -115,6 +140,10 @@ export function AdminDashboardView({
 
   const canSee = (id: AdminTab): boolean => {
     if (id === "users") return isFranchiseOwnerOrAdmin;
+    // The registry — create a location, franchises, the Mindbody link,
+    // delete. A studio's own record is My Studio → Studio (My Studio round),
+    // so this is the owner tier's and the company's (Operations round).
+    if (id === "studios") return isFranchiseOwnerOrAdmin;
     // Site id, location id, the webhook and the schedule pull: these
     // credentials configure the whole Mindbody link. The separate
     // "Integrations" tab folded in here in Round 2 Phase 2 - it was the same
@@ -168,7 +197,7 @@ export function AdminDashboardView({
         // across every client, in date order. Sits beside Renewals because it
         // answers a leader's Monday question in the same way.
         { id: "delight", label: "Delight queue", icon: <Gift className="w-4 h-4" /> },
-        { id: "studios", label: "Studios", icon: <Building2 className="w-4 h-4" /> },
+        { id: "studios", label: "All locations", icon: <Building2 className="w-4 h-4" /> },
         { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
         { id: "clients", label: "Clients", icon: <Users className="w-4 h-4" /> },
         { id: "machines", label: "Catalog", icon: <Dumbbell className="w-4 h-4" /> },
@@ -290,15 +319,18 @@ export function AdminDashboardView({
       </div>
 
       <div className="adm-shell__main">
+        <ScopeBar />
         {activeTab === "metrics" && (
           <AdminOverviewTab
+            key={tabKey}
             authTrainer={authTrainer}
             studios={studios}
+            trainers={trainers}
             activeStudioId={activeStudioId}
             schedules={schedules}
             sessions={sessions}
             clients={clients}
-            onManageStudios={() => setActiveTab("studios")}
+            onManageStudios={isFranchiseOwnerOrAdmin ? () => setActiveTab("studios") : undefined}
             onOpenStudioTasks={onOpenStudioTasks}
             onNavigateProfile={onNavigateProfile}
           />
@@ -316,15 +348,21 @@ export function AdminDashboardView({
                 detail and say what you would do about it.
               </p>
             </div>
-            <DelightQueue
-              studioId={activeStudioId ?? null}
-              clients={clients}
-              onOpenClient={onNavigateProfile}
-            />
+            {ops.scope.kind === "all" ? (
+              <PickOneStudio what="The Delight queue" />
+            ) : (
+              <DelightQueue
+                key={tabKey}
+                studioId={activeStudioId ?? null}
+                clients={clients}
+                onOpenClient={onNavigateProfile}
+              />
+            )}
           </div>
         )}
         {activeTab === "renewals" && (
           <AdminRenewalsTab
+            key={tabKey}
             authTrainer={authTrainer}
             studios={studios}
             activeStudioId={activeStudioId ?? null}
@@ -334,6 +372,7 @@ export function AdminDashboardView({
         )}
         {activeTab === "users" && (
           <AdminStaffTab
+            key={tabKey}
             trainers={trainers}
             studios={studios}
             activeStudioId={activeStudioId}
@@ -343,6 +382,7 @@ export function AdminDashboardView({
         )}
         {activeTab === "clients" && (
           <AdminClientsTab
+            key={tabKey}
             studios={studios}
             activeStudioId={activeStudioId}
             onNavigateProfile={onNavigateProfile}
@@ -362,13 +402,15 @@ export function AdminDashboardView({
         {activeTab === "machines" && <AdminMachinesTab isAdmin={isAdmin} />}
         {activeTab === "routines" && (
           <AdminRoutineTemplatesTab
-            studios={studios}
+            studios={ops.readable}
+            activeStudioId={activeStudioId}
             authTrainer={authTrainer}
             isAdmin={isAdmin}
           />
         )}
         {activeTab === "insights" && (
           <AdminInsightsTab
+            key={tabKey}
             studios={studios}
             trainers={trainers}
             activeStudioId={activeStudioId ?? null}
@@ -376,6 +418,7 @@ export function AdminDashboardView({
         )}
         {activeTab === "machine-fit" && (
           <AdminMachineFitTab
+            key={tabKey}
             machines={machines}
             clients={clients}
             studios={studios}
@@ -385,13 +428,7 @@ export function AdminDashboardView({
           />
         )}
         {activeTab === "hours" && (
-          <AdminHoursTab
-            authTrainer={authTrainer}
-            studios={studios}
-            trainers={trainers}
-            activeStudioId={activeStudioId ?? null}
-            isAdmin={isAdmin}
-          />
+          <AdminHoursTab key={tabKey} trainers={trainers} />
         )}
         {/* "retention" tab removed — see the commented import at the top. */}
         {activeTab === "mindbody" && (
@@ -414,8 +451,10 @@ export function AdminDashboardView({
         )}
         {/* "integrations" folded into the Mindbody tab above, Round 2 Phase 2. */}
 
-        {activeTab === "data" && (
+        {activeTab === "data" && ops.scope.kind === "all" && <PickOneStudio what="Exports" />}
+        {activeTab === "data" && ops.scope.kind !== "all" && (
           <AdminDataReportsTab
+            key={tabKey}
             trainers={trainers}
             clients={clients}
             studios={studios}

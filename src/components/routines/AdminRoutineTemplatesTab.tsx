@@ -50,9 +50,12 @@ type SubTab = "company" | "studio";
 
 export function AdminRoutineTemplatesTab({
   studios,
+  activeStudioId = null,
   authTrainer,
 }: {
   studios: Studio[];
+  /** The Operations scope's studio (Operations round): the default for the studio tier. */
+  activeStudioId?: string | null;
   authTrainer?: Trainer | null;
   isAdmin?: boolean;
 }) {
@@ -92,6 +95,7 @@ export function AdminRoutineTemplatesTab({
   const [pickedStudioId, setPickedStudioId] = useState<string | null>(null);
   const home = authTrainer?.primaryHomeStudioId;
   const fallbackStudioId =
+    (activeStudioId && sortedStudios.some((s) => s.id === activeStudioId) ? activeStudioId : null) ??
     (home && sortedStudios.some((s) => s.id === home) ? home : null) ??
     sortedStudios[0]?.id ??
     null;

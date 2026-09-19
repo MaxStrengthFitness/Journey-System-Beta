@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { Studio, Trainer } from "../../types";
-import { initialScope, operationsStudios, studiosInScope } from "./scope";
+import type { FranchiseNetwork, Studio, Trainer } from "../../types";
+import { operationsStudios, studiosInScope } from "./scope";
 
 const studios = [
-  { id: "westlake", name: "Westlake" },
+  { id: "westlake", name: "Westlake", ownerId: "own-w" },
   { id: "solon", name: "Solon" },
   { id: "strongsville", name: "Strongsville" },
+  { id: "willoughby", name: "Willoughby" },
 ] as Studio[];
+
+const networks = [{ id: "n1", name: "East", ownerIds: ["own-e"], studioIds: ["solon", "willoughby"] }] as FranchiseNetwork[];
 
 const trainer = (extra: Partial<Trainer>): Trainer =>
   ({
@@ -21,31 +24,46 @@ const trainer = (extra: Partial<Trainer>): Trainer =>
   }) as Trainer;
 
 describe("operationsStudios — what a reader may look at", () => {
-  it("gives the company and owner tiers every studio, by name", () => {
-    expect(operationsStudios(trainer({ role: "Owner" }), studios).map((s) => s.id)).toEqual(["solon", "strongsville", "westlake"]);
-    expect(operationsStudios(trainer({}), studios, true)).toHaveLength(3);
+  it("gives the company tier every studio, by name", () => {
+    expect(operationsStudios(trainer({ role: "Founder" }), studios, networks).map((s) => s.id)).toEqual([
+      "solon",
+      "strongsville",
+      "westlake",
+      "willoughby",
+    ]);
+    expect(operationsStudios(trainer({}), studios, networks, true)).toHaveLength(4);
+  });
+
+  it("gives an owner the studios that reach them — ownerId, ownedStudioIds, a network they own", () => {
+    expect(operationsStudios(trainer({ id: "own-w", role: "Owner" }), studios, networks).map((s) => s.id)).toEqual(["westlake"]);
+    expect(operationsStudios(trainer({ id: "own-e", role: "FranchiseOwner" }), studios, networks).map((s) => s.id)).toEqual([
+      "solon",
+      "willoughby",
+    ]);
+    expect(
+      operationsStudios(trainer({ role: "Owner", ownedStudioIds: ["strongsville"] }), studios, networks).map((s) => s.id),
+    ).toEqual(["strongsville"]);
   });
 
   it("gives a studio leader the studios they run, and the grant counts", () => {
-    expect(operationsStudios(trainer({ role: "HeadTrainer" }), studios).map((s) => s.id)).toEqual(["solon"]);
+    expect(operationsStudios(trainer({ role: "HeadTrainer" }), studios, networks).map((s) => s.id)).toEqual(["solon"]);
     expect(
-      operationsStudios(trainer({ role: "StudioOwner", ownedStudioIds: ["solon", "westlake"] }), studios).map((s) => s.id),
+      operationsStudios(trainer({ role: "StudioOwner", ownedStudioIds: ["westlake"] }), studios, networks).map((s) => s.id),
     ).toEqual(["solon", "westlake"]);
-    expect(operationsStudios(trainer({ managedStudioIds: ["strongsville"] }), studios).map((s) => s.id)).toEqual(["strongsville"]);
-    expect(operationsStudios(trainer({}), studios)).toEqual([]);
+    expect(operationsStudios(trainer({ managedStudioIds: ["strongsville"] }), studios, networks).map((s) => s.id)).toEqual([
+      "strongsville",
+    ]);
+    expect(operationsStudios(trainer({}), studios, networks)).toEqual([]);
+    expect(operationsStudios(null, studios, networks)).toEqual([]);
   });
 });
 
-describe("the scope", () => {
-  it("opens on the active studio when readable, else the first, never on all", () => {
-    const readable = operationsStudios(trainer({ role: "Owner" }), studios);
-    expect(initialScope(readable, "westlake")).toEqual({ kind: "studio", studioId: "westlake" });
-    expect(initialScope(readable, "nowhere")).toEqual({ kind: "studio", studioId: "solon" });
-    expect(initialScope([], "solon")).toBeNull();
-  });
-
-  it("lists the studios a scope covers", () => {
-    expect(studiosInScope({ kind: "all" }, studios)).toHaveLength(3);
-    expect(studiosInScope({ kind: "studio", studioId: "solon" }, studios).map((s) => s.id)).toEqual(["solon"]);
+describe("studiosInScope", () => {
+  it("is every readable studio for all, and the one studio otherwise — the app's own copy when it is the active one", () => {
+    const readable = studios.slice(0, 2);
+    expect(studiosInScope({ kind: "all" }, readable, null)).toHaveLength(2);
+    const active = { id: "solon", name: "Solon (live)" } as Studio;
+    expect(studiosInScope({ kind: "studio", studioId: "solon" }, readable, active)).toEqual([active]);
+    expect(studiosInScope({ kind: "studio", studioId: "westlake" }, readable, active).map((s) => s.id)).toEqual(["westlake"]);
   });
 });

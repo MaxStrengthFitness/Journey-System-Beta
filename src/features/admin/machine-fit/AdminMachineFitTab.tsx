@@ -72,6 +72,7 @@ import {
   type MachineFieldInfo,
 } from "./useMachineFitReports";
 import "./machine-fit-admin.css";
+import { PickOneStudio, useOperationsScope } from "../scope-context";
 
 type Scope = "studio" | "company";
 
@@ -102,6 +103,9 @@ const plainKey = (key: string) => {
 export function AdminMachineFitTab({ machines, clients, studios, activeStudioId, isAdmin, onNavigateProfile }: Props) {
   const { catalog } = useMachineCatalog();
   const [scope, setScope] = useState<Scope>("studio");
+  // Under "All my studios" (Operations round) the studio half is a prompt;
+  // the company half is the weekly report and needs no studio.
+  const ops = useOperationsScope();
   const [machineId, setMachineId] = useState<string | null>(null);
   const activeStudio = studios.find((s) => s.id === activeStudioId) ?? null;
 
@@ -234,7 +238,11 @@ export function AdminMachineFitTab({ machines, clients, studios, activeStudioId,
       </p>
 
       {!activeStudioId && scope === "studio" ? (
-        <AdminNotice tone="info">Choose a studio to see its machine fit.</AdminNotice>
+        ops.scope.kind === "all" ? (
+          <PickOneStudio what="Machine fit" />
+        ) : (
+          <AdminNotice tone="info">Choose a studio to see its machine fit.</AdminNotice>
+        )
       ) : status === "failed" ? (
         <AdminNotice tone="warn">
           {scope === "studio"

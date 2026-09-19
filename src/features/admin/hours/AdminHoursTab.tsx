@@ -7,9 +7,10 @@
  * is booked slots, not the stopwatch); this is the screen.
  *
  *   The month        ‹ September 2026 ›, opening on the current month.
- *   The scope        one studio the reader may look at, or every one of
- *                    them (features/admin/scope.ts). "All my studios" reads
- *                    one month per studio and adds a company line on top.
+ *   The scope        the Operations scope (features/admin/scope-context):
+ *                    the studio the app is in, or "All my studios", which
+ *                    reads one month per studio and adds a company line on
+ *                    top.
  *   The table        trainers down, the month's weeks across (Mon–Sun,
  *                    clipped to the month), the month at the right, a total
  *                    row at the foot. Hours, with the session count under.
@@ -30,11 +31,10 @@ import {
   AdminNotice,
   AdminPanel,
   AdminScreen,
-  AdminSelect,
   AdminStatTile,
   AdminTiles,
 } from "../primitives";
-import { operationsStudios, type OperationsScope, initialScope, studiosInScope } from "../scope";
+import { useOperationsScope } from "../scope-context";
 import { MAX_SESSIONS_IN_RANGE, useSessionsInRange } from "../sessions-range";
 import {
   LATE_LOG_GRACE_DAYS,
@@ -52,20 +52,14 @@ import {
 } from "./hours";
 
 interface Props {
-  authTrainer: Trainer;
-  studios: Studio[];
   trainers: Trainer[];
-  activeStudioId: string | null;
-  isAdmin: boolean;
 }
 
-export function AdminHoursTab({ authTrainer, studios, trainers, activeStudioId, isAdmin }: Props) {
-  const readable = useMemo(() => operationsStudios(authTrainer, studios, isAdmin), [authTrainer, studios, isAdmin]);
-  const [scope, setScope] = useState<OperationsScope | null>(() => initialScope(readable, activeStudioId));
+export function AdminHoursTab({ trainers }: Props) {
+  const { studios: inScope } = useOperationsScope();
   const [month, setMonth] = useState<MonthKey>(() => monthKeyOfToday());
   const thisMonth = monthKeyOfToday();
   const names = useMemo(() => trainerNames(trainers), [trainers]);
-  const inScope = scope ? studiosInScope(scope, readable) : [];
 
   return (
     <AdminScreen>
@@ -93,30 +87,12 @@ export function AdminHoursTab({ authTrainer, studios, trainers, activeStudioId, 
                 </AdminButton>
               </div>
             </AdminField>
-            {readable.length > 0 && (
-              <AdminField label="Studio" htmlFor="hrs-studio">
-                <AdminSelect
-                  id="hrs-studio"
-                  value={scope?.kind === "all" ? "all" : (scope?.studioId ?? "")}
-                  onChange={(e) =>
-                    setScope(e.target.value === "all" ? { kind: "all" } : { kind: "studio", studioId: e.target.value })
-                  }
-                >
-                  {readable.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                  {readable.length > 1 && <option value="all">All my studios</option>}
-                </AdminSelect>
-              </AdminField>
-            )}
           </div>
         }
       />
 
-      {readable.length === 0 ? (
-        <AdminEmpty title="No studio to read">Hours are read per studio, and your account does not run one yet.</AdminEmpty>
+      {inScope.length === 0 ? (
+        <AdminEmpty title="No studio to read">Hours are read per studio, and the app is not in one.</AdminEmpty>
       ) : inScope.length > 1 ? (
         <CompanyHours studios={inScope} month={month} names={names} />
       ) : inScope[0] ? (

@@ -34,7 +34,6 @@ import {
   AdminRow,
   AdminRows,
   AdminScreen,
-  AdminSelect,
 } from "../primitives";
 import {
   budgetLeft,
@@ -46,6 +45,8 @@ import {
   type ReadBudget,
 } from "./clientQuery";
 import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
+import { capStudioIds } from "../../../lib/tenancy";
+import { useOperationsScope } from "../scope-context";
 
 /** Long enough that a name is finished, short enough not to feel laggy. */
 const SEARCH_DEBOUNCE_MS = 400;
@@ -61,9 +62,17 @@ export function AdminClientsTab({
   activeStudioId,
   onNavigateProfile,
 }: AdminClientsTabProps) {
-  // Defaults to the studio you are in, never to the whole network. The old
-  // screen defaulted to "all" and counted the entire collection on mount.
-  const [studioId, setStudioId] = useState<string | null>(activeStudioId);
+  // The Operations scope decides the studio (Operations round, Sep 2026):
+  // the studio the app is in, or "All my studios" — which is the READER'S
+  // studios named in an `in` clause (tenancy.ts), never the whole
+  // collection; a search is still required for it. The old screen defaulted
+  // to "all" and counted the entire collection on mount.
+  const ops = useOperationsScope();
+  const studioId = activeStudioId ?? ops.studioId;
+  const scopedStudioIds = useMemo(
+    () => (studioId ? null : capStudioIds(ops.readable.map((s) => s.id))),
+    [studioId, ops.readable],
+  );
   const [rawSearch, setRawSearch] = useState("");
   const search = useDebounce(rawSearch, SEARCH_DEBOUNCE_MS);
 
@@ -101,6 +110,8 @@ export function AdminClientsTab({
         const constraints: any[] = [];
         if (active.studioId) {
           constraints.push(where("homeStudioId", "==", active.studioId));
+        } else if (scopedStudioIds && scopedStudioIds.length > 0) {
+          constraints.push(where("homeStudioId", "in", scopedStudioIds));
         }
         if (active.prefix) {
           constraints.push(where("lastName", ">=", active.prefix));
@@ -146,7 +157,7 @@ export function AdminClientsTab({
         if (reqId === seq.current) setLoading(false);
       }
     },
-    [studioId, search, budget],
+    [studioId, search, budget, scopedStudioIds],
   );
 
   // One effect, keyed on the two things that actually change the answer.
@@ -186,14 +197,14 @@ export function AdminClientsTab({
   }, [studioId]);
 
   const studioName =
-    studios.find((s) => s.id === studioId)?.name ?? "the whole network";
+    studios.find((s) => s.id === studioId)?.name ?? "all your studios";
 
   return (
     <AdminScreen>
       <AdminHeader
         icon={<Users className="w-5 h-5" />}
         title="Clients"
-        subtitle="Everyone on the books. Scoped to one studio by default, because listing the whole network reads every client document."
+        subtitle="Everyone on the books at the studio you are looking at. Across all your studios, search by name — listing them all reads every client document."
         actions={
           <AdminBadge tone="neutral">
             {studioTotal === null
@@ -225,23 +236,6 @@ export function AdminClientsTab({
               placeholder="Search"
               {...NAME_SEARCH_PROPS}
             />
-          </div>
-          <div className="adm-field" style={{ flex: "0 1 220px" }}>
-            <label className="adm-label" htmlFor="client-studio">
-              Studio
-            </label>
-            <AdminSelect
-              id="client-studio"
-              value={studioId ?? ""}
-              onChange={(e) => setStudioId(e.target.value || null)}
-            >
-              <option value="">Every studio (search required)</option>
-              {studios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </AdminSelect>
           </div>
         </div>
 
