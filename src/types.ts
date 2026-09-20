@@ -1837,6 +1837,8 @@ export type View =
   | "client-directory"
   | "chart-importer"
   | "admin-dashboard"
+  /** The Admins dashboard (Operations overhaul, Sep 2026): features/admins. */
+  | "admins-dashboard"
   | "mindbody";
 
 export interface AuditLogEntry {

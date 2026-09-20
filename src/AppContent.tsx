@@ -26,6 +26,7 @@ import {
   Settings,
   GripVertical,
   LayoutDashboard,
+  ShieldCheck,
   Play,
   Calendar,
   Lock,
@@ -147,6 +148,13 @@ const ConsultationWizard = lazy(() =>
 const AdminDashboardView = lazy(() =>
   import("./features/admin/AdminDashboardView").then((m) => ({
     default: m.AdminDashboardView,
+  })),
+);
+// The Admins dashboard (Operations overhaul, Sep 2026): where the app is
+// managed — administrators and the founder only.
+const AdminsDashboardView = lazy(() =>
+  import("./features/admins/AdminsDashboardView").then((m) => ({
+    default: m.AdminsDashboardView,
   })),
 );
 import { CreateClientModal } from "./components/CreateClientModal";
@@ -1154,7 +1162,8 @@ export default function AppContent({
   // Studio Selection Screen (if no active studio or changing studio)
   if (
     (!activeStudioId || isChangingStudio) &&
-    currentView !== "admin-dashboard"
+    currentView !== "admin-dashboard" &&
+    currentView !== "admins-dashboard"
   ) {
     return (
       <StudioSelectionView
@@ -1396,11 +1405,25 @@ export default function AppContent({
                       setCurrentView("admin-dashboard" as any);
                     })
                   }
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
                   {/* Label only: the mode is still "admin" inside (Renewals round, Sep 2026). */}
                   Operations
                 </button>
+                {isAdmin && (
+                  <button
+                    onClick={() =>
+                      menuNavigate(() => {
+                        setAppMode("admin");
+                        setCurrentView("admins-dashboard" as any);
+                      })
+                    }
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  >
+                    {/* The Admins dashboard (Operations overhaul, Sep 2026): administrators and the founder. */}
+                    Admin
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1723,6 +1746,22 @@ export default function AppContent({
                     onOpenStudioTasks={() => setCurrentView("studio-tasks")}
                   />
                 )}
+                {currentView === "admins-dashboard" && authTrainer && (
+                  <AdminsDashboardView
+                    authTrainer={authTrainer}
+                    studios={studios}
+                    networks={networks}
+                    trainers={trainers}
+                    clients={clients}
+                    machines={machines}
+                    isAdmin={isAdmin}
+                    activeStudioId={activeStudioId}
+                    onRefresh={handleManualRefresh}
+                    onRestoreMachines={handleRestoreMachines}
+                    onReorderTrainers={() => setIsReorderingTrainers(true)}
+                    onAppCleanse={handleAppCleanse}
+                  />
+                )}
                 {currentView === "trainer-hub" && (
                   <TrainerSettingsView
                     authTrainer={authTrainer}
@@ -1881,6 +1920,22 @@ export default function AppContent({
                 activeBg="bg-orange-500/10 dark:bg-orange-600/10"
                 activeIndicator="bg-orange-500 dark:bg-orange-600"
               />
+              {/*
+                The Admins dashboard (Operations overhaul, Sep 2026): where the
+                app is managed — the standard template, the master catalog,
+                every location, the machinery. Administrators and the founder.
+              */}
+              {isAdmin && (
+                <NavButton
+                  active={currentView === "admins-dashboard"}
+                  onClick={() => setCurrentView("admins-dashboard" as any)}
+                  icon={<ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />}
+                  label="Admin"
+                  activeColor="text-orange-500"
+                  activeBg="bg-orange-500/10 dark:bg-orange-600/10"
+                  activeIndicator="bg-orange-500 dark:bg-orange-600"
+                />
+              )}
               {/*
                 The Franchise screen that sat here (owners and admins) folded
                 into Operations on Sep 19 2026: its tiles and locations are the

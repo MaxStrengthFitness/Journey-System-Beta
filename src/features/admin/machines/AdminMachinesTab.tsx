@@ -1,6 +1,5 @@
 import { Dumbbell, Info } from "lucide-react";
 import { AdminMachineCreator } from "./AdminMachineCreator";
-import { StandardSetPanel } from "../catalog/StandardSetPanel";
 import { SubmissionsQueue } from "../catalog/SubmissionsQueue";
 import {
   AdminHeader,
@@ -10,24 +9,24 @@ import {
 import "../catalog/catalog.css";
 
 /**
- * MACHINE CATALOG — the global default set every studio picks from.
+ * MACHINE CATALOG — the master: every machine MSF knows, and the queue of
+ * machines studios have offered it.
  *
  * This used to be two sub-tabs: Catalog, and Studio Equipment with its own
- * studio picker. The studio half has moved onto the Studios screen (section 5
- * of the admin overhaul), where the location it edits is the one already
- * selected — a picker inside a picker was one of the four "which studio am I
- * editing" answers the prep audit counted, and the most confusing of them.
+ * studio picker. The studio half moved onto the Studios screen (admin
+ * overhaul), then to My Studio → Machines and Operations → Floor — the one
+ * floor editor, two doors.
  *
  * What is left is genuinely global and genuinely admin-only: the catalog is
  * live-inherited by every location that has not deliberately overridden a
  * field, which is why firestore.rules limits writes here to admins and above
  * rather than to franchise owners.
  *
- * Operations round (Sep 2026): the MSF standard set is a view of its own
- * (StandardSetPanel — membership and order, adopted by floors, never
- * pushed), and machines studios offer the catalog are decided here
- * (SubmissionsQueue, administrators). A franchise owner reads; the creator
- * no longer offers a form the rules will refuse.
+ * Operations round (Sep 2026): machines studios offer the catalog are
+ * decided here (SubmissionsQueue). Operations overhaul (Sep 19): the tab
+ * lives on the Admins dashboard beside the Standard template, which took the
+ * standard set's membership and order (features/admins/StandardTemplateTab)
+ * — the catalog is what exists, the template is what a new studio adopts.
  */
 export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
   return (
@@ -35,19 +34,18 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
       <AdminHeader
         icon={<Dumbbell className="w-5 h-5" />}
         title="Machine catalog"
-        subtitle="The MSF standard. Every studio inherits these, so a correction here reaches every floor that has not overridden that field — and a floor adopts the standard set, it is never pushed one."
+        subtitle="Every machine MSF knows. Every studio inherits these, so a correction here reaches every floor that has not overridden that field. Which of them make the standard set is the Standard template."
       />
 
       {!isAdmin && (
         <AdminNotice tone="info">
           <Info className="w-3.5 h-3.5 inline mr-1" />
           The catalog is shared by every location, so it is written by administrators only. Your own studio's floor — what it has, its
-          settings and notes — is My Studio → Machines.
+          settings and notes — is My Studio → Machines, or Operations → Floor.
         </AdminNotice>
       )}
 
       {isAdmin && <SubmissionsQueue />}
-      <StandardSetPanel canEdit={isAdmin} />
       <AdminMachineCreator canEdit={isAdmin} />
     </AdminScreen>
   );

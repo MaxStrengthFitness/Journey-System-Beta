@@ -3,21 +3,16 @@ import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, Sch
 // Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
 // component file stays on disk in case it is revived; nothing imports it here.
 // import { RetentionDashboardView } from "./RetentionDashboardView";
-import { AdminLimboQueue } from "./limbo/AdminLimboQueue";
-import { Bug, Megaphone, Activity, Users, Building2, TrendingUp, Zap, Inbox, Dumbbell, ClipboardList, Download, Database, CalendarClock, Gift } from "lucide-react";
+import { Megaphone, Activity, Users, TrendingUp, Zap, Dumbbell, Download, CalendarClock, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "./admin.css";
 import { auth } from "../../firebase";
 
-import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "./data";
-import { AdminSystemToolsTab } from "./system/AdminSystemToolsTab";
 import { OverviewPage, type OverviewLink } from "./overview/OverviewPage";
-import { AdminStudiosTab } from "./studios/AdminStudiosTab";
 import { AdminStaffTab } from "./staff/AdminStaffTab";
 import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
-import { AdminBugReportsTab } from "./bugs/AdminBugReportsTab";
 import { InsightsAndHours } from "./insights/InsightsAndHours";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
@@ -114,6 +109,11 @@ function AdminDashboardShell({
   void onShowNewClients;
   void onUpdateStudio;
   void onUpdateClient;
+  // The system tools moved to the Admins dashboard (features/admins); the
+  // callbacks stay on the props so AppContent's call site needs no change.
+  void onRestoreMachines;
+  void onReorderTrainers;
+  void onAppCleanse;
   // "This studio" is the studio the app is in; "All my studios" is null here
   // and the tabs that can span read the list from the scope themselves.
   const ops = useOperationsScope();
@@ -126,41 +126,24 @@ function AdminDashboardShell({
    * · Insights · Announcements · Mindbody · Data. Clients went (the global
    * search and the training dashboard already cover it); Catalog, Machine
    * fit and Routines became Floor; Hours folded into Insights; Exports is
-   * Data. All locations, the Catalog master, Limbo, Bug reports and System
-   * tools are the Admins dashboard's (Overhaul 6) and sit in the Company
-   * group here only for administrators until it opens.
+   * Data. All locations, the Catalog master, the Standard template, Limbo,
+   * Bug reports, System tools and the company's Data are the Admins
+   * dashboard's (features/admins) — the third position on the app-mode
+   * switch, administrators and the founder only.
+   *
+   * AJ, Sep 18: "anyone head trainer and above has pretty much all access to
+   * everything; restrict more later." So nothing on this side is gated
+   * beyond opening Operations at all.
    */
-  type AdminTab =
-    | "overview"
-    | "renewals"
-    | "delight"
-    | "users"
-    | "floor"
-    | "insights"
-    | "announcements"
-    | "mindbody"
-    | "data"
-    | "studios"
-    | "machines"
-    | "limbo"
-    | "bugs"
-    | "system";
+  type AdminTab = "overview" | "renewals" | "delight" | "users" | "floor" | "insights" | "announcements" | "mindbody" | "data";
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [floorView, setFloorView] = useState<"machines" | "fit" | "routines">("machines");
 
   const isOwnerTier = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
 
-  // AJ, Sep 18: "anyone head trainer and above has pretty much all access to
-  // everything; restrict more later." Everything on the studio side is open
-  // to whoever can open Operations; only the company tier's tools are gated.
-  const canSee = (id: AdminTab): boolean => {
-    if (id === "studios" || id === "machines" || id === "limbo" || id === "bugs" || id === "system") return isAdmin;
-    return true;
-  };
-
   type NavTab = { id: AdminTab; label: string; icon: React.ReactNode };
   type NavGroup = { id: string; label: string; tier: "primary" | "secondary"; tabs: NavTab[] };
-  const allGroups: NavGroup[] = [
+  const groups: NavGroup[] = [
     {
       id: "daily",
       label: "Every day",
@@ -196,20 +179,7 @@ function AdminDashboardShell({
         { id: "data", label: "Data", icon: <Download className="w-4 h-4" /> },
       ],
     },
-    {
-      id: "company",
-      label: "Company",
-      tier: "secondary",
-      tabs: [
-        { id: "studios", label: "All locations", icon: <Building2 className="w-4 h-4" /> },
-        { id: "machines", label: "Catalog", icon: <ClipboardList className="w-4 h-4" /> },
-        { id: "limbo", label: "Limbo", icon: <Inbox className="w-4 h-4" /> },
-        { id: "bugs", label: "Bug reports", icon: <Bug className="w-4 h-4" /> },
-        { id: "system", label: "System tools", icon: <Database className="w-4 h-4" /> },
-      ],
-    },
   ];
-  const groups: NavGroup[] = allGroups.map((g) => ({ ...g, tabs: g.tabs.filter((t) => canSee(t.id)) })).filter((g) => g.tabs.length > 0);
 
   const renderNavButton = (tab: NavTab, orientation: "sidebar" | "strip") => {
     const isActive = activeTab === tab.id;
@@ -266,15 +236,6 @@ function AdminDashboardShell({
           .filter((g) => g.tier === "primary")
           .map((group, gIdx) => (
             <div key={group.id} className={cn("adm-shell__group", gIdx > 0 && "adm-shell__group--spaced")}>
-              <div className="adm-nav__group">{group.label}</div>
-              <div className="flex flex-col">{group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}</div>
-            </div>
-          ))}
-        {/* The company tier: pinned to the bottom, visually separated. */}
-        {groups
-          .filter((g) => g.tier === "secondary")
-          .map((group) => (
-            <div key={group.id} className="adm-nav__rule adm-shell__group adm-shell__group--pinned">
               <div className="adm-nav__group">{group.label}</div>
               <div className="flex flex-col">{group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}</div>
             </div>
@@ -379,14 +340,6 @@ function AdminDashboardShell({
         {activeTab === "data" && ops.scope.kind === "all" && <PickOneStudio what="Data" />}
         {activeTab === "data" && ops.scope.kind !== "all" && <AdminDataReportsTab key={tabKey} trainers={trainers} clients={clients} studios={studios} activeStudioId={activeStudioId} />}
 
-        {/* ── The company tier, until the Admins dashboard opens (Overhaul 6) ── */}
-        {activeTab === "studios" && (
-          <AdminStudiosTab authTrainer={authTrainer} studios={studios} networks={networks} trainers={trainers} clients={clients} isAdmin={isAdmin} onRefresh={onRefresh} />
-        )}
-        {activeTab === "machines" && <AdminMachinesTab isAdmin={isAdmin} />}
-        {activeTab === "limbo" && <AdminLimboQueue studios={studios} clients={clients} />}
-        {activeTab === "bugs" && <AdminBugReportsTab studios={studios} />}
-        {activeTab === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} onAppCleanse={onAppCleanse} />}
       </div>
     </div>
   );

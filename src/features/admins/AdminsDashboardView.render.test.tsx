@@ -1,16 +1,13 @@
 // @vitest-environment jsdom
 /**
- * THE OPERATIONS SHELL MOUNTS — the nine tabs for a studio's leader, the
- * Company group for an administrator, and every tab a click away without
- * a throw over an empty Firestore. Catches a tab whose component needs a
- * provider the shell does not give it (the Floor's editor was written for
- * the My Studio shell), and a nav that lists a tab it cannot render.
+ * THE ADMINS DASHBOARD MOUNTS — the seven tabs for an administrator, each a
+ * click away over an empty Firestore, and a refusal for anyone else.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead" } }, functions: {} }));
+vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "adm" } }, functions: {} }));
 vi.mock("../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({
@@ -22,21 +19,6 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
   }),
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
-vi.mock("../../contexts/MindbodyHealthContext", () => ({
-  useMindbodyHealth: () => ({
-    status: "offline",
-    lastSuccessfulEventAt: null,
-    lastFailureAt: null,
-    dlqDepth: 0,
-    signatureFailures24h: 0,
-    webhookSubscriptionActive: false,
-    hydrationP95LatencyMs: 0,
-    updatedAt: null,
-    isLoading: false,
-    hasData: false,
-    subscriptionError: null,
-  }),
-}));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -76,12 +58,12 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { AdminDashboardView } from "./AdminDashboardView";
+import { AdminsDashboardView } from "./AdminsDashboardView";
 import type { Studio, Trainer } from "../../types";
 
-const studios = [{ id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957", mindbodyMode: "live" }] as unknown as Studio[];
-const lead = { id: "lead", fullName: "Lee Leader", initials: "LL", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
+const studios = [{ id: "solon", name: "Solon", timezone: "America/New_York" }] as unknown as Studio[];
 const admin = { id: "adm", fullName: "Ada Admin", initials: "AA", role: "Admin", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
+const lead = { id: "lead", fullName: "Lee Leader", initials: "LL", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -100,7 +82,7 @@ async function mount(who: Trainer, isAdmin: boolean) {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who]} isAdmin={isAdmin} clients={[]} machines={[]} schedules={[]} activeStudioId="solon" />
+        <AdminsDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who]} clients={[]} machines={[]} isAdmin={isAdmin} activeStudioId="solon" />
       </StrictMode>,
     );
   });
@@ -122,38 +104,25 @@ const clickNav = async (el: HTMLElement, label: string) => {
   });
 };
 
-describe("the Operations shell", () => {
-  it("lists the nine for a studio's leader, and none of the company tier", async () => {
-    const el = await mount(lead, false);
-    expect(navLabels(el)).toEqual(["Overview", "Renewals", "Delight queue", "Floor", "Staff & Roles", "Insights", "Announcements", "Mindbody", "Data"]);
-    expect(el.textContent).toContain("Solon — Overview");
-  });
-
-  it("lists the same nine for an administrator — the company tier lives on the Admins dashboard", async () => {
+describe("the Admins dashboard", () => {
+  it("lists the seven, and opens each", async () => {
     const el = await mount(admin, true);
-    expect(navLabels(el)).toEqual(["Overview", "Renewals", "Delight queue", "Floor", "Staff & Roles", "Insights", "Announcements", "Mindbody", "Data"]);
-    // An administrator's Mindbody tab is the whole estate.
-    await clickNav(el, "Mindbody");
-    expect(el.textContent).toContain("Studios linked");
+    expect(navLabels(el)).toEqual(["All locations", "Catalog", "Standard template", "Limbo", "System tools", "Bug reports", "Data"]);
+    await clickNav(el, "Catalog");
+    expect(el.textContent).toContain("Machine catalog");
+    await clickNav(el, "Standard template");
+    expect(el.textContent).toContain("The standard template");
+    await clickNav(el, "Limbo");
+    await clickNav(el, "System tools");
+    await clickNav(el, "Bug reports");
+    await clickNav(el, "Data");
+    expect(el.textContent).toContain("An administrator exports any studio's data");
+    await clickNav(el, "All locations");
   });
 
-  it("every studio-side tab opens for a leader", async () => {
+  it("refuses anyone who is not an administrator", async () => {
     const el = await mount(lead, false);
-    await clickNav(el, "Floor");
-    expect(el.textContent).toContain("Solon — Machines");
-    expect(el.querySelector('[role="tablist"][aria-label="Floor view"]')).toBeTruthy();
-    await clickNav(el, "Insights");
-    expect(el.querySelector('[role="tablist"][aria-label="Insights view"]')).toBeTruthy();
-    await clickNav(el, "Mindbody");
-    expect(el.textContent).toContain("Solon — Mindbody");
-    // The estate — every studio, worst first — is the administrator's, not the leader's.
-    expect(el.textContent).not.toContain("Studios linked");
-    await clickNav(el, "Announcements");
-    expect(el.textContent).toContain("Post an announcement");
-    await clickNav(el, "Data");
-    await clickNav(el, "Staff & Roles");
-    await clickNav(el, "Renewals");
-    await clickNav(el, "Delight queue");
-    expect(el.textContent).toContain("Delight queue");
+    expect(el.textContent).toContain("The Admins dashboard is for administrators and the founder.");
+    expect(navLabels(el)).toEqual([]);
   });
 });
