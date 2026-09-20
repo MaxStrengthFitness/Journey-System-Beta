@@ -299,6 +299,66 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 <a id="rules"></a>
 
+## Machines and the template boundary
+
+*Machine authoring, Sep 20 2026.*
+
+**The catalog documents were in the LEGACY shape, and that is why the editor
+looked empty.** `machines/{id}` was seeded by Operations → System Tools →
+"Restore standard machines" from `data/default-machines.ts`, the legacy
+`Machine` type (`targetMuscles` as one comma string, `settingOptions` as bare
+labels, nothing for the biomechanics template), while the editor reads
+`MachineDefinition`. About 6 of 60 inputs filled. The seeder now writes
+`data/machine-definitions.ts`. **If a machine ever opens sparse again, check
+the document's shape before blaming the form.**
+
+**`emptyMachineDefinition()` must not guess the taxonomy.** It used to default
+`anatomicalRegion` to "Chest" and `movementPattern` to "Upper Body: Horizontal
+Push". No catalog document had a pattern of its own, so `normalize` handed that
+default to the form for all twenty machines — leg press included — and saving
+wrote it in. Those fields start empty now and the section rail asks for them. A
+confident wrong value is worse than a missing one.
+
+**A bag of values merges per key, not whole.** `universalBaseline`,
+`bodyTypeAdjustments` and `defaultSettings` are independent fields under one
+key. Replacing the object on override meant a studio correcting one seat
+position stopped live-inheriting the other four baseline lines forever, and a
+later admin correction reached every location EXCEPT the ones that had edited
+that object. `mergeMachineDefinition` merges them per key (`""` is a deliberate
+clear) and `pruneOverrides` reduces a stored override to the sub-keys that
+actually differ. Both halves are needed; either alone does nothing.
+
+**Write a roster override with `updateDoc`, never `setDoc(..., {merge:true})`.**
+Firestore merges maps deeply, so a merge write keeps a key the studio has just
+reverted — "use the standard" appears to work and then silently does not.
+
+**`machineId` is a foreign key. Never re-mint it on a rename.** It is queried
+across studios in `exerciseLogs`, `clientMachineSettings` and `routines`.
+`MachineSettingField.key` is the same kind of thing one level down: it is written
+into every client's saved settings, so the editor shows it as a fixed badge and
+only the label is editable. Renaming a key orphans every stored value for that
+dial.
+
+**Compute a studio's overrides from the whole DRAFT, not from the save patch.**
+The patch is the difference between this edit and what was on screen; an override
+is the difference between the studio's machine and the catalog's. Using the patch
+drops every override made in an earlier sitting.
+
+**Kinematic class is not the turnaround protocol.** Compound = multi-joint,
+Simple = single-joint, and it comes from `kinematicClassification`. The Academy
+gives the COMPOUND ROW a pause and a squeeze at the contracted position;
+deriving the class from that relabels the row, the pulldown and the pullover as
+single-joint and splits every cross-studio roll-up.
+
+**`isStandardSetMachine` treats an ABSENT flag as in-the-set.** A UI that reads
+`m.inStandardSet` directly shows OFF for every legacy document while the seeder
+treats it as ON. Read through the function, and write an explicit `false` to take
+a machine out.
+
+**The generator must not read `imageUrl` from `machine-database.ts`.** It bundles
+the data files with esbuild's text loader, so that field comes back as the
+`.webp`'s bytes and gets baked into the generated source — 30 KB per machine.
+
 ## Security rules and permissions
 
 - **The 1000-expression budget bites twice now, and it reads as a permission error.**
@@ -353,6 +413,30 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 - **On AJ's PC, use `git --no-optional-locks` for every read-only git command** (beta-prep trim, Sep 17 2026). Claude's shell reaches the project folder through a mount that cannot delete files until AJ grants delete permission for the session. A plain `git status` refreshes the index: it creates `.git/index.lock`, then cannot remove it, and AJ's NEXT git command - in PowerShell or GitHub Desktop - fails with "Another git process seems to be running". `--no-optional-locks` skips that refresh. If a lock is left behind, move it aside with `mv` (renames are allowed) and say so. The same mount makes `git fetch` leave `tmp_pack_*` files in `.git/objects/pack` that it could not unlink (harmless; move them aside), and a `maintenance.lock` from Sep 2 had been silently blocking git's auto-maintenance there for two weeks. To deliver a branch without touching `master` or the working tree: `git bundle create x.bundle master..<branch>` in the cloud, commit the file into `backups\`, then on the PC `git fetch x.bundle <branch>:<branch>` - a new bundle file name each time, because re-using an outputs path can land the previous bytes.
 
 <a id="baselines"></a>
+
+**A `setState` updater is not guaranteed to run synchronously.** Reading live
+state from inside one and acting on a flag it sets is a real bug, not a style
+issue: inside an event handler the updater normally runs during the NEXT render,
+so the flag is still false when you check it. React's eager-evaluation path
+hides this until StrictMode's double render defeats it — and `src/main.tsx`
+turns StrictMode on. `useDirtyForm.save()` shipped like this and silently never
+called `onSave` while the bar sat at "Saving…" (fixed Sep 20 2026, machine
+authoring). Mirror the state in a ref instead. A pure test cannot see this; it
+needs a mounted render test.
+
+**On AJ's PC, `vitest` no longer runs from the Linux-side shell.** The Windows
+`node_modules` has no Linux rolldown binary and the newer vitest needs one
+(`Cannot find module '@rolldown/binding-wasm32-wasi'`). `tsc` and `git` still
+work there. Run the suite and the build in the cloud container instead — tar the
+source (excluding `node_modules`, `.git`, `dist`, `backups`, and `.env` /
+`service-account.json`), stage it, `npm ci`, then push changed files back with
+`device_commit_files`. The Sep 8 note saying vitest works on the PC is obsolete.
+
+**Git on this mount leaves a `.git/HEAD.lock` behind after every commit**, and
+the next commit fails with "Another git process seems to be running". Deleting
+it needs a permission that may be refused — but a RENAME works: `mkdir -p
+.git/stale-locks && mv .git/HEAD.lock .git/stale-locks/HEAD.lock.$(date +%s)`
+after each commit. Use `git --no-optional-locks` for read-only commands.
 
 ## Baselines by round
 
