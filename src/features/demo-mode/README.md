@@ -69,9 +69,62 @@ studio twice; either half makes it demo.
 | `access.ts` | Who may do what: `canEnterDemo`, `hasRunOfDemo`, `studiosInRealm`, `splitOutDemo` |
 | `roster.ts` | Six clients and three trainers, each there to teach something |
 | `seed-core.ts` | Pure. The 1,202 documents the demo studio is made of, as `{ path, data }` |
+| `week.ts` | Pure. The standing week the Hub reads — eleven appointments, repeated for eight weeks |
 | `seed-write.ts` | Lays that list down with the client SDK, in batches |
 | `DemoBanner.tsx` | One line across every screen, the Active Session included |
 | `SetUpDemoCard.tsx` | Set up and reset, from the studio selection screen |
+
+## The week ahead
+
+Round: **the demo week, Sep 20 2026** (`docs/rounds/2026-09-20-demo-week.md`).
+
+Everything the seeder lays down is HISTORY, and every screen that reads
+backwards worked from day one. The Hub reads FORWARDS, out of `schedules`, and
+had nothing — so the first screen a trainer opens in Demo Mode was blank in a
+studio otherwise full of people.
+
+`DEMO_WEEK` is eleven standing appointments (a weekday, a wall-clock time, a
+client, a trainer), laid down again for eight weeks from the day the seeder
+runs. Clients train twice a week, so every pair is three or four days apart —
+Mon/Thu, Tue/Fri, Wed/Sat. Merry is the exception on purpose: forty-three days
+away and one Sunday make-up with the studio leader, so the attendance anomaly
+and the booking that answers it sit on the same screen.
+
+Three decisions hold it up:
+
+1. **The ids count occurrences, never days.** The seeder has no wipe, so an id
+   it writes today and not tomorrow is a document nobody will ever clean up.
+   `demo-booking-eowyn-003` is "this client's third upcoming appointment", and
+   any 56-day window holds exactly eight of every weekday — so the run is the
+   same size and the same set of ids whichever day somebody presses the button.
+2. **Nothing is laid down in the past.** `renewals/attendance.ts` reads a past
+   booking that was not cancelled as a VISIT, so filling in last week to make
+   the Hub look busy would tell the renewals engine that Rosie came in when she
+   did not.
+3. **The wall clock, not a UTC hour.** The history sidesteps timezones by only
+   using UTC hours 13–21; a 7 AM standing appointment cannot, because it has to
+   read as 7 AM in November too. `wallClockToInstant` resolves the real offset,
+   and a test crosses the change to standard time.
+
+Every day of the week carries at least one booking, **Sunday included**, and
+that is the one place the pattern is arranged for the demo rather than for
+realism: the Hub opens on today, and a trainer who lands on an empty grid
+concludes the demo is broken rather than that the studio is shut.
+
+One booking in the run is **cancelled**, so Operations → Overview → Changes has
+something to find. It lands on a client with another booking that week, so it
+reads as a reschedule rather than a cancellation — the more useful of the two.
+
+The Hub resolves a block STRICTLY (`clients/{clientId}` or "Not synced", never
+a name match), so `clientId` is the field the whole round is about.
+`trainerName` picks the column. `source` is `"Manual"`, because the demo studio
+is `mindbodyMode: "offline"` and saying Mindbody sent these would be the one
+lie in the seed a trainer could catch. **No rules or index change**: `schedules`
+already allows an authenticated trainer to write one, and a test pins the seven
+fields `isValidSchedule` requires.
+
+The schedule is the only thing in Demo Mode that expires, so `SetUpDemoCard`
+says how many bookings went in and what date they run through.
 
 ## Full access is authorisation, never membership
 
@@ -135,6 +188,8 @@ performances and one that fails if anybody doubles.
 
 `demo-mode.test.ts` (recognising and guarding), `access.test.ts` (who may do
 what, and the realm rule), `seed.test.ts` (the documents themselves),
+`week.test.ts` (the standing week, the ids that never orphan, the wall clock
+across the change to standard time, and the fields the rules require),
 `leaks.test.ts` (the two above), `DemoBanner.render.test.tsx`. Plus 13
 assertions in `tests/firestore.rules.test.ts`, which need the emulator.
 

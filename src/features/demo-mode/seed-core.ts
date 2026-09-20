@@ -54,6 +54,14 @@ import {
   type DemoClientSeed,
   type DemoTrainerSeed,
 } from "./roster";
+import {
+  DEMO_SERVICE_NAME,
+  buildDemoWeek,
+  demoScheduleRunsThrough,
+  demoWeekClient,
+  demoWeekTrainer,
+  type DemoBooking,
+} from "./week";
 
 /* ── Timestamps ─────────────────────────────────────────────────────────── */
 
@@ -86,6 +94,10 @@ export interface DemoSeed {
     trainers: number;
     sessions: number;
     sets: number;
+    /** Upcoming bookings on the Hub — see `week.ts`. */
+    bookings: number;
+    /** The last studio day the seeded schedule covers, `YYYY-MM-DD`. */
+    scheduleThrough: string;
     machines: number;
     /** Catalog documents the roster points at. The writer must check these
      *  exist: resolveMachine() returns null without them and the machine is
@@ -851,6 +863,65 @@ function buildClient(
   return { docs, sessions: sessions.length, sets: logs.length };
 }
 
+/* ── The week ahead ────────────────────────────────────────── */
+
+/**
+ * One booking, as the Hub reads it.
+ *
+ * The field names are Mindbody's, because `schedules` is Mindbody's
+ * collection and the Hub, the calendar, Operations and the renewals
+ * attendance all read it expecting that shape. The only thing that makes this
+ * one a demo booking is the studio it names and the flag.
+ *
+ * `clientId` is the whole point of the document. The Hub resolves a block
+ * STRICTLY — `clients/{clientId}` or nothing, never a name match — so a
+ * booking whose clientId is not a seeded client document would draw as "Not
+ * synced" and open nobody, which is precisely the interaction AJ asked for.
+ *
+ * `source` is "Manual" rather than "MindBody": the demo studio is
+ * `mindbodyMode: "offline"` and has no site id, so claiming Mindbody put
+ * these here would be the one lie in the seed that a trainer could catch.
+ */
+function bookingDoc(booking: DemoBooking, ctx: SeedContext): SeedDoc {
+  const client = demoWeekClient(booking.clientKey)!;
+  const trainer = demoWeekTrainer(booking.trainerKey)!;
+  return {
+    path: `schedules/${booking.id}`,
+    data: {
+      clientId: demoClientId(client.key),
+      mindbodyClientId: null,
+      clientName: `${client.firstName} ${client.lastName}`,
+      trainerId: demoTrainerId(trainer.key),
+      /* Matched case-insensitively against `trainer.fullName` to decide which
+         COLUMN the block sits in on the Hub. A name that does not match any
+         trainer document conjures a "virtual" column instead. */
+      trainerName: `${trainer.firstName} ${trainer.lastName}`,
+      studioId: DEMO_STUDIO_ID,
+      /* MUST be Timestamps: every reader of this collection filters
+         `startTime` as a range, and an ISO string is skipped by all of them. */
+      startTime: ts(booking.startIso),
+      endTime: ts(booking.endIso),
+      status: booking.cancelled ? "Cancelled" : "Scheduled",
+      serviceName: DEMO_SERVICE_NAME,
+      source: "Manual",
+      /* Booked a fortnight ago, like a standing appointment. */
+      createdAt: ts(`${addDays(ctx.today, -14)}T12:00:00.000Z`),
+      ...(booking.cancelled
+        ? {
+            /* Noticed yesterday. Operations → Overview → Changes holds a
+               cancellation against the day the session was FOR, and reads it
+               as a reschedule when the client has another booking that week. */
+            cancelledAt: ts(`${addDays(ctx.today, -1)}T18:00:00.000Z`),
+            movedFromDay: null,
+            movedFromStart: null,
+            movedAt: null,
+          }
+        : {}),
+      [DEMO_FLAG]: true,
+    },
+  };
+}
+
 /* ── The whole seed ─────────────────────────────────────────────────────── */
 
 /**
@@ -880,6 +951,11 @@ export function buildDemoSeed(options: {
     sets += built.sets;
   }
 
+  /* The week ahead. Last, because it is the only thing here that looks
+     FORWARD, and because it depends on nothing above it. */
+  const bookings = buildDemoWeek(ctx.today);
+  for (const booking of bookings) docs.push(bookingDoc(booking, ctx));
+
   return {
     docs,
     summary: {
@@ -888,6 +964,8 @@ export function buildDemoSeed(options: {
       trainers: DEMO_TRAINERS.length,
       sessions,
       sets,
+      bookings: bookings.length,
+      scheduleThrough: demoScheduleRunsThrough(ctx.today),
       machines: DEMO_MACHINES.length,
       requiresCatalog: DEMO_MACHINES.map((m) => m.id),
     },

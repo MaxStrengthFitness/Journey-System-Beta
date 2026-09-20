@@ -21,6 +21,18 @@ import { DEMO_STUDIO_NAME } from "./constants";
  * died half way is fixed by pressing the button again. What that buys, and
  * why there is deliberately no delete, is in seed-write.ts.
  */
+/** "Nov 15" — a `YYYY-MM-DD` studio day, read the way a person says it. */
+function friendlyDay(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  /* UTC, because the key is a label for a day rather than an instant: built
+     locally it would name the day before for anyone west of Greenwich. */
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function SetUpDemoCard({
   seededBy,
   /** Already there — this is the reset, not the set-up. */
@@ -89,6 +101,15 @@ export function SetUpDemoCard({
             {result.summary.clients} clients, {result.summary.trainers} trainers and{" "}
             {result.summary.sessions} sessions are in.
           </p>
+          {/* The one thing about the demo studio that expires. Everything
+              else is history and stays true; the Hub reads FORWARD, so the
+              seeded bookings run out and the grid quietly empties. Saying
+              when turns that into a date rather than a surprise. */}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink-d3 leading-relaxed mb-5">
+            {result.summary.bookings} bookings on the Hub, through{" "}
+            {friendlyDay(result.summary.scheduleThrough)}. Set it up again to
+            move the schedule forward.
+          </p>
           {result.missingCatalog.length > 0 && (
             /* Not an error, and not silent either: resolveMachine() returns
                null for a roster entry whose catalog machine is missing, and
@@ -115,7 +136,7 @@ export function SetUpDemoCard({
         <p className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 leading-relaxed mb-5 mt-auto">
           {existing
             ? "Put the six demo clients back the way they started."
-            : "Six clients, three trainers and a year of sessions — none of them real. Takes a moment."}
+            : "Six clients, three trainers, a year of sessions and eight weeks of bookings — none of them real. Takes a moment."}
         </p>
       )}
 
