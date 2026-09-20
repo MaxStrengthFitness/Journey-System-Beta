@@ -66,8 +66,48 @@ studio twice; either half makes it demo.
 | `constants.ts` | The id, the name, the seed version, the email domain |
 | `is-demo.ts` | Recognising demo: the four scope fields, `excludeDemo` / `onlyDemo` for the point where data leaves the app, `withDemoFlag` for the write |
 | `guards.ts` | The two crossings above |
+| `access.ts` | Who may do what: `canEnterDemo`, `hasRunOfDemo`, `studiosInRealm`, `splitOutDemo` |
 | `roster.ts` | Six clients and three trainers, each there to teach something |
-| `demo-mode.test.ts` | 26 tests over all of it |
+| `seed-core.ts` | Pure. The 1,202 documents the demo studio is made of, as `{ path, data }` |
+| `seed-write.ts` | Lays that list down with the client SDK, in batches |
+| `DemoBanner.tsx` | One line across every screen, the Active Session included |
+| `SetUpDemoCard.tsx` | Set up and reset, from the studio selection screen |
+
+## Full access is authorisation, never membership
+
+The tempting one-liner was to make `worksAt()` and `leadsStudio()` return true
+for the demo studio. It is wrong: those two answer a different question
+depending on who is asking. "May I act here?" is about the signed-in trainer;
+"is this person on this studio's team?" is asked of every trainer in the
+company, filtered. Operations → Renewals and the Delight queue build their
+people lists the second way, so a blanket true would have put the whole staff
+directory on Demo Mode's team screens.
+
+Membership therefore stays honest, and `hasRunOfDemo()` widens authorisation
+at six call sites. `access.ts` has the list and the reasoning.
+
+**One realm at a time.** `studiosInRealm()`, applied last in
+`operationsStudios()`: from inside Demo Mode you see Demo Mode and nothing
+else; from anywhere else you do not see it at all. That one rule is the whole
+demo boundary in Operations — no check in any of the nine tabs.
+
+## Two leaks guarded elsewhere
+
+Two jobs read across the WHOLE COMPANY on purpose, so a studio-scoped guard
+would never have caught them. Both drop demo rows in their pure aggregator:
+
+- `features/machine-trends/trends.ts` — the weekly "how this machine is used"
+  roll-up reads `exerciseLogs` with no studio filter.
+- `features/machine-fit/company.ts` — the company fit tier pools every
+  studio's index, and its cells are k-anonymous at five clients, which six
+  demo clients at one height would be enough to form.
+
+## Tests
+
+`demo-mode.test.ts` (recognising and guarding), `access.test.ts` (who may do
+what, and the realm rule), `seed.test.ts` (the documents themselves),
+`leaks.test.ts` (the two above), `DemoBanner.render.test.tsx`. Plus 13
+assertions in `tests/firestore.rules.test.ts`, which need the emulator.
 
 ## The roster earns its place
 
