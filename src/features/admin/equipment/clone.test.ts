@@ -41,9 +41,23 @@ describe("pruneOverrides", () => {
     expect(
       pruneOverrides(catalog, { defaultSettings: { seat: "8", gap: "9" } } as any),
     ).toEqual({});
+  });
+
+  it("reduces a bag of values to the keys that actually differ", () => {
+    // Same argument as "DROPS an edit equal to the catalog value", one level
+    // down. A form hands back every dial; storing the ones that match freezes
+    // them, so a studio that once changed the seat would stop receiving
+    // corrections to the gap. resolve-machine merges these per key, so
+    // sending only the difference resolves identically on the floor.
     expect(
       pruneOverrides(catalog, { defaultSettings: { seat: "7", gap: "9" } } as any),
-    ).toEqual({ defaultSettings: { seat: "7", gap: "9" } });
+    ).toEqual({ defaultSettings: { seat: "7" } });
+  });
+
+  it("drops a bag whose every key matches, rather than storing an empty one", () => {
+    expect(
+      pruneOverrides(catalog, { defaultSettings: { gap: "9" } } as any),
+    ).toEqual({});
   });
 
   it("keeps a studio's addition to an additive safety list", () => {

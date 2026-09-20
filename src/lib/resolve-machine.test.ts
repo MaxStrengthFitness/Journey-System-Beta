@@ -164,6 +164,64 @@ describe("resolveMachine — catalog-sourced", () => {
     expect(r.overriddenFields).toContain("universalBaseline");
   });
 
+  it("merges the baseline per line, so one correction keeps the rest inherited", () => {
+    // The studio's unit has a different seat. It says nothing about the axis,
+    // the restraints or the gap — and must keep receiving corrections to them.
+    const r = resolveMachine(
+      fromCatalog({
+        universalBaseline: {
+          seatHeightPosition: "Seat back to P3 on our unit.",
+        } as MachineDefinition["universalBaseline"],
+      }),
+      legPress,
+    )!;
+    expect(r.universalBaseline.seatHeightPosition).toBe("Seat back to P3 on our unit.");
+    expect(r.universalBaseline.padAxisAlignment).toBe(
+      legPress.universalBaseline.padAxisAlignment,
+    );
+    expect(r.universalBaseline.restraintsAnchoring).toBe(
+      legPress.universalBaseline.restraintsAnchoring,
+    );
+  });
+
+  it("lets a studio clear one inherited line without clearing its neighbours", () => {
+    // A plate-loaded unit genuinely has no stack gap. "" is a deliberate
+    // clear; an absent key is not.
+    const r = resolveMachine(
+      fromCatalog({
+        universalBaseline: {
+          startingWeightStackGap: "",
+        } as MachineDefinition["universalBaseline"],
+      }),
+      legPress,
+    )!;
+    expect(r.universalBaseline.startingWeightStackGap).toBe("");
+    expect(r.universalBaseline.seatHeightPosition).toBe(
+      legPress.universalBaseline.seatHeightPosition,
+    );
+  });
+
+  it("merges body-type adjustments per column", () => {
+    // Editing the taller column must not drop the limited-mobility column's
+    // static-hold guidance, which is the Academy's, not the studio's.
+    const r = resolveMachine(
+      fromCatalog({
+        bodyTypeAdjustments: {
+          tallerStature: { seatAdjustment: "P4 on our unit." },
+        } as MachineDefinition["bodyTypeAdjustments"],
+      }),
+      legPress,
+    )!;
+    expect(r.bodyTypeAdjustments.tallerStature.seatAdjustment).toBe("P4 on our unit.");
+    expect(r.bodyTypeAdjustments.limitedMobility.alternativeProtocols).toBe(
+      legPress.bodyTypeAdjustments.limitedMobility.alternativeProtocols,
+    );
+    // And the untouched half of the column it DID edit survives too.
+    expect(r.bodyTypeAdjustments.tallerStature.specialNotes).toBe(
+      legPress.bodyTypeAdjustments.tallerStature.specialNotes,
+    );
+  });
+
   it("keeps catalog fields live-inherited so admin edits still propagate", () => {
     const corrected: MachineCatalogEntry = {
       ...legPress,

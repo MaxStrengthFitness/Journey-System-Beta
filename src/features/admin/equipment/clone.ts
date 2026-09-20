@@ -26,7 +26,7 @@ import type {
   MachineDefinition,
   RosterEntryFromCatalog,
 } from "../../../types/machines";
-import { ADDITIVE_DEFINITION_FIELDS } from "../../../lib/resolve-machine";
+import { ADDITIVE_DEFINITION_FIELDS, pruneMergedField } from "../../../lib/resolve-machine";
 import { sameValue } from "../formState";
 
 export interface LocalMetadata {
@@ -69,7 +69,15 @@ export function pruneOverrides(
     // inherited value on the floor.
     if (next === undefined || next === null || next === "") continue;
     if (sameValue(next, catalog[key])) continue;
-    out[key] = next as never;
+
+    // A bag of independent values (the baseline, the body-type columns, the
+    // dial defaults) is reduced to the sub-keys that actually differ, so the
+    // rest keeps live-inheriting. A form always hands back the whole object;
+    // storing the whole object is what quietly freezes a studio out of
+    // corrections it never asked to opt out of. See resolve-machine.
+    const pruned = pruneMergedField(key, catalog[key], next);
+    if (pruned === undefined) continue;
+    out[key] = pruned as never;
   }
   return out;
 }

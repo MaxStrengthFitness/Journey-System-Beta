@@ -97,6 +97,128 @@ function unionCheckpoints(
 }
 
 /**
+ * Fields that are a BAG OF INDEPENDENT VALUES, not one value.
+ *
+ * `universalBaseline` holds five separate sentences — seat, axis, restraints,
+ * grip, starting gap — written by five different judgements. Under plain
+ * replacement, a studio correcting the seat position on their model has to
+ * send the whole object, and the other four stop live-inheriting: an admin
+ * later fixing the axis-alignment line reaches every location EXCEPT the ones
+ * that once edited a seat height. Nobody would ever see that happen.
+ *
+ * So these merge per key, the same way `defaultSettings` already did and for
+ * exactly the same reason. A key the studio did not send keeps inheriting; a
+ * key sent as "" is a deliberate clear (a plate-loaded unit has no grip
+ * position) and wins.
+ *
+ * `bodyTypeAdjustments` is the same argument one level deeper: its three
+ * columns are independent, and the limited-mobility column in particular
+ * carries the Academy's static-hold guidance that a studio editing the
+ * taller-stature column must not drop.
+ */
+const MERGED_FLAT_FIELDS = [
+  "universalBaseline",
+  "defaultSettings",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
+const MERGED_COLUMN_FIELDS = [
+  "bodyTypeAdjustments",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
+/** Every field whose override merges per key rather than replacing. */
+export const MERGED_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] = [
+  ...MERGED_FLAT_FIELDS,
+  ...MERGED_COLUMN_FIELDS,
+];
+
+function isMergedFlatField(key: string): boolean {
+  return (MERGED_FLAT_FIELDS as readonly string[]).includes(key);
+}
+
+function isMergedColumnField(key: string): boolean {
+  return (MERGED_COLUMN_FIELDS as readonly string[]).includes(key);
+}
+
+type Bag = Record<string, unknown>;
+
+/** One level: studio keys win, catalog keys survive where the studio was silent. */
+function mergeFlat(base: unknown, extra: unknown): Bag {
+  return { ...((base as Bag) ?? {}), ...((extra as Bag) ?? {}) };
+}
+
+/** Two levels: merge each column, so one column's edit leaves the others alone. */
+function mergeColumns(base: unknown, extra: unknown): Bag {
+  const b = (base as Bag) ?? {};
+  const e = (extra as Bag) ?? {};
+  const out: Bag = { ...b };
+  for (const key of Object.keys(e)) {
+    out[key] = mergeFlat(b[key], e[key]);
+  }
+  return out;
+}
+
+/**
+ * Drop sub-keys that already match the catalog, so only real differences are
+ * stored.
+ *
+ * The write-side half of the merge above, and useless without it: merging per
+ * key only preserves live inheritance if the override does not carry a copy
+ * of every inherited value. The editor hands us a whole object because that
+ * is what a form produces; this reduces it to what the studio actually
+ * changed. Exported for clone.ts, which is the one place a roster override
+ * is built.
+ */
+export function pruneMergedField(
+  field: keyof MachineDefinition,
+  base: unknown,
+  value: unknown,
+): unknown {
+  if (value === undefined || value === null) return value;
+
+  if (isMergedFlatField(field)) {
+    const b = (base as Bag) ?? {};
+    const v = value as Bag;
+    const out: Bag = {};
+    for (const key of Object.keys(v)) {
+      if (sameLoose(v[key], b[key])) continue;
+      out[key] = v[key];
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+
+  if (isMergedColumnField(field)) {
+    const b = (base as Bag) ?? {};
+    const v = value as Bag;
+    const out: Bag = {};
+    for (const key of Object.keys(v)) {
+      const inner = pruneMergedField(
+        "universalBaseline",
+        b[key],
+        v[key],
+      ) as Bag | undefined;
+      if (inner) out[key] = inner;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+
+  return value;
+}
+
+/**
+ * Equality for one sub-value, with the same null/undefined blindness the
+ * admin forms use: Firestore omits absent fields, so a doc read back has
+ * `undefined` where the form put "".
+ */
+function sameLoose(a: unknown, b: unknown): boolean {
+  const an = a === null || a === undefined || a === "" ? "" : a;
+  const bn = b === null || b === undefined || b === "" ? "" : b;
+  if (an === bn) return true;
+  if (typeof an !== typeof bn) return false;
+  if (typeof an === "object") return JSON.stringify(an) === JSON.stringify(bn);
+  return false;
+}
+
+/**
  * Drop stored values whose dial no longer exists.
  *
  * A studio that replaces settingFields (an older model with no Back Pad)
@@ -155,16 +277,17 @@ export function mergeMachineDefinition(
       continue;
     }
 
-    merged[field] = value as never;
-  }
+    if (isMergedFlatField(key)) {
+      merged[field] = mergeFlat(base[field], value) as never;
+      continue;
+    }
 
-  // defaultSettings merges per key (studio wins) rather than replacing, so a
-  // studio setting one dial doesn't wipe the catalog's values for the rest.
-  if (overrides.defaultSettings) {
-    merged.defaultSettings = {
-      ...base.defaultSettings,
-      ...overrides.defaultSettings,
-    };
+    if (isMergedColumnField(key)) {
+      merged[field] = mergeColumns(base[field], value) as never;
+      continue;
+    }
+
+    merged[field] = value as never;
   }
 
   merged.defaultSettings = pruneToFields(
