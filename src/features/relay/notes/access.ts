@@ -19,6 +19,7 @@
 import type { Client, Trainer } from "../../../types";
 import { canRecordInBody } from "../../inbody/access";
 import { leadsStudio } from "../../renewals/permissions";
+import { hasRunOfDemo } from "../../demo-mode/access";
 
 const SUPER = new Set(["Admin", "Founder", "Overseer"]);
 
@@ -57,5 +58,5 @@ export function canRemoveSharedNote(
 ): boolean {
   if (uid && note.authorId === uid) return true;
   if (!t) return false;
-  return SUPER.has(t.role) || leadsStudio(t, clientStudio);
+  return SUPER.has(t.role) || leadsStudio(t, clientStudio) || hasRunOfDemo(t, clientStudio);
 }

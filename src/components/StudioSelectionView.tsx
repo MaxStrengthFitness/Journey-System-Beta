@@ -15,6 +15,7 @@ import {
   UserCog,
   Shield,
   Home,
+  FlaskConical,
 } from "lucide-react";
 import { Studio, FranchiseNetwork, Trainer } from "../types";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,9 @@ import { isStudioLeader } from "../lib/permissions";
 import { getStudioClientCount } from "../lib/studio-roster-count";
 import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
 import { releaseUiScrollLock } from "../lib/scroll-lock";
+import { canEnterDemo, splitOutDemo } from "../features/demo-mode/access";
+import { isDemoStudioId } from "../features/demo-mode/is-demo";
+import { DEMO_STUDIO_TAGLINE } from "../features/demo-mode/constants";
 
 interface StudioSelectionViewProps {
   studios: Studio[];
@@ -84,10 +88,17 @@ function StudioCard({
   onEnter,
   onTogglePin,
   onRequestAccess,
+  isDemo = false,
 }: {
   studio: Studio;
   networkName?: string;
   hasAccess: boolean;
+  /**
+   * Demo Mode. Same card, four differences — the icon, no pin (nobody should
+   * land in a practice studio every morning by accident), a sentence where
+   * the roster counts go, and its own wording on the button.
+   */
+  isDemo?: boolean;
   isHome: boolean;
   isPinned: boolean;
   isRequested: boolean;
@@ -101,19 +112,25 @@ function StudioCard({
     <div
       className={cn(
         "bg-bg-dark-2 border rounded-[28px] p-6 shadow-xl flex flex-col relative overflow-hidden transition-colors",
-        hasAccess
-          ? "border-div-d hover:border-action/50"
-          : "border-div-d/70",
+        /* Dashed, so it reads as "not one of your locations" before anyone
+           has read a word of it. */
+        isDemo
+          ? "border-dashed border-ink-d3/50 hover:border-ink-d3"
+          : hasAccess
+            ? "border-div-d hover:border-action/50"
+            : "border-div-d/70",
       )}
     >
       <div
         className={cn(
           "absolute top-0 left-0 w-full h-1",
-          isPinned
-            ? "bg-action"
-            : hasAccess
-              ? "bg-linear-to-r from-action/40 to-transparent"
-              : "bg-linear-to-r from-ink-d3/30 to-transparent",
+          isDemo
+            ? "bg-linear-to-r from-ink-d3/50 to-transparent"
+            : isPinned
+              ? "bg-action"
+              : hasAccess
+                ? "bg-linear-to-r from-action/40 to-transparent"
+                : "bg-linear-to-r from-ink-d3/30 to-transparent",
         )}
       />
 
@@ -126,7 +143,9 @@ function StudioCard({
               : "bg-bg-dark-3 border-div-d text-ink-d3",
           )}
         >
-          {hasAccess ? (
+          {isDemo ? (
+            <FlaskConical className="w-4 h-4" />
+          ) : hasAccess ? (
             <Building2 className="w-4 h-4" />
           ) : (
             <Lock className="w-3.5 h-3.5" />
@@ -139,8 +158,10 @@ function StudioCard({
               <Home className="w-2.5 h-2.5" /> Home
             </span>
           )}
-          {/* Pinning is only meaningful for a studio you can actually enter. */}
-          {hasAccess && (
+          {/* Pinning is only meaningful for a studio you can actually enter —
+              and never for Demo Mode, which nobody should open into by
+              default on a Monday morning. */}
+          {hasAccess && !isDemo && (
             <button
               type="button"
               onClick={onTogglePin}
@@ -188,9 +209,18 @@ function StudioCard({
         </p>
       )}
 
+      {/* What is actually in there, in a sentence. Counts would be true but
+          beside the point: nobody enters Demo Mode to find out how big it is. */}
+      {isDemo && (
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-d3 leading-relaxed mb-5 mt-auto">
+          Six clients, three trainers, and a year of sessions — none of them
+          real. Practise anything. Nothing here touches a live record.
+        </p>
+      )}
+
       {/* Quick stats. Only for studios you can enter — a locked card showing
           another location's roster size would be leaking it. */}
-      {hasAccess && (
+      {hasAccess && !isDemo && (
         <div className="grid grid-cols-2 gap-2 mb-5 mt-auto">
           <div className="bg-bg-dark-3 border border-div-d rounded-2xl px-3 py-2.5">
             <div className="flex items-center gap-1.5 text-ink-d3 mb-1">
@@ -225,9 +255,15 @@ function StudioCard({
         {hasAccess ? (
           <Button
             onClick={onEnter}
-            className="w-full bg-cta-strong hover:bg-[#a02400] text-white font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+            className={cn(
+              "w-full text-white font-black uppercase tracking-widest text-xs h-11 rounded-xl flex items-center justify-center gap-2 cursor-pointer",
+              isDemo
+                ? "bg-bg-dark-3 hover:bg-muted text-ink-d1 border border-div-d"
+                : "bg-cta-strong hover:bg-[#a02400]",
+            )}
           >
-            Enter Studio <ArrowRight className="w-4 h-4" />
+            {isDemo ? "Enter Demo Mode" : "Enter Studio"}{" "}
+            <ArrowRight className="w-4 h-4" />
           </Button>
         ) : isRequested ? (
           <Button
@@ -306,6 +342,13 @@ export function StudioSelectionView({
   const hasAccessToStudio = React.useCallback(
     (studioId: string) => {
       if (!authTrainer) return false;
+      /*
+       * Demo Mode is open to every signed-in trainer, and the answer is
+       * derived from the studio's id rather than from anything written on
+       * this trainer's record — so it cannot be granted, and cannot be lost.
+       * features/demo-mode/access.ts has the why.
+       */
+      if (canEnterDemo(authTrainer) && isDemoStudioId(studioId)) return true;
       return (
         authTrainer.primaryHomeStudioId === studioId ||
         authTrainer.accessibleStudioIds?.includes(studioId) ||
@@ -318,10 +361,14 @@ export function StudioSelectionView({
     [authTrainer],
   );
 
-  const { mine, others } = useMemo(() => {
+  const { demo, mine, others } = useMemo(() => {
     const mine: Studio[] = [];
     const others: Studio[] = [];
-    studios.forEach((s) => {
+    /* Demo Mode gets a section of its own rather than a place in "Your
+       studios": a trainer looking for the building they are standing in
+       should never have to read past a practice studio to find it. */
+    const { demo, rest } = splitOutDemo(studios);
+    rest.forEach((s) => {
       (hasAccessToStudio(s.id || "") ? mine : others).push(s);
     });
     /* Home studio first, then pinned, then alphabetical — the order a trainer
@@ -336,7 +383,7 @@ export function StudioSelectionView({
       return rank(a) - rank(b) || (a.name || "").localeCompare(b.name || "");
     });
     others.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    return { mine, others };
+    return { demo, mine, others };
   }, [studios, hasAccessToStudio, authTrainer?.primaryHomeStudioId, pinnedStudioId]);
 
   /** Trainers per studio — from data already in memory, so it costs nothing. */
@@ -470,12 +517,13 @@ export function StudioSelectionView({
     );
   };
 
-  const renderCard = (studio: Studio, hasAccess: boolean) => (
+  const renderCard = (studio: Studio, hasAccess: boolean, isDemo = false) => (
     <StudioCard
       key={studio.id}
       studio={studio}
-      networkName={networkNameFor(studio)}
+      networkName={isDemo ? undefined : networkNameFor(studio)}
       hasAccess={hasAccess}
+      isDemo={isDemo}
       isHome={studio.id === authTrainer?.primaryHomeStudioId}
       isPinned={!!studio.id && studio.id === pinnedStudioId}
       isRequested={requestedStudios.has(studio.id || "")}
@@ -549,6 +597,26 @@ export function StudioSelectionView({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {mine.map((s) => renderCard(s, true))}
+            </div>
+          </section>
+        )}
+
+        {/* ---- Demo Mode -------------------------------------------------- */}
+        {demo && (
+          <section className="mb-12">
+            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
+              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d2 italic">
+                  Practice
+                </h3>
+                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
+                  {DEMO_STUDIO_TAGLINE}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {renderCard(demo, true, true)}
             </div>
           </section>
         )}
@@ -629,6 +697,7 @@ export function StudioSelectionView({
             <p className="text-xs uppercase tracking-wider text-ink-d3 max-w-md">
               Open "Other locations" above and request access to the studio you
               work from. A manager approves it from the Admin panel.
+              {demo && " In the meantime, Demo Mode is open to everyone."}
             </p>
             {!showOthers && (
               <Button

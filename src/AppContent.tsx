@@ -199,6 +199,7 @@ import {
   isOwner,
   isStudioLeader,
 } from "./lib/permissions";
+import { hasRunOfDemo } from "./features/demo-mode/access";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1358,6 +1359,19 @@ export default function AppContent({
     afterOverlayClose(go);
   };
 
+  /*
+   * Who is offered Operations from the trainer menu: studio leaders and above,
+   * and — inside Demo Mode — everyone. "Full access" is the whole point of the
+   * demo studio (AJ, Sep 20 2026), and the Firestore rules agree, so a trainer
+   * practising there can open the half of the app their own role keeps shut
+   * without the database refusing a single thing they try.
+   *
+   * Operations scopes itself to the one realm the app is standing in, so this
+   * can never show a real studio's numbers — see features/admin/scope.ts.
+   */
+  const canOpenOperations =
+    isStudioLeader(authTrainer) || hasRunOfDemo(authTrainer, activeStudioId);
+
   const headerTrainerDropdown = authTrainer ? (
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
@@ -1368,7 +1382,7 @@ export default function AppContent({
         className="w-56 rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark p-2 shadow-2xl dark:shadow-none text-slate-700 dark:text-slate-300"
       >
         <DropdownMenuGroup>
-          {isStudioLeader(authTrainer) && (
+          {canOpenOperations && (
             <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
               <Label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 block mb-3">
                 App Mode

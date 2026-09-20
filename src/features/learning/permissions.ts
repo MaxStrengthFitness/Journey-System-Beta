@@ -18,6 +18,7 @@
  */
 
 import type { Trainer } from "../../types";
+import { hasRunOfDemo } from "../demo-mode/access";
 
 type TrainerLike =
   | (Pick<Trainer, "role" | "primaryHomeStudioId" | "ownedStudioIds"> &
@@ -41,6 +42,8 @@ export function isSuperRole(trainer: TrainerLike): boolean {
  */
 export function leadsStudioPerRules(trainer: TrainerLike, studioId: string | null | undefined): boolean {
   if (!trainer || !studioId) return false;
+  /* Everyone has the run of Demo Mode -- features/demo-mode/access.ts. */
+  if (hasRunOfDemo(trainer, studioId)) return true;
   if ((trainer.managedStudioIds ?? []).includes(studioId)) return true;
   if (!trainer.role || !STUDIO_LEADER_ROLES.has(trainer.role)) return false;
   return (

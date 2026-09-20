@@ -14,6 +14,7 @@
  */
 
 import type { Trainer } from "../../types";
+import { hasRunOfDemo } from "../demo-mode/access";
 
 const SUPER = new Set(["Admin", "Founder", "Overseer"]);
 const FRANCHISE = new Set(["FranchiseOwner", "Owner"]);
@@ -51,9 +52,16 @@ export function leadsStudio(t: TrainerLike | null | undefined, studioId: string 
   return t.primaryHomeStudioId === studioId || (t.ownedStudioIds ?? []).includes(studioId);
 }
 
-/** The pipeline, stage / lead / outcome, settings and per-trainer rates. */
+/**
+ * The pipeline, stage / lead / outcome, settings and per-trainer rates.
+ *
+ * The demo clause is authorisation only -- everyone has the run of Demo Mode
+ * (features/demo-mode/access.ts). Membership above is untouched, so the team
+ * lists built by filtering all trainers through worksAt() still show Demo
+ * Mode's own three trainers rather than the whole company.
+ */
 export function canManageRenewals(t: TrainerLike | null | undefined, studioId: string | null | undefined): boolean {
-  return isEveryStudioRole(t) || leadsStudio(t, studioId);
+  return isEveryStudioRole(t) || leadsStudio(t, studioId) || hasRunOfDemo(t, studioId);
 }
 
 /** Reading a studio's renewal cycles and settings, and logging a conversation. */

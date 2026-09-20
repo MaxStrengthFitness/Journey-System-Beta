@@ -63,7 +63,10 @@ export function OperationsScopeProvider({
   children: ReactNode;
 }) {
   const { availableStudios, setActiveStudioId } = useActiveStudio();
-  const readable = useMemo(() => operationsStudios(authTrainer, studios, networks, isAdmin), [authTrainer, studios, networks, isAdmin]);
+  const readable = useMemo(
+    () => operationsStudios(authTrainer, studios, networks, isAdmin, activeStudioId),
+    [authTrainer, studios, networks, isAdmin, activeStudioId],
+  );
   const switchable = useMemo(() => {
     const available = new Set(availableStudios.map((s) => s.id));
     return readable.filter((s) => available.has(s.id));

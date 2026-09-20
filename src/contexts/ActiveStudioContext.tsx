@@ -13,6 +13,7 @@ import {
   PermissionAction,
   PermissionContext,
 } from "../lib/permissions";
+import { isDemoStudio } from "../features/demo-mode/is-demo";
 
 interface ActiveStudioContextType {
   activeStudioId: string | null;
@@ -135,8 +136,18 @@ export function ActiveStudioProvider({
     });
 
     // For FranchiseOwner (Owner role) or others, only show their allowed studios plus any where they are listed as ownerId
+    //
+    // Demo Mode is available to everyone, always (AJ, Sep 20 2026). It is
+    // added here rather than granted per trainer so that nobody has to be
+    // given access to it and nobody can lose it — the answer is derived from
+    // the studio's own id, not from anything written on a trainer's record.
+    // If it has not been seeded yet it simply is not in `studios`, and
+    // nothing anywhere mentions it.
     return studios.filter(
-      (s) => (s.id && allowedIds.has(s.id)) || s.ownerId === authTrainer.id,
+      (s) =>
+        (s.id && allowedIds.has(s.id)) ||
+        s.ownerId === authTrainer.id ||
+        isDemoStudio(s),
     );
   }, [authTrainer, studios, isAdmin]);
 

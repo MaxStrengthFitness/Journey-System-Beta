@@ -12,6 +12,7 @@
 
 import type { Trainer } from "../../types";
 import { leadsStudio, worksAt } from "../renewals/permissions";
+import { hasRunOfDemo } from "../demo-mode/access";
 import type { InBodyScan } from "./types";
 
 const SUPER = new Set(["Admin", "Founder", "Overseer"]);
@@ -22,7 +23,13 @@ type TrainerLike = Pick<
 >;
 
 export function canRecordInBody(t: TrainerLike | null | undefined, studioId: string | null | undefined): boolean {
-  return Boolean(t && (SUPER.has(t.role) || worksAt(t, studioId) || leadsStudio(t, studioId)));
+  return Boolean(
+    t &&
+      (SUPER.has(t.role) ||
+        worksAt(t, studioId) ||
+        leadsStudio(t, studioId) ||
+        hasRunOfDemo(t, studioId)),
+  );
 }
 
 export function canRemoveInBodyScan(
@@ -32,5 +39,10 @@ export function canRemoveInBodyScan(
   studioId: string | null | undefined,
 ): boolean {
   if (!t || !canRecordInBody(t, studioId)) return false;
-  return (Boolean(uid) && scan.enteredBy === uid) || SUPER.has(t.role) || leadsStudio(t, studioId);
+  return (
+    (Boolean(uid) && scan.enteredBy === uid) ||
+    SUPER.has(t.role) ||
+    leadsStudio(t, studioId) ||
+    hasRunOfDemo(t, studioId)
+  );
 }

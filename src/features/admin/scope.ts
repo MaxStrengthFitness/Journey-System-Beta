@@ -30,9 +30,18 @@
  * as the studio picker in the header does. "All my studios" is the other
  * scope: tabs that can add studios up do; tabs that read one studio at a
  * time say so and offer the list. See scope-context.tsx.
+ *
+ * DEMO MODE (Sep 20 2026) is scoped by a rule of its own, applied last:
+ * from inside Demo Mode this list is Demo Mode and nothing else, and from
+ * anywhere else Demo Mode is not in it at all — for administrators too, whose
+ * "every studio" would otherwise fold practice numbers into the company's.
+ * One studio in the list also means `canSpan` is false, so "All my studios"
+ * does not appear inside Demo Mode. That is the whole of the demo boundary in
+ * Operations: no check in any of the nine tabs.
  */
 import type { FranchiseNetwork, Studio, Trainer } from "../../types";
 import { isEveryStudioRole, leadsStudio } from "../renewals/permissions";
+import { hasRunOfDemo, studiosInRealm } from "../demo-mode/access";
 
 const SUPER = new Set(["Admin", "Founder", "Overseer"]);
 
@@ -42,6 +51,8 @@ export function operationsStudios(
   studios: Studio[],
   networks: FranchiseNetwork[] = [],
   isAdmin = false,
+  /** The studio the app is standing in — see the demo rule in the header. */
+  activeStudioId: string | null | undefined = null,
 ): Studio[] {
   if (!trainer) return [];
   const all = isAdmin || SUPER.has(trainer.role);
@@ -52,14 +63,20 @@ export function operationsStudios(
       for (const id of n.studioIds ?? []) owned.add(id);
     }
   }
-  return studios
-    .filter((s) => {
-      if (!s.id) return false;
-      if (all) return true;
-      if (owner && (s.ownerId === trainer.id || owned.has(s.id))) return true;
-      return leadsStudio(trainer, s.id);
-    })
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+  const visible = studios.filter((s) => {
+    if (!s.id) return false;
+    /* Everyone runs Demo Mode, whatever their role -- but the realm filter
+       below still decides whether they can see it from where they are. */
+    if (hasRunOfDemo(trainer, s.id)) return true;
+    if (all) return true;
+    if (owner && (s.ownerId === trainer.id || owned.has(s.id))) return true;
+    return leadsStudio(trainer, s.id);
+  });
+  /* Last, and over the top of everything above: you are in one realm at a
+     time. Inside Demo Mode, `all` and `owner` do not reach back out. */
+  return studiosInRealm(visible, activeStudioId).sort((a, b) =>
+    (a.name ?? "").localeCompare(b.name ?? ""),
+  );
 }
 
 /**
