@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
+  writeBatch,
   collection,
   onSnapshot,
   addDoc,
@@ -1296,21 +1297,47 @@ export function WorkoutTrackerView({
           return cleanFirestorePayload(payload);
         };
 
+        /*
+         * ONE BATCH, MERGED, BEFORE THE TRAINER CAN TOUCH ANYTHING.
+         *
+         * This loop used to `await setDoc(...)` once per machine, with no
+         * { merge: true }, AFTER the sessions listener had already seen the
+         * local addDoc and switched the screen to the live tracker. Two ways
+         * that lost a trainer's work:
+         *
+         *   - Offline, a setDoc promise never resolves. The loop parked at
+         *     machine 1 while the trainer kept working; when the network came
+         *     back it resumed and REPLACED (not merged) the placeholder for
+         *     machines 2..N — reps, quality and skip reasons gone, and the
+         *     snapshot echo cleared the Now Bar in front of them.
+         *   - Even online there was a window of N round trips in which the
+         *     same thing could happen on a slow studio connection.
+         *
+         * Every other write to these documents is a merge (updateLogMultiple);
+         * the seed was the one replace. Now the payloads are built first, the
+         * dynamic import is hoisted out of the loop, and one writeBatch with
+         * merge commits them. A session is 5-8 machines, so this is well
+         * inside the 500-op limit.
+         *
+         * "We need the app to be able to act as pen and paper in terms of
+         * reliability." — docs/business/the-floor.md
+         */
+        const { calculateStartingWeight } = await import(
+          "../lib/consultation-utils"
+        );
+
+        const seeds: { ref: ReturnType<typeof doc>; payload: any }[] = [];
+
         for (const mId of activeMachineIds) {
           const mac = floorMachines.find((m) => m.id === mId);
-          // `mac?.name` guarded the machine but not the field: a machine
-          // document without a name threw here, after the session had already
-          // been created, leaving an In-Progress session with no logs.
-          const isTorsoMac = (mac?.name || "")
-            .toLowerCase()
-            .includes("torso rotation");
+          // Canonical id first, so a studio that renamed its torso rotation
+          // still gets Left and Right seeded. src/lib/floor-machines.ts.
+          const isTorsoMac = isPerSideMachine({ id: mId, name: mac?.name });
 
           let defaultWeight: number | null = null;
           if (!machineLastLogs[mId] && selectedClient && mac && mac.name) {
             const gender =
               selectedClient.gender === "Female" ? "Female" : "Male";
-            const { calculateStartingWeight } =
-              await import("../lib/consultation-utils");
             const calculatedWeight = calculateStartingWeight(
               mac.name,
               gender,
@@ -1326,29 +1353,37 @@ export function WorkoutTrackerView({
             const prefilledRight =
               machineLastLogs[`${mId}_Right`] || machineLastLogs[mId];
 
-            // Create Left set
             if (prefilledLeft || defaultWeight) {
-              await setDoc(
-                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Left")),
-                createLogPayload(prefilledLeft, mId, "Left", defaultWeight),
-              );
+              seeds.push({
+                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Left")),
+                payload: createLogPayload(prefilledLeft, mId, "Left", defaultWeight),
+              });
             }
-            // Create Right set
             if (prefilledRight || defaultWeight) {
-              await setDoc(
-                doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Right")),
-                createLogPayload(prefilledRight, mId, "Right", defaultWeight),
-              );
+              seeds.push({
+                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, "Right")),
+                payload: createLogPayload(prefilledRight, mId, "Right", defaultWeight),
+              });
             }
           } else {
             const prefilledLog = machineLastLogs[mId];
             if (prefilledLog || defaultWeight) {
-              await setDoc(
-                doc(db, "exerciseLogs", logDocId(docRef.id, mId, undefined)),
-                createLogPayload(prefilledLog, mId, undefined, defaultWeight),
-              );
+              seeds.push({
+                ref: doc(db, "exerciseLogs", logDocId(docRef.id, mId, undefined)),
+                payload: createLogPayload(prefilledLog, mId, undefined, defaultWeight),
+              });
             }
           }
+        }
+
+        if (seeds.length > 0) {
+          const seedBatch = writeBatch(db);
+          for (const { ref, payload } of seeds) {
+            // merge: a seed must never clobber a set the trainer has already
+            // entered on this machine.
+            seedBatch.set(ref, payload, { merge: true });
+          }
+          await seedBatch.commit();
         }
       }
 
