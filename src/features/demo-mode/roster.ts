@@ -38,7 +38,15 @@ export interface DemoClientSeed {
   age: number;
   height: string;
   weight: string;
-  /** Completed sessions to lay down IN JOURNEY. */
+  /**
+   * Completed sessions to lay down IN JOURNEY.
+   *
+   * `sessions + remainingSessions` is always a real package size (48, 96 or
+   * 144) on purpose, so the package the seeder writes reconciles exactly:
+   * what Mindbody says has been used is what Journey has recorded. A demo
+   * where two screens disagree about the same client by twenty sessions is a
+   * demo that invites the one question you cannot answer.
+   */
   sessions: number;
   remainingSessions: number;
   /**
@@ -66,7 +74,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
     height: "5' 4\"",
     weight: "148",
     sessions: 42,
-    remainingSessions: 18,
+    remainingSessions: 54,
     priorSessions: 0,
     preference: "female",
     hasRoughSets: false,
@@ -83,7 +91,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
     height: "5' 11\"",
     weight: "203",
     sessions: 14,
-    remainingSessions: 10,
+    remainingSessions: 34,
     priorSessions: 0,
     preference: "male",
     hasRoughSets: true,
@@ -99,7 +107,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
     age: 68,
     height: "5' 3\"",
     weight: "141",
-    sessions: 24,
+    sessions: 45,
     remainingSessions: 3,
     priorSessions: 0,
     preference: "female",
@@ -117,7 +125,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
     height: "6' 0\"",
     weight: "196",
     sessions: 2,
-    remainingSessions: 22,
+    remainingSessions: 46,
     priorSessions: 0,
     preference: "male",
     hasRoughSets: false,
@@ -143,7 +151,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
      * and the answer to "did we lose twelve years of records".
      */
     priorSessions: 304,
-    remainingSessions: 31,
+    remainingSessions: 40,
     preference: "neutral",
     hasRoughSets: false,
     daysSinceLastSession: 6,
@@ -159,7 +167,7 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
     height: "5' 9\"",
     weight: "178",
     sessions: 19,
-    remainingSessions: 13,
+    remainingSessions: 29,
     priorSessions: 0,
     preference: "male",
     hasRoughSets: true,
