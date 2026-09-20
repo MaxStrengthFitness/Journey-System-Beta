@@ -33,18 +33,27 @@ import type {
 } from "../../../types";
 import { AdminHeader, AdminScreen } from "../primitives";
 import { AnnouncementComposer } from "./AnnouncementComposer";
-import { millis, type NetworkOption } from "./audience";
+import { millis, type AnnouncementScope, type NetworkOption } from "./audience";
 
 interface Props {
   authTrainer: Trainer;
+  /** The studios this author may address — the shell passes the scope's list. */
   studios: Studio[];
   networks: FranchiseNetwork[];
+  /**
+   * Which audiences this author may pick (Operations overhaul, Sep 2026:
+   * the tab is open to every leader — "leaders announce to their own
+   * studio" — so a studio's leader gets "One studio" only, an owner adds
+   * their network, and administrators everything).
+   */
+  scopes?: AnnouncementScope[];
 }
 
 export function AdminAnnouncementsTab({
   authTrainer,
   studios,
   networks,
+  scopes = ["universal", "network", "studio"],
 }: Props) {
   const [all, setAll] = useState<HubAnnouncement[]>([]);
 
@@ -98,7 +107,7 @@ export function AdminAnnouncementsTab({
         author={{ id: authTrainer.id, fullName: authTrainer.fullName }}
         studios={studios}
         networks={networkOptions}
-        scopes={["universal", "network", "studio"]}
+        scopes={scopes}
         published={live}
         title="Post an announcement"
         subtitle="Pick the audience before you write. It is the part people get wrong."

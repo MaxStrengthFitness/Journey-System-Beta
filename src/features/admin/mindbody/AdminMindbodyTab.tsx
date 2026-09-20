@@ -98,6 +98,14 @@ interface Props {
   trainers: Trainer[];
   clients: Client[];
   activeStudioId: string | null;
+  /**
+   * The whole estate — every studio, worst first, the parked-events depth —
+   * is the administrator's. A studio's leader (Operations overhaul, Sep
+   * 2026: "studio leaders need their own connection") sees their own studio
+   * only: is it linked, when did it last sync, pull the schedule now, the
+   * event log. Off = that scoped view.
+   */
+  company?: boolean;
 }
 
 const LINK_TONE = {
@@ -129,6 +137,7 @@ export function AdminMindbodyTab({
   trainers,
   clients,
   activeStudioId,
+  company = true,
 }: Props) {
   const { success: toastSuccess, error: toastError } = useToast();
   const health = useMindbodyHealth();
@@ -146,7 +155,8 @@ export function AdminMindbodyTab({
   }, []);
 
   const [selectedId, setSelectedId] = useState<string | null>(activeStudioId);
-  const selected = studios.find((s) => s.id === (selectedId ?? activeStudioId));
+  // A leader's view never leaves the studio the app is in.
+  const selected = studios.find((s) => s.id === (company ? (selectedId ?? activeStudioId) : activeStudioId));
 
   const rows = useMemo(
     () => auditStudios(studios, trainers, now),
@@ -335,8 +345,8 @@ export function AdminMindbodyTab({
     <AdminScreen>
       <AdminHeader
         icon={<Zap className="w-5 h-5" />}
-        title="Mindbody"
-        subtitle="Whether it is working, which studio is affected, and what it actually said."
+        title={company ? "Mindbody" : `${selected?.name ?? "This studio"} — Mindbody`}
+        subtitle={company ? "Whether it is working, which studio is affected, and what it actually said." : "Whether your studio's link is working, when it last synced, and what Mindbody actually said. Pull the schedule from here when a booking is missing."}
         actions={
           <AdminButton onClick={checkConnection} busy={checking}>
             <RefreshCw className="w-3.5 h-3.5" />
@@ -380,6 +390,7 @@ export function AdminMindbodyTab({
         </AdminNotice>
       )}
 
+      {company && (
       <AdminTiles>
         <AdminStatTile label="Studios linked" value={estate.linked} />
         <AdminStatTile
@@ -405,8 +416,10 @@ export function AdminMindbodyTab({
           foot="Failed processing, awaiting a retry"
         />
       </AdminTiles>
+      )}
 
-      {/* 2. Which studio is affected? */}
+      {/* 2. Which studio is affected? (the estate — administrators) */}
+      {company && (
       <AdminPanel
         title="Studios"
         subtitle={
@@ -433,6 +446,7 @@ export function AdminMindbodyTab({
           </ul>
         )}
       </AdminPanel>
+      )}
 
       {/* 3. What is this studio doing? */}
       {selected && selectedRow && (

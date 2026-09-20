@@ -142,7 +142,9 @@
   align-items: flex-start;
   gap: 16px;
   width: 100%;
-  max-width: 80rem;
+  /* 88rem, not 80 (Operations overhaul, Sep 2026): the Overview sits in two
+     columns on a desk, and a leader at a computer has the width to spare. */
+  max-width: 88rem;
   margin: 0 auto;
   padding: 12px;
   color: var(--adm-ink);

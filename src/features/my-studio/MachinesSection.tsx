@@ -26,7 +26,8 @@ import { useSharedMachines } from "../machine-db/hooks";
 import { adoptMachine } from "../machine-db/mutations";
 import { writesForStudioPerRules } from "../learning/permissions";
 import { ContextPanel } from "../relay/board/ContextPanel";
-import { useRelay } from "../relay/board/RelayContext";
+import { useRelayMaybe } from "../relay/board/RelayContext";
+import { leadsHere } from "../relay/leads";
 import {
   buildSubmission,
   standardGaps,
@@ -86,11 +87,14 @@ interface Door {
 
 export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
-  const relay = useRelay();
+  // Inside My Studio the Relay shell says who leads; on Operations → Floor
+  // (the same editor, a second door — Operations overhaul, Sep 2026) there
+  // is no shell, so the answer comes from leadsHere directly.
+  const relay = useRelayMaybe();
   const { success: toastSuccess, error: toastError } = useToast();
   const studioId = activeStudioId ?? null;
   const studioName = activeStudio?.name ?? "this studio";
-  const canLead = relay.canLead;
+  const canLead = relay ? relay.canLead : leadsHere(authTrainer ?? null, studioId);
   const canLogUpkeep = writesForStudioPerRules(authTrainer ?? null, studioId);
 
   const { rosterEntries, catalog, byId, loading } = useStudioMachines(studioId, {
