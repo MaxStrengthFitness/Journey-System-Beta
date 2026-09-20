@@ -24,6 +24,7 @@
  * "not enough data yet" instead of quoting a number built on two people.
  */
 
+import { isDemoRecord } from "../demo-mode/is-demo";
 import { isPerformedLog, type OutcomeLog } from "../../lib/set-outcome.ts";
 
 /** Named minimum sample: a median is only written when this many DISTINCT clients contributed. */
@@ -41,6 +42,11 @@ export interface TrendLogInput extends OutcomeLog {
   sessionId?: string | null;
   weight?: string | number | null;
   machineSettings?: Record<string, unknown> | null;
+  /** Studio scoping, read only to keep Demo Mode out — see the filter below. */
+  studioId?: string | null;
+  homeStudioId?: string | null;
+  clientHomeStudioId?: string | null;
+  isDemo?: boolean;
 }
 
 export interface TrendClientInput {
@@ -48,6 +54,7 @@ export interface TrendClientInput {
   height?: string | null;
   homeStudioId?: string | null;
   isActive?: boolean | null;
+  isDemo?: boolean;
 }
 
 export interface Distribution {
@@ -234,6 +241,20 @@ export function buildMachineTrends(
 
   for (const log of logs) {
     if (!isPerformedLog(log)) continue;
+    /*
+     * DEMO MODE (Sep 20 2026). The weekly job reads `exerciseLogs` across the
+     * WHOLE COMPANY -- it has no studio filter, by design, because "how this
+     * machine is used" is a company-wide answer. That makes it the one place
+     * practice sets would silently become part of what Max Strength believes
+     * about its own equipment, and nobody would ever notice: the numbers do
+     * not break, they just stop being true.
+     *
+     * Dropped here rather than in the query, because this is a question about
+     * whether a row COUNTS, and that belongs with the other rules about what
+     * counts. It also keeps the demo studio out of the k-anonymous cells --
+     * six demo clients at one height would be enough to form one.
+     */
+    if (isDemoRecord(log)) continue;
     const clientId = log.clientId ?? null;
     const machineId = log.machineId ?? null;
     const load = parseLoad(log.weight);

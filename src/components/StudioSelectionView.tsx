@@ -37,6 +37,7 @@ import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
 import { releaseUiScrollLock } from "../lib/scroll-lock";
 import { canEnterDemo, splitOutDemo } from "../features/demo-mode/access";
 import { isDemoStudioId } from "../features/demo-mode/is-demo";
+import { SetUpDemoCard } from "../features/demo-mode/SetUpDemoCard";
 import { DEMO_STUDIO_TAGLINE } from "../features/demo-mode/constants";
 
 interface StudioSelectionViewProps {
@@ -617,6 +618,37 @@ export function StudioSelectionView({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {renderCard(demo, true, true)}
+              {authTrainer && (
+                <SetUpDemoCard
+                  seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }}
+                  existing
+                />
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ---- Demo Mode, before it exists -------------------------------
+            The chicken-and-egg: until the seeder has run there is no studio
+            to enter and no Operations to open, so this screen is the only
+            one that can offer the button. */}
+        {!demo && authTrainer && (
+          <section className="mb-12">
+            <div className="flex items-center gap-3 border-b border-div-d pb-2 mb-5">
+              <div className="w-1.5 h-6 bg-ink-d3 rounded-full" />
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-ink-d2 italic">
+                  Practice
+                </h3>
+                <p className="text-[11px] font-bold text-ink-d3 uppercase tracking-widest leading-none mt-0.5">
+                  A studio to learn in, not yet set up
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <SetUpDemoCard
+                seededBy={{ id: authTrainer.id || "", name: authTrainer.fullName || "" }}
+              />
             </div>
           </section>
         )}

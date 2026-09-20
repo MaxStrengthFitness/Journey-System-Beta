@@ -32,6 +32,7 @@ import {
   type MachineFitDoc,
 } from "./fit-index.ts";
 import { buildKaizen, type KaizenReport, type KaizenSample } from "./kaizen.ts";
+import { isDemoStudioId } from "../demo-mode/is-demo";
 import type { FitSample } from "./types.ts";
 
 export interface CompanyClientRecord extends FitClientRecord {
@@ -85,6 +86,14 @@ export function buildCompany(
   const contributing = new Set<string>();
 
   for (const studio of studios) {
+    /*
+     * DEMO MODE (Sep 20 2026). The company tier pools every studio's fit
+     * index, and its cells are k-anonymous at five clients -- six demo
+     * clients at one height would be enough to form one, and the guidance a
+     * real trainer then reads would be partly about people who do not exist.
+     * Skipped whole, at the studio, so no demo row can reach a sample.
+     */
+    if (isDemoStudioId(studio.studioId)) continue;
     const roster = byStudio.get(studio.studioId) ?? new Map<string, FitClientRecord>();
     for (const doc of studio.docs) {
       if (!doc?.machineId || !doc.rows) continue;
