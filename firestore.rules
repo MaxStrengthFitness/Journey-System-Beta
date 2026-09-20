@@ -80,6 +80,8 @@ service cloud.firestore {
     // 3. STUDIO OWNER & HEAD TRAINER: Read/write strictly bounded by location parameter
     function isStudioOwnerOrHeadTrainerOnly(studioId) {
       return isAuthenticated() && (
+        // Demo Mode: everyone leads there. See the demo helpers above.
+        hasRunOfDemo(studioId) ||
         // Secure Custom Token Claim check
         ('studioId' in request.auth.token && request.auth.token.studioId != null && request.auth.token.studioId == studioId) ||
         // Database Backed verification fallback
@@ -113,6 +115,8 @@ service cloud.firestore {
     // 4. TRAINER: Any authenticated trainer at a studio — checks primary home, accessible, and guest studios
     function isTrainerOfStudioOnly(studioId) {
       return isAuthenticated() && trainerDocExistsByUID() && (
+        // Demo Mode: everyone works there. See the demo helpers above.
+        isDemoStudioId(studioId) ||
         (
           getTrainerData().primaryHomeStudioId == studioId ||
           ('accessibleStudioIds' in getTrainerData() && getTrainerData().accessibleStudioIds != null && getTrainerData().accessibleStudioIds.hasAny([studioId])) ||
@@ -130,6 +134,54 @@ service cloud.firestore {
     // can write sessions as long as they are authenticated — the hostedAtStudioId is set by the app
     function isAnyAuthenticatedTrainer() {
       return isAuthenticated() && trainerDocExistsByUID();
+    }
+
+    // ===============================================================
+    // DEMO MODE (Sep 20 2026)
+    // ===============================================================
+    //
+    // `demo-studio` is a real studio document full of people who do not
+    // exist. Every signed-in trainer has the run of it, at every level, so a
+    // trainer can rehearse the half of the app their own role keeps shut
+    // without a single real record in reach. The app mirrors these two
+    // answers in src/features/demo-mode/access.ts.
+    //
+    // The boundary is NOT a wall around this data -- it is that the studio id
+    // is a literal here, and that the app never shows a demo record and a
+    // real one in the same list (features/demo-mode/is-demo.ts). Deriving
+    // access from the id rather than from a field on each trainer is what
+    // makes it impossible to grant by mistake and impossible to lose.
+    //
+    // A literal, not a lookup: naming the id costs nothing, where checking a
+    // flag on the studio document would spend a read on every rule that asks.
+
+    function isDemoStudioId(studioId) {
+      return studioId == 'demo-studio';
+    }
+
+    /** Everybody signed in, inside the demo studio. */
+    function hasRunOfDemo(studioId) {
+      return isDemoStudioId(studioId) && isAnyAuthenticatedTrainer();
+    }
+
+    /*
+     * A trainer document the seeder lays down for the demo studio.
+     *
+     * Pinned hard: the id, the flag, the one studio it belongs to, no grant,
+     * nothing owned, and a role that cannot be an elevated one. A document
+     * that satisfies all of this is inert outside Demo Mode -- it names no
+     * real studio, and it is not the caller's own uid document, so it can
+     * never answer getRole() for anybody.
+     */
+    function isDemoTrainerPayload(trainerId, data) {
+      return trainerId.matches('demo-trainer-.*') &&
+             data.get('isDemo', false) == true &&
+             data.get('primaryHomeStudioId', '') == 'demo-studio' &&
+             data.get('accessibleStudioIds', []).hasOnly(['demo-studio']) &&
+             data.get('managedStudioIds', []).size() == 0 &&
+             data.get('ownedStudioIds', []).size() == 0 &&
+             (data.get('role', '') == 'StudioLeader' ||
+              data.get('role', '') == 'LifeTransformer');
     }
 
     // 5. HELPER: Resolve studio or homeStudioId field safely from a data map
@@ -226,6 +278,7 @@ service cloud.firestore {
     /** Works here, as a trainer. Pure map lookups against an already-read doc. */
     function trainerWorksAt(t, studioId) {
       return t != null && studioId != null && studioId != '' && (
+        isDemoStudioId(studioId) ||
         t.get('primaryHomeStudioId', '') == studioId ||
         t.get('accessibleStudioIds', []).hasAny([studioId]) ||
         t.get('activeGuestStudioIds', []).hasAny([studioId])
@@ -235,6 +288,7 @@ service cloud.firestore {
     /** Runs this location. Mirrors isStudioOwnerOrHeadTrainerOnly's DB branch. */
     function trainerLeads(r, t, studioId) {
       return studioId != null && studioId != '' && (
+        (t != null && isDemoStudioId(studioId)) ||
         // The custom-claim fast path, carried over verbatim from
         // isStudioOwnerOrHeadTrainerOnly. It never fires: the only claim
         // ever set is `role` (syncTrainerClaims, cost round Sep 2026), and
@@ -1106,8 +1160,23 @@ service cloud.firestore {
                      // Bootstrap / claim: a person may own trainers/{their uid},
                      // but may not hand themselves Admin, Founder or Overseer.
                      // See selfCreatedRoleIsAllowed() above.
-                     (request.auth.uid == trainerId && selfCreatedRoleIsAllowed()));
-      allow update: if (isSuperAdmin() && !writesDerivedTrainerFields()) || 
+                     (request.auth.uid == trainerId && selfCreatedRoleIsAllowed()) ||
+                     // Demo Mode (Sep 20 2026). The seeder's three demo
+                     // trainers have no Auth account, so they cannot be minted
+                     // by the bootstrap clause above, and the studio they join
+                     // has no leaders of its own to approve them. Pinned hard
+                     // by isDemoTrainerPayload -- see the demo helpers.
+                     (isAnyAuthenticatedTrainer() &&
+                      isDemoTrainerPayload(trainerId, request.resource.data)));
+      allow update: if
+                    // Demo Mode: re-seeding rewrites these three whole. Both
+                    // the stored document and the incoming one have to be
+                    // demo documents, so a real trainer can never be turned
+                    // into one, nor the reverse.
+                    (isAnyAuthenticatedTrainer() &&
+                     resource.data.get('isDemo', false) == true &&
+                     isDemoTrainerPayload(trainerId, request.resource.data)) ||
+                    (isSuperAdmin() && !writesDerivedTrainerFields()) || 
                     ( !writesDerivedTrainerFields() &&
                       !writesForeignRoster(trainerId) &&
                       (isFranchiseOwner() || 
@@ -1778,7 +1847,12 @@ service cloud.firestore {
       // thing every iPad still writes is the schedule sync's lease
       // (features/admin/useAutoSync: lastScheduleSyncAt, scheduleSyncFailures),
       // so any trainer may touch those two fields and nothing else.
-      allow create: if isSuperAdmin() || isFranchiseOwner();
+      // Demo Mode (Sep 20 2026): `demo-studio` is laid down by the seeder from
+      // inside the app, so anybody signed in may bring it into existence. The
+      // id is a literal, so this creates exactly one studio and no other, and
+      // update is already covered -- isStudioOwnerOrHeadTrainer is true there
+      // for everyone.
+      allow create: if isSuperAdmin() || isFranchiseOwner() || hasRunOfDemo(studioId);
       allow update: if isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId) ||
                        (isAnyAuthenticatedTrainer() &&
                         request.resource.data.diff(resource.data).affectedKeys()

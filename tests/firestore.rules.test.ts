@@ -2438,4 +2438,215 @@ describe("Firestore Security Rules", () => {
     await assertFails(updateDoc(row(stranger), { reason: "rewritten" }));
     await assertFails(deleteDoc(row(stranger)));
   });
+
+  /* ================================================================== *
+   * DEMO MODE (Sep 20 2026)
+   *
+   * `demo-studio` is a real studio full of people who do not exist, and
+   * every signed-in trainer has the run of it. These assertions are the
+   * other half of src/features/demo-mode/access.ts: the app must never
+   * offer a button the database refuses, and — the direction that matters
+   * more — widening the demo studio must not have widened anything else.
+   * Every "denies" below is a test that the blast radius is one studio.
+   * ================================================================== */
+  describe("Demo Mode", () => {
+    const DEMO = "demo-studio";
+
+    /** trainerB is a plain LifeTransformer whose home is studioB. */
+    const plainTrainer = () =>
+      testEnv
+        .authenticatedContext("trainerB", { email: "trainerb@test.com" })
+        .firestore();
+
+    it("lets any signed-in trainer create the demo studio, and no other", async () => {
+      const db = plainTrainer();
+      await assertSucceeds(
+        setDoc(doc(db, "studios", DEMO), { name: "Demo Mode", isDemo: true }),
+      );
+      // The id is a literal in the rule, so this grants exactly one studio.
+      await assertFails(
+        setDoc(doc(db, "studios", "studioC"), { name: "Somewhere Real" }),
+      );
+      await assertFails(
+        setDoc(doc(db, "studios", "demo-studio-2"), { name: "Nearly", isDemo: true }),
+      );
+    });
+
+    it("lets a plain trainer run the demo studio, and still not their neighbour's", async () => {
+      const db = plainTrainer();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), "studios", DEMO), { name: "Demo Mode", isDemo: true });
+      });
+      await assertSucceeds(updateDoc(doc(db, "studios", DEMO), { sessionMinutes: 30 }));
+      // studioA is somebody else's studio and stays somebody else's.
+      await assertFails(updateDoc(doc(db, "studios", "studioA"), { sessionMinutes: 30 }));
+    });
+
+    it("lets the seeder lay down its three trainers", async () => {
+      const db = plainTrainer();
+      const payload = {
+        fullName: "Hob Hayward",
+        initials: "HH",
+        role: "StudioLeader",
+        primaryHomeStudioId: DEMO,
+        accessibleStudioIds: [DEMO],
+        activeGuestStudioIds: [],
+        pendingClaim: true,
+        isDemo: true,
+      };
+      await assertSucceeds(setDoc(doc(db, "trainers", "demo-trainer-hob"), payload));
+      // Re-seeding rewrites the same document whole.
+      await assertSucceeds(setDoc(doc(db, "trainers", "demo-trainer-hob"), payload));
+    });
+
+    it("refuses a demo trainer that reaches outside the demo studio", async () => {
+      const db = plainTrainer();
+      const base = {
+        fullName: "Not Really",
+        initials: "NR",
+        role: "LifeTransformer",
+        primaryHomeStudioId: DEMO,
+        accessibleStudioIds: [DEMO],
+        isDemo: true,
+      };
+      // An elevated role.
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-x"), { ...base, role: "Admin" }),
+      );
+      // Access to a real studio, by any of the three doors.
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-x"), {
+          ...base,
+          accessibleStudioIds: [DEMO, "studioA"],
+        }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-x"), { ...base, ownedStudioIds: ["studioA"] }),
+      );
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-x"), { ...base, managedStudioIds: ["studioA"] }),
+      );
+      // Unflagged, or named as if it were a real person's document.
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-x"), { ...base, isDemo: false }),
+      );
+      await assertFails(setDoc(doc(db, "trainers", "someone-else"), base));
+    });
+
+    it("never lets a real trainer document be turned into a demo one", async () => {
+      const db = plainTrainer();
+      // trainerA exists and is not a demo document; the id does not match
+      // either, so both halves of the update clause refuse it.
+      await assertFails(updateDoc(doc(db, "trainers", "trainerA"), { isDemo: true }));
+    });
+
+    it("lets a plain trainer work with demo clients and sessions", async () => {
+      const db = plainTrainer();
+      await assertSucceeds(
+        setDoc(doc(db, "clients", "demo-client-elanor"), {
+          firstName: "Elanor",
+          lastName: "Gardner",
+          isActive: true,
+          remainingSessions: 54,
+          homeStudioId: DEMO,
+          isDemo: true,
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(db, "sessions", "demo-session-elanor-001"), {
+          clientId: "demo-client-elanor",
+          hostedAtStudioId: DEMO,
+          clientHomeStudioId: DEMO,
+          date: "2026-09-01",
+          sessionNumber: 1,
+          trainerInitials: "HH",
+          isDemo: true,
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(db, "exerciseLogs", "demo-session-elanor-001_m-leg-press"), {
+          sessionId: "demo-session-elanor-001",
+          machineId: "m-leg-press",
+          clientId: "demo-client-elanor",
+          studioId: DEMO,
+          isDemo: true,
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(db, "clientMachineSettings", "demo-client-elanor_m-leg-press"), {
+          clientId: "demo-client-elanor",
+          machineId: "m-leg-press",
+          settings: { Gap: "4" },
+          isDemo: true,
+        }),
+      );
+    });
+
+    it("does not let the demo flag carry a client into a real studio", async () => {
+      // The thing that would make all of this worthless: `isDemo: true`
+      // must never be a key. The studio id is what decides, always.
+      const db = plainTrainer();
+      await assertFails(
+        setDoc(doc(db, "clients", "sneaky"), {
+          firstName: "Not",
+          lastName: "Yours",
+          isActive: true,
+          remainingSessions: 1,
+          homeStudioId: "studioA",
+          isDemo: true,
+        }),
+      );
+    });
+
+    it("still refuses the renewal snapshot on a demo client", async () => {
+      // Demo Mode widens who may act; it does not change what anybody may
+      // write. `renewal` belongs to the nightly job, everywhere.
+      const db = plainTrainer();
+      await assertFails(
+        setDoc(doc(db, "clients", "demo-client-rosie"), {
+          firstName: "Rosie",
+          lastName: "Cotton",
+          isActive: true,
+          remainingSessions: 3,
+          homeStudioId: DEMO,
+          isDemo: true,
+          renewal: { version: 1, situation: "on-track" },
+        }),
+      );
+    });
+
+    it("gives nobody anything when they are not signed in", async () => {
+      const db = testEnv.unauthenticatedContext().firestore();
+      await assertFails(setDoc(doc(db, "studios", DEMO), { name: "Demo Mode" }));
+      await assertFails(
+        setDoc(doc(db, "trainers", "demo-trainer-hob"), {
+          fullName: "Hob Hayward",
+          initials: "HH",
+          role: "StudioLeader",
+          primaryHomeStudioId: DEMO,
+          accessibleStudioIds: [DEMO],
+          isDemo: true,
+        }),
+      );
+    });
+
+    it("gives nothing to a signed-in user with no trainer profile", async () => {
+      // Every demo clause goes through isAnyAuthenticatedTrainer(), so a bare
+      // Auth account is not enough — the same bar as the rest of the app.
+      const db = testEnv
+        .authenticatedContext("nobody-uid", { email: "stranger@example.com" })
+        .firestore();
+      await assertFails(setDoc(doc(db, "studios", DEMO), { name: "Demo Mode" }));
+      await assertFails(
+        setDoc(doc(db, "clients", "demo-client-x"), {
+          firstName: "X",
+          lastName: "Y",
+          isActive: true,
+          remainingSessions: 1,
+          homeStudioId: DEMO,
+          isDemo: true,
+        }),
+      );
+    });
+  });
 });
