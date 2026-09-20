@@ -60,6 +60,12 @@ export function useDirtyForm<T extends object>(
 ): DirtyForm<T> {
   const [state, setState] = useState<FormState<T>>(() => initForm(external));
 
+  // A mirror of the committed state for save() to read. Written during render
+  // on purpose: it is a mirror, never a source, and nothing reads it while
+  // rendering.
+  const live = useRef(state);
+  live.current = state;
+
   // Adopt whatever the database says, three-way merged against unsaved edits.
   useEffect(() => {
     setState((prev) => adoptExternal(prev, external));
@@ -96,15 +102,23 @@ export function useDirtyForm<T extends object>(
   const save = useCallback(async () => {
     // Read the live state rather than the closed-over one so two quick taps
     // cannot send the same diff twice.
-    let patch: Partial<T> = {};
-    let proceed = false;
-    setState((prev) => {
-      if (prev.status === "saving" || !isDirty(prev)) return prev;
-      patch = changedPatch(prev);
-      proceed = true;
-      return beginSave(prev);
-    });
-    if (!proceed) return false;
+    //
+    // Through a REF, not by reaching into a setState updater. React does not
+    // promise that an updater runs synchronously — inside an event handler it
+    // normally runs during the next render, and the eager-evaluation path
+    // that made the old version appear to work is defeated by StrictMode's
+    // double render, which main.tsx turns on. The symptom was the worst kind:
+    // the bar went to "Saving…", onSave was never called, nothing was written
+    // and nothing ever said so. That is precisely what SaveBar exists to
+    // prevent, so it cannot be the thing that breaks.
+    const prev = live.current;
+    if (prev.status === "saving" || !isDirty(prev)) return false;
+    const patch = changedPatch(prev);
+
+    // Claim the save on the ref before awaiting, so a second tap in the same
+    // tick sees "saving" even though React has not re-rendered yet.
+    live.current = beginSave(prev);
+    setState((s) => (s.status === "saving" ? s : beginSave(s)));
 
     try {
       await onSave(patch);
