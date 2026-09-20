@@ -80,6 +80,7 @@ import {
   parseSessionDate,
   orderMachineSettings,
 } from "../lib/utils";
+import { toFloorMachines, isPerSideMachine } from "../lib/floor-machines";
 import { completeWorkoutSession } from "../lib/sync-utils";
 import { getLatestTargetWeight } from "../lib/historical-utils";
 
@@ -244,7 +245,37 @@ export function WorkoutTrackerView({
   // byId is keyed by machineId and its `order` is already resolved through
   // resolveMachineOrder, so passing it as the override is idempotent: an
   // unrostered machine yields undefined and falls back to the code default.
-  const { byId: studioFloorById } = useStudioMachines(contextActiveStudioId);
+  // bridgeWhenRosterEmpty: westlake and Willoughby have no roster yet, and a
+  // tracker with no machines is far worse than a tracker showing the catalog.
+  // The bridge makes the resolved list fall back to the catalog, so those two
+  // studios degrade to exactly today's behaviour instead of to nothing.
+  const { machines: studioFloor, byId: studioFloorById } = useStudioMachines(
+    contextActiveStudioId,
+    { bridgeWhenRosterEmpty: true },
+  );
+
+  /**
+   * THE FLOOR — what this studio actually has, in the shape this screen
+   * already speaks.
+   *
+   * Until Sep 20 2026 the tracker read the app-wide `machines` prop and used
+   * the roster for `order` alone, so a studio's own dial labels, its renamed
+   * units, its custom machines and every catalog correction reached the
+   * Learning -> Catalog page and nothing a trainer held during a session.
+   * `toFloorMachines` merges the studio's resolved truth over the legacy
+   * document, so every consumer below keeps the legacy fields it reads while
+   * the things a studio owns finally arrive. See src/lib/floor-machines.ts.
+   */
+  const legacyMachinesById = useMemo(() => {
+    const map: Record<string, Machine> = {};
+    for (const m of machines) if (m.id) map[m.id] = m;
+    return map;
+  }, [machines]);
+
+  const floorMachines = useMemo(
+    () => toFloorMachines(studioFloor, legacyMachinesById),
+    [studioFloor, legacyMachinesById],
+  );
 
   const { error: toastError } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
@@ -938,14 +969,14 @@ export function WorkoutTrackerView({
     if (routine) {
       seededMachinesForSession.current = sessionId;
       setActiveMachineIds(routine.machineIds);
-    } else if (!currentSession?.routineId && machines.length > 0) {
+    } else if (!currentSession?.routineId && floorMachines.length > 0) {
       // A Free session: no routine to read, so the floor is the list.
       seededMachinesForSession.current = sessionId;
-      setActiveMachineIds(machines.map((m) => m.id!));
+      setActiveMachineIds(floorMachines.map((m) => m.id!));
     }
     // A routineId we have not loaded yet: leave the latch unset and try again
     // on the next snapshot rather than seeding from an empty list.
-  }, [currentSession, routines, machines]);
+  }, [currentSession, routines, floorMachines]);
 
   /* REMOVED (Sep 2026): updateRoutineNote and moveMachine.
 
@@ -1266,7 +1297,7 @@ export function WorkoutTrackerView({
         };
 
         for (const mId of activeMachineIds) {
-          const mac = machines.find((m) => m.id === mId);
+          const mac = floorMachines.find((m) => m.id === mId);
           // `mac?.name` guarded the machine but not the field: a machine
           // document without a name threw here, after the session had already
           // been created, leaving an In-Progress session with no logs.
@@ -1610,7 +1641,7 @@ export function WorkoutTrackerView({
           ? { weight: last.weight, reps: last.reps ?? null, seconds: last.seconds ?? null, isTSC: !!last.isTSC, quality: last.quality }
           : undefined;
       };
-      const machineName = (id: string) => machines.find((m) => m.id === id)?.name || id;
+      const machineName = (id: string) => floorMachines.find((m) => m.id === id)?.name || id;
       const lines = todayLines({ order: activeMachineIds, logs: finalLogs, nameOf: machineName, priorOf });
       const todayWeight = new Map(lines.filter((l) => l.outcome === "performed").map((l) => [l.machineId, l.weight]));
       const journey = strengthJourney(
@@ -1999,8 +2030,10 @@ export function WorkoutTrackerView({
    * commitEndSession writes that map exactly as before. Torso Rotation
    * keeps its Left/Right logs — the Today cell shows two outcome rows.
    * ------------------------------------------------------------------ */
-  const isSidesMachine = (m: Machine) =>
-    (m.name || "").toLowerCase().includes("torso rotation");
+  // Canonical id first: a studio that renames its torso rotation — which the
+  // template boundary explicitly invites — used to lose its Left/Right fields
+  // to a name-only check. src/lib/floor-machines.ts.
+  const isSidesMachine = (m: Machine) => isPerSideMachine(m);
 
   /** Past sessions, oldest → newest. Capped at the 30 the logs listener covers. */
   const gridHistory = useMemo(
@@ -2020,7 +2053,7 @@ export function WorkoutTrackerView({
   );
 
   const gridRows = useMemo(() => {
-    const ordered = [...machines].sort(
+    const ordered = [...floorMachines].sort(
       (a, b) =>
         resolveMachineOrder(
           a.id,
@@ -2088,7 +2121,7 @@ export function WorkoutTrackerView({
       },
     );
   }, [
-    machines,
+    floorMachines,
     logs,
     clientMachineSettings,
     studioFloorById,
@@ -2411,7 +2444,7 @@ export function WorkoutTrackerView({
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
-        machines={machines}
+        machines={floorMachines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
         onStudioClick={onStudioClick}
@@ -2444,7 +2477,7 @@ export function WorkoutTrackerView({
 
             if (setupData.routine && setupData.routine.length > 0) {
               const machineNames = setupData.routine.map((r: any) => r.name);
-              const customMachineIds = machines
+              const customMachineIds = floorMachines
                 .filter((m) => machineNames.includes(m.name))
                 .map((m) => m.id as string);
               startNewSession(
@@ -2489,7 +2522,7 @@ export function WorkoutTrackerView({
           setIsPreSessionMode(false);
           setView("profile");
         }}
-        machines={machines}
+        machines={floorMachines}
         routines={routines}
         trainers={trainers}
         logs={
@@ -2637,7 +2670,7 @@ export function WorkoutTrackerView({
       {editingWeightMachineId &&
         currentSession &&
         (() => {
-          const theMachine = machines.find(
+          const theMachine = floorMachines.find(
             (m) => m.id === editingWeightMachineId,
           )!;
           const isTorso = theMachine.name
@@ -2786,7 +2819,7 @@ export function WorkoutTrackerView({
       {setupPromptMachineId && (
         <SetupPromptDialog
           open
-          machine={machines.find((m) => m.id === setupPromptMachineId) || null}
+          machine={floorMachines.find((m) => m.id === setupPromptMachineId) || null}
           clientId={clientId || ""}
           clientSettings={clientMachineSettings}
           author={
@@ -2842,7 +2875,7 @@ export function WorkoutTrackerView({
             return !row || orderedSets(row, gridHistory).length === 0;
           })()
         }
-        machine={machines.find((m) => m.id === sheetMachineId) || null}
+        machine={floorMachines.find((m) => m.id === sheetMachineId) || null}
         client={selectedClient}
         clientId={clientId || ""}
         clientSettings={clientMachineSettings}
@@ -2864,7 +2897,7 @@ export function WorkoutTrackerView({
       {historyMachineId && clientId && (
         <ExerciseHistoryDialog
           clientId={clientId}
-          machine={machines.find((m) => m.id === historyMachineId)!}
+          machine={floorMachines.find((m) => m.id === historyMachineId)!}
           onClose={() => setHistoryMachineId(null)}
           user={user}
         />
@@ -2969,7 +3002,7 @@ export function WorkoutTrackerView({
                     <div className="flex flex-col gap-2">
                       {Object.keys(endChoices).map((machineId) => {
                         const name =
-                          machines.find((m) => m.id === machineId)?.name || machineId;
+                          floorMachines.find((m) => m.id === machineId)?.name || machineId;
                         const choice = endChoices[machineId];
                         return (
                           <div
@@ -3324,7 +3357,7 @@ export function WorkoutTrackerView({
                   <ClientCheckInPanel
                     client={selectedClient}
                     trainer={authTrainer || null}
-                    machines={machines}
+                    machines={floorMachines}
                   />
                 </React.Suspense>
               </div>
@@ -3338,7 +3371,7 @@ export function WorkoutTrackerView({
           <SessionFlagsSheet
             clientFirstName={clientFirstName(selectedClient)}
             flags={flags}
-            machines={machines}
+            machines={floorMachines}
             onClose={() => setIsShowingFlags(false)}
           />
         )}
@@ -3356,7 +3389,7 @@ export function WorkoutTrackerView({
               initials: (authTrainer?.initials || "TR").toUpperCase(),
               fullName: authTrainer?.fullName || "Coach",
             }}
-            machines={machines}
+            machines={floorMachines}
             defaultMachineId={gridFocusMachineId}
             client={selectedClient}
             trainer={authTrainer}
