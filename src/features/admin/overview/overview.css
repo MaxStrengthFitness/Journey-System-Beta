@@ -1,0 +1,434 @@
+/* ==================================================================== *
+ * THE OVERVIEW (Operations overhaul, Sep 2026)
+ *
+ * Three depths on one screen: the tiles and the Needs-you strip, the
+ * panels in two columns on a desk (act today on the left, look ahead on
+ * the right) and stacked in reading order on a portrait iPad, then the
+ * week's lines. Tokens only — admin.tokens.css.
+ * ==================================================================== */
+
+/* ---------- Needs you ------------------------------------------------- */
+
+.adm-ov__needs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+}
+
+.adm-ov__needs-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adm-ink);
+  white-space: nowrap;
+}
+
+.adm-ov__needs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-ov__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--adm-border);
+  border-radius: 999px;
+  background: var(--adm-surface);
+  color: var(--adm-ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.adm-ov__chip:hover { background: var(--adm-surface-2); }
+.adm-ov__chip:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
+
+.adm-ov__chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink);
+}
+.adm-ov__chip--alert .adm-ov__chip-count { background: var(--adm-alert-fill); color: var(--adm-alert); }
+.adm-ov__chip--warn .adm-ov__chip-count { background: var(--adm-warn-fill); color: var(--adm-warn); }
+
+/* ---------- The chase list under the tiles ---------------------------- */
+
+.adm-ov__chase {
+  margin-top: 12px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  overflow: hidden;
+}
+
+/* ---------- The grid -------------------------------------------------- */
+
+.adm-ov__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+/* Wide enough for two columns: the desk, and an iPad in landscape beside
+   the rail. Explicit columns plus a dense flow let the two stacks fill
+   independently while the DOM stays in reading order for the narrow case. */
+@media (min-width: 900px) {
+  .adm-ov__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+    align-items: start;
+  }
+  .adm-ov__cell--left { grid-column: 1; }
+  .adm-ov__cell--right { grid-column: 2; }
+}
+
+.adm-ov__cell { min-width: 0; }
+
+.adm-ov__panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.adm-ov__panel--folded .adm-panel__body { display: none; }
+
+.adm-ov__foot-line {
+  padding: 8px 10px;
+  border-top: 1px solid var(--adm-border);
+}
+
+/* ---------- Rows ------------------------------------------------------ */
+
+.adm-ov__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-ov__rows--bordered {
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  overflow: hidden;
+}
+
+.adm-ov__row + .adm-ov__row { border-top: 1px solid var(--adm-border); }
+
+/* The whole row opens the client. A <button> centres its own text, so the
+   alignment lives here. 44px at least. */
+.adm-ov__row-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.adm-ov__row-btn:disabled { cursor: default; }
+.adm-ov__row-btn:not(:disabled):hover { background: var(--adm-surface-2); }
+.adm-ov__row-btn:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: -2px; }
+
+/* A row with buttons: the name button on the left, the actions on the right,
+   never one inside the other. */
+.adm-ov__row-main {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.adm-ov__row-main .adm-ov__row-btn { flex: 1; }
+.adm-ov__row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 8px 12px 8px 0;
+  flex: none;
+}
+.adm-ov__row-below {
+  padding: 0 14px 12px;
+}
+
+@media (max-width: 560px) {
+  .adm-ov__row-main { flex-direction: column; }
+  .adm-ov__row-actions { padding: 0 14px 10px; justify-content: flex-start; }
+}
+
+.adm-ov__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.adm-ov__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+.adm-ov__sentence {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink-2);
+}
+.adm-ov__proof {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__more {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+  border-top: 1px solid var(--adm-border);
+}
+
+/* ---------- Snooze ---------------------------------------------------- */
+
+.adm-ov__snooze {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface-2);
+}
+.adm-ov__snooze-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__snooze-date .adm-input { min-height: 40px; }
+
+/* ---------- The next three days -------------------------------------- */
+
+.adm-ov__days {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+.adm-ov__day {
+  padding: 12px 14px;
+  min-width: 0;
+}
+.adm-ov__day + .adm-ov__day { border-left: 1px solid var(--adm-border); }
+
+@media (max-width: 560px) {
+  .adm-ov__days { grid-template-columns: minmax(0, 1fr); }
+  .adm-ov__day + .adm-ov__day { border-left: 0; border-top: 1px solid var(--adm-border); }
+}
+
+.adm-ov__day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.adm-ov__day-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adm-ink);
+}
+.adm-ov__day-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__day-big {
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--adm-ink);
+}
+.adm-ov__day-big span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+  margin-left: 4px;
+}
+.adm-ov__day-facts {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__fact--warn { color: var(--adm-warn); }
+.adm-ov__fact--alert { color: var(--adm-alert); }
+
+.adm-ov__unbooked { border-top: 1px solid var(--adm-border); }
+.adm-ov__unbooked-title {
+  display: block;
+  padding: 10px 14px 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+/* ---------- Team ------------------------------------------------------ */
+
+.adm-ov__team {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.adm-ov__team th,
+.adm-ov__team td {
+  padding: 9px 14px;
+  text-align: left;
+  border-top: 1px solid var(--adm-border);
+  white-space: nowrap;
+}
+.adm-ov__team thead th {
+  border-top: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__team tbody th {
+  font-weight: 800;
+  color: var(--adm-ink);
+  white-space: normal;
+}
+.adm-ov__team td { color: var(--adm-ink-2); font-weight: 600; }
+.adm-ov__team-alert { color: var(--adm-alert); font-weight: 800; }
+.adm-ov__team-note {
+  margin: 0;
+  padding: 8px 14px 10px;
+  font-size: 11px;
+  color: var(--adm-ink-muted);
+  border-top: 1px solid var(--adm-border);
+}
+
+/* ---------- The lines ------------------------------------------------- */
+
+.adm-ov__lines {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+.adm-ov__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.adm-ov__line--tappable { cursor: pointer; }
+.adm-ov__line--tappable:hover { background: var(--adm-surface-2); }
+.adm-ov__line--tappable:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
+.adm-ov__line-icon { flex: none; margin-top: 1px; color: var(--adm-ink-muted); }
+.adm-ov__line-icon--warn { color: var(--adm-warn); }
+.adm-ov__line-icon--alert { color: var(--adm-alert); }
+.adm-ov__line-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.adm-ov__line-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+.adm-ov__line-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--adm-ink);
+}
+.adm-ov__line-chev { flex: none; align-self: center; color: var(--adm-ink-muted); }
+
+/* ==================================================================== *
+ * CHANGES — the day strip
+ * ==================================================================== */
+
+.adm-ch__strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .adm-ch__strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.adm-ch__day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.adm-ch__day:hover { background: var(--adm-surface-2); }
+.adm-ch__day:focus-visible { outline: 2px solid var(--adm-focus-ring); outline-offset: 2px; }
+.adm-ch__day--on { border-color: var(--adm-live); box-shadow: inset 0 0 0 1px var(--adm-live); }
+.adm-ch__day-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adm-ink);
+}
+.adm-ch__day-date { font-size: 11px; font-weight: 600; color: var(--adm-ink-muted); }
+.adm-ch__day-count { font-size: 20px; font-weight: 900; line-height: 1.1; color: var(--adm-ink-muted); }
+.adm-ch__day--has .adm-ch__day-count { color: var(--adm-warn); }

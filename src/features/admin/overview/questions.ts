@@ -1,13 +1,15 @@
 /**
- * THE MONDAY PAGE — the pure half of three of the four questions.
+ * THE QUESTIONS — the pure half of three of the Overview's four questions.
  *
- * Round: Operations (Round B), Sep 2026. ARCHITECTURE §1.5, the leader's
- * Monday-morning questions, in AJ's order (Sep 18): renewals and
- * conversation status · attendance anomalies · performance discrepancies ·
- * pain and incidents. Each is a sentence with its proof, or "not enough
- * data yet" — never a score. The fourth question's maths (performance) is
- * performance.ts, run by the weekly job; this file is the other three,
- * worked out on the page from what Operations already holds:
+ * Round: Operations (Round B), Sep 2026, as the Monday page; the Overview
+ * since the Operations overhaul (Sep 19 — "not the Monday page, studio
+ * management opens this every day"). ARCHITECTURE §1.5, the leader's
+ * questions, in AJ's order (Sep 18): renewals and conversation status ·
+ * attendance anomalies · performance discrepancies · pain and incidents.
+ * Each is a sentence with its proof, or "not enough data yet" — never a
+ * score. The performance maths is performance.ts, run by the weekly job;
+ * this file is the other three, worked out on the page from what
+ * Operations already holds:
  *
  *   renewals     the roster's nightly snapshots (client.renewal), the
  *                studio's renewal cycles and settings — the same lanes and
@@ -31,22 +33,29 @@ import type { JournalEntry } from "../../../types/journal";
 import { clientDisplayName } from "../../../lib/client-name";
 import { studioDateKey } from "../../../lib/studio-time";
 import { addDays, daysBetween } from "../../client-history/model";
+import { daysMattering, mattersOn, needsReview } from "../../client-notes/mattering";
+import { ackKey } from "../attention/attention";
 import { regionDial } from "../../rating/session-reads";
 import { leaningLabel } from "../../renewals/conversation";
 import { laneOf, nextStep, type PipelineLane } from "../../renewals/pipeline";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { sessionDay } from "../insights/metrics";
 
-export type MondayTone = "alert" | "warn" | "info";
+export type OverviewTone = "alert" | "warn" | "info";
 
-export interface MondayRow {
+export interface OverviewRow {
   clientId: string;
   name: string;
   /** The claim, in one sentence. */
   sentence: string;
   /** What backs it up. */
   proof: string;
-  tone: MondayTone;
+  tone: OverviewTone;
+}
+
+/** A pain-and-notes row: acknowledged when every one of its keys is (attention.ts). */
+export interface PainRow extends OverviewRow {
+  ackKeys: string[];
 }
 
 const nameOf = (c: Pick<Client, "firstName" | "lastName" | "nickname">) => clientDisplayName(c, "A client");
@@ -60,7 +69,7 @@ export interface RenewalsQuestion {
   /** In a live lane with nobody having logged a conversation. */
   notTalked: number;
   /** The clients to talk to first: Talk now, then Before the charge, soonest first. */
-  rows: MondayRow[];
+  rows: OverviewRow[];
   /** How many rows there were before the cap. */
   total: number;
 }
@@ -75,7 +84,7 @@ export function renewalsQuestion(
 ): RenewalsQuestion {
   const counts: Record<PipelineLane, number> = { "before-charge": 0, "talk-now": 0, "coming-up": 0, lapsed: 0, away: 0 };
   let notTalked = 0;
-  const candidates: Array<MondayRow & { lane: PipelineLane; focus: string }> = [];
+  const candidates: Array<OverviewRow & { lane: PipelineLane; focus: string }> = [];
   for (const c of clients) {
     const s = c.renewal as RenewalSnapshot | undefined;
     if (!c.id || !s || c.isActive === false) continue;
@@ -123,17 +132,17 @@ export interface AttendanceQuestion {
   missedBookings: number;
   /** Live clients with a measured pace: the sample the claims are drawn from. */
   measured: number;
-  rows: MondayRow[];
+  rows: OverviewRow[];
   total: number;
 }
 
 const LIVE = new Set<RenewalSnapshot["situation"]>(["on-track", "will-bank", "will-run-out", "ended"]);
 
-export function attendanceQuestion(clients: Client[], today: string): AttendanceQuestion {
+export function attendanceQuestion(clients: Client[], today: string, rowsShown: number = ATTENDANCE_ROWS_SHOWN): AttendanceQuestion {
   let longBreaks = 0;
   let missedBookings = 0;
   let measured = 0;
-  const candidates: Array<MondayRow & { gap: number }> = [];
+  const candidates: Array<OverviewRow & { gap: number }> = [];
   for (const c of clients) {
     const s = c.renewal as RenewalSnapshot | undefined;
     if (!c.id || !s || c.isActive === false || !LIVE.has(s.situation)) continue;
@@ -150,7 +159,7 @@ export function attendanceQuestion(clients: Client[], today: string): Attendance
 
     let sentence: string;
     let proof: string;
-    let tone: MondayTone;
+    let tone: OverviewTone;
     if (breakByRhythm && gap !== null && usualGap !== null) {
       longBreaks += 1;
       sentence = `No visit in ${gap} days — they usually come every ${usualGap < 1.5 ? "day or so" : `${Math.round(usualGap)} days`}.`;
@@ -177,7 +186,7 @@ export function attendanceQuestion(clients: Client[], today: string): Attendance
     longBreaks,
     missedBookings,
     measured,
-    rows: candidates.slice(0, ATTENDANCE_ROWS_SHOWN).map(({ gap: _g, ...row }) => row),
+    rows: candidates.slice(0, rowsShown).map(({ gap: _g, ...row }) => row),
     total: candidates.length,
   };
 }
@@ -188,8 +197,6 @@ export function attendanceQuestion(clients: Client[], today: string): Attendance
 
 /** Pain on the Dial counts for this many days. */
 export const PAIN_WINDOW_DAYS = 7;
-/** A critical note with no window of its own counts for this long. */
-export const CRITICAL_NOTE_DAYS = 21;
 export const PAIN_ROWS_SHOWN = 8;
 
 export interface PainQuestionInput {
@@ -205,7 +212,7 @@ export interface PainQuestion {
   openIncidents: number;
   criticalNotes: number;
   painReports: number;
-  rows: MondayRow[];
+  rows: PainRow[];
   total: number;
 }
 
@@ -220,10 +227,11 @@ export function painQuestion(input: PainQuestionInput): PainQuestion {
   const { today, tz } = input;
   const names = new Map(input.clients.filter((c) => c.id).map((c) => [c.id as string, nameOf(c)]));
   const since = addDays(today, -PAIN_WINDOW_DAYS);
-  const items = new Map<string, { alert: string[]; warn: string[] }>();
-  const add = (clientId: string, tone: "alert" | "warn", text: string) => {
-    const e = items.get(clientId) ?? { alert: [], warn: [] };
+  const items = new Map<string, { alert: string[]; warn: string[]; keys: string[] }>();
+  const add = (clientId: string, tone: "alert" | "warn", text: string, key: string) => {
+    const e = items.get(clientId) ?? { alert: [], warn: [], keys: [] };
     e[tone].push(text);
+    e.keys.push(key);
     items.set(clientId, e);
   };
 
@@ -235,19 +243,23 @@ export function painQuestion(input: PainQuestionInput): PainQuestion {
     openIncidents += 1;
     const when = dayOf(inc.createdAt, tz);
     const severity = inc.severity === "stop_session" ? "session stopped" : inc.severity;
-    add(inc.clientId, inc.severity === "mild" ? "warn" : "alert", `Incident${when ? ` on ${when}` : ""}: ${inc.region}, ${severity}${inc.description ? ` — ${inc.description}` : ""}${inc.resolvedAt ? " (resolved, still surfaced)" : ""}.`);
+    add(
+      inc.clientId,
+      inc.severity === "mild" ? "warn" : "alert",
+      `Incident${when ? ` on ${when}` : ""}: ${inc.region}, ${severity}${inc.description ? ` — ${inc.description}` : ""}${inc.resolvedAt ? " (resolved, still surfaced)" : ""}.`,
+      ackKey("incident", inc.id ?? `${inc.clientId}:${when ?? "undated"}`),
+    );
   }
 
+  // A critical note counts while it MATTERS (features/client-notes/mattering):
+  // always until resolved, a range until its day, a DAY note on its day.
   let criticalNotes = 0;
   for (const e of input.entries) {
-    if (e.importance !== "critical" || e.resolvedAt || e.isArchived) continue;
-    const until = dayOf(e.effectiveUntil, tz);
-    const occurred = dayOf(e.occurredAt, tz);
-    const live = until !== null ? until >= today : occurred !== null && occurred >= addDays(today, -CRITICAL_NOTE_DAYS);
-    if (!live) continue;
+    if (e.importance !== "critical" || !mattersOn(e, today, tz)) continue;
     criticalNotes += 1;
+    const occurred = dayOf(e.occurredAt, tz);
     const body = (e.body ?? "").trim();
-    add(e.clientId, "alert", `Critical note${occurred ? ` (${occurred})` : ""}: ${body.length > 140 ? `${body.slice(0, 137)}…` : body}`);
+    add(e.clientId, "alert", `Critical note${occurred ? ` (${occurred})` : ""}: ${body.length > 140 ? `${body.slice(0, 137)}…` : body}`, ackKey("note", e.id));
   }
 
   let painReports = 0;
@@ -264,10 +276,13 @@ export function painQuestion(input: PainQuestionInput): PainQuestion {
   }
   for (const [clientId, regions] of painByClient) {
     painReports += 1;
-    add(clientId, "warn", `Pain on the Dial in the last ${PAIN_WINDOW_DAYS} days: ${[...regions].join(", ")}.`);
+    // One key per day pain was reported: a new day's pain surfaces again
+    // after the last was acknowledged.
+    const days = [...regions].map((r) => r.slice(r.lastIndexOf("(") + 1, -1)).sort();
+    add(clientId, "warn", `Pain on the Dial in the last ${PAIN_WINDOW_DAYS} days: ${[...regions].join(", ")}.`, ackKey("pain", `${clientId}:${days[days.length - 1]}`));
   }
 
-  const rows: MondayRow[] = [...items.entries()].map(([clientId, e]) => {
+  const rows: PainRow[] = [...items.entries()].map(([clientId, e]) => {
     const all = [...e.alert, ...e.warn];
     return {
       clientId,
@@ -275,10 +290,50 @@ export function painQuestion(input: PainQuestionInput): PainQuestion {
       sentence: all[0],
       proof: all.length > 1 ? all.slice(1).join(" ") : "",
       tone: e.alert.length > 0 ? "alert" : "warn",
+      ackKeys: e.keys,
     };
   });
   rows.sort((a, b) => (a.tone === b.tone ? a.name.localeCompare(b.name) : a.tone === "alert" ? -1 : 1));
   return { openIncidents, criticalNotes, painReports, rows: rows.slice(0, PAIN_ROWS_SHOWN), total: rows.length };
+}
+
+/* ------------------------------------------------------------------ *
+ * The 60-day review — notes that have mattered too long unlooked-at
+ * ------------------------------------------------------------------ */
+
+export interface ReviewRow {
+  entryId: string;
+  clientId: string;
+  name: string;
+  importance: JournalEntry["importance"];
+  body: string;
+  authorName: string;
+  /** How many days it has mattered. */
+  days: number;
+}
+
+/**
+ * Notes with no end that have mattered for REVIEW_AFTER_DAYS since they
+ * started or were last reviewed. Longest first. AJ: "it surfaces for review;
+ * it does not silently drop."
+ */
+export function notesToReview(entries: JournalEntry[], clients: Client[], today: string, tz?: string): ReviewRow[] {
+  const names = new Map(clients.filter((c) => c.id).map((c) => [c.id as string, nameOf(c)]));
+  const rows: ReviewRow[] = [];
+  for (const e of entries) {
+    if (!needsReview(e, today, tz)) continue;
+    rows.push({
+      entryId: e.id,
+      clientId: e.clientId,
+      name: names.get(e.clientId) ?? "A client at this studio",
+      importance: e.importance,
+      body: (e.body ?? "").trim(),
+      authorName: e.authorName ?? "",
+      days: daysMattering(e, today, tz) ?? 0,
+    });
+  }
+  rows.sort((a, b) => b.days - a.days || a.name.localeCompare(b.name));
+  return rows;
 }
 
 /* ------------------------------------------------------------------ *

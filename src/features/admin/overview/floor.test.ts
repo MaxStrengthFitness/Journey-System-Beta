@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import type { ScheduleEntry, WorkoutSession } from "../../types";
-import { setActiveTimeZone, studioDateKey } from "../../lib/studio-time";
+import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import { setActiveTimeZone, studioDateKey } from "../../../lib/studio-time";
 import {
   attentionItems,
   entriesForDay,
   loadByDay,
   summariseFloor,
   trainerLanes,
-} from "./overview";
+} from "./floor";
 
 // Studios operate in US Eastern; pin it so these assertions do not move with
 // whatever machine runs them.

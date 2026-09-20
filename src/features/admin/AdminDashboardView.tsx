@@ -13,7 +13,7 @@ import { auth } from "../../firebase";
 import { AdminMachinesTab } from "./machines/AdminMachinesTab";
 import { AdminDataReportsTab } from "./data";
 import { AdminSystemToolsTab } from "./system/AdminSystemToolsTab";
-import { MondayPage } from "./monday/MondayPage";
+import { OverviewPage } from "./overview/OverviewPage";
 import { AdminStudiosTab } from "./studios/AdminStudiosTab";
 import { AdminStaffTab } from "./staff/AdminStaffTab";
 import { AdminClientsTab } from "./clients/AdminClientsTab";
@@ -120,7 +120,7 @@ function AdminDashboardShell({
   const activeStudioId = ops.studioId;
   const tabKey = scopeKey(ops.scope);
   type AdminTab =
-    | "metrics"
+    | "overview"
     | "renewals"
     | "delight"
     | "users"
@@ -137,7 +137,7 @@ function AdminDashboardShell({
     | "mindbody"
     | "system"
     | "limbo";
-  const [activeTab, setActiveTab] = useState<AdminTab>("metrics");
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
   const isFranchiseOwnerOrAdmin = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
 
@@ -193,9 +193,10 @@ function AdminDashboardShell({
       label: "Studio Management",
       tier: "primary",
       tabs: [
-        // Operations round, Sep 2026: the Monday page — the four questions a
-        // leader asks first — replaces the Overview as the first screen.
-        { id: "metrics", label: "Monday", icon: <Activity className="w-4 h-4" /> },
+        // Operations overhaul, Sep 2026: the Overview — today, what needs
+        // you, the next three days, the week — is the first screen. (It was
+        // the Monday page for a day; AJ: studio management opens it every day.)
+        { id: "overview", label: "Overview", icon: <Activity className="w-4 h-4" /> },
         // Renewals round, Sep 2026. Every leader runs their own studio's.
         { id: "renewals", label: "Renewals", icon: <CalendarClock className="w-4 h-4" /> },
         // FORD round, Sep 2026. The gestures the studio has promised itself,
@@ -325,8 +326,8 @@ function AdminDashboardShell({
 
       <div className="adm-shell__main">
         <ScopeBar />
-        {activeTab === "metrics" && (
-          <MondayPage
+        {activeTab === "overview" && (
+          <OverviewPage
             key={tabKey}
             authTrainer={authTrainer}
             studios={studios}
@@ -336,7 +337,7 @@ function AdminDashboardShell({
             schedules={schedules}
             activeStudioId={activeStudioId}
             onNavigateProfile={onNavigateProfile}
-            onOpen={(tab) => setActiveTab(tab)}
+            onOpen={(tab) => setActiveTab(tab === "floor" ? "machine-fit" : tab)}
           />
         )}
         {activeTab === "delight" && (

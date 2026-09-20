@@ -11,6 +11,8 @@ import { createRoot, type Root } from "react-dom/client";
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "owner" } }, functions: {} }));
 
 const picks: string[] = [];
+vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
+
 vi.mock("../../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({
     activeStudioId: "solon",
@@ -56,7 +58,7 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { MondayPage } from "../monday/MondayPage";
+import { OverviewPage } from "../overview/OverviewPage";
 import { OperationsScopeProvider, ScopeBar } from "../scope-context";
 import type { Studio, Trainer } from "../../../types";
 
@@ -90,7 +92,7 @@ async function mount() {
       <StrictMode>
         <OperationsScopeProvider authTrainer={owner} studios={studios} networks={[]} isAdmin={false} activeStudioId="solon">
           <ScopeBar />
-          <MondayPage authTrainer={owner} studios={studios} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
+          <OverviewPage authTrainer={owner} studios={studios} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
         </OperationsScopeProvider>
       </StrictMode>,
     );
@@ -120,9 +122,9 @@ afterEach(() => {
 });
 
 describe("the Overview under the Operations scope", () => {
-  it("shows one studio's Monday, then every studio's tiles under All my studios, and a location switches the app", async () => {
+  it("shows one studio's Overview, then every studio's tiles under All my studios, and a location switches the app", async () => {
     const el = await mount();
-    expect(el.textContent).toContain("Solon — Monday");
+    expect(el.textContent).toContain("Solon — Overview");
 
     await choose(el, "all");
     const text = el.textContent ?? "";

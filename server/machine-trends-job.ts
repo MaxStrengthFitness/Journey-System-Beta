@@ -30,7 +30,7 @@
  *
  * THE PERFORMANCE WATCH (Operations round, Sep 19 2026). The same window of
  * sets answers the leader's third Monday question — "who dropped from ten
- * reps to five" (src/features/admin/monday/performance.ts) — and the answer
+ * reps to five" (src/features/admin/overview/performance.ts) — and the answer
  * is written per studio at studios/{s}/watch/performance: client id, machine
  * id, the numbers, the day. No name, no body data. The Monday page reads
  * that one document; nothing is computed on a screen. AJ chose this over a
@@ -56,7 +56,7 @@ import {
 import { buildCompany, type CompanyBuild, type CompanyClientRecord } from "../src/features/machine-fit/company.ts";
 import type { CompanyFitBlock } from "../src/features/machine-fit/fit-index.ts";
 import { readStudioFitDocs } from "./machine-fit-company.ts";
-import { performanceDrops, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/monday/performance.ts";
+import { performanceDrops, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/overview/performance.ts";
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;

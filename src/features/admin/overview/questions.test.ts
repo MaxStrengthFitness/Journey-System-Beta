@@ -3,7 +3,7 @@ import type { Client, ClinicalIncident, WorkoutSession } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
-import { attendanceQuestion, hoursThisWeek, painQuestion, renewalsQuestion } from "./monday";
+import { attendanceQuestion, hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
 
 const TODAY = "2026-09-21"; // a Monday
 
@@ -158,12 +158,13 @@ describe("painQuestion — pain on the Dial, incidents, critical notes", () => {
 
   it("puts an open incident and a live critical note first, with the pain as proof, and leaves resolved ones out", () => {
     const incidents = [
-      { clientId: "b", studioId: "solon", region: "Shoulder", severity: "stop_session", description: "sharp pain on the press", reportedByTrainerId: "t", createdAt: "2026-09-17T14:00:00Z" },
-      { clientId: "c", studioId: "solon", region: "Knee", severity: "mild", description: "", reportedByTrainerId: "t", createdAt: "2026-09-10T14:00:00Z", resolvedAt: "2026-09-12T14:00:00Z" },
+      { id: "inc-b", clientId: "b", studioId: "solon", region: "Shoulder", severity: "stop_session", description: "sharp pain on the press", reportedByTrainerId: "t", createdAt: "2026-09-17T14:00:00Z" },
+      { id: "inc-c", clientId: "c", studioId: "solon", region: "Knee", severity: "mild", description: "", reportedByTrainerId: "t", createdAt: "2026-09-10T14:00:00Z", resolvedAt: "2026-09-12T14:00:00Z" },
     ] as unknown as ClinicalIncident[];
     const entries = [
-      { clientId: "a", studioId: "solon", importance: "critical", body: "Post-op: no overhead work until cleared.", occurredAt: "2026-08-20T12:00:00Z", effectiveUntil: "2026-10-15", resolvedAt: null, isArchived: false },
-      { clientId: "c", studioId: "solon", importance: "critical", body: "Old note.", occurredAt: "2026-07-01T12:00:00Z", effectiveUntil: null, resolvedAt: null, isArchived: false },
+      { id: "n-a", clientId: "a", studioId: "solon", importance: "critical", body: "Post-op: no overhead work until cleared.", occurredAt: "2026-08-20T12:00:00Z", effectiveUntil: "2026-10-15", resolvedAt: null, isArchived: false },
+      // A range that ended: no longer matters.
+      { id: "n-c", clientId: "c", studioId: "solon", importance: "critical", body: "Old restriction.", occurredAt: "2026-07-01T12:00:00Z", effectiveUntil: "2026-08-01", resolvedAt: null, isArchived: false },
     ] as unknown as JournalEntry[];
     const q = painQuestion({
       sessions: [session("a", "2026-09-19", [{ region: "Shoulder", dial: -2 }])],
@@ -177,8 +178,24 @@ describe("painQuestion — pain on the Dial, incidents, critical notes", () => {
     expect(q.rows.map((r) => r.name)).toEqual(["Ann T", "Bea T"]);
     expect(q.rows[0].sentence).toContain("Critical note (2026-08-20): Post-op");
     expect(q.rows[0].proof).toContain("Pain on the Dial");
+    expect(q.rows[0].ackKeys).toEqual(["note:n-a", "pain:a:2026-09-19"]);
     expect(q.rows[1].sentence).toBe("Incident on 2026-09-17: Shoulder, session stopped — sharp pain on the press.");
     expect(q.rows[1].tone).toBe("alert");
+    expect(q.rows[1].ackKeys).toEqual(["incident:inc-b"]);
+  });
+
+  it("an ALWAYS critical note keeps mattering until resolved — and comes up for review after 60 days", () => {
+    const entries = [
+      { id: "n-old", clientId: "c", studioId: "solon", importance: "critical", body: "Old note.", occurredAt: "2026-07-01T12:00:00Z", effectiveUntil: null, resolvedAt: null, isArchived: false, authorName: "Sam" },
+      { id: "n-new", clientId: "a", studioId: "solon", importance: "critical", body: "Fresh.", occurredAt: "2026-09-10T12:00:00Z", effectiveUntil: null, resolvedAt: null, isArchived: false },
+      { id: "n-done", clientId: "b", studioId: "solon", importance: "critical", body: "Resolved.", occurredAt: "2026-07-01T12:00:00Z", effectiveUntil: null, resolvedAt: "2026-08-01", isArchived: false },
+    ] as unknown as JournalEntry[];
+    const q = painQuestion({ sessions: [], incidents: [], entries, clients, today: TODAY });
+    expect(q.criticalNotes).toBe(2);
+    expect(q.rows.map((r) => r.name)).toEqual(["Ann T", "Cal T"]);
+    const review = notesToReview(entries, clients, TODAY);
+    expect(review.map((r) => r.entryId)).toEqual(["n-old"]);
+    expect(review[0]).toMatchObject({ name: "Cal T", authorName: "Sam", days: 82 });
   });
 });
 

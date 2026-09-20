@@ -15,8 +15,8 @@
  * and arithmetic about someone's day is worth being sure of.
  */
 
-import type { ScheduleEntry, WorkoutSession } from "../../types";
-import { studioDateKey, toDate } from "../../lib/studio-time";
+import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import { studioDateKey, toDate } from "../../../lib/studio-time";
 
 /* ==================================================================== *
  * Day filtering

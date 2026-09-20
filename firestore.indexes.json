@@ -301,6 +301,20 @@
       ]
     },
     {
+      "collectionGroup": "journalEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "studioId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "effectiveUntil",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "sessionNotes",
       "queryScope": "COLLECTION",
       "fields": [
