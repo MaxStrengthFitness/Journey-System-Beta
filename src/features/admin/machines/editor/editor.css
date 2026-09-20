@@ -361,3 +361,26 @@
   .adm-me__railbtn { width: auto; flex: none; white-space: nowrap; }
   .adm-me__railcount { display: none; }
 }
+
+/* ── The catalog list ─────────────────────────────────────────────── */
+
+.adm-me__order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--adm-ink-faint);
+}
+
+.adm-me__needs { color: var(--adm-hero-text); font-weight: 700; }
+
+.adm-me__rowacts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
