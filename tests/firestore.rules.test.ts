@@ -2361,4 +2361,81 @@ describe("Firestore Security Rules", () => {
     await assertFails(getDoc(doc(other, "studios", "studioA", "acknowledgements", "incident:inc1")));
     await assertFails(setDoc(doc(other, "studios", "studioA", "acknowledgements", "incident:inc3"), ack("trainerB")));
   });
+
+  // ---------------------------------------------------------------------
+  // Claude Experiment, Sep 20 2026 — the two rules lines that read as typos.
+  //
+  // Both were `if isAuthenticated()`, which in this codebase means "any
+  // signed-in Google account", NOT "a trainer": a person sitting in
+  // AccessRequestView with no trainers/{uid} document passes it. These two
+  // tests pin the distinction, because it is the one the old rules lost.
+  // ---------------------------------------------------------------------
+
+  it("clientMachineSettings: a trainer may delete, a signed-in non-trainer may not", async () => {
+    const settingId = "clientA_m-leg-press";
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clientMachineSettings", settingId), {
+        clientId: "clientA",
+        machineId: "m-leg-press",
+        settings: { Seat: "4" },
+      });
+    });
+
+    // Someone with a Google account but no trainer profile: read is open by
+    // design (a known deferral), but deleting another studio's client's
+    // set-up must not be.
+    const stranger = testEnv
+      .authenticatedContext("nobody-uid", { email: "stranger@example.com" })
+      .firestore();
+    await assertFails(deleteDoc(doc(stranger, "clientMachineSettings", settingId)));
+
+    // A real trainer still may — this is floor work, and the floor is never
+    // blocked.
+    const trainer = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertSucceeds(deleteDoc(doc(trainer, "clientMachineSettings", settingId)));
+  });
+
+  it("settingHistory: a trainer appends, nobody rewrites or erases, a non-trainer cannot write at all", async () => {
+    const history = (db: any) =>
+      collection(db, "machines", "m-leg-press", "settingHistory");
+
+    const trainer = testEnv
+      .authenticatedContext("trainerA", { email: "trainera@test.com" })
+      .firestore();
+    await assertSucceeds(
+      addDoc(history(trainer), {
+        clientId: "clientA",
+        changes: [{ label: "Seat", from: "3", to: "4" }],
+        reason: "taller shoe",
+        authorId: "trainerA",
+        at: serverTimestamp(),
+      }),
+    );
+
+    // Seed a row directly so the update/delete assertions are about the rule,
+    // not about the row's existence.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), "machines", "m-leg-press", "settingHistory", "row1"),
+        { clientId: "clientA", authorId: "trainerA", reason: "original" },
+      );
+    });
+
+    const row = (db: any) =>
+      doc(db, "machines", "m-leg-press", "settingHistory", "row1");
+
+    // The trail is append-only: not even its own author may revise it.
+    await assertSucceeds(getDoc(row(trainer)));
+    await assertFails(updateDoc(row(trainer), { reason: "rewritten" }));
+    await assertFails(deleteDoc(row(trainer)));
+
+    const stranger = testEnv
+      .authenticatedContext("nobody-uid", { email: "stranger@example.com" })
+      .firestore();
+    await assertFails(addDoc(history(stranger), { clientId: "clientA" }));
+    await assertFails(updateDoc(row(stranger), { reason: "rewritten" }));
+    await assertFails(deleteDoc(row(stranger)));
+  });
 });

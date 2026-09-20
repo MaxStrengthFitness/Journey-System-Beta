@@ -48,7 +48,6 @@ export interface AdminsDashboardViewProps {
   onRefresh?: (collectionName: "studios" | "networks" | "trainers") => Promise<void>;
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
-  onAppCleanse?: () => void;
 }
 
 export type AdminsTab = "locations" | "catalog" | "template" | "limbo" | "system" | "bugs" | "data";
@@ -65,7 +64,7 @@ const TABS: Array<{ id: AdminsTab; label: string; icon: ReactNode; group: "stand
 
 const GROUP_LABEL = { standard: "The MSF standard", tools: "The machinery" } as const;
 
-export function AdminsDashboardView({ authTrainer, studios, networks, trainers, clients, machines, isAdmin, activeStudioId, onRefresh, onRestoreMachines, onReorderTrainers, onAppCleanse }: AdminsDashboardViewProps) {
+export function AdminsDashboardView({ authTrainer, studios, networks, trainers, clients, machines, isAdmin, activeStudioId, onRefresh, onRestoreMachines, onReorderTrainers }: AdminsDashboardViewProps) {
   void machines;
   const [tab, setTab] = useState<AdminsTab>("locations");
   const [dataStudioId, setDataStudioId] = useState<string | null>(activeStudioId);
@@ -130,7 +129,7 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
         {tab === "catalog" && <AdminMachinesTab isAdmin={isAdmin} />}
         {tab === "template" && <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />}
         {tab === "limbo" && <AdminLimboQueue studios={studios} clients={clients} />}
-        {tab === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} onAppCleanse={onAppCleanse} />}
+        {tab === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} />}
         {tab === "bugs" && <AdminBugReportsTab studios={studios} />}
         {tab === "data" && (
           <div className="flex flex-col gap-4">

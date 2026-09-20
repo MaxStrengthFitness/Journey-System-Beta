@@ -57,7 +57,6 @@ interface Props {
    */
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
-  onAppCleanse?: () => void;
   /** Opens the Planner (was the studio to-do screen) from the Overview's task panel. */
   onOpenStudioTasks?: () => void;
 }
@@ -102,7 +101,6 @@ function AdminDashboardShell({
   onNavigateProfile,
   onRestoreMachines,
   onReorderTrainers,
-  onAppCleanse,
   onOpenStudioTasks,
 }: Props) {
   void newClientsCount;
@@ -113,7 +111,6 @@ function AdminDashboardShell({
   // callbacks stay on the props so AppContent's call site needs no change.
   void onRestoreMachines;
   void onReorderTrainers;
-  void onAppCleanse;
   // "This studio" is the studio the app is in; "All my studios" is null here
   // and the tabs that can span read the list from the scope themselves.
   const ops = useOperationsScope();

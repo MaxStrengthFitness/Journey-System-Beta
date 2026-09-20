@@ -239,7 +239,6 @@ import { useSessions } from "./hooks/useSessions";
 import { useLiveSchedule } from "./hooks/useLiveSchedule";
 import { useStudioRoster } from "./hooks/useStudioRoster";
 import { useClientMutations } from "./hooks/useClientMutations";
-import { StrongConfirmationModal } from "./components/StrongConfirmationModal";
 // Pure and tiny, and imported from the module rather than the barrel (the
 // Learning tab itself is lazy-loaded): the link format the bell, search and
 // notes share.
@@ -934,57 +933,26 @@ export default function AppContent({
     localStorage.removeItem("max_strength_trainer_id");
   };
 
-  const [isWipeModalOpen, setIsWipeModalOpen] = useState(false);
-
-  const handleAppCleanse = () => {
-    setIsWipeModalOpen(true);
-  };
-
-  const executeAppCleanse = async () => {
-    setIsWipeModalOpen(false);
-
-    try {
-      const collectionsToWipe = [
-        "studios",
-        "clients",
-        "trainers",
-        "sessions",
-        "exerciseLogs",
-        "clientMachineSettings",
-        "routines",
-        "routineAdjustments",
-        "schedules",
-        "sessionNotes",
-        "machineSettingChanges",
-      ];
-
-      console.log("Starting cleanse...");
-      for (const colName of collectionsToWipe) {
-        const snap = await getDocs(collection(db, colName));
-        console.log(`Clearing ${colName} (${snap.size} docs)...`);
-        const deletePromises = snap.docs.map((d) => deleteDoc(d.ref));
-        await Promise.all(deletePromises);
-      }
-
-      console.log("Wipe complete. Machines were preserved.");
-
-      // Clear local state
-      setAuthTrainer(null);
-      localStorage.removeItem("max_strength_trainer_id");
-      setSelectedClientId(null);
-      setCurrentView("clients");
-
-      toastSuccess(
-        "Application cleansed (studios, clients, users removed). Machines preserved. The app will now reload.",
-      );
-      window.location.href = window.location.origin + window.location.pathname;
-    } catch (error: any) {
-      console.error("Cleanse failed:", error);
-      toastError(
-        `Cleanse failed: ${error.message || "Unknown error"}. Please check your connection or permissions.`,
-      );
-    }
-  };
+  /*
+   * The "Wipe Entire Database" button lived here until Sep 20 2026 (Claude
+   * Experiment, phase A). It ran getDocs + deleteDoc over eleven top-level
+   * collections FROM THE BROWSER, against production (the local .env points
+   * at production), behind one typed phrase.
+   *
+   * Three things were wrong with it beyond the obvious:
+   *   - it deleted `trainers` and `studios` - every account, including the
+   *     admin's own - but not `journalEntries`, `progressReports`, `ford` or
+   *     any studio subcollection, so a "wipe" stranded clinical text in
+   *     collections any signed-in user can read;
+   *   - Promise.all(deleteDoc x N) over `exerciseLogs` hits write limits
+   *     part-way and leaves a torn database with no resume;
+   *   - the dialog promised it would "completely re-initialize the 20
+   *     standard machines" and the code preserved them and re-initialised
+   *     nothing.
+   *
+   * A destructive operation of this size belongs in scripts/ behind the
+   * service account with a dry run - scripts/purge-database.ts is the place.
+   */
 
   /**
    * Write the standard twenty back into the catalog.
@@ -1757,7 +1725,6 @@ export default function AppContent({
                     activeStudioId={activeStudioId}
                     onRestoreMachines={handleRestoreMachines}
                     onReorderTrainers={() => setIsReorderingTrainers(true)}
-                    onAppCleanse={handleAppCleanse}
                     onNavigateProfile={(clientId) => {
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
@@ -1778,7 +1745,6 @@ export default function AppContent({
                     onRefresh={handleManualRefresh}
                     onRestoreMachines={handleRestoreMachines}
                     onReorderTrainers={() => setIsReorderingTrainers(true)}
-                    onAppCleanse={handleAppCleanse}
                   />
                 )}
                 {currentView === "trainer-hub" && (
@@ -2599,15 +2565,6 @@ export default function AppContent({
           </DialogContent>
         </Dialog>
 
-        <StrongConfirmationModal
-          isOpen={isWipeModalOpen}
-          title="Wipe Entire Database"
-          description="This critical action will permanently delete all Clients, Trainers, Sessions, Schedules, Notes, and Logs. It will then completely re-initialize the 20 standard machines to factory defaults. This cannot be undone."
-          confirmationPhrase="confirm wipe system"
-          onConfirm={executeAppCleanse}
-          onCancel={() => setIsWipeModalOpen(false)}
-          isDestructive={true}
-        />
       </FeedbackProvider>
     </ErrorBoundary>
   );

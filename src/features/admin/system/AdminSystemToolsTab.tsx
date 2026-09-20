@@ -3,15 +3,13 @@
  *
  * Round: Settings tiers & Task Board, Sep 2026.
  *
- * These four actions used to hang off the trainer's Hub Settings. Deleting
- * that screen would have deleted their only trigger, so they land here rather
- * than disappearing — which matters most for the demo seeder: the studios are
- * migrating off Claris FileMaker and the cutover needs a demo mode, so quietly
- * losing the one button that creates demo data would have been the expensive
- * kind of tidy-up.
+ * These actions used to hang off the trainer's Hub Settings. Deleting that
+ * screen would have deleted their only trigger, so they land here rather than
+ * disappearing.
  *
- * Ordered least to most destructive, and the wipe is separated by a divider
- * and painted as a hazard. Three of these are recoverable; one is not.
+ * Ordered least to most destructive. Every tool on this screen is now
+ * recoverable: the one that was not — "Wipe and re-initialize" — left on
+ * Sep 20 2026 for scripts/purge-database.ts, where a dry run is possible.
  *
  * On the admin kit as of Sep 2026. This screen was written before the kit
  * existed and used shadcn's semantic tokens — bg-card, border-border,
@@ -26,7 +24,6 @@ import {
   Database,
   ListOrdered,
   RotateCcw,
-  TriangleAlert,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../../firebase";
@@ -43,7 +40,6 @@ import {
 export interface AdminSystemToolsTabProps {
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
-  onAppCleanse?: () => void;
 }
 
 function ToolRow({
@@ -87,7 +83,6 @@ function ToolRow({
 export function AdminSystemToolsTab({
   onRestoreMachines,
   onReorderTrainers,
-  onAppCleanse,
 }: AdminSystemToolsTabProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [rebuilding, setRebuilding] = useState(false);
@@ -160,29 +155,17 @@ export function AdminSystemToolsTab({
       </AdminPanel>
 
       {/*
-        A separate panel rather than a divider inside the one above. The wipe
-        is not the fifth item on a list of tools; it is a different kind of
-        act, and the gap between the two panels is what says so before anyone
-        reads the warning.
+        The "Wipe and re-initialize" hazard panel stood here until Sep 20 2026
+        (Claude Experiment, phase A). It deleted every client, trainer,
+        session, schedule, note and log from the browser, against production,
+        behind one typed phrase. The reasoning is in AppContent.tsx where the
+        handler was; the replacement is scripts/purge-database.ts, behind the
+        service account, where a dry run is possible and a half-finished
+        delete can be resumed.
+
+        The three tools above are all recoverable, which is why the divider
+        and the hazard styling left with the panel.
       */}
-      <AdminPanel
-        title="Destructive"
-        subtitle="Cannot be undone, and not limited to one studio."
-        icon={<TriangleAlert className="w-4 h-4" />}
-        className="adm-panel--hazard"
-        flush
-      >
-        <AdminRows>
-          <ToolRow
-            icon={TriangleAlert}
-            title="Wipe and re-initialize"
-            detail="Permanently deletes every client, trainer, session, schedule, note and log, then re-creates the standard machines."
-            action="Wipe"
-            onClick={onAppCleanse}
-            danger
-          />
-        </AdminRows>
-      </AdminPanel>
     </AdminScreen>
   );
 }

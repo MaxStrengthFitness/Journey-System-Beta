@@ -1331,11 +1331,18 @@ service cloud.firestore {
     }
 
     // DISK SETTINGS: Machine settings assigned to specific athletes
+    //
+    // Delete was `isSuperAdmin() || isFranchiseOwner() || isAuthenticated()`
+    // until Sep 20 2026. The trailing clause made the first two decorative:
+    // ANY signed-in Google account could delete any client's machine settings
+    // — including someone sitting in AccessRequestView with no trainer profile
+    // at all, who could enumerate them first through the open read above.
+    // It now matches create and update: a trainer, and nothing less.
     match /clientMachineSettings/{settingId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
       allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
-      allow delete: if isSuperAdmin() || isFranchiseOwner() || isAuthenticated();
+      allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
     }
 
     // GLOBAL MACHINE CATALOG — the default set every studio picks from
@@ -1355,8 +1362,18 @@ service cloud.firestore {
       allow create, update: if isSuperAdmin();
       allow delete: if false;
 
+      // The audit trail for a machine's settings: who changed what, when and
+      // why (features/equipment/mutations.ts writeHistory, machine-fit
+      // setup-save.ts). It is written with addDoc and never updated or
+      // deleted by any code in the app, so the rule now says exactly that.
+      //
+      // Until Sep 20 2026 this was `allow read, write: if isAuthenticated()`
+      // — any signed-in account could rewrite or erase the trail. An audit
+      // trail anyone can edit is not an audit trail.
       match /settingHistory/{historyId} {
-        allow read, write: if isAuthenticated();
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
+        allow update, delete: if false;
       }
     }
 
