@@ -200,6 +200,8 @@ import {
   isStudioLeader,
 } from "./lib/permissions";
 import { hasRunOfDemo } from "./features/demo-mode/access";
+import { isDemoStudioId } from "./features/demo-mode/is-demo";
+import { DemoBanner } from "./features/demo-mode/DemoBanner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1501,6 +1503,12 @@ export default function AppContent({
         theme={theme}
       >
         <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
+          {/* Above the header, and outside the `workouts` condition below, so
+              it is on the Active Session too — see DemoBanner.tsx. */}
+          {isDemoStudioId(activeStudioId) && (
+            <DemoBanner onLeave={() => setIsChangingStudio(true)} />
+          )}
+
           {/* Header */}
           {currentView !== "workouts" && (
             <AppHeader
