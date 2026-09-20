@@ -304,7 +304,7 @@ export const SETTING_LABELS: Record<NumberSetting, string> = {
   chargeWarnDays: "Warn before the charge (days)",
   chargeWarnMinBanked: "Only when this many sessions are banked",
   horizonMonths: "Plan ahead (months)",
-  breakDays: "A break is (days without a visit)",
+  breakDays: "Warn me when a client has not visited for (days)",
   lostAfterDays: "Lost after (days past the end)",
 };
 

@@ -258,8 +258,13 @@ function countBarePaletteUtilities(): number {
  * Lower it whenever you bring the number down — that is the point of a
  * ratchet. Raising it should take a sentence in the commit message saying
  * what is deliberately hardcoded and why.
+ *
+ * Sep 19 2026 (Operations overhaul): 258 -> 259. The Admin button on the
+ * bottom bar is orange like the Operations button beside it — the colour
+ * of the admin mode, deliberately the same in both themes, the same
+ * `activeColor="text-orange-500"` the Operations button already carries.
  */
-const BARE_PALETTE_BUDGET = 258;
+const BARE_PALETTE_BUDGET = 259;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

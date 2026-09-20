@@ -26,7 +26,7 @@ describe("settings form", () => {
   it("says what is wrong instead of saving a blank or a fraction", () => {
     const form = { ...settingsToForm(DEFAULT_RENEWAL_SETTINGS), breakDays: "", conversationAtSessionsLeft: "9.5" };
     const problems = formToSettings(form).problems.join(" ");
-    expect(problems).toContain("A break is");
+    expect(problems).toContain("Warn me when a client has not visited for");
     expect(problems).toContain("whole number");
   });
 

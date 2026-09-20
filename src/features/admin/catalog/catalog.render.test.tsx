@@ -77,18 +77,26 @@ vi.mock("firebase/firestore", () => {
 vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 
 import { AdminMachinesTab } from "../machines/AdminMachinesTab";
+import { StandardTemplateTab } from "../../admins/StandardTemplateTab";
+import type { Trainer } from "../../../types";
+
+// Operations overhaul (Sep 19 2026): the standard set moved from the Catalog
+// tab to the Admins dashboard's Standard template; the queue and the creator
+// stayed on the Catalog. The cases below mount whichever screen holds them.
+const who = (isAdmin: boolean) =>
+  ({ id: isAdmin ? "admin" : "owner", fullName: isAdmin ? "Ada Admin" : "Own Er", initials: "AA", role: isAdmin ? "Admin" : "FranchiseOwner", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] }) as unknown as Trainer;
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function mount(isAdmin: boolean) {
+async function mount(isAdmin: boolean, screen: "catalog" | "template" = "catalog") {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminMachinesTab isAdmin={isAdmin} />
+        {screen === "catalog" ? <AdminMachinesTab isAdmin={isAdmin} /> : <StandardTemplateTab authTrainer={who(isAdmin)} studios={[]} activeStudioId="solon" isAdmin={isAdmin} />}
       </StrictMode>,
     );
   });
@@ -115,9 +123,9 @@ afterEach(() => {
   writes.length = 0;
 });
 
-describe("Operations → Catalog", () => {
+describe("Admins → Catalog and the Standard template", () => {
   it("shows the standard set in order and the machines outside it, and a move renumbers in tens", async () => {
-    const el = await mount(true);
+    const el = await mount(true, "template");
     const rows = [...el.querySelectorAll(".adm-std__row .adm-std__name")].map((n) => n.textContent);
     expect(rows).toEqual(["Leg Press", "Chest Press", "Row"]);
     expect(el.textContent).toContain("2 machines, in the order a new floor starts in");
@@ -167,8 +175,11 @@ describe("Operations → Catalog", () => {
   it("gives a franchise owner the set to read and no queue, no switches, no New machine", async () => {
     const el = await mount(false);
     expect(el.textContent).not.toContain("Submitted by studios");
-    expect(el.querySelector('button[aria-label="Move Chest Press up"]')).toBeNull();
     expect([...el.querySelectorAll("button")].some((b) => b.textContent?.includes("New machine"))).toBe(false);
+    // The creator's cards still say which machines are in the set, read-only.
     expect(el.textContent).toContain("In the standard set");
+    const template = await mount(false, "template");
+    expect(template.querySelector('button[aria-label="Move Chest Press up"]')).toBeNull();
+    expect(template.textContent).toContain("in the order a new floor starts in");
   });
 });

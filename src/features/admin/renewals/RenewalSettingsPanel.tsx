@@ -60,7 +60,7 @@ const HINTS: Record<NumberKey, string> = {
     "For clients who will still have sessions when billing ends — so there's time to talk before the card is charged.",
   chargeWarnMinBanked: "Fewer banked sessions than this isn't worth a warning.",
   horizonMonths: "How far ahead the Coming up list looks.",
-  breakDays: "Two weeks is the History tab's rule too.",
+  breakDays: "The studio's own number (AJ, Sep 19): past it a quiet client goes on the Overview's attendance watch. Two weeks is the History tab's rule too.",
   lostAfterDays: "Days after billing ends with no new package before a client counts as lost.",
 };
 
