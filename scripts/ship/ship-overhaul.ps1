@@ -6,7 +6,7 @@
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-overhaul.ps1 golive
 
  WHAT IS ON THE BRANCH
-   operations-overhaul carries, on top of master at dbc0714, eight commits -
+   operations-overhaul carries, on top of master at dbc0714, nine commits -
    one per phase (docs/rounds/2026-09-19-operations-overhaul.md):
      1  the change stamps - the sync writes down when a booking went and
         where a moved one came from; the day's changes list (pure)
@@ -21,6 +21,8 @@
      7  loose ends - the attendance number in AJ's words, tests, the
         palette ratchet
      8  docs
+     9  seen in the harness - badge words on every row, Overview brings you
+        home, five tiles across on an iPad
    master has nothing the branch lacks, so the merge is a fast-forward. No
    Cloud Functions changes. No dependency changes. The webhook is untouched.
 

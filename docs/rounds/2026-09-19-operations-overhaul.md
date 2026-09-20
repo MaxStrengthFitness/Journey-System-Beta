@@ -1,8 +1,9 @@
 # The Operations overhaul — Sep 19 2026
 
-Branch `operations-overhaul`, off `master` at `dbc0714`. Eight commits, one
-per phase, each typechecked and tested on its own so any phase can be
-reverted alone. Not pushed; not deployed. The brief is AJ's *Operations
+Branch `operations-overhaul`, off `master` at `dbc0714`. Nine phase commits,
+one per phase, each typechecked and tested on its own so any phase can be
+reverted alone (plus one line that corrects the counts here and in the ship
+script). Not pushed; not deployed. The brief is AJ's *Operations
 Dashboard Overhaul — Build Brief* (Sep 19), read with what he added in
 conversation the same day:
 
@@ -199,6 +200,17 @@ README; KNOWN-TRAPS (baselines, three traps); the testing checklist's Round
 13; ARCHITECTURE (screen map, data dictionary, decision log);
 roles-and-permissions (the Admins dashboard); the index and the changelog;
 ROADMAP; `scripts/ship/ship-overhaul.ps1`.
+
+### 9 · Seen in the harness
+
+The screenshots (see Verification) caught three things: rows said *Now /
+Soon / Note* where the row's own word was better — Changes rows now say
+**Cancelled** or **Moved**, unbooked rows **Not booked**, Moments **No
+owner · Gesture · Date · Milestone** (`OverviewRow.badge`, the tone word as
+the fallback); pressing **Overview** in the sidebar while inside Changes or
+the Attendance watch did nothing — the shell now bumps a `homeSignal` and
+the page comes home; and today's five tiles wrapped 4 + 1 on an iPad — the
+today block lets them sit five across where there is room.
 
 ## What the Overview refuses to say
 
