@@ -1,0 +1,363 @@
+/*
+ * THE MACHINE EDITOR.
+ *
+ * Round: Machine authoring, Sep 2026.
+ *
+ * Colour comes from admin.tokens.css and nowhere else — no hex below that
+ * file, per features/admin/README.md. Nothing interactive is under 40px, and
+ * the rail collapses to a horizontal strip below the masthead at iPad
+ * portrait, the same two-tier shape .adm-shell already uses.
+ */
+
+.adm-me__body {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+/* ── The section rail ─────────────────────────────────────────────── */
+
+.adm-me__rail {
+  position: sticky;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+}
+
+.adm-me__railbtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.adm-me__railbtn:hover {
+  background: var(--adm-surface-2);
+  color: var(--adm-ink);
+}
+
+.adm-me__railbtn:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+.adm-me__railbtn--on {
+  background: var(--adm-surface-3);
+  color: var(--adm-ink);
+}
+
+.adm-me__railname {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-me__railcount {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--adm-ink-muted);
+}
+
+/* A section's state, as one mark. Shape and position carry it as well as
+   colour, so it survives a protanope and a greyscale iPad in bright sun. */
+.adm-me__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--adm-border-strong);
+}
+
+.adm-me__dot--done { background: var(--adm-ok); }
+.adm-me__dot--part { background: var(--adm-warn); }
+.adm-me__dot--empty {
+  background: transparent;
+  border: 2px solid var(--adm-border-strong);
+}
+.adm-me__dot--locked { background: var(--adm-ink-faint); }
+
+/* ── The sections ─────────────────────────────────────────────────── */
+
+.adm-me__main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.adm-me__section { scroll-margin-top: 12px; }
+
+.adm-me__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.adm-me__blurb {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-muted);
+}
+
+.adm-me__field { display: flex; flex-direction: column; gap: 6px; }
+
+.adm-me__field--locked .adm-textarea,
+.adm-me__field--locked .adm-input { opacity: 0.7; }
+
+.adm-me__fieldhead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-me__lock,
+.adm-me__changed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adm-me__lock { color: var(--adm-ink-muted); }
+.adm-me__changed { color: var(--adm-hero-text); }
+
+.adm-me__revert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--adm-live-text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.adm-me__revert:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Prose, for a locked section and the read view ────────────────── */
+
+.adm-me__prose {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--adm-ink);
+  white-space: pre-wrap;
+}
+
+.adm-me__cue {
+  margin: 0;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--adm-live-text);
+}
+
+.adm-me__empty {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--adm-ink-faint);
+}
+
+.adm-me__list,
+.adm-me__checks {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adm-me__listitem {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+}
+
+.adm-me__checktitle {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.adm-me__warnlist {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Editing pieces ───────────────────────────────────────────────── */
+
+.adm-me__stack { display: flex; flex-direction: column; gap: 10px; }
+
+.adm-me__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.adm-me__row > .adm-input,
+.adm-me__row > .adm-textarea { flex: 1; min-width: 0; }
+
+.adm-me__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--adm-surface-2);
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+}
+
+.adm-me__dialhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adm-me__inherited {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--adm-surface-2);
+  border: 1px dashed var(--adm-border-strong);
+  border-radius: 12px;
+}
+
+.adm-me__inheritedhead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--adm-ink-muted);
+}
+
+/* ── Muscle chips ─────────────────────────────────────────────────── */
+
+.adm-me__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 40px tall. The form these replace used 22px chips, 57 of them, on a
+   screen operated with one thumb while holding an iPad in the other hand. */
+.adm-me__chip {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 20px;
+  background: var(--adm-surface);
+  color: var(--adm-ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adm-me__chip:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.adm-me__chip--on {
+  background: var(--adm-live);
+  border-color: var(--adm-live);
+  color: var(--adm-live-on);
+}
+
+/* ── Body-type columns ────────────────────────────────────────────── */
+
+.adm-me__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.adm-me__col { display: flex; flex-direction: column; gap: 14px; }
+
+.adm-me__coltitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--adm-ink-muted);
+}
+
+/* ── The save bar ─────────────────────────────────────────────────── */
+
+/* Sticky to the SCREEN, not inside a scrolling dialog. The form this
+   replaces put its footer inside a fixed, overflowing modal, which on iOS
+   Safari is the case where the keyboard opens and the Save button goes. */
+.adm-me__savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 8px;
+  background: linear-gradient(
+    to top,
+    var(--adm-bg) 60%,
+    transparent
+  );
+}
+
+/* ── iPad portrait and narrower ───────────────────────────────────── */
+
+@media (max-width: 1000px) {
+  .adm-me__body { grid-template-columns: minmax(0, 1fr); }
+
+  .adm-me__rail {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .adm-me__rail::-webkit-scrollbar { display: none; }
+
+  .adm-me__railbtn { width: auto; flex: none; white-space: nowrap; }
+  .adm-me__railcount { display: none; }
+}
