@@ -21,6 +21,7 @@ that encodes it should cite the filename in a comment.
 | `academy.ts` → `MODEL_AB_ROUTINE`, `TWICE_WEEKLY_RULE` | `Academy 6/Programming and Progression 6 - AB Routines - How to Optimize Programming.txt` |
 | `academy.ts` → `REP_RANGE_BY_LEVEL`, `EXERCISE_COUNT` | `Academy 6/Academy - Programming and Progression 2/3/4 - Novice/Intermediate/Advanced Level Trainees.txt` |
 | `academy.ts` → `PAIN_PROTOCOL` | `Academy 6/Considerations for Training with Pain.txt` |
+| `src/features/demo-mode/loads.ts` — the whole file | `Academy 2/Training with pain…txt` (two-pound increments), `Initial Setups/…/Cervical Extension.txt` + `Triceps Extension.txt` (the 20 lb floor), `Academy 2/Exercise Selection Template.txt` (intentionally underestimating the new client), `Academy 2/How Intensely to Push a Client.txt` (the rep bands), `Academy 6/… Progression 5 - Workout Progressions.txt` (reps before resistance), `Academy/… Registering Performance - Use of the Clicker.txt` (only clean reps count), `Initial Setups/…/Leg Extension.txt` (static-hold time progression) |
 
 ## Layout
 
@@ -47,6 +48,16 @@ committed — only the extracted text. Spreadsheets that matter
 (`MSF - Suggested Starting Weights.xlsx`, `Exercise Loading Guidelines.xlsx`)
 are still Drive-only; if their numbers get encoded in the app, add them here
 in a structured form at the same time.
+
+**Those two are now the biggest gap in this corpus.** Sep 20 2026: the demo
+loads round searched every file for a per-machine starting weight and there is
+none — no table, no percentage of bodyweight, no percentage of 1RM. The only
+hard numbers anywhere are the 20 lb floor on Cx / Bi / Tri / LE / LC and the
+Leg Press's 18 lb accessory and 38 lb combined footplate pressure. Two places
+in the app are running on unvetted guesses in the meantime and both should be
+replaced from the spreadsheet: the catalog's `baselineLoad` (which
+`suggestedWeight()` offers to real trainers for real clients) and
+`src/features/demo-mode/loads.ts` (demo only, and says so at the top).
 
 ## Refreshing
 

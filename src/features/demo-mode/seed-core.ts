@@ -55,6 +55,15 @@ import {
   type DemoTrainerSeed,
 } from "./roster";
 import {
+  capabilityAfter,
+  increaseAfter,
+  increaseAfterHold,
+  loadsFor,
+  onTheStack,
+  repsFor,
+  secondsFor,
+} from "./loads";
+import {
   DEMO_SERVICE_NAME,
   buildDemoWeek,
   demoScheduleRunsThrough,
@@ -193,24 +202,6 @@ function dialLabels(machineId: string): string[] {
     .filter(Boolean);
 }
 
-/** The starting load for this client on this machine, from the catalog. */
-function baselineFor(machineId: string, seed: DemoClientSeed): number {
-  const load = MACHINE_BY_ID.get(machineId)?.baselineLoad;
-  const base =
-    (seed.gender === "Female" ? load?.female : load?.male) ??
-    load?.male ??
-    load?.female ??
-    40;
-  /*
-   * Older clients start lower. Gently: the catalog's baselineLoad is already
-   * Max Strength's own starting load for the machine, so this is a nudge and
-   * not a second opinion — and it rounds to 2.5 rather than 5 so the lightest
-   * machines do not collapse to a number nobody would set.
-   */
-  const scale = seed.age >= 75 ? 0.75 : seed.age >= 65 ? 0.85 : 1;
-  return Math.max(5, Math.round((base * scale) / 2.5) * 2.5);
-}
-
 /* ── The studio, its team and its floor ─────────────────────────────────── */
 
 interface SeedContext {
@@ -316,74 +307,30 @@ const HOLD_MACHINES = new Set(["m-lumbar", "m-abs"]);
 const GAP_DAYS = [3, 4];
 
 /*
- * HOW A WEIGHT ACTUALLY MOVES AT MAX STRENGTH (AJ, Sep 20 2026).
+ * HOW A WEIGHT MOVES AT MAX STRENGTH.
  *
- * This is the part a generated history gets wrong by default, and gets wrong
- * in a way that would embarrass the demo: a naive "+5 lb every third session"
- * has a 68-year-old more than doubling her leg press inside five months.
+ * All of it now lives in `loads.ts`, with the Academy passages it comes from
+ * quoted beside each constant. The one-line version: the load is a
+ * CONSEQUENCE OF THE REP COUNT, never a schedule. A client is started
+ * deliberately under what they can do, their sets come out long, the trainer
+ * closes the gap over the learning curve; once the reps sit in the six-to-ten
+ * band the load only moves when the client has actually got stronger.
  *
- * What really happens. Clients train TWICE A WEEK for TWENTY MINUTES, one set
- * to failure, and they are typically over forty. They are not making
- * newcomer-in-their-twenties gains and they never were:
+ * Two things fall out of that which the old coin-flip model had to fake:
+ * weights stand still most of the time without anybody deciding they should,
+ * and the rep count on the grid MEANS something — it falls as the weight
+ * rises, which is the shape a trainer is looking for when they open a client.
  *
- *   - Most sessions the weight does not move at all.
- *   - When it does, it moves 2 to 6 lb, and "on a more rare occasion".
- *   - The exception is early on, while the trainer is still FINDING the
- *     client's working weight for that machine. Those corrections are bigger
- *     — up to 20 lb — because the starting guess was a guess.
- *
- * And the arithmetic that makes the naive version so far out: routines
- * alternate A and B, and a machine lives in only ONE of them. A client with
- * 45 sessions has performed each machine about 22 times, not 45. Every rate
- * below is per PERFORMANCE of that machine, not per session.
+ * Every load is an even whole number of at least twenty, because that is what
+ * the machines can be set to (AJ, Sep 20 2026; and the Academy's "two pound
+ * increments" and "20 pounds, the lightest increment available").
  */
 
-/** The first few times on a machine, while the working weight is still being found. */
-const FINDING_PERFORMANCES = 3;
-/** Chance of a correction during the finding phase. */
-const FINDING_RATE = 0.4;
-/** Chance of an increase once the working weight is settled. Rare, by design. */
-const SETTLED_RATE = 0.12;
-
-/**
- * The settled increase for THIS machine: AJ's 2-to-6 lb, scaled to the load.
- *
- * The scaling is not decoration. A flat 2-to-6 lb is right on a leg press
- * that starts at 160 and nonsense on an overhead press that starts at 15,
- * where six pounds is a forty per cent jump no trainer would make. Five per
- * cent of the starting load lands inside AJ's band on every machine in the
- * catalog, and the clamp keeps it there.
- */
-function settledCeiling(base: number): number {
-  return Math.min(6, Math.max(2, Math.round(base * 0.05)));
-}
-
-/**
- * The most one correction may add while the working weight is still being
- * found. AJ's "up to even 20 lb" is about the heavy machines; a fifth of the
- * starting load is the same statement written so it holds on the light ones
- * too, where there simply is not twenty pounds of room to find.
- */
-function findingCeiling(base: number): number {
-  return Math.min(20, Math.max(2.5, Math.round((base * 0.2) / 2.5) * 2.5));
-}
-
-/**
- * The increase for one performance, or 0 for "it did not move" — which is
- * what most performances are.
- */
-function increaseFor(
-  rand: () => number,
-  performances: number,
-  base: number,
-): number {
-  if (performances < FINDING_PERFORMANCES) {
-    if (rand() >= FINDING_RATE) return 0;
-    const steps = Math.max(1, Math.round(findingCeiling(base) / 2.5));
-    return between(rand, 1, steps) * 2.5;
-  }
-  if (rand() >= SETTLED_RATE) return 0;
-  return between(rand, 2, settledCeiling(base));
+/** This client's own strength on this machine, ±8%: people are not uniformly
+ *  strong across twenty machines, and a client whose profile is the same
+ *  curve twenty times is a demo of a spreadsheet. */
+function strengthJitter(seed: DemoClientSeed, machineId: string): number {
+  return 0.92 + rngFor(`strength:${seed.key}:${machineId}`)() * 0.16;
 }
 
 /** A dial value that looks like somebody set it, and never moves after. */
@@ -468,9 +415,14 @@ function buildHistory(
 
   /* Forwards, so the weights progress. */
   const logs: BuiltLog[] = [];
+  /** What this client is currently set to on each machine. */
   const current = new Map<string, number>();
+  /** Their capability on it: what they fail at around eight reps. */
+  const ceiling = new Map<string, number>();
   /* How many times this client has actually PERFORMED each machine — which
-     is what the finding phase counts, not how many sessions they have had. */
+     is what the learning curve counts, not how many sessions they have had.
+     A machine lives in ONE of the two routines, so a client with 45 sessions
+     has done each of them about 22 times. */
   const performances = new Map<string, number>();
   let setCounter = 0;
 
@@ -478,11 +430,17 @@ function buildHistory(
     session.machineIds.forEach((machineId, position) => {
       setCounter += 1;
       const hold = HOLD_MACHINES.has(machineId);
-      const base = baselineFor(machineId, seed);
 
-      let weight = current.get(machineId);
-      if (weight === undefined) weight = base;
-      else weight += increaseFor(rand, performances.get(machineId) ?? 0, base);
+      if (!current.has(machineId)) {
+        const opening = loadsFor(seed, machineId, strengthJitter(seed, machineId));
+        current.set(machineId, opening.start);
+        ceiling.set(machineId, opening.capability);
+      }
+      const weight = current.get(machineId)!;
+      const done = performances.get(machineId) ?? 0;
+      /* Capability is not fixed: the client gets stronger, which is the point
+         of them being here. Fast at first, then flattening. */
+      const capability = capabilityAfter(ceiling.get(machineId)!, done, seed.priorSessions);
 
       /*
        * The last machine of roughly one session in nine is never reached —
@@ -501,25 +459,43 @@ function buildHistory(
           ? "skipped"
           : "performed";
 
-      if (outcome === "performed") {
-        current.set(machineId, weight);
-        performances.set(machineId, (performances.get(machineId) ?? 0) + 1);
-      }
-
+      let reps = 0;
+      let seconds = 0;
       let repQuality: 1 | 2 | 3 | undefined;
+
       if (outcome === "performed") {
         if (seed.hasRoughSets && setCounter % 4 === 0) repQuality = 1;
         else if (setCounter % 13 === 0) repQuality = 3;
         else repQuality = 2;
+
+        const wobble = between(rand, -1, 1);
+        if (hold) seconds = secondsFor(weight, capability, wobble);
+        else reps = repsFor(weight, capability, wobble);
+
+        performances.set(machineId, done + 1);
+
+        /*
+         * The load only goes up after a set that was CLEAN and too long.
+         * "If you accept these less than optimal reps, there is a likelihood
+         * that they would accumulate enough reps to warrant a weight
+         * increase. And with the subpar execution that they are currently
+         * using, an increase in weight is only going to exacerbate the
+         * situation." — Academy, Use of the Clicker.
+         */
+        if (repQuality > 1) {
+          const added = hold
+            ? increaseAfterHold(seconds, done, capability, weight)
+            : increaseAfter(reps, done, capability, weight);
+          if (added > 0) current.set(machineId, onTheStack(weight + added));
+        }
       }
 
       logs.push({
         sessionId: session.id,
         machineId,
         weight: outcome === "performed" ? String(weight) : "0",
-        reps: outcome === "performed" && !hold ? String(between(rand, 6, 12)) : "0",
-        seconds:
-          outcome === "performed" && hold ? String(between(rand, 9, 18) * 5) : "0",
+        reps: String(reps),
+        seconds: String(seconds),
         hold,
         outcome,
         ...(repQuality ? { repQuality } : {}),

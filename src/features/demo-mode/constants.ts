@@ -48,7 +48,7 @@ export const DEMO_FLAG = "isDemo" as const;
  * the studio document, so "Set up" can tell an up-to-date demo studio from one
  * laid down by an older version of the app.
  */
-export const DEMO_SEED_VERSION = 3;
+export const DEMO_SEED_VERSION = 4;
 
 /**
  * Emails use a reserved TLD that can never route anywhere (RFC 2606), so even

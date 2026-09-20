@@ -68,6 +68,7 @@ studio twice; either half makes it demo.
 | `guards.ts` | The two crossings above |
 | `access.ts` | Who may do what: `canEnterDemo`, `hasRunOfDemo`, `studiosInRealm`, `splitOutDemo` |
 | `roster.ts` | Six clients and three trainers, each there to teach something |
+| `loads.ts` | Pure. What a client lifts and how it moves — the stack, the bands, the double progression |
 | `seed-core.ts` | Pure. The 1,202 documents the demo studio is made of, as `{ path, data }` |
 | `week.ts` | Pure. The standing week the Hub reads — eleven appointments, repeated for eight weeks |
 | `seed-write.ts` | Lays that list down with the client SDK, in batches |
@@ -157,32 +158,94 @@ would never have caught them. Both drop demo rows in their pure aggregator:
 
 ## How a weight actually moves
 
-This is the part a generated history gets wrong by default, and gets wrong in
-the way that would embarrass the demo. A naive "+5 lb every third session" has
-a 72-year-old more than doubling her leg press inside a year.
+Round: **realistic demo loads, Sep 20 2026** (`docs/rounds/2026-09-20-demo-loads.md`).
+The model is `loads.ts`, with the Academy passage it comes from quoted beside
+each constant.
 
-What really happens here (AJ, Sep 20 2026): clients train **twice a week for
-twenty minutes**, one set to failure, and they are typically **over forty**.
-So most sessions the weight does not move at all; when it does it moves **2 to
-6 lb**, and not often; and the only large corrections are early, while the
-trainer is still **finding** the client's working weight for that machine —
-those can be up to 20 lb, because the starting guess was a guess.
+AJ, looking at the first seeded history: *"our machines can only move up in two
+pound increments. As some of the current weights have 35 pounds, 32.5, 37, 53.
+And for some machines like the leg press, the client only has 53 pounds."*
 
-Two things the model has to get right beyond the rates:
+Three separate things were wrong and only one of them was rounding:
 
-- **Routines alternate A and B, and a machine lives in only one of them.** A
-  client with 45 sessions has performed each machine about 22 times, not 45.
-  Every rate is per performance of that machine.
-- **The increment scales with the load.** A flat 2-to-6 lb is right on a leg
-  press starting at 160 and nonsense on an overhead press starting at 15,
-  where six pounds is a forty per cent jump no trainer would make. Five per
-  cent of the starting load lands inside AJ's band on every machine in the
-  catalog; the finding correction is a fifth of it, capped at 20.
+1. **The numbers were not on the machine.** The old model rounded to 2.5 lb and
+   added 2-to-6 lb steps, which produces 32.5, 35, 37 and 53.
+2. **The loads were far too light**, because they came from the catalog's
+   `baselineLoad` (leg press: 160 male / **60 female**) and were then scaled
+   DOWN again for age.
+3. **Reps had nothing to do with weight** — a random 6-to-12 on every set, so
+   the grid could show a weight going up while the rep count went up with it.
 
-The result reads like a real client: `50 → 50 → 50 → 50 → 50 → 50 → 50 → 50 →
-50 → 50 → 50 → 50 → 50 → 50 → 53 → 53 → 53 → 53 → 53 → 53 → 53`. Six tests
-police it, including one that fails if weights move on more than 30% of
-performances and one that fails if anybody doubles.
+### The rule that kills the first one
+
+Every load passes through `onTheStack()`: **an even whole number of at least
+twenty.** The Academy: *"Because our machines can be progressed in two pound
+increments, we can make very small, precise increases"*, and *"Most clients will
+start with 20 pounds, the lightest increment available on this exercise."*
+
+### The model that fixes the other two
+
+**The load is a consequence of the rep count, never a schedule.** That is the
+Academy's own double progression:
+
+> "Repetition count – if a subject has yet to reach muscular fatigue and is
+> still within an acceptable rep count range, the number of reps should be
+> progressed … **before resistance is added**. … Resistance – weight increases
+> are only considered after the previous four factors are optimized."
+
+So a client is started **deliberately under what they can do** (*"we should be
+intentionally underestimating the strength of the new client … which would most
+likely land them at a 10 - 12 or more rep set"*), their sets come out long, and
+the trainer closes the gap across the learning curve — in corrections that
+shrink, because each one takes a share of what is LEFT rather than a flat
+percentage. Once the reps sit in the six-to-ten band the load only moves when
+the client has actually got stronger, and capability grows on a curve that
+flattens.
+
+Two things fall out of that which the old coin-flip could only fake: weights
+stand still most of the time without anybody deciding they should (28% of
+performances move, 15% after the learning curve), and **the rep count on the
+grid means something** — it falls as the weight rises, which is the first thing
+a trainer looks at when they open a client.
+
+A poor-quality set earns nothing. *"If you accept these less than optimal reps,
+there is a likelihood that they would accumulate enough reps to warrant a weight
+increase. And with the subpar execution … an increase in weight is only going to
+exacerbate the situation."*
+
+The two held machines progress on **time first, load second**, the same rule in
+a different unit: *"introduced at … 30 to 45 seconds … progress up to 120
+seconds … Once a client can sustain an effort for 120 seconds, it may be
+advisable to increase the load, decrease the time."*
+
+### What it produces
+
+| Client | Leg press, first → last |
+| --- | --- |
+| Eowyn Rohan, 72 F, 42 sessions | 104 × 14 → 140 × 9 |
+| Rosie Cotton, 68 F, 45 sessions | 132 × 13 → 178 × 10 |
+| Sam Gamgee, 58 M, 14 sessions | 226 × 13 → 284 × 11 |
+| Merry Brandybuck, 54 M, 19 sessions | 236 × 15 → 298 × 12 |
+| Frodo Baggins, 45 M, 2 sessions | 230 × 15 (one set; he is new) |
+| Arwen Evenstar, 81 F, 8 + **304** prior | 148 × 7, and it barely moves |
+
+Arwen is the one to look at twice. A model that only knew her age would have
+had an 81-year-old opening lighter than a sedentary 81-year-old who had never
+trained — the opposite of the point she is in the roster to make. Twelve years
+of training is worth a quarter on capability and, more importantly, means she
+does **not** get a novice's opening: she starts where she left off, at eight
+reps, and her grid is flat because she is not learning anything.
+
+### The numbers are ours, not Max Strength's
+
+`DEMO_LOADS` is **not a company standard and must never be shown as one.** The
+real table is `MSF - Suggested Starting Weights.xlsx`, which is Drive-only —
+`docs/msf-academy/README.md` says so, and nothing in the committed corpus gives
+a per-machine starting load. These are considered demo figures in the catalog's
+own relative order, laid out in the shape of the **empty**
+`standardWeights: { Beginner, Intermediate, Advanced }` slot on a catalog
+machine, so the real numbers drop straight into the catalog when they arrive
+and this table can be deleted in favour of reading them.
 
 ## Tests
 
@@ -190,6 +253,7 @@ performances and one that fails if anybody doubles.
 what, and the realm rule), `seed.test.ts` (the documents themselves),
 `week.test.ts` (the standing week, the ids that never orphan, the wall clock
 across the change to standard time, and the fields the rules require),
+`loads.test.ts` (the stack, the table, the rep bands and the progression),
 `leaks.test.ts` (the two above), `DemoBanner.render.test.tsx`. Plus 13
 assertions in `tests/firestore.rules.test.ts`, which need the emulator.
 

@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { buildDemoSeed, isTsSentinel, addDays, DEMO_MACHINES } from "./seed-core";
 import { DEMO_STUDIO_ID } from "./constants";
+import {
+  LEARNING_CURVE_PERFORMANCES,
+  LOAD_STEP,
+  MAX_REPS,
+  MIN_REPS,
+  onTheStack,
+} from "./loads";
 import { DEMO_CLIENTS, DEMO_TRAINERS, totalSessionsFor } from "./roster";
 import { outcomeOf, isPerformedLog } from "../../lib/set-outcome";
 import { totalSessions, priorHistoryOf } from "../../lib/prior-history";
@@ -170,15 +177,20 @@ describe("the history is the shape the app's own readers expect", () => {
   });
 
   /*
-   * HOW A WEIGHT MOVES — AJ, Sep 20 2026, and the reason these five
-   * assertions exist rather than one.
+   * HOW A WEIGHT MOVES — AJ, Sep 20 2026, and the reason these assertions
+   * exist rather than one.
    *
    * Clients train twice a week for twenty minutes and are typically over
-   * forty. The weight usually does not move; when it does it moves 2 to 6 lb;
-   * and the only big corrections are early, while the trainer is still
-   * finding the working weight. A generated history that climbed steadily
-   * would have a 72-year-old more than doubling her leg press inside a year,
-   * which is the kind of number a boss asks about.
+   * forty. The weight usually does not move; the only big corrections are
+   * early, while the trainer is still finding the working weight. A generated
+   * history that climbed steadily would have a 72-year-old more than doubling
+   * her leg press inside a year, which is the kind of number a boss asks
+   * about.
+   *
+   * The model that produces this is `loads.ts`, and none of it is a schedule:
+   * the load is a consequence of the rep count. These tests are the outcome
+   * of that model, not its definition — `loads.test.ts` tests the rules
+   * themselves.
    */
   const performedRunsByMachine = () => {
     const runs = new Map<string, number[]>();
@@ -225,14 +237,113 @@ describe("the history is the shape the app's own readers expect", () => {
     }
   });
 
-  it("adds at most 6 lb once the working weight is settled", () => {
-    // The first three performances are the finding phase; after that AJ's
-    // band is 2 to 6 and nothing may leave it.
+  it("adds one step, or two after a runaway set, once the weight is settled", () => {
+    /*
+     * The step INTO performance `i` was decided after performance `i - 1`,
+     * so the finding phase covers i < LEARNING_CURVE_PERFORMANCES + 1. After
+     * that the machine's own two pounds is the answer, and four only for a
+     * set that ran past the Academy's practical upper limit of fifteen.
+     */
     for (const run of performedRunsByMachine().values()) {
-      for (let i = 4; i < run.length; i += 1) {
-        expect(run[i] - run[i - 1]).toBeLessThanOrEqual(6);
+      for (let i = LEARNING_CURVE_PERFORMANCES + 1; i < run.length; i += 1) {
+        expect(run[i] - run[i - 1]).toBeLessThanOrEqual(LOAD_STEP * 2);
       }
     }
+  });
+
+  it("only ever sets a weight the machine can actually be set to", () => {
+    /*
+     * AJ, Sep 20 2026: "our machines can only move up in two pound
+     * increments. As some of the current weights have 35 pounds, 32.5, 37,
+     * 53." Every load in the demo is an even whole number of at least twenty
+     * — the Academy's two-pound increments and its "20 pounds, the lightest
+     * increment available on this exercise".
+     */
+    const offTheStack = new Set<number>();
+    for (const l of logs) {
+      if (l.data.outcome !== "performed") continue;
+      const w = Number(l.data.weight);
+      if (w !== onTheStack(w)) offTheStack.add(w);
+    }
+    expect([...offTheStack]).toEqual([]);
+  });
+
+  it("starts nobody on a weight that embarrasses the demo", () => {
+    /*
+     * The other half of AJ's report: "for some machines like the leg press,
+     * the client only has 53 pounds." The old model took the catalog's
+     * `baselineLoad` and scaled it DOWN again for age. Nobody in the demo
+     * leg-presses less than three figures.
+     */
+    const legPress = [...performedRunsByMachine().entries()].filter(([key]) =>
+      key.endsWith(":m-leg-press"),
+    );
+    expect(legPress.length).toBe(DEMO_CLIENTS.length);
+    for (const [key, run] of legPress) {
+      // The key is in the message so a failure names the client.
+      expect(`${key} opened on ${run[0]}`).toBe(`${key} opened on ${Math.max(90, run[0])}`);
+    }
+  });
+
+  it("makes the rep count mean something: it falls as the weight rises", () => {
+    /*
+     * The realism that matters most on the grid. The old model drew reps
+     * from a random 6-to-12 with no relationship to the load, so a weight
+     * could go up while the rep count went up too — backwards from how this
+     * method works, and the first thing a trainer would notice.
+     */
+    const runs = new Map<string, Array<{ weight: number; reps: number }>>();
+    for (const l of logs) {
+      if (l.data.outcome !== "performed" || l.data.isStaticHold === true) continue;
+      const key = `${l.data.clientId}:${l.data.machineId}`;
+      const list = runs.get(key) ?? [];
+      list.push({ weight: Number(l.data.weight), reps: Number(l.data.reps) });
+      runs.set(key, list);
+    }
+    let rose = 0;
+    let fellOrHeld = 0;
+    for (const run of runs.values()) {
+      for (let i = 1; i < run.length; i += 1) {
+        if (run[i].weight <= run[i - 1].weight) continue;
+        if (run[i].reps > run[i - 1].reps) rose += 1;
+        else fellOrHeld += 1;
+      }
+    }
+    expect(fellOrHeld).toBeGreaterThan(50);
+    // A heavier weight that bought MORE reps should be vanishingly rare —
+    // only the ±1 wobble on a set that was already near the band's edge.
+    expect(rose / (rose + fellOrHeld)).toBeLessThan(0.1);
+  });
+
+  it("keeps every set inside the Academy's rep bands", () => {
+    // "< 6 reps → load may be too heavy … ~15 reps → practical upper limit."
+    for (const l of logs) {
+      if (l.data.outcome !== "performed" || l.data.isStaticHold === true) continue;
+      expect(Number(l.data.reps)).toBeGreaterThanOrEqual(MIN_REPS);
+      expect(Number(l.data.reps)).toBeLessThanOrEqual(MAX_REPS);
+    }
+  });
+
+  it("gives a true novice a long set and a veteran a short one", () => {
+    /*
+     * "we should be intentionally underestimating the strength of the new
+     * client … which would most likely land them at a 10 - 12 or more rep
+     * set." Frodo has two sessions; Arwen has 304 behind her and is not
+     * learning anything, so she starts where she left off.
+     */
+    const firstReps = (clientKey: string) =>
+      logs
+        .filter(
+          (l) =>
+            l.data.clientId === `demo-client-${clientKey}` &&
+            l.data.outcome === "performed" &&
+            l.data.isStaticHold !== true,
+        )
+        .map((l) => Number(l.data.reps));
+    const frodo = firstReps("frodo");
+    const arwen = firstReps("arwen");
+    expect(Math.min(...frodo)).toBeGreaterThanOrEqual(12);
+    expect(Math.max(...arwen)).toBeLessThanOrEqual(10);
   });
 
   it("does not have anybody doubling their weight on a machine", () => {
