@@ -26,7 +26,7 @@ import { isDemoStudio, isDemoStudioId } from "./is-demo";
  * Operations → Renewals and the Delight queue both build their people lists by
  * filtering ALL trainers through `worksAt`. A blanket true would have put the
  * entire company's staff directory on Demo Mode's team screens — and Demo
- * Mode's team is Hob, Tom and Robin, who belong to it for real.
+ * Mode's team is Aragorn, Pippin and Gimli, who belong to it for real.
  *
  * So membership stays honest and this file only ever widens AUTHORISATION.
  */

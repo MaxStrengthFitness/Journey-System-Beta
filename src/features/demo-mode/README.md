@@ -102,6 +102,35 @@ would never have caught them. Both drop demo rows in their pure aggregator:
   studio's index, and its cells are k-anonymous at five clients, which six
   demo clients at one height would be enough to form.
 
+## How a weight actually moves
+
+This is the part a generated history gets wrong by default, and gets wrong in
+the way that would embarrass the demo. A naive "+5 lb every third session" has
+a 72-year-old more than doubling her leg press inside a year.
+
+What really happens here (AJ, Sep 20 2026): clients train **twice a week for
+twenty minutes**, one set to failure, and they are typically **over forty**.
+So most sessions the weight does not move at all; when it does it moves **2 to
+6 lb**, and not often; and the only large corrections are early, while the
+trainer is still **finding** the client's working weight for that machine —
+those can be up to 20 lb, because the starting guess was a guess.
+
+Two things the model has to get right beyond the rates:
+
+- **Routines alternate A and B, and a machine lives in only one of them.** A
+  client with 45 sessions has performed each machine about 22 times, not 45.
+  Every rate is per performance of that machine.
+- **The increment scales with the load.** A flat 2-to-6 lb is right on a leg
+  press starting at 160 and nonsense on an overhead press starting at 15,
+  where six pounds is a forty per cent jump no trainer would make. Five per
+  cent of the starting load lands inside AJ's band on every machine in the
+  catalog; the finding correction is a fifth of it, capped at 20.
+
+The result reads like a real client: `50 → 50 → 50 → 50 → 50 → 50 → 50 → 50 →
+50 → 50 → 50 → 50 → 50 → 50 → 53 → 53 → 53 → 53 → 53 → 53 → 53`. Six tests
+police it, including one that fails if weights move on more than 30% of
+performances and one that fails if anybody doubles.
+
 ## Tests
 
 `demo-mode.test.ts` (recognising and guarding), `access.test.ts` (who may do
@@ -116,14 +145,14 @@ six cover the whole app:
 
 | Client | | Teaches |
 | --- | --- | --- |
-| Elanor Gardner | 72, 42 sessions | A long clean journey — the grid at its best |
-| Hal Underhill | 58, rough sets | Mixed rep quality, the red kaizen mark, the machine note |
-| Rosie Cotton | 68, **3 left** | The renewal conversation, and the pipeline |
-| Milo Burrows | 45, 2 sessions | Brand new — first set-up, honest empty states |
-| Esme Bolger | 81, **304 before Journey** | The migration: her profile must read 312, not "new" |
-| Andy Roper | 54, **43 days away** | The attendance anomaly a leader catches on a Monday |
+| Eowyn Rohan | 72 F, 42 sessions | a long clean journey — the grid at its best |
+| Sam Gamgee | 58 M, rough sets | mixed rep quality, the red kaizen mark, the machine note |
+| Rosie Cotton | 68 F, **3 left of 48** | the renewal conversation, and the pipeline |
+| Frodo Baggins | 45 M, 2 sessions | brand new — first set-up, honest empty states |
+| Arwen Evenstar | 81 F, **304 before Journey** | the migration: her profile reads 312, never "new" |
+| Merry Brandybuck | 54 M, **43 days away** | the attendance anomaly a leader catches on a Monday |
 
-Esme is the most important client in the demo. She is
+Arwen is the most important client in the demo. She is
 `docs/business/migration-and-prior-history.md` on one screen, and the answer to
 "did we lose twelve years of records".
 
@@ -136,13 +165,11 @@ It also means the studio-leader half of the app (Team, Staff & Roles, the
 Overview's team panel) has somebody on it, which is exactly the half a studio
 leader is being shown.
 
-**The names** are a Lord of the Rings nod, and AJ's refinement (Sep 20) is that
-it has to be *subtle*. Tolkien built the Shire's surnames out of real English
-rural naming, so many of them are ordinary surnames: Cotton, Bolger, Burrows,
-Gardner, Underhill, Roper, Hayward, Appledore, Fairbairn. Paired with plain
-first names they read as normal clients to a stranger, while a reader quietly
-notices. No Fellowship, nothing comic — a test enforces it.
-
-Every email is `@demo.invalid`, a reserved TLD (RFC 2606) that can never route
-anywhere. The app contacts nobody by design; this is the second lock on that
-door.
+**The names** are Lord of the Rings, from the **films** rather than the books,
+using the most ordinary names the Fellowship has — Frodo, Sam, Merry, Pippin,
+Rosie — and, where the films leave a character with no surname, the name the
+films themselves attach: Arwen *Evenstar*, Éowyn *of Rohan* (Rohan is an
+ordinary surname in its own right), Aragorn *Strider*. A demo can be a little
+silly; it just must not be a joke, so Gandalf and Legolas are out on AJ's word
+and so is every title. A test enforces it. Every email is `@demo.invalid`, a
+reserved TLD (RFC 2606) that can never route anywhere.

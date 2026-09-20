@@ -10,19 +10,20 @@ import { MODEL_AB_ROUTINE } from "../routine-builder/academy";
  *
  * ── The names ────────────────────────────────────────────────────────────
  *
- * AJ's easter egg (Sep 16 2026): every demo person is a Lord of the Rings
- * nod. His refinement (Sep 20): it has to be SUBTLE. Barliman Butterbur and
- * Lobelia Sackville-Baggins read as comedy; Mablung, Damrod and Ioreth read
- * as random foreign strings to anyone who has not read the appendices. Both
- * fail the same test — they announce themselves.
+ * AJ's easter egg: every demo person is a Lord of the Rings nod, and his
+ * brief (Sep 20 2026) narrowed it twice. First: nothing silly and nothing
+ * obscure — "Gandalf the White" is comedy, and Mablung or Ioreth read as
+ * random foreign strings to anyone who has not read the appendices. Then:
+ * **the MOVIES, not the books, and the most ordinary names in the
+ * Fellowship.** A demo can be a little silly; it just must not be a joke.
  *
- * The rule that works: Tolkien built the Shire's surnames out of real English
- * rural naming, so a lot of them ARE ordinary surnames. Cotton, Bolger,
- * Burrows, Chubb, Gardner, Underhill, Roper, Hayward, Appledore and Fairbairn
- * all pass as real people. Pair them with plain first names and the name reads
- * as a normal client to a stranger while a reader quietly notices.
+ * So these are film characters a viewer names without thinking, using the
+ * plainest names the films give them — Frodo, Sam, Merry, Pippin, Rosie —
+ * and, for the ones the films leave with no surname, the name the films
+ * themselves attach: Arwen *Evenstar*, Éowyn *of Rohan* (Rohan is an
+ * ordinary surname in its own right), Aragorn *Strider*.
  *
- * No Fellowship, no Gandalf, nothing anyone would call obvious.
+ * Explicitly out, on AJ's word: Gandalf and Legolas, and any title.
  *
  * ── The addresses ────────────────────────────────────────────────────────
  *
@@ -51,7 +52,7 @@ export interface DemoClientSeed {
   remainingSessions: number;
   /**
    * Sessions this client did before the cutover, which Journey never saw.
-   * Non-zero on exactly one client on purpose — see `esme` below.
+   * Non-zero on exactly one client on purpose — see `arwen` below.
    */
   priorSessions: number;
   /** Which model A/B pair to program, straight from the Academy documents. */
@@ -66,13 +67,13 @@ export interface DemoClientSeed {
 
 export const DEMO_CLIENTS: DemoClientSeed[] = [
   {
-    key: "elanor",
-    firstName: "Elanor",
-    lastName: "Gardner",
+    key: "eowyn",
+    firstName: "Eowyn",
+    lastName: "Rohan",
     gender: "Female",
     age: 72,
-    height: "5' 4\"",
-    weight: "148",
+    height: "5' 8\"",
+    weight: "152",
     sessions: 42,
     remainingSessions: 54,
     priorSessions: 0,
@@ -83,13 +84,13 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
       "A long, clean journey — the Journey grid at its best, and the client to run a check-in on.",
   },
   {
-    key: "hal",
-    firstName: "Hal",
-    lastName: "Underhill",
+    key: "sam",
+    firstName: "Sam",
+    lastName: "Gamgee",
     gender: "Male",
     age: 58,
-    height: "5' 11\"",
-    weight: "203",
+    height: "5' 7\"",
+    weight: "196",
     sessions: 14,
     remainingSessions: 34,
     priorSessions: 0,
@@ -117,13 +118,13 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
       "Three sessions left — the renewal conversation, and the pipeline on Operations.",
   },
   {
-    key: "milo",
-    firstName: "Milo",
-    lastName: "Burrows",
+    key: "frodo",
+    firstName: "Frodo",
+    lastName: "Baggins",
     gender: "Male",
     age: 45,
-    height: "6' 0\"",
-    weight: "196",
+    height: "5' 6\"",
+    weight: "168",
     sessions: 2,
     remainingSessions: 46,
     priorSessions: 0,
@@ -134,13 +135,13 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
       "Brand new — first-time machine set-up, and the honest empty states on a profile with almost nothing in it.",
   },
   {
-    key: "esme",
-    firstName: "Esme",
-    lastName: "Bolger",
+    key: "arwen",
+    firstName: "Arwen",
+    lastName: "Evenstar",
     gender: "Female",
     age: 81,
-    height: "5' 2\"",
-    weight: "133",
+    height: "5' 7\"",
+    weight: "134",
     sessions: 8,
     /*
      * The migration case, and the most important client in the demo.
@@ -149,6 +150,9 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
      * "312 sessions, 8 of them here" and NOT "new client" — which is the
      * whole of `docs/business/migration-and-prior-history.md` in one screen,
      * and the answer to "did we lose twelve years of records".
+     *
+     * She is also the one character in the films with centuries of history
+     * behind her, which is the quiet joke and the reason she got this slot.
      */
     priorSessions: 304,
     remainingSessions: 40,
@@ -159,9 +163,9 @@ export const DEMO_CLIENTS: DemoClientSeed[] = [
       "Twelve years before Journey — prior history is real history, and an empty grid means 'no detail here', never 'this never happened'.",
   },
   {
-    key: "andy",
-    firstName: "Andy",
-    lastName: "Roper",
+    key: "merry",
+    firstName: "Merry",
+    lastName: "Brandybuck",
     gender: "Male",
     age: 54,
     height: "5' 9\"",
@@ -208,26 +212,26 @@ export interface DemoTrainerSeed {
 
 export const DEMO_TRAINERS: DemoTrainerSeed[] = [
   {
-    key: "hob",
-    firstName: "Hob",
-    lastName: "Hayward",
-    initials: "HH",
+    key: "aragorn",
+    firstName: "Aragorn",
+    lastName: "Strider",
+    initials: "AS",
     role: "StudioLeader",
     share: 0.3,
   },
   {
-    key: "tom",
-    firstName: "Tom",
-    lastName: "Appledore",
-    initials: "TA",
+    key: "pippin",
+    firstName: "Pippin",
+    lastName: "Took",
+    initials: "PT",
     role: "LifeTransformer",
     share: 0.4,
   },
   {
-    key: "robin",
-    firstName: "Robin",
-    lastName: "Fairbairn",
-    initials: "RF",
+    key: "gimli",
+    firstName: "Gimli",
+    lastName: "Gloin",
+    initials: "GG",
     role: "LifeTransformer",
     share: 0.3,
   },

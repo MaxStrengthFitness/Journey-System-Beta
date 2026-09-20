@@ -55,7 +55,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
 | Typecheck | `npx tsc --noEmit` | Compare the error **count** to the baseline - **10** on `machine-authoring` (Sep 20 2026; was 11, and the one that went is in the retired MachineDefinitionForm), measured in a clean clone in the container; don't expect zero. History by round: `docs/KNOWN-TRAPS.md#baselines` |
-| Tests | `npx vitest run src` | **3,636** passing in 246 files (one skipped) on `claude-experiment` (Demo Mode, Sep 20 2026); 3,516 in 237 on `machine-authoring`. Run it as `TZ=America/New_York npx vitest run src` - see the date trap. History by round: `docs/KNOWN-TRAPS.md#baselines` |
+| Tests | `npx vitest run src` | **3,642** passing in 246 files (one skipped) on `claude-experiment` (Demo Mode, Sep 20 2026); 3,516 in 237 on `machine-authoring`. Run it as `TZ=America/New_York npx vitest run src` - see the date trap. History by round: `docs/KNOWN-TRAPS.md#baselines` |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 

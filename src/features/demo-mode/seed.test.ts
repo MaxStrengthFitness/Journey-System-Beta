@@ -169,21 +169,88 @@ describe("the history is the shape the app's own readers expect", () => {
     expect(withSettings.length).toBe(logs.length);
   });
 
-  it("weights climb over a client's history rather than wandering", () => {
-    const elanor = logs.filter(
-      (l) => String(l.data.sessionId).includes("elanor") && l.data.machineId === "m-leg-press",
-    );
-    const performed = elanor.filter((l) => l.data.outcome === "performed");
-    expect(performed.length).toBeGreaterThan(5);
-    const first = Number(performed[0].data.weight);
-    const last = Number(performed[performed.length - 1].data.weight);
-    expect(last).toBeGreaterThan(first);
-    // Monotone: this protocol never steps a client backwards on purpose.
-    let previous = 0;
-    for (const l of performed) {
-      expect(Number(l.data.weight)).toBeGreaterThanOrEqual(previous);
-      previous = Number(l.data.weight);
+  /*
+   * HOW A WEIGHT MOVES — AJ, Sep 20 2026, and the reason these five
+   * assertions exist rather than one.
+   *
+   * Clients train twice a week for twenty minutes and are typically over
+   * forty. The weight usually does not move; when it does it moves 2 to 6 lb;
+   * and the only big corrections are early, while the trainer is still
+   * finding the working weight. A generated history that climbed steadily
+   * would have a 72-year-old more than doubling her leg press inside a year,
+   * which is the kind of number a boss asks about.
+   */
+  const performedRunsByMachine = () => {
+    const runs = new Map<string, number[]>();
+    for (const l of logs) {
+      if (l.data.outcome !== "performed") continue;
+      const key = `${l.data.clientId}:${l.data.machineId}`;
+      const list = runs.get(key) ?? [];
+      list.push(Number(l.data.weight));
+      runs.set(key, list);
     }
+    return runs;
+  };
+
+  it("never steps a client backwards", () => {
+    for (const run of performedRunsByMachine().values()) {
+      let previous = 0;
+      for (const w of run) {
+        expect(w).toBeGreaterThanOrEqual(previous);
+        previous = w;
+      }
+    }
+  });
+
+  it("leaves the weight alone most of the time", () => {
+    // The single most important one. If this ever flips, the history has
+    // started reading like a beginner's first six months at a gym.
+    let moves = 0;
+    let steps = 0;
+    for (const run of performedRunsByMachine().values()) {
+      for (let i = 1; i < run.length; i += 1) {
+        steps += 1;
+        if (run[i] > run[i - 1]) moves += 1;
+      }
+    }
+    expect(steps).toBeGreaterThan(200);
+    expect(moves / steps).toBeLessThan(0.3);
+  });
+
+  it("never adds more than 20 lb at once, even while finding the weight", () => {
+    for (const run of performedRunsByMachine().values()) {
+      for (let i = 1; i < run.length; i += 1) {
+        expect(run[i] - run[i - 1]).toBeLessThanOrEqual(20);
+      }
+    }
+  });
+
+  it("adds at most 6 lb once the working weight is settled", () => {
+    // The first three performances are the finding phase; after that AJ's
+    // band is 2 to 6 and nothing may leave it.
+    for (const run of performedRunsByMachine().values()) {
+      for (let i = 4; i < run.length; i += 1) {
+        expect(run[i] - run[i - 1]).toBeLessThanOrEqual(6);
+      }
+    }
+  });
+
+  it("does not have anybody doubling their weight on a machine", () => {
+    const doubled = [...performedRunsByMachine().entries()]
+      .filter(([, run]) => run.length >= 4 && run[run.length - 1] / run[0] >= 2)
+      .map(([key, run]) => `${key} ${run[0]} → ${run[run.length - 1]}`);
+    expect(doubled).toEqual([]);
+  });
+
+  it("still shows real progress over a long history", () => {
+    // The other direction: a demo where nobody ever gets stronger is not a
+    // demo of a strength programme.
+    const runs = [...performedRunsByMachine().entries()].filter(
+      ([key, run]) => key.startsWith("demo-client-eowyn") && run.length > 10,
+    );
+    expect(runs.length).toBeGreaterThan(3);
+    const gained = runs.filter(([, run]) => run[run.length - 1] > run[0]);
+    expect(gained.length).toBe(runs.length);
   });
 });
 
@@ -202,19 +269,19 @@ describe("the six clients each still teach their one thing", () => {
     }
   });
 
-  it("Esme reads 312 sessions, not 'new client' — by the app's own arithmetic", () => {
-    const esme = at("clients/demo-client-esme")!;
-    const prior = priorHistoryOf(esme as never);
+  it("Arwen reads 312 sessions, not 'new client' — by the app's own arithmetic", () => {
+    const arwen = at("clients/demo-client-arwen")!;
+    const prior = priorHistoryOf(arwen as never);
     expect(prior).not.toBeNull();
     expect(prior!.sessions).toBe(304);
     // importedCount 0: none of the 304 were brought over as session docs, so
     // they are all still uncounted by Journey and must all be added.
     expect(prior!.importedCount).toBe(0);
     expect(totalSessions(8, prior)).toBe(312);
-    expect(esme.sessionCount).toBe(totalSessionsFor(DEMO_CLIENTS.find((c) => c.key === "esme")!));
+    expect(arwen.sessionCount).toBe(totalSessionsFor(DEMO_CLIENTS.find((c) => c.key === "arwen")!));
     // Her prior record has to stop before Journey starts, or the two
     // histories overlap and the total double-counts.
-    expect(String(prior!.through) < String(esme.firstSessionDate)).toBe(true);
+    expect(String(prior!.through) < String(arwen.firstSessionDate)).toBe(true);
   });
 
   it("Rosie has three sessions left, and the package agrees with her history", () => {
@@ -233,15 +300,15 @@ describe("the six clients each still teach their one thing", () => {
     expect(near.map((c) => c.key)).toEqual(["rosie"]);
   });
 
-  it("Andy has been away long enough for the attendance watch to find him", () => {
-    const andy = at("clients/demo-client-andy")!;
-    expect(String(andy.lastSessionDate) < addDays(TODAY, -28)).toBe(true);
+  it("Merry has been away long enough for the attendance watch to find him", () => {
+    const merry = at("clients/demo-client-merry")!;
+    expect(String(merry.lastSessionDate) < addDays(TODAY, -28)).toBe(true);
   });
 
-  it("Milo's profile is nearly empty, and honestly so", () => {
-    const milo = at("clients/demo-client-milo")!;
-    expect(milo.completedSessions).toBe(2);
-    expect(milo.priorHistory).toBeUndefined(); // genuinely new, not migrated
+  it("Frodo's profile is nearly empty, and honestly so", () => {
+    const frodo = at("clients/demo-client-frodo")!;
+    expect(frodo.completedSessions).toBe(2);
+    expect(frodo.priorHistory).toBeUndefined(); // genuinely new, not migrated
   });
 
   it("every client's counters agree with the sessions actually written", () => {

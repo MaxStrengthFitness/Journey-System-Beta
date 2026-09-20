@@ -20,7 +20,7 @@
  *     run is fixed by running it again.
  *  2. **The demo is the same everywhere.** AJ's laptop, the Render service and
  *     a trainer's iPad all show the same six people with the same weights, so
- *     "look at Esme's profile" means the same thing in two rooms.
+ *     "look at Arwen's profile" means the same thing in two rooms.
  *  3. **It can be tested.** A generated history that changed every run could
  *     only be eyeballed.
  *
@@ -189,9 +189,14 @@ function baselineFor(machineId: string, seed: DemoClientSeed): number {
     load?.male ??
     load?.female ??
     40;
-  /* Older and lighter clients start lower; this is a demo, not a model. */
-  const scale = seed.age >= 75 ? 0.6 : seed.age >= 65 ? 0.8 : 1;
-  return Math.max(5, Math.round((base * scale) / 5) * 5);
+  /*
+   * Older clients start lower. Gently: the catalog's baselineLoad is already
+   * Max Strength's own starting load for the machine, so this is a nudge and
+   * not a second opinion — and it rounds to 2.5 rather than 5 so the lightest
+   * machines do not collapse to a number nobody would set.
+   */
+  const scale = seed.age >= 75 ? 0.75 : seed.age >= 65 ? 0.85 : 1;
+  return Math.max(5, Math.round((base * scale) / 2.5) * 2.5);
 }
 
 /* ── The studio, its team and its floor ─────────────────────────────────── */
@@ -298,9 +303,75 @@ const HOLD_MACHINES = new Set(["m-lumbar", "m-abs"]);
 /** Sessions land twice a week — the shape of every package the studios sell. */
 const GAP_DAYS = [3, 4];
 
-/** The weight step this machine moves in, from how heavy it starts. */
-function stepFor(base: number): number {
-  return base >= 100 ? 10 : base >= 50 ? 5 : 2.5;
+/*
+ * HOW A WEIGHT ACTUALLY MOVES AT MAX STRENGTH (AJ, Sep 20 2026).
+ *
+ * This is the part a generated history gets wrong by default, and gets wrong
+ * in a way that would embarrass the demo: a naive "+5 lb every third session"
+ * has a 68-year-old more than doubling her leg press inside five months.
+ *
+ * What really happens. Clients train TWICE A WEEK for TWENTY MINUTES, one set
+ * to failure, and they are typically over forty. They are not making
+ * newcomer-in-their-twenties gains and they never were:
+ *
+ *   - Most sessions the weight does not move at all.
+ *   - When it does, it moves 2 to 6 lb, and "on a more rare occasion".
+ *   - The exception is early on, while the trainer is still FINDING the
+ *     client's working weight for that machine. Those corrections are bigger
+ *     — up to 20 lb — because the starting guess was a guess.
+ *
+ * And the arithmetic that makes the naive version so far out: routines
+ * alternate A and B, and a machine lives in only ONE of them. A client with
+ * 45 sessions has performed each machine about 22 times, not 45. Every rate
+ * below is per PERFORMANCE of that machine, not per session.
+ */
+
+/** The first few times on a machine, while the working weight is still being found. */
+const FINDING_PERFORMANCES = 3;
+/** Chance of a correction during the finding phase. */
+const FINDING_RATE = 0.4;
+/** Chance of an increase once the working weight is settled. Rare, by design. */
+const SETTLED_RATE = 0.12;
+
+/**
+ * The settled increase for THIS machine: AJ's 2-to-6 lb, scaled to the load.
+ *
+ * The scaling is not decoration. A flat 2-to-6 lb is right on a leg press
+ * that starts at 160 and nonsense on an overhead press that starts at 15,
+ * where six pounds is a forty per cent jump no trainer would make. Five per
+ * cent of the starting load lands inside AJ's band on every machine in the
+ * catalog, and the clamp keeps it there.
+ */
+function settledCeiling(base: number): number {
+  return Math.min(6, Math.max(2, Math.round(base * 0.05)));
+}
+
+/**
+ * The most one correction may add while the working weight is still being
+ * found. AJ's "up to even 20 lb" is about the heavy machines; a fifth of the
+ * starting load is the same statement written so it holds on the light ones
+ * too, where there simply is not twenty pounds of room to find.
+ */
+function findingCeiling(base: number): number {
+  return Math.min(20, Math.max(2.5, Math.round((base * 0.2) / 2.5) * 2.5));
+}
+
+/**
+ * The increase for one performance, or 0 for "it did not move" — which is
+ * what most performances are.
+ */
+function increaseFor(
+  rand: () => number,
+  performances: number,
+  base: number,
+): number {
+  if (performances < FINDING_PERFORMANCES) {
+    if (rand() >= FINDING_RATE) return 0;
+    const steps = Math.max(1, Math.round(findingCeiling(base) / 2.5));
+    return between(rand, 1, steps) * 2.5;
+  }
+  if (rand() >= SETTLED_RATE) return 0;
+  return between(rand, 2, settledCeiling(base));
 }
 
 /** A dial value that looks like somebody set it, and never moves after. */
@@ -386,6 +457,9 @@ function buildHistory(
   /* Forwards, so the weights progress. */
   const logs: BuiltLog[] = [];
   const current = new Map<string, number>();
+  /* How many times this client has actually PERFORMED each machine — which
+     is what the finding phase counts, not how many sessions they have had. */
+  const performances = new Map<string, number>();
   let setCounter = 0;
 
   for (const session of sessions) {
@@ -393,11 +467,10 @@ function buildHistory(
       setCounter += 1;
       const hold = HOLD_MACHINES.has(machineId);
       const base = baselineFor(machineId, seed);
-      const step = stepFor(base);
 
       let weight = current.get(machineId);
       if (weight === undefined) weight = base;
-      else if (rand() < 0.34) weight += step; // climbs about every third time
+      else weight += increaseFor(rand, performances.get(machineId) ?? 0, base);
 
       /*
        * The last machine of roughly one session in nine is never reached —
@@ -416,7 +489,10 @@ function buildHistory(
           ? "skipped"
           : "performed";
 
-      if (outcome === "performed") current.set(machineId, weight);
+      if (outcome === "performed") {
+        current.set(machineId, weight);
+        performances.set(machineId, (performances.get(machineId) ?? 0) + 1);
+      }
 
       let repQuality: 1 | 2 | 3 | undefined;
       if (outcome === "performed") {
@@ -541,7 +617,7 @@ function settingsFor(seed: DemoClientSeed): Record<string, Record<string, string
 
 /**
  * Rosie is three sessions from the end of a package, and that is the single
- * most valuable thing in the demo after Esme: it is the renewal conversation,
+ * most valuable thing in the demo after Arwen: it is the renewal conversation,
  * and the Operations pipeline with a real row in it.
  *
  * The package is written as the INPUT the renewals engine reads rather than
@@ -708,7 +784,7 @@ function buildClient(
       ...(seed.priorSessions > 0
         ? {
             /*
-             * Esme. 304 sessions before Journey ever saw her, and
+             * Arwen. 304 sessions before Journey ever saw her, and
              * `importedCount: 0` because none of those 304 were brought over
              * as session documents — so her total is 8 + 304 and her profile
              * says "312 sessions", never "new client".

@@ -158,11 +158,11 @@ describe("the roster earns its place", () => {
   it("has exactly one client carrying pre-Journey history, and her total is the sum", () => {
     const migrated = DEMO_CLIENTS.filter((c) => c.priorSessions > 0);
     expect(migrated).toHaveLength(1);
-    const esme = migrated[0];
-    expect(esme.lastName).toBe("Bolger");
+    const migrant = migrated[0];
+    expect(migrant.lastName).toBe("Evenstar");
     // 8 in Journey, 304 before it — the profile must read 312, not "new".
-    expect(totalSessionsFor(esme)).toBe(312);
-    expect(esme.sessions).toBeLessThan(10);
+    expect(totalSessionsFor(migrant)).toBe(312);
+    expect(migrant.sessions).toBeLessThan(10);
   });
 
   it("has somebody the attendance watch should find", () => {
@@ -181,18 +181,32 @@ describe("the roster earns its place", () => {
     expect(total).toBeCloseTo(1, 5);
   });
 
-  it("uses names that read as ordinary people", () => {
-    // The easter egg has to stay subtle: no Fellowship, nothing comic.
-    const banned = [
-      "frodo", "gandalf", "aragorn", "legolas", "gimli", "samwise",
-      "boromir", "bilbo", "sauron", "gollum", "baggins", "butterbur",
-    ];
+  it("uses names from the films, and the plainest ones at that", () => {
+    // AJ, Sep 20 2026: the movies over the books, the most ordinary names in
+    // the Fellowship, and a little silly is fine — but not "Gandalf the
+    // White", and nothing out of the appendices that reads as a random
+    // foreign string to somebody who has only seen the films.
+    const everyone = [...DEMO_CLIENTS, ...DEMO_TRAINERS];
+    const fromTheFilms = new Set([
+      "Frodo", "Sam", "Merry", "Pippin", "Rosie", "Arwen", "Eowyn",
+      "Aragorn", "Gimli",
+    ]);
+    for (const person of everyone) {
+      expect(fromTheFilms.has(person.firstName)).toBe(true);
+      // A surname on everybody: one name in a client list looks like a bug,
+      // not an easter egg.
+      expect(person.lastName.length).toBeGreaterThan(2);
+    }
+  });
+
+  it("leaves out the two AJ named, and every title", () => {
     const everyone = [...DEMO_CLIENTS, ...DEMO_TRAINERS]
       .map((p) => `${p.firstName} ${p.lastName}`.toLowerCase());
     for (const name of everyone) {
-      for (const bad of banned) {
-        expect(name).not.toContain(bad);
-      }
+      expect(name).not.toContain("gandalf");
+      expect(name).not.toContain("legolas");
+      // "the White", "the Grey", "son of ..." — a title is where subtle ends.
+      expect(name).not.toMatch(/\bthe\b|\bson of\b/);
     }
   });
 
