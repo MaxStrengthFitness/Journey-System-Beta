@@ -2976,7 +2976,24 @@ export function WorkoutTrackerView({
             </h3>
             <p className="text-primary-foreground/90 font-medium text-sm leading-relaxed">
               Are you sure you want to conclude this{" "}
-              {currentSession?.sessionType.toLowerCase()} workout session?
+              {/*
+                The optional chain guarded `currentSession` and NOT
+                `sessionType`, so a session document without the field threw
+                here and took the whole screen down with it — the End Session
+                dialog is in the tree whether or not it is open, so the crash
+                is at render, not at the tap.
+
+                Every writer in the app sets it today, so this is a latent
+                landmine rather than a live bug: any session written before
+                the field existed, or by anything outside this codebase, ends
+                a trainer's session with a white screen. HistoryList.tsx
+                already guards the same field.
+
+                Found by the render test in this round — it failed on its
+                first run, before asserting anything.
+              */}
+              {currentSession?.sessionType?.toLowerCase() ?? "standard"} workout
+              session?
             </p>
           </div>
 
