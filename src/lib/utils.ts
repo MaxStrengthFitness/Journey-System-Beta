@@ -339,27 +339,47 @@ export function orderMachineSettings(
     }
   }
 
-  // 2. Ensure "Gap" is ALWAYS present
+  // 2. Gap, when the machine or the client actually has one.
+  //
+  // This block used to end with `gapValue = "0"` — so a client with NO
+  // settings on file at all rendered "G 0" on the Now Bar, the grid rail and
+  // the Equipment rail. That is a confident wrong number on the strip a
+  // trainer reads twice per machine, and it is contradicted by the catalog
+  // itself: the Academy's starting gap is 2 on the compound row, pulldown,
+  // pullover, chest press and chest fly, 1 on three more, 5 and 4 on two
+  // others, and per-client on the leg press.
+  //
+  // It also made the honest empty state unreachable — JourneyGrid's "No
+  // machine settings saved for this client" could never render, because
+  // there was always one setting.
+  //
+  // The client's own value still wins; the machine's standard is still used
+  // when the client has none. What is gone is inventing a third answer when
+  // neither exists.
   const existingGapKey = Object.keys(mergedSettings).find(k => k.toLowerCase() === 'gap');
   let gapValue: string | undefined = undefined;
-  
+
   if (existingGapKey) {
     const val = mergedSettings[existingGapKey];
     if (val !== undefined && val !== null && val !== '') {
       gapValue = String(val);
     }
   }
-  
+
   if (gapValue === undefined) {
     const stdGapKey = standardSettings ? Object.keys(standardSettings).find(k => k.toLowerCase() === 'gap') : undefined;
     if (stdGapKey && standardSettings && standardSettings[stdGapKey] !== undefined && standardSettings[stdGapKey] !== null && standardSettings[stdGapKey] !== '') {
       gapValue = String(standardSettings[stdGapKey]);
-    } else {
-      gapValue = "0";
     }
   }
-  
-  mergedSettings["Gap"] = gapValue;
+
+  if (gapValue !== undefined) {
+    mergedSettings["Gap"] = gapValue;
+  } else if (existingGapKey) {
+    // An explicitly blank gap is not a gap. Drop the empty key rather than
+    // leaving "Gap: ''" to render as a chip with no value.
+    delete mergedSettings[existingGapKey];
+  }
 
   const entries = Object.entries(mergedSettings);
   
@@ -375,12 +395,67 @@ export function orderMachineSettings(
     return keyA.localeCompare(keyB);
   });
   
-  // 4. Convert keys to just the first letter (upper-cased) for visual shorthand
+  // 4. Shorthand keys — unique per machine.
+  //
+  // This used to be "the first letter, upper-cased", unconditionally. The
+  // caller then built a map keyed by that letter, so on any machine with two
+  // dials starting with the same letter, ONE OF THEM SILENTLY DISAPPEARED.
+  // The Leg Press is the worst case: `Seat Angle`, `Shoulder Pads` and
+  // `Seat Distance` all collapsed to "S" and only the last survived, so a
+  // client set at Seat Angle P2 / Seat Distance 7 / Shoulder Pads 3 read on
+  // the Now Bar as "Gap 2 · Shoulder Pads 3" — the seat position gone, on
+  // the machine the studio uses most. The Seated Dip lost a back-pad dial
+  // the same way.
+  //
+  // Now: a letter when it is unambiguous, and word initials for the members
+  // of a colliding group — Seat "S", Seat Angle "SA", Seat Distance "SD",
+  // Shoulder Pads "SP". The full name still travels as the third element
+  // (settingLabels), so the rail shows "SA" and speaks "Seat Angle".
+  const preferredShort = (key: string): string => {
+    const lower = key.toLowerCase();
+    if (lower.includes('arm')) return 'A';
+    if (lower.includes('back')) return 'B';
+    if (lower.includes('chest')) return 'C';
+    return key.trim().substring(0, 1).toUpperCase();
+  };
+
+  const initialsOf = (key: string): string =>
+    key
+      .trim()
+      .split(/[\s\-_]+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 3);
+
+  // Which preferred letters are wanted by more than one dial?
+  const wantCount = new Map<string, number>();
+  for (const [key] of sorted) {
+    const p = preferredShort(key);
+    wantCount.set(p, (wantCount.get(p) ?? 0) + 1);
+  }
+
+  const taken = new Set<string>();
   return sorted.map(([key, val]) => {
-    let shortKey = key.trim().substring(0, 1).toUpperCase();
-    if (key.toLowerCase().includes('arm')) shortKey = 'A';
-    if (key.toLowerCase().includes('back')) shortKey = 'B';
-    if (key.toLowerCase().includes('chest')) shortKey = 'C';
+    const preferred = preferredShort(key);
+    let shortKey = preferred;
+
+    // Widen every member of a colliding group, not just the later ones, so
+    // two dials never read as "S" and "SD" — they read as "SA" and "SD".
+    if ((wantCount.get(preferred) ?? 0) > 1) {
+      const widened = initialsOf(key);
+      if (widened.length > 1) shortKey = widened;
+    }
+
+    // Last resort: a dial whose widened form still collides (two dials named
+    // the same thing) gets a number rather than overwriting its twin.
+    if (taken.has(shortKey)) {
+      let n = 2;
+      while (taken.has(`${shortKey}${n}`)) n++;
+      shortKey = `${shortKey}${n}`;
+    }
+    taken.add(shortKey);
+
     return [shortKey, val, key];
   }) as [string, string, string][];
 }

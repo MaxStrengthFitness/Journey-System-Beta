@@ -22,9 +22,12 @@ import { useMachineTrend } from "./useMachineTrend";
  *     trainer never chose — which is exactly how a client ends up prescribed a
  *     weight nobody set.
  *  2. ONE EXCEPTION. A dial that is identical for every client on that machine
- *     is a fact, not a guess, so it pre-fills for real. Today that is Gap = 0.
- *     The list lives in adapters.ts (ABSOLUTE_STANDARDS), not in an `if` here,
- *     so adding the next one is a one-line change.
+ *     is a fact, not a guess, so it pre-fills for real. Today that is the gap.
+ *     WHICH dials qualify lives in adapters.ts (ABSOLUTE_STANDARDS), not in an
+ *     `if` here, so adding the next one is a one-line change. WHAT it fills is
+ *     the machine's own resolved default (absoluteValueFor) — until Sep 20
+ *     2026 the constant supplied both and every machine pre-filled 0, against
+ *     a catalog that says 2 on the row, pulldown, pullover, press and flye.
  *
  * SUGGESTIONS (client-profile audit, Sep 2026). While editing an EMPTY field
  * for a client whose height is on file, the card may offer what most clients

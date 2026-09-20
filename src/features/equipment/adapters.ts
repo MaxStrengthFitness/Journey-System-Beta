@@ -70,6 +70,33 @@ export function absoluteStandardFor(key: string, label: string): string | undefi
   return ABSOLUTE_STANDARDS[slug(key)] ?? ABSOLUTE_STANDARDS[slug(label)];
 }
 
+/**
+ * WHICH dial pre-fills for real comes from ABSOLUTE_STANDARDS above. WHAT it
+ * pre-fills comes from this machine's own resolved default.
+ *
+ * Until Sep 20 2026 (Claude Experiment, phase C) the constant supplied both,
+ * so every machine pre-filled `gap: "0"` — written, saved, and then counted
+ * as evidence by machine trends and machine fit ("most clients here use gap
+ * 0"). The generated catalog disagrees: the Academy's starting gap is 2 on
+ * the compound row, pulldown, pullover, chest press and chest fly, 1 on three
+ * more, 5 and 4 on two others, and per-client on the leg press.
+ *
+ * `ghost` is already the right value — the studio's roster override, else the
+ * machine's standardSettings, else the catalog's defaultSettings — so an
+ * absolute dial now pre-fills the machine's answer and falls back to the
+ * constant only where the machine has none.
+ */
+export function absoluteValueFor(
+  key: string,
+  label: string,
+  ghost: string | null,
+): string | undefined {
+  const constant = absoluteStandardFor(key, label);
+  if (constant === undefined) return undefined;
+  const fromMachine = (ghost ?? "").trim();
+  return fromMachine !== "" ? fromMachine : constant;
+}
+
 /** MACHINE_DATABASE authors free-text categories; the summary needs five buckets. */
 export function regionOf(category?: string | null, machineName?: string): EquipmentRegion {
   const c = (category || "").toLowerCase();
@@ -100,7 +127,7 @@ const asNumber = (v: unknown): number | null => {
  * ------------------------------------------------------------------ */
 
 function specFromCatalogField(f: MachineSettingField, ghost: string | null): SettingFieldSpec {
-  const absoluteValue = absoluteStandardFor(f.key, f.label);
+  const absoluteValue = absoluteValueFor(f.key, f.label, ghost);
   return {
     key: f.key,
     label: f.label,
@@ -160,7 +187,7 @@ export function buildFields(
       // Catalog metadata, legacy storage key.
       fields.push({ ...specFromCatalogField(cf, ghost), key: label, label: cf.label || label });
     } else {
-      const absoluteValue = absoluteStandardFor(label, label);
+      const absoluteValue = absoluteValueFor(label, label, ghost);
       fields.push({
         key: label,
         label,
