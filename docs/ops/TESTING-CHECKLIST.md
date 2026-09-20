@@ -739,6 +739,148 @@ default; opening it is what triggers the read.
   should be no picker offering one. *Why:* until Sep 19 an owner at studio A
   could post into studio B; the rules now refuse it.
 
+## Round 13 — The Operations overhaul · *Sep 19 2026 round, branch `operations-overhaul`*
+
+The round is `docs/rounds/2026-09-19-operations-overhaul.md`. Walk it on a
+desk (a computer, or an iPad in landscape beside a keyboard) as the studio
+leader AJ described — sat down, with time — and once on a portrait iPad, as
+whoever runs the studio. It builds on Rounds 10–12; if the app does not boot,
+stop there. The two indexes (`schedules studioId + movedFromDay`,
+`journalEntries studioId + effectiveUntil`) must have finished building
+before the changes list and the Moments panel can answer.
+
+**The Overview**
+
+- [ ] **It opens on Overview, named for the studio, dated today.** Operations
+  → the first tab. The five tiles read Booked today · Done · Not completed ·
+  Never logged · On the floor now. *If it fails:* the page is blank or throws
+  — the week's schedule read (`useWeekSchedule`) or one of the four own reads
+  (`useOverviewReads`); the console names the collection.
+- [ ] **Booked today excludes a cancelled booking; "Not completed" counts it.**
+  Cancel one of today's bookings in Mindbody, wait for the sync (Mindbody →
+  pull the schedule now if you are impatient). Booked drops by one, Not
+  completed rises by one, Changes today gains a row.
+- [ ] **Never logged is the loud tile, and tapping it lists who to chase.** A
+  booking whose slot ended five minutes ago with nothing marked: the tile is
+  red, the foot says "tap to see who to chase", the list names the client,
+  the trainer and the time, and the name opens the client.
+- [ ] **Needs you counts every action on the page and jumps to it.** Tap a
+  chip: the page scrolls to that panel and unfolds it if it was folded. "Notes
+  to review" opens the review dialog instead.
+- [ ] **Every panel has a sentence, rows and a door.** Changes today → "The
+  week" (the Changes view); Attendance watch → "The whole list"; Renewals →
+  the tab; Moments → the Delight queue; Team → Insights. *Why:* the brief —
+  a summary layer, each panel drilling into its own tab.
+- [ ] **A folded panel keeps its sentence and stays folded after a reload.**
+  The chevron on any panel; reload; it is still folded (this device only).
+- [ ] **On a desk the panels sit in two columns; on a portrait iPad they
+  stack** — Changes, Next three days, Pain, Renewals, Attendance, Moments,
+  Strength, Team. Nothing is cut off; no horizontal scroll.
+
+**Changes**
+
+- [ ] **A cancellation lands on the day the session was for.** Cancel a
+  booking for the day after tomorrow: today's Changes panel does not change;
+  the week's line says one more; the Changes view's strip shows it under
+  that day. *Why:* AJ — a Wednesday cancellation of Friday's session waits in
+  Friday's list.
+- [ ] **A cancellation with another booking that week reads as a
+  reschedule** — "Cancelled 9:00 AM with Tom — but booked Thu 2:00 PM with
+  Sara, so read it as a reschedule." Cancel one of a client's two bookings
+  this week and check the wording; cancel the only booking and it reads
+  "Cancelled — … Nothing else booked this week."
+- [ ] **A moved booking says where it went.** Move a booking's time in
+  Mindbody: after the sync, the day it left says "Moved — was 10:00 AM …,
+  now 2:00 PM …"; the day it landed on shows nothing (it is simply booked
+  there).
+- [ ] **The calendar shows none of it.** The cancelled row is gone from the
+  Calendar tab, not greyed.
+- [ ] **A cancellation the webhook delivered shows without a time** ("When it
+  changed was not recorded.") — expected until the Cloud Function stamps.
+
+**Pain and critical notes**
+
+- [ ] **Acknowledge takes a row off the list; Acknowledge all takes them
+  all.** Write a critical note on a client, come back: the row is there with
+  its Acknowledge button. Acknowledge it; it leaves; the sentence says "1
+  already acknowledged". A second iPad on the same Overview sees it leave
+  without a reload.
+- [ ] **A head trainer can acknowledge, as themselves.** The rule lets anyone
+  who works at the studio acknowledge (AJ: visible to anyone who can open the
+  Overview, not leadership only); the acknowledgement names them. *Why:* a
+  trainer cannot open Operations today (head trainer and above), so the rule
+  is wider than the door on purpose.
+- [ ] **A new incident on the same client comes back.** After acknowledging,
+  log a new incident: a new row.
+
+**The attendance watch**
+
+- [ ] **The studio's number is on My Studio → Studio, in AJ's words** —
+  "Warn me when a client has not visited for (days)" — and the panel's
+  sentence quotes it ("the studio's 14-day line").
+- [ ] **Snooze offers 3 days · 1 week · 2 weeks · On that day, and the row
+  leaves until then.** The whole list shows it under Snoozed with "Put back on
+  the list".
+- [ ] **Dismiss takes the client off; a booking afterwards brings them back
+  once.** Dismiss a quiet client, then book them in Mindbody; after the
+  nightly job (or the next morning) the panel shows "Back — booked again for
+  …" with Got it; Got it clears it.
+
+**Moments and the next three days**
+
+- [ ] **A note pinned to a day shows as a moment on its day.** On a client,
+  Note → "Pin to a date" → a date within the week, Every year → save. The
+  Moments panel lists it with the day and who wrote it; next year it comes
+  back.
+- [ ] **A milestone is only claimed when the total may be quoted.** A client
+  with a prior-history record and a booking that would be their 100th
+  session shows "Their 100th session"; a client with no record and 99
+  Journey sessions shows nothing. *Why:* the migration rule — never off a low
+  Journey count.
+- [ ] **The next three days are the next three WITH bookings.** On a Saturday
+  with a closed Sunday: Mon · Tue · Wed, not Sun.
+- [ ] **A client booked tomorrow with a live critical note is named** under
+  Tomorrow ("1 with a live note: …").
+
+**Notes**
+
+- [ ] **The Note button on the client's header opens the composer over any
+  tab**, saves, and the note is on Notes & Profile — where Notes now sits
+  above the profile.
+- [ ] **A critical note with "From – until" leaves the briefing after its last
+  day; an "Only on a day" note shows on its day only.** *Why:* one mattering
+  rule for the briefing and the Overview.
+- [ ] **A note older than 60 days with no end comes up for review.** Back-date
+  a critical note's "Starts mattering on" to 61 days ago (or wait): the
+  Overview's Pain panel shows "1 note has mattered 60+ days — review"; Still
+  matters keeps it and the line goes; No longer resolves it.
+
+**The nine tabs, and the Admins dashboard**
+
+- [ ] **Nine tabs, four groups, as a studio leader:** Overview · Renewals ·
+  Delight queue · Floor · Staff & Roles · Insights · Announcements · Mindbody
+  · Data. No All locations, Catalog, Limbo, Bug reports or System tools.
+- [ ] **Floor edits the floor — the same editor as My Studio → Machines.**
+  Retire a machine on Operations → Floor → Machines; it is retired on My
+  Studio → Machines too. Machine fit and Routines on the same segmented
+  control; the Overview's Machine fit line lands on Machine fit.
+- [ ] **Insights has Hours inside** (the segmented control), and the Overview's
+  Hours line lands there.
+- [ ] **Mindbody, as a leader, is your own studio only** — no estate tiles, no
+  studios list; the link, last sync, pull the schedule now, the event log.
+  As an administrator, the estate is back.
+- [ ] **Announcements, as a studio leader, offers "One studio" only;** as an
+  owner, the network too; as an administrator, everyone.
+- [ ] **The app-mode switch has a third position, Admin, for administrators
+  only,** and the bottom bar a second button. The Admins dashboard lists All
+  locations · Catalog · Standard template · Limbo · System tools · Bug reports
+  · Data. As a studio leader neither exists.
+- [ ] **The Standard template holds the standard set and the company
+  routines; the Catalog holds every machine and the submissions queue.**
+  Moving a machine in the set renumbers in tens, as before.
+- [ ] **Data, on the Admins dashboard, asks for a studio first;** on
+  Operations it is the studio you are in.
+
 ---
 
 ## Findings log
@@ -777,4 +919,5 @@ Screenshot:
 | 10 — My Studio (Sep 18–19) | 24 | | |
 | 11 — Operations (Sep 19) | 24 | | |
 | 12 — The master merge (Sep 19) | 13 | | |
-| **Total** | **195** | | |
+| 13 — The Operations overhaul (Sep 19) | 33 | | |
+| **Total** | **228** | | |

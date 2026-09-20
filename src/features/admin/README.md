@@ -15,29 +15,32 @@ fragmented the first time.
 ## Where each Operations tab lives
 
 Every Operations screen is in this folder since the beta-prep trim (Sep 17
-2026). Before it, eight of them still sat in the old `src/components/` folder,
-which made Operations look like two projects.
+2026). The Operations overhaul (Sep 19) cut the tabs to nine and moved the
+company tier to the Admins dashboard (`src/features/admins/`), which mounts
+this folder's screens too — moved, not rewritten.
 
 | Tab (group) | Folder or file |
 | --- | --- |
-| The shell - the sidebar and which tab is showing | `AdminDashboardView.tsx` |
-| Overview | `AdminOverviewTab.tsx`, `overview.ts` |
-| Renewals | `renewals/` (the engine is `src/features/renewals/`) |
-| Delight queue | `src/features/ford/` (drawn by the shell) |
-| Studios | `studios/`, `equipment/`, `upkeep/` |
-| Staff & Roles | `staff/`, `provisional/` |
-| Clients | `clients/` |
-| Catalog | `machines/` |
-| Routines | `routines/` |
-| Insights | `insights/` |
-| Exports | `data/` |
-| Announcements | `announcements/` |
-| Mindbody | `mindbody/`, `useAutoSync.ts`, `syncPolicy.ts` |
+| The shell - the sidebar and which tab is showing | `AdminDashboardView.tsx` (`AdminDashboardView.render.test.tsx` opens every tab) |
+| Overview (Every day) | `overview/` (today, Needs you, the panels, the week; `floor.ts` is the day's arithmetic), `changes/` (the week's cancellations and moves), `attention/` (the watchlist and acknowledgements) |
+| Renewals (Clients) | `renewals/` (the engine is `src/features/renewals/`) |
+| Delight queue (Clients) | `src/features/ford/` (drawn by the shell) |
+| Floor (Studio) | `floor/` — mounts `src/features/my-studio/MachinesSection` (the one floor editor), `machine-fit/` and `routines/` |
+| Staff & Roles (Studio) | `staff/`, `provisional/` |
+| Insights (Studio) | `insights/` (`InsightsAndHours.tsx` puts `hours/` inside it) |
+| Announcements (Studio) | `announcements/` (the audiences follow the tier) |
+| Mindbody (Behind the scenes) | `mindbody/` (`company` off = a leader's own studio), `useAutoSync.ts`, `syncPolicy.ts` |
+| Data (Behind the scenes) | `data/` |
+| — on the Admins dashboard — | |
+| All locations | `studios/`, `equipment/`, `upkeep/` |
+| Catalog | `machines/` (every machine, the submissions queue in `catalog/`) |
+| Standard template | `src/features/admins/StandardTemplateTab.tsx` (`catalog/StandardSetPanel` + `routines/`) |
 | Limbo | `limbo/` |
-| Bug Reports | `bugs/` |
-| System Tools | `system/` |
-| Franchise dashboard (its own screen, not a tab) | `franchise/` |
+| Bug reports | `bugs/` |
+| System tools | `system/` |
+| Data (any studio) | `data/` |
 | Legacy chart importer (its own screen) | `import/` |
+| The network view under "All my studios" | `network/`; the old Franchise screen's pieces in `franchise/` |
 
 The kit every tab composes: `primitives.tsx`, `formState.ts`,
 `useDirtyForm.ts`, `admin.css`, `admin.tokens.css`.
