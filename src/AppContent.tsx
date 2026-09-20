@@ -223,6 +223,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DEFAULT_MACHINES, getMachineImageUrl } from "./data/default-machines";
+import { MACHINE_DEFINITION_LIST } from "./data/machine-definitions";
 
 // Shown in the content area while a lazy view downloads on first visit.
 const ViewLoader = () => <LoadingArea label="" />;
@@ -985,11 +986,27 @@ export default function AppContent({
     }
   };
 
+  /**
+   * Write the standard twenty back into the catalog.
+   *
+   * Seeds from data/machine-definitions.ts, NOT data/default-machines.ts.
+   * That was the bug behind "we edit a machine and nothing is filled out":
+   * DEFAULT_MACHINES is the legacy `Machine` shape — `targetMuscles` as one
+   * comma string, `settingOptions` as bare labels, and nothing at all for the
+   * biomechanics template — while the editor reads `MachineDefinition`. Every
+   * catalog document in production was written by this handler, so every one
+   * of them opened blank.
+   *
+   * `merge: true` on purpose: the legacy keys stay on the document rather
+   * than being stripped. They have readers elsewhere (adapters.ts still falls
+   * back to `trainerTips`), and the house rule is that a write with no reader
+   * is a bug to fix, not a field to delete.
+   */
   const handleRestoreMachines = async () => {
     try {
-      const promises = DEFAULT_MACHINES.map((machine) =>
+      const promises = MACHINE_DEFINITION_LIST.map((machine) =>
         setDoc(
-          doc(db, "machines", machine.id!),
+          doc(db, "machines", machine.id),
           {
             ...machine,
             updatedAt: serverTimestamp(),
@@ -999,7 +1016,9 @@ export default function AppContent({
       );
 
       await Promise.all(promises);
-      toastSuccess(`Standard units enforced successfully.`);
+      toastSuccess(
+        `${MACHINE_DEFINITION_LIST.length} standard machines written, with their Academy setup guides.`,
+      );
     } catch (error: any) {
       console.error("Restore failed:", error);
       toastError(`Restore failed: ${error.message || "Unknown error"}`);
