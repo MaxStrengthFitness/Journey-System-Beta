@@ -250,8 +250,13 @@ ROADMAP; `scripts/ship/ship-overhaul.ps1`.
 
 Cloud: typecheck **11** (= baseline), **3,469** tests in 232 files (one
 skipped) at `TZ=America/New_York`, a clean build, no case-colliding file
-names. The rules tests run on AJ's PC (`ship-overhaul.ps1 check`) — that
-run is the one that counts. Not yet seen on an iPad or a desk.
+names. The Overview, its two views, the chase list and the snooze chooser,
+and the Admins dashboard were rendered and screenshotted in a throwaway
+harness (gitignored `harness/`, a fake Firestore answering with a studio's
+worth of data) at 1440×900 and on a portrait and a landscape iPad, light and
+dark — which is what caught the badge words and the fifth tile. The rules
+tests run on AJ's PC (`ship-overhaul.ps1 check`) — that run is the one that
+counts. Not yet seen on a real iPad or desk.
 
 ## How to ship
 

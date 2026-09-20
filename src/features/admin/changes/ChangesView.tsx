@@ -105,7 +105,14 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, o
           <Rows
             rows={rows.map((c): OverviewRow => {
               const text = describeChange(c, tz);
-              return { clientId: c.clientId ?? "", name: c.clientName, sentence: text.sentence, proof: `${text.proof}${c.trainerName ? ` Booked with ${c.trainerName}.` : ""}`, tone: c.reading === "cancellation" ? "warn" : "info" };
+              return {
+                clientId: c.clientId ?? "",
+                name: c.clientName,
+                sentence: text.sentence,
+                proof: `${text.proof}${c.trainerName ? ` Booked with ${c.trainerName}.` : ""}`,
+                tone: c.reading === "cancellation" ? "warn" : "info",
+                badge: c.reading === "cancellation" ? "Cancelled" : "Moved",
+              };
             })}
             total={rows.length}
             onOpenClient={onOpenClient}

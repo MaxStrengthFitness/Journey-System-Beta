@@ -51,6 +51,8 @@ export interface OverviewRow {
   /** What backs it up. */
   proof: string;
   tone: OverviewTone;
+  /** The badge word, when "Now / Soon / Note" would not say what the row is ("Cancelled", "Moved", "Milestone"). */
+  badge?: string;
 }
 
 /** A pain-and-notes row: acknowledged when every one of its keys is (attention.ts). */

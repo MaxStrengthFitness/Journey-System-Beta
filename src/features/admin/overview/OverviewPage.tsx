@@ -70,6 +70,8 @@ import "./overview.css";
 export type OverviewLink = "renewals" | "delight" | "insights" | "floor";
 
 export interface OverviewPageProps {
+  /** Bumped by the shell when the Overview nav button is pressed while already on it: the page comes home from Changes or the Attendance watch. */
+  homeSignal?: number;
   authTrainer: Trainer;
   studios: Studio[];
   trainers: Trainer[];
@@ -84,7 +86,7 @@ export interface OverviewPageProps {
 
 const DAYS_READ = 14;
 
-export function OverviewPage({ authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen }: OverviewPageProps) {
+export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen }: OverviewPageProps) {
   const ops = useOperationsScope();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -117,6 +119,7 @@ export function OverviewPage({ authTrainer, studios, trainers, machines, clients
   return (
     <StudioOverview
       key={studio.id}
+      homeSignal={homeSignal}
       studio={studio}
       today={today}
       now={now}
@@ -137,6 +140,7 @@ export function OverviewPage({ authTrainer, studios, trainers, machines, clients
 type View = "home" | "changes" | "attendance";
 
 function StudioOverview({
+  homeSignal,
   studio,
   today,
   now,
@@ -147,6 +151,7 @@ function StudioOverview({
   onNavigateProfile,
   onOpen,
 }: {
+  homeSignal: number;
   studio: Studio;
   today: string;
   now: Date;
@@ -160,6 +165,9 @@ function StudioOverview({
   const studioId = studio.id;
   const tz = studio.timezone || undefined;
   const [view, setView] = useState<View>("home");
+  useEffect(() => {
+    setView("home");
+  }, [homeSignal]);
   const [showChase, setShowChase] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [snoozing, setSnoozing] = useState<string | null>(null);
@@ -317,7 +325,7 @@ function StudioOverview({
       />
 
       {/* 1 · Today */}
-      <div id="ov-today">
+      <div id="ov-today" className="adm-ov__today">
         <AdminTiles>
           <AdminStatTile label="Booked today" value={numbers.booked} foot={numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`} loading={week.loading} />
           <AdminStatTile label="Done" value={numbers.done} foot={foot.done} loading={week.loading} />
@@ -380,7 +388,7 @@ function StudioOverview({
           <Rows
             rows={changesToday.slice(0, 6).map((c) => {
               const text = describeChange(c, tz);
-              return { clientId: c.clientId ?? "", name: c.clientName, sentence: text.sentence, proof: text.proof, tone: c.reading === "cancellation" ? "warn" : "info" } as OverviewRow;
+              return { clientId: c.clientId ?? "", name: c.clientName, sentence: text.sentence, proof: text.proof, tone: c.reading === "cancellation" ? "warn" : "info", badge: c.reading === "cancellation" ? "Cancelled" : "Moved" } as OverviewRow;
             })}
             total={changesToday.length}
             onOpenClient={onNavigateProfile}
@@ -424,7 +432,7 @@ function StudioOverview({
           {unbooked.count > 0 && (
             <div className="adm-ov__unbooked">
               <span className="adm-ov__unbooked-title">Nothing booked ahead ({unbooked.count} of {unbooked.measured} active)</span>
-              <Rows rows={unbooked.rows.map((r) => ({ clientId: r.clientId, name: r.name, sentence: "Nothing on the books after their last visit.", proof: r.proof, tone: "warn" }))} total={unbooked.count} onOpenClient={onNavigateProfile} empty="" moreLabel="on Renewals" />
+              <Rows rows={unbooked.rows.map((r) => ({ clientId: r.clientId, name: r.name, sentence: "Nothing on the books after their last visit.", proof: r.proof, tone: "warn", badge: "Not booked" }))} total={unbooked.count} onOpenClient={onNavigateProfile} empty="" moreLabel="on Renewals" />
             </div>
           )}
         </OverviewPanel>
@@ -600,6 +608,7 @@ function StudioOverview({
               sentence: `${dayWord(r.day, today)} — ${r.sentence}`,
               proof: r.proof,
               tone: r.needsOwner ? "warn" : "info",
+              badge: r.kind === "gesture" ? (r.needsOwner ? "No owner" : "Gesture") : r.kind === "date" ? "Date" : "Milestone",
             }))}
             total={moment.rows.length}
             onOpenClient={onNavigateProfile}

@@ -138,6 +138,8 @@ function AdminDashboardShell({
   type AdminTab = "overview" | "renewals" | "delight" | "users" | "floor" | "insights" | "announcements" | "mindbody" | "data";
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [floorView, setFloorView] = useState<"machines" | "fit" | "routines">("machines");
+  // Pressing Overview while on it brings the page home from one of its views.
+  const [homeSignal, setHomeSignal] = useState(0);
 
   const isOwnerTier = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
 
@@ -187,7 +189,10 @@ function AdminDashboardShell({
       <button
         key={tab.id}
         type="button"
-        onClick={() => setActiveTab(tab.id)}
+        onClick={() => {
+          if (tab.id === "overview" && isActive) setHomeSignal((n) => n + 1);
+          setActiveTab(tab.id);
+        }}
         aria-current={isActive ? "page" : undefined}
         className={cn(
           "adm adm-nav__btn flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
@@ -260,6 +265,7 @@ function AdminDashboardShell({
         {activeTab === "overview" && (
           <OverviewPage
             key={tabKey}
+            homeSignal={homeSignal}
             authTrainer={authTrainer}
             studios={studios}
             trainers={trainers}

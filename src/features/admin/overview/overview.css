@@ -7,6 +7,14 @@
  * week's lines. Tokens only — admin.tokens.css.
  * ==================================================================== */
 
+/* ---------- Today ----------------------------------------------------- */
+
+/* Five tiles across on a portrait iPad (the kit's 170px minimum leaves the
+   fifth alone on a second row at 820px). */
+.adm-ov__today .adm-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
 /* ---------- Needs you ------------------------------------------------- */
 
 .adm-ov__needs {

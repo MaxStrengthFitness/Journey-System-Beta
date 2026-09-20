@@ -131,7 +131,7 @@ export function Rows({ rows, total, onOpenClient, empty, moreLabel = "on the tab
           <button type="button" className="adm-ov__row-btn" onClick={() => onOpenClient?.(r.clientId)} disabled={!onOpenClient}>
             <span className="adm-ov__head">
               <span className="adm-ov__name">{r.name}</span>
-              <AdminBadge tone={TONE_BADGE[r.tone]}>{TONE_WORD[r.tone]}</AdminBadge>
+              <AdminBadge tone={TONE_BADGE[r.tone]}>{r.badge ?? TONE_WORD[r.tone]}</AdminBadge>
             </span>
             <span className="adm-ov__sentence">{r.sentence}</span>
             {r.proof && <span className="adm-ov__proof">{r.proof}</span>}
