@@ -64,11 +64,24 @@ export interface MachineEditorProps {
   /** Shown in the masthead — "Max Strength standard", "Solon's copy". */
   whose: string;
   /**
-   * Write it. Receives ONLY the fields that changed, already filtered to what
-   * this scope may write. Throwing keeps the edits and shows the message in
-   * the save bar.
+   * Write it.
+   *
+   * `patch` is only the fields that changed, already filtered to what this
+   * scope may write — that is what a catalog write sends, so an untouched
+   * field is not rewritten with what it already said.
+   *
+   * `draft` is the whole definition as it now stands. A STUDIO write needs
+   * this rather than the patch: a roster override is the difference between
+   * the studio's machine and the catalog's, and the patch is the difference
+   * between this edit and what was already on screen. Computing overrides
+   * from the patch would drop every override made in an earlier sitting.
+   *
+   * Throwing keeps the edits and shows the message in the save bar.
    */
-  onSave: (patch: Partial<MachineDefinition>) => Promise<void>;
+  onSave: (
+    patch: Partial<MachineDefinition>,
+    draft: MachineDefinition,
+  ) => Promise<void>;
   onBack: () => void;
   /** What the back button says it goes to. */
   backLabel: string;
@@ -93,11 +106,17 @@ export function MachineEditor({
   // warning, and the reason StudioDetailsForm memoises its external too.
   const external = React.useMemo(() => value, [value]);
 
+  // The draft, for the save callback. Read from a ref so the callback does
+  // not have to be rebuilt on every keystroke (which would re-run the hook's
+  // onSave identity and defeat its own memoisation).
+  const draftRef = React.useRef<MachineDefinition>(external);
+
   const form = useDirtyForm<MachineDefinition>(external, async (patch) => {
     // The last gate. The editor already hides what a studio may not touch, so
     // in normal use this removes nothing — which is the point of having it.
-    await onSave(scopeOverrides(scope, patch));
+    await onSave(scopeOverrides(scope, patch), draftRef.current);
   });
+  draftRef.current = form.value;
 
   const [reading, setReading] = React.useState(false);
   const [active, setActive] = React.useState(SECTIONS[0].id);

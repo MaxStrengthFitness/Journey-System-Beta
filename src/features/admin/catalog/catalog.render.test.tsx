@@ -153,22 +153,23 @@ describe("Admins → Catalog and the Standard template", () => {
 
   it("Retire asks first, every time — with the count of floors that have it — and writes on the second tap", async () => {
     const el = await mount(true);
-    // The Retire button on the Row card: the last one (the creator lists the
-    // catalog in defaultOrder, Row is third) and, to be sure, the one whose
-    // nearest ancestor with a machine id in it says m-row.
+    // The Retire button on the Row row. The list is ordered by
+    // resolveMachineOrder, which leaves these three in defaultOrder, so Row is
+    // third. Identified by position rather than by the id in the markup: the
+    // raw Firestore id is no longer printed on a row's face (Machine
+    // authoring, Sep 2026), and the row says the machine's NAME instead.
     const retire = [...el.querySelectorAll("button")].filter((b) => b.textContent?.trim() === "Retire");
     expect(retire).toHaveLength(3);
-    const rowRetire = retire.find((b) => {
-      let node: HTMLElement | null = b.parentElement;
-      while (node && !node.textContent?.includes("m-")) node = node.parentElement;
-      return node?.textContent?.includes("m-row") && !node.textContent.includes("m-chest");
-    })!;
+    const rowRetire = retire[2];
+    const rowText = rowRetire.closest(".adm-row")?.textContent ?? "";
+    expect(rowText).toContain("Row");
+    expect(rowText).not.toContain("Chest Press");
     await click(rowRetire);
     expect(writes).toEqual([]);
     const dialog = el.querySelector('[role="alertdialog"]')!;
     expect(dialog.getAttribute("aria-label")).toBe("Retire Row?");
     expect(dialog.textContent).toContain("No studio floor has it today.");
-    await click([...dialog.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Retire")!);
+    await click([...dialog.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Retire it")!);
     expect(writes).toEqual([{ path: "machines/m-row", data: { status: "retired", updatedAt: "now", updatedBy: "admin" } }]);
   });
 
@@ -176,8 +177,9 @@ describe("Admins → Catalog and the Standard template", () => {
     const el = await mount(false);
     expect(el.textContent).not.toContain("Submitted by studios");
     expect([...el.querySelectorAll("button")].some((b) => b.textContent?.includes("New machine"))).toBe(false);
-    // The creator's cards still say which machines are in the set, read-only.
-    expect(el.textContent).toContain("In the standard set");
+    // The rows still say which machines are in the set, read-only.
+    expect(el.textContent).toContain("In the standard");
+    expect(el.textContent).toContain("Not in the standard");
     const template = await mount(false, "template");
     expect(template.querySelector('button[aria-label="Move Chest Press up"]')).toBeNull();
     expect(template.textContent).toContain("in the order a new floor starts in");

@@ -33,18 +33,14 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
-  ArrowUpDown, GripVertical, RotateCcw, Check, X,
+  ArrowUpDown, GripVertical, RotateCcw, Check, X, Pencil,
 } from "lucide-react";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { useToast } from "../../../contexts/ToastContext";
-import {
-  MachineDefinition, RosterStatus, studioMachineId,
-} from "../../../types/machines";
-import { MachineDefinitionForm, emptyMachineDefinition } from "./MachineDefinitionForm";
+import { RosterStatus } from "../../../types/machines";
+import { StudioMachineEditor } from "./StudioMachineEditor";
+import type { EditScope } from "../../../lib/machine-template";
 
 /**
  * STUDIO INVENTORY MANAGER — what THIS location actually has.
@@ -117,6 +113,7 @@ export function StudioInventoryManager({
   flags,
   onOpenMachine,
   hideHeading = false,
+  scope = "studio",
 }: {
   studioId: string | null;
   studioName?: string;
@@ -133,6 +130,14 @@ export function StudioInventoryManager({
   onOpenMachine?: (machineId: string) => void;
   /** The caller draws its own panel title. */
   hideHeading?: boolean;
+  /**
+   * What the person at this door may change.
+   *
+   * "studio" is a studio leader on their own floor: the hardware is theirs,
+   * Max Strength's method is read-only. "admin" is corporate reaching into a
+   * location from the Admins dashboard, with no locks. See lib/machine-template.
+   */
+  scope?: EditScope;
 }) {
   const { machines, byId, catalog, rosterEntries, loading } = useStudioMachines(studioId, {
     includeInactive: true,
@@ -142,9 +147,13 @@ export function StudioInventoryManager({
 
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [customDraft, setCustomDraft] = useState<MachineDefinition | null>(null);
-  const [customBasedOn, setCustomBasedOn] = useState<string>("");
-  const [savingCustom, setSavingCustom] = useState(false);
+  /**
+   * Which machine is open in the full-page editor: a brand-new custom one, or
+   * an existing roster entry. Null when the list is showing.
+   */
+  const [editing, setEditing] = useState<
+    { kind: "new" } | { kind: "entry"; machineId: string } | null
+  >(null);
   /**
    * Reorder mode. Null when off; otherwise the machine ids in the order the
    * user is currently dragging them into. Held as a draft rather than written
@@ -348,39 +357,43 @@ export function StudioInventoryManager({
     }
   };
 
-  const saveCustom = async () => {
-    if (!customDraft) return;
-    const name = customDraft.name.trim();
-    if (!name) { toastError("Give the machine a name first."); return; }
+  /**
+   * The editor REPLACES this list rather than opening over it — the same
+   * shape Operations -> Overview -> Changes uses. A machine is eight sections
+   * and sixty fields; the dialog it used to live in was 768px of edge-to-edge
+   * iPad with the Save button behind the keyboard.
+   */
+  if (editing && studioId) {
+    const entry =
+      editing.kind === "entry"
+        ? rosterEntries.find((e) => e.machineId === editing.machineId)
+        : undefined;
+    const resolvedMachine =
+      editing.kind === "entry"
+        ? machines.find((m) => m.machineId === editing.machineId)
+        : undefined;
+    const catalogEntry =
+      entry && entry.source === "catalog"
+        ? catalog.find((c) => c.id === entry.basedOn)
+        : editing.kind === "entry"
+          ? catalog.find((c) => c.id === editing.machineId)
+          : undefined;
 
-    const machineId = studioMachineId(studioId, name);
-    if (rosteredIds.has(machineId)) {
-      toastError("This studio already has a machine with that name.");
-      return;
-    }
-
-    setSavingCustom(true);
-    try {
-      await setDoc(doc(db, "studios", studioId, "roster", machineId), {
-        machineId,
-        studioId,
-        source: "custom",
-        ...(customBasedOn ? { basedOn: customBasedOn } : {}),
-        status: "active",
-        definition: customDraft,
-        updatedAt: serverTimestamp(),
-        updatedBy: auth.currentUser?.uid ?? null,
-      });
-      toastSuccess(`${name} added to ${studioName ?? "this studio"}.`);
-      setCustomDraft(null);
-      setCustomBasedOn("");
-    } catch (err) {
-      console.error(err);
-      toastError("Could not save the machine.");
-    } finally {
-      setSavingCustom(false);
-    }
-  };
+    return (
+      <StudioMachineEditor
+        studioId={studioId}
+        studioName={studioName}
+        entry={entry}
+        resolved={resolvedMachine}
+        catalogEntry={catalogEntry}
+        catalog={catalog}
+        rosteredIds={rosteredIds}
+        scope={scope}
+        backLabel={studioName ? `${studioName}'s floor` : "The floor"}
+        onBack={() => setEditing(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -439,7 +452,7 @@ export function StudioInventoryManager({
               : <Sparkles className="mr-1.5 h-4 w-4" />}
             Add standard set
           </Button>
-          <Button onClick={() => setCustomDraft(emptyMachineDefinition())}>
+          <Button onClick={() => setEditing({ kind: "new" })}>
             <Plus className="mr-1.5 h-4 w-4" /> Custom machine
           </Button>
             </>
@@ -546,6 +559,19 @@ export function StudioInventoryManager({
                         Open
                       </Button>
                     )}
+                    {/* The door that did not exist. A custom machine could
+                        not be edited at all once saved, and a catalog
+                        machine's local copy could only override its name. */}
+                    {rostered && !readOnly && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditing({ kind: "entry", machineId: m.machineId })}
+                      >
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        {m.source === "custom" ? "Edit" : "Set up for us"}
+                      </Button>
+                    )}
                     {owned && !readOnly && (
                       <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <Switch
@@ -591,51 +617,6 @@ export function StudioInventoryManager({
         </div>
       )}
 
-      <Dialog open={!!customDraft} onOpenChange={(o) => !o && setCustomDraft(null)}>
-        <DialogContent className="max-h-[92dvh] sm:max-w-5xl lg:max-w-6xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="uppercase tracking-tight">
-              Add a custom machine
-            </DialogTitle>
-          </DialogHeader>
-
-          {customDraft && (
-            <>
-              <div className="flex flex-col gap-1.5 rounded-lg border border-border p-3">
-                <span className="text-xs font-semibold">Which machine is this most like?</span>
-                <select
-                  className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
-                  value={customBasedOn}
-                  onChange={(e) => setCustomBasedOn(e.target.value)}
-                >
-                  <option value="">None — genuinely novel equipment</option>
-                  {catalog
-                    .filter((c) => c.status === "active")
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
-                <p className="text-[11px] text-muted-foreground">
-                  Nothing is inherited from this. It only lets network reporting compare
-                  your unit against the same movement at other locations — without it,
-                  your leg press becomes its own one-studio leaderboard.
-                </p>
-              </div>
-
-              <MachineDefinitionForm value={customDraft} onChange={setCustomDraft} />
-
-              <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background pt-3">
-                <Button variant="ghost" onClick={() => setCustomDraft(null)}>Cancel</Button>
-                <Button onClick={saveCustom} disabled={savingCustom}>
-                  {savingCustom && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                  Add to {studioName ?? "this studio"}
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

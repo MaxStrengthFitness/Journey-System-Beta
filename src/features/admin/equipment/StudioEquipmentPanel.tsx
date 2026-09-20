@@ -268,7 +268,16 @@ export function StudioEquipmentPanel({
 
       {showInventory && (
         <div className="mt-5" style={{ borderTop: "1px solid var(--adm-border)", paddingTop: 16 }}>
-          <StudioInventoryManager studioId={studioId} studioName={studio.name} />
+          {/* scope="admin": this panel is on the Admins dashboard, which is
+              administrators and the founder only. Corporate reaching into a
+              location is not bound by the template boundary a studio leader
+              is — that is what makes the boundary safe to enforce on studios
+              at all. See lib/machine-template. */}
+          <StudioInventoryManager
+            studioId={studioId}
+            studioName={studio.name}
+            scope="admin"
+          />
         </div>
       )}
 
