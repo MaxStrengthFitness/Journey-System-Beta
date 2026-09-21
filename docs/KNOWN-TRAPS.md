@@ -361,7 +361,7 @@ the data files with esbuild's text loader, so that field comes back as the
 
 ## Security rules and permissions
 
-- **The 1000-expression budget bites twice now, and it reads as a permission error.**
+- **The 1000-expression budget bites three times now, and it reads as a permission error.**
   Firestore refuses a rule that evaluates more than 1000 expressions with
   "Unable to evaluate the expression as the maximum of 1000 expressions to
   evaluate has been reached" — which surfaces as PERMISSION_DENIED and looks
@@ -370,12 +370,41 @@ the data files with esbuild's text loader, so that field comes back as the
   `getRole()` three times and `getTrainerData()` five, so stacking
   `isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer()`
   in one condition is enough on its own. It took the sessions read rule down
-  (Sep 9), the hub_announcement rules (fixed with `let r = getRole()`), and
-  `teamJobs` (Sep 19, `teamJobLeaderAllowed`). **The fix is always the same:
+  (Sep 9), the hub_announcement rules (fixed with `let r = getRole()`),
+  `teamJobs` (Sep 19, `teamJobLeaderAllowed`), and the **trainers update
+  rule** (Sep 20, Demo Mode - see the next trap). **The fix is always the same:
   extract the condition into a function, `let r = getRole()` and
   `callerTrainer()` once, and ask `trainerLeads(r, t, studioId)` rather than
   the helper that re-reads.** `let` is legal in a function body and not in an
   `allow` condition, which is why these are functions.
+
+- **Ordering is the other half of the budget fix - put the literal tests first (Sep 20, Demo Mode).**
+  Demo Mode added a clause to the `trainers` update rule that opened with
+  `isAnyAuthenticatedTrainer()` - an `exists()` - followed by the whole of
+  `isDemoTrainerPayload()`. That ran on EVERY trainer update, including a
+  trainer saving their own bio, and tipped the rule over the budget: the first
+  assertion of "lets a trainer edit their own profile" started failing with
+  PERMISSION_DENIED. Nothing about the clause was wrong; it was expensive and
+  it ran first. **`&&` short-circuits, so a clause that applies to a narrow
+  case must lead with the cheapest test that rules the case out** - here
+  `request.resource.data.get('isDemo', false) == true` and
+  `trainerId.matches('demo-trainer-.*')`, both free, before anything that
+  spends a read.
+
+- **"Everybody may do X in the demo studio" is a door into every rule that calls the helper (Sep 20).**
+  Demo Mode put `hasRunOfDemo(studioId)` at the top of
+  `isStudioOwnerOrHeadTrainerOnly()` - correct for the demo studio, and
+  instantly enough to make every OTHER rule asking "is this person a studio
+  leader" answer yes for `demo-studio`. The `trainers` create rule has a
+  studio-leader clause that never constrains `accessibleStudioIds` or
+  `ownedStudioIds`, because it trusts the leader. So any signed-in trainer
+  could create a trainer document at ANY id with `primaryHomeStudioId:
+  'demo-studio'` and `accessibleStudioIds: ['demo-studio', 'studioA']` - a
+  claim on a REAL studio, plantable at a colleague's uid before their first
+  sign-in. Fixed with `!isDemoStudioId(...)` on that clause, so demo trainers
+  are minted by `isDemoTrainerPayload` and nowhere else. **Before widening a
+  role helper for the demo studio, list every rule that calls it and ask what
+  each one lets a leader do.**
 
 - **The role lives on the token now (cost round, Sep 16).** `syncTrainerClaims` (`functions/src/claims.ts`) mirrors `trainers/{id}.role` onto the auth user's custom claims; the rules read `request.auth.token.role` first and fall back to the document only when it is absent. Consequences: a role change reaches the rules at the next sign-in or within an hour (the token is checked first, so the OLD claim wins until then); **never set a `studioId` claim** (as written it grants studio-leader access with no role check); a new trainer role must be added to `TRAINER_ROLES` in `claims-logic.ts` as well as `UserRole`; the function has to be deployed (`firebase deploy --only functions:syncTrainerClaims`) and `scripts/backfill-trainer-claims.ts --commit` run once — until then it just costs the read it always did.
 

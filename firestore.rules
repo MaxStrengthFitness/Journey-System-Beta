@@ -1154,7 +1154,17 @@ service cloud.firestore {
                      // an owner (mayHandOut), and a studio leader's grant can
                      // only name the studio the new person is joining.
                      (isFranchiseOwner() && !roleIsSuper(request.resource.data.get('role', null))) ||
-                     (isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) &&
+                     // Demo Mode (Sep 20 2026): demo-studio is NOT a door here.
+                     // hasRunOfDemo() makes isStudioOwnerOrHeadTrainer true for
+                     // EVERYBODY inside demo-studio, and this clause never
+                     // constrains accessibleStudioIds or ownedStudioIds -- so
+                     // without this guard any signed-in trainer could mint a
+                     // trainer document claiming access to a REAL studio, at
+                     // any id, including a colleague's uid before they first
+                     // sign in. Demo trainers are created by the
+                     // isDemoTrainerPayload clause below and nowhere else.
+                     (!isDemoStudioId(request.resource.data.primaryHomeStudioId) &&
+                      isStudioOwnerOrHeadTrainer(request.resource.data.primaryHomeStudioId) &&
                       studioTierRole(request.resource.data.get('role', null)) &&
                       request.resource.data.get('managedStudioIds', []).hasOnly([request.resource.data.primaryHomeStudioId])) ||
                      // Bootstrap / claim: a person may own trainers/{their uid},
@@ -1173,8 +1183,19 @@ service cloud.firestore {
                     // the stored document and the incoming one have to be
                     // demo documents, so a real trainer can never be turned
                     // into one, nor the reverse.
-                    (isAnyAuthenticatedTrainer() &&
+                    //
+                    // ORDER MATTERS (Sep 20 2026). The three literal tests run
+                    // before isAnyAuthenticatedTrainer(), which spends an
+                    // exists(). Evaluating that and the whole payload check on
+                    // EVERY trainer update pushed this rule past Firestore's
+                    // 1000-expression budget, and the answer when it runs out
+                    // is DENY -- a trainer could not edit their own bio. An
+                    // ordinary profile edit now abandons this clause on its
+                    // first expression. See docs/KNOWN-TRAPS.md.
+                    (request.resource.data.get('isDemo', false) == true &&
+                     trainerId.matches('demo-trainer-.*') &&
                      resource.data.get('isDemo', false) == true &&
+                     isAnyAuthenticatedTrainer() &&
                      isDemoTrainerPayload(trainerId, request.resource.data)) ||
                     (isSuperAdmin() && !writesDerivedTrainerFields()) || 
                     ( !writesDerivedTrainerFields() &&
