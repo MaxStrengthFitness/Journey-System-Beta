@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { Dumbbell, Network, Sparkles, Upload } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
@@ -30,9 +30,13 @@ import { useRelayMaybe } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
 import {
   buildSubmission,
+  canOffer,
+  canWithdraw,
+  decisionSentence,
   standardGaps,
   submissionLabel,
   SUBMISSION_NOTE_MAX,
+  type CatalogSubmissionDoc,
   type RosterSubmissionMarker,
 } from "./floor";
 import "../admin/admin.css";
@@ -470,14 +474,23 @@ function MachineDoor({
             Upkeep{upkeepStatus === "overdue" ? " · overdue" : upkeepStatus === "due" ? " · due" : ""}
           </AdminButton>
         )}
-        {canLead && ownMachine && !marker && (
+        {canLead && ownMachine && canOffer(marker) && (
           <AdminButton variant="quiet" onClick={() => setOffer(true)}>
             <Upload className="w-3.5 h-3.5" />
-            Offer to the MSF catalog
+            {marker ? "Offer it again" : "Offer to the MSF catalog"}
           </AdminButton>
+        )}
+        {canLead && canWithdraw(marker) && marker && (
+          <WithdrawOffer
+            submissionId={marker.id}
+            studioId={studioId}
+            machineId={entry.machineId}
+            machineName={machineName}
+          />
         )}
       </section>
       {markerLabel && <AdminNotice tone={marker?.status === "declined" ? "warn" : "info"}>{markerLabel}</AdminNotice>}
+      {marker && <DecisionNote submissionId={marker.id} status={marker.status} />}
 
       {localSetup && (
         <LocalSetupDialog
@@ -511,6 +524,106 @@ function MachineDoor({
       )}
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ *
+ * Taking an offer back, and hearing what corporate said
+ * ------------------------------------------------------------------ */
+
+/**
+ * WITHDRAW — a leader takes back an offer corporate has not decided on yet.
+ *
+ * The status and the rule for it already existed (`withdrawn`;
+ * firestore.rules allows a studio's leader exactly the pending → withdrawn
+ * transition, and only the `status` and `updatedAt` keys with it). Nothing
+ * in the app ever wrote it, so an offer made by mistake sat in corporate's
+ * queue until someone there passed on it.
+ *
+ * The write is deliberately those two keys and nothing else: adding a third
+ * would be refused by the rule, silently, from the studio's side.
+ */
+function WithdrawOffer({
+  submissionId,
+  studioId,
+  machineId,
+  machineName,
+}: {
+  submissionId: string;
+  studioId: string;
+  machineId: string;
+  machineName: string;
+}) {
+  const { success: toastSuccess } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const withdraw = async () => {
+    setBusy(true);
+    try {
+      await updateDoc(doc(db, "catalogSubmissions", submissionId), {
+        status: "withdrawn",
+        updatedAt: serverTimestamp(),
+      });
+      // The marker is a convenience copy, as it is when the offer is made:
+      // its failure leaves the withdrawal standing rather than undoing it.
+      try {
+        await setDoc(
+          doc(db, "studios", studioId, "roster", machineId),
+          { submission: { id: submissionId, status: "withdrawn" } satisfies RosterSubmissionMarker },
+          { merge: true },
+        );
+      } catch (err) {
+        console.warn("[my-studio] withdrawal marker failed:", err);
+      }
+      toastSuccess(`${machineName} is no longer offered. You can fix it and offer it again.`);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, "catalogSubmissions");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AdminButton variant="quiet" busy={busy} disabled={busy} onClick={() => void withdraw()}>
+      Take the offer back
+    </AdminButton>
+  );
+}
+
+/**
+ * WHAT CORPORATE SAID — the decision note, on the studio's own floor.
+ *
+ * It was always written and a studio's leaders could always read it; it was
+ * simply never shown. So a studio learned that corporate passed and never
+ * learned why, which is the one thing that would let them fix the machine
+ * and offer it again.
+ *
+ * One `getDoc` when the machine's door opens, not a listener: a decision is
+ * made once and the door is already open on a tap.
+ */
+function DecisionNote({ submissionId, status }: { submissionId: string; status: RosterSubmissionMarker["status"] }) {
+  const [sentence, setSentence] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status !== "declined" && status !== "published") return;
+    let alive = true;
+    void (async () => {
+      try {
+        const snap = await getDoc(doc(db, "catalogSubmissions", submissionId));
+        if (!alive || !snap.exists()) return;
+        const data = snap.data() as CatalogSubmissionDoc;
+        setSentence(decisionSentence(status, data.decisionNote));
+      } catch {
+        // A refused read means "unknown", never "there was no note" — so the
+        // panel says nothing rather than implying corporate stayed silent.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [submissionId, status]);
+
+  if (!sentence) return null;
+  return <AdminNotice tone={status === "declined" ? "warn" : "ok"}>{sentence}</AdminNotice>;
 }
 
 /* ------------------------------------------------------------------ *

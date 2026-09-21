@@ -179,6 +179,56 @@ export function buildSubmission(
   };
 }
 
+/**
+ * May this studio offer this machine now?
+ *
+ * `buildSubmission` answers whether the MACHINE can be offered at all (its
+ * own, not adopted, named). This answers whether the OFFER slot is free: one
+ * pending offer at a time, and a machine that was passed on or taken back can
+ * be fixed and offered again.
+ *
+ * Re-offering writes a new `catalogSubmissions` document rather than
+ * reopening the old one. The old one is the record of what corporate saw and
+ * decided; editing it would make "Corporate passed: too close to the
+ * pullover" a note about a machine that no longer exists.
+ */
+export function canOffer(marker: RosterSubmissionMarker | null | undefined): boolean {
+  if (!marker) return true;
+  return marker.status === "withdrawn" || marker.status === "declined";
+}
+
+/**
+ * May this studio take the offer back?
+ *
+ * Only while corporate has not decided — mirrors the rule, which allows a
+ * studio exactly one transition (pending → withdrawn) and only the `status`
+ * and `updatedAt` keys with it. Once a machine is published it is in the
+ * catalog and other studios may already have adopted it; taking it back is a
+ * retirement decision, and corporate's.
+ */
+export function canWithdraw(marker: RosterSubmissionMarker | null | undefined): boolean {
+  return marker?.status === "pending";
+}
+
+/**
+ * What corporate said, for the studio's own floor.
+ *
+ * The decision note is already on the submission and a studio's leaders may
+ * already read it (firestore.rules, catalogSubmissions). It was simply never
+ * shown — so a studio learned that corporate passed and never learned why,
+ * which is the one thing that would let them fix it and offer again.
+ */
+export function decisionSentence(
+  status: SubmissionStatus,
+  note: string | null | undefined,
+): string | null {
+  const text = (note ?? "").trim();
+  if (!text) return null;
+  if (status === "declined") return `Corporate passed: ${text}`;
+  if (status === "published") return `Corporate said: ${text}`;
+  return null;
+}
+
 /** The sentence under a machine that carries a submission marker. */
 export function submissionLabel(marker: RosterSubmissionMarker | null | undefined): string | null {
   if (!marker) return null;

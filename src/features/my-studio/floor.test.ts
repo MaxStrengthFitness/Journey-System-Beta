@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSubmission, standardGaps, submissionLabel } from "./floor";
+import { buildSubmission, canOffer, canWithdraw, decisionSentence, standardGaps, submissionLabel } from "./floor";
 import type { MachineCatalogEntry, MachineDefinition, StudioMachineRosterEntry } from "../../types/machines";
 
 type Cat = Pick<MachineCatalogEntry, "id" | "status" | "inStandardSet"> & { name: string };
@@ -101,5 +101,50 @@ describe("buildSubmission — only a studio's own machine can be offered", () =>
     expect(submissionLabel({ id: "s1", status: "declined" })).toContain("passed");
     expect(submissionLabel({ id: "s1", status: "withdrawn" })).toBeNull();
     expect(submissionLabel(null)).toBeNull();
+  });
+
+  it("says when corporate reworded a published machine, rather than a bare Published", () => {
+    expect(submissionLabel({ id: "s1", status: "published", corrected: "execution and cadence" })).toBe(
+      "Published to the MSF catalog — corporate adjusted execution and cadence",
+    );
+  });
+});
+
+describe("the offer's lifecycle", () => {
+  it("offers when there is no marker, and again after a pass or a withdrawal", () => {
+    expect(canOffer(null)).toBe(true);
+    expect(canOffer({ id: "s1", status: "declined" })).toBe(true);
+    expect(canOffer({ id: "s1", status: "withdrawn" })).toBe(true);
+  });
+
+  it("does not offer the same machine twice, or re-offer one already in the catalog", () => {
+    expect(canOffer({ id: "s1", status: "pending" })).toBe(false);
+    expect(canOffer({ id: "s1", status: "published" })).toBe(false);
+  });
+
+  it("withdraws only while corporate has not decided", () => {
+    // Mirrors the rule: a studio gets exactly one transition, pending →
+    // withdrawn. Once published, other studios may have adopted it.
+    expect(canWithdraw({ id: "s1", status: "pending" })).toBe(true);
+    expect(canWithdraw({ id: "s1", status: "published" })).toBe(false);
+    expect(canWithdraw({ id: "s1", status: "declined" })).toBe(false);
+    expect(canWithdraw({ id: "s1", status: "withdrawn" })).toBe(false);
+    expect(canWithdraw(null)).toBe(false);
+  });
+
+  it("gives the studio corporate's reason, so it can fix the machine and offer again", () => {
+    expect(decisionSentence("declined", "Too close to the pullover.")).toBe(
+      "Corporate passed: Too close to the pullover.",
+    );
+    expect(decisionSentence("published", "Renamed to match the Academy.")).toBe(
+      "Corporate said: Renamed to match the Academy.",
+    );
+  });
+
+  it("says nothing when corporate left no note, rather than an empty quote", () => {
+    expect(decisionSentence("declined", "")).toBeNull();
+    expect(decisionSentence("declined", "   ")).toBeNull();
+    expect(decisionSentence("declined", null)).toBeNull();
+    expect(decisionSentence("pending", "not decided yet")).toBeNull();
   });
 });
