@@ -10,6 +10,15 @@ This is the master reference for what Journey is, what it is not, how it is put 
 
 ---
 
+> **Freshness, Sep 21 2026.** Sections 2–4 were derived from source on Sep 12
+> and are marked "review pending" below; the numbers in them were re-counted on
+> Sep 21 and corrected in place, but the *prose* still describes Sep 12. Where
+> this document and `CLAUDE.md` disagree, `CLAUDE.md` is newer. Reconciling
+> §2–§4 with what is built is item 4 under **Now** in `ROADMAP.md`.
+>
+> **New to the project? Read `docs/START-HERE.md` first** — it is the fifteen-
+> minute version of this document, written for a non-programmer.
+
 ## Contents
 
 1. [Purpose and scope — agreed](#1-purpose-and-scope--agreed-sep-12-2026)
@@ -197,7 +206,7 @@ Seventeen `View` values are routed. Rank is the floor-loop rank from §1.4 the s
 | `trainer-profile` | **Trainer profile** (`features/trainer-profile/TrainerProfileView.tsx`) | 4 | Coaching-load rollups, about, studio access, Kaizen Roster, upcoming and recently coached | live `trainers` doc; `sessions` by trainer (per README) | `trainers/{uid}.kaizenRoster`, bio and certifications via `EditTrainerModal` (per README) | unverified |
 | `trainer-hub` | **Trainer settings** (`features/settings/TrainerSettingsView.tsx`) | 4 | The gear-icon settings screen (bug report, the little that is left after the RBAC teardown) | unverified | unverified | unverified |
 | `chart-importer` | **Legacy chart importer** (`features/admin/import/LegacyChartImporter.tsx`) | 4 | CSV / chart import of a client's FileMaker history | unverified | session history and `client.trainerTally` (per README) | profile or clients |
-| `admin-dashboard` | **Operations dashboard** (`features/admin/AdminDashboardView.tsx`, a pure tab router) | 4 | Fourteen tabs in three groups (§2.5). Also renders with no active studio selected | none in the shell; tab components not staged | via props: `studios` update, `clients` update, refresh reads, ~~the demo-client seeder~~ (deleted in the beta-prep trim, Sep 17 2026), machine restore (`machines`), the wipe | profile, studio-tasks |
+| `admin-dashboard` | **Operations dashboard** (`features/admin/AdminDashboardView.tsx`, a pure tab router) | 4 | **Nine tabs** since the Operations overhaul, Sep 19 (fourteen when this was written); everything corporate-only moved to the separate **Admins dashboard** (`features/admins/`). Also renders with no active studio selected | none in the shell; tab components not staged | via props: `studios` update, `clients` update, refresh reads, ~~the demo-client seeder~~ (deleted in the beta-prep trim, Sep 17 2026), machine restore (`machines`), the wipe | profile, studio-tasks |
 | `franchise-dashboard` | **Franchise dashboard** (`features/admin/franchise/FranchiseDashboardView.tsx`) | 4 | Network-level view for owners and admins | unverified | unverified | none |
 
 **Declared in `View` but never routed** (nothing renders them; `dashboard` appears only in a className test and a no-op style ternary): `trainers`, `machines`, `dashboard`, `chart`, `machine-knowledge`, `mindbody`. Delete the six ids (§2.7).
@@ -481,15 +490,15 @@ The vocabulary in `types.ts` grew one round at a time, so the same idea has seve
 
 ## 4. Codebase organization — derived and proposed
 
-*Derived from the `src/` tree on Sep 12 2026 (647 files in 59 folders) and the repo root. §4.4–4.7 are proposals for how to work from here; nothing has been moved.*
+*Derived from the `src/` tree on Sep 12 2026 and re-counted Sep 21 2026: **1,020 files in 90 folders**, 40 feature folders (23 with a README). §4.4–4.7 are proposals for how to work from here.*
 
 ### 4.1 The layout today
 
 | Folder | What it is for | Size | State |
 | --- | --- | --- | --- |
-| `src/features/<name>/` | **Where new code goes.** One folder per feature: pure logic in `.ts` with a `.test.ts` beside it, screens in `.tsx`, a README with the decisions, tokens from the shared token files | 28 folders, ~5.5 MB incl. ~1.3 MB of generated Academy JSON | Good. 18 of 28 have a README; 21 of 28 have tests |
-| `src/components/` | The pre-`features` world: screens and shared pieces from the Gemini era | 46 files at the top level (1.06 MB) + 24 in `anatomy/`, `client-dossier/`, `journal/`, `machines/`, `mindbody/`, `routines/`, `schedule/` | The three biggest screens live here as single files |
-| `src/AppContent.tsx` | The router, the global state store, the app shell, and a pile of handlers | 3,126 lines · 45 imports · 28 `useState` · 7 `useEffect` | The god file |
+| `src/features/<name>/` | **Where new code goes.** One folder per feature: pure logic in `.ts` with a `.test.ts` beside it, screens in `.tsx`, a README with the decisions, tokens from the shared token files | **40 folders** (Sep 21 2026; 28 on Sep 12), incl. ~1.3 MB of generated Academy JSON | Good. 23 of 40 have a README |
+| `src/components/` | The pre-`features` world: screens and shared pieces from the Gemini era | **32 files** at the top level (Sep 21 2026; 46 on Sep 12) + the subfolders `anatomy/`, `client-dossier/`, `journal/`, `machines/`, `mindbody/`, `routines/`, `schedule/` | The three biggest screens live here as single files |
+| `src/AppContent.tsx` | The router, the global state store, the app shell, and a pile of handlers | **2,594 lines · 27 `useState`** (Sep 21 2026; 3,126 on Sep 12) | The god file |
 | `src/hooks/` | Firestore streams and app-level hooks | 16 files | Four overlapping machine hooks; one dead |
 | `src/lib/` | Pure helpers: tenancy, permissions, studio time, Mindbody sync and mapping, rollups, machine resolution | 51 files (14 are tests) | Healthy, except the duplicate `utils.ts` at the repo root |
 | `src/data/` | Code-default data: the machine database, anatomy map, display order, clinical matrix | 11 files; `machine-database.ts` is 76 KB | Fine; know that `machines/` in Firestore is merged over it by id |
@@ -497,7 +506,7 @@ The vocabulary in `types.ts` grew one round at a time, so the same idea has seve
 | `src/contexts/` (Toast, Mindbody health, the active studio - `ActiveStudioContext.tsx` moved in here in the beta-prep trim), `src/services/` | Toast, Mindbody health, the active studio; the Gemini client | 4 files | Fine |
 | `server.ts`, `server/` | Express on Render: serves the build, the Mindbody proxy, the Gemini endpoints, the cron jobs and worker | — | Fine; needs a staff sign-in on every Mindbody route |
 | `functions/src/` | Cloud Functions: the Mindbody webhook, trainer rollups, staff photos, nightly facility analytics | — | Tests never run in CI (no test script there) |
-| `firestore.rules`, `tests/`, `firestore.indexes.json` | Security rules, their emulator tests (JDK 21), composite indexes | 2,059 lines | The only complete map of the database until §3 |
+| `firestore.rules`, `tests/`, `firestore.indexes.json` | Security rules, their emulator tests (JDK 21), composite indexes | **2,769 lines** (Sep 21 2026; 2,059 on Sep 12) | The only complete map of the database until §3 |
 | `scripts/` | One-off scripts: service-account auth, dry-run by default, `--commit` to write | — | Good pattern; a few live at the root instead |
 | `docs/business/`, `docs/msf-academy/` | Business rules; the Academy corpus (219 documents) | — | Good |
 | The repo root | 23 markdown documents, ~39 log and text files, 8 PowerShell ship scripts, 5 loose JS scripts, `patches/`, `patches-machines/`, `backups/`, `harness/`, `Claude outputs/`, and a `components/` and `lib/` that shadow `src/components` and `src/lib` | — | The loudest problem and the cheapest to fix (§4.6) |
@@ -528,7 +537,7 @@ This is the checklist a round follows from now on. It is short on purpose; the r
 3. **It lives in `src/features/<name>/`**: `README.md` (the decisions, the collections touched, who can see it, what is deliberately not done); pure logic in `.ts` with `.test.ts` beside it; screens in `.tsx`; tokens from `equipment.tokens.css` or `admin.tokens.css`, no raw hex; a feature `.css` only when Tailwind cannot express it.
 4. **If it touches data**: add or update the row in §3.2 *first* (path, owner, read and write scope, status), then the type, then `firestore.rules` with a test in `tests/firestore.rules.test.ts`, then an index if the query needs one. Every query names its studios (`src/lib/tenancy.ts`). Never write a whole document back — only the changed fields. Never write to a collection from inside a listener on that collection. Keep running totals instead of re-reading history.
 5. **If it touches the floor loop (Rank 1–3)**: no new taps during a set without removing one; nothing may block a save (invariant 2); mid-session changes stay temporary (invariant 3, guarded by `session-scope.test.ts`).
-6. **Verify**: `npx tsc --noEmit` — the error count must not rise above the baseline (18 on Sep 12); `npx vitest run src` green; `npm run test:rules` whenever the rules changed; the iPad, portrait and landscape, for any Rank 1–3 screen. AJ's own runs are the ones that count.
+6. **Verify**: `npx tsc --noEmit` — the error count must not rise above the baseline (**10** as of Sep 21 2026; it was 18 on Sep 12); `npx vitest run src` green; `npm run test:rules` whenever the rules changed; the iPad, portrait and landscape, for any Rank 1–3 screen. AJ's own runs are the ones that count.
 7. **Ship**: one branch per round, one commit per phase so any phase can be reverted alone; a ship script when there are deploy steps (indexes → rules tests → rules → push). The round's notes go in `docs/rounds/<yyyy-mm-dd>-<name>.md`, not the root. Update `ROADMAP.md` (short) and this document if a screen, a collection, a tier or an invariant changed.
 
 ### 4.5 House rules already written down
