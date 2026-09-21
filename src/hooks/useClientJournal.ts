@@ -70,6 +70,7 @@ import {
 import { adaptClientEvents as adaptFordEvents } from "../features/ford/ford-rollup";
 import { studioDateKey } from "../lib/studio-time";
 import { mattersOn } from "../features/client-notes/mattering";
+import { assembleThreads, withoutThreadUpdates, type NoteThread } from "../features/client-notes/threads";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -182,6 +183,9 @@ export async function createJournalEntry(
     importance: draft.importance,
     machineId: draft.machineId ?? null,
     focusId: draft.focusId ?? null,
+    // The thread this update hangs from, or null for a note of its own
+    // (features/client-notes/threads.ts). Written by addThreadUpdate.
+    threadId: draft.threadId ?? null,
     sessionId: draft.sessionId ?? null,
     origin: draft.origin,
     authorId: author.id,
@@ -833,7 +837,14 @@ export interface UseClientJournalArgs {
 }
 
 export interface UseClientJournalResult {
+  /** Notes in their own right — thread updates are inside `threads`, not here. */
   entries: JournalEntry[];
+  /**
+   * The same notes as threads: a root and the updates hung off it. Optional
+   * on the TYPE only so a fixture built before the Notes round still
+   * typechecks; the hook always returns it. Read it as `threads ?? []`.
+   */
+  threads?: NoteThread[];
   focuses: ClientFocus[];
   criticalEntries: JournalEntry[];
   /**
@@ -1055,7 +1066,7 @@ export function useClientJournal({
   }, [clientId, enabled]);
 
   /* --- merge -------------------------------------------------------- */
-  const entries = useMemo(() => {
+  const allEntries = useMemo(() => {
     const merged: JournalEntry[] = [
       ...native.filter((e) => !e.isArchived),
       ...adaptSessionNotes(legacyNotes, trainers),
@@ -1092,6 +1103,16 @@ export function useClientJournal({
     client,
     trainers,
   ]);
+
+  /**
+   * THREADS (Notes round, Sep 2026). `entries` stays the flat list every
+   * screen already reads — with thread UPDATES taken out, so an update never
+   * renders twice: once inside its thread and once as a note of its own.
+   * `threads` is the same records grouped, root first then its spine.
+   * features/client-notes/threads.ts is the one place that grouping happens.
+   */
+  const entries = useMemo(() => withoutThreadUpdates(allEntries), [allEntries]);
+  const threads = useMemo(() => assembleThreads(allEntries), [allEntries]);
 
   const focuses = useMemo(() => {
     // Precedence: a real clientFocuses doc beats a legacy focusRecord, which
@@ -1149,5 +1170,5 @@ export function useClientJournal({
 
   const capped = Object.values(cappedBy).some(Boolean);
 
-  return { entries, focuses, criticalEntries, headsUpEntries, isLoading, needsIndex, capped };
+  return { entries, threads, focuses, criticalEntries, headsUpEntries, isLoading, needsIndex, capped };
 }
