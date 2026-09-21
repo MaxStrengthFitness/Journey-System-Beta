@@ -13,7 +13,9 @@ import {
   noteCardLabel,
   noteCategoryOf,
   splitUnfiled,
+  threadMatchesSearch,
 } from "./note-catalog";
+import { assembleThreads } from "./threads";
 
 let seq = 0;
 function entry(over: Partial<JournalEntry>): JournalEntry {
@@ -113,6 +115,7 @@ describe("noteCategoryOf — every existing note maps in", () => {
 describe("buildCatalog", () => {
   const sep = (d: number) => new Date(2026, 8, d, 12);
   const aug = (d: number) => new Date(2026, 7, d, 12);
+  const TODAY = "2026-09-20";
   const list = [
     entry({ id: "p1", kind: "coaching", category: "Pace", body: "Own the bottom", occurredAt: sep(10) }),
     entry({ id: "p2", kind: "coaching", category: "Path", occurredAt: sep(12) }),
@@ -122,9 +125,12 @@ describe("buildCatalog", () => {
     // Adapter-produced imports carry no real author.
     entry({ id: "a1", kind: "consultation", isLegacy: true, origin: "mindbody", occurredAt: null, body: "Prefers mornings", authorId: "unknown", authorInitials: "SYS", authorName: "Client profile" }),
   ];
+  const threads = assembleThreads(list);
+  const build = (over: Partial<typeof EMPTY_FILTER> = {}) =>
+    buildCatalog(threads, { ...EMPTY_FILTER, ...over }, TODAY);
 
   it("counts all seven tiles, with the newest date", () => {
-    const cat = buildCatalog(list, EMPTY_FILTER);
+    const cat = build();
     expect(cat.tiles.map((t) => [t.id, t.count])).toEqual([
       ["coaching", 4],
       ["equipment", 0],
@@ -140,57 +146,96 @@ describe("buildCatalog", () => {
     expect(cat.matched).toBe(6);
   });
 
-  it("shelves the newest three of each non-empty category, in order", () => {
-    const cat = buildCatalog(list, EMPTY_FILTER);
-    expect(cat.shelves.map((s) => s.id)).toEqual(["coaching", "injury", "admin"]);
-    expect(cat.shelves[0].total).toBe(4);
-    expect(cat.shelves[0].items.map((e) => e.id)).toEqual(["p2", "p1", "p4"]);
+  it("sorts into the three zones, always in the same order", () => {
+    const cat = build();
+    expect(cat.zones.map((z) => z.id)).toEqual(["open", "standing", "resolved"]);
+    // Every one of these is a plain "always" note, so they are all standing
+    // context — known, not news.
+    expect(cat.zones[1].total).toBe(6);
+    expect(cat.zones[0].total).toBe(0);
     expect(cat.months).toEqual([]);
   });
 
-  it("isolates one category, month by month", () => {
-    const cat = buildCatalog(list, { ...EMPTY_FILTER, category: "coaching" });
-    expect(cat.shelves).toEqual([]);
-    expect(cat.months.map((m) => [m.key, m.items.map((e) => e.id)])).toEqual([
-      ["2026-09", ["p2", "p1"]],
-      ["2026-08", ["p4", "p3"]],
+  it("a note that shouts, or carries a live window, is open instead", () => {
+    const loud = assembleThreads([
+      entry({ id: "loud", importance: "critical", occurredAt: sep(1) }),
+      entry({ id: "quiet", importance: "standard", occurredAt: sep(1) }),
+      entry({ id: "dated", importance: "standard", occurredAt: sep(1), effectiveUntil: new Date(2026, 8, 25, 23) }),
     ]);
-    expect(cat.months[0].label).toContain("2026");
+    const cat = buildCatalog(loud, EMPTY_FILTER, TODAY);
+    expect(cat.zones[0].items.map((t) => t.id)).toEqual(["loud", "dated"]);
+    expect(cat.zones[1].items.map((t) => t.id)).toEqual(["quiet"]);
+  });
+
+  it("keeps Open and Standing whole and shows three of Resolved, with a way to the rest", () => {
+    const many = assembleThreads(
+      [1, 2, 3, 4, 5].map((n) => entry({ id: `r${n}`, occurredAt: sep(n), resolvedAt: sep(n + 1) })),
+    );
+    const cat = buildCatalog(many, EMPTY_FILTER, TODAY);
+    const resolved = cat.zones[2];
+    expect(resolved.total).toBe(5);
+    expect(resolved.items).toHaveLength(3);
+    expect(resolved.collapsed).toBe(true);
+
+    const all = buildCatalog(many, { ...EMPTY_FILTER, zone: "resolved" }, TODAY);
+    expect(all.zones[2].items).toHaveLength(5);
+    expect(all.zones[2].collapsed).toBe(false);
+    // Expanded, it reads month by month.
+    expect(all.months.map((m) => m.key)).toEqual(["2026-09"]);
+  });
+
+  it("isolates one category and keeps the zones", () => {
+    const cat = build({ category: "coaching" });
     expect(cat.matched).toBe(4);
+    expect(cat.zones[1].items.map((t) => t.id)).toEqual(["p2", "p1", "p4", "p3"]);
     // Tiles still count every category, so a coach can hop across.
     expect(cat.tiles.find((t) => t.id === "injury")!.count).toBe(1);
   });
 
-  it("puts undated notes last", () => {
-    const cat = buildCatalog(list, { ...EMPTY_FILTER, category: "admin" });
-    expect(cat.months).toEqual([{ key: "undated", label: "Undated", items: [list[5]] }]);
+  it("puts undated notes last when a zone is opened out", () => {
+    const cat = build({ category: "admin", zone: "standing" });
+    expect(cat.months.map((m) => m.key)).toEqual(["undated"]);
     expect(monthKeyOf(null)).toBe("undated");
   });
 
   it("searches across every category, including the category name", () => {
-    const knee = buildCatalog(list, { ...EMPTY_FILTER, search: "KNEE" });
+    const knee = build({ search: "KNEE" });
     expect(knee.matched).toBe(1);
-    expect(knee.shelves.map((s) => s.id)).toEqual(["injury"]);
-    const byName = buildCatalog(list, { ...EMPTY_FILTER, search: "injur" });
-    expect(byName.matched).toBe(1);
+    expect(knee.zones[1].items.map((t) => t.id)).toEqual(["i1"]);
+    expect(build({ search: "injur" }).matched).toBe(1);
     expect(matchesSearch(list[0], "pace")).toBe(true);
     expect(matchesSearch(list[5], "mornings")).toBe(true);
   });
 
-  it("filters by coach", () => {
-    const sam = buildCatalog(list, { ...EMPTY_FILTER, coachId: "t2" });
+  it("finds a thread by what one of its UPDATES says, not only the note", () => {
+    const shoulder = assembleThreads([
+      entry({ id: "s1", kind: "injury", body: "No overhead", occurredAt: sep(1) }),
+      entry({ id: "s2", threadId: "s1", body: "MRI on the 31st", occurredAt: sep(8) }),
+    ]);
+    expect(threadMatchesSearch(shoulder[0], "MRI")).toBe(true);
+    expect(buildCatalog(shoulder, { ...EMPTY_FILTER, search: "MRI" }, TODAY).matched).toBe(1);
+  });
+
+  it("filters by coach — anyone with a hand in the thread, not only whoever opened it", () => {
+    const sam = build({ coachId: "t2" });
     expect(sam.matched).toBe(1);
     expect(sam.tiles[0].count).toBe(1);
     expect(catalogCoaches(list).map((c) => [c.id, c.count])).toEqual([
       ["t1", 4],
       ["t2", 1],
     ]);
+
+    const helped = assembleThreads([
+      entry({ id: "h1", authorId: "t1", occurredAt: sep(1) }),
+      entry({ id: "h2", threadId: "h1", authorId: "t2", occurredAt: sep(5) }),
+    ]);
+    expect(buildCatalog(helped, { ...EMPTY_FILTER, coachId: "t2" }, TODAY).matched).toBe(1);
   });
 
   it("does not reorder or mutate what it was given", () => {
-    const before = list.map((e) => e.id);
-    buildCatalog(list, EMPTY_FILTER);
-    expect(list.map((e) => e.id)).toEqual(before);
+    const before = threads.map((t) => t.id);
+    build();
+    expect(threads.map((t) => t.id)).toEqual(before);
   });
 });
 

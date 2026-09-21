@@ -214,7 +214,7 @@ function NotesArea({ onOpenFord }: { onOpenFord?: () => void }) {
 }
 
 describe("the Notes catalog mounts", () => {
-  it("draws critical & pinned, seven tiles, and a shelf per category", async () => {
+  it("draws critical & pinned, seven tiles, and the three zones", async () => {
     const host = await mount(<NotesArea />);
     const catalog = host.querySelector('[data-testid="notes-catalog"]')!;
     expect(catalog).toBeTruthy();
@@ -235,43 +235,46 @@ describe("the Notes catalog mounts", () => {
     expect(host.querySelector('[data-testid="tile-admin"] .nc-tile__count')!.textContent).toBe("2");
     expect(host.querySelector('[data-testid="tile-equipment"]')!.textContent).toContain("None yet");
 
-    const coaching = host.querySelector('[data-testid="shelf-coaching"]')!;
-    expect(coaching.querySelectorAll("article")).toHaveLength(3);
-    expect(buttonByText(coaching, "See all 4")).toBeTruthy();
-    expect(host.querySelector('[data-testid="shelf-equipment"]')).toBeNull();
+    // The zones, not the categories, are the structure now (Notes round).
+    // Everything here is a plain "always" note except the critical one, which
+    // shouts and therefore waits to be closed.
+    const open = host.querySelector('[data-testid="zone-open"]')!;
+    expect(open.querySelectorAll("article")).toHaveLength(1);
+    expect(open.textContent).toContain("Check blood pressure");
+    expect(host.querySelector('[data-testid="zone-standing"]')!.querySelectorAll("article")).toHaveLength(6);
+    // Nothing is resolved, so that zone is not drawn at all.
+    expect(host.querySelector('[data-testid="zone-resolved"]')).toBeNull();
     // Only one coach has written here: no coach filter.
     expect(host.querySelector('[aria-label="Filter by coach"]')).toBeNull();
   });
 
-  it("isolates a category with one tap, month by month, and clears with a second", async () => {
+  it("isolates a category with one tap and keeps the zones, and clears with a second", async () => {
     const host = await mount(<NotesArea />);
     const tile = host.querySelector('[data-testid="tile-coaching"]')!;
     await click(tile);
     expect(tile.getAttribute("aria-pressed")).toBe("true");
-    const months = host.querySelector('[data-testid="notes-months"]')!;
-    expect(months.querySelectorAll("article")).toHaveLength(4);
-    expect(months.querySelectorAll(".nc-shelf")).toHaveLength(2);
-    expect(host.querySelector('[data-testid="notes-shelves"]')).toBeNull();
+    // A category narrows what is shown; it does not change how it is shown.
+    // One way of thinking, whatever is being looked at.
+    const zones = host.querySelector('[data-testid="notes-zones"]')!;
+    expect(zones.querySelectorAll("article")).toHaveLength(4);
+    expect(zones.querySelectorAll(".nc-shelf")).toHaveLength(1);
 
     await click(tile);
     expect(tile.getAttribute("aria-pressed")).toBe("false");
-    expect(host.querySelector('[data-testid="notes-shelves"]')).toBeTruthy();
-
-    // "See all" does the same as the tile.
-    await click(buttonByText(host.querySelector('[data-testid="shelf-coaching"]')!, "See all 4"));
-    expect(host.querySelector('[data-testid="tile-coaching"]')!.getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelectorAll('[data-testid="notes-zones"] article')).toHaveLength(7);
   });
 
   it("searches across every category", async () => {
     const host = await mount(<NotesArea />);
     await typeInto(host.querySelector('input[type="search"]'), "knee");
-    const shelves = host.querySelector('[data-testid="notes-shelves"]')!;
-    expect(Array.from(shelves.querySelectorAll(".nc-shelf")).map((s) => s.getAttribute("data-testid"))).toEqual([
-      "shelf-injury",
+    const zones = host.querySelector('[data-testid="notes-zones"]')!;
+    expect(Array.from(zones.querySelectorAll(".nc-shelf")).map((s) => s.getAttribute("data-testid"))).toEqual([
+      "zone-standing",
     ]);
+    expect(zones.querySelectorAll("article")).toHaveLength(1);
     expect(host.querySelector('[data-testid="tile-coaching"] .nc-tile__count')!.textContent).toBe("0");
     await click(buttonByText(host, "Show everything"));
-    expect(host.querySelectorAll('[data-testid="notes-shelves"] .nc-shelf').length).toBeGreaterThan(1);
+    expect(host.querySelectorAll('[data-testid="notes-zones"] article').length).toBeGreaterThan(1);
   });
 
   it("writes a note with the category chosen first", async () => {

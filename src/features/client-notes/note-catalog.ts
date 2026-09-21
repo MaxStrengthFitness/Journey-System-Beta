@@ -44,6 +44,12 @@ import {
   type JournalKind,
   type JournalOrigin,
 } from "../../types/journal";
+import {
+  THREAD_ZONES,
+  threadsByZone,
+  type NoteThread,
+  type ThreadZone,
+} from "./threads";
 
 export type NoteCategory =
   | "coaching"
@@ -242,13 +248,33 @@ export function noteCardLabel(entry: Pick<JournalEntry, "kind" | "category" | "o
 /* THE CATALOG                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * THE CATALOG IS A CATALOG OF THREADS (Notes round, Sep 2026).
+ *
+ * It used to be shelves: one per category, newest three on each. AJ's
+ * complaint was that Notes had inherited the Recent Journey grid — right for
+ * a record you SURVEY, wrong for a place you go LOOKING IN, where everything
+ * being equally quiet means you read all of it to remember any of it.
+ *
+ * So the structure is now the three zones (`threads.ts`), which come from
+ * the timing a trainer already picked rather than a second status anyone
+ * maintains: Open first, then Standing context, then Resolved tucked away.
+ * The seven categories stay, as a filter across the zones — a note is still
+ * filed under exactly one of them, and the tiles still name all seven.
+ *
+ * Months appear in one place only: inside an expanded Resolved zone, where
+ * chronology is how you find a thread from last winter.
+ */
+
 export interface CatalogFilter {
   category: NoteCategory | null;
   coachId: string | null;
   search: string;
+  /** Expanded zone. Only Resolved is ever collapsed, so only it is ever set. */
+  zone: ThreadZone | null;
 }
 
-export const EMPTY_FILTER: CatalogFilter = { category: null, coachId: null, search: "" };
+export const EMPTY_FILTER: CatalogFilter = { category: null, coachId: null, search: "", zone: null };
 
 export interface CatalogTile {
   id: NoteCategory;
@@ -256,34 +282,42 @@ export interface CatalogTile {
   newest: Date | null;
 }
 
-export interface CatalogShelf {
-  id: NoteCategory;
+export interface CatalogZone {
+  id: ThreadZone;
+  /** Threads in this zone under the current filters. */
   total: number;
-  /** The newest `shelfSize`, newest first. */
-  items: JournalEntry[];
+  /** What to draw — every one, unless the zone is collapsed. */
+  items: NoteThread[];
+  /** True when `items` is short of `total`. */
+  collapsed: boolean;
 }
 
 export interface CatalogMonth {
   /** "2026-09", or "undated". */
   key: string;
   label: string;
-  items: JournalEntry[];
+  items: NoteThread[];
 }
 
 export interface Catalog {
   /** Always all seven, in order, counted under the coach + search filters. */
   tiles: CatalogTile[];
-  /** No category chosen: one shelf per non-empty category, in order. */
-  shelves: CatalogShelf[];
-  /** A category chosen: that category, month by month, newest first. */
+  /** Always all three, in order: Open · Standing context · Resolved. */
+  zones: CatalogZone[];
+  /** Month by month, newest first. Only when a zone has been expanded. */
   months: CatalogMonth[];
-  /** Notes matching every filter. */
+  /** Threads matching every filter. */
   matched: number;
-  /** Notes in the catalog at all. */
+  /** Threads in the catalog at all. */
   total: number;
 }
 
-export const SHELF_SIZE = 3;
+/**
+ * How many Resolved threads are shown before "See all". Open and Standing
+ * context are never cut: a live thread you cannot see is the one failure
+ * this screen exists to prevent.
+ */
+export const RESOLVED_PREVIEW = 3;
 
 const timeOf = (e: JournalEntry) => toDate(e.occurredAt)?.getTime() ?? 0;
 
@@ -306,6 +340,15 @@ export function matchesSearch(entry: JournalEntry, needle: string): boolean {
   return hay.includes(q);
 }
 
+/**
+ * A thread matches when ANY of its entries does — searching "MRI" has to
+ * find the shoulder thread whose third update is the one that says MRI.
+ */
+export function threadMatchesSearch(thread: NoteThread, needle: string): boolean {
+  if (!needle.trim()) return true;
+  return thread.entries.some((e) => matchesSearch(e, needle));
+}
+
 export function monthKeyOf(date: Date | null): string {
   if (!date) return "undated";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -317,64 +360,72 @@ export function monthLabel(key: string): string {
   return new Date(y, m - 1, 1, 12).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
+/** The category a thread is filed under: its root's. An update never re-files it. */
+export function threadCategoryOf(thread: NoteThread): NoteCategory {
+  return noteCategoryOf(thread.root);
+}
+
 /**
  * Build the catalog in one pass over what is already loaded. The input is
- * never mutated; a note appears in exactly one category.
+ * never mutated; a thread appears in exactly one category and one zone.
  */
 export function buildCatalog(
-  entries: JournalEntry[],
+  threads: readonly NoteThread[],
   filter: CatalogFilter,
-  shelfSize: number = SHELF_SIZE,
+  today: string,
+  tz?: string,
 ): Catalog {
-  const sorted = entries.slice().sort((a, b) => timeOf(b) - timeOf(a));
-
-  const byCategory = new Map<NoteCategory, JournalEntry[]>();
+  const byCategory = new Map<NoteCategory, NoteThread[]>();
   for (const c of NOTE_CATEGORIES) byCategory.set(c.id, []);
 
-  let matched = 0;
-  for (const e of sorted) {
-    if (filter.coachId && e.authorId !== filter.coachId) continue;
-    if (!matchesSearch(e, filter.search)) continue;
-    const cat = noteCategoryOf(e);
-    byCategory.get(cat)!.push(e);
-    if (!filter.category || filter.category === cat) matched += 1;
+  const kept: NoteThread[] = [];
+  for (const t of threads) {
+    // The coach filter asks who has a hand in the thread, not only who
+    // opened it — a trainer looking for their own notes wants the ones they
+    // added to as well.
+    if (filter.coachId && !t.entries.some((e) => e.authorId === filter.coachId)) continue;
+    if (!threadMatchesSearch(t, filter.search)) continue;
+    const cat = threadCategoryOf(t);
+    byCategory.get(cat)!.push(t);
+    if (!filter.category || filter.category === cat) kept.push(t);
   }
 
   const tiles: CatalogTile[] = NOTE_CATEGORIES.map((c) => {
-    const list = byCategory.get(c.id)!;
-    return { id: c.id, count: list.length, newest: list.length ? toDate(list[0].occurredAt) : null };
+    const list = byCategory
+      .get(c.id)!
+      .slice()
+      .sort((a, b) => timeOf(b.root) - timeOf(a.root));
+    return { id: c.id, count: list.length, newest: list.length ? toDate(list[0].root.occurredAt) : null };
   });
 
-  const shelves: CatalogShelf[] = filter.category
-    ? []
-    : NOTE_CATEGORIES.map((c) => byCategory.get(c.id)!)
-        .map((list, i) => ({
-          id: NOTE_CATEGORIES[i].id,
-          total: list.length,
-          items: list.slice(0, shelfSize),
-        }))
-        .filter((s) => s.total > 0);
+  const grouped = threadsByZone(kept, today, tz);
+  const zones: CatalogZone[] = THREAD_ZONES.map((id) => {
+    const list = grouped[id];
+    const collapse = id === "resolved" && filter.zone !== "resolved" && list.length > RESOLVED_PREVIEW;
+    return {
+      id,
+      total: list.length,
+      items: collapse ? list.slice(0, RESOLVED_PREVIEW) : list,
+      collapsed: collapse,
+    };
+  });
 
   const months: CatalogMonth[] = [];
-  if (filter.category) {
-    for (const e of byCategory.get(filter.category)!) {
-      const key = monthKeyOf(toDate(e.occurredAt));
-      const last = months[months.length - 1];
-      if (last && last.key === key) last.items.push(e);
-      else months.push({ key, label: monthLabel(key), items: [e] });
-    }
-    // Sorted newest first, undated last — so "undated" can only be the tail,
-    // but merge any stray duplicate key defensively.
+  if (filter.zone) {
+    const list = grouped[filter.zone]
+      .slice()
+      .sort((a, b) => timeOf(b.root) - timeOf(a.root));
     const merged = new Map<string, CatalogMonth>();
-    for (const m of months) {
-      const cur = merged.get(m.key);
-      if (cur) cur.items.push(...m.items);
-      else merged.set(m.key, m);
+    for (const t of list) {
+      const key = monthKeyOf(toDate(t.root.occurredAt));
+      const cur = merged.get(key);
+      if (cur) cur.items.push(t);
+      else merged.set(key, { key, label: monthLabel(key), items: [t] });
     }
-    months.splice(0, months.length, ...merged.values());
+    months.push(...merged.values());
   }
 
-  return { tiles, shelves, months, matched, total: entries.length };
+  return { tiles, zones, months, matched: kept.length, total: threads.length };
 }
 
 /** Coaches who have written something here, most notes first. */

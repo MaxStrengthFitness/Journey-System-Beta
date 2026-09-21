@@ -107,7 +107,7 @@ export function ClientJournalTab({
     trainers,
     enabled: !hasQuotaError && !journal,
   });
-  const { entries, focuses, criticalEntries, isLoading, needsIndex, capped } =
+  const { entries, threads, focuses, criticalEntries, isLoading, needsIndex, capped } =
     journal ?? ownJournal;
 
   /** Composed into a spine? Then the section shell already printed a heading. */
@@ -349,6 +349,8 @@ export function ClientJournalTab({
           />
           <NotesCatalog
             entries={entries}
+            threads={threads}
+            author={author}
             criticalEntries={criticalEntries}
             machines={machines}
             isLoading={isLoading}

@@ -16,18 +16,30 @@
  *                       place (a segment is found by position on an iPad),
  *                       each with its count and newest date. One tap isolates
  *                       a category; a second tap clears it.
- *   SHELVES             no category chosen: each category's newest three,
- *                       with "See all N".
- *   MONTHS              a category chosen: all of it, month by month.
+ *   ZONES               the three zones, in this order and always in it:
+ *                       OPEN (live — things you could ask about today),
+ *                       STANDING CONTEXT (quiet but true), RESOLVED (closed
+ *                       or run out, tucked away but findable). Open and
+ *                       Standing are never cut short; Resolved shows three
+ *                       and "See all N".
+ *   MONTHS              inside an expanded Resolved zone only, where
+ *                       chronology is how you find something from last
+ *                       winter.
  *
- * Everything is in memory over the entries useClientJournal already loaded:
+ * THE ZONES REPLACED THE SHELVES (Notes round, Sep 2026). Notes had
+ * inherited the Recent Journey grid, which is right for a record you SURVEY
+ * and wrong for a place you go LOOKING IN — everything equally quiet, so you
+ * read all of it to remember any of it. The zone a thread sits in is not a
+ * status anybody sets: it falls out of the timing already chosen in the
+ * composer. See `threads.ts`.
+ *
+ * Everything is in memory over what useClientJournal already loaded:
  * switching a category, searching or filtering costs no read.
  */
 import { useMemo, useState } from "react";
 import { BookOpen, Heart, Search, X } from "lucide-react";
 import type { Machine } from "../../types";
 import type { JournalEntry } from "../../types/journal";
-import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { LoadingArea } from "../../components/LoadingMark";
 import {
@@ -41,6 +53,10 @@ import {
   type CatalogFilter,
   type NoteCategory,
 } from "./note-catalog";
+import { THREAD_ZONE_META, assembleThreads, type NoteThread } from "./threads";
+import { NoteThreadCard } from "./NoteThreadCard";
+import type { JournalAuthor } from "../../hooks/useClientJournal";
+import { studioDateKey } from "../../lib/studio-time";
 import { NoteCategoryIcon, categoryDotClass } from "./NoteCategoryChips";
 import { NoteSweep } from "./NoteSweep";
 import { discardUnfiledEntry, fileUnfiledEntry } from "./file-unfiled";
@@ -48,8 +64,15 @@ import "./notes.css";
 
 export interface NotesCatalogProps {
   entries: JournalEntry[];
+  /**
+   * The threads useClientJournal assembled. Left out, the catalog builds
+   * one-entry threads from `entries` — correct, just without the spines.
+   */
+  threads?: NoteThread[];
   criticalEntries: JournalEntry[];
   machines: Machine[];
+  /** Who is writing. Null makes every thread read-only. */
+  author?: JournalAuthor | null;
   isLoading?: boolean;
   onArchive?: (entry: JournalEntry) => void;
   onResolve?: (entry: JournalEntry, resolved: boolean) => void;
@@ -64,8 +87,10 @@ const fmtShort = (d: Date | null) =>
 
 export function NotesCatalog({
   entries,
+  threads,
   criticalEntries,
   machines,
+  author = null,
   isLoading = false,
   onArchive,
   onResolve,
@@ -74,24 +99,29 @@ export function NotesCatalog({
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
   // Fields the record shows in their own sections are not repeated here, and
-  // an unfiled note sits in the tray above the catalog, not on a shelf too.
+  // an unfiled note sits in the tray above the catalog, not in a zone too.
   const { unfiled, filed } = useMemo(() => splitUnfiled(withoutRecordFields(entries)), [entries]);
-  const listed = filed;
-  const catalog = useMemo(() => buildCatalog(listed, filter), [listed, filter]);
-  const coaches = useMemo(() => catalogCoaches(listed), [listed]);
+  const listed = useMemo(() => {
+    const given = threads ? threads.filter((t) => filed.some((e) => e.id === t.id)) : null;
+    return given ?? assembleThreads(filed);
+  }, [threads, filed]);
+  const today = studioDateKey(new Date()) ?? "";
+  const catalog = useMemo(() => buildCatalog(listed, filter, today), [listed, filter, today]);
+  const coaches = useMemo(() => catalogCoaches(filed), [filed]);
 
   const filtered = !!filter.category || !!filter.coachId || !!filter.search.trim();
   const clear = () => setFilter(EMPTY_FILTER);
   const pick = (id: NoteCategory) =>
-    setFilter((f) => ({ ...f, category: f.category === id ? null : id }));
+    setFilter((f) => ({ ...f, category: f.category === id ? null : id, zone: null }));
 
-  const card = (e: JournalEntry) => (
-    <JournalEntryCard
-      key={e.id}
-      entry={e}
+  const card = (t: NoteThread) => (
+    <NoteThreadCard
+      key={t.id}
+      thread={t}
       machines={machines}
-      onArchive={e.isLegacy ? undefined : onArchive}
-      onResolve={e.isLegacy ? undefined : onResolve}
+      author={author}
+      onArchive={onArchive}
+      onResolve={onResolve}
     />
   );
 
@@ -221,68 +251,75 @@ export function NotesCatalog({
             session notes from elsewhere in the app land here on their own.
           </p>
         </div>
-      ) : filter.category ? (
-        <div className="flex flex-col gap-4" data-testid="notes-months">
-          {filter.category === "ford" && fordHint}
-          {catalog.months.length === 0 ? (
-            <div className="nc-empty">
-              <p className="nc-kicker">No {activeMeta!.shelf.toLowerCase()} match</p>
-              <p className="mt-1 text-[12px]">{activeMeta!.blurb}</p>
-            </div>
-          ) : (
-            catalog.months.map((m) => (
-              <section key={m.key} className="nc-shelf">
-                <div className="nc-shelf__head">
-                  <h4 className="nc-kicker">{m.label}</h4>
-                  <span className="nc-muted text-[11px]">{m.items.length}</span>
-                </div>
-                {m.items.map(card)}
-              </section>
-            ))
-          )}
-        </div>
-      ) : catalog.shelves.length === 0 ? (
+      ) : catalog.matched === 0 ? (
         <div className="nc-empty">
           <p className="nc-kicker">No notes match</p>
+          {activeMeta && <p className="mt-1 text-[12px]">{activeMeta.blurb}</p>}
           <button type="button" className="nc-btn mt-3" onClick={clear}>
-            Clear the search
+            Show everything
           </button>
         </div>
+      ) : filter.zone ? (
+        /* An expanded zone, month by month — how you find a thread from
+           last winter. Only Resolved is ever collapsed, so only it gets here. */
+        <div className="flex flex-col gap-4" data-testid="notes-months">
+          <div className="nc-filterbar" role="status">
+            <span className="text-[12.5px]">
+              {THREAD_ZONE_META[filter.zone].label} · every one
+            </span>
+            <button
+              type="button"
+              className="nc-btn nc-btn--quiet"
+              onClick={() => setFilter((f) => ({ ...f, zone: null }))}
+            >
+              Back to the zones
+            </button>
+          </div>
+          {catalog.months.map((m) => (
+            <section key={m.key} className="nc-shelf">
+              <div className="nc-shelf__head">
+                <h4 className="nc-kicker">{m.label}</h4>
+                <span className="nc-muted text-[11px]">{m.items.length}</span>
+              </div>
+              {m.items.map(card)}
+            </section>
+          ))}
+        </div>
       ) : (
-        <div className="flex flex-col gap-5" data-testid="notes-shelves">
-          {catalog.shelves.map((s) => {
-            const meta = NOTE_CATEGORY_META[s.id];
+        <div className="flex flex-col gap-5" data-testid="notes-zones">
+          {catalog.zones.map((z) => {
+            const meta = THREAD_ZONE_META[z.id];
+            if (z.total === 0) return null;
             return (
-              <section key={s.id} className="nc-shelf" data-testid={`shelf-${s.id}`}>
+              <section key={z.id} className="nc-shelf" data-testid={`zone-${z.id}`}>
                 <div className="nc-shelf__head">
                   <h4 className="nc-shelf__title">
-                    <span className={`nc-dot ${categoryDotClass(s.id)}`} aria-hidden />
-                    <NoteCategoryIcon id={s.id} className="h-4 w-4" />
-                    {meta.shelf}
-                    <span className="nc-muted text-[12px] font-semibold">· {s.total}</span>
+                    {meta.label}
+                    <span className="nc-muted text-[12px] font-semibold">· {z.total}</span>
                   </h4>
-                  {s.total > s.items.length && (
-                    <button type="button" className="nc-btn nc-btn--quiet" onClick={() => pick(s.id)}>
-                      See all {s.total}
+                  {z.collapsed && (
+                    <button
+                      type="button"
+                      className="nc-btn nc-btn--quiet"
+                      onClick={() => setFilter((f) => ({ ...f, zone: z.id }))}
+                    >
+                      See all {z.total}
                     </button>
                   )}
                 </div>
-                {s.id === "admin" && (
-                  <p className="nc-muted text-[11.5px]">{meta.blurb}</p>
-                )}
-                {s.items.map(card)}
-                {s.id === "ford" && fordHint}
+                <p className="nc-muted text-[11.5px]">{meta.blurb}</p>
+                {z.items.map(card)}
               </section>
             );
           })}
-          {/* Empty categories are not shelved, but a coach should never have
-              to wonder whether a category exists: the tiles above name all
-              seven, and this line says what an empty one means. */}
-          {catalog.shelves.length < NOTE_CATEGORIES.length && !filtered && (
-            <p className="nc-muted text-[11.5px]">
-              Categories with nothing in them yet read “None yet” above.
-            </p>
-          )}
+          {/* A zone with nothing in it is not drawn, but a coach should never
+              have to wonder whether one exists: this says what the order is
+              and that an empty zone means exactly nothing is in it. */}
+          <p className="nc-muted text-[11.5px]">
+            Open first, then what is simply true, then what is done. A zone with nothing in it is
+            not shown.
+          </p>
+          {fordHint}
         </div>
       )}
     </div>
