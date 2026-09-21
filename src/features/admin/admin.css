@@ -565,8 +565,14 @@
   color: var(--adm-surface);
 }
 
+/* The small button is still a TAP TARGET. It was 34px, under the app's own
+   floor ("nothing tappable under 40px", CLAUDE.md) — and it is not a rare
+   control: it is the button on the catalog rows, the Overview's panels and
+   the attendance watch, all of them operated one-thumbed on an iPad while
+   the other hand holds it. Small here means the type and the padding, never
+   the target. */
 .adm-btn--sm {
-  min-height: 34px;
+  min-height: 40px;
   padding: 0 10px;
   font-size: 11px;
 }

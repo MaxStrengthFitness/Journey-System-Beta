@@ -35,12 +35,13 @@ import {
   collection,
   addDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { Client, Machine, Trainer } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { studioTodayKey } from "../lib/studio-time";
+import { createJournalEntry } from "../hooks/useClientJournal";
 
 interface ConsultationWizardProps {
   client: Client;
@@ -182,16 +183,48 @@ export function ConsultationWizard({
         createdAt: serverTimestamp(),
       });
 
-      // 5. Add setup note
-      await addDoc(collection(db, "sessionNotes"), {
-        sessionId: sessionRef.id,
-        clientId: client.id,
-        trainerId: authTrainer?.id || "",
-        trainerInitials: trainerInitials,
-        content: `Demo Consultation. Age: ${age}, Skill: ${skillLevel}. Goals: ${goals}`,
-        createdAt: serverTimestamp(),
-        studioId: client?.homeStudioId || "",
-      });
+      /* 5. The setup note, to the Journal.
+       *
+       * This was the last writer of the legacy `sessionNotes` collection —
+       * the floor round moved the other two in September and this one was
+       * missed. The Journal is the canonical home (`src/types/journal.ts`):
+       * `useClientJournal` adapts old sessionNotes documents for reading, so
+       * a note written there would still SHOW, which is exactly why nobody
+       * noticed. It would not thread, carry a mattering window, reach the
+       * briefing or be dismissible — everything built on notes since.
+       *
+       * The author is the AUTH UID, not `authTrainer.id`: the journalEntries
+       * rule pins `authorId` to the signed-in person and the two differ on
+       * older accounts (docs/KNOWN-TRAPS.md).
+       *
+       * It never blocks the consultation. A note that fails is reported and
+       * the client is still created — the same shape as the tracker's
+       * arrival note.
+       */
+      const consultationNote = `Consultation. Age: ${age}, Skill: ${skillLevel}. Goals: ${goals}`;
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        try {
+          await createJournalEntry(
+            client.id!,
+            client?.homeStudioId || activeStudioId || "",
+            { id: uid, initials: trainerInitials, fullName: trainerName || trainerInitials },
+            {
+              kind: "general",
+              category: null,
+              body: consultationNote,
+              importance: "standard",
+              machineId: null,
+              focusId: null,
+              sessionId: sessionRef.id,
+              origin: "pre_session",
+            },
+          );
+        } catch (err) {
+          console.error("[consultation] the setup note did not reach the Journal", err);
+          toastError("The consultation is saved, but the setup note did not. Add it from the Journal.");
+        }
+      }
 
       onComplete(client.id!);
     } catch (e) {
