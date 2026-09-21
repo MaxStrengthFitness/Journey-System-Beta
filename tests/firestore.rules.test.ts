@@ -2449,6 +2449,36 @@ describe("Firestore Security Rules", () => {
    * more — widening the demo studio must not have widened anything else.
    * Every "denies" below is a test that the blast radius is one studio.
    * ================================================================== */
+  describe("Note dismissals", () => {
+    // "No need to remind me" is one trainer saying what they already know.
+    // It is private by construction: a document per uid, and the rule is the
+    // only thing standing between that and a colleague reading it.
+    it("lets a trainer keep their own dismissals and nobody else's", async () => {
+      const mine = testEnv
+        .authenticatedContext("trainerA", { email: "trainera@test.com" })
+        .firestore();
+      const theirs = testEnv
+        .authenticatedContext("trainerB", { email: "trainerb@test.com" })
+        .firestore();
+
+      await assertSucceeds(
+        setDoc(doc(mine, "noteDismissals", "trainerA"), { threads: { thread1: serverTimestamp() } }),
+      );
+      await assertSucceeds(getDoc(doc(mine, "noteDismissals", "trainerA")));
+
+      // Nobody reads anybody else's, whatever their role.
+      await assertFails(getDoc(doc(theirs, "noteDismissals", "trainerA")));
+      await assertFails(
+        setDoc(doc(theirs, "noteDismissals", "trainerA"), { threads: {} }),
+      );
+    });
+
+    it("denies a signed-out reader entirely", async () => {
+      const anon = testEnv.unauthenticatedContext().firestore();
+      await assertFails(getDoc(doc(anon, "noteDismissals", "trainerA")));
+    });
+  });
+
   describe("Demo Mode", () => {
     const DEMO = "demo-studio";
 

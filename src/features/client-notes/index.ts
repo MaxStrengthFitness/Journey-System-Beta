@@ -12,3 +12,5 @@ export { fileUnfiledEntry, discardUnfiledEntry } from "./file-unfiled";
 export * from "./threads";
 export { addThreadUpdate, closeThread, reopenThread } from "./thread-write";
 export { NoteThreadCard } from "./NoteThreadCard";
+export * from "./dismissals";
+export { useNoteDismissals, dismissThread, restoreThread } from "./dismissal-store";

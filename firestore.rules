@@ -1745,6 +1745,21 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || isFranchiseOwner();
     }
 
+    // NOTE DISMISSALS — "no need to remind me", one document per trainer.
+    //
+    // Notes round, Sep 2026. A dismissal says what one trainer already knows
+    // about one note thread. It is PRIVATE: nobody sees who dismissed what,
+    // and there is nothing to gain by showing it. Rules apply to whole
+    // documents, so privacy here means a document of its own, keyed by the
+    // caller's own uid — which is also why the app must use the Auth uid and
+    // not `authTrainer.id`, the two differing on older accounts.
+    //
+    // Nothing else reads this collection. A dismissal never changes the note
+    // underneath it, so there is no role that needs to see another person's.
+    match /noteDismissals/{uid} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
     // FORD — Family, Occupation, Recreation, Dreams.
     //
     // One document per personal detail, living at clients/{clientId}/ford/{id}.

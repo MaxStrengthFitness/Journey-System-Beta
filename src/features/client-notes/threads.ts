@@ -91,6 +91,13 @@ export interface NoteThread {
   entries: JournalEntry[];
   /** The newest thing that happened: the last update, else the root itself. */
   lastActivityAt: Date | null;
+  /**
+   * The last time anything about the thread CHANGED — an update, or an edit
+   * to any of its entries. What a dismissal is measured against, because
+   * "any update brings it back for everyone" has to cover a note whose
+   * wording was corrected as well as one with something new hung off it.
+   */
+  lastTouchedAt: Date | null;
   /** Someone closed it. A thread whose window merely ran out is not this. */
   isResolved: boolean;
 }
@@ -149,12 +156,18 @@ export function assembleThreads(entries: readonly JournalEntry[]): NoteThread[] 
   return roots.map((root) => {
     const updates = (updatesByRoot.get(root.id) ?? []).slice().sort((a, b) => timeOf(a) - timeOf(b));
     const last = updates.length ? updates[updates.length - 1] : root;
+    const entries = [root, ...updates];
+    let touched = 0;
+    for (const e of entries) {
+      touched = Math.max(touched, toDate(e.updatedAt)?.getTime() ?? 0, toDate(e.occurredAt)?.getTime() ?? 0);
+    }
     return {
       id: root.id,
       root,
       updates,
-      entries: [root, ...updates],
+      entries,
       lastActivityAt: toDate(last.occurredAt),
+      lastTouchedAt: touched ? new Date(touched) : null,
       isResolved: Boolean(root.resolvedAt),
     };
   });
