@@ -96,6 +96,10 @@ import { FordBriefingCue } from "../ford/FordBriefingCue";
 import { useClientJournal } from "../../hooks/useClientJournal";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { CriticalStrip } from "../../components/journal/CriticalStrip";
+import { BriefingNoteFooter } from "./BriefingNoteFooter";
+import { briefingNotes } from "./briefing-notes";
+import { useNoteDismissals, dismissThread } from "../client-notes/dismissal-store";
+import type { NoteThread } from "../client-notes/threads";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
 import { safeToDate } from "../../lib/utils";
@@ -391,6 +395,28 @@ export function BriefingScreen({
      still matter — their "until" day, or three weeks. */
   const headsUpEntries = journal.headsUpEntries ?? [];
 
+  /* WHO IS READING THIS. The Auth uid, not authTrainer.id — the rules pin
+     both the FORD capture and a dismissal to it, and the two differ on older
+     accounts. */
+  const uid = auth.currentUser?.uid ?? authTrainer?.id ?? null;
+
+  /* The same selection as before, read out as THREADS and with this
+     trainer's dismissals applied (features/briefing/briefing-notes.ts).
+     `hidden` is what they chose not to see, counted so the screen can offer
+     it back: a briefing that withholds something with no way to find it is
+     the quiet failure this round is most afraid of. */
+  const dismissals = useNoteDismissals(uid);
+  const [showHushed, setShowHushed] = useState(false);
+  const notes = useMemo(
+    () => briefingNotes(journal.threads, criticalEntries, headsUpEntries, dismissals, showHushed),
+    [journal.threads, criticalEntries, headsUpEntries, dismissals, showHushed],
+  );
+  const hush = uid
+    ? (thread: NoteThread) => {
+        void dismissThread(uid, thread.id);
+      }
+    : undefined;
+
   const activeJournalFocuses = focuses.filter((f) => f.status === "active");
 
   /* Body regions the last session said still matter today ("keep the leg
@@ -406,8 +432,8 @@ export function BriefingScreen({
   );
   const beforeCount =
     clientFlags.length +
-    criticalEntries.length +
-    headsUpEntries.length +
+    notes.critical.length +
+    notes.headsUp.length +
     carried.length +
     markers.length +
     activeJournalFocuses.length;
@@ -417,9 +443,7 @@ export function BriefingScreen({
   const lastRunA = useMemo(() => lastRunOfRoutine(sessions, routines, "A"), [sessions, routines]);
   const lastRunB = useMemo(() => lastRunOfRoutine(sessions, routines, "B"), [sessions, routines]);
 
-  /* The FORD capture writes as the signed-in person (the Auth uid — the rules
-     pin authorId to it, and it differs from authTrainer.id on older accounts). */
-  const uid = auth.currentUser?.uid ?? authTrainer?.id ?? null;
+  /* The FORD capture writes as the signed-in person. So does a dismissal. */
   const fordAuthor = uid
     ? { id: uid, initials: (authTrainer?.initials || "TR").toUpperCase(), fullName: authTrainer?.fullName || "Coach" }
     : null;
@@ -555,34 +579,55 @@ export function BriefingScreen({
                   component built for "a small marker, tappable for more"; it
                   was on the Notes catalog and not on the screen that needed
                   it most. */}
-              {criticalEntries.length > 0 && (
+              {notes.critical.length > 0 && (
                 <div className="br__critical">
-                  <CriticalStrip entries={criticalEntries} machines={machines} title="Critical" />
+                  <CriticalStrip
+                    entries={notes.critical.map((t) => t.root)}
+                    machines={machines}
+                    title="Critical"
+                    footer={(e) => {
+                      const thread = notes.critical.find((t) => t.id === e.id);
+                      return thread ? <BriefingNoteFooter thread={thread} onDismiss={hush} /> : null;
+                    }}
+                  />
                 </div>
               )}
 
               {/* Heads ups: under the critical ones, and quieter. Reporting
                   round, Sep 2026. Three, then "N more". */}
-              {headsUpEntries.length > 0 && (
+              {notes.headsUp.length > 0 && (
                 <div className="br__headsup" data-testid="briefing-headsup">
                   <span className="br__label">Heads up</span>
-                  {(showAllHeadsUp ? headsUpEntries : headsUpEntries.slice(0, 3)).map((entry) => (
-                    <JournalEntryCard
-                      key={entry.id}
-                      entry={entry}
-                      machines={machines}
-                      dense
-                    />
+                  {(showAllHeadsUp ? notes.headsUp : notes.headsUp.slice(0, 3)).map((thread) => (
+                    <div key={thread.id}>
+                      <JournalEntryCard entry={thread.root} machines={machines} dense />
+                      <BriefingNoteFooter thread={thread} onDismiss={hush} />
+                    </div>
                   ))}
-                  {headsUpEntries.length > 3 && (
+                  {notes.headsUp.length > 3 && (
                     <button
                       type="button"
                       className="br__more"
                       onClick={() => setShowAllHeadsUp((v) => !v)}
                     >
-                      {showAllHeadsUp ? "Show fewer" : `${headsUpEntries.length - 3} more`}
+                      {showAllHeadsUp ? "Show fewer" : `${notes.headsUp.length - 3} more`}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* Nothing is hidden without a way back to it. A trainer's own
+                  dismissals, counted and one tap from being shown again. */}
+              {(notes.hidden > 0 || showHushed) && (
+                <div className="br__hidden-line" data-testid="briefing-hushed">
+                  <span>
+                    {showHushed
+                      ? "Showing what you said you already know."
+                      : `${notes.hidden} ${notes.hidden === 1 ? "note" : "notes"} you said you already know.`}
+                  </span>
+                  <button type="button" onClick={() => setShowHushed((v) => !v)}>
+                    {showHushed ? "Hide them again" : "Show them"}
+                  </button>
                 </div>
               )}
 

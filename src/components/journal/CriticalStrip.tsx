@@ -9,7 +9,7 @@
  * still inside its effective window — so the Journal and the briefing can
  * never disagree about what matters.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { JournalEntryCard } from "./JournalEntryCard";
@@ -22,11 +22,19 @@ export function CriticalStrip({
   entries,
   machines,
   title = "Before you start",
+  footer,
 }: {
   entries: JournalEntry[];
   machines: Machine[];
   /** The notes catalog calls it "Critical & pinned" (Sep 2026). */
   title?: string;
+  /**
+   * One line under each card. The briefing puts the thread's latest update
+   * and "no need to remind me" here (Notes round, Sep 2026); the Notes
+   * catalog passes nothing, because the thread card below it already says
+   * both.
+   */
+  footer?: (entry: JournalEntry) => ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (entries.length === 0) return null;
@@ -57,7 +65,10 @@ export function CriticalStrip({
 
       <div className="space-y-2">
         {shown.map((e) => (
-          <JournalEntryCard key={e.id} entry={e} machines={machines} dense />
+          <div key={e.id}>
+            <JournalEntryCard entry={e} machines={machines} dense />
+            {footer?.(e)}
+          </div>
         ))}
       </div>
 

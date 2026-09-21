@@ -23,6 +23,7 @@ vi.mock("../../lib/firestore-errors", () => ({
 }));
 
 const writes: { path: string; data: any }[] = [];
+const sets: { path: string; data: any }[] = [];
 
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
@@ -43,7 +44,9 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       return { id: `new-${writes.length}` };
     },
     updateDoc: async () => {},
-    setDoc: async () => {},
+    setDoc: async (ref: any, data: any) => {
+      sets.push({ path: ref.__path, data });
+    },
     serverTimestamp: () => ({ __server: true }),
   };
 });
@@ -61,6 +64,7 @@ vi.mock("../routine-builder", () => ({
 const journalMock = vi.hoisted(() => ({
   criticalEntries: [] as any[],
   headsUpEntries: [] as any[],
+  threads: undefined as any[] | undefined,
 }));
 vi.mock("../../hooks/useClientJournal", async (importOriginal) => {
   const real = await importOriginal<typeof import("../../hooks/useClientJournal")>();
@@ -71,6 +75,7 @@ vi.mock("../../hooks/useClientJournal", async (importOriginal) => {
       focuses: [],
       criticalEntries: journalMock.criticalEntries,
       headsUpEntries: journalMock.headsUpEntries,
+      threads: journalMock.threads,
       isLoading: false,
       needsIndex: false,
       capped: false,
@@ -82,6 +87,7 @@ import { BriefingScreen } from "./BriefingScreen";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Machine, Routine, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import { assembleThreads } from "../client-notes/threads";
 
 let mounted: { root: Root; host: HTMLElement }[] = [];
 
@@ -126,6 +132,8 @@ beforeEach(() => {
   writes.length = 0;
   journalMock.criticalEntries = [];
   journalMock.headsUpEntries = [];
+  journalMock.threads = undefined;
+  sets.length = 0;
 });
 
 afterEach(async () => {
@@ -316,6 +324,30 @@ describe("the pre-session briefing mounts", () => {
     // Critical is drawn first, heads up after.
     const critical = before.querySelector(".br__critical")!;
     expect(critical.compareDocumentPosition(headsUp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("reads a note out as its thread, and hushing one is a private write", async () => {
+    // The note says "no overhead"; what the trainer walking in has NOT read
+    // is the MRI. That is the whole reason the briefing shows threads.
+    const root = entry({ id: "cr", importance: "critical", body: "No overhead pressing" });
+    const update = {
+      ...entry({ id: "u1", importance: "standard", body: "MRI on the 31st" }),
+      threadId: "cr",
+      occurredAt: new Date("2026-09-10T16:00:00Z"),
+      updatedAt: new Date("2026-09-10T16:00:00Z"),
+    };
+    journalMock.criticalEntries = [root];
+    journalMock.threads = assembleThreads([root, update as JournalEntry]);
+
+    const host = await mount(<Screen last={null} />);
+    const foot = host.querySelector('[data-testid="notefoot-cr"]')!;
+    expect(foot.textContent).toContain("MRI on the 31st");
+    expect(foot.textContent).toContain("1 update");
+
+    await click(buttonByText(foot, "No need to remind me"));
+    // Per trainer and private: their own document, keyed by the Auth uid.
+    expect(sets.map((w) => w.path)).toEqual(["noteDismissals/uid-aj"]);
+    expect(Object.keys(sets[0].data.threads)).toEqual(["cr"]);
   });
 
   it("each routine button says when THAT routine last ran", async () => {
