@@ -378,18 +378,30 @@ the data files with esbuild's text loader, so that field comes back as the
   the helper that re-reads.** `let` is legal in a function body and not in an
   `allow` condition, which is why these are functions.
 
-- **Ordering is the other half of the budget fix - put the literal tests first (Sep 20, Demo Mode).**
-  Demo Mode added a clause to the `trainers` update rule that opened with
-  `isAnyAuthenticatedTrainer()` - an `exists()` - followed by the whole of
-  `isDemoTrainerPayload()`. That ran on EVERY trainer update, including a
-  trainer saving their own bio, and tipped the rule over the budget: the first
-  assertion of "lets a trainer edit their own profile" started failing with
-  PERMISSION_DENIED. Nothing about the clause was wrong; it was expensive and
-  it ran first. **`&&` short-circuits, so a clause that applies to a narrow
-  case must lead with the cheapest test that rules the case out** - here
-  `request.resource.data.get('isDemo', false) == true` and
-  `trainerId.matches('demo-trainer-.*')`, both free, before anything that
-  spends a read.
+- **The trainers UPDATE rule went over the budget (Sep 20, Demo Mode), and reordering did not save it.**
+  Demo Mode added a clause opening with `isAnyAuthenticatedTrainer()` - an
+  `exists()` - followed by the whole of `isDemoTrainerPayload()`, running on
+  EVERY trainer update including a trainer saving their own bio. The first
+  assertion of "lets a trainer edit their own profile" began failing with
+  PERMISSION_DENIED.
+
+  **The first attempt was to reorder that clause so its free literal tests led
+  and `&&` short-circuited out of it. The test still failed.** Worth knowing
+  why: the demo clause was never the expense. The expense was everything under
+  it - `isSuperAdmin()`, `isFranchiseOwner()`,
+  `isStudioOwnerOrHeadTrainer()`, `roleChangeAllowed(getRole())` and
+  `grantChangeAllowed(getRole())` each re-deriving `getRole()`, which reads the
+  trainer document twice on its document-backed path. Roughly ten expansions in
+  one condition. Demo Mode did not create that; it added the last straw.
+
+  **Ordering is a trim, not the cure. The cure is always resolve-once.** Fixed
+  with `trainerUpdateAllowed(trainerId, getRole(), callerTrainer())` - one
+  `getRole()`, one `callerTrainer()`, and pure map lookups below, with
+  `trainerLeads(r, t, studioId)` standing in for
+  `isStudioOwnerOrHeadTrainer()` (it mirrors that helper's DB branch exactly,
+  demo studio and grant included) and `grantChangeAllowed(r, t)` taking the
+  caller document instead of re-reading it. **When a rule is near the budget,
+  count the `getRole()` expansions before you touch anything else.**
 
 - **"Everybody may do X in the demo studio" is a door into every rule that calls the helper (Sep 20).**
   Demo Mode put `hasRunOfDemo(studioId)` at the top of

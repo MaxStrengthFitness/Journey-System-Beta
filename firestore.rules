@@ -865,8 +865,7 @@ service cloud.firestore {
           .concat(t.get('managedStudioIds', []));
     }
 
-    function grantChangeAllowed(r) {
-      let t = callerTrainer();
+    function grantChangeAllowed(r, t) {
       let before = resource.data.get('managedStudioIds', []).toSet();
       let after = request.resource.data.get('managedStudioIds', []).toSet();
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['managedStudioIds'])
@@ -913,6 +912,49 @@ service cloud.firestore {
     function writesForeignRoster(trainerId) {
       return request.resource.data.diff(resource.data).affectedKeys().hasAny(['kaizenRoster'])
         && !ownsTrainerDoc(trainerId);
+    }
+
+    /* THE TRAINER UPDATE RULE, RESOLVED ONCE (Sep 20 2026).
+     *
+     * This rule blew Firestore's 1000-expression budget, which surfaces as
+     * PERMISSION_DENIED and so reads like a rule saying no: a trainer could
+     * not edit their own bio. The cause is the documented one. isSuperAdmin(),
+     * isFranchiseOwner(), isStudioOwnerOrHeadTrainer(), roleChangeAllowed()
+     * and grantChangeAllowed() each re-derived getRole(), and getRole() reads
+     * the trainer document TWICE on its document-backed path -- about ten
+     * expansions of it in one condition. Demo Mode's extra clause, and its
+     * widening of isStudioOwnerOrHeadTrainerOnly, tipped it over.
+     *
+     * The fix is this file's house pattern: the caller passes getRole() and
+     * callerTrainer() in ONCE, and everything below is a pure map lookup
+     * against the document already read. trainerLeads() is the sanctioned
+     * stand-in for isStudioOwnerOrHeadTrainer() -- it mirrors that helper's
+     * DB branch exactly, including the demo studio and the grant. `let` is
+     * legal in a function body and not in an `allow` condition, which is why
+     * this is a function. See docs/KNOWN-TRAPS.md.
+     */
+    function trainerUpdateAllowed(trainerId, r, t) {
+      let derived = writesDerivedTrainerFields();
+      return
+        // Demo Mode: re-seeding rewrites the three demo trainers whole. Both
+        // the stored document and the incoming one have to be demo documents,
+        // so a real trainer can never be turned into one, nor the reverse.
+        // The free literal tests lead, so an ordinary profile edit abandons
+        // this clause on its first expression.
+        (request.resource.data.get('isDemo', false) == true &&
+         trainerId.matches('demo-trainer-.*') &&
+         resource.data.get('isDemo', false) == true &&
+         t != null &&
+         isDemoTrainerPayload(trainerId, request.resource.data)) ||
+        (roleIsSuper(r) && !derived) ||
+        ( !derived &&
+          !writesForeignRoster(trainerId) &&
+          ( roleIsFranchise(r) ||
+            trainerLeads(r, t, resource.data.get('primaryHomeStudioId', null)) ||
+            (ownsTrainerDoc(trainerId) && !writesAccessFields())
+          ) &&
+          roleChangeAllowed(r) && grantChangeAllowed(r, t)
+        );
     }
 
     /* PLANNER NOTES (Learning + Planner round, Sep 2026). The limits match
@@ -1178,34 +1220,8 @@ service cloud.firestore {
                      // by isDemoTrainerPayload -- see the demo helpers.
                      (isAnyAuthenticatedTrainer() &&
                       isDemoTrainerPayload(trainerId, request.resource.data)));
-      allow update: if
-                    // Demo Mode: re-seeding rewrites these three whole. Both
-                    // the stored document and the incoming one have to be
-                    // demo documents, so a real trainer can never be turned
-                    // into one, nor the reverse.
-                    //
-                    // ORDER MATTERS (Sep 20 2026). The three literal tests run
-                    // before isAnyAuthenticatedTrainer(), which spends an
-                    // exists(). Evaluating that and the whole payload check on
-                    // EVERY trainer update pushed this rule past Firestore's
-                    // 1000-expression budget, and the answer when it runs out
-                    // is DENY -- a trainer could not edit their own bio. An
-                    // ordinary profile edit now abandons this clause on its
-                    // first expression. See docs/KNOWN-TRAPS.md.
-                    (request.resource.data.get('isDemo', false) == true &&
-                     trainerId.matches('demo-trainer-.*') &&
-                     resource.data.get('isDemo', false) == true &&
-                     isAnyAuthenticatedTrainer() &&
-                     isDemoTrainerPayload(trainerId, request.resource.data)) ||
-                    (isSuperAdmin() && !writesDerivedTrainerFields()) || 
-                    ( !writesDerivedTrainerFields() &&
-                      !writesForeignRoster(trainerId) &&
-                      (isFranchiseOwner() || 
-                      (resource.data.primaryHomeStudioId != null && isStudioOwnerOrHeadTrainer(resource.data.primaryHomeStudioId)) || 
-                      (ownsTrainerDoc(trainerId) && !writesAccessFields()))
-                      &&
-                      roleChangeAllowed(getRole()) && grantChangeAllowed(getRole())
-                    );
+      allow update: if isAuthenticated() &&
+                       trainerUpdateAllowed(trainerId, getRole(), callerTrainer());
       allow delete: if isSuperAdmin();
 
       match /secrets/account {
