@@ -438,12 +438,48 @@ it needs a permission that may be refused — but a RENAME works: `mkdir -p
 .git/stale-locks && mv .git/HEAD.lock .git/stale-locks/HEAD.lock.$(date +%s)`
 after each commit. Use `git --no-optional-locks` for read-only commands.
 
+## Git on the connected-folder mount - it cannot replace a file
+
+Learned the hard way, Sep 20 2026, during the note threads round.
+
+**The mount cannot delete, and git replaces a file by unlinking it first.** So
+anything that rewrites the working tree - `git reset --hard`, `git checkout
+<branch>` across a real difference, `git stash pop` - half-succeeds: it rewrites
+the files it can create fresh and fails on the rest with `error: unable to
+unlink old '<path>'`, leaving the tree in a state that is neither commit. A
+`git commit -a` or `git add -A` on top of that commits the mixture.
+
+What happened: something checked `master` out mid-round (the reflog said
+`checkout: moving from note-threads to master`, and nothing in the session did
+it - assume an editor, a tool, or another window). The checkout partly reverted
+the tree, and the next `git add -A src` committed that mixture onto **master**,
+not the feature branch.
+
+The rules that come out of it:
+
+- **Print the branch before every commit.** `git --no-optional-locks branch
+  --show-current` costs nothing and is the only thing that would have caught it.
+- **Never `git add -A`.** Name the paths. `-A` is what turns a half-reverted
+  tree into a commit.
+- **Recover the tree with tar, not git:** `git archive <commit> src tests
+  firestore.rules | tar -x --overwrite -C .` - tar's `--overwrite` truncates in
+  place instead of unlinking, so it goes where `reset --hard` cannot. Better
+  still, if the container has a verified copy of the tree (the one the suite
+  passed against), tar that back over the mount.
+- **Rebuild history with plumbing, which never touches the tree:** `NEW=$(git
+  commit-tree <good-tree> -p <parent> -F msg)` then `git branch -f <branch>
+  $NEW`. `git branch -f` refuses the CURRENT branch, so move off it first or
+  use the tree-restoring route above.
+- The lock files are the same problem, and the workaround is unchanged: after
+  every git write, `mv` any `.git/index.lock` and `.git/HEAD.lock` into
+  `.git/stale-locks/`. Renames work on this mount even though deletes do not.
+
 ## Baselines by round
 
 The typecheck count and the test count after each round, moved here from the Commands table in `CLAUDE.md`. Compare COUNTS, never expect zero.
 
-- **Typecheck (`npx tsc --noEmit`):** Compare the error **count** to master's baseline (11 after the Operations overhaul (Sep 19), unchanged from the reporting round which retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero
+- **Typecheck (`npx tsc --noEmit`):** Compare the error **count** to master's baseline (10 on `note-threads` (Sep 20), unchanged from `machine-authoring`; 11 after the Operations overhaul (Sep 19), unchanged from the reporting round which retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero
 
-- **Tests (`npx vitest run src`):** 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
+- **Tests (`npx vitest run src`):** 3,717 in 251 files after the note threads round (Sep 20); 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
 
 - **beta-prep trim (Sep 17 2026), on the `beta-prep` branch only:** typecheck 11; 2,982 tests (2,977 on master, plus five new pins: the History button's `openProfileAt`, the two starting-weight casing tests, the two LoginScreen render tests).
