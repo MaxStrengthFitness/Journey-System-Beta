@@ -87,6 +87,13 @@ export interface MachineEditorProps {
   backLabel: string;
   /** The "This unit" card — serial, manufacturer, studio notes. Slotted. */
   unit?: React.ReactNode;
+  /**
+   * Shown above the sections, under the masthead. The catalog gate puts the
+   * submission review here — what the studio wrote, what is still missing —
+   * so an admin reads the verdict and the sections it is about on one screen
+   * rather than remembering the queue's summary while they scroll.
+   */
+  notice?: React.ReactNode;
   /** True for a machine being created, so the save bar says so. */
   isNew?: boolean;
 }
@@ -100,6 +107,7 @@ export function MachineEditor({
   onBack,
   backLabel,
   unit,
+  notice,
   isNew,
 }: MachineEditorProps) {
   // Stable identity or the form adopts on every render — useDirtyForm's own
@@ -188,6 +196,8 @@ export function MachineEditor({
           </>
         }
       />
+
+      {notice}
 
       {scope === "studio" && standard && (
         <AdminNotice tone="info">

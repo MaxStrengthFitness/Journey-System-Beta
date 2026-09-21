@@ -3,6 +3,8 @@ import { Dumbbell, Info, Loader2 } from "lucide-react";
 import { CatalogList } from "./CatalogList";
 import { CatalogMachineEditor } from "./CatalogMachineEditor";
 import { SubmissionsQueue } from "../catalog/SubmissionsQueue";
+import { SubmissionReview } from "../catalog/SubmissionReview";
+import type { CatalogSubmissionDoc } from "../../my-studio/floor";
 import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import type { MachineCatalogEntry } from "../../../types/machines";
@@ -35,8 +37,26 @@ import "./editor/editor.css";
 export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
   const { catalog, loading } = useMachineCatalog();
   const [open, setOpen] = useState<
-    { kind: "new" } | { kind: "machine"; machine: MachineCatalogEntry } | null
+    | { kind: "new" }
+    | { kind: "machine"; machine: MachineCatalogEntry }
+    | { kind: "submission"; submission: CatalogSubmissionDoc & { id: string } }
+    | null
   >(null);
+
+  // A submission opens the same editor a catalog machine does, at the same
+  // scope, because corporate is deciding whether its text becomes the
+  // standard — and the only honest way to decide that is to read it the way
+  // the standard is read. Saving there keeps the corrections on the offer;
+  // publishing is still one deliberate tap back on the queue.
+  if (open?.kind === "submission") {
+    return (
+      <SubmissionReview
+        submission={open.submission}
+        catalog={catalog}
+        onBack={() => setOpen(null)}
+      />
+    );
+  }
 
   if (open) {
     // Re-read the open machine from the live catalog rather than trusting the
@@ -73,7 +93,11 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
         </AdminNotice>
       )}
 
-      {isAdmin && <SubmissionsQueue />}
+      {isAdmin && (
+        <SubmissionsQueue
+          onReview={(submission) => setOpen({ kind: "submission", submission })}
+        />
+      )}
 
       {loading ? (
         <AdminNotice tone="info">

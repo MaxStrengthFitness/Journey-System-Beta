@@ -35,6 +35,37 @@ describe("the standard set", () => {
   });
 });
 
+/**
+ * Why a plan was refused.
+ *
+ * Read off the object rather than narrowed to it: the repo compiles without
+ * `strict`, so TypeScript will narrow a discriminated union to its `ok: true`
+ * arm (`if (!r.ok) return`, the pattern used throughout) but not to the other
+ * one. Reaching for the reason directly is the honest way to say that.
+ */
+const refusal = (r: ReturnType<typeof publishPlan>): string =>
+  (r as { reason?: string }).reason ?? "";
+
+/**
+ * A definition that clears the publish gate, so a test about ids and ordering
+ * is not also a test about completeness. review.test.ts owns the gate itself.
+ */
+const publishable = (name: string): MachineCatalogEntry =>
+  ({
+    name,
+    anatomicalRegion: "Legs",
+    movementPattern: "Lower Body: Isolation",
+    kinematicClass: "simple-rotary",
+    primaryMuscles: ["quads"],
+    execution: {
+      concentricSeconds: 6,
+      eccentricSeconds: 6,
+      upperTurnaround: { description: "Pause at the squeeze." },
+      lowerTurnaround: { description: "Reverse before the stack touches." },
+      keyCues: ["Drive through the heels."],
+    },
+  }) as unknown as MachineCatalogEntry;
+
 describe("publishing a studio's machine", () => {
   it("makes a catalog id from the name, unique against the catalog", () => {
     expect(catalogIdFor("Hip Adduction", [])).toBe("m-hip-adduction");
@@ -45,14 +76,37 @@ describe("publishing a studio's machine", () => {
   });
 
   it("builds the catalog document last in the order and outside the standard set, and refuses a bad id or a taken one", () => {
-    const submission = { definition: { name: " Sled " } as MachineCatalogEntry, studioName: "Solon" };
+    const submission = { definition: publishable(" Sled "), studioName: "Solon" };
     const r = publishPlan(submission, catalog, "m-sled");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.plan.doc).toMatchObject({ id: "m-sled", name: "Sled", status: "active", inStandardSet: false, defaultOrder: 40, schemaVersion: 1 });
     expect(publishPlan(submission, catalog, "m-chest").ok).toBe(false);
     expect(publishPlan(submission, catalog, "Sled").ok).toBe(false);
-    expect(publishPlan({ definition: { name: "" } as MachineCatalogEntry, studioName: "Solon" }, catalog, "m-x").ok).toBe(false);
+    expect(publishPlan({ definition: publishable(""), studioName: "Solon" }, catalog, "m-x").ok).toBe(false);
+  });
+
+  it("refuses a machine the floor would read wrong, and names what it needs", () => {
+    // Every location inherits a catalog machine, so this is the one place the
+    // app holds a write rather than taking a blank. review.ts owns the list.
+    const noCadence = publishable("Sled");
+    noCadence.execution = { ...noCadence.execution, concentricSeconds: 0, eccentricSeconds: 0 };
+    const r = publishPlan({ definition: noCadence, studioName: "Solon" }, catalog, "m-sled");
+    expect(r.ok).toBe(false);
+    expect(refusal(r)).toContain("Every floor inherits a catalog machine");
+    expect(refusal(r)).toContain("the concentric count");
+    expect(refusal(r)).toContain("the eccentric count");
+  });
+
+  it("does not hold a machine for a blank a studio would override anyway", () => {
+    // No dials, no baseline, no contraindications — all studio-tier, all
+    // named on the panel, none of them a reason to refuse.
+    const sparse = publishable("Sled");
+    sparse.settingFields = [];
+    sparse.defaultSettings = {};
+    sparse.universalBaseline = {} as MachineCatalogEntry["universalBaseline"];
+    sparse.contraindicatedFor = [];
+    expect(publishPlan({ definition: sparse, studioName: "Solon" }, catalog, "m-sled").ok).toBe(true);
   });
 
   it("spells out the PC command that moves the studio's id onto the catalog id", () => {

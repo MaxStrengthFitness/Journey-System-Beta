@@ -33,8 +33,26 @@ vi.mock("firebase/firestore", () => {
     { id: "m-chest", name: "Chest Press", status: "active", inStandardSet: true, defaultOrder: 20, schemaVersion: 1, movementPattern: "push", anatomicalRegion: "upper" },
     { id: "m-row", name: "Row", status: "active", inStandardSet: false, defaultOrder: 30, schemaVersion: 1, movementPattern: "pull", anatomicalRegion: "upper" },
   ];
+  // A definition that clears the publish gate (features/admin/catalog/review.ts).
+  // It used to be `{ name: "Sled" }` — which is the exact machine the gate now
+  // refuses, and the reason the gate exists: every location inherits a catalog
+  // entry, so a name and nothing else is twenty wrong setup cards.
+  const sledDefinition = {
+    name: "Sled",
+    anatomicalRegion: "Legs",
+    movementPattern: "Lower Body: Compound",
+    kinematicClass: "compound-linear",
+    primaryMuscles: ["quads"],
+    execution: {
+      concentricSeconds: 6,
+      eccentricSeconds: 6,
+      upperTurnaround: { description: "Stop short of lockout." },
+      lowerTurnaround: { description: "Reverse before the stack touches." },
+      keyCues: ["Heels flat, knees tracking the toes."],
+    },
+  };
   const submissions = [
-    { id: "sub1", studioId: "solon", studioName: "Solon", machineId: "sm-solon-sled", definition: { name: "Sled" }, basedOn: "m-leg-press", submittedBy: "lead", submittedByName: "Lee Leader", note: "Everyone loves it.", status: "pending" },
+    { id: "sub1", studioId: "solon", studioName: "Solon", machineId: "sm-solon-sled", definition: sledDefinition, basedOn: "m-leg-press", submittedBy: "lead", submittedByName: "Lee Leader", note: "Everyone loves it.", status: "pending" },
   ];
   const answer = (path: string) => (path === "machines" ? snap(machines) : path === "catalogSubmissions" ? snap(submissions) : snap([]));
   return {
@@ -147,8 +165,38 @@ describe("Admins → Catalog and the Standard template", () => {
     expect(paths).toEqual(["machines/m-sled", "catalogSubmissions/sub1", "studios/solon/roster/sm-solon-sled"]);
     expect(writes[0].data).toMatchObject({ id: "m-sled", name: "Sled", status: "active", inStandardSet: false, defaultOrder: 40 });
     expect(writes[1].data).toMatchObject({ status: "published", publishedAs: "m-sled" });
+    // Nothing was reworded, so the studio's marker stays the plain one.
     expect(writes[2].data).toEqual({ submission: { id: "sub1", status: "published" } });
     expect(el.textContent).toContain("--from sm-solon-sled --to m-sled");
+  });
+
+  it("says whose words the catalog is about to adopt, before the tap", async () => {
+    // The whole point of the gate. Solon wrote the cadence, the turnarounds
+    // and the cues on their own machine; publishing makes those Max
+    // Strength's on every floor, and the panel has to say so.
+    const el = await mount(true);
+    await click([...el.querySelectorAll(".adm-sub__head")].find((b) => b.textContent?.includes("Sled"))!);
+    expect(el.textContent).toContain("Publishing makes these Max Strength's words");
+    expect(el.textContent).toContain("execution and cadence");
+    expect(el.textContent).toContain("Read the machine");
+  });
+
+  it("reads the offer against the machine it says it is based on", async () => {
+    const el = await mount(true);
+    await click([...el.querySelectorAll(".adm-sub__head")].find((b) => b.textContent?.includes("Sled"))!);
+    expect(el.textContent).toContain("Leg Press");
+    expect(el.textContent).toContain("it differs on");
+  });
+
+  it("opens the machine in the catalog editor, where a correction is saved onto the offer and nothing is published", async () => {
+    const el = await mount(true);
+    await click([...el.querySelectorAll(".adm-sub__head")].find((b) => b.textContent?.includes("Sled"))!);
+    await click([...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Read the machine"))!);
+    // The catalog editor, on the studio's machine, saying so.
+    expect(el.textContent).toContain("Offered by Solon");
+    expect(el.textContent).toContain("Nothing here is live");
+    expect(el.querySelector(".adm-me")).not.toBeNull();
+    expect(writes).toEqual([]);
   });
 
   it("Retire asks first, every time — with the count of floors that have it — and writes on the second tap", async () => {

@@ -124,6 +124,26 @@
   color: var(--adm-ink-muted);
 }
 
+/* The verdict line on a queue row (the catalog gate, Sep 2026).
+   Wraps rather than truncates: the headline names the fields corporate is
+   about to adopt, and a name cut in half is the one thing this screen must
+   not do — the app's own rule, and the reason the row is not a table. */
+.adm-sub__verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.adm-sub__headline {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--adm-ink-2);
+}
+
 .adm-sub__note {
   font-size: 12px;
   line-height: 1.4;

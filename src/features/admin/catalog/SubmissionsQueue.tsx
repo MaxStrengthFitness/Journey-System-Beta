@@ -7,32 +7,48 @@
  * corporate decides here. Administrators only (the rules let a studio read
  * its own submissions, but deciding is super-admin work).
  *
- *   Publish    creates the catalog document from the submission's definition
+ *   Read it    opens the machine in the catalog editor (SubmissionReview).
+ *              Corporate reads all eight sections and rewrites anything that
+ *              is not house language; what they save is what publishes.
+ *   Publish    creates the catalog document from the REVIEWED definition
  *              (standard-set.ts / publishPlan: active, outside the standard
  *              set, last in the order), marks the submission published with
- *              the new id, updates the studio's roster marker — and then
- *              shows the PC command that migrates the studio's own id onto
- *              the catalog id (scripts/migrate-machine-id.ts), which is what
- *              makes the studio's history follow the machine. AJ chose the
- *              script over a Cloud Function (Sep 18): the migration walks
- *              every document and belongs where a person can read its dry
- *              run first.
+ *              the new id, records which fields corporate changed, updates
+ *              the studio's roster marker — and then shows the PC command
+ *              that migrates the studio's own id onto the catalog id
+ *              (scripts/migrate-machine-id.ts), which is what makes the
+ *              studio's history follow the machine. AJ chose the script over
+ *              a Cloud Function (Sep 18): the migration walks every document
+ *              and belongs where a person can read its dry run first.
  *   Decline    marks it declined with a note the studio can read on its
  *              floor ("Corporate passed: …").
+ *
+ * THE CATALOG GATE (Sep 2026). This screen used to decide from a name, a
+ * studio, a submitter and a note. A studio's own machine carries a whole
+ * definition — including the method — so Publish was adopting a franchise
+ * leader's wording of the cadence and the cues as Max Strength's, sight
+ * unseen, on every floor. `review.ts` is what the panel says now, and
+ * `publishPlan` refuses a machine the floor would read wrong.
  *
  * Nothing here contacts anyone; the studio sees the outcome on its floor.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Check, Inbox, X } from "lucide-react";
+import { BookOpen, Check, Inbox, X } from "lucide-react";
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { useToast } from "../../../contexts/ToastContext";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
-import type { MachineCatalogEntry } from "../../../types/machines";
-import type { CatalogSubmissionDoc } from "../../my-studio/floor";
+import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
+import type { CatalogSubmissionDoc, RosterSubmissionMarker } from "../../my-studio/floor";
+import { describeFields } from "../../../lib/machine-template";
 import { AdminBadge, AdminButton, AdminEmpty, AdminField, AdminInput, AdminNotice, AdminPanel, AdminTextarea } from "../primitives";
 import { catalogIdFor, migrationCommand, publishPlan } from "./standard-set";
+import { correctedFields, reviewSubmission } from "./review";
+
+/** What corporate would publish: their corrections if any, else what arrived. */
+export const definitionUnderReview = (s: Pick<CatalogSubmissionDoc, "definition" | "reviewedDefinition">): MachineDefinition =>
+  (s.reviewedDefinition ?? s.definition) as MachineDefinition;
 
 type Submission = CatalogSubmissionDoc & { id: string; submittedAt?: unknown };
 
@@ -41,7 +57,7 @@ const millis = (v: unknown): number => {
   return d ? d.getTime() : 0;
 };
 
-export function SubmissionsQueue() {
+export function SubmissionsQueue({ onReview }: { onReview: (submission: Submission) => void }) {
   const { catalog } = useMachineCatalog();
   const { success: toastSuccess, error: toastError } = useToast();
   const [pending, setPending] = useState<Submission[] | null>(null);
@@ -88,7 +104,7 @@ export function SubmissionsQueue() {
       {published && (
         <div className="p-3">
           <AdminNotice tone="ok">
-            <strong>{published.submission.definition.name}</strong> is in the catalog as <code>{published.id}</code>. Now move {published.submission.studioName}
+            <strong>{definitionUnderReview(published.submission).name}</strong> is in the catalog as <code>{published.id}</code>. Now move {published.submission.studioName}
             's history onto it — from the project folder on the PC, dry run first:
             <pre className="adm-sub__cmd">{migrationCommand(published.submission, published.id)}</pre>
             then the same line with <code>--commit</code>. Until it runs, the studio's floor still shows its own copy.
@@ -108,24 +124,29 @@ export function SubmissionsQueue() {
           {pending.map((s) => (
             <li key={s.id} className="adm-sub__row">
               <button type="button" className="adm-sub__head" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id}>
-                <span className="adm-sub__name">{s.definition?.name ?? "Unnamed machine"}</span>
+                <span className="adm-sub__name">{definitionUnderReview(s)?.name ?? "Unnamed machine"}</span>
                 <span className="adm-sub__meta">
                   {s.studioName} · {s.submittedByName}
                   {s.basedOn ? ` · based on ${catalog.find((m) => m.id === s.basedOn)?.name ?? s.basedOn}` : ""}
                 </span>
+                {/* The verdict on the row, so a queue of six says which one
+                    needs an hour and which one needs a tap — the same reason
+                    CatalogList names what each machine is still missing. */}
+                <Verdict submission={s} catalog={catalog} />
                 {s.note && <span className="adm-sub__note">“{s.note}”</span>}
               </button>
               {open === s.id && (
                 <Decide
                   submission={s}
                   catalog={catalog}
+                  onReview={() => onReview(s)}
                   onDone={(result) => {
                     setOpen(null);
                     if (result.kind === "published") {
                       setPublished({ submission: s, id: result.id });
-                      toastSuccess(`${s.definition.name} published as ${result.id}.`);
+                      toastSuccess(`${definitionUnderReview(s).name} published as ${result.id}.`);
                     } else if (result.kind === "declined") {
-                      toastSuccess(`${s.definition.name} declined. ${s.studioName} will see why on its floor.`);
+                      toastSuccess(`${definitionUnderReview(s).name} declined. ${s.studioName} will see why on its floor.`);
                     } else {
                       toastError(result.message);
                     }
@@ -142,11 +163,50 @@ export function SubmissionsQueue() {
 
 type DecideResult = { kind: "published"; id: string } | { kind: "declined" } | { kind: "failed"; message: string };
 
-function Decide({ submission, catalog, onDone }: { submission: Submission; catalog: MachineCatalogEntry[]; onDone: (r: DecideResult) => void }) {
-  const [id, setId] = useState(() => catalogIdFor(submission.definition?.name ?? "", catalog.map((m) => m.id)));
+/** The one-line verdict on a queue row. */
+function Verdict({ submission, catalog }: { submission: Submission; catalog: MachineCatalogEntry[] }) {
+  const review = useMemo(
+    () => reviewSubmission(submission, definitionUnderReview(submission), catalog),
+    [submission, catalog],
+  );
+  const tone = review.verdict === "incomplete" ? "warn" : review.verdict === "read-it" ? "hero" : "ok";
+  const word = review.verdict === "incomplete" ? "Not ready" : review.verdict === "read-it" ? "Read the method" : "Ready";
+  return (
+    <span className="adm-sub__verdict">
+      <AdminBadge tone={tone}>{word}</AdminBadge>
+      <span className="adm-sub__headline">{review.headline}</span>
+    </span>
+  );
+}
+
+function Decide({
+  submission,
+  catalog,
+  onReview,
+  onDone,
+}: {
+  submission: Submission;
+  catalog: MachineCatalogEntry[];
+  onReview: () => void;
+  onDone: (r: DecideResult) => void;
+}) {
+  // What would actually be published — corporate's corrections when they have
+  // reviewed it, what the studio sent when they have not. Everything on this
+  // panel reads from this, so the id, the gate and the row never describe a
+  // different machine from the one the button writes.
+  const definition = useMemo(() => definitionUnderReview(submission), [submission]);
+  const [id, setId] = useState(() => catalogIdFor(definition?.name ?? "", catalog.map((m) => m.id)));
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"publish" | "decline" | null>(null);
-  const plan = useMemo(() => publishPlan(submission, catalog, id.trim()), [submission, catalog, id]);
+  const review = useMemo(() => reviewSubmission(submission, definition, catalog), [submission, definition, catalog]);
+  const plan = useMemo(
+    () => publishPlan({ ...submission, definition }, catalog, id.trim()),
+    [submission, definition, catalog, id],
+  );
+  const corrections = useMemo(
+    () => correctedFields(submission.definition as MachineDefinition, definition),
+    [submission.definition, definition],
+  );
 
   const stamp = () => ({ decidedBy: auth.currentUser?.uid ?? null, decidedAt: serverTimestamp(), updatedAt: serverTimestamp() });
 
@@ -168,11 +228,20 @@ function Decide({ submission, catalog, onDone }: { submission: Submission; catal
         status: "published",
         publishedAs: plan.plan.id,
         decisionNote: note.trim(),
+        // Where a catalog sentence came from, kept on the offer: what arrived
+        // stays in `definition`, what went in is `reviewedDefinition`, and
+        // this names the difference without anyone having to diff them.
+        correctedFields: corrections,
         ...stamp(),
       });
       try {
+        const marker: RosterSubmissionMarker = {
+          id: submission.id,
+          status: "published",
+          ...(corrections.length > 0 ? { corrected: describeFields(corrections) } : {}),
+        };
         const batch = writeBatch(db);
-        batch.set(doc(db, "studios", submission.studioId, "roster", submission.machineId), { submission: { id: submission.id, status: "published" } }, { merge: true });
+        batch.set(doc(db, "studios", submission.studioId, "roster", submission.machineId), { submission: marker }, { merge: true });
         await batch.commit();
       } catch (err) {
         console.warn("[catalog] the roster marker could not be updated", err);
@@ -191,7 +260,7 @@ function Decide({ submission, catalog, onDone }: { submission: Submission; catal
     try {
       await updateDoc(doc(db, "catalogSubmissions", submission.id), { status: "declined", decisionNote: note.trim(), ...stamp() });
       try {
-        await setDoc(doc(db, "studios", submission.studioId, "roster", submission.machineId), { submission: { id: submission.id, status: "declined" } }, { merge: true });
+        await setDoc(doc(db, "studios", submission.studioId, "roster", submission.machineId), { submission: { id: submission.id, status: "declined" } satisfies RosterSubmissionMarker }, { merge: true });
       } catch (err) {
         console.warn("[catalog] the roster marker could not be updated", err);
       }
@@ -206,6 +275,62 @@ function Decide({ submission, catalog, onDone }: { submission: Submission; catal
 
   return (
     <div className="adm-sub__decide">
+      {/* What the admin is actually deciding about. This panel used to show
+          the id and a note box — the machine itself was invisible, and
+          Publish adopted its method as the company's. */}
+      <AdminNotice tone={review.verdict === "incomplete" ? "warn" : "info"}>
+        {review.headline}
+      </AdminNotice>
+
+      {review.authored.length > 0 && (
+        <p className="adm-sub__why">
+          <strong>Publishing makes these Max Strength&apos;s words:</strong>{" "}
+          {describeFields(review.authored.map((a) => a.field))}. Read them
+          first — every location inherits them and a trainer is told to trust
+          the screen.
+        </p>
+      )}
+
+      {review.likeness && review.likeness.differs.length > 0 && (
+        <p className="adm-sub__why">
+          Against <strong>{review.likeness.standardName}</strong> it differs on{" "}
+          {describeFields(review.likeness.differs)}
+          {review.likeness.method.length === 0
+            ? " — all hardware. A second catalog entry may be the wrong answer; the studio could override its copy instead."
+            : `, ${describeFields(review.likeness.method)} among them.`}
+        </p>
+      )}
+
+      {review.blocking.length > 0 && (
+        <AdminNotice tone="alert">
+          <strong>Not publishable yet.</strong> It still needs{" "}
+          {review.blocking.map((g) => g.what).join(", ")}. Open it and fill
+          them in — what you save there is what publishes.
+        </AdminNotice>
+      )}
+
+      {review.remaining.length > 0 && review.blocking.length === 0 && (
+        <p className="adm-sub__why">
+          Thin but publishable — no {review.remaining.map((g) => g.what).join(", no ")}.
+          A studio adopting it overrides those anyway; half the catalog has the
+          same blanks.
+        </p>
+      )}
+
+      {corrections.length > 0 && (
+        <AdminNotice tone="ok">
+          You have rewritten {describeFields(corrections)} on this offer.
+          Publishing sends your version, and {submission.studioName} is told
+          which parts changed.
+        </AdminNotice>
+      )}
+
+      <div className="adm-sub__buttons">
+        <AdminButton variant="quiet" onClick={onReview}>
+          <BookOpen className="w-3.5 h-3.5" /> Read the machine
+        </AdminButton>
+      </div>
+
       <AdminField label="Catalog id" hint="m- and the name; every studio will see this id. Change it only if the suggestion reads wrong." htmlFor={`sub-id-${submission.id}`}>
         <AdminInput id={`sub-id-${submission.id}`} value={id} onChange={(e) => setId(e.target.value)} invalid={plan.ok === false} />
       </AdminField>

@@ -25,6 +25,7 @@
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
 import { isStandardSetMachine } from "../studios/registry";
 import type { CatalogSubmissionDoc } from "../../my-studio/floor";
+import { blockingGaps } from "./review";
 
 export const ORDER_STEP = 10;
 
@@ -88,6 +89,23 @@ export interface PublishPlan {
 /**
  * The catalog document a submission becomes. Not in the standard set —
  * corporate adds it there on purpose, if at all — and last in the order.
+ *
+ * `submission.definition` is the definition being published, which is the
+ * one corporate REVIEWED (`reviewedDefinition`) when they edited it and the
+ * one that arrived when they did not — the caller resolves that, so this
+ * function never has to know which it was handed.
+ *
+ * THE GATE. A catalog machine is live-inherited by every location, so an
+ * incomplete one is not a draft sitting in a queue, it is a wrong setup card
+ * on twenty iPads. `blockingGaps` is the short list of what the app would
+ * render wrong or the floor would coach wrong without; the rest of what a
+ * machine still needs is named on the decision panel and left to judgement.
+ *
+ * This is not the "never block a save" rule (docs/KNOWN-TRAPS.md). That rule
+ * is about a trainer on the floor, whose work must never be held hostage to
+ * a missing field. Corporate publishing the company standard is the opposite
+ * case: it is exactly where "a confident wrong number is worse than a missing
+ * one" applies, and where there is someone with the time to fix it first.
  */
 export function publishPlan(
   submission: Pick<CatalogSubmissionDoc, "definition" | "studioName">,
@@ -98,6 +116,15 @@ export function publishPlan(
   if (catalog.some((m) => m.id === id)) return { ok: false, reason: `${id} is already in the catalog.` };
   const name = (submission.definition?.name ?? "").trim();
   if (!name) return { ok: false, reason: "The submission has no machine name." };
+  const blocking = blockingGaps(submission.definition);
+  if (blocking.length > 0) {
+    const named = blocking.map((g) => g.what);
+    const list = named.length === 1 ? named[0] : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
+    return {
+      ok: false,
+      reason: `Every floor inherits a catalog machine, so this one cannot go in until it has ${list}. Open it in the editor and fill them in — what you save there is what publishes.`,
+    };
+  }
   const maxOrder = catalog.reduce((max, m) => Math.max(max, m.defaultOrder ?? 0), 0);
   const definition: MachineDefinition = { ...submission.definition, name };
   return {

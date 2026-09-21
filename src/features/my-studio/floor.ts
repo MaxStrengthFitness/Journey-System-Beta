@@ -91,18 +91,44 @@ export interface CatalogSubmissionDoc {
   /** What the leader told corporate — why it deserves the catalog. */
   note: string;
   status: SubmissionStatus;
+  /**
+   * The definition as corporate CORRECTED it, saved from the review screen
+   * (features/admin/catalog/SubmissionReview.tsx). Absent until an admin
+   * edits one.
+   *
+   * Publishing reads this when it is here and `definition` when it is not,
+   * so a studio's wording of the method is never adopted by accident: an
+   * admin who reworded the cadence publishes their words, and an admin who
+   * changed nothing publishes the studio's, deliberately.
+   */
+  reviewedDefinition?: MachineDefinition;
+  reviewedBy?: string;
+  reviewedAt?: unknown;
   /** Set by corporate when it decides. */
   decidedBy?: string;
   decidedAt?: unknown;
   decisionNote?: string;
   /** The catalog id it was published under. */
   publishedAs?: string;
+  /**
+   * Which fields corporate changed between what arrived and what published,
+   * as `MachineDefinition` keys. The record of where a catalog sentence came
+   * from, and what the studio is told on its own floor.
+   */
+  correctedFields?: string[];
 }
 
 /** What sits on the roster entry while corporate decides. */
 export interface RosterSubmissionMarker {
   id: string;
   status: SubmissionStatus;
+  /**
+   * Set on publish when corporate reworded something: the changed fields in
+   * plain English ("execution and cadence and the key cues"). The studio
+   * learns its machine went in and that the method reads differently now,
+   * which is the honest version of "Published" and takes one extra word.
+   */
+  corrected?: string;
 }
 
 export const SUBMISSION_NOTE_MAX = 500;
@@ -160,7 +186,9 @@ export function submissionLabel(marker: RosterSubmissionMarker | null | undefine
     case "pending":
       return "Offered to the MSF catalog — waiting on corporate";
     case "published":
-      return "Published to the MSF catalog";
+      return marker.corrected
+        ? `Published to the MSF catalog — corporate adjusted ${marker.corrected}`
+        : "Published to the MSF catalog";
     case "declined":
       return "Corporate passed on this one";
     case "withdrawn":
