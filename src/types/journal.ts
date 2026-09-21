@@ -83,6 +83,14 @@ export interface JournalEntry {
   machineId: string | null;
   /** Set when this entry is a check-in on a trainer focus. */
   focusId: string | null;
+  /**
+   * THE THREAD (Notes round, Sep 2026). Null on a note of its own; on an
+   * update it is the ROOT note's id. The mattering window, the loudness and
+   * `resolvedAt` live on the root and nowhere else — see
+   * `features/client-notes/threads.ts`, which is the one place threads are
+   * assembled, and `thread-write.ts`, which is the one place they are written.
+   */
+  threadId?: string | null;
   sessionId: string | null;
 
   origin: JournalOrigin;
@@ -150,6 +158,8 @@ export type JournalDraft = Pick<
   JournalEntry,
   "kind" | "category" | "body" | "importance" | "machineId" | "focusId" | "origin"
 > & {
+  /** Set only by `addThreadUpdate` — the root note this update hangs from. */
+  threadId?: string | null;
   occurredAt?: Date | null;
   effectiveFrom?: Date | null;
   effectiveUntil?: Date | null;
