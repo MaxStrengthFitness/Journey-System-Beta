@@ -6,6 +6,7 @@ import {
   completeness,
   describeGaps,
   sectionStates,
+  type Gap,
 } from "./completeness";
 
 const legPress = MACHINE_DEFINITIONS["m-leg-press"];
@@ -168,10 +169,10 @@ describe("completeness", () => {
 
 describe("describeGaps", () => {
   it("names the first few and counts the rest", () => {
-    const gaps = [
-      { section: "baseline" as const, what: "the seat position" },
-      { section: "baseline" as const, what: "the restraints" },
-      { section: "safety" as const, what: "clinical warnings" },
+    const gaps: Gap[] = [
+      { id: "seat", section: "baseline", what: "the seat position" },
+      { id: "restraints", section: "baseline", what: "the restraints" },
+      { id: "clinical-warnings", section: "safety", what: "clinical warnings" },
     ];
     expect(describeGaps(gaps)).toBe(
       "Needs the seat position and the restraints, and 1 more",

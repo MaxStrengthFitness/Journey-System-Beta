@@ -117,8 +117,48 @@ export const SECTIONS: SectionSpec[] = [
   },
 ];
 
+/**
+ * A stable name for one check.
+ *
+ * The prose in `what` is written for a manager and will be reworded; code
+ * that needs to reason about a PARTICULAR gap matches this instead. The
+ * catalog gate blocks a publish on a named few of them
+ * (`features/admin/catalog/review.ts`), so renaming one here fails that
+ * file's typecheck rather than quietly un-blocking a machine.
+ */
+export type GapId =
+  | "name"
+  | "region"
+  | "movement-pattern"
+  | "kinematic-class"
+  | "clinical-note"
+  | "primary-muscles"
+  | "musculature-primary"
+  | "synergists"
+  | "seat"
+  | "pad-axis"
+  | "restraints"
+  | "stack-gap"
+  | "shorter"
+  | "taller"
+  | "limited-mobility"
+  | "checkpoints"
+  | "load-up"
+  | "concentric"
+  | "eccentric"
+  | "upper-turnaround"
+  | "lower-turnaround"
+  | "key-cues"
+  | "handoff"
+  | "failure-notice"
+  | "clinical-warnings"
+  | "contraindications"
+  | "dials"
+  | "dial-defaults";
+
 /** One thing a machine still needs, named the way a manager would say it. */
 export interface Gap {
+  id: GapId;
   section: SectionId;
   /** "no alignment checkpoints", "the starting weight stack gap" */
   what: string;
@@ -134,6 +174,18 @@ export interface SectionState {
   gaps: Gap[];
   /** True when this scope may not change anything here — read-only. */
   locked: boolean;
+}
+
+/**
+ * Does this field say anything at all?
+ *
+ * Exported because the catalog gate asks the same question of a submission's
+ * method fields ("did the studio write this, or is it empty?") and two
+ * answers to "is it filled in" would disagree the first time one of them
+ * learned about a new shape.
+ */
+export function hasContent(v: unknown): boolean {
+  return has(v);
 }
 
 function has(v: unknown): boolean {
@@ -154,68 +206,67 @@ function has(v: unknown): boolean {
  * on the floor.
  */
 function checksFor(id: SectionId, d: MachineDefinition): Gap[] {
-  const gap = (what: string): Gap => ({ section: id, what });
   const out: Gap[] = [];
-  const need = (ok: boolean, what: string) => {
-    if (!ok) out.push(gap(what));
+  const need = (gapId: GapId, ok: boolean, what: string) => {
+    if (!ok) out.push({ id: gapId, section: id, what });
   };
 
   switch (id) {
     case "identity":
-      need(has(d.name), "a name");
-      need(has(d.anatomicalRegion), "a region");
-      need(has(d.movementPattern), "a movement pattern");
-      need(has(d.kinematicClass), "a kinematic class");
-      need(has(d.clinicalNote), "the one-line clinical note");
+      need("name", has(d.name), "a name");
+      need("region", has(d.anatomicalRegion), "a region");
+      need("movement-pattern", has(d.movementPattern), "a movement pattern");
+      need("kinematic-class", has(d.kinematicClass), "a kinematic class");
+      need("clinical-note", has(d.clinicalNote), "the one-line clinical note");
       break;
     case "musculature":
-      need(has(d.primaryMuscles), "the primary muscles for the diagram");
-      need(has(d.musculature?.primary), "the primary muscles in words");
-      need(has(d.musculature?.synergists), "the synergists");
+      need("primary-muscles", has(d.primaryMuscles), "the primary muscles for the diagram");
+      need("musculature-primary", has(d.musculature?.primary), "the primary muscles in words");
+      need("synergists", has(d.musculature?.synergists), "the synergists");
       break;
     case "baseline": {
       const b = d.universalBaseline;
-      need(has(b?.seatHeightPosition), "the seat position");
-      need(has(b?.padAxisAlignment), "the pad and axis alignment");
-      need(has(b?.restraintsAnchoring), "the restraints");
-      need(has(b?.startingWeightStackGap), "the starting weight stack gap");
+      need("seat", has(b?.seatHeightPosition), "the seat position");
+      need("pad-axis", has(b?.padAxisAlignment), "the pad and axis alignment");
+      need("restraints", has(b?.restraintsAnchoring), "the restraints");
+      need("stack-gap", has(b?.startingWeightStackGap), "the starting weight stack gap");
       break;
     }
     case "bodytype": {
       const b = d.bodyTypeAdjustments;
-      need(has(b?.shorterStature), "what changes for a shorter client");
-      need(has(b?.tallerStature), "what changes for a taller client");
-      need(has(b?.limitedMobility), "what changes for limited mobility");
+      need("shorter", has(b?.shorterStature), "what changes for a shorter client");
+      need("taller", has(b?.tallerStature), "what changes for a taller client");
+      need("limited-mobility", has(b?.limitedMobility), "what changes for limited mobility");
       break;
     }
     case "checkpoints":
-      need(has(d.alignmentCheckpoints), "at least one alignment checkpoint");
+      need("checkpoints", has(d.alignmentCheckpoints), "at least one alignment checkpoint");
       break;
     case "execution": {
       const e = d.execution;
-      need(has(e?.loadUpProtocol), "the load-up");
-      need(Number(e?.concentricSeconds) > 0, "the concentric count");
-      need(Number(e?.eccentricSeconds) > 0, "the eccentric count");
-      need(has(e?.upperTurnaround?.description), "the upper turnaround");
-      need(has(e?.lowerTurnaround?.description), "the lower turnaround");
-      need(has(e?.keyCues), "the key cues");
+      need("load-up", has(e?.loadUpProtocol), "the load-up");
+      need("concentric", Number(e?.concentricSeconds) > 0, "the concentric count");
+      need("eccentric", Number(e?.eccentricSeconds) > 0, "the eccentric count");
+      need("upper-turnaround", has(e?.upperTurnaround?.description), "the upper turnaround");
+      need("lower-turnaround", has(e?.lowerTurnaround?.description), "the lower turnaround");
+      need("key-cues", has(e?.keyCues), "the key cues");
       // Only ask for the handoff protocol on a machine that HAS a handoff.
       if (e?.requiresHandoff) {
-        need(has(e.handoffProtocol), "how the handoff is performed");
+        need("handoff", has(e.handoffProtocol), "how the handoff is performed");
       }
       // Only ask for a safety notice where failure is off the table.
       if (e?.neverToFailure) {
-        need(has(e.safetyNotice), "the safety notice that explains never-to-failure");
+        need("failure-notice", has(e.safetyNotice), "the safety notice that explains never-to-failure");
       }
       break;
     }
     case "safety":
-      need(has(d.clinicalWarnings), "clinical warnings");
-      need(has(d.contraindicatedFor), "who must not use it");
+      need("clinical-warnings", has(d.clinicalWarnings), "clinical warnings");
+      need("contraindications", has(d.contraindicatedFor), "who must not use it");
       break;
     case "dials":
-      need(has(d.settingFields), "the dials this machine has");
-      need(has(d.defaultSettings), "where the dials sit by default");
+      need("dials", has(d.settingFields), "the dials this machine has");
+      need("dial-defaults", has(d.defaultSettings), "where the dials sit by default");
       break;
   }
   return out;
