@@ -29,6 +29,24 @@ corporate by default. `machine-template.test.ts` fails until you name it.
 
 An **admin** is not bound — that is what makes the boundary safe to enforce.
 
+## A fourth layer: an offer becoming the standard
+
+A studio's OWN machine (`source: "custom"`) inherits nothing, so it stores a
+whole definition — method included — and that is correct while it is theirs
+alone. Offering it to the catalog is the one path where a studio's wording of
+the method can become Max Strength's, so it is the one path with a person in
+it: **read the machine, correct it, then publish** (the catalog gate round,
+`docs/rounds/2026-09-20-catalog-gate.md`).
+
+- The boundary cannot help here. Stripping the method off a submission would
+  publish a machine with no cadence, which is worse than publishing a
+  studio's. The answer is a review, not a filter.
+- `publishPlan` refuses a machine missing anything the app would render wrong
+  or the floor would coach wrong. The list is `BLOCKING_GAPS`, and a test
+  pins it to what the twenty MSF machines themselves clear.
+- Publishing sends `definitionUnderReview()` — corporate's corrections if
+  any, what arrived if none. Never read the raw document.
+
 ## The files
 
 | | |
@@ -41,7 +59,9 @@ An **admin** is not bound — that is what makes the boundary safe to enforce.
 | `editor/MachineEditor.tsx` | The screen: masthead, section rail, pinned warnings, save bar. |
 | `editor/sections.tsx` | The eight sections, each in prose or inputs from one source. |
 | `editor/controls.tsx` | The inputs. `FieldShell` says inherited-vs-changed per field. |
-| `completeness.ts` | "What is this machine still missing", named in plain English. |
+| `completeness.ts` | "What is this machine still missing", named in plain English. Every check has a typed `GapId` so code can block on a specific one without matching prose. |
+| `../catalog/review.ts` | What a studio's offer would cost the catalog — the method it wrote, what is still missing, what differs from the machine it is based on. |
+| `../catalog/SubmissionReview.tsx` | That offer opened in this editor, at `scope="catalog"`. Saving records a correction on the offer; it does not publish. |
 | `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. |
 
 ## Things that bite

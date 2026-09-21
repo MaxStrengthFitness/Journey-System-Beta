@@ -301,7 +301,30 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 ## Machines and the template boundary
 
-*Machine authoring, Sep 20 2026.*
+*Machine authoring, Sep 20 2026; the catalog gate, Sep 20 2026.*
+
+**The template boundary does NOT cover a submission, and cannot.**
+`scopeOverrides` protects the roster write, where a studio is editing a COPY
+of a catalog machine. A studio's own machine (`source: "custom"`) inherits
+nothing, so it legitimately stores the whole definition — method included —
+and publishing it copies that into `machines/{id}` verbatim. The protection
+there is a human reading it (`features/admin/catalog/review.ts`,
+`SubmissionReview.tsx`), not a filter. **If you add another path that turns a
+studio document into a catalog document, it needs the same review, not a call
+to `scopeOverrides`** — stripping the method off a submission would publish a
+machine with no cadence, which is worse.
+
+**`BLOCKING_GAPS` must stay clearable by the catalog itself.**
+`review.test.ts` asserts all twenty generated MSF definitions pass every
+blocking check. Adding one that the Academy's guides do not state — dial
+defaults, synergists, secondary musculature — fails that test, and it is
+telling you the truth: a gate the standard would fail stops being read.
+
+**Publishing sends `reviewedDefinition ?? definition`.** Read it through
+`definitionUnderReview()`, never off the raw document, or the row, the
+suggested id, the gate and the write drift apart. And never edit
+`definition` in place: it is what the studio sent, and it is what makes
+`correctedFields` — and the sentence the studio reads on its floor — true.
 
 **The catalog documents were in the LEGACY shape, and that is why the editor
 looked empty.** `machines/{id}` was seeded by Operations → System Tools →
@@ -515,12 +538,51 @@ The rules that come out of it:
   every git write, `mv` any `.git/index.lock` and `.git/HEAD.lock` into
   `.git/stale-locks/`. Renames work on this mount even though deletes do not.
 
+### It is worse than "something else checked master out" (catalog gate, Sep 20 2026)
+
+Hit again the same day, with nothing else touching the repo. Two additions.
+
+**`.git/HEAD` reverts on its own, and `git` will tell you it did not.** `git
+checkout -b catalog-gate` printed `Switched to a new branch`, and
+`rev-parse --abbrev-ref HEAD` agreed — four commits were made on it and every
+one is intact. Some time later `cat .git/HEAD` read `ref: refs/heads/master`
+again. HEAD is written the same way every other file is, by writing
+`HEAD.lock` and renaming it over HEAD, so it loses the same race everything
+else does. The branch ref (`refs/heads/catalog-gate`) was fine the whole time
+and the commits were never at risk; what moved was which branch the working
+tree and the next commit belonged to. **Two edits landed on `master`.**
+
+So: `cat .git/HEAD` is the check, not `rev-parse` — and do it before every
+commit, not once at the start. And never push from a session that has been
+switching branches without reading that file first.
+
+**A branch switch half-applies, silently, with exit code 0.** `git checkout
+catalog-gate` restored the files that did not exist on master (it can CREATE)
+and left every file that existed on both at master's content (it cannot
+REPLACE). No error, no warning. The tree then typechecks as a mixture — here,
+28 errors against a baseline of 10, all of them "X has no exported member Y"
+between files that agree perfectly in the commit.
+
+**Recovery, and it is simpler than the tar route above.** Writing to a file
+works; only replacing it by rename does not. So:
+
+```bash
+for f in $(git --no-optional-locks status --porcelain | grep "^ M" | awk '{print $2}'); do
+  git --no-optional-locks show "HEAD:$f" > "$f"
+done
+```
+
+Run it after EVERY branch switch on this mount, then re-check `git status` —
+it should print nothing but the files you meant to keep. Typecheck afterwards
+and compare to the baseline; a jump of exactly the wrong kind (missing exports
+between two files you just wrote together) is this trap, not your code.
+
 ## Baselines by round
 
 The typecheck count and the test count after each round, moved here from the Commands table in `CLAUDE.md`. Compare COUNTS, never expect zero.
 
 - **Typecheck (`npx tsc --noEmit`):** Compare the error **count** to master's baseline (10 on `note-threads` (Sep 20), unchanged from `machine-authoring`; 11 after the Operations overhaul (Sep 19), unchanged from the reporting round which retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero
 
-- **Tests (`npx vitest run src`):** 3,717 in 251 files after the note threads round (Sep 20); 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
+- **Tests (`npx vitest run src`):** **3,584 in 238 files after the catalog gate (Sep 20; master was 3,545 in 237).** Note that the 251-file figure below counts test files outside `src` as well — the documented command, `npx vitest run src`, collects 238 on master. 3,717 in 251 files after the note threads round (Sep 20); 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
 
 - **beta-prep trim (Sep 17 2026), on the `beta-prep` branch only:** typecheck 11; 2,982 tests (2,977 on master, plus five new pins: the History button's `openProfileAt`, the two starting-weight casing tests, the two LoginScreen render tests).
