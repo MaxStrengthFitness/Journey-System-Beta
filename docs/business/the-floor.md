@@ -30,6 +30,23 @@ breaks rather than describing the symptom.
 | *to stimulate a growth mechanism* | Why a **practice** set is recorded in full and never averaged: it is movement, and by this definition not exercise, so it must not move a number that claims to measure exercise |
 | *within minimum time* | Twenty minutes, five to eight machines — and the Rank 1 rule that nothing may be added during a set without removing something. The clause *is* the constraint |
 
+## The format's one disadvantage, and what answers it
+
+AJ, Sep 21 2026. Twenty minutes, twice a week, one-on-one only. There is no
+class, no lounge and nobody hanging around afterwards, so **a studio in this
+format has almost no natural opportunity to build community.** The
+relationship therefore gets built on purpose, in the minutes on either side of
+the set — which is what the pre-session briefing and the post-session sweep
+are really for, as much as the coaching.
+
+**FORD** (Family, Occupation, Recreation, Dreams) is the frame for what to
+collect, and the **Delight queue** is where knowing turns into doing. Read
+`src/features/ford/README.md` before touching any of it. The rule that falls
+out of this, and that explains an otherwise odd product constraint: **the app
+never contacts anyone.** FORD surfaces a moment to a person and a person acts
+on it — an automated "happy anniversary" would be the precise opposite of
+going above and beyond, because it proves nobody remembered.
+
 ## The twenty minutes
 
 A client comes twice a week for **~20 minutes** (15–30 in practice) and does

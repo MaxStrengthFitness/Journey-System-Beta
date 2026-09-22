@@ -10,6 +10,21 @@ The point is not the filing cabinet. It is the anniversary dinner somebody
 actually paid for. A pillar full of beautifully organised facts that never
 turns into a gesture has failed.
 
+**Why it exists at all** (AJ, Sep 21 2026). The format's one real disadvantage:
+twenty minutes, twice a week, one-on-one only. No class, no lounge, nobody
+hanging around afterwards — **a studio like this has almost no natural
+opportunity to build community.** So it gets built deliberately, in the few
+minutes on either side of the set, and FORD is the frame for what to collect:
+what is going on with their family and which dates could be acted on; what
+their job actually consists of and what just changed in it; what they do for
+fun, out of the house and in it; and where they are headed — what they want
+from their life, what they wish they could do.
+
+That is the test for anything built here. FORD is not a CRM and it is not
+small talk filed for its own sake: it is the raw material for going above and
+beyond, and a feature that does not end in someone doing something human is
+not finished.
+
 ## The loop
 
 | Where | What happens |
