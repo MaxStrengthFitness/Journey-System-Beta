@@ -271,6 +271,17 @@ export function studioSummary(sessions: WorkoutSession[]): StudioSummary {
     unclosed: sessions.length - completed,
     completionRate: sessions.length === 0 ? 0 : completed / sessions.length,
     clients: new Set(sessions.map((s) => s.clientId).filter(Boolean)).size,
+    /*
+     * FIRST SESSION IN JOURNEY - not first session ever.
+     *
+     * `sessionNumber` is stamped from the client's count at the moment the
+     * session started, and during the migration that count is only what
+     * Journey had seen. So a studio whose roster is mostly long-standing
+     * clients reports a stream of "new clients" to its leader, every one of
+     * whom has been coming for years. The number is not fixable from here -
+     * this pass sees sessions, not client records - so the LABEL carries the
+     * qualifier instead, which is the honest reading of it either way.
+     */
     newClients: new Set(
       sessions.filter((s) => s.sessionNumber === 1).map((s) => s.clientId).filter(Boolean),
     ).size,

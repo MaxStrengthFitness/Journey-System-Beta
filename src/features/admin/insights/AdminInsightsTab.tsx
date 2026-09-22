@@ -262,7 +262,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
         <AdminStatTile
           label="Clients seen"
           value={failed ? "—" : summary.clients}
-          foot={failed ? undefined : `${summary.newClients} on their first session`}
+          foot={failed ? undefined : `${summary.newClients} on their first session in Journey`}
           loading={loading}
         />
         <AdminStatTile
