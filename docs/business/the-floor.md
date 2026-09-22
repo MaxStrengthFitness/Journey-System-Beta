@@ -81,10 +81,12 @@ and anything a previous trainer flagged on that machine ("holds her breath
 here"). Then it takes what happened. The catalog and the analytics are for off
 hours.
 
-**The app never decides a progression.** The 8–12 rule — over ten reps and
-approaching fifteen, the weight goes up; under eight, it may be too heavy —
-is a heuristic the trainer applies with judgement that depends on the trainer
-and the client. The app's job is to make the *consequence* visible: "that was a
+**The app never decides a progression.** Failure inside **6–10 reps** is the
+range the protocol advises (AJ, Sep 22 2026); over it the weight goes up, under
+it it may be too heavy. It is a heuristic a trainer applies with judgement, and
+the judgement is the point: **some clients reach failure at three reps and some
+not until fifteen**, by client type, preference or history, and the protocol
+bends to them rather than the other way round. The app's job is to make the *consequence* visible: "that was a
 12% increase", "up 40% over 90 days", and to let a leader find a plateau and
 ask why. Never a suggestion to move the weight.
 
@@ -95,9 +97,10 @@ only cares about **time under tension**, but true TUT is near-impossible to
 capture by hand, so:
 
 - **Weight** is the most important recorded value — it is what progresses.
-- **Reps** vary day to day (sleep, stress, meals, time of day). The goal is
-  failure somewhere around 8–10; some clients fail at 13, some at 8. **The rep
-  count is never the target.**
+- **Reps** vary day to day (sleep, stress, meals, time of day). Every set aims
+  at failure, advised inside 6–10 — but a client who fails at 3 and a client who
+  fails at 15 are both training correctly. **The rep count is never the
+  target**, and no screen may treat the advised range as a rule.
 - **Quality** — did every rep keep the **4 P's**: Pace, Posture, Path, Purpose.
 - **TSC / static hold**: the "reps" are seconds. The in-app stopwatch writes
   straight into that field when stopped.

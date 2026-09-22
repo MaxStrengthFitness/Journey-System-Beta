@@ -526,7 +526,20 @@ export function WorkoutTrackerView({
     };
 
     activeMachineIds.forEach((mId) => {
-      if (mId === "torso_rotation") {
+      /*
+       * The one sided machine. This used to test `mId === "torso_rotation"`,
+       * the LEGACY MACHINE_DATABASE key - but the app's canonical id is
+       * "m-torso-rotation" (data/default-machines.ts), so the branch never
+       * fired, the _Left/_Right logs were never closed, and Torso Rotation was
+       * the only machine in the app with no timing data at all.
+       *
+       * isPerSideMachine() is the one answer to "does this machine record two
+       * sides" and accepts both ids plus the name - every other per-side
+       * decision in this file already goes through it (lines ~1348, ~2084).
+       * AJ confirmed Sep 22 that the machine is on a lot of floors, so this is
+       * a repair rather than a deletion.
+       */
+      if (isPerSideMachine({ id: mId })) {
         close(mId, logs[`${sid}_${mId}_Left`], "Left");
         close(mId, logs[`${sid}_${mId}_Right`], "Right");
       } else {
