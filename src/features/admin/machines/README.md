@@ -96,6 +96,37 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | `../catalog/SubmissionReview.tsx` | That offer opened in this editor, at `scope="catalog"`. Saving records a correction on the offer; it does not publish. |
 | `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. |
 
+## The editor round that has not happened yet
+
+AJ, Sep 21 2026, on what the editor should be. The complaint first, because it
+has a one-tap cause:
+
+> "if you go to create a machine or edit a machine you are shown a large
+> amount of questions and nothing's filled in **even if you edit a machine
+> that has data filled out for it** … I'm not sure if it even interacts with
+> the catalog at all."
+
+**That is the legacy-shape problem, not an editor bug** — see the first trap
+below. Admin → System tools → *Restore standard machines* rewrites the catalog
+documents into the shape the editor reads. Until it is run, every machine
+opens near-empty and the editor looks broken when it is not. **If AJ reports
+the editor as clunky, ask whether that has been run before designing
+anything.**
+
+What he wants it to become, and where each piece stands:
+
+| Ask | State |
+| --- | --- |
+| The anatomical muscle picker | **built** — `sections.tsx`, wired to `primaryMuscles` and the diagram |
+| Safety notes, set-up notes, cues, advice to other trainers, kinematics, muscle groups | **built** — the eight Academy sections |
+| Trainers, leaders and admins all authoring | **partly** — `firestore.rules` allows create/update on `machines/{id}` to `isSuperAdmin()` only. A trainer contributes studio notes and tips, or a whole offered machine, but not a field on the catalog entry. Worth revisiting: the middle ground is a trainer *proposing* a field the way a studio proposes a machine |
+| **Duplicate a machine** | **not built.** The remodel case: "the seated dip just got a bigger seat and different handles" needs its own settings and nothing else changes. Copy → paste → edit the differences. This is also the answer to recording brand and model: a variant IS a copy with its own hardware fields |
+| **Drafts — start one, finish later** | **not built, but half there.** `CatalogStatus` already has `draft` and `CatalogList` already draws the badge; there is no way to reach it. Needs "save and finish later" and a sense of what the draft still needs |
+| **A staged form rather than sixty fields at once** | **not built.** `completeness.ts` already knows which checks matter (and `catalog/review.ts` names the eleven that gate a publish) — it just isn't used to shape the path through the form. "Get it usable", then "make it good", same fields, kinder order |
+
+The through-line in all of it: **the information is not the problem, the path
+through it is.** Do not answer this by removing fields.
+
 ## Things that bite
 
 They are in `docs/KNOWN-TRAPS.md` under **Machines and the template boundary** —
