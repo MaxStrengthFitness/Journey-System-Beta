@@ -4,6 +4,29 @@
 
 The Relay tab became **My Studio** (AJ, Sep 18): "each studio should have full insight and control over its own studio", and a studio's own settings were scattered across Operations → Studios, the Studio setup card under Learning, and Relay → Team → Standards — with the Studios tab shaped as a company registry that listed every studio to every leader.
 
+## The question it answers
+
+AJ, Sep 21 2026, and the test for whether something belongs here or on
+Operations:
+
+> My Studio is a place the team can actively go when they need to ask
+> themselves **how can I help the team right now** … Operations is more of
+> let's locate the problems, let's locate the things we can catch, and where
+> can we take advantage of small opportunities and turn them into big rewards.
+
+So: **My Studio is present tense and participatory** — what is going on at my
+studio today, what is everyone doing, what is coming up, and our machines.
+**Operations is investigative** — where are we going wrong, where are we going
+right. A panel that diagnoses belongs there; a panel that helps someone pitch
+in belongs here.
+
+**Why Relay is a board and not a thread.** Not every trainer is on the floor at
+the same time — mid-session, different shifts, in and out — so you cannot get
+the team in a room, and coordination has to work when nobody is waiting on
+anybody. A task is picked up, assigned, handed to someone and finished by
+whoever is actually there. That constraint is the shape of the feature; don't
+redesign it into something that assumes people are simultaneously present.
+
 ## The four sections
 
 | Section | Who | What |
