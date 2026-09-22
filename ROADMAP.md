@@ -18,6 +18,17 @@ and what is deliberately parked. It is re-cut at every gate.
 
 ## Where the project is right now
 
+**Beta is Nov 1 2026** for the corporate locations, and **Jan 1 2027** for the
+first franchises, rolled out in small batches (AJ, Sep 22). There are about
+**forty locations** in total. Everything on this page is read against those two
+dates.
+
+The scale the app has to survive, stated by AJ on Sep 22 and not written down
+anywhere before: the biggest studio has **~300 active clients**; a studio runs
+**100-200 sessions a week**, some over 200; a busy Monday is **60+ sessions**
+and a slow Wednesday is 4; and clients arrive carrying **10 to 200+ sessions
+each** of FileMaker history.
+
 Journey is **pre-alpha**. AJ is the only user; no trainer has run a real
 session on it. Everything built through Sep 20 is merged into `master` and
 **deployed** — `master` and `origin/master` are level, and every push to
@@ -83,27 +94,44 @@ commands are in **`docs/ops/REPO-HYGIENE.md`**; the scripts already exist
 
 ### 3. The pre-beta audit, and the Mindbody migration it has to solve
 
-`docs/ops/OVERNIGHT-AUDIT.md` is a prompt to paste into a fresh session and
-leave running: it walks the app in Rank order against the standard in
-`docs/START-HERE.md`, and produces a ranked list of what would hurt a trainer
-on day one, plus questions for AJ.
+**The audit ran on Sep 21** — `docs/rounds/2026-09-21-pre-beta-audit.md`. Its
+findings and AJ's answers are built on the `prior-history` branch. What it was
+pointed at:
 
-Two things it is pointed at, both named by AJ on Sep 21:
+- **The client directory shows no data.** SOLVED, and it is four columns, not
+  three. Membership, Sessions Remaining and Next Session all read
+  `client.renewal`, which `server/renewals-job.ts:378` is the only writer of
+  anywhere — and the rules forbid the app from writing it. The nightly job has
+  never run. Fix: `npx tsx scripts/run-renewals.ts --commit` once, no code
+  change. Last Session is a different cause: no session documents yet.
+- **Mindbody sync is per-client and manual — and it is THE beta blocker.**
+  The plan is now written: **`docs/rounds/2026-09-22-mindbody-sync-plan.md`**,
+  costed against AJ's real numbers. Short version: the whole forty-location
+  backfill is about 30,000 Mindbody calls, roughly $100 once or free spread
+  across nights, so **money is not the constraint**. The constraint is that
+  `server/mindbody-client.ts` has **no retry, no backoff and no 429 handling at
+  all**, and one 429 mid-run loses a client's data silently. That floor has to
+  be built first and **needs AJ's explicit OK**, because it is inside the
+  Mindbody integration.
+  Prerequisite, never yet run: `scripts/check-mindbody-client-collisions.ts`.
+  The two sites share one client-id namespace, and if two people share an id a
+  bulk sync writes one person's details over the other's.
 
-- **The client directory shows no data.** The Membership, Sessions Remaining
-  and Last Session columns exist and come back empty. Likely three different
-  causes — two probably waiting on the nightly renewals job, and Last Session
-  has its own known defect in the follow-up pile below.
-- **Mindbody sync is per-client and manual, and it does not scale.** A
-  trainer opens a profile and runs Master Sync for one person. Names arrive
-  on the schedule; address, demographics, contracts and packages do not.
-  With ~250 clients a studio across four studios, that is not viable by hand
-  — **this is a beta blocker**, and it needs a resumable, throttled,
-  miss-nobody backfill in the `scripts/` pattern, costed against Mindbody's
-  rate limits and the read quota. There is precedent for getting this wrong:
-  the 429 quota storm of Aug 30 2026.
+### 4. Two things AJ named on Sep 22
 
-### 4. The polish pass — the last piece of beta prep
+- **Admins cannot control the standard set.** AJ removed Torso Rotation from
+  the standard twenty **by accident**, because there is no good way to manage
+  it from the dashboard. Admins need to own that template — it is the basis
+  every new studio builds from, and with forty locations coming it gets used
+  forty times. The machine is on a lot of floors; its timing bug is fixed on
+  `prior-history`.
+- **An offline session, not attached to a person.** Mindbody is rarely down and
+  a client always exists in Mindbody — but the app must still be able to record
+  a session when the internet or Mindbody is not there, and let someone import
+  it into a client's profile afterwards. This closes the "Mindbody is down /
+  walk-in not in Mindbody" unknown in Gate B below.
+
+### 5. The polish pass — the last piece of beta prep
 Phase 1 of beta prep is otherwise done. What is left is the look and feel:
 transitions between screens, loading states, how buttons read pressed /
 disabled / focused, speed, the token and colour drift (322 raw hex values in
