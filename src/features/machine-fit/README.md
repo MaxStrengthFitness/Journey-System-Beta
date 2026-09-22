@@ -10,6 +10,24 @@ pad 2. This folder answers three questions from the same evidence:
 - an owner — *"what are 5'7" clients set to versus 5'4", and does the seat even
   follow height on this machine?"* → **Operations → Machine fit**.
 
+**An outlier is a question, never a verdict** (AJ, Sep 21 2026). His own
+example: *why is this 5'8" client on seat 6 when most 5'8" clients are on seat
+4?* — and immediately after it, the reason the screen must not answer its own
+question: **some people have a long torso and short legs, so seat 6 may be
+exactly right.** The data cannot tell the difference and the trainer in the
+room can.
+
+That is why this feature raises things as *worth a look* and never as *wrong*,
+and it is the concrete reason the tolerance ladder does not stop at height:
+height alone manufactures precisely that false alarm, so the ladder keeps
+narrowing — wingspan, weight, age, body composition — until the comparison is
+to people actually built the same way. Narrowing shrinks the sample, which is
+why every claim carries a named minimum and says so when it has not got one.
+
+Two uses, and they are not the same job: **forward**, a good starting point
+for a client nobody has ever set up; **backward**, a client who may have been
+set up wrong once and never looked at since.
+
 The round document is `docs/rounds/2026-09-17-machine-fit.md`: the brief, the
 data structure, the algorithm, the screens and the edge cases. Read it before
 changing anything here. This page is the short version: what is load-bearing.
