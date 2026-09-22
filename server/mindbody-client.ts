@@ -31,8 +31,177 @@ import {
   type MasterSyncResponse,
 } from "../src/lib/mindbody-demographics-map.ts";
 import { DEFAULT_TIME_ZONE, studioTodayKey } from "../src/lib/studio-time.ts";
+import {
+  backoffMs,
+  breakerPausedMs,
+  isRetryable,
+  newBucket,
+  recordResult,
+  retryAfterMs,
+  takeFromBucket,
+  NEW_BREAKER,
+  type BreakerState,
+  type BucketState,
+} from "../src/lib/mindbody-throttle.ts";
 
 const MB_BASE = "https://api.mindbodyonline.com/public/v6";
+
+/* ------------------------------------------------------------------ *
+ * The floor under every call (Sep 22 2026)
+ * ------------------------------------------------------------------ *
+ *
+ * Until now this file did one `fetch` and, if it failed, logged a warning and
+ * returned. At today's volume - a trainer pressing a button - that is
+ * survivable. It is not survivable at the volume beta needs: onboarding one
+ * 300-client studio is about 1,500 calls, and one 429 in the middle of that
+ * loses a client's data in silence, which is the worst shape a failure can
+ * have (docs/rounds/2026-09-22-mindbody-sync-plan.md).
+ *
+ * Three things, in the order a call meets them:
+ *
+ *   1. A TOKEN BUCKET, so a burst cannot outrun whatever Mindbody's real
+ *      per-second limit is. We do not know that limit - the repo only ever
+ *      knew the BILLING threshold - so the default is deliberately
+ *      conservative and can be raised from the environment once somebody
+ *      reads it off the developer portal. It is set high enough that a
+ *      trainer pressing Sync (five calls) never waits, and low enough that
+ *      the nightly job spends its 600 calls over a couple of minutes.
+ *
+ *   2. RETRY WITH BACKOFF, on 429, 408 and 5xx only. A 400, 401 or 404 will
+ *      not fix itself and retrying one just spends money. `Retry-After` is
+ *      honoured when Mindbody sends it, capped so a silly value cannot hang
+ *      a request a trainer is waiting on. Jitter, because four concurrent
+ *      pulls retrying in lockstep is its own small thundering herd.
+ *
+ *   3. A CIRCUIT BREAKER per site. A studio with a wrong Site ID, or Mindbody
+ *      being down, must not burn the day's allowance discovering that over
+ *      and over. After a run of failures the site goes quiet for a minute and
+ *      calls fail fast with a clear reason; one call is let through after the
+ *      cooldown to see if it is back.
+ *
+ * The whole thing is bounded by a total deadline, because a person is
+ * sometimes on the other end of this. The existing contract is unchanged:
+ * `mindbodyGet` still never throws for an HTTP error, and still returns the
+ * same flat result shape.
+ *
+ * Deliberately not counted: a retry does not raise the `calls` figure the
+ * pulls report. That number is a BUDGET estimate the nightly job plans
+ * against, and inflating it with retries would make the job pull fewer
+ * clients precisely when Mindbody is already struggling.
+ */
+
+const envNum = (name: string, fallback: number): number => {
+  const raw = Number(process.env[name]);
+  return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+};
+
+/** Requests a second, steady state. Conservative until the real limit is known. */
+const BUCKET_LIMITS = {
+  perSecond: envNum("MINDBODY_RATE_PER_SEC", 5),
+  burst: envNum("MINDBODY_RATE_BURST", 10),
+};
+/** Attempts INCLUDING the first, so 3 means the original plus two retries. */
+const MAX_ATTEMPTS = envNum("MINDBODY_MAX_ATTEMPTS", 3);
+/** Everything for one call, retries and waiting included. */
+const TOTAL_DEADLINE_MS = envNum("MINDBODY_DEADLINE_MS", 15_000);
+const BREAKER_LIMITS = {
+  fails: envNum("MINDBODY_BREAKER_FAILS", 5),
+  cooldownMs: envNum("MINDBODY_BREAKER_COOLDOWN_MS", 60_000),
+};
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+
+/* The mutable half. Every decision about it lives in lib/mindbody-throttle.ts,
+   which is pure and tested; this file only holds the state and does the
+   sleeping. One bucket for the process, one breaker per site. */
+let bucket: BucketState = newBucket(BUCKET_LIMITS, Date.now());
+const breakers: Record<string, BreakerState> = {};
+
+async function takeToken(): Promise<void> {
+  for (;;) {
+    const r = takeFromBucket(bucket, BUCKET_LIMITS, Date.now());
+    bucket = r.state;
+    if (r.waitMs === 0) return;
+    await sleep(r.waitMs);
+  }
+}
+
+export interface FloorOutcome {
+  response: Response | null;
+  /** Set when no response was obtained at all, or the breaker refused. */
+  error: string;
+  /** 503 when the breaker refused, 0 when the network failed. */
+  status: number;
+  attempts: number;
+}
+
+/**
+ * Every call to Mindbody in this process goes through here.
+ * `label` is for the log line only.
+ */
+async function callMindbody(
+  site: string,
+  label: string,
+  send: () => Promise<Response>,
+): Promise<FloorOutcome> {
+  const paused = breakerPausedMs(breakers[site] || NEW_BREAKER, Date.now());
+  if (paused > 0) {
+    return {
+      response: null,
+      status: 503,
+      error:
+        `Mindbody calls for site ${site} are paused for another ` +
+        `${Math.ceil(paused / 1000)}s after repeated failures.`,
+      attempts: 0,
+    };
+  }
+
+  const deadline = Date.now() + TOTAL_DEADLINE_MS;
+  let lastError = "";
+  let lastStatus = 0;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    await takeToken();
+    let res: Response | null = null;
+    try {
+      res = await send();
+    } catch (err: any) {
+      /* A network error, not an HTTP one. Worth one more go. */
+      lastError = err?.message || String(err);
+      lastStatus = 0;
+    }
+
+    if (res) {
+      if (res.ok || !isRetryable(res.status)) {
+        breakers[site] = recordResult(breakers[site] || NEW_BREAKER, res.ok, BREAKER_LIMITS, Date.now());
+        return { response: res, status: res.status, error: "", attempts: attempt };
+      }
+      lastStatus = res.status;
+      lastError = `HTTP ${res.status}`;
+    }
+
+    if (attempt >= MAX_ATTEMPTS) break;
+    const wait =
+      (res && retryAfterMs(res.headers.get("retry-after"), Date.now())) ??
+      backoffMs(attempt, Math.random());
+    if (Date.now() + wait >= deadline) break;
+    console.warn(
+      `Mindbody ${label} (site ${site}) ${lastError}; retrying in ${wait}ms ` +
+        `(attempt ${attempt} of ${MAX_ATTEMPTS}).`,
+    );
+    await sleep(wait);
+  }
+
+  breakers[site] = recordResult(breakers[site] || NEW_BREAKER, false, BREAKER_LIMITS, Date.now());
+  if (breakerPausedMs(breakers[site], Date.now()) > 0) {
+    console.warn(
+      `Mindbody site ${site}: too many failures in a row, pausing calls for ` +
+        `${Math.round(BREAKER_LIMITS.cooldownMs / 1000)}s.`,
+    );
+  }
+  return { response: null, status: lastStatus, error: lastError, attempts: MAX_ATTEMPTS };
+}
+
 
 // Tokens expire after 60 minutes; they are refreshed at 55 for safety.
 const tokenCache: Record<string, { token: string; expiresAt: number }> = {};
@@ -76,18 +245,33 @@ async function issueMindbodyToken(siteId: string): Promise<string> {
     );
   }
 
-  const response = await fetch(`${MB_BASE}/usertoken/issue`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Api-Key": apiKey,
-      SiteId: String(siteId),
-    },
-    body: JSON.stringify({
-      Username: `_${sourceName}`,
-      Password: sourcePassword,
+  /*
+   * The token call goes through the floor as well: it is a call like any
+   * other, it can be rate-limited like any other, and a token failure takes
+   * every call behind it down with it. Its contract is unchanged - unlike
+   * mindbodyGet, this one still THROWS, because a caller with no token has
+   * nothing useful to do.
+   */
+  const outcome = await callMindbody(String(siteId), "usertoken/issue", () =>
+    fetch(`${MB_BASE}/usertoken/issue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Api-Key": apiKey,
+        SiteId: String(siteId),
+      },
+      body: JSON.stringify({
+        Username: `_${sourceName}`,
+        Password: sourcePassword,
+      }),
     }),
-  });
+  );
+
+  const response = outcome.response;
+  if (!response) {
+    console.error("Mindbody Token Error:", outcome.status, outcome.error);
+    throw new Error(`Failed to issue Mindbody token: ${outcome.error}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -130,15 +314,23 @@ export async function mindbodyGet(
     if (Array.isArray(value)) value.forEach((v) => query.append(key, String(v)));
     else query.append(key, String(value));
   }
-  const r = await fetch(`${MB_BASE}/${path}?${query.toString()}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "Api-Key": apiKey,
-      SiteId: site,
-      Authorization: userToken,
-    },
-  });
+  const outcome = await callMindbody(site, path, () =>
+    fetch(`${MB_BASE}/${path}?${query.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Api-Key": apiKey,
+        SiteId: site,
+        Authorization: userToken,
+      },
+    }),
+  );
+  const r = outcome.response;
+  /* Out of attempts, or the breaker is open. Still not a throw. */
+  if (!r) {
+    console.warn(`Mindbody ${path} gave up (Site ${site}):`, outcome.status, outcome.error);
+    return { ok: false, status: outcome.status, data: null, error: outcome.error };
+  }
   if (!r.ok) {
     const text = await r.text();
     console.warn(`Mindbody ${path} failed (Site ${site}):`, r.status, text.slice(0, 300));
