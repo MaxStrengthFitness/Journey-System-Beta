@@ -4,6 +4,32 @@ AJ's own account, Sep 18 2026 (`For Clarity 2`), distilled. **Read this before
 touching the Active Session, the Now Bar, the briefing or the post-session
 screen.** Every one of those screens is furniture for the room described here.
 
+## The definition everything rests on
+
+AJ, Sep 21 2026. **This is the source. If it is not within this definition, it
+is not true exercise** — and almost every rule in the app is one clause of it
+made concrete, so a change is often best rejected by naming the clause it
+breaks rather than describing the symptom.
+
+> "Exercise is a process whereby the body performs work of a demanding nature,
+> in accordance with muscle and joint function, in a clinically-controlled
+> environment, within the constraints of safety, meaningfully loading the
+> muscular structures to inroad their strength to stimulate a growth mechanism
+> within minimum time."
+>
+> — Ken Hutchins
+
+| Clause | What it built |
+| --- | --- |
+| *work of a demanding nature* | One set to failure; and why **performed** is the only outcome that counts toward an average (`src/lib/set-outcome.ts`) |
+| *in accordance with muscle and joint function* | The musculature, movement pattern and kinematics on every machine — the method tier head office owns (`src/lib/machine-template.ts`) |
+| *in a clinically-controlled environment* | Sentences, not scores. No hype, no celebration, and never a confident wrong number |
+| *within the constraints of safety* | Safety is add-only: a studio may add a warning, never remove one. A never-to-failure machine must carry the reason why — an unexplained prohibition gets ignored |
+| *meaningfully loading the muscular structures* | The weight and the settings on the Now Bar. The machine is almost never already right when the trainer walks up, so the load is stated, never assumed |
+| *to inroad their strength* | Rep **quality** as the measure, not rep count — how many *good* reps it took. The red kaizen mark is reserved for exactly this |
+| *to stimulate a growth mechanism* | Why a **practice** set is recorded in full and never averaged: it is movement, and by this definition not exercise, so it must not move a number that claims to measure exercise |
+| *within minimum time* | Twenty minutes, five to eight machines — and the Rank 1 rule that nothing may be added during a set without removing something. The clause *is* the constraint |
+
 ## The twenty minutes
 
 A client comes twice a week for **~20 minutes** (15–30 in practice) and does

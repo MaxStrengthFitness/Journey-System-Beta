@@ -29,7 +29,31 @@ FileMaker system. It does three things and nothing else:
 3. **Around all of that** — lets a studio leader run the studio, and lets head
    office keep the method the same everywhere.
 
-Two sentences that explain most of the design decisions in the codebase:
+### The definition it all rests on
+
+Everything above is downstream of one sentence. AJ: *if it isn't within this
+definition, it isn't true exercise.*
+
+> "Exercise is a process whereby the body performs work of a demanding nature,
+> in accordance with muscle and joint function, in a clinically-controlled
+> environment, within the constraints of safety, meaningfully loading the
+> muscular structures to inroad their strength to stimulate a growth mechanism
+> within minimum time."
+>
+> — Ken Hutchins
+
+Almost every rule in the app is one clause of that, made concrete — *within
+minimum time* is why nothing may be added to the set without removing
+something; *to inroad their strength* is why rep **quality** is the measure
+rather than rep count; *to stimulate a growth mechanism* is why a practice set
+is recorded in full and never averaged. The clause-by-clause map is in
+`docs/business/the-floor.md`.
+
+**It is also a good way to reject a change.** "That breaks *within minimum
+time*" is faster and more precise than describing the symptom, and it points
+at the fix.
+
+Two more sentences that explain most of the rest:
 
 > **The app is a guide and a log. It is never a coach.**
 > It never suggests a progression, never tells the trainer what to do next,
