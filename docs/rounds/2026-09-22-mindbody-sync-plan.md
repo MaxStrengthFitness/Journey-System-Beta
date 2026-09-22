@@ -73,6 +73,34 @@ clients. Twenty clients is a hundred calls.
 
 ---
 
+## What the backfill has to work around (found Sep 22, after the floor was built)
+
+**The mapping we want to reuse is good, and it is currently unreachable from a
+script.**
+
+`buildMasterSyncPatch` in `src/lib/mindbody-master-sync.ts` is the heart of
+Master Sync: it decides every field written to a client, only writes what
+actually changed, never lets a blank from Mindbody blank a field, and it is
+covered by **32 existing tests with 107 assertions** that call it directly. It
+is exactly what a backfill should use, and duplicating it would put the same
+logic in two places - which is the drift that produced the whole Sep 21 audit.
+
+But that module imports `firebase/firestore` and `../firebase` at the top, and
+it calls `buildCommercialWrites`, which does the same. A `scripts/` or
+`server/` backfill runs on **firebase-admin**, so importing it would drag the
+browser SDK and a second Firebase app into a Node process.
+
+**So the first build step is an extraction, not the backfill itself**: move the
+pure patch-building half into its own module with the timestamp constructor
+injected, leaving `mindbody-master-sync.ts` importing and re-exporting it so
+its own signature is unchanged. The 32 tests are the proof - they import
+`buildMasterSyncPatch` by name, so if they still pass, the extraction is
+faithful.
+
+Two reasons it is not done yet: it is a multi-file refactor of the live sync
+path (AJ pushed it to `master` on Sep 22, so it is running in the studios now),
+and it is better done with him available than unattended.
+
 ## The one thing that has to exist first
 
 **There is no retry, no backoff, no rate limiter and no 429 handling anywhere in
@@ -181,6 +209,24 @@ studio is two nights.
 
 ---
 
+## The counting and verification tool — BUILT
+
+`scripts/mindbody-sync-report.ts` (Sep 22). Read-only, no `--commit`, no write
+path, and it imports nothing Mindbody so it cannot spend a call. Safe to run as
+often as you like.
+
+```
+npx tsx scripts/mindbody-sync-report.ts
+```
+
+It answers the questions nobody has answered: how many clients there actually
+are per studio, how many are linked to Mindbody, how many have ever been
+synced and how stale they are, how many already carry a visit count, and **what
+catching up would cost** in calls, in nights at the free allowance, and in
+dollars if done in one go.
+
+It also writes the proof artifact below to `backups/`.
+
 ## How we prove nobody was missed
 
 The run's own report is not proof — it only knows about the clients it reached.
@@ -189,8 +235,13 @@ Prove it the other way round: **enumerate every client document, filter to those
 with no `mindbodyMasterSyncedAt`, and print the list.** The deliverable is a
 report of who has *not* been synced, and it must be empty.
 
-Note for whoever builds it: `mindbodyMasterSyncedAt` is an ISO string with no
-index, and Firestore cannot query for an absent field — so that check is an
+That is what the report tool above writes, as `notSynced` in its JSON. It also
+writes `notLinked` — clients a backfill will skip for good because they carry
+no usable Mindbody id. Those need a person, not another run, and they would
+otherwise sit in the "still to sync" number forever looking like a failure.
+
+`mindbodyMasterSyncedAt` is an ISO string with no index, and Firestore cannot
+query for an absent field — so that check is necessarily an
 enumerate-and-filter, exactly as `backfill-client-since.ts:259` already does it.
 
 ---
@@ -216,8 +267,9 @@ And the one from the lease work: **one shared lease, not one timer per device.**
 
 | | |
 | --- | --- |
-| **Now** | AJ's OK on the Mindbody client. Then the floor: retry, backoff, token bucket, breaker |
-| **Also now** | Run the collision check. Read-only, and it gates everything else |
+| ~~Now~~ | ~~AJ's OK on the Mindbody client.~~ **DONE Sep 22** — the floor is built: token bucket, retry with `Retry-After`, per-site breaker, decisions in `src/lib/mindbody-throttle.ts` with 19 tests |
+| **Now** | Run `scripts/mindbody-sync-report.ts` (built, read-only) and the collision check. Between them they replace every estimate in this document with a number |
+| **Then** | Extract the pure patch builder, protected by its 32 existing tests. With AJ available — the sync path is live |
 | **Next** | The onboarding script, proven on one studio with `--limit 25` first, AJ watching |
 | **Then** | Steady state — today and tomorrow, on the existing lease |
 | **Buffer** | The iPad walkthrough, and the live rules/indexes question that is still the roadmap's top item |
