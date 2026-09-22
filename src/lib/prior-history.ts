@@ -167,15 +167,19 @@ export type HistoryCoverage = "complete" | "partial" | "unknown";
 
 /**
  * How many visits Mindbody may have counted before we stop believing Journey
- * could hold this client's whole story. AJ, Sep 22 2026.
+ * could hold this client's whole story. AJ, Sep 22 2026 - raised from three to
+ * five on his second pass, once the number was going back on the Hub card.
  *
  * A consultation and an intro session already put a genuinely new client at
- * two, so the line has to sit above that, and leaving a booking's worth of
- * slop errs towards the harmless mistake: calling a new client's fourth
- * session "nothing recorded" costs a word, calling a twelve-year client new
- * costs the trainer's trust in the screen.
+ * two, so the line has to sit above that, and the slop errs towards the
+ * harmless mistake: calling a new client's sixth session "nothing recorded"
+ * costs a word, calling a twelve-year client new costs the trainer's trust in
+ * the screen.
+ *
+ * It doubles as the line the Hub card draws between "New" and a number, so
+ * the two can never disagree about who is new.
  */
-export const NEW_CLIENT_MAX_VISITS = 3;
+export const NEW_CLIENT_MAX_VISITS = 5;
 
 export interface CoverageInput {
   priorHistory?: unknown;

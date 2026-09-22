@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { coverageOfClient, cutoverOf } from "./client-coverage";
+import { NEW_CLIENT_MAX_VISITS } from "./prior-history";
 
 /*
  * The direction of failure is the thing under test.
@@ -64,14 +65,17 @@ describe("coverageOfClient", () => {
  * Hub has loaded, with nothing synced and nobody typing anything.
  */
 describe("coverageOfClient and Mindbody's visit count", () => {
-  it("treats three visits or fewer as genuinely new", () => {
+  it("treats five visits or fewer as genuinely new", () => {
     // A consultation and an intro session already put a new client at two.
+    // AJ raised the line to five on Sep 22, when the number went back on the
+    // Hub card: it is the same constant the card uses to say "New", so the
+    // card and the gate cannot disagree about who is new.
     expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 0 }, null)).toBe("complete");
-    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 3 }, null)).toBe("complete");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: NEW_CLIENT_MAX_VISITS }, null)).toBe("complete");
   });
 
   it("treats anything above that as a story Journey cannot hold", () => {
-    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 4 }, null)).toBe("partial");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: NEW_CLIENT_MAX_VISITS + 1 }, null)).toBe("partial");
     expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 412 }, null)).toBe("partial");
   });
 

@@ -4,6 +4,7 @@ import { getClientAlertState } from "../../lib/client-alerts";
 import { hubMarkers, isDefaultService, visibleMarkers, type HubMarkerKind } from "../../lib/hub-markers";
 import { safeToDate, getMillis } from "../../lib/utils";
 import { canQuoteSessionNumber, coverageOfClient } from "../../lib/client-coverage";
+import { NEW_CLIENT_MAX_VISITS } from "../../lib/prior-history";
 import { zonedHM } from "../../lib/studio-time";
 import { cn } from "@/lib/utils";
 
@@ -108,6 +109,18 @@ export function ScheduleBlock({
    */
   const coverage = coverageOfClient(client, journeyCutoverDate);
   const canShowNumber = canQuoteSessionNumber(client, coverage);
+  /*
+   * The corner says one of three things, and never guesses (AJ, Sep 22):
+   *
+   *   "New"  - we know she is new. Her first NEW_CLIENT_MAX_VISITS sessions.
+   *   "#37"  - we know the number.
+   *   nothing - we do not know, and the "New to Journey" marker says why.
+   *
+   * The threshold is the same constant the coverage gate uses, so the card
+   * and the gate cannot drift into disagreeing about who is new.
+   */
+  const showsNew =
+    canShowNumber && sessionNumber !== null && sessionNumber <= NEW_CLIENT_MAX_VISITS;
   const isMilestone =
     canShowNumber && sessionNumber !== null && (sessionNumber === 1 || sessionNumber % 25 === 0);
 
@@ -320,7 +333,14 @@ export function ScheduleBlock({
             aria-label="Not synced to a Max Strength profile yet"
             className="absolute bottom-1 right-1 w-3 h-3 text-slate-400 dark:text-slate-500"
           />
-        ) : !canShowNumber || sessionNumber === null ? null : (
+        ) : !canShowNumber || sessionNumber === null ? null : showsNew ? (
+          <span
+            aria-label="New client"
+            className="absolute bottom-0.5 right-1 text-[9px] font-bold uppercase tracking-wide leading-none text-cyan-700 dark:text-cyan"
+          >
+            New
+          </span>
+        ) : (
           <span
             aria-label={`Session number ${sessionNumber}`}
             className={cn(
