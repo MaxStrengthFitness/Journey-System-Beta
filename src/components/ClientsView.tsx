@@ -146,6 +146,7 @@ export function ClientsView({
   authTrainer,
   searchTerm,
   rosterLoading = false,
+  journeyCutoverDate = null,
 }: {
   clients: Client[];
   trainers: Trainer[];
@@ -174,6 +175,8 @@ export function ClientsView({
    * "Not synced" for that beat.
    */
   rosterLoading?: boolean;
+  /** The active studio's cutover day, for the session number on each card. */
+  journeyCutoverDate?: string | null;
 }) {
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
@@ -1311,6 +1314,7 @@ export function ClientsView({
                                           : null;
                                         return (
                                           <ScheduleBlock
+                                            journeyCutoverDate={journeyCutoverDate}
                                             key={
                                               session.id ||
                                               session.mindbodyAppointmentId ||

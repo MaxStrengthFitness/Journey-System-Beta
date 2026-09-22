@@ -3,6 +3,7 @@ import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { hubMarkers, isDefaultService, visibleMarkers, type HubMarkerKind } from "../../lib/hub-markers";
 import { safeToDate, getMillis } from "../../lib/utils";
+import { canQuoteSessionNumber, coverageOfClient } from "../../lib/client-coverage";
 import { zonedHM } from "../../lib/studio-time";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,12 @@ interface ScheduleBlockProps {
    * confident wrong answer for the second it takes the roster to arrive.
    */
   rosterLoading?: boolean;
+  /**
+   * The studio's `journeyCutoverDate` - the day IT moved onto Journey. Used
+   * only to work out whether this client's session count can be trusted;
+   * absent reads as "we do not know", which shows no number at all.
+   */
+  journeyCutoverDate?: string | null;
 }
 
 /* One tone per kind; the words carry the meaning, the tint only groups them:
@@ -31,6 +38,9 @@ const MARKER_TONE: Record<HubMarkerKind, string> = {
   consult: "bg-cyan/15 text-cyan-800 dark:text-cyan",
   first: "bg-cyan/15 text-cyan-800 dark:text-cyan",
   milestone: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  /* Deliberately the quietest tone on the card. It marks what we do NOT
+     know, so it must not read as an event worth celebrating. */
+  "new-to-journey": "bg-slate-500/15 text-slate-600 dark:text-slate-400",
   birthday: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
   back: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
   away: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
@@ -68,6 +78,7 @@ export function ScheduleBlock({
   workoutSession,
   onOpenClient,
   rosterLoading = false,
+  journeyCutoverDate = null,
 }: ScheduleBlockProps) {
   const isUnavailable = Boolean(
     session?.clientName?.toLowerCase().includes("unavailab"),
@@ -88,8 +99,17 @@ export function ScheduleBlock({
   const sessionNumber = client
     ? (client.sessionCount || 0) + (isAlreadyCompleted ? 0 : 1)
     : null;
+  /*
+   * ...and unknown ALSO for a client who was training here before Journey,
+   * until somebody records her total. The count is then only what Journey
+   * has seen, so the corner of the card would read "#1" for a woman of
+   * twelve years. lib/client-coverage.ts. The corner is simply left empty -
+   * AJ, Sep 2026 - and a "New to Journey" marker says why.
+   */
+  const coverage = coverageOfClient(client, journeyCutoverDate);
+  const canShowNumber = canQuoteSessionNumber(client, coverage);
   const isMilestone =
-    sessionNumber !== null && (sessionNumber === 1 || sessionNumber % 25 === 0);
+    canShowNumber && sessionNumber !== null && (sessionNumber === 1 || sessionNumber % 25 === 0);
 
   const {
     hasPriorityNote,
@@ -115,7 +135,8 @@ export function ScheduleBlock({
      markers instead (lib/hub-markers.ts). A service that is NOT the plain
      session — a consultation, an InBody scan — still shows. */
   const showService = !isDefaultService(serviceName);
-  const markers = !isUnavailable && !isCompleted ? hubMarkers({ client, sessionNumber, serviceName }) : [];
+  const markers =
+    !isUnavailable && !isCompleted ? hubMarkers({ client, sessionNumber, serviceName, coverage }) : [];
   /* A 30-minute card has one line of chips; the rest fold into "+N". The
      full list is on the profile (and in the tooltip). */
   const { shown: shownMarkers, more: moreMarkers } = visibleMarkers(markers);
@@ -299,7 +320,7 @@ export function ScheduleBlock({
             aria-label="Not synced to a Max Strength profile yet"
             className="absolute bottom-1 right-1 w-3 h-3 text-slate-400 dark:text-slate-500"
           />
-        ) : (
+        ) : !canShowNumber || sessionNumber === null ? null : (
           <span
             aria-label={`Session number ${sessionNumber}`}
             className={cn(

@@ -71,6 +71,7 @@ import {
   FranchiseNetwork,
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
+import { cutoverOf } from "./lib/client-coverage";
 import { isSessionValid } from "./lib/utils";
 import { LoadingArea } from "./components/LoadingMark";
 import {
@@ -1571,6 +1572,7 @@ export default function AppContent({
                       authTrainer?.role === "Founder"
                     }
                     activeStudioId={activeStudioId}
+                    journeyCutoverDate={cutoverOf(studios, activeStudioId)}
                     authTrainer={authTrainer}
                     onSelectClient={(id) => {
                       setSelectedClientId(id);

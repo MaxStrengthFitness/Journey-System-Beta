@@ -4,12 +4,60 @@ import { daysUntilBirthday, hubMarkers, isDefaultService, visibleMarkers } from 
 const today = new Date(2026, 8, 13); // Sep 13 2026
 
 describe("hubMarkers", () => {
+  const complete = "complete" as const;
+
   it("names the first session, a consultation, and a milestone", () => {
-    expect(hubMarkers({ client: {} as any, sessionNumber: 1, today })).toEqual([{ kind: "first", label: "First session" }]);
+    expect(hubMarkers({ client: {} as any, sessionNumber: 1, coverage: complete, today })).toEqual([{ kind: "first", label: "First session" }]);
     expect(hubMarkers({ client: {} as any, sessionNumber: 3, serviceName: "Consultation", today })[0]).toEqual({ kind: "consult", label: "Consultation" });
     expect(hubMarkers({ client: { requiresConsultation: true, consultationCompleted: false } as any, sessionNumber: 1, today })[0].kind).toBe("consult");
-    expect(hubMarkers({ client: {} as any, sessionNumber: 100, today })).toEqual([{ kind: "milestone", label: "Session 100" }]);
-    expect(hubMarkers({ client: {} as any, sessionNumber: 52, today })).toEqual([]);
+    expect(hubMarkers({ client: {} as any, sessionNumber: 100, coverage: complete, today })).toEqual([{ kind: "milestone", label: "Session 100" }]);
+    expect(hubMarkers({ client: {} as any, sessionNumber: 52, coverage: complete, today })).toEqual([]);
+  });
+
+  /*
+   * The migration client. Journey has seen nothing of her, so her count is 1
+   * and her real total is in FileMaker. Calling her card "#1 - First session"
+   * in front of the trainer who has known her for eight years is the bug
+   * this gate exists to stop, and it is silent: nobody notices a wrong word.
+   */
+  describe("a client who was training here before Journey", () => {
+    it("says New to Journey instead of First session", () => {
+      expect(hubMarkers({ client: {} as any, sessionNumber: 1, coverage: "partial", today })).toEqual([
+        { kind: "new-to-journey", label: "New to Journey" },
+      ]);
+      expect(hubMarkers({ client: {} as any, sessionNumber: 1, coverage: "unknown", today })).toEqual([
+        { kind: "new-to-journey", label: "New to Journey" },
+      ]);
+    });
+
+    it("claims no milestone off a count that is only part of the story", () => {
+      expect(hubMarkers({ client: {} as any, sessionNumber: 25, coverage: "partial", today })).toEqual([]);
+      expect(hubMarkers({ client: {} as any, sessionNumber: 100, coverage: "unknown", today })).toEqual([]);
+    });
+
+    it("trusts the count again once somebody records what came before", () => {
+      // priorHistory present means a person stated the total, and the
+      // reconciler folds it into sessionCount - so the number is hers again.
+      const recorded = { priorHistory: { sessions: 312, through: "2026-08-31", source: "filemaker" } } as any;
+      expect(hubMarkers({ client: recorded, sessionNumber: 325, coverage: "partial", today })).toEqual([
+        { kind: "milestone", label: "Session 325" },
+      ]);
+    });
+
+    it("defaults to the cautious answer when a caller forgets to pass coverage", () => {
+      // The whole point of the default: a screen nobody threaded this
+      // through says too little, never something wrong.
+      expect(hubMarkers({ client: {} as any, sessionNumber: 1, today })).toEqual([
+        { kind: "new-to-journey", label: "New to Journey" },
+      ]);
+    });
+
+    it("still lets a consultation win, and still says she is back", () => {
+      expect(hubMarkers({ client: {} as any, sessionNumber: 1, serviceName: "Consultation", coverage: "unknown", today })[0].kind).toBe("consult");
+      expect(hubMarkers({ client: { lastSessionDate: "2026-08-16" } as any, sessionNumber: 40, coverage: "unknown", today })).toEqual([
+        { kind: "back", label: "Back after 4 wk" },
+      ]);
+    });
   });
 
   it("sees a birthday within the week", () => {

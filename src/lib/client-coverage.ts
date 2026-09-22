@@ -55,12 +55,35 @@ export function coverageOfClient(
 }
 
 /**
+ * MAY A SCREEN PUT A SESSION NUMBER ON THIS CLIENT?
+ *
+ * `client.sessionCount` is what Journey can SEE plus whatever a person
+ * stated in `priorHistory` (types.ts). So it is trustworthy when Journey
+ * holds the whole story, or when somebody has written down the rest.
+ *
+ * It is NOT trustworthy for the migration client nobody has got to yet: her
+ * first session predates her studio's cutover, so coverage is "partial",
+ * but no total has been stated and the count is only what Journey has seen.
+ * "partial" covers both of those, and the prior record is what separates
+ * them - which is why this takes the client as well as the coverage.
+ */
+export function canQuoteSessionNumber(
+  client: { priorHistory?: unknown } | null | undefined,
+  coverage: HistoryCoverage,
+): boolean {
+  if (!client) return false;
+  return coverage === "complete" || !!client.priorHistory;
+}
+
+/**
  * The studio's cutover day, from whatever list of studios a screen holds.
  * Returns null - which reads as unknown - when the studio is not loaded yet,
  * rather than guessing at another studio's date.
  */
 export function cutoverOf(
-  studios: Array<{ id: string; journeyCutoverDate?: string | null }> | null | undefined,
+  // `Studio.id` is optional in types.ts, so this takes it optional too - a
+  // studio with no id can never match and simply falls through to null.
+  studios: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }> | null | undefined,
   studioId: string | null | undefined,
 ): string | null {
   if (!studios || !studioId) return null;

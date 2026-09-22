@@ -12,10 +12,13 @@
 
 import type { Client, ClientEvent } from "../types";
 import { renewalPromptDue } from "../features/renewals/conversation";
+import type { HistoryCoverage } from "./prior-history";
+import { canQuoteSessionNumber } from "./client-coverage";
 
 export type HubMarkerKind =
   | "consult"
   | "first"
+  | "new-to-journey"
   | "milestone"
   | "birthday"
   | "back"
@@ -72,17 +75,33 @@ export function hubMarkers(params: {
   sessionNumber: number;
   /** Mindbody's service name for the booking, e.g. "Consultation". */
   serviceName?: string | null;
+  /**
+   * How much of this client's story Journey holds (lib/client-coverage.ts).
+   * Defaults to the cautious answer, so a caller who forgets it gets no
+   * number rather than a wrong one.
+   */
+  coverage?: HistoryCoverage;
   today?: Date;
 }): HubMarker[] {
-  const { client, sessionNumber, serviceName } = params;
+  const { client, sessionNumber, serviceName, coverage = "unknown" } = params;
   const today = params.today ?? new Date();
   if (!client) return [];
   const out: HubMarker[] = [];
 
+  /*
+   * Without this gate a woman of twelve years reads as "#1 - First session"
+   * on the screen a trainer lands on, and as "Session 25" when her real
+   * total is 325. AJ, Sep 2026: say "New to Journey" instead - true, and it
+   * does not claim she is new to the STUDIO.
+   */
+  const numberIsTrustworthy = canQuoteSessionNumber(client, coverage);
+
   const isConsult =
     /consult/i.test(serviceName || "") || (!!client.requiresConsultation && !client.consultationCompleted);
   if (isConsult) out.push({ kind: "consult", label: "Consultation" });
-  else if (sessionNumber === 1) out.push({ kind: "first", label: "First session" });
+  else if (!numberIsTrustworthy) {
+    if (sessionNumber === 1) out.push({ kind: "new-to-journey", label: "New to Journey" });
+  } else if (sessionNumber === 1) out.push({ kind: "first", label: "First session" });
   else if (sessionNumber > 1 && sessionNumber % MILESTONE_EVERY === 0) out.push({ kind: "milestone", label: `Session ${sessionNumber}` });
 
   const bday = daysUntilBirthday(client.dateOfBirth, today);
