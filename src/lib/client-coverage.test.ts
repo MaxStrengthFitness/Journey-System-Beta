@@ -58,6 +58,55 @@ describe("coverageOfClient", () => {
   });
 });
 
+/*
+ * Mindbody's own visit count, which rides in on every schedule pull. This is
+ * the only one of these signals that is populated today, for every client the
+ * Hub has loaded, with nothing synced and nobody typing anything.
+ */
+describe("coverageOfClient and Mindbody's visit count", () => {
+  it("treats three visits or fewer as genuinely new", () => {
+    // A consultation and an intro session already put a new client at two.
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 0 }, null)).toBe("complete");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 3 }, null)).toBe("complete");
+  });
+
+  it("treats anything above that as a story Journey cannot hold", () => {
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 4 }, null)).toBe("partial");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 412 }, null)).toBe("partial");
+  });
+
+  it("beats the cutover date in the direction the cutover gets wrong", () => {
+    // Her first Journey session is the week AFTER the studio moved over, so
+    // the date rule called her complete - and she has 412 visits behind her.
+    // This is the case the whole round exists for.
+    expect(
+      coverageOfClient({ firstSessionDate: "2026-09-08", clientsNumberOfVisitsAtSite: 412 }, "2026-09-01"),
+    ).toBe("partial");
+  });
+
+  it("still defers to the cutover when it says she predates Journey", () => {
+    // The date rule IS reliable in that direction, and a low count at this
+    // site can just mean she cross-trains from the other one.
+    expect(
+      coverageOfClient({ firstSessionDate: "2026-08-14", clientsNumberOfVisitsAtSite: 2 }, "2026-09-01"),
+    ).toBe("partial");
+  });
+
+  it("still defers to a total a person wrote down", () => {
+    const stated = {
+      priorHistory: { sessions: 312, importedCount: 312, through: "2026-08-31", source: "filemaker" },
+      clientsNumberOfVisitsAtSite: 400,
+    };
+    expect(coverageOfClient(stated, null)).toBe("complete");
+  });
+
+  it("ignores a count Mindbody did not really give", () => {
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: -1 as number }, null)).toBe("unknown");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 4.5 }, null)).toBe("unknown");
+    expect(coverageOfClient({ clientsNumberOfVisitsAtSite: undefined }, null)).toBe("unknown");
+  });
+});
+
 describe("cutoverOf", () => {
   const studios = [
     { id: "westlake", journeyCutoverDate: "2026-09-01" },

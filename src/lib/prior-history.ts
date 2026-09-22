@@ -165,9 +165,28 @@ export function priorHistoryLabel(prior: PriorHistory | null | undefined): strin
  */
 export type HistoryCoverage = "complete" | "partial" | "unknown";
 
+/**
+ * How many visits Mindbody may have counted before we stop believing Journey
+ * could hold this client's whole story. AJ, Sep 22 2026.
+ *
+ * A consultation and an intro session already put a genuinely new client at
+ * two, so the line has to sit above that, and leaving a booking's worth of
+ * slop errs towards the harmless mistake: calling a new client's fourth
+ * session "nothing recorded" costs a word, calling a twelve-year client new
+ * costs the trainer's trust in the screen.
+ */
+export const NEW_CLIENT_MAX_VISITS = 3;
+
 export interface CoverageInput {
   priorHistory?: unknown;
   historyIsComplete?: boolean;
+  /**
+   * `client.clientsNumberOfVisitsAtSite` - Mindbody's own lifetime count at
+   * the site. NOT her session total: Mindbody counts anything booked, and
+   * types.ts says that number and `sessionCount` "will not agree and neither
+   * is wrong". Null or absent when Mindbody has not said.
+   */
+  mindbodyVisits?: number | null;
   /**
    * The client's FIRST session in Journey, as a studio day (yyyy-mm-dd).
    * A string, not a Timestamp: this module stays pure, and a date-only key
@@ -188,14 +207,48 @@ export function historyCoverage(
   const prior = priorHistoryOf(client);
   if (prior) return priorUncounted(prior) > 0 ? "partial" : "complete";
   if (client?.historyIsComplete === true) return "complete";
+
+  /*
+   * The cutover date is only trusted in the direction it is reliable.
+   *
+   * A first Journey session BEFORE the studio moved over proves she was
+   * training here already. The other direction proves nothing: a twelve-year
+   * client whose first Journey session happens to fall the week after the
+   * cutover is exactly the case that used to read "complete".
+   */
+  if (cutover && client?.firstJourneyDay && client.firstJourneyDay < cutover) {
+    return "partial";
+  }
+
+  /*
+   * MINDBODY'S OWN COUNT - the signal that works today, with nothing synced.
+   *
+   * Every appointment Mindbody returns carries ClientsNumberOfVisitsAtSite,
+   * and the schedule pull writes it onto the client on every pull
+   * (lib/mindbody-api-sync.ts; the webhook does the same). So it is already
+   * on every client the Hub has ever loaded - no Master Sync, no FileMaker
+   * import, nobody typing anything. AJ, Sep 22 2026.
+   *
+   * It decides only whether Journey CAN be holding her whole story. Above
+   * the threshold it cannot: Journey is months old and she has been coming
+   * longer than that.
+   *
+   * Known limit: the count is per Mindbody SITE and the four studios span
+   * two, so a client who cross-trains from the other site can read low here.
+   * A prior record, once anyone writes one, outranks this.
+   */
+  const visits = client?.mindbodyVisits;
+  if (typeof visits === "number" && Number.isInteger(visits) && visits >= 0) {
+    return visits <= NEW_CLIENT_MAX_VISITS ? "complete" : "partial";
+  }
   /*
    * No record, but the studio has said when it moved over: a client whose
    * first session here predates that day was training before Journey existed,
    * so their history is partial whether or not anyone has written the number
    * down. A client who started after it began here, so Journey has all of it.
    */
-  const first = client?.firstJourneyDay;
-  if (cutover && first) return first >= cutover ? "complete" : "partial";
+  /* Mindbody said nothing, but she started after the studio moved over. */
+  if (cutover && client?.firstJourneyDay) return "complete";
   return "unknown";
 }
 

@@ -30,6 +30,12 @@ export interface CoverageClient {
   historyIsComplete?: boolean;
   /** A Timestamp, a Date or a yyyy-mm-dd string - whatever the doc carries. */
   firstSessionDate?: unknown;
+  /**
+   * Mindbody's lifetime visit count at the site. It arrives on every schedule
+   * pull, so unlike everything else here it is already populated for every
+   * client the Hub has loaded - which is what makes the gate work today.
+   */
+  clientsNumberOfVisitsAtSite?: number;
 }
 
 /**
@@ -49,6 +55,7 @@ export function coverageOfClient(
       firstJourneyDay: client.firstSessionDate
         ? studioDayKeyOf(client.firstSessionDate as never)
         : null,
+      mindbodyVisits: client.clientsNumberOfVisitsAtSite ?? null,
     },
     cutover ?? null,
   );
