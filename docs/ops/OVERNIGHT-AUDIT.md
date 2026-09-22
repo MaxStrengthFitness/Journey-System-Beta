@@ -1,6 +1,7 @@
 # The overnight audit — a prompt for a long, unattended run
 
-*Written Sep 22 2026, for AJ to paste into a fresh session and leave running.*
+*Written Sep 21 2026, for AJ to paste into a fresh session and leave running.*
+*Run once, in-session, on Sep 21 — see `docs/rounds/2026-09-21-pre-beta-audit.md`.*
 
 The job: walk the whole app against the standard the project has written down
 for itself, before real trainers use it. Find what's broken, what's missing,
@@ -17,8 +18,10 @@ Everything below the line is the prompt. Paste it whole.
 - **It works on a branch and pushes nothing.** No trainer sees anything.
 - **It writes to the live database only if you say so** — by default it reads
   and reports, because a read count is cheap and a bad write is not.
-- **Dial the fix allowance.** As written it fixes only trivially safe things
-  and proposes the rest. If you want it bolder, change that paragraph.
+- **Dial the fix allowance.** Section 6 is the dial. As written it also fixes
+  bugs it is certain of on Rank 3-4 screens — AJ raised it to that on Sep 21.
+  Narrow it back to documents, comments, dead imports and tests by deleting the
+  Rank 3-4 bullet.
 
 ---
 
@@ -41,6 +44,11 @@ Read these before looking at any code, in this order:
   docs/KNOWN-TRAPS.md         what already broke and the rule that came out
   ROADMAP.md                  what is already known and planned — do NOT
                               re-report anything already written there
+  docs/rounds/claude-experiment/   an eight-part audit of this same ground
+                              from Sep 20, NOT referenced by ROADMAP.md. Read
+                              its section for your area before reporting, and
+                              say when you are re-confirming rather than
+                              finding. Its findings were never triaged.
 
 These are the rubric. You are not inventing a standard; the project has one
 and your job is to find where the app does not meet it.
@@ -196,6 +204,10 @@ Work on a branch off master named pre-beta-audit. Never push. Never merge.
 
 You MAY fix, one commit each, only if the fix is obviously correct and you
 can prove it:
+  - a bug on a Rank 3-4 screen that you are CERTAIN of and can prove, each
+    typechecked on its own so it can be reverted alone (AJ, Sep 21). If you
+    are not certain, it is a proposal. If the right fix depends on wording
+    only AJ can choose, it is a question.
   - a wrong or stale sentence in a document
   - a comment that describes behaviour the code no longer has
   - a typo or dead import a typecheck or knip already flags
