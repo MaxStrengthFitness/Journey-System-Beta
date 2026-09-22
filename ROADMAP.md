@@ -64,7 +64,7 @@ rules tests → rules → push.
 ## Now
 
 ### 1. Merge the catalog gate
-`catalog-gate` (five commits) is built, typechecked and green, and touches no
+`catalog-gate` (17 commits) is built, typechecked and green, and touches no
 rules. It closes the one hole in the machine template boundary: a studio's own
 machine carried the *method*, and publishing it to the catalog adopted those
 words company-wide unread. Round: `docs/rounds/2026-09-20-catalog-gate.md`.

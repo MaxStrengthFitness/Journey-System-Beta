@@ -258,7 +258,7 @@ Roughly, every time:
 4. **Three checks run:**
    - **Typecheck** — does the code contradict itself? We compare the error
      *count* to a baseline (currently 10). It is not zero and that is fine.
-   - **Tests** — about 3,545 small checks that pure logic still does what it
+   - **Tests** — about 3,750 small checks that pure logic still does what it
      should. These run in seconds.
    - **Build** — does it actually assemble into a website?
 5. **You look at it on the iPad**, for anything a trainer touches. This step
@@ -384,7 +384,7 @@ These exist because each one was learned the hard way. In plain language:
 ## 10. A last word about "vibe coding"
 
 You built this app end to end without writing code, and it is a real system:
-about 220,000 lines, 3,500 automated checks, a security model, a franchise
+about 220,000 lines, 3,750 automated checks, a security model, a franchise
 model and a method encoded in it. That is not a small thing.
 
 The part of this that is genuinely yours — and that no amount of code
