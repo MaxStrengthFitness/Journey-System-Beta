@@ -101,26 +101,67 @@ function Stopwatch({
   machineId: string;
   onStop: (seconds: number) => void;
 }) {
-  const [time, setTime] = useState(0);
+  /*
+   * READ THE CLOCK, NEVER COUNT THE TICKS (fixed Sep 22 2026).
+   *
+   * This used to be a one-second interval that incremented a counter, and it
+   * handed that count straight to onStop. Browsers under-fire that timer when
+   * busy, and iPadOS suspends it outright when the tab is backgrounded or the
+   * screen locks - and the trainer sets the iPad down on the machine for the
+   * whole of a sixty-to-ninety-second hold, or hops to the client's notes
+   * mid-set (AJ, Sep 22). Every one of those silently under-counted the only
+   * honest time-under-tension number in the app.
+   *
+   * The value is DERIVED now, the way ActiveSessionTimer and machine-clock.ts
+   * already do it: seconds banked by earlier runs, plus now minus when this
+   * run started. The interval below exists only to re-render - if it never
+   * fires the readout freezes, but the number written on stop is still right.
+   */
   const [running, setRunning] = useState(false);
-  const timeRef = useRef(0);
-  timeRef.current = time;
+  const [, setTick] = useState(0);
+  /** Seconds banked by earlier runs of this watch, on this machine. */
+  const bankedRef = useRef(0);
+  /** When the current run began, or null while stopped. */
+  const startedAtRef = useRef<number | null>(null);
 
+  const elapsed = () =>
+    bankedRef.current +
+    (startedAtRef.current === null ? 0 : (Date.now() - startedAtRef.current) / 1000);
+
+  const reset = () => {
+    setRunning(false);
+    bankedRef.current = 0;
+    startedAtRef.current = null;
+    setTick((t) => t + 1);
+  };
+
+  /* Scoped to one machine: moving on can never land seconds on the wrong one. */
   useEffect(() => {
     setRunning(false);
-    setTime(0);
+    bankedRef.current = 0;
+    startedAtRef.current = null;
   }, [machineId]);
 
   useEffect(() => {
     if (!running) return;
-    const id = setInterval(() => setTime((t) => t + 1), 1000);
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [running]);
 
-  const stop = () => {
-    setRunning(false);
-    if (timeRef.current > 0) onStop(timeRef.current);
+  const start = () => {
+    startedAtRef.current = Date.now();
+    setRunning(true);
   };
+
+  const stop = () => {
+    bankedRef.current = elapsed();
+    startedAtRef.current = null;
+    setRunning(false);
+    const seconds = Math.round(bankedRef.current);
+    if (seconds > 0) onStop(seconds);
+  };
+
+  const time = Math.floor(elapsed());
 
   return (
     <span className={`jg-nb__watch ${running ? "is-running" : ""}`}>
@@ -128,7 +169,7 @@ function Stopwatch({
         type="button"
         className="jg-nb__wbtn"
         aria-label={running ? "Stop the clock and log the seconds" : "Start the clock"}
-        onClick={() => (running ? stop() : setRunning(true))}
+        onClick={() => (running ? stop() : start())}
       >
         {running ? (
           <Pause size={15} strokeWidth={2.5} fill="currentColor" />
@@ -143,10 +184,7 @@ function Stopwatch({
         type="button"
         className="jg-nb__wbtn jg-nb__wbtn--quiet"
         aria-label="Reset the clock"
-        onClick={() => {
-          setRunning(false);
-          setTime(0);
-        }}
+        onClick={reset}
       >
         <RotateCcw size={13} strokeWidth={2.5} />
       </button>
