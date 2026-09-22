@@ -24,6 +24,28 @@ narrowing — wingspan, weight, age, body composition — until the comparison i
 to people actually built the same way. Narrowing shrinks the sample, which is
 why every claim carries a named minimum and says so when it has not got one.
 
+**Settings and weight do not pool at the same level** (AJ, Sep 21 2026), and
+this folder currently treats them as though they do.
+
+> "I just want to be able to compare weights across all compound rows, whereas
+> I would more want to see … compare all settings on the Nautilus compound row."
+
+*Weight and performance* belong to the body and the movement: a client at a
+given load on one compound row is usually near it on another, so pooling them
+across every model and studio is right. *Settings* belong to the hardware: a
+seat 4 on a Nautilus is not a seat 4 on a Hoist, and two body types on two
+machines land on numbers with nothing in common.
+
+**Where that bites today.** Inside one studio the settings data is clean — a
+location owns one physical unit per machine, so `studios/{s}/machineFit/{machineId}`
+is inherently one model. The **company tier is not**: the weekly job rolls one
+`machineFit` list per studio into a single `CompanyFitBlock` keyed only by the
+catalog `machineId`, so a Hoist seat 4 and a Nautilus seat 4 are averaged as
+though they were the same value. Weight is unaffected. Nothing can fix this
+until a model is recorded on a roster entry (see the machines README's open
+questions); once it is, the pattern can still pool company-wide while the
+actual numbers scope per model.
+
 Two uses, and they are not the same job: **forward**, a good starting point
 for a client nobody has ever set up; **backward**, a client who may have been
 set up wrong once and never looked at since.
