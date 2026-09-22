@@ -83,6 +83,12 @@ export async function createFordEntry(
     isPinned: draft.isPinned ?? false,
     eventDate: draft.eventDate ? Timestamp.fromDate(draft.eventDate) : null,
     recurrence: draft.recurrence ?? "none",
+    /* When it matters — the same three fields a note carries, so mattering.ts
+       can answer about a detail without knowing what it is (types.ts). */
+    effectiveFrom: draft.effectiveFrom ? Timestamp.fromDate(draft.effectiveFrom) : null,
+    effectiveUntil: draft.effectiveUntil ? Timestamp.fromDate(draft.effectiveUntil) : null,
+    repeat: draft.repeat ?? null,
+    reviewedAt: null,
     opportunity: draft.opportunity ?? null,
     // Client-side Timestamp, never serverTimestamp() — see types.ts.
     occurredAt: Timestamp.fromDate(occurred),
@@ -113,9 +119,21 @@ export async function createFordEntry(
 export type FordPatch = Partial<
   Pick<
     FordEntry,
-    "pillar" | "body" | "subject" | "isPinned" | "recurrence" | "opportunity"
+    | "pillar"
+    | "body"
+    | "subject"
+    | "isPinned"
+    | "recurrence"
+    | "opportunity"
+    | "repeat"
   >
-> & { eventDate?: Date | null; occurredAt?: Date | null };
+> & {
+  eventDate?: Date | null;
+  occurredAt?: Date | null;
+  effectiveFrom?: Date | null;
+  effectiveUntil?: Date | null;
+  resolvedAt?: Date | null;
+};
 
 export async function updateFordEntry(
   clientId: string,
@@ -128,6 +146,13 @@ export async function updateFordEntry(
   if (patch.body !== undefined) next.body = patch.body.trim();
   if (patch.subject !== undefined) next.subject = patch.subject?.trim() || null;
   if (patch.isPinned !== undefined) next.isPinned = patch.isPinned;
+  if (patch.repeat !== undefined) next.repeat = patch.repeat;
+  if (patch.effectiveFrom !== undefined)
+    next.effectiveFrom = patch.effectiveFrom ? Timestamp.fromDate(patch.effectiveFrom) : null;
+  if (patch.effectiveUntil !== undefined)
+    next.effectiveUntil = patch.effectiveUntil ? Timestamp.fromDate(patch.effectiveUntil) : null;
+  if (patch.resolvedAt !== undefined)
+    next.resolvedAt = patch.resolvedAt ? Timestamp.fromDate(patch.resolvedAt) : null;
   if (patch.recurrence !== undefined) next.recurrence = patch.recurrence;
   if (patch.opportunity !== undefined) next.opportunity = patch.opportunity;
   if (patch.eventDate !== undefined) {

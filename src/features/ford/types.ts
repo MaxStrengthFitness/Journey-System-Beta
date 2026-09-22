@@ -203,6 +203,40 @@ export interface FordEntry {
   eventDate: any | null;
   recurrence: FordRecurrence;
 
+  /* ---- WHEN THIS MATTERS (AJ, Sep 22 2026) -------------------------------
+   *
+   * The same three fields a note carries, and deliberately the same names,
+   * because `mattering.ts` asks about them by shape rather than by type:
+   * `MatteringFields` is a structural Pick, so anything with these answers
+   * `mattersOn()` without knowing it is a FORD detail.
+   *
+   * WHY IT WAS MISSING AND WHY IT MATTERS. A detail could say "Nov 5, every
+   * year" - fine for an anniversary - and nothing else. It could not say
+   * "her mother is in hospice through October", which is the single most
+   * important thing to know before walking in, and which stops mattering on
+   * its own. AJ named it as the gap; this is it.
+   *
+   * `eventDate` + `recurrence` stay exactly as they were. They are the older,
+   * narrower way of saying the same thing for a recurring day, and rewriting
+   * every anniversary in the database to use the window instead would be a
+   * migration for no gain. A detail uses one or the other, not both.
+   */
+
+  /** First day this matters. Null with an `effectiveUntil` means "until then". */
+  effectiveFrom?: any | null;
+  /** Last day this matters. Null means it has no end - a standing fact. */
+  effectiveUntil?: any | null;
+  /** "yearly" turns a single day into an anniversary, as on a note. */
+  repeat?: "yearly" | null;
+  /** Stamped when someone confirms a long-standing detail is still true. */
+  reviewedAt?: any | null;
+  /**
+   * Stamped when the detail has stopped being true - she is back from the
+   * hospice stay, the house move is done. Same word and same meaning as
+   * closing a note thread, and `mattersOn` checks it first.
+   */
+  resolvedAt?: any | null;
+
   /** Set when this detail is worth doing something about. */
   opportunity: FordOpportunity | null;
 
@@ -242,10 +276,13 @@ export type FordDraft = Pick<FordEntry, "pillar" | "body"> &
       | "origin"
       | "sessionId"
       | "opportunity"
+      | "repeat"
     >
   > & {
     eventDate?: Date | null;
     occurredAt?: Date | null;
+    effectiveFrom?: Date | null;
+    effectiveUntil?: Date | null;
   };
 
 /* ------------------------------------------------------------------ */
