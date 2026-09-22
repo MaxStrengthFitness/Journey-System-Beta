@@ -81,13 +81,35 @@ committed — it is all clutter in the folder. The inventory and the exact
 commands are in **`docs/ops/REPO-HYGIENE.md`**; the scripts already exist
 (`scripts/ship/tidy-root.ps1`, `scripts/ship/cleanup-branches.ps1`).
 
-### 3. The polish pass — the last piece of beta prep
+### 3. The pre-beta audit, and the Mindbody migration it has to solve
+
+`docs/ops/OVERNIGHT-AUDIT.md` is a prompt to paste into a fresh session and
+leave running: it walks the app in Rank order against the standard in
+`docs/START-HERE.md`, and produces a ranked list of what would hurt a trainer
+on day one, plus questions for AJ.
+
+Two things it is pointed at, both named by AJ on Sep 21:
+
+- **The client directory shows no data.** The Membership, Sessions Remaining
+  and Last Session columns exist and come back empty. Likely three different
+  causes — two probably waiting on the nightly renewals job, and Last Session
+  has its own known defect in the follow-up pile below.
+- **Mindbody sync is per-client and manual, and it does not scale.** A
+  trainer opens a profile and runs Master Sync for one person. Names arrive
+  on the schedule; address, demographics, contracts and packages do not.
+  With ~250 clients a studio across four studios, that is not viable by hand
+  — **this is a beta blocker**, and it needs a resumable, throttled,
+  miss-nobody backfill in the `scripts/` pattern, costed against Mindbody's
+  rate limits and the read quota. There is precedent for getting this wrong:
+  the 429 quota storm of Aug 30 2026.
+
+### 4. The polish pass — the last piece of beta prep
 Phase 1 of beta prep is otherwise done. What is left is the look and feel:
 transitions between screens, loading states, how buttons read pressed /
 disabled / focused, speed, the token and colour drift (322 raw hex values in
 `.tsx` files), and the sign-in screen in light mode.
 
-### 4. Reconcile the architecture document with what is built
+### 5. Reconcile the architecture document with what is built
 `docs/ARCHITECTURE.md` §2–§4 are marked "review pending" and several of their
 numbers have drifted (it says Operations has fourteen tabs; it has nine plus a
 separate Admins dashboard). The document is good and worth keeping true.
