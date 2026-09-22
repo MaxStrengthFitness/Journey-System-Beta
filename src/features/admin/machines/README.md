@@ -7,7 +7,16 @@ Round: **machine authoring, Sep 2026** (`docs/rounds/2026-09-20-machine-authorin
 1. `machines/{machineId}` — the **Max Strength standard**. Admin-write only.
 2. `studios/{studioId}/roster/{machineId}` — what **this location** has: either a
    copy of a catalog machine with `overrides`, or its own `custom` definition.
-3. `clientMachineSettings` — one client's values.
+3. `clientMachineSettings` — one client's values on the studio's machine, plus
+   anything noted about that client in regard to it.
+
+**Layers 1 and 2 merge; layer 3 is attached, which is a different relationship**
+(AJ, Sep 21 2026). A client never has a machine of their own. What exists is
+*information about a client on the studio's machine* — their settings, and the
+notes a trainer references when walking up to it. So layer 3 is keyed by
+(client, machine) and hangs off the resolved machine; it is not a third
+definition to be merged into one, and a feature that treats it as one will
+produce a per-client machine, which is wrong.
 
 `src/lib/resolve-machine.ts` collapses 1 + 2 into the `ResolvedMachine` every
 screen renders. Nothing here reads two layers and picks a winner.
