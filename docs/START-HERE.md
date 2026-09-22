@@ -148,9 +148,32 @@ You do not need to remember this. You need to know it exists, so you can point.
 
 ### "I want to change…" → look here
 
+### The screens, as a trainer meets them
+
+AJ's own tour, Sep 21 2026.
+
+| Screen | What it's for |
+| --- | --- |
+| **Hub** | Where a trainer lands. Today's sessions by trainer; cycle forward through the coming days |
+| **Calendar** | The schedule properly broken down — month, week, day; past days; sessions or events; the whole team or one person. All pulled from Mindbody. Where you go to actually look ahead |
+| **Client directory** | Search the clients at the studio you're in, and reach your Kaizen roster |
+| **Kaizen roster** | A trainer's own bookmarked clients — the regulars they're watching, so they aren't searching "Jeff… Jeff what?" every time. Per trainer, on `trainers/{uid}.kaizenRoster` |
+| **Client profile** | Opened from the directory or the roster: the whole record of a person |
+| **Start Session** | The door to the Active Session — briefing, live grid, post-session. Rank 1 and 2 |
+| **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
+| **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |
+| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going |
+| **Operations** | "Where are we going wrong, and where are we going right?" Take what the app has gathered, put it together, see what it says |
+| **Admins dashboard** | Corporate setting the standard, the machines, and getting everyone set up for success |
+| **Switch studio** | In the header. Decides which floor loads, whose roster you search, which schedule you see — more than a preference |
+
+### "I want to change…" → look here
+
 | If you want to change… | It lives in |
 | --- | --- |
 | The screen a trainer uses during a set | `src/components/WorkoutTrackerView.tsx` |
+| The Calendar | `src/components/CalendarView.tsx` + `src/features/calendar/` |
+| The client directory and the Kaizen roster | `src/components/ClientDirectoryView.tsx`, `src/features/trainer-profile/` |
 | What the trainer reads before a session | `src/features/briefing/` |
 | The client's profile and its tabs | `src/components/ClientProfileView.tsx` + `src/features/client-profile/` |
 | Notes — writing them, when they matter, threads | `src/features/client-notes/` |
