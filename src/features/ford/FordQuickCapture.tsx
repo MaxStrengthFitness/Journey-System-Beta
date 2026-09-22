@@ -72,6 +72,7 @@ export function FordQuickCapture({
   const [pillar, setPillar] = useState<FordPillar | null>(defaultPillar);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
   const boxRef = useRef<HTMLTextAreaElement | null>(null);
   const flashRef = useRef<number | null>(null);
 
@@ -86,13 +87,21 @@ export function FordQuickCapture({
     const text = body.trim();
     if (!text || saving) return;
     setSaving(true);
+    setFailed(false);
     try {
-      await createFordEntry(clientId, studioId, author, {
+      const id = await createFordEntry(clientId, studioId, author, {
         pillar,
         body: text,
         origin,
         sessionId,
       });
+      // createFordEntry returns null when the write was refused or failed.
+      // Never clear the box on that path and never say Saved: the sentence in
+      // it is the only copy, and this whole feature exists to keep it.
+      if (!id) {
+        setFailed(true);
+        return;
+      }
       // Clear and hand the keyboard straight back: a client who is talking
       // usually says two things, not one.
       setBody("");
@@ -160,7 +169,11 @@ export function FordQuickCapture({
         >
           {saving ? "Saving…" : "Remember this"}
         </button>
-        {justSaved ? (
+        {failed ? (
+          <span className="ford-capture__hint" role="alert">
+            Not saved — still here, try again
+          </span>
+        ) : justSaved ? (
           <span className="ford-when ford-when--soon" role="status">
             <Check size={13} /> Saved
           </span>
