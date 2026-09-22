@@ -173,7 +173,18 @@ coaching. Nothing for a company other than Max Strength Fitness.
 Small things left behind by a round, grouped by where they live. None is
 urgent; all are written down so they are not rediscovered.
 
-**Machines and the catalog** — the twenty catalog machines still use the floor
+**Machines and the catalog** — **the template boundary is superseded and not
+yet rebuilt** (AJ, Sep 21): a franchisee may change anything on their own copy,
+safety included, with head office keeping the catalog and the approvals. The
+round is three things that must ship together — open `canEdit` /
+`scopeOverrides`, let the additive merge in `resolve-machine.ts` express a
+removal, and build the **divergence view** so head office can see which
+studios changed what and why a safety line was removed. Half of it is worse
+than none of it; the reasoning is written at the top of `src/lib/machine-template.ts`.
+Also: **the company-wide settings numbers are currently blended across models**
+(a Hoist seat 4 averaged with a Nautilus seat 4) and cannot be fixed until a
+model is recorded on a roster entry — see `src/features/machine-fit/README.md`;
+weight pooling is unaffected. Then: the twenty catalog machines still use the floor
 abbreviations (`CX (4 WAY NECK)`, `BICEP`) rather than the Academy's names, and
 whether to change that is one line in the generator; the rules do not enforce
 the machine template boundary (the app does, at the write and at the publish);

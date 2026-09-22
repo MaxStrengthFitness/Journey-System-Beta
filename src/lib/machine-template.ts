@@ -40,6 +40,49 @@ import { ADDITIVE_DEFINITION_FIELDS } from "./resolve-machine";
  *
  * Pure and exhaustively tested, because it is the only thing standing
  * between a franchisee and the company's own method.
+ *
+ * ──────────────────────────────────────────────────────────────────────
+ * SUPERSEDED IN PRINCIPLE — AJ, Sep 21 2026. NOT YET BUILT.
+ *
+ * AJ has changed the rule, and this file does not implement the new one
+ * yet. Read this before designing anything on top of the boundary.
+ *
+ *   "a studio should be able to edit whatever they want on there but it's
+ *    never gonna fully affect the main Max Strength cataloged item ... they
+ *    should be able to customize, add safety, remove safety, do whatever
+ *    they want to their machines in their studio but head office controls
+ *    the main Max Strength catalog and also approves any submitted
+ *    machines."
+ *
+ * The reasoning is scale and ownership: ~20 studios now, plausibly ~100
+ * within two years, EACH OWNED BY A DIFFERENT FRANCHISEE running their own
+ * business on the Max Strength protocol. They own the iron in their room.
+ * An older unit may genuinely lack the part a warning refers to, and a
+ * warning that visibly does not apply is worse than no warning, because it
+ * teaches a trainer that warnings can be ignored.
+ *
+ * WHAT MAKES IT SAFE IS VISIBILITY, NOT PROHIBITION. Three things have to
+ * hold, and the third is the one this codebase does not have:
+ *
+ *   1. lineage — a studio's machine always traces back to the catalog
+ *      entry it came from, however far it has been edited (`basedOn`,
+ *      already true, and the reason never to re-mint a machineId);
+ *   2. the catalog stays head office's, and so does approving submissions
+ *      (`features/admin/catalog/review.ts` — already true, and it becomes
+ *      MORE load-bearing under the new rule, not less, because it is then
+ *      the only place the company's own words are protected);
+ *   3. divergence is SURFACED — a view telling head office which studios
+ *      changed what, a heavily-modified machine that reads as heavily
+ *      modified, and a removed safety line marked and carrying a reason.
+ *      "This unit has no seat belt" and "it was in the way" are identical
+ *      in the data and are not the same thing.
+ *
+ * So the round is: open `canEdit` / `scopeOverrides`, change the additive
+ * merge in `resolve-machine.ts` (which currently unions safety lines so
+ * they CANNOT be removed), and build the divergence view — together.
+ * Shipping the permission without the visibility is strictly worse than
+ * either state on its own, so do not do half of it.
+ * ──────────────────────────────────────────────────────────────────────
  */
 
 /**
