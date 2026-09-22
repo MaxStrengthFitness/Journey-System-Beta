@@ -82,7 +82,11 @@ export function computeRowStats(row: JourneyRow, history: JourneySession[]): Row
 /** "40 → 66 lb (+65%)" — the machine cell's readout. */
 export function journeySummary(row: JourneyRow, history: JourneySession[]): string {
   const sets = orderedSets(row, history);
-  if (sets.length === 0) return row.prescribedWeight ? `Next ${row.prescribedWeight} lb` : "No history";
+  // "No history" reads as a fact about the CLIENT. During the migration it is
+  // only ever a fact about our records, and there is house wording for that
+  // (lib/prior-history.ts, NEVER_LABEL). Safe whatever the coverage, so this
+  // one needs no gate.
+  if (sets.length === 0) return row.prescribedWeight ? `Next ${row.prescribedWeight} lb` : "Nothing recorded";
   const start = row.startingWeight ?? sets[0].weight;
   const now = sets[sets.length - 1].weight;
   if (!start || start === now) return `${now} lb`;

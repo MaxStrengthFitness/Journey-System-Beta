@@ -117,6 +117,7 @@ import {
   findIncompleteLogs,
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
+import { coverageOfClient } from "../lib/client-coverage";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
 import { trackerScreen } from "../lib/tracker-screen";
@@ -227,7 +228,7 @@ export function WorkoutTrackerView({
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
 }) {
-  const { activeStudioId: contextActiveStudioId } =
+  const { activeStudioId: contextActiveStudioId, activeStudio } =
     useActiveStudio();
   // Per-studio machine display order (Aug 2026) — same resolution chain
   // as the Client Profile Journey grid: studio override, else the shared
@@ -283,6 +284,18 @@ export function WorkoutTrackerView({
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  /*
+   * How much of this client's story Journey holds - computed ONCE here and
+   * handed to the three screens this file draws, rather than each of them
+   * working it out. `activeStudio` is absent in the render test's context
+   * mock, which resolves to "unknown", which is the cautious wording: the
+   * safe direction to fail in. lib/client-coverage.ts.
+   */
+  const clientCoverage = useMemo(
+    () => coverageOfClient(selectedClient, activeStudio?.journeyCutoverDate ?? null),
+    [selectedClient, activeStudio?.journeyCutoverDate],
+  );
+
   const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(
     null,
   );
@@ -3306,6 +3319,7 @@ export function WorkoutTrackerView({
           logging the set, in one place that never moves. */}
       {gridLive && (
         <SessionNowBar
+          coverage={clientCoverage}
           row={gridFocusRow}
           orderNumber={gridFocusOrder}
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}

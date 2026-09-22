@@ -12,6 +12,7 @@ import type { TraineeLevel } from "../routine-builder/academy";
 import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /* ------------------------------------------------------------------ *
  * Bar
@@ -57,6 +58,23 @@ export interface SessionNowBarProps {
    * as time under tension.
    */
   onMachineSeconds?: number | null;
+  /**
+   * How much of this client's story Journey actually holds
+   * (lib/client-coverage.ts). It decides ONE sentence on this bar, and that
+   * sentence is the most-read line in the app: the trainer sees it walking
+   * up to the machine, twice a machine, five to eight machines a session.
+   *
+   * "First time on this machine" is a claim about the CLIENT and may only be
+   * made when Journey holds her whole story. Machine-level history does not
+   * come across from FileMaker, so a woman who has used this machine four
+   * hundred times arrives with nothing on it - and the bar told her trainer
+   * she had never touched it. Anything short of `complete` says "Nothing
+   * recorded", which is a claim about our RECORDS and is always true.
+   *
+   * Optional, defaulting to the cautious answer: a caller who forgets it
+   * gets the safe sentence, never the confident one.
+   */
+  coverage?: HistoryCoverage;
   /** "side" lays the bar out as a right-hand column (landscape). */
   layout?: "bar" | "side";
 }
@@ -258,6 +276,7 @@ function SessionNowBarImpl({
   onAddMachine,
   flagLine = null,
   onOpenFlag,
+  coverage = "unknown",
   layout = "bar",
 }: SessionNowBarProps) {
   const machine = row?.machine;
@@ -447,7 +466,11 @@ function SessionNowBarImpl({
                   )}
                 </>
               ) : (
-                <>First time on this machine</>
+                <>
+                  {coverage === "complete"
+                    ? "First time on this machine"
+                    : "Nothing recorded on this machine"}
+                </>
               )}
               {expect.best && !expect.best.isTSC && (
                 <>
