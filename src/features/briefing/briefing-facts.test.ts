@@ -117,7 +117,9 @@ describe("lastRunOfRoutine — when THIS routine last ran", () => {
   });
 
   it("labels the run as a sentence, never a raw date string", () => {
-    expect(lastRunLabel(null)).toBe("Never run");
+    // "Never run" was a claim about the client; a routine with no Journey
+    // run is a fact about our records during the migration (prior-history).
+    expect(lastRunLabel(null)).toBe("No run recorded");
     const today = new Date();
     expect(lastRunLabel({ session: s({}), date: today })).toBe("Last run today");
     const yesterday = new Date(Date.now() - 86_400_000);

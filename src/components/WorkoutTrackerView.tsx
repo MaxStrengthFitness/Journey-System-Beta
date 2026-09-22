@@ -2480,6 +2480,7 @@ export function WorkoutTrackerView({
     return (
       <VictoryHUDScreen
         client={postSession.client}
+        coverage={clientCoverage}
         session={postSession.session}
         logs={postSession.logs}
         allLogs={Object.values(logs).filter((l: any) => l.clientId === postSession.client.id) as any}
@@ -2552,6 +2553,7 @@ export function WorkoutTrackerView({
       <BriefingScreen
         authTrainer={authTrainer}
         client={selectedClient}
+        coverage={clientCoverage}
         targetRoutine={targetRoutine}
         lastSession={
           sessions.filter((s) => s.status === "Completed")[0] || null

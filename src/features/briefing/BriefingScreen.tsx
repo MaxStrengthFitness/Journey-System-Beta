@@ -94,6 +94,7 @@ import { BodyStateTracker } from "../../components/BodyStateTracker";
 import { PulseQuickLogDialog } from "../subjective-report";
 import { FordBriefingCue } from "../ford/FordBriefingCue";
 import { useClientJournal } from "../../hooks/useClientJournal";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { BriefingNoteFooter } from "./BriefingNoteFooter";
@@ -113,6 +114,13 @@ import "./briefing.css";
 import { clientDisplayName } from "../../lib/client-name";
 
 export interface BriefingScreenProps {
+  /**
+   * How much of this client's story Journey holds (lib/client-coverage.ts).
+   * The briefing is where a trainer meets a client they may not know - AJ's
+   * cold start - so it is the worst place in the app to claim she is new.
+   * Defaults to the cautious answer.
+   */
+  coverage?: HistoryCoverage;
   authTrainer: Trainer | null;
   client: Client;
   targetRoutine: Routine | null;
@@ -156,6 +164,7 @@ export function BriefingScreen({
   rightControls,
   trainerDropdown,
   onStudioClick,
+  coverage = "unknown",
 }: BriefingScreenProps) {
   // The header follows the app theme now that the page below it does.
   // Mirrors AppContent's own call so the two can never disagree.
@@ -432,8 +441,8 @@ export function BriefingScreen({
   /* Everything that belongs under "Before you start", counted once so the
      heading can say how many things there are. */
   const markers = useMemo(
-    () => hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1 }),
-    [client],
+    () => hubMarkers({ client, sessionNumber: (client.sessionCount || 0) + 1, coverage }),
+    [client, coverage],
   );
   const beforeCount =
     clientFlags.length +
@@ -466,7 +475,15 @@ export function BriefingScreen({
         day: "numeric",
         year: "numeric",
       })
-    : "Never";
+    /*
+     * NOT "Never". Journey having no completed session for her is a fact
+     * about our records, not about her: during the migration most of the
+     * roster arrives that way. lib/prior-history.ts owns the two wordings
+     * and the difference between them.
+     */
+    : coverage === "complete"
+      ? "Never"
+      : "Nothing recorded";
 
   // Follows the trainer's selection, not the original suggestion — otherwise the
   // card keeps naming the auto-picked routine after they switch.

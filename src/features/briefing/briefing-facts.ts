@@ -152,7 +152,11 @@ export function lastRunOfRoutine(
 
 /** "Last run today" · "Last run yesterday" · "Last run Sep 12" · "Never run". */
 export function lastRunLabel(run: RoutineLastRun | null): string {
-  if (!run) return "Never run";
+  // "Never run" is a claim about the CLIENT. A routine built in Journey for
+  // a client who has trained here for years has no Journey run and plenty of
+  // real ones, so the honest form is about our records. Safe whatever the
+  // coverage, so unlike the rest of this round it needs no gate.
+  if (!run) return "No run recorded";
   if (!run.date) return "Last run · date unknown";
   const rel = relativeDay(run.date);
   if (rel === "Today" || rel === "Yesterday") return `Last run ${rel.toLowerCase()}`;

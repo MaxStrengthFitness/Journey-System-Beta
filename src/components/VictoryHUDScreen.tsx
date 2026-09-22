@@ -40,6 +40,7 @@ import {
   type TodayLine,
 } from "../lib/post-session";
 
+import { canQuoteLifetime, type HistoryCoverage } from "../lib/prior-history";
 import { clientFirstName } from "../lib/client-name";
 /**
  * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
@@ -83,6 +84,16 @@ import { clientFirstName } from "../lib/client-name";
  */
 
 export interface VictoryHUDScreenProps {
+  /**
+   * How much of this client's story Journey holds (lib/client-coverage.ts).
+   *
+   * This screen is the one the CLIENT is standing next to. Showing a woman
+   * of twelve years "Sessions 4" is the worst instance of the whole problem,
+   * because she reads it before the trainer can explain. AJ, Sep 22: hide
+   * the three lifetime tiles until we know her whole story, and keep what
+   * actually happened today. Defaults to the cautious answer.
+   */
+  coverage?: HistoryCoverage;
   client: Client;
   session: WorkoutSession;
   /** Today's logs as they were committed (outcomes stamped). */
@@ -200,6 +211,7 @@ export function VictoryHUDScreen({
   rightControls,
   trainerDropdown,
   onStudioClick,
+  coverage = "unknown",
 }: VictoryHUDScreenProps) {
   const [dose, setDose] = useState<DialValue | null>(null);
   const [doseSaved, setDoseSaved] = useState(false);
@@ -597,7 +609,14 @@ export function VictoryHUDScreen({
             </motion.div>
           )}
 
-          {/* 4 · lifetime — quiet, at the bottom */}
+          {/* 4 · lifetime — quiet, at the bottom, and only when it is hers.
+                 These three run off Journey's own rollups, which start the day
+                 Journey first saw her. For a migration client they are a small
+                 number in front of somebody who has been coming for years, so
+                 they are not drawn at all until her prior total is recorded
+                 (canQuoteLifetime, lib/prior-history.ts). Today's numbers
+                 above are unaffected: those really did happen today. */}
+          {canQuoteLifetime(coverage) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mx-5 grid grid-cols-3 gap-2">
             {[
               { label: "Sessions", value: lifetime.sessions.toLocaleString() },
@@ -610,6 +629,7 @@ export function VictoryHUDScreen({
               </div>
             ))}
           </motion.div>
+          )}
 
           {/* leave */}
           <div className="mx-5 mt-2 flex flex-col items-center gap-2">
