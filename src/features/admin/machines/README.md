@@ -12,6 +12,29 @@ Round: **machine authoring, Sep 2026** (`docs/rounds/2026-09-20-machine-authorin
 `src/lib/resolve-machine.ts` collapses 1 + 2 into the `ResolvedMachine` every
 screen renders. Nothing here reads two layers and picks a winner.
 
+### The catalog is the join, not just the reference
+
+AJ, Sep 21 2026 — the reason the layers are worth their complexity. Four
+studios own four different leg presses: a Hoist, a Nautilus, a newer Hoist, an
+Imagine Strength with a yoga block beside it. Different dimensions, different
+dials, different seat numbers. Because every one of them is a copy of the
+**same catalog entry** and keeps `basedOn`, their settings and their results
+pool into one population that can actually be asked a question —
+`features/machine-fit/` is the whole feature built on that ("is anyone here
+sitting somewhere odd?").
+
+Take the shared entry away and there is no question to ask: forty unrelated
+"leg press" records and nothing to compare. **A studio diverging does not break
+this** — an override is a difference against a known machine, and the lineage
+survives it. That is the point of the design, not a side effect: imperfect
+per-studio data, refined into something a trainer can use. There is rarely a
+single setting right for every client, and the value is in finding the outlier
+worth fixing.
+
+This is the second reason never to re-mint a `machineId` (the first being
+orphaned `exerciseLogs`): re-minting silently splits one machine's population
+in two, and nothing fails loudly when it happens.
+
 ## What a studio may change
 
 `src/lib/machine-template.ts` is the one answer, and it is a product rule, not a
