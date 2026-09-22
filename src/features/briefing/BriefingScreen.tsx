@@ -391,6 +391,11 @@ export function BriefingScreen({
     trainers,
   });
   const { criticalEntries, focuses } = journal;
+  /* "Nothing flagged" is a safety claim, so it may only be made once the
+     notes are actually known. A failed read means UNKNOWN, never EMPTY
+     (CLAUDE.md, Data) — and this is the one screen whose job is to answer
+     "is there anything here that could hurt them". It never blocks START. */
+  const notesKnown = !journal.isLoading && !journal.needsIndex;
   /* Heads ups (reporting round): quieter than Critical, and only while they
      still matter — their "until" day, or three weeks. */
   const headsUpEntries = journal.headsUpEntries ?? [];
@@ -525,7 +530,14 @@ export function BriefingScreen({
                 <Info className="w-3.5 h-3.5" />
                 Before you start{hasBefore ? ` · ${beforeCount}` : ""}
               </span>
-              {!hasBefore && <p className="br__before-clear">Nothing flagged — clear to go.</p>}
+              {!hasBefore &&
+                (notesKnown ? (
+                  <p className="br__before-clear">Nothing flagged — clear to go.</p>
+                ) : (
+                  <p className="br__before-clear">
+                    Notes not loaded yet — nothing is being claimed either way.
+                  </p>
+                ))}
 
               {/* Conditions as chips, and the chip is a TAP: it used to be a
                   bare span that named the condition and nothing else, while
