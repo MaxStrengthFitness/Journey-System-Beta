@@ -138,8 +138,9 @@ Journey document — and a bulk sync would write one person's name, birthday,
 contact details and waiver over the other's. The script's own header says
 nothing in the app can tell.
 
-It is read-only, costs about one Mindbody call per 50 clients, and answers the
-question in one run. **It is a prerequisite, not a nice-to-have.**
+It is read-only, costs about one Mindbody call per 20 clients — roughly 40 for
+the whole roster — and answers the question in one run. **It is a prerequisite,
+not a nice-to-have.**
 
 ---
 
@@ -287,6 +288,29 @@ anything else. They are the whole critical path.
   repo knows only the *billing* threshold. Nothing in it reads a rate-limit
   header. This is a question for Mindbody's developer portal or an account rep,
   and the floor should be built conservatively until it's answered.
-- **Whether `client/clients` silently truncates a 50-id request.** The batched
-  lookup asserts 50 ids per call but never reads the pagination response, so a
-  truncation would be invisible. The collision check run answers this too.
+*(One item moved out of this list on Sep 22 — see below.)*
+
+---
+
+## Answered since: `client/clients` does not truncate
+
+This list used to carry a worry that a 50-id request might come back short
+without saying so, which would have made a bulk backfill unsafe in a way no
+report could catch.
+
+AJ's first run of the collision check settled it, by failing:
+
+```
+Mindbody client/clients failed (Site 29068): 400
+{"Error":{"Message":"ClientIds should not be more than 20.",
+"Code":"InvalidParameter","ReasonCode":null}}
+```
+
+**Twenty is a hard ceiling, and going over it is refused outright rather than
+quietly trimmed.** That is the good outcome: a short answer can never be
+mistaken for a complete one on this endpoint, so the backfill's "who is still
+unsynced" proof stays trustworthy.
+
+It also explains why that script had never run — it asked for 50. Fixed on the
+branch. The live schedule pull in `server.ts:676` already used 20 and was never
+affected.
