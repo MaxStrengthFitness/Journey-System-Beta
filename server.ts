@@ -566,7 +566,8 @@ async function startServer() {
           .json({ error: "MINDBODY_API_KEY environment variable is not set." });
       }
 
-      const { siteId, startDate, endDate, staffIds } = req.body || {};
+      const { siteId, startDate, endDate, staffIds, locationId, keepLocationIds } =
+        req.body || {};
 
       if (!siteId) {
         return res.status(400).json({ error: "siteId is required" });
@@ -580,73 +581,158 @@ async function startServer() {
           .toISOString()
           .split("T")[0];
 
-      const userToken = await getMindbodyToken(String(siteId));
-
-      let allAppointments: any[] = [];
-      let offset = 0;
+      /*
+       * THE PAGES, FETCHED TOGETHER RATHER THAN ONE AFTER ANOTHER.
+       *
+       * Mindbody's own PaginationResponse.TotalResults is still what decides
+       * how many pages there are. What changed (Sep 2026) is that the pages
+       * after the first no longer wait for each other. This site alone runs
+       * ~3,800+ appointments per 30-day window across its shared studios --
+       * eight sequential round trips to Mindbody before the browser is shown
+       * anything, which is most of the 30-100 seconds a trainer spends
+       * watching the Refresh spinner.
+       *
+       * Page 1 reports the total, so every remaining offset is known up front
+       * and they go out at once.
+       *
+       * They go through mindbodyGet now rather than a bare fetch, so the
+       * token bucket, the Retry-After handling and the per-site breaker cover
+       * them. Firing seven pages at once WITHOUT that would be an excellent
+       * way to earn a 429 with nothing to catch it.
+       *
+       * MAX_PAGES is a safety valve and nothing more. The old cap of 2000
+       * results silently truncated the answer before every studio's
+       * appointments had been fetched -- whichever studio Mindbody happened
+       * to return last got cut off entirely, with no error to show for it.
+       * See `complete` below for why a short answer is now said out loud.
+       */
       const limit = 500;
-      let hasMore = true;
-
-      // Safety valve only -- `hasMore` (driven by Mindbody's own
-      // PaginationResponse.TotalResults) is the real stopping condition.
-      // This site alone runs ~3,800+ appointments per 30-day window across
-      // its shared studios, so the old cap of 2000 silently truncated the
-      // result before every studio's appointments were even fetched --
-      // whichever studio's data Mindbody happened to return last in the
-      // page order got cut off entirely, with no error to show for it.
-      while (hasMore && offset < 100000) {
-        const params = new URLSearchParams({
+      const MAX_PAGES = 200;
+      const pageParams = (offset: number) => {
+        const p: Record<string, string | number | Array<string | number>> = {
           StartDate: `${start}T00:00:00`,
           EndDate: `${end}T23:59:59`,
-          Limit: String(limit),
-          Offset: String(offset),
-        });
-
+          Limit: limit,
+          Offset: offset,
+        };
         if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
-          staffIds.forEach((id: string | number) =>
-            params.append("StaffIds", String(id)),
-          );
+          p.StaffIds = staffIds.map((id: string | number) => String(id));
         }
+        return p;
+      };
+      const apptsOf = (d: any) => d?.Appointments || d?.appointments || [];
 
-        const apiResponse = await fetch(
-          `https://api.mindbodyonline.com/public/v6/appointment/staffappointments?${params.toString()}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Api-Key": mindbodyApiKey,
-              SiteId: String(siteId),
-              Authorization: userToken,
-            },
-          },
+      const tFetch = Date.now();
+      const first = await mindbodyGet(
+        String(siteId),
+        "appointment/staffappointments",
+        pageParams(0),
+      );
+
+      if (!first.ok) {
+        console.error(
+          "Mindbody Staff Appointments Error:",
+          first.status,
+          first.error,
         );
-
-        if (!apiResponse.ok) {
-          const errorText = await apiResponse.text();
-          console.error(
-            "Mindbody Staff Appointments Error:",
-            apiResponse.status,
-            errorText,
-          );
-          if (offset === 0) {
-            return res
-              .status(apiResponse.status)
-              .json({ error: `Mindbody API Error: ${errorText}` });
-          }
-          break;
-        }
-
-        const data = await apiResponse.json();
-        const pageAppts = data.Appointments || data.appointments || [];
-        allAppointments.push(...pageAppts);
-
-        const totalResults = data.PaginationResponse?.TotalResults || 0;
-        offset += limit;
-        hasMore =
-          pageAppts.length === limit && allAppointments.length < totalResults;
+        return res
+          .status(first.status || 502)
+          .json({ error: `Mindbody API Error: ${first.error}` });
       }
 
-      const appointments = allAppointments;
+      const allAppointments: any[] = [...apptsOf(first.data)];
+      const siteTotal = first.data?.PaginationResponse?.TotalResults || 0;
+      let pages = 1;
+
+      /*
+       * `complete` answers one question for the browser: is this every
+       * appointment Mindbody holds for the window, or only some of them?
+       *
+       * It matters far more than it looks. The sync marks a booking Cancelled
+       * when it is inside the window and absent from this answer. So a short
+       * answer does not mean "a bit less data" -- it means real bookings get
+       * cancelled in Journey because a page 404'd. That is the Aug 30 storm's
+       * second cause repeating: "a transient read failure turned into
+       * permanent data loss." A failed read means UNKNOWN, never EMPTY.
+       *
+       * The sequential loop this replaced had the same hole and simply
+       * `break`-ed, handing back a short list that looked whole.
+       */
+      let complete = true;
+
+      if (allAppointments.length === limit && siteTotal > limit) {
+        const offsets: number[] = [];
+        for (let o = limit; o < siteTotal; o += limit) offsets.push(o);
+        if (offsets.length > MAX_PAGES) {
+          offsets.length = MAX_PAGES;
+          complete = false;
+          console.warn(
+            `[staff-appointments] site ${siteId}: ${siteTotal} results exceeds the ${MAX_PAGES}-page valve.`,
+          );
+        }
+        pages += offsets.length;
+        const rest = await Promise.all(
+          offsets.map((o) =>
+            mindbodyGet(
+              String(siteId),
+              "appointment/staffappointments",
+              pageParams(o),
+            ),
+          ),
+        );
+        for (const r of rest) {
+          if (r.ok) allAppointments.push(...apptsOf(r.data));
+          else complete = false;
+        }
+      }
+      const fetchMs = Date.now() - tFetch;
+
+      /*
+       * Drop the SIBLING studios' appointments before looking any clients up.
+       *
+       * The browser has always filtered by location itself and still does --
+       * this does not replace that. But doing it only there means a refresh
+       * at Willoughby downloads all three Site 29068 studios' appointments,
+       * looks up all three studios' clients from Mindbody, and then throws
+       * two thirds of the work away. Dropping them here makes the client
+       * lookups below, the normalize pass and the JSON the iPad downloads
+       * roughly three times smaller on a shared site.
+       *
+       * WHAT THIS MUST NOT DO is filter down to `locationId` alone. Before
+       * the browser narrows to its own location it walks the whole answer and
+       * parks every appointment at a location NO studio claims into the Limbo
+       * queue -- that queue is the only way a location that came online
+       * before anyone mapped it is ever seen. A plain `=== locationId` filter
+       * here would starve it silently, which is the exact failure the parking
+       * step was built to fix.
+       *
+       * So: keep mine, keep anything unclaimed, keep anything with no
+       * location at all. Drop only what another studio on this site has
+       * already claimed -- which is the bulk of it, and the only part nobody
+       * downstream looks at.
+       *
+       * Optional on purpose. A caller that sends no keepLocationIds (an older
+       * build, or a studio that owns its whole site) filters nothing here and
+       * gets exactly what it did before.
+       */
+      const wantLocation =
+        locationId !== undefined && locationId !== null && String(locationId).trim() !== ""
+          ? String(locationId).trim()
+          : null;
+      const claimedElsewhere = new Set(
+        (Array.isArray(keepLocationIds) ? keepLocationIds : [])
+          .map((v: string | number) => String(v).trim())
+          .filter((v: string) => v !== "" && v !== wantLocation),
+      );
+      const appointments =
+        wantLocation && claimedElsewhere.size > 0
+          ? allAppointments.filter((a: any) => {
+              const loc = String(a?.Location?.Id ?? a?.LocationId ?? "").trim();
+              if (loc === wantLocation) return true;
+              if (loc === "") return true;
+              return !claimedElsewhere.has(loc);
+            })
+          : allAppointments;
 
       const uniqueClientIds = [
         ...new Set(
@@ -673,37 +759,34 @@ async function startServer() {
         }
       > = {};
 
+      /*
+       * 20 is Mindbody's hard ceiling for client/clients, not a tuning knob.
+       * Asking for 21 is refused outright with HTTP 400 "ClientIds should not
+       * be more than 20" -- confirmed against site 29068, Sep 22 2026.
+       *
+       * These also go through mindbodyGet now. They are the likeliest place
+       * in the whole app to meet a 429: on a busy 30-day window this fires
+       * thirty-odd lookups simultaneously, and before the floor existed
+       * nothing would have retried a single one of them. A lookup that fails
+       * costs only the fallback name fields, never a booking, so unlike the
+       * pages above it does not touch `complete`.
+       */
       const BATCH_SIZE = 20;
       const batchPromises = [];
 
+      const tClients = Date.now();
       for (let i = 0; i < uniqueClientIds.length; i += BATCH_SIZE) {
         const batch = uniqueClientIds.slice(i, i + BATCH_SIZE);
-        const clientParams = new URLSearchParams();
-        batch.forEach((id: string) => clientParams.append("ClientIds", id));
-        const clientUrl = `https://api.mindbodyonline.com/public/v6/client/clients?${clientParams.toString()}`;
-
         batchPromises.push(
-          fetch(clientUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "Api-Key": mindbodyApiKey,
-              SiteId: String(siteId),
-              Authorization: userToken,
-            },
-          })
-            .then(async (res) => {
-              if (res.ok) {
-                const clientData = await res.json();
-                return clientData.Clients || [];
-              }
-              return [];
-            })
-            .catch(() => []),
+          mindbodyGet(String(siteId), "client/clients", {
+            ClientIds: batch as string[],
+            Limit: BATCH_SIZE,
+          }).then((r) => (r.ok ? r.data?.Clients || [] : [])),
         );
       }
 
       const clientResults = await Promise.all(batchPromises);
+      const clientsMs = Date.now() - tClients;
       clientResults.flat().forEach((c: any) => {
         if (c && c.Id != null) {
           const cId = String(c.Id);
@@ -789,7 +872,26 @@ async function startServer() {
         };
       });
 
-      res.json({ appointments: normalized, total: normalized.length });
+      console.log(
+        `[staff-appointments] site ${siteId}` +
+          (wantLocation ? ` loc ${wantLocation}` : "") +
+          ` ${start}..${end}: ${pages} page(s) ${fetchMs}ms, ` +
+          `${allAppointments.length}/${siteTotal} appts` +
+          (appointments.length !== allAppointments.length
+            ? ` -> ${appointments.length} after dropping siblings`
+            : "") +
+          `, ${batchPromises.length} client lookup(s) ${clientsMs}ms` +
+          (complete ? "" : " -- INCOMPLETE, sweep suppressed"),
+      );
+
+      res.json({
+        appointments: normalized,
+        total: normalized.length,
+        /* See `complete` above: the browser must not run its cancellation
+         * sweep against a short answer. */
+        complete,
+        siteTotal,
+      });
     } catch (e: any) {
       console.error("Staff appointments error:", e);
       res

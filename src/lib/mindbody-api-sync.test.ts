@@ -101,7 +101,7 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { resolveStudioId, syncMindbodySchedules } from "./mindbody-api-sync";
+import { resolveStudioId, syncMindbodySchedules, syncWindow, REFRESH_WINDOW_DAYS, DEEP_WINDOW_DAYS } from "./mindbody-api-sync";
 
 const SITE = "29068";
 
@@ -149,10 +149,10 @@ function appointment(overrides: Record<string, any> = {}) {
   };
 }
 
-function mockAppointments(appts: any[]) {
+function mockAppointments(appts: any[], extra: Record<string, unknown> = {}) {
   global.fetch = vi.fn(async () => ({
     ok: true,
-    json: async () => ({ appointments: appts }),
+    json: async () => ({ appointments: appts, ...extra }),
   })) as any;
 }
 
@@ -921,5 +921,117 @@ describe("syncMindbodySchedules — phase 1 never overwrites an existing client"
     expect(batchOps.filter((op) => op.path === "clients")).toHaveLength(0);
     const [row] = batchOps.filter((op) => op.path === "schedules");
     expect(row.data.clientId).toBe("mb-visitor");
+  });
+});
+
+describe("syncMindbodySchedules — half an answer must not cancel anything", () => {
+  /*
+   * The proxy fetches the window in pages. When one of them fails, the
+   * bookings on it are UNSEEN, not gone -- but the sweep cannot tell the
+   * difference on its own: absent from the answer and inside the window is
+   * exactly what it cancels on. Left alone that turns a transient 500 into
+   * real sessions disappearing off trainers' schedules, which is the Aug 30
+   * storm's second cause repeating.
+   *
+   * So the proxy says whether its answer was whole, and these lock that in.
+   */
+  const run = () =>
+    syncMindbodySchedules(SITE, TRAINERS, CLIENTS, SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2");
+
+  const vanishedRow = () => [
+    {
+      id: "gone",
+      data: () => ({
+        mindbodyAppointmentId: "999",
+        studioId: "studio-solon",
+        status: "Scheduled",
+        startTime: { toMillis: () => Date.now() + 24 * 60 * 60 * 1000 },
+      }),
+    },
+  ];
+
+  it("sweeps when the proxy says the answer was whole", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })], { complete: true });
+    snapshots.schedules = vanishedRow();
+
+    await run();
+
+    const update = batchOps.find((op) => op.kind === "update" && op.id === "gone");
+    expect(update?.data.status).toBe("Cancelled");
+  });
+
+  it("does NOT sweep when a page failed", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })], { complete: false });
+    snapshots.schedules = vanishedRow();
+
+    await run();
+
+    expect(batchOps.find((op) => op.id === "gone")).toBeUndefined();
+  });
+
+  it("says why it did not sweep, rather than reporting a clean run", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })], { complete: false });
+    snapshots.schedules = vanishedRow();
+
+    const res = await run();
+
+    expect(res.errors.join(" ")).toMatch(/only part of the window/i);
+  });
+
+  it("still saves the bookings that DID arrive", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })], { complete: false });
+    snapshots.schedules = vanishedRow();
+
+    await run();
+
+    expect(batchOps.filter((op) => op.path === "schedules").length).toBeGreaterThan(0);
+  });
+
+  it("an older proxy that sends no `complete` at all still sweeps", async () => {
+    mockAppointments([appointment({ Id: 1, LocationId: 2 })]);
+    snapshots.schedules = vanishedRow();
+
+    await run();
+
+    const update = batchOps.find((op) => op.kind === "update" && op.id === "gone");
+    expect(update?.data.status).toBe("Cancelled");
+  });
+});
+
+describe("syncWindow — how far ahead a sync reaches", () => {
+  const NOON = new Date("2026-09-22T16:00:00Z"); // midday in New York
+
+  it("starts today and runs the number of days it was given", () => {
+    const w = syncWindow("America/New_York", 8, NOON);
+    expect(w.start).toBe("2026-09-22");
+    expect(w.end).toBe("2026-09-30");
+  });
+
+  it("the button's window is the week the app can actually display", () => {
+    expect(REFRESH_WINDOW_DAYS).toBe(8);
+  });
+
+  it("the background sync still reaches a month out, for the calendar", () => {
+    const w = syncWindow("America/New_York", DEEP_WINDOW_DAYS, NOON);
+    expect(w.start).toBe("2026-09-22");
+    expect(w.end).toBe("2026-10-22");
+  });
+
+  it("asking for today alone gives a single day, not an empty window", () => {
+    const w = syncWindow("America/New_York", 0, NOON);
+    expect(w.start).toBe("2026-09-22");
+    expect(w.end).toBe("2026-09-22");
+  });
+
+  it("reads the day in the STUDIO's zone, not the browser's", () => {
+    // 01:00 UTC on the 23rd is still the evening of the 22nd in New York.
+    const lateUtc = new Date("2026-09-23T01:00:00Z");
+    expect(syncWindow("America/New_York", 1, lateUtc).start).toBe("2026-09-22");
+  });
+
+  it("a nonsense day count falls back rather than producing a backwards window", () => {
+    const w = syncWindow("America/New_York", Number.NaN, NOON);
+    expect(w.start).toBe("2026-09-22");
+    expect(w.end).toBe("2026-09-30");
   });
 });

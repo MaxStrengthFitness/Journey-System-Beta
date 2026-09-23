@@ -356,6 +356,53 @@ function studioDayKeyOfInstant(ms: number, tz: string): string {
   return studioDateKey(new Date(ms), tz) ?? new Date(ms).toISOString().slice(0, 10);
 }
 
+/**
+ * HOW FAR AHEAD A SYNC PULLS.
+ *
+ * These two numbers are the whole reason a refresh used to take 30-100
+ * seconds, so they are worth understanding before changing either.
+ *
+ * The window does two jobs at once, and they have to stay the same size:
+ * it decides which Mindbody appointments are fetched, AND which Journey
+ * bookings are compared against them (`windowFrom`/`windowTo` below). Shrink
+ * only one and the sweep cancels everything in the gap. They are derived from
+ * one number here so that cannot happen.
+ *
+ * REFRESH_WINDOW_DAYS — what the button in the header pulls. Eight days,
+ *   which is `WEEK_AHEAD_DAYS` in lib/schedule-window.ts: exactly what the
+ *   Hub's day tabs, the trainer's upcoming list and the Operations week can
+ *   display. A trainer who presses Refresh sees everything they could have
+ *   been looking at, and nothing they could not.
+ *
+ *   It used to be 30 days. On Site 29068 that is ~3,800 appointments across
+ *   three studios fetched before the spinner stops, to render eight days of
+ *   one studio.
+ *
+ * DEEP_WINDOW_DAYS — what the background auto-sync pulls, unchanged at 30.
+ *   The calendar can ask Firestore for any month it likes, but Firestore only
+ *   holds what a sync put there, so something has to keep reaching past the
+ *   week. Nobody watches the auto-sync, so it can afford to.
+ *
+ * If you want the button to cover only today, this is the line: make it 1.
+ * The cost is that a booking made for next Tuesday will not appear until the
+ * auto-sync's next pass.
+ */
+export const REFRESH_WINDOW_DAYS = 8;
+export const DEEP_WINDOW_DAYS = 30;
+
+/** The day keys a sync should ask for, in the studio's own day. */
+export function syncWindow(
+  timeZone?: string,
+  days: number = REFRESH_WINDOW_DAYS,
+  now: Date = new Date(),
+): { start: string; end: string } {
+  const safeDays = Number.isFinite(days) && days >= 0 ? Math.floor(days) : REFRESH_WINDOW_DAYS;
+  return {
+    start: studioTodayKey(now, timeZone),
+    end: studioTodayKey(new Date(now.getTime() + safeDays * 24 * 60 * 60 * 1000), timeZone),
+  };
+}
+
 export async function syncMindbodySchedules(
   siteId: string,
   trainers: Trainer[],
@@ -374,10 +421,13 @@ export async function syncMindbodySchedules(
     errors: [],
   };
   const now = new Date();
-  const start = startDate || studioTodayKey(now);
-  const end =
-    endDate ||
-    studioTodayKey(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+  // No explicit window means the deep one: the background auto-sync is the
+  // caller that relies on the default, and it is the one that has to keep the
+  // calendar's forward months populated. The header's Refresh button passes
+  // REFRESH_WINDOW_DAYS instead. See syncWindow above.
+  const fallback = syncWindow(undefined, DEEP_WINDOW_DAYS, now);
+  const start = startDate || fallback.start;
+  const end = endDate || fallback.end;
 
   let targetTrainers = trainers;
   let staffIdsToFetch: string[] = [];
@@ -448,6 +498,23 @@ export async function syncMindbodySchedules(
         startDate: start,
         endDate: end,
         staffIds: staffIdsToFetch.length > 0 ? staffIdsToFetch : undefined,
+        /*
+         * Both of these are a cost cut, not a correctness change: the proxy
+         * uses them to drop the SIBLING studios' appointments before it looks
+         * their clients up from Mindbody, which on a shared site is most of
+         * the work and most of the wait. Everything below still filters and
+         * parks exactly as it did.
+         *
+         * keepLocationIds is what makes that safe. Without the full list of
+         * claimed locations the proxy cannot tell a sibling's booking (drop
+         * it, someone else's) from an unmapped one (keep it -- the parking
+         * loop below is the only thing that ever surfaces those).
+         */
+        locationId: effectiveLocationId ?? undefined,
+        keepLocationIds: studiosOnSite
+          .map((s) => s.mindbodyLocationId)
+          .filter((id): id is string | number => id !== undefined && id !== null && String(id).trim() !== "")
+          .map((id) => String(id).trim()),
       }),
     });
 
@@ -458,6 +525,24 @@ export async function syncMindbodySchedules(
 
     const data = await response.json();
     let appointments: MindbodyAppointment[] = data.appointments || [];
+
+    /*
+     * Did Mindbody give us the WHOLE window, or only part of it?
+     *
+     * The sweep at the bottom of this function cancels any booking that is
+     * inside the window and absent from this answer. That is correct only if
+     * the answer is complete. If one page of eight failed, the bookings on it
+     * are not gone -- they are unseen -- and sweeping would cancel live
+     * sessions off trainers' schedules because of a transient 500.
+     *
+     * That is the Aug 30 storm's second cause, word for word: a failed read
+     * turned into permanent data loss. A failed read means UNKNOWN, never
+     * EMPTY.
+     *
+     * Older proxies do not send the field. `!== false` keeps them working
+     * unchanged rather than silently disabling their sweep.
+     */
+    const answerComplete = data.complete !== false;
 
     // Before narrowing to this studio's location, park anything belonging to a
     // location NO studio claims.
@@ -978,8 +1063,15 @@ export async function syncMindbodySchedules(
     }
 
     // Gone from Mindbody means cancelled — but only for a booking inside the
-    // window Mindbody was asked about. Anything else was simply not asked.
+    // window Mindbody was asked about, and only when the answer was whole.
+    // See answerComplete above: half an answer cancels real sessions.
+    if (!answerComplete) {
+      result.errors.push(
+        "Mindbody returned only part of the window, so cancelled bookings were not swept this run. Everything it did return has been saved; try again in a moment.",
+      );
+    }
     for (const [mbId, existing] of Object.entries(existingByMbId)) {
+      if (!answerComplete) break;
       if (
         !currentMbIds.has(mbId) &&
         existing.data.status !== "Cancelled" &&

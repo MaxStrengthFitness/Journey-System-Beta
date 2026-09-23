@@ -621,15 +621,27 @@ export default function AppContent({
     try {
       const siteId = String(activeStudio.mindbodySiteId);
 
-      const { syncMindbodySchedules } = await import("./lib/mindbody-api-sync");
+      const { syncMindbodySchedules, syncWindow } = await import(
+        "./lib/mindbody-api-sync"
+      );
+      /*
+       * The button pulls the week, not the month.
+       *
+       * Left to the default this asks Mindbody for 30 days, which on a shared
+       * site is thousands of appointments across every studio on it, fetched
+       * before the spinner stops -- to redraw eight days of one studio, which
+       * is all the Hub, the upcoming list and the Operations week can show.
+       * The background auto-sync still covers 30 days for the calendar.
+       */
+      const win = syncWindow(activeStudio?.timezone);
       const res = await syncMindbodySchedules(
         siteId,
         trainers,
         clients,
         studios,
         null,
-        undefined,
-        undefined,
+        win.start,
+        win.end,
         activeStudioId,
         activeStudio?.mindbodyLocationId,
       );
