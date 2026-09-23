@@ -94,6 +94,35 @@ Three more, all safe, all no-new-index:
 
 ---
 
+## 2b. A backfill that could never succeed was retrying forever
+
+Found while checking the audit's claim that the client profile reads a
+client's whole history twice on every open. It doesn't — both reads are
+one-time backfills, guarded so they run once per client and then write a
+marker. The audit overstated it.
+
+Underneath that, though, was something worse.
+
+Both backfills clear their "already started" guard in the catch, so a failure
+retries on the next app load. That is right for a dropped connection. It is
+wrong for the two failures that will never resolve:
+
+- **permission-denied** — this trainer is not allowed to write this client,
+  and will not be tomorrow either.
+- **resource-exhausted** — the quota is already gone, and re-reading a
+  client's entire history in order to fail again is exactly how Aug 30 became
+  a storm.
+
+Either one meant re-reading a long-tenured client's whole history — every
+session and every set, a few thousand documents — on **every app load, on
+every device, forever**, for a write that could never land. And silently: both
+paths only log a warning.
+
+Now only a transient failure retries. Four tests, confirmed to catch the old
+behaviour.
+
+---
+
 ## 3. What I did NOT do, and why it matters
 
 The audit found about 28 reads with no proper bound. I fixed four. Here is the
@@ -201,12 +230,12 @@ project — noted here so nobody spends an evening on it.
 | --- | --- |
 | First paint | **613.8 → 459.4 kB gzip**, −25% |
 | Typecheck | 10 — baseline, unchanged |
-| Tests | **3,818 passing** in 256 files (+4 new mount tests) |
+| Tests | **3,822 passing** in 257 files (+8 new, two new test files) |
 | Build | green, all five cron bundles |
 | Rules / indexes / functions | **untouched** — nothing to deploy but the app |
 
-Commits: phases 20 and 21, plus this document. All on `prior-history`,
-unpushed, waiting alongside phases 16–19.
+Commits: phases 20 to 23. All on `prior-history`, unpushed, waiting alongside
+phases 16–19.
 
 ## What I need from you
 
