@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../../firebase";
+import { isPermissionError, isQuotaError } from "../../lib/studio-roster";
 import type { Client, ClientMachineStat, ExerciseLog, WorkoutSession } from "../../types";
 import { rollupFromHistory } from "../../lib/client-rollups";
 
@@ -77,8 +78,27 @@ export function useMachineStats(client: Client | null | undefined, options: { en
           machineStatsBackfilledAt: serverTimestamp(),
         });
       } catch (err) {
-        // Best-effort: the partial figures stay on screen; try again next app load.
-        started.delete(clientId);
+        /*
+         * A FAILURE THAT WILL FAIL AGAIN MUST NOT RE-ARM.
+         *
+         * `started` is what stops this backfill running twice, and the catch
+         * used to clear it unconditionally so the next app load could retry.
+         * That is right for a dropped connection. It is wrong for the two
+         * failures that are not going to resolve on their own:
+         *
+         *   permission-denied  this signed-in trainer is not allowed to write
+         *                      this client, and will not be tomorrow either.
+         *   resource-exhausted the quota is already gone, and re-reading a
+         *                      client's entire history to fail again is
+         *                      exactly how Aug 30 got worse.
+         *
+         * Both of those re-read every session (and every set) the client has,
+         * on every app load, on every device, forever, for a write that can
+         * never land. Hold the id instead and let the partial figures stand.
+         */
+        if (!isPermissionError(err) && !isQuotaError(err)) {
+          started.delete(clientId);
+        }
         console.warn("Machine stats backfill skipped:", err);
       } finally {
         if (mounted.current) setBackfilling(false);
