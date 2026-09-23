@@ -690,9 +690,43 @@ export async function syncMindbodySchedules(
     // exactly those before writing anything.
     const toCreate = new Map<string, MindbodyAppointment>();
     const createAlone = new Map<string, MindbodyAppointment>();
+    /*
+     * A CLIENT DOCUMENT WITH THIS ID IS NOT NECESSARILY THIS PERSON.
+     *
+     * `clients/{mindbodyClientId}` carries no site, and Mindbody only promises
+     * an id is unique within ONE site. MSF has two, and both numbered from
+     * 100000001, so the ranges overlap: on Sep 23 2026 the collision check
+     * found 43 ids naming a DIFFERENT PERSON at each site. Adopting by id
+     * alone files one person's booking onto another's record — it already had,
+     * for two clients and nineteen bookings.
+     *
+     * A SIBLING studio on this site is fine: that is a client visiting another
+     * of our locations. Only a positive site MISMATCH is a different person.
+     * An unresolvable site stays adopted, as before, so a client with no home
+     * studio yet is unaffected.
+     *
+     * Ids landing here are left for the `!clientId` path below, which already
+     * writes the booking UNLINKED and says so. That is the right outcome:
+     * `clientName` comes from the appointment, so the card still shows who is
+     * actually coming in — it just no longer opens a stranger's profile.
+     */
+    const crossSiteClient = new Map<string, string>();
     if (missingClients.size > 0) {
       const check = await checkClientIds([...missingClients.keys()]);
-      for (const c of check.existing) allClients.push(c);
+      const thisSite = String(siteId).trim();
+      for (const c of check.existing) {
+        const theirStudio = (studios || []).find(
+          (s) => s.id === (c as { homeStudioId?: string }).homeStudioId,
+        );
+        const theirSite = theirStudio?.mindbodySiteId
+          ? String(theirStudio.mindbodySiteId).trim()
+          : null;
+        if (theirSite && theirSite !== thisSite) {
+          crossSiteClient.set(String(c.id), theirSite);
+          continue;
+        }
+        allClients.push(c);
+      }
       for (const [mbId, appt] of missingClients) {
         if (check.missing.has(mbId)) toCreate.set(mbId, appt);
         else if (check.refused.has(mbId)) createAlone.set(mbId, appt);
@@ -872,11 +906,15 @@ export async function syncMindbodySchedules(
         const clientId = resolveCanonicalClientId(mbClientId, allClients);
 
         if (!clientId && mbClientId) {
-          // Phase 1 above creates every client for this studio before the loop
-          // runs, so reaching here means that batch failed. The schedule row is
-          // still written (unlinked) and will resolve on the next sync.
+          const otherSite = crossSiteClient.get(mbClientId);
           result.errors.push(
-            `Appt ${appt.Id}: client ${mbClientId} could not be resolved or created; left unlinked.`,
+            otherSite
+              ? `Appt ${appt.Id}: Mindbody client ${mbClientId} already belongs to someone on site ${otherSite}, and the two sites number their clients from the same range — so this is a different person. Left unlinked rather than filed on their record.`
+              : // Phase 1 above creates every client for this studio before the
+                // loop runs, so reaching here means that batch failed. The
+                // schedule row is still written (unlinked) and will resolve on
+                // the next sync.
+                `Appt ${appt.Id}: client ${mbClientId} could not be resolved or created; left unlinked.`,
           );
         }
 

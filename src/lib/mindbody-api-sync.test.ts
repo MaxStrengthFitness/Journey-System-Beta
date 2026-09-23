@@ -1035,3 +1035,117 @@ describe("syncWindow — how far ahead a sync reaches", () => {
     expect(w.end).toBe("2026-09-30");
   });
 });
+
+describe("syncMindbodySchedules — one Mindbody id, two different people", () => {
+  /*
+   * MSF's two Mindbody sites both numbered their clients from 100000001, so
+   * the ranges overlap: on Sep 23 2026 the collision check found 43 ids that
+   * name a DIFFERENT person at each site, and the damage check found two of
+   * them already had someone else's standing schedule filed on their record.
+   *
+   * `clients/{mindbodyClientId}` has no site in it, and the sync's id lookup
+   * reads that collection with no studio filter — so a Westlake booking for
+   * client 100000271 found SOLON's client 100000271 and filed against them.
+   *
+   * The booking must be left UNLINKED instead. `clientName` comes from the
+   * appointment, so the card still shows who is actually walking in; it just
+   * no longer opens a stranger's profile, and no session can be logged
+   * against the wrong person.
+   */
+  const OTHER_SITE = "5746957";
+
+  const STUDIOS_ON_TWO_SITES: Studio[] = [
+    ...SHARED_SITE_STUDIOS,
+    {
+      id: "studio-elsewhere",
+      name: "Solon (other site)",
+      ownerId: "o1",
+      timezone: "America/New_York",
+      mindbodySiteId: OTHER_SITE,
+      mindbodyLocationId: "1",
+    },
+  ];
+
+  const run = (studios: Studio[] = STUDIOS_ON_TWO_SITES) =>
+    syncMindbodySchedules(SITE, TRAINERS, [], studios, null, undefined, undefined, "studio-solon", "2");
+
+  /** A client document that exists, but belongs to a studio on the OTHER site. */
+  const strangerAt = (homeStudioId: string) => [
+    {
+      id: "100000271",
+      data: () => ({
+        firstName: "Aydin",
+        lastName: "Kara",
+        homeStudioId,
+      }),
+    },
+  ];
+
+  const scheduleWrites = () => batchOps.filter((op) => op.path === "schedules");
+
+  it("does NOT link a booking to a client document from the other site", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
+    ]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+
+    await run();
+
+    const [row] = scheduleWrites();
+    expect(row).toBeTruthy();
+    expect(row.data.clientId).toBeNull();
+  });
+
+  it("still writes the booking, with the name of whoever is actually coming in", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
+    ]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+
+    await run();
+
+    const [row] = scheduleWrites();
+    expect(row.data.clientName).toBe("Barjesh Walters");
+    expect(row.data.mindbodyClientId).toBe("100000271");
+  });
+
+  it("says WHY, naming the other site, rather than a generic failure", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
+    ]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+
+    const res = await run();
+
+    expect(res.errors.join(" ")).toMatch(new RegExp(`already belongs to someone on site ${OTHER_SITE}`));
+  });
+
+  it("DOES link a client whose home is a sibling studio on the SAME site", async () => {
+    // A Solon client visiting Westlake is not a collision — it is a visitor.
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
+    ]);
+    snapshots.clients = strangerAt("studio-westlake");
+
+    await run();
+
+    const [row] = scheduleWrites();
+    expect(row.data.clientId).toBe("100000271");
+  });
+
+  it("adopts as before when the document has no home studio to place", async () => {
+    // Unknown is unknown, not wrong. Refusing here would break every client
+    // who simply has no home studio set yet.
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
+    ]);
+    snapshots.clients = [
+      { id: "100000271", data: () => ({ firstName: "Aydin", lastName: "Kara" }) },
+    ];
+
+    await run();
+
+    const [row] = scheduleWrites();
+    expect(row.data.clientId).toBe("100000271");
+  });
+});
