@@ -227,7 +227,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DEFAULT_MACHINES, getMachineImageUrl } from "./data/default-machines";
-import { MACHINE_DEFINITION_LIST } from "./data/machine-definitions";
 
 // Shown in the content area while a lazy view downloads on first visit.
 const ViewLoader = () => <LoadingArea label="" />;
@@ -988,6 +987,16 @@ export default function AppContent({
    */
   const handleRestoreMachines = async () => {
     try {
+      /*
+       * Loaded on the click. data/machine-definitions.ts is a GENERATED file
+       * holding all twenty machine definitions with their Academy setup
+       * guides -- 115 kB, 27% of the main chunk when it was imported at the
+       * top of this file. It is read by one admin-only button that most
+       * people will never press.
+       */
+      const { MACHINE_DEFINITION_LIST } = await import(
+        "./data/machine-definitions"
+      );
       const promises = MACHINE_DEFINITION_LIST.map((machine) =>
         setDoc(
           doc(db, "machines", machine.id),

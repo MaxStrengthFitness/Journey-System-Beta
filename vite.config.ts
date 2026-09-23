@@ -16,68 +16,76 @@ export default defineConfig(() => {
       emptyOutDir: false,
       rollupOptions: {
         output: {
-          // Big third-party libraries get their own files ("chunks").
-          // They rarely change between releases, so returning browsers
-          // reuse the cached copy instead of re-downloading them.
-          manualChunks(id) {
-            if (!id.includes("node_modules")) return undefined;
-            if (
-              id.includes("node_modules/react/") ||
-              id.includes("node_modules/react-dom/") ||
-              id.includes("node_modules/scheduler/")
-            )
-              return "vendor-react";
-            // Firestore is by far the largest part of the Firebase SDK and it
-            // ships new versions often. Keeping it apart from app/auth means a
-            // Firestore bump does not invalidate the auth chunk in every
-            // returning browser's cache, and vice versa.
-            //
-            // Note: this does NOT shrink first paint on its own. src/firebase.ts
-            // calls initializeFirestore at module scope, so both chunks still
-            // load before anything renders. Deferring that init behind a dynamic
-            // import is a separate change.
-            if (
-              id.includes("node_modules/firebase/firestore") ||
-              id.includes("node_modules/@firebase/firestore") ||
-              id.includes("node_modules/@firebase/webchannel-wrapper")
-            )
-              return "vendor-firebase-firestore";
-            if (
-              id.includes("node_modules/firebase/") ||
-              id.includes("node_modules/@firebase/")
-            )
-              return "vendor-firebase";
-            if (
-              id.includes("node_modules/motion/") ||
-              id.includes("node_modules/framer-motion/") ||
-              id.includes("node_modules/motion-dom/") ||
-              id.includes("node_modules/motion-utils/")
-            )
-              return "vendor-motion";
-            // Charts. Recharts pulls in most of d3 underneath it, and several
-            // screens import it, so before this rule Rollup lumped all of it
-            // into whichever shared chunk it hit first - a 444 kB file named
-            // after a small hook (useLiveRenewal) that happened to be at the
-            // top of it. Every app change re-downloaded the whole chart
-            // library. Now it is one stable, cacheable file.
-            if (
-              id.includes("node_modules/recharts/") ||
-              id.includes("node_modules/victory-vendor/") ||
-              id.includes("node_modules/d3-") ||
-              id.includes("node_modules/internmap/") ||
-              id.includes("node_modules/delaunator/") ||
-              id.includes("node_modules/robust-predicates/")
-            )
-              return "vendor-charts";
-            // Icons and headless UI primitives - imported by nearly every
-            // screen, change only when we bump the package.
-            if (
-              id.includes("node_modules/lucide-react/") ||
-              id.includes("node_modules/@base-ui/") ||
-              id.includes("node_modules/@dnd-kit/")
-            )
-              return "vendor-ui";
-            return undefined;
+          codeSplitting: {
+            groups: [
+              // ORDER MATTERS. Higher priority wins a module, and the whole
+              // point of this list is WHICH group the small shared utilities
+              // land in -- see the note above `vendor-ui`.
+              {
+                name: "vendor-react",
+                priority: 100,
+                test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              },
+              // The shared utility stack, pinned ABOVE charts on purpose.
+              //
+              // This is the whole fix. recharts is not reachable from
+              // main.tsx -- every screen that charts is lazy -- but it shares
+              // clsx/reselect/react-is/use-sync-external-store with the app
+              // shell. Left unpinned those land in whichever group claims
+              // them first, and when that was `vendor-charts` the entry ended
+              // up with a live import edge into it: one binding dragging
+              // recharts, d3, redux and immer onto the LOGIN SCREEN. 107 kB
+              // gzipped that nobody signing in will ever execute.
+              //
+              // Pinning them into vendor-ui (which is eager anyway) cuts that
+              // edge. Do not move this below the charts group.
+              {
+                name: "vendor-ui",
+                priority: 90,
+                test: /node_modules[\\/](lucide-react|@base-ui|clsx|tailwind-merge|class-variance-authority|reselect|use-sync-external-store|react-is)[\\/]/,
+              },
+              // Drag and drop is only reachable from lazy screens, so it gets
+              // its own file rather than riding along with the icons.
+              {
+                name: "vendor-dnd",
+                priority: 85,
+                test: /node_modules[\\/]@dnd-kit[\\/]/,
+              },
+              // Firestore is by far the largest part of the Firebase SDK and
+              // it ships new versions often. Keeping it apart from app/auth
+              // means a Firestore bump does not invalidate the auth chunk in
+              // every returning browser's cache, and vice versa.
+              //
+              // Note: this does NOT shrink first paint on its own.
+              // src/firebase.ts calls initializeFirestore at module scope, so
+              // both chunks still load before anything renders. Deferring
+              // that init behind a dynamic import is a separate change, and
+              // the biggest one left: ~100 kB gzip.
+              {
+                name: "vendor-firebase-firestore",
+                priority: 80,
+                test: /node_modules[\\/](firebase[\\/]firestore|@firebase[\\/]firestore|@firebase[\\/]webchannel-wrapper)/,
+              },
+              {
+                name: "vendor-firebase",
+                priority: 70,
+                test: /node_modules[\\/](firebase|@firebase)[\\/]/,
+              },
+              {
+                name: "vendor-motion",
+                priority: 60,
+                test: /node_modules[\\/](motion|framer-motion|motion-dom|motion-utils)[\\/]/,
+              },
+              // Charts, LAST among the named vendors. recharts pulls most of
+              // d3 under it and several screens import it, so it earns its
+              // own stable cacheable file -- it just must not get first claim
+              // on anything the shell also uses.
+              {
+                name: "vendor-charts",
+                priority: 50,
+                test: /node_modules[\\/](recharts|victory-vendor|d3-|internmap|delaunator|robust-predicates)/,
+              },
+            ],
           },
         },
       },

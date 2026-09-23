@@ -3,7 +3,7 @@ import { FlaskConical, Loader2, ArrowRight, RotateCcw, AlertTriangle } from "luc
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { studioTodayKey, DEFAULT_TIME_ZONE } from "../../lib/studio-time";
-import { seedDemoStudio, type SeedResult } from "./seed-write";
+import type { SeedResult } from "./seed-write";
 import { DEMO_STUDIO_NAME } from "./constants";
 
 /**
@@ -54,6 +54,19 @@ export function SetUpDemoCard({
     setState("working");
     setProgress({ written: 0, total: 0 });
     try {
+      /*
+       * Loaded on the click, not on the page.
+       *
+       * This card sits on the studio selection screen, which every trainer
+       * passes through to get to work. Importing the seeder at module scope
+       * pulled its whole dependency chain onto that screen --
+       * seed-write -> seed-core -> data/machine-definitions, and that last
+       * file alone is 115 kB of generated machine catalog. Nobody signing in
+       * to coach a client needs a byte of it.
+       *
+       * The handler was already async, so nothing else had to change.
+       */
+      const { seedDemoStudio } = await import("./seed-write");
       const outcome = await seedDemoStudio(
         seededBy,
         studioTodayKey(new Date(), DEFAULT_TIME_ZONE),
