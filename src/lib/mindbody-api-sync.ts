@@ -602,7 +602,27 @@ export async function syncMindbodySchedules(
     // The clients we already know about: the caller's roster (the app passes
     // the studio's whole live roster), topped up below by an id check of
     // only the ones it does not hold. See checkClientIds.
-    const allClients: Client[] = [...clients];
+    //
+    // THE ROSTER CAN CARRY THE STRANGER TOO (Sep 23 2026, after phase 26).
+    // The Hub's roster pulls in "visitors" — every client a booking on this
+    // studio's schedule points at, read by id. Once a booking had been filed on
+    // the wrong person, the roster fetched that wrong person as a visitor, the
+    // id lookup below found them before the phase-26 filter was ever reached,
+    // and every sync re-filed the booking on them. The mistake kept itself
+    // alive. So the same site test runs here, on the way in: a client whose
+    // home studio sits on a DIFFERENT Mindbody site is not this site's client,
+    // whatever their id says. Unknown site (no home studio) is kept, as before.
+    const thisSiteForRoster = String(siteId).trim();
+    const siteOfClient = (c: Client): string | null => {
+      const home = (c as { homeStudioId?: string | null }).homeStudioId;
+      if (!home) return null;
+      const s = (studios || []).find((st) => st.id === home);
+      return s?.mindbodySiteId ? String(s.mindbodySiteId).trim() : null;
+    };
+    const allClients: Client[] = clients.filter((c) => {
+      const theirs = siteOfClient(c);
+      return !theirs || theirs === thisSiteForRoster;
+    });
 
     // THE SYNC WINDOW, as instants. Only rows inside it are compared with
     // Mindbody's answer. This read used to take every booking the studio has

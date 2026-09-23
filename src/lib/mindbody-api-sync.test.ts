@@ -1148,4 +1148,70 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
     const [row] = scheduleWrites();
     expect(row.data.clientId).toBe("100000271");
   });
+
+  /*
+   * THE LOOP PHASE 26 MISSED. The Hub's roster fetches every client a booking
+   * points at, as a "visitor". Once a booking was filed on the wrong person,
+   * that wrong person came back in the ROSTER the sync is handed — and the id
+   * lookup found them there, before the phase-26 filter ran. The booking was
+   * re-filed on them every pass. The damage check still read 19 hours later.
+   */
+  const strangerInRoster = (homeStudioId: string) =>
+    [{ id: "100000271", firstName: "Aydin", lastName: "Kara", homeStudioId }] as unknown as Parameters<
+      typeof syncMindbodySchedules
+    >[2];
+
+  const runWithRoster = (roster: Parameters<typeof syncMindbodySchedules>[2]) =>
+    syncMindbodySchedules(SITE, TRAINERS, roster, STUDIOS_ON_TWO_SITES, null, undefined, undefined, "studio-solon", "2");
+
+  it("does NOT link to a stranger the caller's roster hands in", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
+    ]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+
+    const res = await runWithRoster(strangerInRoster("studio-elsewhere"));
+
+    const [row] = scheduleWrites();
+    expect(row.data.clientId).toBeNull();
+    expect(res.errors.join(" ")).toMatch(new RegExp(`already belongs to someone on site ${OTHER_SITE}`));
+  });
+
+  it("UN-files a booking that was already filed on the stranger", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
+    ]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+    snapshots.schedules = [
+      {
+        id: "7001",
+        data: () => ({
+          mindbodyAppointmentId: "7001",
+          studioId: "studio-solon",
+          clientId: "100000271",
+          clientName: "Barjesh Walters",
+          status: "Scheduled",
+          startTime: { toMillis: () => Date.now() + 2 * 24 * 60 * 60 * 1000 },
+        }),
+      },
+    ];
+
+    await runWithRoster(strangerInRoster("studio-elsewhere"));
+
+    const fix = batchOps.find((op) => op.kind === "update" && op.id === "7001");
+    expect(fix).toBeTruthy();
+    expect(fix!.data.clientId).toBeNull();
+  });
+
+  it("still links a same-site visitor the roster hands in", async () => {
+    mockAppointments([
+      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
+    ]);
+    snapshots.clients = strangerAt("studio-westlake");
+
+    await runWithRoster(strangerInRoster("studio-westlake"));
+
+    const [row] = scheduleWrites();
+    expect(row.data.clientId).toBe("100000271");
+  });
 });
