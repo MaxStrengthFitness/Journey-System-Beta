@@ -24,11 +24,12 @@
 import { useState } from "react";
 import Papa from "papaparse";
 import {
+  QueryConstraint,
+  Timestamp,
   collection,
   getDocs,
   query,
   where,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
@@ -117,23 +118,31 @@ export function useStudioExports(deps: StudioExportDeps) {
       const end = new Date(endDateStr);
       end.setHours(23, 59, 59, 999);
 
-      let q = query(
-        collection(db, "schedules"),
+      /*
+       * The studio goes in the QUERY, not in a filter afterwards.
+       *
+       * This read used to fetch every studio's bookings in the range and then
+       * drop the other studios' in memory -- paying for all four studios'
+       * documents (eventually forty) to export one studio's. The sessions
+       * export directly above was fixed for exactly this and carries the same
+       * note; the schedules path was missed.
+       *
+       * The (studioId, startTime) composite index already exists, so this is
+       * free. The in-memory filter that followed kept only rows whose
+       * studioId matched, so the result is identical either way.
+       */
+      const constraints: QueryConstraint[] = [
         where("startTime", ">=", Timestamp.fromDate(start)),
         where("startTime", "<=", Timestamp.fromDate(end)),
-      );
-
-      const snap = await getDocs(q);
-      let data = snap.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
-      );
-
-      // Filter by activeStudioId if not 'all'
+      ];
       if (activeStudioId) {
-        data = data.filter((s) => s.studioId === activeStudioId);
+        constraints.push(where("studioId", "==", activeStudioId));
       }
 
-      return data;
+      const snap = await getDocs(query(collection(db, "schedules"), ...constraints));
+      return snap.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
+      );
     } catch (err: any) {
       console.error(err);
       toastError("Failed to fetch schedule data: " + err.message);

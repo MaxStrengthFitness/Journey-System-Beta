@@ -126,6 +126,17 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
   const ensureRange = useCallback(
     async (from: Date, to: Date, force = false): Promise<void> => {
       if (!isReady) return;
+      /*
+       * No studio means ask for nothing, not ask for everything.
+       *
+       * The studio constraint below used to be added only `if
+       * (studioAtRequest)`, so before a studio was chosen this read every
+       * booking at every location in the range -- the whole company's
+       * schedule, bounded only by dates. `useSessions` hit the identical bug
+       * and its fix is the precedent: the honest behaviour is to wait until
+       * we know where we are.
+       */
+      if (!activeStudioId) return;
       // The listener owns the three live days: they are always fresh, and
       // rangeToFetch trims them off the front of the week-ahead request so
       // an app open does not read them twice.
@@ -153,10 +164,9 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
           where("startTime", "<=", Timestamp.fromDate(wanted.to)),
           orderBy("startTime", "asc"),
         ];
-        // STRICT FILTERING BY ACTIVE STUDIO
-        if (studioAtRequest) {
-          constraints.push(where("studioId", "==", studioAtRequest));
-        }
+        // STRICT FILTERING BY ACTIVE STUDIO. Unconditional: the guard at the
+        // top of this callback already refused the no-studio case.
+        constraints.push(where("studioId", "==", studioAtRequest));
         const snap = await getDocs(query(collection(db, "schedules"), ...constraints));
 
         // A studio switch swaps the cache map; a stale result is dropped.
@@ -228,6 +238,13 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
 
   useEffect(() => {
     if (!isReady) return;
+    // Same rule as ensureRange above: with no studio this listener would
+    // stream three days of EVERY location's bookings rather than one
+    // studio's. Hold nothing until we know where we are.
+    if (!activeStudioId) {
+      setLiveSchedules([]);
+      return;
+    }
 
     let cancelled = false;
 
@@ -242,10 +259,9 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
       orderBy("startTime", "asc"),
     ];
 
-    // STRICT FILTERING BY ACTIVE STUDIO
-    if (activeStudioId) {
-      scheduleConstraints.push(where("studioId", "==", activeStudioId));
-    }
+    // STRICT FILTERING BY ACTIVE STUDIO. Unconditional: the guard at the top
+    // of this effect already refused the no-studio case.
+    scheduleConstraints.push(where("studioId", "==", activeStudioId));
 
     const unsubscribeSchedules = onSnapshot(
       query(collection(db, "schedules"), ...scheduleConstraints),

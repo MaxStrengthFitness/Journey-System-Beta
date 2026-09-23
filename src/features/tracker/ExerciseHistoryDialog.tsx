@@ -6,7 +6,14 @@
  */
 import { useState, useEffect } from "react";
 import { MessageSquare, ClipboardList, History } from "lucide-react";
-import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 import { Machine, ExerciseLog } from "../../types";
 import { handleFirestoreError, OperationType } from "../../lib/firestore-errors";
@@ -30,11 +37,26 @@ export function ExerciseHistoryDialog({
 
   useEffect(() => {
     if (!user || !machine.id || !clientId) return;
+    /*
+     * The last 20 sets on this machine, not every set ever performed on it.
+     *
+     * This is a LIVE listener opened from the tracker whenever a trainer taps
+     * a machine's history -- many times a session, every session. Unbounded it
+     * streams the client's entire lifetime on that machine and grows forever:
+     * a weekly client is past 150 documents inside three years, and nothing
+     * stops it climbing.
+     *
+     * The dialog shows a short recent list, so the tail was being paid for and
+     * thrown away. The orderBy was already here and the composite index
+     * (clientId, machineId, createdAt DESC) already exists, so the limit costs
+     * nothing and drops no document the list was showing.
+     */
     const q = query(
       collection(db, "exerciseLogs"),
       where("clientId", "==", clientId),
       where("machineId", "==", machine.id),
       orderBy("createdAt", "desc"),
+      limit(20),
     );
 
     const unsubscribe = onSnapshot(

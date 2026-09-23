@@ -138,7 +138,7 @@ export function WorkoutChartGrid({
 
       unsubscribeSessions = onSnapshot(
         sessionsQ,
-        async (snap) => {
+        (snap) => {
           const sessData = snap.docs.map(
             (d) => ({ id: d.id, ...d.data() }) as WorkoutSession,
           );
@@ -147,39 +147,8 @@ export function WorkoutChartGrid({
           );
 
           // Grid view: Left -> Right: Oldest -> Newest
-          const finalSessions = sessData.reverse();
-          setSessions(finalSessions);
-
-          // Only fetch logs for these specific sessions to save reads and memory
-          if (finalSessions.length > 0 && !preloadedLogs) {
-            const sessionIds = finalSessions.map((s) => s.id!).filter(Boolean);
-            if (sessionIds.length === 0) {
-              setExerciseLogs([]);
-              return;
-            }
-
-            // Split into chunks if exceeds 10 due to Firestore 'in' limit
-            const chunks = [];
-            for (let i = 0; i < sessionIds.length; i += 10) {
-              chunks.push(sessionIds.slice(i, i + 10));
-            }
-
-            let allFetchedLogs: ExerciseLog[] = [];
-            for (const chunk of chunks) {
-              const logsQSub = query(
-                collection(db, "exerciseLogs"),
-                where("sessionId", "in", chunk),
-              );
-              const logSnap = await getDocs(logsQSub);
-              allFetchedLogs = [
-                ...allFetchedLogs,
-                ...logSnap.docs.map(
-                  (d) => ({ id: d.id, ...d.data() }) as ExerciseLog,
-                ),
-              ];
-            }
-            setExerciseLogs(allFetchedLogs);
-          }
+          setSessions(sessData.reverse());
+          // The logs are NOT fetched here -- see the effect below.
         },
         (error) => {
           handleFirestoreError(error, OperationType.GET, "sessions");
@@ -212,6 +181,74 @@ export function WorkoutChartGrid({
       unsubscribeSettings();
     };
   }, [clientId, user?.uid, sessionLimit]);
+
+  /*
+   * THE LOGS FOR THE SESSIONS ON SCREEN — keyed on WHICH sessions, not on
+   * every change to them.
+   *
+   * This used to live inside the sessions `onSnapshot` callback above. That
+   * meant every snapshot tick re-fetched every log for every loaded session
+   * from scratch — and during a live workout the sessions collection ticks on
+   * every set a trainer records. With sessionLimit at 30 that is 3 chunked
+   * queries and a few hundred documents re-read per set, to redraw a grid
+   * whose contents did not change.
+   *
+   * Keying the effect on the session ID LIST means it re-runs when the set of
+   * sessions actually changes and not when a field on one of them is written.
+   * The chunks also go out together now rather than one after another —
+   * Firestore's `in` takes 10 ids, so the old sequential loop was three
+   * round trips where one round of three would do.
+   */
+  const sessionIdsKey = useMemo(
+    () => sessions.map((s) => s.id).filter(Boolean).join(","),
+    [sessions],
+  );
+
+  useEffect(() => {
+    if (preloadedLogs) return;
+    if (!clientId || !user) return;
+
+    const sessionIds = sessionIdsKey ? sessionIdsKey.split(",") : [];
+    if (sessionIds.length === 0) {
+      setExerciseLogs([]);
+      return;
+    }
+
+    let cancelled = false;
+    const chunks: string[][] = [];
+    for (let i = 0; i < sessionIds.length; i += 10) {
+      chunks.push(sessionIds.slice(i, i + 10));
+    }
+
+    void (async () => {
+      try {
+        const snaps = await Promise.all(
+          chunks.map((chunk) =>
+            getDocs(
+              query(
+                collection(db, "exerciseLogs"),
+                where("sessionId", "in", chunk),
+              ),
+            ),
+          ),
+        );
+        if (cancelled) return;
+        setExerciseLogs(
+          snaps.flatMap((s) =>
+            s.docs.map((d) => ({ id: d.id, ...d.data() }) as ExerciseLog),
+          ),
+        );
+      } catch (error) {
+        if (!cancelled) {
+          handleFirestoreError(error, OperationType.GET, "exerciseLogs");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionIdsKey, clientId, user?.uid, preloadedLogs]);
 
   useEffect(() => {
     // Auto-scroll to the far right (newest sessions) when sessions are loaded
