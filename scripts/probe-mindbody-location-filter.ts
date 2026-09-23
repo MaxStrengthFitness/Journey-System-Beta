@@ -95,10 +95,11 @@ async function main() {
     return;
   }
 
+  const PAGE = 500;
   const base = {
     StartDate: `${start}T00:00:00`,
     EndDate: `${end}T23:59:59`,
-    Limit: 500,
+    Limit: PAGE,
     Offset: 0,
   };
 
@@ -141,22 +142,55 @@ async function main() {
       probe.filteredTotal = fa.length;
       probe.filteredForeign = fa.filter((a) => locationOf(a) !== t.locationId).length;
 
-      if (probe.filteredForeign === 0 && probe.filteredTotal === probe.atThisLocation) {
-        // Only decisive if the site actually held someone ELSE's appointments
-        // in this window — otherwise "filtered" and "unfiltered" look alike.
-        probe.verdict =
-          probe.unfilteredTotal > probe.atThisLocation ? "HONOURED" : "INCONCLUSIVE";
+      /*
+       * READING THIS CORRECTLY MATTERS, and the first version of this logic
+       * got it wrong on real data (Sep 23 2026).
+       *
+       * `unfilteredTotal` and `atThisLocation` come from ONE page, capped at
+       * PAGE. Site 29068 runs well over 500 appointments in a week, so on a
+       * busy site that page is TRUNCATED and `atThisLocation` is a sample,
+       * not this location's true count. Comparing `filteredTotal` against it
+       * is meaningless -- doing so reported "UNEXPECTED" for three studios
+       * whose answers were in fact conclusive.
+       *
+       * The sound test does not need the unfiltered call to be complete:
+       *
+       *   - every row the filtered call returned is at OUR location
+       *     (filteredForeign === 0), and
+       *   - the filtered call returned rows the unfiltered page did NOT hold
+       *     (filteredTotal > atThisLocation).
+       *
+       * An ignored parameter cannot do the second thing: it hands back the
+       * same first page, so it can never surface an appointment that page did
+       * not contain. The cleanest proof on this data was Strongsville --
+       * 0 of the unfiltered page were at location 5, and the filtered call
+       * returned 175, every one of them at location 5.
+       */
+      const pure = probe.filteredForeign === 0 && probe.filteredTotal > 0;
+      const foundRowsThePageLacked = probe.filteredTotal > probe.atThisLocation;
+      const siteHeldOthers = probe.unfilteredTotal > probe.atThisLocation;
+
+      if (pure && foundRowsThePageLacked) {
+        probe.verdict = "HONOURED";
       } else if (probe.filteredTotal === probe.unfilteredTotal && probe.filteredForeign > 0) {
         probe.verdict = "IGNORED";
+      } else if (pure && siteHeldOthers) {
+        // Same rows, but the site did hold other locations' bookings and none
+        // of them came back. Conclusive too, just less dramatic.
+        probe.verdict = "HONOURED";
       } else {
-        probe.verdict = "UNEXPECTED — see the report";
+        // Usually a studio that owns its whole site: filtered and unfiltered
+        // are identical because there is nothing to filter out.
+        probe.verdict = "INCONCLUSIVE";
       }
     }
 
     probes.push(probe);
+    const capped = probe.unfilteredTotal === PAGE;
     console.log(
       `${t.name} (site ${t.siteId}, loc ${t.locationId}): ` +
-        `${probe.unfilteredTotal} site-wide, ${probe.atThisLocation} here, ` +
+        `${probe.unfilteredTotal}${capped ? "+ (page capped)" : ""} site-wide, ` +
+        `${probe.atThisLocation}${capped ? " of that page" : ""} here, ` +
         `filtered call returned ${probe.filteredTotal ?? "-"} ` +
         `(${probe.filteredForeign ?? "-"} from elsewhere) -> ${probe.verdict}`,
     );
@@ -171,7 +205,8 @@ async function main() {
   } else if (verdicts.has("IGNORED")) {
     console.log("Mindbody accepted LocationIds and ignored it. Nothing to change.");
   } else {
-    console.log("Not decisive — try again with --days 30, ideally on a busy week.");
+    console.log("Not decisive - usually means every studio here owns its whole");
+    console.log("site, so there was nothing to filter out. Nothing to change.");
   }
 
   const file = writeReport("mindbody-location-filter-probe", {
