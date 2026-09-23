@@ -17,8 +17,8 @@
  *   1. Reads every client document and the studios (to know each client's
  *      home site).
  *   2. Asks the OTHER site's Mindbody whether it has a client with the same id
- *      (GET /client/clients?ClientIds=..., 50 ids a call — about 15 calls for
- *      the whole roster).
+ *      (GET /client/clients?ClientIds=..., 20 ids a call — about 40 calls for
+ *      the whole roster). 20 is Mindbody's hard ceiling, see BATCH below.
  *   3. Also looks for documents that already carry contracts or pricing
  *      options from a site that is not their home site — a collision that has
  *      already happened.
@@ -40,7 +40,12 @@ import { connectFirestore, writeReport } from "./lib/admin.ts";
 import { mindbodyConfigured, mindbodyGet } from "../server/mindbody-client.ts";
 
 const SITES = ["29068", "5746957"];
-const BATCH = 50;
+// Mindbody's hard ceiling for client/clients. Asking for 21 does NOT silently
+// truncate — the whole call is refused with HTTP 400 "ClientIds should not be
+// more than 20." (Confirmed against site 29068, Sep 22 2026.) server.ts:676
+// already uses 20 for the live schedule pull; this script had 50 and could
+// never have run. Do not raise it.
+const BATCH = 20;
 
 interface ClientRow {
   docId: string;
