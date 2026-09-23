@@ -1374,6 +1374,13 @@ export interface LimboEntry {
   locationId: string | null;
   clientId: string | null;
   reason: string;
+  /**
+   * Written by the webhook when `clientId` already names a DIFFERENT person on
+   * the other Mindbody site (the collision finding, Sep 23 2026). The Limbo
+   * screen withholds Release / Set home studio on these: both would write
+   * onto that other person. See lib/mindbody-site.ts.
+   */
+  crossSite?: { eventSite: string; clientSite: string };
   summary?: {
     bookingId?: string;
     clientName?: string;

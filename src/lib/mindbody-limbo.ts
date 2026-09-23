@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
@@ -10,8 +11,9 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { Client, LimboEntry, Studio } from "../types";
+import { LimboEntry, Studio } from "../types";
 import { wallClockToInstant, DEFAULT_TIME_ZONE, isValidTimeZone } from "./studio-time";
+import { otherSiteOf } from "./mindbody-site";
 
 /**
  * Browser-side half of the Limbo queue.
@@ -100,6 +102,9 @@ export type ReleaseResult = {
   scheduleId?: string;
   clientId?: string;
   startTimeIso?: string;
+  /** Set when the booking was released UNLINKED because its client id names
+   *  a different person on the other Mindbody site. */
+  otherSite?: string;
 };
 
 /**
@@ -114,7 +119,7 @@ export type ReleaseResult = {
 export async function releaseLimboBooking(
   entry: LimboEntry,
   studio: Studio,
-  clients: Client[],
+  studios: Studio[],
 ): Promise<ReleaseResult> {
   if (!studio.id) throw new Error("Studio has no id");
   if (entry.kind !== "booking") {
@@ -142,10 +147,22 @@ export async function releaseLimboBooking(
 
   // The client must exist, or the released block lands unlinked — the very
   // thing this whole effort removes. Strict canonical id, same as everywhere.
+  //
+  // Asked of Firestore, not of the roster the screen happened to load: a
+  // document missing from that list was treated as missing, and the merge
+  // below then wrote a name and a home studio over whoever did live there.
+  // And a document that does exist is only this person when its home studio
+  // is on the booking's site (see lib/mindbody-site.ts) — otherwise the
+  // booking is released UNLINKED under the name Mindbody gave it.
   let clientId: string | null = null;
-  if (entry.clientId) {
+  let otherSite: string | null = entry.crossSite?.clientSite ?? null;
+  if (entry.clientId && !otherSite) {
     const mbId = String(entry.clientId);
-    const existing = clients.find((c) => c.id === mbId);
+    const snap = await getDoc(doc(db, "clients", mbId));
+    otherSite = snap.exists()
+      ? otherSiteOf(snap.data()?.homeStudioId, studio.mindbodySiteId, studios)
+      : null;
+    const existing = snap.exists();
     const name = String(summary.clientName || "").trim();
     const first = name && name !== "Unknown Client" ? name.split(" ")[0] : "";
     const last =
@@ -153,7 +170,7 @@ export async function releaseLimboBooking(
         ? name.split(" ").slice(1).join(" ")
         : "";
 
-    if (!existing) {
+    if (!existing && !otherSite) {
       await setDoc(
         doc(db, "clients", mbId),
         {
@@ -174,7 +191,7 @@ export async function releaseLimboBooking(
         { merge: true },
       );
     }
-    clientId = mbId;
+    if (!otherSite) clientId = mbId;
   }
 
   const batch = writeBatch(db);
@@ -216,6 +233,7 @@ export async function releaseLimboBooking(
     scheduleId: bookingId,
     clientId: clientId || undefined,
     startTimeIso: startDate.toISOString(),
+    otherSite: otherSite || undefined,
   };
 }
 
@@ -226,9 +244,27 @@ export async function releaseLimboBooking(
 export async function releaseLimboClient(
   entry: LimboEntry,
   studio: Studio,
+  studios: Studio[],
 ): Promise<void> {
   if (!studio.id) throw new Error("Studio has no id");
   if (!entry.clientId) throw new Error("This entry names no client");
+
+  // Setting a home studio decides who may read a client's clinical record, so
+  // it is never written onto a document that belongs to someone else. The
+  // webhook marks the ones it knows about; the read catches the rest.
+  const cid = String(entry.clientId);
+  const otherSite =
+    entry.crossSite?.clientSite ??
+    otherSiteOf(
+      (await getDoc(doc(db, "clients", cid))).data()?.homeStudioId,
+      entry.siteId ?? studio.mindbodySiteId,
+      studios,
+    );
+  if (otherSite) {
+    throw new Error(
+      `Journey's client ${cid} is a different person, whose home studio is on Mindbody site ${otherSite}. The two sites number their clients from the same range, so this event cannot be applied to them. Dismiss it; this person has no Journey record of their own yet.`,
+    );
+  }
 
   await updateDoc(doc(db, "clients", String(entry.clientId)), {
     homeStudioId: studio.id,

@@ -34,6 +34,8 @@ import {
 interface Props {
   key?: any;
   studios: Studio[];
+  /** No longer read: whether a client exists is asked of Firestore at release
+   *  time (a roster can be missing the very document a release would clobber). */
   clients?: Client[];
 }
 
@@ -54,7 +56,7 @@ interface Props {
  * booking away, and it used to commit on a single tap with a tooltip as its
  * only warning.
  */
-export function AdminLimboQueue({ studios, clients = [] }: Props) {
+export function AdminLimboQueue({ studios }: Props) {
   const [entries, setEntries] = useState<LimboEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,10 +131,14 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
     setError(null);
     try {
       if (entry.kind === "booking") {
-        const result = await releaseLimboBooking(entry, studio, clients);
+        const result = await releaseLimboBooking(entry, studio, studios);
         setDone((d) => ({
           ...d,
-          [entry.id!]: `Released to ${studio.name} — ${
+          [entry.id!]: `Released to ${studio.name}${
+            result.otherSite
+              ? ", unlinked: this Mindbody number belongs to a different person on site " + result.otherSite
+              : ""
+          } — ${
             result.startTimeIso
               ? new Date(result.startTimeIso).toLocaleString("en-US", {
                   timeZone: studio.timezone || "America/New_York",
@@ -145,7 +151,7 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
           }`,
         }));
       } else {
-        await releaseLimboClient(entry, studio);
+        await releaseLimboClient(entry, studio, studios);
         setDone((d) => ({ ...d, [entry.id!]: `Home studio set to ${studio.name}` }));
       }
       setEntries((rows) => rows.filter((r) => r.id !== entry.id));
@@ -270,6 +276,16 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
                   </AdminButton>
                 </div>
 
+                {entry.crossSite ? (
+                  // Nothing to release: Journey's client with this number is
+                  // someone else, and both buttons would write onto them.
+                  <AdminNotice tone="warn">
+                    A different person from Journey's client {entry.clientId}, whose
+                    home studio is on site {entry.crossSite.clientSite}. Nothing here
+                    can be applied until this person has a Journey record of their
+                    own. Dismiss it once you have read it.
+                  </AdminNotice>
+                ) : (
                 <div className="adm-limbo__act">
                   <div className="adm-limbo__pick">
                     <label className="adm-label" htmlFor={pickerId}>
@@ -315,6 +331,7 @@ export function AdminLimboQueue({ studios, clients = [] }: Props) {
                       : "Set home studio"}
                   </AdminButton>
                 </div>
+                )}
               </article>
             );
           })}
