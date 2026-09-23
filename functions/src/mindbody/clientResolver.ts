@@ -107,6 +107,12 @@ export async function recordLimboEvent(
     locationId?: string | number;
     clientId?: string | number;
     reason: string;
+    /**
+     * Set when the event's client id already names a DIFFERENT person on the
+     * other Mindbody site. The Limbo screen reads it to withhold Release and
+     * "Set home studio", both of which would write onto that other person.
+     */
+    crossSite?: { eventSite: string; clientSite: string };
     /** Human-readable summary so the admin screen needs no payload spelunking. */
     summary?: Record<string, unknown>;
     payload: Record<string, unknown>;
@@ -123,6 +129,7 @@ export async function recordLimboEvent(
         params.locationId !== undefined ? String(params.locationId) : null,
       clientId: params.clientId !== undefined ? String(params.clientId) : null,
       reason: params.reason,
+      ...(params.crossSite ? { crossSite: params.crossSite } : {}),
       summary: params.summary || null,
       payload: params.payload,
       firstSeenAt: FieldValue.serverTimestamp(),

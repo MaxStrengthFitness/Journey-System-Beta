@@ -66,6 +66,9 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
   // resolve a trainer by field query rather than by doc id, because a trainer
   // document id is the Firebase Auth uid.
   let trainerDocs: Array<{ id: string; mindbodyStaffId?: unknown }>;
+  // Documents that EXIST, keyed "collection/id". Everything else reads as
+  // missing, which is what every older test here assumes.
+  let existingDocs: Record<string, Record<string, unknown>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,6 +82,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
 
     clientQueryDocs = [];
     trainerDocs = [{ id: "trainer-abc", mindbodyStaffId: "100000012" }];
+    existingDocs = {};
 
     writes = [];
     mockSet = vi.fn().mockResolvedValue(undefined);
@@ -93,9 +97,9 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
           writes.push({ collection: collectionName, id, data, options });
           return (mockSet as (...args: any[]) => any)(data, options);
         }),
-        get: vi.fn().mockResolvedValue({
-          exists: false,
-          data: () => undefined,
+        get: vi.fn(async () => {
+          const data = existingDocs[`${collectionName}/${id}`];
+          return { exists: data !== undefined, data: () => data };
         }),
         delete: vi.fn().mockResolvedValue(undefined),
       }));
@@ -1173,6 +1177,139 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       const [parked] = writesTo("mindbodyLimbo");
       expect(parked.data.kind).toBe("unhandled");
       expect(parked.data.reason).toContain("location.updated");
+    });
+  });
+
+  // The collision finding (Sep 23 2026): both MSF Mindbody sites number their
+  // clients from 100000001, so one id can name two different people. Journey
+  // holds Solon's "sherry noll" at clients/100000310; site 29068 has a
+  // different person under the same number.
+  describe("a client id that names a different person on the other site", () => {
+    const post = async (body: Record<string, unknown>) => {
+      const rawBody = JSON.stringify(body);
+      return handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+    };
+
+    beforeEach(() => {
+      studioDocs = [
+        { id: "solon", data: () => ({ mindbodySiteId: 5746957, mindbodyLocationId: 1 }) },
+        { id: "strongsville", data: () => ({ mindbodySiteId: 29068, mindbodyLocationId: 5 }) },
+        { id: "westlake", data: () => ({ mindbodySiteId: 29068, mindbodyLocationId: 3 }) },
+      ];
+      existingDocs["clients/100000310"] = {
+        firstName: "Sherry",
+        lastName: "Noll",
+        homeStudioId: "solon",
+      };
+    });
+
+    it("34. a client event from the other site is parked, and Solon's client is not touched", async () => {
+      const res = await post({
+        messageId: "x-client-1",
+        eventId: "client.updated",
+        eventData: {
+          siteId: 29068,
+          locationId: 5,
+          clientId: "100000310",
+          firstName: "Efty",
+          lastName: "Simakis",
+          membershipStatus: "Active",
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(writesTo("clients")).toHaveLength(0);
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data.kind).toBe("client");
+      expect(parked.data.crossSite).toEqual({ eventSite: "29068", clientSite: "5746957" });
+    });
+
+    it("35. a contract event from the other site is parked, not merged onto Solon's client", async () => {
+      await post({
+        messageId: "x-contract-1",
+        eventId: "clientContract.created",
+        eventData: { siteId: 29068, clientId: "100000310", clientContractId: 77, contractName: "96 Sessions" },
+      });
+
+      expect(writesTo("clients")).toHaveLength(0);
+      const [parked] = writesTo("mindbodyLimbo");
+      expect(parked.data.kind).toBe("commercial");
+      expect(parked.data.crossSite).toBeDefined();
+    });
+
+    it("36. a booking from the other site is written UNLINKED, under the name Mindbody gave it", async () => {
+      await post({
+        messageId: "x-booking-1",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 29068,
+          locationId: 5,
+          clientId: "100000310",
+          id: "2177304",
+          clientName: "Efty Simakis",
+          startDateTime: "2026-09-30T11:00:00",
+          endDateTime: "2026-09-30T11:30:00",
+        },
+      });
+
+      expect(writesTo("clients")).toHaveLength(0);
+      const [row] = writesTo("schedules");
+      expect(row.id).toBe("2177304");
+      expect(row.data.clientId).toBeNull();
+      expect(row.data.mindbodyClientId).toBe("100000310");
+      expect(row.data.clientName).toBe("Efty Simakis");
+      expect(row.data.studioId).toBe("strongsville");
+    });
+
+    it("37. the same site still links and updates — only a positive mismatch is refused", async () => {
+      await post({
+        messageId: "x-booking-2",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 5746957,
+          clientId: "100000310",
+          id: "3000001",
+          clientName: "Sherry Noll",
+          startDateTime: "2026-09-30T11:00:00",
+        },
+      });
+
+      const [row] = writesTo("schedules");
+      expect(row.data.clientId).toBe("100000310");
+      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+    });
+
+    it("38. a sibling studio on the same site is a visitor, not a stranger", async () => {
+      existingDocs["clients/100000999"] = { firstName: "Visiting", homeStudioId: "westlake" };
+      await post({
+        messageId: "x-booking-3",
+        eventId: "appointmentBooking.created",
+        eventData: {
+          siteId: 29068,
+          locationId: 5,
+          clientId: "100000999",
+          id: "3000002",
+          clientName: "Visiting Client",
+          startDateTime: "2026-09-30T11:00:00",
+        },
+      });
+
+      expect(writesTo("schedules")[0].data.clientId).toBe("100000999");
+    });
+
+    it("39. a client with no home studio yet is unknown, not wrong, and is written as before", async () => {
+      existingDocs["clients/100000310"] = { firstName: "Sherry" };
+      await post({
+        messageId: "x-client-2",
+        eventId: "client.updated",
+        eventData: { siteId: 29068, locationId: 5, clientId: "100000310", membershipStatus: "Active" },
+      });
+
+      expect(writesTo("clients")).toHaveLength(1);
+      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
     });
   });
 });
