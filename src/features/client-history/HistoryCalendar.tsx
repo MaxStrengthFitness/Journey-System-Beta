@@ -26,7 +26,9 @@ const CELL_LABEL: Record<DayCellModel["state"], string> = {
   break: "break",
   away: "away",
   rest: "",
-  before: "before first visit",
+  // "on record": for a client who trained before Journey, the first visit
+  // here is not her first visit.
+  before: "before the first visit on record",
   future: "",
 };
 

@@ -28,6 +28,7 @@ import {
   weightUpsBySession,
   type HistorySession,
 } from "./model";
+import { NO_WINDOW, WHOLE_STORY } from "../../lib/history-claims";
 
 const NY = "America/New_York";
 
@@ -440,5 +441,65 @@ describe("words", () => {
     expect(describeRange("2025-12-20", "2026-01-27", 2026)).toBe("Dec 20, 2025 – Jan 27, 2026");
     expect(describeRange("2025-03-03", "2025-03-17", 2026)).toBe("Mar 3 – Mar 17, 2025");
     expect(describeRange("2024-12-19", "2025-03-18", 2026, true)).toBe("Dec 19 ’24 – Mar 18 ’25");
+  });
+});
+
+/*
+ * A migrating client's gaps (Sep 24 2026, lib/history-claims.ts). FileMaker
+ * stays live through the migration, so a gap between two Journey sessions is
+ * a break only where Journey would have seen every session.
+ */
+describe("breaks and numbers for a client whose story predates Journey", () => {
+  const days = () =>
+    toVisitDays([on("2026-06-01"), on("2026-06-29"), on("2026-07-02"), on("2026-08-20"), on("2026-08-24")], NY).days;
+  const TODAY = "2026-09-24";
+
+  it("claims every break for a complete story, as before", () => {
+    const c = computeCadence(days(), TODAY, WHOLE_STORY);
+    expect(c.breaks.map((b) => b.from)).toEqual(["2026-08-24", "2026-07-02", "2026-06-01"]);
+    expect(c.onBreak).toBe(true);
+  });
+
+  it("claims none while Journey owns no day of her timeline", () => {
+    const c = computeCadence(days(), TODAY, NO_WINDOW);
+    expect(c.breaks).toEqual([]);
+    expect(c.longestBreak).toBeNull();
+    // "No visit in 4 weeks" is not something our records can say.
+    expect(c.onBreak).toBe(false);
+    expect(c.breakWindow).toEqual(NO_WINDOW);
+  });
+
+  it("claims only the gaps that begin inside the window", () => {
+    // Her studio moved onto Journey on Aug 1: the June and July gaps may be
+    // FileMaker's; the one still open since Aug 24 is real.
+    const c = computeCadence(days(), TODAY, { complete: false, from: "2026-08-01" });
+    expect(c.breaks.map((b) => b.from)).toEqual(["2026-08-24"]);
+    expect(c.onBreak).toBe(true);
+  });
+
+  it("writes break rows into the list only where they are claimable", () => {
+    const d = days();
+    const list = (window: Parameters<typeof computeCadence>[2]) =>
+      buildList({ days: d, undated: [], events: [], cadence: computeCadence(d, TODAY, window) });
+    const breakRows = (l: ReturnType<typeof list>) =>
+      l.months.flatMap((m) => m.items).filter((i) => i.kind === "break").length;
+    expect(breakRows(list(WHOLE_STORY))).toBe(2);
+    expect(breakRows(list(NO_WINDOW))).toBe(0);
+    expect(list(NO_WINDOW).ongoing).toBeNull();
+    expect(breakRows(list({ complete: false, from: "2026-07-01" }))).toBe(1);
+  });
+
+  it("numbers rows on top of the sessions before Journey, or not at all", () => {
+    const d = days();
+    const cadence = computeCadence(d, TODAY);
+    const numbers = (opts: { priorOffset?: number; numbered?: boolean }) =>
+      buildList({ days: d, undated: [], events: [], cadence, ...opts })
+        .months.flatMap((m) => m.items)
+        .map((i) => (i.kind === "session" ? i.number : "x"))
+        .filter((n) => n !== "x");
+    // Everything in Journey loaded, 412 before it: the oldest row is 413, not S1.
+    expect(numbers({ priorOffset: 412 })).toEqual([417, 416, 415, 414, 413]);
+    // Nobody has recorded her total: Journey's own count is not quoted.
+    expect(numbers({ numbered: false })).toEqual([null, null, null, null, null]);
   });
 });
