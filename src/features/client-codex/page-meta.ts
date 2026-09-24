@@ -14,11 +14,13 @@
  *
  * FORD's line is the FORD area's own (`fordSubnavLine`, phase 10): the
  * soonest date within a month ("birthday in 17 days"), else what waits to be
- * filed, else how much is on file. The lines for Body & Pulse, Goals & Focus
- * and Account are INTERIM (the shell phase): each area replaces its own with
- * the line its page writes. Story says nothing yet: "since 2019" is a claim
- * about the whole story, and the Story page is where it is worked out
- * honestly for a client who trained here long before Journey.
+ * filed, else how much is on file. Body & Pulse's is its own too
+ * (`bodySubline`, phase 12): the watch-outs on file, else when the Pulse was
+ * last saved. The lines for Goals & Focus and Account are INTERIM (the shell
+ * phase): each area replaces its own with the line its page writes. Story
+ * says nothing yet: "since 2019" is a claim about the whole story, and the
+ * Story page is where it is worked out honestly for a client who trained
+ * here long before Journey.
  *
  * Rules: short (the bar wraps at portrait widths, so a long line grows it);
  * words and counts, never a score, a percentage or a traffic light; FORD's
@@ -31,9 +33,9 @@ import type { SubnavItem } from "../client-profile/ProfileSubnav";
 import { RECORD_PAGES, type RecordPage } from "../client-profile/profile-nav";
 import type { JournalLoad } from "../../hooks/useClientJournal";
 import { notesTabMeta, type NotesSummary } from "../client-notes/record-selectors";
-import { selectedFlags } from "../clinical-flags/flag-search";
 import { fordSubnavLine } from "../ford/page-model";
 import type { ComingUpRow } from "../ford/coming-up";
+import { bodySubline } from "./body/page-lines";
 import { plural } from "./kit/text";
 import type { CodexFordStatus } from "./codex-data";
 
@@ -54,6 +56,13 @@ export interface PageMetaInput {
     comingUp?: readonly ComingUpRow[];
     untagged?: number;
   };
+  /**
+   * The Pulse: the newest saved round's studio day, once the history is read
+   * (null while it loads, when it failed, or when there is none).
+   */
+  pulse?: { day: string | null };
+  /** The studio's now, for "Pulse Mar 10" against "Pulse Mar 10, 2025". */
+  now?: Date;
 }
 
 const LOADING = "loading";
@@ -80,11 +89,11 @@ function fordMeta(input: PageMetaInput): string {
 }
 
 function bodyItem(input: PageMetaInput): Pick<SubnavItem<RecordPage>, "meta" | "flag" | "flagTone"> {
-  const flags = selectedFlags(input.client.clinicalFlags);
-  if (flags.length === 0) return { meta: "none on file", flag: false };
-  // Plum for a caution; crimson only when an absolute contraindication is on file.
-  const alert = flags.some((f) => f.tone === "alert");
-  return { meta: plural(flags.length, "watch-out"), flag: true, flagTone: alert ? "alert" : "warn" };
+  return bodySubline({
+    flagIds: input.client.clinicalFlags,
+    pulseDay: input.pulse?.day ?? null,
+    now: input.now ?? new Date(),
+  });
 }
 
 function goalsMeta(input: PageMetaInput): string {

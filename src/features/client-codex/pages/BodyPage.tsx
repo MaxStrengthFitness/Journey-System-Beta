@@ -1,106 +1,51 @@
 /**
- * BODY & PULSE — the codex page (shell phase: an adapter).
+ * BODY & PULSE — the codex page: the Body & Pulse area's page
+ * (`body/BodyPulsePage`) on the tab's one load.
  *
- * Hosts the long scroll's Body section and its Pulse as they were: the
- * build (height, wingspan, weight), the training story (Experience, moved
- * here from Life — AJ's decision 6), the watch-outs, the InBody card on the
- * tab's ONE scans stream, and the Pulse panel. The "Recovery between
- * sessions" select is gone from every screen (decision 7); the field stays on
- * the record. The Body & Pulse area rebuilds the page in its own phases.
- *
- * The Pulse panel keeps its own draft, as it always has; it mounts only when
- * this page is first visited, so its read costs nothing until then.
+ * A thin adapter (INTEGRATION: pages/*.tsx map the tab's one load onto each
+ * area's page). The journal, the Pulse history and the InBody scans are the
+ * tab's ONE load; the page's own reads — the client's one Pulse draft, the
+ * machine catalog and machine fit — happen when it is first visited, because
+ * the shell mounts a page on its first visit. What Programming holds (her
+ * settings, her routines, the roster, the studio) comes from the profile
+ * through `data.programming`. Who may do what is `codexAccess`, worked out
+ * once by the shell; every record field goes through the ONE form.
  */
-import { ExperienceEditor } from "../../client-life/LifeBaseline";
-import { InBodyCard } from "../../inbody/InBodyCard";
-import { ClientJournalTab } from "../../../components/journal/ClientJournalTab";
-import { JournalRail } from "../../../components/client-dossier/JournalRail";
-import { Card, Page, agree } from "../kit";
+import { useCallback } from "react";
+import { isRecordAnchor, noteAnchor } from "../../client-profile/profile-nav";
+import { BodyPulsePage } from "../body/BodyPulsePage";
 import type { CodexPageProps } from "../codex-data";
-import { RecordLock } from "./RecordLock";
-import { BuildBlock, ReportsLinkBlock, WatchOutsBlock } from "./legacy-blocks";
-
-/**
- * What the watch-outs rail says when it lists no note. "None logged" only
- * once the notes are read: while they load it says nothing, and when they
- * failed it says some may be missing — a failed read is unknown, never empty.
- */
-function watchOutsRailHint(state: CodexPageProps["data"]["notes"]["state"]): string | undefined {
-  if (state === "ready") {
-    return "No injury or incident notes logged. Injury notes, clinical incidents, and anything flagged critical anywhere surface here automatically.";
-  }
-  if (state === "failed") return "Injury and incident notes couldn't be loaded, so some may be missing.";
-  return undefined;
-}
 
 export function BodyPage({ data, form, go, hosts }: CodexPageProps) {
-  const { client, access, authTrainer, machines, trainers, journal, pronouns: p, progressReports } = data;
-  const locked = !access.canEdit;
-  const lede =
-    `How ${p.subject} ${agree(p, "is", "are")} built as the machines see ${p.object}, what the load has to work around, ` +
-    `and how ${p.subject} ${agree(p, "says", "say")} ${p.subject} ${agree(p, "feels", "feel")}. The app describes; the trainer decides.`;
-
+  const { client, access, authTrainer, machines, journal, notes, pulse, inbody, programming, pronouns, today } = data;
+  const openNote = useCallback(
+    (threadId: string) => {
+      const at = noteAnchor(threadId);
+      go("notes", isRecordAnchor(at) ? at : undefined);
+    },
+    [go],
+  );
   return (
-    <Page id="body" title="Body & Pulse" lede={lede} go={go}>
-      <Card eyebrow="Build" id="body-build">
-        <RecordLock locked={locked}>
-          <BuildBlock formData={form.formData} updateField={form.updateField} />
-        </RecordLock>
-      </Card>
-
-      <Card eyebrow="Training story" id="body-training-story">
-        <RecordLock locked={locked}>
-          <ExperienceEditor
-            client={client}
-            formData={form.formData}
-            updateField={form.updateField}
-            authorName={authTrainer?.fullName}
-          />
-        </RecordLock>
-      </Card>
-
-      <Card eyebrow="Watch-outs" id="body-watchouts">
-        <RecordLock locked={locked}>
-          <WatchOutsBlock
-            client={client}
-            formData={form.formData}
-            updateField={form.updateField}
-            machines={machines}
-          />
-        </RecordLock>
-        {/* What happened in the room: injury and incident notes, anything critical. */}
-        <JournalRail
-          section="medical"
-          entries={journal.entries}
-          machines={machines}
-          emptyHint={watchOutsRailHint(data.notes.state)}
-        />
-      </Card>
-
-      {/* InBody scans save on their own, not through the Save bar. */}
-      <Card host id="body-inbody">
-        <InBodyCard client={client} authTrainer={authTrainer} inbody={data.inbody} />
-      </Card>
-
-      <Card eyebrow="Pulse" id="body-pulse">
-        <ClientJournalTab
-          areas={["check-in"]}
-          journal={journal}
-          clientId={client.id || null}
-          client={client}
-          machines={machines}
-          trainers={trainers}
-          authTrainer={authTrainer}
-          progressReports={progressReports}
-          onSelectReport={hosts.onSelectReport}
-          onDeleteReport={hosts.onDeleteReport}
-          onNewReport={hosts.onNewReport}
-        />
-        <ReportsLinkBlock
-          count={data.pulse.status === "ready" ? progressReports.length : null}
-          onOpenReports={hosts.onOpenReports}
-        />
-      </Card>
-    </Page>
+    <BodyPulsePage
+      client={client}
+      form={form}
+      canEdit={access.canEdit}
+      fordReadable={access.fordReadable}
+      authTrainer={authTrainer}
+      machines={machines}
+      journal={journal}
+      notesState={notes.state}
+      pulse={pulse}
+      filedReports={pulse.status === "ready" ? data.progressReports.length : null}
+      inbody={inbody}
+      programming={programming}
+      pronouns={pronouns}
+      today={today}
+      go={go}
+      onOpenNote={openNote}
+      onOpenMachine={hosts.onOpenMachine}
+      onOpenSetup={hosts.onOpenSetup}
+      onOpenReports={hosts.onOpenReports}
+    />
   );
 }

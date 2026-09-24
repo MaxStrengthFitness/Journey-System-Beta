@@ -44,7 +44,9 @@ import {
   notesOfJournal,
   pulseFromReports,
   runningFocuses,
+  NO_PROGRAMMING,
   type CodexData,
+  type CodexProgramming,
   type SessionTotals,
 } from "./codex-data";
 
@@ -59,6 +61,8 @@ export interface UseCodexDataArgs {
   progressReportsStatus: ProgressReportsStatus;
   sessionTotals: SessionTotals;
   coverage: HistoryCoverage;
+  /** What the profile holds about her programming (Body & Pulse's floor). */
+  programming?: CodexProgramming;
 }
 
 export function useCodexData({
@@ -71,6 +75,7 @@ export function useCodexData({
   progressReportsStatus,
   sessionTotals,
   coverage,
+  programming = NO_PROGRAMMING,
 }: UseCodexDataArgs): CodexData {
   const { studios, availableStudios } = useActiveStudio();
   const reader = liveTrainer ?? authTrainer;
@@ -155,6 +160,7 @@ export function useCodexData({
       dismissals,
       sessionTotals,
       coverage,
+      programming,
     }),
     [
       client,
@@ -176,6 +182,7 @@ export function useCodexData({
       dismissals,
       sessionTotals,
       coverage,
+      programming,
     ],
   );
 }

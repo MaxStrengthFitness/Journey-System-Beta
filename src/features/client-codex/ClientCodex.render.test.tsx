@@ -308,11 +308,18 @@ async function rerender(host: HTMLElement, props: HostProps) {
   await settle();
 }
 
-/** A Body & Pulse → Build input, found by its label. */
-const buildInput = (host: HTMLElement, label: string) =>
-  Array.from(panel(host, "body").querySelectorAll("input")).find((i) =>
+/**
+ * A Body & Pulse → Build input, found by its label. Build reads first since
+ * phase 12, so its editor is opened when it is closed (a save closes it).
+ */
+async function buildInput(host: HTMLElement, label: string) {
+  const build = panel(host, "body").querySelector<HTMLElement>("#body-build")!;
+  const edit = build.querySelector('[aria-label="Edit Build"]');
+  if (edit) await click(edit);
+  return Array.from(build.querySelectorAll("input")).find((i) =>
     i.closest("div")?.textContent?.includes(label),
   ) as HTMLInputElement;
+}
 
 /** Stub scrollIntoView (jsdom has none) for one block, recording which ids it scrolled to. */
 async function withScrollSpy(run: (seen: string[]) => Promise<void>) {
@@ -460,6 +467,9 @@ describe("ClientCodex — pages", () => {
       "body-build",
       "body-training-story",
       "body-watchouts",
+      "body-figure",
+      "body-floor",
+      "body-measured",
       "body-inbody",
       "body-pulse",
       "goals-coach",
@@ -486,10 +496,9 @@ describe("ClientCodex — pages", () => {
 
   it("shows a saved wingspan — the old form never seeded it", async () => {
     const host = await mount(baseClient({ wingspan: "59" }), homeTrainer, "body");
-    const input = Array.from(panel(host, "body").querySelectorAll("input")).find(
-      (i) => i.closest("div")?.textContent?.includes("Wingspan"),
-    ) as HTMLInputElement | undefined;
-    expect(input?.value).toBe("59");
+    // Read first (phase 12): Build says it, and its editor holds it.
+    expect(panel(host, "body").querySelector("#body-build")?.textContent).toContain(`4'11" wingspan`);
+    expect((await buildInput(host, "Wingspan")).value).toBe("59");
   });
 
   it("has no Recovery between sessions select any more (decision 7)", async () => {
@@ -497,9 +506,9 @@ describe("ClientCodex — pages", () => {
     expect(panel(host, "body").textContent).not.toContain("Recovery between sessions");
   });
 
-  it("says no injury notes are logged on the watch-outs once the notes are read", async () => {
+  it("says no injury notes are logged beside the body figure once the notes are read", async () => {
     const host = await mount(baseClient(), homeTrainer, "body");
-    expect(panel(host, "body").querySelector("#body-watchouts")?.textContent).toContain(
+    expect(panel(host, "body").querySelector("#body-figure")?.textContent).toContain(
       "No injury or incident notes logged.",
     );
   });
@@ -507,7 +516,7 @@ describe("ClientCodex — pages", () => {
   it("never says no injury notes are logged when the notes could not be read", async () => {
     fake.fail.add("journalEntries");
     const host = await mount(baseClient(), homeTrainer, "body");
-    const card = panel(host, "body").querySelector("#body-watchouts")?.textContent ?? "";
+    const card = panel(host, "body").querySelector("#body-figure")?.textContent ?? "";
     expect(card).not.toContain("No injury or incident notes logged");
     expect(card).toContain("Injury and incident notes couldn't be loaded, so some may be missing.");
   });
@@ -805,10 +814,7 @@ describe("ClientCodex — the one Save bar", () => {
     const host = await mount(baseClient(), homeTrainer, "ford");
     await markRetired(host);
     await click(tab(host, "body"));
-    const wingspan = Array.from(panel(host, "body").querySelectorAll("input")).find((i) =>
-      i.closest("div")?.textContent?.includes("Wingspan"),
-    ) as HTMLInputElement;
-    await typeInto(wingspan, "61");
+    await typeInto(await buildInput(host, "Wingspan"), "61");
     expect(saveBar(host)?.textContent).toContain("2 unsaved changes · FORD · Occupation, Body & Pulse · Build");
     await click(buttonIn(saveBar(host)!, "Save changes"));
     const updates = fake.writes.filter((w) => w.op === "update");
@@ -832,21 +838,21 @@ describe("ClientCodex — the one Save bar", () => {
 describe("ClientCodex — a new snapshot of the record", () => {
   it("follows the record while nothing is unsaved", async () => {
     const host = await mount(baseClient(), homeTrainer, "body");
-    expect(buildInput(host, "Wingspan").value).toBe("59");
+    expect((await buildInput(host, "Wingspan")).value).toBe("59");
     await rerender(host, { client: baseClient({ wingspan: "62" }), trainer: homeTrainer, initial: "body" });
-    expect(buildInput(host, "Wingspan").value).toBe("62");
+    expect((await buildInput(host, "Wingspan")).value).toBe("62");
     expect(saveBar(host)).toBeNull();
   });
 
   it("never wipes a half-typed edit, and never writes back what it held", async () => {
     const host = await mount(baseClient(), homeTrainer, "body");
-    await typeInto(buildInput(host, "Wingspan"), "61");
+    await typeInto(await buildInput(host, "Wingspan"), "61");
     // Something about the client saved elsewhere meanwhile (a height from another iPad).
     await rerender(host, { client: baseClient({ height: "5'2\"" }), trainer: homeTrainer, initial: "body" });
-    expect(buildInput(host, "Wingspan").value).toBe("61");
+    expect((await buildInput(host, "Wingspan")).value).toBe("61");
     expect(saveBar(host)?.textContent).toContain("1 unsaved change · Body & Pulse · Build");
     // The form holds while anything is unsaved, so the other fields keep what it had.
-    expect(buildInput(host, "Height").value).toBe("5'0\"");
+    expect((await buildInput(host, "Height")).value).toBe("5'0\"");
 
     await click(buttonIn(saveBar(host)!, "Save changes"));
     // Only the edit is written: the height it held is never put back over the new one.
@@ -854,12 +860,12 @@ describe("ClientCodex — a new snapshot of the record", () => {
       { wingspan: "61", lastUpdatedBy: "t-ann" },
     ]);
     // Nothing unsaved again, so it follows the record: the height saved elsewhere shows.
-    expect(buildInput(host, "Height").value).toBe("5'2\"");
+    expect((await buildInput(host, "Height")).value).toBe("5'2\"");
   });
 
   it("follows the next snapshot after a save", async () => {
     const host = await mount(baseClient(), homeTrainer, "body");
-    await typeInto(buildInput(host, "Wingspan"), "61");
+    await typeInto(await buildInput(host, "Wingspan"), "61");
     await click(buttonIn(saveBar(host)!, "Save changes"));
     expect(saveBar(host)).toBeNull();
     await rerender(host, {
@@ -867,8 +873,8 @@ describe("ClientCodex — a new snapshot of the record", () => {
       trainer: homeTrainer,
       initial: "body",
     });
-    expect(buildInput(host, "Wingspan").value).toBe("61");
-    expect(buildInput(host, "Weight").value).toBe("150");
+    expect((await buildInput(host, "Wingspan")).value).toBe("61");
+    expect((await buildInput(host, "Weight")).value).toBe("150");
     expect(saveBar(host)).toBeNull();
   });
 });

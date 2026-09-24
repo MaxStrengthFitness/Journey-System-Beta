@@ -37,7 +37,7 @@ import { describe, expect, it } from "vitest";
  * suite, so the folder cannot grow a file this scan never reads.
  *
  * HOSTED_FILES is for the shell's phase: components the codex MOUNTS but does
- * not own (the Pulse panel, the InBody card), counted rather than failed, with
+ * not own (the focus board, the contract panel), counted rather than failed, with
  * a budget that each area phase lowers as it brings its hosted piece onto the
  * scale. The shell (phase 8) set it to what it measured; it reaches its final
  * value in the cleanup phase.
@@ -119,6 +119,28 @@ const CODEX_FILES: readonly string[] = [
   // Follow up next time lives in ask-next.ts and AskNextLine.tsx, above.
   "features/ford/page/OneLinePanel.tsx",
   "features/ford/one-line.ts",
+  // Body & Pulse (phase 12): the page, its cards and figure, its stylesheet,
+  // the pure modules that write its words, and the InBody card, restyled on
+  // the kit (it was a hosted Tailwind component).
+  "features/client-codex/body/BodyPulsePage.tsx",
+  "features/client-codex/body/BuildCard.tsx",
+  "features/client-codex/body/WhereItMattersCard.tsx",
+  "features/client-codex/body/BodyFigure.tsx",
+  "features/client-codex/body/WatchOutsCard.tsx",
+  "features/client-codex/body/OnOurFloorCard.tsx",
+  "features/client-codex/body/MeasuredToldCard.tsx",
+  "features/client-codex/body/PulseCard.tsx",
+  "features/client-codex/body/body.css",
+  "features/client-codex/body/build.ts",
+  "features/client-codex/body/figure-map.ts",
+  "features/client-codex/body/watchout-groups.ts",
+  "features/client-codex/body/floor.ts",
+  "features/client-codex/body/pulse-read.ts",
+  "features/client-codex/body/pairs.ts",
+  "features/client-codex/body/built-like-her.ts",
+  "features/client-codex/body/page-lines.ts",
+  "features/inbody/InBodyCard.tsx",
+  "features/inbody/inbody-card.css",
 ];
 
 /**
@@ -142,12 +164,17 @@ const LINE_CLAMP_LINES = 2;
  * inside the codex folder; the cleanup phase deletes it.
  *
  * Shared pieces stay listed until their area replaces them on the codex:
- * ClientJournalTab (the focus and Pulse areas; Notes left it in phase 9,
- * which moved no text size, so the budget stayed at 168), the InBody card,
- * the goals panel, the contract panel, the shared notes and jots, the
- * watch-outs and the flag picker, and ford.css (the detail dialog's). The
- * FORD phase (10) deleted the FORD hub and its CSS and brought the life
- * editors onto the kit (they are CODEX_FILES now): 168 → 148.
+ * ClientJournalTab (the focus area; Notes left it in phase 9, which moved no
+ * text size, so the budget stayed at 168), the goals panel, the contract
+ * panel, the shared notes and jots, the flag picker, and ford.css (the
+ * detail dialog's). The FORD phase (10) deleted the FORD hub and its CSS and
+ * brought the life editors onto the kit (they are CODEX_FILES now): 168 →
+ * 148. Body & Pulse (12) deleted the watch-out banner (BodyWatchOuts), took
+ * the Pulse area out of ClientJournalTab and the Body blocks out of
+ * legacy-blocks, brought the InBody card onto the kit (CODEX_FILES now) and
+ * collapsed the flag picker's stylesheet onto the scale: 148 → 125. The
+ * picker stays hosted: its screen-reader-only text is one line clipped on
+ * purpose, which the clipping rule would refuse.
  */
 const HOSTED_FILES: readonly string[] = [
   "features/client-codex/pages/legacy-blocks.tsx",
@@ -155,7 +182,6 @@ const HOSTED_FILES: readonly string[] = [
   "components/client-dossier/JournalRail.tsx",
   "components/journal/ClientJournalTab.tsx",
   "features/ford/ford.css",
-  "features/inbody/InBodyCard.tsx",
   "features/goals/GoalsPanel.tsx",
   "features/goals/goals.css",
   "features/client-admin/ContractPanel.tsx",
@@ -163,12 +189,11 @@ const HOSTED_FILES: readonly string[] = [
   "features/relay/notes/SharedNotesCard.tsx",
   "features/relay/notes/ClientJotStrip.tsx",
   "features/relay/notes/notes.css",
-  "features/clinical-flags/BodyWatchOuts.tsx",
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
 ];
-/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148. Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 148;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 125;
 
 /**
  * The shared note pieces the Notes page mounts — the composer, the To-file

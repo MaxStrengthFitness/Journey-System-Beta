@@ -1,8 +1,12 @@
-/* Clinical flags: the Body section's picker and watch-out banner (Sep 2026). */
+/* Clinical flags: the picker on Body & Pulse → Watch-outs (Sep 2026).
+   Client codex, Sep 2026 (phase 12): the watch-out banner went with
+   BodyWatchOuts (Watch-outs quotes every instruction now, on the codex kit),
+   and the picker's text sizes collapsed onto the codex scale — 11 / 12 / 14px
+   (they were seven sizes from 9.5 to 14). The 40px chips and 44px rows stay. */
 .cfl { display: flex; flex-direction: column; gap: 14px; }
 .cfl-block { display: flex; flex-direction: column; gap: 8px; }
 .cfl-kicker {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -21,10 +25,9 @@
   border: 1px solid var(--eq-live);
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
 }
-.cfl-chip--static { padding-right: 12px; min-height: 32px; }
 .cfl-chip[data-tone="caution"] { border-color: var(--eq-warn); background: var(--eq-warn-fill); color: var(--eq-warn); }
 .cfl-chip[data-tone="alert"] { border-color: var(--eq-alert); background: var(--eq-alert-fill); color: var(--eq-alert); }
 .cfl-chip__x {
@@ -61,7 +64,7 @@
   border-left: 3px solid var(--eq-border);
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
   text-align: left;
@@ -105,7 +108,7 @@
   padding: 0 6px;
   border-radius: 999px;
   border: 1px solid currentColor;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -158,7 +161,7 @@
 }
 .cfl-group__on {
   margin-left: auto;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--eq-live-text);
 }
@@ -218,32 +221,3 @@
 .cfl-all__chev { transition: transform 0.15s; }
 .cfl-all[open] .cfl-all__chev { transform: rotate(180deg); }
 .cfl-all__body { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
-
-/* ---- the banner ---- */
-.cfl-banner {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--eq-live);
-  border-left-width: 4px;
-  background: var(--eq-surface);
-  color: var(--eq-ink);
-}
-.cfl-banner[data-tone="caution"] { border-color: var(--eq-warn); }
-.cfl-banner[data-tone="alert"] { border-color: var(--eq-alert); background: var(--eq-alert-fill); }
-.cfl-banner__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.cfl-banner[data-tone="alert"] .cfl-banner__head { color: var(--eq-alert); }
-.cfl-banner[data-tone="caution"] .cfl-banner__head { color: var(--eq-warn); }
-.cfl-banner__list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
-.cfl-banner__list li, .cfl-banner__line { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--eq-ink-2); }
-.cfl-banner b { color: var(--eq-ink); font-weight: 800; }

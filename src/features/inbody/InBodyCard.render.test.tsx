@@ -97,8 +97,8 @@ describe("the InBody card", () => {
     const el = await mount(<InBodyCard client={carol} authTrainer={null} />);
     const muscle = byText(el, "+1.2 lb · within normal variation");
     expect(muscle).toBeTruthy();
-    expect(muscle!.className).toContain("text-muted-foreground");
-    expect(muscle!.className).not.toContain("emerald");
+    // Inside the variation: no colour of good news (the codex tokens: data-tone).
+    expect(muscle!.dataset.tone).toBe("neutral");
     expect(byText(el, "−1.3 pts · within normal variation")).toBeTruthy();
     // Weight has no variation and is never coloured.
     expect(byText(el, "−2.0 lb")).toBeTruthy();
@@ -117,7 +117,7 @@ describe("the InBody card", () => {
     const el = await mount(<InBodyCard client={carol} authTrainer={null} />);
     const muscle = byText(el, "+1.2 lb");
     expect(muscle).toBeTruthy();
-    expect(muscle!.className).toContain("emerald");
+    expect(muscle!.dataset.tone).toBe("good");
     expect(el.textContent).toContain("Since Jan 15: muscle up 1.2 lb; body fat within the scanner's normal variation.");
   });
 
@@ -161,6 +161,45 @@ describe("the InBody card given the tab's scans", () => {
     );
     expect(el.textContent).toContain("Loading scans…");
     expect(el.textContent).not.toContain("No InBody scans yet");
+  });
+});
+
+// Client codex, phase 12: the card is drawn with the codex kit and tokens.
+describe("the InBody card on Body & Pulse", () => {
+  const handed = () =>
+    SCANS.map(({ id, ...data }) => scanFromDoc(id, { ...data, enteredByName: "Jess Moreno", device: "InBody 270S" })!);
+
+  it("draws no trend lines when the page draws them (showTrends false)", async () => {
+    const el = await mount(
+      <InBodyCard client={carol} authTrainer={null} inbody={{ scans: handed(), loading: false, error: null }} showTrends={false} />,
+    );
+    expect(el.querySelector(".ib-trends")).toBeNull();
+    expect(el.textContent).not.toContain("Trend lines appear");
+    const withTrends = await mount(
+      <InBodyCard client={carol} authTrainer={null} inbody={{ scans: handed(), loading: false, error: null }} />,
+    );
+    expect(withTrends.querySelector(".ib-trends")).not.toBeNull();
+  });
+
+  it("lists every scan with who entered it, at every width, and cuts nothing", async () => {
+    const el = await mount(
+      <InBodyCard client={carol} authTrainer={null} inbody={{ scans: handed(), loading: false, error: null }} showTrends={false} />,
+    );
+    const toggle = [...el.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Every scan"))!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => toggle.click());
+    const rows = el.querySelectorAll(".ib-scan");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain("Jess Moreno");
+    // No Tailwind colour, no truncate, no hidden-at-a-width class left on the card.
+    expect(el.innerHTML).not.toMatch(/truncate|emerald|amber|sky-|slate-|hidden sm:/);
+  });
+
+  it("gives Add scan 40px or more (the kit's button) to a trainer who may record", async () => {
+    const trainer = { id: "t1", role: "LifeTransformer", primaryHomeStudioId: "solon" } as never;
+    const el = await mount(<InBodyCard client={carol} authTrainer={trainer} inbody={{ scans: [], loading: false, error: null }} />);
+    const add = [...el.querySelectorAll("button")].find((b) => b.textContent?.includes("Add scan"));
+    expect(add?.className).toContain("cx-btn");
   });
 });
 

@@ -1,0 +1,198 @@
+/* ==========================================================================
+   The InBody card (client codex, Sep 2026, phase 12)
+   --------------------------------------------------------------------------
+   The card's own content: the four headline tiles, the summary sentence and
+   the list of every scan. The panel, the buttons and the eyebrow are the
+   codex kit's; the colours are its tokens (--cx-*), declared on `.cx` and on
+   `.cx-kit`, which the card carries so it finds them wherever it is mounted.
+
+   The codex's rules hold here too (kit/scale.test.ts reads this file):
+   text is 11 / 12 / 14 / 17 / 30px, no raw colour, nothing clipped — a scan
+   row wraps rather than cutting its numbers, and who entered it shows at
+   every width — and anything tappable is 40px or taller.
+
+   A change's colour: good news is green (--cx-ok), a change worth watching
+   plum (--cx-warn), and a change inside the scanner's normal variation (or
+   weight, which is never judged) the muted ink.
+   ========================================================================== */
+
+.ib-card {
+  container: ib-card / inline-size;
+}
+
+.ib-quiet,
+.ib-meta {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.ib-quiet {
+  font-size: var(--cx-fs-14);
+}
+
+.ib-strong {
+  color: var(--cx-ink);
+  font-weight: 700;
+}
+
+.ib-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@container ib-card (min-width: 560px) {
+  .ib-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ib-tile {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+}
+
+.ib-tile__label {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-11);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ib-tile__value {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ib-tile__change {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ib-tile__change[data-tone="good"] {
+  color: var(--cx-ok);
+}
+
+.ib-tile__change[data-tone="watch"] {
+  color: var(--cx-warn);
+}
+
+.ib-summary {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 600;
+}
+
+.ib-trends {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+@container ib-card (min-width: 560px) {
+  .ib-trends {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ib-all {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.ib-scans {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface);
+  list-style: none;
+}
+
+.ib-scans li + li {
+  border-top: 1px solid var(--cx-line);
+}
+
+/* A scan: its date, its three numbers and who entered it — a row that wraps
+   (the numbers drop under the date on a narrow card), never one that cuts. */
+.ib-scan {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  align-items: center;
+  width: 100%;
+  min-height: var(--cx-row);
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--cx-ink-2);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+.ib-scan--button {
+  grid-template-columns: 112px minmax(0, 1fr) auto auto;
+  cursor: pointer;
+}
+
+.ib-scan__date {
+  color: var(--cx-ink);
+  font-weight: 700;
+}
+
+.ib-scan__values {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ib-scan__chev {
+  color: var(--cx-ink-3);
+}
+
+@container ib-card (max-width: 520px) {
+  .ib-scan,
+  .ib-scan--button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ib-scan__date,
+  .ib-scan__values,
+  .ib-scan__by {
+    grid-column: 1;
+  }
+
+  .ib-scan__chev {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+}
+
+.ib-scan--button:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .ib-scan--button:hover {
+    background: var(--cx-surface-2);
+  }
+}

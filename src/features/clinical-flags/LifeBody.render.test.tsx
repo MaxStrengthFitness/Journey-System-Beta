@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 /**
  * The record's Life and Body pieces, MOUNTED: the flag picker searches and
- * toggles, the banner leads with the watch-outs, and the life editors write
- * through the Save bar's updateField — including a dated mastery step.
+ * toggles, and the life editors write through the Save bar's updateField —
+ * including a dated mastery step. (The watch-out banner, BodyWatchOuts, went
+ * in phase 12: Body & Pulse → Watch-outs quotes every instruction now, and
+ * its cases are in client-codex/body/BodyPulsePage.render.test.tsx.)
  *
  * Client codex, Sep 2026 (phase 10): the Life baseline became three editors.
  * FORD's Occupation band reads the work sentence and opens WorkEditor (the
@@ -14,9 +16,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Client, Machine } from "../../types";
+import type { Client } from "../../types";
 import { ClinicalFlagPicker } from "./ClinicalFlagPicker";
-import { BodyWatchOuts } from "./BodyWatchOuts";
 import { ExperienceEditor, RecreationEditor } from "../client-life/LifeBaseline";
 import { OccupationBand } from "../ford/page/bands";
 
@@ -66,28 +67,6 @@ describe("ClinicalFlagPicker", () => {
     const el = mount(<ClinicalFlagPicker value={["gen-knee", "sys-hernia"]} onChange={onChange} />);
     act(() => (el.querySelector('[aria-label="Remove Knee limitation"]') as HTMLButtonElement).click());
     expect(onChange).toHaveBeenLastCalledWith(["sys-hernia"]);
-  });
-});
-
-describe("BodyWatchOuts", () => {
-  const machines = [
-    { id: "leg_press", name: "Leg Press" },
-    { id: "chest_press", name: "Chest Press" },
-  ] as Machine[];
-
-  it("renders nothing with nothing to watch", () => {
-    expect(mount(<BodyWatchOuts flagIds={[]} machines={machines} hasMedicalText={false} />).innerHTML).toBe("");
-  });
-
-  it("leads with flags, every-set cautions and the machines that carry one", () => {
-    const el = mount(
-      <BodyWatchOuts flagIds={["gen-knee", "gen-blood-pressure"]} machines={machines} hasMedicalText />,
-    );
-    const text = el.textContent || "";
-    expect(text).toContain("Knee limitation");
-    expect(text).toContain("no breath-holding");
-    expect(text).toContain("Leg Press");
-    expect(text).not.toContain("Chest Press");
   });
 });
 

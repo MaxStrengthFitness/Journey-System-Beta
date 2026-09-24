@@ -4,10 +4,11 @@
  * Client codex, Sep 2026 (the shell phase). The record tab stopped being one
  * scroll (ClientInfoSheet → ClientDossier) and became seven pages. The shell
  * ships before the pages are rebuilt, so the old sections' JSX lives here,
- * MOVED UNCHANGED from ClientDossier.tsx — Who they are, Life, Body, Goals and
- * Admin — minus the section frames (each page draws its own cards) and minus
- * the "Recovery between sessions" select, retired from every screen (AJ's
- * decision 7; the field stays on the record, nothing writes it).
+ * MOVED UNCHANGED from ClientDossier.tsx — Who they are, Goals and Admin —
+ * minus the section frames (each page draws its own cards). Life went with
+ * the FORD page (phase 10) and Body with the Body & Pulse page (phase 12,
+ * which also retired the "Recovery between sessions" select from every
+ * screen: AJ's decision 7; the field stays on the record, nothing writes it).
  *
  * Each page area replaces its block with the real page in its own phase, and
  * the cleanup phase deletes this file. Until then it is a HOSTED file: the
@@ -17,16 +18,13 @@
  * Every field writes through the shell's one record form (`updateField`),
  * and the Save bar saves them together.
  */
-import { TrendingUp } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { mindbodyIdOf } from "../../../lib/mindbody-id";
 import { waiverState } from "../../../lib/client-waiver";
 import { clientLegalName } from "../../../lib/client-name";
 import { ageFromDob, masterSyncLabel } from "../../client-profile/sync-label";
 import { toDate } from "../../../types/journal";
-import type { Client, Machine } from "../../../types";
-import { ClinicalFlagPicker } from "../../clinical-flags/ClinicalFlagPicker";
-import { BodyWatchOuts } from "../../clinical-flags/BodyWatchOuts";
+import type { Client } from "../../../types";
 import {
   FieldGroup,
   FieldLabel,
@@ -263,109 +261,6 @@ export function AcquisitionBlock({ formData, updateField }: Omit<LegacyFieldProp
         hint="Mindbody fills this if it is blank; your edit is never overwritten."
       />
     </FieldGroup>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Body & Pulse                                                        */
-/* ------------------------------------------------------------------ */
-
-/**
- * The watch-outs lead (client-profile audit: "highly visible, without
- * digging through paragraphs"), then the flags and the two medical fields.
- * The journal rail of injury and incident notes that followed them is drawn
- * by the page, outside the record lock (it is read only anyway).
- */
-export function WatchOutsBlock({
-  client,
-  formData,
-  updateField,
-  machines,
-}: LegacyFieldProps & { machines: Machine[] }) {
-  const val = valOf(formData);
-  const set = setOf(updateField);
-  return (
-    <div className="flex flex-col gap-6">
-      <BodyWatchOuts
-        flagIds={formData.clinicalFlags ?? client.clinicalFlags}
-        machines={machines}
-        hasMedicalText={!!(val("medicalHistory").trim() || val("clinicalNotes").trim())}
-      />
-
-      <div className="flex flex-col gap-2.5">
-        <FieldLabel>Clinical flags</FieldLabel>
-        <p className="text-[11px] text-muted-foreground">
-          Flags show in the briefing, and the ones that name a machine appear on that
-          machine in Programming, the machine window and the session.
-        </p>
-        <ClinicalFlagPicker
-          value={formData.clinicalFlags || []}
-          onChange={(next) => updateField("clinicalFlags", next)}
-        />
-      </div>
-
-      <FieldGroup cols={1}>
-        <TextAreaField
-          label="Medical history"
-          value={val("medicalHistory")}
-          onChange={set("medicalHistory")}
-          rows={7}
-          placeholder="Surgeries, chronic conditions, anything a new coach must read before loading them."
-        />
-        <TextAreaField
-          label="Contraindications & constraints"
-          value={val("clinicalNotes")}
-          onChange={set("clinicalNotes")}
-          rows={5}
-          placeholder="What the load has to work around. Specific movements, ranges or machines to avoid."
-        />
-      </FieldGroup>
-
-    </div>
-  );
-}
-
-/**
- * Height, wingspan and weight — the machine set-up inputs. (The "Recovery
- * between sessions" select that sat here is retired: decision 7.)
- */
-export function BuildBlock({ formData, updateField }: Omit<LegacyFieldProps, "client">) {
-  const val = valOf(formData);
-  const set = setOf(updateField);
-  return (
-    <FieldGroup cols={3}>
-      <TextField label="Height" value={val("height")} onChange={set("height")} placeholder={`e.g. 5'4"`} hint="Used for machine set-up suggestions." />
-      <TextField
-        label="Wingspan"
-        value={val("wingspan")}
-        onChange={set("wingspan")}
-        placeholder={`inches, e.g. 66`}
-        hint="Optional. Fingertip to fingertip, arms out. Sharpens set-up suggestions on rows, presses and pulldowns."
-      />
-      <TextField label="Weight" value={val("weight")} onChange={set("weight")} placeholder="lbs" />
-    </FieldGroup>
-  );
-}
-
-/**
- * The one line that keeps the Pulse and its filed reports joined. Count
- * first, because the number is what decides whether it is worth the tap.
- */
-export function ReportsLinkBlock({ count, onOpenReports }: { count: number | null; onOpenReports: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpenReports}
-      className="inline-flex h-11 w-fit items-center gap-2 rounded-xl border border-border px-4 text-[11px] font-black uppercase tracking-wider text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-    >
-      <TrendingUp className="h-3.5 w-3.5" />
-      {count === null
-        ? "Filed reports"
-        : count === 0
-          ? "No filed reports yet"
-          : `${count} filed ${count === 1 ? "report" : "reports"}`}
-      <span className="opacity-60">· Activity Archive</span>
-    </button>
   );
 }
 

@@ -145,8 +145,13 @@ through machine-trends' `normalizeSettingKey` / `normalizeSettingValue`
 **Plum, never red.** "Worth a look" is `--eq-warn` / `--adm-warn`. Red is rep
 quality's. The check is passive: no bell, no Hub marker, no dialog.
 
-**Nothing is read until Setup is opened**, and the segment stays mounted
-afterwards so drafts survive a look at Routine A (the four-tab profile's rule).
+**Nothing is read until Setup or Body & Pulse is opened**, and the segment
+stays mounted afterwards so drafts survive a look at Routine A (the four-tab
+profile's rule). Body & Pulse's "Clients built like her" (client codex, phase
+12) runs the same `useSetupModel` over her prescribed machines, with the same
+stored "Similar to" spec (`ui/stored-spec.ts`, moved out of SetupView so the
+two screens match clients the same way), and speaks only in this feature's
+sentences. It reads nothing for a client with no height.
 The studio index is one query, cached ten minutes, and a save from this iPad is
 folded into the cache.
 
@@ -155,6 +160,7 @@ folded into the cache.
 | | reads |
 | --- | --- |
 | Opening Setup at a studio, first time in ten minutes | one query: the studio's `machineFit` collection (one document per machine anyone is set up on, ~20) |
+| Opening Body & Pulse (Notes & Profile), for a client with a height | the same cached query and the same company reads as Setup, once per profile visit; nothing for a client with no height |
 | …and the company tier | one read per machine per app session, shared with the Settings card's cache |
 | Saving | the settings documents and their history rows (one batch), then one index write per changed machine (a second batch) |
 | Operations → Machine fit, this studio | the same cached query; the report is built in the browser |

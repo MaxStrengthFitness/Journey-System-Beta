@@ -1,16 +1,23 @@
 /**
  * The InBody card: a client's body composition, kept for good.
  *
- * Lives in the profile's Details tab, in the Medical section beside height
- * and weight. The printout's "Body Composition History" block keeps eight
- * tests; this keeps all of them, on the iPad, during a session.
+ * Lives on Notes & Profile → Body & Pulse, last on the page ("Body
+ * composition · InBody"). The printout's "Body Composition History" block
+ * keeps eight tests; this keeps all of them, on the iPad, during a session.
  *
  *   - the latest scan's four headline numbers, each with its change since
  *     the first scan (muscle up and fat down in green). A change inside the
  *     client's home studio's InBody variation keeps its number but is not
- *     called a change (variation.ts)
- *   - weight, muscle and body-fat trend lines once there are two scans
- *   - every scan, newest first; tap one to correct or remove it
+ *     called a change (variation.ts), and carries no colour
+ *   - weight, muscle and body-fat trend lines once there are two scans —
+ *     unless the host draws the trends itself (`showTrends={false}`: Body &
+ *     Pulse's timeline does)
+ *   - every scan, newest first; tap one to correct or remove it. A row wraps
+ *     rather than cutting its numbers, and who entered it shows at every width
+ *
+ * Client codex, Sep 2026 (phase 12): drawn with the codex kit and its tokens
+ * (it was Tailwind emerald / amber / sky / slate) — good is --cx-ok, a change
+ * worth watching is plum --cx-warn, anything else the muted ink.
  *
  * Reading follows the client (whoever can open the profile). Recording and
  * removing follow features/inbody/access.ts, which mirrors firestore.rules.
@@ -18,10 +25,10 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Scale } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { auth } from "../../firebase";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
+import { Btn, Card, EmptyLine, Meta, cls } from "../client-codex/kit";
 import { useInBodyScans, type InBodyScansState } from "./useInBodyScans";
 import { InBodyScanDialog } from "./InBodyScanDialog";
 import { InBodyTrend } from "./InBodyTrend";
@@ -37,10 +44,10 @@ import {
   summarizeScans,
   summarySentence,
   trendPoints,
-  type ChangeTone,
   type MeasureKey,
 } from "./scans";
 import type { InBodyScan } from "./types";
+import "./inbody-card.css";
 
 const HEADLINE: { key: MeasureKey; label: string }[] = [
   { key: "weightLb", label: "Weight" },
@@ -56,14 +63,6 @@ const TRENDS: { key: MeasureKey; label: string; minSpan: number }[] = [
   { key: "percentBodyFat", label: "Body fat %", minSpan: 3 },
 ];
 
-const TONE: Record<ChangeTone, string> = {
-  good: "text-emerald-700 dark:text-emerald-400",
-  watch: "text-amber-700 dark:text-amber-400",
-  neutral: "text-muted-foreground",
-};
-
-const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground";
-
 export interface InBodyCardProps {
   client: Client;
   authTrainer: Trainer | null;
@@ -74,9 +73,14 @@ export interface InBodyCardProps {
    * one. Left out, the card reads the scans itself, as it always has.
    */
   inbody?: InBodyScansState;
+  /**
+   * Draw the trend lines (the default). Body & Pulse passes false: its
+   * timeline draws the trends, and the card keeps the numbers and the scans.
+   */
+  showTrends?: boolean;
 }
 
-export function InBodyCard({ client, authTrainer, inbody }: InBodyCardProps) {
+export function InBodyCard({ client, authTrainer, inbody, showTrends = true }: InBodyCardProps) {
   const today = studioTodayKey();
   // What counts as a change: the client's HOME studio's numbers, wherever
   // the profile is opened (variation.ts).
@@ -99,71 +103,62 @@ export function InBodyCard({ client, authTrainer, inbody }: InBodyCardProps) {
   const editingScan = editing && editing !== "new" ? editing : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={SUB}>Body composition · InBody</span>
-        {canRecord && (
-          <button
-            type="button"
-            onClick={() => setEditing("new")}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 text-[11px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-500/15 dark:text-sky-300"
-          >
-            <Plus className="h-3.5 w-3.5" />
+    <Card
+      className="ib-card cx-kit"
+      eyebrow="Body composition · InBody"
+      icon={Scale}
+      actions={
+        canRecord ? (
+          <Btn variant="live" icon={Plus} onClick={() => setEditing("new")}>
             Add scan
-          </button>
-        )}
-      </div>
+          </Btn>
+        ) : null
+      }
+    >
+      {error ? (
+        <p className="ib-quiet">{error}</p>
+      ) : loading ? (
+        <p className="ib-quiet">Loading scans…</p>
+      ) : !latest ? (
+        <EmptyLine>
+          {`No InBody scans yet. ${
+            canRecord
+              ? "Add one from the printout — the Renewal Brief and progress reports pick it up from here."
+              : "Trainers at this client's studio can add them from the printout."
+          }`}
+        </EmptyLine>
+      ) : (
+        <>
+          <p className="ib-meta">
+            Latest: <b className="ib-strong">{scanDateLabel(latest.testedAt, today)}</b>
+            {latest.device ? ` · ${latest.device}` : ""}
+            {first ? ` · compared with the first scan, ${scanDateLabel(first.testedAt, today)}` : ""}
+          </p>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-        {error ? (
-          <p className="text-sm text-muted-foreground">{error}</p>
-        ) : loading ? (
-          <p className="text-sm text-muted-foreground">Loading scans…</p>
-        ) : !latest ? (
-          <div className="flex items-start gap-3">
-            <Scale className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              No InBody scans yet.{" "}
-              {canRecord
-                ? "Add one from the printout — the trend lines, the Renewal Brief and progress reports pick it up from here."
-                : "Trainers at this client's studio can add them from the printout."}
-            </p>
+          <div className="ib-tiles">
+            {HEADLINE.map((h) => {
+              const delta = changeBetween(first, latest, h.key);
+              return (
+                <div key={h.key} className="ib-tile">
+                  <span className="ib-tile__label">{h.label}</span>
+                  <span className="ib-tile__value">{formatMeasure(latest[h.key], h.key)}</span>
+                  {delta !== null ? (
+                    <span className="ib-tile__change" data-tone={changeTone(h.key, delta, variation)}>
+                      {formatCalledChange(delta, h.key, variation)}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <p className="text-[12px] text-muted-foreground">
-              Latest: <span className="font-bold text-slate-700 dark:text-slate-200">{scanDateLabel(latest.testedAt, today)}</span>
-              {latest.device ? ` · ${latest.device}` : ""}
-              {first ? ` · compared with the first scan, ${scanDateLabel(first.testedAt, today)}` : ""}
-            </p>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {HEADLINE.map((h) => {
-                const delta = changeBetween(first, latest, h.key);
-                return (
-                  <div key={h.key} className="min-w-0 rounded-xl bg-card p-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                      {h.label}
-                    </p>
-                    <p className="mt-1 text-xl font-black tabular-nums text-foreground">
-                      {formatMeasure(latest[h.key], h.key)}
-                    </p>
-                    {delta !== null && (
-                      <p className={cn("text-[12px] font-bold tabular-nums", TONE[changeTone(h.key, delta, variation)])}>
-                        {formatCalledChange(delta, h.key, variation)}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          {summary && summary.scanCount >= 2 ? (
+            <p className="ib-summary">{summarySentence(summary, today, variation)}</p>
+          ) : null}
 
-            {summary && summary.scanCount >= 2 && (
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{summarySentence(summary, today, variation)}</p>
-            )}
-
-            {ordered.length >= 2 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {showTrends ? (
+            ordered.length >= 2 ? (
+              <div className="ib-trends">
                 {TRENDS.map((t) => (
                   <InBodyTrend
                     key={t.key}
@@ -176,60 +171,56 @@ export function InBodyCard({ client, authTrainer, inbody }: InBodyCardProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-[12px] text-muted-foreground">Trend lines appear after the second scan.</p>
-            )}
+              <p className="ib-quiet">Trend lines appear after the second scan.</p>
+            )
+          ) : null}
 
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                aria-expanded={showAll}
-                className="inline-flex min-h-10 items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:text-slate-800 dark:hover:text-slate-200"
-              >
-                {showAll ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                Every scan ({ordered.length})
-              </button>
-              {showAll && (
-                <ul className="mt-1 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-card dark:divide-slate-800 dark:border-slate-800">
-                  {[...ordered].reverse().map((s) => {
-                    const row = (
-                      <>
-                        <span className="w-28 shrink-0 font-bold text-slate-800 dark:text-slate-100">
-                          {scanDateLabel(s.testedAt, today)}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate tabular-nums text-slate-600 dark:text-slate-300">
-                          {formatMeasure(s.weightLb, "weightLb")} · muscle {formatMeasure(s.skeletalMuscleMassLb, "skeletalMuscleMassLb")} · fat{" "}
-                          {formatMeasure(s.percentBodyFat, "percentBodyFat")}
-                        </span>
-                        <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:inline">
-                          {s.enteredByName || ""}
-                        </span>
-                      </>
-                    );
-                    return (
-                      <li key={s.id}>
-                        {canRecord ? (
-                          <button
-                            type="button"
-                            onClick={() => setEditing(s)}
-                            className="flex min-h-11 w-full items-center gap-3 px-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                            aria-label={`Correct or remove the ${scanDateLabel(s.testedAt, today)} scan`}
-                          >
-                            {row}
-                            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-                          </button>
-                        ) : (
-                          <div className="flex min-h-11 items-center gap-3 px-3 text-sm">{row}</div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+          <div className="ib-all">
+            <Btn
+              variant="quiet"
+              icon={showAll ? ChevronDown : ChevronRight}
+              aria-expanded={showAll}
+              onClick={() => setShowAll((v) => !v)}
+            >
+              {`Every scan (${ordered.length})`}
+            </Btn>
+            {showAll ? (
+              <ul className="ib-scans">
+                {[...ordered].reverse().map((s) => {
+                  const row = (
+                    <>
+                      <span className="ib-scan__date">{scanDateLabel(s.testedAt, today)}</span>
+                      <span className="ib-scan__values">
+                        {formatMeasure(s.weightLb, "weightLb")} · muscle{" "}
+                        {formatMeasure(s.skeletalMuscleMassLb, "skeletalMuscleMassLb")} · fat{" "}
+                        {formatMeasure(s.percentBodyFat, "percentBodyFat")}
+                      </span>
+                      {s.enteredByName ? <Meta className="ib-scan__by">{s.enteredByName}</Meta> : null}
+                    </>
+                  );
+                  return (
+                    <li key={s.id}>
+                      {canRecord ? (
+                        <button
+                          type="button"
+                          className={cls("ib-scan", "ib-scan--button")}
+                          onClick={() => setEditing(s)}
+                          aria-label={`Correct or remove the ${scanDateLabel(s.testedAt, today)} scan`}
+                        >
+                          {row}
+                          <ChevronRight className="ib-scan__chev" size={16} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <div className="ib-scan">{row}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {canRecord && (
         <InBodyScanDialog
@@ -242,6 +233,6 @@ export function InBodyCard({ client, authTrainer, inbody }: InBodyCardProps) {
           canRemove={editingScan ? canRemoveInBodyScan(authTrainer, uid, editingScan, studioId) : false}
         />
       )}
-    </div>
+    </Card>
   );
 }

@@ -113,8 +113,16 @@ describe("subnavItems", () => {
       expect(absolute).toMatchObject({ meta: "2 watch-outs", flag: true, flagTone: "alert" });
     });
 
-    it("says none on file, with no dot", () => {
-      expect(item(subnavItems(input()), "body")).toMatchObject({ meta: "none on file", flag: false });
+    it("says when the Pulse was last saved when no watch-out is on file, else what the page holds (phase 12)", () => {
+      expect(item(subnavItems(input()), "body")).toMatchObject({ meta: "Build and Pulse", flag: false });
+      const now = new Date(2027, 2, 24, 12);
+      expect(item(subnavItems({ ...input(), pulse: { day: "2027-03-10" }, now }), "body")).toMatchObject({
+        meta: "Pulse Mar 10",
+        flag: false,
+      });
+      // Watch-outs come first, whatever the Pulse says.
+      const flagged = input({ client: { clinicalFlags: ["gen-knee"] } as Client });
+      expect(item(subnavItems({ ...flagged, pulse: { day: "2027-03-10" }, now }), "body").meta).toBe("1 watch-out");
     });
   });
 

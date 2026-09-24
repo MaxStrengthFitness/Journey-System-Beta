@@ -64,7 +64,14 @@ import { readOnlyLine } from "./access";
 import { useCodexData } from "./useCodexData";
 import { useRecordForm } from "./useRecordForm";
 import { subnavItems } from "./page-meta";
-import { fordCountOf, type CodexHosts, type CodexPageProps, type SessionTotals } from "./codex-data";
+import {
+  fordCountOf,
+  type CodexHosts,
+  type CodexPageProps,
+  type CodexProgramming,
+  type SessionTotals,
+} from "./codex-data";
+import { newestPulseDay } from "./body/page-lines";
 import { OverviewPage } from "./pages/OverviewPage";
 import { NotesPage } from "./pages/NotesPage";
 import { FordPage } from "./pages/FordPage";
@@ -99,6 +106,12 @@ export interface ClientCodexProps {
   sessionTotals: SessionTotals;
   coverage: HistoryCoverage;
   hosts: CodexHosts;
+  /**
+   * Her machine settings and routines, the studio roster and the studio the
+   * iPad is at — what the profile already holds for Programming. Body &
+   * Pulse's floor reads them; left out, it has her notes only.
+   */
+  programming?: CodexProgramming;
 }
 
 /** Notes interprets its own anchors (the composer, one thread); the shell leaves them be. */
@@ -132,6 +145,7 @@ export function ClientCodex({
   sessionTotals,
   coverage,
   hosts,
+  programming,
 }: ClientCodexProps) {
   const data = useCodexData({
     client,
@@ -143,6 +157,7 @@ export function ClientCodex({
     progressReportsStatus,
     sessionTotals,
     coverage,
+    programming,
   });
   const { access, journal, notes } = data;
   const form = useRecordForm({
@@ -196,8 +211,10 @@ export function ClientCodex({
         comingUp: ready ? comingUp({ dateOfBirth: client.dateOfBirth, entries: data.ford.entries, todayKey: data.today }) : [],
         untagged: ready ? data.ford.untagged.length : 0,
       },
+      // Body & Pulse's line: its watch-outs, else the newest saved Pulse.
+      pulse: { day: newestPulseDay(data.pulse.history) },
     });
-  }, [client, notes, journal.loadState, data.focusesRunning, data.fordStatus, data.ford, data.today, access.fordReadable]);
+  }, [client, notes, journal.loadState, data.focusesRunning, data.fordStatus, data.ford, data.today, data.pulse, access.fordReadable]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

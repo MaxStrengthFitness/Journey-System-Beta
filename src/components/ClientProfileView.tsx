@@ -59,7 +59,13 @@ import {
 } from "../features/client-profile";
 import { answerFor, type ClientAnswer } from "../features/client-profile/client-answer";
 import { useProgressReports } from "../features/client-profile/useProgressReports";
-import { ClientCodex, recordStudioIdOf, sessionTotalsOf, type CodexHosts } from "../features/client-codex";
+import {
+  ClientCodex,
+  recordStudioIdOf,
+  sessionTotalsOf,
+  type CodexHosts,
+  type CodexProgramming,
+} from "../features/client-codex";
 import { coverageOfClient, cutoverOf } from "../lib/client-coverage";
 import {
   Client,
@@ -158,6 +164,15 @@ export function ClientProfileView({
   const [clientSettings, setClientSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
+  // Whether the two reads above answered for THIS client. Body & Pulse's
+  // floor says "no machines in her routines" only once both did; a failed
+  // read is unknown, never empty.
+  const [routinesStatus, setRoutinesStatus] = useState<
+    "loading" | "ready" | "failed"
+  >("loading");
+  const [settingsStatus, setSettingsStatus] = useState<
+    "loading" | "ready" | "failed"
+  >("loading");
   /*
    * KAIZEN ROSTER.
    *
@@ -588,7 +603,11 @@ export function ClientProfileView({
     // round-trip landing, the previous client's routines were still in state
     // and the Journey tab's A/B filters resolved against them.
     setRoutines([]);
+    // Nothing read under a quota error: unknown, not "no routines".
+    setRoutinesStatus(hasQuotaError ? "failed" : "loading");
     if (!clientId || hasQuotaError) return;
+    // A slower read for the previous client must not land on this one.
+    let cancelled = false;
 
     const fetchRoutines = async () => {
       try {
@@ -597,16 +616,22 @@ export function ClientProfileView({
           where("clientId", "==", clientId),
         );
         const snap = await getDocs(routinesQuery);
+        if (cancelled) return;
         const routinesData = snap.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() }) as Routine,
         );
         setRoutines(routinesData);
+        setRoutinesStatus("ready");
       } catch (error: any) {
+        if (!cancelled) setRoutinesStatus("failed");
         handleFirestoreError(error, OperationType.GET, "routines");
       }
     };
 
     fetchRoutines();
+    return () => {
+      cancelled = true;
+    };
   }, [clientId, hasQuotaError]);
 
   useEffect(() => {
@@ -1052,6 +1077,23 @@ export function ClientProfileView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [onSelectReport, setView, openMachineWindow, nav.go, nav.setTab],
   );
+  // What Programming already holds, for Body & Pulse's floor (her notes per
+  // machine, and machine fit's "clients built like her") — no read of its own.
+  const codexProgramming = useMemo<CodexProgramming>(
+    () => ({
+      clientSettings,
+      routines,
+      studioClients: clients,
+      activeStudioId: activeStudioId ?? null,
+      status:
+        routinesStatus === "failed" || settingsStatus === "failed"
+          ? "failed"
+          : routinesStatus === "loading" || settingsStatus === "loading"
+            ? "loading"
+            : "ready",
+    }),
+    [clientSettings, routines, clients, activeStudioId, routinesStatus, settingsStatus],
+  );
   const codexSessionTotals = useMemo(
     () => sessionTotalsOf(journeyCompletedCount, client),
     // The totals read nothing of the client but its uncounted prior sessions
@@ -1067,6 +1109,11 @@ export function ClientProfileView({
   }, [clientId]);
 
   useEffect(() => {
+    // Clear first, as the routines do: this view is not remounted between
+    // clients, so until the listener answers the previous client's settings
+    // (and her important machine notes) would still be in state.
+    setClientSettings({});
+    setSettingsStatus("loading");
     if (!clientId) return;
 
     const settingsQ = query(
@@ -1083,8 +1130,10 @@ export function ClientProfileView({
           settingsMap[data.machineId] = data;
         });
         setClientSettings(settingsMap);
+        setSettingsStatus("ready");
       },
       (error) => {
+        setSettingsStatus("failed");
         handleFirestoreError(error, OperationType.GET, "clientMachineSettings");
       },
     );
@@ -1664,6 +1713,7 @@ export function ClientProfileView({
               sessionTotals={codexSessionTotals}
               coverage={clientCoverage}
               hosts={codexHosts}
+              programming={codexProgramming}
             />
           )}
         </TabsContent>

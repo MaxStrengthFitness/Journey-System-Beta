@@ -15,6 +15,7 @@ export {
   type CodexHosts,
   type CodexNotes,
   type CodexPageProps,
+  type CodexProgramming,
   type CodexPulse,
   type SessionTotals,
 } from "./codex-data";

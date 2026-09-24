@@ -54,6 +54,7 @@ import { takeSetupHint } from "./open-hint";
 import { auditSummary } from "./sentences";
 import { EMPTY_DRAFTS, countDrafts, setupDraftReducer, type SetupMode } from "./setup-draft";
 import { useSetupModel, type RowFilter, type SetupRowModel } from "./useSetupModel";
+import { SPEC_STORE, readStoredSpec } from "./stored-spec";
 import "./machine-fit.css";
 
 export interface SetupViewProps {
@@ -71,28 +72,6 @@ export interface SetupViewProps {
   active: boolean;
   /** Settings worth a look, for the segment's meta line. */
   onReviewCount?: (count: number | null) => void;
-}
-
-const SPEC_STORE = "msf_fit_match_spec";
-
-function readStoredSpec(): MatchSpec {
-  try {
-    const raw = window.localStorage.getItem(SPEC_STORE);
-    if (!raw) return DEFAULT_MATCH_SPEC;
-    const parsed = JSON.parse(raw) as Partial<MatchSpec>;
-    if (!parsed || typeof parsed !== "object" || !parsed.numeric) return DEFAULT_MATCH_SPEC;
-    // Merge over the defaults so a spec saved before a factor existed still has it.
-    const numeric = { ...DEFAULT_MATCH_SPEC.numeric };
-    for (const k of Object.keys(numeric) as (keyof typeof numeric)[]) {
-      const saved = parsed.numeric[k];
-      if (saved && typeof saved.on === "boolean" && Number.isFinite(saved.maxSteps)) {
-        numeric[k] = { ...numeric[k], on: saved.on, maxSteps: Math.max(0, Math.min(6, Math.round(saved.maxSteps))) };
-      }
-    }
-    return { ...DEFAULT_MATCH_SPEC, numeric, gender: parsed.gender === true };
-  } catch {
-    return DEFAULT_MATCH_SPEC;
-  }
 }
 
 function coarsePointer(): boolean {

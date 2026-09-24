@@ -705,6 +705,12 @@ export interface Client {
     | "Intermediate"
     | "Advanced"
     | "Protocol Veteran";
+  /**
+   * @deprecated Retired from every screen (client codex, Sep 2026; AJ's
+   * decision 7): Poor / Average / Optimal was a second rating vocabulary
+   * beside the Dial. Kept on existing records; nothing reads or writes it
+   * (the codex's record form refuses the key).
+   */
   recoveryMetric?: "Poor" | "Average" | "Optimal";
   activity?: string;
   goals?: string;

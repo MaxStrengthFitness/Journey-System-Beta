@@ -16,7 +16,7 @@
  *
  * Pure: codex-data.test.ts.
  */
-import type { Client, Machine, ProgressReport, Studio, Trainer } from "../../types";
+import type { Client, ClientMachineSetting, Machine, ProgressReport, Routine, Studio, Trainer } from "../../types";
 import type { JournalLoad, UseClientJournalResult } from "../../hooks/useClientJournal";
 import type { UseClientFordResult } from "../ford/useClientFord";
 import type { FordReadStatus } from "../ford/read-status";
@@ -186,6 +186,40 @@ export function sessionTotalsOf(
 }
 
 /* ------------------------------------------------------------------ */
+/* Programming                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What the profile already holds about her programming, handed in (no read
+ * of the tab's own): her machine settings, her routines, the studio's
+ * client roster and the studio the iPad is at. Body & Pulse's "On our floor"
+ * reads them — her notes per prescribed machine, and machine fit's "clients
+ * built like her" (the same inputs Programming → Setup is given).
+ */
+export interface CodexProgramming {
+  clientSettings: Record<string, ClientMachineSetting>;
+  routines: Routine[];
+  /** The studio roster the app already holds (what machine fit's rows join to). */
+  studioClients: readonly Client[];
+  activeStudioId: string | null;
+  /**
+   * Whether her routines and machine settings were read for this client:
+   * "loading" until both answered, "failed" when either could not be. Until
+   * "ready", the floor never says she has no machines — unknown, not empty.
+   */
+  status: "loading" | "ready" | "failed";
+}
+
+/** No programme, known to be empty (a host that holds none). */
+export const NO_PROGRAMMING: CodexProgramming = Object.freeze({
+  clientSettings: {},
+  routines: [],
+  studioClients: [],
+  activeStudioId: null,
+  status: "ready",
+}) as CodexProgramming;
+
+/* ------------------------------------------------------------------ */
 /* What a page is handed                                               */
 /* ------------------------------------------------------------------ */
 
@@ -222,6 +256,8 @@ export interface CodexData {
   sessionTotals: SessionTotals;
   /** How much of the client's story Journey holds (the home studio's cutover). */
   coverage: HistoryCoverage;
+  /** Her settings and routines, the roster and the studio, as the profile holds them. */
+  programming: CodexProgramming;
 }
 
 /**

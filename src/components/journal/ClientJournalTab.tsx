@@ -2,17 +2,17 @@
  * THE JOURNAL AREAS — mounted by area on the client record's pages.
  *
  *   1. PROGRESS REPORTS  — the shelf of finalized evaluations.
- *   2. ASSESSMENT        — the modular assessment (Pulse), filled a piece at
- *                          a time.
- *   3. FOCUS             — what each coach is working on (the 4 P's), with
+ *   2. FOCUS             — what each coach is working on (the 4 P's), with
  *                          check-in, extend, achieved and retire, and the
  *                          history of every past focus.
  *
  * NOTES LEFT THIS FILE in the client codex (Sep 2026): the Notes page is
  * `features/client-notes/NotesPage` — the composer, the To-file tray and the
- * threads — on the tab's one journal load. The Pulse and Focus areas are
- * still mounted here by the Body & Pulse and Goals & Focus pages until those
- * pages are rebuilt; then this file goes.
+ * threads — on the tab's one journal load. THE PULSE LEFT IT in phase 12:
+ * Body & Pulse owns the client's one Pulse draft and mounts
+ * `ClientCheckInPanel` itself, with that draft. The Focus area is still
+ * mounted here by the Goals & Focus page until that page is rebuilt; then
+ * this file goes.
  *
  * SINCE THE PROFILE MERGE (Sep 2026) THIS IS NOT A TAB
  * ---------------------------------------------------
@@ -42,10 +42,9 @@ import type {
 } from "../../types";
 import { FocusBoard } from "./FocusBoard";
 import { ProgressReportArchive } from "./ProgressReportArchive";
-import { ClientCheckInPanel } from "./ClientCheckInPanel";
 
 /** The areas, by id. */
-export type JournalAreaId = "progress-reports" | "check-in" | "focus";
+export type JournalAreaId = "progress-reports" | "focus";
 
 export interface ClientJournalTabProps {
   clientId: string | null;
@@ -59,7 +58,7 @@ export interface ClientJournalTabProps {
   onNewReport: () => void;
   hasQuotaError?: boolean;
   /**
-   * Which areas to draw. Omit for all three. Whoever composes the areas owns
+   * Which areas to draw. Omit for both. Whoever composes the areas owns
    * the navigation; see the header.
    */
   areas?: JournalAreaId[];
@@ -149,21 +148,7 @@ export function ClientJournalTab({
       </JournalArea>
       )}
 
-      {/* ----------------------- 2 · ASSESSMENT -------------------------- */}
-      {shows("check-in") && (
-      <JournalArea
-        id="check-in"
-        // Inside the record the section and the panel already say
-        // "Assessment" — a third heading is noise.
-        bare={composed}
-        title="Pulse"
-        blurb="A living record, filled in a piece at a time and saved as you go. Open one topic, answer it, come back next session."
-      >
-        <ClientCheckInPanel client={client} trainer={authTrainer ?? null} machines={machines} />
-      </JournalArea>
-      )}
-
-      {/* ---------------------------- 3 · FOCUS -------------------------- */}
+      {/* ---------------------------- 2 · FOCUS -------------------------- */}
       {shows("focus") && (
       <JournalArea
         id="focus"
