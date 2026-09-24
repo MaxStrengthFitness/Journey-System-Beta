@@ -165,6 +165,12 @@ const ClientProgressReportView = lazy(() =>
     default: m.ClientProgressReportView,
   })),
 );
+// From the modules, not the folder's index, which would pull the editor in.
+import {
+  reportEditorKey,
+  useReportSelection,
+} from "./features/progress-report/report-selection";
+import { ReportNotOpened } from "./features/progress-report/ReportNotOpened";
 import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
@@ -469,7 +475,6 @@ export default function AppContent({
     };
   }, [selectedClientId]);
 
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
     string | null
   >(null);
@@ -669,6 +674,18 @@ export default function AppContent({
     }
     setCurrentView(view);
   };
+
+  /**
+   * The progress report to open, pinned to the client it was chosen for and
+   * forgotten whenever the report screen is left, however it was left. Every
+   * way in says whether it wants a filed report or a new one. See
+   * features/progress-report/report-selection.ts for the bug this closed.
+   */
+  const reportSelection = useReportSelection({
+    view: currentView,
+    clientId: selectedClientId,
+    showReport: () => setView("progress-report"),
+  });
 
   useEffect(() => {
     if (currentView !== "clients") setHubSearchTerm("");
@@ -1641,12 +1658,17 @@ export default function AppContent({
                       action?: ClientTaskAction,
                     ) => {
                       setSelectedClientId(clientId);
+                      // A "Progress report" task always starts a NEW report:
+                      // a report left open earlier, for this client or any
+                      // other, is never what the task is asking for.
+                      if (action === "progress-report") {
+                        reportSelection.newReport();
+                        return;
+                      }
                       setCurrentView(
-                        action === "progress-report"
-                          ? "progress-report"
-                          : action === "assessment"
-                            ? "consultation-wizard"
-                            : "profile",
+                        action === "assessment"
+                          ? "consultation-wizard"
+                          : "profile",
                       );
                     };
                     return (
@@ -1697,10 +1719,8 @@ export default function AppContent({
                     authTrainer={authTrainer}
                     trainers={trainers}
                     onDelete={handleDeleteClient}
-                    onSelectReport={(reportId) => {
-                      setSelectedReportId(reportId);
-                      setView("progress-report");
-                    }}
+                    onSelectReport={reportSelection.openReport}
+                    onNewReport={reportSelection.newReport}
                     setView={setView}
                     setSelectedClientId={setSelectedClientId}
                     hasQuotaError={hasQuotaError}
@@ -1711,21 +1731,41 @@ export default function AppContent({
                 )}
                 {currentView === "progress-report" &&
                   selectedClientId &&
-                  authTrainer && (
-                    <ClientProgressReportView
-                      client={
-                        clients.find((c) => c.id === selectedClientId) ||
-                        ({} as Client)
-                      }
-                      trainer={authTrainer}
-                      machines={machines}
-                      existingReportId={selectedReportId || undefined}
-                      onBack={() => {
-                        setSelectedReportId(null);
-                        setCurrentView("profile");
-                      }}
-                    />
-                  )}
+                  authTrainer &&
+                  (() => {
+                    // The editor builds its report from the client it MOUNTS
+                    // with and never re-reads it, so it waits for the real
+                    // client. It used to mount on an empty stand-in while the
+                    // client was still loading, and a report saved from that
+                    // had no client on it at all.
+                    const reportClient = clients.find(
+                      (c) => c.id === selectedClientId,
+                    );
+                    const backToRecord = () => setCurrentView("profile");
+                    if (!reportClient) {
+                      return (
+                        <ReportNotOpened
+                          message={
+                            isLoadingClient
+                              ? "Opening the client's record…"
+                              : "This client's record could not be read, so no report was opened."
+                          }
+                          onBack={backToRecord}
+                        />
+                      );
+                    }
+                    const reportId = reportSelection.existingReportId;
+                    return (
+                      <ClientProgressReportView
+                        key={reportEditorKey(selectedClientId, reportId)}
+                        client={reportClient}
+                        trainer={authTrainer}
+                        machines={machines}
+                        existingReportId={reportId}
+                        onBack={backToRecord}
+                      />
+                    );
+                  })()}
                 {currentView === "trainer-profile" &&
                   (selectedProfileTrainerId
                     ? trainers.find((t) => t.id === selectedProfileTrainerId)

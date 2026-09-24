@@ -111,6 +111,7 @@ import {
   type SlotContext,
 } from "../features/progress-report";
 import "../features/progress-report/progress-report.css";
+import { ReportNotOpened } from "../features/progress-report/ReportNotOpened";
 import { studioTodayKey } from "../lib/studio-time";
 import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
 import { useInBodyVariation } from "../features/inbody/useInBodyVariation";
@@ -191,7 +192,7 @@ export function ClientProgressReportView({
   onBack,
   existingReportId,
 }: ClientProgressReportViewProps) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   // What counts as an InBody change on this report: the client's HOME
   // studio's numbers (features/inbody/variation.ts). No read.
   const inbodyVariation = useInBodyVariation(client);
@@ -433,30 +434,60 @@ export function ClientProgressReportView({
   const machineHistory = slotCtx.stats;
   const candidates = useMemo(() => accoladeCandidates(draftInputFrom(slotCtx)), [slotCtx]);
 
+  /**
+   * Where opening a filed report got to. Until it is "ready" the screen says
+   * so in a sentence rather than showing the new-report chooser under this
+   * client's name.
+   *
+   * "other-client" is the defence behind report-selection.ts: a report is
+   * opened only for the client it belongs to. Before Sep 24 2026 a report
+   * left open for one client came back under the NEXT client's name, and
+   * saving wrote to the first client's document.
+   */
+  const [existingStatus, setExistingStatus] = useState<
+    "loading" | "ready" | "other-client" | "missing" | "error"
+  >("loading");
+
   // Load existing report
   useEffect(() => {
-    async function fetchExisting() {
-      if (!existingReportId) return;
+    if (!existingReportId) return;
+    let cancelled = false;
+    async function fetchExisting(reportId: string) {
       setLoading(true);
+      setExistingStatus("loading");
       try {
-        const snap = await getDoc(doc(db, "progressReports", existingReportId));
-        if (snap.exists()) {
-          const data = snap.data() as ProgressReport;
-          setReport((prev) => ({
-            ...prev,
-            ...data,
-            id: snap.id,
-          }));
-          setMode(data.status === "Finalized" ? "view" : "editing");
+        const snap = await getDoc(doc(db, "progressReports", reportId));
+        if (cancelled) return;
+        if (!snap.exists()) {
+          setExistingStatus("missing");
+          return;
         }
+        const data = snap.data() as ProgressReport;
+        if (data.clientId !== client.id) {
+          setExistingStatus("other-client");
+          return;
+        }
+        setReport((prev) => ({
+          ...prev,
+          ...data,
+          id: snap.id,
+        }));
+        setMode(data.status === "Finalized" ? "view" : "editing");
+        setExistingStatus("ready");
       } catch (err) {
+        if (cancelled) return;
+        // A failed read is "unknown", never "empty": no chooser, no new report.
+        setExistingStatus("error");
         handleFirestoreError(err, OperationType.GET, "progressReports");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    fetchExisting();
-  }, [existingReportId]);
+    fetchExisting(existingReportId);
+    return () => {
+      cancelled = true;
+    };
+  }, [existingReportId, client.id]);
 
   // Load the previous finalized report (goal carry-over, "Prev report") and
   // the client's Pulse history from ONE bounded read.
@@ -746,6 +777,14 @@ export function ClientProgressReportView({
   };
 
   const handleSave = async (status: "Draft" | "Finalized" = "Finalized") => {
+    // Never write a report onto another client's document. The load above
+    // already refuses one; this is the last line if anything slips past it.
+    if (!client.id || report.clientId !== client.id) {
+      toastError(
+        "This report is for a different client, so it was not saved. Go back to the record and start again from there.",
+      );
+      return;
+    }
     setSaving(true);
     try {
       // Recursively remove undefined values to prevent Firestore crashes
@@ -834,6 +873,24 @@ export function ClientProgressReportView({
   /** Fill every open slot from the data, around the trainer's own choices. */
   const fillOpenSlots = () =>
     setReport((prev) => ({ ...prev, highlights: refreshSlots(prev.highlights, slotCtx) }));
+
+  if (existingReportId && existingStatus !== "ready") {
+    const clientName = [client.firstName, client.lastName].filter(Boolean).join(" ");
+    return (
+      <ReportNotOpened
+        message={
+          existingStatus === "loading"
+            ? "Opening the report…"
+            : existingStatus === "other-client"
+              ? `This report is for a different client, so it was not opened here under ${clientName || "this client"}'s name. Nothing has been changed. Open it from that client's record.`
+              : existingStatus === "missing"
+                ? "This report could not be found. It may have been deleted."
+                : "The report could not be read, so it was not opened. Check the connection and try again."
+        }
+        onBack={onBack}
+      />
+    );
+  }
 
   if (mode === "selection") {
     return (
