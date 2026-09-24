@@ -4,9 +4,10 @@
  * Hosts the long scroll's "Who they are" and Admin sections as they were:
  * the client's ID card (Mindbody owns identity and contact on a linked
  * client, so those are read only; the nickname is the coach's), the
- * Mindbody account notes, the contract (ContractPanel, with the tier lock
- * and where they may train) and how they found us. The Account area
- * rebuilds it in its own phase.
+ * Mindbody account notes, Mindbody's client indexes (all but the long-term
+ * goal, which Goals & Focus shows under the why since phase 14), the
+ * contract (ContractPanel, with the tier lock and where they may train) and
+ * how they found us. The Account area rebuilds it in its own phase.
  *
  * The Migration Hub moved here from the old record's top bar, into the fine
  * print, for a reader who may change the record. It still switches the
@@ -17,7 +18,13 @@ import { ContractPanel } from "../../client-admin/ContractPanel";
 import { Btn, Card, Page, Source, anchorProps } from "../kit";
 import type { CodexPageProps } from "../codex-data";
 import { RecordLock } from "./RecordLock";
-import { AcquisitionBlock, MindbodyNotesBlock, WhoTheyAreBlock } from "./legacy-blocks";
+import {
+  AcquisitionBlock,
+  MindbodyIndexesBlock,
+  MindbodyNotesBlock,
+  WhoTheyAreBlock,
+  hasOtherMindbodyIndexes,
+} from "./legacy-blocks";
 
 export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
   const { client, access, authTrainer, author, availableStudios } = data;
@@ -34,6 +41,13 @@ export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
       {client.mindbodyNotes ? (
         <Card id="account-mindbody-notes">
           <MindbodyNotesBlock client={client} />
+        </Card>
+      ) : null}
+
+      {/* Moved from Goals & Focus (phase 14), whose why shows the long-term goal. */}
+      {hasOtherMindbodyIndexes(client) ? (
+        <Card eyebrow="From Mindbody">
+          <MindbodyIndexesBlock client={client} />
         </Card>
       ) : null}
 

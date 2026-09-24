@@ -1,22 +1,28 @@
 // @vitest-environment jsdom
 /**
- * Mounts the Goals panel and the focus board.
+ * Mounts the Goals & Focus page's goal cards and the focus board.
  *
- * The Goals panel does its work in click handlers that fire several
+ * The goal cards do their work in click handlers that fire several
  * `updateField` calls in a row (mark achieved = four field edits), and the
  * record's Save bar decides what to write from those calls. Only a mount
  * proves the sequence leaves the form in the state the Save bar needs. The
- * harness below drives the panel with the record's real form (the client
- * codex's useRecordForm), so the test checks what would actually be written.
+ * harness below drives Her why, Working toward now and Reached (split out of
+ * the long scroll's GoalsPanel in the client codex, phase 14) with the
+ * record's real form (the client codex's useRecordForm), so the test checks
+ * what would actually be written.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client } from "../../types";
 import type { ClientFocus, JournalEntry } from "../../types/journal";
-import { GoalsPanel } from "./GoalsPanel";
+import { HerWhyCard } from "./HerWhyCard";
+import { WorkingTowardCard } from "./WorkingTowardCard";
+import { ReachedShelf } from "./ReachedShelf";
+import { herWhyLinks, reachedShelf } from "./goals-page";
 import { FocusBoard } from "../../components/journal/FocusBoard";
 import { useRecordForm } from "../client-codex/useRecordForm";
+import { pronounsOf } from "../client-codex/kit";
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-jane" } } }));
 vi.mock("../../contexts/ToastContext", () => ({
@@ -65,6 +71,13 @@ function typeInto(el: Element | null, value: string) {
 const buttonByText = (host: HTMLElement, text: string) =>
   Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.includes(text));
 
+/** A kit field by its label's words: the <label> names its control by `for`. */
+function fieldByLabel(host: HTMLElement, text: string): HTMLInputElement | HTMLTextAreaElement | null {
+  const label = Array.from(host.querySelectorAll("label")).find((l) => l.textContent?.trim() === text);
+  const id = label?.getAttribute("for");
+  return id ? (host.querySelector(`[id="${id}"]`) as HTMLInputElement | HTMLTextAreaElement | null) : null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Goals                                                               */
 /* ------------------------------------------------------------------ */
@@ -75,17 +88,40 @@ type Probe = { formData: Partial<Client>; dirty: ReadonlySet<string> };
  * The record's real form (the client codex's useRecordForm): the same
  * dirty rules and the same Save bar payload the Goals page saves with.
  */
-function GoalsHarness({ client, probe }: { client: Client; probe: Probe }) {
-  const form = useRecordForm({ client, trainerId: "t1" });
+function GoalsHarness({ client, probe, canEdit = true }: { client: Client; probe: Probe; canEdit?: boolean }) {
+  const form = useRecordForm({ client, trainerId: "t1", canEdit });
   probe.formData = form.formData;
   probe.dirty = form.dirty;
+  const p = pronounsOf(client);
+  const rows = reachedShelf({
+    current: form.formData.goalHistory !== undefined ? form.formData.goalHistory : client.goalHistory,
+    saved: client.goalHistory,
+    focuses: [],
+  });
   return (
-    <GoalsPanel
-      client={client}
-      formData={form.formData}
-      updateField={form.updateField}
-      authTrainer={{ id: "t1", fullName: "Jane Coach" } as any}
-    />
+    <>
+      <HerWhyCard
+        value={(form.formData.globalNotes as string | undefined) ?? ""}
+        updateField={form.updateField}
+        links={herWhyLinks({ client, fordStatus: "ready", fordEntries: [] })}
+        canEdit={canEdit}
+        dirty={form.isDirty("globalNotes")}
+        revision={form.revision}
+        pronouns={p}
+        go={() => {}}
+      />
+      <WorkingTowardCard
+        client={client}
+        formData={form.formData}
+        updateField={form.updateField}
+        authTrainer={{ id: "t1", fullName: "Jane Coach" } as any}
+        canEdit={canEdit}
+        dirty={form.isDirty("smartGoal", "smartChecks", "goalTargetDate", "goalHistory")}
+        revision={form.revision}
+        pronouns={p}
+      />
+      <ReachedShelf rows={rows} focusesState="ready" coverage="complete" />
+    </>
   );
 }
 
@@ -94,19 +130,43 @@ const baseClient = (over: Partial<Client> = {}): Client =>
     id: "c1",
     firstName: "Judy",
     lastName: "Client",
+    gender: "Female",
     globalNotes: "Wants to garden again",
     smartGoal: "Carry the grandkids up the stairs",
     ...over,
   }) as Client;
 
-describe("GoalsPanel mounts", () => {
-  it("anchors on the original why and badges a raw goal", async () => {
+const card = (host: HTMLElement, id: string) => host.querySelector<HTMLElement>(`#${id}`)!;
+/** The card's Edit / Done button (the kit's EditButton names what it edits). */
+const editOf = (host: HTMLElement, id: string) =>
+  card(host, id).querySelector<HTMLButtonElement>('button[aria-label^="Edit"], button[aria-label^="Done editing"]');
+
+describe("the goal cards mount", () => {
+  it("reads the why and the goal first, and Edit reveals the why", async () => {
     const probe = {} as Probe;
     const host = await mount(<GoalsHarness client={baseClient()} probe={probe} />);
-    expect((host.querySelector("#gf-why") as HTMLTextAreaElement).value).toBe("Wants to garden again");
-    expect(host.querySelector('[data-testid="smart-badge"]')?.textContent).toBe("Raw goal · 0 of 5");
+    const why = card(host, "goals-why");
+    expect(why.textContent).toContain("“Wants to garden again”");
+    expect(why.textContent).toContain("Her why, as it's written on her record");
+    await click(editOf(host, "goals-why"));
+    expect((fieldByLabel(why, "Her why") as HTMLTextAreaElement).value).toBe("Wants to garden again");
+  });
+
+  it("shows the goal, its SMART words and five squares, and Edit reveals the goal and the five toggles", async () => {
+    const probe = {} as Probe;
+    const host = await mount(<GoalsHarness client={baseClient()} probe={probe} />);
+    const now = card(host, "goals-now");
+    expect(now.textContent).toContain("Carry the grandkids up the stairs");
+    expect(now.textContent).toContain("Nothing ticked yet");
+    expect(now.querySelectorAll(".gf-square")).toHaveLength(5);
+    expect(now.querySelectorAll(".gf-square[data-on]")).toHaveLength(0);
+    // The squares are not buttons: only Edit and Mark achieved are.
+    expect(now.querySelectorAll(".gf-squares button")).toHaveLength(0);
+
+    await click(editOf(host, "goals-now"));
+    expect((fieldByLabel(now, "The goal") as HTMLTextAreaElement).value).toBe("Carry the grandkids up the stairs");
     // Five toggles, each a real button with its definition.
-    const toggles = host.querySelectorAll(".gf-smart-toggle");
+    const toggles = now.querySelectorAll(".gf-smart-toggle");
     expect(toggles).toHaveLength(5);
     expect(toggles[0].textContent).toContain("Specific");
   });
@@ -114,26 +174,33 @@ describe("GoalsPanel mounts", () => {
   it("ticks all five to a SMART goal, and a toggle back is not an edit", async () => {
     const probe = {} as Probe;
     const host = await mount(<GoalsHarness client={baseClient()} probe={probe} />);
+    await click(editOf(host, "goals-now"));
     const toggles = () => Array.from(host.querySelectorAll(".gf-smart-toggle"));
     for (const t of toggles()) await click(t);
-    expect(host.querySelector('[data-testid="smart-badge"]')?.textContent).toBe("SMART goal");
     expect(probe.formData.smartChecks).toEqual({ s: true, m: true, a: true, r: true, t: true });
     expect(probe.dirty.has("smartChecks")).toBe(true);
 
+    // Done closes the editor; the read view says it, and that it is unsaved.
+    await click(editOf(host, "goals-now"));
+    expect(card(host, "goals-now").textContent).toContain("All five ticked");
+    expect(card(host, "goals-now").querySelectorAll(".gf-square[data-on]")).toHaveLength(5);
+    expect(card(host, "goals-now").textContent).toContain("Unsaved");
+
+    await click(editOf(host, "goals-now"));
     for (const t of toggles()) await click(t);
-    expect(host.querySelector('[data-testid="smart-badge"]')?.textContent).toBe("Raw goal · 0 of 5");
     expect(probe.dirty.has("smartChecks")).toBe(false);
   });
 
   it("a target date ticks Time-bound", async () => {
     const probe = {} as Probe;
     const host = await mount(<GoalsHarness client={baseClient()} probe={probe} />);
-    await typeInto(host.querySelector("#gf-target"), "2026-11-26");
+    await click(editOf(host, "goals-now"));
+    await typeInto(fieldByLabel(card(host, "goals-now"), "Target date"), "2026-11-26");
     expect(probe.formData.goalTargetDate).toBe("2026-11-26");
     expect(probe.formData.smartChecks?.t).toBe(true);
   });
 
-  it("marks a goal achieved into the history and clears it for the next one", async () => {
+  it("marks a goal achieved into Reached and clears it for the next one", async () => {
     const probe = {} as Probe;
     const client = baseClient({
       smartChecks: { s: true, m: true, a: true, r: true, t: true },
@@ -141,10 +208,11 @@ describe("GoalsPanel mounts", () => {
       goalHistory: [{ goal: "Older goal", achievedAt: "2025-05-01T12:00:00.000Z" }],
     });
     const host = await mount(<GoalsHarness client={client} probe={probe} />);
-    expect(host.querySelector('[data-testid="smart-badge"]')?.textContent).toBe("SMART goal");
+    expect(card(host, "goals-now").textContent).toContain("All five ticked");
+    expect(card(host, "goals-now").textContent).toContain("Nov 26, 2026");
 
     await click(buttonByText(host, "Mark achieved"));
-    await typeInto(host.querySelector("#gf-reward"), "Kaizen pin");
+    await typeInto(fieldByLabel(card(host, "goals-now"), "Reward (optional)"), "Kaizen pin");
     await click(buttonByText(host, "Goal achieved"));
 
     const history = probe.formData.goalHistory!;
@@ -165,13 +233,19 @@ describe("GoalsPanel mounts", () => {
       ["goalHistory", "goalTargetDate", "smartChecks", "smartGoal"].sort(),
     );
 
-    // The badge and the achieve button go with the goal; the history shows both.
-    expect(host.querySelector('[data-testid="smart-badge"]')).toBeNull();
+    // The squares and the achieve button go with the goal; Reached shows both,
+    // the new one not saved yet.
+    expect(card(host, "goals-now").querySelectorAll(".gf-square")).toHaveLength(0);
     expect(buttonByText(host, "Mark achieved")).toBeUndefined();
-    const shelf = host.querySelector('[data-testid="goal-history"]')!;
-    expect(shelf.textContent).toContain("Achieved goals · 2");
+    expect(card(host, "goals-now").textContent).toContain("Nothing set yet. What is she working toward now?");
+    const shelf = host.querySelector<HTMLElement>('[data-testid="goal-history"]')!;
+    expect(shelf.textContent).toContain("Reached · 2 goals");
     expect(shelf.textContent).toContain("Kaizen pin");
     expect(shelf.textContent).toContain("Older goal");
+    const rows = shelf.querySelectorAll(".gf-shelf__row");
+    expect(rows[0].textContent).toContain("Carry the grandkids up the stairs");
+    expect(rows[0].textContent).toContain("Not saved yet");
+    expect(rows[1].textContent).not.toContain("Not saved yet");
   });
 
   it("a client with no checklist on record gets none written when a goal is achieved", async () => {
@@ -182,6 +256,15 @@ describe("GoalsPanel mounts", () => {
     expect(probe.dirty.has("smartChecks")).toBe(false);
     expect(probe.dirty.has("goalTargetDate")).toBe(false);
     expect(probe.formData.goalHistory).toHaveLength(1);
+  });
+
+  it("gives a reader who may not edit the read views and no Edit or Mark achieved", async () => {
+    const probe = {} as Probe;
+    const host = await mount(<GoalsHarness client={baseClient()} probe={probe} canEdit={false} />);
+    expect(host.textContent).toContain("Carry the grandkids up the stairs");
+    expect(host.textContent).toContain("“Wants to garden again”");
+    expect(host.querySelectorAll('button[aria-label^="Edit"]')).toHaveLength(0);
+    expect(buttonByText(host, "Mark achieved")).toBeUndefined();
   });
 });
 
@@ -314,5 +397,51 @@ describe("FocusBoard mounts", () => {
     await typeInto(card.querySelector("input"), "Kaizen pin");
     await click(buttonByText(card, "Mark achieved"));
     expect(h.onAchieve).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }), "Kaizen pin");
+  });
+
+  it("heads the card with the focuses running, and folds the history behind its summary when asked", async () => {
+    const h = handlers();
+    const host = await mount(
+      <FocusBoard
+        focuses={focuses}
+        entries={[]}
+        machines={[]}
+        viewerIds={["uid-jane"]}
+        historyCollapsed
+        anchor="goals-focus"
+        {...h}
+      />,
+    );
+    const board = host.querySelector<HTMLElement>('[data-testid="focus-board"]')!;
+    expect(board.id).toBe("goals-focus");
+    expect(board.hasAttribute("data-cx-anchor")).toBe(true);
+    expect(board.textContent).toContain("Coach focuses · 2 running");
+
+    const history = host.querySelector<HTMLElement>('[data-testid="focus-history"]')!;
+    expect(history.tagName).toBe("DETAILS");
+    expect((history as HTMLDetailsElement).open).toBe(false);
+    expect(history.querySelector("summary")?.textContent).toContain(
+      "Focus history · 2 — who set it, how long it ran, how it ended",
+    );
+    // Still one tap from every past focus, and the coach filter still filters.
+    await click(buttonByText(history, "Sam Kim"));
+    expect(history.querySelectorAll('[data-testid="past-focus"]')).toHaveLength(1);
+  });
+
+  it("puts a review date that is still ahead on the card's line", async () => {
+    const h = handlers();
+    const ahead = new Date(Date.now() + 10 * 86400000);
+    const host = await mount(
+      <FocusBoard
+        focuses={[focus({ id: "r", reviewDueAt: ahead })]}
+        entries={[]}
+        machines={[]}
+        viewerIds={["uid-jane"]}
+        {...h}
+      />,
+    );
+    const card = host.querySelector<HTMLElement>('[data-testid="active-focus"]')!;
+    expect(card.textContent).toContain(`review ${ahead.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+    expect(card.textContent).not.toContain("Review due");
   });
 });

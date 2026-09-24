@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { clientFirstName } from "../../../lib/client-name";
 import { ExternalLink, NotebookPen, Pencil, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { auth } from "../../../firebase";
 import type { Client, Trainer } from "../../../types";
+import type { RecordAnchor } from "../../client-profile/profile-nav";
+import { Btn, CardHead, EmptyLine, Meta, anchorProps, type Pronouns } from "../../client-codex/kit";
 import { requestPlanner } from "../intent";
 import { canRemoveSharedNote, clientStudioId } from "./access";
 import { useSharedNotes } from "./hooks";
 import { removeSharedNote } from "./mutations";
 import { noteErrorMessage, whenLabel } from "./notes";
-import { NOTE_KIND_LABEL, type NoteKind, type SharedNote } from "./types";
+import { NOTE_KIND_LABEL, type SharedNote } from "./types";
 import { NoteBody } from "./NoteBody";
+import "./notes.css";
 
 /**
  * PLANS FROM THE TEAM — the notes trainers have shared onto this client's
- * record, at the top of the profile's Goals section.
+ * record, on the profile's Goals & Focus page.
  *
  * Round: Learning + Planner, Sep 2026. A note is written in its author's
  * Planner (Notes tab) and copied here when they switch on Share; only the
@@ -23,21 +25,20 @@ import { NoteBody } from "./NoteBody";
  *
  *   Write a plan         opens the author's Planner with a new plan about
  *                        this client already started
- *   Edit in Relay the author's own notes
+ *   Jot a note           the same, for a line in the note being built —
+ *                        left off when the card holds the jot strip itself
+ *   Edit in Relay        the author's own notes
  *   Take off the record  the studio's leaders and administrators; the
  *                        author keeps their own copy
+ *
+ * CLIENT CODEX (Sep 2026, phase 14): drawn with the codex kit — one panel,
+ * the kit's buttons, text on the 11 / 12 / 14 / 17 / 30 scale — and a plan's
+ * kind is a token dot (blue for a plan or a retention idea, plum for an
+ * injury, ink for the rest; never crimson). `children` go after the list,
+ * under a hairline, in the same panel: Goals & Focus puts the trainer's own
+ * working notes there. `pronouns` word the card the way the page does
+ * ("everyone who coaches her"); left out, it uses the first name.
  */
-
-const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground";
-
-const KIND_DOT: Record<NoteKind, string> = {
-  note: "bg-slate-400",
-  plan: "bg-sky-500",
-  routine: "bg-emerald-500",
-  retention: "bg-orange-500",
-  injury: "bg-amber-500",
-  research: "bg-slate-600",
-};
 
 /** Long enough that it is worth folding. */
 const FOLD_AT = 320;
@@ -47,15 +48,23 @@ export interface SharedNotesCardProps {
   authTrainer: Trainer | null;
   /** Switches to the Planner. Without it, the card only reads. */
   onOpenPlanner?: () => void;
+  /** How the card refers to the client (the codex's pronouns). Left out: the first name. */
+  pronouns?: Pick<Pronouns, "object" | "possessive">;
+  /** An anchor from RECORD_ANCHORS, when a door may land on this card. */
+  anchor?: RecordAnchor;
+  /** Drawn after the plans, under a hairline, in the same panel. */
+  children?: ReactNode;
 }
 
-export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNotesCardProps) {
+export function SharedNotesCard({ client, authTrainer, onOpenPlanner, pronouns, anchor, children }: SharedNotesCardProps) {
   const clientId = client.id ?? null;
   const { notes, loading, error } = useSharedNotes(clientId);
   const uid = auth.currentUser?.uid ?? null;
   const studioId = clientStudioId(client);
   const name = `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim() || "this client";
   const first = clientFirstName(client) || name;
+  const them = pronouns?.object ?? first;
+  const theirRecord = pronouns ? `${pronouns.possessive} record` : `${first}'s record`;
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -94,176 +103,138 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
     }
   };
 
+  const canWrite = Boolean(onOpenPlanner && clientId);
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={SUB}>Plans from the team</span>
-        {onOpenPlanner && clientId && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={jot}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              <NotebookPen className="h-3.5 w-3.5" />
-              Jot a note
-            </button>
-            <button
-              type="button"
-              onClick={writePlan}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 text-[11px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-500/15 dark:text-sky-300"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Write a plan
-            </button>
-          </div>
-        )}
-      </div>
+    <section className="cx-card snc" data-testid="shared-notes" {...anchorProps(anchor)}>
+      <CardHead
+        eyebrow="Plans from the team"
+        icon={NotebookPen}
+        actions={
+          canWrite ? (
+            <>
+              {/* The jot strip in this panel does what "Jot a note" does, in place. */}
+              {children ? null : (
+                <Btn icon={NotebookPen} onClick={jot}>
+                  Jot a note
+                </Btn>
+              )}
+              <Btn variant="live" icon={Plus} onClick={writePlan}>
+                Write a plan
+              </Btn>
+            </>
+          ) : null
+        }
+      />
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-        {error ? (
-          <p className="text-sm text-muted-foreground">{error}</p>
-        ) : loading ? (
-          <p className="text-sm text-muted-foreground">Loading plans…</p>
-        ) : notes.length === 0 ? (
-          <div className="flex items-start gap-3">
-            <NotebookPen className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Nothing shared yet. A trainer writes a plan in their notes in Relay — a routine change, an injury plan, a
-              retention idea — and switches on Share; it appears here for everyone who coaches {first}.
-            </p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {notes.map((n) => {
-              const long = n.body.length > FOLD_AT || n.body.split("\n").length > 5 || n.links.length > 3;
-              const open = expanded.has(n.id);
-              const mine = Boolean(uid) && n.authorId === uid;
-              const canTakeOff = !mine && canRemoveSharedNote(authTrainer, uid, n, studioId);
-              return (
-                <li key={n.id} className="min-w-0 rounded-xl bg-card p-3">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
-                      <span className={cn("h-2 w-2 rounded-full", KIND_DOT[n.kind])} aria-hidden />
-                      {NOTE_KIND_LABEL[n.kind]}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {mine ? "You" : n.authorName} · {whenLabel(n.updatedAt)}
-                    </span>
+      {error ? (
+        <Meta>{error}</Meta>
+      ) : loading ? (
+        <Meta>Loading plans…</Meta>
+      ) : notes.length === 0 ? (
+        <EmptyLine>
+          {`Nothing shared yet. A trainer writes a plan in their notes in Relay — a routine change, an injury plan, a retention idea — and switches on Share; it appears here for everyone who coaches ${them}.`}
+        </EmptyLine>
+      ) : (
+        <ul className="snc-list">
+          {notes.map((n) => {
+            const long = n.body.length > FOLD_AT || n.body.split("\n").length > 5 || n.links.length > 3;
+            const open = expanded.has(n.id);
+            const mine = Boolean(uid) && n.authorId === uid;
+            const canTakeOff = !mine && canRemoveSharedNote(authTrainer, uid, n, studioId);
+            return (
+              <li key={n.id} className="snc-item">
+                <div className="snc-item__head">
+                  <span className="snc-kind">
+                    <span className="snc-dot" data-kind={n.kind} aria-hidden="true" />
+                    {NOTE_KIND_LABEL[n.kind]}
+                  </span>
+                  <Meta>
+                    {mine ? "You" : n.authorName} · {whenLabel(n.updatedAt)}
+                  </Meta>
+                </div>
+                <p className="snc-title">{n.title}</p>
+                {n.body && (
+                  // A long plan folds to its first lines until "Read all"; the
+                  // whole of it is one tap away.
+                  <div className="snc-body" data-folded={long && !open ? "" : undefined}>
+                    {/* Drawn, never injected: the safe subset in ./format.ts. */}
+                    <NoteBody body={n.body} />
                   </div>
-                  <p className="mt-1 text-[15px] font-bold text-foreground [overflow-wrap:anywhere]">
-                    {n.title}
-                  </p>
-                  {n.body && (
-                    <div
-                      className={cn(
-                        "mt-1 text-sm text-slate-600 dark:text-slate-300",
-                        long && !open && "max-h-32 overflow-hidden",
-                      )}
-                    >
-                      {/* Drawn, never injected: the safe subset in ./format.ts. */}
-                      <NoteBody body={n.body} />
-                    </div>
-                  )}
-                  {n.links.length > 0 && (!long || open) && (
-                    <ul className="mt-2 flex flex-col gap-1">
-                      {n.links.map((l) => (
-                        <li key={l.url}>
-                          <a
-                            href={l.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex min-h-10 items-center gap-1.5 text-[13px] font-bold text-sky-700 underline underline-offset-2 dark:text-sky-300"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                            {l.title}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                )}
+                {n.links.length > 0 && (!long || open) && (
+                  <ul className="snc-links">
+                    {n.links.map((l) => (
+                      <li key={l.url}>
+                        <a href={l.url} target="_blank" rel="noopener noreferrer" className="snc-link">
+                          <ExternalLink size={14} aria-hidden="true" />
+                          {l.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-                  {(long || (mine && onOpenPlanner) || canTakeOff) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      {long && (
-                        <button
-                          type="button"
-                          aria-expanded={open}
-                          onClick={() =>
-                            setExpanded((s) => {
-                              const next = new Set(s);
-                              if (next.has(n.id)) next.delete(n.id);
-                              else next.add(n.id);
-                              return next;
-                            })
-                          }
-                          className="inline-flex min-h-10 items-center rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-500/10 dark:text-sky-300"
-                        >
-                          {open ? "Show less" : "Read all"}
-                        </button>
-                      )}
-                      {mine && onOpenPlanner && (
-                        <button
-                          type="button"
-                          onClick={() => editNote(n.id)}
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit in Relay
-                        </button>
-                      )}
-                      {canTakeOff && confirming !== n.id && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFailure(null);
-                            setConfirming(n.id);
-                          }}
-                          className="inline-flex min-h-10 items-center rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          Take off the record
-                        </button>
-                      )}
-                    </div>
-                  )}
+                {(long || (mine && onOpenPlanner) || canTakeOff) && (
+                  <div className="snc-actions">
+                    {long && (
+                      <Btn
+                        variant="quiet"
+                        aria-expanded={open}
+                        onClick={() =>
+                          setExpanded((s) => {
+                            const next = new Set(s);
+                            if (next.has(n.id)) next.delete(n.id);
+                            else next.add(n.id);
+                            return next;
+                          })
+                        }
+                      >
+                        {open ? "Show less" : "Read all"}
+                      </Btn>
+                    )}
+                    {mine && onOpenPlanner && (
+                      <Btn variant="quiet" icon={Pencil} onClick={() => editNote(n.id)}>
+                        Edit in Relay
+                      </Btn>
+                    )}
+                    {canTakeOff && confirming !== n.id && (
+                      <Btn
+                        variant="quiet"
+                        onClick={() => {
+                          setFailure(null);
+                          setConfirming(n.id);
+                        }}
+                      >
+                        Take off the record
+                      </Btn>
+                    )}
+                  </div>
+                )}
 
-                  {confirming === n.id && (
-                    <div
-                      role="alertdialog"
-                      aria-label="Take this plan off the record?"
-                      className="mt-2 flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3"
-                    >
-                      <p className="text-sm text-slate-700 dark:text-slate-200">
-                        Take “{n.title}” off {first}'s record? {n.authorName} keeps their own copy in their notes in Relay.
-                      </p>
-                      {failure && <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{failure}</p>}
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => takeOff(n)}
-                          className="inline-flex min-h-10 items-center rounded-xl border border-amber-600/40 bg-amber-500/15 px-3 text-[11px] font-black uppercase tracking-widest text-amber-800 disabled:opacity-50 dark:text-amber-300"
-                        >
-                          {busy ? "Taking it off…" : "Take it off"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setConfirming(null)}
-                          autoFocus
-                          className="inline-flex min-h-10 items-center rounded-xl border border-border px-3 text-[11px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 dark:text-slate-300"
-                        >
-                          Keep it
-                        </button>
-                      </div>
+                {confirming === n.id && (
+                  <div role="alertdialog" aria-label="Take this plan off the record?" className="snc-confirm">
+                    <p className="snc-confirm__text">
+                      Take “{n.title}” off {theirRecord}? {n.authorName} keeps their own copy in their notes in Relay.
+                    </p>
+                    {failure && <p className="snc-confirm__failure">{failure}</p>}
+                    <div className="snc-actions">
+                      <Btn disabled={busy} onClick={() => takeOff(n)}>
+                        {busy ? "Taking it off…" : "Take it off"}
+                      </Btn>
+                      <Btn variant="quiet" disabled={busy} onClick={() => setConfirming(null)} autoFocus>
+                        Keep it
+                      </Btn>
                     </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {children ? <div className="snc-more">{children}</div> : null}
+    </section>
   );
 }

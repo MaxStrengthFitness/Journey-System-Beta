@@ -1,190 +1,205 @@
 /* ==========================================================================
-   GOALS & FOCUS — the why, and the how
+   GOALS & FOCUS — the page of Notes & Profile (client codex, Sep 2026)
    --------------------------------------------------------------------------
-   Goals & Focus round, Sep 2026. Two surfaces of the client record:
+   Layout and the Goals-only content of the page: the three rows, the How to
+   coach her rows, the why's link lines, the SMART squares and toggles, the
+   Reached shelf, and the focus board's cards and history. Panels, buttons,
+   chips, eyebrows and fields are the codex kit's (client-codex/kit/kit.css);
+   this file draws no second one. (The P chip is the focus board's own mark:
+   which of the 4 P's a focus is, neutral, never a status colour.)
 
-     .gf-goals   the Goals section — the original why, the current goal and
-                 its SMART checklist, and the achieved-goal history
-     .gf-focus   the focus board — active 4 P focuses and their history
+   The rules it keeps, each read by the codex's scale test:
+     - Text is 11 / 12 / 14 / 17 / 30px (the --cx-fs-* tokens), nothing else.
+     - Colour is --cx-* only. Blue is "you can act on this", green is
+       "reached". Hero orange stays with Start Session; crimson is only a
+       Critical note's Loudness (the kit's LoudChip).
+     - Nothing is clipped. The ONE exception: a How-to-coach row's note body
+       (`.gf-row__text`) may fold to two lines — the whole note is one tap
+       away on Notes. A row's label and machine name are never cut.
+     - Anything tappable is 40px or taller; a button sets its own text
+       alignment here (a utility class did not survive layer ordering).
 
-   Colour comes from equipment.tokens.css; no hex below this line. Blue
-   (--eq-live) is "you can act on this", green (--eq-ok) is "achieved". Hero
-   orange stays with Start Session, and crimson stays with rep quality.
-
-   Touch targets are 40px minimum. Text alignment on buttons lives HERE, not
-   in a utility class: a <button> centres its own text and a Tailwind
-   `text-left` did not survive layer ordering in every build (FORD round).
+   Portrait first. The pages' container (`cx`) is ~696px on a 744pt iPad,
+   ~772 on an 820, ~976 on the 13-inch held upright and ~1320 in landscape.
+   Each row is one column under 760px and two from 760 (7fr / 5fr for How to
+   coach and the why; 5fr / 7fr for the goal and the focuses, the plans and
+   Reached).
    ========================================================================== */
 
-@import "../equipment/equipment.tokens.css";
-
-/* ------------------------------------------------------------------ */
-/* SHARED                                                              */
-/* ------------------------------------------------------------------ */
-
-.gf-card {
-  position: relative;
-  flex: none;
+.gf-page {
+  display: grid;
+  gap: 16px;
   min-width: 0;
-  background: var(--eq-surface);
-  border: 1px solid var(--eq-border);
-  border-radius: var(--eq-radius);
-  color: var(--eq-ink);
-  padding: 1rem 1.1rem;
 }
 
-.gf-kicker {
-  display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+.gf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
 }
 
-.gf-muted { color: var(--eq-ink-muted); }
-.gf-ink-2 { color: var(--eq-ink-2); }
+@container cx (min-width: 760px) {
+  .gf-grid--coach {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
 
-.gf-btn {
+  .gf-grid--now {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
+.gf-edit {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ---- How to coach her -------------------------------------------------- */
+
+/* The coach strategy, as the team wrote it: its own line breaks kept. */
+.gf-strategy {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.gf-row__kind {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 40px;
-  padding: 0 0.95rem;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
-  color: var(--eq-ink-2);
-  font-size: 11px;
+  gap: 6px;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.gf-btn:hover:not(:disabled) { background: var(--eq-surface-3); }
-.gf-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.gf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.gf-btn--primary {
-  background: var(--eq-live);
-  border-color: transparent;
-  color: var(--eq-live-on);
-}
-.gf-btn--primary:hover:not(:disabled) { background: var(--eq-live); filter: brightness(1.08); }
-
-.gf-btn--ok {
-  background: var(--eq-ok-fill);
-  border-color: var(--eq-ok);
-  color: var(--eq-ok);
-}
-.gf-btn--ok:hover:not(:disabled) { background: var(--eq-ok-fill); filter: brightness(0.97); }
-
-.gf-btn--quiet {
-  background: transparent;
-  border-color: transparent;
-  color: var(--eq-ink-muted);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
-.gf-input {
-  width: 100%;
-  min-height: 44px;
-  padding: 0.6rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-bg);
-  color: var(--eq-ink);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.45;
-  outline: none;
+.gf-row__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
-.gf-input::placeholder { color: var(--eq-ink-faint); }
-.gf-input:focus { border-color: var(--eq-focus-ring); background: var(--eq-surface); }
-textarea.gf-input { resize: vertical; }
 
-.gf-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 10.5px;
+.gf-row__machine {
+  color: var(--cx-ink);
   font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  background: var(--eq-surface-2);
-  color: var(--eq-ink-muted);
 }
-.gf-pill--ok   { background: var(--eq-ok-fill);   color: var(--eq-ok); }
-.gf-pill--live { background: var(--eq-live-fill); color: var(--eq-live-text); }
-.gf-pill--warn { background: var(--eq-warn-fill); color: var(--eq-warn); }
 
-/* A row that opens something. Left-aligned, full width, 40px+. */
-.gf-rowbtn {
-  display: flex;
-  width: 100%;
-  min-height: 40px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  padding: 0.35rem 0;
-  color: inherit;
-  cursor: pointer;
+/* A note's words in a row: up to two lines, the rest one tap away on Notes.
+   The machine name comes first inside it, so it is never the part cut. */
+.gf-row__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
-.gf-rowbtn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; border-radius: 8px; }
 
-/* ------------------------------------------------------------------ */
-/* GOALS                                                               */
-/* ------------------------------------------------------------------ */
+/* ---- Her why ----------------------------------------------------------- */
 
-.gf-goals { display: flex; flex-direction: column; gap: 1rem; }
-
-/* The anchor: the original why sits above everything and says so. */
-.gf-anchor {
-  border-left: 4px solid var(--eq-live);
-  background: var(--eq-live-fill);
+.gf-links {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--cx-line);
 }
-.gf-anchor .gf-kicker { color: var(--eq-live-text); }
 
-.gf-goal-head {
+.gf-link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 8px 12px;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.gf-link__icon {
+  flex: none;
+  color: var(--cx-ink-3);
+}
+
+.gf-link__text {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gf-link__key {
+  color: var(--cx-ink);
+  font-weight: 800;
+}
+
+/* ---- Working toward now: the SMART squares (read) and toggles (edit) ---- */
+
+.gf-smart-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.gf-squares {
+  display: flex;
+  gap: 6px;
+}
+
+.gf-square {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--cx-line-2);
+  border-radius: 8px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-3);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-14);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gf-square[data-on] {
+  border-color: var(--cx-ok);
+  background: var(--cx-ok-fill);
+  color: var(--cx-ok);
 }
 
 .gf-smart {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .gf-smart-toggle {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 10px;
   min-height: 56px;
-  padding: 0.55rem 0.7rem;
+  padding: 8px 10px;
+  border: 1px solid var(--cx-line);
   border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-bg);
-  color: var(--eq-ink-2);
+  background: var(--cx-bg);
+  color: var(--cx-ink-2);
+  font-family: inherit;
   text-align: left;
   cursor: pointer;
 }
-.gf-smart-toggle:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+
+.gf-smart-toggle:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+}
+
 .gf-smart-toggle[aria-pressed="true"] {
-  border-color: var(--eq-ok);
-  background: var(--eq-ok-fill);
-  color: var(--eq-ink);
+  border-color: var(--cx-ok);
+  background: var(--cx-ok-fill);
+  color: var(--cx-ink);
 }
 
 .gf-smart-letter {
@@ -194,102 +209,295 @@ textarea.gf-input { resize: vertical; }
   justify-content: center;
   width: 28px;
   height: 28px;
+  border: 1px solid var(--cx-line-2);
   border-radius: 999px;
-  border: 1px solid var(--eq-border-strong);
-  font-size: 13px;
+  background: var(--cx-surface);
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-14);
   font-weight: 800;
-  color: var(--eq-ink-muted);
-  background: var(--eq-surface);
 }
+
 .gf-smart-toggle[aria-pressed="true"] .gf-smart-letter {
-  border-color: var(--eq-ok);
-  background: var(--eq-ok);
-  color: var(--eq-surface);
+  border-color: var(--cx-ok);
+  background: var(--cx-ok);
+  color: var(--cx-surface);
 }
 
-.gf-smart-word { display: block; font-size: 12.5px; font-weight: 800; }
-.gf-smart-line { display: block; font-size: 11px; line-height: 1.3; color: var(--eq-ink-muted); }
-
-.gf-history { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-.gf-history li {
-  border-left: 3px solid var(--eq-ok);
-  padding: 0.45rem 0 0.45rem 0.75rem;
-}
-
-/* ------------------------------------------------------------------ */
-/* FOCUS                                                               */
-/* ------------------------------------------------------------------ */
-
-.gf-focus { display: flex; flex-direction: column; gap: 1rem; }
-
-.gf-focus-grid {
+.gf-smart-text {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 0.75rem;
+  gap: 2px;
+  min-width: 0;
 }
 
-.gf-focus-card--mine { border-color: var(--eq-live); }
-
-.gf-focus-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.75rem;
-  font-size: 11.5px;
-  color: var(--eq-ink-muted);
-}
-.gf-focus-meta strong { color: var(--eq-ink-2); font-weight: 700; }
-
-.gf-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--eq-border);
+.gf-smart-word {
+  font-size: var(--cx-fs-14);
+  font-weight: 800;
 }
 
+.gf-smart-line {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-11);
+  line-height: 1.3;
+}
+
+/* An inline step inside a card: the reward box, a check-in, a confirm. */
 .gf-inline {
-  margin-top: 0.6rem;
-  padding: 0.7rem;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--cx-line);
   border-radius: 12px;
-  background: var(--eq-surface-2);
+  background: var(--cx-surface-2);
+}
+
+.gf-inline__prompt {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+}
+
+.gf-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gf-buttons--end {
+  justify-content: flex-end;
+}
+
+/* ---- Reached ----------------------------------------------------------- */
+
+.gf-shelf {
+  display: grid;
+  min-width: 0;
+}
+
+.gf-shelf__row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--cx-line);
+}
+
+.gf-shelf__row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.gf-medal {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--cx-ok-fill);
+  color: var(--cx-ok);
+}
+
+.gf-shelf__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gf-shelf__title {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.gf-shelf__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Coach focuses (FocusBoard) ---------------------------------------- */
+
+.gf-focus-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gf-focus-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+}
+
+.gf-focus-card[data-mine] {
+  border-color: var(--cx-live-line);
+}
+
+.gf-focus-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gf-focus-card__intent {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* Which of the 4 P's a focus is. Neutral: an identity, never a status. */
+.gf-pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 7px;
+  background: var(--cx-surface-3);
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-11);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.gf-focus-blurb {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-style: italic;
+}
+
+/* A row that opens something: a focus's check-ins. Left-aligned, 44px. */
+.gf-rowbtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--cx-row);
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--cx-ink-2);
+  font-family: inherit;
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gf-rowbtn:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.gf-rowbtn__chevron {
+  flex: none;
+  transition: transform 0.15s;
+}
+
+.gf-rowbtn[aria-expanded="true"] .gf-rowbtn__chevron {
+  transform: rotate(180deg);
 }
 
 .gf-thread {
-  margin: 0.5rem 0 0;
-  padding: 0 0 0 0.75rem;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--cx-line-2);
   list-style: none;
-  border-left: 1px solid var(--eq-border-strong);
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+}
+
+.gf-thread__body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* The history: every focus that ended, who set it, how it ended. On the
+   Goals page it is folded behind its summary (a 44px row). */
+.gf-history {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--cx-line);
+}
+
+.gf-history__summary {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 12.5px;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--cx-row);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.gf-history__summary::-webkit-details-marker {
+  display: none;
+}
+
+.gf-history__summary:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.gf-history__chevron {
+  flex: none;
+  color: var(--cx-ink-3);
+  transition: transform 0.15s;
+}
+
+.gf-history[open] > .gf-history__summary .gf-history__chevron {
+  transform: rotate(90deg);
+}
+
+.gf-history__aside {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 400;
+}
+
+.gf-history__body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .gf-past {
-  border-top: 1px solid var(--eq-border);
-  padding: 0.6rem 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--cx-line);
 }
-.gf-past:first-child { border-top: 0; }
 
-.gf-chiprow { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.gf-chip {
-  min-height: 40px;
-  padding: 0 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
-  color: var(--eq-ink-2);
-  font-size: 12px;
+.gf-past:first-child {
+  border-top: 0;
+}
+
+.gf-past__intent {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
   font-weight: 700;
-  cursor: pointer;
+  overflow-wrap: anywhere;
 }
-.gf-chip[aria-pressed="true"] {
-  border-color: var(--eq-live);
-  background: var(--eq-live-fill);
-  color: var(--eq-live-text);
-}
-.gf-chip:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }

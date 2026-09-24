@@ -16,8 +16,10 @@
  * soonest date within a month ("birthday in 17 days"), else what waits to be
  * filed, else how much is on file. Body & Pulse's is its own too
  * (`bodySubline`, phase 12): the watch-outs on file, else when the Pulse was
- * last saved. The lines for Goals & Focus and Account are INTERIM (the shell
- * phase): each area replaces its own with the line its page writes. Story
+ * last saved. Goals & Focus's is `goalsTabHint` (phase 14): the focuses
+ * running, else "a goal set", else "no focus running". The line for Account
+ * is INTERIM (the shell phase): its area replaces it with the line its page
+ * writes. Story
  * says nothing yet: "since 2019" is a claim about the whole story, and the
  * Story page is where it is worked out honestly for a client who trained
  * here long before Journey.
@@ -36,6 +38,7 @@ import { notesTabMeta, type NotesSummary } from "../client-notes/record-selector
 import { fordSubnavLine } from "../ford/page-model";
 import type { ComingUpRow } from "../ford/coming-up";
 import { bodySubline } from "./body/page-lines";
+import { goalsTabHint } from "../goals/goals-page";
 import { plural } from "./kit/text";
 import type { CodexFordStatus } from "./codex-data";
 
@@ -100,8 +103,7 @@ function goalsMeta(input: PageMetaInput): string {
   const { state, running } = input.focuses;
   if (state === "failed") return FAILED;
   if (state !== "ready" || running === null) return LOADING;
-  if (running > 0) return `${plural(running, "focus", "focuses")} running`;
-  return (input.client.smartGoal ?? "").trim() ? "a goal set" : "nothing set";
+  return goalsTabHint({ running, goal: input.client.smartGoal });
 }
 
 function accountMeta(input: PageMetaInput): string | null {

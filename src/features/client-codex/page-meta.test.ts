@@ -131,10 +131,10 @@ describe("subnavItems", () => {
       expect(item(subnavItems(input({ focuses: { state: "ready", running: 2 } })), "goals").meta).toBe("2 focuses running");
       expect(item(subnavItems(input({ focuses: { state: "ready", running: 1 } })), "goals").meta).toBe("1 focus running");
       expect(item(subnavItems(input({ client: { smartGoal: "Walk the Camino" } as Client })), "goals").meta).toBe("a goal set");
-      expect(item(subnavItems(input()), "goals").meta).toBe("nothing set");
+      expect(item(subnavItems(input()), "goals").meta).toBe("no focus running");
     });
 
-    it("says loading and couldn't load rather than 'nothing set'", () => {
+    it("says loading and couldn't load rather than 'no focus running'", () => {
       expect(item(subnavItems(input({ focuses: { state: "loading", running: null } })), "goals").meta).toBe("loading");
       expect(item(subnavItems(input({ focuses: { state: "failed", running: null } })), "goals").meta).toBe("couldn't load");
     });

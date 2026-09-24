@@ -4,11 +4,13 @@
  * Client codex, Sep 2026 (the shell phase). The record tab stopped being one
  * scroll (ClientInfoSheet → ClientDossier) and became seven pages. The shell
  * ships before the pages are rebuilt, so the old sections' JSX lives here,
- * MOVED UNCHANGED from ClientDossier.tsx — Who they are, Goals and Admin —
- * minus the section frames (each page draws its own cards). Life went with
- * the FORD page (phase 10) and Body with the Body & Pulse page (phase 12,
- * which also retired the "Recovery between sessions" select from every
- * screen: AJ's decision 7; the field stays on the record, nothing writes it).
+ * MOVED UNCHANGED from ClientDossier.tsx — Who they are and Admin — minus
+ * the section frames (each page draws its own cards). Life went with the FORD
+ * page (phase 10), Body with the Body & Pulse page (phase 12, which also
+ * retired the "Recovery between sessions" select from every screen: AJ's
+ * decision 7; the field stays on the record, nothing writes it), and Goals
+ * with the Goals & Focus page (phase 14), whose why shows Mindbody's
+ * long-term goal — the other Mindbody indexes wait on Account below.
  *
  * Each page area replaces its block with the real page in its own phase, and
  * the cleanup phase deletes this file. Until then it is a HOSTED file: the
@@ -30,7 +32,6 @@ import {
   FieldLabel,
   ReadOnlyField,
   SelectField,
-  TextAreaField,
   TextField,
 } from "../../../components/client-dossier/DossierPrimitives";
 
@@ -265,38 +266,26 @@ export function AcquisitionBlock({ formData, updateField }: Omit<LegacyFieldProp
 }
 
 /* ------------------------------------------------------------------ */
-/* Goals & Focus                                                       */
+/* Account · Mindbody's other client indexes                           */
 /* ------------------------------------------------------------------ */
 
-export function CoachStrategyBlock({ formData, updateField }: Omit<LegacyFieldProps, "client">) {
-  const val = valOf(formData);
-  const set = setOf(updateField);
-  return (
-    <FieldGroup cols={1}>
-      <TextAreaField
-        label="Coach strategy"
-        value={val("discoveryNotes")}
-        onChange={set("discoveryNotes")}
-        rows={3}
-        placeholder="How do you coach this client? What cues land?"
-      />
-    </FieldGroup>
-  );
+/** Whether the client has any Mindbody index besides the long-term goal. */
+export function hasOtherMindbodyIndexes(client: Client): boolean {
+  return Object.keys(client.mindbodyIndexes || {}).some((k) => k !== "LongtermGoal" && k !== "LongTermGoal");
 }
 
-/** Mindbody's client indexes, read only (the long-term goal first). */
+/**
+ * Mindbody's client indexes, read only — all but the long-term goal, which
+ * Goals & Focus shows under her why (phase 14). Interim: the Account page's
+ * fine print takes these in its own phase.
+ */
 export function MindbodyIndexesBlock({ client }: { client: Client }) {
-  const longTermGoal =
-    client.mindbodyIndexes?.LongtermGoal ||
-    client.mindbodyIndexes?.LongTermGoal ||
-    "";
   const otherIndexes = Object.entries(client.mindbodyIndexes || {}).filter(
     ([k]) => k !== "LongtermGoal" && k !== "LongTermGoal",
   );
-  if (!longTermGoal && otherIndexes.length === 0) return null;
+  if (otherIndexes.length === 0) return null;
   return (
     <FieldGroup title="Mindbody client indexes">
-      {longTermGoal && <ReadOnlyField label="Long-term goal" value={longTermGoal} />}
       {otherIndexes.map(([k, v]) => (
         <ReadOnlyField key={k} label={k} value={v} />
       ))}

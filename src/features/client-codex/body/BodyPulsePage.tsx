@@ -62,13 +62,13 @@ import { injuryThreads, threadsByMachine } from "../../client-notes/record-selec
 import type { RecordForm } from "../useRecordForm";
 import type { CodexProgramming, CodexPulse } from "../codex-data";
 import type { ProgressReportsStatus } from "../../client-profile/client-answer";
-import { Btn, Card, Page, agree, dayKeyDate, type CodexGo, type Pronouns } from "../kit";
+import { Btn, Card, LoudChip, Page, Source, agree, dayKeyDate, type CodexGo, type Pronouns } from "../kit";
 import { buildFacts } from "./build";
 import { floorReads, floorRows } from "./floor";
 import { latestPain, latestPulseReadings, type PulseSource } from "./pulse-read";
 import { measuredToldPairs } from "./pairs";
 import { builtLikeHer } from "./built-like-her";
-import { coachStripHasMore, coachStripLine } from "./page-lines";
+import { howToCoachLead } from "../../goals/goals-page";
 import { readArrivals, regionTaps } from "./arrivals";
 import { buildTimeline, timelineWindow } from "./timeline";
 import { BuildCard } from "./BuildCard";
@@ -299,8 +299,17 @@ export function BodyPulsePage({
   const fitStatus = !hasHeight ? "ready" : floorKnown.fit !== "ready" ? floorKnown.fit : model.fit.status;
 
   /* ---- the strip ------------------------------------------------------- */
+  // Goals & Focus owns the line (howToCoachLead), so the strip, the Goals
+  // page and the Overview lead with the same words.
   const strategy = (formData.discoveryNotes ?? client.discoveryNotes) as string | undefined;
-  const lead = coachStripLine(strategy);
+  const lead = useMemo(
+    () => howToCoachLead({ discoveryNotes: strategy, threads, notesState, today }),
+    [strategy, threads, notesState, today],
+  );
+  // A note about one machine names it first, as Goals & Focus's rows do — it
+  // is never shown as a general cue.
+  const leadMachine =
+    lead.kind === "note" && lead.machineId ? machinesById.get(lead.machineId)?.name?.trim() || null : null;
 
   const lede =
     `How ${p.subject} ${agree(p, "is", "are")} built as the machines see ${p.object}, what the load has to work around, ` +
@@ -312,18 +321,32 @@ export function BodyPulsePage({
         <Card
           eyebrow={`How to coach ${p.object}`}
           icon={Users}
+          meta={lead.kind === "note" && lead.importance !== "standard" ? <LoudChip importance={lead.importance} /> : undefined}
           actions={
             <Btn iconEnd={ChevronRight} onClick={() => go("goals", "goals-coach")}>
-              {lead && coachStripHasMore(strategy) ? "All of it" : "Goals & Focus"}
+              {(lead.kind === "strategy" || lead.kind === "note") && lead.more ? "All of it" : "Goals & Focus"}
             </Btn>
           }
         >
-          {lead ? (
-            <p className="bp-strip__text">{lead}</p>
+          {lead.kind === "strategy" ? (
+            <p className="bp-strip__text">{lead.text}</p>
+          ) : lead.kind === "note" ? (
+            <>
+              <p className="bp-strip__text">
+                {leadMachine ? <b>{`${leadMachine}: `}</b> : null}
+                {lead.text}
+              </p>
+              <Source>{`${lead.author}, in ${p.possessive} notes`}</Source>
+            </>
+          ) : lead.kind === "none" ? (
+            <p className="bp-strip__empty">{`No coach strategy or coaching notes for ${p.object} yet.`}</p>
           ) : (
-            // Only what was checked: the coaching and preference notes join the
-            // strip with howToCoachLead (Goals & Focus, phase 14).
-            <p className="bp-strip__empty">{`No coach strategy on ${p.possessive} record yet.`}</p>
+            // Unknown, not empty: with no strategy, the line waits on her notes.
+            <p className="bp-strip__empty">
+              {lead.state === "failed"
+                ? `No coach strategy on ${p.possessive} record, and ${p.possessive} notes couldn't be loaded just now.`
+                : `Loading ${p.possessive} coaching notes…`}
+            </p>
           )}
         </Card>
 

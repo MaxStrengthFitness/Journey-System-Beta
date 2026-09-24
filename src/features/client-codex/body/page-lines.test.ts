@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
-import { bodySubline, coachStripHasMore, coachStripLine, newestPulseDay } from "./page-lines";
+import { bodySubline, newestPulseDay } from "./page-lines";
 
 const NOW = new Date(2027, 2, 24, 12);
 
@@ -44,19 +44,5 @@ describe("Body & Pulse's sub-toggle line", () => {
     );
     expect(newestPulseDay(null)).toBeNull();
     expect(newestPulseDay(historyFromDocs([], 50))).toBeNull();
-  });
-});
-
-describe("the How-to-coach strip", () => {
-  it("quotes the first paragraph of the coach strategy, verbatim", () => {
-    const text = "Sets up short on everything.\nTalk her through the first rep.\n\nShe goes quiet when working hard.";
-    expect(coachStripLine(text)).toBe("Sets up short on everything.\nTalk her through the first rep.");
-    expect(coachStripHasMore(text)).toBe(true);
-    expect(coachStripHasMore("One paragraph.")).toBe(false);
-  });
-
-  it("says nothing is written rather than showing a blank", () => {
-    expect(coachStripLine("   ")).toBeNull();
-    expect(coachStripLine(undefined)).toBeNull();
   });
 });

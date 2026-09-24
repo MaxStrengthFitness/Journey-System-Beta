@@ -2,17 +2,15 @@
  * THE JOURNAL AREAS — mounted by area on the client record's pages.
  *
  *   1. PROGRESS REPORTS  — the shelf of finalized evaluations.
- *   2. FOCUS             — what each coach is working on (the 4 P's), with
- *                          check-in, extend, achieved and retire, and the
- *                          history of every past focus.
  *
- * NOTES LEFT THIS FILE in the client codex (Sep 2026): the Notes page is
- * `features/client-notes/NotesPage` — the composer, the To-file tray and the
- * threads — on the tab's one journal load. THE PULSE LEFT IT in phase 12:
+ * WHAT LEFT THIS FILE in the client codex (Sep 2026): NOTES (phase 9) — the
+ * Notes page is `features/client-notes/NotesPage`, the composer, the To-file
+ * tray and the threads on the tab's one journal load. THE PULSE (phase 12) —
  * Body & Pulse owns the client's one Pulse draft and mounts
- * `ClientCheckInPanel` itself, with that draft. The Focus area is still
- * mounted here by the Goals & Focus page until that page is rebuilt; then
- * this file goes.
+ * `ClientCheckInPanel` itself, with that draft. THE FOCUS BOARD (phase 14) —
+ * Goals & Focus mounts `FocusBoard` itself, on the tab's one journal load,
+ * with its writes from `features/goals/useFocusActions`. Nothing mounts this
+ * file any more; the codex's cleanup phase deletes it.
  *
  * SINCE THE PROFILE MERGE (Sep 2026) THIS IS NOT A TAB
  * ---------------------------------------------------
@@ -24,27 +22,20 @@
  * in. The codex loads it once and hands the same object to every mount, so
  * several areas of journal UI cost one set of listeners. Left out, the
  * component loads its own.
- *
- * Each mount is its own component instance with its own state. Nothing may
- * rely on state set in one mount being seen by another — that is exactly how
- * focus check-ins used to lose their focus id (fixed in the Goals & Focus
- * round: the focus card files its own check-in).
  */
 import React from "react";
 import { TriangleAlert } from "lucide-react";
 import { useClientJournal, type UseClientJournalResult } from "../../hooks/useClientJournal";
-import { useFocusActions } from "../../features/goals/useFocusActions";
 import type {
   Client,
   Machine,
   ProgressReport,
   Trainer,
 } from "../../types";
-import { FocusBoard } from "./FocusBoard";
 import { ProgressReportArchive } from "./ProgressReportArchive";
 
 /** The areas, by id. */
-export type JournalAreaId = "progress-reports" | "focus";
+export type JournalAreaId = "progress-reports";
 
 export interface ClientJournalTabProps {
   clientId: string | null;
@@ -58,7 +49,7 @@ export interface ClientJournalTabProps {
   onNewReport: () => void;
   hasQuotaError?: boolean;
   /**
-   * Which areas to draw. Omit for both. Whoever composes the areas owns
+   * Which areas to draw. Omit for all. Whoever composes the areas owns
    * the navigation; see the header.
    */
   areas?: JournalAreaId[];
@@ -69,9 +60,7 @@ export interface ClientJournalTabProps {
 export function ClientJournalTab({
   clientId,
   client,
-  machines,
   trainers,
-  authTrainer,
   progressReports,
   onSelectReport,
   onDeleteReport,
@@ -89,18 +78,11 @@ export function ClientJournalTab({
     trainers,
     enabled: !hasQuotaError && !journal,
   });
-  const { entries, focuses, needsIndex, capped } = journal ?? ownJournal;
+  const { needsIndex, capped } = journal ?? ownJournal;
 
   /** Composed into a spine? Then the section shell already printed a heading. */
   const composed = Boolean(areas);
   const shows = (id: JournalAreaId) => !areas || areas.includes(id);
-
-  /** Set, achieve, extend, retire, check in — the Focus area's writes. */
-  const focusActions = useFocusActions({ clientId, client, authTrainer });
-
-  /* The focus actions (create, achieve, extend, retire, and the check-in
-     that carries its focus id) live in features/goals/useFocusActions.ts,
-     shared with the codex's Goals & Focus page. */
 
   /* -------------------------------- render ----------------------------- */
 
@@ -144,29 +126,6 @@ export function ClientJournalTab({
           onSelect={onSelectReport}
           onDelete={onDeleteReport}
           onNew={onNewReport}
-        />
-      </JournalArea>
-      )}
-
-      {/* ---------------------------- 2 · FOCUS -------------------------- */}
-      {shows("focus") && (
-      <JournalArea
-        id="focus"
-        bare={composed}
-        title="Focus"
-        blurb="What each coach is working on with this client, and whether it was achieved."
-      >
-        <FocusBoard
-          focuses={focuses}
-          entries={entries}
-          machines={machines}
-          viewerIds={focusActions.viewerIds}
-          viewerRole={focusActions.viewerRole}
-          onCreate={focusActions.onCreate}
-          onAchieve={focusActions.onAchieve}
-          onExtend={focusActions.onExtend}
-          onRetire={focusActions.onRetire}
-          onCheckIn={focusActions.onCheckIn}
         />
       </JournalArea>
       )}

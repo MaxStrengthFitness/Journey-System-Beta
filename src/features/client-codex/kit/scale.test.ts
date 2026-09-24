@@ -147,6 +147,23 @@ const CODEX_FILES: readonly string[] = [
   "features/client-codex/body/BodyTimeline.tsx",
   "features/client-codex/body/arrivals.ts",
   "features/client-codex/body/timeline.ts",
+  // Goals & Focus (phase 14): the page and its cards, its stylesheet, the
+  // pure modules that write its words, the focus writes, and the pieces it
+  // mounts, brought onto the kit (they were hosted): the focus board, the
+  // team's shared plans and the trainer's jot strip.
+  "features/goals/GoalsPage.tsx",
+  "features/goals/HowToCoachCard.tsx",
+  "features/goals/HerWhyCard.tsx",
+  "features/goals/WorkingTowardCard.tsx",
+  "features/goals/ReachedShelf.tsx",
+  "features/goals/goals.css",
+  "features/goals/goals-page.ts",
+  "features/goals/goals.ts",
+  "features/goals/focus.ts",
+  "features/goals/useFocusActions.ts",
+  "components/journal/FocusBoard.tsx",
+  "features/relay/notes/SharedNotesCard.tsx",
+  "features/relay/notes/ClientJotStrip.tsx",
 ];
 
 /**
@@ -180,7 +197,12 @@ const LINE_CLAMP_LINES = 2;
  * legacy-blocks, brought the InBody card onto the kit (CODEX_FILES now) and
  * collapsed the flag picker's stylesheet onto the scale: 148 → 125. The
  * picker stays hosted: its screen-reader-only text is one line clipped on
- * purpose, which the clipping rule would refuse.
+ * purpose, which the clipping rule would refuse. Goals & Focus (14) deleted
+ * the goals panel, took the focus board out of ClientJournalTab (which only
+ * the cleanup phase's delete is left for), and brought the focus board, the
+ * goals stylesheet, the shared plans and the jot strip onto the kit
+ * (CODEX_FILES now) — and the jot rules of notes.css onto the scale: 125 →
+ * 93. notes.css stays hosted: the rest of it is Relay's.
  */
 const HOSTED_FILES: readonly string[] = [
   "features/client-codex/pages/legacy-blocks.tsx",
@@ -188,18 +210,14 @@ const HOSTED_FILES: readonly string[] = [
   "components/client-dossier/JournalRail.tsx",
   "components/journal/ClientJournalTab.tsx",
   "features/ford/ford.css",
-  "features/goals/GoalsPanel.tsx",
-  "features/goals/goals.css",
   "features/client-admin/ContractPanel.tsx",
   "features/client-admin/client-admin.css",
-  "features/relay/notes/SharedNotesCard.tsx",
-  "features/relay/notes/ClientJotStrip.tsx",
   "features/relay/notes/notes.css",
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
 ];
-/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125. Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 125;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 93;
 
 /**
  * The shared note pieces the Notes page mounts — the composer, the To-file

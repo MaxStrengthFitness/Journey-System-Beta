@@ -480,6 +480,7 @@ describe("ClientCodex — pages", () => {
       "goals-now",
       "goals-focus",
       "goals-plans",
+      "goals-reached",
       "account-contact",
       "account-membership",
       "account-found-us",
@@ -588,6 +589,31 @@ describe("ClientCodex — one load for the tab", () => {
     expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(3);
     expect(liveOn("sessions")).toBe(1);
     expect(fake.gets.filter((p) => p === "sessions")).toEqual([]);
+  });
+
+  it("opens Goals & Focus's own reads — the shared plans and the jots — on its first visit, once", async () => {
+    const host = await mount();
+    expect(liveOn("clients/c1/sharedNotes")).toBe(0);
+    expect(liveOn("trainers/uid-ann/notes")).toBe(0);
+    await click(tab(host, "goals"));
+    expect(liveOn("clients/c1/sharedNotes")).toBe(1);
+    expect(liveOn("trainers/uid-ann/notes")).toBe(1);
+    await click(tab(host, "overview"));
+    await click(tab(host, "goals"));
+    expect(liveOn("clients/c1/sharedNotes")).toBe(1);
+    expect(liveOn("trainers/uid-ann/notes")).toBe(1);
+  });
+
+  it("gives a cross-train reader Goals & Focus read only: no Edit, no Mark achieved, a focus still theirs to set", async () => {
+    const host = await mount(baseClient({ smartGoal: "Walk the Camino" } as Partial<Client>), crossTrainer);
+    await click(tab(host, "goals"));
+    const goals = panel(host, "goals");
+    expect(goals.textContent).toContain("Walk the Camino");
+    expect(goals.querySelector('[aria-label^="Edit"]')).toBeNull();
+    expect(buttonIn(goals, "Mark achieved")).toBeUndefined();
+    expect(buttonIn(goals, "Set a focus")).toBeTruthy();
+    // Her Dreams are FORD's, which a cross-train reader is refused.
+    expect(goals.querySelector("#goals-why")?.textContent).toContain("FORD is kept by the home studio.");
   });
 
   it("reads nothing when switching between pages it has already shown", async () => {

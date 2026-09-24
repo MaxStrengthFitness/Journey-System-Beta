@@ -3,14 +3,15 @@
  * THE FOCUS ACTIONS, MOVED (client codex, Sep 2026).
  *
  * The focus writes moved out of ClientJournalTab into useFocusActions so the
- * journal's Focus area and the Goals & Focus page file a focus the same way.
- * The writers themselves (useClientJournal) are pinned elsewhere; this mounts
- * the hook, and the journal's Focus area through it, and pins what the move
- * must not change:
+ * Goals & Focus page files a focus exactly as the journal's Focus area did
+ * (phase 14 then took the board out of ClientJournalTab altogether). The
+ * writers themselves (useClientJournal) are pinned elsewhere; this mounts the
+ * hook, and the focus board through it as the Goals page wires it, and pins
+ * what the move must not change:
  *   - the author is the AUTH UID, and the coach's ids are both of theirs;
  *   - a check-in carries its focus id and the client's home studio;
  *   - an empty check-in writes nothing; a failed one says so and resolves false;
- *   - the Focus area's card still files through it.
+ *   - the board's card still files through it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -51,8 +52,7 @@ vi.mock("../../hooks/useClientJournal", async (importOriginal) => {
 });
 
 import { useFocusActions, type FocusActions } from "./useFocusActions";
-import { ClientJournalTab } from "../../components/journal/ClientJournalTab";
-import type { UseClientJournalResult } from "../../hooks/useClientJournal";
+import { FocusBoard } from "../../components/journal/FocusBoard";
 import type { Client, Trainer } from "../../types";
 import type { ClientFocus } from "../../types/journal";
 
@@ -186,7 +186,7 @@ describe("useFocusActions", () => {
     ]);
   });
 
-  it("the journal's Focus area files a card's check-in through it, focus id and all", async () => {
+  it("the Goals page's focus board files a card's check-in through it, focus id and all", async () => {
     const card = {
       ...focus,
       studioId: "westlake",
@@ -203,30 +203,25 @@ describe("useFocusActions", () => {
       createdAt: new Date(2026, 7, 1, 10),
       updatedAt: new Date(2026, 7, 1, 10),
     } as unknown as ClientFocus;
-    const journal = {
-      entries: [],
-      threads: [],
-      focuses: [card],
-      criticalEntries: [],
-      isLoading: false,
-      needsIndex: false,
-      capped: false,
-    } as unknown as UseClientJournalResult;
-    const el = await mount(
-      <ClientJournalTab
-        clientId="judy"
-        client={client}
-        machines={[]}
-        trainers={[]}
-        authTrainer={jane}
-        progressReports={[]}
-        onSelectReport={() => {}}
-        onDeleteReport={() => {}}
-        onNewReport={() => {}}
-        areas={["focus"]}
-        journal={journal}
-      />,
-    );
+    // What Goals & Focus does: the board draws, useFocusActions writes.
+    function Board() {
+      const a = useFocusActions({ clientId: "judy", client, authTrainer: jane });
+      return (
+        <FocusBoard
+          focuses={[card]}
+          entries={[]}
+          machines={[]}
+          viewerIds={a.viewerIds}
+          viewerRole={a.viewerRole}
+          onCreate={a.onCreate}
+          onAchieve={a.onAchieve}
+          onExtend={a.onExtend}
+          onRetire={a.onRetire}
+          onCheckIn={a.onCheckIn}
+        />
+      );
+    }
+    const el = await mount(<Board />);
     const active = el.querySelector('[data-testid="active-focus"]') as HTMLElement;
     const button = (text: string) =>
       Array.from(active.querySelectorAll("button")).find((b) => b.textContent?.includes(text))!;

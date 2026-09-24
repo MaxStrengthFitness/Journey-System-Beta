@@ -378,6 +378,75 @@ describe("Body & Pulse — the page", () => {
   });
 });
 
+describe("Body & Pulse — how to coach her (Goals & Focus's line, phase 14)", () => {
+  const strip = (host: HTMLElement) => host.querySelector<HTMLElement>(".bp > .cx-card")!;
+  const tip = note({
+    id: "tip",
+    kind: "coaching",
+    category: "Pace",
+    importance: "standard",
+    body: "Count her into the turnaround.",
+  });
+
+  it("leads with the first paragraph of the coach strategy, with All of it when there is more", async () => {
+    const host = await mount({
+      client: carol({ discoveryNotes: "Sets up short on everything.\n\nShe goes quiet when working hard." }),
+      entries: [critical, tip],
+    });
+    expect(strip(host).textContent).toContain("How to coach her");
+    expect(strip(host).textContent).toContain("Sets up short on everything.");
+    expect(strip(host).textContent).not.toContain("She goes quiet");
+    expect(buttonIn(strip(host), "All of it")).toBeTruthy();
+  });
+
+  it("with no strategy, quotes her first coaching note and who wrote it", async () => {
+    const host = await mount({ entries: [critical, tip] });
+    expect(strip(host).textContent).toContain("Count her into the turnaround.");
+    expect(strip(host).textContent).toContain("Jess, in her notes");
+    expect(buttonIn(strip(host), "Goals & Focus")).toBeTruthy();
+  });
+
+  it("with no strategy, passes over a Critical coaching tip (the red line carries it) and names a tip's machine first", async () => {
+    const criticalTip = note({
+      id: "crit-tip",
+      kind: "coaching",
+      category: "Pace",
+      importance: "critical",
+      machineId: "m-leg-press",
+      body: "Never past 90° on the way down.",
+      occurredAt: new Date(2027, 2, 16, 12),
+    });
+    const machineTip = note({
+      id: "chest-tip",
+      kind: "coaching",
+      category: "Pace",
+      importance: "elevated",
+      machineId: "m-chest-press",
+      body: "Count the lower turnaround out loud.",
+    });
+    const host = await mount({ entries: [critical, criticalTip, machineTip] });
+    const text = strip(host).textContent ?? "";
+    expect(text).not.toContain("Never past 90°");
+    expect(text).toContain("Chest Press: Count the lower turnaround out loud.");
+    expect(strip(host).querySelector(".cx-loud")?.textContent).toBe("Heads up");
+
+    // Her only coaching note is Critical: it leads, marked Critical, machine first — never "nothing written".
+    const onlyCritical = await mount({ entries: [critical, criticalTip] });
+    const line = strip(onlyCritical).textContent ?? "";
+    expect(line).toContain("Leg Press: Never past 90° on the way down.");
+    expect(strip(onlyCritical).querySelector(".cx-loud")?.textContent).toBe("Critical");
+    expect(line).not.toContain("No coach strategy or coaching notes");
+  });
+
+  it("never says nothing is written while her notes are unknown", async () => {
+    const loading = await mount({ entries: [], notesState: "loading" });
+    expect(strip(loading).textContent).toContain("Loading her coaching notes…");
+    expect(strip(loading).textContent).not.toContain("No coach strategy or coaching notes");
+    const none = await mount({ entries: [critical] });
+    expect(strip(none).textContent).toContain("No coach strategy or coaching notes for her yet.");
+  });
+});
+
 describe("Body & Pulse — watch-outs (they replaced BodyWatchOuts)", () => {
   it("quotes the every-set instruction verbatim and opens a floor machine the instruction names", async () => {
     const onOpenMachine = vi.fn();

@@ -1227,25 +1227,51 @@
 .ne__handoff input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
 .ne__handoff > span { display: flex; flex-direction: column; gap: 2px; }
 
-/* The jot strip on a client's record (ClientJotStrip.tsx) */
+/* The jot strip on a client's record (ClientJotStrip.tsx), and the Plans
+   from the team panel it sits in (SharedNotesCard.tsx). Both are drawn only
+   on the client codex's Goals & Focus page, so they take the codex's tokens
+   (--cx-*, declared on the codex's root) and its text scale: 11 / 12 / 14 /
+   17 / 30px (client codex, Sep 2026, phase 14). Anything tappable is 40px or
+   taller. */
 .jot {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  border: 1px dashed var(--st-border-strong, #a9b2b9);
+  border: 1px dashed var(--cx-line-2);
   border-radius: 14px;
 }
 .jot__head { display: flex; flex-direction: column; gap: 2px; }
-.jot__title { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 10px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
-.jot__sub { font-size: 11px; opacity: 0.7; }
+.jot__title { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--cx-ink-3); font-size: 11px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+.jot__sub { color: var(--cx-ink-3); font-size: 12px; }
 .jot__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.jot__item { display: flex; align-items: baseline; gap: 0.5rem; font-size: 13px; }
-.jot__when { flex: none; font-size: 11px; font-weight: 700; opacity: 0.6; min-width: 5rem; }
-.jot__text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.jot__open { flex: none; min-height: 32px; padding: 0 10px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; opacity: 0.8; }
+.jot__item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; color: var(--cx-ink); font-size: 14px; }
+.jot__when { flex: none; min-width: 5rem; color: var(--cx-ink-3); font-size: 12px; font-weight: 700; }
+.jot__text { flex: 1 1 12rem; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.jot__open { flex: none; min-height: 40px; padding: 0 12px; border: 1px solid var(--cx-line-2); border-radius: 10px; background: var(--cx-surface-2); color: var(--cx-ink); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
 .jot__box { display: flex; gap: 0.5rem; align-items: stretch; }
-.jot__input { flex: 1; min-width: 0; padding: 0.5rem 0.625rem; border: 1px solid var(--st-border, #d3dadf); border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 1.45; resize: vertical; }
-.jot__add { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--st-live, #0a548b); color: #fff; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.jot__input { flex: 1; min-width: 0; min-height: 44px; padding: 0.5rem 0.625rem; border: 1px solid var(--cx-line); border-radius: 10px; background: var(--cx-bg); color: var(--cx-ink); font: inherit; font-size: 14px; line-height: 1.45; resize: vertical; }
+.jot__input:disabled { opacity: 0.6; }
+.jot__add { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--cx-live); border-radius: 10px; background: var(--cx-live); color: var(--cx-live-on); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .jot__add:disabled { opacity: 0.5; cursor: default; }
-.jot__error { margin: 0; font-size: 12px; color: var(--st-flag, #8a5300); }
+.jot__error { margin: 0; color: var(--cx-warn); font-size: 12px; font-weight: 700; }
+
+.snc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+.snc-item { display: grid; gap: 6px; min-width: 0; padding: 12px 14px; border: 1px solid var(--cx-line); border-radius: 12px; background: var(--cx-surface-2); }
+.snc-item__head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.snc-kind { display: inline-flex; align-items: center; gap: 6px; color: var(--cx-ink-2); font-size: 11px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
+.snc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--cx-ink-3); }
+.snc-dot[data-kind="plan"],
+.snc-dot[data-kind="retention"] { background: var(--cx-live); }
+.snc-dot[data-kind="injury"] { background: var(--cx-warn); }
+.snc-title { margin: 0; color: var(--cx-ink); font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.snc-body { min-width: 0; color: var(--cx-ink-2); }
+/* A long plan folds to its first lines until "Read all" — the whole plan is one tap away. */
+.snc-body[data-folded] { max-height: 8rem; overflow: hidden; }
+.snc-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.snc-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; color: var(--cx-live-text); font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.snc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.snc-confirm { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--cx-warn-line); border-radius: 12px; background: var(--cx-warn-fill); }
+.snc-confirm__text { margin: 0; color: var(--cx-ink); font-size: 14px; }
+.snc-confirm__failure { margin: 0; color: var(--cx-warn); font-size: 14px; font-weight: 700; }
+.snc-more { display: grid; gap: 10px; min-width: 0; padding-top: 12px; border-top: 1px solid var(--cx-line); }

@@ -1,6 +1,5 @@
 /**
- * BODY & PULSE — the page's small lines: its sub-toggle line, and the "How to
- * coach her" strip at the top.
+ * BODY & PULSE — the page's small lines: its sub-toggle line.
  *
  * Client codex, Sep 2026 (phase 12). Each page area owns the line under its
  * segment (INTEGRATION: page-meta.ts only composes them). Body & Pulse says
@@ -9,10 +8,11 @@
  * when the Pulse was last saved, else what the page holds ("Build and
  * Pulse"). Short, because the bar wraps at portrait widths.
  *
- * The strip quotes how to coach her. Goals & Focus owns that sentence
- * (`howToCoachLead`, phase 14); until it lands, the strip quotes the first
- * paragraph of the coach strategy on her record, verbatim, never cut
- * mid-sentence — the whole of it is one tap away on Goals & Focus.
+ * The "How to coach her" strip at the top of the page is Goals & Focus's
+ * sentence (`howToCoachLead`, goals/goals-page.ts, phase 14): the first
+ * paragraph of the coach strategy, else her first coaching note that is not
+ * Critical (the red line under the bar carries those), verbatim, its machine
+ * named first.
  *
  * Pure: page-lines.test.ts.
  */
@@ -56,22 +56,4 @@ export function bodySubline({
 export function newestPulseDay(history: AssessmentHistory | null | undefined): string | null {
   const newest = roundsNewestFirst(history)[0];
   return newest ? studioDayKeyOf(newest.date) : null;
-}
-
-/**
- * The first paragraph of the coach strategy, verbatim (a paragraph ends at a
- * blank line). Null when nothing is written.
- */
-export function coachStripLine(discoveryNotes: string | null | undefined): string | null {
-  const text = (discoveryNotes ?? "").replace(/\r\n?/g, "\n").trim();
-  if (!text) return null;
-  const first = text.split(/\n\s*\n/)[0]?.trim() ?? "";
-  return first || null;
-}
-
-/** Whether the strategy holds more than the paragraph the strip shows. */
-export function coachStripHasMore(discoveryNotes: string | null | undefined): boolean {
-  const text = (discoveryNotes ?? "").replace(/\r\n?/g, "\n").trim();
-  const first = coachStripLine(text);
-  return first !== null && text.length > first.length;
 }

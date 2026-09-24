@@ -15,8 +15,18 @@
  *     focus id. It used to scroll to the Notes composer in a DIFFERENT mount
  *     of the journal, which never received the focus — so the note saved
  *     without it and the check-in thread stayed empty.
- *   - The history is always visible: every past focus, who set it, how long
- *     it ran, how it ended, the reward, and its notes. Filter by trainer.
+ *   - The history: every past focus, who set it, how long it ran, how it
+ *     ended, the reward, and its notes. Filter by trainer.
+ *
+ * CLIENT CODEX (Sep 2026, phase 14). The board is the Coach focuses card on
+ * Goals & Focus, drawn with the codex kit — one panel, the kit's buttons,
+ * chips and fields, text on the 11 / 12 / 14 / 17 / 30 scale — and its P is a
+ * neutral chip (an identity, never a hue). Its props, handlers, testids and
+ * button words are unchanged. `historyCollapsed` folds the history behind a
+ * 44px summary (the Goals page passes it: Reached already lists what was
+ * achieved); left out, the history shows as it always has. The card's head
+ * says "Coach focuses · 2 running" and a review date that is still ahead
+ * joins a card's line ("review Mar 23").
  *
  * Check-ins are ordinary journal entries carrying `focusId`, so a focus's
  * thread and the client's notes are the same records — never two sources.
@@ -30,17 +40,17 @@ import {
   Brain,
   Check,
   ChevronDown,
-  Dumbbell,
+  ChevronRight,
   MessageSquarePlus,
   PersonStanding,
   Plus,
   RotateCw,
   Route,
+  Target,
   Timer,
   Trophy,
   X,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
 import {
   FOCUS_BLURBS,
   FOCUS_CATEGORIES,
@@ -51,6 +61,23 @@ import {
   type JournalEntry,
 } from "../../types/journal";
 import type { Machine } from "../../types";
+import type { RecordAnchor } from "../../features/client-profile/profile-nav";
+import {
+  Btn,
+  CardHead,
+  Chip,
+  ChipButton,
+  EmptyLine,
+  Eyebrow,
+  Meta,
+  Picks,
+  SelectInput,
+  TextArea,
+  TextInput,
+  anchorProps,
+  cls,
+  joinDots,
+} from "../../features/client-codex/kit";
 import {
   FOCUS_OUTCOME_LABEL,
   canManageFocus,
@@ -71,7 +98,11 @@ const ICONS: Record<string, React.ElementType> = {
 };
 
 const fmtDay = (d: Date | null) =>
-  d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
+  d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+const fmtShort = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+const CATEGORY_OPTIONS = FOCUS_CATEGORIES.map((c) => ({ value: c, label: c }));
 
 export interface FocusBoardProps {
   focuses: ClientFocus[];
@@ -91,6 +122,11 @@ export interface FocusBoardProps {
   onRetire: (focus: ClientFocus) => Promise<void> | void;
   /** Files a check-in against this focus. Resolves true when it saved. */
   onCheckIn: (focus: ClientFocus, body: string) => Promise<boolean>;
+  /** Fold the history behind its summary (Goals & Focus). Default: shown. */
+  historyCollapsed?: boolean;
+  /** The card a door may land on (Goals & Focus: "goals-focus"). */
+  anchor?: RecordAnchor;
+  className?: string;
 }
 
 export function FocusBoard({
@@ -104,6 +140,9 @@ export function FocusBoard({
   onExtend,
   onRetire,
   onCheckIn,
+  historyCollapsed = false,
+  anchor,
+  className,
 }: FocusBoardProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [draftCategory, setDraftCategory] = useState<FocusCategory>("Posture");
@@ -114,6 +153,7 @@ export function FocusBoard({
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   const active = focuses.filter((f) => f.status === "active");
+  const ended = useMemo(() => focuses.filter((f) => f.status !== "active"), [focuses]);
 
   /** Check-ins per focus, from the entries already loaded. */
   const threads = useMemo(() => {
@@ -128,11 +168,10 @@ export function FocusBoard({
   }, [entries]);
 
   const past = useMemo(() => pastFocuses(focuses, historyTrainer), [focuses, historyTrainer]);
-  const pastTrainers = useMemo(
-    () => focusTrainers(focuses.filter((f) => f.status !== "active")),
-    [focuses],
-  );
+  const pastTrainers = useMemo(() => focusTrainers(ended), [ended]);
   const shownPast = showAllHistory ? past : past.slice(0, 6);
+
+  const machineOptions = useMemo(() => machines.map((m) => ({ value: m.id, label: m.name })), [machines]);
 
   const save = async () => {
     if (!draftIntent.trim()) return;
@@ -151,97 +190,99 @@ export function FocusBoard({
     }
   };
 
-  return (
-    <section className="gf-focus" data-testid="focus-board">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="gf-kicker">Active focuses · {active.length}</h3>
-          <p className="gf-muted text-[12px]">
-            What each coach is working on with this client. More than one can run at once.
-          </p>
+  const history = (
+    <div className="gf-history__body">
+      {pastTrainers.length > 1 && (
+        <div className="cx-chips" role="group" aria-label="Filter history by coach">
+          <ChipButton pressed={historyTrainer === null} onClick={() => setHistoryTrainer(null)}>
+            Everyone
+          </ChipButton>
+          {pastTrainers.map((t) => (
+            <ChipButton
+              key={t.id}
+              pressed={historyTrainer === t.id}
+              onClick={() => setHistoryTrainer(historyTrainer === t.id ? null : t.id)}
+            >
+              {t.name} · {t.count}
+            </ChipButton>
+          ))}
         </div>
-        {!isCreating && (
-          <button type="button" className="gf-btn gf-btn--primary" onClick={() => setIsCreating(true)}>
-            <Plus className="h-3.5 w-3.5" aria-hidden /> Set a focus
-          </button>
-        )}
-      </div>
+      )}
+
+      {past.length === 0 ? (
+        <Meta>No focus has ended yet. When one is achieved or retired it is kept here.</Meta>
+      ) : (
+        <div>
+          {shownPast.map((f) => (
+            <PastFocusRow key={f.id} focus={f} thread={threads.get(f.id) ?? []} machines={machines} />
+          ))}
+        </div>
+      )}
+
+      {past.length > 6 && (
+        <div className="gf-buttons">
+          <Btn variant="quiet" onClick={() => setShowAllHistory((v) => !v)}>
+            {showAllHistory ? "Show fewer" : `See all ${past.length}`}
+          </Btn>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <section
+      className={cls("cx-card gf-focus", className)}
+      data-testid="focus-board"
+      {...anchorProps(anchor)}
+    >
+      <CardHead
+        eyebrow={`Coach focuses · ${active.length} running`}
+        icon={Target}
+        actions={
+          isCreating ? null : (
+            <Btn variant="live" icon={Plus} onClick={() => setIsCreating(true)}>
+              Set a focus
+            </Btn>
+          )
+        }
+      />
 
       {isCreating && (
-        <div className="gf-card">
-          <p className="gf-kicker mb-2">Pick a P</p>
-          <div className="flex flex-wrap gap-1.5">
-            {FOCUS_CATEGORIES.map((c) => {
-              const v = FOCUS_VISUALS[c];
-              const on = draftCategory === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setDraftCategory(c)}
-                  className={cn(
-                    "h-10 rounded-xl border px-3.5 text-[11px] font-black uppercase tracking-wider transition-all",
-                    on
-                      ? v.chip
-                      : "border-slate-200 bg-slate-50 text-muted-foreground hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/40 dark:hover:bg-slate-800",
-                  )}
-                >
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-          <p className="gf-muted mt-1.5 text-[12px] italic">{FOCUS_BLURBS[draftCategory]}</p>
+        <div className="gf-inline">
+          <Picks label="Pick a P" options={CATEGORY_OPTIONS} value={draftCategory} onChange={(c) => setDraftCategory(c as FocusCategory)} />
+          <p className="gf-focus-blurb">{FOCUS_BLURBS[draftCategory]}</p>
 
-          <textarea
+          <TextArea
+            label="What are you chasing?"
             value={draftIntent}
-            onChange={(e) => setDraftIntent(e.target.value)}
+            onChange={setDraftIntent}
             rows={2}
-            aria-label="What are you chasing?"
-            placeholder="What are you chasing? e.g. Constant tension through the whole set — no dumping at the ends."
-            className="gf-input mt-3"
+            placeholder="e.g. Constant tension through the whole set — no dumping at the ends."
           />
 
-          <select
+          <SelectInput
+            label="Target machine"
             value={draftMachine}
-            onChange={(e) => setDraftMachine(e.target.value)}
-            aria-label="Target machine"
-            className="gf-input mt-2"
-          >
-            <option value="">Applies everywhere</option>
-            {machines.map((m) => (
-              <option key={m.id} value={m.id}>
-                Target: {m.name}
-              </option>
-            ))}
-          </select>
+            onChange={setDraftMachine}
+            options={machineOptions}
+            placeholder="Applies everywhere"
+          />
 
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" className="gf-btn gf-btn--quiet" onClick={() => setIsCreating(false)}>
+          <div className="gf-buttons gf-buttons--end">
+            <Btn variant="quiet" onClick={() => setIsCreating(false)}>
               Cancel
-            </button>
-            <button
-              type="button"
-              className="gf-btn gf-btn--primary"
-              onClick={save}
-              disabled={!draftIntent.trim() || isSaving}
-            >
+            </Btn>
+            <Btn variant="solid" onClick={save} disabled={!draftIntent.trim() || isSaving}>
               {isSaving ? "Saving" : "Set focus"}
-            </button>
+            </Btn>
           </div>
         </div>
       )}
 
       {active.length === 0 && !isCreating ? (
-        <div className="gf-card text-center">
-          <p className="gf-kicker">No active focus</p>
-          <p className="gf-muted mt-1 text-[12px]">
-            Set one so the next coach knows what you are working on.
-          </p>
-        </div>
-      ) : (
-        <div className="gf-focus-grid">
+        <EmptyLine>No focus running. Set one so the next coach knows what you are working on.</EmptyLine>
+      ) : active.length > 0 ? (
+        <div className="gf-focus-list">
           {active.map((focus) => (
             <ActiveFocusCard
               key={focus.id}
@@ -257,61 +298,27 @@ export function FocusBoard({
             />
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* ------------------------- history ------------------------- */}
-      <div className="gf-card" data-testid="focus-history">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="gf-kicker">Focus history · {past.length}</h3>
-          <span className="gf-muted text-[11px]">Who set it, how long it ran, how it ended</span>
+      {historyCollapsed ? (
+        <details className="gf-history" data-testid="focus-history">
+          <summary className="gf-history__summary">
+            <ChevronRight className="gf-history__chevron" size={16} aria-hidden="true" />
+            <span>
+              Focus history · {ended.length}{" "}
+              <span className="gf-history__aside">— who set it, how long it ran, how it ended</span>
+            </span>
+          </summary>
+          {history}
+        </details>
+      ) : (
+        <div className="gf-history" data-testid="focus-history">
+          <Eyebrow as="h4">Focus history · {ended.length}</Eyebrow>
+          <Meta>Who set it, how long it ran, how it ended</Meta>
+          {history}
         </div>
-
-        {pastTrainers.length > 1 && (
-          <div className="gf-chiprow mt-2" role="group" aria-label="Filter history by coach">
-            <button
-              type="button"
-              className="gf-chip"
-              aria-pressed={historyTrainer === null}
-              onClick={() => setHistoryTrainer(null)}
-            >
-              Everyone
-            </button>
-            {pastTrainers.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className="gf-chip"
-                aria-pressed={historyTrainer === t.id}
-                onClick={() => setHistoryTrainer(historyTrainer === t.id ? null : t.id)}
-              >
-                {t.name} · {t.count}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {past.length === 0 ? (
-          <p className="gf-muted mt-2 text-[12px]">
-            No focus has ended yet. When one is achieved or retired it is kept here.
-          </p>
-        ) : (
-          <div className="mt-1">
-            {shownPast.map((f) => (
-              <PastFocusRow key={f.id} focus={f} thread={threads.get(f.id) ?? []} machines={machines} />
-            ))}
-          </div>
-        )}
-
-        {past.length > 6 && (
-          <button
-            type="button"
-            className="gf-btn gf-btn--quiet mt-1"
-            onClick={() => setShowAllHistory((v) => !v)}
-          >
-            {showAllHistory ? "Show fewer" : `See all ${past.length}`}
-          </button>
-        )}
-      </div>
+      )}
     </section>
   );
 }
@@ -320,17 +327,13 @@ export function FocusBoard({
 /* An active focus                                                     */
 /* ------------------------------------------------------------------ */
 
+/** Which of the 4 P's: a neutral chip with its glyph — an identity, never a status. */
 function FocusChip({ focus }: { focus: ClientFocus }) {
   const visual = FOCUS_VISUALS[focus.category] || FOCUS_VISUALS.Posture;
   const Icon = ICONS[visual.icon] || PersonStanding;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider",
-        visual.chip,
-      )}
-    >
-      <Icon className="h-3 w-3" aria-hidden />
+    <span className="gf-pchip">
+      <Icon size={13} aria-hidden="true" />
       {focus.category}
     </span>
   );
@@ -391,164 +394,124 @@ function ActiveFocusCard({
       }
     });
 
+  const setBy = `Set by ${focus.trainerName || focus.trainerInitials}${
+    focus.trainerName && focus.trainerInitials ? ` (${focus.trainerInitials})` : ""
+  }`;
+
   return (
-    <article
-      className={cn("gf-card", isMine && "gf-focus-card--mine")}
-      data-testid="active-focus"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <article className="gf-focus-card" data-mine={isMine ? "" : undefined} data-testid="active-focus">
+      <div className="gf-focus-card__top">
         <FocusChip focus={focus} />
-        <div className="flex flex-wrap items-center gap-1">
-          {isMine && <span className="gf-pill gf-pill--live">Yours</span>}
-          {overdue && <span className="gf-pill gf-pill--warn">Review due</span>}
-        </div>
+        {machine ? <Chip>{machine.name}</Chip> : null}
+        <span className="cx-grow" />
+        {isMine && <Chip tone="live">Yours</Chip>}
+        {overdue && <Chip tone="warn">Review due</Chip>}
       </div>
 
-      <p className="mt-2 text-[15px] font-semibold leading-snug">{focus.intent}</p>
+      <p className="gf-focus-card__intent">{focus.intent}</p>
 
-      {machine && (
-        <span className="gf-pill mt-2">
-          <Dumbbell className="h-3 w-3" aria-hidden />
-          {machine.name}
-        </span>
-      )}
+      <Meta>
+        {joinDots([
+          setBy,
+          started ? `started ${fmtDay(started)}` : null,
+          days === null ? null : `${days} ${days === 1 ? "day" : "days"} active`,
+          `${thread.length} ${thread.length === 1 ? "check-in" : "check-ins"}`,
+          focus.extensionCount > 0 ? `extended ${focus.extensionCount}×` : null,
+          reviewDue && !overdue ? `review ${fmtShort(reviewDue)}` : null,
+        ])}
+      </Meta>
 
-      <div className="gf-focus-meta mt-2.5">
-        <span>
-          Set by <strong>{focus.trainerName || focus.trainerInitials}</strong>
-          {focus.trainerName && focus.trainerInitials ? ` (${focus.trainerInitials})` : ""}
-        </span>
-        <span>Started {fmtDay(started)}</span>
-        <span>
-          <strong>{days === null ? "—" : days}</strong> {days === 1 ? "day" : "days"} active
-        </span>
-        <span>
-          <strong>{thread.length}</strong> {thread.length === 1 ? "check-in" : "check-ins"}
-        </span>
-        {focus.extensionCount > 0 && <span>Extended {focus.extensionCount}×</span>}
-      </div>
-
-      <div className="gf-actions">
-        <button
-          type="button"
-          className="gf-btn"
+      <div className="gf-buttons">
+        <Btn
+          icon={MessageSquarePlus}
           aria-expanded={panel === "checkin"}
           onClick={() => setPanel(panel === "checkin" ? "none" : "checkin")}
         >
-          <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden /> Check in
-        </button>
+          Check in
+        </Btn>
         {canManage && (
           <>
             {!focus.isLegacy && (
-              <button type="button" className="gf-btn" disabled={busy} onClick={() => run(() => onExtend(focus))}>
-                <RotateCw className="h-3.5 w-3.5" aria-hidden /> Extend
-              </button>
+              <Btn icon={RotateCw} disabled={busy} onClick={() => run(() => onExtend(focus))}>
+                Extend
+              </Btn>
             )}
-            <button
-              type="button"
-              className="gf-btn gf-btn--ok"
+            <Btn
+              icon={Check}
               aria-expanded={panel === "achieve"}
               onClick={() => setPanel(panel === "achieve" ? "none" : "achieve")}
             >
-              <Check className="h-3.5 w-3.5" aria-hidden /> Achieved
-            </button>
-            <button
-              type="button"
-              className="gf-btn gf-btn--quiet"
+              Achieved
+            </Btn>
+            <Btn
+              variant="quiet"
+              icon={X}
               aria-expanded={panel === "retire"}
               onClick={() => setPanel(panel === "retire" ? "none" : "retire")}
             >
-              <X className="h-3.5 w-3.5" aria-hidden /> Retire
-            </button>
+              Retire
+            </Btn>
           </>
         )}
       </div>
-      {!canManage && (
-        <p className="gf-muted mt-1.5 text-[11px]">
-          Only {focus.trainerName || "the coach who set it"} or an owner can close this focus.
-        </p>
-      )}
+      {!canManage && <Meta>Only {focus.trainerName || "the coach who set it"} or an owner can close this focus.</Meta>}
 
       {panel === "checkin" && (
         <div className="gf-inline">
-          <label className="gf-kicker" htmlFor={`gf-ci-${focus.id}`}>
-            Check-in on this {focus.category.toLowerCase()} focus
-          </label>
-          <textarea
-            id={`gf-ci-${focus.id}`}
-            className="gf-input"
-            rows={2}
+          <TextArea
+            label={`Check-in on this ${focus.category.toLowerCase()} focus`}
             value={note}
+            onChange={setNote}
+            rows={2}
             placeholder="How did it go today?"
-            onChange={(e) => setNote(e.target.value)}
           />
-          <div className="flex justify-end gap-2">
-            <button type="button" className="gf-btn gf-btn--quiet" onClick={() => setPanel("none")}>
+          <div className="gf-buttons gf-buttons--end">
+            <Btn variant="quiet" onClick={() => setPanel("none")}>
               Cancel
-            </button>
-            <button
-              type="button"
-              className="gf-btn gf-btn--primary"
-              disabled={!note.trim() || busy}
-              onClick={saveCheckIn}
-            >
+            </Btn>
+            <Btn variant="solid" disabled={!note.trim() || busy} onClick={saveCheckIn}>
               {busy ? "Saving" : "Log check-in"}
-            </button>
+            </Btn>
           </div>
         </div>
       )}
 
       {panel === "achieve" && (
         <div className="gf-inline">
-          <label className="gf-kicker" htmlFor={`gf-rw-${focus.id}`}>
-            Reward (optional)
-          </label>
-          <input
-            id={`gf-rw-${focus.id}`}
-            className="gf-input"
+          <TextInput
+            label="Reward (optional)"
             value={reward}
             maxLength={200}
             placeholder="e.g. Kaizen pin"
-            onChange={(e) => setReward(e.target.value)}
+            onChange={setReward}
           />
-          <div className="flex justify-end gap-2">
-            <button type="button" className="gf-btn gf-btn--quiet" onClick={() => setPanel("none")}>
+          <div className="gf-buttons gf-buttons--end">
+            <Btn variant="quiet" onClick={() => setPanel("none")}>
               Cancel
-            </button>
-            <button
-              type="button"
-              className="gf-btn gf-btn--ok"
-              disabled={busy}
-              onClick={() => run(() => onAchieve(focus, reward))}
-            >
-              <Trophy className="h-3.5 w-3.5" aria-hidden /> Mark achieved
-            </button>
+            </Btn>
+            <Btn variant="solid" icon={Trophy} disabled={busy} onClick={() => run(() => onAchieve(focus, reward))}>
+              Mark achieved
+            </Btn>
           </div>
         </div>
       )}
 
       {panel === "retire" && (
         <div className="gf-inline">
-          <p className="text-[13px]">
-            Retire this focus without it being met? It stays in the history.
-          </p>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="gf-btn gf-btn--quiet" onClick={() => setPanel("none")}>
+          <p className="gf-inline__prompt">Retire this focus without it being met? It stays in the history.</p>
+          <div className="gf-buttons gf-buttons--end">
+            <Btn variant="quiet" onClick={() => setPanel("none")}>
               Keep it
-            </button>
-            <button type="button" className="gf-btn" disabled={busy} onClick={() => run(() => onRetire(focus))}>
+            </Btn>
+            <Btn disabled={busy} onClick={() => run(() => onRetire(focus))}>
               Retire
-            </button>
+            </Btn>
           </div>
         </div>
       )}
 
       {thread.length > 0 && (
-        <FocusThread
-          thread={thread}
-          open={threadOpen}
-          onToggle={() => setThreadOpen((v) => !v)}
-        />
+        <FocusThread thread={thread} open={threadOpen} onToggle={() => setThreadOpen((v) => !v)} />
       )}
     </article>
   );
@@ -565,23 +528,20 @@ function FocusThread({
 }) {
   return (
     <>
-      <button type="button" className="gf-rowbtn mt-1" aria-expanded={open} onClick={onToggle}>
-        <span className="gf-kicker">
+      <button type="button" className="gf-rowbtn" aria-expanded={open} onClick={onToggle}>
+        <span>
           {thread.length} {thread.length === 1 ? "note" : "notes"}
         </span>
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")}
-          aria-hidden
-        />
+        <ChevronDown className="gf-rowbtn__chevron" size={16} aria-hidden="true" />
       </button>
       {open && (
         <ol className="gf-thread">
           {thread.map((c) => (
             <li key={c.id}>
-              <span className="gf-muted text-[11px]">
+              <Meta>
                 {c.authorName || c.authorInitials} · {fmtDay(toDate(c.occurredAt))}
-              </span>
-              <p className="whitespace-pre-line">{c.body}</p>
+              </Meta>
+              <p className="gf-thread__body">{c.body}</p>
             </li>
           ))}
         </ol>
@@ -614,28 +574,23 @@ function PastFocusRow({
 
   return (
     <div className="gf-past" data-testid="past-focus">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="gf-focus-card__top">
         <FocusChip focus={focus} />
-        <span className={cn("gf-pill", achieved && "gf-pill--ok")}>
-          {achieved && <Trophy className="h-3 w-3" aria-hidden />}
+        <Chip tone={achieved ? "ok" : "neutral"} icon={achieved ? Trophy : undefined}>
           {FOCUS_OUTCOME_LABEL[focus.status]}
-        </span>
-        {focus.rewardNote ? <span className="gf-pill gf-pill--ok">Reward: {focus.rewardNote}</span> : null}
+        </Chip>
+        {focus.rewardNote ? <Chip tone="ok">Reward: {focus.rewardNote}</Chip> : null}
       </div>
-      <p className="mt-1.5 text-[14px] font-semibold leading-snug">{focus.intent}</p>
-      <div className="gf-focus-meta mt-1">
-        <span>
-          <strong>{focus.trainerName || focus.trainerInitials}</strong>
-        </span>
-        <span>
-          {fmtDay(start)} → {fmtDay(end)}
-        </span>
-        <span>{formatSpan(focusDaysActive(focus))}</span>
-        {machine && <span>{machine.name}</span>}
-      </div>
-      {thread.length > 0 && (
-        <FocusThread thread={thread} open={open} onToggle={() => setOpen((v) => !v)} />
-      )}
+      <p className="gf-past__intent">{focus.intent}</p>
+      <Meta>
+        {joinDots([
+          focus.trainerName || focus.trainerInitials,
+          `${fmtDay(start)} → ${fmtDay(end)}`,
+          formatSpan(focusDaysActive(focus)),
+          machine ? machine.name : null,
+        ])}
+      </Meta>
+      {thread.length > 0 && <FocusThread thread={thread} open={open} onToggle={() => setOpen((v) => !v)} />}
     </div>
   );
 }
