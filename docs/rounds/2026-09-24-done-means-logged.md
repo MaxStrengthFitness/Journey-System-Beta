@@ -2,6 +2,8 @@
 
 Branch `claude/booking-completed-by-journey`, off `master` at `810a41b`. One
 commit per phase, each typechecked on its own. Not pushed; not deployed.
+Phases 6 and 7 (the Hub card, below) are on `claude/gallant-ritchie-6d6297`,
+which carries the first five phases unchanged and builds on them.
 
 > "We don't currently have the resources to build a two-way webhook with
 > Mindbody to pull in 'Completed' statuses. Manual marking in Mindbody is fine.
@@ -23,8 +25,10 @@ wrong:
 - **The trainer page's Upcoming:** listed yesterday's and this morning's
   clients (the app holds the schedule from yesterday on).
 - **The attendance watch:** counted a no-show as a visit.
-- **The Hub card** greys out when its start time passes. Not changed here —
-  see "Left alone".
+- **The Hub card** went grey when its start time passed, and a grey card
+  hides the red priority-note flag, the Pulse flag and the clinical dot. So a
+  trainer a few minutes late lost the flags while walking up to read them (the
+  Sep 20 audit's H2). Fixed in phase 6; see "The Hub card" below.
 
 ## The rule — one function
 
@@ -48,6 +52,7 @@ Every screen that reads a booking's outcome for operations now asks it:
 | Team this week | the same read | "Unlogged today" is the same rule; the column hides when the read failed |
 | Trainer page → Upcoming | the app's live 24-hour session stream (already there) | drops finished bookings and ones whose client was already logged today; keeps the one in its slot now |
 | Attendance watch (the nightly renewals job, and the live renewal card) | each client's own sessions (already read) | a booking is a visit when logged — see the migration rule below |
+| The Hub card (phase 6) | the app's live 24-hour session stream (already there) | stays live, flags and all, until the booking is done or its slot is over; see below |
 
 No new query shape: the Overview's read uses the index the app's own session
 stream already uses. **No new index, no rules change, nothing written.**
@@ -67,6 +72,45 @@ they had stopped coming. So:
 
 No studio has a cutover date yet, so the watch reads exactly as before until
 one is set. The cutover field (My Studio → Studio) now says this in its hint.
+
+## The Hub card (phase 6)
+
+The trainer's floor, not Operations, so it was asked separately. The card
+reads the same rule through `src/lib/hub-card-state.ts`, which only decides
+how the floor draws each state:
+
+| The booking | The card |
+| --- | --- |
+| Ahead, or in its slot with nothing finished | **Live**, with every flag. This is the fix: a trainer running late keeps the red flag, the Pulse flag and the clinical dot |
+| A Journey session open for the client that day | **In session** (tinted, pulsing), past the slot too, because a session left open is still going |
+| A Journey session completed for the client that day | **Faded**, flags hidden: done. It fades the moment End Session is pressed, even inside the slot |
+| Slot over (five minutes' slack), nothing logged | **Faded, with a quiet "Not logged"** in the New-to-Journey tone |
+| Slot over, and the sessions could not be read | Faded, and says nothing. A failed read is unknown, never "not logged" |
+| A card with no profile yet | As before: the cloud mark says why. Never "Not logged" |
+
+AJ's two answers (Sep 24):
+
+- **A finished slot nobody logged fades with "Not logged"**, rather than
+  fading silently. A grey card with no word would read as done when it is
+  not. The chip is the quietest tone on the card and is faded with it: it
+  tells whoever forgot End Session, and nobody else. It is not a new loud
+  state.
+- **A card never fades as done before its own start.** A client booked twice
+  in a day (training at nine, an InBody scan at four) reads both bookings done
+  once the nine o'clock is logged. That is right for Operations, but on the
+  floor it would grey the four o'clock card and hide its flags before she
+  arrives. The later card stays live until it starts; after that the per-day
+  rule stands. Only the Hub does this. Operations and the attendance watch
+  keep the rule as it is.
+
+Two smaller fixes came with it. The card found "today's" workout session
+with the iPad's `toDateString()`, which is the wrong day on an iPad set to
+another zone, and compared it with TODAY rather than the booking's day, so a
+session this morning would mark tomorrow's card as in session. It now looks
+the session up on the booking's studio day, from one index built each time
+the stream updates, not per card. And `useSessions` now reports whether its
+stream has answered (`sessionsKnown`), so "Not logged" waits for a real
+answer.
 
 ## Decisions I made — say if any is wrong
 
@@ -91,10 +135,13 @@ one is set. The cutover field (My Studio → Studio) now says this in its hint.
 - **Mindbody, the webhook, Cloud Functions, the Firestore structure.**
   Untouched. Pulling Mindbody's own "Completed" status is a
   Mindbody-integration change and needs your OK.
-- **The Hub card.** It greys out the moment its start time passes and hides
-  its priority-note flag while it is grey, even if the session has not
-  started. That is the trainer's floor rather than Operations, so it was not
-  in this change. Flagged as a separate task.
+- **What feeds the Hub's red priority flag.** Phase 6 keeps the flag on
+  screen, but nothing in the app writes the fields it reads
+  (`client.priorityNote`, `client.hasPriorityNote`, a High-priority
+  `client.events` entry), so it lights only for records that already carried
+  a legacy `priorityNote`. A Critical note in Notes does not mark the card.
+  That is question 12 of the Sep 20 audit
+  (`2026-09-20-claude-experiment-phase1.md`), still waiting on AJ.
 - `trainerLanes` and `loadByDay` in `overview/floor.ts` still read the booking
   alone, but no screen uses them.
 
@@ -109,6 +156,20 @@ one is set. The cutover field (My Studio → Studio) now says this in its hint.
   imports.
 - Not yet seen on a real iPad. Round 14 of `docs/ops/TESTING-CHECKLIST.md`
   is the walkthrough.
+
+After phase 6 (the Hub card), same PC and worktree:
+
+- `npx tsc --noEmit`: **10**, the baseline.
+- `TZ=America/New_York npx vitest run --dir src`: **3,798 passing in 253
+  files**. 27 new: 15 for `hub-card-state` and 12 in
+  `ScheduleBlock.render.test.tsx`, which mounts the real card over every
+  state. Run against the old card, five of those twelve fail, among them the
+  late trainer's.
+- `npx vite build`: clean.
+- The states were looked at in a throwaway page in the browser pane, light
+  and dark, in a 150px column (the Hub's narrowest is 144px). "Not logged"
+  is about 66px wide, so it fits with room to spare.
+  Not yet seen on an iPad or on the live Hub.
 
 ## How to ship
 
