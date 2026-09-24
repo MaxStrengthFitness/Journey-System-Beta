@@ -11,8 +11,14 @@
      hatch  (--hist-hatch)     a break of two weeks or more — absence, drawn
      sand   (--hist-away-*)    away for a reason (vacation, snowbird, medical)
      orange (--cal-hero)       today's ring, nothing else
-     crimson(--eq-alert)       "hasn't been in for N days" — the one that matters
+     plum   (--eq-warn)        "hasn't been in for N days" — the house warning
      green / grey / crimson    rep quality, from the Journey grid's own tokens
+
+   Crimson is the kaizen mark and is reserved for rep quality (CLAUDE.md).
+   The ongoing break used to borrow it; it is the equipment tokens' warning
+   plum now (Sep 24 2026) — and it only appears at all where Journey sees
+   every session (lib/history-claims.ts), never for a gap that may simply be
+   in FileMaker.
 
    No hex values below the token block. Layout reacts to the width of the
    History panel itself (container queries), not the window, because the
@@ -103,14 +109,14 @@
   gap: 10px;
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid var(--eq-alert);
-  background: var(--eq-alert-fill);
+  border: 1px solid var(--eq-warn);
+  background: var(--eq-warn-fill);
   color: var(--cal-ink);
   font-size: 13px;
   font-weight: 700;
 }
-.hist-notice svg { color: var(--eq-alert); flex: 0 0 auto; }
-.hist-notice b { color: var(--eq-alert); font-weight: 900; }
+.hist-notice svg { color: var(--eq-warn); flex: 0 0 auto; }
+.hist-notice b { color: var(--eq-warn); font-weight: 900; }
 .hist-notice__away { margin-left: auto; }
 
 /* ---------- Stats ------------------------------------------------------ */
@@ -171,7 +177,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hist-stat--alert .hist-stat__value b { color: var(--eq-alert); }
+.hist-stat--alert .hist-stat__value b { color: var(--eq-warn); }
 
 /* ---------- Legend ----------------------------------------------------- */
 
@@ -697,11 +703,11 @@
 }
 .hist-break .hist-tag { margin-left: auto; }
 .hist-break--ongoing {
-  border: 1px solid var(--eq-alert);
+  border: 1px solid var(--eq-warn);
   border-radius: var(--cal-radius);
-  background-color: var(--eq-alert-fill);
+  background-color: var(--eq-warn-fill);
 }
-.hist-break--ongoing b { color: var(--eq-alert); }
+.hist-break--ongoing b { color: var(--eq-warn); }
 
 /* ---------- Session detail: rep quality in the grid's colours --------- */
 

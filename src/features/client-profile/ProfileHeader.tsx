@@ -33,6 +33,7 @@ import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
+import { sessionCountLabel } from "../../lib/history-claims";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -70,7 +71,18 @@ export interface ProfileHeaderProps {
   studioName?: string | null;
   sessions: WorkoutSession[];
   scheduledSessions: ScheduleEntry[];
-  completedCount: number;
+  /**
+   * The client's completed-session total, or null while it is not known -
+   * never a 0 standing in for "not counted yet" (Sep 24 2026).
+   */
+  completedCount: number | null;
+  /**
+   * The count may be read as her total (`canQuoteSessionNumber`,
+   * lib/client-coverage.ts). When it is only what Journey has seen - a
+   * migration client nobody has recorded a total for - the tile says
+   * "Sessions in Journey" instead of passing it off as her lifetime.
+   */
+  sessionsQuotable?: boolean;
   /**
    * "412 before Journey · FileMaker", when there is history Journey cannot
    * see. The split is not a footnote: it is what stops a two-month trend
@@ -302,6 +314,7 @@ export function ProfileHeader({
   sessions,
   scheduledSessions,
   completedCount,
+  sessionsQuotable = false,
   priorLabel,
   priorHistoryDoor,
   topTrainer,
@@ -639,7 +652,7 @@ export function ProfileHeader({
             removed" (audit, Sep 13). The count stands alone; what is left on
             the CONTRACT is the sub-line, from the renewal snapshot. */}
         <Stat
-          label="Completed sessions"
+          label={sessionCountLabel(sessionsQuotable)}
           onClick={renewal?.onOpen}
           ariaLabel={renewal ? `Renewal: ${renewal.text}. Open the renewal card.` : undefined}
           door={priorHistoryDoor ? <PriorHistoryDoor {...priorHistoryDoor} /> : undefined}
@@ -668,7 +681,9 @@ export function ProfileHeader({
             )
           }
         >
-          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">{completedCount}</span>
+          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">
+            {completedCount === null ? "—" : completedCount}
+          </span>
           {!priorHistoryDoor && priorLabel && (
             <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {priorLabel}

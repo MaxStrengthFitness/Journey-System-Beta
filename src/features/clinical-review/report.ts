@@ -11,6 +11,8 @@
 import type { Client, ClinicalIncident, ExerciseLog, Machine, Trainer, WorkoutSession } from "../../types";
 import type { AssessmentHistory } from "../subjective-report";
 import { getBroadMuscleGroup } from "../../lib/clinical-review-utils";
+import { allTimeLabel } from "../../lib/history-claims";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import { buildFacts, dayMs, factsInRange } from "./facts";
 import {
   attendanceRhythm,
@@ -125,7 +127,13 @@ export function priorRange(range: ReportRange): ReportRange | null {
   return { preset: "custom", from: shiftIso(range.from, -span), to: shiftIso(range.from, -1) };
 }
 
-export function rangeLabel(range: ReportRange): string {
+/**
+ * @param coverage how much of the client's story Journey holds. The widest
+ *   range is "All time" only when that is all of it; for a client who trained
+ *   before Journey it is "All in Journey" (lib/history-claims.ts). Cautious by
+ *   default.
+ */
+export function rangeLabel(range: ReportRange, coverage: HistoryCoverage = "unknown"): string {
   switch (range.preset) {
     case "30d":
       return "Last 30 days";
@@ -136,7 +144,7 @@ export function rangeLabel(range: ReportRange): string {
     case "12m":
       return "Last 12 months";
     case "all":
-      return "All time";
+      return allTimeLabel(coverage);
     default:
       return range.from ? `${range.from} → ${range.to}` : "Custom";
   }

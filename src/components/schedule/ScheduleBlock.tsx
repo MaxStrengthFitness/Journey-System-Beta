@@ -26,9 +26,10 @@ interface ScheduleBlockProps {
    */
   rosterLoading?: boolean;
   /**
-   * The studio's `journeyCutoverDate` - the day IT moved onto Journey. Used
-   * only to work out whether this client's session count can be trusted;
-   * absent reads as "we do not know", which shows no number at all.
+   * The client's HOME studio's `journeyCutoverDate` - the day her studio
+   * moved onto Journey (homeCutoverOf, lib/client-coverage.ts). Used only to
+   * work out whether this client's session count can be trusted; absent
+   * reads as "we do not know", which shows no number at all.
    */
   journeyCutoverDate?: string | null;
 }

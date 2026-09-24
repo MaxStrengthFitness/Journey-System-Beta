@@ -16,6 +16,8 @@ import { buildReport, rangeForPreset, rangeLabel, todayIso } from "./report";
 import { ClinicalDashboard, DEEP_DIVE_TITLE } from "./ClinicalDashboard";
 import { CaveatLine } from "./panels";
 import { BrandTiles } from "../client-profile/BrandTiles";
+import { allTimeLabel } from "../../lib/history-claims";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import "./clinical-review.css";
 
 export interface ClinicalReviewTabProps {
@@ -26,6 +28,13 @@ export interface ClinicalReviewTabProps {
   timeZone?: string;
   /** Firestore reads are suspended when the app is in quota trouble. */
   disabled?: boolean;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The widest range reads "All time" only when Journey holds all of it; for
+   * a client who trained before Journey it is "All in Journey", because a
+   * trend drawn from the cutover is not her whole story. Cautious by default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export const RANGE_PRESETS: { key: RangePreset; label: string }[] = [
@@ -36,7 +45,20 @@ export const RANGE_PRESETS: { key: RangePreset; label: string }[] = [
   { key: "all", label: "All time" },
 ];
 
-export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabled = false }: ClinicalReviewTabProps) {
+/** The presets with the widest one named for what Journey holds. */
+export function rangePresets(coverage: HistoryCoverage = "unknown"): { key: RangePreset; label: string }[] {
+  return RANGE_PRESETS.map((p) => (p.key === "all" ? { ...p, label: allTimeLabel(coverage) } : p));
+}
+
+export function ClinicalReviewTab({
+  client,
+  machines,
+  trainers,
+  timeZone,
+  disabled = false,
+  coverage = "unknown",
+}: ClinicalReviewTabProps) {
+  const presets = useMemo(() => rangePresets(coverage), [coverage]);
   const clientId = client.id ?? null;
   const { status, progress, data, error, generate } = useClinicalReport(clientId, { enabled: !disabled });
   const [range, setRange] = useState<ReportRange>(() => rangeForPreset("90d"));
@@ -90,7 +112,8 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
       <ClinicalDashboard
         report={report}
         clientName={`${client.firstName} ${client.lastName}`.trim()}
-        presets={RANGE_PRESETS}
+        presets={presets}
+        coverage={coverage}
         onPreset={(p) => run(rangeForPreset(p))}
         onRegenerate={() => run(data.range, true)}
         loading={status === "loading"}
@@ -125,7 +148,7 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
         <div className="cr-range">
           <span className="cr-range__label">Date range</span>
           <div className="cr-seg" role="radiogroup" aria-label="Date range">
-            {RANGE_PRESETS.map((p) => (
+            {presets.map((p) => (
               <button
                 key={p.key}
                 type="button"
@@ -161,7 +184,7 @@ export function ClinicalReviewTab({ client, machines, trainers, timeZone, disabl
             {status === "loading" ? <Loader2 size={18} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
             <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
               <span>{status === "loading" ? "Compiling…" : "Build the Deep Dive"}</span>
-              <span className="cr-generate__sub">{status === "loading" ? progress : activeRange ? rangeLabel(activeRange) : "Pick a valid range"}</span>
+              <span className="cr-generate__sub">{status === "loading" ? progress : activeRange ? rangeLabel(activeRange, coverage) : "Pick a valid range"}</span>
             </span>
           </button>
 

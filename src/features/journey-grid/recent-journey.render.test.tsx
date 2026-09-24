@@ -11,7 +11,10 @@
  *   - scrolling to the left edge (after a touch) reveals the next page, and
  *     the rail then says where the history stops;
  *   - a machine's name opens it on every tap, not only on odd ones;
- *   - the Active Session's grid keeps its own rail, untouched.
+ *   - the Active Session's grid keeps its own rail, untouched;
+ *   - the rail says "Start of history" only when Journey holds the client's
+ *     whole story, and a column head prints "#N" only through the session-
+ *     number gate (lib/history-claims.ts, Sep 24 2026).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { StrictMode, act } from "react";
@@ -109,7 +112,7 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
   it("reveals the next page when the trainer scrolls to the oldest column", async () => {
     const sessions = sessionsOf(20);
     const { host, root } = await mount(
-      <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" />,
+      <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" coverage="complete" />,
     );
     expect(columns(host)).toBe(14);
     expect(host.querySelector(".jg-older__label")?.textContent).toBe("Older");
@@ -120,6 +123,42 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     expect(host.querySelector(".jg-older__label")?.textContent).toBe("Start of history");
     expect(host.querySelector<HTMLButtonElement>(".jg-older__btn")?.disabled).toBe(true);
     await act(async () => root.unmount());
+  });
+
+  it("calls the oldest session the start of Journey, not of her history, short of complete", async () => {
+    // A migration client: her history did not begin when Journey first saw her.
+    for (const coverage of ["partial", "unknown", undefined] as const) {
+      const sessions = sessionsOf(20);
+      const { host, root } = await mount(
+        <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" coverage={coverage} />,
+      );
+      await scrollToOldest(host);
+      expect(host.querySelector(".jg-older__label")?.textContent).toBe("Start of Journey");
+      expect(host.querySelector(".jg-older__btn")?.getAttribute("aria-label")).toContain("not recorded here");
+      expect(host.textContent).not.toContain("Start of history");
+      await act(async () => root.unmount());
+    }
+  });
+
+  it("prints a session number on a column head only through the gate", async () => {
+    const sessions = sessionsOf(3);
+    const heads = (host: HTMLElement) =>
+      Array.from(host.querySelectorAll(".jg-head[data-session-id] .jg-head__n")).map((n) => n.textContent);
+
+    const quoted = await mount(
+      <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" sessionNumbers />,
+    );
+    expect(heads(quoted.host)).toEqual(["#1 · AJ", "#2 · AJ", "#3 · AJ"]);
+    await act(async () => quoted.root.unmount());
+
+    // No gate passed: Journey's own count is not quoted as her session number.
+    const hidden = await mount(
+      <RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" />,
+    );
+    expect(heads(hidden.host)).toEqual(["AJ", "AJ", "AJ"]);
+    const label = hidden.host.querySelector(".jg-head[data-session-id] .jg-head__btn")?.getAttribute("aria-label") ?? "";
+    expect(label.startsWith("Session, ")).toBe(true);
+    await act(async () => hidden.root.unmount());
   });
 
   it("does not load on open, before the trainer has touched the grid", async () => {
@@ -233,5 +272,34 @@ describe("the Active Session's grid is unchanged", () => {
     // The name still traces the row, and says so.
     expect(host.querySelector(".jg-machine__btn")?.getAttribute("aria-label")).toContain("Tap to trace this row.");
     await act(async () => root.unmount());
+  });
+
+  it("numbers today's column only through the gate", async () => {
+    const sessions = sessionsOf(2);
+    const live: LiveColumn = {
+      session: { id: "today", sessionNumber: 3, date: "2026-03-01", trainerInitials: "AJ" },
+      routineMachineIds: ["leg-press"],
+      values: {},
+      onChange: () => {},
+    };
+    const grid = (sessionNumbers: boolean) => (
+      <JourneyGrid
+        sessions={sessions}
+        sections={[{ id: "r", label: "Today", rows: rowsFor(sessions) }]}
+        live={live}
+        showStats={false}
+        layout="fill"
+        sessionNumbers={sessionNumbers}
+      />
+    );
+    const on = await mount(grid(true));
+    expect(on.host.querySelector(".jg-head--live .jg-head__n")?.textContent).toBe("#3 · AJ");
+    await act(async () => on.root.unmount());
+
+    // A migration client nobody has recorded a total for: "#3" would be Journey's count.
+    const off = await mount(grid(false));
+    expect(off.host.querySelector(".jg-head--live .jg-head__n")?.textContent).toBe("AJ");
+    expect(off.host.querySelector(".jg-head--live .jg-head__btn")?.getAttribute("aria-label")).not.toContain("session 3");
+    await act(async () => off.root.unmount());
   });
 });

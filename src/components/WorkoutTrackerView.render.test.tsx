@@ -238,9 +238,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   };
 });
 
+/** The studio list the context hands out; a test may give the studios cutover days. */
+const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
+
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
-  return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID }) };
+  return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID, studios: studioCtx.studios }) };
 });
 
 import { WorkoutTrackerView } from "./WorkoutTrackerView";
@@ -274,6 +277,7 @@ beforeEach(() => {
   sessionDocs = SESSION_DOCS;
   singleDocs = {};
   localStorage.clear();
+  studioCtx.studios = undefined;
 });
 
 afterEach(async () => {
@@ -314,11 +318,11 @@ const appWideMachines: Machine[] = [
   },
 ];
 
-function Tracker() {
+function Tracker({ who = client }: { who?: Client } = {}) {
   return (
     <WorkoutTrackerView
       clientId={CLIENT_ID}
-      clients={[client]}
+      clients={[who]}
       machines={appWideMachines}
       trainers={[trainer]}
       user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
@@ -457,5 +461,59 @@ describe("an abandoned session is asked about, never adopted (Sep 24 2026)", () 
     singleDocs[`sessions/${STALE_ID}`] = STALE_SESSION_DOCS[0].data();
     const host = await mount(<Tracker />);
     expect(host.querySelector(".jg-sbar")).toBeNull();
+  });
+});
+
+/*
+ * "#12" in the session bar and on today's column is a claim about the client
+ * (Sep 24 2026). For a migration client nobody has recorded a total for, the
+ * number is only what Journey has seen - so it is printed only through the
+ * Hub card's gate, and coverage is judged by the client's HOME studio's
+ * cutover, not the iPad's.
+ */
+describe("the Active Session's session number", () => {
+  const barNumber = (host: HTMLElement) => host.querySelector(".jg-sbar__meta b")?.textContent ?? null;
+  const liveHead = (host: HTMLElement) => host.querySelector(".jg-head--live .jg-head__n")?.textContent ?? null;
+
+  it("prints no number when nobody knows how much of her story Journey holds", async () => {
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(barNumber(host)).toBeNull();
+    expect(host.querySelector(".jg-sbar__meta")?.textContent).not.toContain("#");
+    expect(liveHead(host)).toBe("JC");
+  });
+
+  it("prints it for a client Mindbody says is genuinely new", async () => {
+    const host = await mount(<Tracker who={{ ...client, clientsNumberOfVisitsAtSite: 3 } as Client} />);
+    expect(barNumber(host)).toBe("#12");
+    expect(liveHead(host)).toBe("#12 · JC");
+  });
+
+  it("prints it for a long-standing client once her total is recorded", async () => {
+    const recorded = {
+      ...client,
+      clientsNumberOfVisitsAtSite: 400,
+      priorHistory: { sessions: 400, importedCount: 0, through: "2026-09-01", source: "filemaker" },
+    } as Client;
+    const host = await mount(<Tracker who={recorded} />);
+    expect(barNumber(host)).toBe("#12");
+  });
+
+  it("judges coverage by the client's HOME studio's cutover, not the iPad's", async () => {
+    // The iPad is at Solon, which has no cutover; her home is Westlake, which
+    // moved onto Journey before her first session there - so Journey holds her
+    // whole story and the number is hers.
+    studioCtx.studios = [{ id: STUDIO_ID }, { id: "westlake", journeyCutoverDate: "2026-01-01" }];
+    const host = await mount(
+      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
+    );
+    expect(barNumber(host)).toBe("#12");
+
+    // The same client read by Solon's (absent) day would have had no number.
+    studioCtx.studios = [{ id: STUDIO_ID, journeyCutoverDate: "2026-01-01" }, { id: "westlake" }];
+    const other = await mount(
+      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
+    );
+    expect(barNumber(other)).toBeNull();
   });
 });

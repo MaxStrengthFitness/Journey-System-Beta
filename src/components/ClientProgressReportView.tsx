@@ -60,6 +60,8 @@ import {
   AVG_REST_MIN_GAPS,
   type TrainingHistory,
 } from "../lib/progress-utils";
+import { allTimeLabel, reportSessionWords } from "../lib/history-claims";
+import { priorHistoryOf, type HistoryCoverage } from "../lib/prior-history";
 import type { ClientFocus } from "../types/journal";
 import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
@@ -183,9 +185,18 @@ interface ClientProgressReportViewProps {
   machines: Machine[];
   onBack: () => void;
   existingReportId?: string;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The report is printed and handed to the client, so its session tile
+   * says "Total Sessions" and "First Session" only when Journey holds all of
+   * it; otherwise it counts "Sessions" "Since" the window's first day, plus
+   * any recorded count from before Journey. Cautious by default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export function ClientProgressReportView({
+  coverage = "unknown",
   client,
   trainer,
   machines,
@@ -746,6 +757,11 @@ export function ClientProgressReportView({
    * from the history already in memory. Trainer-chosen slots keep their
    * choice with the new numbers; drafted and empty slots are re-drafted.
    */
+  /* The session tile's words (lib/history-claims.ts, Sep 24 2026): a
+     twelve-year client used to be handed "3 Total Sessions · First Session
+     Sep 2" - Journey's count and Journey's first day, as her whole story. */
+  const sessionWords = reportSessionWords(coverage, priorHistoryOf(client));
+
   const handleRecalculateAttendance = (customStartDate?: string) => {
     const activeStartDate = customStartDate || "";
     if (!history) {
@@ -1225,11 +1241,16 @@ export function ClientProgressReportView({
                         {realStat(report.attendance.totalSessions)?.toLocaleString() ?? "—"}
                       </p>
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
-                        Total Sessions
+                        {sessionWords.total}
                       </p>
+                      {sessionWords.before && (
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/80 mt-1 relative z-10">
+                          {sessionWords.before}
+                        </p>
+                      )}
                       <div className="mt-3 pt-3 border-t border-white/20 w-full relative z-10">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
-                          First Session
+                          {sessionWords.first}
                         </p>
                         <p className="text-[11px] font-bold uppercase tracking-tighter opacity-100 italic">
                           {report.attendance.firstSessionDate
@@ -1725,7 +1746,7 @@ export function ClientProgressReportView({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
-                        Timeframe Start Date (Blank = All Time)
+                        Timeframe Start Date (Blank = {allTimeLabel(coverage)})
                       </Label>
                       {report.attendance.firstSessionDate && (
                         <button
@@ -1736,7 +1757,7 @@ export function ClientProgressReportView({
                           }
                           className="text-[11px] font-bold text-primary uppercase hover:underline"
                         >
-                          Use First Session:{" "}
+                          {sessionWords.useFirst}:{" "}
                           {shortDate(report.attendance.firstSessionDate) ||
                             report.attendance.firstSessionDate}
                         </button>
@@ -1785,7 +1806,7 @@ export function ClientProgressReportView({
                     {[
                       {
                         key: "totalSessions",
-                        label: "Total Sessions Attended (Auto-Top)",
+                        label: `${sessionWords.total} Attended (Auto-Top)`,
                         value: realStat(report.attendance.totalSessions),
                         unit: "",
                         why: "No completed sessions in this window.",

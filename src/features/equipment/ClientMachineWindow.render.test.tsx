@@ -243,3 +243,42 @@ describe("ClientMachineWindow", () => {
     await act(async () => root.unmount());
   });
 });
+
+/*
+ * The History card's words (Sep 24 2026). Machine history does not come
+ * across from FileMaker, so "Never performed" and "First performed" are
+ * claims about the client that only a complete story may make.
+ */
+describe("ClientMachineWindow's History card and a client's past", () => {
+  const card = () => document.querySelector('[aria-label="Training history"]');
+
+  it("speaks about the client when Journey holds her whole story", async () => {
+    const { root } = await mount(props({ coverage: "complete" }));
+    expect(card()?.textContent).toContain("First performed");
+    expect(card()?.textContent).toContain("Times performed");
+    expect(card()?.textContent).toContain("lb since first set");
+    await act(async () => root.unmount());
+
+    const never = await mount(props({ coverage: "complete", machineId: "chest-press" }));
+    expect(card()?.textContent).toContain("Never performed by this client.");
+    await act(async () => never.root.unmount());
+  });
+
+  it("names Journey's part for a migrating client, and never says 'never'", async () => {
+    for (const coverage of ["partial", "unknown", undefined] as const) {
+      const { root } = await mount(props({ coverage }));
+      expect(card()?.textContent).toContain("First in Journey");
+      expect(card()?.textContent).toContain("Times in Journey");
+      expect(card()?.textContent).toContain("lb since first set in Journey");
+      expect(card()?.textContent).not.toContain("First performed");
+      await act(async () => root.unmount());
+      document.body.innerHTML = "";
+
+      const never = await mount(props({ coverage, machineId: "chest-press" }));
+      expect(card()?.textContent).toContain("Nothing recorded on this machine in Journey.");
+      expect(card()?.textContent).not.toMatch(/never/i);
+      await act(async () => never.root.unmount());
+      document.body.innerHTML = "";
+    }
+  });
+});

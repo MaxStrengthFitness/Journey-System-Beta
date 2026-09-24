@@ -22,6 +22,7 @@ import type { ClientEvent, ExerciseLog, RepQuality, WorkoutSession } from "../..
 import { calculateExerciseVolume, parseSessionDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import { studioDateKey, toDate } from "../../lib/studio-time";
+import { canClaimGap, WHOLE_STORY, type OwnedWindow } from "../../lib/history-claims";
 
 /** A session as History reads it. `trainerName` is written by the live flow but not declared. */
 export type HistorySession = WorkoutSession & { trainerName?: string };
@@ -287,16 +288,36 @@ export interface CadenceStats {
   daysSinceLast: number | null;
   /** The client has not been in for two weeks or more, as of today. */
   onBreak: boolean;
+  /**
+   * The days Journey holds every session for (lib/history-claims.ts). Only a
+   * gap that begins inside them is a break: before it, a missing session may
+   * simply be in FileMaker. `breaks`, `longestBreak` and `onBreak` are
+   * already filtered by it; the list and the stats read it for their words.
+   */
+  breakWindow: OwnedWindow;
 }
 
-export function computeCadence(days: VisitDay[], today: DayKey): CadenceStats {
+/**
+ * @param window the part of the timeline Journey owns (`ownedWindow`,
+ *   lib/history-claims.ts). Defaults to the whole story, for a caller that has
+ *   already decided every gap is claimable; the History screen passes the
+ *   client's own window, and its default is the cautious one.
+ */
+export function computeCadence(days: VisitDay[], today: DayKey, window: OwnedWindow = WHOLE_STORY): CadenceStats {
   const sessions = days.reduce((n, d) => n + d.sessions.length, 0);
   const first = days[0]?.key ?? null;
   const last = days[days.length - 1]?.key ?? null;
   const gaps = findGaps(days, today);
   const closed = gaps.filter((g) => !g.ongoing);
   const closedSorted = closed.map((g) => g.days).sort((a, b) => a - b);
-  const breaks = gaps.filter(isBreak).reverse();
+  /*
+   * A gap Journey could not have seen a session in is not a break
+   * (Sep 24 2026). During the migration FileMaker stays live, so a client in
+   * twice a week can have three weeks recorded only there - and this tab
+   * called it a three-week break, and her "No visit in 5 weeks" in crimson.
+   */
+  const claimable = (g: Gap) => isBreak(g) && canClaimGap(g.from, window);
+  const breaks = gaps.filter(claimable).reverse();
   const longestBreak = breaks.reduce<Gap | null>(
     (best, g) => (!best || g.days > best.days ? g : best),
     null,
@@ -332,7 +353,8 @@ export function computeCadence(days: VisitDay[], today: DayKey): CadenceStats {
     breaks,
     longestBreak,
     daysSinceLast: last ? Math.max(0, daysBetween(last, today)) : null,
-    onBreak: Boolean(ongoing && isBreak(ongoing)),
+    onBreak: Boolean(ongoing && claimable(ongoing)),
+    breakWindow: window,
   };
 }
 
@@ -613,9 +635,30 @@ export interface BuildListInput {
    * mislabelled "S1" the way the 30-session list used to.
    */
   numberAnchor?: number;
+  /**
+   * Sessions before Journey that exist only as a number (`priorUncounted`).
+   * With the whole Journey history loaded, the oldest row is session
+   * `priorOffset + 1`, not "S1".
+   */
+  priorOffset?: number;
+  /**
+   * Number the rows at all. False for a client whose total nobody has
+   * recorded (`canQuoteSessionNumber`): Journey's own count would call a
+   * twelve-year client's sessions S1, S2, S3. Defaults to true for a caller
+   * that has already passed the gate.
+   */
+  numbered?: boolean;
 }
 
-export function buildList({ days, undated, events, cadence, numberAnchor }: BuildListInput): {
+export function buildList({
+  days,
+  undated,
+  events,
+  cadence,
+  numberAnchor,
+  priorOffset = 0,
+  numbered = true,
+}: BuildListInput): {
   ongoing: ListBreakItem | null;
   months: ListMonth[];
 } {
@@ -624,7 +667,7 @@ export function buildList({ days, undated, events, cadence, numberAnchor }: Buil
     (n, d) => n + d.sessions.filter((s) => s.status === "Completed").length,
     0,
   );
-  let next = Math.max(numberAnchor ?? 0, completed);
+  let next = numbered ? Math.max(numberAnchor ?? 0, completed + Math.max(0, priorOffset)) : 0;
 
   const months: ListMonth[] = [];
   const monthFor = (key: string, year: number, month: number, name: string) => {
@@ -655,7 +698,12 @@ export function buildList({ days, undated, events, cadence, numberAnchor }: Buil
       section.sessions += 1;
     });
 
-    if (older && gapDays !== null && gapDays >= BREAK_MIN_GAP_DAYS) {
+    if (
+      older &&
+      gapDays !== null &&
+      gapDays >= BREAK_MIN_GAP_DAYS &&
+      canClaimGap(older.key, cadence.breakWindow)
+    ) {
       const gap: Gap = { from: older.key, to: day.key, days: gapDays, ongoing: false };
       section.items.push({ kind: "break", id: `break-${gap.from}`, gap, away: awayEventFor(gap, events) });
     }

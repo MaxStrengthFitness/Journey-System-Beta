@@ -350,6 +350,7 @@ export function ProgrammingTab({
           sessions={sessions}
           activeStudioId={activeStudioId}
           authTrainer={authTrainer}
+          coverage={historyCoverage}
         />
       </div>
       )}

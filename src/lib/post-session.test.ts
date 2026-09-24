@@ -72,6 +72,23 @@ describe("todayHeadline", () => {
     });
     expect(todayHeadline(lines)).toBe("2 of 3 machines · 1 max-strength set · load up on 1 · more reps on 1");
   });
+
+  it("counts new machines only when Journey holds the client's whole story", () => {
+    const lines = todayLines({
+      order: ["hip", "leg"],
+      logs: [
+        { machineId: "hip", weight: "40", reps: "8" },
+        { machineId: "leg", weight: "120", reps: "6" },
+      ],
+      nameOf,
+      priorOf: () => undefined,
+    });
+    expect(todayHeadline(lines, "complete")).toBe("2 of 2 machines · 2 new machines");
+    // A migration client's machines are empty because FileMaker's are not here.
+    expect(todayHeadline(lines, "partial")).toBe("2 of 2 machines");
+    expect(todayHeadline(lines, "unknown")).toBe("2 of 2 machines");
+    expect(todayHeadline(lines)).toBe("2 of 2 machines");
+  });
 });
 
 describe("strengthJourney", () => {

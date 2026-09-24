@@ -258,7 +258,7 @@ export const BreakRow = memo(function BreakRow({
   const { gap, away } = item;
   return (
     <div className={`hist-break ${gap.ongoing ? "hist-break--ongoing" : ""}`} role="note">
-      {gap.ongoing && <AlertTriangle size={14} strokeWidth={2.6} aria-hidden style={{ color: "var(--eq-alert)" }} />}
+      {gap.ongoing && <AlertTriangle size={14} strokeWidth={2.6} aria-hidden style={{ color: "var(--eq-warn)" }} />}
       <b>{gap.ongoing ? `No visit in ${describeSpan(gap.days)}` : `${describeSpanAdjective(gap.days)} break`}</b>
       <span>
         {gap.ongoing ? `last visit ${shortDate(gap.from, currentYear)}` : describeRange(gap.from, gap.to, currentYear)}

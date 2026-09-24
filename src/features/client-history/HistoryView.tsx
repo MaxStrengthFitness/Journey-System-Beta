@@ -22,6 +22,8 @@ import {
   type HistorySession,
 } from "./model";
 import "./client-history.css";
+import { NO_WINDOW, type OwnedWindow } from "../../lib/history-claims";
+import { priorUncounted, type PriorHistory } from "../../lib/prior-history";
 
 export type HistoryViewMode = "calendar" | "list";
 
@@ -57,6 +59,20 @@ export interface HistoryViewProps {
   onViewChange?: (view: HistoryViewMode) => void;
   /** Controlled mode: the parent already prints a heading, so suppress ours. */
   hideHeader?: boolean;
+  /**
+   * The days Journey holds every session for (`ownedWindow`,
+   * lib/history-claims.ts). A gap is called a break only inside them. The
+   * default claims none: a caller that has not worked out the client's
+   * coverage must not tell a migrating client she has been away.
+   */
+  breakWindow?: OwnedWindow;
+  /** What the client did before Journey, when anyone recorded it. */
+  prior?: PriorHistory | null;
+  /**
+   * Number the list's rows ("S413"). Only once the caller has passed the
+   * session-number gate (`canQuoteSessionNumber`, lib/client-coverage.ts).
+   */
+  quoteSessionNumbers?: boolean;
 }
 
 /**
@@ -84,6 +100,9 @@ export function HistoryView({
   view: viewProp,
   onViewChange,
   hideHeader = false,
+  breakWindow = NO_WINDOW,
+  prior = null,
+  quoteSessionNumbers = false,
 }: HistoryViewProps) {
   const today = todayProp ?? todayKey(new Date(), timeZone);
   const currentYear = parseKey(today).year;
@@ -104,7 +123,9 @@ export function HistoryView({
     [sessions, timeZone, today],
   );
   const timeline = useMemo(() => toTimelineEvents(events), [events]);
-  const cadence = useMemo(() => computeCadence(days, today), [days, today]);
+  const cadence = useMemo(() => computeCadence(days, today, breakWindow), [days, today, breakWindow]);
+  /* Sessions before Journey that exist only as a number. */
+  const priorOffset = priorUncounted(prior);
   const years = useMemo(
     () => buildCalendar({ days, events: timeline, cadence, today }),
     [days, timeline, cadence, today],
@@ -116,11 +137,15 @@ export function HistoryView({
         undated,
         events: timeline,
         cadence,
-        // Everything loaded: count the history itself. A window of it: count
-        // down from the client's own total so the oldest loaded row is not "S1".
+        // Everything loaded: count the history itself, on top of whatever
+        // came before Journey. A window of it: count down from the client's
+        // own total so the oldest loaded row is not "S1". No numbers at all
+        // for a client whose total nobody has recorded.
         numberAnchor: hasMore ? clientSessionCount : undefined,
+        priorOffset,
+        numbered: quoteSessionNumbers,
       }),
-    [days, undated, timeline, cadence, hasMore, clientSessionCount],
+    [days, undated, timeline, cadence, hasMore, clientSessionCount, priorOffset, quoteSessionNumbers],
   );
 
   const oldestFirstIds = useMemo(
@@ -192,7 +217,10 @@ export function HistoryView({
         ? "No sessions yet"
         : `${cadence.sessions} session${cadence.sessions === 1 ? "" : "s"} · since ${monthName(since!.month).slice(0, 3)} ${since!.year}`;
 
-  const total = clientSessionCount && clientSessionCount > sessions.length ? clientSessionCount : null;
+  /* How many are IN Journey: the client's total less what exists only as a
+     number from before Journey, which "Load full history" can never load. */
+  const journeyTotal = clientSessionCount != null ? clientSessionCount - priorOffset : null;
+  const total = journeyTotal && journeyTotal > sessions.length ? journeyTotal : null;
 
   return (
     <div ref={rootRef} className="cal cal-shell hist">
@@ -259,7 +287,7 @@ export function HistoryView({
       ) : (
         <>
           <OnBreakNotice cadence={cadence} events={timeline} currentYear={currentYear} />
-          <HistoryStats cadence={cadence} currentYear={currentYear} />
+          <HistoryStats cadence={cadence} currentYear={currentYear} prior={prior} today={today} />
 
           {view === "calendar" ? (
             <>

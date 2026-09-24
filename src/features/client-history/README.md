@@ -106,8 +106,24 @@ hatch, with the away event that explains them.
   breaks the chain instead, so the count can be low near the loaded edge,
   never wrong.
 - **Numbers:** with the whole history loaded, sessions are numbered from the
-  history itself; with a window of it, down from the client's own
-  `sessionCount`, so the oldest loaded row is not "S1".
+  history itself plus whatever came before Journey (`priorUncounted`); with a
+  window of it, down from the client's own `sessionCount`, so the oldest
+  loaded row is not "S1". A client whose total nobody has recorded
+  (`canQuoteSessionNumber` false) gets no numbers at all — Journey's own count
+  would call a twelve-year client's sessions S1, S2, S3 (Sep 24 2026).
+- **A gap is a break only where Journey sees every session** (Sep 24 2026).
+  FileMaker stays live through the migration, so a gap between two Journey
+  sessions may be weeks recorded only there. `ClientHistoryTab` works out
+  `ownedWindow` (`lib/history-claims.ts`): the whole timeline for a complete
+  story, otherwise the days from the client's HOME studio's cutover or after
+  her prior record runs through, whichever is later. `computeCadence` drops
+  every gap that begins before it, so the notice, the break rows, the
+  calendar's hatch and the tiles all agree. With no owned day yet the two
+  break tiles become "In Journey since" and "Before Journey". `HistoryView`'s
+  default window claims nothing.
+- **No crimson for absence.** The ongoing break and its notice use the
+  equipment tokens' warning plum (`--eq-warn`); crimson is the kaizen mark,
+  reserved for rep quality.
 - **Sticky headers** pin to the page scroller's real top edge. Every engine
   pins sticky boxes inside the scroller's padding, so against `<main>`'s `p-6`
   a plain `top: 0` stuck 24px down; `HistoryView` measures the padding.

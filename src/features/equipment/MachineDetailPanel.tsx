@@ -18,6 +18,7 @@ import type {
   SaveWeightsResult,
 } from "./mutations";
 import type { EquipmentMachine } from "./types";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /**
  * Right pane: everything known about ONE machine for ONE client.
@@ -52,6 +53,13 @@ export interface MachineDetailPanelProps {
    * suggestions. Optional — without it neither appears.
    */
   client?: Pick<Client, "height" | "gender" | "clinicalFlags"> & Partial<Pick<Client, "homeStudioId">> | null;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The History card says "Never performed" and "First performed" only when
+   * Journey holds all of it; otherwise it names Journey's part. Cautious by
+   * default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export function MachineDetailPanel({
@@ -69,6 +77,7 @@ export function MachineDetailPanel({
   onNoteSaved,
   progression,
   client = null,
+  coverage = "unknown",
 }: MachineDetailPanelProps) {
   if (!machine) {
     return (
@@ -126,7 +135,7 @@ export function MachineDetailPanel({
         onError={onError}
       />
 
-      <MachineUsageCard machine={machine} />
+      <MachineUsageCard machine={machine} coverage={coverage} />
 
       {progression && <LoadProgressionCard points={progression} />}
 

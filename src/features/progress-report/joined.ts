@@ -1,9 +1,11 @@
 /**
- * The report header's "Joined" date, in the SAME order the profile uses
- * (src/lib/client-since.ts): the first session we can prove, then Mindbody's
- * first visit, then Mindbody's created date, then the earliest contract.
- * The report used to check the first appointment before the first session,
- * so the two screens could disagree about when a client started.
+ * The report header's "Joined" date, by the SAME rule the profile uses
+ * (src/lib/client-since.ts): the earliest of the first session in Journey,
+ * Mindbody's first visit and Mindbody's created date, then the earliest
+ * contract. The report used to check the first appointment before the first
+ * session, so the two screens could disagree about when a client started;
+ * since Sep 24 2026 neither lets Journey's first day stand in for a
+ * migrating client's first day.
  *
  * Never the Journey document's own createdAt — that is when the app met the
  * client, not when the business did, and a confident wrong date is worse

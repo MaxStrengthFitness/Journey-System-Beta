@@ -96,3 +96,20 @@ export function cutoverOf(
   if (!studios || !studioId) return null;
   return studios.find((s) => s.id === studioId)?.journeyCutoverDate ?? null;
 }
+
+/**
+ * The cutover of the client's HOME studio - never the iPad's.
+ *
+ * Coverage is a fact about the CLIENT: where her history lives depends on
+ * when the studio she trains at moved onto Journey, not on which studio's
+ * iPad happens to be open. A Strongsville client seen on a Westlake iPad
+ * used to be judged by Westlake's day. The home is read the way the rules
+ * read it (`homeStudioId`, else the older `studioId`); a client with
+ * neither gets null, which is unknown - the safe side.
+ */
+export function homeCutoverOf(
+  studios: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }> | null | undefined,
+  client: { homeStudioId?: string | null; studioId?: string | null } | null | undefined,
+): string | null {
+  return cutoverOf(studios, client?.homeStudioId || client?.studioId || null);
+}
