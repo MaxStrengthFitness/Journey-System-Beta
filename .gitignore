@@ -92,3 +92,6 @@ gitstate.txt
 /harness/
 /patches/
 /patches-*/
+
+# Claude Code's isolated worktrees for background agents
+.claude/worktrees/
