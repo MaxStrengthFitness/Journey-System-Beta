@@ -55,6 +55,8 @@ import { JournalComposer } from "./JournalComposer";
 import { JournalEntryCard } from "./JournalEntryCard";
 import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
 import { useClientFord } from "../../features/ford/useClientFord";
+import { fordStudioIdOf } from "../../features/ford/ford-write";
+import { FORD_READ_NOTICE } from "../../features/ford/read-status";
 import { NoteSweep } from "../../features/client-notes/NoteSweep";
 import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/client-notes/file-unfiled";
 import { splitUnfiled } from "../../features/client-notes/note-catalog";
@@ -107,11 +109,15 @@ export function SessionJournalSidebar({
 
   // Only streamed to show what was already caught this session, so the trainer
   // does not save the same sentence twice. Cheap: one client subcollection.
-  const { entries: fordEntries } = useClientFord({
+  // It needs the client to read at all — the query names the client's studio
+  // (client codex, phase 1) — and a capture is stamped with that same studio,
+  // so what is saved here is what the list reads back.
+  const { entries: fordEntries, status: fordStatus } = useClientFord({
     clientId,
-    client: null,
+    client,
     enabled: mode === "ford",
   });
+  const fordStudioId = fordStudioIdOf(client) || studioId;
   const caughtThisSession = useMemo(
     () =>
       fordEntries
@@ -267,15 +273,32 @@ export function SessionJournalSidebar({
           </div>
         ) : mode === "ford" ? (
           <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
-            <FordQuickCapture
-              clientId={clientId}
-              clientFirstName={clientFirstName || "them"}
-              studioId={studioId}
-              author={author}
-              sessionId={session.id ?? null}
-              origin="in_session"
-              recent={caughtThisSession}
-            />
+            {fordStatus === "denied" ? (
+              // A visiting trainer: the rules refuse both the read and the
+              // write, so a box to type into would only lose the sentence.
+              <p className="ford-notice" role="status" data-testid="ford-read-notice">
+                {FORD_READ_NOTICE.denied}
+              </p>
+            ) : (
+              <>
+                {fordStatus === "failed" ? (
+                  // A failed READ is no reason to refuse a WRITE: the capture
+                  // stays, and only the "caught this session" list is unknown.
+                  <p className="ford-notice mb-3" role="status" data-testid="ford-read-notice">
+                    Couldn&apos;t load what was already caught this session. Anything you save here is still kept.
+                  </p>
+                ) : null}
+                <FordQuickCapture
+                  clientId={clientId}
+                  clientFirstName={clientFirstName || "them"}
+                  studioId={fordStudioId}
+                  author={author}
+                  sessionId={session.id ?? null}
+                  origin="in_session"
+                  recent={caughtThisSession}
+                />
+              </>
+            )}
           </div>
         ) : (
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">

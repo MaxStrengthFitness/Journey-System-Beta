@@ -7,7 +7,9 @@
  * checked) with "Matters until" behind Heads up, the To-file tray showing
  * this session's unfiled notes, and that leaving files the note with its
  * loudness. The renewal dialog and Update Pulse are stubbed — each has its
- * own render test.
+ * own render test. Since the client codex (phase 1) it also proves the FORD
+ * sweep mounts on a FAILED read and says it couldn't check, rather than
+ * vanishing as if nothing had been caught.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -32,6 +34,8 @@ vi.mock("../firebase", () => ({
 }));
 
 const updates: { path: string; data: any }[] = [];
+/** When set, the client's FORD listener errors with this code instead of answering. */
+let fordError: string | null = null;
 
 const unfiledDoc = {
   id: "raw",
@@ -67,7 +71,11 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     orderBy: () => ({}),
     limit: () => ({}),
     // The journal stream feeds one unfiled note; every other stream is empty.
-    onSnapshot: (q: any, next: (snap: any) => void) => {
+    onSnapshot: (q: any, next: (snap: any) => void, error?: (err: any) => void) => {
+      if (fordError && q?.__path === "clients/c1/ford") {
+        error?.({ code: fordError, message: fordError });
+        return () => {};
+      }
       const docs = q?.__path === "journalEntries" ? [unfiledDoc] : [];
       next({ docs, size: docs.length, empty: docs.length === 0 });
       return () => {};
@@ -102,6 +110,7 @@ async function mount(ui: React.ReactNode) {
 
 beforeEach(() => {
   updates.length = 0;
+  fordError = null;
 });
 
 afterEach(async () => {
@@ -245,6 +254,27 @@ describe("the post-session screen mounts", () => {
     // Leaving twice does nothing.
     await click(buttonByText(host, "Leaving"));
     expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws no FORD sweep when FORD answered with nothing caught", async () => {
+    const host = await mount(<Screen />);
+    expect(host.querySelector(".ford-sweep")).toBeNull();
+  });
+
+  it("says it couldn't check for FORD details when the FORD read failed, rather than vanishing", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    fordError = "unavailable";
+    const host = await mount(<Screen />);
+    const sweep = host.querySelector('[data-testid="ford-sweep-unread"]')!;
+    expect(sweep).toBeTruthy();
+    expect(sweep.textContent).toContain("Couldn't check for details caught this session");
+    warn.mockRestore();
+  });
+
+  it("draws no FORD sweep for a visitor the rules refused — their captures were refused too", async () => {
+    fordError = "permission-denied";
+    const host = await mount(<Screen />);
+    expect(host.querySelector(".ford-sweep")).toBeNull();
   });
 
   it("leaves a plain Note with no until day", async () => {

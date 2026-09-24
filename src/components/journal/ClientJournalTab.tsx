@@ -55,6 +55,7 @@ import { JournalComposer } from "./JournalComposer";
 import { ProgressReportArchive } from "./ProgressReportArchive";
 import { ClientCheckInPanel } from "./ClientCheckInPanel";
 import { NotesCatalog } from "../../features/client-notes/NotesCatalog";
+import { fordStudioIdOf } from "../../features/ford/ford-write";
 
 /** The areas, by id. */
 export type JournalAreaId = "progress-reports" | "check-in" | "focus" | "notes";
@@ -135,19 +136,22 @@ export function ClientJournalTab({
     [authTrainer],
   );
 
-  /** FORD / Life in the composer hands off to the FORD capture with these. */
+  /** FORD / Life in the composer hands off to the FORD capture with these.
+   *  Stamped with the studio the FORD read filters on (client codex, phase 1),
+   *  so a detail caught here comes back in the Life section. */
+  const fordStudioId = fordStudioIdOf(client);
   const fordContext = useMemo(
     () =>
       clientId && author.id !== "unknown"
         ? {
             clientId,
-            studioId: client?.homeStudioId || "",
+            studioId: fordStudioId,
             author,
             sessionId: null,
             origin: "profile" as const,
           }
         : null,
-    [clientId, client?.homeStudioId, author],
+    [clientId, fordStudioId, author],
   );
 
   /* ------------------------------ actions ------------------------------ */

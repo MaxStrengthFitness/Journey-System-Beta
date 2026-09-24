@@ -244,11 +244,12 @@ export function VictoryHUDScreen({
   }, [session.id]);
 
   // Anything caught with "Remember this" during the session and not yet filed.
-  // `client: null` because the legacy client.events adapter has nothing to add
-  // here — this list is only ever about captures from the floor.
-  const { untagged: fordUntagged } = useClientFord({
+  // The client is passed because the read names the client's studio (client
+  // codex, phase 1); the legacy client.events adapter it also feeds adds
+  // nothing here, since every legacy detail already has a pillar.
+  const { untagged: fordUntagged, status: fordStatus } = useClientFord({
     clientId: client.id,
-    client: null,
+    client,
   });
   const [showRenewal, setShowRenewal] = useState(false);
   const [renewalLogged, setRenewalLogged] = useState(false);
@@ -589,7 +590,7 @@ export function VictoryHUDScreen({
               />
             </motion.div>
           )}
-          {fordUntagged.length > 0 && (
+          {(fordUntagged.length > 0 || fordStatus === "failed") && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -605,6 +606,7 @@ export function VictoryHUDScreen({
                 clientFirstName={clientFirstName(client, "them")}
                 untagged={fordUntagged}
                 sessionId={session.id ?? null}
+                status={fordStatus}
               />
             </motion.div>
           )}

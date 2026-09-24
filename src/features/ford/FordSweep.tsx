@@ -24,7 +24,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Inbox, Check, Trash2 } from "lucide-react";
+import { Inbox, Check, Trash2, Info } from "lucide-react";
 import {
   FORD_META,
   FORD_PILLARS,
@@ -32,6 +32,7 @@ import {
   type FordPillar,
 } from "./types";
 import { discardUntaggedCapture, tagFordEntry } from "./ford-write";
+import type { FordReadStatus } from "./read-status";
 import { attribution } from "./ui";
 import "./ford.css";
 
@@ -42,6 +43,13 @@ export interface FordSweepProps {
   untagged: FordEntry[];
   /** Limit to one session's captures. Omit to sweep everything outstanding. */
   sessionId?: string | null;
+  /**
+   * useClientFord's read status (client codex, phase 1). An empty tray is only
+   * "nothing to file" when FORD answered: on a failed read the sweep says it
+   * could not check, rather than vanishing as if nothing had been caught.
+   * Omitted = the caller vouches the list was read.
+   */
+  status?: FordReadStatus;
 }
 
 export function FordSweep({
@@ -49,6 +57,7 @@ export function FordSweep({
   clientFirstName,
   untagged,
   sessionId = null,
+  status = "ready",
 }: FordSweepProps) {
   // Cards leave the moment they are tapped. The Firestore write follows, and
   // if it fails the snapshot puts the card back — which is the right outcome,
@@ -81,6 +90,21 @@ export function FordSweep({
     settle(entry.id);
     void discardUntaggedCapture(clientId, entry.id);
   };
+
+  // Could not read FORD: the captures may be there, so say so — quietly,
+  // and without a button, because nothing here is required. A refused read
+  // (a visiting trainer) has nothing to say: their captures were refused too.
+  if (queue.length === 0 && filed === 0 && status === "failed") {
+    return (
+      <section className="ford-sweep" aria-label="Details to file" data-testid="ford-sweep-unread">
+        <div className="ford-sweep__done">
+          <Info size={16} className="shrink-0" aria-hidden />
+          Couldn&apos;t check for details caught this session. Anything caught
+          is kept, and waits on their profile under Life.
+        </div>
+      </section>
+    );
+  }
 
   // Nothing outstanding and nothing filed just now: render nothing at all.
   if (queue.length === 0 && filed === 0) return null;

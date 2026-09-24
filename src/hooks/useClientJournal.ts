@@ -828,6 +828,51 @@ function adaptTrainerFocuses(
 /* THE HOOK                                                            */
 /* ------------------------------------------------------------------ */
 
+/** Whether one group of the journal's collections has answered. */
+export type JournalLoad = "loading" | "ready" | "failed";
+
+/**
+ * Per-group read state (client codex, phase 1). A failed read is "unknown",
+ * never "empty": a screen that would say "No notes yet" says it could not
+ * load them instead. A group is `failed` if ANY of its listeners failed,
+ * `loading` until every one of them has answered, and `ready` after that.
+ *
+ *   notes    - journalEntries, sessionNotes, clinicalIncidents
+ *   focuses  - clientFocuses, focusRecords, trainerFocuses
+ *   sessions - the session summaries (`recentSessions`)
+ *
+ * A listener that errors is finished; its group stays `failed` until the
+ * client changes or the screen mounts again.
+ */
+export interface JournalLoadState {
+  notes: JournalLoad;
+  focuses: JournalLoad;
+  sessions: JournalLoad;
+}
+
+/** Which listener belongs to which group. */
+const LOAD_GROUPS: Record<keyof JournalLoadState, readonly string[]> = {
+  notes: ["journalEntries", "sessionNotes", "clinicalIncidents"],
+  focuses: ["clientFocuses", "focusRecords", "trainerFocuses"],
+  sessions: ["sessions"],
+};
+
+/** Nothing has answered yet. One object, so the memo below stays put. */
+const NO_LOADS: Record<string, JournalLoad> = {};
+const NO_SESSIONS: WorkoutSession[] = [];
+
+/** An empty list - the same array when it is already empty, so no re-render. */
+function emptied<T>(prev: T[]): T[] {
+  return prev.length ? [] : prev;
+}
+
+function groupLoad(by: Record<string, JournalLoad>, names: readonly string[]): JournalLoad {
+  const states = names.map((n) => by[n] ?? "loading");
+  if (states.includes("failed")) return "failed";
+  if (states.includes("loading")) return "loading";
+  return "ready";
+}
+
 export interface UseClientJournalArgs {
   clientId: string | null;
   client: Client | null;
@@ -859,6 +904,22 @@ export interface UseClientJournalResult {
   needsIndex: boolean;
   /** True when a per-client collection hit JOURNAL_GUARD_LIMIT, so counts may be short. */
   capped: boolean;
+  /**
+   * Whether each group of collections has answered (client codex, phase 1).
+   * Optional on the TYPE only so a fixture built before it still typechecks;
+   * the hook always returns it. Read a missing one as unknown, never ready.
+   */
+  loadState?: JournalLoadState;
+  /**
+   * The client's newest sessions (up to SESSION_SUMMARY_LIMIT, date desc),
+   * from the listener this hook already runs for the session wrap-ups - no
+   * second sessions query on a screen that holds the journal. Session
+   * documents only, no exercise logs. Empty until `loadState.sessions` is
+   * `ready` for THIS client - never the last client's rows while this one's
+   * sessions are still on their way. Optional on the TYPE only, like
+   * `loadState`.
+   */
+  recentSessions?: WorkoutSession[];
 }
 
 export function useClientJournal({
@@ -877,6 +938,12 @@ export function useClientJournal({
   const [isLoading, setIsLoading] = useState(true);
   const [needsIndex, setNeedsIndex] = useState(false);
   const [cappedBy, setCappedBy] = useState<Record<string, boolean>>({});
+  // Keyed by client, so an answer for the last client never reads as this
+  // client's (the listeners are re-created per client; the state is not).
+  const [loadBy, setLoadBy] = useState<{ key: string | null; by: Record<string, JournalLoad> }>({
+    key: null,
+    by: {},
+  });
 
   // Guards the ordered-query -> unordered-query fallback from looping.
   const fellBackRef = useRef(false);
@@ -887,6 +954,14 @@ export function useClientJournal({
       const hit = size >= JOURNAL_GUARD_LIMIT;
       if (Boolean(prev[name]) === hit) return prev;
       return { ...prev, [name]: hit };
+    });
+
+  /** Records a listener's answer for this client. A no-op when nothing changed. */
+  const markLoad = (key: string, name: string, state: JournalLoad) =>
+    setLoadBy((prev) => {
+      const by = prev.key === key ? prev.by : {};
+      if (prev.key === key && by[name] === state) return prev;
+      return { key, by: { ...by, [name]: state } };
     });
 
   /* --- native journalEntries -------------------------------------- */
@@ -922,6 +997,7 @@ export function useClientJournal({
             snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JournalEntry),
           );
           setIsLoading(false);
+          markLoad(clientId, "journalEntries", "ready");
         },
         (err: any) => {
           // failed-precondition == "this query needs a composite index".
@@ -935,6 +1011,8 @@ export function useClientJournal({
             subscribe(false);
             return;
           }
+          // Recorded first: handleFirestoreError throws outside a browser.
+          markLoad(clientId, "journalEntries", "failed");
           handleFirestoreError(err, OperationType.GET, "journalEntries");
           setIsLoading(false);
         },
@@ -966,22 +1044,30 @@ export function useClientJournal({
           snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ClientFocus),
         );
         noteCap("clientFocuses", snap.size);
+        markLoad(clientId, "clientFocuses", "ready");
       },
-      (err) => handleFirestoreError(err, OperationType.GET, "clientFocuses"),
+      (err) => {
+        markLoad(clientId, "clientFocuses", "failed");
+        handleFirestoreError(err, OperationType.GET, "clientFocuses");
+      },
     );
     return () => unsub();
   }, [clientId, enabled]);
 
   /* --- legacy collections, all live -------------------------------- */
   useEffect(() => {
-    if (!clientId || !enabled) {
-      setLegacyFocusRecords([]);
-      setLegacyNotes([]);
-      setLegacyIncidents([]);
-      setLegacyTrainerFocuses([]);
-      setLegacySessions([]);
-      return;
-    }
+    // Emptied on every (re)subscribe, not only when there is no client: the
+    // listeners below are re-created per client but the state is not, so
+    // without this the last client's legacy notes and session wrap-ups sat
+    // in this client's `entries` until each listener answered - and one
+    // group (say the notes) could read `ready` while another still held the
+    // last client's rows (client codex, phase 1).
+    setLegacyFocusRecords(emptied);
+    setLegacyNotes(emptied);
+    setLegacyIncidents(emptied);
+    setLegacyTrainerFocuses(emptied);
+    setLegacySessions(emptied);
+    if (!clientId || !enabled) return;
 
     // Deliberately unordered equality queries: they need no composite index and
     // the result set per client is small enough to sort in memory. Each carries
@@ -999,8 +1085,12 @@ export function useClientJournal({
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as FocusRecord),
           );
           noteCap("focusRecords", s.size);
+          markLoad(clientId, "focusRecords", "ready");
         },
-        (e) => handleFirestoreError(e, OperationType.GET, "focusRecords"),
+        (e) => {
+          markLoad(clientId, "focusRecords", "failed");
+          handleFirestoreError(e, OperationType.GET, "focusRecords");
+        },
       ),
       onSnapshot(
         query(
@@ -1008,11 +1098,16 @@ export function useClientJournal({
           where("clientId", "==", clientId),
           limit(LEGACY_NOTE_LIMIT),
         ),
-        (s) =>
+        (s) => {
           setLegacyNotes(
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as SessionNote),
-          ),
-        (e) => handleFirestoreError(e, OperationType.GET, "sessionNotes"),
+          );
+          markLoad(clientId, "sessionNotes", "ready");
+        },
+        (e) => {
+          markLoad(clientId, "sessionNotes", "failed");
+          handleFirestoreError(e, OperationType.GET, "sessionNotes");
+        },
       ),
       onSnapshot(
         query(
@@ -1025,8 +1120,12 @@ export function useClientJournal({
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as ClinicalIncident),
           );
           noteCap("clinicalIncidents", s.size);
+          markLoad(clientId, "clinicalIncidents", "ready");
         },
-        (e) => handleFirestoreError(e, OperationType.GET, "clinicalIncidents"),
+        (e) => {
+          markLoad(clientId, "clinicalIncidents", "failed");
+          handleFirestoreError(e, OperationType.GET, "clinicalIncidents");
+        },
       ),
       onSnapshot(
         query(
@@ -1039,14 +1138,20 @@ export function useClientJournal({
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as TrainerFocus),
           );
           noteCap("trainerFocuses", s.size);
+          markLoad(clientId, "trainerFocuses", "ready");
         },
-        (e) => handleFirestoreError(e, OperationType.GET, "trainerFocuses"),
+        (e) => {
+          markLoad(clientId, "trainerFocuses", "failed");
+          handleFirestoreError(e, OperationType.GET, "trainerFocuses");
+        },
       ),
       // Session wrap-up text lives on the session document itself. The journal
       // owns this subscription rather than taking `sessions` as a prop: the
       // profile view only loads sessions on some tabs, which would make the
       // timeline's contents depend on which tab you happened to open first.
       // Session docs only — no exercise logs — so the read cost stays small.
+      // Also handed out as `recentSessions` (client codex, phase 1), so a
+      // screen that holds the journal never opens a second sessions query.
       onSnapshot(
         query(
           collection(db, "sessions"),
@@ -1054,11 +1159,16 @@ export function useClientJournal({
           orderBy("date", "desc"),
           limit(SESSION_SUMMARY_LIMIT),
         ),
-        (s) =>
+        (s) => {
           setLegacySessions(
             s.docs.map((d) => ({ id: d.id, ...d.data() }) as WorkoutSession),
-          ),
-        (e) => handleFirestoreError(e, OperationType.GET, "sessions"),
+          );
+          markLoad(clientId, "sessions", "ready");
+        },
+        (e) => {
+          markLoad(clientId, "sessions", "failed");
+          handleFirestoreError(e, OperationType.GET, "sessions");
+        },
       ),
     ];
 
@@ -1170,5 +1280,33 @@ export function useClientJournal({
 
   const capped = Object.values(cappedBy).some(Boolean);
 
-  return { entries, threads, focuses, criticalEntries, headsUpEntries, isLoading, needsIndex, capped };
+  // Nothing answered for THIS client yet (or the hook is paused) reads as
+  // loading, never as ready.
+  const loadFor = enabled && clientId && loadBy.key === clientId ? loadBy.by : NO_LOADS;
+  const loadState = useMemo<JournalLoadState>(
+    () => ({
+      notes: groupLoad(loadFor, LOAD_GROUPS.notes),
+      focuses: groupLoad(loadFor, LOAD_GROUPS.focuses),
+      sessions: groupLoad(loadFor, LOAD_GROUPS.sessions),
+    }),
+    [loadFor],
+  );
+
+  return {
+    entries,
+    threads,
+    focuses,
+    criticalEntries,
+    headsUpEntries,
+    isLoading,
+    needsIndex,
+    capped,
+    loadState,
+    // Gated on the sessions listener ITSELF, not on "anything answered for
+    // this client": the journal or focus listeners can answer first, while
+    // `legacySessions` still holds the last client's rows (the effect's reset
+    // lands a render after the client changes). The rows and their "ready"
+    // are set in the same callback, so they arrive together.
+    recentSessions: loadFor.sessions === "ready" ? legacySessions : NO_SESSIONS,
+  };
 }
