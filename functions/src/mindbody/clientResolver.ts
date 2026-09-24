@@ -107,12 +107,6 @@ export async function recordLimboEvent(
     locationId?: string | number;
     clientId?: string | number;
     reason: string;
-    /**
-     * Set when the event's client id already names a DIFFERENT person on the
-     * other Mindbody site. The Limbo screen reads it to withhold Release and
-     * "Set home studio", both of which would write onto that other person.
-     */
-    crossSite?: { eventSite: string; clientSite: string };
     /** Human-readable summary so the admin screen needs no payload spelunking. */
     summary?: Record<string, unknown>;
     payload: Record<string, unknown>;
@@ -129,7 +123,6 @@ export async function recordLimboEvent(
         params.locationId !== undefined ? String(params.locationId) : null,
       clientId: params.clientId !== undefined ? String(params.clientId) : null,
       reason: params.reason,
-      ...(params.crossSite ? { crossSite: params.crossSite } : {}),
       summary: params.summary || null,
       payload: params.payload,
       firstSeenAt: FieldValue.serverTimestamp(),
@@ -157,12 +150,21 @@ export async function ensureCanonicalClient(
     studioId: string | null;
     /** Where the write came from, for auditing sparse stub documents. */
     origin: "client-event" | "booking-stub";
+    /**
+     * The record to write, when it is not `clients/{mindbodyClientId}` — the
+     * second person on a shared Mindbody number, `clients/{site}-{id}`
+     * (index.ts: resolveClientDocId). Defaults to the plain id.
+     */
+    docId?: string;
+    /** The Mindbody site the id belongs to; written on a record this call MAKES. */
+    mindbodySiteId?: string;
   },
 ): Promise<EnsureClientResult> {
   const mbId = String(params.mindbodyClientId).trim();
   if (!mbId) throw new TypeError("mindbodyClientId must be non-empty");
+  const docId = (params.docId && params.docId.trim()) || mbId;
 
-  const canonicalRef = firestore.collection(CLIENTS).doc(mbId);
+  const canonicalRef = firestore.collection(CLIENTS).doc(docId);
   const canonicalSnap = await canonicalRef.get();
 
   const profileFields: Record<string, unknown> = {};
@@ -188,7 +190,7 @@ export async function ensureCanonicalClient(
       updates.homeStudioId = params.studioId;
     }
     await canonicalRef.set(updates, { merge: true });
-    return { clientDocId: mbId, created: false };
+    return { clientDocId: docId, created: false };
   }
 
   // ---- Create a COMPLETE client document ---------------------------------
@@ -213,6 +215,7 @@ export async function ensureCanonicalClient(
     firstName: hasAnyName ? resolvedFirst : "Mindbody",
     lastName: hasAnyName ? resolvedLast : `Client ${mbId}`,
     mindbodyClientId: mbId,
+    ...(params.mindbodySiteId ? { mindbodySiteId: params.mindbodySiteId } : {}),
     // `homeStudioId: null` is deliberate — never fall back to a default studio.
     // A mis-tenanted client appears on the wrong location's schedule.
     homeStudioId: params.studioId ?? null,
@@ -233,5 +236,5 @@ export async function ensureCanonicalClient(
   if (displayName) doc.mindbody_name = displayName;
 
   await canonicalRef.set(doc, { merge: true });
-  return { clientDocId: mbId, created: true };
+  return { clientDocId: docId, created: true };
 }

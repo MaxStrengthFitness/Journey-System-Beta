@@ -1183,8 +1183,10 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
   // The collision finding (Sep 23 2026): both MSF Mindbody sites number their
   // clients from 100000001, so one id can name two different people. Journey
   // holds Solon's "sherry noll" at clients/100000310; site 29068 has a
-  // different person under the same number.
+  // different person under the same number, who now gets a record of their
+  // own at clients/29068-100000310 (src/lib/mindbody-site.ts).
   describe("a client id that names a different person on the other site", () => {
+    const QUALIFIED = "29068-100000310";
     const post = async (body: Record<string, unknown>) => {
       const rawBody = JSON.stringify(body);
       return handleMindbodyWebhook(deps, {
@@ -1206,7 +1208,9 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       };
     });
 
-    it("34. a client event from the other site is parked, and Solon's client is not touched", async () => {
+    const writtenIds = () => writesTo("clients").map((w) => w.id);
+
+    it("34. a client event from the other site goes to the second person's record, never Solon's", async () => {
       const res = await post({
         messageId: "x-client-1",
         eventId: "client.updated",
@@ -1221,26 +1225,28 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(writesTo("clients")).toHaveLength(0);
-      const [parked] = writesTo("mindbodyLimbo");
-      expect(parked.data.kind).toBe("client");
-      expect(parked.data.crossSite).toEqual({ eventSite: "29068", clientSite: "5746957" });
+      expect(writtenIds()).toEqual([QUALIFIED]);
+      const [made] = writesTo("clients");
+      expect(made.data).toMatchObject({
+        firstName: "Efty",
+        lastName: "Simakis",
+        mindbodyClientId: "100000310",
+        mindbodySiteId: "29068",
+        homeStudioId: "strongsville",
+      });
     });
 
-    it("35. a contract event from the other site is parked, not merged onto Solon's client", async () => {
+    it("35. a contract event from the other site merges onto the second person's record", async () => {
       await post({
         messageId: "x-contract-1",
         eventId: "clientContract.created",
         eventData: { siteId: 29068, clientId: "100000310", clientContractId: 77, contractName: "96 Sessions" },
       });
 
-      expect(writesTo("clients")).toHaveLength(0);
-      const [parked] = writesTo("mindbodyLimbo");
-      expect(parked.data.kind).toBe("commercial");
-      expect(parked.data.crossSite).toBeDefined();
+      expect(writtenIds()).toEqual([QUALIFIED]);
     });
 
-    it("36. a booking from the other site is written UNLINKED, under the name Mindbody gave it", async () => {
+    it("36. a booking from the other site is filed on the second person, made if needed", async () => {
       await post({
         messageId: "x-booking-1",
         eventId: "appointmentBooking.created",
@@ -1255,16 +1261,29 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         },
       });
 
-      expect(writesTo("clients")).toHaveLength(0);
+      expect(writtenIds()).toEqual([QUALIFIED]);
       const [row] = writesTo("schedules");
       expect(row.id).toBe("2177304");
-      expect(row.data.clientId).toBeNull();
+      expect(row.data.clientId).toBe(QUALIFIED);
       expect(row.data.mindbodyClientId).toBe("100000310");
       expect(row.data.clientName).toBe("Efty Simakis");
       expect(row.data.studioId).toBe("strongsville");
     });
 
-    it("37. the same site still links and updates — only a positive mismatch is refused", async () => {
+    it("37. once the second person's record exists it is used, whatever the plain one says", async () => {
+      existingDocs[`clients/${QUALIFIED}`] = { firstName: "Efty", homeStudioId: "strongsville" };
+      await post({
+        messageId: "x-booking-4",
+        eventId: "appointmentBooking.created",
+        eventData: { siteId: 29068, locationId: 5, clientId: "100000310", id: "2177305", clientName: "Efty Simakis", startDateTime: "2026-10-07T11:00:00" },
+      });
+
+      expect(writesTo("schedules")[0].data.clientId).toBe(QUALIFIED);
+      // Existing: merged, never re-made with a creation stamp.
+      expect(writesTo("clients")[0].data).not.toHaveProperty("createdAt");
+    });
+
+    it("38. the same site still links the plain number", async () => {
       await post({
         messageId: "x-booking-2",
         eventId: "appointmentBooking.created",
@@ -1277,12 +1296,11 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         },
       });
 
-      const [row] = writesTo("schedules");
-      expect(row.data.clientId).toBe("100000310");
-      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+      expect(writesTo("schedules")[0].data.clientId).toBe("100000310");
+      expect(writtenIds()).toEqual(["100000310"]);
     });
 
-    it("38. a sibling studio on the same site is a visitor, not a stranger", async () => {
+    it("39. a sibling studio on the same site is a visitor, not a stranger", async () => {
       existingDocs["clients/100000999"] = { firstName: "Visiting", homeStudioId: "westlake" };
       await post({
         messageId: "x-booking-3",
@@ -1300,7 +1318,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       expect(writesTo("schedules")[0].data.clientId).toBe("100000999");
     });
 
-    it("39. a client with no home studio yet is unknown, not wrong, and is written as before", async () => {
+    it("40. a client with no home studio yet is unknown, not wrong, and keeps the plain number", async () => {
       existingDocs["clients/100000310"] = { firstName: "Sherry" };
       await post({
         messageId: "x-client-2",
@@ -1308,8 +1326,19 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         eventData: { siteId: 29068, locationId: 5, clientId: "100000310", membershipStatus: "Active" },
       });
 
-      expect(writesTo("clients")).toHaveLength(1);
-      expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+      expect(writtenIds()).toEqual(["100000310"]);
+    });
+
+    it("41. a brand-new client keeps the plain number and learns their site", async () => {
+      await post({
+        messageId: "x-client-3",
+        eventId: "client.created",
+        eventData: { siteId: 29068, locationId: 5, clientId: "100000777", firstName: "New", lastName: "Person" },
+      });
+
+      const [made] = writesTo("clients");
+      expect(made.id).toBe("100000777");
+      expect(made.data.mindbodySiteId).toBe("29068");
     });
   });
 });

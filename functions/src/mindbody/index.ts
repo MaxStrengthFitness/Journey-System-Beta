@@ -166,36 +166,62 @@ function resolveClientRef(firestore: Firestore, clientId: string | number) {
 }
 
 /**
- * A CLIENT DOCUMENT WITH THIS ID IS NOT NECESSARILY THIS PERSON.
+ * WHICH JOURNEY RECORD IS MINDBODY CLIENT X ON SITE S?
  *
  * `clients/{mindbodyClientId}` carries no site, and Mindbody only promises an
  * id is unique within ONE site. MSF has two, and both numbered from
  * 100000001: on Sep 23 2026 the collision check found 43 ids naming a
- * DIFFERENT PERSON at each site. The schedule pull-sync learned this in
- * phases 26–27 (src/lib/mindbody-api-sync.ts); this is the same test for the
- * webhook, which writes Mindbody-owned facts that always overwrite — a client
- * event from the other site would move someone's home studio, and with it who
- * may read their clinical record.
+ * DIFFERENT PERSON at each site. This webhook writes Mindbody-owned facts
+ * that always overwrite, so an event from the other site filed by id alone
+ * would move someone's home studio, and with it who may read their clinical
+ * record.
  *
- * Returns the site the existing client's home studio sits on when that is a
- * POSITIVE mismatch with the event's site, and null otherwise. No document
- * yet, no home studio, or no site on either side is unknown, not wrong — the
- * same three outcomes as the sync. A sibling studio on the same site is a
- * visitor and is fine.
+ * The client-identity round keeps every existing record where it is and gives
+ * the SECOND person their own, `clients/{S}-{X}`. The rule is
+ * src/lib/mindbody-site.ts (a separate package, so this is a copy — keep them
+ * in step):
+ *
+ *   1. clients/S-X exists                       -> that is them
+ *   2. clients/X is on site S, or unknown       -> that is them
+ *   3. clients/X is on the OTHER site           -> S-X (made on first write)
+ *   4. clients/X does not exist                 -> X, as always
+ *
+ * A record's site is its own `mindbodySiteId`, else its home studio's. With no
+ * site on the event there is nothing to test, and X is used as before.
  */
-async function clientOnOtherSite(
+export function siteQualifiedClientId(site: string | number, clientId: string | number): string {
+  return `${String(site).trim()}-${String(clientId).trim()}`;
+}
+
+async function resolveClientDocId(
   firestore: Firestore,
   clientId: string | number,
-  eventSiteId: string | number,
-): Promise<string | null> {
-  const snap = await resolveClientRef(firestore, clientId).get();
-  if (!snap.exists) return null;
-  const home = snap.data()?.homeStudioId;
-  if (typeof home !== "string" || !home) return null;
-  const studios = await getStudios(firestore);
-  const theirSite = studios.find((s) => s.id === home)?.siteId;
-  const eventSite = String(eventSiteId).trim();
-  return theirSite && eventSite && theirSite !== eventSite ? theirSite : null;
+  eventSiteId: string | number | undefined,
+): Promise<{ docId: string; siteId?: string }> {
+  const plainId = String(clientId).trim();
+  const site = eventSiteId !== undefined ? String(eventSiteId).trim() : "";
+  if (!site) return { docId: plainId };
+
+  const qualifiedId = siteQualifiedClientId(site, plainId);
+  if ((await resolveClientRef(firestore, qualifiedId).get()).exists) {
+    return { docId: qualifiedId, siteId: site };
+  }
+  const plain = await resolveClientRef(firestore, plainId).get();
+  if (!plain.exists) return { docId: plainId, siteId: site };
+  const data = plain.data() || {};
+  let theirSite =
+    data.mindbodySiteId !== undefined && data.mindbodySiteId !== null
+      ? String(data.mindbodySiteId).trim()
+      : "";
+  if (!theirSite && typeof data.homeStudioId === "string" && data.homeStudioId) {
+    const studios = await getStudios(firestore);
+    theirSite = studios.find((s) => s.id === data.homeStudioId)?.siteId ?? "";
+  }
+  // `siteId` is only handed on for a record about to be MADE: stamping it on
+  // an existing record whose site was unknown would be a guess.
+  return theirSite && theirSite !== site
+    ? { docId: qualifiedId, siteId: site }
+    : { docId: plainId };
 }
 
 /**
@@ -337,34 +363,17 @@ export async function handleMindbodyWebhook(
       !isBookingEvent &&
       (lowerType.includes("client") || clientId !== undefined);
 
-    // One read, and only for an event that is about to touch a client.
-    const otherSite =
+    // Which record this event is about — a read or two, and only for an event
+    // that is about to touch a client. See resolveClientDocId.
+    const target =
       clientId !== undefined &&
-      siteId !== undefined &&
+      clientId !== "" &&
       (isCommercialEvent || isClientEvent || isBookingEvent)
-        ? await clientOnOtherSite(deps.firestore, clientId, siteId)
+        ? await resolveClientDocId(deps.firestore, clientId, siteId)
         : null;
 
-    if ((isCommercialEvent || isClientEvent) && clientId && otherSite) {
-      // Parked, not applied and not dropped. `crossSite` is what stops the
-      // Limbo screen offering "Set home studio" on it: that would write onto
-      // the very person this event is NOT about.
-      console.warn(
-        `Mindbody webhook: ${eventType} for client ${clientId} on site ${siteId} names a different person from Journey's client ${clientId} (home site ${otherSite}); not applied.`,
-      );
-      await recordLimboEvent(deps.firestore, {
-        eventId,
-        eventType,
-        kind: isCommercialEvent ? "commercial" : "client",
-        siteId,
-        locationId,
-        clientId,
-        crossSite: { eventSite: String(siteId), clientSite: otherSite },
-        reason: `Mindbody client ${clientId} on site ${siteId} is a different person from the Journey client with the same number, whose home studio is on site ${otherSite}. The two sites number their clients from the same range. Not applied, so it cannot change that person's record; this person has no Journey record of their own yet.`,
-        payload: parsed,
-      });
-    } else if (isCommercialEvent && clientId) {
-      const clientRef = resolveClientRef(deps.firestore, clientId);
+    if (isCommercialEvent && clientId && target) {
+      const clientRef = resolveClientRef(deps.firestore, target.docId);
       const isCancelEvent =
         lowerType.includes("cancel") || lowerType.includes("delete");
       const now = FieldValue.serverTimestamp();
@@ -672,6 +681,8 @@ export async function handleMindbodyWebhook(
 
       await ensureCanonicalClient(deps.firestore, {
         mindbodyClientId: clientId,
+        docId: target?.docId,
+        mindbodySiteId: target?.siteId,
         profile,
         enrichment,
         studioId,
@@ -801,12 +812,9 @@ export async function handleMindbodyWebhook(
         ? Timestamp.fromDate(endDate)
         : null;
 
-      // Never borrow a name from the other site's person.
-      if (!clientName && clientId && !otherSite) {
-        const clientSnap = await deps.firestore
-          .collection("clients")
-          .doc(String(clientId))
-          .get();
+      // Read from THIS person's record — never the other site's namesake.
+      if (!clientName && clientId && target) {
+        const clientSnap = await resolveClientRef(deps.firestore, target.docId).get();
         if (clientSnap.exists) {
           const cData = clientSnap.data();
           if (cData) {
@@ -882,17 +890,7 @@ export async function handleMindbodyWebhook(
           bookingExtras.bookingOriginatedFromWaitlist;
       }
 
-      if (clientId && otherSite) {
-        // The same outcome as the pull-sync: the booking lands on the
-        // calendar under the name Mindbody gave it, UNLINKED, and no stub is
-        // made. `clientId: null` is written explicitly so a merge also
-        // unlinks a row an earlier write filed on the wrong person.
-        console.warn(
-          `Mindbody webhook: booking ${bookingId} for client ${clientId} on site ${siteId} names a different person from Journey's client ${clientId} (home site ${otherSite}); written unlinked.`,
-        );
-        scheduleData.clientId = null;
-        scheduleData.mindbodyClientId = String(clientId);
-      } else if (clientId) {
+      if (clientId) {
         // ORDERING HAZARD: a booking can arrive before the client.created event
         // for a brand-new client. Rather than write a clientId that points at
         // nothing (which the hub self-heals to null, producing an unlinked
@@ -904,6 +902,8 @@ export async function handleMindbodyWebhook(
         // path that does not exist yet.
         const resolvedClient = await ensureCanonicalClient(deps.firestore, {
           mindbodyClientId: clientId,
+          docId: target?.docId,
+          mindbodySiteId: target?.siteId,
           profile: {
             mindbody_name: clientName !== "Unknown Client" ? clientName : undefined,
             firstName:
