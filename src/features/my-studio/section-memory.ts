@@ -8,9 +8,17 @@
  * Set it, then switch the app's view to My Studio.
  */
 
+import { forgetOnSignOut } from "../sign-out/memory";
+
 export type MyStudioSection = "relay" | "machines" | "team" | "studio";
 
 let rememberedSection: MyStudioSection = "relay";
+
+// "This iPad" means this person on this iPad: a leader who left it on Team
+// must not hand the next trainer a leader's section. Sign-out round, Sep 24 2026.
+forgetOnSignOut(() => {
+  rememberedSection = "relay";
+});
 
 export function rememberedMyStudioSection(): MyStudioSection {
   return rememberedSection;

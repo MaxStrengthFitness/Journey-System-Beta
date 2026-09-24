@@ -24,6 +24,7 @@ import type { FranchiseNetwork, Studio, Trainer } from "../../types";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { AdminButton, AdminEmpty, AdminSelect } from "./primitives";
 import { operationsStudios, studiosInScope, type OperationsScope } from "./scope";
+import { forgetOnSignOut } from "../sign-out/memory";
 
 export interface OperationsScopeValue {
   /** Every studio the reader may look at, by name. */
@@ -46,6 +47,11 @@ const Ctx = createContext<OperationsScopeValue | null>(null);
 
 /** Remembered across mounts of the Operations screen, per session. */
 let rememberedSpan = false;
+
+// Per session means per person: sign-out forgets it (Sep 24 2026).
+forgetOnSignOut(() => {
+  rememberedSpan = false;
+});
 
 export function OperationsScopeProvider({
   authTrainer,

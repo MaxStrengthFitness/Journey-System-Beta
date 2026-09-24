@@ -12,6 +12,7 @@ import { NowBar } from "./board/NowBar";
 import { ContextPanel } from "./board/ContextPanel";
 import { NetworkView } from "./board/NetworkView";
 import { useClosedRings } from "./board/rings";
+import { forgetOnSignOut } from "../sign-out/memory";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
 import "./kit.css";
@@ -63,6 +64,12 @@ import "./board/relay.css";
 export type PlannerTab = "floor" | "mine" | "notes" | "network";
 
 let rememberedTab: PlannerTab = "floor";
+
+// The next person on this iPad starts on the Floor, not on the last one's
+// Notes or Network. Sign-out round, Sep 24 2026.
+forgetOnSignOut(() => {
+  rememberedTab = "floor";
+});
 
 export interface PlannerViewProps {
   authTrainer?: Trainer | null;

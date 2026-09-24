@@ -7,7 +7,9 @@
  * be the only write it makes. A trainer who works from two devices can pin a
  * different studio on each, which is the behaviour that was actually wanted.
  */
-const KEY = "max_strength_default_studio_id";
+/** Exported for sign-out, which keeps this key and clears the rest (features/sign-out). */
+export const DEFAULT_STUDIO_KEY = "max_strength_default_studio_id";
+const KEY = DEFAULT_STUDIO_KEY;
 
 export function getDefaultStudioId(): string | null {
   try {

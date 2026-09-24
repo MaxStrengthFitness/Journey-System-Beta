@@ -8,7 +8,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 import AppContent from "./AppContent";
 import { useAuthInitialization } from "./hooks/useAuthInitialization";
 import { migrateClientMachineMetrics } from "./lib/migration-utils";
-import { getDefaultStudioId, setDefaultStudioId } from "./lib/default-studio";
+import { endPersonalSession, personKey } from "./features/sign-out/sign-out";
 
 export default function App() {
   const {
@@ -27,13 +27,14 @@ export default function App() {
   } = useAuthInitialization();
 
   const handleLogout = async () => {
-    /* The pinned studio is a property of this device, not of the session --
-       a floor tablet should still open its own studio for the next trainer.
-       It is re-checked against that trainer's access before it is used, so
-       keeping it cannot grant anyone entry to somewhere they can't go. */
-    const pinnedStudioId = getDefaultStudioId();
-    localStorage.clear();
-    setDefaultStudioId(pinnedStudioId);
+    /* The next person on this iPad starts fresh (sign-out round, Sep 24
+       2026): storage, one-shot handoffs and module memory here, React state
+       by the key below. The pinned studio is a property of this device, not
+       of the session -- a floor tablet should still open its own studio for
+       the next trainer. It is re-checked against that trainer's access before
+       it is used, so keeping it cannot grant anyone entry to somewhere they
+       can't go. See features/sign-out. */
+    endPersonalSession({ local: localStorage, session: sessionStorage });
     setAuthTrainer(null);
     setNetworks([]);
     setTokenRole(null);
@@ -64,7 +65,12 @@ export default function App() {
   return (
     <MindbodyHealthProvider>
       <ToastProvider>
+        {/* Keyed on the person, so a sign-out unmounts every screen, mode,
+            selection and the in-memory studio with it, and the next person
+            mounts fresh. The only way to be sure nothing is carried over,
+            including state added after this was written. */}
         <ActiveStudioProvider
+          key={personKey(user, authTrainer)}
           studios={studios}
           networks={networks}
           authTrainer={authTrainer}

@@ -78,10 +78,14 @@ vi.mock("firebase/firestore", () => {
 
 import { AdminDashboardView } from "./AdminDashboardView";
 import type { Studio, Trainer } from "../../types";
+import { DEMO_STUDIO_ID } from "../demo-mode/constants";
 
 const studios = [{ id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957", mindbodyMode: "live" }] as unknown as Studio[];
 const lead = { id: "lead", fullName: "Lee Leader", initials: "LL", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
 const admin = { id: "adm", fullName: "Ada Admin", initials: "AA", role: "Admin", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
+const trainer = { id: "lt", fullName: "Tia Trainer", initials: "TT", role: "LifeTransformer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
+const granted = { ...trainer, id: "lt2", managedStudioIds: ["solon"] } as unknown as Trainer;
+const demoStudio = { id: DEMO_STUDIO_ID, name: "Demo Mode", isDemo: true, timezone: "America/New_York" } as unknown as Studio;
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -93,14 +97,14 @@ afterEach(() => {
   host = null;
 });
 
-async function mount(who: Trainer, isAdmin: boolean) {
+async function mount(who: Trainer, isAdmin: boolean, activeStudioId = "solon", studioList: Studio[] = studios) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who]} isAdmin={isAdmin} clients={[]} machines={[]} schedules={[]} activeStudioId="solon" />
+        <AdminDashboardView authTrainer={who} studios={studioList} networks={[]} trainers={[who]} isAdmin={isAdmin} clients={[]} machines={[]} schedules={[]} activeStudioId={activeStudioId} />
       </StrictMode>,
     );
   });
@@ -155,5 +159,40 @@ describe("the Operations shell", () => {
     await clickNav(el, "Renewals");
     await clickNav(el, "Delight queue");
     expect(el.textContent).toContain("Delight queue");
+  });
+});
+
+/*
+ * THE SHELL'S OWN GATE (sign-out round, Sep 24 2026). AppContent sends anyone
+ * who may not open Operations to the Hub before this is drawn; the shell
+ * refuses on its own as well, so no other door can open it for them.
+ */
+describe("the Operations shell's own gate", () => {
+  const NINE = ["Overview", "Renewals", "Delight queue", "Floor", "Staff & Roles", "Insights", "Announcements", "Mindbody", "Data"];
+
+  it("refuses a Life Transformer at a real studio: a sentence, and none of the nine", async () => {
+    const el = await mount(trainer, false);
+    expect(navLabels(el)).toEqual([]);
+    expect(el.querySelector('[data-testid="operations-closed"]')).toBeTruthy();
+    expect(el.textContent).toContain("Operations is for a studio's leaders");
+    expect(el.textContent).not.toContain("Solon — Overview");
+  });
+
+  it("refuses a trainer with the grant: it opens My Studio's leader sections, not Operations", async () => {
+    const el = await mount(granted, false);
+    expect(navLabels(el)).toEqual([]);
+    expect(el.querySelector('[data-testid="operations-closed"]')).toBeTruthy();
+  });
+
+  it("opens for a Life Transformer inside Demo Mode, where everyone has the run of it", async () => {
+    const el = await mount(trainer, false, DEMO_STUDIO_ID, [...studios, demoStudio]);
+    expect(el.querySelector('[data-testid="operations-closed"]')).toBeNull();
+    expect(navLabels(el)).toEqual(NINE);
+  });
+
+  it("still opens for a studio's leader at a real studio", async () => {
+    const el = await mount(lead, false);
+    expect(el.querySelector('[data-testid="operations-closed"]')).toBeNull();
+    expect(navLabels(el)).toEqual(NINE);
   });
 });
