@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
+import { OUTCOME_GLOSS, OUTCOME_LABEL } from "../../lib/set-outcome";
 
 interface GridToolbarProps {
   /** Section caption, e.g. "Session log". Optional: the profile's Journey tab has none. */
@@ -48,11 +49,16 @@ export function GridToolbar({ title, children }: GridToolbarProps) {
  * `showLatest={false}` drops the "Latest session" key: the profile grid no
  * longer frames its newest column (AJ's call, Sep 2026), so the key would
  * describe something that is not on screen. The Active Session keeps it.
+ *
+ * `showStatHit` adds the dashed ring the grid draws round the set the
+ * Analytics column is quoting (`.is-stat-hit` in journey-grid.css) — only
+ * where that column is on, for the same reason.
  */
 export function QualityLegend({
   compact = false,
   showLatest = true,
-}: { compact?: boolean; showLatest?: boolean } = {}) {
+  showStatHit = false,
+}: { compact?: boolean; showLatest?: boolean; showStatHit?: boolean } = {}) {
   return (
     <div className={`jg-legend ${compact ? "jg-legend--compact" : ""}`} aria-label="Rep quality key">
       <span className="jg-legend__item">
@@ -75,8 +81,10 @@ export function QualityLegend({
         <span className="jg-legend__swatch jg-legend__swatch--q2" aria-hidden="true" />
         {QUALITY_MARK_LABEL[2].name}
       </span>
-      {/* The two outcomes that are recorded but never counted. Not reached
-          and "no set" need no key: a dot and a dash read as absence. */}
+      {/* The two outcomes that are recorded but never counted, then Not
+          reached: the lone dot is not self-evident (it read as a stray mark
+          in the profile review, Sep 2026), so it is keyed too. "No set" is
+          the dash and needs none. */}
       <span className="jg-legend__item">
         <span className="jg-legend__swatch jg-legend__swatch--practice" aria-hidden="true">
           P
@@ -90,6 +98,20 @@ export function QualityLegend({
         </span>
         Skipped
       </span>
+      <span className="jg-legend__item">
+        <span className="jg-legend__swatch jg-legend__swatch--nr" aria-hidden="true">
+          &middot;
+        </span>
+        {OUTCOME_LABEL.not_reached}
+        <i className="jg-legend__gloss">{OUTCOME_GLOSS.not_reached}</i>
+      </span>
+      {showStatHit && (
+        <span className="jg-legend__item">
+          <span className="jg-legend__swatch jg-legend__swatch--stat-hit" aria-hidden="true" />
+          The set the stat quotes
+          <i className="jg-legend__gloss">Highest weight, Most reps and the rest</i>
+        </span>
+      )}
       {showLatest && (
         <span className="jg-legend__item">
           <span className="jg-legend__swatch jg-legend__swatch--latest" aria-hidden="true" />

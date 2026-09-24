@@ -1985,6 +1985,24 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   line-height: 1;
 }
 .jg-legend__swatch--skipped { border-style: solid; border-color: var(--jg-border); color: var(--jg-ink-faint); font-size: 11px; }
+/* Not reached: the lone dot the cell draws, in the skipped swatch's frame. */
+.jg-legend__swatch--nr {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--jg-border);
+  background: var(--jg-surface);
+  color: var(--jg-ink-faint);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+/* The Analytics set: the same dashed outline as .jg-cell.is-stat-hit. */
+.jg-legend__swatch--stat-hit {
+  border: 0;
+  background: var(--jg-surface);
+  outline: 1.5px dashed var(--jg-ink-muted);
+  outline-offset: -2px;
+}
 /* Segmented, exactly like the cell edge it stands for. */
 .jg-legend__swatch--q1 {
   background-color: var(--jg-q-poor-fill);

@@ -194,7 +194,7 @@ export function RecentJourneyView({
             and 21 machines on screen. No "Latest session" key: the profile
             grid does not frame its newest column. */}
         <div className="jg-toolbar__legend">
-          <QualityLegend compact showLatest={false} />
+          <QualityLegend compact showLatest={false} showStatHit />
         </div>
       </GridToolbar>
 

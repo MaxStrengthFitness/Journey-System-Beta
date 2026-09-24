@@ -96,6 +96,12 @@ describe("RecentJourneyView (the profile's Journey tab)", () => {
     expect(host.textContent).not.toContain("Latest");
     // The key itself is still there.
     expect(host.textContent).toContain("Skipped");
+    // ...and keys the two marks that used to go unexplained: the lone dot
+    // (not reached) and the dashed ring round the set the stat quotes.
+    expect(host.querySelector(".jg-legend__swatch--nr")).not.toBeNull();
+    expect(host.textContent).toContain("Not reached");
+    expect(host.querySelector(".jg-legend__swatch--stat-hit")).not.toBeNull();
+    expect(host.textContent).toContain("The set the stat quotes");
     expect(host.querySelector(".jg")?.getAttribute("data-autoload")).toBe("true");
     await act(async () => root.unmount());
   });
