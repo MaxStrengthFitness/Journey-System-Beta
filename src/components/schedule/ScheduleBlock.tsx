@@ -2,8 +2,10 @@ import { AlertTriangle, CloudOff, HeartPulse } from "lucide-react";
 import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { hubMarkers, isDefaultService, visibleMarkers, type HubMarkerKind } from "../../lib/hub-markers";
-import type { LoggedSessions } from "../../lib/booking-state";
+import { bookingDay, type LoggedSessions } from "../../lib/booking-state";
 import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
+import { criticalNotesOn } from "../../lib/hub-critical-notes";
+import type { JournalEntry } from "../../types/journal";
 import { safeToDate } from "../../lib/utils";
 import { canQuoteSessionNumber, coverageOfClient } from "../../lib/client-coverage";
 import { NEW_CLIENT_MAX_VISITS } from "../../lib/prior-history";
@@ -27,6 +29,14 @@ interface ScheduleBlockProps {
    * rather than "Not logged".
    */
   logged?: LoggedSessions | null;
+  /**
+   * This client's Critical notes, whatever their window, from the Hub's one
+   * read of the day (`useHubCriticalNotes`). The card works out which matter
+   * on the BOOKING's day (lib/hub-critical-notes). `null` while they are
+   * unknown — not read yet, or the read failed — and the card then claims
+   * nothing from them.
+   */
+  criticalNotes?: readonly JournalEntry[] | null;
   /** The Hub's minute clock. */
   now?: Date;
   onOpenClient: (clientId: string) => void;
@@ -94,6 +104,7 @@ export function ScheduleBlock({
   rosterLoading = false,
   journeyCutoverDate = null,
   logged = null,
+  criticalNotes = null,
   now = new Date(),
 }: ScheduleBlockProps) {
   const isUnavailable = Boolean(
@@ -157,13 +168,27 @@ export function ScheduleBlock({
   const isMilestone =
     canShowNumber && sessionNumber !== null && (sessionNumber === 1 || sessionNumber % 25 === 0);
 
+  /*
+   * A Critical note written in Journey marks the card (question 12, AJ
+   * Sep 24 2026): one that matters on THIS booking's studio day, by the
+   * briefing's own rule — closed, archived, run out or not yet started lights
+   * nothing. Red for every trainer: the Hub ignores "No need to remind me",
+   * as the record's critical line does.
+   */
+  const liveCritical = criticalNotesOn(
+    criticalNotes,
+    bookingDay({
+      startTime: session?.startTime || session?.StartDateTime || session?.date,
+      status: session?.status,
+    }),
+  );
   const {
     hasPriorityNote,
     priorityLabel,
     hasClinicalHistory,
     hasCheckInRedFlag,
     checkInFlagLabel,
-  } = getClientAlertState(client);
+  } = getClientAlertState(client, liveCritical);
   const showFlags = !recedes && !isUnavailable;
   const flagPriority = hasPriorityNote && showFlags;
   const flagClinical = hasClinicalHistory && showFlags;
@@ -202,18 +227,18 @@ export function ScheduleBlock({
     onOpenClient(client!.id!);
   };
 
-  // Edge-bar color = status. Priority notes win because they must be read first.
-  const edge = flagPriority
-    ? "border-l-red-500"
-    : isUnavailable
-      ? "border-l-slate-300 dark:border-l-slate-600"
-      : isUnlinked
-        ? "border-l-slate-400 dark:border-l-slate-500"
-        : recedes
-          ? "border-l-slate-400 dark:border-l-slate-600"
-          : isMilestone
-            ? "border-l-orange-500"
-            : "border-l-cyan";
+  /* Edge-bar color = status: a session, a milestone, over. A note never turns
+     it red (AJ, Sep 24 2026: the triangle only) — the triangle beside the name
+     is the one mark for "read this first", a legacy priority note included. */
+  const edge = isUnavailable
+    ? "border-l-slate-300 dark:border-l-slate-600"
+    : isUnlinked
+      ? "border-l-slate-400 dark:border-l-slate-500"
+      : recedes
+        ? "border-l-slate-400 dark:border-l-slate-600"
+        : isMilestone
+          ? "border-l-orange-500"
+          : "border-l-cyan";
 
   const surface = isPending
     ? "bg-white/70 dark:bg-slate-800/50 ring-1 ring-inset ring-slate-200/80 dark:ring-white/5 cursor-progress"
@@ -279,7 +304,10 @@ export function ScheduleBlock({
               )}
             />
           )}
-          {/* LOUD: read this before the session starts. */}
+          {/* LOUD: read this before the session starts — a Critical note that
+              matters that day, or a legacy priority note. The words are in the
+              label, whole; the note itself is first on the client's briefing
+              and in Notes. */}
           {flagPriority && (
             <span
               aria-label={priorityLabel || "Priority note"}
