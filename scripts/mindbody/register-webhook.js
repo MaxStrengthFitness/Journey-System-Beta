@@ -1,14 +1,31 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { confirmProduction } from './production-guard.js';
 
-confirmProduction({
-  script: 'register-webhook.js',
-  target: 'Mindbody webhook subscription -> production cloud function',
-  action: 'creates a live subscription; Mindbody will start POSTing real events',
-});
+// --list only reads, so it does not need the production confirmation; every
+// other run changes a live subscription and does.
+if (!process.argv.includes('--list')) {
+  confirmProduction({
+    script: 'register-webhook.js',
+    target: 'Mindbody webhook subscription -> production cloud function',
+    action: 'creates a live subscription; Mindbody will start POSTing real events',
+  });
+}
+
+/**
+ * A short, one-way fingerprint of a signing secret: enough to tell whether two
+ * secrets are the SAME (compare with the one Firebase holds) without ever
+ * printing the secret. Sep 24 2026: the webhook's last success was Aug 20 and
+ * its health record shows a signature failure on Sep 12 -- a secret mismatch
+ * is the first suspect, and this is how to check it safely.
+ */
+export function fingerprint(secret) {
+  if (!secret) return '(none)';
+  return crypto.createHash('sha256').update(String(secret).trim(), 'utf8').digest('hex').slice(0, 10);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,6 +158,9 @@ async function main() {
         const events = s.EventIds || s.eventIds || [];
         console.log(`  ${s.SubscriptionId || s.subscriptionId || s.id}  ${s.Status || s.status}  ${s.WebhookUrl || s.webhookUrl}`);
         console.log(`    events: ${events.join(', ')}`);
+        console.log(`    signing secret fingerprint: ${fingerprint(s.MessageSignatureKey || s.messageSignatureKey)}`);
+        const deact = s.DeactivationDateTime || s.deactivationDateTime;
+        if (deact) console.log(`    deactivated: ${deact}${s.DeactivationReason || s.deactivationReason ? ` (${s.DeactivationReason || s.deactivationReason})` : ''}`);
       }
       console.log('Look-only (--list): nothing was changed.');
       return;
@@ -188,6 +208,7 @@ async function main() {
     console.log('--------------------------------------------------');
     console.log(`Subscription ID: ${subscriptionId}`);
     console.log(`Signing Secret (HMAC Key): ${SHOW_SECRET ? signingSecret : maskSecret(signingSecret)}`);
+    console.log(`Signing secret fingerprint: ${fingerprint(signingSecret)} (must match Firebase's MINDBODY_WEBHOOK_SECRET)`);
     console.log('--------------------------------------------------');
 
     // 2. Activate Subscription
