@@ -209,12 +209,16 @@ export function getMuscleGroupColor(machineName: string = ''): string {
 /**
  * Identifies if a session is valid (active and not abandoned)
  * Abandoned sessions are 60+ minutes past their last heartbeat or creation.
+ *
+ * This is THE staleness rule. Every screen that decides whether an
+ * In-Progress session is still running reads it, through `splitInProgress`
+ * in lib/live-session.ts where it needs to choose between several. `now` is
+ * a parameter so the rule can be tested at a fixed instant.
  */
-export function isSessionValid(session: any): boolean {
+export function isSessionValid(session: any, now: number = Date.now()): boolean {
   if (!session) return false;
   if (session.status !== 'In-Progress') return true;
-  
-  const now = new Date().getTime();
+
   const heartbeat = getMillis(session.lastHeartbeatAt);
   const created = getMillis(session.createdAt);
   

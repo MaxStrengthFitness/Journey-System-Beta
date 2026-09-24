@@ -79,6 +79,8 @@ import { useToast } from "../contexts/ToastContext";
 import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
+import { StaleSessionNotice } from "../features/client-profile/StaleSessionNotice";
+import { forgetLiveSession, staleSessionStartedLine } from "../lib/live-session";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
 import {
@@ -233,7 +235,7 @@ export function ClientProfileView({
     useState<number>(0);
 
   // Use the new soft lock handoff hook
-  const { activeInProgressSession, isCheckingActiveSession } =
+  const { activeInProgressSession, staleInProgressSession, isCheckingActiveSession } =
     useActiveSessionCheck(clientId);
 
   // Per-studio machine display order (Aug 2026): resolves a studio's own
@@ -262,16 +264,20 @@ export function ClientProfileView({
   // deletion sequence WorkoutTrackerView's own "Scrap Session" flow uses
   // (logs, then notes, then the session doc itself) so a discarded session
   // leaves nothing orphaned behind.
-  const [showDiscardActiveSessionConfirm, setShowDiscardActiveSessionConfirm] =
-    useState(false);
+  //
+  // Sep 24 2026: Discard takes the session it was opened for — the live one
+  // from the "In progress" menu, or an abandoned one from the unfinished-
+  // session notice under the header. Before, it could only reach a live
+  // session, and an abandoned one could not be reached from anywhere.
+  const [discardTarget, setDiscardTarget] = useState<WorkoutSession | null>(null);
   const [isDiscardingActiveSession, setIsDiscardingActiveSession] =
     useState(false);
 
   const handleDiscardActiveSession = async () => {
-    if (!activeInProgressSession?.id) return;
+    if (!discardTarget?.id) return;
     setIsDiscardingActiveSession(true);
     try {
-      const sessionId = activeInProgressSession.id;
+      const sessionId = discardTarget.id;
       const logsQ = query(
         collection(db, "exerciseLogs"),
         where("sessionId", "==", sessionId),
@@ -290,14 +296,10 @@ export function ClientProfileView({
       }
       await deleteDoc(doc(db, "sessions", sessionId));
 
-      if (
-        localStorage.getItem("max_strength_active_session_id") === sessionId
-      ) {
-        localStorage.removeItem("max_strength_active_session_id");
-      }
+      forgetLiveSession(sessionId);
 
-      toastSuccess("Active session discarded.");
-      setShowDiscardActiveSessionConfirm(false);
+      toastSuccess("Session discarded.");
+      setDiscardTarget(null);
     } catch (err) {
       console.error("Error discarding active session:", err);
       toastError("Couldn't discard that session. Try again.");
@@ -1321,7 +1323,7 @@ export function ClientProfileView({
           setView("workouts");
         }}
         onViewCurrentSession={() => setView("workouts")}
-        onDiscardSession={() => setShowDiscardActiveSessionConfirm(true)}
+        onDiscardSession={() => setDiscardTarget(activeInProgressSession)}
         renewal={
           client.renewal
             ? {
@@ -1333,6 +1335,15 @@ export function ClientProfileView({
             : undefined
         }
       />
+      {/* An abandoned session: Start is still offered above, and this is
+          where it can be discarded (features/client-profile/StaleSessionNotice). */}
+      {!activeInProgressSession && staleInProgressSession && (
+        <StaleSessionNotice
+          session={staleInProgressSession}
+          todayKey={studioTodayKey()}
+          onDiscard={() => setDiscardTarget(staleInProgressSession)}
+        />
+      )}
       <RenewalCardDialog
         open={renewalOpen}
         onClose={() => setRenewalOpen(false)}
@@ -1504,8 +1515,8 @@ export function ClientProfileView({
               from the profile's In-Progress dropdown so a trainer can clear
               a stuck/abandoned session without opening it first. */}
           <Dialog
-            open={showDiscardActiveSessionConfirm}
-            onOpenChange={(v) => !isDiscardingActiveSession && setShowDiscardActiveSessionConfirm(v)}
+            open={!!discardTarget}
+            onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
           >
             <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
               <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
@@ -1526,16 +1537,20 @@ export function ClientProfileView({
                 <h3 className="text-2xl font-black italic uppercase tracking-tight">
                   {isDiscardingActiveSession
                     ? "Discarding Session..."
-                    : "Discard Active Session?"}
+                    : discardTarget && discardTarget.id !== activeInProgressSession?.id
+                      ? "Discard Unfinished Session?"
+                      : "Discard Active Session?"}
                 </h3>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
                   {isDiscardingActiveSession
                     ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
-                    : `This will end and permanently clear the session ${
-                        activeInProgressSession?.trainerInitials
-                          ? `started by ${activeInProgressSession.trainerInitials}`
-                          : "in progress"
-                      }. All data logged so far will be scrapped and will not be recorded in the database.`}
+                    : [
+                        "This will end and permanently clear this session.",
+                        discardTarget ? staleSessionStartedLine(discardTarget, studioTodayKey()) : "",
+                        "All data logged in it will be scrapped and will not be recorded in the database.",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                 </p>
               </div>
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
@@ -1543,7 +1558,7 @@ export function ClientProfileView({
                   variant="outline"
                   disabled={isDiscardingActiveSession}
                   className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
-                  onClick={() => setShowDiscardActiveSessionConfirm(false)}
+                  onClick={() => setDiscardTarget(null)}
                 >
                   Keep Session
                 </Button>

@@ -721,14 +721,23 @@ export default function AppContent({
       setCurrentView("workouts");
       return;
     }
-    // Second net: the id the device remembered, read directly — this
-    // survives a heartbeat older than the stream's 60-minute cutoff.
+    // Second net: the id the device remembered, read directly — this works
+    // before the studio's sessions stream has arrived after a reload, and for
+    // a session that stream does not hold.
+    // Sep 24 2026: it is followed only while its session is LIVE. It used to
+    // be followed however old the heartbeat was, so the tab — which reads
+    // "Start Session" once nothing is live — took the trainer back into
+    // yesterday's abandoned session. An abandoned one is still reached from
+    // its client, where the Active Session asks before carrying on with it;
+    // the device just stops pointing at it (the session is not touched).
     const rememberedId = peekLiveSessionId();
     if (rememberedId) {
       try {
         const snap = await getDoc(doc(db, "sessions", rememberedId));
-        const data = snap.exists() ? (snap.data() as { status?: string; clientId?: string }) : null;
-        if (data?.status === "In-Progress" && data.clientId) {
+        const data = snap.exists()
+          ? (snap.data() as { status?: string; clientId?: string; lastHeartbeatAt?: unknown; createdAt?: unknown })
+          : null;
+        if (data?.status === "In-Progress" && data.clientId && isSessionValid(data)) {
           setSelectedClientId(data.clientId);
           setCurrentView("workouts");
           return;
