@@ -161,6 +161,7 @@ the-floor.md lists five things a trainer wants to write mid-set. Today's homes, 
 **The profile**
 4. Is Notes & Profile a dossier you read or a form you fill? It is eight sections, fifteen listeners and a Save bar whose unsaved edits die on a tab tap. Should every record field autosave per change (the way Pulse does), so there is no dirty state to lose — and should the four top-level panels stay mounted?
 5. "Sessions before Journey" has no door and the Data tab points at it. Where does it live: a tap on the Completed-sessions number, the Admin section of the record, or an admin script only?
+   *Answered Sep 24 2026 (AJ: "Trainers absolutely need the ability to view and edit this"): the line under the Completed-sessions number. Anyone who can edit the client edits it; everyone else reads it. `src/features/client-profile/prior-history-door.ts`.*
 6. Seven readers download the same client's sessions with seven limits. Is one per-client session store in the profile shell worth a round *before* the FileMaker import multiplies every unbounded read?
 
 **Pulse and the progress report**

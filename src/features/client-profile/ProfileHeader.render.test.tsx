@@ -87,3 +87,72 @@ describe("ProfileHeader", () => {
     expect(el.querySelector('[aria-label^="Sync with Mindbody"]')).toBeNull();
   });
 });
+
+describe("ProfileHeader — the door to Sessions before Journey", () => {
+  const doorOf = (el: HTMLElement) =>
+    el.querySelector<HTMLButtonElement>('button[aria-label^="Sessions before Journey"]');
+
+  it("opens the editor from the Completed sessions tile", () => {
+    const onOpen = vi.fn();
+    const el = mount(
+      props({
+        completedCount: 461,
+        priorLabel: "412 before Journey · FileMaker",
+        priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: true, onOpen },
+      }),
+    );
+    const door = doorOf(el)!;
+    expect(door).toBeTruthy();
+    expect(door.textContent).toBe("412 before Journey · FileMaker");
+    expect(door.getAttribute("aria-label")).toContain("Open to edit.");
+    // Nothing tappable under 40px.
+    expect(door.className).toContain("min-h-10");
+    // The door replaces the plain label rather than repeating it.
+    expect(el.textContent!.split("412 before Journey").length - 1).toBe(1);
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the tile's renewal tap beside the door, never a button inside a button", () => {
+    const onOpen = vi.fn();
+    const onRenewal = vi.fn();
+    const el = mount(
+      props({
+        priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: true, onOpen },
+        renewal: { text: "9 left · auto-renews Nov 14", tone: "ok", attention: false, onOpen: onRenewal },
+      }),
+    );
+    expect(el.querySelectorAll("button button")).toHaveLength(0);
+    const renewal = el.querySelector<HTMLButtonElement>('button[aria-label^="Renewal:"]')!;
+    const door = doorOf(el)!;
+    expect(renewal.contains(door)).toBe(false);
+    // Same tile.
+    expect(renewal.parentElement!.contains(door)).toBe(true);
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onRenewal).not.toHaveBeenCalled();
+    act(() => renewal.click());
+    expect(onRenewal).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers it to read, for someone who cannot change it", () => {
+    const onOpen = vi.fn();
+    const el = mount(props({ priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: false, onOpen } }));
+    const door = doorOf(el)!;
+    expect(door.getAttribute("aria-label")).toContain("Open to read.");
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("says Add when there is nothing recorded yet", () => {
+    const el = mount(props({ priorHistoryDoor: { text: "Add sessions before Journey", canEdit: true, onOpen: () => {} } }));
+    expect(doorOf(el)!.textContent).toBe("Add sessions before Journey");
+  });
+
+  it("leaves the label as plain text when no door is passed", () => {
+    const el = mount(props({ priorLabel: "412 before Journey · FileMaker" }));
+    expect(el.textContent).toContain("412 before Journey · FileMaker");
+    expect(doorOf(el)).toBeNull();
+  });
+});

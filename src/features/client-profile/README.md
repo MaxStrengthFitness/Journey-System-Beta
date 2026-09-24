@@ -75,6 +75,16 @@ medium-weight outline button competing with four equal-weight stat tiles.
   horizontal scroll at 13px; the form re-syncs from the client snapshot only
   while no field is dirty, so a background write cannot clobber a half-typed
   edit.
+- **Sessions before Journey has a door (Sep 24 2026).** The line under the
+  Completed sessions count ("412 before Journey · FileMaker") is a 40px
+  button that opens the prior-history editor; with nothing recorded it
+  reads "Add sessions before Journey", and only for someone who could save
+  it. Who may edit mirrors the `clients/{id}` update rule; everyone else who
+  can open the profile gets the editor read-only. That tile is already a
+  button when a renewal is showing, and a button cannot hold another, so
+  `Stat` stretches the tile's own tap underneath and the door sits over it.
+  The pure half is `prior-history-door.ts`; the write is `statePriorHistory`
+  in `lib/prior-history.ts`. See `docs/business/migration-and-prior-history.md`.
 - **Start Session is the hero.** Hero-orange gradient, the only orange
   button in the header. When a session is already in progress the same slot
   becomes an amber dropdown (take over / view / discard) — same place, same

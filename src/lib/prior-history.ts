@@ -122,6 +122,51 @@ export function recordImportedSessions(
   return { ...prior, importedCount: Math.max(0, Math.trunc(prior.importedCount ?? 0)) + added };
 }
 
+/** The four things a person can actually know about a client's prior history. */
+export interface PriorHistoryStatement {
+  sessions: number;
+  through: string;
+  source: PriorHistorySource;
+  note?: string | null;
+}
+
+/**
+ * THE PERSON'S CONTRACT — the one way a human edit becomes the record, the
+ * counterpart of `recordImportedSessions` above.
+ *
+ * "Sessions before Journey" on the client profile asks for what a person can
+ * know: how many, counted up to when, from where, and a note. Everything else
+ * is carried over from the record already there:
+ *
+ *  - `importedCount` belongs to the importer. Re-stating the total must not
+ *    un-count sessions an import has already turned into real rows.
+ *  - `from` is not asked for, so it is kept rather than wiped.
+ *
+ * It never names `sessionCount`. That field is the reconciler's, and the
+ * reason this record exists is that the two never write the same field.
+ *
+ * Every field is present and none is `undefined` (Firestore refuses it), so
+ * the caller only adds `recordedAt: serverTimestamp()`.
+ */
+export function statePriorHistory(
+  existing: PriorHistory | null | undefined,
+  stated: PriorHistoryStatement,
+  by: { id?: string | null; name?: string | null },
+): Required<Omit<PriorHistory, "recordedAt">> {
+  const whole = (n: unknown) =>
+    typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+  return {
+    sessions: whole(stated.sessions),
+    importedCount: whole(existing?.importedCount),
+    from: existing?.from ?? null,
+    through: stated.through,
+    source: stated.source,
+    note: stated.note?.trim() || null,
+    recordedById: by.id ?? null,
+    recordedByName: by.name ?? null,
+  };
+}
+
 /** Defensive: this arrives off a Firestore document and drives a number on screen. */
 export function isPriorHistory(v: unknown): v is PriorHistory {
   if (!v || typeof v !== "object") return false;

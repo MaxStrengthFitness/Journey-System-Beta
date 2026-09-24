@@ -26,6 +26,7 @@ import {
   priorHistoryLabel,
   priorHistoryOf,
   priorUncounted,
+  statePriorHistory,
   totalSessions,
   type PriorHistorySource,
 } from "../lib/prior-history";
@@ -97,7 +98,13 @@ import {
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import {
   ProfileHeader,
+  canEditPriorHistory,
+  draftFromPrior,
+  priorHistoryDoorText,
+  readPriorHistoryDraft,
+  recordedByLine,
   resolvePackage,
+  statementChangesRecord,
   useTopTrainer,
 } from "../features/client-profile";
 import { isOnRoster, useKaizenRoster } from "../features/trainer-profile";
@@ -493,16 +500,31 @@ export function ClientProfileView({
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
 
+  /*
+   * SESSIONS BEFORE JOURNEY (Sep 24 2026). The header's Completed sessions
+   * tile is the door; anyone the clients/{id} update rule lets write this
+   * client edits, anyone else reads. features/client-profile/prior-history-door.ts.
+   */
+  const canEditPrior = canEditPriorHistory(liveAuthTrainer, client);
+  const priorDoorText = priorHistoryDoorText(priorHistory, canEditPrior);
+  const priorReading = readPriorHistoryDraft(
+    { sessions: sessionCountInput, source: priorSource, through: priorThrough, note: priorNote },
+    studioTodayKey(),
+  );
+  const priorCanSave =
+    canEditPrior && priorReading.ok && statementChangesRecord(priorReading.statement, priorHistory);
+
   /**
    * Opening the dialog seeds it from whatever is on the client, so an edit is
    * a correction rather than a re-entry.
    */
   const openSessionCountEditor = (open: boolean) => {
     if (open) {
-      setSessionCountInput(String(priorHistory?.sessions ?? ""));
-      setPriorSource(priorHistory?.source ?? "filemaker");
-      setPriorThrough(priorHistory?.through ?? studioTodayKey());
-      setPriorNote(priorHistory?.note ?? "");
+      const draft = draftFromPrior(priorHistory, studioTodayKey());
+      setSessionCountInput(draft.sessions);
+      setPriorSource(draft.source);
+      setPriorThrough(draft.through);
+      setPriorNote(draft.note);
     }
     setIsEditingSessionCount(open);
   };
@@ -517,25 +539,20 @@ export function ClientProfileView({
    *
    * `importedCount` is deliberately preserved: a historical import may already
    * have turned some of those sessions into real rows, and re-stating the
-   * total must not un-count them.
+   * total must not un-count them. `statePriorHistory` (lib/prior-history.ts)
+   * is that rule, with no `undefined` left in it.
    */
   const handleSaveSessionCount = async () => {
-    if (!clientId) return;
-    const num = parseInt(sessionCountInput, 10);
-    if (isNaN(num) || num < 0) return;
+    if (!clientId || !priorCanSave || !priorReading.ok) return;
 
     try {
       await updateDoc(doc(db, "clients", clientId), {
         priorHistory: {
-          sessions: num,
-          importedCount: priorHistory?.importedCount ?? 0,
-          from: priorHistory?.from ?? null,
-          through: priorThrough || studioTodayKey(),
-          source: priorSource,
-          note: priorNote.trim() || null,
+          ...statePriorHistory(priorHistory, priorReading.statement, {
+            id: authTrainer?.id,
+            name: authTrainer?.fullName,
+          }),
           recordedAt: serverTimestamp(),
-          recordedById: authTrainer?.id ?? null,
-          recordedByName: authTrainer?.fullName ?? null,
         },
         updatedAt: serverTimestamp(),
       });
@@ -1275,6 +1292,15 @@ export function ClientProfileView({
         scheduledSessions={scheduledSessions}
         completedCount={calculatedSessionCount}
         priorLabel={priorLabel}
+        priorHistoryDoor={
+          priorDoorText
+            ? {
+                text: priorDoorText,
+                canEdit: canEditPrior,
+                onOpen: () => openSessionCountEditor(true),
+              }
+            : undefined
+        }
         topTrainer={topTrainer}
         trainers={trainers}
         pkg={clientPackage}
@@ -1762,6 +1788,20 @@ export function ClientProfileView({
               What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
+          {/* Who said so — and, for anyone the rules will not let write this
+              client, whose number it is to change. */}
+          {recordedByLine(priorHistory) && (
+            <p className="text-[11px] text-muted-foreground">
+              {recordedByLine(priorHistory)}
+            </p>
+          )}
+          {!canEditPrior && (
+            <p className="rounded-xl border border-border bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[12px] text-slate-600 dark:text-slate-300">
+              Read only. Trainers and leaders at{" "}
+              {studios?.find((s) => s.id === client.homeStudioId)?.name ?? "their home studio"}{" "}
+              can change this.
+            </p>
+          )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase tracking-widest">
@@ -1772,9 +1812,15 @@ export function ClientProfileView({
                 inputMode="numeric"
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
                 placeholder="0"
               />
+              {priorReading.ok === false && priorReading.problem && (
+                <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                  {priorReading.problem}
+                </p>
+              )}
               {/* The app adds its own count on top, so the trainer is never
                   asked for a total they would have to work out — and the
                   reconciler can no longer overwrite what they typed. */}
@@ -1794,9 +1840,10 @@ export function ClientProfileView({
                     key={s}
                     type="button"
                     onClick={() => setPriorSource(s)}
+                    disabled={!canEditPrior}
                     aria-pressed={priorSource === s}
                     className={cn(
-                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors",
+                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:cursor-default",
                       priorSource === s
                         ? "border-[#38BDF8] bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#8cc4f2]"
                         : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
@@ -1816,7 +1863,8 @@ export function ClientProfileView({
                 type="date"
                 value={priorThrough}
                 onChange={(e) => setPriorThrough(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8]"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
               />
               <p className="text-[11px] text-muted-foreground">
                 Journey owns everything after this day.
@@ -1830,24 +1878,29 @@ export function ClientProfileView({
               <Input
                 value={priorNote}
                 onChange={(e) => setPriorNote(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8]"
-                placeholder="Counted from the FileMaker export"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
+                // Read-only, a placeholder would pass for the note itself.
+                placeholder={canEditPrior ? "Counted from the FileMaker export" : undefined}
               />
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 h-11 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
-                Cancel
+                {canEditPrior ? "Cancel" : "Close"}
               </Button>
-              <Button
-                onClick={handleSaveSessionCount}
-                className="flex-2 bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
-              >
-                Save
-              </Button>
+              {canEditPrior && (
+                <Button
+                  onClick={handleSaveSessionCount}
+                  disabled={!priorCanSave}
+                  className="flex-2 h-11 bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
+                >
+                  Save
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
