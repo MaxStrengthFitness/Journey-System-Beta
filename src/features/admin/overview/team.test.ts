@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import { loggedSessions } from "../../../lib/booking-state";
 import { teamThisWeek } from "./team";
 
 const TODAY = "2026-09-23"; // Wednesday
@@ -11,6 +12,7 @@ const booking = (id: string, hm: string, trainerId: string | undefined, trainerN
   ({ id, clientId: "c", clientName: "C", trainerId, trainerName, studioId: "s1", startTime: new Date(`${TODAY}T${hm}:00-04:00`), endTime: new Date(new Date(`${TODAY}T${hm}:00-04:00`).getTime() + 30 * 60_000), status, serviceName: "", source: "MindBody", createdAt: null }) as ScheduleEntry;
 
 const NAMES = { t1: "Sara Kim", t2: "Tom Lee", "initials:JC": "Jo Cole" };
+const NONE = loggedSessions([]);
 
 describe("teamThisWeek", () => {
   it("counts completed sessions and distinct clients since Monday, alphabetically, never ranked", () => {
@@ -22,7 +24,7 @@ describe("teamThisWeek", () => {
       session("2026-09-20", "t1", "d"), // Sunday: last week
       session("2026-09-22", "t1", "e", "In-Progress"),
     ];
-    const t = teamThisWeek(sessions, [], NOW, TODAY, 30, NAMES);
+    const t = teamThisWeek(sessions, [], NONE, NOW, TODAY, 30, NAMES);
     expect(t.since).toBe("2026-09-21");
     expect(t.sessions).toBe(4);
     expect(t.rows.map((r) => [r.name, r.sessions, r.clients, r.minutes])).toEqual([
@@ -38,17 +40,34 @@ describe("teamThisWeek", () => {
       booking("z", "14:00", "t2", "Tom Lee"), // still to come
       booking("w", "08:30", "t1", "Sara Kim", "Completed"),
     ];
-    const t = teamThisWeek([session("2026-09-22", "t1", "c")], today, NOW, TODAY, 30, NAMES, { "Jo Cole": "initials:JC" });
+    const t = teamThisWeek([session("2026-09-22", "t1", "c")], today, NONE, NOW, TODAY, 30, NAMES, { "Jo Cole": "initials:JC" });
     expect(t.unloggedToday).toBe(2);
     expect(t.rows.map((r) => [r.name, r.sessions, r.unloggedToday])).toEqual([
       ["Jo Cole", 0, 1],
       ["Sara Kim", 1, 0],
       ["Tom Lee", 0, 1],
     ]);
+    expect(t.unknownToday).toBe(0);
+  });
+
+  it("a booking whose client has a Journey session today is logged, not unlogged; unread sessions leave it unknown", () => {
+    const today = [
+      { ...booking("x", "08:00", "t2", "Tom Lee"), clientId: "c-x" },
+      { ...booking("y", "09:00", "t1", "Sara Kim"), clientId: "c-y" },
+    ];
+    const logged = loggedSessions([{ ...session(TODAY, "t2", "c-x"), startTime: new Date(`${TODAY}T08:03:00-04:00`) }], "America/New_York");
+    const t = teamThisWeek([], today, logged, NOW, TODAY, 30, NAMES, {}, "America/New_York");
+    // Tom logged his; only Sara's is left to chase (a trainer with nothing to show this week has no row).
+    expect(t.unloggedToday).toBe(1);
+    expect(t.rows.map((r) => [r.name, r.unloggedToday])).toEqual([["Sara Kim", 1]]);
+
+    const unread = teamThisWeek([], today, null, NOW, TODAY, 30, NAMES, {}, "America/New_York");
+    expect(unread.unloggedToday).toBe(0);
+    expect(unread.unknownToday).toBe(2);
   });
 
   it("a trainer the roster cannot name is still listed, by their initials", () => {
-    const t = teamThisWeek([{ date: "2026-09-22", trainerInitials: "ZZ", clientId: "a", status: "Completed" } as unknown as WorkoutSession], [], NOW, TODAY, 30, NAMES);
+    const t = teamThisWeek([{ date: "2026-09-22", trainerInitials: "ZZ", clientId: "a", status: "Completed" } as unknown as WorkoutSession], [], NONE, NOW, TODAY, 30, NAMES);
     expect(t.rows[0].name).toBe("ZZ");
   });
 });

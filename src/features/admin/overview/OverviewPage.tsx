@@ -25,7 +25,10 @@
  * right; on a portrait iPad they stack in reading order.
  *
  * READS PER OPEN, one studio: the week's schedule (live; changes/
- * useWeekSchedule), the renewal settings and cycles, the last 14 days of
+ * useWeekSchedule), today's Journey sessions (live; useTodaySessions — a
+ * booking is DONE when a session was logged for that client that day, AJ
+ * Sep 24 2026, because Mindbody's "Completed" never reaches the booking),
+ * the renewal settings and cycles, the last 14 days of
  * sessions (sessions-range — pain, the Insights line, this week's hours and
  * the Team panel all come from it), the studio's incidents, critical notes,
  * dated notes and the Sunday watch document (useOverviewReads), the
@@ -65,6 +68,7 @@ import { teamThisWeek } from "./team";
 import { ActionRows, Line, NeedsYou, OverviewPanel, Rows, SnoozeChooser, useFolded, type NeedChip } from "./pieces";
 import { ReviewNotesDialog } from "./ReviewNotesDialog";
 import { useOverviewReads } from "./useOverviewReads";
+import { useTodaySessions } from "./useTodaySessions";
 import "./overview.css";
 
 export type OverviewLink = "renewals" | "delight" | "insights" | "floor";
@@ -176,6 +180,7 @@ function StudioOverview({
 
   /* ---- the reads ---- */
   const week = useWeekSchedule(studioId, today, tz);
+  const logged = useTodaySessions(studioId, today, tz);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
   const acks = useAcknowledgements(studioId);
@@ -191,9 +196,12 @@ function StudioOverview({
 
   /* ---- today ---- */
   const todayEntries = useMemo(() => entriesForDay(week.entries, today), [week.entries, today]);
-  const numbers = useMemo(() => todayNumbers(todayEntries, now), [todayEntries, now]);
+  const numbers = useMemo(() => todayNumbers(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
   const foot = todayFoot(numbers);
-  const chase = useMemo(() => chaseList(todayEntries, now, tz), [todayEntries, now, tz]);
+  const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
+  // Done, Not completed and Never logged wait for both reads; a finished slot whose logging could not be read is missing, not zero.
+  const dayLoading = week.loading || logged.loading;
+  const missing = numbers.unknown > 0;
 
   /* ---- changes ---- */
   const weekDays = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDay(today, i)), [today]);
@@ -227,7 +235,10 @@ function StudioOverview({
   /* ---- the team and the week ---- */
   const names = useMemo(() => trainerNames(trainers), [trainers]);
   const idsByName = useMemo(() => Object.fromEntries(trainers.filter((t) => t.id).map((t) => [t.fullName, t.id as string])), [trainers]);
-  const team = useMemo(() => teamThisWeek(recent.sessions, todayEntries, now, today, sessionMinutesOf(studio), names, idsByName), [recent.sessions, todayEntries, now, today, studio, names, idsByName]);
+  const team = useMemo(
+    () => teamThisWeek(recent.sessions, todayEntries, logged.logged, now, today, sessionMinutesOf(studio), names, idsByName, tz),
+    [recent.sessions, todayEntries, logged.logged, now, today, studio, names, idsByName, tz],
+  );
   const hours = useMemo(() => hoursThisWeek(recent.sessions, today, sessionMinutesOf(studio)), [recent.sessions, today, studio]);
   const insight = useMemo(() => {
     if (recent.loading || recent.failed) return null;
@@ -328,25 +339,37 @@ function StudioOverview({
       <div id="ov-today" className="adm-ov__today">
         <AdminTiles>
           <AdminStatTile label="Booked today" value={numbers.booked} foot={numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`} loading={week.loading} />
-          <AdminStatTile label="Done" value={numbers.done} foot={foot.done} loading={week.loading} />
-          <AdminStatTile label="Not completed" value={numbers.notCompleted} tone={numbers.noShow > 0 ? "attention" : undefined} foot={numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted} loading={week.loading} />
-          <AdminStatTile label="Never logged" value={numbers.neverLogged} tone={numbers.neverLogged > 0 ? "alert" : undefined} foot={numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged} onClick={() => setShowChase((v) => !v)} loading={week.loading} />
-          <AdminStatTile label="On the floor now" value={numbers.onTheFloor} foot={foot.floor} loading={week.loading} />
+          <AdminStatTile label="Done" value={missing ? "—" : numbers.done} foot={foot.done} loading={dayLoading} />
+          <AdminStatTile label="Not completed" value={missing ? "—" : numbers.notCompleted} tone={!missing && numbers.noShow > 0 ? "attention" : undefined} foot={!missing && numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted} loading={dayLoading} />
+          <AdminStatTile
+            label="Never logged"
+            value={missing ? "—" : numbers.neverLogged}
+            tone={!missing && numbers.neverLogged > 0 ? "alert" : undefined}
+            foot={!missing && numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged}
+            onClick={missing ? undefined : () => setShowChase((v) => !v)}
+            loading={dayLoading}
+          />
+          <AdminStatTile label="On the floor now" value={numbers.onTheFloor} foot={foot.floor} loading={dayLoading} />
         </AdminTiles>
         {week.failed && (
           <div className="mt-3">
             <AdminNotice tone="alert">The week's schedule could not be read just now, so today's numbers and the changes list are missing — not zero.</AdminNotice>
           </div>
         )}
-        {showChase && numbers.neverLogged > 0 && (
+        {!week.failed && logged.failed && (
+          <div className="mt-3">
+            <AdminNotice tone="alert">Today's Journey sessions could not be read just now, so what was done and what was never logged are missing — not zero.</AdminNotice>
+          </div>
+        )}
+        {showChase && !missing && numbers.neverLogged > 0 && (
           <div className="adm-ov__chase">
             <ActionRows
               rows={chase.map((c) => ({
                 key: c.id,
                 clientId: c.clientId,
                 name: c.clientName,
-                sentence: `${c.at} with ${c.trainerName} — past its slot, nothing marked.`,
-                proof: "Completed, no-show, or never happened? Someone on the floor knows.",
+                sentence: `${c.at} with ${c.trainerName} — past its slot, nothing logged.`,
+                proof: "No Journey session for them today. Trained and not logged, a no-show, or never happened? Someone on the floor knows.",
                 tone: "alert",
                 badge: "Chase",
               }))}
@@ -666,9 +689,9 @@ function StudioOverview({
           title="Team this week"
           icon={<Users className="w-4 h-4" />}
           sentence={
-            recent.loading
+            recent.loading || logged.loading
               ? "Adding up the week…"
-              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
+              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
           }
           actions={door("insights", "Insights and hours")}
           folded={fold.folded.has("team")}
@@ -686,7 +709,7 @@ function StudioOverview({
                   <th scope="col">Sessions</th>
                   <th scope="col">Clients</th>
                   <th scope="col">Hours</th>
-                  <th scope="col">Unlogged today</th>
+                  {team.unknownToday === 0 && <th scope="col">Unlogged today</th>}
                 </tr>
               </thead>
               <tbody>
@@ -696,7 +719,7 @@ function StudioOverview({
                     <td>{r.sessions}</td>
                     <td>{r.clients}</td>
                     <td>{formatHours(r.minutes)}</td>
-                    <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>
+                    {team.unknownToday === 0 && <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>}
                   </tr>
                 ))}
               </tbody>

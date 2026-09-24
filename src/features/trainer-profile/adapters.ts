@@ -8,6 +8,7 @@
  */
 import { toDate } from "../../lib/studio-time";
 import { parseSessionDate } from "../../lib/utils";
+import { bookingState, loggedSessions } from "../../lib/booking-state";
 import type {
   Client,
   ScheduleEntry,
@@ -72,16 +73,33 @@ export function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+/**
+ * What is still ahead of this trainer: bookings whose slot has not finished
+ * and that nobody has logged. The schedule the app holds starts YESTERDAY
+ * (hooks/useLiveSchedule), and a booking never comes back "Completed" from
+ * Mindbody, so the old status test listed yesterday's and this morning's
+ * clients under "Upcoming". A booking leaves the list when its slot is over
+ * or when a Journey session was completed for that client that day (AJ, Sep
+ * 24 2026 — lib/booking-state). The one in its slot right now stays: it is
+ * who this trainer is with.
+ */
 export function upcomingFor(
   schedules: ScheduleEntry[],
   trainer: Trainer,
   clients: Client[],
+  sessions: WorkoutSession[] = [],
   now: Date = new Date(),
 ): ScheduleRow[] {
   const byId = new Map(clients.map((c) => [c.id, c]));
+  // Without the sessions (the stream has not answered), a booking finished
+  // early stays until its slot ends; the clock alone still drops every past one.
+  const logged = loggedSessions(sessions);
 
   return schedules
-    .filter((s) => s.status !== "Cancelled" && s.status !== "Completed")
+    .filter((s) => {
+      const state = bookingState(s, logged, now);
+      return state === "upcoming" || state === "in-progress";
+    })
     .filter((s) => isTrainersEntry(s as any, trainer))
     .map((s) => {
       const at = scheduleInstant(s);

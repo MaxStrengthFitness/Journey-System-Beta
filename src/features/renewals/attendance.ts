@@ -3,8 +3,19 @@
  *
  *   schedules  Mindbody bookings, synced per studio. The pull-sync writes a
  *              booking as "Scheduled" or "Cancelled" and never marks it
- *              "Completed", so a past booking that was not cancelled (or
- *              marked a no-show) is read as a visit.
+ *              "Completed", so what happened to one is read through
+ *              `lib/booking-state` (AJ, Sep 24 2026): a booking is a visit
+ *              when a Journey session was completed for the client that
+ *              studio day. A past booking with nothing logged is still read
+ *              as a visit BEFORE its studio's `journeyCutoverDate`, or when
+ *              none is set — FileMaker holds that record and Journey cannot
+ *              see it, so reading it as absence would collapse every
+ *              migration client's pace. From the cutover on, Journey IS the
+ *              record, and a booking nobody logged is neither a visit nor a
+ *              miss: it is on the Overview's chase list, and a session logged
+ *              later makes it a visit the next night. (Calling it a no-show
+ *              would put a trainer's forgotten log in the watch's
+ *              "cancellations or no-shows" sentence.)
  *   sessions   Journey workouts recorded on the iPad. Always a visit.
  *
  * Both become AttendanceRow on the studio's calendar, which is all the engine
@@ -14,15 +25,26 @@
 import { doseOf, readinessDial } from "../rating/session-reads";
 import type { ScheduleEntry, WorkoutSession } from "../../types";
 import { studioDateKey, toDate } from "../../lib/studio-time";
+import { bookingState, type LoggedSessions } from "../../lib/booking-state";
 import { sessionDayKey, type HistorySession } from "../client-history/model";
 import type { AttendanceRow, SessionFeelRow } from "./engine";
 
-type ScheduleLike = Pick<ScheduleEntry, "startTime" | "status" | "trainerId">;
+type ScheduleLike = Pick<ScheduleEntry, "startTime" | "status" | "trainerId"> &
+  Partial<Pick<ScheduleEntry, "endTime" | "clientId" | "studioId">>;
+
+/** What Journey holds for this client, to read their bookings against. */
+export interface JourneyRecord {
+  /** `loggedSessions(...)` over the client's own sessions; null when they could not be read. */
+  logged: LoggedSessions | null;
+  /** A studio's `journeyCutoverDate` (yyyy-mm-dd), or null when unset or unknown. */
+  cutoverOf: (studioId: string | null | undefined) => string | null;
+}
 
 export function attendanceFromSchedules(
   rows: ScheduleLike[],
   now: Date,
   tz: string,
+  journey?: JourneyRecord,
 ): AttendanceRow[] {
   const out: AttendanceRow[] = [];
   for (const r of rows) {
@@ -30,14 +52,28 @@ export function attendanceFromSchedules(
     if (!start) continue;
     const day = studioDateKey(start, tz);
     if (!day) continue;
-    const kind: AttendanceRow["kind"] =
-      r.status === "Cancelled"
-        ? "cancelled"
-        : r.status === "No-Show"
-          ? "no-show"
-          : start.getTime() <= now.getTime()
-            ? "visit"
-            : "booked";
+    let kind: AttendanceRow["kind"];
+    switch (bookingState(r, journey?.logged ?? null, now, tz)) {
+      case "cancelled":
+        kind = "cancelled";
+        break;
+      case "no-show":
+        kind = "no-show";
+        break;
+      case "upcoming":
+        kind = "booked";
+        break;
+      case "never-logged": {
+        const cutover = journey?.cutoverOf(r.studioId) ?? null;
+        // On Journey, with nothing logged: not a visit, not a miss.
+        if (cutover && day >= cutover) continue;
+        kind = "visit";
+        break;
+      }
+      default:
+        // Completed, in its slot, or unknown: a started booking is a visit, as it always was.
+        kind = "visit";
+    }
     out.push({ day, kind, trainerId: r.trainerId ?? null });
   }
   return out;
