@@ -66,7 +66,7 @@ export function useTrainerNotes(uid: string | null): TrainerNotesState {
         setNotes({ list: snap.docs.map((d) => noteFromDoc(d.id, d.data(ESTIMATE))), ready: true, error: null }),
       (err: any) => {
         console.warn("[notes] read failed:", err);
-        setNotes({ list: [], ready: true, error: "Couldn't load your notes. Check the connection and open the Planner again." });
+        setNotes({ list: [], ready: true, error: "Couldn't load your notes. Check the connection and open Relay again." });
       },
     );
     const offFolders = onSnapshot(

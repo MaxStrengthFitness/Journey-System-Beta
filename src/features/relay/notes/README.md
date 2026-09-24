@@ -14,7 +14,7 @@ For sharing, he chose **private, with a Share button**. Only the author reads a 
 - **A note.** It has a title (optional: with none, the first line of the body becomes the title), a kind, a folder, a pin, the clients it is about, the body, and a **Share** switch. It saves explicitly, with Save at the top so the iPad keyboard never covers it.
 - **In a client's profile**, under **Goals → Plans from the team**, are the notes shared onto that client.
   - **Write a plan** opens the Planner with a new plan about the client already started.
-  - The author gets **Edit in your Planner**.
+  - The author gets **Edit in Relay**.
   - The studio's leaders get **Take off the record**.
 
 The kinds are Note, Plan, Routine change, Retention, Injury plan and (rework) Research. They are a coloured dot beside the name, so the colour is never the only cue.

@@ -23,7 +23,7 @@ import { NoteBody } from "./NoteBody";
  *
  *   Write a plan         opens the author's Planner with a new plan about
  *                        this client already started
- *   Edit in your Planner the author's own notes
+ *   Edit in Relay the author's own notes
  *   Take off the record  the studio's leaders and administrators; the
  *                        author keeps their own copy
  */
@@ -129,7 +129,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
           <div className="flex items-start gap-3">
             <NotebookPen className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Nothing shared yet. A trainer writes a plan in their Planner — a routine change, an injury plan, a
+              Nothing shared yet. A trainer writes a plan in their notes in Relay — a routine change, an injury plan, a
               retention idea — and switches on Share; it appears here for everyone who coaches {first}.
             </p>
           </div>
@@ -209,7 +209,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                           className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          Edit in your Planner
+                          Edit in Relay
                         </button>
                       )}
                       {canTakeOff && confirming !== n.id && (
@@ -234,7 +234,7 @@ export function SharedNotesCard({ client, authTrainer, onOpenPlanner }: SharedNo
                       className="mt-2 flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3"
                     >
                       <p className="text-sm text-slate-700 dark:text-slate-200">
-                        Take “{n.title}” off {first}'s record? {n.authorName} keeps their own copy in their Planner.
+                        Take “{n.title}” off {first}'s record? {n.authorName} keeps their own copy in their notes in Relay.
                       </p>
                       {failure && <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{failure}</p>}
                       <div className="flex flex-wrap gap-2">
