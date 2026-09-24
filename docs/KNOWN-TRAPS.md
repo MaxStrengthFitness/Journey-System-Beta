@@ -229,6 +229,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
   - **The notes catalog leaves out profile fields the record edits in its own sections** (`SHOWN_ELSEWHERE_ON_RECORD`).
   - **The progress-report banner above the header reads one probe per client**, not the shelf (which loads on two tabs only).
 
+- **A field the record shows through the dossier's `val()` must be seeded in `clientFormSeed()`** (`src/features/client-profile/info-form.ts`). `val()` reads the form only — it does not fall back to the saved client the way the Life, Goals and Contract panels do — so an unseeded field is a box that is always empty however much is stored. Wingspan shipped that way (Sep 2026) while machine fit's Setup screen was sending trainers to it. `info-form.test.ts` reads `ClientDossier.tsx` and fails on any `val()` field the seed leaves out. Seeding writes nothing: the Save bar writes only `dirtyFields`.
+
 - **`useClientJournal`'s four unbounded collections carry a 200-item guard rail, unordered on purpose** (`JOURNAL_GUARD_LIMIT`). Don't turn it into a "newest N": the focus board counts every past focus and its history, so an ordered cut would miscount (several focuses may be active at once since the audit round). When the rail is hit the hook says `capped` and the journal tab says so.
 
 <a id="tracker"></a>

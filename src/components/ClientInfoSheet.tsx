@@ -8,6 +8,7 @@ import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { useScrollerPad } from "../features/client-profile/use-scroller-pad";
+import { clientFormSeed } from "../features/client-profile/info-form";
 import { Button } from "@/components/ui/button";
 import { ClientDossier } from "./client-dossier/ClientDossier";
 
@@ -123,50 +124,8 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     if ((isOpen || inline) && client) {
       if (inline && dirtyRef.current.size > 0) return;
       setActiveTab(defaultTab || "notes");
-      setFormData({
-        firstName: client.firstName || "",
-        lastName: client.lastName || "",
-        nickname: client.nickname || "",
-        mindbodyId: client.mindbodyId || "",
-        mindbodyClientId: client.mindbodyClientId || client.mindbodyId || "",
-        mindbody_name: client.mindbody_name || "",
-        mindbodyNotes: client.mindbodyNotes || "",
-        photoUrl: client.photoUrl || "",
-        dateOfBirth: client.dateOfBirth || "",
-        gender: client.gender || "",
-        phone: client.phone || "",
-        email: client.email || "",
-        address: client.address || "",
-        emergencyContactName: client.emergencyContactName || "",
-        emergencyContactPhone: client.emergencyContactPhone || "",
-        occupation: client.occupation || "",
-        isRetired: client.isRetired || false,
-        workProfile: client.workProfile ?? null,
-        recreationActivities: client.recreationActivities || [],
-        fitnessBackground: client.fitnessBackground || [],
-        needsUnteaching: client.needsUnteaching || false,
-        pedigreeHistory: client.pedigreeHistory || [],
-        // Dropdowns start EMPTY. Pre-filling "Sedentary"/"Novice" here made an
-        // unset field look assessed, and the first save wrote it to Firestore.
-        // Nothing is stored until a trainer explicitly picks an option.
-        activityLevel: client.activityLevel || "",
-        recoveryMetric: client.recoveryMetric || "",
-        experienceLevel: client.experienceLevel || "",
-        trainingPedigree: client.trainingPedigree || "",
-        leadSource: client.leadSource || "",
-        referredBy: client.referredBy || "",
-        clinicalFlags: client.clinicalFlags || [],
-        medicalHistory: client.medicalHistory || "",
-        clinicalNotes: client.clinicalNotes || "",
-        height: client.height || "",
-        weight: client.weight || "",
-        discoveryNotes: client.discoveryNotes || "",
-        globalNotes: client.globalNotes || "",
-        smartGoal: client.smartGoal || "",
-        packageTier: client.packageTier || "",
-        approvedCrossTrainStudioIds: client.approvedCrossTrainStudioIds || [],
-        events: client.events || [],
-      });
+      // Every field the dossier shows must be in the seed (see info-form.ts).
+      setFormData(clientFormSeed(client));
       setDirtyFields(new Set());
     }
   }, [isOpen, client]);

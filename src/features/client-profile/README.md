@@ -74,7 +74,9 @@ medium-weight outline button competing with four equal-weight stat tiles.
   (`ClientInfoSheet variant="inline"`). Seven tabs fit a 1024px iPad with no
   horizontal scroll at 13px; the form re-syncs from the client snapshot only
   while no field is dirty, so a background write cannot clobber a half-typed
-  edit.
+  edit. What the form opens with is `clientFormSeed()` in `info-form.ts`, and
+  every field the dossier shows must be in it: the dossier's `val()` reads the
+  form only, so a field left out is an empty box (Wingspan was, Sep 2026).
 - **Start Session is the hero.** Hero-orange gradient, the only orange
   button in the header. When a session is already in progress the same slot
   becomes an amber dropdown (take over / view / discard) — same place, same
