@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { DOSSIER_SECTIONS, type DossierSection } from "../../types/journal";
 import {
   DEFAULT_LOCATION,
-  PAGE_TO_SECTION,
   RECORD_ANCHORS,
   RECORD_PAGES,
   RECORD_PAGE_IDS,
@@ -21,7 +20,6 @@ import {
   profileNavReducer,
   readStoredLocation,
   recordLocation,
-  sectionForRecord,
   sectionLocation,
   takeStoredLocation,
   writeStoredLocation,
@@ -599,50 +597,12 @@ describe("normalizeLocation", () => {
   });
 });
 
-describe("the long scroll's landing (temporary, until the codex shell)", () => {
-  it("turns every page back into the section that holds it today", () => {
-    expect(sectionForRecord("notes")).toBe("notes");
-    expect(sectionForRecord("ford")).toBe("life");
-    expect(sectionForRecord("body")).toBe("medical");
-    expect(sectionForRecord("goals")).toBe("goals");
-    expect(sectionForRecord("account")).toBe("general");
-    // No section of their own: the tab's usual landing (Notes, top of the spine).
-    expect(sectionForRecord("overview")).toBeUndefined();
-    expect(sectionForRecord("story")).toBeUndefined();
-    expect(Object.keys(PAGE_TO_SECTION).sort()).toEqual([...RECORD_PAGE_IDS].sort());
-  });
-
-  it("uses the card where the long scroll keeps it in another section", () => {
-    expect(sectionForRecord("body", "body-watchouts")).toBe("medical");
-    expect(sectionForRecord("body", "body-pulse")).toBe("reports");
-    expect(sectionForRecord("body", "body-training-story")).toBe("life");
-    expect(sectionForRecord("goals", "goals-focus")).toBe("focus");
-    expect(sectionForRecord("account", "account-membership")).toBe("admin");
-    expect(sectionForRecord("account", "account-contact")).toBe("general");
-  });
-
-  it("round-trips every dossier section: section → page → the same section", () => {
-    for (const s of DOSSIER_SECTIONS) {
-      const to = SECTION_TO_PAGE[s.id];
-      expect(sectionForRecord(to.page, to.anchor), s.id).toBe(s.id);
-    }
-  });
-
-  it("only ever answers a real dossier section (ClientInfoSheet maps each to itself)", () => {
-    const ids = new Set<string>(DOSSIER_SECTIONS.map((s) => s.id));
-    for (const page of RECORD_PAGE_IDS) {
-      for (const anchor of [undefined, ...RECORD_ANCHORS]) {
-        const s = sectionForRecord(page, anchor);
-        if (s !== undefined) expect(ids.has(s), `${page} ${anchor}`).toBe(true);
-      }
-    }
-  });
-
-  it("sends the two profile doors where they went before", () => {
+describe("the two profile doors into the record", () => {
+  it("land on their page and card, as the long scroll landed on its section", () => {
     // QuickNoteDialog's "this is about her life" and the Activity Archive's
     // "edit medical" — ClientProfileView's two openRecord calls.
-    expect(sectionForRecord("ford")).toBe("life");
-    expect(sectionForRecord("body", "body-watchouts")).toBe("medical");
+    expect(recordLocation("ford")).toEqual({ tab: "record", page: "ford" });
+    expect(recordLocation("body", "body-watchouts")).toEqual({ tab: "record", page: "body", anchor: "body-watchouts" });
   });
 });
 

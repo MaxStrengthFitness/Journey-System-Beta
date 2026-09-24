@@ -44,7 +44,15 @@ export interface GoalsPanelProps {
   formData: Partial<Client>;
   updateField: (key: keyof Client, value: any) => void;
   authTrainer?: Trainer | null;
+  /**
+   * Element ids for the two cards a door may land on (client codex, Sep
+   * 2026: the Save bar's "Show" and the Overview's doors). Each also gets
+   * `data-cx-anchor`, which clears the sticky sub-toggle. Left out, no ids.
+   */
+  anchors?: { why?: string; now?: string };
 }
+
+const anchorOf = (id: string | undefined) => (id ? { id, "data-cx-anchor": id } : {});
 
 const fmtAchieved = (iso: string) => {
   const d = new Date(iso);
@@ -53,7 +61,7 @@ const fmtAchieved = (iso: string) => {
     : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
-export function GoalsPanel({ client, formData, updateField, authTrainer = null }: GoalsPanelProps) {
+export function GoalsPanel({ client, formData, updateField, authTrainer = null, anchors }: GoalsPanelProps) {
   /** The form's value when it has one, else what is on the record. */
   function current<K extends keyof Client>(key: K): Client[K] {
     const v = formData[key];
@@ -116,7 +124,7 @@ export function GoalsPanel({ client, formData, updateField, authTrainer = null }
   return (
     <div className="gf-goals" data-testid="goals-panel">
       {/* 1 · the anchor */}
-      <section className="gf-card gf-anchor">
+      <section className="gf-card gf-anchor" {...anchorOf(anchors?.why)}>
         <label htmlFor="gf-why" className="gf-kicker">
           The original why
         </label>
@@ -134,7 +142,7 @@ export function GoalsPanel({ client, formData, updateField, authTrainer = null }
       </section>
 
       {/* 2 · the current goal */}
-      <section className="gf-card">
+      <section className="gf-card" {...anchorOf(anchors?.now)}>
         <div className="gf-goal-head">
           <label htmlFor="gf-goal" className="gf-kicker inline-flex items-center gap-1.5">
             <Target className="h-3.5 w-3.5" aria-hidden /> Working toward now

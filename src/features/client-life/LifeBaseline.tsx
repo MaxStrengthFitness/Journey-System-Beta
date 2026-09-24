@@ -179,7 +179,19 @@ export function WorkBaseline({ client, formData, updateField }: LifeBaselineProp
   );
 }
 
-export function ActivityExperienceBaseline({ client, formData, updateField, authorName }: LifeBaselineProps) {
+/**
+ * Activity outside the studio, then Experience. `part` draws one of the two
+ * (client codex, Sep 2026): Activity is FORD's Recreation card and
+ * Experience is Body & Pulse's Training story (AJ's decision 6), so the codex
+ * mounts the two halves on two pages. Left out, both draw, as before.
+ */
+export function ActivityExperienceBaseline({
+  client,
+  formData,
+  updateField,
+  authorName,
+  part = "both",
+}: LifeBaselineProps & { part?: "activity" | "experience" | "both" }) {
   const activity = (pick(formData, client, "activityLevel") as string) || "";
   const recreation = (pick(formData, client, "recreationActivities") as string[] | undefined) || [];
   const background = (pick(formData, client, "fitnessBackground") as string[] | undefined) || [];
@@ -198,8 +210,12 @@ export function ActivityExperienceBaseline({ client, formData, updateField, auth
     );
   };
 
+  const showActivity = part !== "experience";
+  const showExperience = part !== "activity";
+
   return (
     <>
+      {showActivity && (
       <div className="clf-block">
         <div className="clf-row">
           <span className="clf-kicker">Active outside the studio</span>
@@ -219,7 +235,9 @@ export function ActivityExperienceBaseline({ client, formData, updateField, auth
         />
         <p className="clf-note">The stories behind these — the golf trip, the pickleball league — go in Recreation below.</p>
       </div>
+      )}
 
+      {showExperience && (
       <div className="clf-block">
         <div className="clf-row">
           <span className="clf-kicker">Experience</span>
@@ -261,6 +279,7 @@ export function ActivityExperienceBaseline({ client, formData, updateField, auth
           onChange={(v) => updateField("experienceLevel", v)}
         />
       </div>
+      )}
     </>
   );
 }

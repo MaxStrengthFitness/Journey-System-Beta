@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Client codex — the shell
+   --------------------------------------------------------------------------
+   The Notes & Profile tab (client codex, Sep 2026): the sub-toggle, the
+   critical line under it, the seven page panels and the one Save bar. Only
+   the shell's own layout lives here; every panel, button and word is the
+   kit's (kit/kit.css), and an area's page lays out its own content in its
+   own stylesheet.
+
+   Portrait first. The studios' iPads are mostly held upright — 1024pt on a
+   13-inch, 820 and 744 on the smaller ones — and 1366 in landscape. The page
+   is one column until the pages' container is wide enough for two.
+
+   Text is on the codex scale and colour comes from --cx-* only, like the
+   kit (kit/scale.test.ts reads this file).
+   ========================================================================== */
+
+.cx {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-bottom: 12px;
+}
+
+/* The pages' container. Deliberately NOT the element that holds the sticky
+   sub-toggle or the Save bar: a container query box would become their
+   containing block and stop them sticking to the scroller. */
+.cx-pages {
+  container: cx / inline-size;
+  min-width: 0;
+}
+
+.cx-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* A page the trainer is not on stays mounted (its editors, its composer and
+   its unsaved edits survive) and is simply not drawn. */
+.cx-page[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cx-page:not([hidden]) {
+    animation: cx-page-in 0.16s ease-out;
+  }
+
+  @keyframes cx-page-in {
+    from {
+      transform: translateY(4px);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* A card a door lands on clears the sticky sub-toggle, whose height
+   ProfileSubnav publishes on the codex root as --psub-stuck-h. */
+.cx [data-cx-anchor] {
+  scroll-margin-top: calc(var(--psub-stuck-h, 64px) + 12px);
+}
+
+/* Read only (a cross-train studio, a franchise owner who does not work at
+   the home studio): the record's editors sit inside a disabled fieldset, so
+   every control shows the record and none can change it. No border, no
+   padding: it is a switch, not a box. */
+.cx-lock {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ---- the Overview (interim: the Notes band and a door per page) -------- */
+
+.cx-ov {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.cx-ov-doors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+@container cx (min-width: 560px) {
+  .cx-ov-doors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container cx (min-width: 1040px) {
+  .cx-ov-doors {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cx-ov-note__machine {
+  color: var(--cx-ink);
+  font-weight: 800;
+}
+
+.cx-ov-door__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+}

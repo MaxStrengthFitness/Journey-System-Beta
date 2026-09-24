@@ -16,7 +16,6 @@ import {
   DEFAULT_LOCATION,
   initialNavState,
   profileNavReducer,
-  sectionForRecord,
   takeStoredLocation,
   type ClinicalView,
   type ProfileLocation,
@@ -39,13 +38,6 @@ export interface UseProfileNav {
   recordPage: RecordPage;
   /** The card on that page a door asked for, if any. */
   recordAnchor: RecordAnchor | undefined;
-  /**
-   * TEMPORARY (client codex, phase 3): the dossier section the long scroll
-   * should land on for recordPage + recordAnchor (profile-nav's
-   * sectionForRecord). ClientInfoSheet still speaks sections; the codex shell
-   * replaces it and this goes with it.
-   */
-  recordSection: DossierSection | undefined;
   setTab: (tab: ProfileTab) => void;
   setProgrammingView: (view: ProgrammingView) => void;
   setClinicalView: (view: ClinicalView) => void;
@@ -130,7 +122,6 @@ export function useProfileNav(
   const goLegacy = useCallback((id: string) => rawDispatch({ type: "legacy", id }), []);
 
   return useMemo(() => {
-    const onRecord = state.location.tab === "record";
     const recordPage: RecordPage =
       state.location.tab === "record" ? (state.location.page ?? "overview") : "overview";
     const recordAnchor =
@@ -148,7 +139,6 @@ export function useProfileNav(
           : (state.lastClinical ?? "calendar"),
       recordPage,
       recordAnchor,
-      recordSection: onRecord ? sectionForRecord(recordPage, recordAnchor) : undefined,
       setTab,
       setProgrammingView,
       setClinicalView,

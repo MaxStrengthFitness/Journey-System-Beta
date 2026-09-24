@@ -18,11 +18,10 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { studioHour, formatStudioTime, studioTodayKey, studioDayKeyOf } from "../lib/studio-time";
+import { studioHour, formatStudioTime, studioTodayKey } from "../lib/studio-time";
 import {
   PRIOR_SOURCES,
   PRIOR_SOURCE_LABEL,
-  historyCoverage,
   priorHistoryLabel,
   priorHistoryOf,
   priorUncounted,
@@ -58,12 +57,10 @@ import {
   defaultProgrammingView,
   useProfileNav,
 } from "../features/client-profile";
-import {
-  answerFor,
-  progressReportsStatusOf,
-  type ClientAnswer,
-} from "../features/client-profile/client-answer";
-import { ClientInfoSheet } from "./ClientInfoSheet";
+import { answerFor, type ClientAnswer } from "../features/client-profile/client-answer";
+import { useProgressReports } from "../features/client-profile/useProgressReports";
+import { ClientCodex, recordStudioIdOf, sessionTotalsOf, type CodexHosts } from "../features/client-codex";
+import { coverageOfClient, cutoverOf } from "../lib/client-coverage";
 import {
   Client,
   Machine,
@@ -161,23 +158,6 @@ export function ClientProfileView({
   const [clientSettings, setClientSettings] = useState<
     Record<string, ClientMachineSetting>
   >({});
-  const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
-  /*
-   * Whether the listener below answered, stamped with the client it answered
-   * for (client codex). The list itself is not cleared on a client change, so
-   * a reader filters it by clientId and trusts it only once this is "ready"
-   * for the same client: Pulse history is read from it, and a list never read
-   * must not pass for "no Pulse on file". See client-answer.ts.
-   */
-  const [progressReportsRead, setProgressReportsRead] = useState<ClientAnswer<
-    "ready" | "failed"
-  > | null>(null);
-  const progressReportsStatus = progressReportsStatusOf(
-    progressReportsRead,
-    clientId,
-    { quotaBlocked: hasQuotaError },
-  );
-
   /*
    * KAIZEN ROSTER.
    *
@@ -406,21 +386,22 @@ export function ClientProfileView({
    * "nothing recorded" about a machine rather than "never attempted", and
    * quotes no lifetime figure. Unset cutover means unknown, which reads the
    * same cautious way. docs/business/migration-and-prior-history.md.
+   *
+   * Client codex (Sep 2026): through `coverageOfClient`, the one answer every
+   * floor screen already uses, and with the CLIENT'S HOME studio's cutover —
+   * not the studio this iPad is at. It also counts Mindbody's own visit
+   * number, so a long-standing client nobody has written a prior record for
+   * reads "partial" rather than "unknown". One value, handed to Programming
+   * and to every page of Notes & Profile. The home is read as the rules read
+   * it (`recordStudioIdOf`: `homeStudioId`, else the older `studioId`).
+   *
+   * The floor screens (the Active Session, the Clients list) still pass the
+   * cutover of the studio the iPad is at, so for a cross-train client the
+   * two can word coverage differently until they move to the home too.
    */
-  const journeyCutover =
-    studios?.find((st) => st.id === activeStudioId)?.journeyCutoverDate ?? null;
+  const journeyCutover = cutoverOf(studios, recordStudioIdOf(client));
   const clientCoverage = useMemo(
-    () =>
-      historyCoverage(
-        {
-          priorHistory: client?.priorHistory,
-          historyIsComplete: client?.historyIsComplete,
-          firstJourneyDay: client?.firstSessionDate
-            ? studioDayKeyOf(client.firstSessionDate)
-            : null,
-        },
-        journeyCutover,
-      ),
+    () => coverageOfClient(client, journeyCutover),
     [client, journeyCutover],
   );
 
@@ -497,6 +478,34 @@ export function ClientProfileView({
     }),
   });
   const activeTab = nav.tab;
+
+  /*
+   * NOTES & PROFILE STAYS MOUNTED after its first visit (client codex, Sep
+   * 2026) — the All Machines and Trends precedent. Returning to the tab
+   * re-reads nothing, and an unsaved edit survives a trip to Journey (the
+   * codex's Save bar says where it is). Stamped with the client, so another
+   * client's profile starts unmounted again. Worked out during render, so the
+   * panel never paints one frame empty on the first visit.
+   */
+  const [recordMountedFor, setRecordMountedFor] = useState<string | null>(null);
+  if (activeTab === "record" && clientId && recordMountedFor !== clientId) {
+    setRecordMountedFor(clientId);
+  }
+  const recordMounted = !!clientId && recordMountedFor === clientId;
+
+  /*
+   * The progress reports: the banner's newest one, the Activity Archive's
+   * shelf and the codex's Pulse history all read this ONE listener. It runs
+   * while a tab that shows them is open — and, since the record panel stays
+   * mounted, for as long as the record has been opened on this client. See
+   * features/client-profile/useProgressReports.ts.
+   */
+  const { reports: progressReports, status: progressReportsStatus } = useProgressReports({
+    clientId,
+    enabled: activeTab === "clinical" || activeTab === "record" || recordMounted,
+    quotaBlocked: hasQuotaError,
+    uid: user?.uid ?? null,
+  });
 
   /* ------------------------------------------------------------------ *
    * HEADER FACTS (Sep 2026 redesign)
@@ -1013,6 +1022,45 @@ export function ClientProfileView({
   }, []);
   const closeMachineWindow = useCallback(() => setMachineWindowId(null), []);
 
+  /*
+   * NOTES & PROFILE (the client codex) — what it is handed from here.
+   *
+   * The doors that leave the tab belong to this view, which owns the other
+   * tabs and the app's view: a report, the Planner, the archive, a machine,
+   * the Set-up, and the Migration Hub. The Hub switches to Journey first, as
+   * the old record's did, because imported sessions land there.
+   *
+   * The session numbers are the header's own ("461 · 49 in Journey · 412
+   * before"), so no page can disagree with it; Journey's count is null until
+   * it answers for this client.
+   */
+  const codexHosts = useMemo<CodexHosts>(
+    () => ({
+      onSelectReport,
+      onDeleteReport: setReportToDelete,
+      onNewReport: () => setView("progress-report"),
+      onOpenPlanner: () => setView("studio-tasks"),
+      onOpenReports: () => nav.go({ tab: "clinical", view: "reports" }),
+      onOpenMigrationHub: () => {
+        nav.setTab("journey");
+        window.dispatchEvent(new CustomEvent("open-bulk-import"));
+      },
+      onOpenMachine: openMachineWindow,
+      onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
+    }),
+    // nav's callbacks are stable (useCallback with no deps in useProfileNav).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onSelectReport, setView, openMachineWindow, nav.go, nav.setTab],
+  );
+  const codexSessionTotals = useMemo(
+    () => sessionTotalsOf(journeyCompletedCount, client),
+    // The totals read nothing of the client but its uncounted prior sessions
+    // (priorOffset), so the deps are two primitives: a snapshot that changed
+    // neither keeps the same object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [journeyCompletedCount, priorOffset],
+  );
+
   // A different client is a different prescription: never carry a window over.
   useEffect(() => {
     setMachineWindowId(null);
@@ -1071,39 +1119,6 @@ export function ClientProfileView({
       live = false;
     };
   }, [clientId, hasQuotaError, user?.uid]);
-
-  useEffect(() => {
-    if (!clientId || hasQuotaError || !user) return;
-    // The shelf lives in the Activity Archive; the record's Assessment section
-    // prints the count and links to it, so both tabs need the query.
-    if (activeTab !== "clinical" && activeTab !== "record") return;
-
-    const q = query(
-      collection(db, "progressReports"),
-      where("clientId", "==", clientId),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        setProgressReports(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
-          ),
-        );
-        setProgressReportsRead({ clientId, value: "ready" });
-      },
-      (error: any) => {
-        // Said before the handler, which throws outside a browser.
-        setProgressReportsRead({ clientId, value: "failed" });
-        handleFirestoreError(error, OperationType.GET, "progressReports");
-      },
-    );
-
-    return () => unsubscribe();
-  }, [clientId, activeTab, user?.uid]);
 
   useEffect(() => {
     if (!clientId || !user) return;
@@ -1621,35 +1636,34 @@ export function ClientProfileView({
         </TabsContent>
 
         {/* ---------------- 3 · NOTES & PROFILE ---------------- */}
-        {/* The whole non-training record — Journal and Details merged into
-            one spine in the FORD round. Marker 13: the settings used to live
-            in a 100dvh-340px box with its own scrollbar. Natural height now;
-            the page scrolls. */}
+        {/* The client codex (Sep 2026): an Overview and six pages instead of
+            the long scroll — features/client-codex. Keyed on the client, so
+            another client starts fresh; kept mounted after its first visit,
+            so coming back re-reads nothing and an unsaved edit survives a
+            trip to Journey. Natural height; the page scrolls. */}
         <TabsContent
           value="record"
+          keepMounted={recordMounted}
           className="mt-0 focus-visible:outline-none"
         >
-          {client && (
-            <ClientInfoSheet
-              variant="inline"
-              isOpen
-              onOpenChange={() => nav.setTab("journey")}
+          {client && client.id && (recordMounted || activeTab === "record") && (
+            <ClientCodex
+              key={client.id}
               client={client}
               authTrainer={authTrainer ?? null}
-              // The page and card the nav is on, as the long scroll's section
-              // (nav.recordSection is the client codex's temporary shim; the
-              // codex shell replaces this sheet and the shim with it).
-              defaultTab={nav.recordSection || "notes"}
+              liveTrainer={liveAuthTrainer}
               machines={machines}
               trainers={trainers}
+              page={nav.recordPage}
+              anchor={nav.recordAnchor}
+              navStamp={nav.location}
+              active={activeTab === "record"}
+              onNavigate={nav.openRecord}
               progressReports={progressReports}
-              onSelectReport={onSelectReport}
-              onDeleteReport={setReportToDelete}
-              onNewReport={() => setView("progress-report")}
-              onOpenPlanner={() => setView("studio-tasks")}
-              // The filed shelf lives in the Activity Archive now; the record's
-              // Assessment section links across rather than keeping a copy.
-              onOpenReports={() => nav.go({ tab: "clinical", view: "reports" })}
+              progressReportsStatus={progressReportsStatus}
+              sessionTotals={codexSessionTotals}
+              coverage={clientCoverage}
+              hosts={codexHosts}
             />
           )}
         </TabsContent>

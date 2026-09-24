@@ -100,8 +100,8 @@ describe("useProfileNav opens Notes & Profile at a page", () => {
   /**
    * Every step is dispatched from an EFFECT, one per tick — a queued action,
    * which is what makes React run the reducer during the next render (the
-   * shape of the crash that shipped). The probe prints the record's page,
-   * card and the long scroll's section (the temporary shim).
+   * shape of the crash that shipped). The probe prints the tab, the record's
+   * page and the card.
    */
   type Step =
     | { openRecord: [RecordPage, string?] }
@@ -126,7 +126,7 @@ describe("useProfileNav opens Notes & Profile at a page", () => {
     }, [at, steps, nav]);
     return (
       <span data-testid="where">
-        {nav.tab}|{nav.recordPage}|{nav.recordAnchor ?? "-"}|{nav.recordSection ?? "-"}
+        {nav.tab}|{nav.recordPage}|{nav.recordAnchor ?? "-"}
       </span>
     );
   }
@@ -140,50 +140,50 @@ describe("useProfileNav opens Notes & Profile at a page", () => {
   }
 
   it("reports the Overview while the record is not showing", async () => {
-    expect(await run([])).toBe("journey|overview|-|-");
+    expect(await run([])).toBe("journey|overview|-");
   });
 
   it("opens a page and a card from an effect without crashing", async () => {
     expect(await run([{ openRecord: ["ford", "ford-occupation"] }])).toBe(
-      "record|ford|ford-occupation|life",
+      "record|ford|ford-occupation",
     );
   });
 
-  it("lands QuickNoteDialog's FORD door on FORD — the long scroll on Life", async () => {
-    expect(await run([{ openRecord: ["ford"] }])).toBe("record|ford|-|life");
+  it("lands QuickNoteDialog's FORD door on FORD", async () => {
+    expect(await run([{ openRecord: ["ford"] }])).toBe("record|ford|-");
   });
 
   it("lands the Activity Archive's edit-medical door on Body's watch-outs", async () => {
     expect(await run([{ openRecord: ["body", "body-watchouts"] }])).toBe(
-      "record|body|body-watchouts|medical",
+      "record|body|body-watchouts",
     );
   });
 
   it("still takes a dossier section", async () => {
-    expect(await run([{ openSection: "life" }])).toBe("record|ford|-|life");
-    expect(await run([{ openSection: "focus" }])).toBe("record|goals|goals-focus|focus");
-    expect(await run([{ openSection: "reports" }])).toBe("record|body|body-pulse|reports");
+    expect(await run([{ openSection: "life" }])).toBe("record|ford|-");
+    expect(await run([{ openSection: "focus" }])).toBe("record|goals|goals-focus");
+    expect(await run([{ openSection: "reports" }])).toBe("record|body|body-pulse");
   });
 
   it("opens the Overview on every entry to the tab, even after a deep link", async () => {
-    expect(await run([{ setTab: "record" }])).toBe("record|overview|-|-");
+    expect(await run([{ setTab: "record" }])).toBe("record|overview|-");
     expect(
       await run([
         { openRecord: ["goals", "goals-focus"] },
         { setTab: "journey" },
         { setTab: "record" },
       ]),
-    ).toBe("record|overview|-|-");
+    ).toBe("record|overview|-");
   });
 
   it("forgets the record's page when the tab is left", async () => {
     expect(await run([{ openRecord: ["account", "account-membership"] }, { setTab: "clinical" }])).toBe(
-      "clinical|overview|-|-",
+      "clinical|overview|-",
     );
   });
 
   it("takes a legacy id onto its page", async () => {
-    expect(await run([{ legacy: "admin" }])).toBe("record|account|account-membership|admin");
+    expect(await run([{ legacy: "admin" }])).toBe("record|account|account-membership");
   });
 
   it("goes back to Journey when the client changes, whatever page the record was on", async () => {
@@ -197,10 +197,10 @@ describe("useProfileNav opens Notes & Profile at a page", () => {
     const { host, root } = await mount(<Swapper />);
     await tick();
     await tick();
-    expect(host.textContent).toBe("record|story|-|-");
+    expect(host.textContent).toBe("record|story|-");
     await act(async () => swap.to?.("marcus"));
     await tick();
-    expect(host.textContent).toBe("journey|overview|-|-");
+    expect(host.textContent).toBe("journey|overview|-");
     await act(async () => root.unmount());
   });
 });

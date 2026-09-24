@@ -223,7 +223,7 @@ Seventeen `View` values are routed. Rank is the floor-loop rank from §1.4 the s
 | **Journal** | `ClientJournalTab` (`components/journal`) with `useClientJournal` | Composer, critical strip, focus board, timeline; streams `journalEntries`, `clientFocuses` and — through the read adapter — the legacy `focusRecords`, `sessionNotes`, `clinicalIncidents`, `trainerFocuses`; lists check-ins and reports |
 | **History** | `ClientHistoryTab` (`features/client-history`) | Every month since the first visit as a calendar, plus the richer list |
 | **Clinical** | `ClinicalReviewTab` (`features/clinical-review`) | "Generate clinical report" over a date range; nothing loads until pressed (by design) |
-| **Details** | `ClientInfoSheet` inline (`components`) | Identity, medical, body composition (InBody entry); links to Journal, reports and Planner |
+| **Details** (now **Notes & Profile**) | `ClientCodex` (`features/client-codex`) — was `ClientInfoSheet` inline | The record as seven pages (Overview · Notes · FORD · Body & Pulse · Goals & Focus · Story · Account) with one Save bar; the client codex round rewrites this section |
 
 The header (`ProfileHeader`, `features/client-profile`): Back → client directory; **Start Session** (the hero action) → `workouts`; when a session is already In-Progress the same slot becomes Take over / View current / Discard; the Kaizen toggle adds or removes the client from the trainer's roster; the package tile opens the renewal card. An alert strip above the header ("Report Required" / "Report Due") jumps to the check-in editor.
 

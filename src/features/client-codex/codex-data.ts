@@ -1,0 +1,217 @@
+/**
+ * WHAT THE CODEX'S PAGES ARE HANDED — the types, and the pure half of the
+ * tab's one load (`useCodexData`).
+ *
+ * Client codex, Sep 2026. The long scroll mounted every section at once and
+ * shared one journal load between them; the codex keeps that promise and
+ * extends it. The tab loads each thing ONCE — the journal, FORD, the InBody
+ * scans, the trainer's note dismissals — and derives the Pulse history from
+ * the progress-reports listener the profile already runs, then hands the lot
+ * to every page as `CodexData`. A page never opens a listener for something
+ * the tab already holds, and switching pages reads nothing.
+ *
+ * The rule every field here keeps: a read that has not answered, or failed,
+ * is UNKNOWN, never empty. Each stream carries its own state, so a page can
+ * say "couldn't load" where it would otherwise say "nothing on file".
+ *
+ * Pure: codex-data.test.ts.
+ */
+import type { Client, Machine, ProgressReport, Studio, Trainer } from "../../types";
+import type { JournalLoad, UseClientJournalResult } from "../../hooks/useClientJournal";
+import type { UseClientFordResult } from "../ford/useClientFord";
+import type { FordReadStatus } from "../ford/read-status";
+import type { FordAuthor } from "../ford/ford-write";
+import type { InBodyScansState } from "../inbody/useInBodyScans";
+import type { NoteDismissalsState } from "../client-notes/dismissal-store";
+import { notesOnRecord, notesSummary, type NotesOnRecord, type NotesSummary } from "../client-notes/record-selectors";
+import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
+import type { ProgressReportsStatus } from "../client-profile/client-answer";
+import { priorHistoryOf, priorUncounted, totalSessions, type HistoryCoverage } from "../../lib/prior-history";
+import type { CodexGo } from "./kit/primitives";
+import type { Pronouns } from "./kit/pronouns";
+import type { CodexAccess } from "./access";
+import type { RecordForm } from "./useRecordForm";
+
+/* ------------------------------------------------------------------ */
+/* FORD                                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * FORD as the codex sees it: the hook's own four states, plus `off` for a
+ * reader the FORD rule refuses — the tab never opens the listener for them,
+ * so the hook would wait ("loading") forever.
+ */
+export type CodexFordStatus = "off" | FordReadStatus;
+
+export function codexFordStatus(fordReadable: boolean, status: FordReadStatus): CodexFordStatus {
+  return fordReadable ? status : "off";
+}
+
+/* ------------------------------------------------------------------ */
+/* Pulse                                                               */
+/* ------------------------------------------------------------------ */
+
+/** The profile's progress-reports listener reads this many, newest first. */
+export const PULSE_READ_LIMIT = 50;
+
+export interface CodexPulse {
+  status: ProgressReportsStatus;
+  /** Null until the reports are read for this client. */
+  history: AssessmentHistory | null;
+}
+
+/**
+ * The client's Pulse history, from the reports the profile already streams —
+ * no second read.
+ *
+ * `historyFromDocs` decides whether the history is COMPLETE from how many
+ * documents the read returned (fewer than the limit: it reached the first
+ * report). So it must be given the RAW page, every report kind together, at
+ * the listener's own limit. Given only the check-ins, 20 check-ins among 50
+ * reports would read "complete" while older check-ins exist, and the Story
+ * would print a false "First Pulse in Journey" for a migrating client.
+ *
+ * The profile keeps the last client's list until this client's arrives, so a
+ * page that holds any other client's report is not this client's page yet:
+ * it is "loading", never a history.
+ */
+export function pulseFromReports(
+  reports: readonly ProgressReport[],
+  clientId: string | null | undefined,
+  status: ProgressReportsStatus,
+): CodexPulse {
+  if (status !== "ready" || !clientId) return { status: status === "ready" ? "loading" : status, history: null };
+  if (reports.some((r) => r.clientId !== clientId)) return { status: "loading", history: null };
+  return {
+    status,
+    history: historyFromDocs(reports as unknown as Record<string, unknown>[], PULSE_READ_LIMIT),
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Notes                                                               */
+/* ------------------------------------------------------------------ */
+
+export interface CodexNotes {
+  /** Whether journalEntries, the legacy notes and the incidents all answered. */
+  state: JournalLoad;
+  /** What Notes lists, what waits to be filed, and the settled life notes. */
+  record: NotesOnRecord;
+  /** The counts, once the notes are read; null while loading or failed. */
+  summary: NotesSummary | null;
+}
+
+/**
+ * The notes as every page counts them, from the one journal load. A journal
+ * that does not say what it could read is read as "loading" — unknown, never
+ * "none yet".
+ */
+export function notesOfJournal(
+  journal: Pick<UseClientJournalResult, "threads" | "criticalEntries" | "loadState">,
+  today: string,
+): CodexNotes {
+  const state: JournalLoad = journal.loadState?.notes ?? "loading";
+  const record = notesOnRecord(journal.threads ?? [], today);
+  const summary = state === "ready" ? notesSummary(record, journal.criticalEntries, today) : null;
+  return { state, record, summary };
+}
+
+/** Focuses the journal holds that are still running. Null until they are read. */
+export function runningFocuses(journal: Pick<UseClientJournalResult, "focuses" | "loadState">): number | null {
+  if (journal.loadState?.focuses !== "ready") return null;
+  return journal.focuses.filter((f) => f.status === "active").length;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sessions                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The header's own session numbers, so the tab can never disagree with it:
+ * "461 · 49 in Journey · 412 before". `journey` is null until the count
+ * answers for THIS client (the header's figure starts at 0, and a 0 reads as
+ * "new" to anything that counts it), and `total` with it.
+ */
+export interface SessionTotals {
+  total: number | null;
+  journey: number | null;
+  /** Sessions before Journey that exist only as a number (the prior record). */
+  before: number;
+}
+
+export function sessionTotalsOf(
+  journeyCount: number | null | undefined,
+  client: { priorHistory?: unknown } | null | undefined,
+): SessionTotals {
+  const prior = priorHistoryOf(client);
+  const journey = typeof journeyCount === "number" && Number.isFinite(journeyCount) ? journeyCount : null;
+  return {
+    total: totalSessions(journey, prior),
+    journey,
+    before: priorUncounted(prior),
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* What a page is handed                                               */
+/* ------------------------------------------------------------------ */
+
+/** Everything the tab loaded, once, for every page. */
+export interface CodexData {
+  client: Client;
+  /** The studio's day, yyyy-mm-dd (studioTodayKey). */
+  today: string;
+  access: CodexAccess;
+  /** she / he / they, from the gender Mindbody holds. */
+  pronouns: Pronouns;
+  authTrainer: Trainer | null;
+  /** Who writes a note or a FORD detail: the Auth uid, which the rules pin. */
+  author: FordAuthor;
+  machines: Machine[];
+  trainers: Trainer[];
+  /** The studios this reader may see (the cross-train list names them). */
+  availableStudios: Studio[];
+  /** The one journal load: notes, focuses, the critical notes, 40 sessions. */
+  journal: UseClientJournalResult;
+  notes: CodexNotes;
+  /** Running focuses; null until the focuses are read. */
+  focusesRunning: number | null;
+  /** The one FORD stream; never opened for a reader the rule refuses. */
+  ford: UseClientFordResult;
+  fordStatus: CodexFordStatus;
+  /** The one InBody scans stream, shared by the card, Story and the timeline. */
+  inbody: InBodyScansState;
+  /** The client's progress reports (the profile's listener, filtered to them). */
+  progressReports: ProgressReport[];
+  pulse: CodexPulse;
+  /** This trainer's note dismissals (noteDismissals/{uid}), one doc listener. */
+  dismissals: NoteDismissalsState;
+  sessionTotals: SessionTotals;
+  /** How much of the client's story Journey holds (the home studio's cutover). */
+  coverage: HistoryCoverage;
+}
+
+/**
+ * What the codex asks of the profile around it: the doors that leave the tab
+ * (a report, the Planner, the archive, the Migration Hub), which the profile
+ * owns because it owns the view and the other tabs.
+ */
+export interface CodexHosts {
+  onSelectReport: (id: string) => void;
+  onDeleteReport: (report: ProgressReport) => void;
+  onNewReport: () => void;
+  onOpenPlanner: () => void;
+  onOpenReports: () => void;
+  /** The Migration Hub (OCR import). Switches to Journey, where imports land. */
+  onOpenMigrationHub: () => void;
+  onOpenMachine?: (machineId: string) => void;
+  onOpenSetup?: () => void;
+}
+
+/** What every page gets. */
+export interface CodexPageProps {
+  data: CodexData;
+  form: RecordForm;
+  go: CodexGo;
+  hosts: CodexHosts;
+}

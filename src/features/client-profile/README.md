@@ -292,6 +292,8 @@ answered to onto its new home.
 | `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements; `wrap`, `idPrefix` and `flagTone` for the codex's seven pages |
 | `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines |
 | `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Trends / Reports, and the clinical strip |
+| `useProgressReports.ts` | the profile's one progress-reports listener (newest 50) and whether it answered for THIS client — the banner, the Archive's shelf and the codex's Pulse history all read it. Render test: `useProgressReports.render.test.tsx` |
+| `features/client-codex/` | Notes & Profile — the codex shell (`ClientCodex`) and its seven pages. Read its README |
 | `profile-nav.css` | `--psub-*` tokens, the shell, the strip, and the wrap variant (scoped to `[data-wrap]`, held there by `profile-nav-css.test.ts`) |
 
 ### 9.2 The rules that are load-bearing
@@ -306,9 +308,19 @@ Story · Account) and, optionally, a card on it from `RECORD_ANCHORS` (or a
 thread, `note-{id}`). Entering the tab remembers nothing; a door that means a
 card uses `openRecord(page, anchor)`. Every old dossier section id still lands
 (`SECTION_TO_PAGE`, the legacy table, and `normalizeLocation` for a handoff
-stored before the change). Until the codex shell replaces it, the long scroll
-still speaks sections: `nav.recordSection` is a temporary shim
-(`sectionForRecord`) that turns a page and card back into one.
+stored before the change). The long scroll and its `recordSection` shim are
+gone (client codex, phase 8): `ClientCodex` takes `recordPage` and
+`recordAnchor` straight from the nav and keeps no copy.
+
+**Notes & Profile stays mounted after its first visit, per client** (client
+codex). The record panel is `keepMounted` from the first time the tab is
+opened on this client, so coming back re-reads nothing and an unsaved record
+edit survives a trip to Journey; `ClientCodex` is keyed on the client, so
+another client starts fresh. Inside it the Overview mounts with the tab and
+every other page on its first visit, then stays (the All Machines and Trends
+precedent below). The progress-reports listener (`useProgressReports`) stays
+open with it, so switching between Notes & Profile and the Activity Archive no
+longer re-subscribes.
 
 **A segment is found by position, not by reading it.** The iPad is held and
 often not looked at. Segments are equal fractions of the full width, the bar
@@ -360,8 +372,9 @@ it.
 
 ### 9.3 Shells, not rewrites
 
-`ProgrammingTab` and `ClinicalHistoryTab` own their sub-toggle and compose the
-existing feature components untouched. No feature component knows it is inside
+`ProgrammingTab`, `ClinicalHistoryTab` and the client codex's `ClientCodex`
+(`features/client-codex`) own their sub-toggle and compose the existing
+feature components. No feature component knows it is inside
 a combined tab. `ClientProfileView` still owns every Firestore write — which
 is why the Routine B dialog, the discard dialog and the Edit Routine drawer
 sit beside `ProgrammingTab` rather than inside it.

@@ -4,18 +4,24 @@
  *
  * The Goals panel does its work in click handlers that fire several
  * `updateField` calls in a row (mark achieved = four field edits), and the
- * dossier's Save bar decides what to write from those calls. Only a mount
+ * record's Save bar decides what to write from those calls. Only a mount
  * proves the sequence leaves the form in the state the Save bar needs. The
- * harness below copies the dirty-tracking rules of ClientInfoSheet so the
- * test checks what would actually be written.
+ * harness below drives the panel with the record's real form (the client
+ * codex's useRecordForm), so the test checks what would actually be written.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, act, useState } from "react";
+import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client } from "../../types";
 import type { ClientFocus, JournalEntry } from "../../types/journal";
 import { GoalsPanel } from "./GoalsPanel";
 import { FocusBoard } from "../../components/journal/FocusBoard";
+import { useRecordForm } from "../client-codex/useRecordForm";
+
+vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-jane" } } }));
+vi.mock("../../contexts/ToastContext", () => ({
+  useToast: () => ({ success: () => {}, error: () => {}, info: () => {}, warning: () => {}, toast: () => {} }),
+}));
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -63,46 +69,21 @@ const buttonByText = (host: HTMLElement, text: string) =>
 /* Goals                                                               */
 /* ------------------------------------------------------------------ */
 
-type Probe = { formData: Partial<Client>; dirty: Set<keyof Client> };
+type Probe = { formData: Partial<Client>; dirty: ReadonlySet<string> };
 
-/** The dossier's form, with ClientInfoSheet's dirty rules. */
+/**
+ * The record's real form (the client codex's useRecordForm): the same
+ * dirty rules and the same Save bar payload the Goals page saves with.
+ */
 function GoalsHarness({ client, probe }: { client: Client; probe: Probe }) {
-  const [formData, setFormData] = useState<Partial<Client>>({
-    globalNotes: client.globalNotes || "",
-    smartGoal: client.smartGoal || "",
-  });
-  const [dirty, setDirty] = useState<Set<keyof Client>>(new Set());
-  probe.formData = formData;
-  probe.dirty = dirty;
-
-  const updateField = (key: keyof Client, value: any) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    const initial = client[key] as any;
-    setDirty((prev) => {
-      const next = new Set(prev);
-      let different: boolean;
-      if (Array.isArray(value) && Array.isArray(initial)) {
-        different = value.length !== initial.length || value.some((v, i) => v !== initial[i]);
-      } else {
-        different = value !== initial;
-      }
-      if (
-        initial === undefined &&
-        (value === "" || value === false || (Array.isArray(value) && value.length === 0))
-      ) {
-        different = false;
-      }
-      if (different) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  };
-
+  const form = useRecordForm({ client, trainerId: "t1" });
+  probe.formData = form.formData;
+  probe.dirty = form.dirty;
   return (
     <GoalsPanel
       client={client}
-      formData={formData}
-      updateField={updateField}
+      formData={form.formData}
+      updateField={form.updateField}
       authTrainer={{ id: "t1", fullName: "Jane Coach" } as any}
     />
   );

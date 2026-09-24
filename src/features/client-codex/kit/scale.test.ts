@@ -39,7 +39,8 @@ import { describe, expect, it } from "vitest";
  * HOSTED_FILES is for the shell's phase: components the codex MOUNTS but does
  * not own (the Pulse panel, the InBody card), counted rather than failed, with
  * a budget that each area phase lowers as it brings its hosted piece onto the
- * scale. It starts empty because nothing is hosted yet.
+ * scale. The shell (phase 8) set it to what it measured; it reaches its final
+ * value in the cleanup phase.
  *
  * If this fails on a size, the fix is the size, not the list.
  */
@@ -66,6 +67,25 @@ const CODEX_FILES: readonly string[] = [
   "features/client-notes/CriticalLine.tsx",
   "features/client-notes/critical-line.css",
   "features/client-notes/record-selectors.ts",
+  // The shell (phase 8): the tab, its one load, its one form, the sub-toggle's
+  // lines, and the page adapters that host the long scroll's sections.
+  "features/client-codex/ClientCodex.tsx",
+  "features/client-codex/codex.css",
+  "features/client-codex/index.ts",
+  "features/client-codex/access.ts",
+  "features/client-codex/codex-data.ts",
+  "features/client-codex/useCodexData.ts",
+  "features/client-codex/record-form.ts",
+  "features/client-codex/useRecordForm.ts",
+  "features/client-codex/page-meta.ts",
+  "features/client-codex/pages/OverviewPage.tsx",
+  "features/client-codex/pages/NotesPage.tsx",
+  "features/client-codex/pages/FordPage.tsx",
+  "features/client-codex/pages/BodyPage.tsx",
+  "features/client-codex/pages/GoalsPage.tsx",
+  "features/client-codex/pages/StoryPage.tsx",
+  "features/client-codex/pages/AccountPage.tsx",
+  "features/client-codex/pages/RecordLock.tsx",
 ];
 
 /**
@@ -79,9 +99,43 @@ const LINE_CLAMP_BODIES: readonly string[] = [".nx-row__body", ".gf-row__text"];
 /** How many lines a body may clamp to. */
 const LINE_CLAMP_LINES = 2;
 
-/** Components the codex hosts but does not own. Set by the shell phase. */
-const HOSTED_FILES: readonly string[] = [];
-const HOSTED_OFF_SCALE_BUDGET = 0;
+/**
+ * Components the codex hosts but does not own yet (the shell phase, phase 8):
+ * the long scroll's sections moved onto the pages unchanged, and the pieces
+ * those pages mount directly. Their text sizes are COUNTED, not failed, and
+ * the count may only go down: each page area's phase takes its hosted pieces
+ * off this list as it rebuilds them on the kit, and lowers the budget to the
+ * new count in the same commit. `legacy-blocks.tsx` is the one hosted file
+ * inside the codex folder; the cleanup phase deletes it.
+ *
+ * Shared pieces stay listed until their area replaces them on the codex:
+ * ClientJournalTab (the notes, focus and Pulse areas), the FORD hub, the
+ * InBody card, the goals panel, the contract panel, the shared notes and
+ * jots, the watch-outs and the flag picker, and the life baselines.
+ */
+const HOSTED_FILES: readonly string[] = [
+  "features/client-codex/pages/legacy-blocks.tsx",
+  "components/client-dossier/DossierPrimitives.tsx",
+  "components/client-dossier/JournalRail.tsx",
+  "components/journal/ClientJournalTab.tsx",
+  "features/ford/FordSection.tsx",
+  "features/ford/ford.css",
+  "features/inbody/InBodyCard.tsx",
+  "features/goals/GoalsPanel.tsx",
+  "features/goals/goals.css",
+  "features/client-admin/ContractPanel.tsx",
+  "features/client-admin/client-admin.css",
+  "features/relay/notes/SharedNotesCard.tsx",
+  "features/relay/notes/ClientJotStrip.tsx",
+  "features/relay/notes/notes.css",
+  "features/clinical-flags/BodyWatchOuts.tsx",
+  "features/clinical-flags/ClinicalFlagPicker.tsx",
+  "features/clinical-flags/clinical-flags.css",
+  "features/client-life/LifeBaseline.tsx",
+  "features/client-life/client-life.css",
+];
+/** Measured when the shell landed (phase 8). Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 168;
 
 const SCALE_PX = [11, 12, 14, 17, 30] as const;
 
@@ -421,12 +475,15 @@ function everyCodexFile(): string[] {
 
 describe("the codex's files", () => {
   it("are all on the list, and the list names only real files", () => {
-    for (const rel of CODEX_FILES) expect(existsSync(join(SRC, rel)), rel).toBe(true);
-    const listed = new Set(CODEX_FILES);
+    for (const rel of [...CODEX_FILES, ...HOSTED_FILES]) expect(existsSync(join(SRC, rel)), rel).toBe(true);
+    // A file in the folder is either the codex's own (every check) or a
+    // hosted one still waiting for its area (counted against the budget).
+    const listed = new Set([...CODEX_FILES, ...HOSTED_FILES]);
     for (const full of codeFilesUnder(CODEX_DIR)) {
       const rel = relative(SRC, full).split(sep).join("/");
       expect(listed.has(rel), `${rel} is in the codex folder but not in CODEX_FILES`).toBe(true);
     }
+    for (const rel of HOSTED_FILES) expect(CODEX_FILES.includes(rel), `${rel} is on both lists`).toBe(false);
   });
 
   it("set text only on the 11 / 12 / 14 / 17 / 30 scale", () => {

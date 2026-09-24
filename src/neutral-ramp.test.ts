@@ -263,8 +263,13 @@ function countBarePaletteUtilities(): number {
  * bottom bar is orange like the Operations button beside it — the colour
  * of the admin mode, deliberately the same in both themes, the same
  * `activeColor="text-orange-500"` the Operations button already carries.
+ *
+ * Sep 24 2026 (client codex, the shell): 259 -> 258, the count again. The
+ * long scroll's files (ClientInfoSheet, ClientDossier, ClientSnapshot) are
+ * gone; their sections moved to the codex's legacy-blocks.tsx unchanged,
+ * which the page areas retire one by one.
  */
-const BARE_PALETTE_BUDGET = 259;
+const BARE_PALETTE_BUDGET = 258;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {
