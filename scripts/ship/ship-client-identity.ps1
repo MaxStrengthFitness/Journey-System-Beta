@@ -81,12 +81,14 @@ switch ($Stage) {
     npx tsx scripts\check-collision-damage.ts
   }
   'webhook' {
-    Say 'Deploying the Mindbody webhook only (firebase deploy --only functions:mindbodyWebhook)'
+    Say 'Deploying the Mindbody webhook only, to PRODUCTION (gen-lang-client-0731527386)'
     $answer = Read-Host 'Type GO to deploy'
     if ($answer -ne 'GO') { Stop-Here 'Nothing deployed.' }
     Push-Location $Preview
     try {
-      firebase deploy --only functions:mindbodyWebhook
+      # Named, not assumed: the Firebase CLI remembers the active project per
+      # FOLDER, and this copy of the repo never had one chosen.
+      firebase deploy --only functions:mindbodyWebhook --project prod
       if ($LASTEXITCODE -ne 0) { Stop-Here 'The deploy failed; the old webhook is still running.' }
     } finally { Pop-Location }
     Say 'Webhook deployed.' 'Green'
