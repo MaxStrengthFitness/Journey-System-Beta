@@ -39,7 +39,7 @@ import {
   AdminSelect,
   ConfirmDialog,
 } from "../primitives";
-import type { StaffRow, StaffState } from "./roster";
+import { isStudioAccessRequest, requestStudioId, type StaffRow, type StaffState } from "./roster";
 
 export const STATE_BADGE: Record<
   StaffState,
@@ -109,9 +109,16 @@ export function StaffEditor({
   const roleLocked = !canChangeRole && row.state !== "awaiting-approval";
   const roleOutOfReach = Boolean(row.role && !assignableRoles.includes(row.role));
 
+  // The studio picker's Request Access comes from someone who already has an
+  // account. Approving writes a WHOLE new trainers/{uid}, which would replace
+  // that account, so this path is never offered for one (roster.ts).
+  const studioAccess = Boolean(row.request && isStudioAccessRequest(row.request));
+  const askedFor = row.request ? requestStudioId(row.request) : null;
+  const studioName = (id: string | null | undefined) => studios.find((s) => s.id === id)?.name;
+
   const approve = async () => {
     const req = row.request;
-    if (!req) return;
+    if (!req || studioAccess) return;
     if (!req.userId) {
       toastError(
         "No signed-in account is attached to this request. Ask them to sign in with Google first — the account is keyed on that.",
@@ -248,84 +255,97 @@ export function StaffEditor({
           </div>
         )}
 
-        {row.request?.requestedStudioId && row.request.requestedStudioId !== activeStudioId && (
+        {studioAccess && (
           <div style={{ marginTop: 10 }}>
             <AdminNotice tone="info">
-              They asked for {studios.find((s) => s.id === row.request?.requestedStudioId)?.name ?? "another studio"}.
-              Approving here puts them at {studios.find((s) => s.id === homeStudioId)?.name ?? "this studio"} instead.
+              {row.name} already has an account
+              {studioName(row.homeStudioId) ? ` at ${studioName(row.homeStudioId)}` : ""} and asked to work at{" "}
+              {studioName(askedFor) ?? "another studio"} too. Letting an existing account into another studio
+              isn't built yet, so this request can't be approved from here.
             </AdminNotice>
           </div>
         )}
 
-        <div style={{ marginTop: 12 }}>
-          <AdminGrid>
-            <AdminField
-              label="Role"
-              hint={
-                roleOutOfReach
-                  ? "A role above what you can hand out — an owner or administrator changes it."
-                  : undefined
-              }
-            >
-              <AdminSelect
-                value={role}
-                disabled={roleLocked || roleOutOfReach}
-                onChange={(e) => setRole(e.target.value as UserRole)}
+        {!studioAccess && askedFor && askedFor !== activeStudioId && (
+          <div style={{ marginTop: 10 }}>
+            <AdminNotice tone="info">
+              They asked for {studioName(askedFor) ?? "another studio"}.
+              Approving here puts them at {studioName(homeStudioId) ?? "this studio"} instead.
+            </AdminNotice>
+          </div>
+        )}
+
+        {!studioAccess && (
+          <div style={{ marginTop: 12 }}>
+            <AdminGrid>
+              <AdminField
+                label="Role"
+                hint={
+                  roleOutOfReach
+                    ? "A role above what you can hand out — an owner or administrator changes it."
+                    : undefined
+                }
               >
-                {roleOptions.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </AdminSelect>
-            </AdminField>
-            {lockHomeStudio ? (
-              <AdminField label="Home studio" hint="Approved here, they belong here.">
-                <AdminInput value={studios.find((s) => s.id === homeStudioId)?.name ?? ""} readOnly />
-              </AdminField>
-            ) : (
-              <AdminField label="Home studio">
-                <AdminSelect value={homeStudioId} onChange={(e) => setHomeStudioId(e.target.value)}>
-                  <option value="">Choose a studio</option>
-                  {studios.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
+                <AdminSelect
+                  value={role}
+                  disabled={roleLocked || roleOutOfReach}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
+                >
+                  {roleOptions.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABELS[r]}
                     </option>
                   ))}
                 </AdminSelect>
               </AdminField>
-            )}
-            <AdminField label="Initials" hint="Shown on the schedule and session grid.">
-              <AdminInput value={initials} maxLength={4} onChange={(e) => setInitials(e.target.value)} />
-            </AdminField>
-            <AdminField label="Calendar" hint="Whether they appear on the studio schedule.">
-              <AdminSelect
-                value={onCalendar ? "yes" : "no"}
-                onChange={(e) => setOnCalendar(e.target.value === "yes")}
-              >
-                <option value="yes">Shown on the schedule</option>
-                <option value="no">Hidden from the schedule</option>
-              </AdminSelect>
-            </AdminField>
-            {grantStudioId && (
-              <AdminField
-                label="Can manage My Studio"
-                hint={`Opens the Machines, Team and Studio sections at ${grantStudioName} without changing their role — how a studio grows its next leader.`}
-              >
+              {lockHomeStudio ? (
+                <AdminField label="Home studio" hint="Approved here, they belong here.">
+                  <AdminInput value={studios.find((s) => s.id === homeStudioId)?.name ?? ""} readOnly />
+                </AdminField>
+              ) : (
+                <AdminField label="Home studio">
+                  <AdminSelect value={homeStudioId} onChange={(e) => setHomeStudioId(e.target.value)}>
+                    <option value="">Choose a studio</option>
+                    {studios.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </AdminField>
+              )}
+              <AdminField label="Initials" hint="Shown on the schedule and session grid.">
+                <AdminInput value={initials} maxLength={4} onChange={(e) => setInitials(e.target.value)} />
+              </AdminField>
+              <AdminField label="Calendar" hint="Whether they appear on the studio schedule.">
                 <AdminSelect
-                  value={managesHere ? "yes" : "no"}
-                  onChange={(e) => setManagesHere(e.target.value === "yes")}
+                  value={onCalendar ? "yes" : "no"}
+                  onChange={(e) => setOnCalendar(e.target.value === "yes")}
                 >
-                  <option value="no">No — a trainer here</option>
-                  <option value="yes">Yes — helps run {grantStudioName}</option>
+                  <option value="yes">Shown on the schedule</option>
+                  <option value="no">Hidden from the schedule</option>
                 </AdminSelect>
               </AdminField>
-            )}
-          </AdminGrid>
-        </div>
+              {grantStudioId && (
+                <AdminField
+                  label="Can manage My Studio"
+                  hint={`Opens the Machines, Team and Studio sections at ${grantStudioName} without changing their role — how a studio grows its next leader.`}
+                >
+                  <AdminSelect
+                    value={managesHere ? "yes" : "no"}
+                    onChange={(e) => setManagesHere(e.target.value === "yes")}
+                  >
+                    <option value="no">No — a trainer here</option>
+                    <option value="yes">Yes — helps run {grantStudioName}</option>
+                  </AdminSelect>
+                </AdminField>
+              )}
+            </AdminGrid>
+          </div>
+        )}
 
         <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {row.state === "awaiting-approval" && (
+          {row.state === "awaiting-approval" && !studioAccess && (
             <AdminButton
               variant="hero"
               busy={busy}

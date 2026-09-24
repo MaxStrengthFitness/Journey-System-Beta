@@ -523,6 +523,8 @@ the data files with esbuild's text loader, so that field comes back as the
 
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
 
+- **`access_requests` holds two kinds of request with different fields (Sep 24 2026).** A **sign-up** (`AccessRequestView`, no `type`) has `fullName`, `email`, `userId` and `requestedStudioId`. A **studio-access request** (the studio picker's Request Access, `type: "studio_access"`) comes from someone who already has an account: `trainerId` is their Auth uid (the rules pin it), and the studio is `studioId`. Until Sep 24 the picker wrote no `fullName` or `email` and keyed `trainerId` on the trainer document id; the roster read `fullName`, so each request was a nameless row at every studio, and two of them crashed My Studio → Team and Operations → Staff & Roles with `localeCompare` on undefined. The picker now writes through `studioAccessRequest` (`features/admin/staff/studio-access-request.ts`) beside its reader, and `buildStaffRoster` scopes both kinds and never trusts a name to exist. **Approving writes a WHOLE `trainers/{uid}`**, so a studio-access request must never reach that path, because it would replace the person's account. Letting an existing account into another studio is not built. A studio's leader cannot write another studio's trainer under the current rules (`trainerLeads` is checked against the trainer's home studio).
+
 <a id="tooling"></a>
 
 ## React, tests, dates and tooling
