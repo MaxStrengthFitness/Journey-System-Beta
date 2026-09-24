@@ -1,3 +1,5 @@
+import { authedFetch } from "../lib/authed-fetch";
+
 export interface ValidationLog {
   id: string;
   name: string;
@@ -73,8 +75,10 @@ async function handleResponse(res: Response) {
   return res.json();
 }
 
+// Both routes need a staff sign-in (server/gemini-routes.ts, Sep 24 2026):
+// authedFetch adds it, a plain fetch gets a 401.
 export async function processLegacyChart(images: { base64: string; mimeType: string }[], expectedSessions: number, pageIndex?: number, totalPages?: number): Promise<OCRResult> {
-  const res = await fetch('/api/gemini/processChart', {
+  const res = await authedFetch('/api/gemini/processChart', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ images, expectedSessions, pageIndex, totalPages })
@@ -83,7 +87,7 @@ export async function processLegacyChart(images: { base64: string; mimeType: str
 }
 
 export async function extractMachineSettingsFromImage(images: { base64: string; mimeType: string }[]): Promise<OCRMachineSetting[]> {
-  const res = await fetch('/api/gemini/extractSettings', {
+  const res = await authedFetch('/api/gemini/extractSettings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ images })
