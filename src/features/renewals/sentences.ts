@@ -8,6 +8,7 @@
  */
 
 import { daysBetween } from "../client-history/model";
+import { callChange, type InBodyVariation } from "../inbody/variation";
 import type { RenewalSituation, RenewalSnapshot } from "./types";
 
 /** "Nov 14", or "Nov 14, 2027" when it isn't this year. */
@@ -125,8 +126,13 @@ export function paceSentence(s: RenewalSnapshot): string {
       : `Comes ${paceLabel(s.pacePerWeek)} a week`;
 }
 
-/** One line of evidence for a pipeline row: consistency, then strength. */
-export function proofSentence(s: RenewalSnapshot): string | null {
+/**
+ * One line of evidence for a pipeline row: consistency, then strength.
+ * InBody muscle joins it only when the gain is beyond the client's HOME
+ * studio's variation (features/inbody/variation.ts): the stored change is
+ * raw, and a gain the scanner could have made up is not evidence.
+ */
+export function proofSentence(s: RenewalSnapshot, variation: InBodyVariation): string | null {
   const parts: string[] = [];
   const p = s.proof;
   if (p.weeksAttended !== null && p.weeksObserved !== null) {
@@ -135,7 +141,7 @@ export function proofSentence(s: RenewalSnapshot): string | null {
   if (p.machinesImproved !== null && p.machinesTracked !== null && p.machinesImproved > 0) {
     parts.push(`stronger on ${p.machinesImproved} of ${p.machinesTracked} machines`);
   }
-  if (p.inbody && p.inbody.muscleLbChange > 0) {
+  if (p.inbody && callChange("skeletalMuscleMassLb", p.inbody.muscleLbChange, variation) === "up") {
     parts.push(`+${round1(p.inbody.muscleLbChange)} lb muscle`);
   }
   return parts.length ? capitalize(parts.join(" · ")) : null;

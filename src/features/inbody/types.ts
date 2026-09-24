@@ -91,3 +91,25 @@ export interface InBodySummary {
   bodyFatPctChange: number | null;
   updatedAt?: unknown;
 }
+
+/**
+ * studios/{studioId}.inbodyVariation — how big a change this studio's
+ * scanner has to see before any screen calls it a change (client codex,
+ * Sep 2026; AJ's decision 8). Written whole by My Studio → Studio, and
+ * deleted when the studio goes back to Max Strength's defaults, so an
+ * absent field means the defaults. Read ONLY through variation.ts, which
+ * treats a missing or out-of-range number as the default.
+ *
+ * No weight: weight is a scale reading and no screen tones it.
+ */
+export interface StoredInBodyVariation {
+  /** Skeletal muscle mass, lb. */
+  skeletalMuscleMassLb?: number;
+  /** Body fat mass, lb. */
+  bodyFatMassLb?: number;
+  /** Percent body fat, in percentage points. */
+  percentBodyFat?: number;
+  /** Auth uid of whoever saved it last. */
+  updatedBy?: string;
+  updatedAt?: unknown;
+}

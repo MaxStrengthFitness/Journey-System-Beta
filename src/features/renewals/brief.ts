@@ -12,6 +12,7 @@ import { clientSinceLabel } from "../../lib/client-since";
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { MIN_MACHINE_SESSIONS } from "./engine";
 import { dayLabel, paceSentence } from "./sentences";
+import { callChange, type InBodyVariation } from "../inbody/variation";
 import type { Client } from "../../types";
 import type { PackageTier, RenewalSettings, RenewalSnapshot } from "./types";
 
@@ -73,20 +74,40 @@ export function journeyLines(client: Client, s: RenewalSnapshot | null, settings
   return lines;
 }
 
-/** Health first: the assessment, the InBody, the goal. */
-export function healthLines(client: Client, s: RenewalSnapshot | null, today: string): string[] {
+/**
+ * Health first: the assessment, the InBody, the goal.
+ *
+ * The InBody line names only a change beyond the client's HOME studio's
+ * variation (features/inbody/variation.ts) — the snapshot holds the raw
+ * change, and "+1.2 lb muscle" is inside what the scanner reads differently
+ * from one day to the next. A leader is not handed noise to say across the
+ * table as progress.
+ */
+export function healthLines(
+  client: Client,
+  s: RenewalSnapshot | null,
+  today: string,
+  variation: InBodyVariation,
+): string[] {
   const lines: string[] = [];
   const inbody = s?.proof.inbody;
   if (inbody) {
+    const muscle = callChange("skeletalMuscleMassLb", inbody.muscleLbChange, variation);
+    const fat = callChange("percentBodyFat", inbody.bodyFatPctChange, variation);
     const bits = [
-      inbody.muscleLbChange !== 0
-        ? `muscle ${inbody.muscleLbChange > 0 ? "up" : "down"} ${Math.abs(Math.round(inbody.muscleLbChange * 10) / 10)} lb`
+      muscle === "up" || muscle === "down"
+        ? `muscle ${muscle} ${Math.abs(Math.round(inbody.muscleLbChange * 10) / 10)} lb`
         : null,
-      inbody.bodyFatPctChange !== 0
-        ? `body fat ${inbody.bodyFatPctChange < 0 ? "down" : "up"} ${Math.abs(Math.round(inbody.bodyFatPctChange * 10) / 10)} points`
+      fat === "up" || fat === "down"
+        ? `body fat ${fat} ${Math.abs(Math.round(inbody.bodyFatPctChange * 10) / 10)} points`
         : null,
     ].filter(Boolean);
-    if (bits.length) lines.push(`InBody since ${dayLabel(inbody.since, today)}: ${bits.join(", ")}`);
+    const since = dayLabel(inbody.since, today);
+    lines.push(
+      bits.length
+        ? `InBody since ${since}: ${bits.join(", ")}`
+        : `InBody since ${since}: no change bigger than the scanner's normal variation`,
+    );
   }
   const snap = client.subjectiveSnapshot;
   if (snap?.date) {

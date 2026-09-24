@@ -2880,4 +2880,79 @@ describe("Firestore Security Rules", () => {
       await assertFails(getDocs(collection(as("trainerC"), "clients", "clientA", "inbodyScans")));
     });
   });
+
+  /* ================================================================== *
+   * STUDIO INBODY VARIATION (client codex, phase 2). NO rules change:
+   * `studios/{id}.inbodyVariation` rides on the existing studio update rule,
+   * which already lets a studio's own leaders (a leader role there, or the
+   * grant), franchise owners and administrators write it — and nobody else.
+   * These pin that, with the exact writes InBodyVariationPanel sends: the
+   * whole map signed with the Auth uid, and deleteField() for "back to Max
+   * Strength's defaults". Everyone signed in may read a studio already.
+   * ================================================================== */
+  describe("Studio InBody variation (client codex)", () => {
+    const as = (uid: string) =>
+      testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+
+    /** InBodyVariationPanel's save, via features/inbody/variation.ts variationWrite. */
+    const ownNumbers = (uid: string) => ({
+      inbodyVariation: {
+        skeletalMuscleMassLb: 2,
+        bodyFatMassLb: 4,
+        percentBodyFat: 2,
+        updatedBy: uid,
+        updatedAt: serverTimestamp(),
+      },
+    });
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        const person = (role: string, home: string, extra: Record<string, unknown> = {}) => ({
+          fullName: `${role} ${home}`,
+          initials: "XX",
+          role,
+          primaryHomeStudioId: home,
+          accessibleStudioIds: [home],
+          ...extra,
+        });
+        await setDoc(doc(db, "trainers", "granted"), person("LifeTransformer", "studioB", { managedStudioIds: ["studioA"] }));
+        await setDoc(doc(db, "trainers", "franchise"), person("FranchiseOwner", "studioB"));
+        await setDoc(doc(db, "trainers", "admin"), person("Admin", "studioB"));
+      });
+    });
+
+    it("lets the studio's own leader set its numbers and go back to the defaults", async () => {
+      const db = as("ownerA");
+      await assertSucceeds(updateDoc(doc(db, "studios", "studioA"), ownNumbers("ownerA")));
+      await assertSucceeds(updateDoc(doc(db, "studios", "studioA"), { inbodyVariation: deleteField() }));
+    });
+
+    it("counts the grant, and a franchise owner and an administrator", async () => {
+      for (const uid of ["granted", "franchise", "admin"]) {
+        await assertSucceeds(updateDoc(doc(as(uid), "studios", "studioA"), ownNumbers(uid)));
+      }
+    });
+
+    it("refuses a trainer, and a leader on another studio", async () => {
+      await assertFails(updateDoc(doc(as("trainerA"), "studios", "studioA"), ownNumbers("trainerA")));
+      // Removing numbers a studio HAS is refused too. (Removing a field that
+      // is not there changes nothing, so the rule's sync-lease clause — "only
+      // these keys changed" — lets that no-op through; that is harmless.)
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), "studios", "studioA"), ownNumbers("ownerA"));
+      });
+      await assertFails(updateDoc(doc(as("trainerA"), "studios", "studioA"), { inbodyVariation: deleteField() }));
+      await assertFails(updateDoc(doc(as("ownerA"), "studios", "studioB"), ownNumbers("ownerA")));
+      // The grant is for studio A only.
+      await assertFails(updateDoc(doc(as("granted"), "studios", "studioB"), ownNumbers("granted")));
+    });
+
+    it("lets any trainer read the numbers, as every studio document already is", async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await updateDoc(doc(context.firestore(), "studios", "studioA"), { inbodyVariation: { skeletalMuscleMassLb: 2 } });
+      });
+      await assertSucceeds(getDoc(doc(as("trainerB"), "studios", "studioA")));
+    });
+  });
 });

@@ -3,8 +3,10 @@ import { chipText, dayLabel, paceLabel, paceSentence, proofSentence, situationSe
 import { fitNote, optionsFor, upgradeVerdict } from "./options";
 import { DEFAULT_RENEWAL_SETTINGS, DEFAULT_PACKAGES } from "./settings";
 import type { RenewalSnapshot } from "./types";
+import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "../inbody/variation";
 
 const TODAY = "2026-09-11";
+const V = DEFAULT_INBODY_VARIATION;
 
 function snap(over: Partial<RenewalSnapshot>): RenewalSnapshot {
   return {
@@ -101,7 +103,7 @@ describe("sentences", () => {
     expect(paceLabel(2)).toBe("2×");
     expect(paceSentence(snap({ pacePerWeek: null }))).toBe("Pace: not enough visits on record yet");
     expect(paceSentence(snap({ pacePerWeek: 1.5 }))).toBe("Comes 1.5× a week");
-    expect(proofSentence(snap({}))).toBe("In 11 of the last 12 weeks · stronger on 12 of 14 machines");
+    expect(proofSentence(snap({}), V)).toBe("In 11 of the last 12 weeks · stronger on 12 of 14 machines");
   });
 
   it("adds the year only when it isn't this one", () => {
@@ -133,7 +135,7 @@ describe("options", () => {
   });
 
   it("suggests an upgrade only on consistent attendance and visible progress", () => {
-    expect(upgradeVerdict(snap({}), DEFAULT_RENEWAL_SETTINGS)).toEqual({
+    expect(upgradeVerdict(snap({}), DEFAULT_RENEWAL_SETTINGS, V)).toEqual({
       candidate: true,
       reasons: ["Trained in 11 of the last 12 weeks.", "Stronger on 12 of 14 machines."],
       blockers: [],
@@ -141,6 +143,7 @@ describe("options", () => {
     const patchy = upgradeVerdict(
       snap({ proof: { weeksAttended: 6, weeksObserved: 12, machinesImproved: 12, machinesTracked: 14, bestGain: null, inbody: null } }),
       DEFAULT_RENEWAL_SETTINGS,
+      V,
     );
     expect(patchy.candidate).toBe(false);
     expect(patchy.blockers[0]).toContain("patchy");
@@ -150,13 +153,63 @@ describe("options", () => {
     const v = upgradeVerdict(
       snap({ flags: [{ code: "check-in-red", text: "Red on the last assessment: Pain & Mobility." }] }),
       DEFAULT_RENEWAL_SETTINGS,
+      V,
     );
     expect(v.candidate).toBe(false);
     expect(v.blockers).toContain("Red on the last assessment: Pain & Mobility.");
   });
 
   it("has nothing longer to offer Life Transformed", () => {
-    const v = upgradeVerdict(snap({ packageKey: "transformed" }), DEFAULT_RENEWAL_SETTINGS);
+    const v = upgradeVerdict(snap({ packageKey: "transformed" }), DEFAULT_RENEWAL_SETTINGS, V);
     expect(v.blockers[0]).toBe("Life Transformed is already the longest package.");
+  });
+});
+
+/*
+ * Client codex, Sep 2026 (AJ's decision 8): an InBody change counts as
+ * evidence only beyond the client's home studio's variation. Before this
+ * round the pipeline row read "... · +2.3 lb muscle" and a +1.2 lb change
+ * alone made an upgrade candidate.
+ */
+describe("InBody as evidence", () => {
+  const withInBody = (muscleLbChange: number, bodyFatPctChange: number, over: Partial<RenewalSnapshot["proof"]> = {}) =>
+    snap({
+      proof: {
+        weeksAttended: 11,
+        weeksObserved: 12,
+        machinesImproved: 12,
+        machinesTracked: 14,
+        bestGain: null,
+        inbody: { muscleLbChange, bodyFatPctChange, since: "2026-01-15" },
+        ...over,
+      },
+    });
+
+  it("leaves a muscle gain inside the variation off the proof line", () => {
+    expect(proofSentence(withInBody(2.3, -1.8), V)).toBe("In 11 of the last 12 weeks · stronger on 12 of 14 machines");
+    expect(proofSentence(withInBody(4.0, -1.8), V)).toBe(
+      "In 11 of the last 12 weeks · stronger on 12 of 14 machines · +4 lb muscle",
+    );
+    expect(proofSentence(withInBody(2.3, -1.8), normalizeInBodyVariation({ skeletalMuscleMassLb: 2 }))).toBe(
+      "In 11 of the last 12 weeks · stronger on 12 of 14 machines · +2.3 lb muscle",
+    );
+    // A loss is never proof, however big.
+    expect(proofSentence(withInBody(-6, 0), V)).toBe("In 11 of the last 12 weeks · stronger on 12 of 14 machines");
+  });
+
+  it("never counts a change inside the variation as visible progress", () => {
+    const flat = { machinesImproved: 2, machinesTracked: 14 };
+    const noise = upgradeVerdict(withInBody(1.2, -1.1, flat), DEFAULT_RENEWAL_SETTINGS, V);
+    expect(noise.candidate).toBe(false);
+    expect(noise.blockers).toContain("Progress isn't visible in the data yet.");
+    expect(noise.reasons.join(" ")).not.toContain("InBody");
+
+    const real = upgradeVerdict(withInBody(1.2, -3.0, flat), DEFAULT_RENEWAL_SETTINGS, V);
+    expect(real.candidate).toBe(true);
+    // Only the change that was called is given as a reason.
+    expect(real.reasons).toContain("InBody: body fat down 3 points.");
+
+    const tight = upgradeVerdict(withInBody(1.2, -1.1, flat), DEFAULT_RENEWAL_SETTINGS, normalizeInBodyVariation({ skeletalMuscleMassLb: 1 }));
+    expect(tight.reasons).toContain("InBody: muscle up 1.2 lb.");
   });
 });

@@ -18,7 +18,7 @@ import { InBodyTrend } from "./InBodyTrend";
 import {
   changeBetween,
   changeTone,
-  formatChange,
+  formatCalledChange,
   formatMeasure,
   reportInBody,
   scanDateLabel,
@@ -26,6 +26,7 @@ import {
   trendPoints,
   type MeasureKey,
 } from "./scans";
+import { callChange, type InBodyVariation } from "./variation";
 
 const ROWS: { key: MeasureKey; label: string }[] = [
   { key: "weightLb", label: "Weight" },
@@ -43,10 +44,17 @@ const TONE = {
 export function InBodyReportSection({
   clientId,
   reportDate: rawDate,
+  variation,
 }: {
   clientId: string | null | undefined;
   /** The report's `date`: a day key, or on older reports a timestamp or ISO string. */
   reportDate: unknown;
+  /**
+   * The client's HOME studio's InBody variation (variation.ts). The client
+   * takes this report home, so a change the scanner can't tell from itself
+   * is never printed as progress.
+   */
+  variation: InBodyVariation;
 }) {
   const { scans } = useInBodyScans(clientId ?? null);
   const reportDate = studioDayKeyOf(rawDate as any) ?? studioTodayKey();
@@ -54,6 +62,15 @@ export function InBodyReportSection({
   if (!view) return null;
   const { latest, first, count } = view;
   const upToReport = sortScans(scans).filter((s) => s.testedAt <= reportDate);
+  // The footnote explains a label, so it follows what the cells PRINT: a row
+  // reads "within normal variation" only for a non-zero change inside the
+  // number — an exact zero prints "no change" (formatCalledChange).
+  const anyWithin =
+    first !== null &&
+    ROWS.some((r) => {
+      const delta = changeBetween(first, latest, r.key);
+      return delta !== null && delta !== 0 && callChange(r.key, delta, variation) === "within";
+    });
 
   return (
     <section className="space-y-3 break-inside-avoid">
@@ -81,8 +98,8 @@ export function InBodyReportSection({
                   {first && <td className="p-3 text-right tabular-nums text-white/60">{formatMeasure(first[r.key], r.key)}</td>}
                   <td className="p-3 text-right font-black tabular-nums text-white">{formatMeasure(latest[r.key], r.key)}</td>
                   {first && (
-                    <td className={`p-3 text-right font-black tabular-nums ${TONE[changeTone(r.key, delta)]}`}>
-                      {formatChange(delta, r.key)}
+                    <td className={`p-3 text-right font-black tabular-nums ${TONE[changeTone(r.key, delta, variation)]}`}>
+                      {formatCalledChange(delta, r.key, variation)}
                     </td>
                   )}
                 </tr>
@@ -91,6 +108,12 @@ export function InBodyReportSection({
           </tbody>
         </table>
       </div>
+      {anyWithin && (
+        <p className={`text-[12px] ${TONE.neutral}`}>
+          Within normal variation: smaller than the difference an InBody scanner can show between two scans of the same
+          body, so it isn't counted as a change.
+        </p>
+      )}
       {count >= 2 && (
         <div className="grid grid-cols-1 gap-4 rounded-[20px] border border-white/10 bg-white/5 p-4 sm:grid-cols-3">
           <InBodyTrend points={trendPoints(upToReport, "weightLb")} measure="weightLb" label="Weight" minSpan={6} today={reportDate} variant="report" />

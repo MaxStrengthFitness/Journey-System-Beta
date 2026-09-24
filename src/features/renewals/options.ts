@@ -17,6 +17,7 @@
  * information for a conversation between people.
  */
 
+import { callChange, type InBodyVariation } from "../inbody/variation";
 import type { PackageTier, RenewalSettings, RenewalSnapshot } from "./types";
 
 export interface PackageOption {
@@ -100,7 +101,16 @@ export interface UpgradeVerdict {
   blockers: string[];
 }
 
-export function upgradeVerdict(s: RenewalSnapshot, settings: RenewalSettings): UpgradeVerdict {
+/**
+ * `variation` is the client's HOME studio's InBody variation
+ * (features/inbody/variation.ts): body composition counts as visible progress
+ * only when muscle is up, or body fat down, beyond it.
+ */
+export function upgradeVerdict(
+  s: RenewalSnapshot,
+  settings: RenewalSettings,
+  variation: InBodyVariation,
+): UpgradeVerdict {
   const reasons: string[] = [];
   const blockers: string[] = [];
   const current = settings.packages.find((p) => p.key === s.packageKey) ?? null;
@@ -129,12 +139,14 @@ export function upgradeVerdict(s: RenewalSnapshot, settings: RenewalSettings): U
     p.machinesImproved !== null && p.machinesTracked !== null && p.machinesTracked > 0
       ? p.machinesImproved / p.machinesTracked >= PROGRESS_SHARE
       : false;
-  const body = p.inbody ? p.inbody.muscleLbChange > 0 || p.inbody.bodyFatPctChange < 0 : false;
+  const muscleUp = p.inbody ? callChange("skeletalMuscleMassLb", p.inbody.muscleLbChange, variation) === "up" : false;
+  const fatDown = p.inbody ? callChange("percentBodyFat", p.inbody.bodyFatPctChange, variation) === "down" : false;
+  const body = muscleUp || fatDown;
   if (strength) reasons.push(`Stronger on ${p.machinesImproved} of ${p.machinesTracked} machines.`);
   if (body && p.inbody) {
     const bits = [
-      p.inbody.muscleLbChange > 0 ? `muscle up ${Math.round(p.inbody.muscleLbChange * 10) / 10} lb` : null,
-      p.inbody.bodyFatPctChange < 0 ? `body fat down ${Math.abs(Math.round(p.inbody.bodyFatPctChange * 10) / 10)} points` : null,
+      muscleUp ? `muscle up ${Math.round(p.inbody.muscleLbChange * 10) / 10} lb` : null,
+      fatDown ? `body fat down ${Math.abs(Math.round(p.inbody.bodyFatPctChange * 10) / 10)} points` : null,
     ].filter(Boolean);
     reasons.push(`InBody: ${bits.join(", ")}.`);
   }

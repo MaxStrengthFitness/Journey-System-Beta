@@ -2,7 +2,7 @@
  * Roles defining system access levels across the organization.
  */
 import type { RenewalSnapshot } from "./features/renewals/types";
-import type { InBodySummary } from "./features/inbody/types";
+import type { InBodySummary, StoredInBodyVariation } from "./features/inbody/types";
 import type { StoredLearningRef } from "./features/learning/ref";
 import type { SetOutcome, SkipReason } from "./lib/set-outcome";
 import type { PriorHistory } from "./lib/prior-history";
@@ -1753,6 +1753,16 @@ export interface Studio {
    * Set on My Studio → Studio → The studio's day. Default 30.
    */
   sessionMinutes?: number;
+  /**
+   * Client codex (Sep 2026, AJ's decision 8): the smallest InBody change this
+   * studio's scanner can tell apart from noise, per measure. Absent = Max
+   * Strength's defaults. Set on My Studio → Studio → InBody; read ONLY through
+   * `features/inbody/variation.ts`, always for the CLIENT'S HOME studio, by the
+   * InBody card, the progress report, the Renewal Brief, the renewal card and
+   * the Operations pipeline (its proof line and its upgrade filter). The
+   * nightly job never reads it: it stores raw changes.
+   */
+  inbodyVariation?: StoredInBodyVariation | null;
   /** MindBody Site ID for external API synchronization */
   mindbodySiteId?: string;
   /** MindBody Location ID for location-specific filtering when site IDs are shared */

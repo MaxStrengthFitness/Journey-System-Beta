@@ -42,6 +42,7 @@ import {
 } from "../../renewals/pipeline";
 import { chipText, proofSentence, SITUATION_TONE } from "../../renewals/sentences";
 import { latestLine } from "../../renewals/conversation";
+import { useInBodyVariationLookup } from "../../inbody/useInBodyVariation";
 import {
   useCyclesFor,
   useMissingDataClients,
@@ -85,6 +86,10 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
   const [showQuiet, setShowQuiet] = useState<Record<string, boolean>>({});
 
   const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
+  // Each client's InBody is read against THEIR home studio's variation
+  // (variationForClient in features/inbody/variation.ts), from the studios
+  // already in memory: the same answer the Brief and the renewal card give.
+  const variationFor = useInBodyVariationLookup();
 
   const rows = useMemo(() => {
     const out: PipelineRow[] = [];
@@ -94,10 +99,17 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
       const cycle = s.cycleKey ? cycles[s.cycleKey] ?? null : null;
       const lane = laneOf(s, cycle, settings, today);
       if (!lane) continue;
-      out.push({ clientId: c.id, name: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(), snapshot: s, cycle, lane });
+      out.push({
+        clientId: c.id,
+        name: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim(),
+        snapshot: s,
+        cycle,
+        lane,
+        inbodyVariation: variationFor(c),
+      });
     }
     return out;
-  }, [clients, cycles, settings, today]);
+  }, [clients, cycles, settings, today, variationFor]);
 
   const visible = rows.filter((r) => matchesFilter(r, filter, settings));
   const inLane = (lane: PipelineLane) => sortRows(visible.filter((r) => r.lane === lane));
@@ -106,7 +118,7 @@ export function RenewalsPipeline({ studioId, studioName, settings, onOpenBrief }
   const renderRow = (r: PipelineRow) => {
     const s = r.snapshot;
     const latest = latestLine(r.cycle, today);
-    const proof = proofSentence(s);
+    const proof = proofSentence(s, r.inbodyVariation);
     return (
       <AdminRow
         key={r.clientId}

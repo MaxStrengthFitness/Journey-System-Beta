@@ -113,6 +113,7 @@ import {
 import "../features/progress-report/progress-report.css";
 import { studioTodayKey } from "../lib/studio-time";
 import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
+import { useInBodyVariation } from "../features/inbody/useInBodyVariation";
 
 /** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
 const shortDate = (v: any): string | null => {
@@ -191,6 +192,9 @@ export function ClientProgressReportView({
   existingReportId,
 }: ClientProgressReportViewProps) {
   const { success: toastSuccess } = useToast();
+  // What counts as an InBody change on this report: the client's HOME
+  // studio's numbers (features/inbody/variation.ts). No read.
+  const inbodyVariation = useInBodyVariation(client);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"selection" | "editing" | "view">(
     "selection",
@@ -1273,7 +1277,7 @@ export function ClientProgressReportView({
             {/* 2c. BODY COMPOSITION (Renewals round, Sep 2026) — read live
                 from the client's InBody scans up to this report's date, never
                 copied into the report: see features/inbody. */}
-            <InBodyReportSection clientId={client.id} reportDate={report.date} />
+            <InBodyReportSection clientId={client.id} reportDate={report.date} variation={inbodyVariation} />
 
             {/* 3. REINSTATED 4 P'S MATRIX - THE CENTERPIECE */}
             {!report.isCheckInOnly && (

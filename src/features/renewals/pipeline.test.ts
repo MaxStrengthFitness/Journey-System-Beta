@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { byMonth, conversationDueDate, horizonEnd, laneOf, matchesFilter, nextStep, sortRows, type PipelineRow } from "./pipeline";
 import { DEFAULT_RENEWAL_SETTINGS } from "./settings";
+import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSnapshot } from "./types";
 
 const TODAY = "2026-09-11";
@@ -98,6 +99,7 @@ describe("filters and grouping", () => {
     snapshot: snap({}),
     cycle: null,
     lane: "coming-up",
+    inbodyVariation: DEFAULT_INBODY_VARIATION,
     ...over,
   });
 
@@ -106,6 +108,26 @@ describe("filters and grouping", () => {
     expect(matchesFilter(row({}), "not-talked", S)).toBe(true);
     expect(matchesFilter(row({}), "upgrade", S)).toBe(true);
     expect(matchesFilter(row({}), "needs-leader", S)).toBe(false);
+  });
+
+  // Client codex, Sep 2026 (AJ's decision 8): before this round a client
+  // whose only "progress" was +1.2 lb of muscle on InBody was an upgrade
+  // candidate.
+  it("never makes an upgrade candidate out of a change inside the scanner's variation", () => {
+    const onlyInBody = snap({
+      proof: {
+        weeksAttended: 11,
+        weeksObserved: 12,
+        machinesImproved: 1,
+        machinesTracked: 6,
+        bestGain: null,
+        inbody: { muscleLbChange: 1.2, bodyFatPctChange: 0, since: "2026-01-15" },
+      },
+    });
+    expect(matchesFilter(row({ snapshot: onlyInBody }), "upgrade", S)).toBe(false);
+    // The row carries its client's own studio's numbers, and the filter uses them.
+    const tight = normalizeInBodyVariation({ skeletalMuscleMassLb: 1 });
+    expect(matchesFilter(row({ snapshot: onlyInBody, inbodyVariation: tight }), "upgrade", S)).toBe(true);
   });
 
   it("groups coming-up by month, soonest first", () => {

@@ -193,6 +193,9 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Mindbody");
     expect(h.textContent).toContain("The studio's day");
     expect(h.textContent).toContain("Deep clean every");
+    // Client codex (Sep 2026): the InBody variation, between the day and renewals.
+    expect(h.textContent).toContain("InBody: the scanner's normal variation");
+    expect(h.textContent).toContain("Max Strength's defaults. Change a number and save to make it this studio's own.");
     expect(h.textContent).toContain("Announcements");
     expect(h.textContent).toContain("Everyone at Solon.");
     // The studio's own notices: no audience picker, the audience is fixed.

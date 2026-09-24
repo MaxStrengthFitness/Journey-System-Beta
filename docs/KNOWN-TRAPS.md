@@ -265,6 +265,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **InBody is health data.** Scans live in `clients/{id}/inbodyScans` under the sessions-style rule. Never copy InBody numbers into `progressReports`, which any signed-in user can read.
 
+- **An InBody change is only called a change beyond the client's HOME studio's variation** (client codex, phase 2, Sep 24 2026; AJ's decision 8). The scanner reads the same body differently each time — 3.5 lb of muscle, 5.3 lb of fat mass and 2.7 points of body fat by default, each studio's own on My Studio → Studio (`studios/{id}.inbodyVariation`). Every word or colour about an InBody change goes through `src/features/inbody/variation.ts` (`callChange`, and `formatCalledChange` / `changeTone` / `summarySentence` in `scans.ts`); **never compare a delta with 0 to decide it is progress** — that is how "+1.2 lb muscle" became renewal proof and an upgrade candidate. The variation is a REQUIRED argument on every reader, so the typecheck names each one; pass the CLIENT — `useInBodyVariation(client)`, or `useInBodyVariationLookup()` for a list (a lookup in the studios already in context — no read) — never a studio id: neither hook takes one, so no screen can hand it the active studio. `clients/{id}.inbodySummary` and `renewal.proof.inbody` stay RAW deltas and the nightly job does not read the variation: it is applied only at display. "Use Max Strength's defaults" DELETES the field, so absent always means the defaults. Weight has no variation and is never toned.
+
 <a id="layout"></a>
 
 ## Layout and CSS

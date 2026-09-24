@@ -34,6 +34,7 @@ import {
   situationSentence,
 } from "./sentences";
 import { latestLine } from "./conversation";
+import { useInBodyVariation } from "../inbody/useInBodyVariation";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import type { RenewalSnapshot } from "./types";
@@ -116,9 +117,12 @@ export function RenewalCardDialog({ open, onClose, client, trainer, machineNames
   const { cycle } = useRenewalCycle(open ? studioId : null, snapshot?.cycleKey ?? null);
   const [logging, setLogging] = useState(false);
 
+  // What counts as an InBody change: the client's HOME studio's numbers.
+  const inbodyVariation = useInBodyVariation(client);
+
   const s = snapshot;
   const latest = latestLine(cycle, today);
-  const proof = s ? proofSentence(s) : null;
+  const proof = s ? proofSentence(s, inbodyVariation) : null;
 
   return (
     <>

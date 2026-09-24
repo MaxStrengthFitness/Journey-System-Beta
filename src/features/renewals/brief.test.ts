@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { gainSentence, healthLines, journeyLines, strengthGains } from "./brief";
 import { DEFAULT_RENEWAL_SETTINGS } from "./settings";
+import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "../inbody/variation";
 import type { Client } from "../../types";
 import type { RenewalSnapshot } from "./types";
 
@@ -57,12 +58,43 @@ describe("the Brief", () => {
     ]);
   });
 
+  // Client codex, Sep 2026 (AJ's decision 8): before this round the first
+  // line read "InBody since Jan 15: muscle up 2.3 lb, body fat down 1.8
+  // points". Both are inside Max Strength's default variation.
   it("leads with health: InBody, the check-in, the goal", () => {
-    expect(healthLines(client, snap, TODAY)).toEqual([
-      "InBody since Jan 15: muscle up 2.3 lb, body fat down 1.8 points",
+    expect(healthLines(client, snap, TODAY, DEFAULT_INBODY_VARIATION)).toEqual([
+      "InBody since Jan 15: no change bigger than the scanner's normal variation",
       "Pulse, Jun 2: overall Green (72%)",
       "Red on: Sleep & Recovery",
       "Their goal: Carry groceries without back pain",
     ]);
+  });
+
+  it("names an InBody change only beyond the client's studio's variation", () => {
+    const tight = normalizeInBodyVariation({ skeletalMuscleMassLb: 2, percentBodyFat: 1.5 });
+    expect(healthLines(client, snap, TODAY, tight)[0]).toBe(
+      "InBody since Jan 15: muscle up 2.3 lb, body fat down 1.8 points",
+    );
+    const mixed = normalizeInBodyVariation({ skeletalMuscleMassLb: 2 });
+    expect(healthLines(client, snap, TODAY, mixed)[0]).toBe("InBody since Jan 15: muscle up 2.3 lb");
+    const bigger = {
+      ...snap,
+      proof: { ...snap.proof, inbody: { muscleLbChange: 4, bodyFatPctChange: -3.1, since: "2026-01-15" } },
+    } as RenewalSnapshot;
+    expect(healthLines(client, bigger, TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe(
+      "InBody since Jan 15: muscle up 4 lb, body fat down 3.1 points",
+    );
+    // Exactly at the variation is a change; a hair under is not.
+    const edge = (muscleLbChange: number) =>
+      ({ ...snap, proof: { ...snap.proof, inbody: { muscleLbChange, bodyFatPctChange: 0, since: "2026-01-15" } } }) as RenewalSnapshot;
+    expect(healthLines(client, edge(3.5), TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe("InBody since Jan 15: muscle up 3.5 lb");
+    expect(healthLines(client, edge(3.4), TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe(
+      "InBody since Jan 15: no change bigger than the scanner's normal variation",
+    );
+  });
+
+  it("has no InBody line without a scan pair", () => {
+    const none = { ...snap, proof: { ...snap.proof, inbody: null } } as RenewalSnapshot;
+    expect(healthLines(client, none, TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe("Pulse, Jun 2: overall Green (72%)");
   });
 });

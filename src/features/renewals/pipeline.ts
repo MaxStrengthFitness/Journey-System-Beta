@@ -21,6 +21,7 @@ import { addDays, daysBetween } from "../client-history/model";
 import { effectiveStage } from "./conversation";
 import { dayLabel } from "./sentences";
 import { upgradeVerdict } from "./options";
+import type { InBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "./types";
 
 export type PipelineLane = "before-charge" | "talk-now" | "coming-up" | "lapsed" | "away";
@@ -117,6 +118,12 @@ export interface PipelineRow {
   snapshot: RenewalSnapshot;
   cycle: RenewalCycle | null;
   lane: PipelineLane;
+  /**
+   * The client's HOME studio's InBody variation (features/inbody/variation.ts),
+   * for the row's proof line and the upgrade filter. Carried on the row so a
+   * client is judged by one studio's numbers however the list is filtered.
+   */
+  inbodyVariation: InBodyVariation;
 }
 
 export type PipelineFilter = "all" | "needs-leader" | "price" | "upgrade" | "not-talked";
@@ -136,7 +143,7 @@ export function matchesFilter(row: PipelineRow, filter: PipelineFilter, settings
     case "price":
       return (row.cycle?.latestConcerns ?? []).includes("price");
     case "upgrade":
-      return upgradeVerdict(row.snapshot, settings).candidate;
+      return upgradeVerdict(row.snapshot, settings, row.inbodyVariation).candidate;
     case "not-talked":
       return !row.cycle?.lastTouchAt;
     default:

@@ -53,6 +53,7 @@ import { gainSentence, healthLines, journeyLines, strengthGains } from "../../re
 import { OUTCOMES, closedOnFor } from "../../renewals/outcomes";
 import { optionsFor, upgradeVerdict } from "../../renewals/options";
 import { useClinicalReport, buildReport, rangeForPreset } from "../../clinical-review";
+import { useInBodyVariation } from "../../inbody/useInBodyVariation";
 import type { RenewalOutcome, RenewalStage } from "../../renewals/types";
 import "./renewals.css";
 
@@ -99,14 +100,16 @@ export function RenewalBrief({
   const [logging, setLogging] = useState(false);
   const [saving, setSaving] = useState(false);
   const clinical = useClinicalReport(client.id ?? null, { enabled: true });
+  // What counts as an InBody change: the client's HOME studio's numbers.
+  const inbodyVariation = useInBodyVariation(client);
 
   const name = `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim();
   const gains = strengthGains(client, machineNames);
   const options = s ? optionsFor(settings, s.packageKey, s.pacePerWeek) : [];
-  const verdict = s ? upgradeVerdict(s, settings) : null;
+  const verdict = s ? upgradeVerdict(s, settings, inbodyVariation) : null;
   const currentTier = s ? settings.packages.find((p) => p.key === s.packageKey) ?? null : null;
   const hasLongerPackage = currentTier ? settings.packages.some((p) => p.months > currentTier.months) : false;
-  const health = s ? healthLines(client, s, today) : [];
+  const health = s ? healthLines(client, s, today, inbodyVariation) : [];
   const rhythm = useMemo(() => {
     if (clinical.status !== "ready" || !clinical.data) return null;
     const report = buildReport({

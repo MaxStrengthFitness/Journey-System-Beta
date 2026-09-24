@@ -19,6 +19,7 @@ import {
   type InBodySource,
   type InBodySummary,
 } from "./types";
+import { callChange, type InBodyVariation } from "./variation";
 
 export const DEFAULT_DEVICE = "InBody 270S";
 
@@ -407,6 +408,19 @@ export function formatChange(delta: number | null, key: MeasureKey): string {
   return `${sign}${n}${unit}`;
 }
 
+/**
+ * A change as a screen may show it, against the client's home studio's
+ * variation (variation.ts): "+4.1 lb" when it is a change, "+1.2 lb · within
+ * normal variation" when the scanner can't tell it from itself, "no change"
+ * at zero. The number is always shown; only the CALL is withheld.
+ */
+export function formatCalledChange(delta: number | null, key: MeasureKey, variation: InBodyVariation): string {
+  if (delta === null) return "";
+  if (delta === 0) return "no change";
+  if (callChange(key, delta, variation) === "within") return `${formatChange(delta, key)} · within normal variation`;
+  return formatChange(delta, key);
+}
+
 export type ChangeTone = "good" | "watch" | "neutral";
 
 const MORE_IS_BETTER = new Set<MeasureKey>(["skeletalMuscleMassLb", "dryLeanMassLb", "fatFreeMassLb", "smi", "phaseAngle"]);
@@ -415,28 +429,46 @@ const LESS_IS_BETTER = new Set<MeasureKey>(["bodyFatMassLb", "percentBodyFat"]);
 /**
  * Muscle up and fat down are good news. Weight is neither: for most of the
  * studio's clients, holding weight while muscle replaces fat is the win.
+ * Nor is a change inside the scanner's normal variation good or bad news:
+ * it is not a change at all (variation.ts).
  */
-export function changeTone(key: MeasureKey, delta: number | null): ChangeTone {
+export function changeTone(key: MeasureKey, delta: number | null, variation: InBodyVariation): ChangeTone {
   if (!delta) return "neutral";
+  if (callChange(key, delta, variation) === "within") return "neutral";
   if (MORE_IS_BETTER.has(key)) return delta > 0 ? "good" : "watch";
   if (LESS_IS_BETTER.has(key)) return delta < 0 ? "good" : "watch";
   return "neutral";
 }
 
-/** "Since Jan 15: muscle up 2.3 lb, body fat down 1.8 points." */
-export function summarySentence(summary: InBodySummary | null | undefined, today?: string): string | null {
+/**
+ * The card's one sentence. Only a change beyond the client's home studio's
+ * variation is named; the rest is said to be within it, so nothing the
+ * scanner could have made up is ever called "up":
+ *
+ *   both called  "Since Jan 15: muscle up 4.1 lb, body fat down 3.0 points."
+ *   one called   "Since Jan 15: muscle up 4.1 lb; body fat within the scanner's normal variation."
+ *   none         "Since Jan 15: no change bigger than the scanner's normal variation."
+ */
+export function summarySentence(
+  summary: InBodySummary | null | undefined,
+  today: string | undefined,
+  variation: InBodyVariation,
+): string | null {
   if (!summary || !isDateKey(summary.firstTestedAt)) return null;
   const since = scanDateLabel(summary.firstTestedAt, today);
   if (summary.scanCount < 2 || summary.muscleLbChange === null || summary.bodyFatPctChange === null) {
     return `One scan so far, ${since}.`;
   }
-  const part = (word: string, delta: number, unit: string) =>
-    delta === 0 ? `${word} unchanged` : `${word} ${delta > 0 ? "up" : "down"} ${Math.abs(delta).toFixed(1)} ${unit}`;
-  return `Since ${since}: ${part("muscle", summary.muscleLbChange, "lb")}, ${part(
-    "body fat",
-    summary.bodyFatPctChange,
-    "points",
-  )}.`;
+  const part = (word: string, key: MeasureKey, delta: number, unit: string) => {
+    const call = callChange(key, delta, variation);
+    return call === "up" || call === "down" ? `${word} ${call} ${Math.abs(delta).toFixed(1)} ${unit}` : null;
+  };
+  const muscle = part("muscle", "skeletalMuscleMassLb", summary.muscleLbChange, "lb");
+  const fat = part("body fat", "percentBodyFat", summary.bodyFatPctChange, "points");
+  if (muscle && fat) return `Since ${since}: ${muscle}, ${fat}.`;
+  if (muscle) return `Since ${since}: ${muscle}; body fat within the scanner's normal variation.`;
+  if (fat) return `Since ${since}: ${fat}; muscle within the scanner's normal variation.`;
+  return `Since ${since}: no change bigger than the scanner's normal variation.`;
 }
 
 /* ------------------------------------------------------------------ *

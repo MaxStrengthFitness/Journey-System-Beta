@@ -6,7 +6,9 @@
  * tests; this keeps all of them, on the iPad, during a session.
  *
  *   - the latest scan's four headline numbers, each with its change since
- *     the first scan (muscle up and fat down in green)
+ *     the first scan (muscle up and fat down in green). A change inside the
+ *     client's home studio's InBody variation keeps its number but is not
+ *     called a change (variation.ts)
  *   - weight, muscle and body-fat trend lines once there are two scans
  *   - every scan, newest first; tap one to correct or remove it
  *
@@ -24,10 +26,11 @@ import { useInBodyScans } from "./useInBodyScans";
 import { InBodyScanDialog } from "./InBodyScanDialog";
 import { InBodyTrend } from "./InBodyTrend";
 import { canRecordInBody, canRemoveInBodyScan } from "./access";
+import { useInBodyVariation } from "./useInBodyVariation";
 import {
   changeBetween,
   changeTone,
-  formatChange,
+  formatCalledChange,
   formatMeasure,
   scanDateLabel,
   sortScans,
@@ -68,6 +71,9 @@ export interface InBodyCardProps {
 
 export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
   const today = studioTodayKey();
+  // What counts as a change: the client's HOME studio's numbers, wherever
+  // the profile is opened (variation.ts).
+  const variation = useInBodyVariation(client);
   const { scans, loading, error } = useInBodyScans(client.id ?? null);
   const ordered = useMemo(() => sortScans(scans), [scans]);
   const [editing, setEditing] = useState<InBodyScan | "new" | null>(null);
@@ -133,8 +139,8 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
                       {formatMeasure(latest[h.key], h.key)}
                     </p>
                     {delta !== null && (
-                      <p className={cn("text-[12px] font-bold tabular-nums", TONE[changeTone(h.key, delta)])}>
-                        {formatChange(delta, h.key)}
+                      <p className={cn("text-[12px] font-bold tabular-nums", TONE[changeTone(h.key, delta, variation)])}>
+                        {formatCalledChange(delta, h.key, variation)}
                       </p>
                     )}
                   </div>
@@ -143,7 +149,7 @@ export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
             </div>
 
             {summary && summary.scanCount >= 2 && (
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{summarySentence(summary, today)}</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{summarySentence(summary, today, variation)}</p>
             )}
 
             {ordered.length >= 2 ? (

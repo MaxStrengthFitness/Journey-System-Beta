@@ -5,6 +5,7 @@ import {
   checkDraft,
   draftFromScan,
   emptyDraft,
+  formatCalledChange,
   formatChange,
   formatMeasure,
   parseNumber,
@@ -16,8 +17,10 @@ import {
   trendPoints,
 } from "./scans";
 import type { InBodyScan } from "./types";
+import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "./variation";
 
 const TODAY = "2026-09-11";
+const V = DEFAULT_INBODY_VARIATION;
 
 /** A realistic printout: 172.4 lb, 68.1 lb muscle, 53.8 lb fat (31.2%). */
 function filled(overrides: Partial<Record<string, string>> = {}) {
@@ -172,12 +175,33 @@ describe("the summary on the client", () => {
   it("has no changes with one scan, and nothing with none", () => {
     const one = summarizeScans([jan]);
     expect(one?.muscleLbChange).toBeNull();
-    expect(summarySentence(one as any, TODAY)).toBe("One scan so far, Jan 15.");
+    expect(summarySentence(one as any, TODAY, V)).toBe("One scan so far, Jan 15.");
     expect(summarizeScans([])).toBeNull();
   });
 
-  it("says it the way the Brief does", () => {
-    expect(summarySentence(summarizeScans([jan, sep]) as any, TODAY)).toBe(
+  // Client codex, Sep 2026 (AJ's decision 8): before this round the sentence
+  // read "Since Jan 15: muscle up 2.3 lb, body fat down 2.2 points." Both of
+  // those are inside Max Strength's default variation (3.5 lb, 2.7 points).
+  it("calls nothing a change that sits inside the studio's variation", () => {
+    expect(summarySentence(summarizeScans([jan, sep]) as any, TODAY, V)).toBe(
+      "Since Jan 15: no change bigger than the scanner's normal variation.",
+    );
+  });
+
+  it("names a change beyond it, and says the other one is within it", () => {
+    const stronger = scan("d", "2026-09-02", 172.4, 69.8, 53.8, 31.2); // +4.0 lb, −2.2 pts
+    expect(summarySentence(summarizeScans([jan, stronger]) as any, TODAY, V)).toBe(
+      "Since Jan 15: muscle up 4.0 lb; body fat within the scanner's normal variation.",
+    );
+    const leaner = scan("e", "2026-09-02", 172.4, 66.9, 50.0, 30.4); // +1.1 lb, −3.0 pts
+    expect(summarySentence(summarizeScans([jan, leaner]) as any, TODAY, V)).toBe(
+      "Since Jan 15: body fat down 3.0 points; muscle within the scanner's normal variation.",
+    );
+  });
+
+  it("says the old sentence when the studio's own numbers are smaller", () => {
+    const tight = normalizeInBodyVariation({ skeletalMuscleMassLb: 2, percentBodyFat: 2 });
+    expect(summarySentence(summarizeScans([jan, sep]) as any, TODAY, tight)).toBe(
       "Since Jan 15: muscle up 2.3 lb, body fat down 2.2 points.",
     );
   });
@@ -202,11 +226,32 @@ describe("words and trends", () => {
   });
 
   it("calls muscle up and fat down good news, and weight neither", () => {
-    expect(changeTone("skeletalMuscleMassLb", 2.3)).toBe("good");
-    expect(changeTone("percentBodyFat", 1.1)).toBe("watch");
-    expect(changeTone("bodyFatMassLb", -5)).toBe("good");
-    expect(changeTone("weightLb", -3.8)).toBe("neutral");
+    expect(changeTone("skeletalMuscleMassLb", 4.1, V)).toBe("good");
+    expect(changeTone("skeletalMuscleMassLb", -3.5, V)).toBe("watch");
+    expect(changeTone("percentBodyFat", 2.8, V)).toBe("watch");
+    expect(changeTone("bodyFatMassLb", -5.3, V)).toBe("good");
+    expect(changeTone("weightLb", -3.8, V)).toBe("neutral");
+    expect(changeTone("weightLb", -30, V)).toBe("neutral");
     expect(changeBetween({ weightLb: 170.04 }, { weightLb: 170 }, "weightLb")).toBe(0);
+  });
+
+  it("gives a change inside the variation no colour, at the studio's own numbers", () => {
+    expect(changeTone("skeletalMuscleMassLb", 2.3, V)).toBe("neutral");
+    expect(changeTone("percentBodyFat", 1.1, V)).toBe("neutral");
+    expect(changeTone("bodyFatMassLb", -5, V)).toBe("neutral");
+    const tight = normalizeInBodyVariation({ skeletalMuscleMassLb: 2 });
+    expect(changeTone("skeletalMuscleMassLb", 2.3, tight)).toBe("good");
+  });
+
+  it("keeps the number and withholds only the call", () => {
+    expect(formatCalledChange(1.2, "skeletalMuscleMassLb", V)).toBe("+1.2 lb · within normal variation");
+    expect(formatCalledChange(-2.2, "percentBodyFat", V)).toBe("−2.2 pts · within normal variation");
+    expect(formatCalledChange(4.1, "skeletalMuscleMassLb", V)).toBe("+4.1 lb");
+    expect(formatCalledChange(-5.3, "bodyFatMassLb", V)).toBe("−5.3 lb");
+    // Weight has no variation: its change is always shown plainly.
+    expect(formatCalledChange(-0.4, "weightLb", V)).toBe("−0.4 lb");
+    expect(formatCalledChange(0, "skeletalMuscleMassLb", V)).toBe("no change");
+    expect(formatCalledChange(null, "skeletalMuscleMassLb", V)).toBe("");
   });
 
   it("draws the last few scans, oldest first", () => {

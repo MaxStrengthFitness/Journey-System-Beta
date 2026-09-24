@@ -12,6 +12,7 @@ import { StudioDetailsForm, type StudioForm } from "../admin/studios/StudioDetai
 import { studioPatchPayload } from "../admin/studios/studio-writes";
 import { auditStudios, formatAge } from "../admin/mindbody/diagnostics";
 import { RenewalSettingsPanel } from "../admin/renewals/RenewalSettingsPanel";
+import { InBodyVariationPanel } from "./InBodyVariationPanel";
 import { AnnouncementComposer } from "../admin/announcements/AnnouncementComposer";
 import { DEFAULT_SESSION_MINUTES, MAX_SESSION_MINUTES, MIN_SESSION_MINUTES, sessionMinutesOf } from "../admin/hours/hours";
 import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalSettings";
@@ -41,6 +42,10 @@ import "../admin/admin.css";
  *                     administrator
  *   The studio's day  shift hours and the deep-clean interval (from Relay's
  *                     Standards), on the dirty-tracked save bar
+ *   InBody            the scanner's normal variation: how big a change has
+ *                     to be before any screen calls it one (client codex,
+ *                     Sep 2026 — InBodyVariationPanel, features/inbody/
+ *                     variation.ts)
  *   Renewals          the studio's thresholds and packages (the one editor —
  *                     Operations → Renewals only points here since the
  *                     Operations round)
@@ -91,6 +96,8 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
       <SyncPanel trainers={trainers ?? NONE} />
 
       <HoursPanel />
+
+      <InBodyVariationPanel studioId={studioId} studio={studio} trainers={trainers ?? NONE} />
 
       <RenewalsPanel studioId={studioId} studioName={studio.name} />
 
