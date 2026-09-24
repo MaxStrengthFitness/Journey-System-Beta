@@ -2622,3 +2622,16 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
    Key popover, never the inline legend. */
 .jg-stage--side .jg-rail__legend { display: none; }
 .jg-stage--side .jg-keywrap { display: block; }
+
+/* Names are never truncated (CLAUDE.md). The Now Bar's machine, the Next
+   button's machine and the session bar's client wrap onto a second line
+   instead of ending in an ellipsis; each sits in a flex row that grows. */
+.jg-nb__name,
+.jg-nb__nextname,
+.jg-sbar__name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+  line-height: 1.1;
+}

@@ -517,7 +517,7 @@ export function ProfileHeader({
               : undefined
           }
         >
-          {topTrainer.top?.name ? <span className="truncate">{topTrainer.top.name}</span> : <span className="text-muted-foreground font-medium">Not yet</span>}
+          {topTrainer.top?.name ? <span className="break-words">{topTrainer.top.name}</span> : <span className="text-muted-foreground font-medium">Not yet</span>}
         </Stat>
 
         <Stat label="Last session" icon={<History />} sub={lastMs ? relativeDays(lastMs) ?? undefined : undefined}>
@@ -615,7 +615,7 @@ export function ProfileHeader({
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {trainerRows.map((t) => (
               <li key={t.key} className="flex items-center gap-3 py-1.5">
-                <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
+                <span className="flex-1 min-w-0 break-words text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t.name}</span>
                 <span className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                   <span className="block h-full bg-[#F06C22]" style={{ width: `${Math.round(t.share * 100)}%` }} />
                 </span>
