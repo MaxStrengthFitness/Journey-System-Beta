@@ -288,6 +288,17 @@ export const NEVER_PHRASE: Record<HistoryCoverage, string> = {
 };
 
 /**
+ * The words that follow a count of unused studio machines, grammatical for
+ * every coverage: "6 studio machines never attempted" when Journey holds the
+ * whole story, "6 studio machines with nothing recorded" otherwise. The count
+ * itself is left to the caller so a screen can set it in bold.
+ */
+export function neverTriedPhrase(count: number, coverage: HistoryCoverage): string {
+  const noun = count === 1 ? "studio machine" : "studio machines";
+  return coverage === "complete" ? `${noun} ${NEVER_PHRASE.complete}` : `${noun} with ${NEVER_PHRASE[coverage]}`;
+}
+
+/**
  * May a screen quote a lifetime figure off `client.machineStats` as though it
  * were the client's whole story? Only when it IS.
  *

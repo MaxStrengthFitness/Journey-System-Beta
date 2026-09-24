@@ -4,6 +4,7 @@ import {
   NEVER_LABEL,
   canQuoteLifetime,
   historyCoverage,
+  neverTriedPhrase,
   isPriorHistory,
   priorHistoryLabel,
   priorHistoryOf,
@@ -166,5 +167,17 @@ describe("the two things a screen may say about an unused machine", () => {
     expect(canQuoteLifetime("complete")).toBe(true);
     expect(canQuoteLifetime("partial")).toBe(false);
     expect(canQuoteLifetime("unknown")).toBe(false);
+  });
+
+  it("reads as a sentence after the count, for every coverage", () => {
+    expect(neverTriedPhrase(6, "complete")).toBe("studio machines never attempted");
+    expect(neverTriedPhrase(1, "complete")).toBe("studio machine never attempted");
+    expect(neverTriedPhrase(6, "partial")).toBe("studio machines with nothing recorded");
+    expect(neverTriedPhrase(1, "unknown")).toBe("studio machine with nothing recorded");
+  });
+
+  it("never says 'never attempted' unless Journey holds the whole story", () => {
+    expect(neverTriedPhrase(3, "partial")).not.toMatch(/never attempted/);
+    expect(neverTriedPhrase(3, "unknown")).not.toMatch(/never attempted/);
   });
 });

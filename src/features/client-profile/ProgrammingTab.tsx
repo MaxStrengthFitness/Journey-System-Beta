@@ -45,7 +45,7 @@
  * Journey grid and back.
  */
 import { rosterCoverage } from "./programming-summary";
-import { NEVER_PHRASE, type HistoryCoverage } from "../../lib/prior-history";
+import { neverTriedPhrase, type HistoryCoverage } from "../../lib/prior-history";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Client,
@@ -278,7 +278,7 @@ export function ProgrammingTab({
         <>
           <span className="psub-context__dot" aria-hidden="true" />
           <span>
-            <b>{coverage.neverTried}</b> studio {coverage.neverTried === 1 ? "machine" : "machines"} with {NEVER_PHRASE[coverage.coverage]}
+            <b>{coverage.neverTried}</b> {neverTriedPhrase(coverage.neverTried, coverage.coverage)}
           </span>
         </>
       ) : null}
