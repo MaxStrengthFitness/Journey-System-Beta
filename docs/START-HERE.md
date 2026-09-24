@@ -80,7 +80,7 @@ confusing bug is really a question about which system owns a fact.
 ```
 
 - **Mindbody owns people, bookings and contracts.** Journey never invents a
-  client. A client lives at `clients/{mindbodyClientId}` — we use *their* id,
+  client. A client lives at `clients/{mindbodyClientId}` (or, for the rare second person whose number the other Mindbody site already uses, `clients/{site}-{id}`) — we use *their* id,
   never match on names. If a client's name or package is wrong, it is wrong in
   Mindbody.
 - **Journey owns the coaching.** Every set, note, routine, machine setting and

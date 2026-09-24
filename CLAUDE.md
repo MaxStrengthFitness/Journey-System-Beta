@@ -88,7 +88,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - Sharing between studios is the studio's choice, per machine and per tip or note (a "Share with all MSF studios" switch). Comments stay within the studio; a tag rings the tagged person's bell and nothing else.
 
 **Data**
-- Mindbody owns people, bookings and contracts; Journey owns coaching data. A Mindbody client lives at `clients/{mindbodyClientId}` — no name matching, ever.
+- Mindbody owns people, bookings and contracts; Journey owns coaching data. A Mindbody client lives at `clients/{mindbodyClientId}` — no name matching, ever. **Except the second person on a shared number** (client-identity round, Sep 23 2026): both Mindbody sites number clients from 100000001, so when the plain number already belongs to someone on the OTHER site, this person lives at `clients/{siteId}-{mindbodyClientId}`. `src/lib/mindbody-site.ts` is the one rule (the webhook carries a copy); a record's Mindbody id is always the `mindbodyClientId` field, never parsed from the doc id.
 - Every query names the studios it reads (`src/lib/tenancy.ts`). Sessions are scoped by **client**, not studio.
 - Never write to a collection from inside a listener on that same collection. A failed read means "unknown", never "empty". No per-client queries in a loop.
 - Keep running totals (`trainerTally`, `machineStats`, trainer rollups) instead of re-reading history when a screen opens.
