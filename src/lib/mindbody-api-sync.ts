@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { parkPullSyncBooking } from "./mindbody-limbo";
+import { chooseClientDoc, siteOfClient, siteQualifiedClientId } from "./mindbody-site";
 import { extractBookingExtras } from "./mindbody-pass";
 import { authedFetch } from "./authed-fetch";
 import { Trainer, Client, Studio } from "../types";
@@ -87,14 +88,19 @@ export interface MindbodyAppointment {
 function resolveCanonicalClientId(
   mbClientId: string | null,
   clientsData: Client[],
+  /** The Mindbody site the id belongs to: `{site}-{id}`, the second person's
+   *  record (lib/mindbody-site.ts), wins over the plain id. The caller has
+   *  already dropped other-site clients from `clientsData`. */
+  siteId: string,
 ): string | null {
   if (!mbClientId) return null;
   const target = String(mbClientId).trim();
   if (!target) return null;
 
-  const canonical = clientsData.find(
-    (c) => c.id && String(c.id).trim() === target,
-  );
+  const qualified = siteQualifiedClientId(siteId, target);
+  const canonical =
+    clientsData.find((c) => c.id && String(c.id).trim() === qualified) ??
+    clientsData.find((c) => c.id && String(c.id).trim() === target);
   return canonical ? canonical.id || null : null;
 }
 
@@ -123,6 +129,8 @@ function buildCanonicalClientPayload(
    * "Client since". Optional so existing callers and tests are unaffected.
    */
   earliestAppointment?: Date | null,
+  /** The Mindbody site `mbClientId` belongs to (lib/mindbody-site.ts). */
+  siteId?: string,
 ): Record<string, any> {
   const firstName = (appt.ClientFirstName || "").trim();
   const lastName = (appt.ClientLastName || "").trim();
@@ -131,6 +139,7 @@ function buildCanonicalClientPayload(
     firstName: firstName || "Mindbody",
     lastName: lastName || `Client ${mbClientId}`,
     mindbodyClientId: mbClientId,
+    ...(siteId ? { mindbodySiteId: String(siteId).trim() } : {}),
     mindbody_name: `${firstName} ${lastName}`.trim(),
     homeStudioId: studioId,
     isActive: true,
@@ -613,14 +622,8 @@ export async function syncMindbodySchedules(
     // home studio sits on a DIFFERENT Mindbody site is not this site's client,
     // whatever their id says. Unknown site (no home studio) is kept, as before.
     const thisSiteForRoster = String(siteId).trim();
-    const siteOfClient = (c: Client): string | null => {
-      const home = (c as { homeStudioId?: string | null }).homeStudioId;
-      if (!home) return null;
-      const s = (studios || []).find((st) => st.id === home);
-      return s?.mindbodySiteId ? String(s.mindbodySiteId).trim() : null;
-    };
     const allClients: Client[] = clients.filter((c) => {
-      const theirs = siteOfClient(c);
+      const theirs = siteOfClient(c, studios || []);
       return !theirs || theirs === thisSiteForRoster;
     });
 
@@ -693,7 +696,7 @@ export async function syncMindbodySchedules(
       const mbId = appt.ClientId ? String(appt.ClientId).trim() : "";
       if (!mbId) continue;
       if (missingClients.has(mbId)) continue;
-      if (resolveCanonicalClientId(mbId, allClients)) continue;
+      if (resolveCanonicalClientId(mbId, allClients, siteId)) continue;
 
       // MULTI-TENANT GUARD: only create a client for an appointment that will
       // actually be filed under the studio being synced. Without this, a
@@ -706,50 +709,74 @@ export async function syncMindbodySchedules(
       missingClients.set(mbId, appt);
     }
 
-    // Candidates are only "not in the caller's roster". Ask Firestore about
-    // exactly those before writing anything.
-    const toCreate = new Map<string, MindbodyAppointment>();
-    const createAlone = new Map<string, MindbodyAppointment>();
     /*
-     * A CLIENT DOCUMENT WITH THIS ID IS NOT NECESSARILY THIS PERSON.
+     * WHICH RECORD IS THIS PERSON (client-identity round, Sep 23 2026).
      *
      * `clients/{mindbodyClientId}` carries no site, and Mindbody only promises
-     * an id is unique within ONE site. MSF has two, and both numbered from
-     * 100000001, so the ranges overlap: on Sep 23 2026 the collision check
-     * found 43 ids naming a DIFFERENT PERSON at each site. Adopting by id
-     * alone files one person's booking onto another's record — it already had,
-     * for two clients and nineteen bookings.
+     * an id is unique within ONE site. MSF has two, both numbered from
+     * 100000001: 43 ids name a DIFFERENT PERSON at each. Adopting by id alone
+     * filed one person's bookings onto another's record (phases 26–27 stopped
+     * that by leaving them unlinked). Now the second person gets a record of
+     * their own at `clients/{site}-{id}` — lib/mindbody-site.ts is the rule.
      *
-     * A SIBLING studio on this site is fine: that is a client visiting another
-     * of our locations. Only a positive site MISMATCH is a different person.
-     * An unresolvable site stays adopted, as before, so a client with no home
-     * studio yet is unaffected.
+     * Candidates are only "not in the caller's roster". Firestore is asked
+     * about exactly those, first at the plain id and then, for any that turn
+     * out to belong to the other site, at the site-qualified one.
      *
-     * Ids landing here are left for the `!clientId` path below, which already
-     * writes the booking UNLINKED and says so. That is the right outcome:
-     * `clientName` comes from the appointment, so the card still shows who is
-     * actually coming in — it just no longer opens a stranger's profile.
+     * Keyed by the DOCUMENT to create, carrying the Mindbody id it is for.
      */
-    const crossSiteClient = new Map<string, string>();
+    const toCreate = new Map<string, { mbId: string; appt: MindbodyAppointment }>();
+    const createAlone = new Map<string, { mbId: string; appt: MindbodyAppointment }>();
+    /*
+     * Ids this caller cannot place. The rules would not show the plain record
+     * and refused to create it, so it exists and belongs to a studio this
+     * trainer cannot read — a sibling's client or the other site's, and
+     * nothing here can tell which. Linking by id alone is exactly how the
+     * wrong person's record got someone's bookings, and this trainer could not
+     * open that profile anyway. So nothing NEW is linked for them, and a link
+     * a sync that could read the record already made is left as it is (so a
+     * leader's sync and a trainer's do not undo each other).
+     */
+    const unplaceable = new Set<string>();
     if (missingClients.size > 0) {
-      const check = await checkClientIds([...missingClients.keys()]);
       const thisSite = String(siteId).trim();
+      const check = await checkClientIds([...missingClients.keys()]);
+      const strangers = new Map<string, MindbodyAppointment>();
       for (const c of check.existing) {
-        const theirStudio = (studios || []).find(
-          (s) => s.id === (c as { homeStudioId?: string }).homeStudioId,
-        );
-        const theirSite = theirStudio?.mindbodySiteId
-          ? String(theirStudio.mindbodySiteId).trim()
-          : null;
-        if (theirSite && theirSite !== thisSite) {
-          crossSiteClient.set(String(c.id), theirSite);
-          continue;
-        }
-        allClients.push(c);
+        const mbId = String(c.id);
+        const choice = chooseClientDoc({
+          mindbodyClientId: mbId,
+          site: thisSite,
+          qualifiedExists: false,
+          plain: c as { homeStudioId?: string | null; mindbodySiteId?: string | null },
+          studios: studios || [],
+        });
+        if (choice.docId === mbId) allClients.push(c);
+        else strangers.set(mbId, missingClients.get(mbId)!);
       }
       for (const [mbId, appt] of missingClients) {
-        if (check.missing.has(mbId)) toCreate.set(mbId, appt);
-        else if (check.refused.has(mbId)) createAlone.set(mbId, appt);
+        if (check.missing.has(mbId)) toCreate.set(mbId, { mbId, appt });
+        else if (check.refused.has(mbId)) createAlone.set(mbId, { mbId, appt });
+      }
+
+      if (strangers.size > 0) {
+        const byQualified = new Map(
+          [...strangers].map(([mbId, appt]) => [siteQualifiedClientId(thisSite, mbId), { mbId, appt }]),
+        );
+        const second = await checkClientIds([...byQualified.keys()]);
+        allClients.push(...second.existing);
+        for (const [docId, item] of byQualified) {
+          // A trainer may not read a document that is not there, so a refused
+          // read here is usually a record still to be made; the create is
+          // tried on its own and refused if it is someone else's.
+          if (second.missing.has(docId)) toCreate.set(docId, item);
+          else if (second.refused.has(docId)) createAlone.set(docId, item);
+        }
+        if (second.unchecked.size > 0) {
+          result.errors.push(
+            `Could not check ${second.unchecked.size} client profile(s) that share a Mindbody number with someone at another site; their bookings were left unlinked this run.`,
+          );
+        }
       }
       if (check.unchecked.size > 0) {
         result.errors.push(
@@ -761,21 +788,21 @@ export async function syncMindbodySchedules(
     // Refused reads, one write each: a new client is created, someone else's
     // client is refused by the rules and simply stays theirs.
     let createdAlone = 0;
-    for (const [mbId, appt] of createAlone) {
+    for (const [docId, { mbId, appt }] of createAlone) {
       const payload = buildCanonicalClientPayload(
         appt,
         mbId,
         targetStudioId,
         earliestApptByClient.get(mbId) ?? null,
+        siteId,
       );
       try {
-        await setDoc(doc(db, "clients", mbId), payload, { merge: true });
-        allClients.push({ id: mbId, ...payload } as unknown as Client);
+        await setDoc(doc(db, "clients", docId), payload, { merge: true });
+        allClients.push({ id: docId, ...payload } as unknown as Client);
         createdAlone++;
       } catch {
-        // Exists at another studio. The booking still points at the one
-        // canonical id; nothing about that client is written from here.
-        allClients.push({ id: mbId } as Client);
+        // Exists at a studio this caller cannot read. See `unplaceable`.
+        if (docId === mbId) unplaceable.add(mbId);
       }
     }
     result.clientsCreated = createdAlone;
@@ -785,16 +812,17 @@ export async function syncMindbodySchedules(
       let pending = 0;
       let created = 0;
       try {
-        for (const [mbId, appt] of toCreate) {
+        for (const [docId, { mbId, appt }] of toCreate) {
           const payload = buildCanonicalClientPayload(
             appt,
             mbId,
             targetStudioId,
             earliestApptByClient.get(mbId) ?? null,
+            siteId,
           );
-          clientBatch.set(doc(db, "clients", mbId), payload, { merge: true });
+          clientBatch.set(doc(db, "clients", docId), payload, { merge: true });
           // Keep the in-memory roster in step so the loop below resolves them.
-          allClients.push({ id: mbId, ...payload } as unknown as Client);
+          allClients.push({ id: docId, ...payload } as unknown as Client);
           created++;
           pending++;
           if (pending >= 400) {
@@ -923,18 +951,22 @@ export async function syncMindbodySchedules(
           appt as unknown as Record<string, unknown>,
         );
 
-        const clientId = resolveCanonicalClientId(mbClientId, allClients);
+        const isUnplaceable = Boolean(mbClientId && unplaceable.has(mbClientId));
+        const clientId =
+          resolveCanonicalClientId(mbClientId, allClients, siteId) ??
+          // See `unplaceable` above: nothing new is linked, and a link a sync
+          // that could read the record already made is kept.
+          (isUnplaceable
+            ? ((existingByMbId[String(appt.Id)]?.data?.clientId as string | null | undefined) ?? null)
+            : null);
 
-        if (!clientId && mbClientId) {
-          const otherSite = crossSiteClient.get(mbClientId);
+        if (!clientId && mbClientId && !isUnplaceable) {
+          // Phase 1 above creates every client for this studio before the
+          // loop runs, so reaching here means that batch failed. The
+          // schedule row is still written (unlinked) and will resolve on
+          // the next sync.
           result.errors.push(
-            otherSite
-              ? `Appt ${appt.Id}: Mindbody client ${mbClientId} already belongs to someone on site ${otherSite}, and the two sites number their clients from the same range — so this is a different person. Left unlinked rather than filed on their record.`
-              : // Phase 1 above creates every client for this studio before the
-                // loop runs, so reaching here means that batch failed. The
-                // schedule row is still written (unlinked) and will resolve on
-                // the next sync.
-                `Appt ${appt.Id}: client ${mbClientId} could not be resolved or created; left unlinked.`,
+            `Appt ${appt.Id}: client ${mbClientId} could not be resolved or created; left unlinked.`,
           );
         }
 

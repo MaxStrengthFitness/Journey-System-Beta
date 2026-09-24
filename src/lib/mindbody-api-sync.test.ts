@@ -896,10 +896,46 @@ describe("syncMindbodySchedules — phase 1 never overwrites an existing client"
 
     expect(result.clientsCreated).toBe(1);
     expect(setDocOps.filter((op) => op.path === "clients").map((op) => op.id)).toEqual(["mb-brand-new"]);
-    // Neither is written through the batch, and both bookings keep the canonical id.
     expect(batchOps.filter((op) => op.path === "clients")).toHaveLength(0);
     const rows = batchOps.filter((op) => op.path === "schedules");
-    expect(rows.map((r) => r.data.clientId).sort()).toEqual(["mb-brand-new", "mb-elsewhere"]);
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r.data.clientId]));
+    expect(byId["7001"]).toBe("mb-brand-new");
+    // Someone this trainer cannot read, and cannot place on a site: a sibling
+    // studio's client or the other site's, nothing here can tell. Linking by
+    // id alone is how a stranger's bookings landed on Solon's records, so a
+    // NEW booking is not linked (client-identity round, Sep 23 2026)...
+    expect(byId["7002"]).toBeNull();
+    // ...and it is not reported as a failure on every sync either.
+    expect(result.errors.join(" ")).not.toMatch(/mb-elsewhere/);
+  });
+
+  it("keeps a link a sync that COULD read the record already made", async () => {
+    // A leader's sync linked it; a trainer's must not undo that every pass.
+    mockAppointments([appointment({ Id: 7002, ClientId: "mb-elsewhere", LocationId: 2 })]);
+    refusedClientIds = new Set(["mb-elsewhere"]);
+    refusedWrites = new Set(["mb-elsewhere"]);
+    snapshots.schedules = [
+      {
+        id: "7002",
+        data: () => ({
+          mindbodyAppointmentId: "7002",
+          studioId: "studio-solon",
+          clientId: "mb-elsewhere",
+          clientName: "Alice Smith",
+          trainerId: "trainer-1",
+          status: "Scheduled",
+          startTime: { toMillis: () => new Date("2026-01-13T10:00:00Z").getTime() },
+        }),
+      },
+    ];
+
+    await syncMindbodySchedules(
+      SITE, TRAINERS, [], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2",
+    );
+
+    const update = batchOps.find((op) => op.path === "schedules" && op.id === "7002");
+    // Either untouched, or rewritten with the same link — never unlinked.
+    if (update) expect(update.data.clientId).toBe("mb-elsewhere");
   });
 
   it("does not fill in a visitor's record from this studio's booking", async () => {
@@ -1043,16 +1079,14 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
    * name a DIFFERENT person at each site, and the damage check found two of
    * them already had someone else's standing schedule filed on their record.
    *
-   * `clients/{mindbodyClientId}` has no site in it, and the sync's id lookup
-   * reads that collection with no studio filter — so a Westlake booking for
-   * client 100000271 found SOLON's client 100000271 and filed against them.
-   *
-   * The booking must be left UNLINKED instead. `clientName` comes from the
-   * appointment, so the card still shows who is actually walking in; it just
-   * no longer opens a stranger's profile, and no session can be logged
-   * against the wrong person.
+   * `clients/{mindbodyClientId}` has no site in it. Phases 26–27 stopped the
+   * sync filing a Westlake booking for client 100000271 on SOLON's client
+   * 100000271, by leaving it unlinked. The client-identity round gives the
+   * Westlake person a record of their own, `clients/29068-100000271`
+   * (lib/mindbody-site.ts), and files their bookings there.
    */
   const OTHER_SITE = "5746957";
+  const QUALIFIED = `${SITE}-100000271`;
 
   const STUDIOS_ON_TWO_SITES: Studio[] = [
     ...SHARED_SITE_STUDIOS,
@@ -1081,80 +1115,99 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
     },
   ];
 
+  const barjesh = () =>
+    appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" });
+
   const scheduleWrites = () => batchOps.filter((op) => op.path === "schedules");
+  const clientCreates = () => batchOps.filter((op) => op.path === "clients" && op.kind === "set");
 
-  it("does NOT link a booking to a client document from the other site", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
-    ]);
+  it("never links a booking to the client document from the other site", async () => {
+    mockAppointments([barjesh()]);
     snapshots.clients = strangerAt("studio-elsewhere");
 
     await run();
 
     const [row] = scheduleWrites();
-    expect(row).toBeTruthy();
-    expect(row.data.clientId).toBeNull();
+    expect(row.data.clientId).not.toBe("100000271");
   });
 
-  it("still writes the booking, with the name of whoever is actually coming in", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
-    ]);
-    snapshots.clients = strangerAt("studio-elsewhere");
-
-    await run();
-
-    const [row] = scheduleWrites();
-    expect(row.data.clientName).toBe("Barjesh Walters");
-    expect(row.data.mindbodyClientId).toBe("100000271");
-  });
-
-  it("says WHY, naming the other site, rather than a generic failure", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
-    ]);
+  it("gives the second person a record of their own, and files the booking there", async () => {
+    mockAppointments([barjesh()]);
     snapshots.clients = strangerAt("studio-elsewhere");
 
     const res = await run();
 
-    expect(res.errors.join(" ")).toMatch(new RegExp(`already belongs to someone on site ${OTHER_SITE}`));
+    const [created] = clientCreates();
+    expect(created.id).toBe(QUALIFIED);
+    expect(created.data).toMatchObject({
+      firstName: "Barjesh",
+      lastName: "Walters",
+      mindbodyClientId: "100000271",
+      mindbodySiteId: SITE,
+      homeStudioId: "studio-solon",
+    });
+    const [row] = scheduleWrites();
+    expect(row.data.clientId).toBe(QUALIFIED);
+    expect(row.data.mindbodyClientId).toBe("100000271");
+    expect(row.data.clientName).toBe("Barjesh Walters");
+    // Nothing is written to Solon's Aydin Kara, and nothing is reported as wrong.
+    expect(batchOps.filter((op) => op.path === "clients" && op.id === "100000271")).toHaveLength(0);
+    expect(res.errors).toEqual([]);
+  });
+
+  it("uses the second person's record once it exists, without making another", async () => {
+    mockAppointments([barjesh()]);
+    snapshots.clients = [
+      ...strangerAt("studio-elsewhere"),
+      { id: QUALIFIED, data: () => ({ firstName: "Barjesh", lastName: "Walters", homeStudioId: "studio-solon" }) },
+    ];
+
+    await run();
+
+    expect(clientCreates()).toHaveLength(0);
+    expect(scheduleWrites()[0].data.clientId).toBe(QUALIFIED);
+  });
+
+  it("finds the second person in the roster before asking Firestore anything", async () => {
+    mockAppointments([barjesh()]);
+    const roster = [
+      { id: QUALIFIED, firstName: "Barjesh", lastName: "Walters", homeStudioId: "studio-solon", mindbodyClientId: "100000271" },
+    ] as unknown as Client[];
+
+    await syncMindbodySchedules(SITE, TRAINERS, roster, STUDIOS_ON_TWO_SITES, null, undefined, undefined, "studio-solon", "2");
+
+    expect(reads.filter((r) => r.__collection === "clients")).toHaveLength(0);
+    expect(scheduleWrites()[0].data.clientId).toBe(QUALIFIED);
   });
 
   it("DOES link a client whose home is a sibling studio on the SAME site", async () => {
     // A Solon client visiting Westlake is not a collision — it is a visitor.
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
-    ]);
+    mockAppointments([appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" })]);
     snapshots.clients = strangerAt("studio-westlake");
 
     await run();
 
-    const [row] = scheduleWrites();
-    expect(row.data.clientId).toBe("100000271");
+    expect(clientCreates()).toHaveLength(0);
+    expect(scheduleWrites()[0].data.clientId).toBe("100000271");
   });
 
   it("adopts as before when the document has no home studio to place", async () => {
     // Unknown is unknown, not wrong. Refusing here would break every client
     // who simply has no home studio set yet.
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
-    ]);
-    snapshots.clients = [
-      { id: "100000271", data: () => ({ firstName: "Aydin", lastName: "Kara" }) },
-    ];
+    mockAppointments([appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" })]);
+    snapshots.clients = [{ id: "100000271", data: () => ({ firstName: "Aydin", lastName: "Kara" }) }];
 
     await run();
 
-    const [row] = scheduleWrites();
-    expect(row.data.clientId).toBe("100000271");
+    expect(scheduleWrites()[0].data.clientId).toBe("100000271");
   });
 
   /*
    * THE LOOP PHASE 26 MISSED. The Hub's roster fetches every client a booking
    * points at, as a "visitor". Once a booking was filed on the wrong person,
    * that wrong person came back in the ROSTER the sync is handed — and the id
-   * lookup found them there, before the phase-26 filter ran. The booking was
-   * re-filed on them every pass. The damage check still read 19 hours later.
+   * lookup found them there. Phase 27 drops other-site clients from the
+   * roster on the way in; that still holds.
    */
   const strangerInRoster = (homeStudioId: string) =>
     [{ id: "100000271", firstName: "Aydin", lastName: "Kara", homeStudioId }] as unknown as Parameters<
@@ -1165,22 +1218,16 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
     syncMindbodySchedules(SITE, TRAINERS, roster, STUDIOS_ON_TWO_SITES, null, undefined, undefined, "studio-solon", "2");
 
   it("does NOT link to a stranger the caller's roster hands in", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
-    ]);
+    mockAppointments([barjesh()]);
     snapshots.clients = strangerAt("studio-elsewhere");
 
-    const res = await runWithRoster(strangerInRoster("studio-elsewhere"));
+    await runWithRoster(strangerInRoster("studio-elsewhere"));
 
-    const [row] = scheduleWrites();
-    expect(row.data.clientId).toBeNull();
-    expect(res.errors.join(" ")).toMatch(new RegExp(`already belongs to someone on site ${OTHER_SITE}`));
+    expect(scheduleWrites()[0].data.clientId).toBe(QUALIFIED);
   });
 
-  it("UN-files a booking that was already filed on the stranger", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271", ClientFirstName: "Barjesh", ClientLastName: "Walters" }),
-    ]);
+  it("MOVES a booking already filed on the stranger onto the right person", async () => {
+    mockAppointments([barjesh()]);
     snapshots.clients = strangerAt("studio-elsewhere");
     snapshots.schedules = [
       {
@@ -1200,18 +1247,29 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
 
     const fix = batchOps.find((op) => op.kind === "update" && op.id === "7001");
     expect(fix).toBeTruthy();
-    expect(fix!.data.clientId).toBeNull();
+    expect(fix!.data.clientId).toBe(QUALIFIED);
   });
 
   it("still links a same-site visitor the roster hands in", async () => {
-    mockAppointments([
-      appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" }),
-    ]);
+    mockAppointments([appointment({ Id: 7001, LocationId: 2, ClientId: "100000271" })]);
     snapshots.clients = strangerAt("studio-westlake");
 
     await runWithRoster(strangerInRoster("studio-westlake"));
 
-    const [row] = scheduleWrites();
-    expect(row.data.clientId).toBe("100000271");
+    expect(scheduleWrites()[0].data.clientId).toBe("100000271");
+  });
+
+  it("a trainer who cannot read the other site's client still gets the second person's record", async () => {
+    // The plain record is Solon's and unreadable here; the second person's
+    // does not exist yet, which a trainer's read is also refused for — so it
+    // is created on its own, as any new client is.
+    mockAppointments([barjesh()]);
+    snapshots.clients = strangerAt("studio-elsewhere");
+    refusedClientIds = new Set([QUALIFIED]);
+
+    await run();
+
+    expect(setDocOps.filter((op) => op.path === "clients").map((op) => op.id)).toEqual([QUALIFIED]);
+    expect(scheduleWrites()[0].data.clientId).toBe(QUALIFIED);
   });
 });
