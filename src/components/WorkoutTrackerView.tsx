@@ -117,7 +117,8 @@ import {
   findIncompleteLogs,
 } from "../lib/log-validation";
 import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
-import { coverageOfClient } from "../lib/client-coverage";
+import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
+import { sessionNumberTag } from "../lib/history-claims";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
 import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
 import { trackerScreen } from "../lib/tracker-screen";
@@ -228,7 +229,7 @@ export function WorkoutTrackerView({
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
 }) {
-  const { activeStudioId: contextActiveStudioId, activeStudio } =
+  const { activeStudioId: contextActiveStudioId, activeStudio, studios } =
     useActiveStudio();
   // Per-studio machine display order (Aug 2026) — same resolution chain
   // as the Client Profile Journey grid: studio override, else the shared
@@ -287,14 +288,26 @@ export function WorkoutTrackerView({
   /*
    * How much of this client's story Journey holds - computed ONCE here and
    * handed to the three screens this file draws, rather than each of them
-   * working it out. `activeStudio` is absent in the render test's context
-   * mock, which resolves to "unknown", which is the cautious wording: the
-   * safe direction to fail in. lib/client-coverage.ts.
+   * working it out. `studios` is absent in the render test's context mock,
+   * which resolves to "unknown", which is the cautious wording: the safe
+   * direction to fail in. lib/client-coverage.ts.
+   *
+   * The cutover is the client's HOME studio's (Sep 24 2026), not the iPad's:
+   * where her history lives depends on when HER studio moved onto Journey.
    */
+  const homeCutover = homeCutoverOf(studios, selectedClient);
   const clientCoverage = useMemo(
-    () => coverageOfClient(selectedClient, activeStudio?.journeyCutoverDate ?? null),
-    [selectedClient, activeStudio?.journeyCutoverDate],
+    () => coverageOfClient(selectedClient, homeCutover),
+    [selectedClient, homeCutover],
   );
+  /*
+   * Whether "#N" may be printed at all. `sessionCount` is only what Journey
+   * has seen for a migration client nobody has recorded a total for, so the
+   * session bar and the grid's column heads read "#3" for a woman of twelve
+   * years. The Hub card's gate (ScheduleBlock); no number rather than a
+   * wrong one. The number is still WRITTEN on the session as before.
+   */
+  const canQuoteNumber = canQuoteSessionNumber(selectedClient, clientCoverage);
 
   const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(
     null,
@@ -2445,6 +2458,11 @@ export function WorkoutTrackerView({
       setQualityWithGuard(sessionId, machineId, patch.qualityR, "Right");
   };
 
+  const sessionBarNumber = sessionNumberTag(
+    currentSession?.sessionNumber || sessions.length,
+    canQuoteNumber,
+  );
+
   const gridLive: LiveColumn | undefined = currentSession?.id
     ? {
         session: {
@@ -2634,10 +2652,16 @@ export function WorkoutTrackerView({
                   : "Initializing..."}
             </h3>
             <div className="jg-sbar__meta">
-              <span>
-                <b>#{currentSession?.sessionNumber || sessions.length}</b>
-              </span>
-              <span aria-hidden>·</span>
+              {/* No number for a client whose total nobody has recorded:
+                  Journey's own count would call a twelve-year client "#3". */}
+              {sessionBarNumber && (
+                <>
+                  <span>
+                    <b>{sessionBarNumber}</b>
+                  </span>
+                  <span aria-hidden>·</span>
+                </>
+              )}
               <span>{authTrainer?.initials || currentSession?.trainerInitials || "??"}</span>
               {sessionStartedLabel && (
                 <>
@@ -2882,6 +2906,7 @@ export function WorkoutTrackerView({
       {setupPromptMachineId && (
         <SetupPromptDialog
           open
+          coverage={clientCoverage}
           machine={floorMachines.find((m) => m.id === setupPromptMachineId) || null}
           clientId={clientId || ""}
           clientSettings={clientMachineSettings}
@@ -2931,6 +2956,7 @@ export function WorkoutTrackerView({
           their Equipment tab before the trainer walks back to the desk. */}
       <MachineSheet
         open={!!sheetMachineId}
+        coverage={clientCoverage}
         firstTime={
           !!sheetMachineId &&
           (() => {
@@ -3308,6 +3334,8 @@ export function WorkoutTrackerView({
             historySessions={gridHistory}
             sections={gridSections}
             live={gridLive}
+            sessionNumbers={canQuoteNumber}
+            coverage={clientCoverage}
             /* Analytics is a review tool: "highest weight, Sep 2" is what you
                read on the client profile, not what you need while a set is
                running. Off here, it hands its 100px to the timeline. */

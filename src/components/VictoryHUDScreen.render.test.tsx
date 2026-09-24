@@ -254,3 +254,71 @@ describe("the post-session screen mounts", () => {
     expect(onLeave.mock.calls[0][0]).toEqual({ noteContent: "", importance: "standard", effectiveUntil: null });
   });
 });
+
+/*
+ * What the screen says about her PAST (Sep 24 2026, lib/history-claims.ts).
+ * The client is standing next to this screen. A machine with no earlier set
+ * on record is her "First time" only when Journey holds her whole story, and
+ * "session #N" is printed only through the Hub card's number gate.
+ */
+describe("the post-session screen and a client's history", () => {
+  const firstLine = {
+    machineId: "m1",
+    name: "Leg Press",
+    outcome: "performed",
+    weight: 120,
+    count: 8,
+    isTSC: false,
+    quality: 2,
+    loadDelta: null,
+    countDelta: null,
+    first: true,
+  } as const;
+
+  function HistoryScreen({ coverage, who = client }: { coverage?: "complete" | "partial" | "unknown"; who?: Client }) {
+    return (
+      <VictoryHUDScreen
+        client={who}
+        coverage={coverage}
+        session={{ ...session, sessionNumber: 4 }}
+        logs={[]}
+        lines={[firstLine]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+      />
+    );
+  }
+
+  it("calls a machine her first time, and numbers the session, when Journey holds her whole story", async () => {
+    const host = await mount(<HistoryScreen coverage="complete" />);
+    expect(host.textContent).toContain("First time");
+    expect(host.textContent).toContain("1 new machine");
+    expect(host.textContent).toContain("session #4");
+  });
+
+  it("says neither to a migrating client nobody has recorded a total for", async () => {
+    for (const coverage of ["partial", "unknown", undefined] as const) {
+      const host = await mount(<HistoryScreen coverage={coverage} />);
+      expect(host.textContent).not.toContain("First time");
+      expect(host.textContent).not.toMatch(/new machine/);
+      expect(host.textContent).not.toContain("session #");
+      // What actually happened today is still there.
+      expect(host.textContent).toContain("Leg Press");
+      expect(host.textContent).toContain("1 of 1 machine");
+    }
+  });
+
+  it("numbers the session once somebody has recorded her total, and still claims no first time", async () => {
+    const recorded = {
+      ...client,
+      priorHistory: { sessions: 412, importedCount: 0, through: "2026-09-12", source: "filemaker" },
+    } as Client;
+    const host = await mount(<HistoryScreen coverage="partial" who={recorded} />);
+    expect(host.textContent).toContain("session #4");
+    expect(host.textContent).not.toContain("First time");
+  });
+});

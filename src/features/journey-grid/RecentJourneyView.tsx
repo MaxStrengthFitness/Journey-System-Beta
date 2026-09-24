@@ -3,6 +3,7 @@ import type { JourneyRow, JourneySession, StatMetric } from "./types";
 import { JourneyGrid, type GridSection } from "./JourneyGrid";
 import { GridToolbar, QualityLegend } from "./GridToolbar";
 import { LoadingArea, LoadingMark } from "../../components/LoadingMark";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /**
  * Which machines the grid lists.
@@ -68,6 +69,13 @@ export interface RecentJourneyViewProps {
    * window here.
    */
   onOpenMachine?: (machineId: string) => void;
+  /**
+   * Print "#N" on the column heads - only once the caller has passed the
+   * session-number gate (canQuoteSessionNumber, lib/client-coverage.ts).
+   */
+  sessionNumbers?: boolean;
+  /** How much of the client's story Journey holds; decides "Start of history". */
+  coverage?: HistoryCoverage;
 }
 
 /**
@@ -101,6 +109,8 @@ export function RecentJourneyView({
   routineAMachineIds,
   routineBMachineIds,
   onOpenMachine,
+  sessionNumbers = false,
+  coverage = "unknown",
 }: RecentJourneyViewProps) {
   /* Every machine, by default (audit, Sep 13): "the Journey tab should really
      display all the machines" — a trainer evaluating a client reads what was
@@ -226,6 +236,8 @@ export function RecentJourneyView({
         metric={metric}
         onMetricChange={setMetric}
         onOpenMachine={onOpenMachine}
+        sessionNumbers={sessionNumbers}
+        coverage={coverage}
         /* The owner's call (Sep 2026): no LATEST frame on the profile. The
            newest column was a blue stripe of dashes whenever its session
            logged nothing, and the Active Session is where "baseline →

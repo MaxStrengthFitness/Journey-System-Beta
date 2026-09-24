@@ -12,6 +12,8 @@
 
 import type { DialValue } from "../types";
 import { isPerformedLog, outcomeOf, type SetOutcome } from "./set-outcome";
+import { newMachinesPhrase } from "./history-claims";
+import type { HistoryCoverage } from "./prior-history";
 
 export interface TodayLog {
   machineId: string;
@@ -47,7 +49,11 @@ export interface TodayLine {
   /** Today against the last performed set; null when there is no prior set. */
   loadDelta: number | null;
   countDelta: number | null;
-  /** First time this machine was performed. */
+  /**
+   * No earlier performed set on record for this machine. That is her FIRST
+   * time only when Journey holds her whole story - the screen asks
+   * `firstTimeTag(coverage)` before saying so (lib/history-claims.ts).
+   */
   first: boolean;
   skipReason?: string | null;
 }
@@ -106,8 +112,14 @@ export function todayLines(params: {
   });
 }
 
-/** "6 of 6 machines · 3 max-strength sets · load up on 2". */
-export function todayHeadline(lines: readonly TodayLine[]): string {
+/**
+ * "6 of 6 machines · 3 max-strength sets · load up on 2".
+ *
+ * "2 new machines" joins it only when Journey holds the client's whole story
+ * (`coverage` complete): machine history does not come across from FileMaker,
+ * so to a migration client every machine looks new. Cautious by default.
+ */
+export function todayHeadline(lines: readonly TodayLine[], coverage: HistoryCoverage = "unknown"): string {
   const planned = lines.length;
   const performed = lines.filter((l) => l.outcome === "performed");
   const maxSets = performed.filter((l) => l.quality === 3).length;
@@ -119,7 +131,8 @@ export function todayHeadline(lines: readonly TodayLine[]): string {
   if (maxSets > 0) parts.push(`${maxSets} max-strength set${maxSets === 1 ? "" : "s"}`);
   if (loadUp > 0) parts.push(`load up on ${loadUp}`);
   if (repsUp > 0) parts.push(`more reps on ${repsUp}`);
-  if (firsts > 0) parts.push(`${firsts} new machine${firsts === 1 ? "" : "s"}`);
+  const firstsPhrase = newMachinesPhrase(firsts, coverage);
+  if (firstsPhrase) parts.push(firstsPhrase);
   return parts.join(" · ");
 }
 

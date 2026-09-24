@@ -25,6 +25,8 @@ import {
   olderRailState,
   shouldAutoLoadOlder,
 } from "./older-autoload";
+import { historyStartWords, sessionNumberTag } from "../../lib/history-claims";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /* ------------------------------------------------------------------ *
  * Public props
@@ -133,6 +135,20 @@ export interface JourneyGridProps {
   settingsDisplay?: "inline" | "menu";
   /** Session columns to aim for when fitting (default 14; never fewer than 10 are fitted). */
   targetColumns?: number;
+  /**
+   * Print "#N" on the column heads. Off unless the caller has passed the
+   * session-number gate (`canQuoteSessionNumber`, lib/client-coverage.ts):
+   * for a migration client nobody has recorded a total for, the numbers are
+   * only what Journey has seen, and "#3" on a woman of twelve years is the
+   * claim this gate exists to stop. Off, a head shows the trainer alone.
+   */
+  sessionNumbers?: boolean;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * Decides what the Older rail says once it reaches the oldest session:
+   * "Start of history" only when that IS the start of her history.
+   */
+  coverage?: HistoryCoverage;
 }
 
 /* ------------------------------------------------------------------ *
@@ -533,6 +549,8 @@ export function JourneyGrid({
   fit = "fixed",
   settingsDisplay = "inline",
   targetColumns = 14,
+  sessionNumbers = false,
+  coverage = "unknown",
 }: JourneyGridProps) {
   const history = historySessions ?? sessions;
   const latestSessionId = latestProp !== undefined ? latestProp : (history[history.length - 1]?.id ?? null);
@@ -671,6 +689,10 @@ export function JourneyGrid({
    * listeners read the latest props through a ref so they are bound once. */
   const autoOlder = autoLoadOlder && !!onLoadOlder && !live;
   const railState = olderRailState(loadingOlder, canLoadOlder);
+  const startWords = historyStartWords(coverage);
+  const railLabel = railState === "start" ? startWords.label : OLDER_RAIL_LABEL[railState];
+  const railSpoken = railState === "start" ? startWords.spoken : OLDER_RAIL_SPOKEN[railState];
+  const liveNum = live ? sessionNumberTag(live.session.sessionNumber, sessionNumbers) : null;
   const olderRef = useRef({ onLoadOlder, canLoadOlder, loadingOlder });
   useLayoutEffect(() => {
     olderRef.current = { onLoadOlder, canLoadOlder, loadingOlder };
@@ -960,7 +982,7 @@ export function JourneyGrid({
                     className="jg-head__btn jg-older__btn"
                     onClick={askOlder}
                     disabled={railState !== "more"}
-                    aria-label={OLDER_RAIL_SPOKEN[railState]}
+                    aria-label={railSpoken}
                   >
                     <span className="jg-older__glyph" aria-hidden="true">
                       {railState === "more" ? "‹" : railState === "loading" ? "…" : ""}
@@ -968,10 +990,10 @@ export function JourneyGrid({
                   </button>
                   {/* The status reads down the rail, under the header. */}
                   <span className="jg-older__label" aria-hidden="true">
-                    {OLDER_RAIL_LABEL[railState]}
+                    {railLabel}
                   </span>
                   <span className="jg-sr" aria-live="polite">
-                    {railState === "more" ? "" : OLDER_RAIL_SPOKEN[railState]}
+                    {railState === "more" ? "" : railSpoken}
                   </span>
                 </div>
               ) : (
@@ -992,6 +1014,7 @@ export function JourneyGrid({
             {sessions.map((s) => {
               const isSpot = spot === s.id;
               const isLatest = latestSessionId === s.id;
+              const num = sessionNumberTag(s.sessionNumber, sessionNumbers);
               return (
                 <div
                   key={s.id}
@@ -1003,7 +1026,7 @@ export function JourneyGrid({
                     type="button"
                     className="jg-head__btn"
                     aria-pressed={isSpot}
-                    aria-label={`Session ${s.sessionNumber}, ${formatLongDate(s.date)}, trainer ${s.trainerName ?? s.trainerInitials}${
+                    aria-label={`${num ? `Session ${s.sessionNumber}` : "Session"}, ${formatLongDate(s.date)}, trainer ${s.trainerName ?? s.trainerInitials}${
                       isLatest ? ", most recent session" : ""
                     }. Tap to spotlight this column.`}
                     onClick={() => toggleSpot(s.id)}
@@ -1011,7 +1034,7 @@ export function JourneyGrid({
                     {isLatest && <span className="jg-head__tag">Latest</span>}
                     <span className="jg-head__d">{formatShortDate(s.date)}</span>
                     <span className="jg-head__n">
-                      #{s.sessionNumber} · {s.trainerInitials}
+                      {num ? `${num} · ${s.trainerInitials}` : s.trainerInitials}
                     </span>
                   </button>
                 </div>
@@ -1022,12 +1045,12 @@ export function JourneyGrid({
               <div className="jg-head jg-head--live" role="columnheader">
                 <div
                   className="jg-head__btn"
-                  aria-label={`Today, session ${live.session.sessionNumber}, ${formatLongDate(live.session.date)}`}
+                  aria-label={`Today${liveNum ? `, session ${live.session.sessionNumber}` : ""}, ${formatLongDate(live.session.date)}`}
                 >
                   <span className="jg-head__tag">Today</span>
                   <span className="jg-head__d">{formatShortDate(live.session.date)}</span>
                   <span className="jg-head__n">
-                    #{live.session.sessionNumber} · {live.session.trainerInitials}
+                    {liveNum ? `${liveNum} · ${live.session.trainerInitials}` : live.session.trainerInitials}
                   </span>
                 </div>
               </div>

@@ -53,6 +53,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { openProfileAt } from "../features/client-profile/profile-nav";
+import { homeCutoverOf } from "../lib/client-coverage";
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
 const SLOT_MINUTES = 30;
@@ -146,7 +147,7 @@ export function ClientsView({
   authTrainer,
   searchTerm,
   rosterLoading = false,
-  journeyCutoverDate = null,
+  cutoverStudios,
 }: {
   clients: Client[];
   trainers: Trainer[];
@@ -175,8 +176,12 @@ export function ClientsView({
    * "Not synced" for that beat.
    */
   rosterLoading?: boolean;
-  /** The active studio's cutover day, for the session number on each card. */
-  journeyCutoverDate?: string | null;
+  /**
+   * Every studio's cutover day. Each card reads its CLIENT'S home studio's
+   * (homeCutoverOf) - a client cross-training here is judged by when her own
+   * studio moved onto Journey, not this one.
+   */
+  cutoverStudios?: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }>;
 }) {
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
@@ -1314,7 +1319,7 @@ export function ClientsView({
                                           : null;
                                         return (
                                           <ScheduleBlock
-                                            journeyCutoverDate={journeyCutoverDate}
+                                            journeyCutoverDate={homeCutoverOf(cutoverStudios, clientObj)}
                                             key={
                                               session.id ||
                                               session.mindbodyAppointmentId ||

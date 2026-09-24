@@ -13,6 +13,7 @@ import type { JourneyRow, JourneySession, LiveSet, RepQuality } from "./types";
 import { computeRowStats, formatSeconds, orderedSets } from "./stats";
 import { QualityMark, QUALITY_MARK_LABEL } from "./QualityMark";
 import type { HistoryCoverage } from "../../lib/prior-history";
+import { noMachineHistoryLine } from "../../lib/history-claims";
 
 /* ------------------------------------------------------------------ *
  * Bar
@@ -504,11 +505,7 @@ function SessionNowBarImpl({
                   )}
                 </>
               ) : (
-                <>
-                  {coverage === "complete"
-                    ? "First time on this machine"
-                    : "Nothing recorded on this machine"}
-                </>
+                <>{noMachineHistoryLine(coverage)}</>
               )}
               {expect.best && !expect.best.isTSC && (
                 <>
