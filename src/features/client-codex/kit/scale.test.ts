@@ -37,7 +37,7 @@ import { describe, expect, it } from "vitest";
  * suite, so the folder cannot grow a file this scan never reads.
  *
  * HOSTED_FILES is for the shell's phase: components the codex MOUNTS but does
- * not own (the focus board, the contract panel), counted rather than failed, with
+ * not own (the focus board, the flag picker), counted rather than failed, with
  * a budget that each area phase lowers as it brings its hosted piece onto the
  * scale. The shell (phase 8) set it to what it measured; it reaches its final
  * value in the cleanup phase.
@@ -85,7 +85,6 @@ const CODEX_FILES: readonly string[] = [
   "features/client-codex/pages/GoalsPage.tsx",
   "features/client-codex/pages/StoryPage.tsx",
   "features/client-codex/pages/AccountPage.tsx",
-  "features/client-codex/pages/RecordLock.tsx",
   // The Notes page (phase 9): the page, its catalog, a thread card and a row,
   // their stylesheet, and the doors' vocabulary. The composer and the To-file
   // tray are shared with the session sheet and keep their own sizes there;
@@ -169,6 +168,16 @@ const CODEX_FILES: readonly string[] = [
   "features/client-story/StoryPage.tsx",
   "features/client-story/story.css",
   "features/client-story/story.ts",
+  // Account (phase 16): the page, the ID card and the membership section,
+  // their stylesheet (the contract panel's, restyled onto the kit — it was
+  // hosted), the pure module that writes their words, and the contract
+  // module they read.
+  "features/client-admin/AccountPage.tsx",
+  "features/client-admin/ContactCard.tsx",
+  "features/client-admin/MembershipSection.tsx",
+  "features/client-admin/client-admin.css",
+  "features/client-admin/account.ts",
+  "features/client-admin/contract.ts",
 ];
 
 /**
@@ -188,8 +197,8 @@ const LINE_CLAMP_LINES = 2;
  * those pages mount directly. Their text sizes are COUNTED, not failed, and
  * the count may only go down: each page area's phase takes its hosted pieces
  * off this list as it rebuilds them on the kit, and lowers the budget to the
- * new count in the same commit. `legacy-blocks.tsx` is the one hosted file
- * inside the codex folder; the cleanup phase deletes it.
+ * new count in the same commit. `legacy-blocks.tsx` was the one hosted file
+ * inside the codex folder; Account (phase 16) emptied it and deleted it.
  *
  * Shared pieces stay listed until their area replaces them on the codex:
  * ClientJournalTab (the focus area; Notes left it in phase 9, which moved no
@@ -207,22 +216,24 @@ const LINE_CLAMP_LINES = 2;
  * the cleanup phase's delete is left for), and brought the focus board, the
  * goals stylesheet, the shared plans and the jot strip onto the kit
  * (CODEX_FILES now) — and the jot rules of notes.css onto the scale: 125 →
- * 93. notes.css stays hosted: the rest of it is Relay's.
+ * 93. notes.css stays hosted: the rest of it is Relay's. Account (16)
+ * deleted the contract panel and the last of legacy-blocks (the ID card, the
+ * Mindbody blocks, how they found us — rebuilt on the kit in client-admin),
+ * and brought client-admin.css onto the scale (CODEX_FILES now): 93 → 80.
+ * DossierPrimitives and JournalRail stay listed, read by nothing now, for
+ * the cleanup phase to delete.
  */
 const HOSTED_FILES: readonly string[] = [
-  "features/client-codex/pages/legacy-blocks.tsx",
   "components/client-dossier/DossierPrimitives.tsx",
   "components/client-dossier/JournalRail.tsx",
   "components/journal/ClientJournalTab.tsx",
   "features/ford/ford.css",
-  "features/client-admin/ContractPanel.tsx",
-  "features/client-admin/client-admin.css",
   "features/relay/notes/notes.css",
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
 ];
-/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93. Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 93;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93; after Account (phase 16): 80. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 80;
 
 /**
  * The shared note pieces the Notes page mounts — the composer, the To-file

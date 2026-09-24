@@ -77,6 +77,12 @@ describe("FIELD_HOME", () => {
     expect(FIELD_HOME.goalHistory).toMatchObject({ page: "goals", anchor: "goals-now" });
     expect(FIELD_HOME.nickname).toMatchObject({ page: "account", anchor: "account-contact" });
     expect(FIELD_HOME.contractTierOverride).toMatchObject({ page: "account", anchor: "account-membership" });
+    // The studios she may also train at are their own card (phase 16), so Show lands on them.
+    expect(FIELD_HOME.approvedCrossTrainStudioIds).toEqual({
+      page: "account",
+      anchor: "account-train-at",
+      label: "Where they can train",
+    });
     // The card's own title, so "Referred by" reads "Account · How they found us".
     expect(FIELD_HOME.referredBy).toEqual({ page: "account", anchor: "account-found-us", label: "How they found us" });
   });

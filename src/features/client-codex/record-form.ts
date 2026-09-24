@@ -82,7 +82,7 @@ export const RECORD_FORM_KEYS = [
   "address",
   "emergencyContactName",
   "emergencyContactPhone",
-  // Account · Membership
+  // Account · Membership (the tier lock), and where they can train
   "contractTierOverride",
   "approvedCrossTrainStudioIds",
   // Account · How they found us
@@ -120,6 +120,7 @@ const THE_WHY: FieldHome = { page: "goals", anchor: "goals-why", label: "The why
 const WORKING_TOWARD: FieldHome = { page: "goals", anchor: "goals-now", label: "Working toward" };
 const CONTACT: FieldHome = { page: "account", anchor: "account-contact", label: "Contact" };
 const MEMBERSHIP: FieldHome = { page: "account", anchor: "account-membership", label: "Membership" };
+const TRAIN_AT: FieldHome = { page: "account", anchor: "account-train-at", label: "Where they can train" };
 const FOUND_US: FieldHome = { page: "account", anchor: "account-found-us", label: "How they found us" };
 
 /** The page and card every editable field lives on. Total: a key with no home fails the suite. */
@@ -157,7 +158,7 @@ export const FIELD_HOME: Readonly<Record<RecordFormKey, FieldHome>> = {
   emergencyContactName: CONTACT,
   emergencyContactPhone: CONTACT,
   contractTierOverride: MEMBERSHIP,
-  approvedCrossTrainStudioIds: MEMBERSHIP,
+  approvedCrossTrainStudioIds: TRAIN_AT,
   leadSource: FOUND_US,
   referredBy: FOUND_US,
 };

@@ -19,7 +19,7 @@
  *     Show goes back to it, Discard clears it, Save writes exactly the
  *     changed field and who changed it — and a refused save keeps the edit;
  *   - a cross-train reader gets the pages read only and no Save bar, and the
- *     form takes no edit from them even past the lock;
+ *     form takes no edit from them even from a control the pages failed to hide;
  *   - a new snapshot of the record re-seeds the form only while nothing is
  *     unsaved — a half-typed edit is never wiped;
  *   - nothing scrolls or takes focus while the tab is hidden;
@@ -483,6 +483,8 @@ describe("ClientCodex — pages", () => {
       "goals-reached",
       "account-contact",
       "account-membership",
+      "account-train-at",
+      "account-on-file",
       "account-found-us",
       "account-fine-print",
     ]) {
@@ -1000,16 +1002,23 @@ describe("ClientCodex — read only", () => {
       "Read only here · Westlake keeps this record. Notes you write still save.",
     );
     await visitAll(host);
-    const locks = Array.from(host.querySelectorAll<HTMLFieldSetElement>("fieldset.cx-lock"));
-    expect(locks.length).toBeGreaterThan(0);
-    expect(locks.every((f) => f.disabled)).toBe(true);
-    // The Migration Hub is for a reader who may change the record.
-    expect(host.querySelector("#account-fine-print")).toBeNull();
+    // Every page reads first; Account, the last to leave its form behind
+    // (phase 16), offers them no editor: no nickname, no identity, no lock,
+    // no studio to approve, no Edit on how she found us.
+    const account = panel(host, "account");
+    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Use Mindbody's"]) {
+      expect(buttonIn(account, text), text).toBeUndefined();
+    }
+    expect(account.querySelectorAll("input, textarea, select, .cx-pick")).toHaveLength(0);
+    // The fine print is readable (the client document is); the Migration Hub
+    // is for a reader who may change the record.
+    expect(host.querySelector("#account-fine-print")).not.toBeNull();
+    expect(buttonIn(account, "Migration Hub (OCR)")).toBeUndefined();
     expect(saveBar(host)).toBeNull();
   });
 
-  it("takes no edit from a reader who may not change the record, even past the lock", async () => {
-    // A control that escaped the disabled fieldset (a portaled popover, an
+  it("takes no edit from a reader who may not change the record, even from a control a page failed to hide", async () => {
+    // A control that escaped a page's canEdit gate (a portaled popover, an
     // editor added later) still calls updateField: the form refuses it.
     const probe: { form?: RecordForm } = {};
     function Probe() {
@@ -1035,8 +1044,12 @@ describe("ClientCodex — read only", () => {
   it("gives a trainer at the home studio live editors and no context line", async () => {
     const host = await mount();
     await visitAll(host);
-    const locks = Array.from(host.querySelectorAll<HTMLFieldSetElement>("fieldset.cx-lock"));
-    expect(locks.every((f) => !f.disabled)).toBe(true);
+    const account = panel(host, "account");
+    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Migration Hub (OCR)"]) {
+      expect(buttonIn(account, text), text).toBeDefined();
+    }
+    // The studios she may also train at are picks for them.
+    expect(account.querySelectorAll("#account-train-at .cx-pick").length).toBeGreaterThan(0);
     expect(host.querySelector(".psub-context")).toBeNull();
     expect(host.querySelector("#account-fine-print")).not.toBeNull();
   });

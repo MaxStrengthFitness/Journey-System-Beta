@@ -268,8 +268,13 @@ function countBarePaletteUtilities(): number {
  * long scroll's files (ClientInfoSheet, ClientDossier, ClientSnapshot) are
  * gone; their sections moved to the codex's legacy-blocks.tsx unchanged,
  * which the page areas retire one by one.
+ *
+ * Sep 24 2026 (client codex, Account — phase 16): 258 -> 242, the count
+ * again. The page areas rebuilt their sections on the codex kit (tokens, no
+ * Tailwind palette), and Account emptied legacy-blocks.tsx and deleted it
+ * with the contract panel.
  */
-const BARE_PALETTE_BUDGET = 258;
+const BARE_PALETTE_BUDGET = 242;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

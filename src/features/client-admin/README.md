@@ -1,0 +1,48 @@
+# Account — the last page of Notes & Profile
+
+Client codex, Sep 2026 (phase 16 of `docs/rounds/2026-09-24-client-codex.md`). The long scroll's **Who they are** section was a form of greyed-out boxes (on a client linked to Mindbody every box was disabled), and its **Admin** section was a contract panel with a catch-all fine print. Account is now a page of the client codex that **reads first**, as the approved mockup has it (one column under 760px of page width — the 744pt iPad held upright — two from 760):
+
+| Row | Left | Right |
+| --- | --- | --- |
+| 1 (6fr / 5fr) | **Contact** — the ID card (`ContactCard`) | **Mindbody account notes**, as synced (phase 17 turns them into the intake matcher's card, in the same place) |
+| Membership — what she has bought, what is left, and where she can train (7fr / 5fr) | **The package** — the tier and its lock, what is left, the contract history as tiles | **Where she can train** · **On file with Mindbody** · **How she found us** |
+| then, folded | **The fine print** — the contract's number, sessions on hand, memberships, Mindbody's other indexes, the sync stamps, the Migration Hub | |
+
+`AccountPage.tsx` is the page; `client-codex/pages/AccountPage.tsx` is the thin adapter that feeds it the tab's load. `MembershipSection.tsx` is the membership (it was `ContractPanel.tsx`, restyled onto the kit with the same logic and writes, and the panel is deleted). `account.ts` is the pure half — every sentence the page writes — with `account.test.ts` beside it; `contract.ts` is the older pure core the package reads (the tier, the history, sessions on hand, the cross-train realm). The page closes with the Next card reading **Done**, back to the Overview.
+
+## What each card reads and writes
+
+| Card | Reads | Writes | Save model |
+| --- | --- | --- | --- |
+| Contact | the record: legal name, date of birth, gender, phone, email, the address parts, the emergency contact, the Mindbody ID (`mindbodyIdOf`), `mindbodyMasterSyncedAt`; the form's `nickname` | `nickname`; on a client Mindbody does not hold, `firstName`, `lastName`, `dateOfBirth`, `gender`, `phone`, `email`, `address`, `emergencyContactName`, `emergencyContactPhone` | The Save bar ("Account · Contact") |
+| Mindbody account notes | `mindbodyNotes` (the first 1,000 characters, webhook-synced) | nothing (phase 17 adds the intake matcher's taps) | — |
+| The package | the renewal snapshot (`client.renewal`, the nightly job's, read as it is), Mindbody's contracts and pricing options, the lock (`contractTierOverride`, the form's first), `priorHistory` | `contractTierOverride` — the same object the contract panel built, with `setById` = the Auth uid | The Save bar ("Account · Membership") |
+| Where she can train | home (`homeStudioId`, else the older `studioId`), the studio this iPad is at, `approvedCrossTrainStudioIds` | `approvedCrossTrainStudioIds`, only studios in the client's realm (`crossTrainChoices`) | The Save bar ("Account · Where they can train") |
+| On file with Mindbody | the waiver (`client-waiver.ts`, three states), `mindbodyStatus`, `isProspect`, `mindbodyActive`, `mindbodyCreatedAt`, `firstAppointmentDate` and its source, `clientsNumberOfVisitsAtSite` | nothing | — |
+| How she found us | `leadSource`, `referredBy` (the form's) | the same two | The Save bar ("Account · How they found us") |
+| The fine print | the current contract, pricing options with sessions left, active memberships, Mindbody's indexes but the long-term goal (Goals & Focus's why shows that), the commercial pull's stamp, the Master Sync stamp | nothing; the Migration Hub is the profile's door | — |
+
+## The rules it keeps
+
+- **Mindbody owns who a client is.** On a linked client (`isMindbodyLinked`: a Mindbody id the app trusts, and not a temporary profile) every identity and contact fact is read straight off the RECORD — never the form, which re-seeds only while nothing is unsaved and so can hold a name Master Sync has since changed — and the only thing a coach changes is the nickname, what she is called on the floor. On a client Mindbody does not hold, the card has an Edit that opens her identity; a first or last name left empty says the record needs one (the clients rule refuses an empty name, or one of 50 characters or more).
+- **An empty fact says why it is empty** (`missingWords`): "Not in Mindbody" once Master Sync has read her, "Not synced yet" before it has, "Not recorded" on a client Mindbody does not hold, and "Not linked to Mindbody" (or "A temporary profile, not linked to Mindbody yet") for the ID. Never a blank.
+- **No Sync button** (a departure from the mockup, on AJ's list): Master Sync at the top of the profile is the one client sync (KNOWN-TRAPS → The client profile). The ID card says when Mindbody was last read and where Sync is.
+- **The Mindbody ID appears once**, on the ID card; the fine print does not repeat it.
+- **Dates.** A date of birth is a calendar day, read from its digits ("Apr 2, 1958 · 68" — never Apr 1 in Eastern time). A Mindbody date is its UTC day (`lib/mindbody-dates.ts`), so a contract starting "2026-03-01T00:00:00Z" is "Mar 2026". The first visit is read as the Story reads it (`firstVisitOf`, `client-story/story.ts`): "first visit" only of Mindbody's own date; an inferred one says what it is ("earliest visit seen", "earliest session on file", "earliest package began").
+- **A number says what it is.** "95 left" is the renewal's; "(estimated)" when the nightly job estimated it, with the firm "8 on hand in Mindbody now" beside it. With no count from the renewal, what Mindbody says she holds is "7 on hand", never "left" — a monthly client holds a few sessions between payments. **On hand is counted one way** (`onHandTotal`: every pricing option with sessions on it, as the fine print lists them), so the package card and the sub-toggle never disagree; the renewal snapshot's own `sessionsOnHand` leaves out an option the package table does not recognise, and its data gap names it. The sub-toggle's line (`accountTabHint`) prints only Mindbody's own figures: "package ended", "95 sessions left", "7 on hand", else nothing.
+- **When it ends.** A contract "Renews" (or "Billing ends") on its charge date. A package paid in full, or banked sessions after billing ended, "Runs out around Sep 1 (estimated)" — the run-out date the old chip gave ("runs out ~…"), always an estimate from her pace, and "Run-out date not known yet" with no pace. A contract whose end has passed "ended", never "ends"; a used-up package with no contract is dated by the job's own end ("Ended Mar 1"). An unknown renewal's sentence IS its first data gap, so the gap is not printed a second time.
+- **Unknown is not none.** With the studios not loaded (or not readable), Where she can train says "Studio names not loaded yet" — never "No other studios to approve" over a raw studio id. The lede (`accountLede`) is true for the client and the reader: a typed-in client's details are "typed into Journey", and a reader who may not edit is told "Read only here", not what is "edited here".
+- **Prior history is real history.** The contract history's first tile, dashed, is the years before Journey — "Mar 2019 – Sep 2026 · 412 sessions in FileMaker · Before Journey" — or, with no prior record and a story Journey does not hold whole, "Before Journey · Not recorded here" with the coverage caveat. So the list is never read as her whole history.
+- **Colour.** A renewal's tone is the package card's left edge (`tabTone`): green on track, plum a caution — an ended or lapsed package included. Crimson is a Critical note's and an absolute contraindication's, never a package's. "Time for the renewal conversation" is brand blue; hero orange is Start Session's.
+- **Who may do what.** `canEdit` (`codexAccess` — the clients update rule) gives Set a nickname, Edit, Lock the tier, the studio picks and the Migration Hub. A cross-train reader sees every fact — the client document, fine print included, is readable to them — and no button the rules would refuse. The form is the backstop (`useRecordForm({ canEdit: false })` takes no edit).
+- **Nothing here writes on its own**, and `renewal` is never written (the nightly job owns it; the rules refuse an app write that changes it). Every field goes through the ONE record form; Done only closes an editor.
+- **Words.** Pronouns come from the gender Mindbody holds (`pronounsOf`; they/their when unknown). The client's name is the header's: the page's own words use the pronoun, and the legal name appears only as a fact on the ID card. Names, contract names, studio names and addresses wrap, never clip.
+
+## What moved, and what it replaced
+
+- `ContractPanel.tsx` is deleted; `MembershipSection.tsx` is it on the kit. Its render test moved with it (`MembershipSection.render.test.tsx`), its four cases kept.
+- The long scroll's "Who they are" (`WhoTheyAreBlock`), Mindbody notes, Mindbody indexes and "How they found us" blocks, held in `client-codex/pages/legacy-blocks.tsx` since the shell phase, are rebuilt here; `legacy-blocks.tsx` is deleted, and with it the shell's interim disabled fieldset (`RecordLock`).
+- "How she found us" left the fine print for its own card, and gained a read view.
+- `isProspect` and `mindbodyActive` (written by Master Sync, read by nothing until now) have a reader: On file with Mindbody.
+- The cross-train studios have their own home on the Save bar ("Where they can train", `account-train-at`) instead of "Membership".
+- `accountGlance` (the Overview's Account slot) is ready for the Overview's own phase (18); nothing reads it yet. For a client Mindbody does not hold it says what the page says — "Typed in Journey · not linked to Mindbody", and no waiver line.

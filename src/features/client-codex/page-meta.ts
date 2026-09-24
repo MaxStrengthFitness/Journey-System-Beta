@@ -22,8 +22,10 @@
  * 2019" only for a day the record can stand behind as her start, "since 2025
  * or earlier" for one she was certainly with us by, "in Journey since 2026"
  * when Journey's own dates are all there is — so the segment and the page
- * never disagree. The line for Account is INTERIM (the shell phase): its
- * area replaces it with the line its page writes.
+ * never disagree. Account's is `accountTabHint` (phase 16): "package ended",
+ * else Mindbody's own count of what is left ("95 sessions left" — never an
+ * estimate, which the page labels and a line this short cannot), else what
+ * she holds right now ("8 on hand"), else no line.
  *
  * Rules: short (the bar wraps at portrait widths, so a long line grows it);
  * words and counts, never a score, a percentage or a traffic light; FORD's
@@ -40,11 +42,12 @@ import { fordSubnavLine } from "../ford/page-model";
 import type { ComingUpRow } from "../ford/coming-up";
 import { bodySubline } from "./body/page-lines";
 import { goalsTabHint } from "../goals/goals-page";
+import { accountTabHint } from "../client-admin/account";
 import { plural } from "./kit/text";
 import type { CodexFordStatus } from "./codex-data";
 
 export interface PageMetaInput {
-  client: Pick<Client, "clinicalFlags" | "smartGoal" | "renewal">;
+  client: Pick<Client, "clinicalFlags" | "smartGoal" | "renewal" | "mindbodyServices">;
   notes: { state: JournalLoad; summary: NotesSummary | null };
   /** Running focuses, and whether the focuses were read. */
   focuses: { state: JournalLoad; running: number | null };
@@ -109,17 +112,6 @@ function goalsMeta(input: PageMetaInput): string {
   return goalsTabHint({ running, goal: input.client.smartGoal });
 }
 
-function accountMeta(input: PageMetaInput): string | null {
-  const r = input.client.renewal;
-  if (!r) return null;
-  if (r.situation === "ended" || r.situation === "lapsed") return "package ended";
-  // Only Mindbody's own count: an estimate is not a number to print here.
-  if (typeof r.sessionsLeft === "number" && r.sessionsLeftSource === "mindbody") {
-    return `${plural(r.sessionsLeft, "session")} left`;
-  }
-  return null;
-}
-
 /** The seven segments, in AJ's order, with their lines and dots. */
 export function subnavItems(input: PageMetaInput): SubnavItem<RecordPage>[] {
   return RECORD_PAGES.map(({ id, label }): SubnavItem<RecordPage> => {
@@ -137,7 +129,7 @@ export function subnavItems(input: PageMetaInput): SubnavItem<RecordPage>[] {
       case "story":
         return { id, label, meta: input.story?.hint ?? null };
       case "account":
-        return { id, label, meta: accountMeta(input) };
+        return { id, label, meta: accountTabHint(input.client) };
     }
   });
 }

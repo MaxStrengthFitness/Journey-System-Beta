@@ -64,20 +64,6 @@
   scroll-margin-top: calc(var(--psub-stuck-h, 64px) + 12px);
 }
 
-/* Read only (a cross-train studio, a franchise owner who does not work at
-   the home studio): the record's editors sit inside a disabled fieldset, so
-   every control shows the record and none can change it. No border, no
-   padding: it is a switch, not a box. */
-.cx-lock {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-  min-inline-size: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
 /* ---- the Overview (interim: the Notes band and a door per page) -------- */
 
 .cx-ov {

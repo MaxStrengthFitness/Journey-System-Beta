@@ -1,84 +1,37 @@
 /**
- * ACCOUNT — the codex page (shell phase: an adapter).
+ * ACCOUNT — the codex page: the Account area's page (`client-admin/AccountPage`)
+ * on the tab's one load.
  *
- * Hosts the long scroll's "Who they are" and Admin sections as they were:
- * the client's ID card (Mindbody owns identity and contact on a linked
- * client, so those are read only; the nickname is the coach's), the
- * Mindbody account notes, Mindbody's client indexes (all but the long-term
- * goal, which Goals & Focus shows under the why since phase 14), the
- * contract (ContractPanel, with the tier lock and where they may train) and
- * how they found us. The Account area rebuilds it in its own phase.
+ * A thin adapter (INTEGRATION: pages/*.tsx map the tab's one load onto each
+ * area's page). Account reads the client document only — the ID card, the
+ * Mindbody notes, the package, where she trains, what is on file, how she
+ * found us and the fine print — so it opens nothing of its own. Who may
+ * change the record is `codexAccess`, worked out once by the shell; every
+ * field goes through the ONE form. The tier lock is named with the Auth uid
+ * (`data.author.id`), as the old record's was.
  *
- * The Migration Hub moved here from the old record's top bar, into the fine
- * print, for a reader who may change the record. It still switches the
- * profile to Journey first, because that is where imported sessions land.
+ * The Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it
+ * switches to Journey, where imported sessions land, and the page offers it
+ * only to a reader who may change the record.
  */
-import { Upload } from "lucide-react";
-import { ContractPanel } from "../../client-admin/ContractPanel";
-import { Btn, Card, Page, Source, anchorProps } from "../kit";
+import { AccountPage as AccountArea } from "../../client-admin/AccountPage";
 import type { CodexPageProps } from "../codex-data";
-import { RecordLock } from "./RecordLock";
-import {
-  AcquisitionBlock,
-  MindbodyIndexesBlock,
-  MindbodyNotesBlock,
-  WhoTheyAreBlock,
-  hasOtherMindbodyIndexes,
-} from "./legacy-blocks";
 
 export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
-  const { client, access, authTrainer, author, availableStudios } = data;
-  const locked = !access.canEdit;
-
+  const { client, access, authTrainer, author, availableStudios, coverage, pronouns, today } = data;
   return (
-    <Page id="account" title="Account" lede="Contact details as Mindbody knows them, then the membership." go={go}>
-      <Card eyebrow="Contact" id="account-contact">
-        <RecordLock locked={locked}>
-          <WhoTheyAreBlock client={client} formData={form.formData} updateField={form.updateField} />
-        </RecordLock>
-      </Card>
-
-      {client.mindbodyNotes ? (
-        <Card id="account-mindbody-notes">
-          <MindbodyNotesBlock client={client} />
-        </Card>
-      ) : null}
-
-      {/* Moved from Goals & Focus (phase 14), whose why shows the long-term goal. */}
-      {hasOtherMindbodyIndexes(client) ? (
-        <Card eyebrow="From Mindbody">
-          <MindbodyIndexesBlock client={client} />
-        </Card>
-      ) : null}
-
-      <Card host id="account-membership">
-        <RecordLock locked={locked}>
-          <ContractPanel
-            client={client}
-            formData={form.formData}
-            updateField={form.updateField}
-            studios={availableStudios}
-            // The Auth uid names the lock (the author's id), as the old record did.
-            author={authTrainer ? { id: author.id || authTrainer.id, name: authTrainer.fullName } : null}
-            acquisition={
-              <div {...anchorProps("account-found-us")}>
-                <AcquisitionBlock formData={form.formData} updateField={form.updateField} />
-              </div>
-            }
-          />
-        </RecordLock>
-      </Card>
-
-      {access.canEdit ? (
-        <Card eyebrow="Fine print" id="account-fine-print">
-          <div>
-            <Btn icon={Upload} onClick={hosts.onOpenMigrationHub}>
-              Migration Hub (OCR)
-            </Btn>
-          </div>
-          <Source>Imports past sessions from paper charts. The profile switches to Journey, where they land.</Source>
-        </Card>
-      ) : null}
-    </Page>
+    <AccountArea
+      client={client}
+      form={form}
+      canEdit={access.canEdit}
+      studios={availableStudios}
+      // The Auth uid names the lock (the author's id), as the old record did.
+      author={authTrainer ? { id: author.id || authTrainer.id, name: authTrainer.fullName } : null}
+      coverage={coverage}
+      pronouns={pronouns}
+      today={today}
+      go={go}
+      onOpenMigrationHub={hosts.onOpenMigrationHub}
+    />
   );
 }

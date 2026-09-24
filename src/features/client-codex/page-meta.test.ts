@@ -147,7 +147,7 @@ describe("subnavItems", () => {
       expect(item(subnavItems(input({ story: { hint: "since 2019" } })), "story").meta).toBe("since 2019");
     });
 
-    it("prints Mindbody's sessions left, never an estimate", () => {
+    it("prints Mindbody's sessions left, never an estimate — the Account area's own line", () => {
       const renewal = (over: Record<string, unknown>) => ({ client: { renewal: { situation: "on-track", ...over } } as unknown as Client });
       expect(item(subnavItems(input(renewal({ sessionsLeft: 95, sessionsLeftSource: "mindbody" }))), "account").meta).toBe("95 sessions left");
       expect(item(subnavItems(input(renewal({ sessionsLeft: 95, sessionsLeftSource: "estimate" }))), "account").meta).toBeNull();
@@ -155,6 +155,18 @@ describe("subnavItems", () => {
         "package ended",
       );
       expect(item(subnavItems(input()), "account").meta).toBeNull();
+      // With an estimate, what she holds right now — never called "left" —
+      // counted off Mindbody's pricing options, as the Account page counts it.
+      const estimated = {
+        client: {
+          renewal: { situation: "on-track", sessionsLeft: 95, sessionsLeftSource: "estimate", sessionsOnHand: 5 },
+          mindbodyServices: {
+            a: { serviceId: "a", name: "96 Sessions · 12 Mo", remaining: 5 },
+            b: { serviceId: "b", name: "Drop-in 3 pack", remaining: 3 },
+          },
+        } as unknown as Client,
+      };
+      expect(item(subnavItems(input(estimated)), "account").meta).toBe("8 on hand");
     });
   });
 

@@ -1,179 +1,305 @@
-/*
- * The record's Admin section (client-profile audit, Sep 2026).
- * Equipment tokens throughout — they are global and themed — so the contract
- * cards read like the rest of the profile in both modes.
- */
-.cadm { display: flex; flex-direction: column; gap: 12px; }
-.cadm-pillars { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-@media (min-width: 900px) { .cadm-pillars { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+/* ==========================================================================
+   ACCOUNT — the last page of Notes & Profile (client codex, Sep 2026)
+   --------------------------------------------------------------------------
+   Layout and the Account-only content of the page: the two rows, the ID
+   card's nickname line and editor, the Mindbody account notes, the package
+   card (its two columns, its tone edge, the renewal-conversation callout),
+   the contract history's tiles and the fine print's summary. Panels,
+   buttons, chips, picks, eyebrows, facts and fields are the codex kit's
+   (client-codex/kit/kit.css); this file draws no second one.
 
-.cadm-card {
-  position: relative;
+   It was the long scroll's Admin section (the contract panel), restyled onto
+   the kit: its 10 / 10.5 / 11.5 / 12.5 / 13 / 20px text is on the codex
+   scale now, its hero-orange "time for the renewal conversation" callout is
+   brand blue (hero orange is Start Session's), and a package that ended is a
+   plum edge, not crimson (crimson is a Critical note's and an absolute
+   contraindication's — `tabTone` in account.ts maps it). Its 900px viewport
+   query is a container query on the pages' container: portrait iPads are
+   ~696 (744pt), ~772 (820) and ~976 (the 13-inch) wide there, ~1320 in
+   landscape.
+
+   The rules it keeps, each read by the codex's scale test:
+     - Text is 11 / 12 / 14 / 17 / 30px (the --cx-fs-* tokens), nothing else.
+     - Colour is --cx-* only.
+     - Nothing is clipped: a contract's name, a studio's name, a Mindbody
+       index and an address wrap.
+     - Anything tappable is 40px or taller.
+   ========================================================================== */
+
+.cadm-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Two rows, one column below 760px of page width (the 744pt iPad held
+   upright), two from 760: the ID card beside the Mindbody notes (6fr / 5fr),
+   the package beside where she trains, what is on file and how she found
+   us (7fr / 5fr). */
+.cadm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+@container cx (min-width: 760px) {
+  .cadm-row--contact {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+
+  .cadm-row--membership {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+.cadm-side {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+/* An empty fact says why it is empty, quietly. */
+.cadm-missing {
+  color: var(--cx-ink-3);
+}
+
+/* ---- the ID card ------------------------------------------------------- */
+
+/* "Her first name  [Set a nickname]" — the button drops under the words
+   when the value column is narrow. */
+.cadm-nick {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border: 1px solid var(--eq-border);
-  border-radius: var(--eq-radius, 12px);
-  background: var(--eq-surface);
-  color: var(--eq-ink);
-}
-.cadm-card[data-tone="warn"] { box-shadow: inset 3px 0 0 var(--eq-warn); }
-.cadm-card[data-tone="alert"] { box-shadow: inset 3px 0 0 var(--eq-alert); }
-.cadm-card[data-tone="ok"] { box-shadow: inset 3px 0 0 var(--eq-ok); }
-
-.cadm-kicker {
-  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  gap: 8px 12px;
+  min-width: 0;
 }
-.cadm-big {
+
+.cadm-nick__edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.cadm-nick__edit > .cx-field {
+  flex: 1 1 200px;
+}
+
+.cadm-edit {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The unlinked client's identity boxes: side by side when the card has room. */
+.cadm-edit__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.cadm-edit__wide {
+  grid-column: 1 / -1;
+}
+
+/* ---- the Mindbody account notes ---------------------------------------- */
+
+/* Mindbody's words, as synced: their own line breaks kept. */
+.cadm-notes {
   margin: 0;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1.15;
-  color: var(--eq-ink);
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the package ------------------------------------------------------- */
+
+/* The renewal's tone as a left edge, from `tabTone`: green on track, plum a
+   caution (billing ends with sessions banked, runs out early, ended,
+   lapsed). Never crimson. */
+.cadm-pkg[data-tone="ok"] {
+  box-shadow: inset 3px 0 0 var(--cx-ok);
+}
+
+.cadm-pkg[data-tone="warn"] {
+  box-shadow: inset 3px 0 0 var(--cx-warn);
+}
+
+/* What she is on | what is left — side by side when the card has room. */
+.cadm-pkg__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.cadm-pkg__col {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+}
+
+.cadm-pkg__col .cx-big {
+  overflow-wrap: anywhere;
+}
+
+.cadm-pkg__words {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cadm-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+}
+
+.cadm-line svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* Time for the renewal conversation: an invitation, so brand blue — never
+   hero orange (Start Session's). */
+.cadm-due {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cx-live-line);
+  border-radius: var(--cx-radius-sm);
+  background: var(--cx-live-fill);
+  color: var(--cx-live-text);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+}
+
+.cadm-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cadm-picker__list,
+.cadm-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---- the contract history ---------------------------------------------- */
+
+.cadm-tl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.cadm-tl__tile {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--cx-line);
+  border-radius: var(--cx-radius-sm);
+  background: var(--cx-surface-2);
+}
+
+/* The years before Journey: dashed, on no fill — a record, not a package. */
+.cadm-tl__tile[data-era] {
+  border-style: dashed;
+  border-color: var(--cx-line-2);
+  background: transparent;
+}
+
+.cadm-tl__when {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-.cadm-big--date { font-size: 17px; }
-.cadm-sub {
+
+.cadm-tl__name {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  overflow-wrap: anywhere;
+}
+
+.cadm-tl__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  overflow-wrap: anywhere;
+}
+
+/* ---- the fine print ----------------------------------------------------- */
+
+.cadm-fine > .cx-facts {
+  padding-top: 4px;
+}
+
+.cadm-fine__summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--eq-ink-muted);
-}
-.cadm-note { margin: 0; font-size: 11.5px; font-weight: 600; line-height: 1.35; color: var(--eq-ink-faint); }
-.cadm-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 2px 0 0;
-  font-size: 12.5px;
+  min-height: var(--cx-row);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
   font-weight: 700;
-  color: var(--eq-ink-2);
-}
-.cadm-line svg { flex: none; }
-.cadm-line--strong { color: var(--eq-ink); }
-.cadm-due {
-  margin: 4px 0 0;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--eq-hero-fill);
-  color: var(--eq-hero-text);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.cadm-src {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--eq-surface-2);
-  color: var(--eq-ink-2);
-}
-.cadm-src--override { background: var(--eq-live-fill); color: var(--eq-live-text); }
-.cadm-src--renewal, .cadm-src--parsed { background: var(--eq-live-fill); color: var(--eq-live-text); opacity: 0.85; }
-.cadm-src--unknown { background: var(--eq-warn-fill); color: var(--eq-warn); }
-
-.cadm-nums { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-
-.cadm-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.cadm-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-live);
-  background: var(--eq-surface);
-  color: var(--eq-live-text);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.cadm-btn--ghost { border-color: var(--eq-border); color: var(--eq-ink-2); }
-.cadm-btn:focus-visible, .cadm-choice:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-
-.cadm-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.cadm-picker .cadm-note { flex-basis: 100%; }
-.cadm-choice {
-  min-height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
-  color: var(--eq-ink-2);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.cadm-choice--on { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
-
-.cadm-timeline { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
-.cadm-term {
-  padding: 8px 0 8px 12px;
-  border-left: 2px solid var(--eq-border);
-  position: relative;
-}
-.cadm-term::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: 13px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--eq-border-strong);
-}
-.cadm-term[data-status="active"]::before { background: var(--eq-ok); }
-.cadm-term[data-status="upcoming"]::before { background: var(--eq-live); }
-.cadm-term[data-status="ended"], .cadm-term[data-status="cancelled"] { opacity: 0.72; }
-.cadm-term__top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; }
-.cadm-term__top b { font-weight: 800; color: var(--eq-ink); }
-.cadm-term__when { margin: 2px 0 0; font-size: 11.5px; font-weight: 600; color: var(--eq-ink-muted); }
-.cadm-pill {
-  padding: 1px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface-2);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--eq-ink-2);
-}
-.cadm-pill[data-status="active"] { border-color: var(--eq-ok); background: var(--eq-ok-fill); color: var(--eq-ok); }
-.cadm-pill[data-status="upcoming"] { border-color: var(--eq-live); background: var(--eq-live-fill); color: var(--eq-live-text); }
-
-.cadm-fine > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  min-height: 40px;
   cursor: pointer;
   list-style: none;
 }
-.cadm-fine > summary::-webkit-details-marker { display: none; }
-.cadm-fine__chev { margin-left: auto; color: var(--eq-ink-muted); transition: transform 0.15s; }
-.cadm-fine[open] .cadm-fine__chev { transform: rotate(180deg); }
-.cadm-dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 6px 0 10px; }
-@media (min-width: 700px) { .cadm-dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-.cadm-dl dt { font-size: 10px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--eq-ink-muted); }
-.cadm-dl dd { margin: 2px 0 0; font-size: 12.5px; font-weight: 700; color: var(--eq-ink); overflow-wrap: anywhere; }
+
+.cadm-fine__summary::-webkit-details-marker {
+  display: none;
+}
+
+.cadm-fine__summary:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.cadm-fine__what {
+  flex: 1 1 200px;
+  min-width: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 400;
+}
+
+.cadm-fine__chev {
+  flex: none;
+  color: var(--cx-ink-3);
+  transition: transform 0.15s;
+}
+
+.cadm-fine[open] > .cadm-fine__summary .cadm-fine__chev {
+  transform: rotate(180deg);
+}
+
+/* A Mindbody index or an active membership per line. */
+.cadm-lines {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
