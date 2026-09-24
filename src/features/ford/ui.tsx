@@ -25,6 +25,7 @@ import {
   type FordPillar,
   type FordRecurrence,
 } from "./types";
+import { rotatedPrompt, type PromptContext } from "./ask-next";
 
 export const PILLAR_ICONS: Record<FordPillar, LucideIcon> = {
   family: Users,
@@ -134,11 +135,13 @@ export function GestureChip({ entry }: { entry: FordEntry }) {
  * Rotated by day rather than at random, so a trainer who opens a client twice
  * in a morning is not handed two different opening lines — and so the studio's
  * four trainers are not all asking about the dog on the same Tuesday.
+ *
+ * `ctx.retired` (client codex, Sep 2026) skips the work questions for a
+ * retired client and the retirement question for a working one
+ * (`FORD_PROMPT_WHEN`). Without it, every prompt is in the rotation, as before.
  */
-export function pillarPrompt(pillar: FordPillar, seed = new Date()): string {
-  const prompts = FORD_META[pillar].prompts;
-  const day = Math.floor(seed.getTime() / 86_400_000);
-  return prompts[day % prompts.length];
+export function pillarPrompt(pillar: FordPillar, seed = new Date(), ctx?: PromptContext): string {
+  return rotatedPrompt(pillar, seed, ctx);
 }
 
 /* ------------------------------------------------------------------ */

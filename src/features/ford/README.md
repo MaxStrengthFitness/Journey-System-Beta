@@ -32,7 +32,7 @@ not finished.
 | Pre-session briefing | One quiet row: the soonest dated detail, or a question to ask when nothing is on file yet (`FordBriefingCue`) |
 | Mid-session | **Remember this** — the second mode of the Notes sheet. One box, one button, no category required (`FordQuickCapture`) |
 | Post-session | The sweep. Unfiled captures come back as cards with four big buttons (`FordSweep`) |
-| Client profile → Life | The hub: what is coming up, what is unfiled, the four pillars (`FordSection`) |
+| Client profile → Notes & Profile → FORD | The page: what is coming up (the Mindbody birthday included), what is unfiled, the four pillars with their bands, and going above and beyond (`page/FordPage`) — see "The FORD page" below |
 | Operations → Delight queue | Every gesture the studio owes, across every client, in date order (`DelightQueue`) — with row actions since the Operations round (Sep 19): Take it, Hand it to… (the studio's people, by Auth uid), Done with what happened, Pass; a passed one-off files under "Passed — still open"; a switch shows what is done. Every write is `setGestureStatus`, the client record's own writer |
 
 ## Where the data sits, and why
@@ -91,6 +91,75 @@ Giovanni's, she cried" is the institutional memory a new trainer inherits.
 something about". `planned` means someone owns it. Ownership is a name, not an
 assignment — the opposite of the task board, where work is claimed.
 
+## The FORD page (client codex, Sep 2026)
+
+Notes & Profile became seven pages, and FORD is the third: `page/FordPage.tsx`,
+mounted by the codex's adapter (`client-codex/pages/FordPage.tsx`). It
+replaced the Life section's hub (`FordSection`, deleted) and the work and
+activity baselines that sat above it. Top to bottom, as the approved mockup
+has it:
+
+- **Coming up** (`coming-up.ts`). The birthday Mindbody holds leads, rolled
+  forward on the studio's day through the same `daysUntilBirthday` Relay's
+  Mine uses, beside the dated FORD details. An annual FORD "Birthday" on the
+  same day folds into the birthday's row (its gesture rides on it); a legacy
+  `client.events` birthday is dropped the same way but not linked. A birthday
+  nobody planned for opens a new annual Family detail with the gesture open.
+  The when is coloured by urgency (`urgencyOf`), never by pillar.
+- **To file.** Captures with no pillar; four buttons that carry the letter AND
+  the word (40px, no tooltip-only buttons), one tap files (`tagFordEntry`).
+- **Four pillar cards** (`page/PillarCard.tsx`), each built the same way:
+  the band (below), every standing fact, FORD's moments merged with the
+  **older life notes** filed under that pillar (three, then Show all), the
+  **Pulse lines**, a gap line, and **Ask next**.
+  - Bands (`page/bands.tsx`): Family is the emergency contact and the
+    birthday from the record; **Occupation is the Work block and Recreation
+    is Active outside the studio**, each with Edit / Done — record fields
+    (`occupation`, `workProfile`, `isRetired`, `activityLevel`,
+    `recreationActivities`) written through the codex's ONE form and saved by
+    its ONE Save bar, so Done never saves and the band says "Not saved yet"
+    until Save. Dreams quotes the why from Goals & Focus, with a door there.
+  - Older life notes are the journal's `life` notes from before FORD, placed
+    by Notes' ONE selector (`olderLifeNotesByPillar` over
+    `notesOnRecord().lifeSettled`): Birthday and Anniversary under Family,
+    Vacation under Recreation, the rest under "Older life notes". A settled
+    one (standing or resolved) leaves Notes for this page; a live one stays on
+    Notes. They are journal notes, so a cross-train reader who cannot read
+    FORD still sees them here.
+  - Pulse lines (`pulse-links.ts`) quote the Pulse beside the pillar it is
+    about — the stress worries "Caring for someone" and "A family member's
+    health" under Family, "Work / career" and "Retirement transition" under
+    Occupation, "I stay physically active outside of workouts." under
+    Recreation — in the Dial's own words, from the two newest rounds that said
+    anything about it. Read only, and the page says nothing is copied: FORD
+    text must never travel into `progressReports`, which every signed-in user
+    can read.
+  - Ask next (`ask-next.ts`) is one of FORD_META's prompts, rotated by day
+    and **aware of retirement** (`FORD_PROMPT_WHEN`): a retired client is
+    never asked "How is work treating you?", a working one never how
+    retirement is going. The briefing cue passes the same context.
+- **Going above and beyond** (`page/AboveAndBeyond.tsx`): the gestures,
+  Idea → Planned → Done, with "I'll do it" and "Mark done" through
+  `setGestureStatus` — the Delight queue's own writer. Owners' names in full.
+
+`page-model.ts` is the pure half: the pillar list, the older-note meta, the
+gestures, `fordOverview` (for the Overview's FORD slot, in its own phase) and
+`fordSubnavLine` (the sub-toggle's "birthday in 17 days").
+
+**One load.** The page opens no listener: FORD, the journal and the Pulse
+history are the tab's (`useCodexData`). **Who may write.** A FORD detail is
+written only by a reader the create rule accepts: the codex's `canEdit`, a
+signed-in author (the Auth uid) and a client with a studio (`fordCanAdd`). A
+failed READ still lets a trainer add; a refused one does not.
+
+**The dialog keeps the sentence.** `FordDetailDialog`'s `onSave` may answer
+`false`; the dialog then stays open with every field and says "Not saved —
+still here, try again". **A new idea is unowned**: a gesture made in the
+dialog at Idea has no owner until someone says "I'll do it" (the Delight
+queue's "Needs an owner" depends on it); one that already has an owner keeps
+them, and one moved to Planned or Done with nobody on it is owned by whoever
+moved it.
+
 ## Files
 
 | File | |
@@ -101,9 +170,14 @@ assignment — the opposite of the task board, where work is claimed.
 | `useClientFord.ts` | One client's details, and the studio-wide Delight queue. Reports `status`: `loading` · `ready` · `failed` · `denied` |
 | `read-status.ts` | What a FORD read that did not come back is, and the sentence a screen shows instead of its empty state |
 | `ford.tokens.css` | Colour. Pillars get identity, never status — see the note at the top of the file |
-| `ford.css` | Layout for all three surfaces |
+| `ford.css` | The floor's capture and sweep, the Delight queue, the briefing row and the detail dialog. The FORD page draws from the codex kit and `page/ford-page.css` |
 | `ford.test.ts` | The pure layer |
-| `useClientFord.render.test.tsx` | The query's shape, the four read states, and every caller's wording when FORD could not be read |
+| `ask-next.ts` | Ask next: the prompts worth asking this client, rotated by day, aware of retirement (`FORD_PROMPT_WHEN` in `types.ts`). `ask-next.test.ts` holds the drift guard |
+| `coming-up.ts` | Coming up: the Mindbody birthday and the dated details, on the studio's day |
+| `pulse-links.ts` | The Pulse lines beside each pillar. No Firestore, no writes |
+| `page-model.ts` | The FORD page's pure selectors, its sub-toggle line and the Overview's FORD slot |
+| `page/` | The FORD page: `FordPage`, `PillarCard`, `bands`, `ComingUp`, `UnfiledTray`, `AskNextLine`, `AboveAndBeyond`, `ford-page.css`. `FordPage.render.test.tsx` mounts it |
+| `useClientFord.render.test.tsx` | The query's shape, the four read states, and the floor callers' wording when FORD could not be read (the FORD page's is `page/FordPage.render.test.tsx`) |
 
 ## Things that will bite you
 
@@ -129,18 +203,17 @@ assignment — the opposite of the task board, where work is claimed.
   listener errored for a reason other than the rules, or the client names no
   studio to read by) or `denied` (a cross-train visitor: they can read the
   client document but not her FORD), and neither may be drawn as "Nothing
-  here yet". The Life section, the briefing cue, the Active Session sheet and
+  here yet". The FORD page, the briefing cue, the Active Session sheet and
   the post-session sweep each say "couldn't be read" or "kept by the client's
   home studio" instead (`FORD_READ_NOTICE`, `fordReadNotice`). A visitor is
   offered no capture, because the rules refuse that write too; a failed read
   still offers one — a failed READ is no reason to refuse a WRITE. A client
   with no studio gets its own sentence and no Add (`fordCanAdd`): a retry
   cannot help, and the create rule refuses a detail stamped with no studio.
-- **One FORD listener per screen** (client codex, phase 6). A screen that
-  already holds `useClientFord` for this client — the Notes & Profile codex
-  reads FORD once for all seven pages — hands it to `FordSection` as `ford`,
-  and the section's own read is disabled rather than opened a second time.
-  Left out, the section reads FORD itself, as it always has.
+- **One FORD listener per screen** (client codex, phases 6 and 10). The
+  Notes & Profile codex reads FORD once for all seven pages and hands the
+  result to the FORD page, which has no hook of its own — it cannot open a
+  second listener.
 - **Offline is not `failed`.** The app keeps a persistent cache
   (`src/firebase.ts`), so an offline iPad's read answers from what it last
   saw and comes back `ready` — empty if this iPad never opened the client's

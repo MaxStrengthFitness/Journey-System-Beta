@@ -355,6 +355,13 @@ const buttonIn = (root: ParentNode, text: string) =>
   Array.from(root.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes(text));
 const saveBar = (host: HTMLElement) => host.querySelector<HTMLElement>(".cx-savebar");
 
+/** FORD → Occupation: open the Work band's editor and pick Retired (a record field, for the Save bar). */
+async function markRetired(host: HTMLElement) {
+  const occupation = panel(host, "ford").querySelector<HTMLElement>("#ford-occupation")!;
+  await click(occupation.querySelector('[aria-label="Edit Occupation"]'));
+  await click(buttonIn(occupation, "Retired"));
+}
+
 async function visitAll(host: HTMLElement) {
   for (const page of ["notes", "ford", "body", "goals", "story", "account", "overview"] as RecordPage[]) {
     await click(tab(host, page));
@@ -669,6 +676,38 @@ describe("ClientCodex — the Notes page", () => {
   });
 });
 
+describe("ClientCodex — the FORD page carries the older life notes", () => {
+  const anniversary = {
+    ...criticalNote,
+    id: "anniv",
+    kind: "life",
+    category: "Anniversary",
+    body: "Anniversary is Oct 12. They're planning a trip for the 41st.",
+    importance: "standard",
+    machineId: null,
+  };
+
+  it("shows an older Anniversary note in Family, and no longer on Notes", async () => {
+    fake.rows.journalEntries = [anniversary];
+    const host = await mount(baseClient(), homeTrainer, "notes");
+    expect(panel(host, "notes").textContent).not.toContain("Anniversary is Oct 12.");
+    // The door and the sub-toggle count it: it is on FORD now.
+    expect(panel(host, "notes").querySelector(".nx-door")?.getAttribute("aria-label")).toBe("Life, in FORD: 1 detail");
+    expect(tab(host, "ford")?.textContent).toContain("1 detail");
+    await click(tab(host, "ford"));
+    const family = panel(host, "ford").querySelector<HTMLElement>("#ford-family")!;
+    expect(family.textContent).toContain("Anniversary is Oct 12.");
+    expect(family.textContent).toContain("From an older note");
+  });
+
+  it("still shows it to a cross-train reader, who cannot read FORD", async () => {
+    fake.rows.journalEntries = [anniversary];
+    const host = await mount(baseClient(), crossTrainer, "ford");
+    expect(panel(host, "ford").querySelector("#ford-family")?.textContent).toContain("Anniversary is Oct 12.");
+    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
+  });
+});
+
 describe("ClientCodex — the one Save bar", () => {
   it("draws no bar while nothing is unsaved", async () => {
     const host = await mount();
@@ -677,8 +716,7 @@ describe("ClientCodex — the one Save bar", () => {
 
   it("says where an edit is from another page, and Show goes back to it", async () => {
     const host = await mount(baseClient(), homeTrainer, "ford");
-    const retired = panel(host, "ford").querySelector<HTMLElement>('#ford-occupation [role="switch"]');
-    await click(retired);
+    await markRetired(host);
     await click(tab(host, "account"));
     expect(saveBar(host)?.textContent).toContain("1 unsaved change · FORD · Occupation");
 
@@ -698,17 +736,20 @@ describe("ClientCodex — the one Save bar", () => {
 
   it("Discard puts the record back and closes the bar", async () => {
     const host = await mount(baseClient(), homeTrainer, "ford");
-    await click(panel(host, "ford").querySelector('#ford-occupation [role="switch"]'));
+    await markRetired(host);
     expect(saveBar(host)).not.toBeNull();
     await click(buttonIn(saveBar(host)!, "Discard"));
     expect(saveBar(host)).toBeNull();
-    expect(panel(host, "ford").querySelector('#ford-occupation [role="switch"]')?.getAttribute("aria-checked")).toBe("false");
+    // The editor closes on a discard, and the band reads the record again.
+    const occupation = panel(host, "ford").querySelector<HTMLElement>("#ford-occupation")!;
+    expect(occupation.querySelector('[aria-label="Edit Occupation"]')).not.toBeNull();
+    expect(occupation.querySelector(".fordpg-band")?.textContent).toContain("Work not recorded yet");
     expect(fake.writes).toEqual([]);
   });
 
   it("Save writes exactly the changed field and who changed it, once", async () => {
     const host = await mount(baseClient(), homeTrainer, "ford");
-    await click(panel(host, "ford").querySelector('#ford-occupation [role="switch"]'));
+    await markRetired(host);
     await click(buttonIn(saveBar(host)!, "Save changes"));
     const updates = fake.writes.filter((w) => w.op === "update");
     expect(updates).toHaveLength(1);
@@ -720,7 +761,7 @@ describe("ClientCodex — the one Save bar", () => {
 
   it("names two cards on two pages, and saves both in one write", async () => {
     const host = await mount(baseClient(), homeTrainer, "ford");
-    await click(panel(host, "ford").querySelector('#ford-occupation [role="switch"]'));
+    await markRetired(host);
     await click(tab(host, "body"));
     const wingspan = Array.from(panel(host, "body").querySelectorAll("input")).find((i) =>
       i.closest("div")?.textContent?.includes("Wingspan"),
@@ -736,7 +777,7 @@ describe("ClientCodex — the one Save bar", () => {
   it("keeps every edit when the save is refused, and says where the record is kept", async () => {
     fake.updateError = { code: "permission-denied" };
     const host = await mount(baseClient(), homeTrainer, "ford");
-    await click(panel(host, "ford").querySelector('#ford-occupation [role="switch"]'));
+    await markRetired(host);
     await click(buttonIn(saveBar(host)!, "Save changes"));
     expect(saveBar(host)?.textContent).toContain("1 unsaved change");
     expect(fake.toasts).toContainEqual({

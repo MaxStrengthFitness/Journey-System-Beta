@@ -1,72 +1,35 @@
 /**
- * FORD — the codex page (shell phase: an adapter).
+ * FORD — the codex page: the FORD area's page (`ford/page/FordPage`) on the
+ * tab's one load.
  *
- * Hosts the long scroll's Life section as it was: the work and recreation
- * baselines (client-document fields, saved by the one Save bar) and the FORD
- * hub on the tab's ONE FORD stream. The FORD area rebuilds it in its own
- * phase (Coming up, the four pillars, "In one line").
- *
- * A reader the FORD rule refuses (a cross-train studio) gets no FORD
- * listener at all — the tab never opens one for them — and a sentence
- * saying whose it is, rather than a list that would only fail.
- * Experience moved to Body & Pulse → Training story (AJ's decision 6).
+ * A thin adapter (INTEGRATION: pages/*.tsx map the tab's one load onto each
+ * area's page). FORD is the tab's ONE stream — never opened for a reader the
+ * FORD rule refuses (a cross-train studio), whose page then says whose FORD
+ * it is. The older life notes are the journal load's settled life notes
+ * (`notes.record.lifeSettled`, which leave Notes for this page), the Pulse
+ * lines the history the profile already streams, and the Work and
+ * Recreation bands edit the record through the ONE form, saved by the ONE
+ * Save bar. Who may do what is `codexAccess`, worked out once by the shell.
  */
-import { WorkBaseline, ActivityExperienceBaseline } from "../../client-life/LifeBaseline";
-import { FordSection } from "../../ford/FordSection";
-import { FORD_READ_NOTICE } from "../../ford/read-status";
-import { JournalRail } from "../../../components/client-dossier/JournalRail";
-import { Card, Page } from "../kit";
+import { FordPage as FordArea } from "../../ford/page/FordPage";
 import type { CodexPageProps } from "../codex-data";
-import { RecordLock } from "./RecordLock";
 
 export function FordPage({ data, form, go }: CodexPageProps) {
-  const { client, access, authTrainer, author, machines, journal } = data;
-  const locked = !access.canEdit;
+  const { client, access, author, pronouns, today, ford, fordStatus, notes, pulse } = data;
   return (
-    <Page
-      id="ford"
-      title="FORD"
-      lede="Family, occupation, recreation, dreams: catch it once, and anyone on the team can pick up the conversation."
+    <FordArea
+      client={client}
+      ford={ford}
+      status={fordStatus}
+      older={{ state: notes.state, settled: notes.record.lifeSettled }}
+      pulse={pulse}
+      form={form}
+      canEdit={access.canEdit}
+      homeStudioName={access.homeStudioName}
+      author={author}
+      pronouns={pronouns}
+      today={today}
       go={go}
-    >
-      <Card eyebrow="Occupation" id="ford-occupation">
-        <RecordLock locked={locked}>
-          <WorkBaseline
-            client={client}
-            formData={form.formData}
-            updateField={form.updateField}
-            authorName={authTrainer?.fullName}
-          />
-        </RecordLock>
-      </Card>
-      <Card eyebrow="Recreation" id="ford-recreation">
-        <RecordLock locked={locked}>
-          <ActivityExperienceBaseline
-            part="activity"
-            client={client}
-            formData={form.formData}
-            updateField={form.updateField}
-            authorName={authTrainer?.fullName}
-          />
-        </RecordLock>
-      </Card>
-
-      {access.fordReadable ? (
-        <Card host>
-          <FordSection client={client} author={author} machines={machines} ford={data.ford} />
-        </Card>
-      ) : (
-        <Card eyebrow="Family, occupation, recreation, dreams">
-          <p>
-            {access.homeStudioName
-              ? `FORD is kept by ${access.homeStudioName}, and only its team can read it or add to it.`
-              : FORD_READ_NOTICE.denied}
-          </p>
-        </Card>
-      )}
-
-      {/* Personal notes written before FORD existed: read only, and quiet. */}
-      <JournalRail section="life" entries={journal.entries} machines={machines} emptyHint="" />
-    </Page>
+    />
   );
 }

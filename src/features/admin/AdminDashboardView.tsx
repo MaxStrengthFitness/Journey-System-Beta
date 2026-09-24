@@ -284,8 +284,8 @@ function AdminDashboardShell({
             <div>
               <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Delight queue</h2>
               <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-                What the team has promised itself it would do something about, for every client at this studio, soonest first. A detail becomes a gesture from a
-                client's Life section — tap the gift on any detail and say what you would do about it.
+                What the team has promised itself it would do something about, for every client at this studio, soonest first. A detail becomes a gesture on a
+                client's FORD page: Add an idea under Going above and beyond, or open a detail and choose Do something about it.
               </p>
             </div>
             {ops.scope.kind === "all" ? (

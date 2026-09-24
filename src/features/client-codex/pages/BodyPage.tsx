@@ -11,7 +11,7 @@
  * The Pulse panel keeps its own draft, as it always has; it mounts only when
  * this page is first visited, so its read costs nothing until then.
  */
-import { ActivityExperienceBaseline } from "../../client-life/LifeBaseline";
+import { ExperienceEditor } from "../../client-life/LifeBaseline";
 import { InBodyCard } from "../../inbody/InBodyCard";
 import { ClientJournalTab } from "../../../components/journal/ClientJournalTab";
 import { JournalRail } from "../../../components/client-dossier/JournalRail";
@@ -50,8 +50,7 @@ export function BodyPage({ data, form, go, hosts }: CodexPageProps) {
 
       <Card eyebrow="Training story" id="body-training-story">
         <RecordLock locked={locked}>
-          <ActivityExperienceBaseline
-            part="experience"
+          <ExperienceEditor
             client={client}
             formData={form.formData}
             updateField={form.updateField}

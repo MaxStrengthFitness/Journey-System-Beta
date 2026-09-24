@@ -46,9 +46,12 @@ export function TextInput({
   list,
   maxLength,
   autoComplete = "off",
+  onBlur,
 }: FieldBase & {
   value: string | number | null | undefined;
   onChange: (next: string) => void;
+  /** When the field loses focus, with what it holds (a caller may tidy it, e.g. trim). */
+  onBlur?: (value: string) => void;
   type?: "text" | "email" | "tel" | "number" | "date" | "url";
   inputMode?: "text" | "email" | "tel" | "numeric" | "decimal" | "url";
   /** The id of a <datalist> of suggestions. */
@@ -76,6 +79,7 @@ export function TextInput({
         autoComplete={autoComplete}
         aria-describedby={hint ? hintId : undefined}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur ? (e) => onBlur(e.target.value) : undefined}
       />
       {hint ? (
         <span className="cx-field__hint" id={hintId}>

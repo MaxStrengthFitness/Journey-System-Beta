@@ -1,25 +1,35 @@
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { useId } from "react";
 import { cn } from "../../lib/utils";
 import type { Client } from "../../types";
-import { OccupationSelect } from "../../components/OccupationSelect";
+import { Picks, TextInput } from "../client-codex/kit";
+import { ChipPicks, PickGroup } from "./controls";
 import {
   ACTIVITY_LEVELS,
   FITNESS_BACKGROUNDS,
+  OCCUPATION_SUGGESTIONS,
   PEDIGREE_LEVELS,
   RECREATION_CHOICES,
   WORK_PROFILES,
   nextPedigreeHistory,
   pedigreeTrail,
   workProfileOf,
-  workSentence,
 } from "./life";
 import "./client-life.css";
 
 /**
- * The structured half of Life: work, activity outside the studio, and
- * experience. All coach fields, all saved by the record's Save bar.
- * See life.ts for the reasoning.
+ * The structured half of a client's life: work, activity outside the studio,
+ * and experience. All coach fields on the client record, all saved by the
+ * record's ONE Save bar — these editors only call `updateField`. See life.ts
+ * for the reasoning.
+ *
+ * Client codex, Sep 2026: three editors, mounted where each belongs.
+ *   WorkEditor        FORD → Occupation (the Work band's Edit)
+ *   RecreationEditor  FORD → Recreation (the Active band's Edit)
+ *   ExperienceEditor  Body & Pulse → Training story (AJ's decision 6)
+ * The job title is free text with suggestions now (it was a closed list that
+ * showed any title typed elsewhere — ConsultationWizard, the client list — as
+ * blank); the structured value is the work category, which a picked title
+ * still maps onto. Retired is two picks, Working and Retired.
  */
 
 export interface LifeBaselineProps {
@@ -35,105 +45,17 @@ function pick<K extends keyof Client>(formData: Partial<Client>, client: Client,
   return (key in formData ? formData[key] : client[key]) as Client[K];
 }
 
-function Seg<T extends string>({
-  options,
-  value,
-  onChange,
-  label,
-}: {
-  options: readonly { value: T; label: string; hint?: string }[];
-  value: T | "" | null | undefined;
-  onChange: (v: T | "") => void;
-  label: string;
-}) {
-  return (
-    <div className="clf-seg" role="radiogroup" aria-label={label}>
-      {options.map((o) => {
-        const on = value === o.value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            className={cn("clf-seg__opt", on && "clf-seg__opt--on")}
-            // Tapping the chosen option again clears it: nothing is assessed
-            // until someone says so.
-            onClick={() => onChange(on ? "" : o.value)}
-          >
-            <span className="clf-seg__label">{o.label}</span>
-            {o.hint && <span className="clf-seg__hint">{o.hint}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+/** The longest job title the box takes. */
+export const JOB_TITLE_MAX = 80;
 
-function ChipSet({
-  choices,
-  value,
-  onChange,
-  label,
-  allowCustom = false,
-}: {
-  choices: readonly string[];
-  value: readonly string[];
-  onChange: (next: string[]) => void;
-  label: string;
-  allowCustom?: boolean;
-}) {
-  const [draft, setDraft] = useState("");
-  const set = new Set(value);
-  const extras = value.filter((v) => !choices.includes(v));
-  const toggle = (v: string) => onChange(set.has(v) ? value.filter((x) => x !== v) : [...value, v]);
-  const add = () => {
-    const v = draft.trim().replace(/\s+/g, " ");
-    if (v && !set.has(v)) onChange([...value, v].slice(0, 24));
-    setDraft("");
-  };
-  return (
-    <div className="clf-chips" role="group" aria-label={label}>
-      {[...choices, ...extras].map((c) => {
-        const on = set.has(c);
-        return (
-          <button
-            key={c}
-            type="button"
-            aria-pressed={on}
-            className={cn("clf-chip", on && "clf-chip--on")}
-            onClick={() => toggle(c)}
-          >
-            {c}
-            {on && !choices.includes(c) ? <X size={12} aria-hidden /> : null}
-          </button>
-        );
-      })}
-      {allowCustom && (
-        <span className="clf-add">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                add();
-              }
-            }}
-            placeholder="Something else…"
-            aria-label={`Add to ${label}`}
-            maxLength={40}
-          />
-          <button type="button" onClick={add} disabled={!draft.trim()} aria-label="Add">
-            <Plus size={14} />
-          </button>
-        </span>
-      )}
-    </div>
-  );
-}
+const STATUS_OPTIONS = [
+  { value: "working", label: "Working" },
+  { value: "retired", label: "Retired" },
+] as const;
 
-export function WorkBaseline({ client, formData, updateField }: LifeBaselineProps) {
+/** FORD → Occupation: what the work does to the body, the job title, working or retired. */
+export function WorkEditor({ client, formData, updateField }: LifeBaselineProps) {
+  const listId = useId();
   const occupation = (pick(formData, client, "occupation") as string) || "";
   const workProfile = (pick(formData, client, "workProfile") as string | undefined) || "";
   const isRetired = !!pick(formData, client, "isRetired");
@@ -141,59 +63,77 @@ export function WorkBaseline({ client, formData, updateField }: LifeBaselineProp
 
   return (
     <div className="clf-block">
-      <div className="clf-row">
-        <span className="clf-kicker">Work</span>
-        <span className="clf-sentence">{workSentence({ occupation, workProfile, isRetired })}</span>
-      </div>
-      <Seg
-        label="What their work does to the body"
+      <PickGroup
+        label="What the work does to the body"
         options={WORK_PROFILES.map((p) => ({ value: p.id, label: p.label }))}
         value={workProfile || (derived?.id ?? "")}
-        // Tapping the category read from the occupation CONFIRMS it; tapping a
+        // Tapping the category read from the job title CONFIRMS it; tapping a
         // confirmed one clears it back to the reading.
         onChange={(v) => updateField("workProfile", v || (workProfile ? null : derived?.id ?? null))}
       />
-      {derived && <p className="clf-note">{derived.note}{!workProfile ? " (read from the occupation — tap to confirm)" : ""}</p>}
+      {derived ? (
+        <p className="clf-note">
+          {derived.note}
+          {!workProfile ? " (read from the job title — tap to confirm)" : ""}
+        </p>
+      ) : null}
       <div className="clf-two">
         <div className="clf-field">
-          <span className="clf-label">Job title (optional)</span>
-          <OccupationSelect value={occupation} onChange={(v) => updateField("occupation", v)} />
+          <TextInput
+            label="Job title (optional)"
+            value={occupation}
+            list={listId}
+            maxLength={JOB_TITLE_MAX}
+            placeholder="e.g. Dental hygienist"
+            onChange={(v) => updateField("occupation", v)}
+            onBlur={(v) => {
+              if (v !== v.trim()) updateField("occupation", v.trim());
+            }}
+          />
+          <datalist id={listId}>
+            {OCCUPATION_SUGGESTIONS.map((title) => (
+              <option key={title} value={title} />
+            ))}
+          </datalist>
         </div>
-        <div className="clf-field">
-          <span className="clf-label">Status</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isRetired}
-            className={cn("clf-switch", isRetired && "clf-switch--on")}
-            onClick={() => updateField("isRetired", !isRetired)}
-          >
-            <span>{isRetired ? "Retired — previous work kept" : "Working"}</span>
-            <span className="clf-switch__track" aria-hidden>
-              <span className="clf-switch__knob" />
-            </span>
-          </button>
-        </div>
+        <Picks
+          label="Status"
+          options={STATUS_OPTIONS}
+          value={isRetired ? "retired" : "working"}
+          onChange={(v) => updateField("isRetired", v === "retired")}
+        />
       </div>
+      {isRetired ? <p className="clf-note">Retired keeps the previous work: forty years of it still shapes the body.</p> : null}
     </div>
   );
 }
 
-/**
- * Activity outside the studio, then Experience. `part` draws one of the two
- * (client codex, Sep 2026): Activity is FORD's Recreation card and
- * Experience is Body & Pulse's Training story (AJ's decision 6), so the codex
- * mounts the two halves on two pages. Left out, both draw, as before.
- */
-export function ActivityExperienceBaseline({
-  client,
-  formData,
-  updateField,
-  authorName,
-  part = "both",
-}: LifeBaselineProps & { part?: "activity" | "experience" | "both" }) {
+/** FORD → Recreation: how active outside the studio, and what they do. */
+export function RecreationEditor({ client, formData, updateField }: LifeBaselineProps) {
   const activity = (pick(formData, client, "activityLevel") as string) || "";
   const recreation = (pick(formData, client, "recreationActivities") as string[] | undefined) || [];
+  return (
+    <div className="clf-block">
+      <PickGroup
+        label="How active outside the studio"
+        options={ACTIVITY_LEVELS}
+        value={activity as (typeof ACTIVITY_LEVELS)[number]["value"]}
+        onChange={(v) => updateField("activityLevel", v)}
+      />
+      <ChipPicks
+        label="What they do"
+        choices={RECREATION_CHOICES}
+        value={recreation}
+        onChange={(v) => updateField("recreationActivities", v)}
+        allowCustom
+      />
+      <p className="clf-note">The stories behind these — the golf trip, the pickleball league — are Recreation's details, below.</p>
+    </div>
+  );
+}
+
+/** Body & Pulse → Training story: where they came from, and how far they have come in the protocol. */
+export function ExperienceEditor({ client, formData, updateField, authorName }: LifeBaselineProps) {
   const background = (pick(formData, client, "fitnessBackground") as string[] | undefined) || [];
   const unteach = !!pick(formData, client, "needsUnteaching");
   const pedigree = (pick(formData, client, "trainingPedigree") as string) || "";
@@ -210,76 +150,41 @@ export function ActivityExperienceBaseline({
     );
   };
 
-  const showActivity = part !== "experience";
-  const showExperience = part !== "activity";
-
   return (
-    <>
-      {showActivity && (
-      <div className="clf-block">
-        <div className="clf-row">
-          <span className="clf-kicker">Active outside the studio</span>
-        </div>
-        <Seg
-          label="Activity outside the studio"
-          options={ACTIVITY_LEVELS}
-          value={activity as (typeof ACTIVITY_LEVELS)[number]["value"]}
-          onChange={(v) => updateField("activityLevel", v)}
-        />
-        <ChipSet
-          label="What they do"
-          choices={RECREATION_CHOICES}
-          value={recreation}
-          onChange={(v) => updateField("recreationActivities", v)}
-          allowCustom
-        />
-        <p className="clf-note">The stories behind these — the golf trip, the pickleball league — go in Recreation below.</p>
-      </div>
-      )}
+    <div className="clf-block">
+      <ChipPicks
+        label="Before Max Strength"
+        choices={FITNESS_BACKGROUNDS}
+        value={background}
+        onChange={(v) => updateField("fitnessBackground", v)}
+      />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={unteach}
+        className={cn("clf-switch", unteach && "clf-switch--on")}
+        onClick={() => updateField("needsUnteaching", !unteach)}
+      >
+        <span>{unteach ? "Has habits to unteach" : "No habits to unteach noted"}</span>
+        <span className="clf-switch__track" aria-hidden>
+          <span className="clf-switch__knob" />
+        </span>
+      </button>
 
-      {showExperience && (
-      <div className="clf-block">
-        <div className="clf-row">
-          <span className="clf-kicker">Experience</span>
-        </div>
-        <span className="clf-label">Before Max Strength</span>
-        <ChipSet
-          label="Fitness background"
-          choices={FITNESS_BACKGROUNDS}
-          value={background}
-          onChange={(v) => updateField("fitnessBackground", v)}
-        />
-        <button
-          type="button"
-          role="switch"
-          aria-checked={unteach}
-          className={cn("clf-switch", unteach && "clf-switch--on")}
-          onClick={() => updateField("needsUnteaching", !unteach)}
-        >
-          <span>{unteach ? "Has habits to unteach" : "No habits to unteach noted"}</span>
-          <span className="clf-switch__track" aria-hidden>
-            <span className="clf-switch__knob" />
-          </span>
-        </button>
+      <PickGroup
+        label="Protocol mastery — moves up over time"
+        options={PEDIGREE_LEVELS.map((l) => ({ value: l, label: l }))}
+        value={pedigree}
+        onChange={(v) => setPedigree(v)}
+      />
+      <p className="clf-note">{trail ?? "Each step up is dated when you save."}</p>
 
-        <span className="clf-label">Protocol mastery — moves up over time</span>
-        <Seg
-          label="Protocol mastery"
-          options={PEDIGREE_LEVELS.map((l) => ({ value: l, label: l }))}
-          value={pedigree}
-          onChange={(v) => setPedigree(v)}
-        />
-        {trail ? <p className="clf-note">{trail}</p> : <p className="clf-note">Each step up is dated when you save.</p>}
-
-        <span className="clf-label">Strength experience (sets suggested starting weights)</span>
-        <Seg
-          label="Strength experience"
-          options={["Beginner", "Intermediate", "Advanced"].map((l) => ({ value: l, label: l }))}
-          value={(pick(formData, client, "experienceLevel") as string) || ""}
-          onChange={(v) => updateField("experienceLevel", v)}
-        />
-      </div>
-      )}
-    </>
+      <PickGroup
+        label="Strength experience (sets suggested starting weights)"
+        options={["Beginner", "Intermediate", "Advanced"].map((l) => ({ value: l, label: l }))}
+        value={(pick(formData, client, "experienceLevel") as string) || ""}
+        onChange={(v) => updateField("experienceLevel", v)}
+      />
+    </div>
   );
 }

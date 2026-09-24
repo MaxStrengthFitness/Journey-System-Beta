@@ -1,8 +1,10 @@
 /**
- * LIFE — the structured half of the record's Life section (client-profile
- * audit, Sep 2026). FORD holds the stories; this holds the few facts a
- * leader can count across a whole studio ("clients who are on their feet all
- * day gain strength fastest") and a coach reads to set expectations.
+ * LIFE — the structured half of a client's life on the record (client-profile
+ * audit, Sep 2026; since the client codex, the Work and Recreation bands of
+ * the FORD page and Body & Pulse's Training story). FORD holds the stories;
+ * this holds the few facts a leader can count across a whole studio ("clients
+ * who are on their feet all day gain strength fastest") and a coach reads to
+ * set expectations.
  *
  * WORK. The audit asks for "strategic, slightly vague categories rather than
  * hyper-specific job titles", grouped by what the job does to the body. The
@@ -99,6 +101,26 @@ export function isRetirementTitle(title: string | null | undefined): boolean {
   return /^retired\b/i.test((title || "").trim());
 }
 
+/**
+ * Is this client retired? The toggle, or an old occupation that was really a
+ * retirement status ("Retired (Active Lifestyle)"). FORD's Ask next and the
+ * briefing's prompt read this, so a retired client is never asked about work.
+ */
+export function isRetiredClient(client: Pick<Client, "isRetired" | "occupation"> | null | undefined): boolean {
+  if (!client) return false;
+  return client.isRetired === true || isRetirementTitle(client.occupation);
+}
+
+/**
+ * The job titles the free-text box suggests (client codex, Sep 2026): the old
+ * occupation list's titles, minus the two that were a retirement status —
+ * retirement is the Status pick now, not a job. A picked title still maps
+ * onto its work category through `workProfileOf`.
+ */
+export const OCCUPATION_SUGGESTIONS: readonly string[] = OCCUPATIONS.map((o) => o.title).filter(
+  (t) => !isRetirementTitle(t),
+);
+
 /** "Retired — was seated / desk (Software Developer / IT)". */
 export function workSentence(client: Pick<Client, "occupation" | "isRetired"> & { workProfile?: string | null }): string {
   const profile = workProfileOf(client);
@@ -119,6 +141,27 @@ export const ACTIVITY_LEVELS: { value: NonNullable<Client["activityLevel"]>; lab
   { value: "High", label: "High", hint: "Plays or trains most days" },
   { value: "Manual Labor", label: "Physical job", hint: "Their work is the workout" },
 ];
+
+/**
+ * "Moderate · An active hobby a few times a week" — the level and what it
+ * means, as FORD's Recreation card reads it. Null when no level is set.
+ */
+export function activitySentence(level: string | null | undefined): string | null {
+  const found = ACTIVITY_LEVELS.find((l) => l.value === level);
+  return found ? `${found.label} · ${found.hint}` : null;
+}
+
+/**
+ * "Moderate · Pickleball, Walking, Gardening" — the level, then what they do,
+ * written as the trainer entered it (never lower-cased or reworded). "Not
+ * recorded yet" when neither is on file.
+ */
+export function recreationSentence(client: Pick<Client, "activityLevel" | "recreationActivities">): string {
+  const level = ACTIVITY_LEVELS.find((l) => l.value === client.activityLevel)?.label ?? "";
+  const what = (client.recreationActivities ?? []).map((a) => a.trim()).filter(Boolean).join(", ");
+  const parts = [level, what].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Not recorded yet";
+}
 
 /** Quick picks for what they do outside the studio. Free text is allowed too. */
 export const RECREATION_CHOICES = [

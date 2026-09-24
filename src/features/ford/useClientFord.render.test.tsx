@@ -16,9 +16,9 @@
  *   - a refused read is `denied`, a failed one `failed`, and neither is ever
  *     `ready` with an empty list;
  *   - the rollup refresh on save reads through the same filter;
- *   - the Life section, the briefing cue, the Active Session sheet and the
- *     post-session sweep say "couldn't load" / "kept by the home studio"
- *     instead of their empty state.
+ *   - the briefing cue, the Active Session sheet and the post-session sweep
+ *     say "couldn't load" / "kept by the home studio" instead of their empty
+ *     state. (The FORD page's own states are FordPage.render.test.tsx.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -111,8 +111,6 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 import { useClientFord, type UseClientFordResult } from "./useClientFord";
 import { createFordEntry, updateFordEntry } from "./ford-write";
-import { groupByPillar } from "./ford-rollup";
-import { FordSection } from "./FordSection";
 import { FordBriefingCue } from "./FordBriefingCue";
 import { FordSweep } from "./FordSweep";
 import { SessionJournalSidebar } from "../../components/journal/SessionJournalSidebar";
@@ -343,99 +341,11 @@ describe("the rollup refresh reads through the same filter", () => {
   });
 });
 
-describe("the Life section never says 'nothing here' about a read that did not come back", () => {
-  it("says FORD is the home studio's when a visitor is refused, and offers no add", async () => {
-    const { host } = await mount(<FordSection client={client} author={author} />);
-    await refuse(fordListener(), "permission-denied");
-    const notice = host.querySelector('[data-testid="ford-read-notice"]')!;
-    expect(notice.textContent).toContain("kept by the client's home studio");
-    expect(host.textContent).not.toContain("Nothing here yet");
-    expect(host.textContent).not.toContain("Nothing on Judy yet");
-    expect((buttonByText(host, "Add a detail") as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("says it couldn't be read when the read failed, and still lets a detail be added", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const { host } = await mount(<FordSection client={client} author={author} />);
-    await refuse(fordListener(), "unavailable");
-    expect(host.querySelector('[data-testid="ford-read-notice"]')!.textContent).toContain(
-      "isn't the same as nothing on file",
-    );
-    expect(host.textContent).not.toContain("Nothing here yet");
-    expect((buttonByText(host, "Add a detail") as HTMLButtonElement).disabled).toBe(false);
-    warn.mockRestore();
-  });
-
-  it("says a client with no studio has none on file — no retry that cannot help, and no add the rules would refuse", async () => {
-    const homeless = { id: "c9", firstName: "Nora", lastName: "Client" } as Client;
-    const { host } = await mount(<FordSection client={homeless} author={author} />);
-    // Nothing to read by, so nothing was queried.
-    expect(fake.listeners.filter((l) => l.path === "clients/c9/ford")).toHaveLength(0);
-    const notice = host.querySelector('[data-testid="ford-read-notice"]')!;
-    expect(notice.textContent).toContain("no home studio on file");
-    expect(notice.textContent).not.toMatch(/retry|again/i);
-    expect(host.textContent).not.toContain("Nothing here yet");
-    expect(host.textContent).toContain("No home studio on file.");
-    expect((buttonByText(host, "Add a detail") as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it("says 'Loading…' while waiting and 'Nothing here yet' only once FORD answered empty", async () => {
-    const { host } = await mount(<FordSection client={client} author={author} />);
-    expect(host.textContent).toContain("Loading…");
-    expect(host.textContent).not.toContain("Nothing here yet");
-    await answer(fordListener(), []);
-    expect(host.textContent).toContain("Nothing here yet");
-    expect(host.textContent).toContain("Nothing on Judy yet");
-    expect(host.querySelector('[data-testid="ford-read-notice"]')).toBeNull();
-  });
-
-  it("shows the details a trainer's filtered read brings back", async () => {
-    const { host } = await mount(<FordSection client={client} author={author} />);
-    await answer(fordListener(), [detail({ id: "k", body: "Wife is Karen." })]);
-    expect(host.textContent).toContain("Wife is Karen.");
-  });
-});
-
 /*
- * CLIENT CODEX: the Notes & Profile tab reads FORD ONCE and hands the same
- * stream to every page. Given one, the Life section opens no listener.
+ * The FORD page (the Life section's successor, client codex phase 10) has its
+ * own mounted test for the same four states: ford/page/FordPage.render.test.tsx.
+ * It is handed the tab's one stream and opens no listener of its own.
  */
-describe("the Life section given the tab's FORD stream", () => {
-  function Tab() {
-    const ford = useClientFord({ clientId: "c1", client });
-    return <FordSection client={client} author={author} ford={ford} />;
-  }
-
-  it("opens no listener of its own and draws the stream it was handed", async () => {
-    const { host } = await mount(<Tab />);
-    // One listener on her FORD: the tab's. (fordListener asserts exactly one.)
-    const l = fordListener();
-    expect(l.constraints).toContainEqual({ type: "where", field: "studioId", op: "==", value: "s1" });
-    expect(host.textContent).toContain("Loading…");
-    await answer(l, [detail({ id: "k", body: "Wife is Karen." })]);
-    expect(host.textContent).toContain("Wife is Karen.");
-    expect(fake.listeners.filter((x) => x.live && x.path === "clients/c1/ford")).toHaveLength(1);
-  });
-
-  it("draws a refused stream as the home studio's, never as nothing on file", async () => {
-    const refused: UseClientFordResult = {
-      entries: [],
-      buckets: groupByPillar([]).buckets,
-      untagged: [],
-      upcoming: [],
-      status: "denied",
-      isLoading: false,
-    };
-    const { host } = await mount(<FordSection client={client} author={author} ford={refused} />);
-    // Nothing read at all: the stream was handed in.
-    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
-    expect(host.querySelector('[data-testid="ford-read-notice"]')!.textContent).toContain(
-      "kept by the client's home studio",
-    );
-    expect(host.textContent).not.toContain("Nothing here yet");
-    expect((buttonByText(host, "Add a detail") as HTMLButtonElement).disabled).toBe(true);
-  });
-});
 
 describe("the briefing cue waits for FORD, and says why when it cannot read it", () => {
   it("draws nothing while FORD is loading — no prompt that flashes and is replaced", async () => {
@@ -449,6 +359,30 @@ describe("the briefing cue waits for FORD, and says why when it cannot read it",
     const cue = host.querySelector('[data-testid="ford-briefing-cue"]')!;
     expect(cue.getAttribute("data-status")).toBe("ready");
     expect(cue.textContent).toContain("Nothing on file under");
+  });
+
+  // Every pillar but Occupation holds a moment (no facts, no dates), so the
+  // cue asks from Occupation — the one pillar whose prompts know retirement.
+  const occupationEmpty = ["family", "recreation", "dreams"].map((pillar, i) =>
+    detail({ id: `m-${pillar}`, pillar, isPinned: false, body: `A ${pillar} moment`, occurredAt: new Date(2026, 8, 1 + i, 12) }),
+  );
+
+  it("never asks a retired client about work: the Occupation prompt is about retirement", async () => {
+    const retired = { ...client, isRetired: true } as Client;
+    const { host } = await mount(<FordBriefingCue client={retired} author={author} />);
+    await answer(fordListener(), occupationEmpty);
+    const cue = host.querySelector('[data-testid="ford-briefing-cue"]')!;
+    expect(cue.textContent).toContain("“How is retirement going?”");
+    expect(cue.textContent).toContain("Nothing on file under Occupation yet");
+  });
+
+  it("never asks a working client how retirement is going", async () => {
+    const working = { ...client, isRetired: false, occupation: "Dental hygienist" } as Client;
+    const { host } = await mount(<FordBriefingCue client={working} author={author} />);
+    await answer(fordListener(), occupationEmpty);
+    const cue = host.querySelector('[data-testid="ford-briefing-cue"]')!;
+    expect(cue.textContent).toContain("Nothing on file under Occupation yet");
+    expect(cue.textContent).not.toContain("retire");
   });
 
   it("tells a visitor FORD is the home studio's, read-only, with no capture", async () => {

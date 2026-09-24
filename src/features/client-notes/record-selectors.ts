@@ -107,10 +107,11 @@ export interface NotesOnRecord {
 export interface NotesOnRecordOptions {
   tz?: string;
   /**
-   * True once the FORD page draws the settled life notes in their pillars —
-   * then, and only then, may they leave Notes. Until that page ships (the FORD
-   * phase), they are in `listed` AND `lifeSettled`, so no note ever
-   * disappears from the tab. Default false.
+   * True where the FORD page draws the settled life notes in their pillars —
+   * then, and only then, may they leave Notes. The codex passes true since the
+   * FORD page shipped (client codex, phase 10: `notesOfJournal`). Left false,
+   * they are in `listed` AND `lifeSettled`, so no note ever disappears from a
+   * screen that has no FORD page to carry them. Default false.
    */
   lifeOnFord?: boolean;
 }
@@ -531,8 +532,9 @@ export function hiddenCriticalThreads(
  *  - Null when this reader cannot read FORD (a cross-train visit): the door
  *    leads somewhere they may not open, and a number would be a claim about
  *    another studio's record.
- *  - Once FORD has been read: its live details, plus the older life notes it
- *    shows (`olderLifeCount`, once the FORD page carries them).
+ *  - Once FORD has been read: its live details, plus the older life notes the
+ *    FORD page shows (`olderLifeCount`; null until the journal answers, and
+ *    then the whole count is null).
  *  - While it loads, or if it failed: the COUNTS the client document already
  *    carries (`fordSummary` — counts only; its text is never read here), plus
  *    the `client.events` rows FORD adds to what it read (`adaptClientEvents`,
@@ -547,10 +549,16 @@ export function fordDoorCount(args: {
   readable: boolean;
   ford?: { status: FordReadStatus; entries: readonly Pick<FordEntry, "isArchived">[] } | null;
   client?: Client | null;
-  olderLifeCount?: number;
+  /**
+   * The older life notes the FORD page shows (client codex, phase 10: the
+   * settled life notes left Notes for FORD). `null` while they are not known
+   * yet — the whole count is then unknown, never an undercount. Left out: 0.
+   */
+  olderLifeCount?: number | null;
 }): number | null {
   if (!args.readable) return null;
   if (args.ford?.status === "denied") return null;
+  if (args.olderLifeCount === null) return null;
   const older = Math.max(0, args.olderLifeCount ?? 0);
   if (args.ford?.status === "ready") {
     return args.ford.entries.filter((e) => !e.isArchived).length + older;

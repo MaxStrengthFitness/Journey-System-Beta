@@ -1,0 +1,563 @@
+/* ==========================================================================
+   FORD — the page of Notes & Profile (client codex, Sep 2026)
+   --------------------------------------------------------------------------
+   Layout and the FORD-only content of the page: Coming up's date cards, the
+   To file tray, the four pillar cards' inside, the gesture rows. The panels,
+   buttons, chips, eyebrows and fields are the codex kit's (kit.css); this
+   file does not draw a second one.
+
+   The rules it keeps, each read by the codex's scale test:
+     - Text is 11 / 12 / 14 / 17 / 30px (the --cx-fs-* tokens), nothing else.
+     - Colour is --cx-* only. Colour by URGENCY, never by pillar: a pillar
+       gets its tinted letter mark and nothing else, and the only orange on
+       the page is FORD's "now" date (--cx-now). Nothing is crimson.
+     - Nothing is clipped: details, names and dates wrap.
+     - Anything tappable is 40px or taller; a button sets its own text
+       alignment here (a utility class did not survive layer ordering).
+
+   Portrait first. The pages' container (`cx`) is ~696px on a 744pt iPad,
+   ~772 on an 820, ~976 on the 13-inch and ~1320 in landscape: the pillars
+   are one column until 880px, Coming up one, two from 560px and three from
+   880px.
+   ========================================================================== */
+
+/* ---- a read that did not come back ------------------------------------ */
+
+.fordpg-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  line-height: 1.45;
+}
+
+.fordpg-notice__icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cx-ink-3);
+}
+
+.fordpg-quiet,
+.fordpg-gap {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-14);
+}
+
+.fordpg-gap {
+  font-style: italic;
+}
+
+.fordpg-footnote {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+/* ---- Coming up -------------------------------------------------------- */
+
+.fordpg-coming {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fordpg-coming__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@container cx (min-width: 560px) {
+  .fordpg-coming__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container cx (min-width: 880px) {
+  .fordpg-coming__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.fordpg-cu {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface);
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  text-align: left;
+}
+
+button.fordpg-cu {
+  cursor: pointer;
+}
+
+.fordpg-cu__date {
+  grid-row: span 2;
+  display: grid;
+  justify-items: center;
+  min-width: 52px;
+  color: var(--cx-ink-2);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-30);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.fordpg-cu__month {
+  margin-top: 3px;
+  color: var(--cx-ink-3);
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-11);
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.fordpg-cu__what {
+  min-width: 0;
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.fordpg-cu__meta {
+  min-width: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+/* When, coloured by how much time a gesture still has — never by pillar. */
+.fordpg-when {
+  font-weight: 800;
+}
+
+.fordpg-when[data-urgency="now"] {
+  color: var(--cx-now);
+}
+
+.fordpg-when[data-urgency="soon"] {
+  color: var(--cx-soon);
+}
+
+.fordpg-when[data-urgency="later"],
+.fordpg-when[data-urgency="past"],
+.fordpg-when[data-urgency="none"] {
+  color: var(--cx-later);
+  font-weight: 700;
+}
+
+/* ---- To file ---------------------------------------------------------- */
+
+/* A tidy-up, never an error: the unfiled tint, no alarm colour. */
+.cx-card.fordpg-tray {
+  border-color: var(--cx-line);
+  background: var(--cx-unfiled-fill);
+}
+
+.fordpg-tray__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fordpg-tray__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.fordpg-tray__text {
+  flex: 1 1 260px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fordpg-tray__quote {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.fordpg-tray__quote {
+  cursor: pointer;
+}
+
+.fordpg-tray__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.fordpg-tray__picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cx-btn.fordpg-file {
+  padding-inline: 10px 12px;
+}
+
+/* ---- the four pillars ------------------------------------------------- */
+
+.fordpg-pillars {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+@container cx (min-width: 880px) {
+  .fordpg-pillars {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The kit's card, opened up so the band runs edge to edge. */
+.cx-card.fordpg-pillar {
+  gap: 0;
+  padding: 0;
+}
+
+.fordpg-pl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px 16px 12px;
+}
+
+.fordpg-pl-name {
+  flex: 1 1 180px;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fordpg-pl-name__label {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.fordpg-pl-name__blurb {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.fordpg-pl-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.fordpg-band {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--cx-line);
+  border-bottom: 1px solid var(--cx-line);
+  background: var(--cx-surface-2);
+}
+
+.fordpg-band__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.fordpg-band__lede {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.fordpg-band__why {
+  white-space: pre-line;
+}
+
+.fordpg-band__quiet {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-14);
+}
+
+.fordpg-band__src {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.fordpg-pl-body {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 12px 16px 14px;
+}
+
+/* Standing facts: a short paragraph that grew, each line openable. */
+.fordpg-facts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fordpg-fact {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 0 6px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  line-height: 1.4;
+  text-align: left;
+  overflow-wrap: anywhere;
+  position: relative;
+}
+
+.fordpg-fact::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 7px;
+  height: 2px;
+  background: var(--cx-ink-4);
+}
+
+button.fordpg-fact {
+  cursor: pointer;
+}
+
+/* A moment, or an older life note. */
+.fordpg-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px dashed var(--cx-line);
+  background: transparent;
+  color: var(--cx-ink);
+  font-family: inherit;
+  text-align: left;
+}
+
+button.fordpg-item {
+  cursor: pointer;
+}
+
+.fordpg-item__text {
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.fordpg-item__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.fordpg-updates {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--cx-line);
+  list-style: none;
+}
+
+.fordpg-updates li {
+  display: grid;
+  gap: 2px;
+}
+
+.fordpg-pulse {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  line-height: 1.45;
+}
+
+.fordpg-pulse__icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.fordpg-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cx-line);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.fordpg-ask__q {
+  color: var(--cx-ink);
+  font-weight: 700;
+}
+
+.fordpg-ask__why {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+/* ---- older life notes that belong to no pillar ------------------------ */
+
+.fordpg-older {
+  display: grid;
+  gap: 10px;
+}
+
+/* ---- going above and beyond ------------------------------------------- */
+
+.fordpg-beyond {
+  container: fordpg-beyond / inline-size;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fordpg-by {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 6px 14px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--cx-line);
+}
+
+.fordpg-by:first-child {
+  border-top: 0;
+}
+
+.fordpg-by__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fordpg-by__text {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+span.fordpg-by__text {
+  display: flex;
+  align-items: center;
+}
+
+button.fordpg-by__text {
+  cursor: pointer;
+}
+
+.fordpg-by__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.fordpg-by__outcome {
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.fordpg-by__close {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 4px 0 6px;
+}
+
+.fordpg-by__close-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@container fordpg-beyond (max-width: 520px) {
+  .fordpg-by {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- focus and hover -------------------------------------------------- */
+
+.fordpg-cu:focus-visible,
+.fordpg-fact:focus-visible,
+.fordpg-item:focus-visible,
+.fordpg-tray__quote:focus-visible,
+.fordpg-by__text:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  button.fordpg-cu:hover {
+    border-color: var(--cx-live-line);
+  }
+
+  button.fordpg-fact:hover,
+  button.fordpg-item:hover .fordpg-item__text,
+  button.fordpg-tray__quote:hover,
+  button.fordpg-by__text:hover {
+    color: var(--cx-live-text);
+  }
+}

@@ -467,6 +467,8 @@ describe("fordDoorCount", () => {
   it("prefers FORD itself once read: live details plus the older notes it shows", () => {
     expect(fordDoorCount({ readable: true, ford: { status: "ready", entries: details(3, 1) }, client: withSummary })).toBe(3);
     expect(fordDoorCount({ readable: true, ford: { status: "ready", entries: details(3, 1) }, olderLifeCount: 2 })).toBe(5);
+    // The older notes not known yet: the whole count is unknown, never an undercount.
+    expect(fordDoorCount({ readable: true, ford: { status: "ready", entries: details(3, 1) }, olderLifeCount: null })).toBeNull();
     expect(fordDoorCount({ readable: true, ford: { status: "ready", entries: [] } })).toBe(0);
   });
 

@@ -12,11 +12,13 @@
  *   FORD refused     "home studio only" — a cross-train reader; FORD is the
  *                                        home studio's to read, so no count
  *
- * The lines for FORD, Body & Pulse, Goals & Focus and Account are INTERIM
- * (the shell phase): each area replaces its own with the line its page
- * writes. Story says nothing yet: "since 2019" is a claim about the whole
- * story, and the Story page is where it is worked out honestly for a client
- * who trained here long before Journey.
+ * FORD's line is the FORD area's own (`fordSubnavLine`, phase 10): the
+ * soonest date within a month ("birthday in 17 days"), else what waits to be
+ * filed, else how much is on file. The lines for Body & Pulse, Goals & Focus
+ * and Account are INTERIM (the shell phase): each area replaces its own with
+ * the line its page writes. Story says nothing yet: "since 2019" is a claim
+ * about the whole story, and the Story page is where it is worked out
+ * honestly for a client who trained here long before Journey.
  *
  * Rules: short (the bar wraps at portrait widths, so a long line grows it);
  * words and counts, never a score, a percentage or a traffic light; FORD's
@@ -30,6 +32,8 @@ import { RECORD_PAGES, type RecordPage } from "../client-profile/profile-nav";
 import type { JournalLoad } from "../../hooks/useClientJournal";
 import { notesTabMeta, type NotesSummary } from "../client-notes/record-selectors";
 import { selectedFlags } from "../clinical-flags/flag-search";
+import { fordSubnavLine } from "../ford/page-model";
+import type { ComingUpRow } from "../ford/coming-up";
 import { plural } from "./kit/text";
 import type { CodexFordStatus } from "./codex-data";
 
@@ -39,11 +43,17 @@ export interface PageMetaInput {
   /** Running focuses, and whether the focuses were read. */
   focuses: { state: JournalLoad; running: number | null };
   /**
-   * FORD: its read state, and how many things it holds — `fordDoorCount`,
+   * FORD: its read state, and how many things it holds — `fordCountOf`,
    * which is the client document's counts while FORD loads (no read) and
-   * null when it cannot be known.
+   * null when it cannot be known — plus, once FORD has answered, what is
+   * coming up (`comingUp`) and how many captures wait to be filed.
    */
-  ford: { status: CodexFordStatus; count: number | null };
+  ford: {
+    status: CodexFordStatus;
+    count: number | null;
+    comingUp?: readonly ComingUpRow[];
+    untagged?: number;
+  };
 }
 
 const LOADING = "loading";
@@ -56,12 +66,17 @@ function notesItem(input: PageMetaInput): Pick<SubnavItem<RecordPage>, "meta" | 
 }
 
 function fordMeta(input: PageMetaInput): string {
-  const { status, count } = input.ford;
+  const { status, count, comingUp = [], untagged = 0 } = input.ford;
   if (status === "off" || status === "denied") return "home studio only";
   if (status === "failed") return FAILED;
-  if (count === null) return LOADING;
-  if (count > 0) return plural(count, "detail");
-  return status === "ready" ? "nothing yet" : LOADING;
+  // The count is null while the older life notes are unknown: loading, or —
+  // when the journal failed and FORD holds nothing — couldn't load.
+  if (status === "ready") {
+    return fordSubnavLine({ comingUp, untagged, count }) ?? (input.notes.state === "failed" ? FAILED : LOADING);
+  }
+  // Still loading: the client document's counts (no read), never "nothing".
+  if (count !== null && count > 0) return plural(count, "detail");
+  return LOADING;
 }
 
 function bodyItem(input: PageMetaInput): Pick<SubnavItem<RecordPage>, "meta" | "flag" | "flagTone"> {

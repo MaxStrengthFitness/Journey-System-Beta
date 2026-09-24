@@ -130,6 +130,24 @@ export const FORD_META: Record<FordPillar, FordPillarMeta> = {
   },
 };
 
+/**
+ * Which prompts only make sense for a client who is still working, or only
+ * for one who has retired (client codex, Sep 2026). Keyed by the prompt's
+ * text in `FORD_META`, verbatim — `ask-next.test.ts` fails if a key drifts
+ * from the list. A prompt that is not here is for everyone.
+ *
+ * The mockup's "fixed by the redesign" list had FORD asking a retired client
+ * "How is work treating you?" — this is the fix. The prompts themselves stay
+ * exactly as written; the only new logic is which ones to skip.
+ */
+export const FORD_PROMPT_WHEN: Readonly<Record<string, "retired" | "not-retired">> = {
+  "How is work treating you?": "not-retired",
+  "Still on the road as much?": "not-retired",
+  "Busy season coming up?": "not-retired",
+  "How is retirement going?": "retired",
+  "What is on the list for when you retire?": "not-retired",
+};
+
 /* ------------------------------------------------------------------ */
 /* THE DOCUMENT                                                        */
 /* ------------------------------------------------------------------ */

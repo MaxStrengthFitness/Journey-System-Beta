@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 /**
- * The record's new Life and Body pieces, MOUNTED: the flag picker searches and
- * toggles, the banner leads with the watch-outs, and the Life baseline writes
+ * The record's Life and Body pieces, MOUNTED: the flag picker searches and
+ * toggles, the banner leads with the watch-outs, and the life editors write
  * through the Save bar's updateField — including a dated mastery step.
+ *
+ * Client codex, Sep 2026 (phase 10): the Life baseline became three editors.
+ * FORD's Occupation band reads the work sentence and opens WorkEditor (the
+ * job title is free text with suggestions now, and Retired is a pick);
+ * RecreationEditor is FORD's Recreation band; ExperienceEditor is Body &
+ * Pulse's Training story. Every updateField the old tests asserted is still
+ * asserted, word for word.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client, Machine } from "../../types";
 import { ClinicalFlagPicker } from "./ClinicalFlagPicker";
 import { BodyWatchOuts } from "./BodyWatchOuts";
-import { ActivityExperienceBaseline, WorkBaseline } from "../client-life/LifeBaseline";
+import { ExperienceEditor, RecreationEditor } from "../client-life/LifeBaseline";
+import { OccupationBand } from "../ford/page/bands";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -83,7 +91,7 @@ describe("BodyWatchOuts", () => {
   });
 });
 
-describe("Life baseline", () => {
+describe("the life editors", () => {
   const client = {
     id: "1",
     firstName: "A",
@@ -96,27 +104,88 @@ describe("Life baseline", () => {
     trainingPedigree: "Novice",
   } as Client;
 
-  it("reads the work category from the occupation and confirms it on tap", () => {
+  it("reads the work sentence, then confirms the category, marks retired and takes a free-text title", () => {
     const updateField = vi.fn();
-    const el = mount(<WorkBaseline client={client} formData={{}} updateField={updateField} />);
-    expect(el.textContent).toContain("On their feet (Teacher / Educator)");
+    const read = mount(
+      <OccupationBand client={client} formData={{}} updateField={updateField} dirty={false} editing={false} />,
+    );
+    expect(read.textContent).toContain("On their feet (Teacher / Educator)");
+    expect(read.textContent).not.toContain("Not saved yet");
+    expect(read.querySelector("button")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+
+    const el = mount(<OccupationBand client={client} formData={{}} updateField={updateField} dirty editing />);
+    expect(el.textContent).toContain("Not saved yet");
+    expect(el.textContent).toContain("Saved with the Save bar");
     act(() => button(el, "On their feet").click());
     expect(updateField).toHaveBeenLastCalledWith("workProfile", "on-feet");
-    act(() => button(el, "Working").click());
+    act(() => button(el, "Retired").click());
     expect(updateField).toHaveBeenLastCalledWith("isRetired", true);
+
+    const title = el.querySelector<HTMLInputElement>("input[list]")!;
+    expect(title.value).toBe("Teacher / Educator");
+    typeInto(title, "Dental hygienist");
+    expect(updateField).toHaveBeenLastCalledWith("occupation", "Dental hygienist");
+    const options = [...el.querySelectorAll(`datalist[id="${title.getAttribute("list")}"] option`)].map((o) =>
+      o.getAttribute("value"),
+    );
+    expect(options).toContain("Teacher / Educator");
+    expect(options.some((v) => v?.startsWith("Retired ("))).toBe(false);
   });
 
   it("dates a step up in protocol mastery", () => {
     const updateField = vi.fn();
-    const el = mount(
-      <ActivityExperienceBaseline client={client} formData={{}} updateField={updateField} authorName="AJ" />,
-    );
+    const el = mount(<ExperienceEditor client={client} formData={{}} updateField={updateField} authorName="AJ" />);
     act(() => button(el, "Intermediate").click());
     expect(updateField).toHaveBeenCalledWith("trainingPedigree", "Intermediate");
     const history = updateField.mock.calls.find((c) => c[0] === "pedigreeHistory")![1];
     expect(history.map((s: { level: string }) => s.level)).toEqual(["Novice", "Intermediate"]);
     expect(history[1].byName).toBe("AJ");
+  });
+
+  it("picks what they do outside the studio, and takes one of their own", () => {
+    const updateField = vi.fn();
+    const el = mount(<RecreationEditor client={client} formData={{}} updateField={updateField} />);
     act(() => button(el, "Pickleball").click());
     expect(updateField).toHaveBeenLastCalledWith("recreationActivities", ["Pickleball"]);
+    act(() => button(el, "Moderate").click());
+    expect(updateField).toHaveBeenLastCalledWith("activityLevel", "Moderate");
+    const custom = el.querySelector<HTMLInputElement>('input[maxlength="40"]')!;
+    typeInto(custom, "  Tai   chi ");
+    act(() => (el.querySelector('[aria-label="Add to What they do"]') as HTMLButtonElement).click());
+    expect(updateField).toHaveBeenLastCalledWith("recreationActivities", ["Tai chi"]);
+  });
+
+  it("keeps the saved order when a chip goes on and off again, so nothing is left unsaved", () => {
+    const updateField = vi.fn();
+    const saved = { ...client, recreationActivities: ["Walking", "Pickleball"] } as Client;
+    function Harness() {
+      const [formData, setFormData] = useState<Partial<Client>>({});
+      return (
+        <RecreationEditor
+          client={saved}
+          formData={formData}
+          updateField={(key, value) => {
+            updateField(key, value);
+            setFormData((f) => ({ ...f, [key]: value }));
+          }}
+        />
+      );
+    }
+    const el = mount(<Harness />);
+    act(() => button(el, "Golf").click());
+    expect(updateField).toHaveBeenLastCalledWith("recreationActivities", ["Walking", "Pickleball", "Golf"]);
+    act(() => button(el, "Golf").click());
+    expect(updateField).toHaveBeenLastCalledWith("recreationActivities", ["Walking", "Pickleball"]);
+    act(() => button(el, "Walking").click());
+    expect(updateField).toHaveBeenLastCalledWith("recreationActivities", ["Pickleball"]);
+  });
+
+  it("draws every pick at 40px or more (the kit's pills)", () => {
+    const el = mount(<RecreationEditor client={client} formData={{}} updateField={vi.fn()} />);
+    const picks = [...el.querySelectorAll("button")].filter((b) => !b.classList.contains("cx-btn"));
+    expect(picks.length).toBeGreaterThan(0);
+    for (const b of picks) expect(b.classList.contains("cx-pick"), b.textContent ?? "").toBe(true);
   });
 });

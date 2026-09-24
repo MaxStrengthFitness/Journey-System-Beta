@@ -96,6 +96,25 @@ const CODEX_FILES: readonly string[] = [
   "features/client-notes/ThreadRow.tsx",
   "features/client-notes/notes-page.css",
   "features/client-notes/notes-intent.ts",
+  // The FORD page (phase 10): the page and its parts, its stylesheet, the
+  // pure modules that write its words, and the life editors its Work and
+  // Recreation bands open (Body & Pulse's Training story is the third).
+  "features/ford/page/FordPage.tsx",
+  "features/ford/page/bands.tsx",
+  "features/ford/page/PillarCard.tsx",
+  "features/ford/page/AskNextLine.tsx",
+  "features/ford/page/ComingUp.tsx",
+  "features/ford/page/UnfiledTray.tsx",
+  "features/ford/page/AboveAndBeyond.tsx",
+  "features/ford/page/ford-page.css",
+  "features/ford/ask-next.ts",
+  "features/ford/coming-up.ts",
+  "features/ford/pulse-links.ts",
+  "features/ford/page-model.ts",
+  "features/client-life/LifeBaseline.tsx",
+  "features/client-life/controls.tsx",
+  "features/client-life/client-life.css",
+  "features/client-life/life.ts",
 ];
 
 /**
@@ -120,16 +139,17 @@ const LINE_CLAMP_LINES = 2;
  *
  * Shared pieces stay listed until their area replaces them on the codex:
  * ClientJournalTab (the focus and Pulse areas; Notes left it in phase 9,
- * which moved no text size, so the budget stayed at 168), the FORD hub, the
- * InBody card, the goals panel, the contract panel, the shared notes and
- * jots, the watch-outs and the flag picker, and the life baselines.
+ * which moved no text size, so the budget stayed at 168), the InBody card,
+ * the goals panel, the contract panel, the shared notes and jots, the
+ * watch-outs and the flag picker, and ford.css (the detail dialog's). The
+ * FORD phase (10) deleted the FORD hub and its CSS and brought the life
+ * editors onto the kit (they are CODEX_FILES now): 168 → 148.
  */
 const HOSTED_FILES: readonly string[] = [
   "features/client-codex/pages/legacy-blocks.tsx",
   "components/client-dossier/DossierPrimitives.tsx",
   "components/client-dossier/JournalRail.tsx",
   "components/journal/ClientJournalTab.tsx",
-  "features/ford/FordSection.tsx",
   "features/ford/ford.css",
   "features/inbody/InBodyCard.tsx",
   "features/goals/GoalsPanel.tsx",
@@ -142,11 +162,9 @@ const HOSTED_FILES: readonly string[] = [
   "features/clinical-flags/BodyWatchOuts.tsx",
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
-  "features/client-life/LifeBaseline.tsx",
-  "features/client-life/client-life.css",
 ];
-/** Measured when the shell landed (phase 8). Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 168;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 148;
 
 /**
  * The shared note pieces the Notes page mounts — the composer, the To-file

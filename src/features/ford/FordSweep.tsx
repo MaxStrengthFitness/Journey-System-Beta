@@ -12,7 +12,7 @@
  *     would be worse than no tray at all.
  *   - It never blocks Finish. Nothing here is required, in the same way the
  *     not-reached machines strip is not required. A trainer who walks away
- *     loses nothing — the captures sit in the Life section's unfiled tray and
+ *     loses nothing — the captures sit in the FORD page's To file tray and
  *     can be filed from the profile at any point, including next week.
  *   - Filing is optimistic. The card leaves the tray the instant it is tapped
  *     rather than waiting for Firestore, because on studio wifi that round

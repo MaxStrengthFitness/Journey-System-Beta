@@ -7,9 +7,12 @@
    splitting them let the letter marks drift apart last time this pattern was
    copied:
 
-     .ford-hub      the Life section of the client profile
      .ford-capture  the floor sheet — one box, four letters, save
      .ford-sweep    the post-session tray where captures get filed
+     .ford-queue    Operations → Delight queue
+
+   The client profile's FORD page is not here: it is drawn from the codex kit
+   and ford/page/ford-page.css (client codex, Sep 2026).
 
    Touch targets are 40px minimum throughout. The capture sheet's letter marks
    are 44px because they are hit with a thumb by someone who is not looking
@@ -91,32 +94,22 @@
 .ford-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ------------------------------------------------------------------ */
-/* THE HUB — the Life section                                          */
+/* THE BRIEFING ROW, THE QUEUE'S BANNER, AND SHARED BITS               */
 /* ------------------------------------------------------------------ */
 
-.ford-hub { display: flex; flex-direction: column; gap: 0.9rem; }
+/* The Life section's hub (FordSection) was replaced by the FORD page of
+   Notes & Profile in the client codex (Sep 2026), which is drawn from the
+   codex kit and ford/page/ford-page.css. What stays here is what the floor
+   and Operations still use: the briefing's one row (.ford-upnext), the
+   Delight queue's banner (.ford-tray) and empty line, the dialog's icon
+   buttons, the gesture chip and the "couldn't be read" notice. */
 
-/* "Coming up" — the only part of this section that is a to-do list. It sits
-   above the pillars because a date that is eight days out is worth more than
-   a beautifully filed fact. */
+/* The briefing cue's one row (FordBriefingCue). */
 .ford-upnext {
   border: 1px solid var(--ford-border);
   border-radius: var(--ford-radius);
   background: var(--ford-surface);
   overflow: hidden;
-}
-.ford-upnext__head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.85rem;
-  background: var(--ford-surface-2);
-  border-bottom: 1px solid var(--ford-border);
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ford-ink-muted);
 }
 .ford-upnext__row {
   display: flex;
@@ -148,7 +141,7 @@
   color: var(--ford-ink-muted);
 }
 
-/* The unfiled tray. Reads as tidying, never as an error — see the tokens. */
+/* The Delight queue's banner (a missing index). Reads as tidying, never as an error. */
 .ford-tray {
   display: flex;
   align-items: center;
@@ -161,146 +154,15 @@
   color: var(--ford-ink-2);
   font-size: 0.8125rem;
 }
-.ford-tray__count { font-weight: 800; color: var(--ford-unfiled); }
-.ford-tray__list { margin: 0.35rem 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
-.ford-tray__item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-}
-.ford-tray__quote { flex: 1 1 10rem; min-width: 0; color: var(--ford-ink); }
-/* The four letters in the tray are a ROW, always. Their own container, so they
-   cannot be wrapped one-per-line by whatever the quote does. */
-.ford-tray__letters { display: flex; gap: 0.25rem; flex: 0 0 auto; }
-.ford-tray__letters .ford-letter { width: 36px; min-height: 36px; padding: 0; }
 
-/* The four pillars. Two up on a landscape iPad, stacked in portrait — the
-   8-machine rule's sibling: four cards must be reachable without hunting. */
-.ford-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-}
-/* Two columns only when the record's spine is wide enough (landscape): in
-   portrait the spine beside the jump rail is ~560px and two columns cramped
-   every card (review round, Sep 2026). */
-@media (min-width: 1100px) {
-  .ford-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-.ford-pillar {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--ford-border);
-  border-radius: var(--ford-radius);
-  background: var(--ford-surface);
-  overflow: hidden;
-}
-.ford-pillar__head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--ford-border);
-}
-.ford-pillar__name {
-  font-size: 0.9375rem;
-  font-weight: 800;
-  color: var(--ford-ink);
-  letter-spacing: -0.01em;
-}
-.ford-pillar__blurb {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--ford-ink-muted);
-  line-height: 1.3;
-}
-.ford-pillar__count {
-  margin-left: auto;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--ford-ink-faint);
-  font-variant-numeric: tabular-nums;
-}
-.ford-pillar__body { padding: 0.55rem 0.75rem 0.7rem; }
-
-/* Standing facts read as a paragraph that grew, not as a list of records. */
-.ford-facts { margin: 0 0 0.5rem; padding: 0; list-style: none; }
-.ford-fact {
-  display: flex;
-  gap: 0.45rem;
-  align-items: flex-start;
-  padding: 0.22rem 0;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: var(--ford-ink);
-}
-.ford-fact::before {
-  content: "—";
-  color: var(--ford-ink-faint);
-  flex: 0 0 auto;
-}
-/* These are <button>s so a detail can be opened, and a button's UA default is
-   text-align:center — which centres any detail long enough to wrap. Set here
-   rather than with a utility class so it cannot be lost to layer ordering. */
-.ford-fact__text {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-align: left;
-  background: none;
-  border: 0;
-  padding: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.ford-moments { margin: 0; padding: 0; list-style: none; }
-.ford-moment {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  padding: 0.4rem 0;
-  border-top: 1px solid var(--ford-border);
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: var(--ford-ink);
-}
-.ford-moment:first-child { border-top: 0; }
-.ford-moment__body { flex: 1 1 auto; min-width: 0; }
-.ford-moment__text {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 0;
-  padding: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.ford-moment__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-  font-size: 0.75rem;
-  color: var(--ford-ink-muted);
-}
-.ford-moment__actions {
-  display: flex;
-  gap: 0.15rem;
-  flex: 0 0 auto;
-}
+/* The dialog's close and remove buttons. 40px: nothing tappable is smaller. */
 .ford-icon-btn {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border: 0;
   border-radius: var(--ford-radius-sm);
   background: transparent;
@@ -337,12 +199,6 @@
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--ford-ink-faint);
-}
-.ford-empty__prompt {
-  display: block;
-  margin-top: 0.3rem;
-  font-style: italic;
-  color: var(--ford-ink-muted);
 }
 
 /* A FORD read that did not come back (client codex, phase 1): refused for a

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  OCCUPATION_SUGGESTIONS,
+  activitySentence,
+  isRetiredClient,
   isRetirementTitle,
   nextPedigreeHistory,
+  recreationSentence,
   pedigreeTrail,
   workProfileOf,
   workSentence,
@@ -69,5 +73,42 @@ describe("pedigreeTrail", () => {
     expect(pedigreeTrail([{ level: "Novice", at: "" }, { level: "Intermediate", at: "2026-06-15T12:00:00Z" }])).toMatch(
       /^Novice → Intermediate \(Jun 2026\)$/,
     );
+  });
+});
+
+describe("isRetiredClient", () => {
+  it("reads the toggle, or an old occupation that was really a retirement status", () => {
+    expect(isRetiredClient({ isRetired: true, occupation: "Teacher / Educator" })).toBe(true);
+    expect(isRetiredClient({ occupation: "Retired (Active Lifestyle)" })).toBe(true);
+    expect(isRetiredClient({ isRetired: false, occupation: "Teacher / Educator" })).toBe(false);
+    expect(isRetiredClient({})).toBe(false);
+    expect(isRetiredClient(null)).toBe(false);
+  });
+});
+
+describe("activitySentence and recreationSentence", () => {
+  it("says the level and what it means", () => {
+    expect(activitySentence("Moderate")).toBe("Moderate · An active hobby a few times a week");
+    expect(activitySentence("Manual Labor")).toBe("Physical job · Their work is the workout");
+    expect(activitySentence("")).toBeNull();
+    expect(activitySentence(undefined)).toBeNull();
+  });
+
+  it("keeps what they do exactly as typed", () => {
+    expect(recreationSentence({ activityLevel: "Moderate", recreationActivities: ["Pickleball", "Walking", "Gardening"] })).toBe(
+      "Moderate · Pickleball, Walking, Gardening",
+    );
+    expect(recreationSentence({ recreationActivities: ["tai chi", "Pickleball"] })).toBe("tai chi, Pickleball");
+    expect(recreationSentence({ activityLevel: "High" })).toBe("High");
+    expect(recreationSentence({})).toBe("Not recorded yet");
+    expect(recreationSentence({ recreationActivities: ["  "] })).toBe("Not recorded yet");
+  });
+});
+
+describe("OCCUPATION_SUGGESTIONS", () => {
+  it("offers every old title but the two that were a retirement status", () => {
+    expect(OCCUPATION_SUGGESTIONS).toContain("Teacher / Educator");
+    expect(OCCUPATION_SUGGESTIONS.some((t) => t.startsWith("Retired ("))).toBe(false);
+    expect(OCCUPATION_SUGGESTIONS).toHaveLength(OCCUPATIONS.length - 2);
   });
 });

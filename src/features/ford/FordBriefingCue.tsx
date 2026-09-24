@@ -20,7 +20,10 @@
  *   3. Failing that, a prompt from the emptiest pillar — a question to ASK,
  *      which is how the record gets filled in the first place. Rotated by day
  *      so the studio's trainers are not all asking about the dog on the same
- *      Tuesday.
+ *      Tuesday, and aware of retirement (client codex, Sep 2026): a retired
+ *      client is never asked "How is work treating you?", a working one never
+ *      how retirement is going (`FORD_PROMPT_WHEN`). Nothing else about the
+ *      row changed.
  *
  * WHAT A TAP DOES (audit action item C)
  *   The row used to be read-only and told the trainer to "catch the answer
@@ -50,6 +53,7 @@ import { FordMark, WhenChip, pillarPrompt } from "./ui";
 import { FordQuickCapture } from "./FordQuickCapture";
 import { fordStudioIdOf, type FordAuthor } from "./ford-write";
 import { clientFirstName } from "../../lib/client-name";
+import { isRetiredClient } from "../client-life/life";
 import "./ford.css";
 
 export interface FordBriefingCueProps {
@@ -147,7 +151,9 @@ export function FordBriefingCue({ client, author = null, studioId = "" }: FordBr
           <MessageCircle size={15} strokeWidth={2.5} />
         </span>
         <span className="ford-upnext__body">
-          <span className="ford-upnext__text">“{pillarPrompt(cue.pillar)}”</span>
+          <span className="ford-upnext__text">
+            “{pillarPrompt(cue.pillar, undefined, { retired: isRetiredClient(client) })}”
+          </span>
           <span className="ford-upnext__meta">
             {canCapture
               ? `Nothing on file under ${FORD_META[cue.pillar].label} yet — tap to note the answer`

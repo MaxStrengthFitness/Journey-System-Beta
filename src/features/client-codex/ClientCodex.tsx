@@ -57,14 +57,14 @@ import {
 } from "../client-profile/profile-nav";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
 import { CriticalLine } from "../client-notes/CriticalLine";
-import { fordDoorCount } from "../client-notes/record-selectors";
+import { comingUp } from "../ford/coming-up";
 import { notesIntentOf } from "../client-notes/notes-intent";
 import { SaveBar } from "./kit";
 import { readOnlyLine } from "./access";
 import { useCodexData } from "./useCodexData";
 import { useRecordForm } from "./useRecordForm";
 import { subnavItems } from "./page-meta";
-import type { CodexHosts, CodexPageProps, SessionTotals } from "./codex-data";
+import { fordCountOf, type CodexHosts, type CodexPageProps, type SessionTotals } from "./codex-data";
 import { OverviewPage } from "./pages/OverviewPage";
 import { NotesPage } from "./pages/NotesPage";
 import { FordPage } from "./pages/FordPage";
@@ -182,19 +182,22 @@ export function ClientCodex({
     [go],
   );
 
-  const items = useMemo(
-    () =>
-      subnavItems({
-        client,
-        notes: { state: notes.state, summary: notes.summary },
-        focuses: { state: journal.loadState?.focuses ?? "loading", running: data.focusesRunning },
-        ford: {
-          status: data.fordStatus,
-          count: fordDoorCount({ readable: access.fordReadable, ford: data.ford, client }),
-        },
-      }),
-    [client, notes, journal.loadState, data.focusesRunning, data.fordStatus, data.ford, access.fordReadable],
-  );
+  const items = useMemo(() => {
+    const ready = data.fordStatus === "ready";
+    return subnavItems({
+      client,
+      notes: { state: notes.state, summary: notes.summary },
+      focuses: { state: journal.loadState?.focuses ?? "loading", running: data.focusesRunning },
+      ford: {
+        status: data.fordStatus,
+        // Everything the FORD page shows: its details and the older life notes.
+        count: fordCountOf({ readable: access.fordReadable, ford: data.ford, client }, notes),
+        // Once FORD answered: the soonest date and the tray, for FORD's own line.
+        comingUp: ready ? comingUp({ dateOfBirth: client.dateOfBirth, entries: data.ford.entries, todayKey: data.today }) : [],
+        untagged: ready ? data.ford.untagged.length : 0,
+      },
+    });
+  }, [client, notes, journal.loadState, data.focusesRunning, data.fordStatus, data.ford, data.today, access.fordReadable]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

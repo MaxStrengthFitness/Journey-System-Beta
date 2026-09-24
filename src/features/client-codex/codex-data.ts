@@ -23,7 +23,7 @@ import type { FordReadStatus } from "../ford/read-status";
 import type { FordAuthor } from "../ford/ford-write";
 import type { InBodyScansState } from "../inbody/useInBodyScans";
 import type { NoteDismissalsState } from "../client-notes/dismissal-store";
-import { notesOnRecord, notesSummary, type NotesOnRecord, type NotesSummary } from "../client-notes/record-selectors";
+import { fordDoorCount, notesOnRecord, notesSummary, type NotesOnRecord, type NotesSummary } from "../client-notes/record-selectors";
 import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
 import { priorHistoryOf, priorUncounted, totalSessions, type HistoryCoverage } from "../../lib/prior-history";
@@ -105,15 +105,48 @@ export interface CodexNotes {
  * The notes as every page counts them, from the one journal load. A journal
  * that does not say what it could read is read as "loading" — unknown, never
  * "none yet".
+ *
+ * Settled life notes — the journal's FORD / Life notes that are standing or
+ * resolved — are FORD's to show since the FORD page (client codex, phase 10),
+ * in their pillar, "from an older note". So they leave Notes' zones and its
+ * counts (`lifeOnFord`), and `record.lifeSettled` is what the FORD page draws.
+ * A LIVE life note (a Heads up, a coming date) stays on Notes.
  */
 export function notesOfJournal(
   journal: Pick<UseClientJournalResult, "threads" | "criticalEntries" | "loadState">,
   today: string,
 ): CodexNotes {
   const state: JournalLoad = journal.loadState?.notes ?? "loading";
-  const record = notesOnRecord(journal.threads ?? [], today);
+  const record = notesOnRecord(journal.threads ?? [], today, { lifeOnFord: true });
   const summary = state === "ready" ? notesSummary(record, journal.criticalEntries, today) : null;
   return { state, record, summary };
+}
+
+/**
+ * How many older life notes the FORD page shows, for the counts that name
+ * everything FORD holds (the Notes door, the sub-toggle). Null while the
+ * journal loads — unknown, never 0. When the journal could not be read the
+ * FORD page cannot show them either and says so, so they count as none: the
+ * number is then FORD's own details, which is what the page draws.
+ */
+export function olderLifeCountOf(notes: Pick<CodexNotes, "state" | "record">): number | null {
+  if (notes.state === "loading") return null;
+  return notes.state === "ready" ? notes.record.lifeSettled.length : 0;
+}
+
+/**
+ * Everything the FORD page shows, as the counts that name it read it (the
+ * Notes door, the sub-toggle): `fordDoorCount` with the older life notes.
+ * When the journal could not be read the number is FORD's own details —
+ * what the page draws — but a 0 then is not "nothing on file": the older
+ * notes are unknown, and the page says it couldn't load them. So it is null.
+ */
+export function fordCountOf(
+  args: Omit<Parameters<typeof fordDoorCount>[0], "olderLifeCount">,
+  notes: Pick<CodexNotes, "state" | "record">,
+): number | null {
+  const n = fordDoorCount({ ...args, olderLifeCount: olderLifeCountOf(notes) });
+  return notes.state === "failed" && n === 0 ? null : n;
 }
 
 /** Focuses the journal holds that are still running. Null until they are read. */

@@ -90,7 +90,7 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **Sync (header) on a real Mindbody client.** The toast says how many fields refreshed; Who they are shows address, waiver, status, "In Mindbody since". Name and contact are read-only. Try a client with no Mindbody id — the button is disabled and says why.
 - [ ] **Nickname:** set one, Save, and check the header, the briefing, the session bar and the post-session screen.
 - [ ] **Body:** search "stent", toggle Knee limitation, Save. The banner, the briefing, the Activity Archive strip and Programming's leg press row all show it.
-- [ ] **Life:** a Teacher lands on "On their feet"; toggle Retired and the previous work stays in the sentence; step protocol mastery up and Save — the trail is dated.
+- [ ] **FORD** (Notes & Profile → FORD), signed in as a Life Transformer, not an administrator: Coming up leads with the Mindbody birthday ("Her 69th birthday · In 17 days · Family · from Mindbody"); tap it and the dialog opens as an annual Family "Birthday" with the gesture open. A capture in To file files with one of the four labelled buttons. On Occupation tap Edit: a Teacher lands on "On their feet"; type a job title that is not on the list and it stays; pick Retired — the band says "Not saved yet", Ask next turns to "How is retirement going?", and the Save bar says "FORD · Occupation"; Save. An old "Anniversary" note from the journal sits in Family, "From an older note", and is no longer on Notes. Idea → "I'll do it" puts your name on it; "Mark done" asks what happened. A cross-train trainer sees the notice that FORD is kept by the home studio, the older notes, and no Add. **Body & Pulse → Training story:** step protocol mastery up and Save — the trail is dated.
 - [ ] **Goals:** tick SMART boxes, Mark achieved with a reward, and see it in the history. **Focus:** two active focuses at once; Achieved with a reward; check in on one — the note carries the focus.
 - [ ] **Notes:** tap "Write a note…" to open the composer; tap a category chip to isolate it (a critical note it hides shows as the red line, "Show it" brings it back); write an injury with a machine; type a sentence, then FORD / Life — the same words stay and "Save to FORD" saves it to FORD, not the notes. Open a Standing row in place; "Show the N resolved notes". Signed in as a trainer from another studio, neither the page nor the header's Note dialog offers "Save to FORD". Medical history does not appear twice.
 - [ ] **Assessment:** change a score, add "why?", reload — the change and the note are in the history log.
@@ -633,8 +633,8 @@ no queue, no switches, no New machine)
   still open**. **Take it**: the row shows your name and "Planned". **Hand
   it to…** lists this studio's people only; pick one: their name. **Done**
   asks what happened; the sentence shows on the row once "Show what is done"
-  is on, and on the client's Life section. **Pass** removes it from the
-  list.
+  is on, and on the client's FORD page (Notes & Profile → FORD). **Pass**
+  removes it from the list.
 
 **The fix pile**
 

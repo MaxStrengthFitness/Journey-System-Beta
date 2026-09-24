@@ -27,8 +27,8 @@ New code goes here.
 | `clinical-review/` | Profile, Activity Archive: Trends (the Kaizen Deep Dive) | `facts.ts` |
 | `progress-report/` | The Client Progress Report, the five-step conversation | `README.md` |
 | `client-notes/` | The client notes catalog, category chips and the To-file tray (NOT a trainer's private notes; those are `relay/notes/`) | `note-catalog.ts` |
-| `ford/` | FORD: the Life section of the record, mid-session capture, the post-session sweep, the Delight queue | `README.md` |
-| `client-life/` | The Life baseline block inside the record | `life.ts` |
+| `ford/` | FORD: the client's FORD page (Notes & Profile → FORD), mid-session capture, the post-session sweep, the Delight queue | `README.md` |
+| `client-life/` | The life editors: Work and Recreation on the FORD page's bands, Experience on Body & Pulse | `life.ts` |
 | `goals/` | The Goals section of the record: the original why, goals, focus | `goals.ts` |
 | `clinical-flags/` | The Body section's watch-out banner and the condition picker | `BodyWatchOuts.tsx` |
 | `client-admin/` | The record's Admin section: the contract panel and the tier lock | `contract.ts` |

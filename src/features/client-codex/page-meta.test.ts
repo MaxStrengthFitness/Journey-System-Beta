@@ -3,6 +3,7 @@ import type { Client } from "../../types";
 import type { NotesSummary } from "../client-notes/record-selectors";
 import { RECORD_PAGE_IDS } from "../client-profile/profile-nav";
 import { subnavItems, type PageMetaInput } from "./page-meta";
+import { comingUp } from "../ford/coming-up";
 
 const summary = (over: Partial<NotesSummary> = {}): NotesSummary => ({
   open: 0,
@@ -68,11 +69,31 @@ describe("subnavItems", () => {
       expect(item(subnavItems(input({ ford: { status: "loading", count: 4 } })), "ford").meta).toBe("4 details");
     });
 
-    it("never says 'nothing yet' before FORD has answered", () => {
-      expect(item(subnavItems(input({ ford: { status: "ready", count: 0 } })), "ford").meta).toBe("nothing yet");
+    it("never says 'nothing on file yet' before FORD has answered", () => {
+      expect(item(subnavItems(input({ ford: { status: "ready", count: 0 } })), "ford").meta).toBe("nothing on file yet");
+      // Answered, but the older life notes it also shows are still loading.
+      expect(item(subnavItems(input({ ford: { status: "ready", count: null } })), "ford").meta).toBe("loading");
       expect(item(subnavItems(input({ ford: { status: "loading", count: 0 } })), "ford").meta).toBe("loading");
       expect(item(subnavItems(input({ ford: { status: "loading", count: null } })), "ford").meta).toBe("loading");
       expect(item(subnavItems(input({ ford: { status: "failed", count: 3 } })), "ford").meta).toBe("couldn't load");
+    });
+
+    it("says couldn't load, never 'nothing on file yet', when the journal's notes failed", () => {
+      const failed = { state: "failed" as const, summary: null };
+      // fordCountOf is null when FORD is empty and the older notes are unknown.
+      expect(item(subnavItems(input({ notes: failed, ford: { status: "ready", count: null } })), "ford").meta).toBe("couldn't load");
+      // FORD's own details are still true, and still counted.
+      expect(item(subnavItems(input({ notes: failed, ford: { status: "ready", count: 3 } })), "ford").meta).toBe("3 details");
+    });
+
+    it("names a birthday within a month, then what waits to be filed (FORD's own line)", () => {
+      const soon = comingUp({ dateOfBirth: "1958-04-02", entries: [], todayKey: "2027-03-16" });
+      expect(item(subnavItems(input({ ford: { status: "ready", count: 6, comingUp: soon, untagged: 1 } })), "ford").meta).toBe(
+        "birthday in 17 days",
+      );
+      expect(item(subnavItems(input({ ford: { status: "ready", count: 6, comingUp: [], untagged: 2 } })), "ford").meta).toBe("2 to file");
+      // Not while it loads: the birthday is known, but what else is coming up is not.
+      expect(item(subnavItems(input({ ford: { status: "loading", count: 6, comingUp: soon } })), "ford").meta).toBe("6 details");
     });
 
     it("never draws a dot, so it can never be coloured by a pillar", () => {

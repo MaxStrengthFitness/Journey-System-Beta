@@ -6,8 +6,9 @@
  * area's page). Everything Notes shows is the tab's ONE load — the journal,
  * its note selection (`data.notes`), this trainer's dismissals — so the page
  * opens no listener of its own. The FORD door's number is the same
- * `fordDoorCount` the sub-toggle's FORD segment reads (counts, never FORD's
- * text), and FORD / Life saves in place only for a reader who may change this
+ * `fordCountOf` the sub-toggle's FORD segment reads (counts, never FORD's
+ * text) — FORD's details and the older life notes that moved there from here
+ * (phase 10) — and FORD / Life saves in place only for a reader who may change this
  * client's record (`access.canEdit`): the FORD create rule wants a trainer of
  * the client's studio, so a cross-train visitor is told where FORD is kept.
  *
@@ -17,10 +18,9 @@
 import { useMemo } from "react";
 import { NotesPage as NotesArea } from "../../client-notes/NotesPage";
 import type { NotesIntent } from "../../client-notes/notes-intent";
-import { fordDoorCount } from "../../client-notes/record-selectors";
 import { fordStudioIdOf } from "../../ford/ford-write";
 import { Page } from "../kit";
-import type { CodexPageProps } from "../codex-data";
+import { fordCountOf, type CodexPageProps } from "../codex-data";
 
 export function NotesPage({
   data,
@@ -32,8 +32,8 @@ export function NotesPage({
 }) {
   const { client, access, journal, notes, dismissals, machines, author, today, coverage, pronouns, ford } = data;
   const doorCount = useMemo(
-    () => fordDoorCount({ readable: access.fordReadable, ford, client }),
-    [access.fordReadable, ford, client],
+    () => fordCountOf({ readable: access.fordReadable, ford, client }, notes),
+    [access.fordReadable, ford, client, notes],
   );
   // `author.id` is the Auth uid (the rules pin it); no one signed in → read only.
   const writer = author.id ? author : null;

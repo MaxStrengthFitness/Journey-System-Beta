@@ -148,9 +148,9 @@ export function DelightQueue({
       <div className="ford-queue">
         {toolbar}
         <p className="ford-empty">
-          Nothing on the list yet. A detail becomes a gesture from a client’s
-          <strong> Life</strong> section — tap the gift on any detail and say what
-          you would do about it.
+          Nothing on the list yet. A detail becomes a gesture on a client’s
+          <strong> FORD</strong> page: Add an idea under Going above and beyond,
+          or open a detail and choose Do something about it.
         </p>
       </div>
     );

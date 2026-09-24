@@ -6,7 +6,9 @@ import { assembleThreads } from "../client-notes/threads";
 import {
   PULSE_READ_LIMIT,
   codexFordStatus,
+  fordCountOf,
   notesOfJournal,
+  olderLifeCountOf,
   pulseFromReports,
   runningFocuses,
   sessionTotalsOf,
@@ -125,6 +127,55 @@ describe("notesOfJournal", () => {
     const silent = notesOfJournal(journalOf(entries, undefined), TODAY);
     expect(silent.state).toBe("loading");
     expect(silent.summary).toBeNull();
+  });
+
+  it("hands settled life notes to the FORD page: off Notes' zones and counts, a live one stays", () => {
+    const ready = { notes: "ready", focuses: "ready", sessions: "ready" } as const;
+    const standing = entry({ kind: "life", category: "Anniversary", body: "Anniversary is Oct 12." });
+    const live = entry({ kind: "life", category: "Vacation", body: "Away in Maine", importance: "elevated" });
+    const n = notesOfJournal(journalOf([...entries, standing, live], ready), TODAY);
+    expect(n.record.lifeSettled.map((t) => t.id)).toEqual([standing.id]);
+    expect(n.record.listed.map((t) => t.id)).not.toContain(standing.id);
+    expect(n.record.listed.map((t) => t.id)).toContain(live.id);
+    expect(n.summary?.total).toBe(3);
+  });
+});
+
+describe("olderLifeCountOf", () => {
+  const life = entry({ kind: "life", category: "Birthday", body: "Grandson's birthday is May 9." });
+
+  it("counts the settled life notes once the journal answered", () => {
+    const n = notesOfJournal(journalOf([life], { notes: "ready", focuses: "ready", sessions: "ready" }), TODAY);
+    expect(olderLifeCountOf(n)).toBe(1);
+  });
+
+  it("is unknown while the journal loads, and none when it failed (the FORD page cannot show them either)", () => {
+    expect(olderLifeCountOf(notesOfJournal(journalOf([life], undefined), TODAY))).toBeNull();
+    expect(olderLifeCountOf(notesOfJournal(journalOf([life], { notes: "failed", focuses: "ready", sessions: "ready" }), TODAY))).toBe(0);
+  });
+});
+
+describe("fordCountOf", () => {
+  const life = entry({ kind: "life", category: "Birthday", body: "Grandson's birthday is May 9." });
+  const fordOf = (n: number) => ({
+    status: "ready" as const,
+    entries: Array.from({ length: n }, () => ({ isArchived: false })),
+  });
+
+  it("is FORD's details and the older life notes together", () => {
+    const n = notesOfJournal(journalOf([life], { notes: "ready", focuses: "ready", sessions: "ready" }), TODAY);
+    expect(fordCountOf({ readable: true, ford: fordOf(2), client: null }, n)).toBe(3);
+  });
+
+  it("is unknown, never 0, when the journal failed and FORD holds nothing", () => {
+    const failed = notesOfJournal(journalOf([life], { notes: "failed", focuses: "ready", sessions: "ready" }), TODAY);
+    expect(fordCountOf({ readable: true, ford: fordOf(0), client: null }, failed)).toBeNull();
+    // FORD's own details are still true when the older notes are unknown.
+    expect(fordCountOf({ readable: true, ford: fordOf(2), client: null }, failed)).toBe(2);
+  });
+
+  it("is unknown while the journal loads", () => {
+    expect(fordCountOf({ readable: true, ford: fordOf(2), client: null }, notesOfJournal(journalOf([life], undefined), TODAY))).toBeNull();
   });
 });
 

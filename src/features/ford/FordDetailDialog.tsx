@@ -6,9 +6,15 @@
  * that matters, a pillar is a nicety, and a date or a gesture is a bonus. A
  * form that demanded all four would be filled in once and then avoided.
  *
- * Reached from the Life section (add, or tap a detail) and from the teardown
- * sweep (when a capture needs more than a one-tap filing). Never from the
- * tracker mid-set — that is what FordQuickCapture is for.
+ * Reached from the FORD page of Notes & Profile (Remember something, a
+ * pillar's Add, a detail, the birthday in Coming up, Add an idea) and from
+ * the teardown sweep (when a capture needs more than a one-tap filing).
+ * Never from the tracker mid-set — that is what FordQuickCapture is for.
+ *
+ * A SAVE THAT FAILS KEEPS THE SENTENCE (client codex, Sep 2026). `onSave`
+ * may answer `false`; the dialog then stays open with every field as typed
+ * and says so. It used to close whatever happened, and the page ignored a
+ * failed create, so a refused save lost the sentence without a word.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -36,8 +42,18 @@ export interface FordDetailDialogProps {
   clientFirstName: string;
   author: FordAuthor;
   onClose: () => void;
-  onSave: (values: FordDetailValues) => Promise<void> | void;
+  /**
+   * Save the detail. Answer `false` when it did not save: the dialog stays
+   * open, keeps every field, and says "Not saved — still here, try again".
+   */
+  onSave: (values: FordDetailValues) => Promise<boolean | void> | boolean | void;
   onArchive?: (entry: FordEntry) => Promise<void> | void;
+  /** Seeds a NEW detail — the birthday in Coming up opens one already filled in. */
+  initial?: Partial<FordDetailValues>;
+  /** A new detail opens with "Do something about it" already showing (Add an idea). */
+  openGesture?: boolean;
+  /** The example in the empty box. */
+  bodyPlaceholder?: string;
 }
 
 export interface FordDetailValues {
@@ -77,6 +93,9 @@ export function FordDetailDialog({
   onClose,
   onSave,
   onArchive,
+  initial,
+  openGesture = false,
+  bodyPlaceholder,
 }: FordDetailDialogProps) {
   const [pillar, setPillar] = useState<FordPillar | null>(defaultPillar);
   const [body, setBody] = useState("");
@@ -90,23 +109,27 @@ export function FordDetailDialog({
   const [outcome, setOutcome] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   // Re-seed every time the dialog opens on a different detail. Keyed on
   // entry?.id rather than `entry` so a live snapshot update while the dialog
   // is open does not wipe what the trainer is halfway through typing.
   useEffect(() => {
     if (!open) return;
-    setPillar(entry?.pillar ?? defaultPillar ?? null);
-    setBody(entry?.body ?? "");
-    setSubject(entry?.subject ?? "");
-    setIsPinned(entry?.isPinned ?? false);
-    setDateValue(toInputDate(entry?.eventDate));
-    setRecurrence(entry?.recurrence ?? "none");
-    setIdea(entry?.opportunity?.idea ?? "");
-    setStatus(entry?.opportunity?.status ?? "idea");
-    setOutcome(entry?.opportunity?.outcome ?? "");
-    setShowGesture(Boolean(entry?.opportunity));
+    // An existing detail is seeded from itself; a new one from `initial`.
+    const seed = entry ?? initial ?? null;
+    setPillar(entry?.pillar ?? initial?.pillar ?? defaultPillar ?? null);
+    setBody(seed?.body ?? "");
+    setSubject(seed?.subject ?? "");
+    setIsPinned(seed?.isPinned ?? false);
+    setDateValue(toInputDate(seed?.eventDate));
+    setRecurrence(seed?.recurrence ?? "none");
+    setIdea(seed?.opportunity?.idea ?? "");
+    setStatus(seed?.opportunity?.status ?? "idea");
+    setOutcome(seed?.opportunity?.outcome ?? "");
+    setShowGesture(Boolean(seed?.opportunity) || (!entry && openGesture));
     setConfirmArchive(false);
+    setFailed(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry?.id]);
 
@@ -116,11 +139,23 @@ export function FordDetailDialog({
 
   const opportunity = useMemo<FordOpportunity | null>(() => {
     if (!showGesture || !idea.trim()) return null;
+    // Ownership is a name someone takes, never one handed out (README → The
+    // gesture). An idea stays unowned until someone says "I'll do it" — the
+    // Delight queue's "Needs an owner" depends on it. A gesture that already
+    // has an owner keeps them; one moved to Planned or Done with nobody on it
+    // is owned by whoever moved it.
+    const existingId = entry?.opportunity?.ownerTrainerId ?? null;
+    const takes = status === "planned" || status === "done";
+    const owner = existingId
+      ? { id: existingId, name: entry?.opportunity?.ownerName ?? null }
+      : takes
+        ? { id: author.id, name: author.fullName }
+        : { id: null, name: null };
     return {
       idea: idea.trim(),
       status,
-      ownerTrainerId: entry?.opportunity?.ownerTrainerId ?? author.id,
-      ownerName: entry?.opportunity?.ownerName ?? author.fullName,
+      ownerTrainerId: owner.id,
+      ownerName: owner.name,
       plannedFor: entry?.opportunity?.plannedFor ?? null,
       doneAt: status === "done" ? (entry?.opportunity?.doneAt ?? new Date()) : null,
       outcome: outcome.trim() || null,
@@ -130,8 +165,10 @@ export function FordDetailDialog({
   const submit = async () => {
     if (!canSave) return;
     setSaving(true);
+    setFailed(false);
+    let saved = false;
     try {
-      await onSave({
+      const result = await onSave({
         pillar,
         body: body.trim(),
         subject: subject.trim() || null,
@@ -140,10 +177,14 @@ export function FordDetailDialog({
         recurrence: dateValue ? recurrence : "none",
         opportunity,
       });
-      onClose();
+      saved = result !== false;
+    } catch {
+      saved = false;
     } finally {
       setSaving(false);
     }
+    if (saved) onClose();
+    else setFailed(true);
   };
 
   return (
@@ -152,7 +193,7 @@ export function FordDetailDialog({
         <div className="ford-capture p-4">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-extrabold text-[var(--ford-ink)]">
+              <h2 className="text-[17px] font-extrabold text-[var(--ford-ink)]">
                 {isNew ? `Something about ${clientFirstName}` : "This detail"}
               </h2>
               <p className="text-xs text-[var(--ford-ink-muted)]">
@@ -175,7 +216,7 @@ export function FordDetailDialog({
             className="ford-capture__field"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={`e.g. "Anniversary is 5 Nov — 40th, always at Giovanni's"`}
+            placeholder={bodyPlaceholder ?? `e.g. "Anniversary is 5 Nov — 40th, always at Giovanni's"`}
             disabled={readOnly}
             autoFocus={isNew}
           />
@@ -324,6 +365,12 @@ export function FordDetailDialog({
               ) : null}
             </div>
           )}
+
+          {failed ? (
+            <p className="ford-capture__hint" role="alert">
+              Not saved — still here, try again.
+            </p>
+          ) : null}
 
           {/* ---- actions ---- */}
           <div className="ford-capture__actions pt-1">
