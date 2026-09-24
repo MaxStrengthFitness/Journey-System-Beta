@@ -262,7 +262,7 @@ A fixed, sticky column immediately right of the machine names. **Every row shows
 |---|---|---|
 | **First** weight | earliest set on record | — |
 | **Lowest** weight | lowest load ever | earliest — when the floor was set |
-| **Highest** weight | heaviest load ever | latest — is the ceiling still current? |
+| **Highest** weight | heaviest load ever | more reps at that load (AJ, Sep 23 2026: 76 × 10 beats a later 76 × 9); then latest — is the ceiling still current? |
 | **Most** reps | best rep count in a set | latest, at whatever load it happened |
 | **Fewest** reps | lowest rep count in a set | latest — the most recent struggle is the useful one |
 

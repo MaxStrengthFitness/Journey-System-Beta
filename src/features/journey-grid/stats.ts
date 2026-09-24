@@ -55,7 +55,11 @@ export type RowStats = Record<StatMetric, StatHit | null>;
  *
  * Tie-breaking is intentional:
  *  - low       → the EARLIEST time they were at that weight (when the floor was set)
- *  - high      → the LATEST time they hit the max (is the ceiling still current?)
+ *  - high      → the heaviest load; at the same load, the set with MORE reps
+ *                (76 lb x 10 beats a later 76 lb x 9: it is the better set);
+ *                at the same load and reps, the LATEST (is the ceiling still
+ *                current?). A timed static contraction has no count, so at
+ *                equal load it ranks below a counted set.
  *  - mostReps  → the LATEST tie, at whatever weight it happened
  *  - fewestReps→ the LATEST tie — the most recent struggle is the useful one
  * Timed static contractions have no rep count, so they are skipped by the two
@@ -70,13 +74,28 @@ export function computeRowStats(row: JourneyRow, history: JourneySession[]): Row
     const hit: StatHit = { set, session };
     if (!out.first) out.first = hit;
     if (!out.low || set.weight < out.low.set.weight) out.low = hit;
-    if (!out.high || set.weight >= out.high.set.weight) out.high = hit;
+    if (!out.high || beatsHigh(set, out.high.set)) out.high = hit;
     if (!set.isTSC && typeof set.reps === "number") {
       if (!out.mostReps || set.reps >= out.mostReps.set.reps!) out.mostReps = hit;
       if (!out.fewestReps || set.reps <= out.fewestReps.set.reps!) out.fewestReps = hit;
     }
   }
   return out;
+}
+
+/** A counted set's reps, or -1 for a timed static contraction / no count. */
+function countedReps(set: JourneySet): number {
+  return !set.isTSC && typeof set.reps === "number" ? set.reps : -1;
+}
+
+/**
+ * Does `set` (later in the history) take "Highest weight" from `best`?
+ * Heavier wins; at the same load more reps wins; a full tie goes to the
+ * later set, which is the one being walked now.
+ */
+function beatsHigh(set: JourneySet, best: JourneySet): boolean {
+  if (set.weight !== best.weight) return set.weight > best.weight;
+  return countedReps(set) >= countedReps(best);
 }
 
 /** "40 → 66 lb (+65%)" — the machine cell's readout. */

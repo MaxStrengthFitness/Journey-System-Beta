@@ -72,3 +72,51 @@ describe("the row's numbers read performed sets only", () => {
     expect(row.sets.s5.outcome).toBe("not_reached");
   });
 });
+
+describe("Highest weight: heaviest, then more reps, then most recent", () => {
+  const days = toJourneySessions([
+    { id: "a", sessionNumber: 1, date: "2026-08-30", trainerInitials: "aj" },
+    { id: "b", sessionNumber: 2, date: "2026-09-06", trainerInitials: "aj" },
+    { id: "c", sessionNumber: 3, date: "2026-09-13", trainerInitials: "aj" },
+    { id: "d", sessionNumber: 4, date: "2026-09-20", trainerInitials: "aj" },
+  ]);
+  type L = { sessionId: string; weight: string; reps: string; outcome?: "practice" };
+  const highOf = (ls: L[]) => {
+    const [r] = toJourneyRows([{ id: "hab", name: "Hip Abduction" }], ls.map((l) => ({ ...l, machineId: "hab" })), {});
+    return computeRowStats(r, days).high;
+  };
+
+  it("keeps 76 lb x 10 (Sep 6) over a later 76 lb x 9 (Sep 20)", () => {
+    const high = highOf([
+      { sessionId: "a", weight: "72", reps: "11" },
+      { sessionId: "b", weight: "76", reps: "10" },
+      { sessionId: "d", weight: "76", reps: "9" },
+    ]);
+    expect(high?.session.id).toBe("b");
+    expect(high?.set.reps).toBe(10);
+  });
+
+  it("a heavier load wins whatever the reps", () => {
+    const high = highOf([
+      { sessionId: "b", weight: "76", reps: "12" },
+      { sessionId: "c", weight: "78", reps: "6" },
+    ]);
+    expect(high?.session.id).toBe("c");
+  });
+
+  it("at the same load and reps, the most recent", () => {
+    const high = highOf([
+      { sessionId: "b", weight: "76", reps: "10" },
+      { sessionId: "d", weight: "76", reps: "10" },
+    ]);
+    expect(high?.session.id).toBe("d");
+  });
+
+  it("only performed sets count: a heavier practice set never wins", () => {
+    const high = highOf([
+      { sessionId: "b", weight: "76", reps: "10" },
+      { sessionId: "d", weight: "90", reps: "12", outcome: "practice" },
+    ]);
+    expect(high?.session.id).toBe("b");
+  });
+});
