@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "../../lib/utils";
-import { CLIENT_ACTION_LABEL, type ClientTaskAction } from "./types";
+import { CLIENT_ACTION_LABEL, clientActionInSentence, type ClientTaskAction } from "./types";
 import type { InitiativeTarget } from "./initiatives";
 
 /** The actions an initiative can be about. Mirrors ClientTaskAction. */
@@ -231,7 +231,7 @@ export function PostInitiativeDialog({
                 <strong className="text-ink-d1 tabular">
                   {rosterSize * perTrainer}
                 </strong>{" "}
-                {CLIENT_ACTION_LABEL[action].toLowerCase()}s across{" "}
+                {clientActionInSentence(action)}s across{" "}
                 {rosterSize} trainer{rosterSize === 1 ? "" : "s"}.
               </>
             ) : rosterSize > 0 ? (

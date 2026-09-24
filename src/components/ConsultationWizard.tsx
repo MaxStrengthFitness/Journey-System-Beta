@@ -1,3 +1,13 @@
+/**
+ * The Initial Consultation — NOT MOUNTED since Sep 24 2026.
+ *
+ * Its only door was the Relay client task "Assessment", which is the Pulse
+ * task now and opens the client's Pulse instead (AppContent's
+ * openClientTask). The route and the lazy import went with it. The file stays
+ * for the consultation redesign, which will replace it; its ghost defaults
+ * (every client a man of 40) were removed the same day, so nothing it would
+ * save is invented. The tracker's First-Time Setup is ConsultationSetupWizard.
+ */
 import { useState, useEffect } from "react";
 import {
   Gender,

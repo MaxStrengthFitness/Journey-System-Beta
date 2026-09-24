@@ -140,12 +140,6 @@ const WorkoutTrackerView = lazy(() =>
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ConsultationWizard = lazy(() =>
-  import("./components/ConsultationWizard").then((m) => ({
-    default: m.ConsultationWizard,
-  })),
-);
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
 const AdminDashboardView = lazy(() =>
   import("./features/admin/AdminDashboardView").then((m) => ({
     default: m.AdminDashboardView,
@@ -178,6 +172,8 @@ import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
+// The module, not the barrel: a pure function, for the Pulse task's deep link.
+import { openProfileAt } from "./features/client-profile/profile-nav";
 import { NAME_SEARCH_PROPS } from "./lib/name-search-input";
 /**
  * My Studio (My Studio round, Sep 2026; Relay before that, the Planner and
@@ -1567,22 +1563,6 @@ export default function AppContent({
           >
             <Suspense fallback={<ViewLoader />}>
               <AnimatePresence mode="wait">
-                {currentView === "consultation-wizard" && selectedClientId && (
-                  <ConsultationWizard
-                    client={
-                      clients.find((c) => c.id === selectedClientId) ||
-                      ({} as Client)
-                    }
-                    machines={machines}
-                    authTrainer={authTrainer}
-                    trainers={trainers}
-                    onComplete={(id) => {
-                      setSelectedClientId(id);
-                      setCurrentView("profile");
-                    }}
-                    onCancel={() => setCurrentView("profile")}
-                  />
-                )}
                 {currentView === "client-directory" && (
                   <ClientDirectoryView
                     clients={clients}
@@ -1654,6 +1634,9 @@ export default function AppContent({
                     // actually done, rather than being a tick that claims it
                     // happened. 'inbody' has no screen of its own yet, so it
                     // lands on the profile — the closest honest destination.
+                    // 'assessment' is the Pulse task (the key predates the
+                    // name): Notes & Profile → Pulse. It used to open the
+                    // Initial Consultation wizard (Sep 24 2026).
                     const openClientTask = (
                       clientId: string,
                       action?: ClientTaskAction,
@@ -1666,11 +1649,10 @@ export default function AppContent({
                         reportSelection.newReport();
                         return;
                       }
-                      setCurrentView(
-                        action === "assessment"
-                          ? "consultation-wizard"
-                          : "profile",
-                      );
+                      if (action === "assessment") {
+                        openProfileAt(clientId, { tab: "record", section: "reports" });
+                      }
+                      setCurrentView("profile");
                     };
                     return (
                       <MyStudioView

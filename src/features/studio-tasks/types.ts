@@ -447,7 +447,14 @@ export interface TaskRow extends PlannedInstance {
   clientName?: string;
 }
 
-/** What a client task actually opens. */
+/**
+ * What a client task actually opens.
+ *
+ * `assessment` is the Pulse (Sep 24 2026, AJ: "Assessment" meant two things).
+ * It opens the client's Pulse — Notes & Profile → Pulse — where it used to
+ * open the Initial Consultation wizard. The stored key stays `assessment`
+ * so every task already in Firestore still works; only the words changed.
+ */
 export type ClientTaskAction =
   | "inbody"
   | "assessment"
@@ -456,7 +463,12 @@ export type ClientTaskAction =
 
 export const CLIENT_ACTION_LABEL: Record<ClientTaskAction, string> = {
   inbody: "InBody scan",
-  assessment: "Assessment",
+  assessment: "Pulse",
   "progress-report": "Progress report",
   custom: "Something else",
 };
+
+/** The label inside a sentence: lower case, except Pulse, which is a name. */
+export function clientActionInSentence(action: ClientTaskAction): string {
+  return action === "assessment" ? CLIENT_ACTION_LABEL.assessment : CLIENT_ACTION_LABEL[action].toLowerCase();
+}

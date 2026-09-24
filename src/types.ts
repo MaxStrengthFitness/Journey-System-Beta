@@ -1832,7 +1832,6 @@ export type View =
   | "profile"
   | "progress-report"
   | "trainer-profile"
-  | "consultation-wizard"
   | "machine-anatomy"
   /* The MSF Academy, its own tab since the Wiki Redesign (Sep 2026). It used
      to be a pane rendered inside "machine-anatomy". */

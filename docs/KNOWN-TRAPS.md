@@ -184,6 +184,7 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
   - **Note formatting is plain text drawn by `notes/format.ts`** — never store or render HTML, and never use regex lookbehind (older iPadOS Safari throws on parse, which takes the whole bundle down).
   - **Firestore refuses `undefined`.** `saveTaskTemplate` strips it (`withoutUndefined`); a new optional field written from a form needs the same.
 
+- **The client-task action `assessment` IS the Pulse** (Sep 24 2026). AJ retired "Assessment" as a word because it meant two things; the label is "Pulse" (`CLIENT_ACTION_LABEL`) and the task opens the profile at Notes & Profile → Pulse (`openProfileAt(id, { tab: "record", section: "reports" })` in AppContent's `openClientTask`). **The stored key stays `assessment`** — tasks, requests and initiatives already in Firestore carry it. Never rename the key, and never point it back at the Initial Consultation: that route is gone (`ConsultationWizard.tsx` is unmounted, kept for the consultation redesign). In a sentence use `clientActionInSentence()`, which keeps Pulse capitalised.
 
 <a id="rating"></a>
 
