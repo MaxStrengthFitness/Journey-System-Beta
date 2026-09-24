@@ -211,6 +211,13 @@
   background: var(--psub-flag);
   flex: 0 0 auto;
 }
+/* A caution rather than an alarm: plum, the same --eq-warn as the watch-out
+   count in the context line. Only the codex's Body & Pulse segment asks for it
+   (its clinical watch-outs). On the selected segment the rule above wins and
+   the dot is the segment's ink, whichever tone it is. */
+.psub__dot[data-tone="warn"] {
+  background: var(--eq-warn);
+}
 .psub__btn[data-on] .psub__dot {
   background: var(--psub-live-on);
 }
@@ -220,6 +227,77 @@
 @media (max-width: 420px) {
   .psub__label { font-size: 11px; letter-spacing: 0.04em; }
   .psub__meta { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   The wrap variant — the Notes & Profile codex's seven pages (Sep 2026).
+
+   At 744pt portrait a seventh of the bar is ~90px, and "BODY & PULSE" does not
+   fit on one line. The label above clips instead of wrapping, which breaks
+   "names are never truncated", so here a label takes a second line and the
+   row grows to hold it. Grid rows stretch their items, so every segment in
+   the row grows together and they stay equal. On the portrait iPads below the
+   13-inch (744, 820, 834pt) "Body & Pulse" and "Goals & Focus" take two lines
+   and the row is about 75px; in landscape, and on the 13-inch in portrait
+   while the metas are short, nothing wraps and a segment is still 48px. A
+   meta that wraps grows the row too, and it usually lands after the bar has
+   drawn, so keep the codex's metas short. The label keeps the other tabs'
+   look, 12px/900 uppercase.
+
+   EVERY rule in this block is scoped to [data-wrap]. Programming and the
+   Activity Archive do not pass `wrap` and must render exactly as they did —
+   don't move any of this into the base rules above.
+
+   Type stays on the codex scale: 11 / 12 / 14 / 17 / 30.
+   -------------------------------------------------------------------------- */
+.psub-shell[data-wrap] .psub__btn {
+  height: auto;
+  min-height: var(--psub-h);
+  padding: 6px;
+}
+.psub-shell[data-wrap] .psub__label {
+  white-space: normal;
+  text-wrap: balance;
+  overflow: visible;
+  text-align: center;
+  line-height: 1.15;
+  /* A line breaks at a space. Only a single word wider than the whole segment
+     (a phone — no iPad width does it) breaks inside itself: broken, never
+     clipped, and never drawn over the next segment. */
+  overflow-wrap: anywhere;
+}
+.psub-shell[data-wrap] .psub__meta {
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  /* Here the meta is a state ("couldn't load", "3 open · 1 critical"), not a
+     quiet count, so it is drawn in the segment's own ink rather than at the
+     0.72 alpha above (about 2.9:1 on the tray): 5.0:1 on the tray, 6.1:1 in
+     dark, 7.4:1 or better on the selected segment. Weight, size and case keep
+     it quieter than the label. This rule comes after the selected segment's
+     0.86 and has the same weight, so it wins there too. */
+  opacity: 1;
+}
+.psub-shell[data-wrap] .psub-context {
+  font-size: 12px;
+  /* The codex's context line is the read-only sentence, which has to be read:
+     --psub-ink-faint is 4.0:1 on the page, the muted ink 5.1:1. */
+  color: var(--psub-ink-muted);
+}
+@media (max-width: 420px) {
+  /* The codex's meta line says whether the page could be read at all, so it
+     stays on a phone too. The label shrinks with everyone else's above. A
+     phone is not the floor case and this is not a phone layout: at 375px
+     seven equal segments are just under 40px wide, below the floor, and the
+     labels break inside words. A codex that has to work on a phone needs its own
+     layout (two rows, or a bar that scrolls). */
+  .psub-shell[data-wrap] .psub__meta { display: block; }
 }
 
 /* --------------------------------------------------------------------------

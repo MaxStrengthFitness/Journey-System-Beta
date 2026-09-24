@@ -33,6 +33,7 @@ import { StrictMode, act, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ProfileSubnav, type SubnavItem } from "./ProfileSubnav";
 import { useProfileNav } from "./useProfileNav";
+import { RECORD_PAGES } from "./profile-nav";
 import type { ProfileTab, ProgrammingView, RecordPage } from "./profile-nav";
 import type { DossierSection } from "../../types/journal";
 
@@ -267,5 +268,194 @@ describe("ProfileSubnav mounts", () => {
     expect(seen).toEqual(["machines"]);
     expect(machines.getAttribute("aria-selected")).toBe("true");
     await act(async () => root.unmount());
+  });
+
+  it("adds none of the codex's attributes to a bar that does not ask for them", async () => {
+    // Programming and the Activity Archive pass no wrap, no idPrefix and no
+    // flagTone, and every wrap rule in profile-nav.css hangs off one of these
+    // attributes — so their absence is what keeps those two bars as they were.
+    const { host, root } = await mount(<Bar />);
+    expect(host.querySelector(".psub-shell")?.hasAttribute("data-wrap")).toBe(false);
+    for (const btn of host.querySelectorAll(".psub__btn")) {
+      expect(btn.hasAttribute("id")).toBe(false);
+      expect(btn.hasAttribute("aria-controls")).toBe(false);
+    }
+    const dot = host.querySelector(".psub__dot");
+    expect(dot).not.toBeNull();
+    expect(dot?.hasAttribute("data-tone")).toBe(false);
+    await act(async () => root.unmount());
+  });
+});
+
+describe("ProfileSubnav wraps the codex's seven pages", () => {
+  /** What each segment says underneath — the mockup's lines, for a full client. */
+  const META: Record<RecordPage, string> = {
+    overview: "everything",
+    notes: "3 open · 1 critical",
+    ford: "Birthday in 17 days",
+    body: "3 watch-outs",
+    goals: "2 focuses running",
+    story: "since 2019",
+    account: "95 sessions left",
+  };
+
+  /** The real seven, in AJ's order; Notes has a critical note, Body watch-outs. */
+  const pages: SubnavItem<RecordPage>[] = RECORD_PAGES.map((p) => ({
+    id: p.id,
+    label: p.label,
+    meta: META[p.id],
+    flag: p.id === "notes" || p.id === "body",
+    flagTone: p.id === "body" ? "warn" : undefined,
+  }));
+
+  function Codex({ onChange }: { onChange?: (p: RecordPage) => void }) {
+    const [page, setPage] = useState<RecordPage>("overview");
+    return (
+      <div className="cx">
+        <ProfileSubnav
+          label="Notes and profile pages"
+          items={pages}
+          value={page}
+          onChange={(next) => {
+            setPage(next);
+            onChange?.(next);
+          }}
+          wrap
+          idPrefix="cx"
+          context={<span>Read only here · Westlake keeps this record.</span>}
+        />
+      </div>
+    );
+  }
+
+  const selected = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll('[aria-selected="true"]')).map((b) => b.id);
+
+  it("draws all seven in AJ's order, hides none, and marks itself as wrapping", async () => {
+    const { host, root } = await mount(<Codex />);
+    const btns = Array.from(host.querySelectorAll<HTMLButtonElement>(".psub__btn"));
+    expect(btns).toHaveLength(7);
+    expect(btns.every((b) => !b.hidden)).toBe(true);
+    expect(Array.from(host.querySelectorAll(".psub__label")).map((l) => l.textContent)).toEqual(
+      RECORD_PAGES.map((p) => p.label),
+    );
+    // Every meta line is drawn — the codex's say whether a page could be read.
+    expect(Array.from(host.querySelectorAll(".psub__meta")).map((m) => m.textContent)).toEqual(
+      RECORD_PAGES.map((p) => META[p.id]),
+    );
+    expect(host.querySelector(".psub-shell")?.getAttribute("data-wrap")).toBe("true");
+    // Seven equal tracks, not content width.
+    const list = host.querySelector(".psub") as HTMLElement;
+    expect(list.style.getPropertyValue("--psub-n")).toBe("7");
+    expect(list.getAttribute("aria-label")).toBe("Notes and profile pages");
+    expect(selected(host)).toEqual(["cx-tab-overview"]);
+    await act(async () => root.unmount());
+  });
+
+  it("names every segment and points it at its page's panel", async () => {
+    const { host, root } = await mount(<Codex />);
+    const ids = Array.from(host.querySelectorAll(".psub__btn")).map((b) => b.id);
+    expect(ids).toEqual(RECORD_PAGES.map((p) => `cx-tab-${p.id}`));
+    expect(new Set(ids).size).toBe(7);
+    for (const p of RECORD_PAGES) {
+      const btn = host.querySelector(`#cx-tab-${p.id}`);
+      expect(btn?.getAttribute("role")).toBe("tab");
+      expect(btn?.getAttribute("aria-controls")).toBe(`cx-panel-${p.id}`);
+    }
+    await act(async () => root.unmount());
+  });
+
+  it("draws Body & Pulse's dot plum and Notes' in the default crimson", async () => {
+    const { host, root } = await mount(<Codex />);
+    expect(host.querySelector("#cx-tab-body .psub__dot")?.getAttribute("data-tone")).toBe("warn");
+    const notesDot = host.querySelector("#cx-tab-notes .psub__dot");
+    expect(notesDot).not.toBeNull();
+    expect(notesDot?.hasAttribute("data-tone")).toBe(false);
+    expect(host.querySelector("#cx-tab-overview .psub__dot")).toBeNull();
+    // The dot is decoration; the meta line is what a screen reader hears.
+    expect(host.querySelector("#cx-tab-body .psub__dot")?.getAttribute("aria-hidden")).toBe("true");
+    await act(async () => root.unmount());
+  });
+
+  it("changes page on a tap", async () => {
+    const seen: RecordPage[] = [];
+    const { host, root } = await mount(<Codex onChange={(p) => seen.push(p)} />);
+    await act(async () => {
+      (host.querySelector("#cx-tab-goals") as HTMLButtonElement).click();
+    });
+    expect(seen).toEqual(["goals"]);
+    expect(selected(host)).toEqual(["cx-tab-goals"]);
+    await act(async () => root.unmount());
+  });
+
+  it("walks all seven with the arrow keys, round the ends, and moves focus with it", async () => {
+    const { host, root } = await mount(<Codex />);
+    const press = (key: string) =>
+      act(async () => {
+        const on = host.querySelector('[aria-selected="true"]') as HTMLElement;
+        on.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+    await press("ArrowLeft");
+    expect(selected(host)).toEqual(["cx-tab-account"]);
+    expect(document.activeElement?.id).toBe("cx-tab-account");
+    await press("ArrowRight");
+    expect(selected(host)).toEqual(["cx-tab-overview"]);
+    await press("End");
+    expect(selected(host)).toEqual(["cx-tab-account"]);
+    await press("Home");
+    expect(selected(host)).toEqual(["cx-tab-overview"]);
+    await act(async () => root.unmount());
+  });
+
+  it("runs its layout effect with no ResizeObserver at all", async () => {
+    // The codex's bar is the one whose height changes most (a label taking a
+    // second line), so it leans on the observer most — and must still mount
+    // without one. Anything that throws in a layout effect takes the whole
+    // profile to the error boundary.
+    const g = globalThis as { ResizeObserver?: unknown };
+    const had = "ResizeObserver" in g;
+    const saved = g.ResizeObserver;
+    delete g.ResizeObserver;
+    try {
+      const { host, root } = await mount(<Codex />);
+      const shell = host.querySelector(".psub-shell") as HTMLElement;
+      const cx = host.querySelector(".cx") as HTMLElement;
+      expect(shell.style.getPropertyValue("--psub-stick-top")).toBe("0px");
+      // jsdom lays nothing out, so the published height is 0 — but published.
+      expect(cx.style.getPropertyValue("--psub-stuck-h")).toBe("0px");
+      await act(async () => root.unmount());
+      expect(cx.style.getPropertyValue("--psub-stuck-h")).toBe("");
+    } finally {
+      if (had) g.ResizeObserver = saved;
+    }
+  });
+
+  it("observes its own height when it can, and lets go on unmount", async () => {
+    const g = globalThis as { ResizeObserver?: unknown };
+    const had = "ResizeObserver" in g;
+    const saved = g.ResizeObserver;
+    const observed: Element[] = [];
+    let disconnected = 0;
+    g.ResizeObserver = class {
+      observe(el: Element) {
+        observed.push(el);
+      }
+      unobserve() {}
+      disconnect() {
+        disconnected += 1;
+      }
+    };
+    try {
+      const { host, root } = await mount(<Codex />);
+      const shell = host.querySelector(".psub-shell");
+      expect(observed.length).toBeGreaterThan(0);
+      expect(observed.every((el) => el === shell)).toBe(true);
+      await act(async () => root.unmount());
+      // StrictMode mounts the effect twice; every observer it made is released.
+      expect(disconnected).toBe(observed.length);
+    } finally {
+      if (had) g.ResizeObserver = saved;
+      else delete g.ResizeObserver;
+    }
   });
 });

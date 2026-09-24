@@ -289,10 +289,10 @@ answered to onto its new home.
 | --- | --- |
 | `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the per-client resume, and (client codex, Sep 2026) the record's pages, the anchor registry and `SECTION_TO_PAGE`. Pure, tested in `profile-nav.test.ts` |
 | `useProfileNav.ts` | the reducer plus sessionStorage and the default-segment context |
-| `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements |
+| `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements; `wrap`, `idPrefix` and `flagTone` for the codex's seven pages |
 | `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines |
 | `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Trends / Reports, and the clinical strip |
-| `profile-nav.css` | `--psub-*` tokens, the shell, the strip |
+| `profile-nav.css` | `--psub-*` tokens, the shell, the strip, and the wrap variant (scoped to `[data-wrap]`, held there by `profile-nav-css.test.ts`) |
 
 ### 9.2 The rules that are load-bearing
 
@@ -316,6 +316,29 @@ never moves between tabs, and it is sticky. Never size a segment to its text.
 
 **A segment is never hidden.** Routine B on a client with no B reads "OFF",
 and the switch to turn it on lives behind that segment.
+
+**A name is never cut, so seven segments wrap** (client codex, Sep 2026). At
+744pt portrait a seventh of the bar is ~90px and "Body & Pulse" does not fit
+on one line, so the codex passes `wrap`: a label and its meta line may take a
+second line, and the row grows to hold them — every segment in it together, so
+they stay equal and in place. On every portrait iPad below the 13-inch (744,
+820, 834pt) "Body & Pulse" and "Goals & Focus" take two lines and the row is
+about 75px; in landscape, and on the 13-inch in portrait while the meta lines
+are short, the bar is still 48px (a long meta makes it ~52px). In the wrap
+variant the meta line is sentence case at 11px in the segment's own ink,
+because on the codex it says something ("3 open · 1 critical", "couldn't
+load"). A meta that wraps grows the row too, and the metas usually arrive
+after the bar has drawn, so a long one moves the page below when it lands:
+keep them to about a dozen characters, or reserve the height. `flagTone:
+"warn"` draws the dot plum (Body & Pulse's watch-outs). `idPrefix` gives each
+segment an id and `aria-controls`, so a host that passes it keeps an element
+with every panel id in the page from the start — for a page that mounts on
+first visit, an empty, hidden `role="tabpanel"` placeholder until then. It is
+not a phone layout: at 375px seven segments are just under 40px wide and the
+labels break inside words. Programming and the Activity Archive don't pass
+`wrap` and render exactly as they did — every wrap rule is scoped to
+`.psub-shell[data-wrap]`. Moving them over too, so the three bars match again
+and nothing clips, is a separate change with its own look at an iPad.
 
 **Switching a sub-view costs no fetch.** Every pane reads what the profile
 already loaded, or keeps its own gate. If a future pane needs a read of its

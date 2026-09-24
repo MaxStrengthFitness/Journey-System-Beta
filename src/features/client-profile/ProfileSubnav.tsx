@@ -32,6 +32,32 @@
  * A segment is NEVER hidden. `meta` carries the state instead: Routine B when
  * the client has no B reads "B · off", and tapping it explains how to turn it
  * on. Hiding it is how the whole feature stops existing.
+ *
+ * Seven segments: the wrap variant (client codex, Sep 2026)
+ * ----------------------------------------------------------
+ * Notes & Profile is seven pages, and at 744pt portrait a seventh of the width
+ * is ~90px — not enough for "BODY & PULSE" on one line. The old answer, a
+ * label that clips, breaks the rule that names are never truncated, so the
+ * codex passes `wrap`: the label and the meta line wrap onto a second line
+ * instead, and the row grows to hold them. Every segment in the row grows with
+ * it, so they stay equal, and it stays where it is. On every portrait iPad
+ * below the 13-inch (744, 820, 834pt) "Body & Pulse" and "Goals & Focus" take
+ * two lines and the row is about 75px. In landscape, and on the 13-inch in
+ * portrait while the meta lines are short, nothing wraps and the bar is still
+ * 48px (a long meta there makes it ~52px). The meta line becomes sentence
+ * case at 11px, because on the codex it says something ("3 open · 1
+ * critical", "couldn't load") rather than labelling a count.
+ *
+ * The row's height follows its longest line, meta included, and the metas
+ * usually arrive after the bar has drawn. At the portrait widths a meta much
+ * past a dozen characters takes a second line of its own, so the row grows
+ * when it lands and the page below moves down. Whoever writes the metas keeps
+ * them short, or reserves the height; the top of the bar never moves either
+ * way.
+ *
+ * `wrap` is opt-in and Programming and the Activity Archive do not pass it, so
+ * they render exactly as they did: every wrap rule in profile-nav.css is
+ * scoped to `[data-wrap]`. Moving them over is a separate change.
  */
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { scrollParentOf } from "./use-scroller-pad";
@@ -45,6 +71,14 @@ export interface SubnavItem<T extends string> {
   meta?: string | null;
   /** Draws the small attention dot. For "there is something here to see". */
   flag?: boolean;
+  /**
+   * The dot's colour, when `flag` is set. "alert" (the default) is the crimson
+   * every tab uses for "this one matters"; "warn" is plum, for a caution
+   * rather than an alarm — the codex's Body & Pulse segment when the client
+   * has clinical watch-outs, the same plum as the watch-out count above
+   * Programming. On the selected segment both are drawn in the segment's ink.
+   */
+  flagTone?: "alert" | "warn";
 }
 
 export interface ProfileSubnavProps<T extends string> {
@@ -59,6 +93,22 @@ export interface ProfileSubnavProps<T extends string> {
    * the toggle, because the sentence and the switch are read together.
    */
   context?: React.ReactNode;
+  /**
+   * Let a label or a meta line take a second line instead of clipping (see
+   * "Seven segments" above). Off by default, which is today's bar exactly.
+   */
+  wrap?: boolean;
+  /**
+   * Gives each segment the id `{idPrefix}-tab-{id}` and points it at
+   * `{idPrefix}-panel-{id}` with `aria-controls`, so a host whose panes are
+   * `role="tabpanel"` can name them with `aria-labelledby`. A host that passes
+   * it keeps an element with every panel id in the page from the start, or
+   * `aria-controls` points at nothing. That does not mean every page mounts:
+   * a page that mounts on first visit sits in an empty, hidden
+   * `role="tabpanel"` placeholder until then. A host that does not pass it
+   * leaves the ids off, as today.
+   */
+  idPrefix?: string;
 }
 
 export function ProfileSubnav<T extends string>({
@@ -67,6 +117,8 @@ export function ProfileSubnav<T extends string>({
   value,
   onChange,
   context,
+  wrap = false,
+  idPrefix,
 }: ProfileSubnavProps<T>) {
   const listRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -102,8 +154,9 @@ export function ProfileSubnav<T extends string>({
 
     apply();
 
-    // The context line rewraps as the numbers change and as the iPad rotates,
-    // so the height is OBSERVED rather than measured once.
+    // The context line rewraps as the numbers change and as the iPad rotates
+    // (and with `wrap`, so do the labels and the meta lines), so the height
+    // is OBSERVED rather than measured once.
     //
     // Feature-detected, and not out of politeness: this runs in a layout
     // effect, and anything that throws in a layout effect takes the whole
@@ -146,7 +199,7 @@ export function ProfileSubnav<T extends string>({
   );
 
   return (
-    <div className="psub-shell" ref={shellRef}>
+    <div className="psub-shell" ref={shellRef} data-wrap={wrap || undefined}>
       {context ? <div className="psub-context">{context}</div> : null}
       <div
         ref={listRef}
@@ -163,6 +216,8 @@ export function ProfileSubnav<T extends string>({
               key={item.id}
               type="button"
               role="tab"
+              id={idPrefix ? `${idPrefix}-tab-${item.id}` : undefined}
+              aria-controls={idPrefix ? `${idPrefix}-panel-${item.id}` : undefined}
               aria-selected={on}
               tabIndex={on ? 0 : -1}
               className="psub__btn"
@@ -171,7 +226,9 @@ export function ProfileSubnav<T extends string>({
             >
               <span className="psub__label">
                 {item.label}
-                {item.flag ? <i className="psub__dot" aria-hidden="true" /> : null}
+                {item.flag ? (
+                  <i className="psub__dot" data-tone={item.flagTone} aria-hidden="true" />
+                ) : null}
               </span>
               {item.meta ? <span className="psub__meta">{item.meta}</span> : null}
             </button>
