@@ -960,11 +960,6 @@ export default function AppContent({
     }
   }, [trainers.length, authTrainer?.id, user?.email, tokenRole]);
 
-  const handleTrainerLock = () => {
-    setAuthTrainer(null);
-    localStorage.removeItem("max_strength_trainer_id");
-  };
-
   /*
    * The "Wipe Entire Database" button lived here until Sep 20 2026 (Claude
    * Experiment, phase A). It ran getDocs + deleteDoc over eleven top-level
@@ -1079,6 +1074,11 @@ export default function AppContent({
       let provider;
       if (providerName === "google") {
         provider = new GoogleAuthProvider();
+        // Always ask which account. On a shared iPad the browser can still
+        // hold the last trainer's Google session, and without this Google may
+        // sign the next person straight back in as them — Switch Trainer
+        // would switch nobody. Microsoft already asks (below).
+        provider.setCustomParameters({ prompt: "select_account" });
       } else {
         provider = new OAuthProvider("microsoft.com");
 
@@ -1478,8 +1478,22 @@ export default function AppContent({
         <DropdownMenuSeparator className="my-2 bg-slate-700" />
 
         <DropdownMenuGroup>
+          {/*
+            SWITCH TRAINER hands this iPad to the next person (sign-out round,
+            Sep 24 2026). It used to clear the trainer profile and leave the
+            Google or Microsoft sign-in in place, which the app reads as "signed
+            in, but not a trainer": a dead end on "not registered as an
+            authorized trainer". It was left from the facility-account days,
+            when one sign-in served the studio and trainers switched with a
+            PIN. PINs are gone and everyone signs in as themselves, so switching
+            trainer IS signing out: the next person gets the sign-in screen
+            with an account chooser, this iPad keeps its pinned studio, and
+            nothing of the last person is left on screen (features/sign-out).
+            For now it is the same as Log Out Facility; whether to merge the two
+            or make the second one also un-pin the iPad is AJ's call.
+          */}
           <DropdownMenuItem
-            onClick={() => menuNavigate(handleTrainerLock)}
+            onClick={() => menuNavigate(() => void handleLogout())}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
           >
             <Lock className="w-4 h-4" />
