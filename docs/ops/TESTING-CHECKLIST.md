@@ -883,6 +883,59 @@ before the changes list and the Moments panel can answer.
 
 ---
 
+## Round 14 — Signing out and the Operations gate · *Sep 24 2026, branch `claude/nifty-archimedes-139384`*
+
+What changed is in `src/features/sign-out/README.md` and
+`src/features/admin/operations-access.ts`. You need **one iPad and two
+accounts**: a studio leader (or yourself) and a Life Transformer. Nothing here
+could be walked in Claude's browser, because signing out there would have
+signed AJ out of his own session — this is the only place it gets checked.
+
+**Signing out hands the iPad over**
+
+- [ ] **A leader on Operations signs out; a trainer signs in and lands on the
+  Hub.** As the leader: open a client's profile, then switch to Operations,
+  then Log Out Facility. Sign in as the trainer. They see the Hub, the
+  trainer bottom bar (Hub · Client · Start Session · Learning · My Studio ·
+  Calendar), and no Operations anywhere. *If it fails:* the trainer lands on
+  Operations or on the leader's client — the keyed tree in `App.tsx`
+  (`personKey`) did not remount.
+- [ ] **The Client tab opens the directory, not the leader's client.** *If it
+  fails:* the selected client survived the sign-out.
+- [ ] **A pinned iPad still opens its studio for the next trainer** — if they
+  work there. Pin the studio on the picker, sign out, sign in as a trainer
+  from that studio: no picker, straight in. As someone from another studio:
+  the picker, not the pinned studio.
+- [ ] **My Studio opens on Relay for the trainer** even if the leader left it
+  on Team or Studio.
+- [ ] **A note started mid-session survives.** Start a session, type a note,
+  close the sheet without saving, sign out and back in as the same trainer,
+  resume the session: the words are still there (they belong to the session,
+  not the person).
+
+**Switch Trainer**
+
+- [ ] **Switch Trainer goes to the sign-in screen,** not to "is not
+  registered as an authorized trainer". *If it fails:* the old
+  `handleTrainerLock` is back.
+- [ ] **Google asks which account.** Tap Sign in with Google after Switch
+  Trainer: the account chooser appears, rather than signing the last person
+  straight back in.
+
+**The Operations gate**
+
+- [ ] **The Demo Mode door is shut.** As the trainer: choose Demo Mode, open
+  Operations from the menu (it is offered there), then the gear → tap the
+  studio name → choose your real studio. You land on the Hub with the trainer
+  bottom bar; there is no Operations button. Go back into Demo Mode: still the
+  Hub, until you choose Operations again. *If it fails:* `useGuardedPlace` is
+  not holding the view.
+- [ ] **A studio leader is unaffected:** Operations opens from the menu, from
+  the studio picker's button and from the gear's "Open Operations", at every
+  studio they lead, and stays open when they switch studio.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.

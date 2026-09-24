@@ -384,6 +384,36 @@ the data files with esbuild's text loader, so that field comes back as the
 
 ## Security rules and permissions
 
+- **A menu item is not a gate: Operations had no check behind the menu (Sep 24 2026, sign-out round).**
+  The App Mode switch in the trainer menu was the only place that asked who
+  may open Operations. The route (`currentView === "admin-dashboard"`) and
+  `AdminDashboardView` asked nothing, so a Life Transformer got in two ways:
+  a sign-out left the last person's view in place for the next one, and Demo
+  Mode - open Operations there (everyone may), choose a real studio, tap
+  Operations on the bottom bar. Fixed with ONE question,
+  `mayOpenOperations` (`src/features/admin/operations-access.ts`), asked by
+  the menu, by the route (`useGuardedPlace`, which derives the view during
+  render so a shut screen is never drawn, and writes the refusal back so
+  going back into Demo Mode does not reopen it) and by the shell itself.
+  **A screen a role may not open checks on the screen, and again on every
+  change of person and studio. Hiding the door only helps the honest.**
+
+- **A sign-out must forget everything that was the person's (Sep 24 2026, sign-out round).**
+  `App` kept `AppContent` mounted through a sign-out - the signed-out screen is
+  an early return INSIDE it - so every `useState` survived to the next person:
+  the view, the app mode, the selected client. `ActiveStudioProvider` kept the
+  active studio in memory, and `localStorage.clear()` reached neither. Module
+  scope (`let rememberedTab` and friends) outlives every component, so it
+  survived too. Now `App` keys the signed-in tree on `personKey(user,
+  trainer)` and `src/features/sign-out/` clears the rest: local storage but the
+  pinned studio, the one-shot session-storage handoffs, and every module
+  memory registered with `forgetOnSignOut`. **A new module-level variable
+  that remembers what a person was doing registers a reset with
+  `forgetOnSignOut` beside it**; one keyed by the signed-in uid does not need
+  to. **Don't key the tree on the bare uid:** the Microsoft domain check signs
+  an outsider in and straight back out, and its sentence would be lost to the
+  remount in between.
+
 - **The 1000-expression budget bites three times now, and it reads as a permission error.**
   Firestore refuses a rule that evaluates more than 1000 expressions with
   "Unable to evaluate the expression as the maximum of 1000 expressions to
@@ -475,6 +505,25 @@ the data files with esbuild's text loader, so that field comes back as the
 - On AJ's PC, Claude's Linux shell reaches the project folder again (Sep 16): it can run git (delete permission needed for the lock files) and `tsc`, but **not** `vitest` or `vite` — the Windows `node_modules` has no Linux rolldown binding. The cloud container **can** `npm ci`, typecheck, run the suite and both builds; it cannot run `test:rules` (the emulator jar's host is blocked), so **AJ's `test:rules` run is the one that counts.** The file bridge (stage and commit files) works either way.
 
 - **On AJ's PC, use `git --no-optional-locks` for every read-only git command** (beta-prep trim, Sep 17 2026). Claude's shell reaches the project folder through a mount that cannot delete files until AJ grants delete permission for the session. A plain `git status` refreshes the index: it creates `.git/index.lock`, then cannot remove it, and AJ's NEXT git command - in PowerShell or GitHub Desktop - fails with "Another git process seems to be running". `--no-optional-locks` skips that refresh. If a lock is left behind, move it aside with `mv` (renames are allowed) and say so. The same mount makes `git fetch` leave `tmp_pack_*` files in `.git/objects/pack` that it could not unlink (harmless; move them aside), and a `maintenance.lock` from Sep 2 had been silently blocking git's auto-maintenance there for two weeks. To deliver a branch without touching `master` or the working tree: `git bundle create x.bundle master..<branch>` in the cloud, commit the file into `backups\`, then on the PC `git fetch x.bundle <branch>:<branch>` - a new bundle file name each time, because re-using an outputs path can land the previous bytes.
+
+- **A fresh Claude worktree (`.claude/worktrees/*`) can't typecheck or test as it stands (Sep 24 2026).**
+  It has no `node_modules` and no `firebase-applet-config.json` (gitignored),
+  so `tsc` reports 12 errors - the baseline 10 plus two "Cannot find module
+  firebase-applet-config.json" - and Vite cannot resolve any package. Copy the
+  config in from the main checkout (it stays ignored) and make a directory
+  junction for `node_modules` (`New-Item -ItemType Junction -Path node_modules
+  -Target <main>\node_modules`); on Windows, vitest then runs in the worktree.
+  **Remove the junction when done** (`cmd /c rmdir node_modules` removes the
+  link, not the target), so nothing that cleans the worktree up can follow it
+  into the real one.
+
+- **The desktop app's built-in browser can already be signed in as AJ - against production (Sep 24 2026).**
+  A Vite server on a new localhost port opened straight onto Strongsville's
+  real Hub, from a Firebase session saved in that browser. Treat it as AJ's:
+  never sign out there (it is his session), never click anything that writes,
+  and close the tab when done so the app's background sync stops. Sign-in and
+  sign-out flows are checked with render tests and on an iPad
+  (`docs/ops/TESTING-CHECKLIST.md`, Round 14), not in that browser.
 
 <a id="baselines"></a>
 
@@ -581,8 +630,8 @@ between two files you just wrote together) is this trap, not your code.
 
 The typecheck count and the test count after each round, moved here from the Commands table in `CLAUDE.md`. Compare COUNTS, never expect zero.
 
-- **Typecheck (`npx tsc --noEmit`):** Compare the error **count** to master's baseline (10 on `note-threads` (Sep 20), unchanged from `machine-authoring`; 11 after the Operations overhaul (Sep 19), unchanged from the reporting round which retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero
+- **Typecheck (`npx tsc --noEmit`):** Compare the error **count** to master's baseline (10, unchanged by the sign-out round (Sep 24); 10 on `note-threads` (Sep 20), unchanged from `machine-authoring`; 11 after the Operations overhaul (Sep 19), unchanged from the reporting round which retired two charts, unchanged by Relay; 13 after the client-profile audit round removed dead code from ClientProfileView, unchanged by the Planner rework and the hub sync fixes; 18 after the FORD round; 20 before that); don't expect zero
 
-- **Tests (`npx vitest run src`):** **3,584 in 238 files after the catalog gate (Sep 20; master was 3,545 in 237).** Note that the 251-file figure below counts test files outside `src` as well — the documented command, `npx vitest run src`, collects 238 on master. 3,717 in 251 files after the note threads round (Sep 20); 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
+- **Tests (`npx vitest run src`):** **3,720 in 247 files after the sign-out round (Sep 24; master measured 3,681 in 244 just before it, both with `TZ=America/New_York npx vitest run --dir src` on AJ's PC).** 3,584 in 238 files after the catalog gate (Sep 20; master was 3,545 in 237).** Note that the 251-file figure below counts test files outside `src` as well — the documented command, `npx vitest run src`, collects 238 on master. 3,717 in 251 files after the note threads round (Sep 20); 3,683 in 247 files after the demo loads round (Sep 20); 3,654 in 246 after the demo week (Sep 20; 3,636 in 245 before it, at the end of the Demo Mode round). 3,469 in 232 files after the Operations overhaul (Sep 19; 3,396 in 224 before it); 2,977 passing after Relay (Sep 16); 2,903 after the reporting round (Sep 16); 2,787 after the hub sync fixes (Sep 16); 2,763 after the Planner rework (Sep 16); 2,636 after the client-profile audit round (Sep 16); 2,128 after the cost round (Sep 16) — run it as `TZ=America/New_York npx vitest run src`, see the date trap below; 2,077 after the four-tab profile round; 2,046 after the FORD round; 2,027 after the fix round; 2,015 after the tracker round; 1,813 after the floor round
 
 - **beta-prep trim (Sep 17 2026), on the `beta-prep` branch only:** typecheck 11; 2,982 tests (2,977 on master, plus five new pins: the History button's `openProfileAt`, the two starting-weight casing tests, the two LoginScreen render tests).
