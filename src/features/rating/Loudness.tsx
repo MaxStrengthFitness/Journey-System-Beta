@@ -10,7 +10,10 @@
  *   Note      — filed. In the record, found by category.
  *   Heads up  — rises to the top of the record and shows on the briefing
  *               while it still matters (three weeks, or its "until" date).
- *   Critical  — pinned, on the briefing, and marks the Hub card.
+ *   Critical  — pinned, on the briefing, and marks the Hub card: the red
+ *               triangle beside the name, on every day the note matters
+ *               (lib/hub-critical-notes.ts — true since Sep 24 2026; before
+ *               that the Hub never read the journal at all).
  *
  * Same bar as the Dial (three equal segments, 48px, words inside because
  * three words fit), same urgency colours as the Dial's left side, so "how

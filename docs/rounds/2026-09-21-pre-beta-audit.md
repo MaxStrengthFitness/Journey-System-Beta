@@ -601,6 +601,7 @@ Hub card". It does not — it only reaches the briefing. I have corrected the
 sentence. Do you want the mark actually built (the Hub would have to read every
 client's notes, so it costs a little on load), or is the briefing the right and only
 place?
+*Answered by AJ, Sep 24 2026: the red triangle only (the edge keeps its meanings), from one live read of the day's booked clients' Critical notes rather than a count on the client, and red for every trainer. Built in `docs/rounds/2026-09-24-hub-critical-flag.md`.*
 
 **7.** When a trainer says a session landed as "Barely worked", the app currently
 writes back *"plenty of room to add next time"*. It is the only place in the app

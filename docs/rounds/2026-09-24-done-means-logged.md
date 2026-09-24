@@ -141,7 +141,8 @@ answer.
   `client.events` entry), so it lights only for records that already carried
   a legacy `priorityNote`. A Critical note in Notes does not mark the card.
   That is question 12 of the Sep 20 audit
-  (`2026-09-20-claude-experiment-phase1.md`), still waiting on AJ.
+  (`2026-09-20-claude-experiment-phase1.md`). AJ answered it the same day,
+  and the next round built it: `2026-09-24-hub-critical-flag.md`.
 - `trainerLanes` and `loadByDay` in `overview/floor.ts` still read the booking
   alone, but no screen uses them.
 
@@ -154,7 +155,7 @@ answer.
   failed read, and the trainer page's Upcoming).
 - `npx vite build`: clean. The renewals job's bundle builds with the new
   imports.
-- Not yet seen on a real iPad. Round 14 of `docs/ops/TESTING-CHECKLIST.md`
+- Not yet seen on a real iPad. Round 15 of `docs/ops/TESTING-CHECKLIST.md`
   is the walkthrough.
 
 After phase 6 (the Hub card), same PC and worktree:

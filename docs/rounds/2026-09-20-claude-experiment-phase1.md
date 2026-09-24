@@ -552,6 +552,7 @@ Grouped, one topic at a time, as you asked. Each is answerable in a sentence.
     modes? Can the other one go?
 12. The Hub cannot see a Critical note. **Is a red left edge on the card the marker you meant** — and
     should it come from a cached count on the client, or one studio-day query?
+    *Answered by AJ, Sep 24 2026: the red triangle only (the edge keeps its meanings), from one live read of the day's booked clients' Critical notes rather than a count on the client, and red for every trainer. Built in `docs/rounds/2026-09-24-hub-critical-flag.md`.*
 
 ### The import (Phase 3)
 13. **FileMaker can export CSV or XML. What specifically stops you getting an export out of Claris?**

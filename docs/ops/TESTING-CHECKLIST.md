@@ -1068,6 +1068,37 @@ heart or the clinical dot is easiest) booked today. Portrait and landscape.
   client with two bookings today and the first one logged: the later card
   stays white, with its flags, until its start time.
 
+## Round 16 — A Critical note marks the Hub card · *Sep 24 2026, branch `claude/brave-engelbart-790628`*
+
+AJ's answer to question 12 of the Sep 20 audit: the red triangle beside the
+name, for every trainer, from the day's notes. The round document is
+`docs/rounds/2026-09-24-hub-critical-flag.md`. Walk it **signed in as a Life
+Transformer**, portrait and landscape, on the Hub with today selected. Have a
+client booked today and one booked tomorrow. Nothing to deploy first.
+
+- [ ] **A Critical note marks the card, live.** Open a client booked later
+  today, tap **Note** in the header, pick a category, write a sentence, set
+  it to **Critical**, Save.
+  Back on the Hub, without reloading, the small red triangle is beside her
+  name within a few seconds. *The card's left edge stays blue* (orange on a
+  milestone) — it never turns red. *If it fails:* the day's read
+  (`hooks/useHubCriticalNotes.ts`) or the rule (`lib/hub-critical-notes.ts`).
+- [ ] **Closing it clears the card.** On her Notes, close the thread: the
+  triangle goes from the Hub card. Reopen it: the triangle comes back.
+- [ ] **A note that starts tomorrow.** For a client booked today AND tomorrow,
+  write a Critical note with **From – until** starting tomorrow. Today's card
+  has no triangle; tap tomorrow in the day strip: that card has it.
+- [ ] **Red for everyone.** On her briefing, tap "No need to remind me" on the
+  note: the Hub card keeps its triangle. A second trainer's iPad shows it too.
+- [ ] **Heads up does not mark the card.** A Heads up note on another client:
+  no triangle.
+- [ ] **Late, then logged.** Past her start time with no session started, the
+  triangle is still there. Start and end her session: the card fades and the
+  triangle goes with the other flags.
+- [ ] **A visiting client** (if one is booked here from another studio): a
+  Critical note written on her profile at her home studio marks her card on
+  this studio's Hub.
+
 ---
 
 ## Findings log
@@ -1107,5 +1138,7 @@ Screenshot:
 | 11 — Operations (Sep 19) | 24 | | |
 | 12 — The master merge (Sep 19) | 13 | | |
 | 13 — The Operations overhaul (Sep 19) | 33 | | |
-| 14 — Done means logged (Sep 24) | 9 | | |
-| **Total** | **237** | | |
+| 14 — The client codex (Sep 24) | 28 | | |
+| 15 — Done means logged (Sep 24) | 9 | | |
+| 16 — A Critical note marks the Hub card (Sep 24) | 7 | | |
+| **Total** | **272** | | |
