@@ -155,3 +155,85 @@ describe("ClientProgressReportView — whose report it opens", () => {
     expect(text()).toContain("Castellanos-Whitfield");
   });
 });
+
+/*
+ * The session tile the client is handed (Sep 24 2026, lib/history-claims.ts).
+ * A twelve-year client used to read "3 Total Sessions · First Session Sep 2"
+ * - Journey's count and Journey's first day, printed as her whole story.
+ */
+describe("ClientProgressReportView — the session tile and a client's past", () => {
+  const filed = {
+    kind: "report" as const,
+    data: {
+      clientId: "client-bo",
+      status: "Finalized",
+      date: "2026-09-20",
+      attendance: {
+        totalSessions: 3,
+        firstSessionDate: "2026-09-02",
+        customStartDate: "2026-09-02",
+        toggles: { totalSessions: true },
+        narrative: "",
+      },
+    },
+  };
+
+  async function mountFor(client: Client, coverage?: "complete" | "partial" | "unknown") {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(
+        <ToastProvider>
+          <ClientProgressReportView
+            client={client}
+            coverage={coverage}
+            trainer={trainer}
+            machines={[]}
+            existingReportId="report-of-bo"
+            onBack={() => {}}
+          />
+        </ToastProvider>,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it("prints 'Total Sessions' and 'First Session' when Journey holds her whole story", async () => {
+    nextRead = filed;
+    await mountFor(bo, "complete");
+    expect(text()).toContain("Total Sessions");
+    expect(text()).toContain("First Session");
+  });
+
+  it("prints what the window counts for a migrating client, with her recorded sessions before Journey", async () => {
+    nextRead = filed;
+    const recorded = {
+      ...bo,
+      priorHistory: { sessions: 412, importedCount: 0, through: "2026-08-31", source: "filemaker" },
+    } as Client;
+    await mountFor(recorded, "partial");
+    expect(text()).not.toContain("Total Sessions");
+    expect(text()).not.toContain("First Session");
+    expect(text()).toContain("412 before Journey");
+    expect(text()).toMatch(/Since/);
+  });
+
+  it("claims neither when nobody knows how much of her story is here", async () => {
+    nextRead = filed;
+    await mountFor(bo);
+    expect(text()).not.toContain("Total Sessions");
+    expect(text()).not.toContain("First Session");
+  });
+
+  it("names the editor's count for what it is, too", async () => {
+    nextRead = { kind: "report", data: { ...filed.data, status: "Draft" } };
+    await mountFor(bo, "partial");
+    expect(text()).toContain("Sessions Attended (Auto-Top)");
+    expect(text()).not.toContain("Total Sessions Attended");
+    expect(text()).toContain("Blank = All in Journey");
+    expect(text()).toContain("Use First in Journey");
+  });
+});

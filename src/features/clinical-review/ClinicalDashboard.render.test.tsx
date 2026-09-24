@@ -17,7 +17,7 @@ vi.mock("../../firebase", () => ({ db: { __fake: true }, auth: {}, functions: {}
 
 import { buildReport } from "./report";
 import { ClinicalDashboard, DEEP_DIVE_TITLE } from "./ClinicalDashboard";
-import { RANGE_PRESETS } from "./ClinicalReviewTab";
+import { RANGE_PRESETS, rangePresets } from "./ClinicalReviewTab";
 import { DEEP_DIVE_CAVEAT } from "./panels";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -117,5 +117,72 @@ describe("ClinicalDashboard (Kaizen Deep Dive)", () => {
     expect(text).toContain("Pulse history unavailable");
     // A level under three sessions shows "needs 3", not a number.
     expect(text).toContain("needs 3");
+  });
+});
+
+/*
+ * The widest range (Sep 24 2026, lib/history-claims.ts). A trend drawn from
+ * the day Journey first saw a client is not her whole story, so "All time"
+ * is said only when Journey holds all of it.
+ */
+describe("ClinicalDashboard's widest range and a client's past", () => {
+  const allRangeReport = (sessions: WorkoutSession[] = [], logs: ExerciseLog[] = []) =>
+    buildReport({
+      client,
+      machines: [{ id: "leg-press", name: "Leg Press" } as any, { id: "chest", name: "Chest Press" } as any],
+      trainers: [],
+      sessions,
+      logs,
+      incidents: [],
+      pulseHistory: null,
+      range: { preset: "all", from: null, to: day(40) },
+    });
+
+  it("says 'All time' only when Journey holds her whole story", async () => {
+    const { sessions, logs } = synthetic();
+    const host = await mount(
+      <ClinicalDashboard
+        report={allRangeReport(sessions, logs)}
+        clientName="Judy Kaizen"
+        presets={rangePresets("complete")}
+        coverage="complete"
+        onPreset={() => {}}
+        onRegenerate={() => {}}
+      />,
+    );
+    expect(host.querySelector(".cr-bar__meta")?.textContent).toContain("All time");
+    expect(Array.from(host.querySelectorAll(".cr-bar .cr-seg__btn")).map((b) => b.textContent)).toContain("All time");
+  });
+
+  it("says 'All in Journey' for everyone else, on the bar, the buttons and the empty state", async () => {
+    for (const coverage of ["partial", "unknown", undefined] as const) {
+      const { sessions, logs } = synthetic();
+      const host = await mount(
+        <ClinicalDashboard
+          report={allRangeReport(sessions, logs)}
+          clientName="Judy Kaizen"
+          presets={rangePresets(coverage)}
+          coverage={coverage}
+          onPreset={() => {}}
+          onRegenerate={() => {}}
+        />,
+      );
+      expect(host.querySelector(".cr-bar__meta")?.textContent).toContain("All in Journey");
+      const buttons = Array.from(host.querySelectorAll(".cr-bar .cr-seg__btn")).map((b) => b.textContent);
+      expect(buttons).toContain("All in Journey");
+      expect(buttons).not.toContain("All time");
+
+      const empty = await mount(
+        <ClinicalDashboard
+          report={allRangeReport()}
+          clientName="Judy Kaizen"
+          presets={rangePresets(coverage)}
+          coverage={coverage}
+          onPreset={() => {}}
+          onRegenerate={() => {}}
+        />,
+      );
+      expect(empty.querySelector(".cr-empty")?.textContent).toContain("pick All in Journey");
+    }
   });
 });

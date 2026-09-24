@@ -72,6 +72,7 @@ import {
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
 import { isSessionValid } from "./lib/utils";
+import { coverageOfClient, homeCutoverOf } from "./lib/client-coverage";
 import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
@@ -1758,6 +1759,7 @@ export default function AppContent({
                       <ClientProgressReportView
                         key={reportEditorKey(selectedClientId, reportId)}
                         client={reportClient}
+                        coverage={coverageOfClient(reportClient, homeCutoverOf(studios, reportClient))}
                         trainer={authTrainer}
                         machines={machines}
                         existingReportId={reportId}
