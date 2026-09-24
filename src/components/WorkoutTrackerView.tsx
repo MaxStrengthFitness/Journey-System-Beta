@@ -80,6 +80,7 @@ const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 import {
   parseSessionDate,
   orderMachineSettings,
+  isSessionValid,
 } from "../lib/utils";
 import { toFloorMachines, isPerSideMachine } from "../lib/floor-machines";
 import { completeWorkoutSession } from "../lib/sync-utils";
@@ -116,10 +117,11 @@ import {
   hasRequiredCount,
   findIncompleteLogs,
 } from "../lib/log-validation";
-import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL } from "../lib/set-outcome";
+import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog } from "../lib/set-outcome";
 import { coverageOfClient } from "../lib/client-coverage";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
-import { forgetLiveSession, peekLiveSessionId, rememberLiveSession } from "../lib/live-session";
+import { forgetLiveSession, peekLiveSessionId, rememberLiveSession, splitInProgress } from "../lib/live-session";
+import { StaleSessionDialog } from "../features/tracker/StaleSessionDialog";
 import { trackerScreen } from "../lib/tracker-screen";
 import {
   createMachineClocks,
@@ -451,6 +453,60 @@ export function WorkoutTrackerView({
     at: number;
   } | null>(null);
 
+  /*
+   * STALE SESSIONS ARE ASKED ABOUT, NEVER ADOPTED (Sep 24 2026).
+   *
+   * `staleSession` is the client's newest In-Progress session that the
+   * heartbeat rule calls abandoned (lib/live-session.ts), held here while
+   * nothing live is running. The screen is the briefing, with the question
+   * over it (features/tracker/StaleSessionDialog.tsx); `declinedStaleId` is
+   * the one the trainer chose to leave, so it is asked once per visit.
+   *
+   * The session on screen (`currentSessionIdRef`, which the note draft
+   * also reads) is never taken away because its heartbeat aged: a long
+   * pause, or a resumed session whose first new heartbeat is still on its
+   * way to the server, stays put.
+   */
+  const [staleSession, setStaleSession] = useState<WorkoutSession | null>(null);
+  const [declinedStaleId, setDeclinedStaleId] = useState<string | null>(null);
+
+  /* Machines worked on in the stale session, for the question. Only ever a
+     positive count: before the logs arrive "none" and "not loaded yet" look
+     the same, so the question never claims nothing was logged. */
+  const staleBegunMachines = useMemo(() => {
+    if (!staleSession?.id) return null;
+    const worked = new Set<string>();
+    for (const log of Object.values(logs)) {
+      if (log.sessionId === staleSession.id && isBegunLog(log)) worked.add(log.machineId);
+    }
+    return worked.size > 0 ? worked.size : null;
+  }, [logs, staleSession?.id]);
+
+  /* The trainer chose to carry on with the stale session. It is on screen
+     at once (the ref as well, so a snapshot that lands before the next
+     render cannot take it away), the device remembers it as the live
+     session, and a heartbeat marks it running again so every other screen
+     agrees. Nothing else about it changes: its sets stay under its day. */
+  const resumeStaleSession = () => {
+    const s = staleSession;
+    if (!s?.id) return;
+    currentSessionIdRef.current = s.id;
+    setStaleSession(null);
+    setCurrentSession(s);
+    setShowRoutinePicker(false);
+    setIsPreSessionMode(false);
+    rememberLiveSession(s.id);
+    updateDoc(doc(db, "sessions", s.id), {
+      lastHeartbeatAt: serverTimestamp(),
+    }).catch((error) => handleFirestoreError(error, OperationType.UPDATE, "sessions"));
+  };
+
+  /* ...or chose to leave it. It is not touched: the briefing's Start makes
+     a new session beside it, and the profile keeps showing it with Discard. */
+  const leaveStaleSession = () => {
+    if (staleSession?.id) setDeclinedStaleId(staleSession.id);
+  };
+
   const [machineTimeElapsed, setMachineTimeElapsed] = useState<number>(0);
 
   useEffect(() => {
@@ -465,8 +521,17 @@ export function WorkoutTrackerView({
             /* Adopt only for the client on screen. The remembered id used to
                be cleared on adoption so it could not attach the wrong client's
                session later; the client check does that job, which lets the
-               key stay put as the crash-recovery net (lib/live-session.ts). */
-            if (data.status === "In-Progress" && (!selectedClient?.id || data.clientId === selectedClient.id)) {
+               key stay put as the crash-recovery net (lib/live-session.ts).
+               Sep 24 2026: the check read `selectedClient`, which is always
+               null on the first render this effect sees, so it passed for
+               every client — the `clientId` prop is known from the start.
+               And only a LIVE session is adopted here: a stale one is left
+               to the client's sessions stream below, which asks. */
+            if (
+              data.status === "In-Progress" &&
+              (!clientId || data.clientId === clientId) &&
+              isSessionValid(data)
+            ) {
               setCurrentSession(data);
               /* Merge, never replace. `sessions` feeds the history grid AND
                  builds the exerciseLogs query below (its `where sessionId in`
@@ -833,10 +898,20 @@ export function WorkoutTrackerView({
             });
           setSessions(sessionsData);
 
-          // Auto-select In-Progress session if it exists
-          const inProgress = sessionsData.find(
-            (s) => s.status === "In-Progress",
+          /* Which session to carry on with (lib/live-session.ts). The one
+             already on screen stays, whatever its heartbeat says; otherwise
+             a LIVE session is adopted without asking, as it always was. A
+             stale one is never adopted here — it is held for the trainer to
+             resume or leave, and until they choose, the screen is the
+             briefing. This used to adopt any In-Progress session at all,
+             which is how Start the next morning reopened yesterday's
+             abandoned session and put the day's sets under yesterday's date. */
+          const onScreen = sessionsData.find(
+            (s) => s.status === "In-Progress" && s.id === currentSessionIdRef.current,
           );
+          const { live, stale } = splitInProgress(sessionsData);
+          const inProgress = onScreen ?? live;
+          setStaleSession(inProgress ? null : (stale[0] ?? null));
           if (inProgress) {
             setCurrentSession(inProgress);
             setShowRoutinePicker(false);
@@ -2520,6 +2595,19 @@ export function WorkoutTrackerView({
   }
 
   if (screen === "briefing" && selectedClient) {
+    /* The question about a stale session sits over whichever briefing is
+       drawn (features/tracker/StaleSessionDialog.tsx). */
+    const staleAsk = staleSession ? (
+      <StaleSessionDialog
+        open={staleSession.id !== declinedStaleId}
+        clientFirstName={clientFirstName(selectedClient)}
+        session={staleSession}
+        begunMachines={staleBegunMachines}
+        todayKey={studioTodayKey()}
+        onResume={resumeStaleSession}
+        onStartNew={leaveStaleSession}
+      />
+    ) : null;
 
     const shouldShowWizard =
       selectedClient.requiresConsultation === true &&
@@ -2527,78 +2615,84 @@ export function WorkoutTrackerView({
 
     if (shouldShowWizard) {
       return (
-        <ConsultationSetupWizard
-          clientName={clientFirstName(selectedClient)}
-          onComplete={async (setupData) => {
-            // Optional: update client with gender/age setup
-            await updateDoc(doc(db, "clients", selectedClient.id!), {
-              gender: setupData.gender || selectedClient.gender,
-              consultationCompleted: true,
-              requiresConsultation: false,
-              updatedAt: serverTimestamp(),
-            }).catch((e) => console.error(e));
+        <>
+          <ConsultationSetupWizard
+            clientName={clientFirstName(selectedClient)}
+            onComplete={async (setupData) => {
+              // Optional: update client with gender/age setup
+              await updateDoc(doc(db, "clients", selectedClient.id!), {
+                gender: setupData.gender || selectedClient.gender,
+                consultationCompleted: true,
+                requiresConsultation: false,
+                updatedAt: serverTimestamp(),
+              }).catch((e) => console.error(e));
 
-            if (setupData.routine && setupData.routine.length > 0) {
-              const machineNames = setupData.routine.map((r: any) => r.name);
-              const customMachineIds = floorMachines
-                .filter((m) => machineNames.includes(m.name))
-                .map((m) => m.id as string);
-              startNewSession(
-                "A",
-                undefined,
-                customMachineIds,
-                "Consultation Baseline Protocol Generated",
-              );
-            } else {
-              // If skipped, we don't start a session, just let the state refresh
-              // which will cause the wizard to disappear because consultationCompleted is now true
-              setIsPreSessionMode(true); // Land them on the BriefingScreen instead of hiding it
-            }
-          }}
-          onCancel={() => {
-            setIsPreSessionMode(false);
-            setView("profile");
-          }}
-        />
+              if (setupData.routine && setupData.routine.length > 0) {
+                const machineNames = setupData.routine.map((r: any) => r.name);
+                const customMachineIds = floorMachines
+                  .filter((m) => machineNames.includes(m.name))
+                  .map((m) => m.id as string);
+                startNewSession(
+                  "A",
+                  undefined,
+                  customMachineIds,
+                  "Consultation Baseline Protocol Generated",
+                );
+              } else {
+                // If skipped, we don't start a session, just let the state refresh
+                // which will cause the wizard to disappear because consultationCompleted is now true
+                setIsPreSessionMode(true); // Land them on the BriefingScreen instead of hiding it
+              }
+            }}
+            onCancel={() => {
+              setIsPreSessionMode(false);
+              setView("profile");
+            }}
+          />
+          {staleAsk}
+        </>
       );
     }
 
     return (
-      <BriefingScreen
-        authTrainer={authTrainer}
-        client={selectedClient}
-        coverage={clientCoverage}
-        targetRoutine={targetRoutine}
-        lastSession={
-          sessions.filter((s) => s.status === "Completed")[0] || null
-        }
-        sessions={sessions.filter((s) => s.status === "Completed")}
-        onStart={(routineType, customMachines, note, checkIn) =>
-          startNewSession(
-            routineType,
-            undefined,
-            customMachines,
-            note,
-            checkIn,
-          )
-        }
-        onClose={() => {
-          setIsPreSessionMode(false);
-          setView("profile");
-        }}
-        machines={floorMachines}
-        routines={routines}
-        trainers={trainers}
-        logs={
-          Object.values(logs).filter(
-            (l: any) => !l.clientId || l.clientId === clientId,
-          ) as any
-        }
-        isIntroSession={isIntroSession}
-        rightControls={rightControls}
-        trainerDropdown={trainerDropdown}
-        onStudioClick={onStudioClick}
-      />
+      <>
+        <BriefingScreen
+          authTrainer={authTrainer}
+          client={selectedClient}
+          coverage={clientCoverage}
+          targetRoutine={targetRoutine}
+          lastSession={
+            sessions.filter((s) => s.status === "Completed")[0] || null
+          }
+          sessions={sessions.filter((s) => s.status === "Completed")}
+          onStart={(routineType, customMachines, note, checkIn) =>
+            startNewSession(
+              routineType,
+              undefined,
+              customMachines,
+              note,
+              checkIn,
+            )
+          }
+          onClose={() => {
+            setIsPreSessionMode(false);
+            setView("profile");
+          }}
+          machines={floorMachines}
+          routines={routines}
+          trainers={trainers}
+          logs={
+            Object.values(logs).filter(
+              (l: any) => !l.clientId || l.clientId === clientId,
+            ) as any
+          }
+          isIntroSession={isIntroSession}
+          rightControls={rightControls}
+          trainerDropdown={trainerDropdown}
+          onStudioClick={onStudioClick}
+        />
+        {staleAsk}
+      </>
     );
   }
 
