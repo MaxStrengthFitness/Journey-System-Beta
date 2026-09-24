@@ -27,8 +27,17 @@
  * (`OneLineSaveResult` in ford-write.ts); that says so, and who can clear it.
  * The input stops at 120 characters, and a paste is cut there too. "Saved"
  * shows for a moment, and goes at once if the line changes under it.
+ *
+ * A DOOR THAT ASKS TO WRITE IT (`writeRequest`, client codex phase 19): the
+ * Overview's "Write one" lands here with a request keyed by the navigation
+ * move. Once FORD has answered, the panel opens its editor and puts the
+ * cursor in it — once per request, and only if there is still no line and
+ * this reader may write one. A line another trainer wrote in the meantime is
+ * shown instead, never opened over. The cursor moves only on that explicit
+ * tap: the codex keeps pages mounted while hidden, so nothing here focuses
+ * on mount (codex README).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Quote as QuoteIcon, PenLine } from "lucide-react";
 import { Btn, Card, Meta, TextInput } from "../../client-codex/kit";
 import type { OneLineSaveResult } from "../ford-write";
@@ -48,6 +57,7 @@ export function OneLinePanel({
   status,
   now,
   onSave,
+  writeRequest = null,
 }: {
   /** The line the tab's one FORD stream delivered (`useClientFord().oneLine`). */
   oneLine: FordEntry | null;
@@ -59,6 +69,11 @@ export function OneLinePanel({
    * read only.
    */
   onSave: ((text: string, existing: FordEntry | null) => Promise<OneLineSaveResult>) | null;
+  /**
+   * A door's request to write the line (the Overview's "Write one"); a new
+   * value opens the editor once. Null or left out: nothing is asked.
+   */
+  writeRequest?: unknown;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -74,11 +89,35 @@ export function OneLinePanel({
     return () => window.clearTimeout(t);
   }, [result]);
 
-  if (status === "off" || status === "denied") return null;
-
   const view = status === "ready" ? oneLineView(oneLine) : null;
   // A line is only rewritten over one this iPad has read.
   const canWrite = onSave !== null && status === "ready";
+  const hasLine = view !== null;
+
+  // A door asked to write the line: act once FORD has answered, once per
+  // request. Opening sets the editor's words and asks for the cursor, which
+  // the effect below puts in the box once the box is drawn.
+  const handled = useRef<unknown>(null);
+  const focusOnOpen = useRef(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (writeRequest === null || writeRequest === undefined || handled.current === writeRequest) return;
+    if (status === "loading") return; // not known yet: wait for FORD to answer
+    handled.current = writeRequest;
+    if (!canWrite || hasLine || editing) return;
+    setDraft("");
+    setResult(null);
+    focusOnOpen.current = true;
+    setEditing(true);
+  }, [writeRequest, status, canWrite, hasLine, editing]);
+  useEffect(() => {
+    if (!editing || !focusOnOpen.current) return;
+    focusOnOpen.current = false;
+    const input = boxRef.current?.querySelector("input");
+    if (input && typeof input.focus === "function") input.focus({ preventScroll: true });
+  }, [editing]);
+
+  if (status === "off" || status === "denied") return null;
 
   const open = () => {
     setDraft(view?.text ?? "");
@@ -111,7 +150,7 @@ export function OneLinePanel({
   let body;
   if (editing && canWrite) {
     body = (
-      <div className="fordpg-line__edit">
+      <div className="fordpg-line__edit" ref={boxRef}>
         <TextInput
           // Not "In one line" again: the card's eyebrow already says that.
           label="The sentence"

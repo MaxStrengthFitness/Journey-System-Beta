@@ -23,7 +23,10 @@
  *   - a new snapshot of the record re-seeds the form only while nothing is
  *     unsaved — a half-typed edit is never wiped;
  *   - nothing scrolls or takes focus while the tab is hidden;
- *   - the neighbours, the Next card, a door to a card, and no duplicate ids.
+ *   - the neighbours, the Next card, a door to a card, and no duplicate ids;
+ *   - (phase 19) the Overview's "Write one" lands on FORD with the In one line
+ *     editor open and the cursor in it, and an administrator who works
+ *     elsewhere is offered no FORD add on FORD or Notes (the create rule).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act, useCallback, useState } from "react";
@@ -216,9 +219,6 @@ const criticalNote = {
 };
 
 const hosts: CodexHosts = {
-  onSelectReport: vi.fn(),
-  onDeleteReport: vi.fn(),
-  onNewReport: vi.fn(),
   onOpenPlanner: vi.fn(),
   onOpenReports: vi.fn(),
   onOpenMigrationHub: vi.fn(),
@@ -857,6 +857,32 @@ describe("ClientCodex — the intake matcher (phase 17)", () => {
     expect(buttonIn(notesCard(host), "Add to Recreation")).toBeUndefined();
     expect(buttonIn(notesCard(host), "Add as medical history")).toBeDefined();
   });
+
+  it("offers that administrator no FORD add on the FORD page or on Notes either (phase 19), and says why on FORD", async () => {
+    fake.rows["clients/c1/ford"] = [];
+    const founder = { ...crossTrainer, id: "t-aj", fullName: "AJ Founder", role: "Founder" } as Trainer;
+    const host = await mount(baseClient(), founder, "ford");
+    const ford = panel(host, "ford");
+    expect(ford.querySelector('[data-testid="ford-add-not-offered"]')?.textContent).toBe(
+      "Only a trainer at her home studio can add to FORD, so adding isn't offered here.",
+    );
+    expect(buttonIn(ford, "Remember something")).toBeUndefined();
+    expect(ford.querySelector('[aria-label^="Add a "]')).toBeNull();
+    await click(tab(host, "notes"));
+    const notes = panel(host, "notes");
+    await click(buttonIn(notes, "Write a note…"));
+    const composer = notes.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonIn(composer, "FORD / Life"));
+    expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
+    // They CAN read FORD (Open FORD works for them), so the hand-off says
+    // adding isn't offered — never that only the home studio can read it.
+    expect(composer.textContent).toContain(
+      "Personal details are kept in FORD. Only a trainer at the client’s home studio can add to it, so saving there isn’t offered here.",
+    );
+    expect(composer.textContent).not.toContain("which only the client’s home studio can read");
+    expect(buttonIn(composer, "Open FORD")).toBeDefined();
+    expect(fake.writes).toEqual([]);
+  });
 });
 
 describe("ClientCodex — the Story (phase 15)", () => {
@@ -1133,7 +1159,7 @@ describe("ClientCodex — the Overview", () => {
     expect(selected(host)).toEqual(["cx-tab-body"]);
   });
 
-  it("opens a FORD pillar's card from its tile, and FORD's In one line from Write one", async () => {
+  it("opens a FORD pillar's card from its tile, and FORD's In one line from Write one — its editor open, the cursor in it", async () => {
     fake.rows["clients/c1/ford"] = [
       { id: "f1", clientId: "c1", studioId: "s1", pillar: "family", body: "Married to Tom, 41 years this October.", isPinned: true, isArchived: false },
     ];
@@ -1145,10 +1171,18 @@ describe("ClientCodex — the Overview", () => {
       await click(family);
       expect(selected(host)).toEqual(["cx-tab-ford"]);
       expect(seen).toContain("ford-family");
+      // A pillar's door opens no editor.
+      expect(panel(host, "ford").querySelector("#ford-one-line input")).toBeNull();
       await click(tab(host, "overview"));
       await click(buttonIn(overview, "Write one"));
       expect(selected(host)).toEqual(["cx-tab-ford"]);
       expect(seen).toContain("ford-one-line");
+      // Phase 19: "Write one" asks the FORD page to write the line, so the
+      // editor is open on arrival — not a second tap on "Write the line".
+      const box = panel(host, "ford").querySelector<HTMLInputElement>("#ford-one-line input");
+      expect(box).not.toBeNull();
+      expect(document.activeElement).toBe(box);
+      expect(fake.writes).toEqual([]);
     });
   });
 

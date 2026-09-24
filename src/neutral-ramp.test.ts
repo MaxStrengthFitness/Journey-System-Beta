@@ -273,8 +273,11 @@ function countBarePaletteUtilities(): number {
  * again. The page areas rebuilt their sections on the codex kit (tokens, no
  * Tailwind palette), and Account emptied legacy-blocks.tsx and deleted it
  * with the contract panel.
+ *
+ * Sep 24 2026 (client codex, cleanup — phase 19): 242 -> 235, the count
+ * again: ClientJournalTab, DossierPrimitives and JournalRail deleted.
  */
-const BARE_PALETTE_BUDGET = 242;
+const BARE_PALETTE_BUDGET = 235;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

@@ -12,9 +12,11 @@
  * capture in place, as on the Notes page (the composer's FORD mode); the
  * dialog stays open after a FORD save, with "Saved to FORD", so a second
  * thing the client said can follow. Only for a reader the FORD create rule
- * accepts — the same `codexAccess(...).canEdit` the Notes page asks — so a
- * cross-train trainer is told where FORD is kept rather than typing a
- * detail the database will refuse.
+ * accepts — the same `codexAccess(...).fordWritable` the Notes page asks
+ * (phase 19; it was `canEdit`, which an administrator who works elsewhere
+ * passes and the create rule does not) — so a cross-train trainer is told
+ * where FORD is kept, and that administrator that adding isn't offered,
+ * rather than typing a detail the database will refuse.
  */
 import { useMemo } from "react";
 import { NotebookPen } from "lucide-react";
@@ -55,9 +57,13 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
   // A FORD capture is stamped with the studio the FORD read filters on, so it
   // comes back in the client's Life section (client codex, phase 1).
   const fordStudioId = fordStudioIdOf(client);
-  // The FORD create rule wants a trainer of the client's studio: the codex's
-  // one answer to "may change this record" (the studios list only names it).
-  const fordWritable = codexAccess(authTrainer, client, null).canEdit;
+  // The FORD create rule wants a trainer of the client's home studio — the
+  // codex's `fordWritable`, which an administrator who works elsewhere does
+  // not pass even though they may change the record and read FORD
+  // (`fordReadable`, so the hand-off says adding isn't offered rather than
+  // that FORD is out of reach). The studios list only names the home studio,
+  // so none is needed here.
+  const { fordWritable, fordReadable } = codexAccess(authTrainer, client, null);
   const ford = useMemo(
     () =>
       fordWritable && clientId && fordStudioId && author.id !== "unknown"
@@ -92,7 +98,7 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
             Saved to their Notes. Pick a kind, say how loud it is, and when it matters — or just write and file it later.
           </DialogDescription>
         </DialogHeader>
-        <JournalComposer clientFirstName={client.firstName || ""} machines={machines} onSubmit={submit} disabled={!clientId} ford={ford} onOpenFord={onOpenFord} />
+        <JournalComposer clientFirstName={client.firstName || ""} machines={machines} onSubmit={submit} disabled={!clientId} ford={ford} onOpenFord={onOpenFord} fordReadOnly={fordReadable && !fordWritable} />
       </DialogContent>
     </Dialog>
   );

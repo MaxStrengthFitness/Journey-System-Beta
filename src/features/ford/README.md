@@ -207,10 +207,25 @@ No rules change: the ford block has no allowed-keys list. The briefing does
 not read follow-ups yet (a floor change, for AJ).
 
 **One load.** The page opens no listener: FORD, the journal and the Pulse
-history are the tab's (`useCodexData`). **Who may write.** A FORD detail is
-written only by a reader the create rule accepts: the codex's `canEdit`, a
-signed-in author (the Auth uid) and a client with a studio (`fordCanAdd`). A
-failed READ still lets a trainer add; a refused one does not.
+history are the tab's (`useCodexData`). **Who may write** follows FORD's own
+rules, which are not the record's (phase 19). CHANGING what is on file —
+edit a detail, file a capture, take a gesture, rewrite a line that exists —
+follows the update rule: the codex's `canEdit`, a signed-in author (the Auth
+uid) and a client with a studio (`fordCanAdd`). ADDING — Remember something,
+a pillar's Add, planning the birthday, an idea, "Asked it" with an answer, a
+first line — also needs the CREATE rule, which has no clause for an
+administrator who works elsewhere: `canAdd` (`codexAccess().fordWritable`).
+Such a reader is told "Only a trainer at her home studio can add to FORD, so
+adding isn't offered here." rather than offered an Add the database would
+refuse; Notes' FORD / Life and the header's Note dialog follow the same
+answer. A failed READ still lets a trainer add; a refused one does not.
+
+**"Write one" opens the line's editor** (phase 19). The Overview's "Write
+one" goes to `ford-one-line`, and the shell hands the page that door as a
+request (`writeLine` → `OneLinePanel`'s `writeRequest`, keyed by the move):
+once FORD has answered, the editor opens with the cursor in it — once per
+door, only when there is still no line and the reader may write one. A line
+someone wrote meanwhile is shown, never opened over.
 
 **The dialog keeps the sentence.** `FordDetailDialog`'s `onSave` may answer
 `false`; the dialog then stays open with every field and says "Not saved —
@@ -230,7 +245,7 @@ moved it.
 | `useClientFord.ts` | One client's details, and the studio-wide Delight queue. Reports `status`: `loading` · `ready` · `failed` · `denied` |
 | `read-status.ts` | What a FORD read that did not come back is, and the sentence a screen shows instead of its empty state |
 | `ford.tokens.css` | Colour. Pillars get identity, never status — see the note at the top of the file |
-| `ford.css` | The floor's capture and sweep, the Delight queue, the briefing row and the detail dialog. The FORD page draws from the codex kit and `page/ford-page.css` |
+| `ford.css` | The floor's capture and sweep, the Delight queue, the briefing row and the detail dialog. The FORD page draws from the codex kit and `page/ford-page.css`. **Every component that draws with it imports it** (`ford-css.test.ts`, phase 19) |
 | `ford.test.ts` | The pure layer |
 | `ask-next.ts` | Ask next: the newest open Follow up next time, else the prompts worth asking this client, rotated by day, aware of retirement (`FORD_PROMPT_WHEN` in `types.ts`); `followUpPatch` (stamp only on change). `ask-next.test.ts` holds the drift guard |
 | `one-line.ts` | In one line: the fixed id, the 120-character cap, `splitOneLine` (what `useClientFord` takes out of the list) and the "Written by the team · last by …" line. `one-line.test.ts` proves the document never reaches the tray, the rollup or Coming up |
@@ -315,6 +330,16 @@ moved it.
   filter fixed, trainers' saves now refresh it too. Whether to stop writing it
   is waiting on AJ (client codex round); until he says so it is written as
   before.
+- **A component that draws with `ford.css` imports it** (client codex,
+  phase 19). The app is split into chunks and a stylesheet arrives with the
+  chunk that imports it. The FORD hub brought `ford.css` in with the profile;
+  once the codex deleted the hub (phase 10), only the session and Operations
+  chunks imported it, and the FORD page's detail dialog — which draws with the
+  capture sheet's classes — opened UNSTYLED on the profile of an iPad that had
+  not started a session yet. Tests load no stylesheets, so nothing failed.
+  `FordDetailDialog`, `ui.tsx` and the session sheet now import it
+  themselves, and `ford-css.test.ts` fails any component that names one of
+  `ford.css`'s classes without importing the file.
 
 - **Annual dates roll forward.** An anniversary recorded in 2019 reads "in 12
   days", never "seven years ago". `nextOccurrence()` does this; use it rather

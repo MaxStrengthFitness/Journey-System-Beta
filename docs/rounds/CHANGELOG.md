@@ -717,6 +717,17 @@ Every completed round, in the order it was written. Nothing here has been edited
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
 
+### 📖 Built — The client codex (Sep 23–24) — branch `client-codex`, one commit per phase, waiting for AJ's go
+
+*Appended out of order on purpose: the archive was last appended Sep 12, and the rounds between are in `README.md` beside this file.* The round is `2026-09-24-client-codex.md`.
+
+Notes & Profile stops being one long scroll and becomes an **Overview and six pages** — Notes · FORD · Body & Pulse · Goals & Focus · Story · Account — switched by the profile's own sub-toggle, always opening on the Overview (AJ's ten answers to the Client Codex mockup, Sep 23). Nineteen phases: the FORD read fix (every trainer below franchise owner had been refused FORD by the rules and shown "Nothing here yet"), the InBody normal variation (a change smaller than the client's home studio's number is never called a change), the record tab as pages with one Save bar and one load per tab, one visual kit held by a test that reads the files, the seven pages, In one line and Follow up next time, how she arrives and leaves at each session (from the sessions the journal already streamed — no new read), the Mindbody intake-notes matcher, and the cleanup (the dead journal area and dossier deleted; a FORD dialog that opened unstyled on a cold start found and fixed). **No rules or index change** — rules tests only. Typecheck 10 → 4; tests 3,681 in 244 files → 4,835 in 303 (`TZ=America/New_York npx vitest run --dir src`; `npm test` 5,018 and one skipped in 317); rules tests 154 on the local emulator.
+
+- [ ] Merge master into `client-codex` (master moved on Sep 24: phase 1 and the progress-report fix went to it on their own) — Claude, with AJ's go.
+- [ ] `scripts/ship/ship-client-codex.ps1 prepare`, then `golive` (the restore tag, then the push).
+- [ ] Walk Round 14 of `docs/ops/TESTING-CHECKLIST.md` on an iPad, signed in as a Life Transformer.
+- [ ] AJ: the CLAUDE.md change (proposed in the round document), and the held question — stop writing `fordSummary.pinned`?
+
 ### 💾 Shipped — Session-log persistence + studio picker rebuild (Sep 8) — branch `fix/session-persistence-and-studio-picker`, one commit per phase
 
 **Not yet merged. This branch contains a data-loss fix and should go out ahead of anything cosmetic.**

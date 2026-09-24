@@ -7,12 +7,20 @@
    splitting them let the letter marks drift apart last time this pattern was
    copied:
 
-     .ford-capture  the floor sheet — one box, four letters, save
+     .ford-capture  the floor sheet — one box, four letters, save — and the
+                    FORD detail dialog, which draws with the same classes
      .ford-sweep    the post-session tray where captures get filed
      .ford-queue    Operations → Delight queue
 
    The client profile's FORD page is not here: it is drawn from the codex kit
-   and ford/page/ford-page.css (client codex, Sep 2026).
+   and ford/page/ford-page.css (client codex, Sep 2026). The detail dialog it
+   opens IS here, which is why FordDetailDialog imports this file itself.
+
+   EVERY COMPONENT THAT DRAWS WITH THESE CLASSES IMPORTS THIS FILE. The app is
+   split into chunks and a stylesheet arrives with the chunk that imports it:
+   when only the floor and Operations imported it, the profile's FORD dialog
+   opened unstyled on an iPad that had not started a session yet (client
+   codex, phase 19). ford-css.test.ts holds every component to it.
 
    Touch targets are 40px minimum throughout. The capture sheet's letter marks
    are 44px because they are hit with a thumb by someone who is not looking
@@ -99,10 +107,12 @@
 
 /* The Life section's hub (FordSection) was replaced by the FORD page of
    Notes & Profile in the client codex (Sep 2026), which is drawn from the
-   codex kit and ford/page/ford-page.css. What stays here is what the floor
-   and Operations still use: the briefing's one row (.ford-upnext), the
-   Delight queue's banner (.ford-tray) and empty line, the dialog's icon
-   buttons, the gesture chip and the "couldn't be read" notice. */
+   codex kit and ford/page/ford-page.css; its rules went with it (the last,
+   the pin button's "on" colour, in the cleanup, phase 19). What stays here
+   is what the floor, Operations and the detail dialog still use: the
+   briefing's one row (.ford-upnext), the Delight queue's banner (.ford-tray)
+   and empty line, the dialog's icon buttons, the Delight queue's gesture
+   chip and the "couldn't be read" notice. */
 
 /* The briefing cue's one row (FordBriefingCue). */
 .ford-upnext {
@@ -174,7 +184,6 @@
   outline: 2px solid var(--ford-focus-ring);
   outline-offset: 1px;
 }
-.ford-icon-btn--on { color: var(--ford-soon); }
 .ford-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* A gesture in flight. */

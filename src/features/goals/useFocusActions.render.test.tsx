@@ -4,7 +4,8 @@
  *
  * The focus writes moved out of ClientJournalTab into useFocusActions so the
  * Goals & Focus page files a focus exactly as the journal's Focus area did
- * (phase 14 then took the board out of ClientJournalTab altogether). The
+ * (phase 14 then took the board out of ClientJournalTab altogether, and the
+ * cleanup, phase 19, deleted ClientJournalTab). The
  * writers themselves (useClientJournal) are pinned elsewhere; this mounts the
  * hook, and the focus board through it as the Goals page wires it, and pins
  * what the move must not change:

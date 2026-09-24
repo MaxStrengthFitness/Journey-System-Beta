@@ -36,11 +36,11 @@ import { describe, expect, it } from "vitest";
  * A file in src/features/client-codex/ that is not on the list fails the
  * suite, so the folder cannot grow a file this scan never reads.
  *
- * HOSTED_FILES is for the shell's phase: components the codex MOUNTS but does
- * not own (the focus board, the flag picker), counted rather than failed, with
- * a budget that each area phase lowers as it brings its hosted piece onto the
- * scale. The shell (phase 8) set it to what it measured; it reaches its final
- * value in the cleanup phase.
+ * HOSTED_FILES is for components the codex MOUNTS but does not own — shared
+ * with another screen that draws them at its own sizes — counted rather than
+ * failed, with a budget that only goes down. The shell (phase 8) set it to
+ * what it measured, each area phase lowered it, and the cleanup (phase 19)
+ * set its final value.
  *
  * If this fails on a size, the fix is the size, not the list.
  */
@@ -202,45 +202,67 @@ const LINE_CLAMP_LINES = 2;
  * Components the codex hosts but does not own yet (the shell phase, phase 8):
  * the long scroll's sections moved onto the pages unchanged, and the pieces
  * those pages mount directly. Their text sizes are COUNTED, not failed, and
- * the count may only go down: each page area's phase takes its hosted pieces
- * off this list as it rebuilds them on the kit, and lowers the budget to the
+ * the count may only go down: each page area's phase took its hosted pieces
+ * off this list as it rebuilt them on the kit, and lowered the budget to the
  * new count in the same commit. `legacy-blocks.tsx` was the one hosted file
  * inside the codex folder; Account (phase 16) emptied it and deleted it.
  *
- * Shared pieces stay listed until their area replaces them on the codex:
- * ClientJournalTab (the focus area; Notes left it in phase 9, which moved no
- * text size, so the budget stayed at 168), the goals panel, the contract
- * panel, the shared notes and jots, the flag picker, and ford.css (the
- * detail dialog's). The FORD phase (10) deleted the FORD hub and its CSS and
- * brought the life editors onto the kit (they are CODEX_FILES now): 168 →
- * 148. Body & Pulse (12) deleted the watch-out banner (BodyWatchOuts), took
- * the Pulse area out of ClientJournalTab and the Body blocks out of
- * legacy-blocks, brought the InBody card onto the kit (CODEX_FILES now) and
- * collapsed the flag picker's stylesheet onto the scale: 148 → 125. The
- * picker stays hosted: its screen-reader-only text is one line clipped on
- * purpose, which the clipping rule would refuse. Goals & Focus (14) deleted
- * the goals panel, took the focus board out of ClientJournalTab (which only
- * the cleanup phase's delete is left for), and brought the focus board, the
- * goals stylesheet, the shared plans and the jot strip onto the kit
- * (CODEX_FILES now) — and the jot rules of notes.css onto the scale: 125 →
- * 93. notes.css stays hosted: the rest of it is Relay's. Account (16)
- * deleted the contract panel and the last of legacy-blocks (the ID card, the
- * Mindbody blocks, how they found us — rebuilt on the kit in client-admin),
- * and brought client-admin.css onto the scale (CODEX_FILES now): 93 → 80.
- * DossierPrimitives and JournalRail stay listed, read by nothing now, for
- * the cleanup phase to delete.
+ * The ratchet, phase by phase: 168 when the shell landed (phase 8; Notes,
+ * phase 9, moved no text size). The FORD page (10) deleted the FORD hub and
+ * its CSS and brought the life editors onto the kit: 148. Body & Pulse (12)
+ * deleted the watch-out banner, took the Pulse area out of ClientJournalTab
+ * and the Body blocks out of legacy-blocks, brought the InBody card onto the
+ * kit and collapsed the flag picker's stylesheet onto the scale: 125. Goals &
+ * Focus (14) deleted the goals panel, took the focus board out of
+ * ClientJournalTab and brought the board, the goals stylesheet, the shared
+ * plans, the jot strip and the jot rules of notes.css onto the kit: 93.
+ * Account (16) deleted the contract panel and the last of legacy-blocks: 80.
+ * The cleanup (19) deleted what nothing mounted any more — ClientJournalTab,
+ * DossierPrimitives and JournalRail: 57, the final value.
+ *
+ * WHAT IS LEFT, AND WHY IT STAYS. The two stylesheets that still count are
+ * SHARED: the codex mounts a piece of each, but other screens draw the rest
+ * at their own sizes, so moving them onto the codex's scale would change
+ * screens that are not the codex's.
+ *   - ford.css (26): the FORD detail dialog the FORD page opens draws with
+ *     the floor capture sheet's own classes (`.ford-capture`, `.ford-letter`,
+ *     `.ford-btn`), and the rest of the file is that capture sheet, the
+ *     post-session sweep, the briefing's row and the Delight queue — all off
+ *     the codex.
+ *   - relay/notes/notes.css (31): Relay's notes, whose jot rules came onto
+ *     the scale in phase 14; the rest is Relay's own screen.
+ *   - the clinical flag picker (0): only the codex mounts it (Body & Pulse →
+ *     Watch-outs) and it is on the scale already. It stays here rather than
+ *     on CODEX_FILES only because its screen-reader-only text is one line
+ *     clipped on purpose, which the clipping rule would refuse.
+ * Other shared pieces the codex mounts — the Pulse panel, the note composer
+ * and the To-file tray, the one Loudness control — keep their own sizes where
+ * the floor draws them; on Notes, notes-page.css brings the composer's onto
+ * the scale (the test below holds every one of them).
  */
 const HOSTED_FILES: readonly string[] = [
-  "components/client-dossier/DossierPrimitives.tsx",
-  "components/client-dossier/JournalRail.tsx",
-  "components/journal/ClientJournalTab.tsx",
   "features/ford/ford.css",
   "features/relay/notes/notes.css",
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
 ];
-/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93; after Account (phase 16): 80. Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 80;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93; after Account (phase 16): 80; after the cleanup (phase 19): 57, the final value. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 57;
+
+/**
+ * Components only the codex mounts that live OUTSIDE its folder and draw
+ * with Tailwind utilities, so neither list fits them: CODEX_FILES would
+ * refuse a deliberate screen-reader-only label (the clipping rule) and the
+ * FORD tokens they colour with, and HOSTED_FILES would count those colour
+ * utilities (`text-[var(--ford-ink)]`) as sizes. Their own text is held to
+ * the scale exactly — a budget of 0 — with Tailwind's named sizes read as
+ * the pixels they are (review of phase 19).
+ *   - the FORD detail dialog: since the FORD hub went (phase 10) only the
+ *     FORD page opens it. Its own sizes are 12 / 14 / 17; the capture
+ *     classes it borrows from ford.css are counted under HOSTED_FILES
+ *     (ford.css's 26, shared with the floor's capture sheet).
+ */
+const CODEX_MOUNTED_FILES: readonly string[] = ["features/ford/FordDetailDialog.tsx"];
 
 /**
  * The shared note pieces the Notes page mounts — the composer, the To-file
@@ -316,6 +338,30 @@ function offScaleSizes(text: string, kind: Kind): string[] {
     }
     for (const m of text.matchAll(/\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g)) bad.push(`Tailwind text-${m[1]}`);
     for (const m of text.matchAll(/\btext-\[[^\]]*\]/g)) bad.push(`Tailwind ${m[0]}`);
+  }
+  return bad;
+}
+
+/** Tailwind 4's named text sizes, in px. */
+const TAILWIND_TEXT_PX: Record<string, number> = {
+  xs: 12, sm: 14, base: 16, lg: 18, xl: 20,
+  "2xl": 24, "3xl": 30, "4xl": 36, "5xl": 48, "6xl": 60, "7xl": 72, "8xl": 96, "9xl": 128,
+};
+
+/**
+ * A component's off-scale text sizes, reading Tailwind's utilities as the
+ * pixels they draw (`text-sm` is 14px, on the scale) and skipping the
+ * bracketed ones that set a colour (`text-[var(--ford-ink)]`), not a size.
+ */
+function offScaleSizesReadingTailwind(text: string): string[] {
+  const bad = offScaleSizes(text, "tsx").filter((b) => !b.startsWith("Tailwind "));
+  for (const m of text.matchAll(/\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/g)) {
+    if (!onScale(`${TAILWIND_TEXT_PX[m[1]]}px`)) bad.push(`Tailwind text-${m[1]}`);
+  }
+  for (const m of text.matchAll(/\btext-\[([^\]]*)\]/g)) {
+    const v = m[1];
+    const isSize = /^\d/.test(v) || v.startsWith("var(--cx-fs-");
+    if (isSize && !onScale(v)) bad.push(`Tailwind text-[${v}]`);
   }
   return bad;
 }
@@ -506,6 +552,16 @@ describe("the scale checker", () => {
     expect(offScaleSizes("<span style={{ font: 'inherit' }} />", "tsx")).toEqual([]);
   });
 
+  it("reads Tailwind's sizes as pixels for a codex-mounted component, and skips a colour", () => {
+    expect(offScaleSizesReadingTailwind('<b className="text-xs text-sm text-[17px] text-[var(--ford-ink)]" />')).toEqual([]);
+    expect(offScaleSizesReadingTailwind('<b className="text-base text-[13px] text-lg" />')).toEqual([
+      "Tailwind text-base",
+      "Tailwind text-lg",
+      "Tailwind text-[13px]",
+    ]);
+    expect(offScaleSizesReadingTailwind("<span style={{ fontSize: 13 }} />")).toHaveLength(1);
+  });
+
   it("catches clipping, and allows a row body's two-line clamp only", () => {
     expect(clipping(".a { text-overflow: ellipsis; }", "css")).toHaveLength(1);
     expect(clipping(".a { white-space: nowrap; overflow: hidden; }", "css")).toHaveLength(1);
@@ -593,7 +649,9 @@ function everyCodexFile(): string[] {
 
 describe("the codex's files", () => {
   it("are all on the list, and the list names only real files", () => {
-    for (const rel of [...CODEX_FILES, ...HOSTED_FILES]) expect(existsSync(join(SRC, rel)), rel).toBe(true);
+    for (const rel of [...CODEX_FILES, ...HOSTED_FILES, ...CODEX_MOUNTED_FILES]) {
+      expect(existsSync(join(SRC, rel)), rel).toBe(true);
+    }
     // A file in the folder is either the codex's own (every check) or a
     // hosted one still waiting for its area (counted against the budget).
     const listed = new Set([...CODEX_FILES, ...HOSTED_FILES]);
@@ -602,6 +660,9 @@ describe("the codex's files", () => {
       expect(listed.has(rel), `${rel} is in the codex folder but not in CODEX_FILES`).toBe(true);
     }
     for (const rel of HOSTED_FILES) expect(CODEX_FILES.includes(rel), `${rel} is on both lists`).toBe(false);
+    for (const rel of CODEX_MOUNTED_FILES) {
+      expect(CODEX_FILES.includes(rel) || HOSTED_FILES.includes(rel), `${rel} is on two lists`).toBe(false);
+    }
   });
 
   it("set text only on the 11 / 12 / 14 / 17 / 30 scale", () => {
@@ -640,6 +701,10 @@ describe("the codex's files", () => {
     let found = 0;
     for (const rel of HOSTED_FILES) found += offScaleSizes(read(rel), kindOf(rel)).length;
     expect(found).toBeLessThanOrEqual(HOSTED_OFF_SCALE_BUDGET);
+  });
+
+  it("draw a codex-only component's own text on the scale (the FORD detail dialog)", () => {
+    for (const rel of CODEX_MOUNTED_FILES) expect(offScaleSizesReadingTailwind(read(rel)), rel).toEqual([]);
   });
 });
 

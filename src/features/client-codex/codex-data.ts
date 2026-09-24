@@ -322,13 +322,14 @@ export interface CodexData {
 
 /**
  * What the codex asks of the profile around it: the doors that leave the tab
- * (a report, the Planner, the archive, the Migration Hub), which the profile
- * owns because it owns the view and the other tabs.
+ * (the Planner, the Activity Archive's reports, a machine, the Set-up, the
+ * Migration Hub), which the profile owns because it owns the view and the
+ * other tabs. The filed progress reports are the Archive's (Activity Archive
+ * → Reports); no page of the codex lists, opens or deletes one, so it asks
+ * for no report door of its own (the old journal area's three went with it
+ * in the cleanup, phase 19).
  */
 export interface CodexHosts {
-  onSelectReport: (id: string) => void;
-  onDeleteReport: (report: ProgressReport) => void;
-  onNewReport: () => void;
   onOpenPlanner: () => void;
   onOpenReports: () => void;
   /** The Migration Hub (OCR import). Switches to Journey, where imports land. */

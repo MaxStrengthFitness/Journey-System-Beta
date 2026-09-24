@@ -375,9 +375,16 @@ it.
 `ProgrammingTab`, `ClinicalHistoryTab` and the client codex's `ClientCodex`
 (`features/client-codex`) own their sub-toggle and compose the existing
 feature components. No feature component knows it is inside
-a combined tab. `ClientProfileView` still owns every Firestore write — which
-is why the Routine B dialog, the discard dialog and the Edit Routine drawer
-sit beside `ProgrammingTab` rather than inside it.
+a combined tab. `ClientProfileView` still owns every Firestore write of
+Journey, Programming and the Activity Archive — which is why the Routine B
+dialog, the discard dialog and the Edit Routine drawer sit beside
+`ProgrammingTab` rather than inside it. The codex is the exception, on
+purpose: its pages write the record through its one form (the Save bar's
+one `updateDoc`), notes and FORD through their own writers, and nothing
+else; the doors that LEAVE the tab (the Planner, the Archive's reports, a
+machine, the Set-up, the Migration Hub) are still the profile's, handed in
+as `CodexHosts`. Since the cleanup (phase 19) the codex asks for no report
+door: the filed reports are the Archive's shelf.
 
 `useRoutinesModel` (in `features/routines/`) was lifted out of `RoutinesTab`
 so the context sentence above the toggle and the panel below it are the same

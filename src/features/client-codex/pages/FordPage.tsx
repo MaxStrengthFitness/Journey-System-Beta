@@ -9,12 +9,15 @@
  * (`notes.record.lifeSettled`, which leave Notes for this page), the Pulse
  * lines the history the profile already streams, and the Work and
  * Recreation bands edit the record through the ONE form, saved by the ONE
- * Save bar. Who may do what is `codexAccess`, worked out once by the shell.
+ * Save bar. Who may do what is `codexAccess`, worked out once by the shell:
+ * `canEdit` changes the record and what FORD holds, `fordWritable` (the FORD
+ * create rule) adds to it. `writeLine` is the shell's request from a door to
+ * In one line (the Overview's "Write one").
  */
 import { FordPage as FordArea } from "../../ford/page/FordPage";
 import type { CodexPageProps } from "../codex-data";
 
-export function FordPage({ data, form, go }: CodexPageProps) {
+export function FordPage({ data, form, go, writeLine = null }: CodexPageProps & { writeLine?: unknown }) {
   const { client, access, author, pronouns, today, ford, fordStatus, notes, pulse } = data;
   return (
     <FordArea
@@ -25,6 +28,8 @@ export function FordPage({ data, form, go }: CodexPageProps) {
       pulse={pulse}
       form={form}
       canEdit={access.canEdit}
+      canAdd={access.fordWritable}
+      writeLine={writeLine}
       homeStudioName={access.homeStudioName}
       author={author}
       pronouns={pronouns}

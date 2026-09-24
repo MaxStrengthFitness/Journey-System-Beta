@@ -7,9 +7,17 @@
  * form that demanded all four would be filled in once and then avoided.
  *
  * Reached from the FORD page of Notes & Profile (Remember something, a
- * pillar's Add, a detail, the birthday in Coming up, Add an idea) and from
- * the teardown sweep (when a capture needs more than a one-tap filing).
- * Never from the tracker mid-set — that is what FordQuickCapture is for.
+ * pillar's Add, a detail, the birthday in Coming up, Add an idea) — the only
+ * place it opens. Never from the tracker mid-set — that is what
+ * FordQuickCapture is for — and the teardown sweep files with one tap.
+ *
+ * IT IMPORTS ITS OWN STYLESHEET (client codex, phase 19). It draws with the
+ * floor capture sheet's classes in ford.css (`.ford-capture`, `.ford-letter`,
+ * `.ford-btn`, `.ford-icon-btn`). A stylesheet arrives with the chunk that
+ * imports it, and once the FORD hub that used to import it was gone only the
+ * session and Operations chunks did: on an iPad that had not started a
+ * session yet, this dialog opened on the profile unstyled. ford-css.test.ts
+ * holds every component that draws with ford.css to importing it.
  *
  * A SAVE THAT FAILS KEEPS THE SENTENCE (client codex, Sep 2026). `onSave`
  * may answer `false`; the dialog then stays open with every field as typed
@@ -41,6 +49,7 @@ import {
 } from "./types";
 import type { FordAuthor } from "./ford-write";
 import { FOLLOW_UP_MAX } from "./ask-next";
+import "./ford.css";
 
 export interface FordDetailDialogProps {
   open: boolean;

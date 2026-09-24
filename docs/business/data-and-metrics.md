@@ -92,6 +92,24 @@ cutover. Any cohort claim must say what it is drawn from — see
 
 ---
 
+## What the client codex added, and who reads it (Sep 24 2026)
+
+The client codex (`docs/rounds/2026-09-24-client-codex.md`) kept this rule for every field it touched:
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| **In one line** — `clients/{id}/ford/one-line` | The FORD page's In one line panel (the team's sentence, last writer wins) | The top of the FORD page and the Overview's FORD slot, with who wrote it last |
+| **Follow up next time** — `followUp`, `followUpAt`, `followUpBy` on a FORD detail | The FORD detail dialog, only when the question changes; "Asked it" clears it | The pillar's Ask next line on the FORD page. The briefing does not read it yet: showing it there is a floor change waiting on AJ |
+| **The InBody normal variation** — `studios/{id}.inbodyVariation` | My Studio → Studio | The InBody card, Body & Pulse (Measured and told, Over time), the progress report, the Renewal Brief, the renewal card, the pipeline and its Upgrade candidates filter |
+| **How she arrives and leaves** — the briefing's readiness answers and the post-session dose on each `sessions` document | The briefing and the post-session screen (unchanged) | Now also Body & Pulse → Over time and the figure's region list, from the 40 sessions the journal already streams — a reader, not a new read |
+| `recoveryMetric` on the client | **Nothing any more** (decision: retire it from the screen) | **Nothing.** It stays on old records by AJ's choice; the record form refuses the key, so no screen can write it again. It is kept, not a bug: no reader and no writer |
+| `fordSummary.pinned` on the client | The FORD rollup, after every FORD save (now for trainers too, since the FORD read was fixed) | **Nothing.** A write with no reader — and FORD text on a document cross-train studios can read. Whether to stop writing it is waiting on AJ; `counts` and `nextDate` beside it do have readers (Relay, cohorts) |
+| `lastUpdatedBy` on the client | The Save bar (as the old form did) | Nothing yet — carried over unchanged, on the work list |
+
+Every number the codex shows about her history keeps the migration rules: the Story's since line and the header's session counts are one computation, a FileMaker client is never called new, and a count of her Journey sessions says "in Journey".
+
+---
+
 ## The audit this implies
 
 Each field we store should be traceable to a reader. When a round adds a field,

@@ -139,7 +139,9 @@ export interface JournalEntry {
   searchTags: string[];
 
   /**
-   * Optional override for which client-dossier section this note belongs to.
+   * Optional override for which of the old record's sections this note
+   * belongs to (the client codex replaced the sections with pages in Sep
+   * 2026; old documents keep the id, and `SECTION_TO_PAGE` still lands it).
    * Normally left unset: `sectionForEntry()` derives it from kind + category,
    * which needs no backfill, no index and no write-time denormalisation to
    * keep in sync. Set it only when a coach deliberately files a note somewhere
@@ -502,47 +504,27 @@ export function relativeDay(date: Date | null): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* JOURNAL -> CLIENT DOSSIER LINKING                                   */
+/* JOURNAL -> THE OLD DOSSIER SECTIONS                                 */
 /* ------------------------------------------------------------------ */
 
 /**
- * The client profile's sections — one spine holding what used to be two tabs.
+ * The sections of the client record's old long scroll — kept as a vocabulary,
+ * not a screen.
  *
- * WHAT CHANGED, AND WHY (the profile merge, Sep 2026)
- * --------------------------------------------------
- * Details and Journal were separately good screens that showed each other's
- * data. Four of the six dossier sections embedded a rail of journal notes the
- * Journal tab was also rendering; `client.events` was an editable section AND
- * a stream of "life" entries; six profile textareas were edited in Details and
- * adapted into journal cards at the same time. A trainer reading a client had
- * to visit two tabs and then work out which copy was the real one.
+ * The profile merge (Sep 2026) made Details and Journal one tab: a spine of
+ * eight sections (who they are, life, body, goals, focus, notes, the Pulse,
+ * admin) with a journal rail beside some of them. The client codex (Sep 24
+ * 2026) replaced that spine with seven pages — Overview · Notes · FORD ·
+ * Body & Pulse · Goals & Focus · Story · Account (`features/client-codex`) —
+ * and deleted the dossier, its jump rail (`DOSSIER_SECTIONS`), its journal
+ * rails (`JournalRail`, `entriesForSection`) and its form primitives.
  *
- * So they are one tab now, and the sections below are the whole client, in the
- * order someone actually reads a person:
- *
- *   general   who they are          — identity, contact, the Mindbody record
- *   life      the FORD hub          — family, occupation, recreation, dreams
- *   medical   what the load works around, plus the load they already carry
- *   goals     the why              — original why, SMART goal, coach strategy
- *   focus     the 4 P's            — what each coach is working on
- *   notes     the catalog          — every note, in one of seven categories
- *   reports   the assessment — the living record a coach fills in over time.
- *             The FILED reports moved to the Activity Archive (was Clinical History) in the four-tab
- *             round: the archive is the past, and the past has a tab. You
- *             still write one from here; you read the shelf over there.
- *   admin     contract, billing, access, and how they found us
- *
- * Two sections are gone. LIFESTYLE is replaced by `life`: its dropdowns were
- * programming inputs and moved to `medical` beside the rest of the load
- * picture, its acquisition fields moved to `admin`, and the personal detail it
- * was supposed to hold now has a real home in FORD. EVENTS is gone because
- * `client.events` is read as FORD entries instead (see features/ford), leaving
- * one dated timeline rather than two.
- *
- * The per-section journal rails are also gone, with ONE exception: `medical`
- * keeps its rail, because a limitation noticed mid-session is safety
- * information and belongs beside the clinical fields, not one section away.
- * Everything else reads the `notes` section, which is the single timeline.
+ * Two things outlive it, which is why this type stays:
+ *   - a journal entry may STORE a section (`JournalEntry.profileSection`), so
+ *     old documents carry these ids;
+ *   - every door that ever named a section still lands: the profile's
+ *     navigation maps each id to its page and card (`SECTION_TO_PAGE`,
+ *     features/client-profile/profile-nav.ts, which is total over this type).
  */
 export type DossierSection =
   | "general"
@@ -554,35 +536,17 @@ export type DossierSection =
   | "reports"
   | "admin";
 
-export const DOSSIER_SECTIONS: {
-  id: DossierSection;
-  label: string;
-  blurb: string;
-  icon: string;
-}[] = [
-  // Notes first (Operations overhaul, Sep 2026): the tab is Notes & Profile,
-  // so the notes sit above the profile — AJ, Sep 19. The dossier renders its
-  // sections in this order and the rail follows it.
-  { id: "notes", label: "Notes", blurb: "Every note, filed by category", icon: "NotebookPen" },
-  { id: "general", label: "Who they are", blurb: "The ID card — what they go by, and what Mindbody knows", icon: "User" },
-  { id: "life", label: "Life", blurb: "Family, occupation, recreation, dreams", icon: "Heart" },
-  { id: "medical", label: "Body", blurb: "What the load has to work around", icon: "HeartPulse" },
-  { id: "goals", label: "Goals", blurb: "The why, and how it has moved", icon: "Target" },
-  { id: "focus", label: "Focus", blurb: "What each coach is working on", icon: "Crosshair" },
-  { id: "reports", label: "Pulse", blurb: "How life is going, filled a little at a time — write it here, read the filed reports in the Activity Archive", icon: "TrendingUp" },
-  { id: "admin", label: "Admin", blurb: "Contract, billing and access", icon: "Settings2" },
-];
-
 /**
- * Which section a note belongs to.
+ * Which old section a note belonged to.
  *
  * Derived rather than stored: the journal is already loaded in memory, the
  * rules live in exactly one place, and changing the mapping later needs no
  * migration. An explicit `profileSection` on the entry always wins.
  *
  * Returns null for notes with no profile home — coaching cues and equipment
- * notes are training material, and belong in the Journal and the
- * Equipment tab rather than being forced into a dossier section.
+ * notes are training material. The codex's pages select notes through
+ * `features/client-notes/record-selectors.ts`, not through this; the journal
+ * adapter's tests hold the medical fields to "medical" with it.
  */
 export function sectionForEntry(entry: JournalEntry): DossierSection | null {
   if (entry.profileSection) return entry.profileSection;
@@ -609,67 +573,3 @@ export function sectionForEntry(entry: JournalEntry): DossierSection | null {
       return null;
   }
 }
-
-/**
- * The notes a given section should show.
- *
- * Medical is the deliberate exception. The studio trains continuous-tension
- * and high-intensity, so a limitation noticed mid-session is safety
- * information wherever it was filed — a critical Pace note that says she
- * cannot hold the end range is a physical limitation even though its kind is
- * "coaching". So Medical also pulls any unresolved critical note, whatever
- * its kind, and marks where it came from.
- */
-export function entriesForSection(
-  entries: JournalEntry[],
-  section: DossierSection,
-): JournalEntry[] {
-  if (section === "medical") {
-    return entries.filter((e) => {
-      if (sectionForEntry(e) === "medical") return true;
-      return e.importance === "critical" && !e.resolvedAt;
-    });
-  }
-  return entries.filter((e) => sectionForEntry(e) === section);
-}
-
-/* ------------------------------------------------------------------ */
-/* PROVENANCE                                                          */
-/* ------------------------------------------------------------------ */
-
-/**
- * Where a value on the dossier came from. The single most important thing a
- * coach needs to know about any field on this screen is whether they can
- * change it and whether it will survive the next sync.
- */
-export type FieldSource = "coach" | "mindbody" | "journal" | "derived";
-
-export const SOURCE_META: Record<
-  FieldSource,
-  { label: string; hint: string; chip: string; bar: string }
-> = {
-  coach: {
-    label: "Coach",
-    hint: "Typed here. Yours to edit.",
-    chip: "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/25",
-    bar: "bg-slate-400 dark:bg-slate-600",
-  },
-  mindbody: {
-    label: "Mindbody",
-    hint: "Synced from Mindbody. Overwritten on the next sync — edit it there.",
-    chip: "bg-sky-500/12 text-sky-600 dark:text-sky-300 border-sky-500/25",
-    bar: "bg-sky-500",
-  },
-  journal: {
-    label: "Journal",
-    hint: "Surfaced from a coaching note. Edit it in the Journal.",
-    chip: "bg-violet-500/12 text-violet-600 dark:text-violet-300 border-violet-500/25",
-    bar: "bg-violet-500",
-  },
-  derived: {
-    label: "Calculated",
-    hint: "Worked out from other data. Not editable.",
-    chip: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300 border-emerald-500/25",
-    bar: "bg-emerald-500",
-  },
-};

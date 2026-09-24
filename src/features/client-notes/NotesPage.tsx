@@ -82,6 +82,13 @@ export interface NotesPageProps {
    * saves in place; otherwise it says where FORD is kept.
    */
   fordWritable: boolean;
+  /**
+   * May this reader READ the client's FORD? With `fordWritable` false it
+   * tells the composer why FORD / Life doesn't save here: adding isn't
+   * offered (an administrator who works elsewhere), rather than FORD being
+   * out of reach (a cross-train visitor). Left out, it is the latter.
+   */
+  fordReadable?: boolean;
   /** The studio a FORD detail is stamped with (`fordStudioIdOf`), the one the FORD read filters on. */
   fordStudioId: string;
   /** How many things FORD holds (`fordDoorCount`); null when unknown. */
@@ -106,6 +113,7 @@ export function NotesPage({
   coverage,
   possessive,
   fordWritable,
+  fordReadable = false,
   fordStudioId,
   fordDoorCount,
   onOpenFord,
@@ -294,6 +302,7 @@ export function NotesPage({
             disabled={!clientId || !author}
             ford={fordContext}
             onOpenFord={onOpenFord}
+            fordReadOnly={fordReadable && !fordWritable}
             onFordSaved={() => {
               toastSuccess("Saved to FORD.");
               setComposeOpen(false);

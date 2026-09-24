@@ -62,6 +62,9 @@ import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/client-not
 import { splitUnfiled } from "../../features/client-notes/note-catalog";
 import { PulseQuickLog } from "../../features/subjective-report";
 import type { SessionNoteDraft } from "../../features/client-notes/session-draft";
+// Its FORD notice draws with ford.css; a component imports the stylesheet it
+// draws with rather than lean on a neighbour in the same chunk (ford-css.test.ts).
+import "../../features/ford/ford.css";
 
 export interface SessionJournalSidebarProps {
   session: WorkoutSession;

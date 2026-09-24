@@ -33,7 +33,15 @@
  *   - FOLLOW UP NEXT TIME (phase 11): the newest open question is Ask next,
  *     "Asked it" clears it (saving an answer as a new detail first), the
  *     dialog stamps a question only when it changed, and a question on a
- *     detail Ask next is not showing — or on an unfiled one — is still said.
+ *     detail Ask next is not showing — or on an unfiled one — is still said;
+ *   - WHO MAY ADD (phase 19): a reader who may change the record but whom the
+ *     FORD create rule refuses (an administrator who works elsewhere) is told
+ *     why adding isn't offered, gets no Add anywhere, and may still change
+ *     what is on file — file a capture, rewrite a line that exists;
+ *   - A DOOR THAT ASKS TO WRITE THE LINE (phase 19, the Overview's "Write
+ *     one"): the editor opens with the cursor in it, once per request, only
+ *     when there is no line and this reader may write one, and only once
+ *     FORD has answered.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -236,6 +244,8 @@ function Harness({
   older = { state: "ready", settled: [] },
   pulse = { status: "ready", history: historyFromDocs([], 50) },
   canEdit = true,
+  canAdd = true,
+  writeLine = null,
   homeStudioName = "Westlake",
   author = AUTHOR,
   today = TODAY,
@@ -250,6 +260,8 @@ function Harness({
       pulse={pulse}
       form={form}
       canEdit={canEdit}
+      canAdd={canAdd}
+      writeLine={writeLine}
       homeStudioName={homeStudioName}
       author={author}
       pronouns={pronounsOf(client)}
@@ -875,6 +887,110 @@ describe("In one line", () => {
     const host = await mount({ canEdit: false, ford: fordOf([], "ready", lineDoc("Retired hygienist")) });
     expect(panel(host)!.textContent).toContain("Retired hygienist");
     expect(panel(host)!.querySelector("button")).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Phase 19 — who may add, and a door that asks to write the line      */
+/* ------------------------------------------------------------------ */
+
+describe("a reader who may change FORD but not add to it (phase 19)", () => {
+  // An administrator who works elsewhere: the record's update rule and the
+  // FORD update rule let them in, the FORD create rule does not.
+  const caught = detail({ id: "u1", pillar: null, origin: "in_session", body: "Her sister might visit from Arizona in April." });
+  const kids = detail({ id: "f1", pillar: "family", body: "Two granddaughters, Ellie and Rose." });
+
+  it("says why adding isn't offered, and offers no Add anywhere", async () => {
+    const host = await mount({ canAdd: false, ford: fordOf([caught, kids]) });
+    expect(host.querySelector('[data-testid="ford-add-not-offered"]')?.textContent).toBe(
+      "Only a trainer at her home studio can add to FORD, so adding isn't offered here.",
+    );
+    expect(buttonIn(host, "Remember something")).toBeUndefined();
+    expect(host.querySelector('[aria-label^="Add a "]')).toBeNull();
+    expect(buttonIn(host.querySelector("#ford-one-line")!, "Write the line")).toBeUndefined();
+    expect(buttonIn(host.querySelector("#ford-beyond")!, "Add an idea")).toBeUndefined();
+    // The birthday nobody planned is a new detail: not offered.
+    expect(host.querySelector('#ford-coming-up button[data-kind="birthday"]')).toBeNull();
+    expect(host.querySelector("#ford-coming-up")!.textContent).toContain("Her 69th birthday");
+  });
+
+  it("still changes what is on file: files a capture, opens a detail", async () => {
+    const host = await mount({ canAdd: false, ford: fordOf([caught, kids]) });
+    await click(host.querySelector('[aria-label="File under Family"]'));
+    expect(fake.writes.find((w) => w.op === "update" && w.path === "clients/c1/ford/u1")?.data).toMatchObject({ pillar: "family" });
+    const kidsRow = Array.from(card(host, "family").querySelectorAll("button")).find((b) =>
+      (b.textContent ?? "").includes("Two granddaughters"),
+    );
+    await click(kidsRow);
+    expect(dialog()).not.toBeNull();
+  });
+
+  it("rewrites a line that exists (an update), and writes no first line (a create)", async () => {
+    const host = await mount({ canAdd: false, ford: fordOf([], "ready", lineDoc("Retired hygienist")) });
+    const panel = host.querySelector<HTMLElement>("#ford-one-line")!;
+    await click(panel.querySelector('[aria-label="Edit the line"]'));
+    await typeInto(panel.querySelector("input"), "Retired hygienist, pickleball regular");
+    await click(buttonIn(panel, "Save"));
+    expect(fake.writes.find((w) => w.path === "clients/c1/ford/one-line")?.op).toBe("update");
+  });
+
+  it("says nothing of the kind to a trainer at her studio, or to a reader FORD refuses", async () => {
+    const trainer = await mount();
+    expect(trainer.querySelector('[data-testid="ford-add-not-offered"]')).toBeNull();
+    expect(buttonIn(trainer, "Remember something")).toBeTruthy();
+    const refused = await mount({ status: "off", canEdit: false, canAdd: false, ford: fordOf([]) });
+    expect(refused.querySelector('[data-testid="ford-add-not-offered"]')).toBeNull();
+  });
+});
+
+describe("a door that asks to write the line (phase 19)", () => {
+  const panel = (host: HTMLElement) => host.querySelector<HTMLElement>("#ford-one-line")!;
+  const input = (host: HTMLElement) => panel(host).querySelector("input");
+
+  it("opens the editor with the cursor in it when there is no line yet", async () => {
+    const host = await mount({ writeLine: { move: 1 } });
+    expect(input(host)).not.toBeNull();
+    expect(input(host)!.value).toBe("");
+    expect(document.activeElement).toBe(input(host));
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("acts once per request: Cancel stays closed until a new door asks again", async () => {
+    const first = { move: 1 };
+    const host = await mount({ writeLine: first });
+    await click(buttonIn(panel(host), "Cancel"));
+    expect(input(host)).toBeNull();
+    await rerender(host, { writeLine: first });
+    expect(input(host)).toBeNull();
+    await rerender(host, { writeLine: { move: 2 } });
+    expect(input(host)).not.toBeNull();
+  });
+
+  it("never opens over a line — one written meanwhile is shown instead", async () => {
+    const host = await mount({ writeLine: { move: 1 }, ford: fordOf([], "ready", lineDoc("Retired hygienist")) });
+    expect(input(host)).toBeNull();
+    expect(panel(host).textContent).toContain("Retired hygienist");
+  });
+
+  it("waits for FORD to answer, then opens", async () => {
+    const move = { move: 1 };
+    const host = await mount({ writeLine: move, status: "loading", ford: fordOf([], "loading") });
+    expect(input(host)).toBeNull();
+    await rerender(host, { writeLine: move, status: "ready", ford: fordOf([]) });
+    expect(input(host)).not.toBeNull();
+  });
+
+  it("opens nothing for a reader who may not write the line, or when FORD could not be read", async () => {
+    const admin = await mount({ canAdd: false, writeLine: { move: 1 } });
+    expect(input(admin)).toBeNull();
+    const failed = await mount({ writeLine: { move: 1 }, status: "failed", ford: fordOf([], "failed") });
+    expect(input(failed)).toBeNull();
+  });
+
+  it("focuses nothing when no door asked", async () => {
+    const host = await mount();
+    expect(input(host)).toBeNull();
+    expect(document.activeElement === document.body || document.activeElement === null).toBe(true);
   });
 });
 

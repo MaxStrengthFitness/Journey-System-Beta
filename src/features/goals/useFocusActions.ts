@@ -2,10 +2,11 @@
  * THE FOCUS ACTIONS — set a focus, achieve it, extend it, retire it, and
  * file a check-in against it, each with its toast.
  *
- * Moved out of ClientJournalTab unchanged (client codex, Sep 2026), so the
- * journal's Focus area today and the Goals & Focus page tomorrow file a
- * focus the SAME way. The board itself (FocusBoard) draws; this owns the
- * writes. Nothing here reads Firestore.
+ * Moved out of the old journal area, ClientJournalTab, unchanged (client
+ * codex, Sep 2026), so Goals & Focus files a focus the SAME way the journal's
+ * Focus area did; the codex's cleanup (phase 19) deleted that area. The board
+ * itself (FocusBoard) draws; this owns the writes. Nothing here reads
+ * Firestore.
  *
  * WHO THE COACH IS
  * ----------------

@@ -41,7 +41,8 @@
  * `createFordEntry`. A second tap on the chip is a note again, words intact.
  * A FORD detail holds 2,000 characters (the rule), a note 5,000, so a longer
  * box says so instead of being refused. With neither, the chip says where
- * personal details are kept and offers the way there.
+ * personal details are kept and offers the way there — and, for a reader who
+ * may read FORD but not add to it (`fordReadOnly`), that adding isn't offered.
  *
  * A failed save never costs the words: the box is cleared only once the save
  * has landed, and a refused note or FORD capture stays where it was typed.
@@ -111,6 +112,15 @@ export interface JournalComposerProps {
   onPickFord?: () => void;
   /** Offered in FORD mode and with the hand-off: go to where FORD is kept. */
   onOpenFord?: () => void;
+  /**
+   * This reader may READ FORD but its create rule refuses them (an
+   * administrator who works at another studio — `codexAccess()`'s
+   * fordReadable without fordWritable). The hand-off then says adding isn't
+   * offered, not that FORD is out of reach: the Open FORD beside it works for
+   * them (client codex, phase 19). Left false, the hand-off says what a
+   * cross-train trainer needs to hear: only the home studio can read FORD.
+   */
+  fordReadOnly?: boolean;
   /** A FORD capture landed (FORD mode). The composer has already cleared itself. */
   onFordSaved?: () => void;
   /**
@@ -141,6 +151,7 @@ export function JournalComposer({
   ford = null,
   onPickFord,
   onOpenFord,
+  fordReadOnly = false,
   onFordSaved,
   draft = null,
   onDraftChange,
@@ -351,7 +362,9 @@ export function JournalComposer({
       {fordHandoff ? (
         <div className="nc-handoff flex flex-wrap items-center justify-between gap-2">
           <span className="nc-hint">
-            Personal details are kept in FORD, which only the client’s home studio can read.
+            {fordReadOnly
+              ? "Personal details are kept in FORD. Only a trainer at the client’s home studio can add to it, so saving there isn’t offered here."
+              : "Personal details are kept in FORD, which only the client’s home studio can read."}
             {body.trim() ? " Your unsaved note is kept — pick its category again to finish it." : ""}
           </span>
           {onOpenFord ? (

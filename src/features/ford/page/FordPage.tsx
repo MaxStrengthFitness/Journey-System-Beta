@@ -26,12 +26,25 @@
  *
  * WHO MAY DO WHAT. The bands are record fields: a reader who may change the
  * record (`canEdit`) gets Edit on Occupation and Recreation, and the one Save
- * bar saves them. A FORD detail is written the moment it is added, and only
- * by a reader the FORD create rule accepts — the same `canEdit`, a signed-in
- * author (the Auth uid), and a client with a studio (`fordCanAdd`). A failed
- * READ still lets a trainer add (never block a save); a refused one does not.
- * The one exception is In one line, which is REPLACED rather than added to:
- * it is rewritten only over a line this iPad has read (OneLinePanel).
+ * bar saves them. FORD itself follows FORD's rules, which are not the
+ * record's (client codex, phase 19):
+ *   - CHANGING what is on file (edit a detail, file a capture, take a
+ *     gesture, rewrite a line that exists) follows the FORD update rule —
+ *     `canEdit`, a signed-in author (the Auth uid) and a client with a studio
+ *     (`fordCanAdd`): `canWrite`;
+ *   - ADDING (Remember something, a pillar's Add, planning the birthday, an
+ *     idea, "Asked it" with an answer, a first line) follows the CREATE rule,
+ *     which has no clause for an administrator who works elsewhere: `canAdd`
+ *     (`codexAccess().fordWritable` — trains at or leads her home studio).
+ *     Such a reader is told why adding is not offered, rather than offered
+ *     an Add the database would refuse.
+ * A failed READ still lets a trainer add (never block a save); a refused one
+ * does not. In one line is REPLACED rather than added to: it is rewritten
+ * only over a line this iPad has read (OneLinePanel).
+ *
+ * A DOOR THAT ASKS TO WRITE THE LINE (`writeLine`, the Overview's "Write
+ * one", phase 19) opens the In one line editor on arrival — once per door,
+ * only when there is no line yet and this reader may write one.
  *
  * FOLLOW UP NEXT TIME is written by the detail dialog, and only when the
  * question changed (`followUpPatch`); the pillar's Ask next line shows the
@@ -103,8 +116,20 @@ export interface FordPageProps {
   /** The Pulse history the profile already streams. */
   pulse: { status: ProgressReportsStatus; history: AssessmentHistory | null };
   form: Pick<RecordForm, "formData" | "updateField" | "isDirty" | "revision">;
-  /** May change the client record (codexAccess().canEdit) — and so write FORD. */
+  /** May change the client record (codexAccess().canEdit) — and so change what FORD holds. */
   canEdit: boolean;
+  /**
+   * May ADD to FORD (codexAccess().fordWritable — the create rule: trains at
+   * or leads her home studio). An administrator who works elsewhere may edit
+   * the record and what FORD holds, but not add to it.
+   */
+  canAdd: boolean;
+  /**
+   * A door's request to write In one line (the Overview's "Write one"): a
+   * new value opens the editor once, if there is no line yet. Keyed by the
+   * navigation move, so each door is acted on once.
+   */
+  writeLine?: unknown;
   homeStudioName: string | null;
   /** Who writes: the Auth uid as `id` ("" when nobody is signed in). */
   author: FordAuthor;
@@ -125,6 +150,8 @@ export function FordPage({
   pulse,
   form,
   canEdit,
+  canAdd,
+  writeLine = null,
   homeStudioName,
   author,
   pronouns,
@@ -146,9 +173,17 @@ export function FordPage({
         : FORD_READ_NOTICE.denied
       : fordReadNotice(status, studioId);
 
-  // Who may write FORD here: the create rule wants a trainer of the client's
-  // studio (canEdit is that answer), a signed-in author, and a studio to stamp.
+  // Who may change FORD here: a reader who may change the record, a
+  // signed-in author, and a studio to stamp (the update rule). Adding needs
+  // the create rule as well, which only the home studio's own people pass.
   const canWrite = canEdit && !!author.id && !!clientId && fordCanAdd(status === "off" ? "denied" : status, studioId);
+  const canCreate = canWrite && canAdd;
+  // Told, not offered: a reader who may change the record but not add to
+  // FORD (an administrator who works elsewhere), while FORD is readable.
+  const addNotOffered =
+    canEdit && !canAdd && (status === "ready" || status === "loading" || status === "failed")
+      ? `Only a trainer at ${pronouns.possessive} home studio can add to FORD, so adding isn't offered here.`
+      : null;
 
   const entries = readable ? ford.entries : NO_ENTRIES;
   const rows = useMemo(
@@ -187,7 +222,7 @@ export function FordPage({
           setDialog({ kind: "edit", entry: row.entry });
         } else if (row.linked) {
           setDialog({ kind: "edit", entry: row.linked });
-        } else {
+        } else if (canCreate) {
           // The birthday nobody has planned for yet: a Family detail already
           // filled in, every year, with the gesture open.
           addUnder("family", {
@@ -202,10 +237,11 @@ export function FordPage({
   // answered. While it loads, or when the read failed, the client's own
   // "Birthday" detail may exist unseen, and planning it would make a second;
   // until then that card is read only (a linked one still opens).
-  const canOpenComingUp = (row: ComingUpRow) => row.kind === "detail" || row.linked !== null || status === "ready";
+  const canOpenComingUp = (row: ComingUpRow) =>
+    row.kind === "detail" || row.linked !== null || (status === "ready" && canCreate);
 
   const save = async (values: FordDetailValues): Promise<boolean> => {
-    if (!canWrite || !dialog) return false;
+    if (!canWrite || !dialog || (dialog.kind === "new" && !canCreate)) return false;
     let ok: boolean;
     if (dialog.kind === "edit") {
       // The follow-up is written only when the question CHANGED — the dialog
@@ -224,8 +260,10 @@ export function FordPage({
   };
 
   // In one line: saved the moment Save is tapped, by a reader who may write
-  // FORD, stamped with the same studio every detail is.
-  const saveLine = canWrite
+  // FORD, stamped with the same studio every detail is. A FIRST line is a
+  // create; a reader who may only change FORD may rewrite a line that exists.
+  const lineWritable = canCreate || (canWrite && readable && ford.oneLine !== null);
+  const saveLine = lineWritable
     ? (text: string, existing: FordEntry | null) => saveFordOneLine(clientId, studioId, author, text, existing)
     : null;
 
@@ -235,7 +273,7 @@ export function FordPage({
   // the question the panel was opened on (AskNextLine holds it), never
   // whatever Ask next says by the time the write runs.
   const askActions = (pillar: FordPillar): AskNextActions | null =>
-    canWrite
+    canCreate
       ? {
           answer: async (ask, body) =>
             (await createFordEntry(clientId, studioId, author, {
@@ -266,8 +304,8 @@ export function FordPage({
       lede={FORD_PAGE_LEDE}
       go={go}
       actions={
-        canEdit ? (
-          <Btn variant="solid" icon={Plus} disabled={!canWrite} onClick={() => addUnder(null)}>
+        canEdit && canAdd ? (
+          <Btn variant="solid" icon={Plus} disabled={!canCreate} onClick={() => addUnder(null)}>
             Remember something
           </Btn>
         ) : null
@@ -279,6 +317,12 @@ export function FordPage({
           <span>{notice}</span>
         </p>
       ) : null}
+      {addNotOffered ? (
+        <p className="fordpg-notice" role="status" data-testid="ford-add-not-offered">
+          <Info size={16} aria-hidden="true" className="fordpg-notice__icon" />
+          <span>{addNotOffered}</span>
+        </p>
+      ) : null}
       {older.state === "failed" ? (
         <p className="fordpg-notice" role="status">
           <Info size={16} aria-hidden="true" className="fordpg-notice__icon" />
@@ -286,7 +330,13 @@ export function FordPage({
         </p>
       ) : null}
 
-      <OneLinePanel oneLine={readable ? ford.oneLine : null} status={status} now={now} onSave={saveLine} />
+      <OneLinePanel
+        oneLine={readable ? ford.oneLine : null}
+        status={status}
+        now={now}
+        onSave={saveLine}
+        writeRequest={writeLine}
+      />
 
       <ComingUp
         rows={rows}
@@ -363,7 +413,7 @@ export function FordPage({
               askingId={ask.kind === "follow-up" ? ask.entry.id : null}
               now={now}
               onOpen={openEntry}
-              onAdd={canWrite ? () => addUnder(pillar) : null}
+              onAdd={canCreate ? () => addUnder(pillar) : null}
             />
           );
         })}
@@ -399,7 +449,7 @@ export function FordPage({
           clientId={clientId}
           known={status === "ready"}
           me={canWrite ? { id: author.id, name: author.fullName } : null}
-          onAddIdea={canWrite ? () => addUnder(null, { openGesture: true }) : null}
+          onAddIdea={canCreate ? () => addUnder(null, { openGesture: true }) : null}
           onOpen={openEntry}
         />
       ) : null}

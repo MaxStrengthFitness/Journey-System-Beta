@@ -76,6 +76,29 @@ Body composition is health data, so it is never more visible than the client.
 | Add a scan, or correct one | Trainers and leaders at the client's home studio, and administrators — the same people who can edit the client |
 | Remove a scan | Whoever entered it, the studio's leaders, administrators |
 
+## A client's Notes & Profile (the client codex, Sep 24 2026)
+
+The record tab is seven pages (Overview, Notes, FORD, Body & Pulse, Goals & Focus, Story, Account). The screens offer only what the database rules would allow, and say why when they hold something back.
+
+| | Who |
+| --- | --- |
+| Read the record (every page but FORD's own text) | Anyone who can open the client: trainers and leaders at their home studio, cleared cross-trainers, franchise owners, administrators |
+| Change the record (the Save bar) | Trainers and leaders at the client's home studio (the grant counts), and administrators. Everyone else gets the pages read only: "Read only here · {home studio} keeps this record. Notes you write still save." |
+| Write a note | Any trainer who can open the client, as themselves — a cross-trainer too |
+| Read FORD (Family, Occupation, Recreation, Dreams, and In one line) | Trainers and leaders at the client's home studio, franchise owners, administrators — **never a cross-train studio**, which is told whose FORD it is and shown none of it |
+| Add to FORD (a new detail, an idea, the first In one line, Save to FORD from a note) | Only people who train at or lead the client's home studio (the grant counts). An administrator or franchise owner who works elsewhere can read FORD but not add to it — the app says so rather than offering an Add that would be refused |
+| Change what FORD holds (edit a detail, file a capture, take a gesture, rewrite In one line) | People who may change the record (above). The database would also let a franchise owner; the app does not offer it to one who does not work at the studio |
+| Follow up next time (the question on a FORD detail) | Whoever may change that detail; "Asked it" clears it |
+
+## The InBody normal variation (Sep 24 2026)
+
+How big an InBody change must be before any screen calls it a change — each studio's own, with Max Strength's defaults (3.5 lb skeletal muscle, 5.3 lb body fat mass, 2.7 points body fat %) until it sets one. A client is always judged by their HOME studio's numbers.
+
+| | Who |
+| --- | --- |
+| See it, and have it applied | Everyone: every InBody sentence, the Renewal Brief, the pipeline and the progress report read it |
+| Set it, or go back to Max Strength's defaults (My Studio → Studio) | The studio's leaders (head trainer, studio leader, studio owner there, or the grant), franchise owners, administrators |
+
 ## Studio boundaries
 
 - Every client has a **home studio** (where they are billed and mainly train).

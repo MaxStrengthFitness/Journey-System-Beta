@@ -8,9 +8,11 @@
  * opens no listener of its own. The FORD door's number is the same
  * `fordCountOf` the sub-toggle's FORD segment reads (counts, never FORD's
  * text) — FORD's details and the older life notes that moved there from here
- * (phase 10) — and FORD / Life saves in place only for a reader who may change this
- * client's record (`access.canEdit`): the FORD create rule wants a trainer of
- * the client's studio, so a cross-train visitor is told where FORD is kept.
+ * (phase 10) — and FORD / Life saves in place only for a reader the FORD create
+ * rule accepts (`access.fordWritable`: a trainer at or leader of the client's
+ * home studio — not a cross-train visitor, and not an administrator who works
+ * elsewhere, phase 19), so anyone else is told where FORD is kept, or, for a
+ * reader who may read FORD (`access.fordReadable`), that adding isn't offered.
  *
  * The shell hands over Notes' own cards (`note-{id}`, `notes-compose`,
  * `notes-resolved`) as `intent`: the page acts on each once per move.
@@ -56,7 +58,8 @@ export function NotesPage({
         today={today}
         coverage={coverage}
         possessive={pronouns.possessive}
-        fordWritable={access.canEdit}
+        fordWritable={access.fordWritable}
+        fordReadable={access.fordReadable}
         fordStudioId={fordStudioIdOf(client)}
         fordDoorCount={doorCount}
         onOpenFord={() => go("ford")}

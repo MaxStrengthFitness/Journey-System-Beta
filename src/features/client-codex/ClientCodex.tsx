@@ -38,7 +38,11 @@
  * stuck, and nothing moves if it is not (the header is never yanked away).
  * Notes' own anchors (`notes-*`, `note-{id}`) are Notes' to interpret: the
  * shell hands them to the Notes page as a one-shot request (`notesIntentOf`),
- * which opens the thread, the composer or Resolved and brings it into view. A tap
+ * which opens the thread, the composer or Resolved and brings it into view.
+ * FORD's In one line card (`ford-one-line`) is scrolled to like any card AND
+ * handed to the FORD page as a request to write the line (the Overview's
+ * "Write one" is the door that uses it), which opens its editor only when
+ * there is no line yet (phase 19). A tap
  * on a neighbour, a Next card or Show moves focus to the new page's title;
  * the sub-toggle keeps its own focus. Everything in the layout effect is
  * feature-detected — a throw there takes the whole profile down.
@@ -117,6 +121,9 @@ export interface ClientCodexProps {
 
 /** Notes interprets its own anchors (the composer, one thread); the shell leaves them be. */
 const isNotesAnchor = (anchor: string) => anchor.startsWith("notes-") || anchor.startsWith("note-");
+
+/** In one line's card: a door to it also asks the FORD page to write the line. */
+const FORD_LINE_ANCHOR: RecordAnchor = "ford-one-line";
 
 /**
  * Put the page's top right under the sticky bar — but only if the bar is
@@ -265,6 +272,13 @@ export function ClientCodex({
     return request ? { key: navStamp, request } : null;
   }, [page, active, anchor, navStamp]);
 
+  /*
+   * A door to In one line asks the FORD page to write it (the Overview's
+   * "Write one"): keyed by the move, handed over only while FORD is on show.
+   * The page opens the editor once, and only if there is still no line.
+   */
+  const fordLineRequest = page === "ford" && active && anchor === FORD_LINE_ANCHOR ? navStamp : null;
+
   const pageProps: CodexPageProps = { data, form, go, hosts };
   const renderPage = (id: RecordPage) => {
     switch (id) {
@@ -273,7 +287,7 @@ export function ClientCodex({
       case "notes":
         return <NotesPage {...pageProps} intent={notesIntent} />;
       case "ford":
-        return <FordPage {...pageProps} />;
+        return <FordPage {...pageProps} writeLine={fordLineRequest} />;
       case "body":
         return <BodyPage {...pageProps} />;
       case "goals":

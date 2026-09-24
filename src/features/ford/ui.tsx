@@ -2,9 +2,14 @@
  * The small shared pieces of FORD.
  *
  * Kept in one file on purpose: the letter mark and the date chip appear on the
- * profile, on the floor sheet, in the teardown tray and in the Delight queue,
+ * floor sheet, in the briefing, in the teardown tray and in the Delight queue,
  * and the last time a pattern like this was copied per-surface the four copies
- * drifted within a fortnight.
+ * drifted within a fortnight. (The profile's FORD page draws its own from the
+ * codex kit since the client codex; the gesture chip the old FORD hub drew
+ * went with the hub — the Delight queue draws its own.)
+ *
+ * The marks draw with ford.css, so this file imports it: a stylesheet arrives
+ * with the chunk that imports it (ford-css.test.ts).
  */
 
 import {
@@ -17,7 +22,6 @@ import {
 } from "lucide-react";
 import {
   FORD_META,
-  GESTURE_STATUS_LABEL,
   toDate,
   urgencyOf,
   whenLabel,
@@ -26,6 +30,7 @@ import {
   type FordRecurrence,
 } from "./types";
 import { rotatedPrompt, type PromptContext } from "./ask-next";
+import "./ford.css";
 
 export const PILLAR_ICONS: Record<FordPillar, LucideIcon> = {
   family: Users,
@@ -109,20 +114,6 @@ export function WhenChip({
     <span className={`ford-when ford-when--${tone} ${className}`.trim()}>
       {recurrence === "annual" ? "Every year · " : ""}
       {label}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-
-/** Where a gesture has got to. Absent entirely when there is no gesture. */
-export function GestureChip({ entry }: { entry: FordEntry }) {
-  const opp = entry.opportunity;
-  if (!opp) return null;
-  return (
-    <span className={`ford-gesture ford-gesture--${opp.status}`}>
-      {GESTURE_STATUS_LABEL[opp.status]}
-      {opp.ownerName ? ` · ${opp.ownerName.split(" ")[0]}` : ""}
     </span>
   );
 }

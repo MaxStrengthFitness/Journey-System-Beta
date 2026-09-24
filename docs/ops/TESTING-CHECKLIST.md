@@ -83,6 +83,10 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 
 ### Client profile audit · *branch `client-profile-audit` (Sep 16)*
 
+*Since the client codex (Sep 24) Notes & Profile is seven pages: walk its
+record items in **Round 14** instead. The Body, Goals, Assessment, Admin and
+"Portrait, record tab" items below describe the old long scroll.*
+
 - [ ] **Tap all four tabs twice**, then open a machine from the Journey grid, close it, and tap the SAME machine again. The machine window opens both times.
 - [ ] **Journey:** no "Recent journey" caption, no blue Latest column. Scroll the grid left: older sessions appear on their own and the rail says "Start of history" at the end. The Active Session grid still shows its Today and Latest columns.
 - [ ] **Machine window on a client with a disc or knee flag:** the watch-out card leads; change a setting — it asks for a reason and the change appears in the history and the journal.
@@ -880,6 +884,140 @@ before the changes list and the Moments panel can answer.
   Moving a machine in the set renumbers in tens, as before.
 - [ ] **Data, on the Admins dashboard, asks for a studio first;** on
   Operations it is the studio you are in.
+
+---
+
+## Round 14 — The client codex · *Sep 24 2026 round, branch `client-codex`*
+
+The round is `docs/rounds/2026-09-24-client-codex.md`; the screens are
+Notes & Profile's seven pages. Walk it **signed in as a Life Transformer at
+the client's home studio, not as an administrator** — an administrator could
+always read FORD, which is how nobody noticed that trainers could not. Walk
+it at 744 or 834 upright (most of the studio iPads), once in landscape, and
+once in dark mode. Nothing on it needs an index or a rules deploy. Have three
+clients ready: a **migrating** one (a FileMaker record, sessions before
+Journey), a **brand-new** one, and one with a knee flag, a Pulse and two
+InBody scans.
+
+**Before anything else: a cold start**
+
+- [ ] **Reload the app and go straight to a client, without starting a
+  session.** Notes & Profile → FORD → Remember something. *Expected:* the
+  dialog is styled — the four letter buttons, the box, Save. *If it is plain
+  unstyled text:* the stylesheet trap in `docs/KNOWN-TRAPS.md` → Layout and
+  CSS (a component must import the stylesheet it draws with).
+
+**The bar and the Overview**
+
+- [ ] **The tab opens on the Overview, every time,** whichever page you left
+  it on. Seven segments; at 744 and 834 upright "Body & Pulse" and "Goals &
+  Focus" take two lines and nothing is cut off; ‹ › and the Next card move
+  through the pages in order, and Account's Next is "Done".
+- [ ] **The Overview's six slots, for the migrating client:** Notes across
+  the top, Who she is · FORD, Body & Pulse, Goals & Focus, Story ("With Max
+  Strength since …" with the FileMaker sessions), Account. Nothing says
+  "new" or "First session.".
+- [ ] **For the brand-new client:** "No notes in Journey yet.", "No line
+  yet." with **Write one**, each pillar "Nothing on file yet." with its Ask,
+  "No Pulse saved in Journey yet.", "Her why isn't written down yet."
+- [ ] **Write one opens the line's editor with the cursor in the box** — no
+  second tap on "Write the line". *Watch the keyboard:* iPadOS raises it only
+  for a focus made inside the tap itself, and this one lands a moment later,
+  after the page changes; if the keyboard waits for a tap on the box, note it
+  (the Overview's "Write a note" works the same way). Type a sentence, Save;
+  back on the Overview it leads the FORD slot with "Written by the team ·
+  last by {you}".
+- [ ] **Every door lands:** a pillar tile opens FORD at that pillar; a note
+  row opens Notes on that thread; Write a note opens the composer; tapping
+  Body & Pulse, Goals & Focus, Story or Account anywhere on the slot opens it.
+
+**One Save bar**
+
+- [ ] **Edit on FORD → Occupation**, pick Retired: the bar says "1 unsaved
+  change · FORD · Occupation" from any page, even Account. Show goes back;
+  Discard reverts; Save saves and the bar goes.
+- [ ] **A saved wingspan shows** on Body & Pulse → Build (it never did
+  before).
+
+**Notes**
+
+- [ ] **A critical note shows once**, as the red line under the bar on the
+  other pages and in full on Notes. Filter to Equipment on a client with a
+  critical injury note: the red line says so, with "Show it".
+- [ ] **FORD / Life keeps the words:** type a sentence, pick FORD / Life,
+  Save to FORD — it lands on FORD, not in the notes.
+- [ ] **A Standing row opens in place**; "Show the N resolved notes" works;
+  a Standing row's kind wraps at a space, never mid-word.
+
+**FORD**
+
+- [ ] **Coming up leads with her Mindbody birthday** ("Her 69th birthday · In
+  17 days"); tap it and the dialog opens as an annual Family "Birthday" with
+  the gesture open.
+- [ ] **Follow up next time:** in a detail, type a question and Save — Ask
+  next shows it with your name; "Asked it" → save an answer: a new detail,
+  and the question goes. Edit only the sentence of a detail: the date under
+  its question does not change.
+- [ ] **A second trainer at the same studio rewrites In one line:** their
+  name replaces yours.
+- [ ] **On an 11-inch in landscape, with the keyboard up**, the detail dialog
+  scrolls and Save is reachable.
+
+**Body & Pulse**
+
+- [ ] **The knee client:** the diamond sits between the knees, the ring on
+  her side; tap Knee and the sentences open. Watch-outs quote the clinical
+  list; a machine chip opens its window.
+- [ ] **Over time:** the recovery lane has a bar at each session where the
+  door question was asked, none where it wasn't; an imported client's lede
+  says imports don't record the door (never "wasn't asked"). Turn the iPad:
+  it redraws.
+- [ ] **InBody:** a change smaller than the studio's variation reads "within
+  normal variation", uncoloured; the shaded band sits around her first scan.
+- [ ] **Update Pulse**, answer one area, Done: the answer shows with today's
+  date. Hand to client opens the client's sheet.
+- [ ] **No "Recovery between sessions" dropdown** anywhere.
+
+**Goals & Focus, Story, Account**
+
+- [ ] **Goals & Focus:** How to coach her leads with the coach strategy (the
+  same first paragraph Body & Pulse's strip shows); a coaching row opens the
+  thread on Notes; set a focus, check in on it.
+- [ ] **Story:** the since line matches the header's numbers; filter to Life:
+  only FORD moments.
+- [ ] **Account:** the ID card has no Sync button (the header's is the only
+  one); the package shows what is left; the fine print's Migration Hub
+  switches to Journey. A client with "Occ:", "Med:", "Activity:" and "Goals:"
+  in the Mindbody notes: each line is its own row; Add to Recreation lands on
+  FORD "from the Mindbody account notes"; Add as medical history stages on
+  the Save bar.
+
+**Who sees what**
+
+- [ ] **As a trainer from a cross-train studio:** "Read only here · {home}
+  keeps this record. Notes you write still save." — no Edit, no Save bar, no
+  Migration Hub, and no FORD anywhere (the FORD page and slot say whose FORD
+  it is); a note still saves.
+- [ ] **As an administrator who works at another studio** (AJ): FORD reads,
+  and the FORD page says "Only a trainer at her home studio can add to FORD,
+  so adding isn't offered here." — no Remember something, no pillar Add, no
+  Save to FORD on Notes or in the header's Note dialog; editing a detail that
+  is on file still works. On Notes and in the Note dialog, FORD / Life reads
+  "Personal details are kept in FORD. Only a trainer at the client's home
+  studio can add to it, so saving there isn't offered here." beside Open
+  FORD — never "which only the client's home studio can read", which is the
+  cross-train trainer's sentence.
+
+**The floor and Operations, which share pieces with the codex**
+
+- [ ] **Active Session → the notes sheet:** its small lines read at one size,
+  and a refused save says "Not saved — still here, try again".
+- [ ] **My Studio → Studio → InBody: the scanner's normal variation** (a
+  leader): change a number, Save, and the Renewal Brief's InBody line and the
+  pipeline's proof line follow it; "Use Max Strength's defaults" puts them
+  back.
+- [ ] **The briefing** for a retired client with nothing under Occupation
+  never asks about work.
 
 ---
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DOSSIER_SECTIONS, type DossierSection } from "../../types/journal";
+import type { DossierSection } from "../../types/journal";
 import {
   DEFAULT_LOCATION,
   RECORD_ANCHORS,
@@ -27,6 +27,24 @@ import {
   type ProfileNavState,
   type RecordPage,
 } from "./profile-nav";
+
+/**
+ * Every old dossier section id. The dossier and its `DOSSIER_SECTIONS` list
+ * went in the client codex's cleanup (phase 19); the ids live on in stored
+ * journal entries (`profileSection`) and in old links. A Record, so a new
+ * `DossierSection` fails the typecheck here until it is listed.
+ */
+const EVERY_SECTION: Record<DossierSection, true> = {
+  notes: true,
+  general: true,
+  life: true,
+  medical: true,
+  goals: true,
+  focus: true,
+  reports: true,
+  admin: true,
+};
+const DOSSIER_SECTION_IDS = Object.keys(EVERY_SECTION) as DossierSection[];
 
 describe("legacyLocation", () => {
   it("keeps Journey where it was", () => {
@@ -146,10 +164,10 @@ describe("legacyLocation", () => {
   });
 
   it("has a real home for every old dossier section id", () => {
-    for (const s of DOSSIER_SECTIONS) {
-      const to = legacyLocation(s.id);
-      expect(isLocation(to), s.id).toBe(true);
-      expect(to, s.id).not.toEqual(DEFAULT_LOCATION);
+    for (const id of DOSSIER_SECTION_IDS) {
+      const to = legacyLocation(id);
+      expect(isLocation(to), id).toBe(true);
+      expect(to, id).not.toEqual(DEFAULT_LOCATION);
     }
   });
 });
@@ -305,16 +323,16 @@ describe("SECTION_TO_PAGE", () => {
       reports: ["body", "body-pulse"],
       admin: ["account", "account-membership"],
     };
-    for (const s of DOSSIER_SECTIONS) {
-      const [page, anchor] = want[s.id];
-      expect(SECTION_TO_PAGE[s.id], s.id).toEqual(anchor ? { page, anchor } : { page });
-      const loc = sectionLocation(s.id);
-      expect(isLocation(loc), s.id).toBe(true);
-      expect(loc, s.id).toStrictEqual(
+    for (const id of DOSSIER_SECTION_IDS) {
+      const [page, anchor] = want[id];
+      expect(SECTION_TO_PAGE[id], id).toEqual(anchor ? { page, anchor } : { page });
+      const loc = sectionLocation(id);
+      expect(isLocation(loc), id).toBe(true);
+      expect(loc, id).toStrictEqual(
         anchor ? { tab: "record", page, anchor } : { tab: "record", page },
       );
     }
-    expect(Object.keys(SECTION_TO_PAGE).sort()).toEqual(DOSSIER_SECTIONS.map((s) => s.id).sort());
+    expect(Object.keys(SECTION_TO_PAGE).sort()).toEqual([...DOSSIER_SECTION_IDS].sort());
   });
 
   it("only uses anchors that are in the registry", () => {

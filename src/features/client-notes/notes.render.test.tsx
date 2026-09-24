@@ -586,12 +586,30 @@ describe("the quick note's FORD hand-off", () => {
     const composer = document.body.querySelector('[data-testid="note-composer"]')!;
     await click(buttonByText(composer, "FORD / Life"));
     expect(buttonByText(composer, "Save to FORD")).toBeUndefined();
-    expect(composer.textContent).toContain("Personal details are kept in FORD");
+    // The database refuses them FORD altogether, so that is what it says.
+    expect(composer.textContent).toContain("Personal details are kept in FORD, which only the client’s home studio can read.");
     // Their note still saves: notes are not FORD.
     await click(buttonByText(composer, "FORD / Life"));
     await typeInto(composer.querySelector("textarea"), "Asked about the Saturday times");
     await click(buttonByText(composer, "Save — file later"));
     expect(writes.map((w) => w.path)).toEqual(["journalEntries"]);
+  });
+
+  it("offers an administrator who works elsewhere no Save to FORD either — the create rule has no clause for them (phase 19)", async () => {
+    // They may change the record (the clients update rule) but not add to
+    // FORD: the dialog follows the create rule (codexAccess().fordWritable).
+    const admin = { ...trainer, role: "Admin", primaryHomeStudioId: "strongsville" };
+    await mount(<QuickNoteDialog open onOpenChange={() => {}} client={client} machines={[]} authTrainer={admin} />);
+    const composer = document.body.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "FORD / Life"));
+    expect(buttonByText(composer, "Save to FORD")).toBeUndefined();
+    // They may READ FORD, so the hand-off says adding isn't offered — not
+    // the cross-train sentence, which would be false for them.
+    expect(composer.textContent).toContain(
+      "Personal details are kept in FORD. Only a trainer at the client’s home studio can add to it, so saving there isn’t offered here.",
+    );
+    expect(composer.textContent).not.toContain("which only the client’s home studio can read");
+    expect(writes).toEqual([]);
   });
 
   it("keeps the words when a note is refused (the dialog rethrows, so the composer knows)", async () => {

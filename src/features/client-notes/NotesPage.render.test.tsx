@@ -537,6 +537,19 @@ describe("NotesPage — empty, failed and large", () => {
     const composer = host.querySelector('[data-testid="note-composer"]')!;
     await click(buttonIn(composer, "FORD / Life"));
     expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
-    expect(composer.textContent).toContain("Personal details are kept in FORD");
+    expect(composer.textContent).toContain("Personal details are kept in FORD, which only the client’s home studio can read.");
+  });
+
+  it("tells a reader who may read FORD but not add to it that adding isn't offered (phase 19)", async () => {
+    const host = await mount(propsFor(ALL, { fordWritable: false, fordReadable: true }));
+    await click(buttonIn(host, "Write a note…"));
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonIn(composer, "FORD / Life"));
+    expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
+    expect(composer.textContent).toContain(
+      "Personal details are kept in FORD. Only a trainer at the client’s home studio can add to it, so saving there isn’t offered here.",
+    );
+    expect(composer.textContent).not.toContain("which only the client’s home studio can read");
+    expect(buttonIn(composer, "Open FORD")).toBeDefined();
   });
 });

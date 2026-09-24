@@ -176,6 +176,7 @@ AJ's own tour, Sep 21 2026.
 | The client directory and the Kaizen roster | `src/components/ClientDirectoryView.tsx`, `src/features/trainer-profile/` |
 | What the trainer reads before a session | `src/features/briefing/` |
 | The client's profile and its tabs | `src/components/ClientProfileView.tsx` + `src/features/client-profile/` |
+| A client's Notes & Profile — the Overview and six pages (the client codex) | `src/features/client-codex/` — its README says which folder each page lives in |
 | Notes — writing them, when they matter, threads | `src/features/client-notes/` |
 | How a machine is set up and described | `src/features/admin/machines/` (the editor) and `src/data/machine-definitions.ts` (the twenty) |
 | A studio's own floor and its machines | `src/features/my-studio/` |

@@ -1051,9 +1051,10 @@ export function ClientProfileView({
    * NOTES & PROFILE (the client codex) — what it is handed from here.
    *
    * The doors that leave the tab belong to this view, which owns the other
-   * tabs and the app's view: a report, the Planner, the archive, a machine,
+   * tabs and the app's view: the Planner, the archive's reports, a machine,
    * the Set-up, and the Migration Hub. The Hub switches to Journey first, as
-   * the old record's did, because imported sessions land there.
+   * the old record's did, because imported sessions land there. (The filed
+   * reports are the Activity Archive's shelf, below; the codex opens none.)
    *
    * The session numbers are the header's own ("461 · 49 in Journey · 412
    * before"), so no page can disagree with it; Journey's count is null until
@@ -1061,9 +1062,6 @@ export function ClientProfileView({
    */
   const codexHosts = useMemo<CodexHosts>(
     () => ({
-      onSelectReport,
-      onDeleteReport: setReportToDelete,
-      onNewReport: () => setView("progress-report"),
       onOpenPlanner: () => setView("studio-tasks"),
       onOpenReports: () => nav.go({ tab: "clinical", view: "reports" }),
       onOpenMigrationHub: () => {
@@ -1075,7 +1073,7 @@ export function ClientProfileView({
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onSelectReport, setView, openMachineWindow, nav.go, nav.setTab],
+    [setView, openMachineWindow, nav.go, nav.setTab],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.
