@@ -56,6 +56,7 @@ const { InBodyCard } = await import("./InBodyCard");
 const { InBodyReportSection } = await import("./InBodyReportSection");
 const { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } = await import("./variation");
 const { useInBodyVariationLookup } = await import("./useInBodyVariation");
+const { scanFromDoc } = await import("./scans");
 import type { Client } from "../../types";
 
 const carol = { id: "carol", firstName: "Carol", lastName: "Tester", homeStudioId: "solon" } as unknown as Client;
@@ -123,6 +124,43 @@ describe("the InBody card", () => {
   it("falls back to Max Strength's defaults while the studios have not arrived", async () => {
     const el = await mount(<InBodyCard client={carol} authTrainer={null} />);
     expect(byText(el, "+1.2 lb · within normal variation")).toBeTruthy();
+  });
+});
+
+// Client codex: the Notes & Profile tab reads the scans ONCE and hands the
+// same state to every page that shows them.
+describe("the InBody card given the tab's scans", () => {
+  const handed = () => SCANS.map(({ id, ...data }) => scanFromDoc(id, data)!);
+
+  it("draws the scans it is handed and opens no listener of its own", async () => {
+    studios = [{ id: "solon" }];
+    const el = await mount(
+      <InBodyCard client={carol} authTrainer={null} inbody={{ scans: handed(), loading: false, error: null }} />,
+    );
+    expect(listeners).toHaveLength(0);
+    expect(byText(el, "+1.2 lb · within normal variation")).toBeTruthy();
+    expect(el.textContent).toContain("Since Jan 15: no change bigger than the scanner's normal variation.");
+  });
+
+  it("says a handed-in failure, never 'No InBody scans yet'", async () => {
+    const el = await mount(
+      <InBodyCard
+        client={carol}
+        authTrainer={null}
+        inbody={{ scans: [], loading: false, error: "Couldn't load InBody scans." }}
+      />,
+    );
+    expect(listeners).toHaveLength(0);
+    expect(el.textContent).toContain("Couldn't load InBody scans.");
+    expect(el.textContent).not.toContain("No InBody scans yet");
+  });
+
+  it("says loading while the handed-in read has not answered", async () => {
+    const el = await mount(
+      <InBodyCard client={carol} authTrainer={null} inbody={{ scans: [], loading: true, error: null }} />,
+    );
+    expect(el.textContent).toContain("Loading scans…");
+    expect(el.textContent).not.toContain("No InBody scans yet");
   });
 });
 

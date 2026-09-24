@@ -136,6 +136,11 @@ assignment — the opposite of the task board, where work is claimed.
   still offers one — a failed READ is no reason to refuse a WRITE. A client
   with no studio gets its own sentence and no Add (`fordCanAdd`): a retry
   cannot help, and the create rule refuses a detail stamped with no studio.
+- **One FORD listener per screen** (client codex, phase 6). A screen that
+  already holds `useClientFord` for this client — the Notes & Profile codex
+  reads FORD once for all seven pages — hands it to `FordSection` as `ford`,
+  and the section's own read is disabled rather than opened a second time.
+  Left out, the section reads FORD itself, as it always has.
 - **Offline is not `failed`.** The app keeps a persistent cache
   (`src/firebase.ts`), so an offline iPad's read answers from what it last
   saw and comes back `ready` — empty if this iPad never opened the client's

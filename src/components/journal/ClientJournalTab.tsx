@@ -35,15 +35,13 @@ import { TriangleAlert } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import {
   archiveJournalEntry,
-  createClientFocus,
   createJournalEntry,
-  extendFocus,
   resolveJournalEntry,
-  setFocusStatus,
   useClientJournal,
   type UseClientJournalResult,
 } from "../../hooks/useClientJournal";
-import type { ClientFocus, JournalDraft, JournalEntry } from "../../types/journal";
+import type { JournalDraft, JournalEntry } from "../../types/journal";
+import { useFocusActions } from "../../features/goals/useFocusActions";
 import type {
   Client,
   Machine,
@@ -127,14 +125,8 @@ export function ClientJournalTab({
     [authTrainer],
   );
 
-  /** Every id the signed-in coach may be stored under on a focus. */
-  const viewerIds = useMemo(
-    () =>
-      [auth.currentUser?.uid, authTrainer?.id].filter(
-        (v): v is string => typeof v === "string" && v.length > 0,
-      ),
-    [authTrainer],
-  );
+  /** Set, achieve, extend, retire, check in — the Focus area's writes. */
+  const focusActions = useFocusActions({ clientId, client, authTrainer });
 
   /** FORD / Life in the composer hands off to the FORD capture with these.
    *  Stamped with the studio the FORD read filters on (client codex, phase 1),
@@ -184,72 +176,9 @@ export function ClientJournalTab({
     }
   };
 
-  const handleCreateFocus = async (input: {
-    category: any;
-    intent: string;
-    targetMachineId: string | null;
-  }) => {
-    if (!clientId) return;
-    try {
-      await createClientFocus(clientId, client?.homeStudioId || "", author, input);
-      toastSuccess(`Focus set: ${input.category}.`);
-    } catch {
-      toastError("Could not set that focus.");
-    }
-  };
-
-  const handleAchieve = async (focus: ClientFocus, rewardNote: string) => {
-    try {
-      await setFocusStatus(focus.id, "passed", { rewardNote });
-      toastSuccess(`${focus.category} focus achieved. Nice work.`);
-    } catch {
-      toastError("Could not update that focus.");
-    }
-  };
-
-  const handleExtend = async (focus: ClientFocus) => {
-    try {
-      await extendFocus(focus.id);
-      toastSuccess("Focus extended by three weeks.");
-    } catch {
-      toastError("Could not extend that focus.");
-    }
-  };
-
-  const handleRetire = async (focus: ClientFocus) => {
-    try {
-      await setFocusStatus(focus.id, "retired");
-      toastSuccess("Focus retired.");
-    } catch {
-      toastError("Could not retire that focus.");
-    }
-  };
-
-  /**
-   * A check-in is filed right here, from the focus card, carrying the focus
-   * id. It used to set state in THIS mount and scroll to the composer in the
-   * Notes mount — a different component instance that never saw the focus —
-   * so the note saved without `focusId` and the thread stayed empty.
-   */
-  const handleCheckIn = async (focus: ClientFocus, body: string): Promise<boolean> => {
-    if (!clientId || !body.trim()) return false;
-    try {
-      await createJournalEntry(clientId, client?.homeStudioId || "", author, {
-        kind: "coaching",
-        category: focus.category,
-        body: body.trim(),
-        importance: "standard",
-        machineId: focus.targetMachineId ?? null,
-        focusId: focus.id,
-        origin: "manual",
-      });
-      toastSuccess("Check-in logged.");
-      return true;
-    } catch {
-      toastError("Could not save that check-in. Check your connection and try again.");
-      return false;
-    }
-  };
+  /* The focus actions (create, achieve, extend, retire, and the check-in
+     that carries its focus id) live in features/goals/useFocusActions.ts,
+     shared with the codex's Goals & Focus page. */
 
   /* -------------------------------- render ----------------------------- */
 
@@ -323,13 +252,13 @@ export function ClientJournalTab({
           focuses={focuses}
           entries={entries}
           machines={machines}
-          viewerIds={viewerIds}
-          viewerRole={authTrainer?.role ?? null}
-          onCreate={handleCreateFocus}
-          onAchieve={handleAchieve}
-          onExtend={handleExtend}
-          onRetire={handleRetire}
-          onCheckIn={handleCheckIn}
+          viewerIds={focusActions.viewerIds}
+          viewerRole={focusActions.viewerRole}
+          onCreate={focusActions.onCreate}
+          onAchieve={focusActions.onAchieve}
+          onExtend={focusActions.onExtend}
+          onRetire={focusActions.onRetire}
+          onCheckIn={focusActions.onCheckIn}
         />
       </JournalArea>
       )}

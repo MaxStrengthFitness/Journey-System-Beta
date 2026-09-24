@@ -8,7 +8,8 @@
 - **2 — The InBody normal variation (AJ's decision 8)** (`9e77640`). Below.
 - **3 — Navigation: the record tab becomes pages** (`b02e66d`). The record arm of the profile's one location is `{ page, anchor }`; every old section and tab id still lands; the tab always opens on the Overview. See `src/features/client-profile/README.md`.
 - **4 — The sub-toggle can wrap** (`5884295`). `ProfileSubnav` gains `wrap`, `idPrefix` and a plum `warn` dot, all opt-in, so Programming and the Activity Archive are unchanged. See KNOWN-TRAPS → The client profile.
-- **5 — One visual kit.** Below.
+- **5 — One visual kit** (`c8203b9`). Below.
+- **6 — Additive props and exports the pages need.** Below.
 
 ## Phase 2 — the scanner's normal variation
 
@@ -50,3 +51,17 @@ Every codex page is built from one kit, so a trainer learns one panel, one butto
 - **Accessibility**: a field's label is its name and its hint its description, so VoiceOver reads each once; the Save bar announces the first unsaved change through a live region that is mounted before it.
 
 No Firestore, rules, index or Functions change.
+
+## Phase 6 — additive props and exports the pages need
+
+The codex loads each thing ONCE for the whole tab and hands it to every page. This phase lets the existing pieces take what the tab loaded instead of reading it again, and exports the small readers the pages need. **No screen changes**: every new prop is optional, and a caller that passes none of them behaves exactly as before (the existing notes, Pulse panel, goals and contract tests pass unchanged).
+
+- **Shared data, one listener each.** `FordSection` takes `ford` (the tab's FORD stream), `InBodyCard` takes `inbody` (the tab's scans), and `ClientCheckInPanel` takes `draft` (the Body & Pulse page's one Pulse draft). Given one, each disables its own hook — it is not opened a second time. For the Pulse this is more than cost: two drafts of one client autosaving side by side is the duplicate-draft bug. The panel also takes `startInClientMode` (opens client mode once the draft is in, and again each time it turns true, so "Hand to client" on the page is one tap) and `onClientModeClose`; client mode never opens over a draft still loading. `CheckInDraftState` is exported.
+- **Readers exported, not rewritten.** `statementAnswer` (a saved round's own answer to one statement on 0–10 — a v1 answer converted, `null` when the round did not ask; it was the private `ownAnswer`) and `painKeyOf` (`region:side`, how a spot is paired with last round's). `ContractTermRow.cancelledAt` — when Mindbody said a contract was cancelled; null unless the row is cancelled (a re-activated contract with a stale stamp never reads as cancelled) and for paid-in-full rows. Story will read it.
+- **`useFocusActions`** (`src/features/goals/`): set, achieve, extend, retire and check in on a focus, moved out of `ClientJournalTab` unchanged (author = the Auth uid, the check-in carries its focus id). The journal's Focus area uses it now; Goals & Focus will.
+- **`useNoteDismissalsState`**: the trainer's dismissals plus whether they have been read (`loading · ready · failed`), keyed by uid so another trainer never inherits the map. The Notes page offers hush / restore only once it is `ready`. `useNoteDismissals` (the briefing's) returns the same map as before.
+- **ClientProfileView** gains `progressReportsStatus` (whether the progress-reports listener answered for THIS client — Pulse history is read from that list, and a list never read must not pass for "no Pulse on file") and `journeyCompletedCount` (the Journey session count, null until the count answers — the header's number starts at 0). The profile is not remounted per client, so both are stamped with the client they are for and read through `answerFor` (`src/features/client-profile/client-answer.ts`). Nothing reads them yet; the shell (phase 8) passes them to the codex. Out of quota, the reports listener never opens, so the status says `failed` rather than waiting forever.
+
+Tests: the new props each have a render case (the panel with the page's draft makes no read of its own — checked by count against the panel alone — and writes once; client mode waits for the draft and re-opens on a second tap; FORD and InBody open no listener when handed their data and say "couldn't be read" / "loading" rather than "nothing"); `useFocusActions` mounts on its own and through the journal's Focus card; the dismissals status, `answerFor`, `cancelledAt`, `statementAnswer` (v1 and v2) and `painKeyOf` have unit cases. No Firestore, rules, index or Functions change.
+
+**Carried to phase 8.** Nothing mounts `ClientProfileView`, so the wiring that stamps `progressReportsStatus` (the listener's success and error callbacks) has no test: dropping the `failed` stamp would leave Pulse history "loading" forever with the suite still green. Phase 8 moves the reports listener into a small hook with its own render test (ready, failed, a client switch, out of quota). The codex also stays keyed on `client.id`: `draft`, `ford` and `inbody` are not checked against the panel's `client`, so a stale hand-over is prevented only by that key.

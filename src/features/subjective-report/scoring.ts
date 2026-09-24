@@ -255,18 +255,23 @@ export function scoreHydration(h: HydrationTracking): HydrationStatus {
  * Pain map
  * ------------------------------------------------------------------ */
 
-const painKey = (p: PainPoint) => `${p.region}:${p.side}`;
+/**
+ * One spot on the pain map, as `region:side`: how a spot this round is
+ * matched to the same spot last round. Exported (client codex) so a reader
+ * of saved rounds pairs spots exactly as summarizePain does.
+ */
+export const painKeyOf = (p: Pick<PainPoint, "region" | "side">): string => `${p.region}:${p.side}`;
 
 export function summarizePain(
   current: PainPoint[],
   previous: PainPoint[] | null,
 ): PainSummary {
   const prevActive = (previous ?? []).filter((p) => p.status !== "resolved");
-  const prevByKey = new Map(prevActive.map((p) => [painKey(p), p]));
+  const prevByKey = new Map(prevActive.map((p) => [painKeyOf(p), p]));
   const active = current.filter((p) => p.status !== "resolved");
 
   const trends = current.map((p) => {
-    const prev = prevByKey.get(painKey(p)) ?? null;
+    const prev = prevByKey.get(painKeyOf(p)) ?? null;
     return {
       point: p,
       severityChange: prev ? p.severity - prev.severity : null,
@@ -274,8 +279,8 @@ export function summarizePain(
     };
   });
 
-  const currentKeys = new Set(active.map(painKey));
-  const resolvedSinceLast = prevActive.filter((p) => !currentKeys.has(painKey(p)));
+  const currentKeys = new Set(active.map(painKeyOf));
+  const resolvedSinceLast = prevActive.filter((p) => !currentKeys.has(painKeyOf(p)));
 
   return {
     activeCount: active.length,

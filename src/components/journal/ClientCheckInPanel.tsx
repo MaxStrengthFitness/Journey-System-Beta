@@ -40,8 +40,21 @@
  *  - The chrome (header, search, footer) draws from the feature's tokens so
  *    light and dark both read inside the record spine; every tappable ≥ 44px.
  *
- * Props are unchanged: the profile's Pulse section and the Active Session's
- * slide-over both mount it as before.
+ * The profile's Pulse section and the Active Session's slide-over pass none
+ * of the props below and behave as before.
+ *
+ * CLIENT CODEX (Sep 2026) — three optional props, each changing nothing when
+ * it is left out:
+ *  - `draft`: an already-loaded useCheckInDraft result. The Body & Pulse page
+ *    owns the ONE draft for the client (its read grid and this editor show
+ *    the same answers), so the panel's own hook is DISABLED when one is
+ *    handed in — no second progressReports read, and never two drafts of one
+ *    client autosaving side by side.
+ *  - `startInClientMode`: open client mode as soon as the draft is in (and
+ *    again each time the prop turns true), so "Hand to client" on the page
+ *    lands on the client's sheet in one tap.
+ *  - `onClientModeClose`: told when client mode closes, so that page can go
+ *    back to where it was.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -70,6 +83,7 @@ import {
   SUBJECTIVE_CATEGORIES,
   scoreCategory,
   useCheckInDraft,
+  type CheckInDraftState,
   type CheckInSectionState,
 } from "../../features/subjective-report";
 import {
@@ -101,6 +115,16 @@ export interface ClientCheckInPanelProps {
   client: Client | null;
   trainer: Trainer | null;
   machines: Machine[];
+  /**
+   * The client's draft, already loaded by the screen that owns it. When
+   * given, the panel loads nothing itself (see the header). It must be the
+   * draft of THIS `client`.
+   */
+  draft?: CheckInDraftState;
+  /** Open client mode once the draft is in, and whenever this turns true. */
+  startInClientMode?: boolean;
+  /** Called when client mode closes. */
+  onClientModeClose?: () => void;
 }
 
 const relative = (ms: number | null): string | null => {
@@ -198,12 +222,33 @@ const relativeIso = (iso: string) => {
   return Number.isFinite(t) ? (relative(t) ?? "") : "";
 };
 
-export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInPanelProps) {
-  const draft = useCheckInDraft({ client, trainer, machines });
+export function ClientCheckInPanel({
+  client,
+  trainer,
+  machines,
+  draft: sharedDraft,
+  startInClientMode = false,
+  onClientModeClose,
+}: ClientCheckInPanelProps) {
+  // Hooks cannot be called conditionally, so when a draft is handed in the
+  // panel's own is disabled rather than skipped: a disabled useCheckInDraft
+  // reads nothing and never writes.
+  const ownDraft = useCheckInDraft({ client, trainer, machines, enabled: !sharedDraft });
+  const draft = sharedDraft ?? ownDraft;
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmFinalize, setConfirmFinalize] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const [clientMode, setClientMode] = useState(false);
+  const [clientMode, setClientMode] = useState(startInClientMode);
+  // Each time the host asks again (its "Hand to client" tapped a second
+  // time), open client mode again. Closing is the panel's: it tells the host
+  // through onClientModeClose, and the host sets the prop back.
+  useEffect(() => {
+    if (startInClientMode) setClientMode(true);
+  }, [startInClientMode]);
+  const closeClientMode = useCallback(() => {
+    setClientMode(false);
+    onClientModeClose?.();
+  }, [onClientModeClose]);
   /**
    * Auto-open happens ONCE. Keyed on `openId === null` it fought the user:
    * collapsing a section sets openId to null, which was also the re-open
@@ -586,12 +631,16 @@ export function ClientCheckInPanel({ client, trainer, machines }: ClientCheckInP
       )}
 
       {/* ---------------------------- client mode ------------------------ */}
+      {/* Never over a draft still loading: the client would be tapping onto
+          a blank round that the loaded draft then replaces. The panel's own
+          button is disabled until then; a host asking to start in client
+          mode waits here for the same thing. */}
       <PulseClientMode
-        open={clientMode}
+        open={clientMode && !draft.loading}
         client={client}
         assessment={draft.assessment}
         onUpdate={draft.update}
-        onClose={() => setClientMode(false)}
+        onClose={closeClientMode}
       />
     </section>
   );

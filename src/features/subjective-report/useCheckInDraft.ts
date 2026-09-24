@@ -492,3 +492,12 @@ export function useCheckInDraft(opts: {
     setChangeNote,
   };
 }
+
+/**
+ * Everything the hook hands back. Exported (client codex) so one screen can
+ * own the ONE draft for a client and pass it to the Pulse panel through the
+ * panel's `draft` prop, instead of the panel loading a second copy — two
+ * drafts of one client autosaving side by side is the duplicate-draft bug
+ * this hook exists to prevent.
+ */
+export type CheckInDraftState = ReturnType<typeof useCheckInDraft>;

@@ -193,6 +193,15 @@ export interface ContractTermRow {
   start: Date | null;
   end: Date | null;
   status: TermStatus;
+  /**
+   * When Mindbody said the contract was cancelled (the webhook's stamp).
+   * Null unless the row IS cancelled — a re-activated contract clears the
+   * stamp, and a stale one must never read as a cancellation — and always
+   * null for paid-in-full rows, which have no cancel event. Read by the
+   * codex's Story ("Cancelled: …"); a cancelled row with no stamp says only
+   * that it was cancelled, never when.
+   */
+  cancelledAt: Date | null;
   autoRenews: boolean | null;
   /** Sessions it came with and has left — paid-in-full rows only. */
   sessions: { count: number | null; remaining: number | null } | null;
@@ -233,13 +242,15 @@ export function buildContractHistory(
     const start = toDateSafe(c.startDate);
     const end = toDateSafe(c.endDate);
     const autopay = (c.autopayStatus || "").toLowerCase();
+    const cancelled = c.status === "Cancelled";
     rows.push({
       key: `c-${c.clientContractId}`,
       name: c.contractName || "Contract (name not synced)",
       kind: "contract",
       start,
       end,
-      status: statusOf(start, end, c.status === "Cancelled", today),
+      status: statusOf(start, end, cancelled, today),
+      cancelledAt: cancelled ? toDateSafe(c.cancelledAt) : null,
       autoRenews: typeof c.isAutoRenewing === "boolean" ? c.isAutoRenewing : autopay ? autopay === "active" : null,
       sessions: null,
       boughtOnline: String(c.originationLocationId ?? "") === "98",
@@ -260,6 +271,7 @@ export function buildContractHistory(
       start,
       end,
       status: used ? "ended" : statusOf(start, end, false, today),
+      cancelledAt: null,
       autoRenews: null,
       sessions: { count: typeof s.count === "number" ? s.count : null, remaining },
       boughtOnline: false,

@@ -112,6 +112,49 @@ describe("buildContractHistory", () => {
     const ended = buildContractHistory(client, now).filter((r) => r.status === "ended").map((r) => r.key);
     expect(ended).toEqual(["c-cur", "c-old", "s-p2"]);
   });
+
+  it("carries when a cancelled contract was cancelled, and nothing for any other row", () => {
+    const rows = buildContractHistory(
+      {
+        mindbodyContracts: {
+          cut: {
+            clientContractId: "cut",
+            status: "Cancelled" as const,
+            contractName: "96 Sessions - 2X Week",
+            startDate: ts("2025-07-01T00:00:00Z"),
+            cancelledAt: ts("2026-02-03T15:30:00Z"),
+          },
+          // Cancelled before the webhook stamped the time: unknown, not a guess.
+          bare: { clientContractId: "bare", status: "Cancelled" as const, contractName: "Month to Month" },
+          // Re-activated with a stale stamp left behind: never a cancellation.
+          back: {
+            clientContractId: "back",
+            status: "Active" as const,
+            contractName: "48 Sessions - 2X Week",
+            startDate: ts("2026-03-01T00:00:00Z"),
+            cancelledAt: ts("2026-02-20T12:00:00Z"),
+          },
+        },
+        mindbodyServices: {
+          p2: { serviceId: "p2", name: "144 PIF", remaining: 4, count: 144, activeDate: ts("2026-01-01T00:00:00Z") },
+        },
+      },
+      now,
+    );
+    const cut = rows.find((r) => r.key === "c-cut")!;
+    expect(cut.status).toBe("cancelled");
+    expect(cut.cancelledAt).toBeInstanceOf(Date);
+    expect(cut.cancelledAt!.toISOString()).toBe("2026-02-03T15:30:00.000Z");
+    expect(rows.find((r) => r.key === "c-bare")).toMatchObject({ status: "cancelled", cancelledAt: null });
+    expect(rows.find((r) => r.key === "c-back")).toMatchObject({ status: "active", cancelledAt: null });
+    expect(rows.find((r) => r.key === "s-p2")).toMatchObject({ kind: "paid-in-full", cancelledAt: null });
+  });
+
+  it("leaves cancelledAt null on every row of an ordinary history", () => {
+    const rows = buildContractHistory(client, now);
+    // `gone` is cancelled but was never stamped.
+    expect(rows.map((r) => r.cancelledAt)).toEqual(rows.map(() => null));
+  });
 });
 
 describe("buildContractHistory reads days, not instants", () => {

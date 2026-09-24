@@ -19,6 +19,7 @@ import {
   previousFromHistory,
   recordChanges,
   sectionTouches,
+  statementAnswer,
   withChangeNote,
   type AssessmentHistory,
   type AssessmentHistoryReport,
@@ -62,6 +63,37 @@ const T0 = new Date("2026-09-14T14:00:00Z");
 const later = (ms: number) => new Date(T0.getTime() + ms);
 
 /* ---------------- measures ---------------- */
+
+describe("statementAnswer", () => {
+  it("reads a scale-2 answer as it was saved, clamped to 0–10", () => {
+    const a = withSleep([8, 0, 14]);
+    expect(statementAnswer(a, "sleepRecovery_1")).toBe(8);
+    // An explicit 0 is an answer ("Not at all"), not a missing one.
+    expect(statementAnswer(a, "sleepRecovery_2")).toBe(0);
+    expect(statementAnswer(a, "sleepRecovery_3")).toBe(10);
+    expect(statementAnswer(withSleep([-3]), "sleepRecovery_1")).toBe(0);
+  });
+
+  it("converts a scale-1 (0–4) answer the way the scoring code does", () => {
+    const v1 = { ...withSleep([0, 1, 2]), scaleVersion: 1 as const };
+    expect(statementAnswer(v1, "sleepRecovery_1")).toBe(0);
+    expect(statementAnswer(v1, "sleepRecovery_2")).toBe(3);
+    expect(statementAnswer(v1, "sleepRecovery_3")).toBe(5);
+    expect(statementAnswer({ ...withSleep([3]), scaleVersion: 1 as const }, "sleepRecovery_1")).toBe(8);
+    expect(statementAnswer({ ...withSleep([4]), scaleVersion: 1 as const }, "sleepRecovery_1")).toBe(10);
+  });
+
+  it("is null for a statement the round did not ask — never carried forward", () => {
+    const a = withSleep([7]);
+    expect(statementAnswer(a, "sleepRecovery_2")).toBeNull();
+    expect(statementAnswer(emptyAssessment(), "sleepRecovery_1")).toBeNull();
+    expect(statementAnswer(a, "no-such-statement")).toBeNull();
+    const blank = { ...emptyAssessment(), answers: { sleepRecovery_1: { value: null } } };
+    expect(statementAnswer(blank, "sleepRecovery_1")).toBeNull();
+    const garbled = { ...emptyAssessment(), answers: { sleepRecovery_1: { value: Number.NaN } } };
+    expect(statementAnswer(garbled, "sleepRecovery_1")).toBeNull();
+  });
+});
 
 describe("measureSection", () => {
   it("scores a category on the 0–12 scale and says null when nothing was asked", () => {

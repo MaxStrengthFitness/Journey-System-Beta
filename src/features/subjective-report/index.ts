@@ -17,7 +17,7 @@ export { PulseQuickLog, PulseQuickLogDialog } from "./PulseQuickLog";
 export * from "./checkin-write";
 export * from "./checkin-draft";
 export { useCheckInDraft } from "./useCheckInDraft";
-export type { CheckInSectionState } from "./useCheckInDraft";
+export type { CheckInSectionState, CheckInDraftState } from "./useCheckInDraft";
 // The living assessment (Assessment round): pillars, the change log, the history.
 export * from "./pillars";
 export * from "./assessment-history";

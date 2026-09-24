@@ -415,3 +415,25 @@ words on a statement and no 0…10 button anywhere; a tap logs "11 → 7" with
 a note and autosaves `enteredBy: "coach"`; "Hand to client" opens the sheet,
 a tap there autosaves `enteredBy: "client"`, Next walks the eight areas,
 Done hands back, and the coach's next edit restores `"coach"`.
+
+### 6.8 One draft per screen (client codex, Sep 2026)
+
+The Notes & Profile codex's Body & Pulse page shows the Pulse (a read grid)
+and edits it (this panel), so it owns the ONE `useCheckInDraft` for the
+client and hands it to `ClientCheckInPanel` as `draft`. The panel's own hook
+is then disabled: no second progressReports read, and never two drafts of
+one client autosaving side by side (the duplicate-draft bug the hook's
+`flush` comment describes). `CheckInDraftState` is the hook's return type.
+
+Two more optional props: `startInClientMode` opens client mode once the
+draft is in (and again whenever the prop turns true), and
+`onClientModeClose` tells the host it closed. Client mode never opens over a
+draft still loading — the panel's own "Hand to client" was already disabled
+until then. Every caller that passes none of the three (the Active Session's
+slide-over, the journal's Pulse area) behaves as before.
+
+Two readers are exported for the codex rather than re-implemented:
+`statementAnswer(a, id)` (`assessment-history.ts`) — one saved round's own
+answer to one statement, on 0–10, a v1 answer converted and `null` when the
+round did not ask; and `painKeyOf(spot)` (`scoring.ts`) — `region:side`, the
+key `summarizePain` pairs a spot with last round's.

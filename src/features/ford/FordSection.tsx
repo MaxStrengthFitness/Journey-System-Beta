@@ -34,7 +34,7 @@ import {
   type FordEntry,
   type FordPillar,
 } from "./types";
-import { useClientFord } from "./useClientFord";
+import { useClientFord, type UseClientFordResult } from "./useClientFord";
 import {
   archiveFordEntry,
   createFordEntry,
@@ -53,16 +53,28 @@ export interface FordSectionProps {
   author: FordAuthor;
   /** Kept for parity with the other profile sections; unused today. */
   machines?: Machine[];
+  /**
+   * An already-open FORD stream for this client (client codex): the Notes &
+   * Profile tab reads FORD ONCE and hands the same result to every page, so
+   * this section opens no listener of its own when it is given one. Left
+   * out, the section reads FORD itself, as it always has.
+   */
+  ford?: UseClientFordResult;
 }
 
-export function FordSection({ client, author }: FordSectionProps) {
+export function FordSection({ client, author, ford }: FordSectionProps) {
   // The studio the read filters on is the studio a new detail is stamped
   // with, so a detail saved here always comes back in the list.
   const studioId = fordStudioIdOf(client);
-  const { buckets, untagged, upcoming, isLoading, status } = useClientFord({
+  // Hooks cannot be called conditionally, so when a stream is handed in the
+  // section's own read is disabled rather than skipped. A disabled
+  // useClientFord opens no listener.
+  const own = useClientFord({
     clientId: client.id,
     client,
+    enabled: !ford,
   });
+  const { buckets, untagged, upcoming, isLoading, status } = ford ?? own;
   // "Nothing here yet" is a claim, and it is only true once FORD answered.
   // Refused (a cross-train visitor) or failed reads say so instead.
   const ready = status === "ready";

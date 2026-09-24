@@ -58,6 +58,11 @@ import {
   defaultProgrammingView,
   useProfileNav,
 } from "../features/client-profile";
+import {
+  answerFor,
+  progressReportsStatusOf,
+  type ClientAnswer,
+} from "../features/client-profile/client-answer";
 import { ClientInfoSheet } from "./ClientInfoSheet";
 import {
   Client,
@@ -157,6 +162,21 @@ export function ClientProfileView({
     Record<string, ClientMachineSetting>
   >({});
   const [progressReports, setProgressReports] = useState<ProgressReport[]>([]);
+  /*
+   * Whether the listener below answered, stamped with the client it answered
+   * for (client codex). The list itself is not cleared on a client change, so
+   * a reader filters it by clientId and trusts it only once this is "ready"
+   * for the same client: Pulse history is read from it, and a list never read
+   * must not pass for "no Pulse on file". See client-answer.ts.
+   */
+  const [progressReportsRead, setProgressReportsRead] = useState<ClientAnswer<
+    "ready" | "failed"
+  > | null>(null);
+  const progressReportsStatus = progressReportsStatusOf(
+    progressReportsRead,
+    clientId,
+    { quotaBlocked: hasQuotaError },
+  );
 
   /*
    * KAIZEN ROSTER.
@@ -231,6 +251,16 @@ export function ClientProfileView({
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [calculatedSessionCount, setCalculatedSessionCount] =
     useState<number>(0);
+  /*
+   * What Journey itself holds — completed sessions in Journey, before any
+   * prior history — stamped with the client it was counted for (client
+   * codex). `calculatedSessionCount` above starts at 0 and keeps the last
+   * client's total until the next count lands, so it cannot say "not known
+   * yet"; this can. Null until the count query answers for THIS client.
+   */
+  const [journeyCountRead, setJourneyCountRead] =
+    useState<ClientAnswer<number> | null>(null);
+  const journeyCompletedCount = answerFor(journeyCountRead, clientId);
 
   // Use the new soft lock handoff hook
   const { activeInProgressSession, isCheckingActiveSession } =
@@ -408,6 +438,7 @@ export function ClientProfileView({
       const journeyCount = await getCompletedSessionCount(clientId);
       // null means "could not determine right now" — never treat that as zero.
       if (cancelled || journeyCount === null) return;
+      setJourneyCountRead({ clientId, value: journeyCount });
 
       /*
        * THE ONE ARITHMETIC RULE: what Journey can see, plus the part of the
@@ -1062,8 +1093,11 @@ export function ClientProfileView({
             (doc) => ({ id: doc.id, ...doc.data() }) as ProgressReport,
           ),
         );
+        setProgressReportsRead({ clientId, value: "ready" });
       },
       (error: any) => {
+        // Said before the handler, which throws outside a browser.
+        setProgressReportsRead({ clientId, value: "failed" });
         handleFirestoreError(error, OperationType.GET, "progressReports");
       },
     );

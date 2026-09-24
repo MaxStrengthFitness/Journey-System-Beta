@@ -63,6 +63,8 @@ An InBody scan of the same body reads a little differently every time. Before th
 | `clients/{clientId}.inbodySummary` | The first scan against the latest (`InBodySummary`), raw changes | The same batch, every add, correction or removal |
 | `studios/{studioId}.inbodyVariation` | The studio's own numbers (`StoredInBodyVariation`); absent = the defaults | My Studio → Studio → InBody |
 
+One listener per open client (`useInBodyScans`). A screen that already holds it — the Notes & Profile codex reads the scans once for every page that shows them — hands it to `InBodyCard` as `inbody`, and the card's own read is disabled (client codex, phase 6).
+
 The progress report does **not** copy InBody numbers into the report document. `progressReports` can be read by any signed-in user, and body composition is health data. The report section reads the scans live instead, so anyone who can't open the client doesn't see it. The studio variation holds no client data, so the studio document (readable by anyone signed in) is the right place for it.
 
 ## Permissions (`firestore.rules`, mirrored in `access.ts`)

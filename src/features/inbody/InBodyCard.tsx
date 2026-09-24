@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { auth } from "../../firebase";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
-import { useInBodyScans } from "./useInBodyScans";
+import { useInBodyScans, type InBodyScansState } from "./useInBodyScans";
 import { InBodyScanDialog } from "./InBodyScanDialog";
 import { InBodyTrend } from "./InBodyTrend";
 import { canRecordInBody, canRemoveInBodyScan } from "./access";
@@ -67,14 +67,24 @@ const SUB = "font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-mu
 export interface InBodyCardProps {
   client: Client;
   authTrainer: Trainer | null;
+  /**
+   * This client's scans, already streaming (client codex): the Notes &
+   * Profile tab reads them ONCE and shares the result with every page that
+   * needs them, so the card opens no listener of its own when it is given
+   * one. Left out, the card reads the scans itself, as it always has.
+   */
+  inbody?: InBodyScansState;
 }
 
-export function InBodyCard({ client, authTrainer }: InBodyCardProps) {
+export function InBodyCard({ client, authTrainer, inbody }: InBodyCardProps) {
   const today = studioTodayKey();
   // What counts as a change: the client's HOME studio's numbers, wherever
   // the profile is opened (variation.ts).
   const variation = useInBodyVariation(client);
-  const { scans, loading, error } = useInBodyScans(client.id ?? null);
+  // Disabled rather than skipped when scans are handed in (hooks cannot be
+  // conditional); a disabled useInBodyScans opens no listener.
+  const own = useInBodyScans(client.id ?? null, !inbody);
+  const { scans, loading, error } = inbody ?? own;
   const ordered = useMemo(() => sortScans(scans), [scans]);
   const [editing, setEditing] = useState<InBodyScan | "new" | null>(null);
   const [showAll, setShowAll] = useState(false);

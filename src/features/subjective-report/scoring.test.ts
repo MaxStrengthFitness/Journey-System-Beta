@@ -4,6 +4,7 @@ import {
   compareCategories,
   convertLegacyAnswer,
   emptyAssessment,
+  painKeyOf,
   parseWeightLbs,
   ragForDaysPerWeek,
   ragForFraction,
@@ -192,6 +193,18 @@ describe("pain map trends", () => {
     const s = summarizePain([], [{ ...knee, severity: 4 }]);
     expect(s.resolvedSinceLast).toHaveLength(1);
     expect(s.activeCount).toBe(0);
+  });
+  it("keys a spot by region and side — the one key summarizePain matches on", () => {
+    expect(painKeyOf(knee)).toBe("knee:left");
+    expect(painKeyOf({ region: "knee", side: "right" })).toBe("knee:right");
+    // The same spot with a new id and severity is the same spot…
+    const now = { ...knee, id: "p9", severity: 2 };
+    const before = { ...knee, severity: 8 };
+    expect(painKeyOf(now)).toBe(painKeyOf(before));
+    // …and summarizePain agrees: a trend, not a new spot.
+    const s = summarizePain([now], [before]);
+    expect(s.trends[0].isNew).toBe(false);
+    expect(s.resolvedSinceLast).toHaveLength(0);
   });
 });
 

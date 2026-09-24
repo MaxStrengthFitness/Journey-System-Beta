@@ -18,7 +18,7 @@
  * tap writes the answer with `enteredBy: "client"`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, act } from "react";
+import { StrictMode, act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 // Tell React this is a test renderer, so act() is honoured without warnings.
@@ -35,6 +35,10 @@ let store: Array<Record<string, any>> = [];
 let failHistory = false;
 const updateDocCalls: Array<{ path: string; data: any }> = [];
 const addDocCalls: any[] = [];
+/** Every getDocs the fake answered (client codex: a handed-in draft reads nothing more). */
+const getDocsCalls: string[] = [];
+/** While set, every read waits for it — to see the panel before the draft is in. */
+let holdReads: Promise<void> | null = null;
 
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
@@ -48,6 +52,8 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     limit: (n: number) => ({ type: "limit", n }),
     serverTimestamp: () => ({ __serverTime: true }),
     getDocs: async (q: any) => {
+      getDocsCalls.push(q.__collection);
+      if (holdReads) await holdReads;
       await new Promise((r) => setTimeout(r, 0));
       const wheres = q.constraints.filter((c: any) => c.type === "where");
       const max = q.constraints.find((c: any) => c.type === "limit")?.n ?? Infinity;
@@ -72,6 +78,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 });
 
 import { ClientCheckInPanel } from "../../components/journal/ClientCheckInPanel";
+import { useCheckInDraft, type CheckInDraftState } from "./useCheckInDraft";
 import { emptyAssessment } from "./scoring";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
@@ -173,6 +180,8 @@ beforeEach(() => {
   failHistory = false;
   updateDocCalls.length = 0;
   addDocCalls.length = 0;
+  getDocsCalls.length = 0;
+  holdReads = null;
 });
 
 afterEach(() => {
@@ -351,6 +360,125 @@ describe("ClientCheckInPanel mounts", () => {
     expect(text).toContain("couldn't be loaded");
     expect(text).not.toContain("None of 4 updated");
     expect(host.querySelectorAll(".sra-stale")).toHaveLength(0);
+    await act(async () => root.unmount());
+  });
+});
+
+/*
+ * CLIENT CODEX (Sep 2026): the Body & Pulse page owns the ONE draft for the
+ * client and hands it to the panel. The panel must then read nothing and
+ * save nothing of its own — two drafts of one client autosaving side by side
+ * is the duplicate-draft bug useCheckInDraft exists to prevent.
+ */
+describe("ClientCheckInPanel given the page's draft", () => {
+  /** The page: one useCheckInDraft, one "Hand to client" of its own. */
+  let pageDraft: CheckInDraftState | null = null;
+  function Page({ start = false, onClosed }: { start?: boolean; onClosed?: () => void }) {
+    const draft = useCheckInDraft({ client, trainer, machines: [] });
+    pageDraft = draft;
+    const [handing, setHanding] = useState(start);
+    return (
+      <>
+        <button type="button" data-testid="page-hand" onClick={() => setHanding(true)}>
+          Hand to client
+        </button>
+        <ClientCheckInPanel
+          client={client}
+          trainer={trainer}
+          machines={[]}
+          draft={draft}
+          startInClientMode={handing}
+          onClientModeClose={() => {
+            setHanding(false);
+            onClosed?.();
+          }}
+        />
+      </>
+    );
+  }
+
+  const sheet = () => document.querySelector<HTMLElement>('[data-testid="pulse-client-mode"]');
+
+  it("draws the page's draft and makes no progressReports read of its own", async () => {
+    // What the panel costs on its own, StrictMode included…
+    const alone = await mount(<ClientCheckInPanel client={client} trainer={trainer} machines={[]} />);
+    await settle();
+    const ownReads = getDocsCalls.length;
+    expect(ownReads).toBeGreaterThan(0);
+    expect(getDocsCalls.every((c) => c === "progressReports")).toBe(true);
+    await act(async () => alone.root.unmount());
+    document.body.innerHTML = "";
+    getDocsCalls.length = 0;
+
+    // …is exactly what the page's one draft costs with the panel inside it.
+    const { host, root } = await mount(<Page />);
+    await settle();
+    expect(getDocsCalls).toHaveLength(ownReads);
+
+    // The panel shows that draft: the pillars, and who touched it last.
+    const pillars = [...host.querySelectorAll(".sra-pillar__title")].map((n) => n.textContent);
+    expect(pillars).toEqual(["Recovery & Fuel", "Physical & Functional", "Psychological & Behavioral"]);
+    expect(host.textContent).toContain("by Ana Lopez");
+    expect(host.querySelector('section[aria-label="Pulse history"]')?.textContent).toContain(
+      "Client finally purchased a new mattress; sleep improved",
+    );
+    await act(async () => root.unmount());
+  });
+
+  it("edits the page's draft, and the page's one autosave writes it once", async () => {
+    const { host, root } = await mount(<Page />);
+    await settle();
+    const group = host.querySelector('[role="radiogroup"][aria-label="I am getting consistent, quality sleep."]')!;
+    await act(async () => group.querySelector<HTMLButtonElement>('button[aria-label="Not at all"]')!.click());
+    // The page sees the answer the panel took: it is the same draft.
+    expect(pageDraft!.assessment.answers.sleepRecovery_1?.value).toBe(0);
+
+    await settle(1400);
+    expect(updateDocCalls.filter((c) => c.path === "progressReports/d1")).toHaveLength(1);
+    expect(addDocCalls).toHaveLength(0);
+    await act(async () => root.unmount());
+  });
+
+  it("starts in client mode, but only once the draft is in", async () => {
+    let release!: () => void;
+    holdReads = new Promise<void>((r) => {
+      release = r;
+    });
+    const { root } = await mount(<Page start />);
+    await settle();
+    // The draft is still loading: no sheet for the client to tap onto a blank round.
+    expect(sheet()).toBeNull();
+
+    await act(async () => release());
+    await settle();
+    expect(sheet()).not.toBeNull();
+    expect(sheet()!.textContent).toContain("Judy, tap the word that fits.");
+    await act(async () => root.unmount());
+  });
+
+  it("tells the page when client mode closes, and opens again when the page asks again", async () => {
+    const onClosed = vi.fn();
+    const { host, root } = await mount(<Page onClosed={onClosed} />);
+    await settle();
+    expect(sheet()).toBeNull();
+
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="page-hand"]')!.click());
+    expect(sheet()).not.toBeNull();
+
+    await act(async () => sheet()!.querySelector<HTMLButtonElement>(".pcm__close")!.click());
+    expect(sheet()).toBeNull();
+    expect(onClosed).toHaveBeenCalledTimes(1);
+
+    // A second tap on the page's button is a second hand-over.
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-testid="page-hand"]')!.click());
+    expect(sheet()).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("left without the new props, never opens client mode on its own", async () => {
+    const { root } = await mount(<ClientCheckInPanel client={client} trainer={trainer} machines={[]} />);
+    await settle();
+    expect(sheet()).toBeNull();
     await act(async () => root.unmount());
   });
 });

@@ -93,8 +93,16 @@ export const EMPTY_BASELINE: LivingBaseline = Object.freeze({
 
 const isCategory = (id: string): id is SubjectiveCategoryKey => id in CATEGORY_BY_KEY;
 
-/** This assessment's own answer to one statement, on the 0–10 scale. */
-function ownAnswer(a: SubjectiveAssessment, statementId: string): number | null {
+/**
+ * This assessment's own answer to one statement, on the 0–10 scale; `null`
+ * when it did not ask (never carried forward from an earlier round). A
+ * scaleVersion 1 answer is converted, a v2 answer clamped to 0–10.
+ *
+ * Exported (client codex) so Story and Body & Pulse read a saved Pulse's
+ * statements exactly as the history and the baseline do, rather than off
+ * `answers[id].value`, which is on the wrong scale for a v1 round.
+ */
+export function statementAnswer(a: SubjectiveAssessment, statementId: string): number | null {
   const raw = a.answers?.[statementId]?.value;
   if (raw === null || raw === undefined || !Number.isFinite(raw)) return null;
   return a.scaleVersion === 1 ? convertLegacyAnswer(raw) : clamp(raw, 0, SCALE_MAX);
@@ -130,7 +138,7 @@ export function hasOwnValue(
 ): boolean {
   if (!a) return false;
   if (isCategory(sectionId)) {
-    return CATEGORY_BY_KEY[sectionId].statements.some((st) => ownAnswer(a, st.id) !== null);
+    return CATEGORY_BY_KEY[sectionId].statements.some((st) => statementAnswer(a, st.id) !== null);
   }
   return ownExtra(sectionId, a, reviewed) !== null;
 }
@@ -145,7 +153,7 @@ function knownWithoutBaseline(
   reviewed: readonly string[],
 ): boolean {
   if (isCategory(sectionId)) {
-    return CATEGORY_BY_KEY[sectionId].statements.every((st) => ownAnswer(a, st.id) !== null);
+    return CATEGORY_BY_KEY[sectionId].statements.every((st) => statementAnswer(a, st.id) !== null);
   }
   return ownExtra(sectionId, a, reviewed) !== null;
 }
@@ -163,7 +171,7 @@ export function measureSection(
   if (isCategory(sectionId)) {
     const merged: Record<string, StatementAnswer> = {};
     for (const st of CATEGORY_BY_KEY[sectionId].statements) {
-      const v = (a ? ownAnswer(a, st.id) : null) ?? base.answers[st.id] ?? null;
+      const v = (a ? statementAnswer(a, st.id) : null) ?? base.answers[st.id] ?? null;
       if (v !== null) merged[st.id] = { value: v };
     }
     return scoreCategory(sectionId, merged, 2).legacyScore;
@@ -184,7 +192,7 @@ export function advanceBaseline(
   for (const id of ALL_ASSESSMENT_SECTION_IDS) {
     if (isCategory(id)) {
       for (const st of CATEGORY_BY_KEY[id].statements) {
-        const v = ownAnswer(a, st.id);
+        const v = statementAnswer(a, st.id);
         if (v !== null) answers[st.id] = v;
       }
     } else {

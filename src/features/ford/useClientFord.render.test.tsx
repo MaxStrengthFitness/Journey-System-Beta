@@ -111,6 +111,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 
 import { useClientFord, type UseClientFordResult } from "./useClientFord";
 import { createFordEntry, updateFordEntry } from "./ford-write";
+import { groupByPillar } from "./ford-rollup";
 import { FordSection } from "./FordSection";
 import { FordBriefingCue } from "./FordBriefingCue";
 import { FordSweep } from "./FordSweep";
@@ -392,6 +393,47 @@ describe("the Life section never says 'nothing here' about a read that did not c
     const { host } = await mount(<FordSection client={client} author={author} />);
     await answer(fordListener(), [detail({ id: "k", body: "Wife is Karen." })]);
     expect(host.textContent).toContain("Wife is Karen.");
+  });
+});
+
+/*
+ * CLIENT CODEX: the Notes & Profile tab reads FORD ONCE and hands the same
+ * stream to every page. Given one, the Life section opens no listener.
+ */
+describe("the Life section given the tab's FORD stream", () => {
+  function Tab() {
+    const ford = useClientFord({ clientId: "c1", client });
+    return <FordSection client={client} author={author} ford={ford} />;
+  }
+
+  it("opens no listener of its own and draws the stream it was handed", async () => {
+    const { host } = await mount(<Tab />);
+    // One listener on her FORD: the tab's. (fordListener asserts exactly one.)
+    const l = fordListener();
+    expect(l.constraints).toContainEqual({ type: "where", field: "studioId", op: "==", value: "s1" });
+    expect(host.textContent).toContain("Loading…");
+    await answer(l, [detail({ id: "k", body: "Wife is Karen." })]);
+    expect(host.textContent).toContain("Wife is Karen.");
+    expect(fake.listeners.filter((x) => x.live && x.path === "clients/c1/ford")).toHaveLength(1);
+  });
+
+  it("draws a refused stream as the home studio's, never as nothing on file", async () => {
+    const refused: UseClientFordResult = {
+      entries: [],
+      buckets: groupByPillar([]).buckets,
+      untagged: [],
+      upcoming: [],
+      status: "denied",
+      isLoading: false,
+    };
+    const { host } = await mount(<FordSection client={client} author={author} ford={refused} />);
+    // Nothing read at all: the stream was handed in.
+    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
+    expect(host.querySelector('[data-testid="ford-read-notice"]')!.textContent).toContain(
+      "kept by the client's home studio",
+    );
+    expect(host.textContent).not.toContain("Nothing here yet");
+    expect((buttonByText(host, "Add a detail") as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
