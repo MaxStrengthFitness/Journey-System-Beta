@@ -46,6 +46,7 @@ import {
   increment,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
@@ -275,6 +276,35 @@ export async function archiveJournalEntry(entryId: string): Promise<void> {
     });
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, `journalEntries/${entryId}`);
+    throw err;
+  }
+}
+
+/**
+ * Archive several entries in ONE batch — all of them or none (client codex,
+ * the Notes page). Archiving a thread's root alone turns its updates into
+ * notes of their own (`assembleThreads` promotes an update whose root is not
+ * in the load), so a thread is archived whole: `archiveThread` in
+ * features/client-notes/thread-write.ts passes the root and every update.
+ *
+ * Writes `isArchived` and `updatedAt` and nothing else, which is what the
+ * journalEntries update rule checks (author and client unchanged). Empty or
+ * duplicate ids are dropped; nothing to archive writes nothing.
+ */
+export async function archiveJournalEntries(entryIds: readonly string[]): Promise<void> {
+  const ids = Array.from(new Set(entryIds.filter((id) => typeof id === "string" && id.trim())));
+  if (ids.length === 0) return;
+  try {
+    const batch = writeBatch(db);
+    for (const id of ids) {
+      batch.update(doc(db, "journalEntries", id), {
+        isArchived: true,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, "journalEntries");
     throw err;
   }
 }

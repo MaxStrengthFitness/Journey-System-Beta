@@ -1,0 +1,810 @@
+/* ==========================================================================
+   The Notes page — Notes & Profile, page 2 of 7
+   --------------------------------------------------------------------------
+   Client codex, Sep 2026. The composer folded behind one bar, the To-file
+   tray, one filter row, and the three zones: Open as full thread cards,
+   Standing context as one line each, Resolved folded to its count. The kit
+   (client-codex/kit) draws the page's head and its Next card; this file draws
+   what only Notes has.
+
+   The codex's contract holds here too, and kit/scale.test.ts reads this file:
+   text at 11 / 12 / 14 / 17 / 30px only, no raw hex, nothing clipped — the
+   one exception is a row's note body (`.nx-row__body`), which may fold to two
+   lines because the whole note is one tap away. Colours are the Equipment
+   tokens (--eq-*), which resolve anywhere in the app, so a thread card looks
+   the same wherever it is drawn.
+
+   Loudness is the only colour on a card: a crimson edge for Critical, plum
+   for Heads up (the one Loudness control's mapping), a quiet edge for a plain
+   note. What kind of note it is reads from the glyph and the label in
+   neutral ink. Crimson is a critical note's and nothing else's.
+
+   Nothing tappable is under 40px: picks and the door 40, rows 48, the compose
+   bar 52, the ⋯ button 40 × 40. A button's text alignment lives here, not in
+   a utility class (KNOWN-TRAPS → Layout). Portrait first: one column of cards
+   until the page is 720px wide.
+   ========================================================================== */
+
+.nx-notes {
+  container: nx-notes / inline-size;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  color: var(--eq-ink);
+}
+
+/* The page's shared pieces, brought onto the codex scale inside this page
+   only: the composer and the To-file tray are the same components the
+   session sheet uses, and keep their own sizes there. The shared Loudness
+   control keeps its own (it is one control everywhere). */
+.nx-notes .nc-kicker {
+  font-size: 11px;
+}
+.nx-notes .nc-chip {
+  font-size: 14px;
+}
+.nx-notes .nc-chip--small {
+  font-size: 12px;
+}
+.nx-notes .nc-btn {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.nx-notes .nc-sweep__title,
+.nx-notes .nc-sweep__quote,
+.nx-notes .nc-sweep__done,
+.nx-notes .nc-matters__check {
+  font-size: 14px;
+}
+
+/* ---- banners: a large record, an index, a read that failed ------------- */
+
+.nx-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.nx-banner__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--eq-ink-muted);
+}
+
+.nx-banner code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- the composer ------------------------------------------------------ */
+
+.nx-compose-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--eq-border-strong);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-compose-bar__icon {
+  flex: none;
+  color: var(--eq-ink-muted);
+}
+
+.nx-compose-bar__meta {
+  margin-left: auto;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.nx-compose {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nx-compose[hidden] {
+  display: none;
+}
+
+.nx-compose__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nx-compose__title {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---- the filter row ---------------------------------------------------- */
+
+.nx-catalog {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.nx-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nx-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 240px;
+  max-width: 360px;
+  min-width: 0;
+  position: relative;
+}
+
+.nx-search__icon {
+  position: absolute;
+  left: 12px;
+  color: var(--eq-ink-muted);
+  pointer-events: none;
+}
+
+.nx-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 12px 0 36px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.nx-search__input::placeholder {
+  color: var(--eq-ink-faint);
+}
+
+.nx-pick,
+.nx-door {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-pick[aria-pressed="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.nx-pick__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.nx-pick__count {
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.nx-pick[aria-pressed="true"] .nx-pick__count {
+  color: inherit;
+}
+
+/* The door leaves the page, so it looks like a way out, not a filter. */
+.nx-door {
+  background: var(--eq-surface);
+  border-style: dashed;
+}
+
+/* ---- zones -------------------------------------------------------------- */
+
+.nx-zone {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.nx-zone-h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--eq-border);
+}
+
+.nx-zone-h__title {
+  margin: 0;
+  color: var(--eq-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.nx-zone-h__blurb {
+  flex: 1 1 auto;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+}
+
+.nx-zone-h__toggle {
+  margin-left: auto;
+}
+
+.nx-open-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+@container nx-notes (min-width: 720px) {
+  .nx-open-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nx-open-grid > .nt-card--critical {
+    grid-column: 1 / -1;
+  }
+}
+
+/* One line each. The panel clips its rows to its round corners, so it must
+   not shrink in a flex column (KNOWN-TRAPS → Layout): flex none. */
+.nx-rows {
+  flex: none;
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--eq-border);
+  border-radius: 14px;
+  background: var(--eq-surface);
+  overflow: hidden;
+}
+
+.nx-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 14px;
+  border: 0;
+  border-top: 1px solid var(--eq-border);
+  background: transparent;
+  color: var(--eq-ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nx-rows > .nx-row:first-child,
+.nx-month:first-child > .nx-month__label {
+  border-top: 0;
+}
+
+.nx-row[aria-expanded="true"] {
+  background: var(--eq-surface-2);
+}
+
+.nx-row__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* The kind's words wrap at a space ("COACHING / TIP") in the 112px portrait
+   column, and break inside a word only if one word cannot fit at all — never
+   "PREFERENC/E" for want of room it had. min-width 0 lets that last resort
+   happen inside the column rather than past it. */
+.nx-row__kind {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.nx-row__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* The note's words — the only text on the codex that may fold, to two
+   lines; the whole note opens with a tap. The machine is named first, so it
+   is never the part that folds. */
+.nx-row__body {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.nx-row__machine {
+  font-weight: 800;
+}
+
+.nx-row__meta {
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.nx-row--done .nx-row__body {
+  color: var(--eq-ink-muted);
+}
+
+/* Narrow (every portrait iPad below the 13-inch): who and when go under the
+   words and may wrap, rather than squeezing them. */
+@container nx-notes (max-width: 719px) {
+  .nx-row {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .nx-row__meta {
+    grid-column: 2;
+    white-space: normal;
+  }
+}
+
+@container nx-notes (max-width: 460px) {
+  .nx-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nx-row__meta {
+    grid-column: 1;
+  }
+}
+
+/* A row opened in place: the whole thread under it, in the same panel. */
+.nx-row-open {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+}
+
+.nx-month {
+  display: grid;
+}
+
+.nx-month__label {
+  margin: 0;
+  padding: 10px 14px 4px;
+  border-top: 1px solid var(--eq-border);
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ---- empty and the way to FORD ----------------------------------------- */
+
+.nx-empty {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px dashed var(--eq-border-strong);
+  border-radius: 12px;
+  color: var(--eq-ink-2);
+}
+
+.nx-empty__text {
+  margin: 0;
+  font-size: 14px;
+}
+
+.nx-empty__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nx-empty__acts:empty {
+  display: none;
+}
+
+.nx-fordline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.nx-fordline__text {
+  flex: 1 1 18rem;
+  margin: 0;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* A thread a door or the critical line brought into view: a ring for two
+   seconds, so the eye finds it. */
+.nx-focus {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.nx-notes .nt-card,
+.nx-notes .nx-row,
+.nx-notes .nc-sweep__card,
+.nx-notes .nx-zone-h {
+  scroll-margin-top: calc(var(--psub-stuck-h, 64px) + 12px);
+}
+
+/* ==========================================================================
+   A thread card
+   ========================================================================== */
+
+.nt-card {
+  --nt-edge: var(--eq-border-strong);
+  position: relative;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px 16px 12px 20px;
+  border: 1px solid var(--eq-border);
+  border-radius: 14px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+}
+
+.nt-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--nt-edge);
+}
+
+.nt-card--critical {
+  --nt-edge: var(--eq-alert);
+  border-color: color-mix(in srgb, var(--eq-alert) 40%, transparent);
+}
+
+.nt-card--headsup {
+  --nt-edge: var(--eq-warn);
+}
+
+.nt-card--resolved {
+  --nt-edge: var(--eq-border);
+}
+
+/* Somebody else's record (an import): a dashed edge, the journal's
+   "this app does not own it" texture. */
+.nt-card--legacy::before {
+  background: repeating-linear-gradient(to bottom, var(--nt-edge) 0 6px, transparent 6px 10px);
+}
+
+.nt-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.nt-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--eq-ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nt-cat__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.nt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.nt-grow {
+  flex: 1 1 auto;
+}
+
+.nt-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nt-pill[data-tone="warn"] {
+  background: var(--eq-warn-fill);
+  color: var(--eq-warn);
+}
+
+.nt-pill[data-tone="alert"] {
+  background: var(--eq-alert-fill);
+  color: var(--eq-alert);
+}
+
+.nt-pill[data-tone="ok"] {
+  background: var(--eq-ok-fill);
+  color: var(--eq-ok);
+}
+
+.nt-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--eq-ink-muted);
+  cursor: pointer;
+}
+
+.nt-more[aria-expanded="true"] {
+  border-color: var(--eq-border-strong);
+  background: var(--eq-surface-2);
+}
+
+.nt-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+}
+
+.nt-menu__ask {
+  flex: 1 1 14rem;
+  margin: 0;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+}
+
+.nt-body {
+  margin: 0;
+  color: var(--eq-ink);
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.nt-spine-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--eq-ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nt-chev {
+  transition: transform 150ms ease;
+}
+
+.nt-chev--open {
+  transform: rotate(180deg);
+}
+
+.nt-upd {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 0 4px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--eq-border-strong);
+  list-style: none;
+}
+
+.nt-upd__item {
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.nt-upd__by {
+  font-weight: 700;
+}
+
+.nt-meta {
+  margin: 0;
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.nt-brief {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--eq-ink-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.nt-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.nt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nt-btn--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--eq-ink-2);
+}
+
+.nt-btn--solid {
+  border-color: transparent;
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+/* Archive, confirmed: taken off every screen. Crimson is a critical note's,
+   so the confirm is plain ink on a strong edge. */
+.nt-btn--danger {
+  border-color: var(--eq-ink-2);
+}
+
+.nt-compose {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.nt-compose__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nt-btn:focus-visible,
+.nt-more:focus-visible,
+.nt-spine-toggle:focus-visible,
+.nx-pick:focus-visible,
+.nx-door:focus-visible,
+.nx-row:focus-visible,
+.nx-compose-bar:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.nx-search__input:focus {
+  border-color: var(--eq-focus-ring);
+  outline: none;
+}
+
+@media (hover: hover) {
+  .nt-btn:not(:disabled):hover,
+  .nx-pick:hover,
+  .nx-door:hover {
+    background: var(--eq-surface-3);
+  }
+
+  .nt-more:hover,
+  .nt-spine-toggle:hover,
+  .nx-row:hover {
+    background: var(--eq-surface-2);
+  }
+
+  .nx-compose-bar:hover {
+    border-color: var(--eq-live);
+    color: var(--eq-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-chev {
+    transition: none;
+  }
+}

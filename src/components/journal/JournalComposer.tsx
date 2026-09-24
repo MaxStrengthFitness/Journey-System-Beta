@@ -32,13 +32,22 @@
  *
  * FORD / Life never writes a journal entry: `journalEntries` is readable by
  * every signed-in user, and a client's home life is not company-wide reading.
- * Choosing it hands off to the FORD capture — inline when the host passes
- * `ford`, or to the host's own FORD mode through `onPickFord` (the Active
- * Session sheet's "Remember this"). Whatever was typed in the note box is
- * kept if the coach switches back.
+ * Choosing it hands off to FORD — to the host's own FORD mode through
+ * `onPickFord` (the Active Session sheet's "Remember this"), or, when the host
+ * passes `ford`, IN PLACE (client codex, Sep 2026): the same box, the same
+ * words, and the note becomes a FORD capture — the loudness, the window and
+ * the extras step aside, the four letters appear (optional), and the button
+ * says "Save to FORD", which writes only `clients/{id}/ford` through
+ * `createFordEntry`. A second tap on the chip is a note again, words intact.
+ * A FORD detail holds 2,000 characters (the rule), a note 5,000, so a longer
+ * box says so instead of being refused. With neither, the chip says where
+ * personal details are kept and offers the way there.
+ *
+ * A failed save never costs the words: the box is cleared only once the save
+ * has landed, and a refused note or FORD capture stays where it was typed.
  */
 import { useEffect, useRef, useState } from "react";
-import { Heart } from "lucide-react";
+import { Check, Heart } from "lucide-react";
 import {
   FOCUS_BLURBS,
   FOCUS_CATEGORIES,
@@ -55,9 +64,8 @@ import {
 } from "../../features/client-notes/note-catalog";
 import { NoteCategoryChips } from "../../features/client-notes/NoteCategoryChips";
 import { Loudness } from "../../features/rating";
-import { FordQuickCapture } from "../../features/ford/FordQuickCapture";
-import type { FordAuthor } from "../../features/ford/ford-write";
-import type { FordOrigin } from "../../features/ford/types";
+import { FORD_BODY_MAX, createFordEntry, type FordAuthor } from "../../features/ford/ford-write";
+import { FORD_META, FORD_PILLARS, type FordOrigin, type FordPillar } from "../../features/ford/types";
 import { EMPTY_SESSION_DRAFT, type SessionNoteDraft } from "../../features/client-notes/session-draft";
 import { EMPTY_MATTERING, MatteringPicker } from "../../features/client-notes/MatteringPicker";
 import { windowFromChoice, type MatteringChoice } from "../../features/client-notes/mattering";
@@ -91,7 +99,7 @@ export interface JournalComposerProps {
   defaultMachineId?: string;
   /** Provenance stamped on the entry. The Notes area leaves it "manual". */
   origin?: JournalOrigin;
-  /** FORD / Life hands off to an inline FORD capture with these details. */
+  /** FORD / Life turns the note into a FORD capture in place, saved with these details. */
   ford?: {
     clientId: string;
     studioId: string;
@@ -101,8 +109,10 @@ export interface JournalComposerProps {
   } | null;
   /** …or, instead, the host switches to its own FORD mode. Wins over `ford`. */
   onPickFord?: () => void;
-  /** Offered beside the inline FORD capture: jump to the Life section. */
+  /** Offered in FORD mode and with the hand-off: go to where FORD is kept. */
   onOpenFord?: () => void;
+  /** A FORD capture landed (FORD mode). The composer has already cleared itself. */
+  onFordSaved?: () => void;
   /**
    * A draft the HOST owns (the Active Session, fluidity round Sep 2026).
    * The composer seeds itself from it once and reports every change back,
@@ -117,6 +127,10 @@ export interface JournalComposerProps {
 const isFiling = (c: NoteCategory | null): c is FilingCategory =>
   c !== null && c !== "ford" && c !== "admin";
 
+
+/** How long "Saved to FORD" stays up after a capture lands. */
+const SAVED_FLASH_MS = 2200;
+
 export function JournalComposer({
   clientFirstName,
   machines,
@@ -127,6 +141,7 @@ export function JournalComposer({
   ford = null,
   onPickFord,
   onOpenFord,
+  onFordSaved,
   draft = null,
   onDraftChange,
 }: JournalComposerProps) {
@@ -159,9 +174,25 @@ export function JournalComposer({
   const [occurredOn, setOccurredOn] = useState("");
   const [matters, setMatters] = useState<MatteringChoice>(EMPTY_MATTERING);
   const [isSaving, setIsSaving] = useState(false);
+  // What the last save said, until the words change: a refused save keeps
+  // the box and says so; a FORD capture that landed says so for a moment.
+  const [outcome, setOutcome] = useState<"idle" | "failed" | "saved-ford">("idle");
+  // FORD mode's optional letter. Never pre-set: the sentence is the capture.
+  const [pillar, setPillar] = useState<FordPillar | null>(null);
+  const flashRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flashRef.current !== null) window.clearTimeout(flashRef.current);
+    },
+    [],
+  );
 
   const name = clientFirstName || "this client";
   const filing = isFiling(category);
+  // FORD / Life, and the host takes it in place (no FORD mode of its own).
+  const fordMode = category === "ford" && !!ford && !onPickFord;
+  // FORD / Life with nowhere to save it here: say where it lives instead.
+  const fordHandoff = category === "ford" && !fordMode;
   const defaultMachine = defaultMachineId
     ? machines.find((m) => m.id === defaultMachineId) ?? null
     : null;
@@ -169,6 +200,8 @@ export function JournalComposer({
   const dated = category === "incident" || category === "injury";
   // Preference needs nothing extra; an untagged note in a session keeps its machine.
   const hasExtras = category === "equipment" || aboutMachineKinds || (category === null && !!defaultMachine);
+  const fordLength = body.trim().length;
+  const fordTooLong = fordMode && fordLength > FORD_BODY_MAX;
 
   const pick = (next: NoteCategory) => {
     if (next === "ford" && onPickFord) {
@@ -178,6 +211,7 @@ export function JournalComposer({
     // A second tap on the chosen chip un-picks it: back to "file later".
     const chosen = next === category ? null : next;
     setCategory(chosen);
+    setOutcome("idle");
     if (!importanceTouched) {
       setImportance(isFiling(chosen) ? DEFAULT_IMPORTANCE[chosen] : "standard");
     }
@@ -194,6 +228,7 @@ export function JournalComposer({
     setAboutMachine(true);
     setOccurredOn("");
     setMatters(EMPTY_MATTERING);
+    setPillar(null);
   };
 
   /** Which machine the note is about, if any, for the chosen kind. */
@@ -216,6 +251,7 @@ export function JournalComposer({
     const kind = filing ? NOTE_CATEGORY_META[category].kind : "general";
     if (!kind) return;
     setIsSaving(true);
+    setOutcome("idle");
     try {
       await onSubmit({
         kind,
@@ -233,6 +269,50 @@ export function JournalComposer({
         ...(importance !== "standard" || matters.shape === "day" ? windowFromChoice(matters) : {}),
       });
       reset();
+    } catch {
+      // Refused or offline: the words stay in the box, and it says so. The
+      // host may also have said so (a toast); this line stays until the next
+      // edit, beside the words it is about.
+      setOutcome("failed");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  /** FORD mode's save: the typed words become a FORD detail, never a note. */
+  const saveToFord = async () => {
+    if (!fordMode || !ford) return;
+    const text = body.trim();
+    if (!text || isSaving || disabled || text.length > FORD_BODY_MAX) return;
+    setIsSaving(true);
+    setOutcome("idle");
+    try {
+      const id = await createFordEntry(ford.clientId, ford.studioId, ford.author, {
+        pillar,
+        body: text,
+        origin: ford.origin ?? "profile",
+        sessionId: ford.sessionId ?? null,
+      });
+      // createFordEntry returns null when the write was refused or failed.
+      // Never clear the box on that path and never say Saved: the sentence in
+      // it is the only copy.
+      if (!id) {
+        setOutcome("failed");
+        return;
+      }
+      reset();
+      setOutcome("saved-ford");
+      if (flashRef.current !== null) window.clearTimeout(flashRef.current);
+      flashRef.current = window.setTimeout(
+        () => setOutcome((o) => (o === "saved-ford" ? "idle" : o)),
+        SAVED_FLASH_MS,
+      );
+      onFordSaved?.();
+    } catch {
+      // createFordEntry reports a refusal by returning null, but a write that
+      // throws (outside the app shell, or a later change) must still leave
+      // the words in the box and say so, never fail silently.
+      setOutcome("failed");
     } finally {
       setIsSaving(false);
     }
@@ -245,182 +325,244 @@ export function JournalComposer({
       : "Save — file later";
 
   return (
-    <section className="nc-composer" data-testid="note-composer">
+    <section className="nc-composer" data-testid="note-composer" data-mode={fordMode ? "ford" : "note"}>
       {/* 1 · what kind */}
-      <div className="flex flex-col gap-1.5">
+      <div className="nc-composer__kind">
         <span className="nc-kicker">What kind of note?</span>
         <NoteCategoryChips value={category} onChange={pick} />
-        <p className="nc-muted text-[12px]">
-          {category
-            ? NOTE_CATEGORY_META[category].blurb
-            : origin === "in_session"
-              ? "Optional — untagged notes come back to be filed at the end."
-              : "Pick a category, or save and file it later."}
+        <p className="nc-hint">
+          {fordMode
+            ? "Family, occupation, recreation, dreams — saved to FORD."
+            : category
+              ? NOTE_CATEGORY_META[category].blurb
+              : origin === "in_session"
+                ? "Optional — untagged notes come back to be filed at the end."
+                : "Pick a category, or save and file it later."}
         </p>
+        {outcome === "saved-ford" ? (
+          <p className="nc-saved" role="status">
+            <Check className="h-4 w-4" aria-hidden /> Saved to FORD
+          </p>
+        ) : null}
       </div>
 
-      {category === "ford" ? (
-        ford ? (
-          <div className="flex flex-col gap-2">
-            <FordQuickCapture
-              clientId={ford.clientId}
-              clientFirstName={clientFirstName || "them"}
-              studioId={ford.studioId}
-              author={ford.author}
-              sessionId={ford.sessionId ?? null}
-              origin={ford.origin ?? "profile"}
-            />
-            {body.trim() ? (
-              <p className="nc-muted text-[11.5px]">
-                Your unsaved note is kept — pick its category again to finish it.
-              </p>
-            ) : null}
-            {onOpenFord ? (
-              <button type="button" className="nc-btn self-start" onClick={onOpenFord}>
-                <Heart className="h-3.5 w-3.5" aria-hidden /> See everything in Life
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <div className="nc-handoff flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[12.5px]">
-              Personal details are kept in Life (FORD), where only this studio can read them.
-            </span>
-            {onOpenFord ? (
-              <button type="button" className="nc-btn" onClick={onOpenFord}>
-                <Heart className="h-3.5 w-3.5" aria-hidden /> Open Life
-              </button>
-            ) : null}
-          </div>
-        )
-      ) : (
-        <>
-          {/* 2 · the words */}
-          <textarea
-            className="nc-input"
-            rows={3}
-            value={body}
-            aria-label={`${filing ? NOTE_CATEGORY_META[category].label : "Untagged"} note about ${name}`}
-            placeholder={filing ? PLACEHOLDERS[category] : UNTAGGED_PLACEHOLDER}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
+      {/* FORD / Life with nowhere to save it here: where it lives. The words
+          typed so far are kept; picking a note category brings them back. */}
+      {fordHandoff ? (
+        <div className="nc-handoff flex flex-wrap items-center justify-between gap-2">
+          <span className="nc-hint">
+            Personal details are kept in FORD, which only the client’s home studio can read.
+            {body.trim() ? " Your unsaved note is kept — pick its category again to finish it." : ""}
+          </span>
+          {onOpenFord ? (
+            <button type="button" className="nc-btn" onClick={onOpenFord}>
+              <Heart className="h-3.5 w-3.5" aria-hidden /> Open FORD
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-          {/* 3 · only what that kind needs */}
-          {hasExtras && (
-          <div className="nc-extras">
-            {category === "coaching" && (
-              <div className="flex flex-col gap-1.5">
-                <span className="nc-kicker">Which P (optional)</span>
-                <div className="nc-chips" role="group" aria-label="Which P">
-                  {FOCUS_CATEGORIES.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="nc-chip nc-chip--small"
-                      aria-pressed={p === c}
-                      onClick={() => setP(p === c ? null : c)}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-                {p ? <p className="nc-muted text-[11.5px]">{FOCUS_BLURBS[p]}</p> : null}
-              </div>
-            )}
+      {/* 2 · the words — the SAME box in note mode and FORD mode, so nothing
+          typed is lost when the category changes. */}
+      {fordHandoff ? null : (
+        <textarea
+          className="nc-input"
+          rows={3}
+          value={body}
+          aria-label={
+            fordMode
+              ? `Something ${name} told you`
+              : `${filing ? NOTE_CATEGORY_META[category].label : "Untagged"} note about ${name}`
+          }
+          placeholder={fordMode ? "“Grandson graduates in May”" : filing ? PLACEHOLDERS[category] : UNTAGGED_PLACEHOLDER}
+          onChange={(e) => {
+            setBody(e.target.value);
+            if (outcome === "failed") setOutcome("idle");
+          }}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              void (fordMode ? saveToFord() : submit());
+            }
+          }}
+        />
+      )}
 
-            {(category === "equipment" || (aboutMachineKinds && !defaultMachine)) && (
-              <label className="flex flex-col gap-1.5">
-                <span className="nc-kicker">{category === "equipment" ? "Machine" : "Machine (optional)"}</span>
-                <select
-                  className="nc-input"
-                  value={machineId}
-                  onChange={(e) => setMachineId(e.target.value)}
-                >
-                  <option value="">No specific machine</option>
-                  {machines.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {(aboutMachineKinds || category === null) && defaultMachine && (
-              <div className="flex flex-col gap-1.5">
-                <span className="nc-kicker">Machine</span>
+      {/* FORD mode: the letter (optional), where it goes, and the save. */}
+      {fordMode ? (
+        <div className="nc-ford">
+          <div className="nc-chips" role="group" aria-label="File under (optional)">
+            {FORD_PILLARS.map((pl) => {
+              const on = pillar === pl;
+              return (
                 <button
+                  key={pl}
                   type="button"
-                  className="nc-chip nc-chip--small self-start"
-                  aria-pressed={aboutMachine}
-                  onClick={() => setAboutMachine((v) => !v)}
+                  className="nc-chip nc-chip--small"
+                  aria-pressed={on}
+                  onClick={() => setPillar(on ? null : pl)}
                 >
-                  About {defaultMachine.name}
+                  <span className={`nc-letter nc-letter--${pl}`} aria-hidden>
+                    {FORD_META[pl].letter}
+                  </span>
+                  {FORD_META[pl].label}
                 </button>
-              </div>
-            )}
-
-            {dated && (
-              <label className="flex flex-col gap-1.5">
-                <span className="nc-kicker">Happened on</span>
-                <input
-                  type="date"
-                  className="nc-input"
-                  value={occurredOn}
-                  onChange={(e) => setOccurredOn(e.target.value)}
-                />
-                <span className="nc-muted text-[11px]">Leave blank for today.</span>
-              </label>
-            )}
+              );
+            })}
           </div>
-          )}
-
-          {/* 4 · how loud, 5 · matters until */}
-          <div className="nc-composer__loud">
-            <Loudness
-              ask="How loud? (optional)"
-              value={importance}
-              compact={origin === "in_session"}
-              onChange={(lvl) => {
-                setImportance(lvl);
-                setImportanceTouched(true);
-              }}
-            />
-
-            {(importance !== "standard" || matters.shape === "day") && (
-              <MatteringPicker value={matters} onChange={setMatters} compact={origin === "in_session"} />
-            )}
-            {importance === "standard" && matters.shape !== "day" && (
-              <button type="button" className="nc-btn nc-btn--quiet self-start" onClick={() => setMatters({ ...EMPTY_MATTERING, shape: "day" })}>
-                Pin to a date (a birthday, an anniversary)
-              </button>
-            )}
-          </div>
-
-          {/* 6 · save — always last */}
+          <p className="nc-hint">
+            Saved to FORD, which only the client’s home studio can read. It never becomes a note.
+          </p>
+          {fordTooLong ? (
+            <p className="nc-hint nc-hint--warn">
+              FORD details hold up to 2,000 characters — this one is {fordLength.toLocaleString("en-US")}.
+            </p>
+          ) : null}
           <div className="nc-composer__save">
-            {body.trim() && (
-              <button type="button" className="nc-btn nc-btn--quiet" onClick={reset}>
+            {outcome === "failed" ? (
+              <span className="nc-hint nc-hint--warn" role="alert">
+                Not saved — still here, try again
+              </span>
+            ) : null}
+            {onOpenFord ? (
+              <button type="button" className="nc-btn nc-btn--quiet" onClick={onOpenFord}>
+                Open FORD
+              </button>
+            ) : null}
+            {body.trim() ? (
+              <button type="button" className="nc-btn nc-btn--quiet" onClick={() => setBody("")}>
                 Clear
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               className="nc-btn nc-btn--primary"
-              onClick={() => void submit()}
-              disabled={!body.trim() || isSaving || disabled}
+              onClick={() => void saveToFord()}
+              disabled={!body.trim() || isSaving || disabled || fordTooLong}
             >
-              {saveLabel}
+              {isSaving ? "Saving" : "Save to FORD"}
             </button>
           </div>
-        </>
-      )}
+        </div>
+      ) : null}
+
+      {/* 3 · only what that kind needs */}
+      {!fordMode && !fordHandoff && hasExtras ? (
+        <div className="nc-extras">
+          {category === "coaching" && (
+            <div className="flex flex-col gap-1.5">
+              <span className="nc-kicker">Which P (optional)</span>
+              <div className="nc-chips" role="group" aria-label="Which P">
+                {FOCUS_CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="nc-chip nc-chip--small"
+                    aria-pressed={p === c}
+                    onClick={() => setP(p === c ? null : c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              {p ? <p className="nc-hint">{FOCUS_BLURBS[p]}</p> : null}
+            </div>
+          )}
+
+          {(category === "equipment" || (aboutMachineKinds && !defaultMachine)) && (
+            <label className="flex flex-col gap-1.5">
+              <span className="nc-kicker">{category === "equipment" ? "Machine" : "Machine (optional)"}</span>
+              <select
+                className="nc-input"
+                value={machineId}
+                onChange={(e) => setMachineId(e.target.value)}
+              >
+                <option value="">No specific machine</option>
+                {machines.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {(aboutMachineKinds || category === null) && defaultMachine && (
+            <div className="flex flex-col gap-1.5">
+              <span className="nc-kicker">Machine</span>
+              <button
+                type="button"
+                className="nc-chip nc-chip--small self-start"
+                aria-pressed={aboutMachine}
+                onClick={() => setAboutMachine((v) => !v)}
+              >
+                About {defaultMachine.name}
+              </button>
+            </div>
+          )}
+
+          {dated && (
+            <label className="flex flex-col gap-1.5">
+              <span className="nc-kicker">Happened on</span>
+              <input
+                type="date"
+                className="nc-input"
+                value={occurredOn}
+                onChange={(e) => setOccurredOn(e.target.value)}
+              />
+              <span className="nc-hint">Leave blank for today.</span>
+            </label>
+          )}
+        </div>
+      ) : null}
+
+      {/* 4 · how loud, 5 · matters until */}
+      {!fordMode && !fordHandoff ? (
+        <div className="nc-composer__loud">
+          <Loudness
+            ask="How loud? (optional)"
+            value={importance}
+            compact={origin === "in_session"}
+            onChange={(lvl) => {
+              setImportance(lvl);
+              setImportanceTouched(true);
+            }}
+          />
+
+          {(importance !== "standard" || matters.shape === "day") && (
+            <MatteringPicker value={matters} onChange={setMatters} compact={origin === "in_session"} />
+          )}
+          {importance === "standard" && matters.shape !== "day" && (
+            <button type="button" className="nc-btn nc-btn--quiet self-start" onClick={() => setMatters({ ...EMPTY_MATTERING, shape: "day" })}>
+              Pin to a date (a birthday, an anniversary)
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {/* 6 · save — always last */}
+      {!fordMode && !fordHandoff ? (
+        <div className="nc-composer__save">
+          {outcome === "failed" ? (
+            <span className="nc-hint nc-hint--warn" role="alert">
+              Not saved — still here, try again
+            </span>
+          ) : null}
+          {body.trim() && (
+            <button type="button" className="nc-btn nc-btn--quiet" onClick={reset}>
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            className="nc-btn nc-btn--primary"
+            onClick={() => void submit()}
+            disabled={!body.trim() || isSaving || disabled}
+          >
+            {saveLabel}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

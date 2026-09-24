@@ -5,8 +5,8 @@ import {
   EMPTY_FILTER,
   FILING_CATEGORIES,
   NOTE_CATEGORIES,
+  NOTES_PAGE_CATEGORIES,
   buildCatalog,
-  catalogCoaches,
   isUnfiled,
   matchesSearch,
   monthKeyOf,
@@ -72,6 +72,17 @@ describe("the seven categories", () => {
     expect(COMPOSER_CATEGORIES.find((c) => c.id === "ford")!.kind).toBeNull();
     // "general" is gone from the composer.
     expect(COMPOSER_CATEGORIES.some((c) => c.kind === "general")).toBe(false);
+  });
+
+  it("filter the Notes page with every category but FORD, which is a door there, in the same order", () => {
+    expect(NOTES_PAGE_CATEGORIES.map((c) => c.label)).toEqual([
+      "Coaching tip",
+      "Equipment",
+      "Incident",
+      "Injury",
+      "Preference",
+      "Admin",
+    ]);
   });
 });
 
@@ -167,21 +178,45 @@ describe("buildCatalog", () => {
     expect(cat.zones[1].items.map((t) => t.id)).toEqual(["quiet"]);
   });
 
-  it("keeps Open and Standing whole and shows three of Resolved, with a way to the rest", () => {
+  it("holds every thread in every zone — the page folds Resolved, the catalog never cuts it", () => {
     const many = assembleThreads(
       [1, 2, 3, 4, 5].map((n) => entry({ id: `r${n}`, occurredAt: sep(n), resolvedAt: sep(n + 1) })),
     );
     const cat = buildCatalog(many, EMPTY_FILTER, TODAY);
     const resolved = cat.zones[2];
     expect(resolved.total).toBe(5);
-    expect(resolved.items).toHaveLength(3);
-    expect(resolved.collapsed).toBe(true);
+    expect(resolved.items).toHaveLength(5);
+    // Unfolding it changes nothing that is counted or listed.
+    const shown = buildCatalog(many, { ...EMPTY_FILTER, showResolved: true }, TODAY);
+    expect(shown.zones[2].items.map((t) => t.id)).toEqual(resolved.items.map((t) => t.id));
+    expect(shown.tiles).toEqual(cat.tiles);
+    // Resolved reads month by month, whether or not it is unfolded.
+    expect(cat.months.map((m) => m.key)).toEqual(["2026-09"]);
+    expect(cat.months[0].items.map((t) => t.id)).toEqual(["r5", "r4", "r3", "r2", "r1"]);
+  });
 
-    const all = buildCatalog(many, { ...EMPTY_FILTER, zone: "resolved" }, TODAY);
-    expect(all.zones[2].items).toHaveLength(5);
-    expect(all.zones[2].collapsed).toBe(false);
-    // Expanded, it reads month by month.
-    expect(all.months.map((m) => m.key)).toEqual(["2026-09"]);
+  it("groups Resolved by month, newest first, with undated last", () => {
+    const mixed = assembleThreads([
+      entry({ id: "aug", occurredAt: aug(10), resolvedAt: aug(12) }),
+      entry({ id: "none", occurredAt: null, resolvedAt: sep(2) }),
+      entry({ id: "sep", occurredAt: sep(3), resolvedAt: sep(4) }),
+      entry({ id: "open", occurredAt: sep(3) }),
+    ]);
+    const cat = buildCatalog(mixed, EMPTY_FILTER, TODAY);
+    expect(cat.months.map((m) => m.key)).toEqual(["2026-09", "2026-08", "undated"]);
+    expect(cat.months.map((m) => m.label)[2]).toBe("Undated");
+    // A standing note is never in a month group: months are Resolved's only.
+    expect(cat.months.flatMap((m) => m.items.map((t) => t.id))).not.toContain("open");
+  });
+
+  it("counts resolved threads on the category chips, so a chip says what it holds", () => {
+    const withClosed = assembleThreads([
+      ...list,
+      entry({ id: "old-inj", kind: "injury", occurredAt: aug(1), resolvedAt: aug(9) }),
+    ]);
+    const cat = buildCatalog(withClosed, EMPTY_FILTER, TODAY);
+    expect(cat.tiles.find((t) => t.id === "injury")!.count).toBe(2);
+    expect(cat.zones[2].items.map((t) => t.id)).toEqual(["old-inj"]);
   });
 
   it("isolates one category and keeps the zones", () => {
@@ -192,10 +227,10 @@ describe("buildCatalog", () => {
     expect(cat.tiles.find((t) => t.id === "injury")!.count).toBe(1);
   });
 
-  it("puts undated notes last when a zone is opened out", () => {
-    const cat = build({ category: "admin", zone: "standing" });
-    expect(cat.months.map((m) => m.key)).toEqual(["undated"]);
+  it("keys a note with no date as undated", () => {
     expect(monthKeyOf(null)).toBe("undated");
+    // A standing admin note with no date is in no month: months are Resolved's.
+    expect(build({ category: "admin" }).months).toEqual([]);
   });
 
   it("searches across every category, including the category name", () => {
@@ -216,20 +251,18 @@ describe("buildCatalog", () => {
     expect(buildCatalog(shoulder, { ...EMPTY_FILTER, search: "MRI" }, TODAY).matched).toBe(1);
   });
 
-  it("filters by coach — anyone with a hand in the thread, not only whoever opened it", () => {
-    const sam = build({ coachId: "t2" });
+  it("finds a coach's notes by name — anyone with a hand in the thread, not only whoever opened it", () => {
+    // The coach chip row is gone (the Notes page); search reads every entry's author.
+    const sam = build({ search: "Sam" });
     expect(sam.matched).toBe(1);
     expect(sam.tiles[0].count).toBe(1);
-    expect(catalogCoaches(list).map((c) => [c.id, c.count])).toEqual([
-      ["t1", 4],
-      ["t2", 1],
-    ]);
+    expect(build({ search: "SK" }).matched).toBe(1);
 
     const helped = assembleThreads([
       entry({ id: "h1", authorId: "t1", occurredAt: sep(1) }),
-      entry({ id: "h2", threadId: "h1", authorId: "t2", occurredAt: sep(5) }),
+      entry({ id: "h2", threadId: "h1", authorId: "t2", authorName: "Sam Kim", authorInitials: "SK", occurredAt: sep(5) }),
     ]);
-    expect(buildCatalog(helped, { ...EMPTY_FILTER, coachId: "t2" }, TODAY).matched).toBe(1);
+    expect(buildCatalog(helped, { ...EMPTY_FILTER, search: "sam" }, TODAY).matched).toBe(1);
   });
 
   it("does not reorder or mutate what it was given", () => {

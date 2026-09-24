@@ -7,11 +7,15 @@
      .nc-chips     the category chips — the composer's FIRST choice, in the
                    Notes area and in the Active Session sheet alike
      .nc-composer  the note box
-     .nc-catalog   the tiles, the shelves and the month-by-month view
      .nc-sweep     the To-file tray (reporting round, Sep 2026) — the notes
                    twin of the FORD sweep, mounted in the session sheet, on
                    the post-session screen and at the top of the Notes area
      .nc-tofile    the small "To file" mark on an unfiled note's card
+
+   The Notes PAGE of the record (client codex, Sep 2026) — its filters, zones,
+   thread cards and rows — is notes-page.css, which the codex's scale test
+   reads; the catalog's tiles, shelves and thread styles that were here went
+   with the page they drew.
 
    Colour comes from equipment.tokens.css; no hex below this line. A
    category's own hue is a small dot borrowed from the journal's visual
@@ -46,6 +50,19 @@
   color: var(--eq-ink-muted);
 }
 .nc-muted { color: var(--eq-ink-muted); }
+
+/* A quiet line under a control: the chip's blurb, a P's meaning, "Leave
+   blank for today". 12px everywhere (client codex: it was 11, 11.5, 12 and
+   12.5px in different corners of the composer). */
+.nc-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--eq-ink-muted);
+}
+/* A save that did not land, or a FORD detail that is too long: plum, the
+   caution colour — never crimson, which is a critical note's. */
+.nc-hint--warn { color: var(--eq-warn); font-weight: 600; }
 
 .nc-dot {
   display: inline-block;
@@ -96,9 +113,6 @@
 .nc-input::placeholder { color: var(--eq-ink-faint); }
 .nc-input:focus { border-color: var(--eq-focus-ring); background: var(--eq-surface); }
 textarea.nc-input { resize: vertical; }
-/* Room for a leading icon. In the feature CSS, not a utility class: .nc-input's
-   padding would win over `pl-9` depending on layer order (docs/KNOWN-TRAPS.md, Layout and CSS). */
-.nc-input.nc-input--icon { padding-left: 2.25rem; }
 
 /* ------------------------------------------------------------------ */
 /* CATEGORY CHIPS                                                      */
@@ -176,106 +190,35 @@ textarea.nc-input { resize: vertical; }
   background: var(--eq-surface-2);
 }
 
-/* ------------------------------------------------------------------ */
-/* CATALOG                                                             */
-/* ------------------------------------------------------------------ */
+.nc-composer__kind { display: flex; flex-direction: column; gap: 0.375rem; }
 
-.nc-catalog { display: flex; flex-direction: column; gap: 1rem; }
-
-.nc-searchrow {
-  display: flex;
-  gap: 0.5rem;
+/* "Saved to FORD" — a moment's confirmation after a capture lands. */
+.nc-saved {
+  display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--eq-ok);
 }
 
-.nc-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 0.5rem;
-}
+/* FORD mode (client codex): the note box became a FORD capture in place. */
+.nc-ford { display: flex; flex-direction: column; gap: 0.6rem; }
 
-.nc-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.2rem;
-  min-height: 76px;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
-  color: var(--eq-ink);
-  text-align: left;
-  cursor: pointer;
-}
-.nc-tile:hover { background: var(--eq-surface-2); }
-.nc-tile:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.nc-tile[aria-pressed="true"] {
-  border-color: var(--eq-live);
-  background: var(--eq-live-fill);
-  box-shadow: inset 0 0 0 1px var(--eq-live);
-}
-.nc-tile--empty { color: var(--eq-ink-muted); }
-
-.nc-tile__label {
-  display: flex;
+/* A pillar's letter on a chip — its tint is identity, never a status. */
+.nc-letter {
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  min-width: 1.25rem;
   font-size: 12px;
   font-weight: 800;
-  line-height: 1.2;
 }
-.nc-tile__count {
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.nc-tile__when { font-size: 11px; color: var(--eq-ink-muted); }
-
-.nc-shelf {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.nc-shelf__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  border-bottom: 1px solid var(--eq-border);
-  padding-bottom: 0.3rem;
-}
-.nc-shelf__title {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--eq-ink);
-}
-
-.nc-empty {
-  border: 1px dashed var(--eq-border-strong);
-  border-radius: var(--eq-radius);
-  padding: 1.5rem 1rem;
-  text-align: center;
-  color: var(--eq-ink-muted);
-}
-
-.nc-filterbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 12px;
-  background: var(--eq-live-fill);
-  color: var(--eq-live-text);
-  font-weight: 700;
-}
+.nc-letter--family { color: var(--ford-family-ink); }
+.nc-letter--occupation { color: var(--ford-occupation-ink); }
+.nc-letter--recreation { color: var(--ford-recreation-ink); }
+.nc-letter--dreams { color: var(--ford-dreams-ink); }
 
 /* ------------------------------------------------------------------ */
 /* THE TO-FILE TRAY                                                    */
@@ -327,6 +270,23 @@ textarea.nc-input { resize: vertical; }
   color: var(--eq-ink);
   white-space: pre-line;
 }
+/* How loud an unfiled note is (client codex): an unfiled critical note waits
+   in the tray, not in Open, so the tray is where it must still look critical.
+   The one Loudness mapping: Heads up plum, Critical crimson. */
+.nc-loud {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.nc-loud[data-tone="warn"] { background: var(--eq-warn-fill); color: var(--eq-warn); }
+.nc-loud[data-tone="alert"] { background: var(--eq-alert-fill); color: var(--eq-alert); }
+
 .nc-sweep__machine {
   display: inline-flex;
   align-items: center;
@@ -404,50 +364,3 @@ textarea.nc-input { resize: vertical; }
 }
 .nc-matters__check input { width: 20px; height: 20px; accent-color: var(--eq-live); }
 .nc-matters[data-compact="true"] .nc-matters__row { gap: 0.4rem 0.5rem; }
-
-/* ------------------------------------------------------------------ *
- * THREADS (Notes round, Sep 2026)
- *
- * The spine sits UNDER the note and indented, so a glance reads the note
- * first and the story second. It is deliberately quieter than a card: an
- * update is not a note of its own and must not look like one.
- * ------------------------------------------------------------------ */
-.nt-thread { display: flex; flex-direction: column; gap: 0.375rem; }
-
-.nt-muted { color: var(--eq-ink-muted); }
-
-.nt-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  align-self: flex-start;
-  min-height: 40px;
-  padding: 0 0.5rem;
-  border-radius: 0.625rem;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--eq-ink-muted);
-  background: transparent;
-}
-.nt-toggle:hover { background: var(--eq-surface-2); }
-.nt-toggle:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
-.nt-chev { transition: transform 150ms ease; }
-.nt-chev--open { transform: rotate(180deg); }
-
-.nt-spine {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin: 0 0 0 1rem;
-  padding: 0.125rem 0 0.125rem 0.75rem;
-  border-left: 2px solid var(--eq-border);
-  list-style: none;
-}
-
-.nt-update { display: flex; gap: 0.5rem; align-items: flex-start; }
-.nt-update__body { font-size: 13px; line-height: 1.45; color: var(--eq-ink); margin: 0; }
-.nt-update__by { font-size: 11px; color: var(--eq-ink-muted); margin: 0.125rem 0 0; }
-
-.nt-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-left: 1rem; }
-.nt-composer { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
-.nt-composer__row { display: flex; gap: 0.5rem; }

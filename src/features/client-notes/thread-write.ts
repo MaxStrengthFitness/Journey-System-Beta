@@ -20,13 +20,20 @@
  *
  * Nothing here closes a thread on its own. A trainer whose session
  * contradicts a note ADDS to it — see the header of threads.ts for why.
+ *
+ * Archiving (client codex, the Notes page) takes the WHOLE thread off every
+ * screen: the root and every update, in one batch. Archiving the root alone
+ * left its updates behind as stray notes of their own (`assembleThreads`
+ * promotes an update whose root is not in the load).
  */
 import type { JournalEntry, JournalOrigin } from "../../types/journal";
 import {
+  archiveJournalEntries,
   createJournalEntry,
   resolveJournalEntry,
   type JournalAuthor,
 } from "../../hooks/useClientJournal";
+import type { NoteThread } from "./threads";
 
 export interface ThreadUpdateOptions {
   /** Back-date an update the way the composer can back-date a note. */
@@ -73,4 +80,15 @@ export function closeThread(rootId: string): Promise<void> {
 /** It flared again. The same thread picks up where it left off. */
 export function reopenThread(rootId: string): Promise<void> {
   return resolveJournalEntry(rootId, false);
+}
+
+/**
+ * Archive a thread — the root and every update, in one batch, so no update is
+ * left behind as a note of its own. Only entries this app wrote: an imported
+ * row (`isLegacy`) has no journalEntries document to archive, and one missing
+ * document would refuse the whole batch.
+ */
+export function archiveThread(thread: Pick<NoteThread, "root" | "updates">): Promise<void> {
+  const ids = [thread.root, ...thread.updates].filter((e) => e?.id && !e.isLegacy).map((e) => e.id);
+  return archiveJournalEntries(ids);
 }

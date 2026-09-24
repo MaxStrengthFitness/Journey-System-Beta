@@ -20,6 +20,14 @@
  * and in the quick-note dialog — stamps the studio the FORD read filters on
  * (`fordStudioIdOf`), so a client on the older `studioId` field still gets a
  * detail the rules accept and the Life section reads back.
+ *
+ * Client codex (the Notes page): the area is `NotesPage` on the tab's one
+ * journal load. The composer is folded behind "Write a note…"; the critical
+ * note is drawn once, in Open (never again as "Critical & pinned"); the seven
+ * tiles became six chips and a door to FORD; and FORD / Life saves IN PLACE —
+ * the same box, "Save to FORD" — on the page and in the quick-note dialog
+ * alike. NotesPage.render.test.tsx covers the page's zones, doors and
+ * briefing line.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -45,6 +53,8 @@ vi.mock("../../firebase", () => ({
 
 const writes: { path: string; data: any }[] = [];
 const updates: { path: string; data: any }[] = [];
+/** Set to refuse the next addDoc, as the rules or a dead connection would. */
+const refuse = { nextAdd: false };
 
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
@@ -60,6 +70,10 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     onSnapshot: () => () => {},
     getDocs: async () => ({ docs: [], size: 0 }),
     addDoc: async (ref: any, data: any) => {
+      if (refuse.nextAdd) {
+        refuse.nextAdd = false;
+        throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+      }
       writes.push({ path: ref.__path, data });
       return { id: `new-${writes.length}` };
     },
@@ -71,13 +85,16 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 });
 
 import { ToastProvider } from "../../contexts/ToastContext";
-import { ClientJournalTab } from "../../components/journal/ClientJournalTab";
 import { SessionJournalSidebar } from "../../components/journal/SessionJournalSidebar";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
+import { NotesPage } from "./NotesPage";
 import { NoteSweep } from "./NoteSweep";
 import { QuickNoteDialog } from "./QuickNoteDialog";
 import { fileUnfiledEntry } from "./file-unfiled";
 import { isUnfiled, splitUnfiled } from "./note-catalog";
+import { notesOnRecord } from "./record-selectors";
+import { assembleThreads } from "./threads";
+import { fordStudioIdOf } from "../ford/ford-write";
 import type { Client, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { UseClientJournalResult } from "../../hooks/useClientJournal";
@@ -191,101 +208,137 @@ const entries: JournalEntry[] = [
   entry({ id: "raw", kind: "general", origin: "in_session", sessionId: "sess1", body: "Knee clicked on leg press", occurredAt: new Date(2026, 8, 14, 12) }),
 ];
 
+const threads = assembleThreads(entries);
 const journal: UseClientJournalResult = {
   entries,
+  threads,
   focuses: [],
   criticalEntries: [critical],
+  headsUpEntries: [],
   isLoading: false,
   needsIndex: false,
   capped: false,
 };
 
-function NotesArea({ onOpenFord, who = client }: { onOpenFord?: () => void; who?: Client }) {
+const AUTHOR = { id: "uid-jane", initials: "JC", fullName: "Jane Coach" };
+const TODAY = "2026-09-24";
+
+/** The Notes page on the tab's one load, as the codex mounts it. */
+function NotesArea({ onOpenFord = () => {}, who = client }: { onOpenFord?: () => void; who?: Client }) {
   return (
-    <ClientJournalTab
-      areas={["notes"]}
-      journal={journal}
-      clientId="c1"
+    <NotesPage
       client={who}
+      journal={journal}
+      record={notesOnRecord(threads, TODAY)}
+      notesState="ready"
+      dismissals={{ dismissals: {}, status: "ready" }}
       machines={[]}
-      trainers={[]}
-      authTrainer={trainer}
-      progressReports={[]}
-      onSelectReport={() => {}}
-      onDeleteReport={() => {}}
-      onNewReport={() => {}}
+      author={AUTHOR}
+      today={TODAY}
+      coverage="complete"
+      possessive="her"
+      fordWritable
+      fordStudioId={fordStudioIdOf(who)}
+      fordDoorCount={null}
       onOpenFord={onOpenFord}
     />
   );
 }
 
-describe("the Notes catalog mounts", () => {
-  it("draws critical & pinned, seven tiles, and the three zones", async () => {
+/** Mount the page and open its composer, the way a trainer does. */
+async function mountComposer(props: { onOpenFord?: () => void; who?: Client } = {}) {
+  const host = await mount(<NotesArea {...props} />);
+  await click(buttonByText(host, "Write a note…"));
+  return { host, composer: host.querySelector('[data-testid="note-composer"]')! };
+}
+
+/** A pick's words, without its icon's or count's. */
+const pickLabel = (el: Element) =>
+  Array.from(el.childNodes)
+    .filter((n) => n.nodeType === 3)
+    .map((n) => n.textContent)
+    .join("")
+    .trim();
+
+describe("the Notes page mounts", () => {
+  it("draws the critical note once, six chips and a door, and the three zones", async () => {
     const host = await mount(<NotesArea />);
     const catalog = host.querySelector('[data-testid="notes-catalog"]')!;
     expect(catalog).toBeTruthy();
-    expect(catalog.textContent).toContain("Critical & pinned");
-    expect(catalog.textContent).toContain("Check blood pressure");
+    // Drawn once, in Open: no "Critical & pinned" above the zones any more.
+    expect(host.textContent).not.toContain("Critical & pinned");
+    expect(host.textContent!.split("Check blood pressure").length - 1).toBe(1);
 
-    const tiles = catalog.querySelectorAll(".nc-tile");
-    expect(Array.from(tiles).map((t) => t.querySelector(".nc-tile__label")!.textContent)).toEqual([
-      "Coaching tip",
-      "Equipment",
-      "Incident",
-      "Injury",
-      "Preference",
-      "FORD / Life",
-      "Admin",
-    ]);
-    expect(host.querySelector('[data-testid="tile-coaching"] .nc-tile__count')!.textContent).toBe("4");
-    expect(host.querySelector('[data-testid="tile-admin"] .nc-tile__count')!.textContent).toBe("2");
-    expect(host.querySelector('[data-testid="tile-equipment"]')!.textContent).toContain("None yet");
+    const picks = Array.from(catalog.querySelectorAll(".nx-pick"));
+    expect(picks.map(pickLabel)).toEqual(["All", "Coaching tip", "Equipment", "Incident", "Injury", "Preference", "Admin"]);
+    const count = (id: string) => host.querySelector(`[data-testid="pick-${id}"] .nx-pick__count`)!.textContent;
+    expect(count("coaching")).toBe("4");
+    expect(count("admin")).toBe("2");
+    // A category with nothing in it keeps its place, at 0.
+    expect(count("equipment")).toBe("0");
+    expect(catalog.querySelector(".nx-door")?.textContent).toContain("Life · in FORD");
 
-    // The zones, not the categories, are the structure now (Notes round).
-    // Everything here is a plain "always" note except the critical one, which
-    // shouts and therefore waits to be closed.
+    // The zones are the structure. Everything here is a plain "always" note
+    // except the critical one, which shouts and therefore waits to be closed.
     const open = host.querySelector('[data-testid="zone-open"]')!;
     expect(open.querySelectorAll("article")).toHaveLength(1);
     expect(open.textContent).toContain("Check blood pressure");
-    expect(host.querySelector('[data-testid="zone-standing"]')!.querySelectorAll("article")).toHaveLength(6);
+    // Standing context is one line each, until a row is opened.
+    const standing = host.querySelector('[data-testid="zone-standing"]')!;
+    expect(standing.querySelectorAll("button.nx-row")).toHaveLength(6);
+    expect(standing.querySelectorAll("article")).toHaveLength(0);
     // Nothing is resolved, so that zone is not drawn at all.
-    expect(host.querySelector('[data-testid="zone-resolved"]')).toBeNull();
-    // Only one coach has written here: no coach filter.
+    expect(host.textContent).not.toContain("Resolved ·");
+    // The coach chip row is gone: search finds a coach by name.
     expect(host.querySelector('[aria-label="Filter by coach"]')).toBeNull();
   });
 
   it("isolates a category with one tap and keeps the zones, and clears with a second", async () => {
     const host = await mount(<NotesArea />);
-    const tile = host.querySelector('[data-testid="tile-coaching"]')!;
-    await click(tile);
-    expect(tile.getAttribute("aria-pressed")).toBe("true");
+    const pick = host.querySelector('[data-testid="pick-coaching"]')!;
+    await click(pick);
+    expect(pick.getAttribute("aria-pressed")).toBe("true");
     // A category narrows what is shown; it does not change how it is shown.
-    // One way of thinking, whatever is being looked at.
-    const zones = host.querySelector('[data-testid="notes-zones"]')!;
-    expect(zones.querySelectorAll("article")).toHaveLength(4);
-    expect(zones.querySelectorAll(".nc-shelf")).toHaveLength(1);
+    expect(host.querySelectorAll('[data-testid="zone-standing"] button.nx-row')).toHaveLength(4);
+    expect(host.querySelector('[data-testid="zone-open"]')).toBeNull();
+    // …and the critical note it hid is still said, with a way back.
+    expect(host.querySelector('[data-testid="critical-line"]')?.textContent).toContain("Check blood pressure");
 
-    await click(tile);
-    expect(tile.getAttribute("aria-pressed")).toBe("false");
-    expect(host.querySelectorAll('[data-testid="notes-zones"] article')).toHaveLength(7);
+    await click(pick);
+    expect(pick.getAttribute("aria-pressed")).toBe("false");
+    expect(host.querySelectorAll('[data-testid="zone-standing"] button.nx-row')).toHaveLength(6);
+    expect(host.querySelector('[data-testid="critical-line"]')).toBeNull();
   });
 
   it("searches across every category", async () => {
     const host = await mount(<NotesArea />);
     await typeInto(host.querySelector('input[type="search"]'), "knee");
-    const zones = host.querySelector('[data-testid="notes-zones"]')!;
-    expect(Array.from(zones.querySelectorAll(".nc-shelf")).map((s) => s.getAttribute("data-testid"))).toEqual([
-      "zone-standing",
-    ]);
-    expect(zones.querySelectorAll("article")).toHaveLength(1);
-    expect(host.querySelector('[data-testid="tile-coaching"] .nc-tile__count')!.textContent).toBe("0");
-    await click(buttonByText(host, "Show everything"));
-    expect(host.querySelectorAll('[data-testid="notes-zones"] article').length).toBeGreaterThan(1);
+    expect(host.querySelectorAll('[data-testid="zone-standing"] button.nx-row')).toHaveLength(1);
+    expect(host.querySelector('[data-testid="zone-open"]')).toBeNull();
+    expect(host.querySelector('[data-testid="pick-coaching"] .nx-pick__count')!.textContent).toBe("0");
+    // The tray is not searched: an unfiled note is in the tray only.
+    expect(host.querySelector('[data-testid="zone-standing"]')!.textContent).not.toContain("Knee clicked");
+    await click(buttonByText(host.querySelector(".nx-search")!, "Clear"));
+    expect(host.querySelectorAll('[data-testid="zone-standing"] button.nx-row').length).toBeGreaterThan(1);
+  });
+
+  it("folds the composer behind one bar, and Close keeps the words", async () => {
+    const host = await mount(<NotesArea />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    expect(composer.closest("[hidden]")).not.toBeNull();
+    await click(buttonByText(host, "Write a note…"));
+    expect(composer.closest("[hidden]")).toBeNull();
+    const box = composer.querySelector("textarea")!;
+    expect(document.activeElement).toBe(box);
+    await typeInto(box, "Half a thought");
+    await click(buttonByText(host.querySelector(".nx-compose__head")!, "Close"));
+    expect(composer.closest("[hidden]")).not.toBeNull();
+    await click(buttonByText(host, "Finish your note…"));
+    expect((composer.querySelector("textarea") as HTMLTextAreaElement).value).toBe("Half a thought");
   });
 
   it("writes a note with the category chosen first", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     const chips = Array.from(composer.querySelectorAll(".nc-chips")[0].querySelectorAll("button"));
     expect(chips.map((b) => b.textContent)).toEqual([
       "Coaching tip",
@@ -330,8 +383,7 @@ describe("the Notes catalog mounts", () => {
   });
 
   it("saves an untagged note as general — capture now, file later", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     await typeInto(composer.querySelector("textarea"), "Said her hip felt odd on the way in");
     // No "Matters until" while it is a plain Note.
     expect(composer.querySelector('input[aria-label="Matters until"]')).toBeNull();
@@ -349,8 +401,7 @@ describe("the Notes catalog mounts", () => {
   });
 
   it("offers the mattering picker for any Heads up, of any category, and writes a range's end as end of day", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     await click(buttonByText(composer, "Preference"));
     await typeInto(composer.querySelector("textarea"), "On a trip — no sessions");
     // A plain note has no picker — only the offer to pin it to a date.
@@ -374,8 +425,7 @@ describe("the Notes catalog mounts", () => {
   });
 
   it("pins a plain note to one day, every year — a birthday", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     await click(buttonByText(composer, "Preference"));
     await typeInto(composer.querySelector("textarea"), "Birthday — brings the good coffee");
     await click(buttonByText(composer, "Pin to a date (a birthday, an anniversary)"));
@@ -395,8 +445,7 @@ describe("the Notes catalog mounts", () => {
   });
 
   it("keeps the incident's Critical default until the trainer touches loudness", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     await click(buttonByText(composer, "Incident"));
     const loud = composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')!;
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Critical");
@@ -406,8 +455,7 @@ describe("the Notes catalog mounts", () => {
   });
 
   it("files a coaching tip with its P", async () => {
-    const host = await mount(<NotesArea />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer();
     await click(buttonByText(composer, "Coaching tip"));
     await typeInto(composer.querySelector("textarea"), "Cue the exhale");
     await click(buttonByText(composer.querySelector('[aria-label="Which P"]')!, "Pace"));
@@ -415,35 +463,97 @@ describe("the Notes catalog mounts", () => {
     expect(writes[0].data).toMatchObject({ kind: "coaching", category: "Pace", importance: "standard" });
   });
 
-  it("hands FORD / Life to the FORD capture — never the journal", async () => {
+  it("turns the typed words into a FORD capture in place — the same box, saved to FORD, never the journal", async () => {
     const onOpenFord = vi.fn();
-    const host = await mount(<NotesArea onOpenFord={onOpenFord} />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { host, composer } = await mountComposer({ onOpenFord });
+    // Typed first, as a note, then the trainer realises it is about her life.
+    const box = composer.querySelector("textarea") as HTMLTextAreaElement;
+    await typeInto(box, "Grandson graduates in May");
     await click(buttonByText(composer, "FORD / Life"));
 
-    const capture = composer.querySelector(".ford-capture")!;
-    expect(capture).toBeTruthy();
-    await typeInto(capture.querySelector("textarea"), "Grandson graduates in May");
-    await click(buttonByText(capture, "Remember this"));
+    // The SAME box, still holding the words; no second capture component.
+    expect(composer.querySelector("textarea")).toBe(box);
+    expect(box.value).toBe("Grandson graduates in May");
+    expect(composer.querySelector(".ford-capture")).toBeNull();
+    expect(composer.getAttribute("data-mode")).toBe("ford");
+    // A FORD detail has no loudness and no window.
+    expect(composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')).toBeNull();
+    const letters = composer.querySelector('[role="group"][aria-label="File under (optional)"]')!;
+    expect(letters.querySelectorAll("button")).toHaveLength(4);
+    expect(host.querySelector(".nx-compose__title")?.textContent).toBe("Something about her life");
 
+    await click(buttonByText(composer, "Save to FORD"));
     expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
-    expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "s1", pillar: null });
+    expect(writes[0].data).toMatchObject({
+      clientId: "c1",
+      studioId: "s1",
+      pillar: null,
+      body: "Grandson graduates in May",
+      origin: "profile",
+    });
     expect(writes.some((w) => w.path === "journalEntries")).toBe(false);
+    // Saved: the composer folds, and says so.
+    expect(composer.closest("[hidden]")).not.toBeNull();
+    expect(host.textContent).toContain("Saved to FORD");
 
-    await click(buttonByText(composer, "See everything in Life"));
+    await click(buttonByText(host.querySelector(".nx-fordline")!, "Open FORD"));
     expect(onOpenFord).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes back to a note with the words intact, files under a letter, and refuses more than FORD holds", async () => {
+    const { composer } = await mountComposer();
+    const box = composer.querySelector("textarea") as HTMLTextAreaElement;
+    await click(buttonByText(composer, "FORD / Life"));
+    await typeInto(box, "x".repeat(2001));
+    expect(composer.textContent).toContain("FORD details hold up to 2,000 characters — this one is 2,001.");
+    expect((buttonByText(composer, "Save to FORD") as HTMLButtonElement).disabled).toBe(true);
+
+    // A second tap is a note again, words and all — a note holds 5,000.
+    await click(buttonByText(composer, "FORD / Life"));
+    expect(composer.getAttribute("data-mode")).toBe("note");
+    expect(box.value).toHaveLength(2001);
+    expect(composer.querySelector('[role="radiogroup"][aria-label="How loud? (optional)"]')).not.toBeNull();
+
+    await click(buttonByText(composer, "FORD / Life"));
+    await typeInto(box, "Plays pickleball Tuesdays");
+    await click(buttonByText(composer.querySelector('[aria-label="File under (optional)"]')!, "Recreation"));
+    await click(buttonByText(composer, "Save to FORD"));
+    expect(writes[0].data).toMatchObject({ pillar: "recreation", body: "Plays pickleball Tuesdays" });
+  });
+
+  it("keeps the words when a FORD detail is refused, says so, and writes no note", async () => {
+    // handleFirestoreError reports a failed write with window.alert outside the app shell.
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { host, composer } = await mountComposer();
+      const box = composer.querySelector("textarea") as HTMLTextAreaElement;
+      await typeInto(box, "Grandson graduates in May");
+      await click(buttonByText(composer, "FORD / Life"));
+      refuse.nextAdd = true;
+      await click(buttonByText(composer, "Save to FORD"));
+      expect(writes).toHaveLength(0);
+      expect(box.value).toBe("Grandson graduates in May");
+      expect(composer.getAttribute("data-mode")).toBe("ford");
+      expect(composer.querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here, try again");
+      // Still open, and never the "Saved to FORD" flash.
+      expect(composer.closest("[hidden]")).toBeNull();
+      expect(host.querySelector(".nc-saved")).toBeNull();
+    } finally {
+      refuse.nextAdd = false;
+      alert.mockRestore();
+      quiet.mockRestore();
+    }
   });
 
   it("stamps a FORD detail with the studio the FORD read filters on — the older studioId when there is no home studio", async () => {
     // Before the client codex this stamped `homeStudioId || ""`, which the
     // create rule refuses, and which the Life section could never read back.
     const olderRecord = { id: "c1", studioId: "solon", firstName: "Judy", lastName: "Client" } as unknown as Client;
-    const host = await mount(<NotesArea who={olderRecord} />);
-    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    const { composer } = await mountComposer({ who: olderRecord });
+    await typeInto(composer.querySelector("textarea"), "Walks the dog every morning");
     await click(buttonByText(composer, "FORD / Life"));
-    const capture = composer.querySelector(".ford-capture")!;
-    await typeInto(capture.querySelector("textarea"), "Walks the dog every morning");
-    await click(buttonByText(capture, "Remember this"));
+    await click(buttonByText(composer, "Save to FORD"));
     expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
     expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "solon" });
   });
@@ -452,17 +562,57 @@ describe("the Notes catalog mounts", () => {
 describe("the quick note's FORD hand-off", () => {
   it("stamps a FORD detail with the client's studio, the older studioId when there is no home studio", async () => {
     const olderRecord = { id: "c1", studioId: "solon", firstName: "Judy", lastName: "Client" } as unknown as Client;
-    await mount(<QuickNoteDialog open onOpenChange={() => {}} client={olderRecord} machines={[]} authTrainer={trainer} />);
+    // A trainer at Solon: the FORD create rule's isTrainerOfStudio.
+    const solonTrainer = { ...trainer, primaryHomeStudioId: "solon" };
+    await mount(<QuickNoteDialog open onOpenChange={() => {}} client={olderRecord} machines={[]} authTrainer={solonTrainer} />);
     // The dialog renders in a portal on document.body.
     const composer = document.body.querySelector('[data-testid="note-composer"]')!;
     expect(composer).toBeTruthy();
     await click(buttonByText(composer, "FORD / Life"));
-    const capture = composer.querySelector(".ford-capture")!;
-    await typeInto(capture.querySelector("textarea"), "Daughter starts college in the fall");
-    await click(buttonByText(capture, "Remember this"));
+    // In place, as on the Notes page: the note box is the capture.
+    expect(composer.querySelector(".ford-capture")).toBeNull();
+    await typeInto(composer.querySelector("textarea"), "Daughter starts college in the fall");
+    await click(buttonByText(composer, "Save to FORD"));
     expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
     expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "solon", pillar: null });
     expect(writes.some((w) => w.path === "journalEntries")).toBe(false);
+    // The dialog stays open and says so, ready for the next thing she said.
+    expect(document.body.querySelector('[data-testid="note-composer"]')?.textContent).toContain("Saved to FORD");
+  });
+
+  it("tells a cross-train trainer where FORD is kept, and offers no Save to FORD the rules would refuse", async () => {
+    const visitor = { ...trainer, primaryHomeStudioId: "strongsville" };
+    await mount(<QuickNoteDialog open onOpenChange={() => {}} client={client} machines={[]} authTrainer={visitor} />);
+    const composer = document.body.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "FORD / Life"));
+    expect(buttonByText(composer, "Save to FORD")).toBeUndefined();
+    expect(composer.textContent).toContain("Personal details are kept in FORD");
+    // Their note still saves: notes are not FORD.
+    await click(buttonByText(composer, "FORD / Life"));
+    await typeInto(composer.querySelector("textarea"), "Asked about the Saturday times");
+    await click(buttonByText(composer, "Save — file later"));
+    expect(writes.map((w) => w.path)).toEqual(["journalEntries"]);
+  });
+
+  it("keeps the words when a note is refused (the dialog rethrows, so the composer knows)", async () => {
+    // handleFirestoreError reports a failed write with window.alert outside the app shell.
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await mount(<QuickNoteDialog open onOpenChange={() => {}} client={client} machines={[]} authTrainer={trainer} />);
+      const composer = document.body.querySelector('[data-testid="note-composer"]')!;
+      const box = composer.querySelector("textarea") as HTMLTextAreaElement;
+      await typeInto(box, "Mentioned her knee on the stairs");
+      refuse.nextAdd = true;
+      await click(buttonByText(composer, "Save — file later"));
+      expect(writes).toHaveLength(0);
+      expect(box.value).toBe("Mentioned her knee on the stairs");
+      expect(composer.querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here");
+    } finally {
+      refuse.nextAdd = false;
+      alert.mockRestore();
+      quiet.mockRestore();
+    }
   });
 });
 

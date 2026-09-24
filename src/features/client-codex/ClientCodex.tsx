@@ -36,7 +36,9 @@
  * MOVING. A page change with an anchor scrolls that card under the sticky
  * bar; without one, the new page starts right under the bar if the bar is
  * stuck, and nothing moves if it is not (the header is never yanked away).
- * Notes' own anchors (`notes-*`, `note-{id}`) are Notes' to interpret. A tap
+ * Notes' own anchors (`notes-*`, `note-{id}`) are Notes' to interpret: the
+ * shell hands them to the Notes page as a one-shot request (`notesIntentOf`),
+ * which opens the thread, the composer or Resolved and brings it into view. A tap
  * on a neighbour, a Next card or Show moves focus to the new page's title;
  * the sub-toggle keeps its own focus. Everything in the layout effect is
  * feature-detected — a throw there takes the whole profile down.
@@ -56,6 +58,7 @@ import {
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
 import { CriticalLine } from "../client-notes/CriticalLine";
 import { fordDoorCount } from "../client-notes/record-selectors";
+import { notesIntentOf } from "../client-notes/notes-intent";
 import { SaveBar } from "./kit";
 import { readOnlyLine } from "./access";
 import { useCodexData } from "./useCodexData";
@@ -217,13 +220,24 @@ export function ClientCodex({
     }
   }, [page, anchor, navStamp, active]);
 
+  /*
+   * Notes' own cards (a thread, the composer, Resolved) are a request for the
+   * Notes page to act on, not a scroll: handed over only while Notes is the
+   * page on show, keyed by the move so each is acted on once.
+   */
+  const notesIntent = useMemo(() => {
+    if (page !== "notes" || !active || !anchor) return null;
+    const request = notesIntentOf(anchor);
+    return request ? { key: navStamp, request } : null;
+  }, [page, active, anchor, navStamp]);
+
   const pageProps: CodexPageProps = { data, form, go, hosts };
   const renderPage = (id: RecordPage) => {
     switch (id) {
       case "overview":
         return <OverviewPage {...pageProps} items={items} />;
       case "notes":
-        return <NotesPage {...pageProps} />;
+        return <NotesPage {...pageProps} intent={notesIntent} />;
       case "ford":
         return <FordPage {...pageProps} />;
       case "body":

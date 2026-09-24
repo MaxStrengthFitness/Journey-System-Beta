@@ -63,16 +63,21 @@ export interface ThreadZoneMeta {
   blurb: string;
 }
 
+/**
+ * The zones' headings and the line under each. The Notes page is their one
+ * reader (client codex, Sep 2026): Open is drawn as full cards in the
+ * briefing's order, Standing as one line each, Resolved folded to its count.
+ */
 export const THREAD_ZONE_META: Record<ThreadZone, ThreadZoneMeta> = {
   open: {
     id: "open",
     label: "Open",
-    blurb: "Live — things you could ask about today.",
+    blurb: "Loudest first, the way the briefing reads them.",
   },
   standing: {
     id: "standing",
     label: "Standing context",
-    blurb: "Quiet but true. Known, not news.",
+    blurb: "Quiet but true, one line each.",
   },
   resolved: {
     id: "resolved",

@@ -1,18 +1,43 @@
 /**
- * NOTES — the codex page (shell phase: an adapter).
+ * NOTES — the codex page: the Notes area's page (`client-notes/NotesPage`)
+ * inside the kit's Page (its head, the ‹ › neighbours and the Next card).
  *
- * Hosts the long scroll's Notes section as it was — the composer and the
- * threads (`ClientJournalTab`'s notes area) — on the tab's ONE journal load,
- * so it opens no listener of its own. The Notes area rebuilds this page in
- * its own phase (open cards, standing rows, resolved folded) and takes over
- * the `note-{id}` and `notes-compose` anchors, which the shell leaves to it.
+ * A thin adapter (INTEGRATION: pages/*.tsx map the tab's one load onto each
+ * area's page). Everything Notes shows is the tab's ONE load — the journal,
+ * its note selection (`data.notes`), this trainer's dismissals — so the page
+ * opens no listener of its own. The FORD door's number is the same
+ * `fordDoorCount` the sub-toggle's FORD segment reads (counts, never FORD's
+ * text), and FORD / Life saves in place only for a reader who may change this
+ * client's record (`access.canEdit`): the FORD create rule wants a trainer of
+ * the client's studio, so a cross-train visitor is told where FORD is kept.
+ *
+ * The shell hands over Notes' own cards (`note-{id}`, `notes-compose`,
+ * `notes-resolved`) as `intent`: the page acts on each once per move.
  */
-import { ClientJournalTab } from "../../../components/journal/ClientJournalTab";
-import { Card, Page } from "../kit";
+import { useMemo } from "react";
+import { NotesPage as NotesArea } from "../../client-notes/NotesPage";
+import type { NotesIntent } from "../../client-notes/notes-intent";
+import { fordDoorCount } from "../../client-notes/record-selectors";
+import { fordStudioIdOf } from "../../ford/ford-write";
+import { Page } from "../kit";
 import type { CodexPageProps } from "../codex-data";
 
-export function NotesPage({ data, go, hosts }: CodexPageProps) {
-  const { client, journal, machines, trainers, authTrainer, progressReports } = data;
+export function NotesPage({
+  data,
+  go,
+  intent = null,
+}: CodexPageProps & {
+  /** A door's request (a thread, the composer, Resolved), keyed per move. */
+  intent?: { key: unknown; request: NotesIntent } | null;
+}) {
+  const { client, access, journal, notes, dismissals, machines, author, today, coverage, pronouns, ford } = data;
+  const doorCount = useMemo(
+    () => fordDoorCount({ readable: access.fordReadable, ford, client }),
+    [access.fordReadable, ford, client],
+  );
+  // `author.id` is the Auth uid (the rules pin it); no one signed in → read only.
+  const writer = author.id ? author : null;
+
   return (
     <Page
       id="notes"
@@ -20,22 +45,23 @@ export function NotesPage({ data, go, hosts }: CodexPageProps) {
       lede="Every note is a thread. Open means it matters now, loudest first. Standing context is simply true. Resolved notes wait at the bottom with a way back."
       go={go}
     >
-      <Card host>
-        <ClientJournalTab
-          areas={["notes"]}
-          journal={journal}
-          onOpenFord={() => go("ford")}
-          clientId={client.id || null}
-          client={client}
-          machines={machines}
-          trainers={trainers}
-          authTrainer={authTrainer}
-          progressReports={progressReports}
-          onSelectReport={hosts.onSelectReport}
-          onDeleteReport={hosts.onDeleteReport}
-          onNewReport={hosts.onNewReport}
-        />
-      </Card>
+      <NotesArea
+        client={client}
+        journal={journal}
+        record={notes.record}
+        notesState={notes.state}
+        dismissals={dismissals}
+        machines={machines}
+        author={writer}
+        today={today}
+        coverage={coverage}
+        possessive={pronouns.possessive}
+        fordWritable={access.canEdit}
+        fordStudioId={fordStudioIdOf(client)}
+        fordDoorCount={doorCount}
+        onOpenFord={() => go("ford")}
+        intent={intent}
+      />
     </Page>
   );
 }

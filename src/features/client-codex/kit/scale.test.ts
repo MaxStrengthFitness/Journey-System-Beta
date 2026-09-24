@@ -86,6 +86,16 @@ const CODEX_FILES: readonly string[] = [
   "features/client-codex/pages/StoryPage.tsx",
   "features/client-codex/pages/AccountPage.tsx",
   "features/client-codex/pages/RecordLock.tsx",
+  // The Notes page (phase 9): the page, its catalog, a thread card and a row,
+  // their stylesheet, and the doors' vocabulary. The composer and the To-file
+  // tray are shared with the session sheet and keep their own sizes there;
+  // on this page `.nx-notes` rules in notes-page.css bring them onto the scale.
+  "features/client-notes/NotesPage.tsx",
+  "features/client-notes/NotesCatalog.tsx",
+  "features/client-notes/NoteThreadCard.tsx",
+  "features/client-notes/ThreadRow.tsx",
+  "features/client-notes/notes-page.css",
+  "features/client-notes/notes-intent.ts",
 ];
 
 /**
@@ -109,7 +119,8 @@ const LINE_CLAMP_LINES = 2;
  * inside the codex folder; the cleanup phase deletes it.
  *
  * Shared pieces stay listed until their area replaces them on the codex:
- * ClientJournalTab (the notes, focus and Pulse areas), the FORD hub, the
+ * ClientJournalTab (the focus and Pulse areas; Notes left it in phase 9,
+ * which moved no text size, so the budget stayed at 168), the FORD hub, the
  * InBody card, the goals panel, the contract panel, the shared notes and
  * jots, the watch-outs and the flag picker, and the life baselines.
  */
@@ -136,6 +147,19 @@ const HOSTED_FILES: readonly string[] = [
 ];
 /** Measured when the shell landed (phase 8). Lower it; never raise it. */
 const HOSTED_OFF_SCALE_BUDGET = 168;
+
+/**
+ * The shared note pieces the Notes page mounts — the composer, the To-file
+ * tray, the mattering picker, all drawn from client-notes/notes.css — keep
+ * their own sizes in the Active Session sheet and on the post-session screen.
+ * On the Notes page, notes-page.css brings each off-scale rule onto the scale
+ * with a `.nx-notes` rule of its own; the test below finds every off-scale
+ * size in notes.css and fails if the page has no override for it. Listed here:
+ * selectors the Notes page never draws, and why.
+ */
+const NOTES_CSS_NOT_ON_THE_PAGE: Readonly<Record<string, string>> = {
+  ".nc-tofile": "the dense entry card's To-file mark; the Notes page draws no JournalEntryCard",
+};
 
 const SCALE_PX = [11, 12, 14, 17, 30] as const;
 
@@ -539,6 +563,38 @@ function tokenBlock(css: string, selector: string): Record<string, string> {
   for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out[m[1]] = m[2].trim();
   return out;
 }
+
+describe("the Notes page's shared pieces", () => {
+  it("bring every off-scale size in notes.css onto the scale inside .nx-notes", () => {
+    // Its @import lines would otherwise be read as the first rule's selector.
+    const shared = cssRules(read("features/client-notes/notes.css").replace(/@import[^;]*;/g, ""));
+    const page = cssRules(read("features/client-notes/notes-page.css"));
+    const overridden = new Map<string, string>();
+    for (const rule of page) {
+      const size = /(?:^|[;\s])font-size\s*:\s*([^;}]+)/.exec(rule.body)?.[1]?.trim();
+      if (!size) continue;
+      for (const s of rule.selectors) {
+        const m = /^\.nx-notes\s+(\.[\w-]+)$/.exec(s.replace(/\s+/g, " "));
+        if (m) overridden.set(m[1], size);
+      }
+    }
+    const offScale: string[] = [];
+    for (const rule of shared) {
+      const size = /(?:^|[;\s])font-size\s*:\s*([^;}]+)/.exec(rule.body)?.[1]?.trim();
+      if (!size || onScale(size)) continue;
+      offScale.push(...rule.selectors);
+    }
+    // The scan finds something: notes.css really is off the scale on its own.
+    expect(offScale.length).toBeGreaterThan(0);
+    for (const selector of offScale) {
+      if (selector in NOTES_CSS_NOT_ON_THE_PAGE) continue;
+      // A modifier (.nc-chip--small) rides on its base class's override only
+      // if it sets no size of its own, so each selector is checked as written.
+      expect(overridden.get(selector), `${selector} has no .nx-notes override in notes-page.css`).toBeDefined();
+      expect(onScale(overridden.get(selector)!), `${selector} is overridden off the scale`).toBe(true);
+    }
+  });
+});
 
 describe("codex.tokens.css", () => {
   const tokens = tokenBlock(read("features/client-codex/codex.tokens.css"), ".cx,");

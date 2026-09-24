@@ -194,6 +194,13 @@ export const RECORD_ANCHORS = [
  */
 export const noteAnchor = (threadId: string): RecordAnchor => `note-${threadId}`;
 
+/** The thread a `note-{threadId}` anchor opens; null for any other anchor. */
+export function threadIdOfAnchor(anchor: RecordAnchor | null | undefined): string | null {
+  if (typeof anchor !== "string" || !anchor.startsWith("note-")) return null;
+  const id = anchor.slice("note-".length);
+  return id ? id : null;
+}
+
 /**
  * Which page an anchor lives on, read from its prefix. Null when the id
  * follows no page's prefix — the caller's page then stands.

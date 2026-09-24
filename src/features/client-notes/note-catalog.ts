@@ -264,17 +264,31 @@ export function noteCardLabel(entry: Pick<JournalEntry, "kind" | "category" | "o
  *
  * Months appear in one place only: inside an expanded Resolved zone, where
  * chronology is how you find a thread from last winter.
+ *
+ * THE NOTES PAGE (client codex, Sep 2026) reshaped the filter. The coach chip
+ * row is gone — search already finds a coach's notes by name or initials on
+ * every entry of a thread — and so is the "see all" zone: every zone now
+ * holds every item, and the page decides what to fold. Only Resolved folds,
+ * to its count and a "Show the N resolved notes" (`showResolved`); Open and
+ * Standing are never cut, because a live thread you cannot see is the one
+ * failure this screen exists to prevent.
  */
 
 export interface CatalogFilter {
   category: NoteCategory | null;
-  coachId: string | null;
   search: string;
-  /** Expanded zone. Only Resolved is ever collapsed, so only it is ever set. */
-  zone: ThreadZone | null;
+  /** The Resolved zone is unfolded. It never changes what is counted. */
+  showResolved: boolean;
 }
 
-export const EMPTY_FILTER: CatalogFilter = { category: null, coachId: null, search: "", zone: null };
+export const EMPTY_FILTER: CatalogFilter = { category: null, search: "", showResolved: false };
+
+/**
+ * The category chips on the Notes page, in the owner's order: every category
+ * but FORD / Life, which is not a filter there but a door ("Life · in FORD")
+ * to the page where a client's life is kept.
+ */
+export const NOTES_PAGE_CATEGORIES: readonly NoteCategoryMeta[] = NOTE_CATEGORIES.filter((c) => c.id !== "ford");
 
 export interface CatalogTile {
   id: NoteCategory;
@@ -286,10 +300,8 @@ export interface CatalogZone {
   id: ThreadZone;
   /** Threads in this zone under the current filters. */
   total: number;
-  /** What to draw — every one, unless the zone is collapsed. */
+  /** Every one of them, in the zone's order (`sortThreads`). Never cut. */
   items: NoteThread[];
-  /** True when `items` is short of `total`. */
-  collapsed: boolean;
 }
 
 export interface CatalogMonth {
@@ -300,24 +312,17 @@ export interface CatalogMonth {
 }
 
 export interface Catalog {
-  /** Always all seven, in order, counted under the coach + search filters. */
+  /** Always all seven, in order, counted under the search (every zone, resolved included). */
   tiles: CatalogTile[];
   /** Always all three, in order: Open · Standing context · Resolved. */
   zones: CatalogZone[];
-  /** Month by month, newest first. Only when a zone has been expanded. */
+  /** The Resolved zone month by month, newest first, "Undated" last. */
   months: CatalogMonth[];
   /** Threads matching every filter. */
   matched: number;
   /** Threads in the catalog at all. */
   total: number;
 }
-
-/**
- * How many Resolved threads are shown before "See all". Open and Standing
- * context are never cut: a live thread you cannot see is the one failure
- * this screen exists to prevent.
- */
-export const RESOLVED_PREVIEW = 3;
 
 const timeOf = (e: JournalEntry) => toDate(e.occurredAt)?.getTime() ?? 0;
 
@@ -380,10 +385,8 @@ export function buildCatalog(
 
   const kept: NoteThread[] = [];
   for (const t of threads) {
-    // The coach filter asks who has a hand in the thread, not only who
-    // opened it — a trainer looking for their own notes wants the ones they
-    // added to as well.
-    if (filter.coachId && !t.entries.some((e) => e.authorId === filter.coachId)) continue;
+    // Search reads every entry of the thread — its updates, and who wrote
+    // each one — so a coach's name finds the threads they added to as well.
     if (!threadMatchesSearch(t, filter.search)) continue;
     const cat = threadCategoryOf(t);
     byCategory.get(cat)!.push(t);
@@ -399,53 +402,22 @@ export function buildCatalog(
   });
 
   const grouped = threadsByZone(kept, today, tz);
-  const zones: CatalogZone[] = THREAD_ZONES.map((id) => {
-    const list = grouped[id];
-    const collapse = id === "resolved" && filter.zone !== "resolved" && list.length > RESOLVED_PREVIEW;
-    return {
-      id,
-      total: list.length,
-      items: collapse ? list.slice(0, RESOLVED_PREVIEW) : list,
-      collapsed: collapse,
-    };
-  });
+  const zones: CatalogZone[] = THREAD_ZONES.map((id) => ({ id, total: grouped[id].length, items: grouped[id] }));
 
+  // The Resolved zone, month by month — how a thread from last winter is
+  // found once the zone is unfolded. Newest month first; a note with no date
+  // sorts as the oldest, so "Undated" is always last.
   const months: CatalogMonth[] = [];
-  if (filter.zone) {
-    const list = grouped[filter.zone]
-      .slice()
-      .sort((a, b) => timeOf(b.root) - timeOf(a.root));
-    const merged = new Map<string, CatalogMonth>();
-    for (const t of list) {
-      const key = monthKeyOf(toDate(t.root.occurredAt));
-      const cur = merged.get(key);
-      if (cur) cur.items.push(t);
-      else merged.set(key, { key, label: monthLabel(key), items: [t] });
-    }
-    months.push(...merged.values());
+  const merged = new Map<string, CatalogMonth>();
+  for (const t of grouped.resolved.slice().sort((a, b) => timeOf(b.root) - timeOf(a.root))) {
+    const key = monthKeyOf(toDate(t.root.occurredAt));
+    const cur = merged.get(key);
+    if (cur) cur.items.push(t);
+    else merged.set(key, { key, label: monthLabel(key), items: [t] });
   }
+  months.push(...merged.values());
 
   return { tiles, zones, months, matched: kept.length, total: threads.length };
-}
-
-/** Coaches who have written something here, most notes first. */
-export function catalogCoaches(
-  entries: JournalEntry[],
-): { id: string; initials: string; name: string; count: number }[] {
-  const map = new Map<string, { id: string; initials: string; name: string; count: number }>();
-  for (const e of entries) {
-    if (!e.authorId || e.authorId === "unknown") continue;
-    const cur = map.get(e.authorId);
-    if (cur) cur.count += 1;
-    else
-      map.set(e.authorId, {
-        id: e.authorId,
-        initials: e.authorInitials,
-        name: e.authorName || e.authorInitials,
-        count: 1,
-      });
-  }
-  return Array.from(map.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /**

@@ -1,27 +1,28 @@
 /**
- * THE JOURNAL AREAS — mounted inside the client record's spine.
+ * THE JOURNAL AREAS — mounted by area on the client record's pages.
  *
  *   1. PROGRESS REPORTS  — the shelf of finalized evaluations.
- *   2. ASSESSMENT        — the modular assessment, filled a piece at a time.
+ *   2. ASSESSMENT        — the modular assessment (Pulse), filled a piece at
+ *                          a time.
  *   3. FOCUS             — what each coach is working on (the 4 P's), with
  *                          check-in, extend, achieved and retire, and the
  *                          history of every past focus.
- *   4. NOTES             — the category-first composer, then the catalog:
- *                          critical & pinned, search, seven category tiles,
- *                          and a shelf per category (features/client-notes).
+ *
+ * NOTES LEFT THIS FILE in the client codex (Sep 2026): the Notes page is
+ * `features/client-notes/NotesPage` — the composer, the To-file tray and the
+ * threads — on the tab's one journal load. The Pulse and Focus areas are
+ * still mounted here by the Body & Pulse and Goals & Focus pages until those
+ * pages are rebuilt; then this file goes.
  *
  * SINCE THE PROFILE MERGE (Sep 2026) THIS IS NOT A TAB
  * ---------------------------------------------------
  * Details and Journal became one spine, and the areas were dealt out to its
- * sections: Focus, Notes, and Assessment. So this component is mounted once
- * per section, each with an `areas` list naming what to draw, and the spine
- * owns navigation. (The standalone tab's own jump nav and critical rail were
- * removed in the notes catalog round: every caller passes `areas`. The
- * critical notes now head the Notes catalog as "Critical & pinned".)
+ * sections. So this component is mounted once per section, each with an
+ * `areas` list naming what to draw, and the host owns navigation.
  *
  * `journal` lets the caller pass an already-loaded useClientJournal result
- * in. The dossier loads it once and hands the same object to every mount, so
- * several sections of journal UI cost one set of listeners. Left out, the
+ * in. The codex loads it once and hands the same object to every mount, so
+ * several areas of journal UI cost one set of listeners. Left out, the
  * component loads its own.
  *
  * Each mount is its own component instance with its own state. Nothing may
@@ -29,18 +30,9 @@
  * focus check-ins used to lose their focus id (fixed in the Goals & Focus
  * round: the focus card files its own check-in).
  */
-import React, { useMemo } from "react";
-import { auth } from "../../firebase";
+import React from "react";
 import { TriangleAlert } from "lucide-react";
-import { useToast } from "../../contexts/ToastContext";
-import {
-  archiveJournalEntry,
-  createJournalEntry,
-  resolveJournalEntry,
-  useClientJournal,
-  type UseClientJournalResult,
-} from "../../hooks/useClientJournal";
-import type { JournalDraft, JournalEntry } from "../../types/journal";
+import { useClientJournal, type UseClientJournalResult } from "../../hooks/useClientJournal";
 import { useFocusActions } from "../../features/goals/useFocusActions";
 import type {
   Client,
@@ -49,14 +41,11 @@ import type {
   Trainer,
 } from "../../types";
 import { FocusBoard } from "./FocusBoard";
-import { JournalComposer } from "./JournalComposer";
 import { ProgressReportArchive } from "./ProgressReportArchive";
 import { ClientCheckInPanel } from "./ClientCheckInPanel";
-import { NotesCatalog } from "../../features/client-notes/NotesCatalog";
-import { fordStudioIdOf } from "../../features/ford/ford-write";
 
 /** The areas, by id. */
-export type JournalAreaId = "progress-reports" | "check-in" | "focus" | "notes";
+export type JournalAreaId = "progress-reports" | "check-in" | "focus";
 
 export interface ClientJournalTabProps {
   clientId: string | null;
@@ -70,14 +59,12 @@ export interface ClientJournalTabProps {
   onNewReport: () => void;
   hasQuotaError?: boolean;
   /**
-   * Which areas to draw. Omit for all four. Whoever composes the areas owns
+   * Which areas to draw. Omit for all three. Whoever composes the areas owns
    * the navigation; see the header.
    */
   areas?: JournalAreaId[];
   /** An already-loaded journal, so several mounts share one set of listeners. */
   journal?: UseClientJournalResult;
-  /** Jump to the Life section, where FORD personal details live. */
-  onOpenFord?: () => void;
 }
 
 export function ClientJournalTab({
@@ -93,10 +80,7 @@ export function ClientJournalTab({
   hasQuotaError,
   areas,
   journal,
-  onOpenFord,
 }: ClientJournalTabProps) {
-  const { success: toastSuccess, error: toastError } = useToast();
-
   // Hooks cannot be called conditionally, so when a journal is handed in the
   // internal one is disabled rather than skipped. A disabled useClientJournal
   // opens no listeners, so this costs nothing but a few empty arrays.
@@ -106,75 +90,14 @@ export function ClientJournalTab({
     trainers,
     enabled: !hasQuotaError && !journal,
   });
-  const { entries, threads, focuses, criticalEntries, isLoading, needsIndex, capped } =
-    journal ?? ownJournal;
+  const { entries, focuses, needsIndex, capped } = journal ?? ownJournal;
 
   /** Composed into a spine? Then the section shell already printed a heading. */
   const composed = Boolean(areas);
   const shows = (id: JournalAreaId) => !areas || areas.includes(id);
 
-  const author = useMemo(
-    () => ({
-      // The Auth uid: the journalEntries rule pins authorId to it, and it
-      // differs from authTrainer.id on older accounts. The FORD rules pin it
-      // the same way.
-      id: auth.currentUser?.uid || authTrainer?.id || "unknown",
-      initials: (authTrainer?.initials || "TR").toUpperCase(),
-      fullName: authTrainer?.fullName || "Coach",
-    }),
-    [authTrainer],
-  );
-
   /** Set, achieve, extend, retire, check in — the Focus area's writes. */
   const focusActions = useFocusActions({ clientId, client, authTrainer });
-
-  /** FORD / Life in the composer hands off to the FORD capture with these.
-   *  Stamped with the studio the FORD read filters on (client codex, phase 1),
-   *  so a detail caught here comes back in the Life section. */
-  const fordStudioId = fordStudioIdOf(client);
-  const fordContext = useMemo(
-    () =>
-      clientId && author.id !== "unknown"
-        ? {
-            clientId,
-            studioId: fordStudioId,
-            author,
-            sessionId: null,
-            origin: "profile" as const,
-          }
-        : null,
-    [clientId, fordStudioId, author],
-  );
-
-  /* ------------------------------ actions ------------------------------ */
-
-  const handleCreate = async (draft: JournalDraft) => {
-    if (!clientId) return;
-    try {
-      await createJournalEntry(clientId, client?.homeStudioId || "", author, draft);
-      toastSuccess("Note saved.");
-    } catch {
-      toastError("Could not save that note. Check your connection and try again.");
-    }
-  };
-
-  const handleArchive = async (entry: JournalEntry) => {
-    try {
-      await archiveJournalEntry(entry.id);
-      toastSuccess("Entry archived.");
-    } catch {
-      toastError("Could not archive that entry.");
-    }
-  };
-
-  const handleResolve = async (entry: JournalEntry, resolved: boolean) => {
-    try {
-      await resolveJournalEntry(entry.id, resolved);
-      toastSuccess(resolved ? "Marked resolved." : "Reopened.");
-    } catch {
-      toastError("Could not update that entry.");
-    }
-  };
 
   /* The focus actions (create, achieve, extend, retire, and the check-in
      that carries its focus id) live in features/goals/useFocusActions.ts,
@@ -260,38 +183,6 @@ export function ClientJournalTab({
           onRetire={focusActions.onRetire}
           onCheckIn={focusActions.onCheckIn}
         />
-      </JournalArea>
-      )}
-
-      {/* ---------------------------- 4 · NOTES -------------------------- */}
-      {shows("notes") && (
-      <JournalArea
-        id="notes"
-        bare={composed}
-        title="Notes"
-        blurb="Every note about this client, filed by category."
-      >
-        <div className="flex flex-col gap-5">
-          <JournalComposer
-            clientFirstName={client?.firstName || ""}
-            machines={machines}
-            onSubmit={handleCreate}
-            disabled={!clientId}
-            ford={fordContext}
-            onOpenFord={onOpenFord}
-          />
-          <NotesCatalog
-            entries={entries}
-            threads={threads}
-            author={author}
-            criticalEntries={criticalEntries}
-            machines={machines}
-            isLoading={isLoading}
-            onArchive={handleArchive}
-            onResolve={handleResolve}
-            onOpenFord={onOpenFord}
-          />
-        </div>
       </JournalArea>
       )}
     </div>

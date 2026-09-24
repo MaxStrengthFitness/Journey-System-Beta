@@ -48,6 +48,13 @@ export { fordStudioIdOf };
 /** Same cap as useClientFord's stream: a runaway guard, not a window. */
 const SUMMARY_READ_LIMIT = 500;
 
+/**
+ * The longest detail the FORD rules accept (`body.size() <= 2000` on create
+ * and update). A journal note may be 5,000, so a capture that starts as a
+ * note (the composer's FORD mode) checks this before it is sent.
+ */
+export const FORD_BODY_MAX = 2000;
+
 export interface FordAuthor {
   /** The Auth uid. The rules pin authorId to it, same as the journal. */
   id: string;

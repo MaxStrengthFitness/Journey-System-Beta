@@ -7,6 +7,14 @@
  * first, Loudness, the mattering window, FORD hand-off) in a dialog over
  * whatever tab the profile is on. The full Notes section stays where it is;
  * this is a shortcut to it, not a second kind of note.
+ *
+ * Client codex, Sep 2026: FORD / Life turns the typed words into a FORD
+ * capture in place, as on the Notes page (the composer's FORD mode); the
+ * dialog stays open after a FORD save, with "Saved to FORD", so a second
+ * thing the client said can follow. Only for a reader the FORD create rule
+ * accepts — the same `codexAccess(...).canEdit` the Notes page asks — so a
+ * cross-train trainer is told where FORD is kept rather than typing a
+ * detail the database will refuse.
  */
 import { useMemo } from "react";
 import { NotebookPen } from "lucide-react";
@@ -19,6 +27,7 @@ import type { JournalDraft } from "../../types/journal";
 import { JournalComposer } from "../../components/journal/JournalComposer";
 import { clientDisplayName } from "../../lib/client-name";
 import { fordStudioIdOf } from "../ford/ford-write";
+import { codexAccess } from "../client-codex/access";
 
 export interface QuickNoteDialogProps {
   open: boolean;
@@ -46,12 +55,15 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
   // A FORD capture is stamped with the studio the FORD read filters on, so it
   // comes back in the client's Life section (client codex, phase 1).
   const fordStudioId = fordStudioIdOf(client);
+  // The FORD create rule wants a trainer of the client's studio: the codex's
+  // one answer to "may change this record" (the studios list only names it).
+  const fordWritable = codexAccess(authTrainer, client, null).canEdit;
   const ford = useMemo(
     () =>
-      clientId && author.id !== "unknown"
+      fordWritable && clientId && fordStudioId && author.id !== "unknown"
         ? { clientId, studioId: fordStudioId, author, sessionId: null, origin: "profile" as const }
         : null,
-    [clientId, fordStudioId, author],
+    [fordWritable, clientId, fordStudioId, author],
   );
 
   const submit = async (draft: JournalDraft) => {
@@ -60,8 +72,11 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
       await createJournalEntry(clientId, studioId, author, draft);
       toastSuccess("Note saved.");
       onOpenChange(false);
-    } catch {
+    } catch (err) {
       toastError("Could not save that note. Check your connection and try again.");
+      // Rethrown so the composer keeps the words (client codex): it clears
+      // its box only when the save landed.
+      throw err;
     }
   };
 

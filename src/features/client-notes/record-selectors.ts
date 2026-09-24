@@ -316,6 +316,44 @@ export function threadRowMeta(thread: NoteThread, zone: ThreadZone, today: strin
   return parts.join(" · ");
 }
 
+/**
+ * The meta line under a thread CARD on Notes (the Notes page, client codex):
+ *   "AJ · Mar 4 · matters always · 2 updates"   a loud note, or one with a window
+ *   "Jess · Mar 9 · 3 updates"                   a plain "always" note (no window to name)
+ *   "Jess · Nov 3 · closed Nov 7"                closed by a trainer
+ *   "Jess · Sep 2 · ended Oct 3"                 its window ran out
+ *   "Read-only · Mindbody account notes · Sep 1. Edit it where it lives."   an import
+ * Every part that cannot be read is left out, never guessed.
+ */
+export function threadCardMeta(thread: NoteThread, today: string, tz?: string): string {
+  const root = thread.root;
+  const written = shortDay(dayOf(root.occurredAt, tz), today);
+  if (root.isLegacy) {
+    const source = (root.legacySource ?? "").trim() || "Imported";
+    const who = whoOf(root);
+    const parts = [`Read-only · ${source}`];
+    if (who !== source && who !== "Unknown") parts.push(who);
+    if (written) parts.push(written);
+    return `${parts.join(" · ")}. Edit it where it lives.`;
+  }
+  const parts: string[] = [whoOf(root)];
+  if (written) parts.push(written);
+  if (root.resolvedAt) {
+    const closed = shortDay(dayOf(root.resolvedAt, tz), today);
+    parts.push(closed ? `closed ${closed}` : "closed");
+  } else if (windowEnded(root, today, tz)) {
+    const ended = shortDay(dayOf(root.effectiveUntil, tz), today);
+    parts.push(ended ? `ended ${ended}` : "ended");
+  } else {
+    // A plain "always" note has no window worth naming: it is simply true.
+    const plain = shapeOf(root, tz) === "always" && root.importance === "standard" && !root.effectiveFrom;
+    if (!plain) parts.push(lowerFirst(describeWindow(root, tz)));
+  }
+  const updates = updateCountLabel(thread);
+  if (updates) parts.push(updates);
+  return parts.join(" · ");
+}
+
 export interface CloseWords {
   close: string;
   reopen: string;

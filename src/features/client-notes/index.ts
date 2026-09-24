@@ -10,8 +10,13 @@ export * from "./note-catalog";
 export { NoteSweep } from "./NoteSweep";
 export { fileUnfiledEntry, discardUnfiledEntry } from "./file-unfiled";
 export * from "./threads";
-export { addThreadUpdate, closeThread, reopenThread } from "./thread-write";
+export { addThreadUpdate, archiveThread, closeThread, reopenThread } from "./thread-write";
 export { NoteThreadCard } from "./NoteThreadCard";
+// The Notes page of the record (client codex): the page, its catalog, a row.
+export { NotesPage, type NotesPageProps } from "./NotesPage";
+export { NotesCatalog, type NotesCatalogProps } from "./NotesCatalog";
+export { ThreadRow, firstLineOf, type ThreadRowProps } from "./ThreadRow";
+export { notesIntentOf, type CatalogIntent, type NotesIntent } from "./notes-intent";
 export * from "./dismissals";
 // The record's note selectors and its one critical line (client codex): every
 // page of Notes & Profile reads the one journal load through these.

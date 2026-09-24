@@ -607,6 +607,66 @@ describe("ClientCodex — the critical line", () => {
     await click(buttonIn(host.querySelector('[data-testid="critical-line"]')!, "Open the note"));
     expect(selected(host)).toEqual(["cx-tab-notes"]);
   });
+
+  it("lands on the note itself, not just the page, and draws it once there", async () => {
+    fake.rows.journalEntries = [criticalNote];
+    const host = await mount(baseClient(), homeTrainer, "account");
+    await click(buttonIn(host.querySelector('[data-testid="critical-line"]')!, "Open the note"));
+    const notes = panel(host, "notes");
+    const card = notes.querySelector("#thread-crit1");
+    expect(card).not.toBeNull();
+    expect(card?.classList.contains("nx-focus")).toBe(true);
+    // The critical note is drawn once on Notes, and the line is not under the bar there.
+    expect(notes.textContent!.split("stop at 90° at the bottom turn").length - 1).toBe(1);
+    expect(host.querySelector('[data-testid="critical-line"]')).toBeNull();
+  });
+});
+
+describe("ClientCodex — the Notes page", () => {
+  it("opens the composer from the Overview's Write a note, with the cursor in it", async () => {
+    const host = await mount();
+    await click(buttonIn(panel(host, "overview"), "Write a note"));
+    expect(selected(host)).toEqual(["cx-tab-notes"]);
+    const composer = panel(host, "notes").querySelector('[data-testid="note-composer"]')!;
+    expect(composer.closest("[hidden]")).toBeNull();
+    expect(document.activeElement).toBe(composer.querySelector("textarea"));
+  });
+
+  it("puts the FORD door's number on Notes once FORD is read, and saves FORD / Life in place for the home studio", async () => {
+    fake.rows["clients/c1/ford"] = [
+      { id: "f1", clientId: "c1", studioId: "s1", pillar: "family", body: "Married to Tom", isArchived: false },
+      { id: "f2", clientId: "c1", studioId: "s1", pillar: null, body: "Sister visiting", isArchived: false },
+    ];
+    const host = await mount(baseClient(), homeTrainer, "notes");
+    const door = panel(host, "notes").querySelector(".nx-door")!;
+    expect(door.getAttribute("aria-label")).toBe("Life, in FORD: 2 details");
+    await click(buttonIn(panel(host, "notes"), "Write a note…"));
+    const composer = panel(host, "notes").querySelector('[data-testid="note-composer"]')!;
+    await typeInto(composer.querySelector("textarea"), "Grandson graduates in May");
+    await click(buttonIn(composer, "FORD / Life"));
+    await click(buttonIn(composer, "Save to FORD"));
+    const adds = fake.writes.filter((w) => w.op === "add");
+    expect(adds.map((w) => w.path)).toEqual(["clients/c1/ford"]);
+    expect(adds[0].data).toMatchObject({ studioId: "s1", authorId: "uid-ann", body: "Grandson graduates in May" });
+    await click(door);
+    expect(selected(host)).toEqual(["cx-tab-ford"]);
+  });
+
+  it("gives a cross-train reader no FORD number and no FORD save, but their notes still save", async () => {
+    const host = await mount(baseClient(), crossTrainer, "notes");
+    const notes = panel(host, "notes");
+    expect(notes.querySelector(".nx-door")?.getAttribute("aria-label")).toBe("Life, in FORD");
+    await click(buttonIn(notes, "Write a note…"));
+    const composer = notes.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonIn(composer, "FORD / Life"));
+    expect(buttonIn(composer, "Save to FORD")).toBeUndefined();
+    await click(buttonIn(composer, "FORD / Life"));
+    await typeInto(composer.querySelector("textarea"), "Visiting from Solon this month");
+    await click(buttonIn(composer, "Save — file later"));
+    const adds = fake.writes.filter((w) => w.op === "add");
+    expect(adds.map((w) => w.path)).toEqual(["journalEntries"]);
+    expect(adds[0].data).toMatchObject({ authorId: "uid-ann", kind: "general" });
+  });
 });
 
 describe("ClientCodex — the one Save bar", () => {

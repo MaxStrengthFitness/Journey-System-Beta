@@ -12,7 +12,10 @@
  *     unfiled notes (so a trainer who has a second between machines can
  *     file the last one);
  *   - the post-session screen, with the session's unfiled notes;
- *   - the top of the Notes area on the record, for everything outstanding.
+ *   - the Notes page of the record, under the composer, for everything
+ *     outstanding. A loud note wears its Loudness pill here (client codex):
+ *     an unfiled critical note sits in this tray, not in Open, and the
+ *     critical line's "Open the note" brings the trainer to its card.
  *
  * THE RESTRAINT IT SHARES WITH THE FORD SWEEP
  *   - It renders NOTHING when there is nothing to file. Teardown is thirty
@@ -31,7 +34,8 @@
 import { useMemo, useState } from "react";
 import { Check, Dumbbell, Inbox, Trash2 } from "lucide-react";
 import type { Machine } from "../../types";
-import { FOCUS_CATEGORIES, type FocusCategory, type JournalEntry } from "../../types/journal";
+import { FOCUS_CATEGORIES, IMPORTANCE_META, type FocusCategory, type JournalEntry } from "../../types/journal";
+import { LOUDNESS_TONE } from "../rating/Loudness";
 import { FILING_CATEGORIES, isUnfiled, type FilingCategory } from "./note-catalog";
 import { NoteCategoryChips } from "./NoteCategoryChips";
 import "./notes.css";
@@ -111,8 +115,16 @@ export function NoteSweep({ entries, machines, clientFirstName, onFile, onDiscar
       {queue.map((entry) => {
         const machine = entry.machineId ? machines.find((m) => m.id === entry.machineId) : null;
         return (
-          <article key={entry.id} className="nc-sweep__card" data-testid={`sweep-${entry.id}`}>
+          <article key={entry.id} className="nc-sweep__card" id={`sweep-${entry.id}`} data-testid={`sweep-${entry.id}`}>
             <p className="nc-sweep__quote">“{entry.body}”</p>
+            {/* An unfiled note waits here rather than in Open, so a loud one
+                must still look loud (client codex): the Loudness words and
+                colours, the same as on a thread card. */}
+            {entry.importance === "elevated" || entry.importance === "critical" ? (
+              <span className="nc-loud" data-tone={LOUDNESS_TONE[entry.importance]}>
+                {IMPORTANCE_META[entry.importance].short}
+              </span>
+            ) : null}
             {machine ? (
               <span className="nc-sweep__machine">
                 <Dumbbell className="h-3 w-3" aria-hidden /> {machine.name}

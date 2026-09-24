@@ -2,9 +2,11 @@
  * "Read this before you touch the client."
  *
  * Sits above everything else and only exists when there is something to say.
- * Since the notes catalog round it heads the Notes area as "Critical &
- * pinned" — the pinned priority note is imported as a critical entry, so it
- * lands here too.
+ * It is the briefing's "Before you start" strip and the flags sheet's
+ * "Critical". It no longer heads the record's Notes (client codex, Sep 2026):
+ * there a critical note is drawn once, as a card in Open, and every other
+ * page of Notes & Profile carries `features/client-notes/CriticalLine`
+ * instead — one line, whole sentences, a button to the note.
  * Same selection the pre-session briefing uses — critical, unresolved, and
  * still inside its effective window — so the Journal and the briefing can
  * never disagree about what matters.
@@ -26,13 +28,11 @@ export function CriticalStrip({
 }: {
   entries: JournalEntry[];
   machines: Machine[];
-  /** The notes catalog calls it "Critical & pinned" (Sep 2026). */
+  /** The flags sheet calls it "Critical". (The Notes catalog's "Critical & pinned" is gone.) */
   title?: string;
   /**
    * One line under each card. The briefing puts the thread's latest update
-   * and "no need to remind me" here (Notes round, Sep 2026); the Notes
-   * catalog passes nothing, because the thread card below it already says
-   * both.
+   * and "no need to remind me" here (Notes round, Sep 2026).
    */
   footer?: (entry: JournalEntry) => ReactNode;
 }) {

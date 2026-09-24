@@ -259,6 +259,14 @@ export interface ClientFocus {
  *     -> amber edge, timer glyph, PACE tag + COMPOUND ROW machine chip,
  *        no ring. Reads as a coaching cue.
  * Different hue family, different glyph, different chrome, different tag row.
+ *
+ * THE RECORD PAGE IS THE ONE EXCEPTION (client codex, Sep 2026). On the Notes
+ * page of Notes & Profile a thread card's colour is its LOUDNESS only —
+ * crimson for Critical, plum for Heads up, the one Loudness control's own
+ * mapping — and what kind of note it is reads from the glyph and the label in
+ * neutral ink (features/client-notes/NoteThreadCard.tsx). A page of many cards
+ * read side by side must show at a glance which ones shout. The dense cards on
+ * the briefing, the flags sheet and the session sheet keep this contract.
  */
 export interface EntryVisual {
   /** Colour of the 4px left edge bar. */

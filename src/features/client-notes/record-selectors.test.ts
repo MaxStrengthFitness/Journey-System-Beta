@@ -19,6 +19,7 @@ import {
   notesTabMeta,
   olderLifeNotesByPillar,
   shortDay,
+  threadCardMeta,
   threadRowMeta,
   threadsByMachine,
   whoOf,
@@ -268,6 +269,41 @@ describe("one thread, in words", () => {
 
     const lastYear = thread(entry({ id: "ly", occurredAt: noon("2025-11-03"), resolvedAt: noon("2025-11-07") }));
     expect(threadRowMeta(lastYear, "resolved", TODAY, TZ)).toBe("AJ · Nov 3, 2025 · closed Nov 7, 2025");
+  });
+
+  it("threadCardMeta: a card names its window only when it has one worth naming", () => {
+    // A plain "always" note is simply true: no "matters always".
+    const plain = thread(entry({ id: "p" }), entry({ id: "pu", threadId: "p", occurredAt: noon("2026-09-05") }));
+    expect(threadCardMeta(plain, TODAY, TZ)).toBe("AJ · Sep 1 · 1 update");
+    // A loud "always" note says so — it waits for someone to close it.
+    expect(threadCardMeta(thread(entry({ id: "k", importance: "critical" })), TODAY, TZ)).toBe("AJ · Sep 1 · matters always");
+    expect(
+      threadCardMeta(thread(entry({ id: "o", importance: "elevated", effectiveUntil: eod("2026-10-03") })), TODAY, TZ),
+    ).toBe("AJ · Sep 1 · matters until Oct 3");
+    // A plain note pinned ahead names its start.
+    expect(threadCardMeta(thread(entry({ id: "f", effectiveFrom: noon("2026-10-01") })), TODAY, TZ)).toBe(
+      "AJ · Sep 1 · matters from Oct 1",
+    );
+    // Closed, and run out: the window gives way to how it ended.
+    expect(threadCardMeta(thread(entry({ id: "c", importance: "critical", resolvedAt: noon("2026-09-10") })), TODAY, TZ)).toBe(
+      "AJ · Sep 1 · closed Sep 10",
+    );
+    expect(
+      threadCardMeta(thread(entry({ id: "r", importance: "elevated", effectiveUntil: eod("2026-09-20") })), TODAY, TZ),
+    ).toBe("AJ · Sep 1 · ended Sep 20");
+  });
+
+  it("threadCardMeta: an import says it is read-only and where it lives", () => {
+    const mb = thread(
+      entry({ id: "mb", isLegacy: true, legacySource: "Mindbody account notes", authorId: "unknown", authorName: "Unknown coach" }),
+    );
+    expect(threadCardMeta(mb, TODAY, TZ)).toBe("Read-only · Mindbody account notes · Sep 1. Edit it where it lives.");
+    // An old session note with its trainer's name keeps the name.
+    const old = thread(entry({ id: "sn", isLegacy: true, legacySource: "Session notes", authorId: "t9", authorName: "Jess Moreno" }));
+    expect(threadCardMeta(old, TODAY, TZ)).toBe("Read-only · Session notes · Jess · Sep 1. Edit it where it lives.");
+    expect(threadCardMeta(thread(entry({ id: "x", isLegacy: true, authorId: "unknown", occurredAt: null })), TODAY, TZ)).toBe(
+      "Read-only · Imported. Edit it where it lives.",
+    );
   });
 
   it("closeWordsOf: a body heals; anything else closes", () => {
