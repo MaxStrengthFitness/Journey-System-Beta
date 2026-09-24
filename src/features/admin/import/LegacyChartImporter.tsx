@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Client, Machine, Trainer, WorkoutSession, ExerciseLog } from '../../../types';
 import { processLegacyChart, extractMachineSettingsFromImage, OCRMachineSetting, ValidationSession, sanitizeImportedSessions, OCRResult } from '../../../services/geminiService';
+import { chartPagesProblem, MAX_CHART_PAGES } from '../../../services/chart-upload';
+import { readChartFile } from '../../../services/read-chart-file';
 import { db } from '../../../firebase';
 import { useActiveStudio } from '../../../contexts/ActiveStudioContext';
 import { useToast } from '../../../contexts/ToastContext';
@@ -100,22 +102,23 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
   const [finalizeProgress, setFinalizeProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => {
-    const files = e.target.files;
-    if (files) {
-      (Array.from(files) as File[]).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const base64Content = (event.target?.result as string).split(',')[1];
-          setFiles(prev => [...prev, {
-            name: file.name,
-            base64: base64Content,
-            mimeType: file.type,
-            previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
-          }]);
-        };
-        reader.readAsDataURL(file);
-      });
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => {
+    const picked = e.target.files ? (Array.from(e.target.files) as File[]) : [];
+    // One at a time, so the pages keep the order they were picked in. Each
+    // photo is shrunk as it is read (services/read-chart-file.ts): that is what
+    // lets a whole scan fit the server's body limit.
+    for (const file of picked) {
+      try {
+        const { base64, mimeType } = await readChartFile(file);
+        setFiles(prev => [...prev, {
+          name: file.name,
+          base64,
+          mimeType,
+          previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+        }]);
+      } catch {
+        toastError(`Couldn't read ${file.name}.`);
+      }
     }
   };
 
@@ -130,6 +133,13 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
   const runOCR = async () => {
     if (!selectedClientId || files.length === 0 || !expectedSessions) return;
+    // Checked before the first page is sent: the settings call at the end
+    // sends every page at once, and the server refuses more than this.
+    const tooManyPages = chartPagesProblem(files.length);
+    if (tooManyPages) {
+      toastError(tooManyPages);
+      return;
+    }
 
     setIsScanning(true);
     setScanPercentage(0);
@@ -284,6 +294,11 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
 
   const runSettingsOCR = async () => {
     if (!selectedClientId || files.length === 0) return;
+    const tooManyPages = chartPagesProblem(files.length);
+    if (tooManyPages) {
+      toastError(tooManyPages);
+      return;
+    }
 
     setIsScanningSettings(true);
     setScanProgress('Scanning Settings Column Across All Images...');
@@ -831,7 +846,7 @@ export function LegacyChartImporter({ clients, machines, trainers, initialClient
                 />
                 <Upload className="w-10 h-10 text-slate-600 group-hover:text-[#F06C22] mb-3 transition-colors" />
                 <p className="text-sm font-black text-slate-300 uppercase tracking-tighter text-center">Drop Multiple Chart Images</p>
-                <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 text-center">Batch Processing (Up to 8 Images)</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 text-center">Batch Processing (Up to {MAX_CHART_PAGES} Pages)</p>
               </div>
 
               {files.length > 0 && (
