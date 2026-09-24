@@ -501,6 +501,175 @@ button.bp-hers {
   }
 }
 
+/* ---- Over time (phase 13) ---------------------------------------------
+   One strip per lane on one shared axis (BodyTimeline.tsx). Each lane's
+   title and lines are HTML, so they wrap at portrait widths; the strip is an
+   SVG at the container's measured width. Ink and muted ink only — never a
+   red, never a heat map. The SVG text sizes are the scale's 11 and 12. */
+
+.bp-tl__lede {
+  margin: 0;
+}
+
+.bp-lg-m {
+  display: inline-block;
+  width: 4px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--cx-ink);
+}
+
+.bp-tl {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.bp-tl__lanes {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bp-tl__lane {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0 2px;
+  border-top: 1px solid var(--cx-line);
+  min-width: 0;
+}
+
+.bp-tl__lane:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.bp-tl__head {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bp-tl__title {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.bp-tl__src {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.bp-tl__gap {
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* The strips scale with the card through their viewBox; at the measured
+   width they are drawn one to one. */
+.bp-tl__plot,
+.bp-tl__axis {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bp-tl__guide {
+  stroke: var(--cx-line);
+  stroke-width: 1;
+  stroke-dasharray: 1 5;
+}
+
+.bp-tl__rung {
+  stroke: var(--cx-line);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.bp-tl__rung[data-centre] {
+  stroke: var(--cx-line-2);
+}
+
+.bp-tl__word {
+  fill: var(--cx-ink-3);
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-11);
+}
+
+.bp-tl__tick {
+  stroke: var(--cx-line-2);
+  stroke-width: 1;
+}
+
+/* A session's answer: below the centre in ink, the rest muted. */
+.bp-tl__mark {
+  fill: var(--cx-ink-3);
+}
+
+.bp-tl__mark[data-below] {
+  fill: var(--cx-ink);
+}
+
+/* The Pulse: rings and a dashed line (she told us). */
+.bp-tl__ring {
+  fill: var(--cx-surface);
+  stroke: var(--cx-ink);
+  stroke-width: 2;
+}
+
+.bp-tl__link {
+  fill: none;
+  stroke: var(--cx-ink-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+/* InBody: dots and a solid line (measured), and the variation band. */
+.bp-tl__dot {
+  fill: var(--cx-ink);
+}
+
+.bp-tl__line {
+  fill: none;
+  stroke: var(--cx-ink-3);
+  stroke-width: 1.5;
+}
+
+.bp-tl__band {
+  fill: var(--cx-surface-2);
+  stroke: var(--cx-line-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* A point's word or number, with a halo so it reads over a line. */
+.bp-tl__label {
+  fill: var(--cx-ink-2);
+  stroke: var(--cx-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+}
+
+.bp-tl__foot {
+  display: grid;
+  gap: 4px;
+}
+
 /* ---- Pulse ------------------------------------------------------------- */
 
 .bp-pulse {

@@ -17,7 +17,7 @@ import { BodyPulsePage } from "../body/BodyPulsePage";
 import type { CodexPageProps } from "../codex-data";
 
 export function BodyPage({ data, form, go, hosts }: CodexPageProps) {
-  const { client, access, authTrainer, machines, journal, notes, pulse, inbody, programming, pronouns, today } = data;
+  const { client, access, authTrainer, machines, journal, notes, coverage, pulse, inbody, programming, pronouns, today } = data;
   const openNote = useCallback(
     (threadId: string) => {
       const at = noteAnchor(threadId);
@@ -35,6 +35,7 @@ export function BodyPage({ data, form, go, hosts }: CodexPageProps) {
       machines={machines}
       journal={journal}
       notesState={notes.state}
+      coverage={coverage}
       pulse={pulse}
       filedReports={pulse.status === "ready" ? data.progressReports.length : null}
       inbody={inbody}

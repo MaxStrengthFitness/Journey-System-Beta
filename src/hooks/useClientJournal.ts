@@ -75,7 +75,13 @@ import { assembleThreads, withoutThreadUpdates, type NoteThread } from "../featu
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
-const SESSION_SUMMARY_LIMIT = 40;
+/**
+ * How many session documents the sessions listener reads (newest first), and
+ * so how many `recentSessions` can hold. Exported (client codex, phase 13) so
+ * Body & Pulse's arrive/leave track can tell a full page — which may stop
+ * short of six months — from all of her sessions.
+ */
+export const SESSION_SUMMARY_LIMIT = 40;
 /**
  * A guard rail, not a window (cost round, Sep 2026). The four per-client
  * collections below (clientFocuses, focusRecords, clinicalIncidents,

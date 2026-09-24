@@ -141,6 +141,12 @@ const CODEX_FILES: readonly string[] = [
   "features/client-codex/body/page-lines.ts",
   "features/inbody/InBodyCard.tsx",
   "features/inbody/inbody-card.css",
+  // Body & Pulse → Over time (phase 13): the card, the timeline's drawing,
+  // and the two pure modules that write its lanes and its sentences.
+  "features/client-codex/body/OverTimeCard.tsx",
+  "features/client-codex/body/BodyTimeline.tsx",
+  "features/client-codex/body/arrivals.ts",
+  "features/client-codex/body/timeline.ts",
 ];
 
 /**

@@ -144,6 +144,8 @@ import { useRecordForm, type RecordForm } from "./useRecordForm";
 import type { CodexHosts } from "./codex-data";
 import type { RecordPage } from "../client-profile/profile-nav";
 import type { Client, Machine, Trainer } from "../../types";
+import { studioTodayKey } from "../../lib/studio-time";
+import { addDays } from "../client-history/model";
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -470,6 +472,7 @@ describe("ClientCodex — pages", () => {
       "body-figure",
       "body-floor",
       "body-measured",
+      "body-timeline",
       "body-inbody",
       "body-pulse",
       "goals-coach",
@@ -562,6 +565,29 @@ describe("ClientCodex — one load for the tab", () => {
     expect(liveOn("clients/c1/inbodyScans")).toBe(1);
     expect(liveOn("sessions")).toBe(1);
     expect(liveOn("noteDismissals/uid-ann")).toBe(1);
+    // Body & Pulse's arrive/leave track reads the journal's sessions: no query of its own.
+    expect(fake.gets.filter((p) => p === "sessions")).toEqual([]);
+  });
+
+  it("draws how she arrives on Body & Pulse from the journal's one sessions listener", async () => {
+    const today = studioTodayKey();
+    fake.rows.sessions = [
+      [-2, -1],
+      [-9, 0],
+      [-16, 1],
+    ].map(([ago, recovery], i) => {
+      const date = addDays(today, ago);
+      // Run in Journey: the live flow stamps the tablet's start time (mid-morning Eastern).
+      return { id: `v${3 - i}`, clientId: "c1", date, clientStartTime: `${date}T15:00:00.000Z`, status: "Completed", preSessionCheckIn: { readiness: { recovery } } };
+    });
+    const host = await mount(baseClient(), homeTrainer, "body");
+    const card = panel(host, "body").querySelector("#body-timeline")!;
+    expect(card.querySelector(".cx-lede")?.textContent).toBe(
+      "“How's the body since last time?” asked at 3 of her last 3 sessions. “Still feeling it” or “Still wrecked” at 1 of them.",
+    );
+    expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(3);
+    expect(liveOn("sessions")).toBe(1);
+    expect(fake.gets.filter((p) => p === "sessions")).toEqual([]);
   });
 
   it("reads nothing when switching between pages it has already shown", async () => {

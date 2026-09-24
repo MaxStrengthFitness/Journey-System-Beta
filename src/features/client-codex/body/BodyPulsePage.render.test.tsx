@@ -98,7 +98,7 @@ import { historyFromDocs } from "../../subjective-report/assessment-history";
 import { emptyAssessment } from "../../subjective-report/scoring";
 import { assembleThreads } from "../../client-notes/threads";
 import { NO_PROGRAMMING, type CodexProgramming, type CodexPulse } from "../codex-data";
-import type { Client, Machine, Trainer } from "../../../types";
+import type { Client, Machine, PreSessionCheckIn, Trainer, WorkoutSession } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import type { JournalLoad } from "../../../hooks/useClientJournal";
 
@@ -202,6 +202,33 @@ const CRITICAL = [critical];
 
 const readyPulse = (): CodexPulse => ({ status: "ready", history: historyFromDocs([round], 50) });
 
+/** A completed session run in Journey (with the tablet's start time), as the journal's sessions listener hands it out. */
+const visit = (id: string, date: string, check: Partial<PreSessionCheckIn> = {}, over: Partial<WorkoutSession> = {}) =>
+  ({
+    id,
+    clientId: "c1",
+    date,
+    clientStartTime: `${date}T15:00:00.000Z`,
+    status: "Completed",
+    preSessionCheckIn: check,
+    ...over,
+  }) as WorkoutSession;
+
+/** Brought in by the chart importer: no start time, so no briefing and no dose. */
+const charted = (id: string, date: string) =>
+  ({ id, clientId: "c1", date, status: "Completed", trainerId: "t-ann", trainerInitials: "AN" }) as WorkoutSession;
+
+/** How many times `needle` appears in `text`. */
+const occurrences = (text: string | null | undefined, needle: string) => (text ?? "").split(needle).length - 1;
+
+/** Four sessions in March: recovery asked at three, a knee tapped at one, the dose judged at two. */
+const SESSIONS: WorkoutSession[] = [
+  visit("v4", "2027-03-20", { readiness: { recovery: -1 }, bodyStates: [{ region: "Knees", state: "stiff", dial: -1 }] }, { dose: -1 }),
+  visit("v3", "2027-03-13", { readiness: { recovery: -2 } }, { dose: 0 }),
+  visit("v2", "2027-03-06", { readiness: { recovery: 0 } }),
+  visit("v1", "2027-02-27", {}),
+];
+
 interface HostProps {
   client?: Client;
   canEdit?: boolean;
@@ -210,15 +237,20 @@ interface HostProps {
   entries?: JournalEntry[];
   onOpenMachine?: (id: string) => void;
   programming?: CodexProgramming;
+  /** The journal's sessions and whether they answered. */
+  sessions?: WorkoutSession[];
+  sessionsState?: JournalLoad;
 }
 
 function Host(p: HostProps) {
   // Held once, like a snapshot the profile hands down: a new object on every
   // render would re-seed the form on every render.
-  const [{ client, pulse, threads }] = useState(() => ({
+  const [{ client, pulse, threads, sessions, loadState }] = useState(() => ({
     client: p.client ?? carol(),
     pulse: p.pulse ?? readyPulse(),
     threads: assembleThreads(p.entries ?? [critical, headsUp]),
+    sessions: (p.sessionsState ?? "ready") === "ready" ? (p.sessions ?? SESSIONS) : [],
+    loadState: { notes: p.notesState ?? "ready", focuses: "ready", sessions: p.sessionsState ?? "ready" } as const,
   }));
   const { canEdit = true, notesState = "ready", onOpenMachine = () => {} } = p;
   const form = useRecordForm({ client, canEdit, trainerId: "t-ann", homeStudioName: "Westlake" });
@@ -229,8 +261,9 @@ function Host(p: HostProps) {
     fordReadable: canEdit,
     authTrainer: trainer,
     machines: MACHINES,
-    journal: { threads, criticalEntries: CRITICAL },
+    journal: { threads, criticalEntries: CRITICAL, recentSessions: sessions, loadState },
     notesState,
+    coverage: "complete",
     pulse,
     filedReports: 1,
     inbody: { scans: [], loading: false, error: null },
@@ -482,6 +515,86 @@ describe("Body & Pulse — measured, and what she told us", () => {
     expect(card).toContain("No InBody scan yet.");
     // Consistency was never asked, and the Pulse answered: now it may say so.
     expect(card).toContain("Not asked yet");
+  });
+});
+
+describe("Body & Pulse — over time (decision 9)", () => {
+  it("draws how she arrives from the journal's own sessions, and reads no sessions of its own", async () => {
+    const host = await mount();
+    const card = host.querySelector("#body-timeline")!;
+    expect(card.querySelector(".cx-lede")?.textContent).toBe(
+      "“How's the body since last time?” asked at 3 of her last 4 sessions. “Still feeling it” or “Still wrecked” at 2 of them.",
+    );
+    expect(card.querySelectorAll('svg[data-lane="arrive:recovery"] rect.bp-tl__mark')).toHaveLength(3);
+    expect(card.querySelector('[data-lane="arrive:dose"]')?.textContent).toContain("How it landed");
+    // The Pulse round and the footer's counts sit on the same timeline.
+    expect(card.querySelector('svg[data-lane="pulse:strengthConfidence_1"]')).not.toBeNull();
+    expect(card.textContent).toContain("1 saved Pulse round, 0 InBody scans and 4 sessions in Journey in these six months.");
+    // No sessions query anywhere: the journal already streams them.
+    expect(fake.gets.filter((p) => p.startsWith("sessions"))).toEqual([]);
+    expect(fake.listeners.filter((p) => p.startsWith("sessions"))).toEqual([]);
+    // Every page's words, and never a retry for a listener that is final.
+    expect(card.textContent).not.toContain("Try again");
+  });
+
+  it("says not asked — never as usual — for a client with no sessions", async () => {
+    const host = await mount({ sessions: [] });
+    const card = host.querySelector("#body-timeline")!;
+    expect(card.querySelector(".cx-lede")?.textContent).toBe(
+      "Not asked yet: Journey holds no session of hers in these six months.",
+    );
+    expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(0);
+    expect(card.querySelector(".cx-lede")?.textContent).not.toContain("As usual");
+  });
+
+  it("says the sessions couldn't be loaded — never not asked — and the rest of the timeline still draws", async () => {
+    const host = await mount({ sessionsState: "failed" });
+    const card = host.querySelector("#body-timeline")!;
+    // Said once, in its row — the lede only says what the card is about.
+    const failed = "Her recent sessions couldn't be loaded just now, so how she arrived isn't drawn. The rest of this page is unaffected.";
+    expect(occurrences(card.textContent, failed)).toBe(1);
+    expect(card.querySelector(".cx-lede")?.textContent).toBe(
+      "How she arrives at the door and how each session lands, over these six months.",
+    );
+    expect(card.textContent).not.toContain("Not asked");
+    expect(card.textContent).not.toContain("Try again");
+    expect(card.querySelector('svg[data-lane="pulse:strengthConfidence_1"]')).not.toBeNull();
+    // The figure says nothing about the door while it is unknown.
+    expect(host.querySelector("#body-figure")?.textContent).not.toContain("At the door");
+  });
+
+  it("says it is loading her sessions while the journal's listener is out", async () => {
+    const host = await mount({ sessionsState: "loading" });
+    const card = host.querySelector("#body-timeline")!;
+    expect(card.querySelector('[data-lane="gap:sessions"] [role="status"]')?.getAttribute("aria-label")).toBe(
+      "Loading her recent sessions…",
+    );
+    // Once — the loading mark's label — never again as the lede.
+    expect(occurrences(card.textContent, "Loading her recent sessions…")).toBe(1);
+    expect(card.textContent).not.toContain("sessions in these six months");
+    expect(card.textContent).not.toContain("sessions in Journey in these six months");
+  });
+
+  it("never tells a migrating client's trainer the question wasn't asked at imported sessions", async () => {
+    const host = await mount({
+      sessions: [charted("c3", "2027-03-20"), charted("c2", "2027-03-13"), charted("c1", "2027-03-06")],
+    });
+    const card = host.querySelector("#body-timeline")!;
+    expect(card.querySelector(".cx-lede")?.textContent).toBe(
+      "The briefing asks “How's the body since last time?” at the door. Her 3 sessions in these six months were imported, and imports don't record the door.",
+    );
+    expect(card.textContent).not.toMatch(/wasn't asked|Not asked/);
+    expect(card.querySelectorAll("rect.bp-tl__mark")).toHaveLength(0);
+  });
+
+  it("tells the figure's Knee row how often the knee was tapped at the door", async () => {
+    const host = await mount();
+    const row = Array.from(host.querySelectorAll<HTMLButtonElement>(".bp-region__btn")).find((b) =>
+      b.textContent?.startsWith("Knee"),
+    )!;
+    await click(row);
+    const detail = host.querySelector<HTMLElement>(`[id="${row.getAttribute("aria-controls")}"]`)!;
+    expect(detail.textContent).toContain("At the door: “Stiff” on Mar 20 · tapped at 1 of her last 4 sessions.");
   });
 });
 

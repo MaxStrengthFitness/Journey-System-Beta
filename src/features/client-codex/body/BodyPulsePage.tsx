@@ -17,13 +17,16 @@
  *   On our floor       her notes per prescribed machine, then the Academy's
  *                      set-up for her band; clients built like her
  *   Measured, and what she told us   pairs, each side with its own source
+ *   Over time          how she arrives and how each session lands (the
+ *                      briefing and the dose, decision 9), the Pulse and
+ *                      InBody on one six-month timeline (phase 13)
  *   Pulse              one line per area; Update Pulse, Hand to client
  *   InBody             every scan, and Add scan
  *
- * (Over time — the arrive/leave track and the timeline — is phase 13.)
- *
  * WHAT IT READS. The tab's one load: the journal (her notes, the critical
- * line's), the Pulse history, the InBody scans. Its OWN reads happen once,
+ * line's, and the 40 newest sessions it already streams — the arrive/leave
+ * track opens NO sessions query of its own), the Pulse history, the InBody
+ * scans. Its OWN reads happen once,
  * when the page is first visited (the shell mounts a page on first visit and
  * keeps it): the client's ONE Pulse draft (`useCheckInDraft`, handed to the
  * editor — never a second one), the machine catalog (its body-type columns,
@@ -42,7 +45,8 @@
 import { useMemo } from "react";
 import { ChevronRight, Users } from "lucide-react";
 import type { Client, Machine, Trainer } from "../../../types";
-import type { JournalLoad, UseClientJournalResult } from "../../../hooks/useClientJournal";
+import { SESSION_SUMMARY_LIMIT, type JournalLoad, type UseClientJournalResult } from "../../../hooks/useClientJournal";
+import { priorHistoryOf, type HistoryCoverage } from "../../../lib/prior-history";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useCheckInDraft } from "../../subjective-report/useCheckInDraft";
@@ -65,11 +69,14 @@ import { latestPain, latestPulseReadings, type PulseSource } from "./pulse-read"
 import { measuredToldPairs } from "./pairs";
 import { builtLikeHer } from "./built-like-her";
 import { coachStripHasMore, coachStripLine } from "./page-lines";
+import { readArrivals, regionTaps } from "./arrivals";
+import { buildTimeline, timelineWindow } from "./timeline";
 import { BuildCard } from "./BuildCard";
 import { WhereItMattersCard } from "./WhereItMattersCard";
 import { WatchOutsCard } from "./WatchOutsCard";
 import { OnOurFloorCard } from "./OnOurFloorCard";
 import { MeasuredToldCard } from "./MeasuredToldCard";
+import { OverTimeCard } from "./OverTimeCard";
 import { PulseCard } from "./PulseCard";
 import "./body.css";
 
@@ -82,9 +89,15 @@ export interface BodyPulsePageProps {
   fordReadable: boolean;
   authTrainer: Trainer | null;
   machines: Machine[];
-  /** The tab's ONE journal load, and whether its notes answered. */
-  journal: Pick<UseClientJournalResult, "threads" | "criticalEntries">;
+  /**
+   * The tab's ONE journal load: her notes, the critical line's, and the
+   * sessions it already streams (`recentSessions`, with `loadState.sessions`)
+   * for the arrive/leave track — and whether its notes answered.
+   */
+  journal: Pick<UseClientJournalResult, "threads" | "criticalEntries" | "recentSessions" | "loadState">;
   notesState: JournalLoad;
+  /** How much of her story Journey holds (the home studio's cutover): Over time's caveat. */
+  coverage: HistoryCoverage;
   /** The tab's one read-only Pulse history. */
   pulse: CodexPulse;
   /** Filed progress reports for her, once read; null while unknown. */
@@ -111,6 +124,7 @@ export function BodyPulsePage({
   machines,
   journal,
   notesState,
+  coverage,
   pulse,
   filedReports,
   inbody,
@@ -195,6 +209,41 @@ export function BodyPulsePage({
     [client, inbody, variation, variationOwner, flagIds, pain, source, readings, toldStatus, p, now],
   );
 
+  /* ---- over time: the door, the dose, the Pulse and InBody --------------- */
+  // Her sessions are the journal's own page (no read here); a failed listener
+  // is final, so a failed track says so and offers no retry.
+  const sixMonths = useMemo(() => timelineWindow(today), [today]);
+  const arrivals = useMemo(
+    () =>
+      readArrivals({
+        sessions: journal.recentSessions,
+        state: journal.loadState?.sessions,
+        window: sixMonths,
+        limit: SESSION_SUMMARY_LIMIT,
+      }),
+    [journal.recentSessions, journal.loadState?.sessions, sixMonths],
+  );
+  // The figure's region list says how often a region was tapped at the door —
+  // only once the sessions answered (unknown is not "never tapped").
+  const door = useMemo(() => (arrivals.state === "ready" ? regionTaps(arrivals) : null), [arrivals]);
+  const timeline = useMemo(
+    () =>
+      buildTimeline({
+        window: sixMonths,
+        arrivals,
+        pulseStatus: toldStatus,
+        source,
+        inbody,
+        variation,
+        variationOwner,
+        coverage,
+        prior: priorHistoryOf(client),
+        pronouns: p,
+        now,
+      }),
+    [sixMonths, arrivals, toldStatus, source, inbody, variation, variationOwner, coverage, client, p, now],
+  );
+
   /* ---- the floor, and machine fit ---------------------------------------- */
   const { clientSettings, routines, studioClients, activeStudioId } = programming;
   // No height, nothing to compare: machine fit reads nothing for her.
@@ -255,7 +304,7 @@ export function BodyPulsePage({
 
   const lede =
     `How ${p.subject} ${agree(p, "is", "are")} built as the machines see ${p.object}, what the load has to work around, ` +
-    `and how ${p.subject} ${agree(p, "says", "say")} ${p.subject} ${agree(p, "feels", "feel")}, side by side. The app describes; the trainer decides.`;
+    `and how ${p.subject} ${agree(p, "says", "say")} ${p.subject} ${agree(p, "feels", "feel")}, side by side and over time. The app describes; the trainer decides.`;
 
   return (
     <Page id="body" title="Body & Pulse" lede={lede} go={go}>
@@ -306,6 +355,7 @@ export function BodyPulsePage({
             notesState={notesState}
             onCriticalLine={onCriticalLine}
             machinesById={machinesById}
+            door={door}
             onOpenNote={onOpenNote}
             onOpenNotes={() => go("notes")}
             pronouns={p}
@@ -341,6 +391,8 @@ export function BodyPulsePage({
 
         <MeasuredToldCard rows={pairs} pronouns={p} />
 
+        <OverTimeCard model={timeline} pronouns={p} />
+
         <PulseCard
           client={client}
           authTrainer={authTrainer}
@@ -354,8 +406,8 @@ export function BodyPulsePage({
           now={now}
         />
 
-        {/* InBody scans save on their own, not through the Save bar. The
-            timeline (phase 13) draws the trends, so the card shows none. */}
+        {/* InBody scans save on their own, not through the Save bar. Over
+            time draws the trends, so the card shows none. */}
         <Card host id="body-inbody">
           <InBodyCard client={client} authTrainer={authTrainer} inbody={inbody} showTrends={false} />
         </Card>

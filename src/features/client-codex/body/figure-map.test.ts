@@ -144,4 +144,34 @@ describe("the region list", () => {
     expect(knee.meta).toBe("at the door");
     expect(knee.sentences).toEqual(["At the door: “Stiff” on Mar 20 · tapped at 3 of her last 12 sessions."]);
   });
+
+  it("says one session plainly at the door", () => {
+    const [knee] = regionRows({
+      flagIds: [],
+      pain: null,
+      machinesById: new Map(),
+      door: new Map([["knee", { k: 1, n: 1, latest: { word: "Pain", day: "2027-03-20" } }]]),
+      pronouns: her,
+      now: NOW,
+    });
+    expect(knee.sentences).toEqual(["At the door: “Pain” on Mar 20 · tapped at her one session in these six months."]);
+  });
+
+  it("says the count is of her sessions run in Journey when imported or logged ones were left out", () => {
+    const row = (taps: { k: number; n: number }) =>
+      regionRows({
+        flagIds: [],
+        pain: null,
+        machinesById: new Map(),
+        door: new Map([["knee", { ...taps, runOnly: true, latest: { word: "Stiff", day: "2027-03-20" } }]]),
+        pronouns: her,
+        now: NOW,
+      })[0];
+    expect(row({ k: 2, n: 5 }).sentences).toEqual([
+      "At the door: “Stiff” on Mar 20 · tapped at 2 of her last 5 sessions run in Journey.",
+    ]);
+    expect(row({ k: 1, n: 1 }).sentences).toEqual([
+      "At the door: “Stiff” on Mar 20 · tapped at her one session run in Journey in these six months.",
+    ]);
+  });
 });

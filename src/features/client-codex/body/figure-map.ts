@@ -220,12 +220,17 @@ export function figureLabel(
 /* The region list                                                     */
 /* ------------------------------------------------------------------ */
 
-/** How often a region was tapped at the door (the arrive/leave track; phase 13 fills it). */
+/**
+ * How often a region was tapped on the briefing's body map at the door, over
+ * her sessions in the last six months (arrivals.ts `regionTaps`, phase 13).
+ */
 export interface DoorTaps {
   /** Sessions it was tapped at… */
   k: number;
-  /** …of this many. */
+  /** …of this many: the sessions whose door could have been recorded. */
   n: number;
+  /** True when imported or logged sessions were left out of `n` ("run in Journey"). */
+  runOnly?: boolean;
   /** The newest tap's word and day. */
   latest: { word: string; day: string };
 }
@@ -330,9 +335,12 @@ export function regionRows({
     }
     if (taps && taps.n > 0) {
       const when = dayWords(taps.latest.day, now);
-      sentences.push(
-        `At the door: “${taps.latest.word}”${when ? ` on ${when}` : ""} · tapped at ${taps.k} of ${pronouns.possessive} last ${taps.n} sessions.`,
-      );
+      const ran = taps.runOnly ? " run in Journey" : "";
+      const of =
+        taps.n === 1
+          ? `at ${pronouns.possessive} one session${ran} in these six months`
+          : `at ${taps.k} of ${pronouns.possessive} last ${taps.n} sessions${ran}`;
+      sentences.push(`At the door: “${taps.latest.word}”${when ? ` on ${when}` : ""} · tapped ${of}.`);
     }
     if (sentences.length === 0) continue;
 

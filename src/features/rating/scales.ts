@@ -124,6 +124,15 @@ export const RECOVERY_SCALE: DialScale = {
   untouched: "Not asked",
 };
 
+/**
+ * The studio day the briefing began asking the recovery question (the
+ * reporting round, Sep 16 2026). It has no legacy field, so a session before
+ * this day could not have been asked it: a reader that counts "not asked"
+ * leaves those sessions out rather than calling them unasked (client codex,
+ * phase 13 — `client-codex/body/arrivals.ts`).
+ */
+export const RECOVERY_ASKED_FROM = "2026-09-16";
+
 export const STRESS_SCALE: DialScale = {
   id: "stress",
   mode: "relative",
