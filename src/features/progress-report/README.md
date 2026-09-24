@@ -208,3 +208,31 @@ client progress report." Round document: `docs/rounds/2026-09-16-reporting-round
 - The report keeps its identity — navy on screen, orange rules and Finalize —
   because it is the client-facing brand look; the ACTIVE step tab is paper
   white on navy, not orange.
+
+## Which report opens (Sep 24 2026)
+
+`report-selection.ts` decides which report the screen opens, and for whom.
+Before it, AppContent kept a bare `selectedReportId` that only the report's
+own Back button cleared: leave any other way and the next "New report",
+"Start Now" or Relay "Progress report" task opened the OLD report under the
+CURRENT client's name, and saving wrote to the old document. Now:
+
+- **A chosen report is pinned to its client.** Asked for another client,
+  `reportToOpen()` answers "a new one".
+- **Leaving the report screen forgets the choice**, however it was left (an
+  effect on the view — there is no router, so the exits are every
+  `setCurrentView` in the app).
+- **Every way in says what it wants**: `openReport(id)` from the shelf,
+  `newReport()` from New report, Start Now, Schedule Report and Relay.
+- **The editor is keyed on client + report** (`reportEditorKey`), so nothing
+  carries over, and it waits for the real client instead of mounting on an
+  empty stand-in (a report saved from one had no `clientId`).
+- **The editor refuses another client's report** and says so in a sentence
+  (`ReportNotOpened`); `handleSave` refuses to write one too. While a filed
+  report is being read, or when the read fails, it says that rather than
+  showing the new-report chooser.
+
+`report-selection.render.test.tsx` mounts the selection the way AppContent
+wires it (bottom bar, bell, Relay, switching client);
+`components/ClientProgressReportView.render.test.tsx` mounts the editor's
+refusal.

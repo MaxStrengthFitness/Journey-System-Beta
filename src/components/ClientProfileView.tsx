@@ -123,6 +123,7 @@ export function ClientProfileView({
   trainers,
   onDelete,
   onSelectReport,
+  onNewReport,
   setView,
   setSelectedClientId,
   hasQuotaError,
@@ -139,6 +140,8 @@ export function ClientProfileView({
   trainers: Trainer[];
   onDelete: (id: string) => void;
   onSelectReport: (id: string) => void;
+  /** Start a NEW progress report for this client — never reopen the last one. */
+  onNewReport: () => void;
   setView: (v: View, data?: { isIntroSession?: boolean }) => void;
   setSelectedClientId: (id: string | null) => void;
   hasQuotaError?: boolean;
@@ -1197,7 +1200,7 @@ export function ClientProfileView({
                 <Button
                   variant="ghost"
                   className="ml-auto text-[11px] font-medium uppercase hover:bg-red-500/10"
-                  onClick={() => setView("progress-report")}
+                  onClick={onNewReport}
                 >
                   Start Now
                 </Button>
@@ -1238,7 +1241,7 @@ export function ClientProfileView({
                 <Button
                   variant="ghost"
                   className={`ml-auto text-[11px] font-medium uppercase ${isOverdue ? "hover:bg-red-500/10" : "hover:bg-amber-500/10"}`}
-                  onClick={() => setView("progress-report")}
+                  onClick={onNewReport}
                 >
                   Schedule Report
                 </Button>
@@ -1608,7 +1611,7 @@ export function ClientProfileView({
               progressReports={progressReports}
               onSelectReport={onSelectReport}
               onDeleteReport={setReportToDelete}
-              onNewReport={() => setView("progress-report")}
+              onNewReport={onNewReport}
               onOpenPlanner={() => setView("studio-tasks")}
               // The filed shelf lives in the Activity Archive now; the record's
               // Assessment section links across rather than keeping a copy.
@@ -1644,7 +1647,7 @@ export function ClientProfileView({
               progressReports={progressReports}
               onSelectReport={onSelectReport}
               onDeleteReport={setReportToDelete}
-              onNewReport={() => setView("progress-report")}
+              onNewReport={onNewReport}
               onEditMedical={() => nav.openSection("medical")}
               view={nav.clinicalView}
               onViewChange={nav.setClinicalView}
