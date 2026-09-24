@@ -155,6 +155,7 @@ import { RECORD_ANCHORS, type RecordPage } from "../client-profile/profile-nav";
 import type { Client, Machine, Trainer } from "../../types";
 import { studioTodayKey } from "../../lib/studio-time";
 import { addDays } from "../client-history/model";
+import { UnsavedChangesProvider, useLeaveGuard } from "../unsaved-changes";
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -1020,6 +1021,83 @@ describe("ClientCodex — the one Save bar", () => {
       kind: "error",
       message: "Couldn't save. Nothing was changed. This record can only be changed at Westlake.",
     });
+  });
+});
+
+/**
+ * UNSAVED CHANGES (carried onto the codex at the landing merge, Sep 24 2026).
+ * The old ClientInfoSheet registered its Save bar with the leave warning;
+ * the codex replaced it, so the codex registers instead. Mounted under the
+ * real provider with a button that leaves the way AppContent does.
+ */
+function GuardedHost(props: HostProps) {
+  const leave = useLeaveGuard();
+  const [left, setLeft] = useState(false);
+  return (
+    <div data-left={left ? "1" : "0"}>
+      <button type="button" data-action="leave-app" onClick={() => leave(() => setLeft(true))}>
+        Hub
+      </button>
+      {!left && <Host {...props} />}
+    </div>
+  );
+}
+
+async function mountGuarded(client = baseClient(), trainer = homeTrainer, initial?: RecordPage) {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  await act(async () => {
+    root.render(
+      <StrictMode>
+        <UnsavedChangesProvider>
+          <GuardedHost client={client} trainer={trainer} initial={initial} />
+        </UnsavedChangesProvider>
+      </StrictMode>,
+    );
+  });
+  await settle();
+  mounted.push({ root, host });
+  return host;
+}
+
+describe("ClientCodex — the leave warning", () => {
+  const question = () => document.querySelector('[role="alertdialog"]');
+  const answer = (action: "keep-editing" | "leave") =>
+    document.querySelector<HTMLElement>(`[data-testid="leave-confirm"] [data-action="${action}"]`);
+  const left = (host: HTMLElement) => host.querySelector("[data-left]")!.getAttribute("data-left");
+
+  it("lets the app leave at once while nothing is unsaved", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()).toBeNull();
+    expect(left(host)).toBe("1");
+  });
+
+  it("asks, naming her, before the app leaves with an edit on the Save bar; Keep editing keeps it", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await markRetired(host);
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()?.textContent).toContain("You have unsaved changes to Carol's profile. Leave without saving?");
+    await click(answer("keep-editing"));
+    expect(left(host)).toBe("0");
+    expect(saveBar(host)?.textContent).toContain("1 unsaved change");
+  });
+
+  it("Leave discards the edit and goes, writing nothing", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await markRetired(host);
+    await click(host.querySelector('[data-action="leave-app"]'));
+    await click(answer("leave"));
+    expect(left(host)).toBe("1");
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("never asks a reader who may not change the record", async () => {
+    const host = await mountGuarded(baseClient(), crossTrainer, "ford");
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()).toBeNull();
+    expect(left(host)).toBe("1");
   });
 });
 

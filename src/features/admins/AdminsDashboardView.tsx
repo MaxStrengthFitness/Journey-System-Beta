@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import type { Client, FranchiseNetwork, Machine, Studio, Trainer } from "../../types";
 import { AdminStudiosTab } from "../admin/studios/AdminStudiosTab";
 import { AdminMachinesTab } from "../admin/machines/AdminMachinesTab";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import { AdminLimboQueue } from "../admin/limbo/AdminLimboQueue";
 import { AdminSystemToolsTab } from "../admin/system/AdminSystemToolsTab";
 import { AdminBugReportsTab } from "../admin/bugs/AdminBugReportsTab";
@@ -68,6 +69,9 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
   void machines;
   const [tab, setTab] = useState<AdminsTab>("locations");
   const [dataStudioId, setDataStudioId] = useState<string | null>(activeStudioId);
+  // Another tab unmounts this one — a catalog machine mid-edit, a studio's
+  // details — so it asks first (unsaved changes, Sep 24 2026).
+  const tabsScope = useLeaveScope();
 
   if (!isAdmin) {
     return (
@@ -83,7 +87,7 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
     <button
       key={t.id}
       type="button"
-      onClick={() => setTab(t.id)}
+      onClick={() => t.id !== tab && tabsScope.guard(() => setTab(t.id))}
       aria-current={tab === t.id ? "page" : undefined}
       className={cn(
         "adm adm-nav__btn flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
@@ -125,6 +129,7 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
       </div>
 
       <div className="adm-shell__main">
+        <UnsavedChangesScope scope={tabsScope}>
         {tab === "locations" && <AdminStudiosTab authTrainer={authTrainer} studios={studios} networks={networks} trainers={trainers} clients={clients} isAdmin={isAdmin} onRefresh={onRefresh} />}
         {tab === "catalog" && <AdminMachinesTab isAdmin={isAdmin} />}
         {tab === "template" && <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />}
@@ -153,6 +158,7 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
             )}
           </div>
         )}
+        </UnsavedChangesScope>
       </div>
     </div>
   );

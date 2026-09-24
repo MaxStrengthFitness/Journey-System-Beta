@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   CheckCircle2,
   ArrowLeft,
@@ -117,6 +117,7 @@ import { ReportNotOpened } from "../features/progress-report/ReportNotOpened";
 import { studioTodayKey } from "../lib/studio-time";
 import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
 import { useInBodyVariation } from "../features/inbody/useInBodyVariation";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 
 /** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
 const shortDate = (v: any): string | null => {
@@ -215,7 +216,7 @@ export function ClientProgressReportView({
   const [showExportOptions, setShowExportOptions] = useState(false);
 
   // Entire Report State
-  const [report, setReport] = useState<ProgressReport>({
+  const [report, setReportState] = useState<ProgressReport>({
     clientId: client.id!,
     trainerId: trainer.id!,
     trainerName: trainer.fullName,
@@ -335,6 +336,28 @@ export function ClientProgressReportView({
     trainerNotes: "",
     createdAt: null,
   });
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). The report has no autosave, and leaving
+   * it any way but a save — Back, the bottom bar, the bell — dropped
+   * everything typed, silently. There is no saved copy to compare against,
+   * and the load, the goal carry-over, the auto-populate and the focus
+   * prefill all change `report` without the trainer touching it, so
+   * "different from how it opened" would be dirty on its own. Instead every
+   * TRAINER edit goes through `setReport`, which counts it; the automatic
+   * writes use `setReportState` and count nothing. A save records the count
+   * it wrote, so an edit typed while the save was in flight still counts.
+   */
+  const [editCount, setEditCount] = useState(0);
+  const [savedEditCount, setSavedEditCount] = useState(0);
+  const setReport: typeof setReportState = useCallback((update) => {
+    setEditCount((n) => n + 1);
+    setReportState(update);
+  }, []);
+  useUnsavedChanges(
+    mode === "editing" && editCount !== savedEditCount,
+    "this progress report",
+  );
 
   /**
    * The most recent FINALIZED report for this client other than this one —
@@ -478,7 +501,7 @@ export function ClientProgressReportView({
           setExistingStatus("other-client");
           return;
         }
-        setReport((prev) => ({
+        setReportState((prev) => ({
           ...prev,
           ...data,
           id: snap.id,
@@ -539,7 +562,7 @@ export function ClientProgressReportView({
           // A brand-new report inherits the goal set last time as the goal
           // to review now. An existing report keeps whatever it saved.
           if (!existingReportId) {
-            setReport((r) => ({
+            setReportState((r) => ({
               ...r,
               previousReportId: prev.id ?? null,
               goals: r.goals
@@ -711,7 +734,7 @@ export function ClientProgressReportView({
     const stats = attendanceStatsFrom(history, activeStartDate);
     const ctx = slotContextFor(activeStartDate);
 
-    setReport((prev) => ({
+    setReportState((prev) => ({
       ...prev,
       attendance: {
         ...prev.attendance,
@@ -745,7 +768,7 @@ export function ClientProgressReportView({
     if (mode !== "editing" || focusStatus !== "ready" || refinementFocusArea) return;
     const category = newestActiveCategory(focuses, reportAsOf);
     if (!category) return;
-    setReport((r) =>
+    setReportState((r) =>
       r.roadmap && !r.roadmap.refinementFocusArea
         ? { ...r, roadmap: { ...r.roadmap, refinementFocusArea: category } }
         : r,
@@ -801,6 +824,7 @@ export function ClientProgressReportView({
       );
       return;
     }
+    const editsBeingSaved = editCount;
     setSaving(true);
     try {
       // Recursively remove undefined values to prevent Firestore crashes
@@ -861,9 +885,10 @@ export function ClientProgressReportView({
           sanitizedReport,
         );
         reportId = docRef.id;
-        setReport((prev) => ({ ...prev, id: docRef.id }));
+        setReportState((prev) => ({ ...prev, id: docRef.id }));
       }
-      setReport((prev) => ({ ...prev, focusSnapshot }));
+      setReportState((prev) => ({ ...prev, focusSnapshot }));
+      setSavedEditCount(editsBeingSaved);
 
       if (status === "Finalized") {
         setShowExportOptions(true);
@@ -935,7 +960,7 @@ export function ClientProgressReportView({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              setReport((prev) => ({ ...prev, isManual: false }));
+              setReportState((prev) => ({ ...prev, isManual: false }));
               setMode("editing");
             }}
             className="flex flex-col items-center p-8 bg-white/5 border-2 border-(--pr-hero)/20 rounded-[40px] hover:border-(--pr-hero) transition-all group hover:bg-(--pr-hero)/2 text-center"
@@ -955,7 +980,7 @@ export function ClientProgressReportView({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              setReport((prev) => ({ ...prev, isManual: true }));
+              setReportState((prev) => ({ ...prev, isManual: true }));
               setMode("editing");
               setLoading(false);
             }}
@@ -1055,7 +1080,7 @@ export function ClientProgressReportView({
                     // and let the auto-populate fill the rest. Its Pulse block
                     // stays on the document and is the snapshot the Blueprint
                     // step shows; there is no step to fill for it.
-                    setReport((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
+                    setReportState((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
                     setPromotedFromCheckIn(true);
                     setActiveStep("celebrate");
                     setMode("editing");

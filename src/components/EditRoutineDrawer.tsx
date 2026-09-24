@@ -30,6 +30,7 @@ import {
 import { db } from "../firebase";
 import { cn, safeToDate } from "../lib/utils";
 import { isPerformedLog } from "../lib/set-outcome";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 import { GLOBAL_ROUTINE_PRESETS } from "../data/routine-presets";
 import {
   describeDeviation,
@@ -229,6 +230,21 @@ export function EditRoutineDrawer({
     () => machineIds.join(",") !== snapshot.join(","),
     [machineIds, snapshot],
   );
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). A tap outside the drawer, Escape, the X
+   * and Close all used to close it with an unapplied routine still in it,
+   * and the next open reloaded the saved one. Every close now asks first
+   * while the sequence differs from the saved routine. Only while OPEN: the
+   * drawer stays mounted when closed, holding whatever it last had.
+   */
+  const unsaved = useUnsavedChanges(isOpen && isDirty, activeSlot, {
+    onDiscard: () => {
+      setMachineIds([...snapshot]);
+      setPendingSlotSwitch(null);
+    },
+  });
+  const requestClose = () => unsaved.guard(onClose);
 
   const handleRequestSlot = (name: RoutineSlot) => {
     if (name === activeSlot) return;
@@ -522,7 +538,7 @@ export function EditRoutineDrawer({
   // mounted with open={isOpen} lets Radix play its fade/zoom-out closing
   // animation instead of the tree vanishing instantly.
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(v) => !v && requestClose()}>
       <DialogContent
         showCloseButton={false}
         style={dialogPositionStyle}
@@ -542,7 +558,7 @@ export function EditRoutineDrawer({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onClose}
+              onClick={requestClose}
               className="h-8 w-8 p-0 shrink-0"
             >
               <X className="w-5 h-5" />
@@ -823,7 +839,7 @@ export function EditRoutineDrawer({
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-3 border-t border-div-l/40 flex justify-end gap-3">
             <Button
               variant="ghost"
-              onClick={onClose}
+              onClick={requestClose}
               className="rounded-xl uppercase font-bold text-xs"
             >
               Close

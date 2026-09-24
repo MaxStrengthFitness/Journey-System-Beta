@@ -201,7 +201,7 @@ function HoursPanel() {
       sessionMinutes: slot,
     });
     toastSuccess("Saved — the Now Bar, the rings and Operations → Hours follow it.");
-  });
+  }, { label: "the studio's day" });
 
   const bad = [form.value.open, form.value.mid, form.value.closing, form.value.close].some(
     (v) => clockToMinutes(v) === null,

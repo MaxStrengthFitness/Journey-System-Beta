@@ -38,6 +38,8 @@ import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import type { Client, ClientMachineSetting, Machine, Routine, Trainer } from "../../../types";
 import { authorFromTrainer } from "../../equipment/author";
 import { useScrollerPad } from "../../client-profile/use-scroller-pad";
+import { useUnsavedChanges } from "../../unsaved-changes";
+import { clientFirstName } from "../../../lib/client-name";
 import { comboAckKey, comboAckValue } from "../audit";
 import { formatInches } from "../factors";
 import { DEFAULT_MATCH_SPEC, activeFactors } from "../match-spec";
@@ -401,6 +403,24 @@ export function SetupView({
   /* ---------------- saving ---------------- */
 
   const counts = countDrafts(drafts);
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). Setup is kept mounted when hidden, so its
+   * drafts — Quick entry's included — survive the Programming sub-toggle.
+   * They did not survive a tab change, a client change or leaving the
+   * profile, and nothing said so; the profile and AppContent now ask first.
+   */
+  const firstName = client ? clientFirstName(client) : "";
+  useUnsavedChanges(
+    counts.fields > 0,
+    firstName ? `${firstName}'s machine set-up` : "this client's machine set-up",
+    {
+      onDiscard: () => {
+        dispatch({ type: "reset" });
+        setReason("");
+      },
+    },
+  );
   const plan = useMemo(() => {
     const inputs: SetupMachineInput[] = [];
     for (const [machineId, d] of Object.entries(drafts.drafts)) {

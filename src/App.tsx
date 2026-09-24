@@ -5,6 +5,7 @@ import { auth } from "./firebase";
 import { ActiveStudioProvider } from "./contexts/ActiveStudioContext";
 import { MindbodyHealthProvider } from "./contexts/MindbodyHealthContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { UnsavedChangesProvider } from "./features/unsaved-changes";
 import AppContent from "./AppContent";
 import { useAuthInitialization } from "./hooks/useAuthInitialization";
 import { migrateClientMachineMetrics } from "./lib/migration-utils";
@@ -84,6 +85,10 @@ export default function App() {
           tokenRole={tokenRole || authTrainer?.role || undefined}
           onLogout={handleLogout}
         >
+          {/* Above AppContent so every screen can say "I hold unsaved
+              typing" and every navigation can ask first. See
+              features/unsaved-changes/README.md. */}
+          <UnsavedChangesProvider>
           <AppContent
             user={user!}
             authTrainer={authTrainer!}
@@ -97,6 +102,7 @@ export default function App() {
             handleLogout={handleLogout}
             tokenRole={tokenRole}
           />
+          </UnsavedChangesProvider>
         </ActiveStudioProvider>
       </ToastProvider>
     </MindbodyHealthProvider>

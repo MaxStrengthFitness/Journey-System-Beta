@@ -67,6 +67,8 @@ import { SaveBar } from "./kit";
 import { readOnlyLine } from "./access";
 import { useCodexData } from "./useCodexData";
 import { useRecordForm } from "./useRecordForm";
+import { useUnsavedChanges } from "../unsaved-changes";
+import { clientFirstName } from "../../lib/client-name";
 import { subnavItems } from "./page-meta";
 import {
   fordCountOf,
@@ -174,6 +176,24 @@ export function ClientCodex({
     trainerId: authTrainer?.id ?? null,
     homeStudioName: access.homeStudioName,
   });
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026; carried onto the codex at the landing
+   * merge from the old ClientInfoSheet). The Save bar's edits are lost when
+   * the app changes screen or the client changes, and AppContent asks the
+   * unsaved-changes gate before either. "Leave" is the Save bar's Discard.
+   * The profile's own tab bar does NOT ask about this form: the codex stays
+   * mounted across a tab change, and its edits with it (ClientProfileView
+   * exempts it from the tabs' scope). No wrong-client carry-over to guard
+   * against here: the profile keys the codex by client, so a new client is
+   * a new form.
+   */
+  const firstName = clientFirstName(client);
+  useUnsavedChanges(
+    access.canEdit && form.count > 0,
+    firstName ? `${firstName}'s profile` : "this client's profile",
+    { onDiscard: form.discard },
+  );
 
   /*
    * Pages mount on first visit and stay. Worked out during render (not in an
