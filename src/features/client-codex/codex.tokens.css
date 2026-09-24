@@ -1,0 +1,108 @@
+/* ==========================================================================
+   Client codex — design tokens
+   --------------------------------------------------------------------------
+   The Notes & Profile tab's seven pages (client codex, Sep 2026). These are
+   NOT a new palette. Every colour below is an alias of a token the app
+   already has — the Equipment set (--eq-*), which the whole trainer app
+   draws in, and FORD's (--ford-*) for the pillar marks and dates — so the
+   codex can never drift from the screens around it, and light and dark come
+   for free: the aliases resolve wherever `.dark` / [data-theme] / the media
+   query set the --eq-* and --ford-* values.
+
+   WHY THEY ARE DECLARED ON .cx AND NOT ON :root. A custom property holding
+   var() is resolved on the element that declares it and then inherited as
+   the resolved value. Declared on :root, --cx-ink would be fixed to the
+   page's theme; declared on the codex's own root, it follows any theme
+   wrapper around the codex. `.cx-kit` is the same scope for kit pieces
+   rendered OUTSIDE the codex root — a dialog's portal content, say — which
+   would otherwise find no tokens at all.
+
+   The text scale is the codex's contract: 11 · 12 · 14 · 17 · 30, nothing
+   else. kit/scale.test.ts reads every codex file and fails on any other size,
+   any raw hex and any clipping of text.
+
+   Colour meanings are the app's, unchanged:
+     live   brand blue   anything you can act on (never hero orange)
+     hero   orange       Start Session, and FORD's "now" date — nothing else
+     warn   plum         Heads up (Loudness), a caution watch-out
+     alert  crimson      a Critical note, an absolute contraindication
+     ok     green        done, reached
+   ========================================================================== */
+
+.cx,
+.cx-kit {
+  /* ---- surfaces -------------------------------------------------------- */
+  --cx-bg:              var(--eq-bg);
+  --cx-surface:         var(--eq-surface);
+  --cx-surface-2:       var(--eq-surface-2);
+  --cx-surface-3:       var(--eq-surface-3);
+  --cx-line:            var(--eq-border);
+  --cx-line-2:          var(--eq-border-strong);
+
+  /* ---- ink ------------------------------------------------------------- */
+  --cx-ink:             var(--eq-ink);
+  --cx-ink-2:           var(--eq-ink-2);
+  --cx-ink-3:           var(--eq-ink-muted);
+  --cx-ink-4:           var(--eq-ink-faint);
+
+  /* ---- meaning --------------------------------------------------------- */
+  --cx-live:            var(--eq-live);
+  --cx-live-text:       var(--eq-live-text);
+  --cx-live-fill:       var(--eq-live-fill);
+  --cx-live-on:         var(--eq-live-on);
+  --cx-live-line:       color-mix(in srgb, var(--eq-live) 45%, transparent);
+
+  --cx-hero:            var(--eq-hero);
+  --cx-hero-text:       var(--eq-hero-text);
+  --cx-hero-fill:       var(--eq-hero-fill);
+  --cx-hero-on:         var(--eq-hero-on);
+
+  --cx-ok:              var(--eq-ok);
+  --cx-ok-fill:         var(--eq-ok-fill);
+  --cx-ok-line:         color-mix(in srgb, var(--eq-ok) 40%, transparent);
+
+  --cx-warn:            var(--eq-warn);
+  --cx-warn-fill:       var(--eq-warn-fill);
+  --cx-warn-line:       color-mix(in srgb, var(--eq-warn) 40%, transparent);
+
+  --cx-alert:           var(--eq-alert);
+  --cx-alert-fill:      var(--eq-alert-fill);
+  --cx-alert-line:      color-mix(in srgb, var(--eq-alert) 45%, transparent);
+
+  --cx-focus:           var(--eq-focus-ring);
+  --cx-shadow:          var(--eq-shadow);
+
+  /* ---- FORD: dates by urgency, pillars by identity only ---------------- */
+  --cx-now:             var(--ford-now);
+  --cx-soon:            var(--ford-soon);
+  --cx-later:           var(--ford-later);
+  --cx-unfiled:         var(--ford-unfiled);
+  --cx-unfiled-fill:    var(--ford-unfiled-fill);
+
+  --cx-family-ink:      var(--ford-family-ink);
+  --cx-family-fill:     var(--ford-family-fill);
+  --cx-occupation-ink:  var(--ford-occupation-ink);
+  --cx-occupation-fill: var(--ford-occupation-fill);
+  --cx-recreation-ink:  var(--ford-recreation-ink);
+  --cx-recreation-fill: var(--ford-recreation-fill);
+  --cx-dreams-ink:      var(--ford-dreams-ink);
+  --cx-dreams-fill:     var(--ford-dreams-fill);
+
+  /* ---- type: the whole scale ------------------------------------------- */
+  --cx-fs-11:           11px;      /* eyebrows, chip caps, fact labels      */
+  --cx-fs-12:           12px;      /* meta, sources, field labels, chips    */
+  --cx-fs-14:           14px;      /* body, buttons, inputs                 */
+  --cx-fs-17:           17px;      /* ledes, card and section titles        */
+  --cx-fs-30:           30px;      /* page titles, a big number             */
+  /* The app's two faces. The fallbacks matter: these files are not run
+     through Tailwind, so they must not depend on it having emitted its
+     theme variables. */
+  --cx-font-display:    var(--font-display, "Saira Condensed", system-ui, sans-serif);
+  --cx-font-body:       var(--font-sans, "Geist Variable", system-ui, sans-serif);
+
+  /* ---- shape and touch ------------------------------------------------- */
+  --cx-radius:          var(--eq-radius);
+  --cx-radius-sm:       10px;
+  --cx-tap:             40px;      /* nothing tappable is smaller           */
+  --cx-row:             44px;      /* a list row                            */
+}

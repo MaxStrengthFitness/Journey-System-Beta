@@ -5,7 +5,10 @@
 ## Phases so far
 
 - **1 — FORD reads that work for every trainer, and honest test commands** (`29f653d`). `useClientFord` listed FORD with no studio filter, so the rules refused it for everyone below franchise owner and the refusal read as "nothing on file". Now filtered on the client's studio, with a `status` that tells "couldn't be read" and "kept by the home studio" from empty. `useClientJournal` reports what it could read and hands out the sessions it already streams. The test commands skip the `.claude` worktree copies. See KNOWN-TRAPS → The client profile.
-- **2 — The InBody normal variation (AJ's decision 8).** Below.
+- **2 — The InBody normal variation (AJ's decision 8)** (`9e77640`). Below.
+- **3 — Navigation: the record tab becomes pages** (`b02e66d`). The record arm of the profile's one location is `{ page, anchor }`; every old section and tab id still lands; the tab always opens on the Overview. See `src/features/client-profile/README.md`.
+- **4 — The sub-toggle can wrap** (`5884295`). `ProfileSubnav` gains `wrap`, `idPrefix` and a plum `warn` dot, all opt-in, so Programming and the Activity Archive are unchanged. See KNOWN-TRAPS → The client profile.
+- **5 — One visual kit.** Below.
 
 ## Phase 2 — the scanner's normal variation
 
@@ -34,3 +37,16 @@ At the defaults, for the fixtures the tests pin (a client up 2.3 lb of muscle an
 ### Files
 
 `src/features/inbody/variation.ts` (+ test), `useInBodyVariation.ts`, `scans.ts` (`formatCalledChange`; `changeTone` and `summarySentence` take the variation), `InBodyCard.tsx` (+ render test), `InBodyReportSection.tsx`; `src/components/ClientProgressReportView.tsx`; `src/features/renewals/brief.ts`, `sentences.ts`, `options.ts`, `pipeline.ts`, `RenewalCardDialog.tsx` (+ the three tests); `src/features/admin/renewals/RenewalsPipeline.tsx`, `RenewalBrief.tsx`; `src/features/my-studio/InBodyVariationPanel.tsx` (+ render test), `StudioSection.tsx`; `src/types.ts` (`Studio.inbodyVariation`); `tests/firestore.rules.test.ts`; the InBody and My Studio READMEs, KNOWN-TRAPS and ARCHITECTURE.
+
+## Phase 5 — one visual kit
+
+Every codex page is built from one kit, so a trainer learns one panel, one button and one set of words: `src/features/client-codex/kit/` (read `src/features/client-codex/README.md`). Nothing on screen changes in this phase — the kit has no caller yet; the shell (phase 8) and the pages use it.
+
+- **Tokens** (`codex.tokens.css`): every colour is an alias of a token the app already has (`--eq-*`, `--ford-*`), so there is no new palette and light and dark come for free. Text is 11 / 12 / 14 / 17 / 30px and nothing else.
+- **Pieces** (`primitives.tsx`, `ReadEdit.tsx`, `fields.tsx`, `SaveBar.tsx`, `kit.css`): Page (head, ‹ › neighbours, Next card), Card, Slot, FactList, Rows, Chip, LoudChip, Btn, FordMark, the read-view-then-Edit frame, the inputs and pick pills, and the one Save bar ("1 unsaved change · FORD · Occupation"). Nothing tappable is under 40px; nothing is clipped; solid buttons are brand blue, never orange.
+- **Words** (`text.ts`, `src/lib/first-sentences.ts`, `pronouns.ts`): whole sentences instead of "…" (a critical note is never cut mid-instruction), dates the studio way, and she / he / they from the gender Mindbody holds — they when it holds none (the overnight default for AJ's pronoun question; one file to change). The review caught `firstSentences` ending "Train her at 7 a.m. only…" after "a.m." and "Ask "does it pinch?" before every set" after the question mark; the word after the mark now decides (a lower-case word or a number means the sentence goes on), so an abbreviation it does not know makes the line longer instead of cutting it. `inTime` counts days up to 30 ("Birthday in 17 days", as the mockup says), and FORD will use it rather than a second formatter.
+- **Loudness**: `LOUDNESS_TONE` is exported from `src/features/rating/Loudness.tsx`, so the codex shows Heads up plum and Critical crimson with the one control's own mapping (a departure from the mockup's gold, as agreed).
+- **The contract is a test** (`kit/scale.test.ts`): it reads every codex file and fails on an off-scale text size, a raw hex colour or a colour a component sets itself, clipped text (a line clamp is allowed only on the two named row-body selectors, at two lines), a regex lookbehind or a raw invisible character, and on any file in the folder that is not on its list. Adding a 13px rule to `kit.css` fails it (checked). `kit/kit.render.test.tsx` mounts every piece in light and dark and checks each control is at least 40px tall.
+- **Accessibility**: a field's label is its name and its hint its description, so VoiceOver reads each once; the Save bar announces the first unsaved change through a live region that is mounted before it.
+
+No Firestore, rules, index or Functions change.

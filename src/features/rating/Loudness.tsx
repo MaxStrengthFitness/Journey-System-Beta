@@ -22,7 +22,15 @@ import "./rating.css";
 
 export const LOUDNESS_LEVELS: readonly JournalImportance[] = ["standard", "elevated", "critical"] as const;
 
-const TONE: Record<JournalImportance, "quiet" | "warn" | "alert"> = {
+/**
+ * The one Loudness colour mapping: Note is quiet, Heads up is plum
+ * (`--eq-warn`), Critical is crimson (`--eq-alert`). Exported so a chip that
+ * SHOWS a note's loudness (the client codex's LoudChip) draws the same colour
+ * as the control that set it, instead of a second mapping that drifts.
+ */
+export type LoudnessTone = "quiet" | "warn" | "alert";
+
+export const LOUDNESS_TONE: Readonly<Record<JournalImportance, LoudnessTone>> = {
   standard: "quiet",
   elevated: "warn",
   critical: "alert",
@@ -54,7 +62,7 @@ export function Loudness({ value, onChange, ask = "How loud?", hint = true, disa
             role="radio"
             aria-checked={value === lvl}
             className="rt__seg"
-            data-tone={TONE[lvl]}
+            data-tone={LOUDNESS_TONE[lvl]}
             disabled={disabled}
             onClick={() => onChange(lvl)}
           >

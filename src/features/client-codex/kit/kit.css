@@ -1,0 +1,849 @@
+/* ==========================================================================
+   Client codex — the kit
+   --------------------------------------------------------------------------
+   One look for every page of Notes & Profile (client codex, Sep 2026): the
+   panel, the head, the chips, the buttons, the fields, the Save bar. An
+   area's own stylesheet may lay out its own content; it may not draw a
+   second panel, button, chip or eyebrow — it uses these.
+
+   The rules this file keeps, each checked by kit/scale.test.ts:
+     - Text is 11, 12, 14, 17 or 30px (the --cx-fs-* tokens). Nothing else.
+     - Colour comes from --cx-* only (codex.tokens.css), never a raw value.
+     - Nothing is clipped: no ellipsis, no line clamp, no one-line cut-off.
+       Names and labels wrap. (A list ROW in an area may clamp a note body to
+       two lines, with the whole note one tap away — only there.)
+     - Anything tappable is at least --cx-tap (40px) tall.
+     - A button's text alignment is set HERE, not by a utility class: a
+       <button> centres its own text and a utility did not survive layer
+       ordering in every build (KNOWN-TRAPS → Layout and CSS).
+     - Hover only ever adds; it is never the only way to find something, and
+       it is behind (hover: hover) so a tap on an iPad does not leave a
+       control stuck in its hover look.
+   ========================================================================== */
+
+.cx,
+.cx-kit {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  line-height: 1.45;
+}
+
+/* ---- page: head, neighbours, Next ------------------------------------- */
+
+.cx-page-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cx-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 6px 0 2px;
+}
+
+.cx-page-head__text {
+  flex: 1 1 280px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cx-page-title {
+  margin: 0;
+  color: var(--cx-ink);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-30);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* The shell focuses the title after a Next or neighbour tap, so a screen
+   reader lands on the new page; it shows a ring only for the keyboard. */
+.cx-page-title:focus {
+  outline: none;
+}
+
+.cx-page-title:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 4px;
+}
+
+.cx-page-lede {
+  margin: 0;
+  max-width: 78ch;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.cx-page-head__actions,
+.cx-page-head__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cx-page-head__nav {
+  flex: none;
+}
+
+.cx-next {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  margin-top: 6px;
+  padding: 12px 18px;
+  border: 1px solid var(--cx-line);
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface);
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cx-next__text {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cx-next__label {
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-17);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cx-next__blurb {
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.cx-next__icon {
+  flex: none;
+  color: var(--cx-live-text);
+}
+
+/* ---- panels: card, slot ----------------------------------------------- */
+
+.cx-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--cx-line);
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface);
+}
+
+/* The frame for a component that already draws its own inner cards: spacing
+   only, so two borders never nest. */
+.cx-card[data-host] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.cx-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 28px;
+}
+
+.cx-card-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.cx-grow {
+  flex: 1 1 auto;
+}
+
+.cx-slot {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--cx-line);
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface);
+  color: var(--cx-ink);
+  text-align: left;
+}
+
+.cx-slot[data-as="button"] {
+  width: 100%;
+  min-height: 120px;
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.cx-slot__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.cx-slot__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--cx-live-text);
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+}
+
+.cx-slot__body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.cx-slot__foot {
+  display: block;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--cx-line);
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+/* ---- words ------------------------------------------------------------ */
+
+.cx-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-11);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.cx-meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.cx-lede {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.cx-quote {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+}
+
+.cx-source {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.cx-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 10px 0 0;
+  color: var(--cx-ink);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-17);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cx-section-head__aside {
+  color: var(--cx-ink-3);
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-12);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cx-big {
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-30);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cx-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px 16px;
+  border: 1px dashed var(--cx-line-2);
+  border-radius: 12px;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+.cx-empty__text {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* ---- facts: label | value --------------------------------------------- */
+
+.cx-facts {
+  container: cx-facts / inline-size;
+  display: grid;
+  margin: 0;
+}
+
+.cx-fact {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--cx-line);
+}
+
+.cx-fact:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+
+.cx-fact__label {
+  margin: 0;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-11);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cx-fact__value {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--cx-fs-14);
+  overflow-wrap: anywhere;
+}
+
+@container cx-facts (max-width: 480px) {
+  .cx-fact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- chips ------------------------------------------------------------ */
+
+.cx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 6px;
+}
+
+.cx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid var(--cx-line);
+  border-radius: 999px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.cx-chip[data-tone="alert"] {
+  border-color: var(--cx-alert-line);
+  background: var(--cx-alert-fill);
+  color: var(--cx-alert);
+}
+
+.cx-chip[data-tone="warn"] {
+  border-color: var(--cx-warn-line);
+  background: var(--cx-warn-fill);
+  color: var(--cx-warn);
+}
+
+.cx-chip[data-tone="live"] {
+  border-color: var(--cx-live-line);
+  background: var(--cx-live-fill);
+  color: var(--cx-live-text);
+}
+
+.cx-chip[data-tone="ok"] {
+  border-color: var(--cx-ok-line);
+  background: var(--cx-ok-fill);
+  color: var(--cx-ok);
+}
+
+.cx-chip[data-tone="new"] {
+  border-style: dashed;
+  border-color: var(--cx-ink-3);
+  background: transparent;
+  color: var(--cx-ink-2);
+}
+
+.cx-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--cx-tap);
+  padding: 6px 12px;
+  border: 1px solid var(--cx-live-line);
+  border-radius: 999px;
+  background: var(--cx-live-fill);
+  color: var(--cx-live-text);
+  font-family: inherit;
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cx-chip-btn[aria-pressed="true"] {
+  border-color: var(--cx-live);
+  background: var(--cx-live);
+  color: var(--cx-live-on);
+}
+
+/* A note's loudness, shown — the colours are Loudness's own (LOUDNESS_TONE):
+   Heads up plum, Critical crimson, a plain Note quiet. */
+.cx-loud {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 24px;
+  padding: 2px 9px;
+  border: 1px solid var(--cx-line);
+  border-radius: 999px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-11);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cx-loud[data-tone="warn"] {
+  border-color: var(--cx-warn-line);
+  background: var(--cx-warn-fill);
+  color: var(--cx-warn);
+}
+
+.cx-loud[data-tone="alert"] {
+  border-color: var(--cx-alert-line);
+  background: var(--cx-alert-fill);
+  color: var(--cx-alert);
+}
+
+/* ---- buttons ---------------------------------------------------------- */
+
+.cx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: var(--cx-tap);
+  min-height: var(--cx-tap);
+  padding: 8px 14px;
+  border: 1px solid var(--cx-line-2);
+  border-radius: var(--cx-radius-sm);
+  background: var(--cx-surface-2);
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cx-btn[data-variant="live"] {
+  border-color: var(--cx-live-line);
+  background: var(--cx-live-fill);
+  color: var(--cx-live-text);
+}
+
+/* Solid is brand blue. Hero orange is Start Session's, never a Save. */
+.cx-btn[data-variant="solid"] {
+  border-color: var(--cx-live);
+  background: var(--cx-live);
+  color: var(--cx-live-on);
+}
+
+.cx-btn[data-variant="quiet"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--cx-live-text);
+}
+
+.cx-btn:disabled,
+.cx-chip-btn:disabled,
+.cx-pick:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.cx-btn__icon {
+  flex: none;
+}
+
+/* ---- the FORD letter mark: identity only, never status ----------------- */
+
+.cx-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-14);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cx-mark[data-size="22"] {
+  width: 22px;
+  height: 22px;
+  font-size: var(--cx-fs-12);
+}
+
+.cx-mark[data-size="40"] {
+  width: 40px;
+  height: 40px;
+  font-size: var(--cx-fs-17);
+}
+
+.cx-mark[data-pillar="family"] {
+  background: var(--cx-family-fill);
+  color: var(--cx-family-ink);
+}
+
+.cx-mark[data-pillar="occupation"] {
+  background: var(--cx-occupation-fill);
+  color: var(--cx-occupation-ink);
+}
+
+.cx-mark[data-pillar="recreation"] {
+  background: var(--cx-recreation-fill);
+  color: var(--cx-recreation-ink);
+}
+
+.cx-mark[data-pillar="dreams"] {
+  background: var(--cx-dreams-fill);
+  color: var(--cx-dreams-ink);
+}
+
+.cx-mark[data-pillar="unfiled"] {
+  background: var(--cx-unfiled-fill);
+  color: var(--cx-unfiled);
+}
+
+/* ---- rows: a list you can open one line of ---------------------------- */
+
+.cx-rows {
+  container: cx-rows / inline-size;
+  display: grid;
+  border: 1px solid var(--cx-line);
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface);
+}
+
+.cx-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  align-items: center;
+  width: 100%;
+  min-height: var(--cx-row);
+  padding: 8px 14px;
+  border: 0;
+  border-top: 1px solid var(--cx-line);
+  background: transparent;
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  text-align: left;
+}
+
+.cx-row[data-nolabel] {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.cx-row:first-child {
+  border-top: 0;
+  border-top-left-radius: var(--cx-radius);
+  border-top-right-radius: var(--cx-radius);
+}
+
+.cx-row:last-child {
+  border-bottom-left-radius: var(--cx-radius);
+  border-bottom-right-radius: var(--cx-radius);
+}
+
+.cx-row[data-as="button"] {
+  cursor: pointer;
+}
+
+.cx-row__label,
+.cx-row__text {
+  min-width: 0;
+}
+
+.cx-row__text {
+  overflow-wrap: anywhere;
+}
+
+.cx-row__meta {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  text-align: right;
+}
+
+@container cx-rows (max-width: 560px) {
+  .cx-row,
+  .cx-row[data-nolabel] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cx-row__meta {
+    text-align: left;
+  }
+}
+
+/* ---- fields ----------------------------------------------------------- */
+
+.cx-field,
+.cx-picks {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cx-field__label,
+.cx-picks__label {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+}
+
+.cx-field__hint {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.cx-input,
+.cx-select,
+.cx-textarea {
+  width: 100%;
+  min-height: var(--cx-tap);
+  padding: 8px 12px;
+  border: 1px solid var(--cx-line-2);
+  border-radius: var(--cx-radius-sm);
+  background: var(--cx-bg);
+  color: var(--cx-ink);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  line-height: 1.3;
+}
+
+.cx-textarea {
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.cx-input::placeholder,
+.cx-textarea::placeholder {
+  color: var(--cx-ink-3);
+}
+
+.cx-input:disabled,
+.cx-select:disabled,
+.cx-textarea:disabled {
+  opacity: 0.6;
+}
+
+.cx-picks__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cx-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--cx-tap);
+  padding: 6px 13px;
+  border: 1px solid var(--cx-line-2);
+  border-radius: var(--cx-radius-sm);
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cx-pick[aria-pressed="true"] {
+  border-color: var(--cx-live);
+  background: var(--cx-live-fill);
+  color: var(--cx-live-text);
+}
+
+.cx-pick[data-tall] {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  min-height: 48px;
+}
+
+.cx-pick__hint {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 600;
+}
+
+/* ---- read view / edit view -------------------------------------------- */
+
+.cx-readedit__edit {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ---- the Save bar ----------------------------------------------------- */
+
+/* Sticky to the bottom of the profile's scroller. --scroll-pad-bottom is the
+   scroller's padding, negated (useScrollerPad), so the bar sits on the edge
+   instead of floating above it with rows showing underneath; and it is
+   OPAQUE, or the page scrolls through it (KNOWN-TRAPS → Layout and CSS).
+   z-index 20 keeps it above the sub-toggle (18). */
+.cx-savebar {
+  position: sticky;
+  bottom: var(--scroll-pad-bottom, 0px);
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding: 10px 12px 10px 18px;
+  border: 1px solid var(--cx-line-2);
+  border-radius: var(--cx-radius);
+  background: var(--cx-surface-3);
+  color: var(--cx-ink);
+  box-shadow: 0 18px 40px -18px var(--cx-shadow);
+}
+
+.cx-savebar__text {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+}
+
+.cx-savebar__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---- focus and hover -------------------------------------------------- */
+
+.cx-btn:focus-visible,
+.cx-chip-btn:focus-visible,
+.cx-next:focus-visible,
+.cx-slot[data-as="button"]:focus-visible,
+.cx-row[data-as="button"]:focus-visible,
+.cx-pick:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+}
+
+.cx-input:focus,
+.cx-select:focus,
+.cx-textarea:focus {
+  border-color: var(--cx-live);
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) {
+  .cx-btn:not(:disabled):hover,
+  .cx-pick:not(:disabled):hover,
+  .cx-chip-btn:not(:disabled):hover,
+  .cx-next:hover {
+    border-color: var(--cx-live);
+  }
+
+  .cx-btn[data-variant="quiet"]:not(:disabled):hover {
+    border-color: var(--cx-line-2);
+  }
+
+  .cx-slot[data-as="button"]:hover {
+    border-color: var(--cx-live-line);
+  }
+
+  .cx-row[data-as="button"]:hover {
+    background: var(--cx-surface-2);
+  }
+}
