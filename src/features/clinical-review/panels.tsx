@@ -389,7 +389,7 @@ export function PainPulsePanel({ pain, pulse }: { pain: PainTimeline; pulse: Pul
       </div>
       <div className="cr-card">
         <p className="cr-card__title">Pulse trend</p>
-        <p className="cr-card__sub">Each Pulse area, first saved reading → latest. The client's own account beside the sets.</p>
+        <p className="cr-card__sub">Each Pulse area, first full reading → latest (a full reading answers all three statements). The client's own account beside the sets.</p>
         {pulse.status === "unavailable" ? (
           <div className="cr-empty">Pulse history unavailable — the read did not complete. The sets above stand on their own.</div>
         ) : pulse.status === "none" ? (
