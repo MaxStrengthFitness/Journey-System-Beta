@@ -81,7 +81,7 @@ const RailItem = memo(function RailItem({ machine, selected, onSelect, clinicalF
             <em>{machine.currentWeight ?? "—"}</em> lbs
           </span>
         ) : (
-          <span className="eq-item__empty">Not set up</span>
+          <span className="eq-item__empty">No load yet</span>
         )}
 
         {times > 0 && (

@@ -148,7 +148,7 @@ const Row = memo(function Row({ row, onSelect }: { row: RoutineRow; onSelect?: (
         </span>
         <span className="rt-row__nums">
           {row.weight === null ? (
-            <span className="eq-item__empty">Not set up</span>
+            <span className="eq-item__empty">No load yet</span>
           ) : (
             <span className="rt-row__load">
               {showStart && (
