@@ -13,7 +13,7 @@ import {
 import { db } from "../firebase";
 import { LimboEntry, Studio } from "../types";
 import { wallClockToInstant, DEFAULT_TIME_ZONE, isValidTimeZone } from "./studio-time";
-import { otherSiteOf } from "./mindbody-site";
+import { chooseClientDoc, siteQualifiedClientId } from "./mindbody-site";
 
 /**
  * Browser-side half of the Limbo queue.
@@ -102,10 +102,34 @@ export type ReleaseResult = {
   scheduleId?: string;
   clientId?: string;
   startTimeIso?: string;
-  /** Set when the booking was released UNLINKED because its client id names
-   *  a different person on the other Mindbody site. */
-  otherSite?: string;
 };
+
+/**
+ * Which record is Mindbody client `mbId` on `site` — lib/mindbody-site.ts's
+ * rule over two reads. Limbo is an administrators' screen, so both reads are
+ * allowed; one that fails is an error, never "absent".
+ */
+async function placeClient(
+  mbId: string,
+  site: string,
+  studios: Studio[],
+): Promise<{ docId: string; create: boolean }> {
+  if (!site) {
+    const plain = await getDoc(doc(db, "clients", mbId));
+    return { docId: mbId, create: !plain.exists() };
+  }
+  const [qualified, plain] = await Promise.all([
+    getDoc(doc(db, "clients", siteQualifiedClientId(site, mbId))),
+    getDoc(doc(db, "clients", mbId)),
+  ]);
+  return chooseClientDoc({
+    mindbodyClientId: mbId,
+    site,
+    qualifiedExists: qualified.exists(),
+    plain: plain.exists() ? (plain.data() as { homeStudioId?: string; mindbodySiteId?: string }) : null,
+    studios,
+  });
+}
 
 /**
  * Releases a parked BOOKING onto a studio's live schedule.
@@ -146,23 +170,18 @@ export async function releaseLimboBooking(
     : null;
 
   // The client must exist, or the released block lands unlinked — the very
-  // thing this whole effort removes. Strict canonical id, same as everywhere.
+  // thing this whole effort removes.
   //
   // Asked of Firestore, not of the roster the screen happened to load: a
   // document missing from that list was treated as missing, and the merge
   // below then wrote a name and a home studio over whoever did live there.
-  // And a document that does exist is only this person when its home studio
-  // is on the booking's site (see lib/mindbody-site.ts) — otherwise the
-  // booking is released UNLINKED under the name Mindbody gave it.
+  // Which record is this person is lib/mindbody-site.ts's rule: the second
+  // person on a shared Mindbody number has their own, `clients/{site}-{id}`.
   let clientId: string | null = null;
-  let otherSite: string | null = entry.crossSite?.clientSite ?? null;
-  if (entry.clientId && !otherSite) {
+  const site = String(entry.siteId ?? studio.mindbodySiteId ?? "").trim();
+  if (entry.clientId) {
     const mbId = String(entry.clientId);
-    const snap = await getDoc(doc(db, "clients", mbId));
-    otherSite = snap.exists()
-      ? otherSiteOf(snap.data()?.homeStudioId, studio.mindbodySiteId, studios)
-      : null;
-    const existing = snap.exists();
+    const place = await placeClient(mbId, site, studios);
     const name = String(summary.clientName || "").trim();
     const first = name && name !== "Unknown Client" ? name.split(" ")[0] : "";
     const last =
@@ -170,14 +189,16 @@ export async function releaseLimboBooking(
         ? name.split(" ").slice(1).join(" ")
         : "";
 
-    if (!existing && !otherSite) {
+    if (place.create) {
       await setDoc(
-        doc(db, "clients", mbId),
+        doc(db, "clients", place.docId),
         {
           firstName: first || "Mindbody",
           lastName: last || (first ? "" : `Client ${mbId}`),
-          mindbody_name: name && name !== "Unknown Client" ? name : undefined,
+          // Firestore refuses `undefined`: a missing name is left out.
+          ...(name && name !== "Unknown Client" ? { mindbody_name: name } : {}),
           mindbodyClientId: mbId,
+          ...(site ? { mindbodySiteId: site } : {}),
           homeStudioId: studio.id,
           isActive: true,
           height: "",
@@ -191,7 +212,7 @@ export async function releaseLimboBooking(
         { merge: true },
       );
     }
-    if (!otherSite) clientId = mbId;
+    clientId = place.docId;
   }
 
   const batch = writeBatch(db);
@@ -233,7 +254,6 @@ export async function releaseLimboBooking(
     scheduleId: bookingId,
     clientId: clientId || undefined,
     startTimeIso: startDate.toISOString(),
-    otherSite: otherSite || undefined,
   };
 }
 
@@ -250,23 +270,18 @@ export async function releaseLimboClient(
   if (!entry.clientId) throw new Error("This entry names no client");
 
   // Setting a home studio decides who may read a client's clinical record, so
-  // it is never written onto a document that belongs to someone else. The
-  // webhook marks the ones it knows about; the read catches the rest.
-  const cid = String(entry.clientId);
-  const otherSite =
-    entry.crossSite?.clientSite ??
-    otherSiteOf(
-      (await getDoc(doc(db, "clients", cid))).data()?.homeStudioId,
-      entry.siteId ?? studio.mindbodySiteId,
-      studios,
-    );
-  if (otherSite) {
+  // it is written to THIS person's record (lib/mindbody-site.ts), never to a
+  // namesake's on the other site. The webhook created that record already;
+  // one that is missing is an error, not something to invent here.
+  const site = String(entry.siteId ?? studio.mindbodySiteId ?? "").trim();
+  const place = await placeClient(String(entry.clientId), site, studios);
+  if (place.create) {
     throw new Error(
-      `Journey's client ${cid} is a different person, whose home studio is on Mindbody site ${otherSite}. The two sites number their clients from the same range, so this event cannot be applied to them. Dismiss it; this person has no Journey record of their own yet.`,
+      `No Journey record for Mindbody client ${entry.clientId}${site ? ` on site ${site}` : ""} exists yet, so there is nothing to give a home studio. It is made the next time Mindbody sends this client, or when one of their bookings syncs.`,
     );
   }
 
-  await updateDoc(doc(db, "clients", String(entry.clientId)), {
+  await updateDoc(doc(db, "clients", place.docId), {
     homeStudioId: studio.id,
   });
   await updateDoc(doc(db, LIMBO_QUEUE, entry.id!), {

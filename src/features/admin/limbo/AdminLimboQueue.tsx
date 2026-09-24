@@ -134,11 +134,7 @@ export function AdminLimboQueue({ studios }: Props) {
         const result = await releaseLimboBooking(entry, studio, studios);
         setDone((d) => ({
           ...d,
-          [entry.id!]: `Released to ${studio.name}${
-            result.otherSite
-              ? ", unlinked: this Mindbody number belongs to a different person on site " + result.otherSite
-              : ""
-          } — ${
+          [entry.id!]: `Released to ${studio.name} — ${
             result.startTimeIso
               ? new Date(result.startTimeIso).toLocaleString("en-US", {
                   timeZone: studio.timezone || "America/New_York",
@@ -276,16 +272,6 @@ export function AdminLimboQueue({ studios }: Props) {
                   </AdminButton>
                 </div>
 
-                {entry.crossSite ? (
-                  // Nothing to release: Journey's client with this number is
-                  // someone else, and both buttons would write onto them.
-                  <AdminNotice tone="warn">
-                    A different person from Journey's client {entry.clientId}, whose
-                    home studio is on site {entry.crossSite.clientSite}. Nothing here
-                    can be applied until this person has a Journey record of their
-                    own. Dismiss it once you have read it.
-                  </AdminNotice>
-                ) : (
                 <div className="adm-limbo__act">
                   <div className="adm-limbo__pick">
                     <label className="adm-label" htmlFor={pickerId}>
@@ -331,7 +317,6 @@ export function AdminLimboQueue({ studios }: Props) {
                       : "Set home studio"}
                   </AdminButton>
                 </div>
-                )}
               </article>
             );
           })}

@@ -643,6 +643,13 @@ export interface Client {
   id?: string;
   mindbodyId?: string;
   mindbodyClientId?: string;
+  /**
+   * The Mindbody site `mindbodyClientId` belongs to. Both MSF sites number
+   * from 100000001, so a Mindbody id alone does not name a person; written on
+   * every record Mindbody creates from Sep 23 2026, and read by
+   * lib/mindbody-site.ts ahead of the home studio's site.
+   */
+  mindbodySiteId?: string;
   photoUrl?: string;
   /** MANDATORY: The studio where the client is billed and primarily trains */
   homeStudioId: string;
@@ -1374,13 +1381,6 @@ export interface LimboEntry {
   locationId: string | null;
   clientId: string | null;
   reason: string;
-  /**
-   * Written by the webhook when `clientId` already names a DIFFERENT person on
-   * the other Mindbody site (the collision finding, Sep 23 2026). The Limbo
-   * screen withholds Release / Set home studio on these: both would write
-   * onto that other person. See lib/mindbody-site.ts.
-   */
-  crossSite?: { eventSite: string; clientSite: string };
   summary?: {
     bookingId?: string;
     clientName?: string;
