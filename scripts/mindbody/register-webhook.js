@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 
 import { confirmProduction } from './production-guard.js';
 
-// --list only reads, so it does not need the production confirmation; every
-// other run changes a live subscription and does.
-if (!process.argv.includes('--list')) {
+// --list and --secret-only only read, so they do not need the production
+// confirmation; every other run changes a live subscription and does.
+if (!process.argv.includes('--list') && !process.argv.includes('--secret-only')) {
   confirmProduction({
     script: 'register-webhook.js',
     target: 'Mindbody webhook subscription -> production cloud function',
@@ -98,6 +98,13 @@ const argValue = (name) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const LIST_ONLY = args.includes('--list');
+/*
+ * --secret-only writes the signing secret of the subscription for this
+ * webhook URL to stdout and NOTHING else, so it can be piped straight into
+ * `firebase functions:secrets:set MINDBODY_WEBHOOK_SECRET --data-file -`
+ * without the secret ever appearing on a screen. Reads only.
+ */
+const SECRET_ONLY = args.includes('--secret-only');
 const SHOW_SECRET = args.includes('--show-secret');
 const SITE_ID = String(argValue('site') || '5746957').trim();
 
@@ -120,6 +127,20 @@ async function main() {
     process.exit(1);
   }
   const webhookUrl = 'https://us-central1-gen-lang-client-0731527386.cloudfunctions.net/mindbodyWebhook';
+
+  if (SECRET_ONLY) {
+    const res = await fetch('https://mb-api.mindbodyonline.com/push/api/v1/subscriptions', {
+      headers: { 'Api-Key': apiKey, 'SiteId': String(siteId) },
+    });
+    if (!res.ok) { console.error('Error listing subscriptions:', res.status); process.exit(1); }
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : data.items || data.Subscriptions || data.subscriptions || [];
+    const sub = list.find((s) => (s.WebhookUrl || s.webhookUrl) === webhookUrl);
+    const key = sub && (sub.MessageSignatureKey || sub.messageSignatureKey);
+    if (!key) { console.error('No subscription with a signing secret for this webhook URL.'); process.exit(1); }
+    process.stdout.write(String(key).trim());
+    return;
+  }
 
   console.log(`Starting Webhook Sync for Site ID: ${siteId}...`);
   console.log(`Events: ${EVENT_IDS.join(', ')}`);

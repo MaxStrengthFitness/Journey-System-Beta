@@ -46,7 +46,17 @@ Checked and **not** a problem: appointment numbers. Solon's run 3,070–25,059 a
 
 To undo: `git reset --hard restore/2026-09-23-before-client-identity` and push; the rehome script's backup in `backups/` holds every booking as it was.
 
-## Found on the way, not part of this
+Shipped Sep 23 by AJ: the app (phases 28–37), the rehome script (2 records made, 23 bookings moved, damage check **NOTHING CROSSED**) and the webhook deploy.
 
-- **About 600 past bookings are unlinked for reasons unrelated to the collision** — Solon and site 29068 alike, last written Aug 26 – Sep 1, before the mid-September sync fixes and outside the sync window now. `scripts/diagnose-schedule-links.ts` is the tool.
-- The same-person-at-both-sites question above.
+## Sep 24 — the follow-ups (branch `sep24-round`, shipped with `scripts/ship/ship-sep24.ps1`)
+
+- **Housekeeping.** The five untracked ship scripts and `docs/JOURNEY-BRIEFING.md` are committed; the three `.bundle` files (every commit in them already on `master`) and the superseded `DEMO-MODE-RUNBOOK.md` moved to `C:\Users\austi\Projects\journey-archive\2026-09-24`. 26 local branches already merged into `master` deleted (`git branch -d`, which refuses anything unmerged); `claude-experiment` is not merged and was left alone. `.claude/worktrees/` is ignored.
+- **"The same person at both sites" was a misreading — and a bigger find (phase 39).** Every booking of those seven people is at Solon. What they have is two Journey records: the canonical one and an older random-id record with the same Mindbody id and name and no home studio. Looking wider, **16 people** are like this, and for some the duplicate holds the training history — Heather Corlett 76 sessions, Deena Epstein 55 — so a trainer opening them from the schedule saw none of it. `scripts/merge-duplicate-client-records.ts` does the app's own merge (`mergeClient.ts`, from `reconcile.ts`'s list of what points at a client) with the Admin SDK, rebuilds the survivor's running totals from the whole history (`rollupFromHistory`), and tombstones the duplicate. Dry run: 16 found, 16 ready.
+- **The ~600 unlinked old bookings are NOT relinked.** All 675 are `Cancelled` rows at random ids from the old importer — most likely the pre-Sep-16 sweep that cancelled everything outside its window. Linking them would put 667 false cancellations on people's records, which the attendance watch and the Changes list read. Left alone; a cleanup of the rows themselves is a separate decision.
+- **The webhook (phase 40).** Its health record: last successful event **Aug 20**, a **signature failure on Sep 12**, nothing since — a signing-secret mismatch is the first suspect (after it, Mindbody stops delivering). `register-webhook.js --list` now runs without the production flag (it only reads), shows deactivation dates and a one-way fingerprint of each signing secret; `--secret-only` hands the secret straight to Firebase without it ever being shown. `ship-sep24.ps1 webhooks-check` compares the two; `webhooks-on` re-activates with the full event list (client, booking, contract, membership, staff) and syncs the secret if it differs. Site 29068 goes ahead only if it is the SAME subscription — the webhook holds one secret.
+- **The client-profile fixes** (eight commits from a background agent, then one more): the "never attempted" sentence; "No load yet" where "Not set up" meant no weight; Relay, not Planner; a Demo Mode client is only offered Demo Mode studios for cross-training (and a real studio id can no longer be written onto one); machine, studio, Now Bar, Next, session-bar and trainer names wrap instead of truncating; the grid key explains the lone dot (not reached) and the dashed ring (the set the stat quotes); Highest weight at equal load goes to more reps; the client's name once on Notes & Profile, not three times.
+
+## Still open
+
+- Whether to clean up the 675 cancelled legacy booking rows themselves.
+- Site 29068's webhook, if it turns out to be a separate subscription with its own secret.
