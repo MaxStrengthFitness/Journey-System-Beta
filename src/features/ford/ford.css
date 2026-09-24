@@ -313,6 +313,7 @@
   outline-offset: 1px;
 }
 .ford-icon-btn--on { color: var(--ford-soon); }
+.ford-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* A gesture in flight. */
 .ford-gesture {
@@ -341,6 +342,24 @@
   display: block;
   margin-top: 0.3rem;
   font-style: italic;
+  color: var(--ford-ink-muted);
+}
+
+/* A FORD read that did not come back (client codex, phase 1): refused for a
+   cross-train visitor, or failed. Unknown is never empty, so this stands in
+   for the empty state rather than beside it. Quiet on purpose — muted ink on
+   the tray surface, no alarm colour: nothing here is wrong with the client. */
+.ford-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--ford-border);
+  border-radius: var(--ford-radius-sm);
+  background: var(--ford-surface-2);
+  font-size: 0.875rem;
+  line-height: 1.45;
   color: var(--ford-ink-muted);
 }
 

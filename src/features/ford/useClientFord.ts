@@ -12,7 +12,6 @@ import {
   collectionGroup,
   query,
   where,
-  orderBy,
   limit,
   onSnapshot,
 } from "firebase/firestore";
@@ -20,11 +19,15 @@ import { db } from "../../firebase";
 import type { Client } from "../../types";
 import {
   adaptClientEvents,
+  fordStudioIdOf,
   groupByPillar,
   upcomingFord,
   type FordPillarBucket,
 } from "./ford-rollup";
 import { toDate, type FordEntry } from "./types";
+import { fordReadStatusOfError, type FordReadStatus } from "./read-status";
+
+export type { FordReadStatus } from "./read-status";
 
 /**
  * A client's whole personal history fits in one read. Twelve years of a
@@ -40,53 +43,99 @@ export interface UseClientFordResult {
   untagged: FordEntry[];
   /** Dated details from today forward, soonest first. */
   upcoming: ReturnType<typeof upcomingFord>;
+  /**
+   * Whether the details could be read (client codex, phase 1). Empty lists
+   * mean "nothing on file" ONLY when this is `ready`; `failed` and `denied`
+   * are unknown, and a screen says so instead of drawing its empty state.
+   * `entries` still carries the legacy `client.events` details either way —
+   * they come off the client document, which this reader already holds.
+   */
+  status: FordReadStatus;
+  /** `status === "loading"`. Kept for the screens that only ask this. */
   isLoading: boolean;
 }
 
+interface NativeRead {
+  /** Which client and studio this answer is for: `${clientId}|${studioId}`. */
+  key: string;
+  status: FordReadStatus;
+  rows: FordEntry[];
+}
+
+/** One empty array, so a not-yet-answered read does not re-memo every render. */
+const NO_ROWS: FordEntry[] = [];
+
+const byNewestFirst = (a: FordEntry, b: FordEntry) =>
+  (toDate(b.occurredAt)?.getTime() ?? 0) - (toDate(a.occurredAt)?.getTime() ?? 0);
+
+/**
+ * One client's FORD, live.
+ *
+ * `client` is required to READ, not only for the legacy adapter: the query
+ * names the client's studio (`fordStudioIdOf`), because the read rule tests
+ * `resource.data.studioId` and Firestore refuses any list it cannot prove is
+ * inside a studio the caller trains at. Until the client codex round this
+ * query named no studio, so it was refused for every role below franchise
+ * owner and every trainer saw an empty FORD. Until the client is known the
+ * hook waits (`loading`) rather than guess.
+ */
 export function useClientFord(args: {
   clientId: string | null;
   client: Client | null;
   enabled?: boolean;
 }): UseClientFordResult {
   const { clientId, client, enabled = true } = args;
-  const [native, setNative] = useState<FordEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(Boolean(clientId && enabled));
+  const studioId = fordStudioIdOf(client);
+  const clientKnown = Boolean(client);
+  const key = `${clientId ?? ""}|${studioId}`;
+  const [read, setRead] = useState<NativeRead>({ key: "", status: "loading", rows: [] });
 
   useEffect(() => {
-    if (!clientId || !enabled) {
-      setNative([]);
-      setIsLoading(false);
+    if (!clientId || !enabled || !clientKnown) return;
+    if (!studioId) {
+      // A client who names no studio has no FORD scope the rules would
+      // accept. That is not "nothing on file" — it is "can't tell".
+      setRead({ key, status: "failed", rows: [] });
       return;
     }
-    setIsLoading(true);
 
-    // Single-collection, single-field ordering — no composite index needed,
-    // which is why this hook works the moment the code ships rather than after
-    // an index deploy.
+    // Equality on studioId and nothing else: the automatic single-field index
+    // serves it, so this works the moment the code ships. Do NOT add
+    // orderBy("occurredAt") without first deploying the composite index
+    // ford(studioId asc, occurredAt desc) — until it builds, the query fails
+    // everywhere. Sorting happens here instead.
     const q = query(
       collection(db, "clients", clientId, "ford"),
-      orderBy("occurredAt", "desc"),
+      where("studioId", "==", studioId),
       limit(STREAM_LIMIT),
     );
 
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setNative(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as FordEntry),
-        );
-        setIsLoading(false);
+        const rows = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as object) }) as FordEntry)
+          .sort(byNewestFirst);
+        setRead({ key, status: "ready", rows });
       },
-      () => {
-        // A client with no details yet, or rules saying no. Either way the
-        // section renders its empty state rather than an error — there is
-        // nothing a trainer could do about it mid-session.
-        setNative([]);
-        setIsLoading(false);
+      (err) => {
+        // Unknown, never empty. No toast: a cross-train visitor is refused
+        // by design, and there is nothing a trainer could do about either
+        // case mid-session. The screen says which it was.
+        const status = fordReadStatusOfError(err);
+        if (status === "failed") {
+          console.warn("FORD could not be read", (err as { code?: string })?.code ?? err);
+        }
+        setRead({ key, status, rows: [] });
       },
     );
     return unsub;
-  }, [clientId, enabled]);
+  }, [clientId, studioId, enabled, clientKnown, key]);
+
+  // An answer for a different client (or before any answer) is no answer.
+  const current = read.key === key && enabled && clientKnown;
+  const status: FordReadStatus = current ? read.status : "loading";
+  const native = current ? read.rows : NO_ROWS;
 
   return useMemo(() => {
     const legacy = adaptClientEvents(client);
@@ -105,9 +154,10 @@ export function useClientFord(args: {
       buckets,
       untagged,
       upcoming: upcomingFord(entries),
-      isLoading,
+      status,
+      isLoading: status === "loading",
     };
-  }, [native, client, isLoading]);
+  }, [native, client, status]);
 }
 
 /* ------------------------------------------------------------------ */

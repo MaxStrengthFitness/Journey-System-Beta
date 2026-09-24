@@ -13,8 +13,11 @@
 
 import {
   collection,
+  getDoc,
   getDocs,
   query,
+  where,
+  limit,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -24,6 +27,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { handleFirestoreError, OperationType } from "../../lib/firestore-errors";
+import type { Client } from "../../types";
 import {
   type ClientFordSummary,
   type FordDraft,
@@ -32,7 +36,17 @@ import {
   type FordOpportunity,
   type FordPillar,
 } from "./types";
-import { summariseFord } from "./ford-rollup";
+import { fordStudioIdOf, summariseFord } from "./ford-rollup";
+
+/**
+ * The studio every FORD writer stamps and every per-client read filters on.
+ * Defined beside the rollup (pure, tested there); exported here because this
+ * is where a writer looks for it.
+ */
+export { fordStudioIdOf };
+
+/** Same cap as useClientFord's stream: a runaway guard, not a window. */
+const SUMMARY_READ_LIMIT = 500;
 
 export interface FordAuthor {
   /** The Auth uid. The rules pin authorId to it, same as the journal. */
@@ -104,7 +118,7 @@ export async function createFordEntry(
 
   try {
     const ref = await addDoc(fordCollection(clientId), payload);
-    void refreshFordSummary(clientId);
+    void refreshFordSummary(clientId, payload.studioId);
     return ref.id;
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, "ford");
@@ -284,12 +298,33 @@ export function setGestureStatus(
  * client list in the app being able to show "Anniversary in 12 days" without
  * touching the subcollection, and it is worth paying. Failures are swallowed:
  * a stale chip is cosmetic, and the next save fixes it.
+ *
+ * The read names the client's studio (client codex, phase 1). Unfiltered, the
+ * rules refused it for every role below franchise owner, so a trainer's save
+ * never refreshed the rollup — only an administrator's did. `studioId` is the
+ * stamp the detail was written with; the update paths do not have it, so it
+ * is read off the client document (one more read, on a path that is already
+ * fire-and-forget).
  */
 export async function refreshFordSummary(
   clientId: string,
+  studioId?: string,
 ): Promise<ClientFordSummary | null> {
   try {
-    const snap = await getDocs(query(fordCollection(clientId)));
+    let studio = studioId || "";
+    if (!studio) {
+      const client = await getDoc(doc(db, "clients", clientId));
+      studio = client.exists() ? fordStudioIdOf(client.data() as Client) : "";
+    }
+    // No studio, no scope the rules would accept: leave the cache alone.
+    if (!studio) return null;
+    const snap = await getDocs(
+      query(
+        fordCollection(clientId),
+        where("studioId", "==", studio),
+        limit(SUMMARY_READ_LIMIT),
+      ),
+    );
     const entries = snap.docs.map(
       (d) => ({ id: d.id, ...(d.data() as object) }) as FordEntry,
     );

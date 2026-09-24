@@ -36,7 +36,15 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     where: () => ({}),
     orderBy: () => ({}),
     limit: () => ({}),
-    onSnapshot: () => () => {},
+    // FORD answers with nothing on file, so the cue asks its question: since
+    // the client codex round (phase 1) the cue waits for FORD to answer
+    // rather than guessing while it loads. Every other stream stays silent.
+    onSnapshot: (q: any, next?: unknown) => {
+      if (typeof q?.__path === "string" && q.__path.endsWith("/ford") && typeof next === "function") {
+        next({ docs: [], size: 0, empty: true });
+      }
+      return () => {};
+    },
     getDocs: async () => ({ docs: [], size: 0 }),
     getDoc: async () => ({ exists: () => false, data: () => undefined }),
     addDoc: async (ref: any, data: any) => {

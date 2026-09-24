@@ -98,12 +98,54 @@ assignment — the opposite of the task board, where work is claimed.
 | `types.ts` | The enum, the document, the date helpers. **Read this first** |
 | `ford-write.ts` | Every write. All of them swallow their errors — a failed detail is a lost sentence; a hard failure mid-session is a lost client |
 | `ford-rollup.ts` | Pure functions over an array: the summary, grouping, upcoming dates, the `client.events` adapter |
-| `useClientFord.ts` | One client's details, and the studio-wide Delight queue |
+| `useClientFord.ts` | One client's details, and the studio-wide Delight queue. Reports `status`: `loading` · `ready` · `failed` · `denied` |
+| `read-status.ts` | What a FORD read that did not come back is, and the sentence a screen shows instead of its empty state |
 | `ford.tokens.css` | Colour. Pillars get identity, never status — see the note at the top of the file |
 | `ford.css` | Layout for all three surfaces |
-| `ford.test.ts` | The pure layer, 19 tests |
+| `ford.test.ts` | The pure layer |
+| `useClientFord.render.test.tsx` | The query's shape, the four read states, and every caller's wording when FORD could not be read |
 
 ## Things that will bite you
+
+- **Every per-client FORD query names the client's studio** (client codex,
+  Sep 24 2026). The read rule tests `resource.data.studioId`, and rules are
+  not filters: Firestore refuses a list it cannot prove stays inside a studio
+  the caller trains at, even when every document in it would pass one by
+  one. `useClientFord` listed `clients/{id}/ford` with no filter from the FORD
+  round (Sep 15) until then, so **every trainer below franchise owner saw an
+  empty FORD** — only administrators and franchise owners saw anything, and
+  AJ is an administrator, so nobody noticed. `refreshFordSummary` had the same
+  fault, so only an administrator's save ever refreshed the rollup. Both now
+  filter `where("studioId", "==", fordStudioIdOf(client))`, and **every
+  writer stamps that same `fordStudioIdOf(client)`** (home studio, then the
+  older `studioId`) — a detail stamped with any other studio would never come
+  back. `tests/firestore.rules.test.ts` → "FORD — who can read her life" pins
+  it.
+- **No `orderBy` on that query.** Equality alone is served by the automatic
+  index; `orderBy("occurredAt")` beside it needs the composite index
+  `ford(studioId asc, occurredAt desc)`, and until one is deployed the query
+  fails everywhere. The hook sorts on the client instead.
+- **A failed read is unknown, not empty.** `status` is `failed` (the
+  listener errored for a reason other than the rules, or the client names no
+  studio to read by) or `denied` (a cross-train visitor: they can read the
+  client document but not her FORD), and neither may be drawn as "Nothing
+  here yet". The Life section, the briefing cue, the Active Session sheet and
+  the post-session sweep each say "couldn't be read" or "kept by the client's
+  home studio" instead (`FORD_READ_NOTICE`, `fordReadNotice`). A visitor is
+  offered no capture, because the rules refuse that write too; a failed read
+  still offers one — a failed READ is no reason to refuse a WRITE. A client
+  with no studio gets its own sentence and no Add (`fordCanAdd`): a retry
+  cannot help, and the create rule refuses a detail stamped with no studio.
+- **Offline is not `failed`.** The app keeps a persistent cache
+  (`src/firebase.ts`), so an offline iPad's read answers from what it last
+  saw and comes back `ready` — empty if this iPad never opened the client's
+  FORD. Don't test the "couldn't be read" notice in airplane mode; make the
+  listener error instead (the render test does).
+- **`fordSummary.pinned` is FORD text on the client document**, which a
+  cross-train studio can read. Nothing outside this folder reads it. With the
+  filter fixed, trainers' saves now refresh it too. Whether to stop writing it
+  is waiting on AJ (client codex round); until he says so it is written as
+  before.
 
 - **Annual dates roll forward.** An anniversary recorded in 2019 reads "in 12
   days", never "seven years ago". `nextOccurrence()` does this; use it rather

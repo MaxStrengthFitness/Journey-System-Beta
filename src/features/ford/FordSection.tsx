@@ -27,7 +27,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Plus, CalendarClock, Inbox, Gift, Pin } from "lucide-react";
+import { Plus, CalendarClock, Inbox, Gift, Pin, Info } from "lucide-react";
 import type { Client, Machine } from "../../types";
 import {
   FORD_META,
@@ -38,10 +38,12 @@ import { useClientFord } from "./useClientFord";
 import {
   archiveFordEntry,
   createFordEntry,
+  fordStudioIdOf,
   tagFordEntry,
   updateFordEntry,
   type FordAuthor,
 } from "./ford-write";
+import { fordCanAdd, fordReadNotice } from "./read-status";
 import { FordDetailDialog, type FordDetailValues } from "./FordDetailDialog";
 import { FordMark, GestureChip, WhenChip, attribution, pillarPrompt } from "./ui";
 import "./ford.css";
@@ -54,12 +56,20 @@ export interface FordSectionProps {
 }
 
 export function FordSection({ client, author }: FordSectionProps) {
-  const studioId =
-    (client as any).homeStudioId || (client as any).studioId || "";
-  const { buckets, untagged, upcoming, isLoading } = useClientFord({
+  // The studio the read filters on is the studio a new detail is stamped
+  // with, so a detail saved here always comes back in the list.
+  const studioId = fordStudioIdOf(client);
+  const { buckets, untagged, upcoming, isLoading, status } = useClientFord({
     clientId: client.id,
     client,
   });
+  // "Nothing here yet" is a claim, and it is only true once FORD answered.
+  // Refused (a cross-train visitor) or failed reads say so instead.
+  const ready = status === "ready";
+  const notice = fordReadNotice(status, studioId);
+  // The database refuses a visitor's write, and one stamped with no studio,
+  // so don't offer either.
+  const canAdd = fordCanAdd(status, studioId);
 
   const [editing, setEditing] = useState<FordEntry | null>(null);
   const [adding, setAdding] = useState<FordPillar | null | "new">(null);
@@ -107,11 +117,19 @@ export function FordSection({ client, author }: FordSectionProps) {
           type="button"
           className="ford-btn ford-btn--primary"
           onClick={() => setAdding("new")}
+          disabled={!canAdd}
         >
           <Plus size={15} />
           Add a detail
         </button>
       </div>
+
+      {notice ? (
+        <p className="ford-notice" role="status" data-testid="ford-read-notice">
+          <Info size={16} aria-hidden className="shrink-0" />
+          <span>{notice}</span>
+        </p>
+      ) : null}
 
       {/* ---- 1. COMING UP ---- */}
       {upcoming.length > 0 ? (
@@ -203,6 +221,7 @@ export function FordSection({ client, author }: FordSectionProps) {
                   className="ford-icon-btn"
                   onClick={() => setAdding(bucket.pillar)}
                   aria-label={`Add a ${meta.label} detail`}
+                  disabled={!canAdd}
                 >
                   <Plus size={17} />
                 </button>
@@ -211,8 +230,16 @@ export function FordSection({ client, author }: FordSectionProps) {
               <div className="ford-pillar__body">
                 {empty ? (
                   <p className="ford-empty">
-                    {isLoading ? "Loading…" : `Nothing here yet.`}
-                    {!isLoading ? (
+                    {ready
+                      ? "Nothing here yet."
+                      : isLoading
+                        ? "Loading…"
+                        : status === "denied"
+                          ? "Kept by the home studio."
+                          : studioId
+                            ? "Not loaded."
+                            : "No home studio on file."}
+                    {ready ? (
                       <span className="ford-empty__prompt">
                         Try: “{pillarPrompt(bucket.pillar)}”
                       </span>
@@ -293,7 +320,7 @@ export function FordSection({ client, author }: FordSectionProps) {
         })}
       </div>
 
-      {total === 0 && untagged.length === 0 && !isLoading ? (
+      {total === 0 && untagged.length === 0 && ready ? (
         <p className="ford-empty">
           Nothing on {firstName} yet. The fastest way to fill this in is not
           this screen — it is the <strong>Remember this</strong> button on the

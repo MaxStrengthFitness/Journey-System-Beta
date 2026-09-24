@@ -17,6 +17,7 @@ import {
 } from "./types";
 import {
   adaptClientEvents,
+  fordStudioIdOf,
   groupByPillar,
   summariseFord,
   upcomingFord,
@@ -280,5 +281,33 @@ describe("adaptClientEvents", () => {
       client([{ id: "e1", date: "2026-11-05", title: "", type: "Vacation", priority: "Low" }]),
     );
     expect(out).toEqual([]);
+  });
+});
+
+describe("fordStudioIdOf", () => {
+  // The one studio a detail is stamped with and read back by (client codex,
+  // phase 1). The read rule tests resource.data.studioId, so a writer and the
+  // reader disagreeing here makes a saved detail invisible.
+  it("is the client's home studio, falling back to the older studioId", () => {
+    expect(fordStudioIdOf({ id: "c1", homeStudioId: "westlake" } as Client)).toBe("westlake");
+    expect(fordStudioIdOf({ id: "c1", homeStudioId: "", studioId: "solon" } as unknown as Client)).toBe("solon");
+    expect(
+      fordStudioIdOf({ id: "c1", homeStudioId: "westlake", studioId: "solon" } as unknown as Client),
+    ).toBe("westlake");
+  });
+
+  it("is empty, not a guess, when the client names no studio or is not known yet", () => {
+    expect(fordStudioIdOf({ id: "c1" } as Client)).toBe("");
+    expect(fordStudioIdOf(null)).toBe("");
+    expect(fordStudioIdOf(undefined)).toBe("");
+  });
+
+  it("is what the legacy adapter stamps, so a legacy detail sits in the same studio", () => {
+    const c = {
+      id: "c1",
+      homeStudioId: "westlake",
+      events: [{ id: "e1", date: "2026-11-05", title: "Anniversary", type: "Birthday/Anniversary", priority: "Low" }],
+    } as unknown as Client;
+    expect(adaptClientEvents(c)[0].studioId).toBe(fordStudioIdOf(c));
   });
 });

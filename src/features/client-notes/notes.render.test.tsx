@@ -15,6 +15,11 @@
  * `kind: "general"`; Heads up / Critical reveal "Matters until"; the To-file
  * tray files with one tap; the sheet's third tab mounts the Pulse quick-log
  * (stubbed here — its own render test covers it).
+ *
+ * Client codex (phase 1): the composer's FORD hand-off — on the Notes area
+ * and in the quick-note dialog — stamps the studio the FORD read filters on
+ * (`fordStudioIdOf`), so a client on the older `studioId` field still gets a
+ * detail the rules accept and the Life section reads back.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -70,6 +75,7 @@ import { ClientJournalTab } from "../../components/journal/ClientJournalTab";
 import { SessionJournalSidebar } from "../../components/journal/SessionJournalSidebar";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
 import { NoteSweep } from "./NoteSweep";
+import { QuickNoteDialog } from "./QuickNoteDialog";
 import { fileUnfiledEntry } from "./file-unfiled";
 import { isUnfiled, splitUnfiled } from "./note-catalog";
 import type { Client, WorkoutSession } from "../../types";
@@ -194,13 +200,13 @@ const journal: UseClientJournalResult = {
   capped: false,
 };
 
-function NotesArea({ onOpenFord }: { onOpenFord?: () => void }) {
+function NotesArea({ onOpenFord, who = client }: { onOpenFord?: () => void; who?: Client }) {
   return (
     <ClientJournalTab
       areas={["notes"]}
       journal={journal}
       clientId="c1"
-      client={client}
+      client={who}
       machines={[]}
       trainers={[]}
       authTrainer={trainer}
@@ -426,6 +432,37 @@ describe("the Notes catalog mounts", () => {
 
     await click(buttonByText(composer, "See everything in Life"));
     expect(onOpenFord).toHaveBeenCalledTimes(1);
+  });
+
+  it("stamps a FORD detail with the studio the FORD read filters on — the older studioId when there is no home studio", async () => {
+    // Before the client codex this stamped `homeStudioId || ""`, which the
+    // create rule refuses, and which the Life section could never read back.
+    const olderRecord = { id: "c1", studioId: "solon", firstName: "Judy", lastName: "Client" } as unknown as Client;
+    const host = await mount(<NotesArea who={olderRecord} />);
+    const composer = host.querySelector('[data-testid="note-composer"]')!;
+    await click(buttonByText(composer, "FORD / Life"));
+    const capture = composer.querySelector(".ford-capture")!;
+    await typeInto(capture.querySelector("textarea"), "Walks the dog every morning");
+    await click(buttonByText(capture, "Remember this"));
+    expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
+    expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "solon" });
+  });
+});
+
+describe("the quick note's FORD hand-off", () => {
+  it("stamps a FORD detail with the client's studio, the older studioId when there is no home studio", async () => {
+    const olderRecord = { id: "c1", studioId: "solon", firstName: "Judy", lastName: "Client" } as unknown as Client;
+    await mount(<QuickNoteDialog open onOpenChange={() => {}} client={olderRecord} machines={[]} authTrainer={trainer} />);
+    // The dialog renders in a portal on document.body.
+    const composer = document.body.querySelector('[data-testid="note-composer"]')!;
+    expect(composer).toBeTruthy();
+    await click(buttonByText(composer, "FORD / Life"));
+    const capture = composer.querySelector(".ford-capture")!;
+    await typeInto(capture.querySelector("textarea"), "Daughter starts college in the fall");
+    await click(buttonByText(capture, "Remember this"));
+    expect(writes.map((w) => w.path)).toEqual(["clients/c1/ford"]);
+    expect(writes[0].data).toMatchObject({ clientId: "c1", studioId: "solon", pillar: null });
+    expect(writes.some((w) => w.path === "journalEntries")).toBe(false);
   });
 });
 

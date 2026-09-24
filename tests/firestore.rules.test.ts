@@ -18,6 +18,8 @@ import {
   collectionGroup,
   query,
   where,
+  orderBy,
+  limit,
   arrayUnion,
   arrayRemove,
   deleteField,
@@ -2677,6 +2679,205 @@ describe("Firestore Security Rules", () => {
           isDemo: true,
         }),
       );
+    });
+  });
+
+  /* ================================================================== *
+   * FORD — WHO CAN READ HER LIFE (client codex, phase 1, Sep 24 2026)
+   *
+   * Written against the rules AS THEY ARE: the round changes no rule. The
+   * read rule tests resource.data.studioId, so a LIST is only allowed when
+   * the query itself pins the studio. useClientFord listed the client's FORD
+   * with no filter from Sep 15 until this round, which is why every trainer
+   * below franchise owner saw an empty FORD. The app now filters on the
+   * client's home studio (useClientFord.ts, `fordStudioIdOf`); these pin that
+   * the filtered query works for everyone who should read it, that the
+   * unfiltered one does not, and that a cross-train visitor — who CAN read
+   * the client document — cannot read their FORD.
+   * ================================================================== */
+  describe("FORD — who can read her life (client codex)", () => {
+    const as = (uid: string) =>
+      testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+
+    /** The app's exact query (useClientFord.ts): equality on studioId, a cap, no orderBy. */
+    const appQuery = (db: ReturnType<typeof as>, clientId = "clientA", studioId = "studioA") =>
+      query(collection(db, "clients", clientId, "ford"), where("studioId", "==", studioId), limit(500));
+
+    const person = (role: string, home: string, extra: Record<string, unknown> = {}) => ({
+      fullName: `${role} ${home}`,
+      initials: "XX",
+      role,
+      primaryHomeStudioId: home,
+      accessibleStudioIds: [home],
+      ...extra,
+    });
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "studios", "studioC"), { name: "Studio C" });
+        // Carol's home is studio A; she has approved cross-training at B.
+        await setDoc(doc(db, "clients", "clientA"), {
+          firstName: "Carol",
+          lastName: "Tester",
+          isActive: true,
+          remainingSessions: 10,
+          homeStudioId: "studioA",
+          approvedCrossTrainStudioIds: ["studioB"],
+        });
+        await setDoc(doc(db, "clients", "clientA", "ford", "f1"), {
+          clientId: "clientA",
+          studioId: "studioA",
+          pillar: "family",
+          body: "Wife is Karen.",
+          isPinned: true,
+          authorId: "trainerA",
+          isArchived: false,
+        });
+        await setDoc(doc(db, "trainers", "trainerC"), person("LifeTransformer", "studioC"));
+        // THE GRANT: helps run studio A, whatever their own home.
+        await setDoc(
+          doc(db, "trainers", "granted"),
+          person("LifeTransformer", "studioC", { managedStudioIds: ["studioA"] }),
+        );
+        // A guest pass at studio A.
+        await setDoc(
+          doc(db, "trainers", "guest"),
+          person("LifeTransformer", "studioC", { activeGuestStudioIds: ["studioA"] }),
+        );
+        await setDoc(doc(db, "trainers", "franchise"), person("FranchiseOwner", "studioC"));
+        await setDoc(doc(db, "trainers", "admin"), person("Admin", "studioC"));
+        // A Demo Mode client: every signed-in trainer has the run of it.
+        await setDoc(doc(db, "clients", "demo-client-x"), {
+          firstName: "Demo",
+          lastName: "Client",
+          isActive: true,
+          remainingSessions: 10,
+          homeStudioId: "demo-studio",
+          isDemo: true,
+        });
+        await setDoc(doc(db, "clients", "demo-client-x", "ford", "d1"), {
+          clientId: "demo-client-x",
+          studioId: "demo-studio",
+          pillar: null,
+          body: "Off to Italy in May",
+          authorId: "trainerA",
+          isArchived: false,
+        });
+      });
+    });
+
+    it("lets the home studio's trainer read a detail and list with the app's filtered query", async () => {
+      const db = as("trainerA");
+      await assertSucceeds(getDoc(doc(db, "clients", "clientA", "ford", "f1")));
+      await assertSucceeds(getDocs(appQuery(db)));
+    });
+
+    it("refuses the same trainer the list WITHOUT the studio filter — the bug this round fixed", async () => {
+      // Every document in the list is readable by trainerA one by one; the
+      // list is still refused, because rules are not filters: Firestore will
+      // not run a query it cannot prove stays inside a studio the caller
+      // trains at. This is why useClientFord must name the studio.
+      const db = as("trainerA");
+      await assertFails(getDocs(collection(db, "clients", "clientA", "ford")));
+      await assertFails(getDocs(query(collection(db, "clients", "clientA", "ford"), limit(500))));
+    });
+
+    it("counts the grant and a guest pass at the client's studio", async () => {
+      for (const uid of ["granted", "guest"]) {
+        const db = as(uid);
+        await assertSucceeds(getDoc(doc(db, "clients", "clientA", "ford", "f1")));
+        await assertSucceeds(getDocs(appQuery(db)));
+      }
+    });
+
+    it("lets a franchise owner and an administrator read it too", async () => {
+      for (const uid of ["franchise", "admin"]) {
+        const db = as(uid);
+        await assertSucceeds(getDoc(doc(db, "clients", "clientA", "ford", "f1")));
+        await assertSucceeds(getDocs(appQuery(db)));
+      }
+    });
+
+    it("refuses a cross-train visitor her FORD, although they can read her client record", async () => {
+      // trainerB works at studio B, which Carol approved for cross-training:
+      // the client document is theirs to read (so she is trainable there),
+      // her home life is not. This is why 'In one line' and every other FORD
+      // text stays off the client document.
+      const db = as("trainerB");
+      await assertSucceeds(getDoc(doc(db, "clients", "clientA")));
+      await assertFails(getDoc(doc(db, "clients", "clientA", "ford", "f1")));
+      await assertFails(getDocs(appQuery(db)));
+    });
+
+    it("refuses a trainer at a studio with no tie to her at all", async () => {
+      const db = as("trainerC");
+      await assertFails(getDoc(doc(db, "clients", "clientA", "ford", "f1")));
+      await assertFails(getDocs(appQuery(db)));
+    });
+
+    it("lets any trainer read a Demo Mode client's FORD with the same query", async () => {
+      const db = as("trainerB");
+      await assertSucceeds(getDocs(appQuery(db, "demo-client-x", "demo-studio")));
+    });
+  });
+
+  /* ================================================================== *
+   * BODY & PULSE READS (client codex, phase 1). Existing policy, pinned:
+   * the record reads a client's newest sessions from the journal's own
+   * listener (useClientJournal, `recentSessions`) and her InBody scans, and
+   * both are scoped by CLIENT, so an approved cross-train visitor reads them
+   * where they could not read her FORD.
+   * ================================================================== */
+  describe("Body & Pulse reads (client codex)", () => {
+    const as = (uid: string) =>
+      testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+
+    /** useClientJournal's sessions listener, exactly. */
+    const newestSessions = (db: ReturnType<typeof as>) =>
+      query(collection(db, "sessions"), where("clientId", "==", "clientA"), orderBy("date", "desc"), limit(40));
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "clients", "clientA"), {
+          firstName: "Carol",
+          lastName: "Tester",
+          isActive: true,
+          remainingSessions: 10,
+          homeStudioId: "studioA",
+          approvedCrossTrainStudioIds: ["studioB"],
+        });
+        await setDoc(doc(db, "sessions", "sA1"), {
+          clientId: "clientA",
+          hostedAtStudioId: "studioA",
+          trainerId: "trainerA",
+          date: "2026-09-01",
+        });
+        await setDoc(doc(db, "clients", "clientA", "inbodyScans", "scan1"), {
+          clientId: "clientA",
+          studioId: "studioA",
+          testedAt: "2026-09-02",
+        });
+        await setDoc(doc(db, "trainers", "trainerC"), {
+          fullName: "Trainer C",
+          initials: "TC",
+          role: "LifeTransformer",
+          primaryHomeStudioId: "studioC",
+          accessibleStudioIds: ["studioC"],
+        });
+      });
+    });
+
+    it("lets the home trainer and an approved cross-trainer list her 40 newest sessions, and nobody else", async () => {
+      await assertSucceeds(getDocs(newestSessions(as("trainerA"))));
+      await assertSucceeds(getDocs(newestSessions(as("trainerB"))));
+      await assertFails(getDocs(newestSessions(as("trainerC"))));
+    });
+
+    it("lets an approved cross-trainer read her InBody scans", async () => {
+      await assertSucceeds(getDocs(collection(as("trainerB"), "clients", "clientA", "inbodyScans")));
+      await assertFails(getDocs(collection(as("trainerC"), "clients", "clientA", "inbodyScans")));
     });
   });
 });

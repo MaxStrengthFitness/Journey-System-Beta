@@ -18,6 +18,28 @@ import {
   type FordPillar,
 } from "./types";
 
+/**
+ * The studio a client's FORD details are stamped with, and read by.
+ *
+ * The client's home studio, falling back to the older `studioId` field —
+ * the order `getStudioIdFromData` in firestore.rules uses, except that an
+ * EMPTY `homeStudioId` falls through to `studioId` here (the rules would
+ * take the ""). The FORD rules test the detail's own stamp, never the client
+ * document, so that difference cannot refuse anything.
+ *
+ * EVERY FORD writer stamps this and EVERY per-client FORD read filters on it
+ * (client codex, phase 1): the read rule tests `resource.data.studioId`, so
+ * a query without the filter is
+ * refused for everyone below franchise owner, and a detail stamped with any
+ * other studio is invisible to the filtered read. "" when the client names
+ * no studio at all; nothing can be written or read for such a client.
+ */
+export function fordStudioIdOf(client: Client | null | undefined): string {
+  if (!client) return "";
+  const c = client as Partial<Client> & { studioId?: string };
+  return c.homeStudioId || c.studioId || "";
+}
+
 /** How many pinned lines per pillar the rollup carries. Enough to glance at. */
 const PINNED_PER_PILLAR = 3;
 /** Pinned lines are truncated in the rollup — it is a chip, not the record. */
@@ -236,7 +258,7 @@ export function adaptClientEvents(client: Client | null | undefined): FordEntry[
     out.push({
       id: `legacy:clientEvents:${event.id}`,
       clientId: client.id,
-      studioId: (client as any).homeStudioId || (client as any).studioId || "",
+      studioId: fordStudioIdOf(client),
       pillar,
       body,
       subject: event.title || null,

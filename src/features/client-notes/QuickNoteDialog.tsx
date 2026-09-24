@@ -18,6 +18,7 @@ import type { Client, Machine, Trainer } from "../../types";
 import type { JournalDraft } from "../../types/journal";
 import { JournalComposer } from "../../components/journal/JournalComposer";
 import { clientDisplayName } from "../../lib/client-name";
+import { fordStudioIdOf } from "../ford/ford-write";
 
 export interface QuickNoteDialogProps {
   open: boolean;
@@ -42,9 +43,15 @@ export function QuickNoteDialog({ open, onOpenChange, client, machines, authTrai
   );
   const clientId = client.id ?? null;
   const studioId = client.homeStudioId || "";
+  // A FORD capture is stamped with the studio the FORD read filters on, so it
+  // comes back in the client's Life section (client codex, phase 1).
+  const fordStudioId = fordStudioIdOf(client);
   const ford = useMemo(
-    () => (clientId && author.id !== "unknown" ? { clientId, studioId, author, sessionId: null, origin: "profile" as const } : null),
-    [clientId, studioId, author],
+    () =>
+      clientId && author.id !== "unknown"
+        ? { clientId, studioId: fordStudioId, author, sessionId: null, origin: "profile" as const }
+        : null,
+    [clientId, fordStudioId, author],
   );
 
   const submit = async (draft: JournalDraft) => {
