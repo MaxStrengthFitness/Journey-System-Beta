@@ -196,11 +196,9 @@ const LearningView = lazy(() =>
 );
 import { LoginScreen } from "./components/LoginScreen";
 import { ThemeToggle } from "./components/ThemeToggle";
-import {
-  isOwner,
-  isStudioLeader,
-} from "./lib/permissions";
-import { hasRunOfDemo } from "./features/demo-mode/access";
+import { isOwner } from "./lib/permissions";
+import { mayOpenOperations } from "./features/admin/operations-access";
+import { useGuardedPlace } from "./features/admin/useGuardedPlace";
 import { isDemoStudioId } from "./features/demo-mode/is-demo";
 import { DemoBanner } from "./features/demo-mode/DemoBanner";
 
@@ -358,8 +356,27 @@ export default function AppContent({
     availableStudios,
   ]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
-  const [currentView, setCurrentView] = useState<View>("clients");
+  /*
+   * Who may open Operations: studio leaders and above, and — inside Demo Mode
+   * — everyone. "Full access" is the whole point of the demo studio (AJ, Sep
+   * 20 2026), and the Firestore rules agree, so a trainer practising there can
+   * open the half of the app their own role keeps shut without the database
+   * refusing a single thing they try. Operations scopes itself to the one
+   * realm the app is standing in, so this can never show a real studio's
+   * numbers — see features/admin/scope.ts.
+   *
+   * The menu offers Operations on this, AND the screen itself is held to it
+   * (sign-out round, Sep 24 2026): the view and the app mode below can never
+   * be Operations, or the Admins dashboard, for someone who may not open it —
+   * whether they arrived by the menu, a sign-out that left the last person's
+   * screen, or a studio switch out of Demo Mode. They are sent to the Hub.
+   * See features/admin/operations-access.ts.
+   */
+  const canOpenOperations = mayOpenOperations(authTrainer, activeStudioId);
+  const { currentView, setCurrentView, appMode, setAppMode } = useGuardedPlace({
+    operations: canOpenOperations,
+    admins: isAdmin,
+  });
   /*
    * LEARNING LINKS (features/learning/ref.ts). Any page in Learning — a
    * machine, an Academy page, a studio's own page — can be opened from
@@ -1383,19 +1400,8 @@ export default function AppContent({
     afterOverlayClose(go);
   };
 
-  /*
-   * Who is offered Operations from the trainer menu: studio leaders and above,
-   * and — inside Demo Mode — everyone. "Full access" is the whole point of the
-   * demo studio (AJ, Sep 20 2026), and the Firestore rules agree, so a trainer
-   * practising there can open the half of the app their own role keeps shut
-   * without the database refusing a single thing they try.
-   *
-   * Operations scopes itself to the one realm the app is standing in, so this
-   * can never show a real studio's numbers — see features/admin/scope.ts.
-   */
-  const canOpenOperations =
-    isStudioLeader(authTrainer) || hasRunOfDemo(authTrainer, activeStudioId);
-
+  // Who is offered Operations from this menu: `canOpenOperations`, the same
+  // test the screen itself is held to (see useGuardedPlace, near the top).
   const headerTrainerDropdown = authTrainer ? (
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">

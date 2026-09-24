@@ -19,6 +19,8 @@ import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperationsScope } from "./scope-context";
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
+import { mayOpenOperations } from "./operations-access";
+import { AdminNotice } from "./primitives";
 
 interface Props {
   authTrainer: Trainer;
@@ -68,6 +70,25 @@ interface Props {
  * provider needs the active-studio context, so the shell is a child of it.
  */
 export function AdminDashboardView(props: Props) {
+  /*
+   * The shell holds itself to the same rule as the menu and the route
+   * (sign-out round, Sep 24 2026): studio leaders and above, or anyone inside
+   * Demo Mode. AppContent already sends everyone else to the Hub; this is so
+   * no other door — a link, a future screen — can open it for them, and so
+   * none of the nine tabs starts reading a studio it should not.
+   */
+  if (!mayOpenOperations(props.authTrainer, props.activeStudioId ?? null)) {
+    return (
+      <div className="adm adm-shell" data-testid="operations-closed">
+        <div className="adm-shell__main">
+          <AdminNotice tone="warn">
+            Operations is for a studio's leaders. Everything a trainer needs is on the Hub, a client's profile and My Studio — and anyone can try
+            Operations in Demo Mode.
+          </AdminNotice>
+        </div>
+      </div>
+    );
+  }
   return (
     <OperationsScopeProvider
       authTrainer={props.authTrainer}
