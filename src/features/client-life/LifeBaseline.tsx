@@ -6,6 +6,7 @@ import { ChipPicks, PickGroup } from "./controls";
 import {
   ACTIVITY_LEVELS,
   FITNESS_BACKGROUNDS,
+  JOB_TITLE_MAX,
   OCCUPATION_SUGGESTIONS,
   PEDIGREE_LEVELS,
   RECREATION_CHOICES,
@@ -44,9 +45,6 @@ export interface LifeBaselineProps {
 function pick<K extends keyof Client>(formData: Partial<Client>, client: Client, key: K): Client[K] {
   return (key in formData ? formData[key] : client[key]) as Client[K];
 }
-
-/** The longest job title the box takes. */
-export const JOB_TITLE_MAX = 80;
 
 const STATUS_OPTIONS = [
   { value: "working", label: "Working" },

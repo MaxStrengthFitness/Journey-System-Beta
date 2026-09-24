@@ -6,7 +6,7 @@
  * check itself. They would have drifted, and a page offering an editor the
  * database refuses is how a trainer loses a paragraph of typing. So there is
  * ONE: `codexAccess`, worked out once by the shell and handed to every page
- * as props (`canEdit`, `fordReadable`).
+ * as props (`canEdit`, `fordReadable`, `fordWritable`).
  *
  *   canEdit       The clients/{id} update rule: an administrator, or anyone
  *                 who trains at or leads the client's HOME studio (the grant
@@ -20,11 +20,21 @@
  *                 A cross-train visitor is refused FORD by the database, so
  *                 the tab never opens a FORD listener for them (it would only
  *                 fail) and says whose record it is instead.
+ *   fordWritable  The FORD CREATE rule (`isTrainerOfStudio(studioId)`, the
+ *                 detail stamped with her home studio): anyone who trains at
+ *                 or leads that studio, the grant and Demo Mode included.
+ *                 NOT an administrator or franchise owner who works
+ *                 elsewhere — the create rule has no such clause, so they
+ *                 read FORD and edit the record but are refused a new
+ *                 detail (client codex, phase 17: the intake card offers
+ *                 its FORD tap only on this).
  *
  * Pure: no React, no Firestore. access.test.ts holds it to the rules.
  */
 import type { Studio, Trainer } from "../../types";
 import { canRecordInBody } from "../inbody/access";
+import { leadsStudio, worksAt } from "../renewals/permissions";
+import { hasRunOfDemo } from "../demo-mode/access";
 import { FRANCHISE_ROLES } from "../../lib/staff-access";
 
 export interface CodexAccess {
@@ -32,6 +42,8 @@ export interface CodexAccess {
   canEdit: boolean;
   /** May read the client's FORD (clients/{id}/ford). */
   fordReadable: boolean;
+  /** May add a FORD detail for her (the create rule: trains at or leads her home studio). */
+  fordWritable: boolean;
   /** The studio the record belongs to: `homeStudioId`, else the older `studioId`. */
   homeStudioId: string | null;
   /** That studio's name, or null while the studios are not loaded (never a guess). */
@@ -61,10 +73,15 @@ export function codexAccess(
   const canEdit = canRecordInBody(trainer ?? null, homeStudioId);
   const role = typeof trainer?.role === "string" ? trainer.role : "";
   const fordReadable = canEdit || (Boolean(trainer) && FRANCHISE_ROLES.has(role));
+  // The FORD create rule has no administrator or franchise clause: only the
+  // studio's own people (isTrainerOfStudio), mirrored here.
+  const fordWritable =
+    worksAt(trainer, homeStudioId) || leadsStudio(trainer, homeStudioId) || hasRunOfDemo(trainer, homeStudioId);
   const name = homeStudioId ? (studios ?? []).find((s) => s.id === homeStudioId)?.name?.trim() : "";
   return {
     canEdit,
     fordReadable,
+    fordWritable,
     homeStudioId,
     homeStudioName: name ? name : null,
   };

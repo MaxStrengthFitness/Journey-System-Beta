@@ -24,11 +24,11 @@
  */
 import { useState, type ReactNode } from "react";
 import { Activity, Plus } from "lucide-react";
-import { Btn, EditButton, FordMark, anchorProps, cls, curly, inTime } from "../../client-codex/kit";
+import { Btn, EditButton, FordMark, anchorProps, cap, cls, curly, inTime } from "../../client-codex/kit";
 import { FORD_META, GESTURE_STATUS_LABEL, shortDate, type FordEntry, type FordPillar } from "../types";
 import { attribution } from "../ui";
 import { hasOpenFollowUp, normaliseFollowUp } from "../ask-next";
-import { detailWhen, olderNoteMeta, type PillarItem, type PillarList } from "../page-model";
+import { detailWhen, olderNoteMeta, provenanceOf, type PillarItem, type PillarList } from "../page-model";
 import type { PulseLink } from "../pulse-links";
 import type { NoteThread } from "../../client-notes/threads";
 
@@ -51,9 +51,18 @@ function followUpMark(entry: FordEntry, askingId: string | null): string | null 
   return `${FOLLOW_UP_MARK}: ${curly(normaliseFollowUp(entry.followUp))}`;
 }
 
-/** "Jess Moreno · Mar 11 · in 5 weeks · Idea: a good-luck card · follow up next time: “…”". */
+/**
+ * "Jess Moreno · Mar 11 · in 5 weeks · Idea: a good-luck card · follow up next
+ * time: “…”". A detail copied in from Mindbody's account notes says so in
+ * place of the bare name — "From the Mindbody account notes, added by AJ ·
+ * Mar 11", capitalised because it leads the line — so her sign-up words
+ * never read as something a trainer heard.
+ */
 function DetailMeta({ entry, now, followUp }: { entry: FordEntry; now: Date; followUp: string | null }) {
-  const who = entry.isLegacy ? attribution(entry) : [entry.authorName?.trim(), shortDate(entry.occurredAt, now)].filter(Boolean).join(" · ");
+  const source = provenanceOf(entry);
+  const who = entry.isLegacy
+    ? attribution(entry)
+    : [source ? cap(source) : entry.authorName?.trim(), shortDate(entry.occurredAt, now)].filter(Boolean).join(" · ");
   const when = detailWhen(entry, now);
   const opp = entry.opportunity;
   return (
@@ -202,7 +211,10 @@ export function PillarCard({
         {list.pinned.length > 0 ? (
           <ul className="fordpg-facts">
             {list.pinned.map((entry) => {
-              const words = followUpMark(entry, askingId);
+              // A standing fact is its words alone — except where they came
+              // from, when that was not a trainer (Mindbody's account notes),
+              // and a follow-up Ask next is not showing.
+              const words = [provenanceOf(entry), followUpMark(entry, askingId)].filter(Boolean).join(" · ");
               const mark = words ? <span className="fordpg-fact__mark"> · {words}</span> : null;
               return (
                 <li key={entry.id}>

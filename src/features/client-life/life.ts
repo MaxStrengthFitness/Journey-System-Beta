@@ -121,10 +121,36 @@ export const OCCUPATION_SUGGESTIONS: readonly string[] = OCCUPATIONS.map((o) => 
   (t) => !isRetirementTitle(t),
 );
 
-/** "Retired — was seated / desk (Software Developer / IT)". */
+/** The longest job title the Work editor's box takes (and the intake matcher offers). */
+export const JOB_TITLE_MAX = 80;
+
+/**
+ * The old list's two entries that were ONLY a retirement status — "Retired
+ * (Active Lifestyle)", "Retired (Sedentary Lifestyle)" — and say nothing
+ * about the job itself.
+ */
+function isStatusOnlyTitle(title: string): boolean {
+  const t = title.trim().toLowerCase();
+  return OCCUPATIONS.some((o) => isRetirementTitle(o.title) && o.title.toLowerCase() === t);
+}
+
+/**
+ * "Retired — was seated / desk (Software Developer / IT)".
+ *
+ * A job title that is itself a retirement — "Retired dental hygienist.", as a
+ * coach may type it or as Mindbody's intake notes have it (the Account page's
+ * intake matcher copies an "Occ:" line in verbatim, client codex phase 17) —
+ * IS the sentence, kept as written: dropping it as a status read "Work not
+ * recorded yet" about a client whose work is on the record. Only the old
+ * list's two status entries say nothing about the work.
+ */
 export function workSentence(client: Pick<Client, "occupation" | "isRetired"> & { workProfile?: string | null }): string {
   const profile = workProfileOf(client);
-  const title = isRetirementTitle(client.occupation) ? "" : (client.occupation || "").trim();
+  const typed = (client.occupation || "").trim();
+  if (isRetirementTitle(typed) && !isStatusOnlyTitle(typed)) {
+    return profile ? `${typed} — was ${profile.label.toLowerCase()}` : typed;
+  }
+  const title = isRetirementTitle(typed) ? "" : typed;
   const what = [profile?.label.toLowerCase(), title ? `(${title})` : ""].filter(Boolean).join(" ");
   if (client.isRetired) return what ? `Retired — was ${what}` : "Retired";
   return what ? what.charAt(0).toUpperCase() + what.slice(1) : "Work not recorded yet";

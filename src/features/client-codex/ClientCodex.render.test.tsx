@@ -813,6 +813,62 @@ describe("ClientCodex — In one line (phase 11)", () => {
   });
 });
 
+describe("ClientCodex — the intake matcher (phase 17)", () => {
+  const NOTES = "ACTIVITY: Pickleball 2x/wk, gardening.\nGOALS: Keep up w/ grandkids. Camino!\nMED: R TKA Mar 2024.";
+  const notesCard = (host: HTMLElement) => panel(host, "account").querySelector<HTMLElement>("#account-mindbody-notes")!;
+
+  it("adds an Activity line to FORD once, stamped as FORD's one stream reads it, and stages the medical line", async () => {
+    fake.rows["clients/c1/ford"] = [];
+    const host = await mount(baseClient({ mindbodyNotes: NOTES }), homeTrainer, "account");
+    await click(buttonIn(notesCard(host), "Add to Recreation"));
+    const adds = fake.writes.filter((w) => w.op === "add" && w.path === "clients/c1/ford");
+    expect(adds).toHaveLength(1);
+    expect(adds[0].data).toMatchObject({
+      clientId: "c1",
+      studioId: "s1",
+      authorId: "uid-ann",
+      pillar: "recreation",
+      body: "Pickleball 2x/wk, gardening.",
+      isPinned: true,
+      origin: "mindbody_intake",
+    });
+    expect(notesCard(host).textContent).toContain("Added to Recreation.");
+    // Still the tab's ONE FORD listener: the card opened nothing of its own.
+    expect(liveOn("clients/c1/ford")).toBe(1);
+
+    // A record field is staged for the Save bar, never written by the tap.
+    await click(buttonIn(notesCard(host), "Add as medical history"));
+    expect(fake.writes.some((w) => w.data && "medicalHistory" in w.data)).toBe(false);
+    expect(saveBar(host)?.textContent).toContain("Watch-outs");
+  });
+
+  it("shows the Goals line under her why on Goals & Focus, read only", async () => {
+    const host = await mount(baseClient({ mindbodyNotes: NOTES }), homeTrainer, "goals");
+    const why = panel(host, "goals").querySelector<HTMLElement>("#goals-why")!;
+    expect(why.textContent).toContain("At sign-up (Mindbody notes)");
+    expect(why.textContent).toContain("“Keep up w/ grandkids. Camino!”");
+    expect(buttonIn(why, "Use as her why")).toBeUndefined();
+  });
+
+  it("offers a cross-train reader no tap, and says FORD is the home studio's", async () => {
+    const host = await mount(baseClient({ mindbodyNotes: NOTES }), crossTrainer, "account");
+    expect(notesCard(host).textContent).toContain("FORD is kept by her home studio");
+    for (const text of ["Add to Recreation", "Add as medical history", "Use as her why"]) {
+      expect(buttonIn(notesCard(host), text), text).toBeUndefined();
+    }
+    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
+  });
+
+  it("offers an administrator who works elsewhere no FORD add — the create rule refuses them — but the record's own fields", async () => {
+    fake.rows["clients/c1/ford"] = [];
+    const founder = { ...crossTrainer, id: "t-aj", fullName: "AJ Founder", role: "Founder" } as Trainer;
+    const host = await mount(baseClient({ mindbodyNotes: NOTES }), founder, "account");
+    expect(notesCard(host).textContent).toContain("Only a trainer at her home studio can add a FORD detail");
+    expect(buttonIn(notesCard(host), "Add to Recreation")).toBeUndefined();
+    expect(buttonIn(notesCard(host), "Add as medical history")).toBeDefined();
+  });
+});
+
 describe("ClientCodex — the Story (phase 15)", () => {
   const migrated = () =>
     baseClient({

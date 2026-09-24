@@ -9,6 +9,8 @@ import {
   fordSubnavLine,
   gesturesForClient,
   olderNoteMeta,
+  ORIGIN_WORDS,
+  provenanceOf,
   pillarItems,
   type PillarItem,
 } from "./page-model";
@@ -300,5 +302,19 @@ describe("fordSubnavLine", () => {
 
   it("says nothing it cannot know", () => {
     expect(fordSubnavLine({ comingUp: [], untagged: 0, count: null })).toBeNull();
+  });
+});
+
+describe("provenanceOf — where a detail's words came from (client codex, phase 17)", () => {
+  it("names Mindbody's account notes and who added the line; nothing for a detail a trainer caught", () => {
+    expect(provenanceOf({ origin: "mindbody_intake", authorName: "AJ Jurgens" })).toBe(
+      "from the Mindbody account notes, added by AJ Jurgens",
+    );
+    expect(provenanceOf({ origin: "mindbody_intake", authorName: "  " })).toBe("from the Mindbody account notes");
+    for (const origin of ["in_session", "post_session", "briefing", "profile", "legacy"] as const) {
+      expect(provenanceOf({ origin, authorName: "Jess" }), origin).toBeNull();
+    }
+    // The tray says "{words} by {who}, {when}": the trainer added it, Mindbody held the words.
+    expect(ORIGIN_WORDS.mindbody_intake).toBe("Added from the Mindbody account notes");
   });
 });

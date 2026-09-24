@@ -12,22 +12,38 @@
  *     nickname is staged on the form for the Save bar;
  *   - an unlinked client's card has an Edit that opens her identity; a
  *     linked client's has none;
- *   - Mindbody's account notes show verbatim, and say why when there are none;
+ *   - Mindbody's account notes show line by line, verbatim, and say why when
+ *     there are none;
+ *   - the intake matcher (phase 17): each line says where it belongs; an
+ *     Activity line is ONE FORD detail however fast it is tapped, stamped
+ *     with the home studio, the Auth uid and `mindbody_intake`; Occ, Goals
+ *     and Med are staged on the form for the Save bar (the medical line added
+ *     to the history), never written; nothing is offered while FORD is
+ *     unread, or to a reader who may not edit;
  *   - a reader who may not edit gets every fact and no button that edits;
  *   - the page's anchors, its neighbours, and Next reading "Done";
  *   - the pronoun, not the client's name, in the page's own words.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client, Studio } from "../../types";
+import type { FordEntry } from "../ford/types";
+import type { CodexFordStatus } from "../client-codex/codex-data";
+
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const fordWrite = vi.hoisted(() => ({ createFordEntry: vi.fn() }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-aj" } } }));
 vi.mock("../../contexts/ToastContext", () => ({
-  useToast: () => ({ success: () => {}, error: () => {}, info: () => {}, warning: () => {}, toast: () => {} }),
+  useToast: () => ({ success: toast.success, error: toast.error, info: () => {}, warning: () => {}, toast: () => {} }),
 }));
 vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({ activeStudioId: "westlake", activeStudio: null }),
+}));
+vi.mock("../ford/ford-write", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../ford/ford-write")>()),
+  createFordEntry: fordWrite.createFordEntry,
 }));
 
 import { AccountPage, type AccountPageProps } from "./AccountPage";
@@ -84,18 +100,26 @@ const sam = (over: Partial<Client> = {}): Client =>
 
 type Probe = { form?: RecordForm };
 
+const FORD_AUTHOR = { id: "uid-aj", initials: "AJ", fullName: "AJ Jurgens" };
+
 function Harness({
   c,
   probe = {},
   canEdit = true,
   go = () => {},
   onOpenMigrationHub = () => {},
+  fordStatus = "ready",
+  fordEntries = [],
+  fordCanAdd = true,
 }: {
   c: Client;
   probe?: Probe;
   canEdit?: boolean;
   go?: AccountPageProps["go"];
   onOpenMigrationHub?: () => void;
+  fordStatus?: CodexFordStatus;
+  fordEntries?: FordEntry[];
+  fordCanAdd?: boolean;
 }) {
   const form = useRecordForm({ client: c, trainerId: "t-aj", canEdit, homeStudioName: "Westlake" });
   probe.form = form;
@@ -108,6 +132,8 @@ function Harness({
           canEdit={canEdit}
           studios={studios}
           author={{ id: "uid-aj", name: "AJ" }}
+          ford={{ status: fordStatus, entries: fordEntries, canAdd: fordCanAdd }}
+          fordAuthor={FORD_AUTHOR}
           coverage="complete"
           pronouns={pronounsOf(c)}
           today={TODAY}
@@ -132,6 +158,13 @@ async function mount(ui: React.ReactNode) {
   mounted.push({ root, host });
   return host;
 }
+
+beforeEach(() => {
+  toast.success.mockReset();
+  toast.error.mockReset();
+  fordWrite.createFordEntry.mockReset();
+  fordWrite.createFordEntry.mockResolvedValue("f-new");
+});
 
 afterEach(async () => {
   for (const m of mounted) {
@@ -247,13 +280,30 @@ describe("AccountPage — the ID card", () => {
   });
 });
 
+const MOCKUP_NOTES =
+  "OCC: Retired dental hygienist.\nMED: R TKA Mar 2024. BP managed w/ meds.\nACTIVITY: Pickleball 2x/wk, gardening.\nGOALS: Keep up w/ grandkids. Camino!\nPmt: autopay";
+
+const notesCard = (host: HTMLElement) => host.querySelector<HTMLElement>("#account-mindbody-notes")!;
+const rows = (host: HTMLElement) => Array.from(notesCard(host).querySelectorAll<HTMLElement>(".cadm-intake__row"));
+const row = (host: HTMLElement, label: string) =>
+  rows(host).find((r) => r.querySelector(".cadm-intake__label")?.textContent === label)!;
+/** A line whose label the matcher does not know has no label of its own: it is found by its words, as typed. */
+const rowByText = (host: HTMLElement, text: string) =>
+  rows(host).find((r) => r.querySelector(".cadm-intake__text")?.textContent === text)!;
+const status = (r: HTMLElement) => r.querySelector(".cadm-intake__status")?.textContent ?? "";
+
 describe("AccountPage — Mindbody's account notes", () => {
-  it("shows them verbatim, with their own line breaks", async () => {
-    const host = await mount(<Harness c={carol()} />);
-    const notes = host.querySelector<HTMLElement>("#account-mindbody-notes")!;
-    expect(notes.querySelector(".cadm-notes")?.textContent).toBe("OCC: Retired dental hygienist.\nMED: R TKA Mar 2024.");
-    expect(notes.textContent).toContain("edit in Mindbody");
-    expect(notes.textContent).toContain("The first 1,000 characters of her Mindbody account notes");
+  it("shows them line by line, the label as written and the words verbatim", async () => {
+    const host = await mount(<Harness c={carol({ mindbodyNotes: "OCC: Retired dental hygienist.\nMED: R TKA Mar 2024.\nwith a second line" })} />);
+    const card = notesCard(host);
+    expect(rows(host).map((r) => [r.querySelector(".cadm-intake__label")?.textContent, r.querySelector(".cadm-intake__text")?.textContent])).toEqual([
+      ["OCC", "Retired dental hygienist."],
+      // A line with no label goes on with the one above it, its own break kept.
+      ["MED", "R TKA Mar 2024.\nwith a second line"],
+    ]);
+    expect(card.textContent).toContain("edit in Mindbody");
+    expect(card.textContent).toContain("The first 1,000 characters of her Mindbody account notes");
+    expect(card.textContent).toContain("Nothing is copied on its own");
   });
 
   it("says why there are none", async () => {
@@ -265,6 +315,183 @@ describe("AccountPage — Mindbody's account notes", () => {
     host = await mount(<Harness c={sam()} />);
     expect(host.querySelector("#account-mindbody-notes")).toBeNull();
     expect(host.querySelector(".cadm-row--contact")).toBeNull();
+  });
+});
+
+describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
+  it("says where each line belongs, and offers one tap for each on an empty record", async () => {
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} />);
+    const to = (label: string) => row(host, label).querySelector(".cadm-intake__to")?.textContent;
+    expect([to("OCC"), to("MED"), to("ACTIVITY"), to("GOALS")]).toEqual(["Occupation", "Body", "Recreation", "Her why"]);
+    expect(status(row(host, "OCC"))).toBe("No job title on her record yet.");
+    expect(status(row(host, "MED"))).toBe("Nothing in Body's watch-outs yet.");
+    expect(status(row(host, "ACTIVITY"))).toBe("Nothing in Recreation yet.");
+    expect(status(row(host, "GOALS"))).toBe("Her why isn't written yet.");
+    expect(buttonByText(row(host, "OCC"), "Add to Occupation")).toBeDefined();
+    expect(buttonByText(row(host, "MED"), "Add as medical history")).toBeDefined();
+    expect(buttonByText(row(host, "ACTIVITY"), "Add to Recreation")).toBeDefined();
+    expect(buttonByText(row(host, "GOALS"), "Use as her why")).toBeDefined();
+    // A line it does not know is shown exactly as typed, label and all, with
+    // nothing offered and nowhere to go.
+    const pmt = rowByText(host, "Pmt: autopay");
+    expect(pmt.querySelector(".cadm-intake__label")).toBeNull();
+    expect(pmt.querySelector(".cadm-intake__to")).toBeNull();
+    expect(pmt.querySelectorAll("button")).toHaveLength(0);
+    // Nothing was copied anywhere by drawing the card.
+    expect(fordWrite.createFordEntry).not.toHaveBeenCalled();
+  });
+
+  it("adds an Activity line as ONE pinned FORD Recreation detail, however fast it is tapped", async () => {
+    let resolve: (id: string | null) => void = () => {};
+    fordWrite.createFordEntry.mockImplementation(() => new Promise<string | null>((r) => (resolve = r)));
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} />);
+    const add = buttonByText(row(host, "ACTIVITY"), "Add to Recreation")!;
+    await act(async () => {
+      add.click();
+      add.click();
+    });
+    expect(fordWrite.createFordEntry).toHaveBeenCalledTimes(1);
+    expect(fordWrite.createFordEntry).toHaveBeenCalledWith("100004418", "westlake", FORD_AUTHOR, {
+      pillar: "recreation",
+      body: "Pickleball 2x/wk, gardening.",
+      isPinned: true,
+      origin: "mindbody_intake",
+    });
+    // Busy: every tap on the card waits for the first to answer.
+    expect(buttonByText(row(host, "ACTIVITY"), "Adding")?.disabled).toBe(true);
+    expect(buttonByText(row(host, "OCC"), "Add to Occupation")?.disabled).toBe(true);
+    await click(buttonByText(row(host, "ACTIVITY"), "Adding"));
+    expect(fordWrite.createFordEntry).toHaveBeenCalledTimes(1);
+    await act(async () => resolve("f-new"));
+    expect(status(row(host, "ACTIVITY"))).toBe("Added to Recreation.");
+    expect(buttonByText(row(host, "ACTIVITY"), "Add to Recreation")).toBeUndefined();
+    expect(toast.success).toHaveBeenCalledWith("Added to Recreation.");
+    // It saved on its own, as every FORD detail does: nothing waits on the Save bar.
+  });
+
+  it("keeps the offer, and says so, when the FORD add is refused", async () => {
+    fordWrite.createFordEntry.mockResolvedValue(null);
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} />);
+    await click(buttonByText(row(host, "ACTIVITY"), "Add to Recreation"));
+    expect(row(host, "ACTIVITY").querySelector('[role="alert"]')?.textContent).toBe(
+      "Not added. Check your connection and try again.",
+    );
+    expect(toast.error).toHaveBeenCalledWith("Couldn't add that line. Check your connection and try again.");
+    expect(buttonByText(row(host, "ACTIVITY"), "Add to Recreation")?.disabled).toBe(false);
+  });
+
+  it("stages the medical line on the form — added to the history — and writes nothing", async () => {
+    const probe: Probe = {};
+    const host = await mount(
+      <Harness c={carol({ mindbodyNotes: MOCKUP_NOTES, medicalHistory: "Knee replaced 2024." })} probe={probe} />,
+    );
+    const med = row(host, "MED");
+    expect(status(med)).toBe(
+      "Body has a medical history on file. Read both side by side; the app can't tell whether they say the same thing.",
+    );
+    await click(buttonByText(med, "Add to medical history"));
+    expect(probe.form!.formData.medicalHistory).toBe("Knee replaced 2024.\n\nR TKA Mar 2024. BP managed w/ meds.");
+    expect(probe.form!.isDirty("medicalHistory")).toBe(true);
+    expect(probe.form!.where).toEqual([{ page: "body", anchor: "body-watchouts", label: "Watch-outs" }]);
+    expect(status(row(host, "MED"))).toBe(
+      "UnsavedAdded to her medical history. Nothing is saved until you tap Save changes on the bar at the bottom.",
+    );
+    expect(buttonByText(row(host, "MED"), "Add to medical history")).toBeUndefined();
+    expect(fordWrite.createFordEntry).not.toHaveBeenCalled();
+    // Discard on the bar brings the offer back.
+    await act(async () => probe.form!.discard());
+    expect(buttonByText(row(host, "MED"), "Add to medical history")).toBeDefined();
+  });
+
+  it("stages the job title and her why only while each is empty, each named on the bar by its own page", async () => {
+    const probe: Probe = {};
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} probe={probe} />);
+    await click(buttonByText(row(host, "OCC"), "Add to Occupation"));
+    await click(buttonByText(row(host, "GOALS"), "Use as her why"));
+    expect(probe.form!.formData.occupation).toBe("Retired dental hygienist.");
+    expect(probe.form!.formData.globalNotes).toBe("Keep up w/ grandkids. Camino!");
+    expect(probe.form!.where).toEqual([
+      { page: "ford", anchor: "ford-occupation", label: "Occupation" },
+      { page: "goals", anchor: "goals-why", label: "The why" },
+    ]);
+    expect(status(row(host, "OCC"))).toContain("Now her job title.");
+    expect(status(row(host, "GOALS"))).toContain("Now her why.");
+
+    // A job title or why already on the record is never replaced.
+    const other = await mount(
+      <Harness c={carol({ mindbodyNotes: MOCKUP_NOTES, occupation: "Hygienist", globalNotes: "Walk the Camino" })} />,
+    );
+    expect(status(row(other, "OCC"))).toBe("Journey has: “Hygienist” as her job title.");
+    expect(status(row(other, "GOALS"))).toBe("Her why is already written on her record.");
+    expect(row(other, "OCC").textContent).not.toContain("Add to Occupation");
+    expect(row(other, "GOALS").textContent).not.toContain("Use as her why");
+  });
+
+  it("offers nothing once these exact words are there", async () => {
+    const host = await mount(
+      <Harness
+        c={carol({ mindbodyNotes: MOCKUP_NOTES, medicalHistory: "Intake: R TKA Mar 2024. BP managed w/ meds." })}
+        fordEntries={[
+          {
+            id: "f1",
+            clientId: "100004418",
+            studioId: "westlake",
+            pillar: "recreation",
+            body: "Pickleball 2x/wk, gardening.",
+            isPinned: true,
+            isArchived: false,
+            origin: "mindbody_intake",
+          } as FordEntry,
+        ]}
+      />,
+    );
+    expect(status(row(host, "MED"))).toBe("This exact line is in her medical history.");
+    expect(status(row(host, "ACTIVITY"))).toBe("This line is already a detail in Recreation.");
+    expect(buttonByText(row(host, "MED"), "Add")).toBeUndefined();
+    expect(buttonByText(row(host, "ACTIVITY"), "Add")).toBeUndefined();
+  });
+
+  it("offers no FORD add while FORD is unread — unknown, never nothing — and still offers the record's own fields", async () => {
+    const loading = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} fordStatus="loading" />);
+    expect(status(row(loading, "ACTIVITY"))).toBe("Still reading FORD, so it isn't known yet whether this line is in Recreation.");
+    expect(buttonByText(row(loading, "ACTIVITY"), "Add")).toBeUndefined();
+    expect(buttonByText(row(loading, "OCC"), "Add to Occupation")).toBeDefined();
+    const failed = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} fordStatus="failed" />);
+    expect(status(row(failed, "ACTIVITY"))).toMatch(/^Couldn't check FORD just now/);
+    expect(buttonByText(row(failed, "ACTIVITY"), "Add")).toBeUndefined();
+  });
+
+  it("offers no FORD add to a reader the FORD create rule refuses (an administrator elsewhere), and says why", async () => {
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} fordCanAdd={false} />);
+    expect(status(row(host, "ACTIVITY"))).toBe(
+      "Nothing in Recreation yet. Only a trainer at her home studio can add a FORD detail, so it isn't offered here.",
+    );
+    expect(buttonByText(row(host, "ACTIVITY"), "Add")).toBeUndefined();
+    // The record's own fields are still theirs to stage.
+    expect(buttonByText(row(host, "OCC"), "Add to Occupation")).toBeDefined();
+    expect(fordWrite.createFordEntry).not.toHaveBeenCalled();
+  });
+
+  it("gives a reader who may not edit the sentences and the doors, and no tap", async () => {
+    const go = vi.fn();
+    const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES })} canEdit={false} fordStatus="off" go={go} />);
+    expect(status(row(host, "OCC"))).toBe("No job title on her record yet.");
+    expect(status(row(host, "ACTIVITY"))).toBe(
+      "FORD is kept by her home studio, so this line can't be checked or added to Recreation here.",
+    );
+    for (const text of ["Add to", "Add as", "Use as"]) expect(buttonByText(notesCard(host), text), text).toBeUndefined();
+    await click(buttonByText(row(host, "MED"), "Open Watch-outs"));
+    expect(go).toHaveBeenLastCalledWith("body", "body-watchouts");
+    await click(buttonByText(row(host, "GOALS"), "Open her why"));
+    expect(go).toHaveBeenLastCalledWith("goals", "goals-why");
+  });
+
+  it("never says 'covered' or 'match' about a medical line", async () => {
+    for (const over of [{}, { medicalHistory: "Knee" }, { clinicalFlags: ["joint-tka"], clinicalNotes: "No lunges" }] as Partial<Client>[]) {
+      const host = await mount(<Harness c={carol({ mindbodyNotes: MOCKUP_NOTES, ...over })} />);
+      expect(row(host, "MED").textContent).not.toMatch(/\bcovered\b|\bmatch/i);
+      expect(notesCard(host).textContent).not.toMatch(/\bcovered\b/i);
+    }
   });
 });
 

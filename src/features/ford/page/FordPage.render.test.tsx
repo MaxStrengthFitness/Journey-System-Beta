@@ -448,6 +448,27 @@ describe("a pillar", () => {
     expect(buttonIn(family, "Show fewer")).toBeTruthy();
   });
 
+  it("says where a detail's words came from when it was Mindbody's intake notes, not a trainer (phase 17)", async () => {
+    const intake = detail({
+      id: "mb",
+      pillar: "recreation",
+      isPinned: true,
+      body: "Pickleball 2x/wk, gardening.",
+      origin: "mindbody_intake",
+      authorName: "AJ Jurgens",
+    });
+    const moment = detail({ id: "mb2", pillar: "recreation", body: "Tournament in May", origin: "mindbody_intake", authorName: "AJ Jurgens" });
+    const heard = detail({ id: "t1", pillar: "recreation", isPinned: true, body: "Loves the Browns" });
+    const host = await mount({ ford: fordOf([intake, moment, heard]) });
+    const rec = card(host, "recreation");
+    const facts = [...rec.querySelectorAll(".fordpg-fact")].map((f) => f.textContent);
+    expect(facts).toContain("Pickleball 2x/wk, gardening. · from the Mindbody account notes, added by AJ Jurgens");
+    // A fact a trainer heard is its words alone.
+    expect(facts).toContain("Loves the Browns");
+    // Leading a moment's meta line, it starts with a capital, not a clipped sentence.
+    expect(rec.textContent).toContain("From the Mindbody account notes, added by AJ Jurgens · Jan 1");
+  });
+
   it("carries an older journal Anniversary note in Family, from an older note", async () => {
     const host = await mount({ older: { state: "ready", settled: settled(lifeNote({ id: "anniv" })) } });
     const family = card(host, "family");

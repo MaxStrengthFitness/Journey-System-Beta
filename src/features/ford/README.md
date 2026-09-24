@@ -147,6 +147,15 @@ has it:
     rotated by day and **aware of retirement** (`FORD_PROMPT_WHEN`): a
     retired client is never asked "How is work treating you?", a working one
     never how retirement is going. The briefing cue passes the same context.
+  - **Where the words came from** (phase 17). A detail added from the
+    client's Mindbody account notes by the Account page's intake card
+    (`client-admin/IntakeNotesCard.tsx`, AJ's decision 4) carries `origin:
+    "mindbody_intake"`, and the pillar says so beside it — "Pickleball
+    2x/wk, gardening. · from the Mindbody account notes, added by AJ"
+    (`provenanceOf`, page-model.ts) — so her sign-up words never read as
+    something a trainer heard. Every other detail is its words alone, as
+    before. The rules do not read `origin`, so the new value needed no rules
+    change; `ORIGIN_WORDS` names it too.
 - **Going above and beyond** (`page/AboveAndBeyond.tsx`): the gestures,
   Idea → Planned → Done, with "I'll do it" and "Mark done" through
   `setGestureStatus` — the Delight queue's own writer. Owners' names in full.

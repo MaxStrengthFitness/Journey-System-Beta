@@ -155,13 +155,23 @@ export const FORD_PROMPT_WHEN: Readonly<Record<string, "retired" | "not-retired"
 /** Birthdays and anniversaries come round again; a graduation does not. */
 export type FordRecurrence = "none" | "annual";
 
-/** Where the detail was caught. Provenance only — never gates anything. */
+/**
+ * Where the detail was caught. Provenance only — never gates anything.
+ *
+ * `mindbody_intake` (client codex, phase 17; AJ's decision 4): a line of the
+ * client's Mindbody account notes ("Activity: Pickleball 2x/wk, gardening.")
+ * added to FORD by a trainer's tap on the Account page's intake card, word
+ * for word. The FORD page says so beside it — the words are the client's
+ * sign-up notes, not something a trainer heard — and names who added it.
+ * The rules do not read `origin`, so the new value needed no rules change.
+ */
 export type FordOrigin =
   | "in_session"
   | "post_session"
   | "briefing"
   | "profile"
-  | "legacy";
+  | "legacy"
+  | "mindbody_intake";
 
 /** The life of a gesture, from overheard to delivered. */
 export type FordGestureStatus = "idea" | "planned" | "done" | "declined";

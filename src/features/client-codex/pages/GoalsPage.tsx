@@ -12,13 +12,18 @@
  * every record field goes through the ONE form, and a door to one note opens
  * it on Notes (`note-{id}`, which Notes interprets itself).
  */
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { isRecordAnchor, noteAnchor } from "../../client-profile/profile-nav";
 import { GoalsPage as GoalsArea } from "../../goals/GoalsPage";
+import { intakeGoalsLines, parseIntakeNotes } from "../../client-admin/intake";
 import type { CodexPageProps } from "../codex-data";
 
 export function GoalsPage({ data, form, go, hosts }: CodexPageProps) {
   const { client, access, authTrainer, machines, journal, notes, coverage, pronouns, today } = data;
+  // The Goals lines of her Mindbody account notes, read by the intake
+  // matcher's parser (phase 17) and shown under her why, read only: Account
+  // is the one place a line is ever copied anywhere.
+  const signUpGoals = useMemo(() => intakeGoalsLines(parseIntakeNotes(client.mindbodyNotes)), [client.mindbodyNotes]);
   const openThread = useCallback(
     (threadId: string) => {
       const at = noteAnchor(threadId);
@@ -42,6 +47,7 @@ export function GoalsPage({ data, form, go, hosts }: CodexPageProps) {
       go={go}
       onOpenThread={openThread}
       onOpenPlanner={hosts.onOpenPlanner}
+      signUpGoals={signUpGoals}
     />
   );
 }

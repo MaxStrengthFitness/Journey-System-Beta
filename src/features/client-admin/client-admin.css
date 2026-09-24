@@ -110,14 +110,108 @@
 
 /* ---- the Mindbody account notes ---------------------------------------- */
 
+/* The intake matcher's rows (phase 17): one line of the notes each — its
+   label as written and its words, verbatim, with where it belongs beside it
+   (the dashed chip, as the mockup has it); then what Journey has there, and
+   the tap and the door. The chip drops under the words when the card is
+   narrow, rather than squeezing them. */
+.cadm-intake {
+  container: cadm-intake / inline-size;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.cadm-intake__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--cx-line);
+  min-width: 0;
+}
+
+.cadm-intake__row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.cadm-intake__row:last-child {
+  padding-bottom: 0;
+}
+
 /* Mindbody's words, as synced: their own line breaks kept. */
-.cadm-notes {
+.cadm-intake__line {
   margin: 0;
   color: var(--cx-ink);
   font-size: var(--cx-fs-14);
   line-height: 1.5;
   white-space: pre-line;
   overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* The label as the studio typed it ("OCC", "Med Hx") — never re-cased. */
+.cadm-intake__label {
+  margin-right: 6px;
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.cadm-intake__to {
+  justify-self: end;
+}
+
+.cadm-intake__status,
+.cadm-intake__failed,
+.cadm-intake__acts {
+  grid-column: 1 / -1;
+}
+
+.cadm-intake__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.cadm-intake__status > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cadm-intake__failed {
+  margin: 0;
+  color: var(--cx-warn);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+}
+
+.cadm-intake__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+@container cadm-intake (max-width: 359px) {
+  .cadm-intake__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cadm-intake__to {
+    justify-self: start;
+  }
 }
 
 /* ---- the package ------------------------------------------------------- */

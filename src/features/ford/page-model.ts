@@ -99,7 +99,20 @@ export const ORIGIN_WORDS: Readonly<Record<FordOrigin, string>> = {
   post_session: "Caught after the session",
   profile: "Added on the profile",
   legacy: "From the old events list",
+  mindbody_intake: "Added from the Mindbody account notes",
 };
+
+/**
+ * Where a detail's words came from, when that is not the trainer who added
+ * it: "from the Mindbody account notes, added by AJ" (client codex, phase
+ * 17). Null for every detail a trainer caught or typed themselves, whose
+ * author line already says who.
+ */
+export function provenanceOf(entry: Pick<FordEntry, "origin" | "authorName">): string | null {
+  if (entry.origin !== "mindbody_intake") return null;
+  const who = (entry.authorName ?? "").trim();
+  return who ? `from the Mindbody account notes, added by ${who}` : "from the Mindbody account notes";
+}
 
 /**
  * When a detail points at, from `now`: the days away (negative is past), the

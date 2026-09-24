@@ -178,6 +178,10 @@ const CODEX_FILES: readonly string[] = [
   "features/client-admin/client-admin.css",
   "features/client-admin/account.ts",
   "features/client-admin/contract.ts",
+  // The intake matcher (phase 17): the Account page's Mindbody account notes
+  // card and the pure module that parses the notes and writes its sentences.
+  "features/client-admin/IntakeNotesCard.tsx",
+  "features/client-admin/intake.ts",
 ];
 
 /**

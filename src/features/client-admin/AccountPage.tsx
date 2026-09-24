@@ -10,7 +10,9 @@
  *
  *   Contact | Mindbody account notes
  *       the ID card (ContactCard): the nickname is the one thing a coach
- *       changes on a linked client; Mindbody's notes, verbatim
+ *       changes on a linked client; Mindbody's notes line by line, verbatim,
+ *       each with where it belongs and one tap to put it there
+ *       (IntakeNotesCard, the intake matcher — AJ's decision 4)
  *   Membership — what she has bought, what is left, and where she can train
  *       the package and its history | where she can train, on file with
  *       Mindbody, how she found us — then the fine print, folded
@@ -23,23 +25,27 @@
  * client's identity, the tier lock, the cross-train studios, the lead source
  * and the referral — so each is an edit to the shell's ONE record form, and
  * the Save bar saves ("Account · Contact", "· Membership", "· Where they can
- * train", "· How they found us"). Nothing on this page writes on its own.
+ * train", "· How they found us"). The intake card's taps stage the fields
+ * they fill on the same form — the job title, her why, her medical history,
+ * each named on the Save bar by its own page. Its one exception is a FORD
+ * detail (an Activity line), which saves the moment it is added, as every
+ * FORD detail does.
  *
- * WHAT IT READS: the client document only (and the studios this reader may
- * see), so the page opens no listener. The Migration Hub is the profile's
- * (`hosts.onOpenMigrationHub`): it switches to Journey, where imported
- * sessions land, and is offered only to a reader who may change the record.
- *
- * The Mindbody account notes are shown as synced, read only. Phase 17 (AJ's
- * decision 4) turns them into the intake matcher's card — one row per line,
- * each with where it belongs and a one-tap add — in the same place.
+ * WHAT IT READS: the client document (and the studios this reader may see)
+ * and the tab's one FORD stream, so the page opens no listener. The
+ * Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it switches
+ * to Journey, where imported sessions land, and is offered only to a reader
+ * who may change the record.
  */
-import { StickyNote } from "lucide-react";
 import type { Client, Studio } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
-import { Card, EmptyLine, Page, type CodexGo, type Pronouns } from "../client-codex/kit";
+import type { FordEntry } from "../ford/types";
+import type { FordAuthor } from "../ford/ford-write";
+import type { CodexFordStatus } from "../client-codex/codex-data";
+import { Page, type CodexGo, type Pronouns } from "../client-codex/kit";
 import type { RecordForm } from "../client-codex/useRecordForm";
 import { ContactCard } from "./ContactCard";
+import { IntakeNotesCard } from "./IntakeNotesCard";
 import { MembershipSection } from "./MembershipSection";
 import { accountLede, isMindbodyLinked } from "./account";
 import "./client-admin.css";
@@ -57,6 +63,15 @@ export interface AccountPageProps {
    * accounts) and their name. Null when nobody is.
    */
   author: { id: string; name: string } | null;
+  /**
+   * The tab's one FORD stream (`off` for a reader the FORD rule refuses): the
+   * intake card checks an Activity line against it before offering it.
+   * `canAdd` is the FORD create rule for this reader
+   * (`codexAccess().fordWritable`).
+   */
+  ford: { status: CodexFordStatus; entries: readonly FordEntry[]; canAdd: boolean };
+  /** Who adds a FORD detail from the intake card: the Auth uid, which the FORD rule pins. */
+  fordAuthor: FordAuthor | null;
   /** How much of her story Journey holds (the contract history's "Before Journey"). */
   coverage: HistoryCoverage;
   pronouns: Pronouns;
@@ -68,36 +83,14 @@ export interface AccountPageProps {
   now?: Date;
 }
 
-/** Mindbody's account notes, as synced (the first 1,000 characters). Read only. */
-function MindbodyNotesCard({ client, pronouns: p }: { client: Client; pronouns: Pronouns }) {
-  const notes = typeof client.mindbodyNotes === "string" ? client.mindbodyNotes.trim() : "";
-  return (
-    <Card
-      eyebrow="Mindbody account notes"
-      icon={StickyNote}
-      meta="edit in Mindbody"
-      id="account-mindbody-notes"
-      source={
-        notes
-          ? `The first 1,000 characters of ${p.possessive} Mindbody account notes, as the last sync brought them.`
-          : null
-      }
-    >
-      {notes ? (
-        <p className="cadm-notes">{notes}</p>
-      ) : (
-        <EmptyLine>{client.mindbodyMasterSyncedAt ? "No account notes in Mindbody." : "Not synced yet."}</EmptyLine>
-      )}
-    </Card>
-  );
-}
-
 export function AccountPage({
   client,
   form,
   canEdit,
   studios,
   author,
+  ford,
+  fordAuthor,
   coverage,
   pronouns: p,
   today,
@@ -115,7 +108,17 @@ export function AccountPage({
       <div className="cadm-page">
         <div className={showNotes ? "cadm-row cadm-row--contact" : "cadm-row"}>
           <ContactCard client={client} form={form} canEdit={canEdit} pronouns={p} now={now} />
-          {showNotes ? <MindbodyNotesCard client={client} pronouns={p} /> : null}
+          {showNotes ? (
+            <IntakeNotesCard
+              client={client}
+              form={form}
+              canEdit={canEdit}
+              ford={ford}
+              fordAuthor={fordAuthor}
+              pronouns={p}
+              go={go}
+            />
+          ) : null}
         </div>
 
         <MembershipSection

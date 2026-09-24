@@ -43,6 +43,19 @@ describe("workSentence", () => {
     expect(workSentence({ occupation: "Teacher / Educator" })).toBe("On their feet (Teacher / Educator)");
     expect(workSentence({})).toBe("Work not recorded yet");
   });
+
+  it("keeps a job title that is itself a retirement, as written (client codex, phase 17)", () => {
+    // Mindbody's intake notes ("OCC: Retired dental hygienist.") copied in verbatim:
+    // never "Work not recorded yet" about a client whose work is on the record.
+    expect(workSentence({ occupation: "Retired dental hygienist." })).toBe("Retired dental hygienist.");
+    expect(workSentence({ occupation: "Retired dental hygienist.", isRetired: true })).toBe("Retired dental hygienist.");
+    expect(workSentence({ occupation: "Retired teacher" })).toBe("Retired teacher — was on their feet");
+    expect(workSentence({ occupation: "Retired dental hygienist.", workProfile: "seated" })).toBe(
+      "Retired dental hygienist. — was seated / desk",
+    );
+    // The old list's status entries still say nothing about the work.
+    expect(workSentence({ occupation: "Retired (Sedentary Lifestyle)", isRetired: true })).toBe("Retired");
+  });
 });
 
 describe("nextPedigreeHistory", () => {
