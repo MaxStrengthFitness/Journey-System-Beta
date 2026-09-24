@@ -19,6 +19,13 @@ function answered(values: Partial<Record<string, number>>): SubjectiveAssessment
   return { ...a, answers };
 }
 
+/** An assessment with ONLY the first `count` statements of one category answered — a part answer. */
+function partly(key: string, value: number, count: number, base: SubjectiveAssessment = emptyAssessment()): SubjectiveAssessment {
+  const answers: SubjectiveAssessment["answers"] = { ...base.answers };
+  for (let i = 1; i <= count; i++) answers[`${key}_${i}`] = { value };
+  return { ...base, answers };
+}
+
 function report(id: string, date: string, assessment: SubjectiveAssessment): AssessmentHistoryReport {
   return { id, date, savedAtMs: null, trainerId: "t1", trainerName: "AJ", enteredBy: "coach", assessment, sectionsReviewed: [] };
 }
@@ -77,6 +84,86 @@ describe("pulseTrend", () => {
     const sleep = t.areas.find((a) => a.key === "sleepRecovery")!;
     expect(sleep.direction).toBe("same");
     expect(sleep.sentence).toBe("Sleep & Recovery: green since Jun, unchanged");
+  });
+
+  // The Pulse screen gives a part-answered area no colour ("1/3", not "Red"):
+  // the trend must not colour it either, and must say the reading is missing.
+  describe("a part-answered area is not a reading", () => {
+    it("in the latest Pulse: the trend keeps the last full reading and says the newest was not enough", () => {
+      const history: AssessmentHistory = {
+        reports: [
+          // One statement answered low in September — the Pulse screen would call Sleep "1/3", never red.
+          report("c", "2026-09-01", partly("sleepRecovery", 1, 1)),
+          report("b", "2026-08-05", answered({ sleepRecovery: 8 })),
+          report("a", "2026-07-02", answered({ sleepRecovery: 5 })),
+        ],
+        complete: true,
+        coversSinceMs: null,
+      };
+      const sleep = pulseTrend(history, TODAY).areas.find((a) => a.key === "sleepRecovery")!;
+      expect(sleep.first).toEqual({ date: "2026-07-02", rag: "yellow" });
+      expect(sleep.latest).toEqual({ date: "2026-08-05", rag: "green" });
+      expect(sleep.direction).toBe("up");
+      expect(sleep.sentence).toBe("Sleep & Recovery: yellow → green since Jul; not enough answered in Sep");
+    });
+
+    it("in the first Pulse: the trend starts at the first full reading", () => {
+      const history: AssessmentHistory = {
+        reports: [
+          report("c", "2026-09-01", answered({ sleepRecovery: 8 })),
+          report("b", "2026-07-02", answered({ sleepRecovery: 5 })),
+          // Two of three answered low in June: not enough to call it red, and not the start of the trend.
+          report("a", "2026-06-02", partly("sleepRecovery", 1, 2)),
+        ],
+        complete: true,
+        coversSinceMs: null,
+      };
+      const sleep = pulseTrend(history, TODAY).areas.find((a) => a.key === "sleepRecovery")!;
+      expect(sleep.first).toEqual({ date: "2026-07-02", rag: "yellow" });
+      expect(sleep.latest).toEqual({ date: "2026-09-01", rag: "green" });
+      expect(sleep.sentence).toBe("Sleep & Recovery: yellow → green since Jul");
+    });
+
+    it("beside a single full reading: 'one full reading', not 'one Pulse', and the newer part answer named", () => {
+      const before: AssessmentHistory = {
+        reports: [report("b", "2026-09-01", answered({ sleepRecovery: 8 })), report("a", "2026-06-02", partly("sleepRecovery", 1, 1))],
+        complete: true,
+        coversSinceMs: null,
+      };
+      const early = pulseTrend(before, TODAY).areas.find((a) => a.key === "sleepRecovery")!;
+      expect(early.direction).toBe("single");
+      expect(early.sentence).toBe("Sleep & Recovery: green (one full reading so far, Sep)");
+
+      const after: AssessmentHistory = {
+        reports: [report("b", "2026-09-01", partly("sleepRecovery", 9, 2)), report("a", "2026-07-02", answered({ sleepRecovery: 3 }))],
+        complete: true,
+        coversSinceMs: null,
+      };
+      const late = pulseTrend(after, TODAY).areas.find((a) => a.key === "sleepRecovery")!;
+      expect(late.latest).toEqual({ date: "2026-07-02", rag: "red" });
+      expect(late.direction).toBe("single");
+      expect(late.sentence).toBe("Sleep & Recovery: red (one full reading so far, Jul); not enough answered in Sep");
+    });
+
+    it("with only part answers: no colour at all, and 'not enough answered' rather than 'not assessed'", () => {
+      const history: AssessmentHistory = {
+        reports: [
+          // Pain complete in the same Pulse, so the partial Sleep answer sits beside a real reading.
+          report("b", "2026-09-01", partly("sleepRecovery", 1, 1, answered({ painMobility: 8 }))),
+          report("a", "2026-07-02", partly("sleepRecovery", 2, 2)),
+        ],
+        complete: true,
+        coversSinceMs: null,
+      };
+      const t = pulseTrend(history, TODAY);
+      const sleep = t.areas.find((a) => a.key === "sleepRecovery")!;
+      expect(sleep.first).toBeNull();
+      expect(sleep.latest).toBeNull();
+      expect(sleep.direction).toBeNull();
+      expect(sleep.sentence).toBe("Sleep & Recovery: not enough answered yet (part answered in Sep)");
+      const pain = t.areas.find((a) => a.key === "painMobility")!;
+      expect(pain.sentence).toBe("Pain & Mobility: green (one Pulse so far, Sep)");
+    });
   });
 
   it("names the year only when it is not this one", () => {

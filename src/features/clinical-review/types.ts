@@ -408,14 +408,22 @@ export interface PainTimeline {
 export type PulseRag = "green" | "yellow" | "red";
 export type PulseDirection = "up" | "down" | "same" | "single";
 
-/** One Pulse area, first saved reading vs the latest. */
+/**
+ * One Pulse area, first full reading vs the latest. A reading is a Pulse that
+ * answered all three of the area's statements (the Pulse's own rule); a part
+ * answer gives no colour and is named in the sentence instead.
+ */
 export interface PulseAreaTrend {
   key: string;
   title: string;
   first: { date: string; rag: PulseRag } | null;
   latest: { date: string; rag: PulseRag } | null;
   direction: PulseDirection | null;
-  /** "Sleep & Recovery: yellow → green since Jul", or "not assessed yet". */
+  /**
+   * "Sleep & Recovery: yellow → green since Jul", "…; not enough answered in
+   * Sep" when a newer Pulse only part answered it, "not enough answered yet
+   * (part answered in Sep)", or "not assessed yet".
+   */
   sentence: string;
 }
 
