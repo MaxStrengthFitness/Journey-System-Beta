@@ -182,6 +182,9 @@ const CODEX_FILES: readonly string[] = [
   // card and the pure module that parses the notes and writes its sentences.
   "features/client-admin/IntakeNotesCard.tsx",
   "features/client-admin/intake.ts",
+  // The Overview (phase 18): the page is the shell's (above); its words are
+  // worked out in one pure module from the selectors each page already uses.
+  "features/client-codex/overview-model.ts",
 ];
 
 /**

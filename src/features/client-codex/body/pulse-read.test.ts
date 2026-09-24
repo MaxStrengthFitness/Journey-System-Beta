@@ -134,6 +134,10 @@ describe("the latest answer to each statement", () => {
     expect(statementChange("I feel stronger than I did 3 months ago.", now, prev, NOW)).toBe(
       "“I feel stronger than I did 3 months ago.” Often, up from Rarely in Sep 2026.",
     );
+    // With the current answer's own day, for a line that names a newer one.
+    expect(statementChange("I feel stronger than I did 3 months ago.", now, prev, NOW, "Mar 10")).toBe(
+      "“I feel stronger than I did 3 months ago.” Often (Mar 10), up from Rarely in Sep 2026.",
+    );
     expect(statementChange("x", now, null, NOW)).toBeNull();
   });
 });

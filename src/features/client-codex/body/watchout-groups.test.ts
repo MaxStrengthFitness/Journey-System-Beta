@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CLINICAL_FLAGS_MATRIX } from "../../../data/clinical-matrix";
-import { groupEyebrow, watchOutGroups } from "./watchout-groups";
+import { flagChip, groupEyebrow, watchOutGroups } from "./watchout-groups";
+import { selectedFlags } from "../../clinical-flags/flag-search";
 
 const machine = (id: string, name: string) => ({ id, name });
 const matrixText = (flagId: string) =>
@@ -60,5 +61,25 @@ describe("watch-outs grouped by instruction", () => {
     const every = CLINICAL_FLAGS_MATRIX.map((f) => f.id);
     const all = new Set(CLINICAL_FLAGS_MATRIX.flatMap((f) => (f.protocolHandling ?? []).map((r) => r.instruction)));
     for (const g of watchOutGroups(every, [])) expect(all.has(g.instruction), g.instruction).toBe(true);
+  });
+});
+
+describe("flagChip", () => {
+  it("names the flag, badges Stop and High, and is crimson only for an absolute contraindication", () => {
+    const chips = selectedFlags(["cv-hypertension", "gen-blood-pressure", "joint-tka"]).map(flagChip);
+    const tones = new Map(selectedFlags(["cv-hypertension", "gen-blood-pressure", "joint-tka"]).map((f, i) => [f.tone, chips[i]]));
+    for (const [tone, chip] of tones) {
+      if (tone === "alert") {
+        expect(chip.tone).toBe("alert");
+        expect(chip.text).toMatch(/ · Stop$/);
+      } else if (tone === "caution") {
+        expect(chip.tone).toBe("warn");
+        expect(chip.text).toMatch(/ · High$/);
+      } else {
+        expect(chip.tone).toBe("live");
+        expect(chip.text).not.toContain(" · ");
+      }
+    }
+    expect(flagChip({ name: "Neck limitation", tone: "modify" })).toEqual({ text: "Neck limitation", tone: "live" });
   });
 });

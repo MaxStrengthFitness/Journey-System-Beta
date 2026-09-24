@@ -474,7 +474,8 @@ export interface GoalsGlance {
   coach: HowToCoachLead;
   /**
    * "2 focuses running · 2 goals reached · 1 focus achieved". While the
-   * focuses are unknown only the goals are counted — never "0 running". What
+   * focuses are unknown only the goals are counted, and a count of none is
+   * left out — never "0 running". What
    * was reached is said only when Journey holds some: never "0 goals
    * reached" for a client whose story began before Journey. Empty when
    * there is nothing to say.
@@ -527,7 +528,9 @@ export function goalsGlance({
     // reached" would be a confident zero for a client whose goals were
     // reached before Journey (prior history is real history).
     foot: joinDots([
-      running ? `${plural(running.length, "focus", "focuses")} running` : null,
+      // No "0 focuses running" either: the slot's own line already says
+      // "none running", and a zero on the footer reads as a score.
+      running?.length ? `${plural(running.length, "focus", "focuses")} running` : null,
       goalsReached ? `${plural(goalsReached, "goal")} reached` : null,
       focusesReached ? `${plural(focusesReached, "focus", "focuses")} achieved` : null,
     ]),

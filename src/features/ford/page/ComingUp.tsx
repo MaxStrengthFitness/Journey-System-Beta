@@ -16,7 +16,7 @@ import { useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { Btn, Eyebrow, anchorProps, cap, inTime, type Pronouns } from "../../client-codex/kit";
 import { FORD_META, GESTURE_STATUS_LABEL, type FordEntry } from "../types";
-import { ordinal, type BirthdayRow, type ComingUpRow } from "../coming-up";
+import { birthdayLabel, type ComingUpRow } from "../coming-up";
 
 /** How many cards show before "All N coming up". */
 export const COMING_UP_SHOWN = 3;
@@ -25,11 +25,6 @@ function gestureWords(entry: FordEntry | null): string | null {
   const opp = entry?.opportunity;
   if (!opp || !opp.idea) return null;
   return `${GESTURE_STATUS_LABEL[opp.status]}: ${opp.idea}`;
-}
-
-function birthdayWhat(row: BirthdayRow, pronouns: Pronouns): string {
-  const whose = cap(pronouns.possessive);
-  return row.turning !== null ? `${whose} ${ordinal(row.turning)} birthday` : `${whose} birthday`;
 }
 
 export function ComingUp({
@@ -59,7 +54,7 @@ export function ComingUp({
       </Eyebrow>
       <div className="fordpg-coming__grid">
         {shown.map((row) => {
-          const what = row.kind === "birthday" ? birthdayWhat(row, pronouns) : row.entry.body;
+          const what = row.kind === "birthday" ? birthdayLabel(row, pronouns) : row.entry.body;
           const where =
             row.kind === "birthday"
               ? `${FORD_META.family.label} · ${birthdaySource}`

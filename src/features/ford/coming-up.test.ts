@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comingUp, ordinal, studioNoon, type BirthdayRow, type DetailRow } from "./coming-up";
+import { birthdayLabel, comingUp, ordinal, studioNoon, type BirthdayRow, type DetailRow } from "./coming-up";
 import type { FordEntry } from "./types";
 
 /** Run with TZ=America/New_York: every date here is a local calendar day. */
@@ -190,5 +190,13 @@ describe("ordinal", () => {
       "111th",
       "112th",
     ]);
+  });
+});
+
+describe("birthdayLabel", () => {
+  it("names whose birthday and the age she turns, one wording for FORD and the Overview", () => {
+    expect(birthdayLabel({ turning: 69 }, { possessive: "her" })).toBe("Her 69th birthday");
+    expect(birthdayLabel({ turning: 41 }, { possessive: "his" })).toBe("His 41st birthday");
+    expect(birthdayLabel({ turning: null }, { possessive: "their" })).toBe("Their birthday");
   });
 });

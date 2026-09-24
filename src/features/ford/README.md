@@ -235,7 +235,7 @@ moved it.
 | `ask-next.ts` | Ask next: the newest open Follow up next time, else the prompts worth asking this client, rotated by day, aware of retirement (`FORD_PROMPT_WHEN` in `types.ts`); `followUpPatch` (stamp only on change). `ask-next.test.ts` holds the drift guard |
 | `one-line.ts` | In one line: the fixed id, the 120-character cap, `splitOneLine` (what `useClientFord` takes out of the list) and the "Written by the team · last by …" line. `one-line.test.ts` proves the document never reaches the tray, the rollup or Coming up |
 | `ford-write.test.ts` | The new writes: a follow-up's stamps, `clearFollowUp` (no rollup refresh), and `saveFordOneLine`'s create, rewrite, clear and three outcomes (`saved` · `failed` · `blocked`) |
-| `coming-up.ts` | Coming up: the Mindbody birthday and the dated details, on the studio's day |
+| `coming-up.ts` | Coming up: the Mindbody birthday and the dated details, on the studio's day; `birthdayLabel` ("Her 69th birthday") is the one wording, shared with the Overview's FORD slot |
 | `pulse-links.ts` | The Pulse lines beside each pillar. No Firestore, no writes |
 | `page-model.ts` | The FORD page's pure selectors, its sub-toggle line and the Overview's FORD slot |
 | `page/` | The FORD page: `FordPage`, `OneLinePanel`, `PillarCard`, `bands`, `ComingUp`, `UnfiledTray`, `AskNextLine` (with "Asked it"), `AboveAndBeyond`, `ford-page.css`. `FordPage.render.test.tsx` mounts it; `AskNextLine.render.test.tsx` holds "Asked it" against a clear the cache shows before the server answers |

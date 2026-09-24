@@ -28,7 +28,7 @@
  */
 import { CLINICAL_FLAGS_MATRIX } from "../../../data/clinical-matrix";
 import { generalWatchOuts, machineKey, machineWatchOuts } from "../../../lib/clinical-watchouts";
-import { TONE_ORDER, selectedFlags, type FlagOption } from "../../clinical-flags/flag-search";
+import { TONE_BADGE, TONE_ORDER, selectedFlags, type FlagOption } from "../../clinical-flags/flag-search";
 import type { ClinicalSafetyFlag } from "../../../types";
 
 export interface FloorMachineLike {
@@ -125,4 +125,19 @@ export function watchOutGroups(
 export function groupEyebrow(group: Pick<WatchOutGroup, "flag" | "general">): string {
   const name = group.flag.detail ? `${group.flag.name} · ${group.flag.detail}` : group.flag.name;
   return group.general ? `Every set · ${name}` : name;
+}
+
+/**
+ * A flag as a chip, the one way the codex draws it (Watch-outs and the
+ * Overview's Body & Pulse slot): its name, with "Stop" or "High" when the
+ * matrix says so, and its tone — crimson only for an absolute
+ * contraindication, plum for a high risk, blue for one that changes the
+ * set-up.
+ */
+export function flagChip(f: Pick<FlagOption, "name" | "tone">): { text: string; tone: "alert" | "warn" | "live" } {
+  const badge = TONE_BADGE[f.tone];
+  return {
+    text: badge ? `${f.name} · ${badge.short}` : f.name,
+    tone: f.tone === "alert" ? "alert" : f.tone === "caution" ? "warn" : "live",
+  };
 }

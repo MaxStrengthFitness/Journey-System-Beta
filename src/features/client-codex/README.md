@@ -2,7 +2,7 @@
 
 Client codex round, Sep 2026 (`docs/rounds/2026-09-24-client-codex.md`). The profile's Notes & Profile tab stops being one long scroll and becomes an Overview and six pages — **Overview · Notes · FORD · Body & Pulse · Goals & Focus · Story · Account** — switched by the profile's own sub-toggle. Where the trainer is lives in the profile's one navigation reducer (`src/features/client-profile/profile-nav.ts`: `RecordPage`, `RECORD_ANCHORS`, `neighbours()`).
 
-This folder is built phase by phase on the `client-codex` branch. It holds **the kit** (phase 5), **the shell** (phase 8) and **Body & Pulse** (`body/`, phases 12–13); each page area adds its section here as it rebuilds its page. Pages whose area has its own folder live there: Notes in `client-notes/`, FORD in `ford/page/`, **Goals & Focus in `goals/`** (phase 14 — read `src/features/goals/README.md`), Story in `client-story/` (phase 15) and **Account in `client-admin/`** (phase 16 — read `src/features/client-admin/README.md`).
+This folder is built phase by phase on the `client-codex` branch. It holds **the kit** (phase 5), **the shell** (phase 8), **Body & Pulse** (`body/`, phases 12–13) and **the Overview** (`pages/OverviewPage.tsx` + `overview-model.ts`, phase 18); each page area adds its section here as it rebuilds its page. Pages whose area has its own folder live there: Notes in `client-notes/`, FORD in `ford/page/`, **Goals & Focus in `goals/`** (phase 14 — read `src/features/goals/README.md`), Story in `client-story/` (phase 15) and **Account in `client-admin/`** (phase 16 — read `src/features/client-admin/README.md`).
 
 ## The shell (`ClientCodex.tsx`)
 
@@ -29,6 +29,29 @@ The rules the shell keeps:
 - **`FIELD_HOME` stays total.** A new editable field needs a key in `RECORD_FORM_KEYS` and a home on a card whose anchor is in `RECORD_ANCHORS`; `record-form.test.ts` fails otherwise. A key that is not a form key is refused by `updateField`, so a retired field (`recoveryMetric`) or a Mindbody one can never be written from here.
 
 **Notes are Notes'.** What any page says about a client's notes — how to coach her, injury threads, her notes on each machine, older life notes by pillar, the FORD door's count, the Notes segment's line — comes from `src/features/client-notes/record-selectors.ts`, over the tab's one journal load, and the red line under the bar is Notes' `CriticalLine`. The kit builds no second critical strip and no page writes its own note selection.
+
+## The Overview (`pages/OverviewPage.tsx`, `overview-model.ts`)
+
+Phase 18. The codex's front page, where the tab always opens (AJ's decision 1): six slots, as the approved mockup has them. It is not a `Page` — no head, no neighbours, no Next card — and its slots carry no anchors.
+
+| Slot | What it says | Where its words come from |
+| --- | --- | --- |
+| Notes | "3 open, 1 critical · 8 standing · 5 resolved", the three loudest open notes (a critical note still in the To-file tray too, "waiting to be filed"), Write a note, All N notes | `notesSummarySentence`, `sortThreads`, `threadRowMeta`; rows open `note-{id}` on Notes |
+| Who she is · FORD | The In one line and who wrote it last (or "No line yet." + Write one, for a reader the FORD create rule accepts), the four pillars — each one button to its card (`ford-{pillar}`) — Coming up within two months (the Mindbody birthday first, the when coloured by urgency) and the open gestures with who is doing each | `fordOverview`, `oneLineMeta`, `askNext` (a pillar with nothing leading), `birthdayLabel` |
+| Body & Pulse | Where she sits against the machines with her height and wingspan, the flags as Watch-outs chips them, the first every-set instruction QUOTED, what she says (Sleep & Recovery first, else the first answered area in the Pulse's order; "up from …" and "was …" only against an earlier round; an answer older than the newest round, which the source line names, carries its own day), the source line | `buildFacts` (its `statureLede`), `flagChip`, `generalWatchOuts`, pulse-read's `statementChange` and `latestPain` over the tab's one history |
+| Goals & Focus | Her why (quoted), working toward, the newest focus, how to coach her | `goalsGlance` (its `howToCoachLead`) |
+| Story | The Story's since line and its three newest moments | `CodexData.story` (`sinceLine`, `buildStory`) |
+| Account | Age and birthday, emergency, the waiver · what is left, the package, where she trains; two columns from 720px | `accountGlance` (`who`, `membership`) |
+
+The rules it keeps:
+
+- **Zero reads.** Everything is the tab's one load; the render test proves the tab opening on the Overview opens nothing but that load and makes no `getDocs`.
+- **One selector per line.** Every line is built by the selector the page behind it uses, so the front page and the page can never disagree. A new line here means a selector on its page first.
+- **Missing and unread are different sentences.** Each slot has a sentence for what is not on file ("No line yet.", "No Pulse saved in Journey yet.", "Her why isn't written down yet.") and a different one for a read that failed or is on its way ("Notes couldn't be loaded, so nothing here is certain.", FORD's own `FORD_READ_NOTICE`, "The Pulse couldn't be loaded…", "Couldn't read … here, so a moment may be missing."). FORD draws no pillar tiles until it answered — four empty tiles would read as "nothing on file" beside the sentence that says it isn't known.
+- **FORD text only for a reader FORD lets in, and only once FORD answered.** While it loads, the slot says "Reading FORD… 18 details on file." with the sub-toggle's own count (`fordCountOf`) — never `fordSummary.pinned`, which a cross-train studio can read. To a reader FORD refuses it says whose FORD it is and nothing else.
+- **What is saved.** The Overview reads the record as it is on file; an unsaved edit is the Save bar's to show.
+- **Words, never scores.** No percentage, no /10, no traffic light, no "0 focuses running"; a long note shows its whole first sentences (`firstSentences`), never cut and never an ellipsis.
+- **Portrait first** (`codex.css`): one column on a 744pt iPad held upright; FORD 7 / Body 5 and Goals 7 / Story 5 from 720px of page width (820, 834 and the 13-inch upright, whose page is just under 1040px inside the profile's gutters); FORD 8 / Body 4 from 1040px, which is landscape. The pillars are two across in the FORD slot's own container, four from 560px.
 
 ## Body & Pulse (`body/`)
 

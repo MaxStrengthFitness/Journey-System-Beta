@@ -218,13 +218,16 @@ export function shownStatement(
 /**
  * "“I feel stronger than I did 3 months ago.” Often, up from Rarely in
  * September." — a statement against its previous different answer. Null when
- * there is none. Higher is better on every Pulse statement.
+ * there is none. Higher is better on every Pulse statement. `day` (words,
+ * "Jan 10") puts the current answer's own day after its word — "Often (Jan
+ * 10), up from …" — for a line whose surroundings name a newer day.
  */
 export function statementChange(
   text: string,
   reading: PulseReading,
   previous: PulseReading | null,
   now: Date,
+  day?: string,
 ): string | null {
   if (!previous || previous.dial === reading.dial) return null;
   const when = dayKeyDate(previous.day);
@@ -234,7 +237,7 @@ export function statementChange(
       : when.toLocaleDateString("en-US", { month: "short", year: "numeric" })
     : "";
   const dir = reading.dial > previous.dial ? "up" : "down";
-  return `“${text}” ${reading.word}, ${dir} from ${previous.word}${month ? ` in ${month}` : ""}.`;
+  return `“${text}” ${reading.word}${day ? ` (${day})` : ""}, ${dir} from ${previous.word}${month ? ` in ${month}` : ""}.`;
 }
 
 /* ------------------------------------------------------------------ */

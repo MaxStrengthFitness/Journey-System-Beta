@@ -31,6 +31,12 @@ import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// Several tests visit every page, and every mount works out the whole
+// Overview: about a second alone, but a busy machine (a typecheck running
+// alongside, the cloud container) can pass the default five, and one act()
+// that times out leaves state behind that fails every test after it.
+vi.setConfig({ testTimeout: 20_000 });
+
 type Listener = { path: string; live: boolean };
 
 const fake = vi.hoisted(() => ({
@@ -142,7 +148,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 import { ClientCodex } from "./ClientCodex";
 import { useRecordForm, type RecordForm } from "./useRecordForm";
 import type { CodexHosts } from "./codex-data";
-import type { RecordPage } from "../client-profile/profile-nav";
+import { RECORD_ANCHORS, type RecordPage } from "../client-profile/profile-nav";
 import type { Client, Machine, Trainer } from "../../types";
 import { studioTodayKey } from "../../lib/studio-time";
 import { addDays } from "../client-history/model";
@@ -456,38 +462,22 @@ describe("ClientCodex — pages", () => {
     expect(selected(host)).toEqual(["cx-tab-overview"]);
   });
 
-  it("gives no two elements the same id, with every page mounted", async () => {
-    const host = await mount();
+  it("gives no two elements the same id, and puts every card in the anchor registry in the page once", async () => {
+    // A client whose every card has something to draw: a birthday (Coming
+    // up), Mindbody account notes, and a resolved note (Notes' Resolved).
+    fake.rows.journalEntries = [
+      { ...criticalNote, id: "done1", importance: "standard", body: "Left wrist sore.", resolvedAt: new Date(2026, 7, 1, 12) },
+    ];
+    const host = await mount(
+      baseClient({ dateOfBirth: "1958-04-02", mindbodyNotes: "OCC: Retired hygienist." } as Partial<Client>),
+    );
     await visitAll(host);
     const ids = Array.from(host.querySelectorAll("[id]")).map((el) => el.id);
     const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
     expect(dupes).toEqual([]);
-    // The cards the Save bar and the doors land on are in the page.
-    for (const anchor of [
-      "ford-occupation",
-      "ford-recreation",
-      "body-build",
-      "body-training-story",
-      "body-watchouts",
-      "body-figure",
-      "body-floor",
-      "body-measured",
-      "body-timeline",
-      "body-inbody",
-      "body-pulse",
-      "goals-coach",
-      "goals-why",
-      "goals-now",
-      "goals-focus",
-      "goals-plans",
-      "goals-reached",
-      "account-contact",
-      "account-membership",
-      "account-train-at",
-      "account-on-file",
-      "account-found-us",
-      "account-fine-print",
-    ]) {
+    // Every card a door, the Save bar's Show or a legacy link may land on
+    // (client codex, phase 18: the whole registry, not a hand-kept list).
+    for (const anchor of RECORD_ANCHORS) {
       expect(host.querySelectorAll(`[id="${anchor}"][data-cx-anchor]`), anchor).toHaveLength(1);
     }
   });
@@ -1128,17 +1118,63 @@ describe("ClientCodex — the Overview", () => {
     expect(panel(host, "overview").textContent).not.toContain("No notes");
   });
 
-  it("has a door to every page but Notes, which has its own band", async () => {
+  it("has a slot for every page, in AJ's order, and the whole Body & Pulse slot opens its page", async () => {
     const host = await mount();
-    const doors = Array.from(panel(host, "overview").querySelectorAll<HTMLElement>(".cx-ov-doors .cx-slot"));
-    expect(doors.map((d) => d.querySelector(".cx-eyebrow")?.textContent)).toEqual([
-      "FORD",
+    const slots = Array.from(panel(host, "overview").querySelectorAll<HTMLElement>(".cx-ov > .cx-slot"));
+    expect(slots.map((d) => d.querySelector(".cx-eyebrow")?.textContent)).toEqual([
+      "Notes",
+      "Who she is · FORD",
       "Body & Pulse",
       "Goals & Focus",
       "Story",
-      "Account",
+      "Account · contact and membership",
     ]);
-    await click(doors[1]);
+    await click(slots[2]);
     expect(selected(host)).toEqual(["cx-tab-body"]);
+  });
+
+  it("opens a FORD pillar's card from its tile, and FORD's In one line from Write one", async () => {
+    fake.rows["clients/c1/ford"] = [
+      { id: "f1", clientId: "c1", studioId: "s1", pillar: "family", body: "Married to Tom, 41 years this October.", isPinned: true, isArchived: false },
+    ];
+    await withScrollSpy(async (seen) => {
+      const host = await mount();
+      const overview = panel(host, "overview");
+      const family = overview.querySelector<HTMLElement>('.cx-ov-pillar[data-pillar="family"]')!;
+      expect(family.textContent).toContain("Married to Tom, 41 years this October.");
+      await click(family);
+      expect(selected(host)).toEqual(["cx-tab-ford"]);
+      expect(seen).toContain("ford-family");
+      await click(tab(host, "overview"));
+      await click(buttonIn(overview, "Write one"));
+      expect(selected(host)).toEqual(["cx-tab-ford"]);
+      expect(seen).toContain("ford-one-line");
+    });
+  });
+
+  it("makes no read of its own: the tab opens on it with the one load and nothing else", async () => {
+    const host = await mount();
+    expect(panel(host, "overview").childElementCount).toBe(1);
+    // One listener each on the tab's load, and no page's own read.
+    expect(liveOn("journalEntries")).toBe(1);
+    expect(liveOn("clients/c1/ford")).toBe(1);
+    expect(liveOn("clients/c1/inbodyScans")).toBe(1);
+    expect(liveOn("clients/c1/sharedNotes")).toBe(0);
+    expect(liveOn("trainers/uid-ann/notes")).toBe(0);
+    expect(fake.gets).toEqual([]);
+  });
+
+  it("tells a cross-train reader whose FORD it is, and shows none of it", async () => {
+    fake.rows["clients/c1/ford"] = [
+      { id: "f1", clientId: "c1", studioId: "s1", pillar: "family", body: "Married to Tom", isPinned: true, isArchived: false },
+    ];
+    const host = await mount(baseClient(), crossTrainer);
+    const overview = panel(host, "overview");
+    expect(overview.querySelector('[data-testid="ov-ford-notice"]')?.textContent).toBe(
+      "FORD is kept by Westlake. It opens for the people who work there.",
+    );
+    expect(overview.querySelector(".cx-ov-pillar")).toBeNull();
+    expect(overview.textContent).not.toContain("Married to Tom");
+    expect(buttonIn(overview, "Write one")).toBeUndefined();
   });
 });

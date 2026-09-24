@@ -23,7 +23,7 @@ import { useMemo } from "react";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import type { Client, Machine } from "../../../types";
 import { ClinicalFlagPicker } from "../../clinical-flags/ClinicalFlagPicker";
-import { TONE_BADGE, selectedFlags, type FlagOption } from "../../clinical-flags/flag-search";
+import { selectedFlags } from "../../clinical-flags/flag-search";
 import {
   CardHead,
   Chip,
@@ -38,11 +38,8 @@ import {
   anchorProps,
   cls,
   useReadEdit,
-  type ChipTone,
 } from "../kit";
-import { groupEyebrow, watchOutGroups } from "./watchout-groups";
-
-const TONE_CHIP: Record<FlagOption["tone"], ChipTone> = { alert: "alert", caution: "warn", modify: "live" };
+import { flagChip, groupEyebrow, watchOutGroups } from "./watchout-groups";
 
 export interface WatchOutsCardProps {
   flagIds: readonly string[] | null | undefined;
@@ -58,12 +55,6 @@ export interface WatchOutsCardProps {
   updateField: (key: keyof Client, value: unknown) => void;
   onOpenMachine?: (machineId: string) => void;
   className?: string;
-}
-
-/** A flag's chip words: the name, with Stop or High when the matrix says so. */
-function chipWords(f: FlagOption): string {
-  const badge = TONE_BADGE[f.tone];
-  return badge ? `${f.name} · ${badge.short}` : f.name;
 }
 
 export function WatchOutsCard({
@@ -125,11 +116,14 @@ export function WatchOutsCard({
         <>
           {flags.length > 0 ? (
             <Chips>
-              {flags.map((f) => (
-                <Chip key={f.id} tone={TONE_CHIP[f.tone]}>
-                  {chipWords(f)}
-                </Chip>
-              ))}
+              {flags.map((f) => {
+                const chip = flagChip(f);
+                return (
+                  <Chip key={f.id} tone={chip.tone}>
+                    {chip.text}
+                  </Chip>
+                );
+              })}
             </Chips>
           ) : null}
 

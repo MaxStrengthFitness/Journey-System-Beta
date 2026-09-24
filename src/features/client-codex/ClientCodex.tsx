@@ -269,7 +269,7 @@ export function ClientCodex({
   const renderPage = (id: RecordPage) => {
     switch (id) {
       case "overview":
-        return <OverviewPage {...pageProps} items={items} />;
+        return <OverviewPage {...pageProps} />;
       case "notes":
         return <NotesPage {...pageProps} intent={notesIntent} />;
       case "ford":

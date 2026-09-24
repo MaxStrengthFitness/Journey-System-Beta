@@ -469,6 +469,8 @@ describe("goalsTabHint and goalsGlance", () => {
     // No start date: the coach alone, never "AJ, —".
     expect(glance.focusLine).toBe("Pace: Slow the lower turnaround. · AJ");
     expect(goalsGlance({ client, focuses: null, threads: [], notesState: "ready", today: TODAY, tz: TZ }).foot).toBe("");
+    // Known and none running: no "0 focuses running" (the slot says "none running").
+    expect(goalsGlance({ client, focuses: [], threads: [], notesState: "ready", today: TODAY, tz: TZ }).foot).toBe("");
   });
 
   it("formats a day key as a studio day, never through UTC", () => {

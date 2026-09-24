@@ -136,3 +136,17 @@ export function ordinal(n: number): string {
       return `${n}th`;
   }
 }
+
+/**
+ * What a birthday row is called: "Her 69th birthday", or "His birthday" when
+ * the birth year is not believable. One wording for the FORD page's Coming up
+ * and the Overview's (client codex, phase 18), so the two never disagree.
+ */
+export function birthdayLabel(
+  row: Pick<BirthdayRow, "turning">,
+  pronouns: { possessive: string },
+): string {
+  const p = pronouns.possessive;
+  const whose = p ? p.charAt(0).toUpperCase() + p.slice(1) : p;
+  return row.turning !== null ? `${whose} ${ordinal(row.turning)} birthday` : `${whose} birthday`;
+}

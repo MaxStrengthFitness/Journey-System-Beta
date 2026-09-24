@@ -21,7 +21,7 @@
  *   membershipTimeline  the contract history as tiles, oldest first, with
  *                     the years before Journey as the first, dashed one
  *   accountTabHint    the sub-toggle's line ("95 sessions left")
- *   accountGlance     the Overview's Account slot (phase 18)
+ *   accountGlance     the Overview's Account slot (phase 18), in two columns
  *   accountLede       the page's opening lines, by linked or not and by
  *                     whether this reader may edit
  *   tabTone           a renewal's tone on this page: never crimson
@@ -673,14 +673,21 @@ export function accountTabHint(client: Pick<Client, "mindbodyServices"> & Partia
 /* ------------------------------------------------------------------ */
 
 export interface AccountGlance {
+  /** Every line, in order: `who` then `membership`. */
   lines: string[];
+  /** Who she is: age and birthday, the emergency contact, the waiver. */
+  who: string[];
+  /** Her membership: what is left, the package, where she trains. */
+  membership: string[];
   foot: string;
 }
 
 /**
  * The few lines the Overview shows for Account: age and birthday, the
  * emergency contact, the waiver, the package, and where she trains. Each is
- * left out when it is not on file (the slot's door says the rest).
+ * left out when it is not on file (the slot's door says the rest). `who` and
+ * `membership` are the same lines split the way the slot draws its two
+ * columns (client codex, phase 18); `lines` is both, in order.
  */
 export function accountGlance(
   client: Client,
@@ -723,21 +730,27 @@ export function accountGlance(
     .map(nameOf)
     .filter((n): n is string => !!n);
 
-  const lines = [
+  const present = (list: Array<string | null>) => list.filter((l): l is string => !!l);
+  const who = present([
     joinDots([ageLine, gender]) || null,
     emergencyName ? `Emergency: ${emergencyName}${relationship ? `, ${relationship}` : ""}` : null,
     linked || waiver.state !== "unknown"
       ? `Liability waiver ${waiver.label.charAt(0).toLowerCase()}${waiver.label.slice(1)}`
       : null,
+  ]);
+  const membership = present([
     renewal,
     tier.source === "unknown" ? null : tier.label,
     home ? `Home: ${home}${also.length ? ` · also trains at ${also.join(", ")}` : ""}` : null,
-  ].filter((l): l is string => !!l);
+  ]);
+  const lines = [...who, ...membership];
 
-  if (!linked) return { lines, foot: "Typed in Journey · not linked to Mindbody" };
+  if (!linked) return { lines, who, membership, foot: "Typed in Journey · not linked to Mindbody" };
   const synced = masterSyncLabel(client.mindbodyMasterSyncedAt, now);
   return {
     lines,
+    who,
+    membership,
     foot: `From Mindbody, ${synced.charAt(0).toLowerCase()}${synced.slice(1)} · the renewal is worked out nightly`,
   };
 }

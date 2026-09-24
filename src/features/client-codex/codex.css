@@ -64,31 +64,51 @@
   scroll-margin-top: calc(var(--psub-stuck-h, 64px) + 12px);
 }
 
-/* ---- the Overview (interim: the Notes band and a door per page) -------- */
+/* ---- the Overview ------------------------------------------------------
+   The front page (phase 18): Notes across the top, then FORD beside Body &
+   Pulse, Goals & Focus beside Story, and Account across. Portrait first: a
+   744pt iPad held upright gets ONE column (the pages' container is under
+   720px there); 820, 834 and the 13-inch upright (1024, whose page is
+   under 1040px inside the profile's gutters) get FORD 7 / Body 5 and
+   Goals 7 / Story 5; from 1040px, which is landscape, FORD 8 / Body 4. Every slot is the kit's `Slot`; only the layout of its insides is
+   here. Nothing is clipped: every line wraps. */
 
 .cx-ov {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 14px;
   min-width: 0;
 }
 
-.cx-ov-doors {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  min-width: 0;
+.cx-ov > * {
+  grid-column: 1 / -1;
 }
 
-@container cx (min-width: 560px) {
-  .cx-ov-doors {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@container cx (min-width: 720px) {
+  .cx-ov > .cx-ov-ford {
+    grid-column: span 7;
+  }
+
+  .cx-ov > .cx-ov-body {
+    grid-column: span 5;
+  }
+
+  .cx-ov > .cx-ov-goals {
+    grid-column: span 7;
+  }
+
+  .cx-ov > .cx-ov-story {
+    grid-column: span 5;
   }
 }
 
 @container cx (min-width: 1040px) {
-  .cx-ov-doors {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .cx-ov > .cx-ov-ford {
+    grid-column: span 8;
+  }
+
+  .cx-ov > .cx-ov-body {
+    grid-column: span 4;
   }
 }
 
@@ -97,23 +117,234 @@
   font-weight: 800;
 }
 
-.cx-ov-door__meta {
+.cx-ov-quiet {
   color: var(--cx-ink-3);
-  font-size: var(--cx-fs-12);
-  font-weight: 700;
+  font-size: var(--cx-fs-14);
 }
 
-/* The FORD door's In one line (phase 11): the team's sentence, then who
-   wrote it last. It wraps; it is never cut. */
-.cx-ov-door__line {
-  color: var(--cx-ink);
-  font-size: var(--cx-fs-17);
-  font-weight: 600;
-  line-height: 1.35;
+.cx-ov-notice {
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+}
+
+/* A wait: the app's one loading mark, then the slot's own words beside it. */
+.cx-ov-wait {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+/* Bold lead-ins ("Every set:", "Working toward:"), then the words. */
+.cx-ov-lines {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
   overflow-wrap: anywhere;
 }
 
-.cx-ov-door__by {
+.cx-ov-lines b {
+  color: var(--cx-ink);
+  font-weight: 700;
+}
+
+.cx-ov-lines .cx-loud {
+  vertical-align: middle;
+}
+
+/* ---- FORD: the In one line, the four pillars, the two lists ------------ */
+
+.cx-ov-ford {
+  container: cxford / inline-size;
+}
+
+/* FORD holds the most: its line, its pillars and its two lists get room. */
+.cx-ov-ford > .cx-slot__body {
+  gap: 12px;
+}
+
+.cx-ov-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.cx-ov-line[data-missing] {
+  align-items: center;
+}
+
+.cx-ov-line__text {
+  overflow-wrap: anywhere;
+}
+
+.cx-ov-pillars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+@container cxford (min-width: 560px) {
+  .cx-ov-pillars {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* A pillar is one button: its whole tile opens the pillar's card on FORD.
+   The text alignment is set here, not left to the browser's centred button
+   (KNOWN-TRAPS → Layout and CSS). */
+.cx-ov-pillar {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid var(--cx-line);
+  border-radius: 12px;
+  background: var(--cx-surface-2);
+  color: var(--cx-ink-2);
+  font-family: inherit;
+  font-size: var(--cx-fs-14);
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cx-ov-pillar:focus-visible {
+  outline: 2px solid var(--cx-focus);
+  outline-offset: 2px;
+}
+
+.cx-ov-pillar__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 800;
+}
+
+.cx-ov-pillar__lead,
+.cx-ov-pillar__empty,
+.cx-ov-pillar__ask {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cx-ov-pillar__empty,
+.cx-ov-pillar__meta {
+  color: var(--cx-ink-3);
+}
+
+.cx-ov-pillar__meta {
+  display: block;
+  margin-top: auto;
+  font-size: var(--cx-fs-12);
+}
+
+.cx-ov-ford-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+@container cxford (min-width: 560px) {
+  .cx-ov-ford-foot {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cx-ov-mini {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cx-ov-mini__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  overflow-wrap: anywhere;
+}
+
+.cx-ov-mini .cx-ov-quiet {
+  margin: 0;
+}
+
+/* The when of a date, coloured by URGENCY and never by pillar: this week
+   FORD's "now" orange, this month "soon" blue, later quiet. */
+.cx-ov-when {
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+}
+
+.cx-ov-when[data-urgency="now"] {
+  color: var(--cx-now);
+}
+
+.cx-ov-when[data-urgency="soon"] {
+  color: var(--cx-soon);
+}
+
+.cx-ov-when[data-urgency="later"],
+.cx-ov-when[data-urgency="past"],
+.cx-ov-when[data-urgency="none"] {
+  color: var(--cx-later);
+}
+
+/* ---- Story: day | moment ---------------------------------------------- */
+
+/* A whole-slot button holds phrasing content only, so these are spans; the
+   slot's body is a grid, which makes each one a block of its own. */
+.cx-ov-story-rows {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 12px;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  overflow-wrap: anywhere;
+}
+
+.cx-ov-story-rows__day {
+  padding-top: 2px;
   color: var(--cx-ink-3);
   font-size: var(--cx-fs-12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Account: who she is | her membership ------------------------------ */
+
+.cx-ov-acct {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px 20px;
+}
+
+@container cx (min-width: 720px) {
+  .cx-ov-acct {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (hover: hover) {
+  .cx-ov-pillar:hover {
+    border-color: var(--cx-live-line);
+  }
 }

@@ -554,12 +554,17 @@ describe("accountGlance", () => {
       "Committed · 12 months · paying every 4 weeks",
       "Home: Westlake · also trains at Solon",
     ]);
+    // The same lines, split the way the Overview draws its two columns.
+    expect(g.who).toEqual(g.lines.slice(0, 3));
+    expect(g.membership).toEqual(g.lines.slice(3));
     expect(g.foot).toBe("From Mindbody, synced 2 days ago · the renewal is worked out nightly");
   });
 
   it("leaves out what is not on file, and never an unknown tier", () => {
     const g = accountGlance(linked({ homeStudioId: "", dateOfBirth: "", gender: "", emergencyContactName: "" }), studios, TODAY, NOW);
     expect(g.lines).toEqual(["Liability waiver not synced yet"]);
+    expect(g.who).toEqual(["Liability waiver not synced yet"]);
+    expect(g.membership).toEqual([]);
     const never = accountGlance(linked({ mindbodyMasterSyncedAt: undefined }), studios, TODAY, NOW);
     expect(never.foot).toBe("From Mindbody, never synced · the renewal is worked out nightly");
   });
