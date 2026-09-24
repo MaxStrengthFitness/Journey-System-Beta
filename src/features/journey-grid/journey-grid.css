@@ -633,11 +633,12 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   color: var(--jg-ink);
   letter-spacing: -0.005em;
 }
+/* Names are never truncated: a long one ("Seated Abdominal") wraps onto a
+   second line and the row grows (rows are a min-height, not a height). */
 .jg-machine__label {
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 /* The note glyph is absolutely positioned in the cell's top-right corner,
    so the NAME row reserves room for it. The settings row underneath runs

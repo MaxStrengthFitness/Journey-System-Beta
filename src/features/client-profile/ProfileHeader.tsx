@@ -335,7 +335,8 @@ export function ProfileHeader({
           </h1>
           <div className="mt-1.5 flex items-center gap-2.5 min-w-0">
             <BrandTiles size={6} gap={2} />
-            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground truncate">
+            {/* Wraps, never an ellipsis: the studio is a name too ("Demo Mode"). */}
+            <span className="min-w-0 text-[10px] font-bold uppercase tracking-[0.14em] leading-snug text-muted-foreground [overflow-wrap:anywhere]">
               <span>{studioName}</span>
               {since && (
                 <span className="xl:hidden 2xl:inline">
