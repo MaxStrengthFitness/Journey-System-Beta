@@ -60,6 +60,35 @@
   font-size: var(--cx-fs-12);
 }
 
+/* ---- In one line ------------------------------------------------------ */
+
+/* The sentence a new trainer reads first: 17px, and it wraps, never cut. */
+.fordpg-line__text {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fordpg-line__edit {
+  display: grid;
+  gap: 8px;
+}
+
+.fordpg-line__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fordpg-line__note {
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+}
+
 /* ---- Coming up -------------------------------------------------------- */
 
 .fordpg-coming {
@@ -431,22 +460,52 @@ button.fordpg-item {
 }
 
 .fordpg-ask {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
+  display: grid;
+  gap: 8px;
   padding-top: 10px;
   border-top: 1px solid var(--cx-line);
   color: var(--cx-ink-2);
   font-size: var(--cx-fs-14);
 }
 
+.fordpg-ask__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
 .fordpg-ask__q {
   color: var(--cx-ink);
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .fordpg-ask__why {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+/* "Asked it": the answer box and its three moves. */
+.fordpg-ask__panel {
+  display: grid;
+  gap: 8px;
+}
+
+.fordpg-ask__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fordpg-ask__note {
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+}
+
+/* A standing fact holding a follow-up Ask next is not showing. */
+.fordpg-fact__mark {
   color: var(--cx-ink-3);
   font-size: var(--cx-fs-12);
 }

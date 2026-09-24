@@ -24,7 +24,16 @@
  *     record; while FORD loads or after it failed, the birthday card plans
  *     nothing (a Birthday detail may already exist unseen);
  *   - a save that fails keeps the dialog and the words; a new idea is unowned;
- *   - every button is 40px or taller (the kit's, or the page's own rows).
+ *   - every button is 40px or taller (the kit's, or the page's own rows);
+ *   - IN ONE LINE (phase 11): written at clients/{id}/ford/one-line (the
+ *     whole document the first time, archived; an update of the words
+ *     after, never the studio), "Written by the team · last by …", never
+ *     drawn for a reader FORD refuses, and not rewritable over a line that
+ *     could not be read;
+ *   - FOLLOW UP NEXT TIME (phase 11): the newest open question is Ask next,
+ *     "Asked it" clears it (saving an answer as a new detail first), the
+ *     dialog stamps a question only when it changed, and a question on a
+ *     detail Ask next is not showing — or on an unfiled one — is still said.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -37,6 +46,13 @@ const fake = vi.hoisted(() => ({
   writes: [] as { op: string; path: string; data: Record<string, unknown> }[],
   /** When set, addDoc and updateDoc throw this. */
   fail: null as null | { code: string },
+  /** When set, only updateDoc throws this (an add lands, the next update is refused). */
+  failUpdate: null as null | { code: string },
+  /**
+   * When set, updateDoc waits on this before it answers — the gap in which
+   * real Firestore has already applied the update to this iPad's cache.
+   */
+  holdUpdate: null as null | Promise<void>,
   toasts: [] as { kind: string; message: string }[],
 }));
 
@@ -73,10 +89,13 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       return { id: "new-1" };
     },
     updateDoc: async (r: { path: string }, data: Record<string, unknown>) => {
+      if (fake.holdUpdate) await fake.holdUpdate;
       if (fake.fail) throw fake.fail;
+      if (fake.failUpdate) throw fake.failUpdate;
       fake.writes.push({ op: "update", path: r.path, data });
     },
     setDoc: async (r: { path: string }, data: Record<string, unknown>) => {
+      if (fake.fail) throw fake.fail;
       fake.writes.push({ op: "set", path: r.path, data });
     },
     serverTimestamp: () => ({ __server: true }),
@@ -84,6 +103,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 });
 
 import { FordPage, type FordPageProps } from "./FordPage";
+import { ONE_LINE_BLOCKED, ONE_LINE_SAVED_MS } from "./OneLinePanel";
 import { useRecordForm } from "../../client-codex/useRecordForm";
 import { pronounsOf } from "../../client-codex/kit";
 import { groupByPillar, upcomingFord } from "../ford-rollup";
@@ -155,10 +175,22 @@ const opp = (status: FordOpportunity["status"], patch: Partial<FordOpportunity> 
   ...patch,
 });
 
-function fordOf(rows: FordEntry[], status: FordReadStatus = "ready"): UseClientFordResult {
+function fordOf(rows: FordEntry[], status: FordReadStatus = "ready", oneLine: FordEntry | null = null): UseClientFordResult {
   const { buckets, untagged } = groupByPillar(rows);
-  return { entries: rows, buckets, untagged, upcoming: upcomingFord(rows), status, isLoading: status === "loading" };
+  return { entries: rows, buckets, untagged, upcoming: upcomingFord(rows), status, isLoading: status === "loading", oneLine };
 }
+
+/** The In one line document as useClientFord hands it out (phase 11). */
+const lineDoc = (body: string): FordEntry =>
+  detail({
+    id: "one-line",
+    kind: "one-line",
+    pillar: null,
+    isPinned: true,
+    isArchived: true,
+    body,
+    occurredAt: new Date(2027, 2, 15, 9),
+  });
 
 const lifeNote = (over: Partial<JournalEntry> & { id: string }): JournalEntry =>
   ({
@@ -231,7 +263,7 @@ function Harness({
 /* Harness                                                             */
 /* ------------------------------------------------------------------ */
 
-let mounted: { root: Root; host: HTMLElement }[] = [];
+let mounted: { root: Root; host: HTMLElement; client: Client }[] = [];
 
 const settle = () =>
   act(async () => {
@@ -253,8 +285,24 @@ async function mount(props: HarnessProps = {}) {
       </StrictMode>,
     );
   });
-  mounted.push({ root, host });
+  mounted.push({ root, host, client });
   return host;
+}
+
+/**
+ * Hand a mounted page new props, as a new snapshot would — same client
+ * object, so the record form does not re-seed.
+ */
+async function rerender(host: HTMLElement, props: HarnessProps) {
+  const m = mounted.find((x) => x.host === host)!;
+  await act(async () => {
+    m.root.render(
+      <StrictMode>
+        <Harness {...props} client={m.client} />
+      </StrictMode>,
+    );
+  });
+  await settle();
 }
 
 const click = async (el: Element | null | undefined) => {
@@ -286,6 +334,8 @@ beforeEach(() => {
   fake.writes.length = 0;
   fake.toasts.length = 0;
   fake.fail = null;
+  fake.failUpdate = null;
+  fake.holdUpdate = null;
   go.mockClear();
 });
 
@@ -620,10 +670,18 @@ describe("going above and beyond", () => {
 describe("the page's controls", () => {
   it("are all 40px or taller: the kit's buttons, or the page's own row buttons", async () => {
     const caught = detail({ id: "u1", pillar: null, body: "Caught" });
+    const asking = detail({ id: "q1", pillar: "dreams", followUp: "Did the Camino booking go through?", followUpBy: "Jess Moreno" });
     const host = await mount({
-      ford: fordOf([caught, detail({ id: "f1", isPinned: true }), detail({ id: "m1" }), detail({ id: "i1", opportunity: opp("idea") })]),
+      ford: fordOf(
+        [caught, detail({ id: "f1", isPinned: true }), detail({ id: "m1" }), detail({ id: "i1", opportunity: opp("idea") }), asking],
+        "ready",
+        lineDoc("Retired hygienist, pickleball regular"),
+      ),
       older: { state: "ready", settled: settled(lifeNote({ id: "anniv" })) },
     });
+    // The new fields' buttons are the kit's too.
+    expect(buttonIn(host, "Asked it")).toBeTruthy();
+    expect(host.querySelector('#ford-one-line [aria-label="Edit the line"]')).not.toBeNull();
     const allowed = ["cx-btn", "cx-pick", "cx-next", "fordpg-cu", "fordpg-fact", "fordpg-item", "fordpg-tray__quote", "fordpg-by__text"];
     const buttons = [...host.querySelectorAll("button")];
     expect(buttons.length).toBeGreaterThan(10);
@@ -637,5 +695,395 @@ describe("the page's controls", () => {
     const classes = [...host.querySelectorAll("[class]")].map((el) => el.getAttribute("class") ?? "").join(" ");
     expect(classes).not.toMatch(/\btruncate\b|line-clamp|text-ellipsis/);
     expect(classes).not.toMatch(/\b(?:text|bg|border)-(?:slate|red|orange|amber|sky|emerald)-\d{2,3}\b/);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Phase 11 — In one line                                              */
+/* ------------------------------------------------------------------ */
+
+describe("In one line", () => {
+  const panel = (host: HTMLElement) => host.querySelector<HTMLElement>("#ford-one-line");
+  const input = (host: HTMLElement) => panel(host)!.querySelector("input") as HTMLInputElement;
+
+  it("sits at the top, before Coming up, and says there is no line yet — with a way to write one", async () => {
+    const host = await mount();
+    const ids = [...host.querySelectorAll("[data-cx-anchor]")].map((el) => el.id);
+    expect(ids.indexOf("ford-one-line")).toBeGreaterThanOrEqual(0);
+    expect(ids.indexOf("ford-one-line")).toBeLessThan(ids.indexOf("ford-coming-up"));
+    expect(panel(host)!.textContent).toContain("No line yet. The one sentence a new trainer should read first.");
+    expect(buttonIn(panel(host)!, "Write the line")).toBeTruthy();
+  });
+
+  it("writes the first line as the whole document at clients/c1/ford/one-line: archived, the studio, the Auth uid", async () => {
+    const host = await mount();
+    await click(buttonIn(panel(host)!, "Write the line"));
+    expect(input(host).maxLength).toBe(120);
+    await typeInto(input(host), "Retired hygienist, pickleball regular, walking the Camino in May");
+    await click(buttonIn(panel(host)!, "Save"));
+    const set = fake.writes.find((w) => w.op === "set")!;
+    expect(set.path).toBe("clients/c1/ford/one-line");
+    expect(set.data).toMatchObject({
+      kind: "one-line",
+      body: "Retired hygienist, pickleball regular, walking the Camino in May",
+      isArchived: true,
+      pillar: null,
+      studioId: "s1",
+      clientId: "c1",
+      authorId: "uid-ann",
+      authorName: "Ann Trainer",
+    });
+    expect(panel(host)!.querySelector('[role="status"]')?.textContent).toContain("Saved");
+    expect(panel(host)!.querySelector("input")).toBeNull();
+    // It is not a detail: no rollup refresh.
+    expect(fake.writes.some((w) => w.path === "clients/c1")).toBe(false);
+  });
+
+  it("shows the line, who wrote it last and when — and a rewrite updates the words, never the studio", async () => {
+    const host = await mount({ ford: fordOf([], "ready", lineDoc("Retired hygienist, pickleball regular")) });
+    expect(panel(host)!.querySelector(".fordpg-line__text")?.textContent).toBe("Retired hygienist, pickleball regular");
+    expect(panel(host)!.textContent).toContain("Written by the team · last by Jess Moreno, Mar 15");
+    await click(panel(host)!.querySelector('[aria-label="Edit the line"]'));
+    expect(input(host).value).toBe("Retired hygienist, pickleball regular");
+    await typeInto(input(host), "Walking the Camino with Tom in May");
+    await click(buttonIn(panel(host)!, "Save"));
+    const update = fake.writes.find((w) => w.op === "update" && w.path === "clients/c1/ford/one-line")!;
+    expect(update.data).toMatchObject({ body: "Walking the Camino with Tom in May", authorId: "uid-ann" });
+    expect("studioId" in update.data).toBe(false);
+    expect("clientId" in update.data).toBe(false);
+    expect(fake.writes.some((w) => w.op === "set")).toBe(false);
+  });
+
+  it("clears the line when the box is emptied", async () => {
+    const host = await mount({ ford: fordOf([], "ready", lineDoc("Old line")) });
+    await click(panel(host)!.querySelector('[aria-label="Edit the line"]'));
+    await typeInto(input(host), "");
+    await click(buttonIn(panel(host)!, "Save"));
+    expect(fake.writes.find((w) => w.path === "clients/c1/ford/one-line")?.data).toMatchObject({ body: "" });
+  });
+
+  it("labels the box once: the card says In one line, the field says what goes in it", async () => {
+    const host = await mount();
+    await click(buttonIn(panel(host)!, "Write the line"));
+    expect(panel(host)!.querySelector("label")?.textContent).toBe("The sentence");
+    expect(panel(host)!.textContent!.split("In one line").length - 1).toBe(1);
+  });
+
+  it("keeps the words when the save fails, and says so", async () => {
+    fake.fail = { code: "unavailable" };
+    const host = await mount();
+    await click(buttonIn(panel(host)!, "Write the line"));
+    await typeInto(input(host), "Retired hygienist");
+    await click(buttonIn(panel(host)!, "Save"));
+    expect(input(host).value).toBe("Retired hygienist");
+    expect(panel(host)!.querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here, try again");
+  });
+
+  it("says a line from an earlier studio may be in the way when a first line is refused — never 'try again'", async () => {
+    // A client who moved home studio: the old line sits at the fixed id,
+    // stamped with the old studio, so this studio sees "No line yet" and the
+    // rules refuse every save. Retrying can never work; an administrator can
+    // clear it.
+    fake.fail = { code: "permission-denied" };
+    const host = await mount();
+    await click(buttonIn(panel(host)!, "Write the line"));
+    await typeInto(input(host), "Retired hygienist");
+    await click(buttonIn(panel(host)!, "Save"));
+    expect(input(host).value).toBe("Retired hygienist");
+    const alert = panel(host)!.querySelector('[role="alert"]')?.textContent ?? "";
+    expect(alert).toBe(ONE_LINE_BLOCKED);
+    expect(alert).toContain("earlier home studio");
+    expect(alert).toContain("An administrator can clear it");
+    expect(alert).not.toContain("try again");
+  });
+
+  it("says 'Saved' for a moment, and not under a line someone else wrote after it", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const host = await mount();
+      await click(buttonIn(panel(host)!, "Write the line"));
+      await typeInto(input(host), "Retired hygienist");
+      await click(buttonIn(panel(host)!, "Save"));
+      expect(panel(host)!.querySelector('[role="status"]')?.textContent).toBe("Saved");
+      await act(async () => {
+        vi.advanceTimersByTime(ONE_LINE_SAVED_MS);
+      });
+      expect(panel(host)!.querySelector('[role="status"]')).toBeNull();
+
+      // Save again, and another trainer's rewrite arrives while "Saved" is up.
+      await click(buttonIn(panel(host)!, "Write the line"));
+      await typeInto(input(host), "Retired hygienist, pickleball regular");
+      await click(buttonIn(panel(host)!, "Save"));
+      expect(panel(host)!.querySelector('[role="status"]')?.textContent).toBe("Saved");
+      await rerender(host, { ford: fordOf([], "ready", lineDoc("Walking the Camino with Tom in May")) });
+      expect(panel(host)!.querySelector(".fordpg-line__text")?.textContent).toBe("Walking the Camino with Tom in May");
+      expect(panel(host)!.querySelector('[role="status"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Cancel writes nothing", async () => {
+    const host = await mount({ ford: fordOf([], "ready", lineDoc("Old line")) });
+    await click(panel(host)!.querySelector('[aria-label="Edit the line"]'));
+    await typeInto(input(host), "Something else");
+    await click(buttonIn(panel(host)!, "Cancel"));
+    expect(fake.writes).toEqual([]);
+    expect(panel(host)!.textContent).toContain("Old line");
+  });
+
+  it("is never 'no line yet' when FORD did not answer, and cannot be rewritten over a line nobody here has read", async () => {
+    const loading = await mount({ status: "loading", ford: fordOf([], "loading") });
+    expect(panel(loading)!.textContent).toContain("Loading…");
+    expect(panel(loading)!.querySelector("button")).toBeNull();
+    const failed = await mount({ status: "failed", ford: fordOf([], "failed") });
+    expect(panel(failed)!.textContent).toContain("couldn't be read just now");
+    expect(panel(failed)!.textContent).not.toContain("No line yet");
+    expect(panel(failed)!.querySelector("button")).toBeNull();
+  });
+
+  it("is not drawn at all for a reader FORD refuses — the line is FORD text", async () => {
+    const off = await mount({ status: "off", canEdit: false, ford: fordOf([], "ready", lineDoc("Retired hygienist")) });
+    expect(panel(off)).toBeNull();
+    expect(off.textContent).not.toContain("Retired hygienist");
+    const denied = await mount({ status: "denied", ford: fordOf([], "denied") });
+    expect(panel(denied)).toBeNull();
+  });
+
+  it("is read only for a reader who may not write FORD", async () => {
+    const host = await mount({ canEdit: false, ford: fordOf([], "ready", lineDoc("Retired hygienist")) });
+    expect(panel(host)!.textContent).toContain("Retired hygienist");
+    expect(panel(host)!.querySelector("button")).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* Phase 11 — Follow up next time                                      */
+/* ------------------------------------------------------------------ */
+
+describe("Follow up next time", () => {
+  const boots = detail({
+    id: "boots",
+    pillar: "recreation",
+    subject: "Boots",
+    body: "New hiking boots for the Camino",
+    followUp: "How were the boots?",
+    followUpAt: new Date(2027, 2, 15, 9),
+    followUpBy: "Jess Moreno",
+  });
+  const ask = (host: HTMLElement, pillar = "recreation") => card(host, pillar).querySelector<HTMLElement>(".fordpg-ask")!;
+  const followUpField = () =>
+    dialog()!.querySelector('input[placeholder^="e.g. \\"How did the new boots"]') as HTMLInputElement;
+
+  it("is Ask next, ahead of FORD's prompt, with who set it and when", async () => {
+    const host = await mount({ ford: fordOf([boots]) });
+    expect(ask(host).textContent).toContain("“How were the boots?”");
+    expect(ask(host).textContent).toContain("Follow up from Jess Moreno, Mar 15");
+    // The detail it came from does not say it twice.
+    expect(card(host, "recreation").querySelector(".fordpg-item")?.textContent).not.toContain("follow up next time");
+  });
+
+  it("'Asked it', then 'Nothing new, clear it' nulls the question and nothing else", async () => {
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    await click(buttonIn(ask(host), "Nothing new, clear it"));
+    const update = fake.writes.find((w) => w.op === "update" && w.path === "clients/c1/ford/boots")!;
+    expect(update.data).toMatchObject({ followUp: null, followUpAt: null, followUpBy: null });
+    expect(Object.keys(update.data).sort()).toEqual(["followUp", "followUpAt", "followUpBy", "updatedAt"]);
+    expect(fake.writes.some((w) => w.op === "add")).toBe(false);
+  });
+
+  it("'Save the answer' files the answer as a new detail under the pillar, then clears the question", async () => {
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    expect((buttonIn(ask(host), "Save the answer") as HTMLButtonElement).disabled).toBe(true);
+    await typeInto(ask(host).querySelector("textarea"), "Broke them in on the towpath. No blisters.");
+    await click(buttonIn(ask(host), "Save the answer"));
+    const add = fake.writes.find((w) => w.op === "add")!;
+    expect(add.path).toBe("clients/c1/ford");
+    expect(add.data).toMatchObject({
+      pillar: "recreation",
+      body: "Broke them in on the towpath. No blisters.",
+      subject: "Boots",
+      studioId: "s1",
+      authorId: "uid-ann",
+      followUp: null,
+    });
+    const clear = fake.writes.find((w) => w.op === "update" && w.path === "clients/c1/ford/boots")!;
+    expect(clear.data).toMatchObject({ followUp: null, followUpAt: null, followUpBy: null });
+    expect(fake.writes.indexOf(add)).toBeLessThan(fake.writes.indexOf(clear));
+  });
+
+  it("keeps the answer and the question when the answer is refused", async () => {
+    fake.fail = { code: "permission-denied" };
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    await typeInto(ask(host).querySelector("textarea"), "No blisters.");
+    await click(buttonIn(ask(host), "Save the answer"));
+    expect((ask(host).querySelector("textarea") as HTMLTextAreaElement).value).toBe("No blisters.");
+    expect(ask(host).querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here, try again");
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("says so when the answer saved but the question could not be cleared — and never files the answer twice", async () => {
+    fake.failUpdate = { code: "unavailable" };
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    await typeInto(ask(host).querySelector("textarea"), "No blisters.");
+    await click(buttonIn(ask(host), "Save the answer"));
+    expect(fake.writes.filter((w) => w.op === "add")).toHaveLength(1);
+    expect(ask(host).querySelector('[role="alert"]')?.textContent).toContain("The answer is saved.");
+    expect((buttonIn(ask(host), "Save the answer") as HTMLButtonElement).disabled).toBe(true);
+    // The retry is the clear alone.
+    fake.failUpdate = null;
+    await click(buttonIn(ask(host), "Nothing new, clear it"));
+    expect(fake.writes.filter((w) => w.op === "add")).toHaveLength(1);
+    expect(fake.writes.find((w) => w.op === "update" && w.path === "clients/c1/ford/boots")?.data).toMatchObject({ followUp: null });
+  });
+
+  it("'Not yet' closes the panel and writes nothing", async () => {
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    await click(buttonIn(ask(host), "Not yet"));
+    expect(ask(host).querySelector("textarea")).toBeNull();
+    expect(buttonIn(ask(host), "Asked it")).toBeTruthy();
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("shows the question, with no 'Asked it', to a reader who may not write FORD", async () => {
+    const host = await mount({ canEdit: false, ford: fordOf([boots]) });
+    expect(ask(host).textContent).toContain("“How were the boots?”");
+    expect(buttonIn(ask(host), "Asked it")).toBeUndefined();
+  });
+
+  it("marks a second open question on the pillar, so it never waits unseen", async () => {
+    const older = detail({
+      id: "trip",
+      pillar: "recreation",
+      body: "Trip to the Smokies in April",
+      followUp: "How was the Smokies trip?",
+      followUpAt: new Date(2027, 1, 1, 9),
+      followUpBy: "AJ Jurgens",
+      occurredAt: new Date(2027, 1, 1, 9),
+    });
+    const fact = detail({
+      id: "fact",
+      pillar: "recreation",
+      isPinned: true,
+      body: "Plays pickleball",
+      followUp: "Still Tuesdays?",
+      followUpAt: new Date(2027, 0, 5),
+    });
+    const host = await mount({ ford: fordOf([boots, older, fact]) });
+    expect(ask(host).textContent).toContain("“How were the boots?”");
+    const items = [...card(host, "recreation").querySelectorAll(".fordpg-item")];
+    const trip = items.find((i) => i.textContent?.includes("Smokies"))!;
+    // The question itself, not only that there is one.
+    expect(trip.textContent).toContain("follow up next time: “How was the Smokies trip?”");
+    const newest = items.find((i) => i.textContent?.includes("hiking boots"))!;
+    expect(newest.textContent).not.toContain("follow up next time");
+    expect(card(host, "recreation").querySelector(".fordpg-fact")?.textContent).toBe(
+      "Plays pickleball · follow up next time: “Still Tuesdays?”",
+    );
+  });
+
+  it("shows a waiting question in full to a reader who can read FORD but cannot open the detail", async () => {
+    const older = detail({
+      id: "trip",
+      pillar: "recreation",
+      body: "Trip to the Smokies in April",
+      followUp: "How was the Smokies trip?",
+      followUpAt: new Date(2027, 1, 1, 9),
+    });
+    const host = await mount({ canEdit: false, ford: fordOf([boots, older]) });
+    const trip = [...card(host, "recreation").querySelectorAll(".fordpg-item")].find((i) => i.textContent?.includes("Smokies"))!;
+    expect(trip.tagName).not.toBe("BUTTON");
+    expect(trip.textContent).toContain("“How was the Smokies trip?”");
+  });
+
+  it("holds the question it was opened on while the cache shows it cleared — and says so when the server refuses", async () => {
+    // Real Firestore applies an update to this iPad's cache before the server
+    // answers, so the one listener delivers the question as cleared the moment
+    // "clear" is tapped, and Ask next moves on. The line must not follow it:
+    // a remount would close the panel as if the clear had worked.
+    const trip = detail({
+      id: "trip",
+      pillar: "recreation",
+      body: "Trip to the Smokies in April",
+      followUp: "How was the Smokies trip?",
+      followUpAt: new Date(2027, 1, 1, 9),
+      followUpBy: "AJ Jurgens",
+    });
+    const cleared = { ...boots, followUp: null, followUpAt: null, followUpBy: null };
+    let refuse!: () => void;
+    fake.holdUpdate = new Promise<void>((_, reject) => {
+      refuse = () => reject({ code: "permission-denied" });
+    });
+    const host = await mount({ ford: fordOf([boots, trip]) });
+    await click(buttonIn(ask(host), "Asked it"));
+    await click(buttonIn(ask(host), "Nothing new, clear it"));
+
+    // The cache already says cleared: Ask next is now the Smokies question.
+    await rerender(host, { ford: fordOf([cleared, trip]) });
+    expect(ask(host).textContent).toContain("“How were the boots?”");
+    expect(ask(host).textContent).toContain("Follow up from Jess Moreno, Mar 15");
+    expect(ask(host).querySelector("textarea")).not.toBeNull();
+
+    // The server refuses; the question comes back.
+    await act(async () => {
+      refuse();
+    });
+    await settle();
+    await rerender(host, { ford: fordOf([boots, trip]) });
+    expect(ask(host).textContent).toContain("“How were the boots?”");
+    expect(ask(host).querySelector('[role="alert"]')?.textContent).toContain("Not saved — still here, try again");
+
+    // A retry clears the question it was opened on, not the one Ask next showed meanwhile.
+    fake.holdUpdate = null;
+    fake.writes.length = 0;
+    await click(buttonIn(ask(host), "Nothing new, clear it"));
+    expect(fake.writes.map((w) => w.path)).toEqual(["clients/c1/ford/boots"]);
+    await rerender(host, { ford: fordOf([cleared, trip]) });
+    expect(ask(host).textContent).toContain("“How was the Smokies trip?”");
+    expect(ask(host).querySelector("textarea")).toBeNull();
+  });
+
+  it("shows the question on a capture that is not filed yet", async () => {
+    const caught = detail({ id: "u1", pillar: null, body: "Sister visiting from Arizona", followUp: "Did her sister make it?" });
+    const host = await mount({ ford: fordOf([caught]) });
+    expect(host.querySelector(".fordpg-tray")?.textContent).toContain("Follow up next time: “Did her sister make it?”");
+  });
+
+  it("the dialog saves a new detail's question with who set it", async () => {
+    const host = await mount();
+    await click(host.querySelector('[aria-label="Add a Recreation detail"]'));
+    const d = dialog()!;
+    await typeInto(d.querySelector("textarea"), "New hiking boots for the Camino");
+    expect(followUpField().maxLength).toBe(140);
+    expect(d.textContent).toContain("Follow up next time (optional)");
+    await typeInto(followUpField(), "How did the new boots do on the long walk?");
+    await click(buttonIn(d, "Save it"));
+    const add = fake.writes.find((w) => w.op === "add")!;
+    expect(add.data).toMatchObject({ followUp: "How did the new boots do on the long walk?", followUpBy: "Ann Trainer" });
+    expect(add.data.followUpAt).toBeTruthy();
+  });
+
+  it("the dialog leaves an unchanged question alone, and stamps a changed one", async () => {
+    const host = await mount({ ford: fordOf([boots]) });
+    await click(buttonIn(card(host, "recreation"), "New hiking boots for the Camino"));
+    expect(followUpField().value).toBe("How were the boots?");
+    await typeInto(dialog()!.querySelector("textarea"), "New hiking boots for the Camino, size 8");
+    await click(buttonIn(dialog()!, "Save changes"));
+    const first = fake.writes.find((w) => w.path === "clients/c1/ford/boots")!;
+    expect(first.data.body).toBe("New hiking boots for the Camino, size 8");
+    expect("followUp" in first.data || "followUpAt" in first.data || "followUpBy" in first.data).toBe(false);
+
+    fake.writes.length = 0;
+    await click(buttonIn(card(host, "recreation"), "New hiking boots for the Camino"));
+    await typeInto(followUpField(), "Any blisters on the long walk?");
+    await click(buttonIn(dialog()!, "Save changes"));
+    const second = fake.writes.find((w) => w.path === "clients/c1/ford/boots")!;
+    expect(second.data).toMatchObject({ followUp: "Any blisters on the long walk?", followUpBy: "Ann Trainer" });
+    expect(second.data.followUpAt).toBeTruthy();
   });
 });

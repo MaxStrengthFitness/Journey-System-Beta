@@ -26,6 +26,7 @@ import {
 } from "./ford-rollup";
 import { toDate, type FordEntry } from "./types";
 import { fordReadStatusOfError, type FordReadStatus } from "./read-status";
+import { splitOneLine } from "./one-line";
 
 export type { FordReadStatus } from "./read-status";
 
@@ -53,6 +54,15 @@ export interface UseClientFordResult {
   status: FordReadStatus;
   /** `status === "loading"`. Kept for the screens that only ask this. */
   isLoading: boolean;
+  /**
+   * The client's In one line (client codex, AJ's decision 3a): the FORD
+   * document with the fixed id `one-line` (`one-line.ts`), which arrives in
+   * the same snapshot and is taken out of it here — it is never in
+   * `entries`, `buckets`, `untagged` or `upcoming`. Null when there is none,
+   * when it was cleared, and whenever `status` is not `ready` (then it is
+   * unknown, not absent: say so rather than "no line yet").
+   */
+  oneLine: FordEntry | null;
 }
 
 interface NativeRead {
@@ -138,13 +148,18 @@ export function useClientFord(args: {
   const native = current ? read.rows : NO_ROWS;
 
   return useMemo(() => {
+    // The In one line document rides in the same snapshot (it is stamped with
+    // the same studio). Take it out FIRST, before anything reads the list as
+    // details — including the legacy merge below, which would otherwise let
+    // the line's words hide a legacy event that happened to say the same.
+    const { oneLine, details } = splitOneLine(native);
     const legacy = adaptClientEvents(client);
     // A legacy event that has since been re-typed as a real detail would show
     // twice. Match on the body text, which is what a trainer would recognise
     // as the duplicate, and let the native one win.
-    const nativeBodies = new Set(native.map((e) => e.body.trim().toLowerCase()));
+    const nativeBodies = new Set(details.map((e) => e.body.trim().toLowerCase()));
     const entries = [
-      ...native,
+      ...details,
       ...legacy.filter((e) => !nativeBodies.has(e.body.trim().toLowerCase())),
     ];
 
@@ -156,6 +171,7 @@ export function useClientFord(args: {
       upcoming: upcomingFord(entries),
       status,
       isLoading: status === "loading",
+      oneLine,
     };
   }, [native, client, status]);
 }

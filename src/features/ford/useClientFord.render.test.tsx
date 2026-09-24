@@ -310,6 +310,55 @@ describe("useClientFord reads what the rules allow", () => {
   });
 });
 
+describe("In one line arrives in the same snapshot, and is taken out of it (phase 11)", () => {
+  const line = (body: string) =>
+    detail({
+      id: "one-line",
+      kind: "one-line",
+      pillar: null,
+      isPinned: true,
+      isArchived: true,
+      body,
+      authorName: "Jess Moreno",
+      occurredAt: new Date(2026, 8, 20, 12),
+    });
+
+  it("hands out the line on its own, never among the details, the tray or the dates", async () => {
+    await mount(<Probe clientId="c1" client={client} />);
+    // ONE listener: the line needs no read of its own.
+    fordListener();
+    await answer(fordListener(), [detail({ id: "f1" }), line("Retired hygienist, pickleball regular")]);
+    expect(fake.listeners.filter((l) => l.live)).toHaveLength(1);
+    expect(last!.oneLine?.id).toBe("one-line");
+    expect(last!.oneLine?.body).toBe("Retired hygienist, pickleball regular");
+    expect(last!.entries.map((e) => e.id)).toEqual(["f1"]);
+    expect(last!.untagged).toEqual([]);
+    expect(last!.upcoming).toEqual([]);
+    expect(last!.buckets.flatMap((b) => [...b.pinned, ...b.moments]).map((e) => e.id)).toEqual(["f1"]);
+  });
+
+  it("gives no line when it was cleared, and none while loading or after a refusal", async () => {
+    await mount(<Probe clientId="c1" client={client} />);
+    expect(last!.oneLine).toBeNull();
+    await answer(fordListener(), [line("")]);
+    expect(last!.status).toBe("ready");
+    expect(last!.oneLine).toBeNull();
+    expect(last!.entries).toEqual([]);
+    await refuse(fordListener(), "permission-denied");
+    expect(last!.oneLine).toBeNull();
+  });
+
+  it("never lets the line's words hide a legacy event that says the same", async () => {
+    const withEvent = {
+      ...client,
+      events: [{ id: "e1", type: "Vacation", title: "Italy in May", date: "2027-05-01", notes: "" }],
+    } as unknown as Client;
+    await mount(<Probe clientId="c1" client={withEvent} />);
+    await answer(fordListener(), [line("Italy in May")]);
+    expect(last!.entries.map((e) => e.id)).toEqual(["legacy:clientEvents:e1"]);
+  });
+});
+
 describe("the rollup refresh reads through the same filter", () => {
   it("a new detail refreshes clients/{id}.fordSummary from the studio it was stamped with", async () => {
     const id = await createFordEntry("c1", "s1", author, { pillar: "family", body: "Grandson graduates in May" });

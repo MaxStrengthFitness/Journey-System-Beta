@@ -116,3 +116,18 @@
   font-size: var(--cx-fs-12);
   font-weight: 700;
 }
+
+/* The FORD door's In one line (phase 11): the team's sentence, then who
+   wrote it last. It wraps; it is never cut. */
+.cx-ov-door__line {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.cx-ov-door__by {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}

@@ -258,6 +258,40 @@ export interface FordEntry {
   /** Set when this detail is worth doing something about. */
   opportunity: FordOpportunity | null;
 
+  /* ---- FOLLOW UP NEXT TIME (client codex, Sep 2026; AJ's decision 3) -----
+   *
+   * A question saved with a detail, so the next trainer asks about the boots
+   * rather than only "how is the family?". The pillar's Ask next line shows
+   * the newest open one (`ask-next.ts`), and "Asked it" clears it — with the
+   * answer, if there was one, saved as a new detail. Absent on every detail
+   * written before the round; `null` once asked.
+   *
+   * `followUpAt` and `followUpBy` are stamped only when the QUESTION changes
+   * (`followUpPatch`), never by an unrelated edit of the detail: the dialog
+   * sends every field on every save, and re-dating the question would
+   * reorder Ask next for no reason. Written only by the FORD page's detail
+   * dialog and cleared only by its Ask next line; the rules check none of it
+   * (the ford block has no allowed-keys list).
+   */
+  /** The question, trimmed, at most FOLLOW_UP_MAX (140) characters. */
+  followUp?: string | null;
+  /** When the question was set — Ask next's "newest open" order. */
+  followUpAt?: any | null;
+  /** The full name of who set it: "Follow up from Jess Moreno, Mar 15". */
+  followUpBy?: string | null;
+
+  /**
+   * "one-line" marks the client's In one line document — the sentence at the
+   * top of her FORD page and her Overview, written by the team (client codex,
+   * AJ's decision 3). It is a FORD document with the FIXED id `one-line`
+   * (`one-line.ts`), stored `isArchived: true` so every reader of details —
+   * the tray, the rollup, Coming up, the Delight queue, the sweep, and an old
+   * iPad bundle that has never heard of it — skips it. `useClientFord` splits
+   * it off before anything else sees the list. Absent on every ordinary
+   * detail.
+   */
+  kind?: "one-line";
+
   /**
    * THE SORT KEY. Written client-side as `Timestamp.now()`, never
    * `serverTimestamp()` — same reason as the journal: a pending server
@@ -301,6 +335,8 @@ export type FordDraft = Pick<FordEntry, "pillar" | "body"> &
     occurredAt?: Date | null;
     effectiveFrom?: Date | null;
     effectiveUntil?: Date | null;
+    /** Follow up next time. `createFordEntry` stamps who and when if it is set. */
+    followUp?: string | null;
   };
 
 /* ------------------------------------------------------------------ */
@@ -360,6 +396,21 @@ export function toDate(value: any): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
   }
   return null;
+}
+
+/**
+ * "Sep 20", or "Sep 20, 2025" when it is not `now`'s year; null when the
+ * value is no date. The one short date of the FORD page — a detail's meta,
+ * a follow-up's "Follow up from …", In one line's "last by …".
+ */
+export function shortDate(value: unknown, now: Date): string | null {
+  const d = toDate(value);
+  if (!d) return null;
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
 }
 
 /**

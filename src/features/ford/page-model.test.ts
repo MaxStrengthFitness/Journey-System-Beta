@@ -244,6 +244,36 @@ describe("fordOverview", () => {
     expect(o.comingUp.map((r) => r.kind)).toEqual(["birthday"]);
     expect(o.openGestures).toEqual([]);
   });
+
+  it("carries In one line once FORD answered, and never before — it is FORD text", () => {
+    const line = detail({
+      id: "one-line",
+      kind: "one-line",
+      pillar: null,
+      isPinned: true,
+      isArchived: true,
+      body: "Retired hygienist, pickleball regular",
+      occurredAt: new Date(2027, 2, 15, 9),
+    });
+    const args = {
+      buckets,
+      entries,
+      oneLine: line,
+      olderByPillar: null,
+      client: {},
+      work: {},
+      todayKey: TODAY,
+    };
+    expect(fordOverview({ ...args, status: "ready" }).oneLine).toEqual({
+      text: "Retired hygienist, pickleball regular",
+      byName: "Jess Moreno",
+      at: new Date(2027, 2, 15, 9),
+    });
+    for (const status of ["loading", "failed", "denied", "off"] as const) {
+      expect(fordOverview({ ...args, status }).oneLine, status).toBeNull();
+    }
+    expect(fordOverview({ ...args, status: "ready", oneLine: null }).oneLine).toBeNull();
+  });
 });
 
 describe("fordSubnavLine", () => {

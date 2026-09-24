@@ -9,12 +9,17 @@
  *
  * Filing writes only the pillar (`tagFordEntry`). A reader who may not write
  * FORD sees the tray without the buttons.
+ *
+ * A capture saved with a Follow up next time (a detail added with no pillar)
+ * shows its question here, because no pillar's Ask next can show it until it
+ * is filed — a question nobody can see is a write with no reader.
  */
 import { useState } from "react";
 import { Inbox } from "lucide-react";
 import { Btn, Card, FordMark, curly } from "../../client-codex/kit";
-import { FORD_META, FORD_PILLARS, type FordEntry, type FordPillar } from "../types";
-import { ORIGIN_WORDS, shortDate } from "../page-model";
+import { FORD_META, FORD_PILLARS, shortDate, type FordEntry, type FordPillar } from "../types";
+import { ORIGIN_WORDS } from "../page-model";
+import { hasOpenFollowUp, normaliseFollowUp } from "../ask-next";
 
 /** How many captures show before "Show all". */
 export const TRAY_SHOWN = 3;
@@ -66,6 +71,9 @@ export function UnfiledTray({
                   <span className="fordpg-tray__quote">{curly(entry.body)}</span>
                 )}
                 <span className="fordpg-tray__meta">{meta}</span>
+                {hasOpenFollowUp(entry) ? (
+                  <span className="fordpg-tray__meta">Follow up next time: {curly(normaliseFollowUp(entry.followUp))}</span>
+                ) : null}
                 {failed === entry.id ? (
                   <span className="fordpg-tray__meta" role="alert">
                     Not filed — try again.

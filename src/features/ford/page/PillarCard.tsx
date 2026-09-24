@@ -15,15 +15,20 @@
  *   Ask next   the question worth asking next time
  *
  * No count chip on the head: a count reads as a score. A detail opens in the
- * dialog (its pin and its gesture live there); an older note is read only —
- * it is a journal note, kept where it was written.
+ * dialog (its pin, its gesture and its follow-up live there); an older note
+ * is read only — it is a journal note, kept where it was written. A detail
+ * carrying a follow-up that Ask next is NOT showing (only the newest shows)
+ * says so after it, with the question itself — "follow up next time: “Still
+ * Tuesdays?”" — so no question waits unseen, including for a reader who may
+ * read FORD but cannot open the dialog.
  */
 import { useState, type ReactNode } from "react";
 import { Activity, Plus } from "lucide-react";
-import { Btn, EditButton, FordMark, anchorProps, cls, inTime } from "../../client-codex/kit";
-import { FORD_META, GESTURE_STATUS_LABEL, type FordEntry, type FordPillar } from "../types";
+import { Btn, EditButton, FordMark, anchorProps, cls, curly, inTime } from "../../client-codex/kit";
+import { FORD_META, GESTURE_STATUS_LABEL, shortDate, type FordEntry, type FordPillar } from "../types";
 import { attribution } from "../ui";
-import { detailWhen, olderNoteMeta, shortDate, type PillarItem, type PillarList } from "../page-model";
+import { hasOpenFollowUp, normaliseFollowUp } from "../ask-next";
+import { detailWhen, olderNoteMeta, type PillarItem, type PillarList } from "../page-model";
 import type { PulseLink } from "../pulse-links";
 import type { NoteThread } from "../../client-notes/threads";
 
@@ -33,8 +38,21 @@ export const PILLAR_ITEMS_SHOWN = 3;
 /** What the FORD half of a card can say: FORD answered, is still loading, or could not be read. */
 export type PillarFordState = "ready" | "loading" | "unread";
 
-/** "Jess Moreno · Mar 11 · in 5 weeks · Idea: a good-luck card". */
-function DetailMeta({ entry, now }: { entry: FordEntry; now: Date }) {
+/** The words a detail adds when it holds a follow-up that Ask next is not showing. */
+export const FOLLOW_UP_MARK = "follow up next time";
+
+/**
+ * What a detail says about its follow-up: `follow up next time: “Still
+ * Tuesdays?”` — or nothing, when it has none or Ask next is already showing
+ * it (`askingId`).
+ */
+function followUpMark(entry: FordEntry, askingId: string | null): string | null {
+  if (entry.id === askingId || !hasOpenFollowUp(entry)) return null;
+  return `${FOLLOW_UP_MARK}: ${curly(normaliseFollowUp(entry.followUp))}`;
+}
+
+/** "Jess Moreno · Mar 11 · in 5 weeks · Idea: a good-luck card · follow up next time: “…”". */
+function DetailMeta({ entry, now, followUp }: { entry: FordEntry; now: Date; followUp: string | null }) {
   const who = entry.isLegacy ? attribution(entry) : [entry.authorName?.trim(), shortDate(entry.occurredAt, now)].filter(Boolean).join(" · ");
   const when = detailWhen(entry, now);
   const opp = entry.opportunity;
@@ -51,6 +69,7 @@ function DetailMeta({ entry, now }: { entry: FordEntry; now: Date }) {
         </>
       ) : null}
       {opp?.idea ? `${who || when ? " · " : ""}${GESTURE_STATUS_LABEL[opp.status]}: ${opp.idea}` : ""}
+      {followUp ? `${who || when || opp?.idea ? " · " : ""}${followUp}` : ""}
     </span>
   );
 }
@@ -91,10 +110,12 @@ export function OlderNoteItem({ thread, now }: { thread: NoteThread; now: Date }
 function Item({
   item,
   now,
+  askingId,
   onOpen,
 }: {
   item: PillarItem;
   now: Date;
+  askingId: string | null;
   onOpen: ((entry: FordEntry) => void) | null;
 }) {
   if (item.kind === "older-note") return <OlderNoteItem thread={item.thread} now={now} />;
@@ -102,7 +123,7 @@ function Item({
   const body = (
     <>
       <span className="fordpg-item__text">{entry.body}</span>
-      <DetailMeta entry={entry} now={now} />
+      <DetailMeta entry={entry} now={now} followUp={followUpMark(entry, askingId)} />
     </>
   );
   return onOpen ? (
@@ -125,6 +146,7 @@ export function PillarCard({
   olderKnown,
   pulseLinks,
   askLine,
+  askingId = null,
   now,
   onOpen,
   onAdd,
@@ -139,6 +161,8 @@ export function PillarCard({
   olderKnown: boolean;
   pulseLinks: readonly PulseLink[];
   askLine: ReactNode;
+  /** The detail whose follow-up Ask next is showing, if any: it needs no second mention. */
+  askingId?: string | null;
   now: Date;
   /** Opens a FORD detail; null for a reader who may not write FORD (the details are then read only). */
   onOpen: ((entry: FordEntry) => void) | null;
@@ -177,22 +201,34 @@ export function PillarCard({
       <div className="fordpg-pl-body">
         {list.pinned.length > 0 ? (
           <ul className="fordpg-facts">
-            {list.pinned.map((entry) => (
-              <li key={entry.id}>
-                {onOpen ? (
-                  <button type="button" className="fordpg-fact" onClick={() => onOpen(entry)}>
-                    {entry.body}
-                  </button>
-                ) : (
-                  <span className="fordpg-fact">{entry.body}</span>
-                )}
-              </li>
-            ))}
+            {list.pinned.map((entry) => {
+              const words = followUpMark(entry, askingId);
+              const mark = words ? <span className="fordpg-fact__mark"> · {words}</span> : null;
+              return (
+                <li key={entry.id}>
+                  {onOpen ? (
+                    <button type="button" className="fordpg-fact" onClick={() => onOpen(entry)}>
+                      <span>
+                        {entry.body}
+                        {mark}
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="fordpg-fact">
+                      <span>
+                        {entry.body}
+                        {mark}
+                      </span>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : null}
 
         {items.map((item) => (
-          <Item key={item.key} item={item} now={now} onOpen={onOpen} />
+          <Item key={item.key} item={item} now={now} askingId={askingId} onOpen={onOpen} />
         ))}
         {list.items.length > PILLAR_ITEMS_SHOWN ? (
           <div>

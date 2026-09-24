@@ -19,6 +19,7 @@ import {
   where,
   limit,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -37,6 +38,9 @@ import {
   type FordPillar,
 } from "./types";
 import { fordStudioIdOf, summariseFord } from "./ford-rollup";
+import { normaliseFollowUp } from "./ask-next";
+import { FORD_ONE_LINE_ID, normaliseOneLine } from "./one-line";
+import { fordReadStatusOfError } from "./read-status";
 
 /**
  * The studio every FORD writer stamps and every per-client read filters on.
@@ -94,6 +98,9 @@ export async function createFordEntry(
   if (!clientId || !body) return null;
 
   const occurred = draft.occurredAt ?? new Date();
+  // Follow up next time: the question, and who set it and when — all three
+  // null when there is none, never undefined (Firestore refuses undefined).
+  const followUp = normaliseFollowUp(draft.followUp) || null;
 
   const payload = {
     clientId,
@@ -111,6 +118,9 @@ export async function createFordEntry(
     repeat: draft.repeat ?? null,
     reviewedAt: null,
     opportunity: draft.opportunity ?? null,
+    followUp,
+    followUpAt: followUp ? Timestamp.fromDate(new Date()) : null,
+    followUpBy: followUp ? author.fullName || null : null,
     // Client-side Timestamp, never serverTimestamp() — see types.ts.
     occurredAt: Timestamp.fromDate(occurred),
     createdAt: serverTimestamp(),
@@ -154,6 +164,14 @@ export type FordPatch = Partial<
   effectiveFrom?: Date | null;
   effectiveUntil?: Date | null;
   resolvedAt?: Date | null;
+  /**
+   * Follow up next time. Send these only when the question CHANGED — the
+   * dialog goes through `followUpPatch` (ask-next.ts), which leaves all three
+   * out when it did not, so an edit of the sentence never re-dates it.
+   */
+  followUp?: string | null;
+  followUpAt?: Date | null;
+  followUpBy?: string | null;
 };
 
 export async function updateFordEntry(
@@ -182,10 +200,40 @@ export async function updateFordEntry(
   if (patch.occurredAt !== undefined && patch.occurredAt) {
     next.occurredAt = Timestamp.fromDate(patch.occurredAt);
   }
+  if (patch.followUp !== undefined) next.followUp = normaliseFollowUp(patch.followUp) || null;
+  if (patch.followUpAt !== undefined)
+    next.followUpAt = patch.followUpAt ? Timestamp.fromDate(patch.followUpAt) : null;
+  if (patch.followUpBy !== undefined) next.followUpBy = patch.followUpBy?.trim() || null;
 
   try {
     await updateDoc(fordDoc(clientId, fordId), next);
     void refreshFordSummary(clientId);
+    return true;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, "ford");
+    return false;
+  }
+}
+
+/**
+ * "Asked it": the follow-up on a detail has been asked, so it stops being
+ * Ask next. All three fields go to null together — the question, who set it
+ * and when — and the detail itself is untouched. Resolves false when the
+ * write did not land (the Ask next line then says so and keeps the question).
+ *
+ * A plain update, not `updateFordEntry`: a follow-up is not in the rollup
+ * (`summariseFord` never reads it), so refreshing it here would read up to
+ * 500 documents and rewrite the client for nothing — twice over after "Save
+ * the answer", whose new detail has already refreshed it.
+ */
+export async function clearFollowUp(clientId: string, fordId: string): Promise<boolean> {
+  try {
+    await updateDoc(fordDoc(clientId, fordId), {
+      followUp: null,
+      followUpAt: null,
+      followUpBy: null,
+      updatedAt: serverTimestamp(),
+    });
     return true;
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, "ford");
@@ -292,6 +340,110 @@ export function setGestureStatus(
     outcome: extras.outcome !== undefined ? extras.outcome.trim() || null : current.outcome,
   };
   return updateFordEntry(clientId, fordId, { opportunity });
+}
+
+/* ------------------------------------------------------------------ */
+/* IN ONE LINE                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What saving In one line came to.
+ *   - `saved`: it landed (or there was nothing to save).
+ *   - `failed`: it did not; trying again may work.
+ *   - `blocked`: a FIRST line (no line on screen) was refused by the rules.
+ *     The likeliest reason is a client who moved home studio: the line her
+ *     earlier studio wrote still sits at the same fixed id, stamped with that
+ *     studio, so this studio can neither read it (the listener filters it
+ *     out, so the page says "No line yet") nor replace it (the update rule
+ *     holds `studioId`). Trying again can never work. An administrator or a
+ *     franchise owner may delete it (the delete rule), and then the line can
+ *     be written here. No data is moved.
+ */
+export type OneLineSaveResult = "saved" | "failed" | "blocked";
+
+/**
+ * Save the client's In one line (`one-line.ts`): the document at
+ * `clients/{clientId}/ford/one-line`, which anyone at her home studio may
+ * rewrite. Anything but `saved` means nothing was written — the panel then
+ * keeps the words and says which (`OneLineSaveResult`).
+ *
+ *   - `existing` (the line the page is showing): an UPDATE of the words and
+ *     who wrote them, and nothing else. `clientId` and `studioId` are not in
+ *     the patch, so the rule's "neither may change" holds by construction.
+ *     An empty text clears the line (body ""), which the update rule allows.
+ *   - no `existing` and some text: the whole document, stamped with the
+ *     client's studio (`studioId`, which must be `fordStudioIdOf(client)` —
+ *     the studio the ONE listener filters on) and the Auth uid as author.
+ *     If a CLEARED line is already there (the page shows none), the same
+ *     write replaces it: the rules take it as an update, and the studio and
+ *     client are the same.
+ *   - no `existing` and no text: nothing to save, and nothing is written.
+ *
+ * Stored `isArchived: true` and `pillar: null` on purpose, so every reader
+ * of details skips it (one-line.ts). It is not a detail, so it does not
+ * refresh the rollup — `summariseFord` would drop it anyway.
+ */
+export async function saveFordOneLine(
+  clientId: string,
+  studioId: string,
+  author: FordAuthor,
+  text: string,
+  existing: FordEntry | null,
+): Promise<OneLineSaveResult> {
+  if (!clientId || !author.id) return "failed";
+  const body = normaliseOneLine(text);
+  const ref = fordDoc(clientId, FORD_ONE_LINE_ID);
+  const now = Timestamp.fromDate(new Date());
+  try {
+    if (existing) {
+      await updateDoc(ref, {
+        body,
+        authorId: author.id,
+        authorName: author.fullName,
+        authorInitials: author.initials,
+        occurredAt: now,
+        updatedAt: serverTimestamp(),
+      });
+      return "saved";
+    }
+    if (!body) return "saved";
+    if (!studioId) return "failed";
+    await setDoc(ref, {
+      kind: "one-line",
+      clientId,
+      studioId,
+      pillar: null,
+      body,
+      subject: null,
+      isPinned: true,
+      eventDate: null,
+      recurrence: "none",
+      effectiveFrom: null,
+      effectiveUntil: null,
+      repeat: null,
+      reviewedAt: null,
+      opportunity: null,
+      followUp: null,
+      followUpAt: null,
+      followUpBy: null,
+      occurredAt: now,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      authorId: author.id,
+      authorName: author.fullName,
+      authorInitials: author.initials,
+      origin: "profile",
+      sessionId: null,
+      isArchived: true,
+    });
+    return "saved";
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, "ford");
+    // A refused FIRST line is not a network blip: something this studio
+    // cannot see is at the fixed id (OneLineSaveResult). The same test a
+    // refused read uses.
+    return !existing && fordReadStatusOfError(err) === "denied" ? "blocked" : "failed";
+  }
 }
 
 /* ------------------------------------------------------------------ */

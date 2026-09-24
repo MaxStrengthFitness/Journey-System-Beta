@@ -15,10 +15,18 @@
  * may answer `false`; the dialog then stays open with every field as typed
  * and says so. It used to close whatever happened, and the page ignored a
  * failed create, so a refused save lost the sentence without a word.
+ *
+ * FOLLOW UP NEXT TIME (client codex, AJ's decision 3b): an optional question
+ * saved with the detail, which the pillar's Ask next line shows the next
+ * trainer until someone asks it. The dialog hands back what is in the box;
+ * the page decides whether it CHANGED (`followUpPatch`), so an edit of the
+ * sentence never re-dates the question. This dialog is the only place a
+ * follow-up is written; the Ask next line's "Asked it" is the only place one
+ * is cleared.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { Calendar, Gift, Pin, Trash2, X } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Calendar, Gift, MessageCircleQuestion, Pin, Trash2, X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   FORD_META,
@@ -32,6 +40,7 @@ import {
   type FordRecurrence,
 } from "./types";
 import type { FordAuthor } from "./ford-write";
+import { FOLLOW_UP_MAX } from "./ask-next";
 
 export interface FordDetailDialogProps {
   open: boolean;
@@ -64,6 +73,8 @@ export interface FordDetailValues {
   eventDate: Date | null;
   recurrence: FordRecurrence;
   opportunity: FordOpportunity | null;
+  /** Follow up next time, as typed (trimmed); null when the box is empty. */
+  followUp: string | null;
 }
 
 /** <input type="date"> speaks YYYY-MM-DD and nothing else. */
@@ -107,9 +118,11 @@ export function FordDetailDialog({
   const [idea, setIdea] = useState("");
   const [status, setStatus] = useState<FordGestureStatus>("idea");
   const [outcome, setOutcome] = useState("");
+  const [followUp, setFollowUp] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [failed, setFailed] = useState(false);
+  const followUpId = useId();
 
   // Re-seed every time the dialog opens on a different detail. Keyed on
   // entry?.id rather than `entry` so a live snapshot update while the dialog
@@ -127,6 +140,7 @@ export function FordDetailDialog({
     setIdea(seed?.opportunity?.idea ?? "");
     setStatus(seed?.opportunity?.status ?? "idea");
     setOutcome(seed?.opportunity?.outcome ?? "");
+    setFollowUp(seed?.followUp ?? "");
     setShowGesture(Boolean(seed?.opportunity) || (!entry && openGesture));
     setConfirmArchive(false);
     setFailed(false);
@@ -176,6 +190,7 @@ export function FordDetailDialog({
         eventDate: fromInputDate(dateValue),
         recurrence: dateValue ? recurrence : "none",
         opportunity,
+        followUp: followUp.trim() || null,
       });
       saved = result !== false;
     } catch {
@@ -189,7 +204,11 @@ export function FordDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="ford-scope max-w-lg p-0 gap-0 overflow-hidden">
+      {/* 512px on an iPad takes the `sm:` class too (the width note in
+          components/ui/dialog.tsx), and a dialog taller than the screen
+          scrolls rather than clipping: with the gesture open and the iPad
+          keyboard up, Save must stay reachable. */}
+      <DialogContent className="ford-scope max-w-lg sm:max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 gap-0">
         <div className="ford-capture p-4">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
@@ -291,6 +310,31 @@ export function FordDetailDialog({
                 Comes round every year
               </button>
             ) : null}
+          </div>
+
+          {/* ---- follow up next time ---- */}
+          <div className="flex flex-col gap-1">
+            <label
+              htmlFor={followUpId}
+              className="flex items-center gap-1.5 text-sm font-bold text-[var(--ford-ink-2)]"
+            >
+              <MessageCircleQuestion size={15} className="text-[var(--ford-ink-muted)]" aria-hidden="true" />
+              Follow up next time (optional)
+            </label>
+            <input
+              id={followUpId}
+              className="ford-capture__field"
+              style={{ minHeight: 44 }}
+              value={followUp}
+              maxLength={FOLLOW_UP_MAX}
+              onChange={(e) => setFollowUp(e.target.value)}
+              placeholder={`e.g. "How did the new boots do on the long walk?"`}
+              aria-describedby={`${followUpId}-hint`}
+              disabled={readOnly}
+            />
+            <span id={`${followUpId}-hint`} className="ford-capture__hint">
+              The next trainer sees this as the question to ask. It clears once someone asks it.
+            </span>
           </div>
 
           {/* ---- the gesture ---- */}

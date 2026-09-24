@@ -2823,6 +2823,186 @@ describe("Firestore Security Rules", () => {
   });
 
   /* ================================================================== *
+   * FORD'S NEW FIELDS — IN ONE LINE AND FOLLOW UP NEXT TIME (client
+   * codex, phase 11, AJ's decision 3). NO rules change: both ride on the
+   * ford block as it is.
+   *
+   *   - In one line is a FORD document with the fixed id `one-line`
+   *     (src/features/ford/one-line.ts), stamped with the client's studio
+   *     and the Auth uid, stored archived with no pillar. saveFordOneLine
+   *     sends the whole document the first time (setDoc) and only the words
+   *     and who wrote them after (updateDoc). It keeps FORD's read scope —
+   *     which is why it is not on the client document, where a cross-train
+   *     studio could read it.
+   *   - Follow up next time is three fields on a detail (followUp,
+   *     followUpAt, followUpBy); the ford block has no allowed-keys list,
+   *     so an update adding or clearing them passes the rule every edit
+   *     passes.
+   *   - The delete rule lets the AUTHOR delete a pillar-null document of
+   *     their own — the one-line document included. No screen offers it
+   *     (the sweep's discard only lists unfiled captures, and the line is
+   *     archived, so it is never one); pinned here so nobody is surprised.
+   * ================================================================== */
+  describe("FORD — In one line and Follow up next time (client codex)", () => {
+    const as = (uid: string) =>
+      testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+
+    const lineRef = (db: ReturnType<typeof as>) => doc(db, "clients", "clientA", "ford", "one-line");
+
+    /** saveFordOneLine's create, exactly (ford-write.ts). */
+    const firstLine = (uid: string, body = "Retired hygienist, pickleball regular") => ({
+      kind: "one-line",
+      clientId: "clientA",
+      studioId: "studioA",
+      pillar: null,
+      body,
+      subject: null,
+      isPinned: true,
+      eventDate: null,
+      recurrence: "none",
+      effectiveFrom: null,
+      effectiveUntil: null,
+      repeat: null,
+      reviewedAt: null,
+      opportunity: null,
+      followUp: null,
+      followUpAt: null,
+      followUpBy: null,
+      occurredAt: new Date(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      authorId: uid,
+      authorName: `Name ${uid}`,
+      authorInitials: "XX",
+      origin: "profile",
+      sessionId: null,
+      isArchived: true,
+    });
+
+    /** saveFordOneLine's rewrite, exactly: the words and who wrote them. */
+    const rewrite = (uid: string, body: string) => ({
+      body,
+      authorId: uid,
+      authorName: `Name ${uid}`,
+      authorInitials: "XX",
+      occurredAt: new Date(),
+      updatedAt: serverTimestamp(),
+    });
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "clients", "clientA"), {
+          firstName: "Carol",
+          lastName: "Tester",
+          isActive: true,
+          remainingSessions: 10,
+          homeStudioId: "studioA",
+          approvedCrossTrainStudioIds: ["studioB"],
+        });
+        // A second trainer at the client's home studio: the line is the team's.
+        await setDoc(doc(db, "trainers", "trainerA2"), {
+          fullName: "Trainer A2",
+          initials: "A2",
+          role: "LifeTransformer",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "clients", "clientA", "ford", "f1"), {
+          clientId: "clientA",
+          studioId: "studioA",
+          pillar: "recreation",
+          body: "New hiking boots for the Camino",
+          isPinned: false,
+          authorId: "trainerA",
+          isArchived: false,
+        });
+      });
+    });
+
+    it("lets a home trainer write the first line as themselves, and no one as someone else", async () => {
+      await assertFails(setDoc(lineRef(as("trainerA")), firstLine("trainerA2")));
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+    });
+
+    it("refuses a first line stamped with another studio, or with no words", async () => {
+      await assertFails(setDoc(lineRef(as("trainerA")), { ...firstLine("trainerA"), studioId: "studioB" }));
+      await assertFails(setDoc(lineRef(as("trainerA")), firstLine("trainerA", "")));
+    });
+
+    it("lets anyone on the home team rewrite it, and clear it — but never walk it to another studio or client", async () => {
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+      await assertSucceeds(updateDoc(lineRef(as("trainerA2")), rewrite("trainerA2", "Walking the Camino with Tom in May")));
+      await assertSucceeds(updateDoc(lineRef(as("trainerA2")), rewrite("trainerA2", "")));
+      await assertFails(updateDoc(lineRef(as("trainerA2")), { ...rewrite("trainerA2", "x"), studioId: "studioB" }));
+      await assertFails(updateDoc(lineRef(as("trainerA2")), { ...rewrite("trainerA2", "x"), clientId: "clientB" }));
+    });
+
+    it("takes the create again as a rewrite over a cleared line — saveFordOneLine's fallback when none is showing", async () => {
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+      await assertSucceeds(updateDoc(lineRef(as("trainerA")), rewrite("trainerA", "")));
+      await assertSucceeds(setDoc(lineRef(as("trainerA2")), firstLine("trainerA2", "A new line")));
+    });
+
+    it("arrives in the app's one FORD query, for the home team", async () => {
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+      const snap = await assertSucceeds(
+        getDocs(query(collection(as("trainerA2"), "clients", "clientA", "ford"), where("studioId", "==", "studioA"), limit(500))),
+      );
+      expect(snap.docs.map((d) => d.id).sort()).toEqual(["f1", "one-line"]);
+    });
+
+    it("refuses a cross-train visitor the line, to read or to write — although they can read her client record", async () => {
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+      const visitor = as("trainerB");
+      await assertSucceeds(getDoc(doc(visitor, "clients", "clientA")));
+      await assertFails(getDoc(lineRef(visitor)));
+      await assertFails(updateDoc(lineRef(visitor), rewrite("trainerB", "Not theirs to write")));
+      await assertFails(setDoc(lineRef(visitor), firstLine("trainerB")));
+    });
+
+    it("lets its last author delete it (no screen offers that) and refuses everyone else", async () => {
+      await assertSucceeds(setDoc(lineRef(as("trainerA")), firstLine("trainerA")));
+      await assertFails(deleteDoc(lineRef(as("trainerA2"))));
+      await assertFails(deleteDoc(lineRef(as("trainerB"))));
+      await assertSucceeds(deleteDoc(lineRef(as("trainerA"))));
+    });
+
+    it("lets a home trainer add a follow-up to a detail, and clear it", async () => {
+      const f1 = doc(as("trainerA2"), "clients", "clientA", "ford", "f1");
+      await assertSucceeds(
+        updateDoc(f1, {
+          followUp: "How did the new boots do on the long walk?",
+          followUpAt: new Date(),
+          followUpBy: "Trainer A2",
+          updatedAt: serverTimestamp(),
+        }),
+      );
+      await assertSucceeds(updateDoc(f1, { followUp: null, followUpAt: null, followUpBy: null, updatedAt: serverTimestamp() }));
+      // A cross-train visitor may not touch it.
+      await assertFails(
+        updateDoc(doc(as("trainerB"), "clients", "clientA", "ford", "f1"), { followUp: "Theirs?", updatedAt: serverTimestamp() }),
+      );
+    });
+
+    it("lets a new detail carry its follow-up from the start", async () => {
+      await assertSucceeds(
+        addDoc(collection(as("trainerA"), "clients", "clientA", "ford"), {
+          clientId: "clientA",
+          studioId: "studioA",
+          pillar: "family",
+          body: "Sister visiting from Arizona in April",
+          followUp: "Did her sister make it?",
+          followUpAt: new Date(),
+          followUpBy: "Trainer A",
+          authorId: "trainerA",
+          isArchived: false,
+        }),
+      );
+    });
+  });
+
+  /* ================================================================== *
    * BODY & PULSE READS (client codex, phase 1). Existing policy, pinned:
    * the record reads a client's newest sessions from the journal's own
    * listener (useClientJournal, `recentSessions`) and her InBody scans, and

@@ -17,9 +17,9 @@
 import { useState } from "react";
 import { Gift, Plus } from "lucide-react";
 import { Btn, Card, Chip, TextInput, curly, type ChipTone } from "../../client-codex/kit";
-import { GESTURE_STATUS_LABEL, type FordEntry, type FordGestureStatus } from "../types";
+import { GESTURE_STATUS_LABEL, shortDate, type FordEntry, type FordGestureStatus } from "../types";
 import { setGestureStatus } from "../ford-write";
-import { shortDate, type ClientGestures } from "../page-model";
+import type { ClientGestures } from "../page-model";
 
 /** How many finished gestures show before "Show all N finished". */
 export const FINISHED_SHOWN = 2;

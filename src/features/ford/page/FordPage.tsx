@@ -6,11 +6,14 @@
  * nothing linked to anything). Top to bottom, as the approved mockup has it:
  *
  *   head          the lede, and "Remember something" (a new detail, no pillar)
+ *   In one line   the sentence a new trainer should read first, written by
+ *                 the team (OneLinePanel, `one-line.ts`)
  *   Coming up     the Mindbody birthday and FORD's dated details, soonest first
  *   To file       what was caught on the floor and not filed yet
  *   four pillars  Family · Occupation · Recreation · Dreams, each built the
  *                 same way (PillarCard): band, facts, moments and older life
- *                 notes, the Pulse beside it, a gap line, and Ask next
+ *                 notes, the Pulse beside it, a gap line, and Ask next — the
+ *                 newest open Follow up next time, else one of FORD's prompts
  *   older notes   life notes from before FORD that belong to no pillar
  *   above and beyond   the gestures, Idea → Planned → Done
  *
@@ -27,6 +30,13 @@
  * by a reader the FORD create rule accepts — the same `canEdit`, a signed-in
  * author (the Auth uid), and a client with a studio (`fordCanAdd`). A failed
  * READ still lets a trainer add (never block a save); a refused one does not.
+ * The one exception is In one line, which is REPLACED rather than added to:
+ * it is rewritten only over a line this iPad has read (OneLinePanel).
+ *
+ * FOLLOW UP NEXT TIME is written by the detail dialog, and only when the
+ * question changed (`followUpPatch`); the pillar's Ask next line shows the
+ * newest open one and clears it ("Asked it"), saving any answer as a new
+ * detail first.
  *
  * A FAILED READ IS UNKNOWN, NEVER EMPTY. While FORD loads the pillars say
  * "Loading…"; if it failed or is the home studio's to read, a notice says so
@@ -50,8 +60,10 @@ import { isRetiredClient } from "../../client-life/life";
 import { FordDetailDialog, type FordDetailValues } from "../FordDetailDialog";
 import {
   archiveFordEntry,
+  clearFollowUp,
   createFordEntry,
   fordStudioIdOf,
+  saveFordOneLine,
   tagFordEntry,
   updateFordEntry,
   type FordAuthor,
@@ -59,15 +71,16 @@ import {
 import { FORD_READ_NOTICE, fordCanAdd, fordReadNotice } from "../read-status";
 import type { UseClientFordResult } from "../useClientFord";
 import { FORD_PILLARS, type FordEntry, type FordPillar } from "../types";
-import { askNext, askNextMeta } from "../ask-next";
+import { askNext, askNextMeta, followUpPatch } from "../ask-next";
 import { comingUp, studioNoon, type ComingUpRow } from "../coming-up";
 import { fordPulseLinks } from "../pulse-links";
 import { gesturesForClient, pillarItems, type FordPageStatus } from "../page-model";
 import { ComingUp } from "./ComingUp";
 import { UnfiledTray } from "./UnfiledTray";
 import { PillarCard, OlderNoteItem, type PillarFordState } from "./PillarCard";
-import { AskNextLine } from "./AskNextLine";
+import { AskNextLine, type AskNextActions } from "./AskNextLine";
 import { AboveAndBeyond } from "./AboveAndBeyond";
+import { OneLinePanel } from "./OneLinePanel";
 import { DreamsBand, FamilyBand, OccupationBand, RecreationBand } from "./bands";
 import "./ford-page.css";
 
@@ -193,13 +206,47 @@ export function FordPage({
 
   const save = async (values: FordDetailValues): Promise<boolean> => {
     if (!canWrite || !dialog) return false;
-    const ok =
-      dialog.kind === "edit"
-        ? await updateFordEntry(clientId, dialog.entry.id, values)
-        : (await createFordEntry(clientId, studioId, author, { ...values, origin: "profile" })) !== null;
+    let ok: boolean;
+    if (dialog.kind === "edit") {
+      // The follow-up is written only when the question CHANGED — the dialog
+      // sends every field on every save, and re-dating an unchanged question
+      // would reorder Ask next (followUpPatch).
+      const { followUp, ...rest } = values;
+      ok = await updateFordEntry(clientId, dialog.entry.id, {
+        ...rest,
+        ...followUpPatch(dialog.entry, followUp, author.fullName, new Date()),
+      });
+    } else {
+      ok = (await createFordEntry(clientId, studioId, author, { ...values, origin: "profile" })) !== null;
+    }
     if (ok) toastSuccess("Saved to FORD.");
     return ok;
   };
+
+  // In one line: saved the moment Save is tapped, by a reader who may write
+  // FORD, stamped with the same studio every detail is.
+  const saveLine = canWrite
+    ? (text: string, existing: FordEntry | null) => saveFordOneLine(clientId, studioId, author, text, existing)
+    : null;
+
+  // "Asked it" on a follow-up: the answer becomes a new detail under the
+  // pillar, about the same subject, in the trainer's words; then the
+  // question is cleared on the detail it was written on. Each write names
+  // the question the panel was opened on (AskNextLine holds it), never
+  // whatever Ask next says by the time the write runs.
+  const askActions = (pillar: FordPillar): AskNextActions | null =>
+    canWrite
+      ? {
+          answer: async (ask, body) =>
+            (await createFordEntry(clientId, studioId, author, {
+              pillar,
+              body,
+              subject: ask.entry.subject ?? null,
+              origin: "profile",
+            })) !== null,
+          clear: (ask) => clearFollowUp(clientId, ask.entry.id),
+        }
+      : null;
 
   const bandProps = {
     client,
@@ -239,6 +286,8 @@ export function FordPage({
         </p>
       ) : null}
 
+      <OneLinePanel oneLine={readable ? ford.oneLine : null} status={status} now={now} onSave={saveLine} />
+
       <ComingUp
         rows={rows}
         pronouns={pronouns}
@@ -258,7 +307,8 @@ export function FordPage({
         {FORD_PILLARS.map((pillar) => {
           const bucket = readable ? ford.buckets.find((b) => b.pillar === pillar) ?? null : null;
           const list = pillarItems(bucket, olderByPillar?.[pillar] ?? []);
-          const ask = askNext(pillar, { retired, seed: now });
+          // The newest open follow-up on this pillar's details, else a prompt.
+          const ask = askNext(pillar, { retired, seed: now, entries });
           let band;
           let edit: { open: boolean; onToggle: () => void } | null = null;
           if (pillar === "family") band = <FamilyBand client={client} pronouns={pronouns} />;
@@ -299,7 +349,18 @@ export function FordPage({
               fordState={fordState}
               olderKnown={olderByPillar !== null}
               pulseLinks={pulseLinks?.[pillar] ?? []}
-              askLine={<AskNextLine ask={ask} meta={askNextMeta(ask, pillar, pronouns.known ? pronouns : null)} />}
+              askLine={
+                <AskNextLine
+                  // No key per question: an open "Asked it" holds the question
+                  // it was opened on while the cache shows it cleared before
+                  // the server answers, and a remount would drop it
+                  // (AskNextLine). A closed line simply follows Ask next.
+                  ask={ask}
+                  meta={askNextMeta(ask, pillar, pronouns.known ? pronouns : null, now)}
+                  actions={askActions(pillar)}
+                />
+              }
+              askingId={ask.kind === "follow-up" ? ask.entry.id : null}
               now={now}
               onOpen={openEntry}
               onAdd={canWrite ? () => addUnder(pillar) : null}

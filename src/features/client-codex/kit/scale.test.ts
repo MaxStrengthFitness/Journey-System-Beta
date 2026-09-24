@@ -115,6 +115,10 @@ const CODEX_FILES: readonly string[] = [
   "features/client-life/controls.tsx",
   "features/client-life/client-life.css",
   "features/client-life/life.ts",
+  // FORD's new fields (phase 11): In one line's panel and its pure module.
+  // Follow up next time lives in ask-next.ts and AskNextLine.tsx, above.
+  "features/ford/page/OneLinePanel.tsx",
+  "features/ford/one-line.ts",
 ];
 
 /**

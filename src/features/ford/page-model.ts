@@ -41,6 +41,7 @@ import {
   type FordUrgency,
 } from "./types";
 import type { FordReadStatus } from "./read-status";
+import { oneLineView, type OneLineView } from "./one-line";
 
 /** FORD's read state as a page sees it: `off` is a reader the rule refuses (never read at all). */
 export type FordPageStatus = FordReadStatus | "off";
@@ -82,16 +83,8 @@ export function pillarItems(bucket: FordPillarBucket | null, older: readonly Not
 /* Words for one line                                                  */
 /* ------------------------------------------------------------------ */
 
-/** "Sep 20", or "Sep 20, 2025" when it is not `now`'s year. */
-export function shortDate(value: unknown, now: Date): string | null {
-  const d = toDate(value);
-  if (!d) return null;
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
-  });
-}
+/* The short date ("Sep 20", with the year when it is not this one) is
+   `shortDate` in types.ts, shared with ask-next.ts and one-line.ts. */
 
 /** "Sep 20, 2025" — always with the year: an older note says how old it is. */
 export function dateWithYear(value: unknown): string | null {
@@ -194,6 +187,8 @@ export interface FordOverviewPillar {
 
 export interface FordOverview {
   status: FordPageStatus;
+  /** In one line — FORD text, so only once FORD answered; null when there is none (or it can't be said). */
+  oneLine: OneLineView | null;
   pillars: FordOverviewPillar[];
   comingUp: ComingUpRow[];
   openGestures: FordEntry[];
@@ -210,6 +205,8 @@ export function fordOverview(args: {
   status: FordPageStatus;
   buckets: readonly FordPillarBucket[];
   entries: readonly FordEntry[];
+  /** The In one line document (`useClientFord().oneLine`). */
+  oneLine?: FordEntry | null;
   olderByPillar: Readonly<Record<FordPillar, readonly NoteThread[]>> | null;
   client: Pick<Client, "dateOfBirth">;
   /** The record as the form holds it (draft over saved): occupation, workProfile, isRetired. */
@@ -243,6 +240,7 @@ export function fordOverview(args: {
   });
   return {
     status: args.status,
+    oneLine: ready ? oneLineView(args.oneLine) : null,
     pillars,
     comingUp: comingUp({ dateOfBirth: args.client.dateOfBirth, entries, todayKey: args.todayKey }),
     openGestures: gesturesForClient(entries, now).open,

@@ -99,6 +99,14 @@ replaced the Life section's hub (`FordSection`, deleted) and the work and
 activity baselines that sat above it. Top to bottom, as the approved mockup
 has it:
 
+- **In one line** (`one-line.ts`, `page/OneLinePanel.tsx`; phase 11, AJ's
+  decision 3a). The sentence a new trainer should read first — "Retired
+  hygienist, pickleball regular, walking the Camino with Tom in May." —
+  written by the team: anyone at her home studio may rewrite it, it saves the
+  moment Save is tapped, and the line under it says "Written by the team ·
+  last by Jess Moreno, Mar 15". Last writer wins; earlier versions are not
+  kept. Up to 120 characters, one line. It also heads the Overview's FORD
+  door. See "The one-line document" below for where it lives.
 - **Coming up** (`coming-up.ts`). The birthday Mindbody holds leads, rolled
   forward on the studio's day through the same `daysUntilBirthday` Relay's
   Mine uses, beside the dated FORD details. An annual FORD "Birthday" on the
@@ -134,17 +142,60 @@ has it:
     anything about it. Read only, and the page says nothing is copied: FORD
     text must never travel into `progressReports`, which every signed-in user
     can read.
-  - Ask next (`ask-next.ts`) is one of FORD_META's prompts, rotated by day
-    and **aware of retirement** (`FORD_PROMPT_WHEN`): a retired client is
-    never asked "How is work treating you?", a working one never how
-    retirement is going. The briefing cue passes the same context.
+  - Ask next (`ask-next.ts`) is the newest open **Follow up next time** on
+    the pillar's details (below); otherwise one of FORD_META's prompts,
+    rotated by day and **aware of retirement** (`FORD_PROMPT_WHEN`): a
+    retired client is never asked "How is work treating you?", a working one
+    never how retirement is going. The briefing cue passes the same context.
 - **Going above and beyond** (`page/AboveAndBeyond.tsx`): the gestures,
   Idea → Planned → Done, with "I'll do it" and "Mark done" through
   `setGestureStatus` — the Delight queue's own writer. Owners' names in full.
 
 `page-model.ts` is the pure half: the pillar list, the older-note meta, the
-gestures, `fordOverview` (for the Overview's FORD slot, in its own phase) and
-`fordSubnavLine` (the sub-toggle's "birthday in 17 days").
+gestures, `fordOverview` (for the Overview's FORD slot, in its own phase —
+it carries the one line too) and `fordSubnavLine` (the sub-toggle's
+"birthday in 17 days").
+
+**The one-line document** (phase 11). In one line is a FORD document with the
+FIXED id `one-line` — `clients/{clientId}/ford/one-line` — not a field on the
+client document (a cross-train studio can read that, and FORD they cannot),
+and not a collection of its own (a rules change, a deploy and one more
+listener, for nothing). It is stamped with `fordStudioIdOf(client)` like
+every detail, so the ONE filtered FORD listener delivers it, and
+`useClientFord` takes it out of the list first (`splitOneLine`) and hands it
+out as `oneLine`: it is never in `entries`, `buckets`, `untagged` or
+`upcoming`. It is written **`isArchived: true`, `pillar: null`, `kind:
+"one-line"`** on purpose, so every reader of details — the tray, the rollup,
+Coming up, the Delight queue, the sweep, and an old iPad bundle that has
+never heard of it — skips it (`one-line.test.ts` holds that). The first save
+is the whole document (`setDoc`); every rewrite after is an update of the
+words and who wrote them, never the studio or the client (the rule holds
+both immutable). An empty box clears it (body `""`). A line is rewritten only
+over one this iPad has READ: when FORD failed to load, the panel says so and
+offers no editor, because a line is replaced, not added to — unlike a detail,
+which a failed read does not stop. `saveFordOneLine` answers `saved`,
+`failed` ("try again") or `blocked`: a FIRST line refused by the rules, which
+retrying can never fix (see "Things that will bite you").
+
+**Follow up next time** (phase 11, AJ's decision 3b). `followUp`,
+`followUpAt` and `followUpBy` on a detail: a question for the next trainer
+("How did the new boots do on the long walk?"), at most 140 characters. It is
+written only by the detail dialog, and **stamped only when the question
+changes** (`followUpPatch`) — the dialog sends every field on every save, and
+re-dating an unchanged question would reorder Ask next. The pillar's Ask next
+line shows the newest open one ("Follow up from Jess Moreno, Mar 15"); **Asked
+it** offers "Save the answer" (a new detail under the pillar, same subject,
+the trainer's words — then the question is cleared), "Nothing new, clear it"
+(`clearFollowUp`: all three fields to null, and no rollup refresh — a
+follow-up is not in the rollup) and "Not yet". While the panel is open it
+HOLDS the question it was opened on (see "Things that will bite you"). A
+detail holding a follow-up that Ask next is not showing says so after it,
+with the question — "follow up next time: “Still Tuesdays?”" — and an
+unfiled capture shows its question in the tray, so no question waits unseen,
+even for a reader who cannot open the dialog. One pair of quotes typed around
+the whole question is taken off (`normaliseFollowUp`): Ask next adds its own.
+No rules change: the ford block has no allowed-keys list. The briefing does
+not read follow-ups yet (a floor change, for AJ).
 
 **One load.** The page opens no listener: FORD, the journal and the Pulse
 history are the tab's (`useCodexData`). **Who may write.** A FORD detail is
@@ -164,7 +215,7 @@ moved it.
 
 | File | |
 | --- | --- |
-| `types.ts` | The enum, the document, the date helpers. **Read this first** |
+| `types.ts` | The enum, the document, the date helpers (`toDate`, and `shortDate` — the FORD page's one short date). **Read this first** |
 | `ford-write.ts` | Every write. All of them swallow their errors — a failed detail is a lost sentence; a hard failure mid-session is a lost client |
 | `ford-rollup.ts` | Pure functions over an array: the summary, grouping, upcoming dates, the `client.events` adapter |
 | `useClientFord.ts` | One client's details, and the studio-wide Delight queue. Reports `status`: `loading` · `ready` · `failed` · `denied` |
@@ -172,11 +223,13 @@ moved it.
 | `ford.tokens.css` | Colour. Pillars get identity, never status — see the note at the top of the file |
 | `ford.css` | The floor's capture and sweep, the Delight queue, the briefing row and the detail dialog. The FORD page draws from the codex kit and `page/ford-page.css` |
 | `ford.test.ts` | The pure layer |
-| `ask-next.ts` | Ask next: the prompts worth asking this client, rotated by day, aware of retirement (`FORD_PROMPT_WHEN` in `types.ts`). `ask-next.test.ts` holds the drift guard |
+| `ask-next.ts` | Ask next: the newest open Follow up next time, else the prompts worth asking this client, rotated by day, aware of retirement (`FORD_PROMPT_WHEN` in `types.ts`); `followUpPatch` (stamp only on change). `ask-next.test.ts` holds the drift guard |
+| `one-line.ts` | In one line: the fixed id, the 120-character cap, `splitOneLine` (what `useClientFord` takes out of the list) and the "Written by the team · last by …" line. `one-line.test.ts` proves the document never reaches the tray, the rollup or Coming up |
+| `ford-write.test.ts` | The new writes: a follow-up's stamps, `clearFollowUp` (no rollup refresh), and `saveFordOneLine`'s create, rewrite, clear and three outcomes (`saved` · `failed` · `blocked`) |
 | `coming-up.ts` | Coming up: the Mindbody birthday and the dated details, on the studio's day |
 | `pulse-links.ts` | The Pulse lines beside each pillar. No Firestore, no writes |
 | `page-model.ts` | The FORD page's pure selectors, its sub-toggle line and the Overview's FORD slot |
-| `page/` | The FORD page: `FordPage`, `PillarCard`, `bands`, `ComingUp`, `UnfiledTray`, `AskNextLine`, `AboveAndBeyond`, `ford-page.css`. `FordPage.render.test.tsx` mounts it |
+| `page/` | The FORD page: `FordPage`, `OneLinePanel`, `PillarCard`, `bands`, `ComingUp`, `UnfiledTray`, `AskNextLine` (with "Asked it"), `AboveAndBeyond`, `ford-page.css`. `FordPage.render.test.tsx` mounts it; `AskNextLine.render.test.tsx` holds "Asked it" against a clear the cache shows before the server answers |
 | `useClientFord.render.test.tsx` | The query's shape, the four read states, and the floor callers' wording when FORD could not be read (the FORD page's is `page/FordPage.render.test.tsx`) |
 
 ## Things that will bite you
@@ -210,6 +263,35 @@ moved it.
   still offers one — a failed READ is no reason to refuse a WRITE. A client
   with no studio gets its own sentence and no Add (`fordCanAdd`): a retry
   cannot help, and the create rule refuses a detail stamped with no studio.
+- **`clients/{id}/ford/one-line` is not a detail** (client codex, phase 11).
+  It is In one line, stored archived with no pillar so every reader of
+  details skips it. Anything new that lists FORD documents must either take
+  it out (`splitOneLine`) or drop archived documents, or it will show the
+  line as an unfiled capture — and the delete rule lets its last author
+  delete a pillar-null document, so a screen that offered "discard" on it
+  would delete the team's line. No screen does.
+- **A client who moved home studio cannot get a line at the new one** until
+  someone clears the old line. The old line sits at the fixed id, stamped
+  with the old studio: the new studio's listener filters it out (so the page
+  says "No line yet" and offers "Write the line"), and every save there is a
+  `setDoc` over it that the rules take as an update changing `studioId` —
+  refused, every time. This is WORSE than an older detail, which is only
+  hidden while new ones still save. `saveFordOneLine` answers `blocked` for a
+  refused first line, and the panel says a line from an earlier home studio
+  may be in the way, that trying again won't help, and that an administrator
+  can clear it (the delete rule lets administrators and franchise owners
+  delete it; no screen offers that yet). No data is moved.
+- **An open "Asked it" holds its question.** Firestore applies `updateDoc` to
+  this iPad's cache before the server answers, so the one listener delivers
+  the follow-up as CLEARED the moment "clear" is tapped, and Ask next moves
+  on. `AskNextLine` therefore keeps the question it was opened on (and its
+  meta) until the panel closes, every action is handed the question it is
+  for, and the FORD page gives the line no key per question — a remount
+  would close the panel as if the clear had worked, lose "The answer is
+  saved…", and bind a retry to another detail. A fake Firestore that does not
+  apply writes locally first cannot show this; `AskNextLine.render.test.tsx`
+  hands the line those props in order, and `FordPage.render.test.tsx` holds
+  the update open (`holdUpdate`).
 - **One FORD listener per screen** (client codex, phases 6 and 10). The
   Notes & Profile codex reads FORD once for all seven pages and hands the
   result to the FORD page, which has no hook of its own — it cannot open a

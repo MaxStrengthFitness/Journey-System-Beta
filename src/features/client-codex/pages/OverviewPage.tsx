@@ -11,6 +11,13 @@
  * Zero reads: everything here is the tab's one load (CodexData). Nothing on
  * it is a score — counts are facts with their words beside them — and a read
  * that failed says so in its own sentence, never "No notes".
+ *
+ * The FORD door carries the client's In one line (phase 11, AJ's decision
+ * 3a) — "Retired hygienist, pickleball regular…" — with "Written by the
+ * team · last by {name}" under it. It is FORD text, so only once FORD has
+ * answered for a reader the rule accepts (`fordStatus === "ready"`, never
+ * "off"); otherwise the door says what it always has. The full FORD slot is
+ * the Overview's own phase, and uses the same `oneLineView`.
  */
 import type { ReactNode } from "react";
 import { NotebookPen, PenLine, ChevronRight } from "lucide-react";
@@ -21,7 +28,8 @@ import {
 } from "../../client-notes/record-selectors";
 import { sortThreads, zoneOf } from "../../client-notes/threads";
 import type { SubnavItem } from "../../client-profile/ProfileSubnav";
-import { Btn, EmptyLine, LoudChip, Meta, Row, Rows, Slot, firstSentences, plural } from "../kit";
+import { oneLineMeta, oneLineView } from "../../ford/one-line";
+import { Btn, EmptyLine, LoudChip, Meta, Row, Rows, Slot, dayKeyDate, firstSentences, plural } from "../kit";
 import type { CodexPageProps } from "../codex-data";
 
 /** How many open notes the band shows before "All notes". */
@@ -44,6 +52,8 @@ export function OverviewPage({
 
   const open = sortThreads(notes.record.listed.filter((t) => zoneOf(t, today) === "open")).slice(0, OPEN_ROWS);
   const total = notes.summary ? notes.summary.total + notes.summary.unfiled : null;
+  // In one line: FORD text, drawn only once FORD answered for this reader.
+  const line = data.fordStatus === "ready" ? oneLineView(data.ford.oneLine) : null;
 
   const openThread = (threadId: string) => {
     const anchor = noteAnchor(threadId);
@@ -111,9 +121,19 @@ export function OverviewPage({
         {DOORS.map((id) => {
           const page = RECORD_PAGES.find((p) => p.id === id)!;
           const meta = items.find((i) => i.id === id)?.meta ?? null;
+          const tagline = id === "ford" ? line : null;
           return (
             <Slot key={id} as="button" eyebrow={page.label} go={() => go(id)}>
-              <span>{page.blurb}</span>
+              {tagline ? (
+                <>
+                  <span className="cx-ov-door__line" data-testid="ov-one-line">
+                    {tagline.text}
+                  </span>
+                  <span className="cx-ov-door__by">{oneLineMeta(tagline, dayKeyDate(today) ?? new Date())}</span>
+                </>
+              ) : (
+                <span>{page.blurb}</span>
+              )}
               {meta ? <span className="cx-ov-door__meta">{meta}</span> : null}
             </Slot>
           );

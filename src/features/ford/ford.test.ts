@@ -11,6 +11,7 @@ import { describe, it, expect } from "vitest";
 import {
   daysUntil,
   nextOccurrence,
+  shortDate,
   urgencyOf,
   whenLabel,
   type FordEntry,
@@ -109,6 +110,15 @@ describe("dates", () => {
     expect(urgencyOf(day("2026-12-25"), "none", NOW)).toBe("later");
     expect(urgencyOf(day("2026-08-01"), "none", NOW)).toBe("past");
     expect(urgencyOf(null, "none", NOW)).toBe("none");
+  });
+
+  it("writes a short date, with the year only when it is not this one", () => {
+    // One helper for the FORD page's meta lines, Ask next and In one line.
+    expect(shortDate(new Date(2026, 2, 15, 9), NOW)).toBe("Mar 15");
+    expect(shortDate(new Date(2025, 2, 15, 9), NOW)).toBe("Mar 15, 2025");
+    expect(shortDate({ toDate: () => new Date(2026, 8, 20, 12) }, NOW)).toBe("Sep 20");
+    expect(shortDate(null, NOW)).toBeNull();
+    expect(shortDate("not a date", NOW)).toBeNull();
   });
 });
 

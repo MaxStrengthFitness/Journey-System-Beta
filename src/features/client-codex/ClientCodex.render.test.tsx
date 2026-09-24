@@ -708,6 +708,48 @@ describe("ClientCodex — the FORD page carries the older life notes", () => {
   });
 });
 
+describe("ClientCodex — In one line (phase 11)", () => {
+  const rows = () => [
+    { id: "f1", clientId: "c1", studioId: "s1", pillar: "family", body: "Married to Tom", isPinned: true, isArchived: false },
+    {
+      id: "one-line",
+      kind: "one-line",
+      clientId: "c1",
+      studioId: "s1",
+      pillar: null,
+      body: "Retired hygienist, pickleball regular",
+      isPinned: true,
+      isArchived: true,
+      authorId: "uid-jess",
+      authorName: "Jess Moreno",
+      occurredAt: new Date(2026, 8, 20, 12),
+    },
+  ];
+
+  it("arrives with FORD's one listener, heads the Overview's FORD door and the FORD page, and is never a detail", async () => {
+    fake.rows["clients/c1/ford"] = rows();
+    const host = await mount();
+    const line = panel(host, "overview").querySelector('[data-testid="ov-one-line"]');
+    expect(line?.textContent).toBe("Retired hygienist, pickleball regular");
+    expect(line?.closest(".cx-slot")?.textContent).toContain("Written by the team · last by Jess Moreno");
+    // Counted as nothing: one detail on the sub-toggle, none to file.
+    expect(tab(host, "ford")?.textContent).toContain("1 detail");
+    await click(tab(host, "ford"));
+    const ford = panel(host, "ford");
+    expect(ford.querySelector("#ford-one-line")?.textContent).toContain("Retired hygienist, pickleball regular");
+    expect(ford.querySelector(".fordpg-tray")).toBeNull();
+    expect(liveOn("clients/c1/ford")).toBe(1);
+  });
+
+  it("is never shown to a cross-train reader, whose FORD is never read", async () => {
+    fake.rows["clients/c1/ford"] = rows();
+    const host = await mount(baseClient(), crossTrainer);
+    expect(panel(host, "overview").querySelector('[data-testid="ov-one-line"]')).toBeNull();
+    expect(panel(host, "overview").textContent).not.toContain("Retired hygienist");
+    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
+  });
+});
+
 describe("ClientCodex — the one Save bar", () => {
   it("draws no bar while nothing is unsaved", async () => {
     const host = await mount();
