@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Client } from "../../types";
 import { RECORD_ANCHORS, pageOfAnchor, recordLocation } from "../client-profile/profile-nav";
@@ -151,6 +153,40 @@ describe("seedForm", () => {
     expect(full.smartChecks).toBeNull();
     expect(full.goalTargetDate).toBe("2026-11-26");
     expect(full.goalHistory).toEqual([]);
+  });
+
+  // Landing, Sep 24 2026 (from claude/elastic-margulis-5fc2d8, written
+  // against the old ClientInfoSheet): a stored wingspan showed as an empty
+  // box because the form never seeded it. The codex seeds every
+  // RECORD_FORM_KEY, so the guard here is that every field a Notes & Profile
+  // editor writes through updateField IS one: a key outside the list is
+  // never seeded (its box would open blank however much is stored) and
+  // updateField refuses the edit.
+  it("seeds every field a Notes & Profile editor writes, with its stored value", () => {
+    const dirs = ["client-codex", "client-admin", "client-life", "ford/page", "goals"].map((d) =>
+      resolve(process.cwd(), "src/features", d),
+    );
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) walk(path);
+        else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) files.push(path);
+      }
+    };
+    dirs.forEach(walk);
+    const written = new Set<string>();
+    for (const file of files) {
+      for (const m of readFileSync(file, "utf8").matchAll(/\bupdateField\(\s*"([A-Za-z_]+)"/g)) written.add(m[1]);
+    }
+    // Guard against passing vacuously if updateField is ever renamed.
+    expect([...written]).toEqual(expect.arrayContaining(["height", "wingspan", "weight", "occupation", "smartGoal"]));
+    for (const key of written) {
+      expect(isRecordFormKey(key), key).toBe(true);
+      expect((seedForm(client({ [key]: "stored" } as Partial<Client>)) as Record<string, unknown>)[key], key).toBe(
+        "stored",
+      );
+    }
   });
 });
 
