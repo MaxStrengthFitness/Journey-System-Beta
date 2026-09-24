@@ -459,6 +459,7 @@ export interface ClientSubjectiveSnapshot {
   reportId: string;
   date: string;
   overallStatus: Rag | null;
+  /** A 0–1 fraction despite the name (0.724 is 72%): multiply by 100 to print it. */
   overallPercent: number | null;
   proteinStatus: Rag | null;
   hydrationStatus: Rag | null;

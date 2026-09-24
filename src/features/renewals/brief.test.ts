@@ -24,8 +24,10 @@ const client = {
   subjectiveSnapshot: {
     reportId: "r",
     date: "2026-06-02",
-    overallStatus: "green",
-    overallPercent: 72.4,
+    // What snapshotForClient writes: a fraction, and Yellow because 72% is
+    // under the 75% line.
+    overallStatus: "yellow",
+    overallPercent: 0.724,
     proteinStatus: null,
     hydrationStatus: null,
     redCategories: ["sleepRecovery"],
@@ -60,9 +62,17 @@ describe("the Brief", () => {
   it("leads with health: InBody, the check-in, the goal", () => {
     expect(healthLines(client, snap, TODAY)).toEqual([
       "InBody since Jan 15: muscle up 2.3 lb, body fat down 1.8 points",
-      "Pulse, Jun 2: overall Green (72%)",
+      "Pulse, Jun 2: overall Yellow (72%)",
       "Red on: Sleep & Recovery",
       "Their goal: Carry groceries without back pain",
     ]);
+  });
+
+  it("prints the stored fraction as a percentage, even under half", () => {
+    const red = {
+      ...client,
+      subjectiveSnapshot: { ...client.subjectiveSnapshot!, overallStatus: "red", overallPercent: 0.42 },
+    } as Client;
+    expect(healthLines(red, snap, TODAY)).toContain("Pulse, Jun 2: overall Red (42%)");
   });
 });

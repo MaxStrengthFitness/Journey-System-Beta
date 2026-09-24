@@ -90,9 +90,10 @@ export function healthLines(client: Client, s: RenewalSnapshot | null, today: st
   }
   const snap = client.subjectiveSnapshot;
   if (snap?.date) {
+    // overallPercent is stored as a 0–1 fraction (scoreOverall's raw / rawMax).
     const overall = snap.overallStatus
       ? `overall ${snap.overallStatus[0].toUpperCase()}${snap.overallStatus.slice(1)}${
-          typeof snap.overallPercent === "number" ? ` (${Math.round(snap.overallPercent)}%)` : ""
+          typeof snap.overallPercent === "number" ? ` (${Math.round(snap.overallPercent * 100)}%)` : ""
         }`
       : null;
     lines.push(
