@@ -129,6 +129,32 @@ export function resolveClientSince(
   return null;
 }
 
+/**
+ * The OLDEST date anything on the record gives - for "has she been here at
+ * least N months?", where one old date is proof enough.
+ *
+ * `resolveClientSince` ranks its sources, which is right for a label; this
+ * takes the earliest of all of them, including the Journey document's own
+ * createdAt (the day Journey met her is still a day she was a client). A
+ * question about tenure must not be answered by whichever source happens to
+ * rank first: for a migration client that is often the first Journey
+ * session, months after the twelve years that came before it.
+ */
+export function earliestKnownDate(client: ClientSinceInput | null | undefined): Date | null {
+  if (!client) return null;
+  let best: Date | null = null;
+  const consider = (d: Date | null) => {
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) return;
+    if (!best || d.getTime() < best.getTime()) best = d;
+  };
+  consider(toDate(client.firstSessionDate));
+  consider(toDate(client.firstAppointmentDate));
+  consider(toDate(client.mindbodyCreatedAt));
+  consider(earliestCommercialDate(client));
+  consider(toDate(client.createdAt));
+  return best;
+}
+
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
