@@ -42,6 +42,21 @@ describe("watch-outs grouped by instruction", () => {
     expect(g.machines.map((m) => m.id)).toEqual(["m-lumbar"]);
   });
 
+  it("finds the floor's machines by catalog id and lineage, not only by a name that spells the matrix's key", () => {
+    // The floor's names for the standard machines ("LUMBAR", "SEATED
+    // ABDOMINALS") never spelled the matrix's keys ("lumbar_extension"), so
+    // before the catalog-id matcher (clinical watch-outs, Sep 24) these read
+    // "names no machine on this floor" while the machine stood on it.
+    const floor = [
+      machine("m-lumbar", "LUMBAR"),
+      { id: "sm-westlake-lumbar", name: "Our Lumbar", comparisonKey: "m-lumbar" },
+      machine("m-chest", "Chest Press"),
+    ];
+    const [g] = watchOutGroups(["spine-ddd"], floor);
+    expect(g.namesOffFloor).toBe(false);
+    expect(g.machines.map((m) => m.id)).toEqual(["m-lumbar", "sm-westlake-lumbar"]);
+  });
+
   it("puts every-set groups first, then Stop before High before modify", () => {
     const groups = watchOutGroups(["gen-neck", "joint-tka", "cv-hypertension", "gen-blood-pressure"], []);
     expect(groups.map((g) => [g.general, g.flag.tone])).toEqual([

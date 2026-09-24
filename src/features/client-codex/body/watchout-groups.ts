@@ -35,6 +35,12 @@ export interface FloorMachineLike {
   id?: string | null;
   name?: string | null;
   fullName?: string | null;
+  /**
+   * Lineage (`basedOn ?? machineId`), which `toFloorMachines` carries since
+   * the clinical watch-outs fix (Sep 24): how a studio's own machine
+   * ("our Hammer leg press") picks up its catalog machine's watch-outs.
+   */
+  comparisonKey?: string | null;
 }
 
 export interface WatchOutGroup {
