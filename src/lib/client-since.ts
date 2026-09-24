@@ -34,7 +34,11 @@
 import { toDate } from "./studio-time";
 
 export type ClientSinceSource =
-  /** First workout recorded in Journey. The most meaningful answer we have. */
+  /**
+   * First workout recorded IN JOURNEY. For a new client it is her first
+   * session; for a migrating one it is the day Journey first saw her, which
+   * is why it competes with Mindbody's dates rather than outranking them.
+   */
   | "firstSession"
   /** Mindbody's first visit to the site. */
   | "firstAppointment"
@@ -94,9 +98,19 @@ function earliestCommercialDate(client: ClientSinceInput): Date | null {
 /**
  * Best available start date, with provenance.
  *
- * Order is deliberate: the first workout we can prove, then Mindbody's own
- * two dates, then commercial evidence, then — only so a caller can render
- * something — the Journey timestamp, flagged as not being a business date.
+ * Three dates are proof she was here - the first session recorded in
+ * Journey, Mindbody's first visit, Mindbody's created date - and the
+ * EARLIEST of them wins (Sep 24 2026). Each is only an upper bound on when
+ * she started, so the earliest is the closest to the truth. It used to be
+ * the first one present, in that order, which for a migrating client was
+ * her first JOURNEY session (the Active Session stamps `firstSessionDate`
+ * the first time Journey sees her): a twelve-year client read "Client since
+ * Sep 2026" on her profile, "Joined Sep 2026" on her report, and would
+ * have had her first anniversary celebrated next autumn. For a genuinely
+ * new client the three are days apart and nothing changes.
+ *
+ * Then commercial evidence, then - only so a caller can render something -
+ * the Journey timestamp, flagged as not being a business date.
  */
 export function resolveClientSince(
   client: ClientSinceInput | null | undefined,
@@ -109,12 +123,16 @@ export function resolveClientSince(
     ["mindbodyCreated", client.mindbodyCreatedAt],
   ];
 
+  let proven: ClientSince | null = null;
   for (const [source, value] of candidates) {
     const d = toDate(value);
-    if (d && !Number.isNaN(d.getTime()) && d.getFullYear() >= 1990) {
-      return { date: d, source, fromMindbody: true };
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) continue;
+    // Strictly earlier: on a tie the order above decides.
+    if (!proven || d.getTime() < proven.date.getTime()) {
+      proven = { date: d, source, fromMindbody: true };
     }
   }
+  if (proven) return proven;
 
   const commercial = earliestCommercialDate(client);
   if (commercial) {
@@ -133,12 +151,11 @@ export function resolveClientSince(
  * The OLDEST date anything on the record gives - for "has she been here at
  * least N months?", where one old date is proof enough.
  *
- * `resolveClientSince` ranks its sources, which is right for a label; this
- * takes the earliest of all of them, including the Journey document's own
- * createdAt (the day Journey met her is still a day she was a client). A
- * question about tenure must not be answered by whichever source happens to
- * rank first: for a migration client that is often the first Journey
- * session, months after the twelve years that came before it.
+ * `resolveClientSince` falls back to contracts and then to the Journey
+ * document only when none of the three proven dates exists, which is right
+ * for a label; this takes the earliest of ALL of them, including createdAt
+ * (the day Journey met her is still a day she was a client). One old date
+ * anywhere is proof of tenure.
  */
 export function earliestKnownDate(client: ClientSinceInput | null | undefined): Date | null {
   if (!client) return null;
