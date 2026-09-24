@@ -169,7 +169,10 @@ export function mySessionsToday(
       : startMin + DEFAULT_SESSION_MINUTES;
     out.push({
       id: entry.id ?? `${entry.clientName}-${startMin}`,
-      clientId: entry.clientId ?? entry.mindbodyClientId ?? null,
+      // Never the Mindbody id: it does not name a record on its own (two MSF
+      // sites share the numbers — lib/mindbody-site.ts), so an unlinked
+      // booking stays unlinked rather than opening a namesake.
+      clientId: entry.clientId ?? null,
       clientName: entry.clientName ?? "Client",
       startMin,
       endMin,

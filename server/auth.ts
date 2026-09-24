@@ -206,18 +206,35 @@ async function loadAccess(uid: string, claimRole: unknown, idToken: string): Pro
  * so the security rules decide whether they may open the client at all; the
  * answer is the site of THAT client's home studio, which the request must
  * name — so the check can't be pointed at one client to pull another.
- * A Mindbody client's document id is their Mindbody id (CLAUDE.md).
+ *
+ * Which record that is follows src/lib/mindbody-site.ts: both MSF sites
+ * number clients from 100000001, so the second person on a shared number
+ * lives at `clients/{site}-{id}`, and that record is asked about first. The
+ * plain record answers for the other site's person, whose home site will not
+ * match the request's, so falling back to it can refuse but never wrongly
+ * allow.
  */
-async function readableClientSite(mindbodyClientId: string, idToken: string): Promise<string | null> {
+async function readableClientSite(
+  mindbodyClientId: string,
+  idToken: string,
+  requestSiteId?: string,
+): Promise<string | null> {
   if (!/^[A-Za-z0-9_-]{1,120}$/.test(mindbodyClientId)) return null;
-  const { status, body } = await restGet(
-    `${documentsBase()}/clients/${encodeURIComponent(mindbodyClientId)}?mask.fieldPaths=homeStudioId`,
-    idToken,
-  );
-  if (status !== 200) return null;
-  const home = decodeRestFields(body?.fields).homeStudioId;
-  if (typeof home !== "string" || !home) return null;
-  return studioSiteOf(home, idToken);
+  const candidates =
+    requestSiteId && /^[0-9]{1,20}$/.test(requestSiteId)
+      ? [`${requestSiteId}-${mindbodyClientId}`, mindbodyClientId]
+      : [mindbodyClientId];
+  for (const docId of candidates) {
+    const { status, body } = await restGet(
+      `${documentsBase()}/clients/${encodeURIComponent(docId)}?mask.fieldPaths=homeStudioId`,
+      idToken,
+    );
+    if (status !== 200) continue;
+    const home = decodeRestFields(body?.fields).homeStudioId;
+    if (typeof home !== "string" || !home) continue;
+    return studioSiteOf(home, idToken);
+  }
+  return null;
 }
 
 /** A plain id — a string or a number — or absent. Anything else is refused. */
@@ -302,7 +319,7 @@ export function requireStaff(options: RequireStaffOptions = {}) {
       String(mbClient).trim() !== ""
     ) {
       try {
-        const clientSite = await readableClientSite(String(mbClient).trim(), idToken);
+        const clientSite = await readableClientSite(String(mbClient).trim(), idToken, siteId);
         if (clientSite && clientSite === siteId) {
           decision = { ok: true, status: 200, error: "" };
           delete body.clientName;
