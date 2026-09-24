@@ -87,3 +87,34 @@ describe("ProfileHeader", () => {
     expect(el.querySelector('[aria-label^="Sync with Mindbody"]')).toBeNull();
   });
 });
+
+/*
+ * The completed-session tile (Sep 24 2026). A migrating client's count is
+ * only what Journey has seen, and a count that has not landed is unknown -
+ * the tile used to print "Completed sessions 0" for both.
+ */
+describe("ProfileHeader's session count", () => {
+  const tile = (el: HTMLElement, label: string) =>
+    [...el.querySelectorAll("*")].find((n) => n.children.length === 0 && n.textContent === label)?.closest("div, button");
+
+  it("calls the count her completed sessions when it may be quoted as her total", () => {
+    const el = mount(props({ completedCount: 413, sessionsQuotable: true, priorLabel: "412 before Journey · FileMaker" }));
+    expect(el.textContent).toContain("Completed sessions");
+    expect(el.textContent).toContain("413");
+    expect(el.textContent).toContain("412 before Journey · FileMaker");
+  });
+
+  it("calls it Journey's count when nobody has recorded what came before", () => {
+    const el = mount(props({ completedCount: 3 }));
+    expect(el.textContent).toContain("Sessions in Journey");
+    expect(el.textContent).not.toContain("Completed sessions");
+    expect(tile(el, "Sessions in Journey")?.textContent).toContain("3");
+  });
+
+  it("shows a dash, never a zero, while the count is not known", () => {
+    const el = mount(props({ completedCount: null, sessionsQuotable: true }));
+    const t = tile(el, "Completed sessions");
+    expect(t?.textContent).toContain("—");
+    expect(t?.textContent).not.toMatch(/\b0\b/);
+  });
+});

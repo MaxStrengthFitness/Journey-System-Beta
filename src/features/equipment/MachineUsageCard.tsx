@@ -1,5 +1,7 @@
 import { memo } from "react";
 import type { EquipmentMachine } from "./types";
+import type { HistoryCoverage } from "../../lib/prior-history";
+import { machineUsageWords } from "../../lib/history-claims";
 
 /**
  * History — what the client has actually done on this machine.
@@ -14,6 +16,12 @@ import type { EquipmentMachine } from "./types";
  * prescription's starting weight, because the two can differ (a starting
  * weight is sometimes typed in months later from memory) and only one of them
  * is a fact that happened on the floor.
+ *
+ * Machine history does not come across from FileMaker (Sep 24 2026), so for
+ * a client whose story predates Journey "Never performed" and "First
+ * performed" are claims about her that our records cannot make: the card
+ * then names what it counts - "First in Journey", "Times in Journey" - via
+ * lib/history-claims.ts.
  */
 
 const day = (iso: string | null): string => {
@@ -36,8 +44,15 @@ const ago = (iso: string | null, now = Date.now()): string | null => {
   return years === 1 ? "1 yr ago" : `${years} yrs ago`;
 };
 
-export const MachineUsageCard = memo(function MachineUsageCard({ machine }: { machine: EquipmentMachine }) {
+export const MachineUsageCard = memo(function MachineUsageCard({
+  machine,
+  coverage = "unknown",
+}: {
+  machine: EquipmentMachine;
+  coverage?: HistoryCoverage;
+}) {
   const u = machine.usage;
+  const words = machineUsageWords(coverage);
   const never = u.timesPerformed === 0 && !u.firstPerformed;
   const pct = u.progressionPct;
   const progressClass = pct === null ? "eq-use__value--empty" : pct > 0 ? "eq-use__value--up" : pct < 0 ? "eq-use__value--down" : "";
@@ -59,17 +74,17 @@ export const MachineUsageCard = memo(function MachineUsageCard({ machine }: { ma
           <p className="eq-use__never">
             {machine.startingWeight !== null || machine.isConfigured
               ? "Set up, but no set has been logged on it yet."
-              : "Never performed by this client."}
+              : words.never}
           </p>
         ) : (
           <dl className="eq-use">
             <div className="eq-use__stat">
-              <dt className="eq-rx__label">First performed</dt>
+              <dt className="eq-rx__label">{words.first}</dt>
               <dd className="eq-use__value">{day(u.firstPerformed)}</dd>
               <dd className="eq-use__sub">{ago(u.firstPerformed) ?? ""}</dd>
             </div>
             <div className="eq-use__stat">
-              <dt className="eq-rx__label">Times performed</dt>
+              <dt className="eq-rx__label">{words.times}</dt>
               <dd className="eq-use__value">
                 {u.timesPerformed}
                 <small>{u.timesPerformed === 1 ? "session" : "sessions"}</small>
@@ -105,7 +120,7 @@ export const MachineUsageCard = memo(function MachineUsageCard({ machine }: { ma
               <dd className="eq-use__sub">
                 {from !== null && to !== null ? (
                   <>
-                    {from} <span aria-hidden="true">→</span> {to} lb since first set
+                    {from} <span aria-hidden="true">→</span> {to} lb {words.since}
                   </>
                 ) : (
                   "needs a first and a current load"

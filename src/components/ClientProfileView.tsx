@@ -51,6 +51,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuickNoteDialog } from "../features/client-notes/QuickNoteDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
+import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
+import { isEstablishedClient, noReportSentence } from "../lib/history-claims";
+import { earliestKnownDate } from "../lib/client-since";
 import {
   ClinicalHistoryTab,
   PROFILE_TABS,
@@ -379,28 +382,36 @@ export function ClientProfileView({
    * "nothing recorded" about a machine rather than "never attempted", and
    * quotes no lifetime figure. Unset cutover means unknown, which reads the
    * same cautious way. docs/business/migration-and-prior-history.md.
+   *
+   * Sep 24 2026: through `coverageOfClient`, the one answer the floor uses
+   * (so Mindbody's own visit count counts here too), and with the client's
+   * HOME studio's cutover rather than the iPad's.
    */
-  const journeyCutover =
-    studios?.find((st) => st.id === activeStudioId)?.journeyCutoverDate ?? null;
+  const journeyCutover = homeCutoverOf(studios, client);
   const clientCoverage = useMemo(
-    () =>
-      historyCoverage(
-        {
-          priorHistory: client?.priorHistory,
-          historyIsComplete: client?.historyIsComplete,
-          firstJourneyDay: client?.firstSessionDate
-            ? studioDayKeyOf(client.firstSessionDate)
-            : null,
-        },
-        journeyCutover,
-      ),
+    () => coverageOfClient(client, journeyCutover),
     [client, journeyCutover],
   );
+  /* "#N" only through the Hub card's gate (lib/client-coverage.ts). */
+  const canQuoteNumber = canQuoteSessionNumber(client, clientCoverage);
 
   const clientSessionCountRef = useRef<number | undefined>(client?.sessionCount);
   useEffect(() => {
     clientSessionCountRef.current = client?.sessionCount;
   }, [client?.sessionCount]);
+
+  /*
+   * THE TOTAL THE HEADER AND THE GRID NUMBER FROM (Sep 24 2026).
+   * `calculatedSessionCount` starts at 0, keeps the last client's total until
+   * this client's count lands, and never lands at all when the count query
+   * fails - so a client of four hundred sessions read "Completed sessions 0"
+   * and the grid numbered her loaded page #7 down to #1. Until THIS client
+   * has been counted, the stored total stands in, and with neither the
+   * header says it does not know. Unknown is never zero.
+   */
+  const [countedFor, setCountedFor] = useState<string | null>(null);
+  const completedTotal: number | null =
+    countedFor === clientId ? calculatedSessionCount : (client?.sessionCount ?? null);
 
   useEffect(() => {
     if (!clientId) return;
@@ -423,6 +434,7 @@ export function ClientProfileView({
       if (total === null) return;
 
       setCalculatedSessionCount(total);
+      setCountedFor(clientId);
 
       if (clientSessionCountRef.current !== total) {
         clientSessionCountRef.current = total;
@@ -897,11 +909,11 @@ export function ClientProfileView({
    * as the pre-filled value in the Active Session's Today column.
    * ------------------------------------------------------------------ */
   const journeyGridSessions = useMemo(() => {
-    const totalRecords = Math.max(calculatedSessionCount, sessions.length);
+    const totalRecords = Math.max(completedTotal ?? 0, sessions.length);
     return toJourneySessions(
       sessions.map((s, idx) => ({ ...s, sessionNumber: totalRecords - idx })),
     );
-  }, [sessions, calculatedSessionCount]);
+  }, [sessions, completedTotal]);
 
   /**
    * Routine A / B machine ids, for the Journey tab's filters. Matched on the
@@ -1170,14 +1182,16 @@ export function ClientProfileView({
         if (latestReport === undefined) return null;
 
         if (latestReport === null) {
-          // Only show "Report Required" if client is older than 3 months
-          const clientCreatedAt =
-            client.createdAt?.toDate?.() ||
-            (client.createdAt ? new Date(client.createdAt) : new Date());
-          const threeMonthsAgo = new Date();
-          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-          if (clientCreatedAt > threeMonthsAgo) {
+          // Only once the client has been with the studio three months -
+          // judged from the oldest date on the record, or a prior record,
+          // never from the day Journey met them: that made every migrating
+          // client look new (lib/history-claims.ts, Sep 24 2026).
+          if (
+            !isEstablishedClient(
+              { earliest: earliestKnownDate(client), prior: priorHistory },
+              new Date(),
+            )
+          ) {
             return null;
           }
 
@@ -1193,8 +1207,7 @@ export function ClientProfileView({
                     Report Required
                   </p>
                   <p className="text-[11px] font-bold opacity-80">
-                    This client has no progress report on file. Please perform
-                    an evaluation.
+                    {noReportSentence(clientCoverage)}
                   </p>
                 </div>
                 <Button
@@ -1273,7 +1286,8 @@ export function ClientProfileView({
         studioName={studios?.find((s) => s.id === client.homeStudioId)?.name}
         sessions={sessions}
         scheduledSessions={scheduledSessions}
-        completedCount={calculatedSessionCount}
+        completedCount={completedTotal}
+        sessionsQuotable={canQuoteNumber}
         priorLabel={priorLabel}
         topTrainer={topTrainer}
         trainers={trainers}
@@ -1400,6 +1414,8 @@ export function ClientProfileView({
             routineAMachineIds={routineAMachineIds}
             routineBMachineIds={routineBMachineIds}
             onOpenMachine={openMachineWindow}
+            sessionNumbers={canQuoteNumber}
+            coverage={clientCoverage}
           />
         </TabsContent>
 
@@ -1744,6 +1760,7 @@ export function ClientProfileView({
         sessions={sessions}
         authTrainer={authTrainer}
         activeStudioId={activeStudioId}
+        coverage={clientCoverage}
       />
 
       <Dialog
