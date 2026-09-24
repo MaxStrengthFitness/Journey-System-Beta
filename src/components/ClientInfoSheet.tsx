@@ -8,8 +8,6 @@ import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { useScrollerPad } from "../features/client-profile/use-scroller-pad";
-import { clientDisplayName } from "../lib/client-name";
-import { mindbodyIdOf } from "../lib/mindbody-id";
 import { Button } from "@/components/ui/button";
 import { ClientDossier } from "./client-dossier/ClientDossier";
 
@@ -256,19 +254,10 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
       }
     >
       {inline ? (
-        /* Slim inline bar: the tab already says "Details", so no title here. */
-        <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/60">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 min-w-0">
-            <span className="text-[#0a548b] dark:text-[#8cc4f2] truncate">
-              {clientDisplayName(client)}
-            </span>
-            {mindbodyIdOf(client) && (
-              <>
-                <span className="text-slate-300 dark:text-slate-600">•</span>
-                <span className="truncate">MBO ID {mindbodyIdOf(client)}</span>
-              </>
-            )}
-          </p>
+        /* Slim inline bar: the tab already says "Details", so no title here,
+           and no name either -- the profile header above says it, and the
+           snapshot below carries the MBO ID. Just the Migration Hub door. */
+        <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/60">
           <Button
             type="button"
             onClick={() => {
@@ -276,7 +265,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
               window.dispatchEvent(new CustomEvent("open-bulk-import"));
             }}
             variant="outline"
-            className="h-9 rounded-xl border-border text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
+            className="h-10 rounded-xl border-border text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
           >
             <Maximize className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Migration Hub (OCR)</span>

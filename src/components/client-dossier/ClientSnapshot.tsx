@@ -145,11 +145,12 @@ export function ClientSnapshot({
               <ImageIcon strokeWidth={1.4} size={20} />
             )}
           </div>
+          {/* No name here: the profile header right above already says it,
+              and three copies of it stacked was the profile review's first
+              note (Sep 2026). The screen reader still gets it. */}
           <div className="min-w-0">
-            <p className="truncate text-base font-black uppercase italic tracking-tight text-foreground">
-              {clientDisplayName(client)}
-            </p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <p className="sr-only">{clientDisplayName(client)}</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground [overflow-wrap:anywhere]">
               {identity || "No demographics on file"}
             </p>
           </div>
