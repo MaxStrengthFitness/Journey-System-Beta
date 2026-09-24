@@ -1100,21 +1100,22 @@ async function startServer() {
         },
       });
 
-      let signatureHeader = "test-signature";
-      if (webhookSecret) {
-        const crypto = await import("crypto");
-        let key: string | Buffer = webhookSecret;
-        if (webhookSecret.length === 44 && webhookSecret.endsWith("=")) {
-          try {
-            key = Buffer.from(webhookSecret, "base64");
-          } catch {
-            key = webhookSecret;
-          }
-        }
-        const hmac = crypto.createHmac("sha256", key);
-        hmac.update(testPayload);
-        signatureHeader = hmac.digest("base64");
+      // Signed exactly as Mindbody signs (functions/src/mindbody/
+      // verifySignature.ts): HMAC-SHA-256 keyed with the secret as a UTF-8
+      // string, sent as `sha256={base64}`. There is no unsigned fallback any
+      // more: the webhook no longer accepts the old "test-signature" header.
+      if (!webhookSecret) {
+        return res.status(400).json({
+          error: "MINDBODY_WEBHOOK_SECRET is not set on this server, so a test event cannot be signed.",
+        });
       }
+      const crypto = await import("crypto");
+      const signatureHeader =
+        "sha256=" +
+        crypto
+          .createHmac("sha256", Buffer.from(webhookSecret, "utf8"))
+          .update(testPayload, "utf8")
+          .digest("base64");
 
       const webhookResponse = await fetch(webhookUrl, {
         method: "POST",

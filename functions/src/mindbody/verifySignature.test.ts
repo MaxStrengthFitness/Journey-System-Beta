@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as crypto from 'node:crypto';
-import { verifyMindbodySignature } from './verifySignature';
+import { signMindbodyPayload, verifyMindbodySignature } from './verifySignature';
 
 describe('verifyMindbodySignature', () => {
   const webhookSecret = 'test_secret_123';
@@ -56,6 +56,26 @@ describe('verifyMindbodySignature', () => {
   it('whitespace-only inputs -> false, does not throw', () => {
     expect(verifyMindbodySignature('   ', '   ', '   ')).toBe(false);
     expect(verifyMindbodySignature(rawBody, '\t\n', webhookSecret)).toBe(false);
+  });
+
+  // Sep 24 2026 -- what Mindbody actually sends (WebhooksDocumentation).
+  it('the documented header, sha256={base64}, verifies', () => {
+    expect(verifyMindbodySignature(rawBody, `sha256=${validSignature}`, webhookSecret)).toBe(true);
+    expect(signMindbodyPayload(rawBody, webhookSecret)).toBe(`sha256=${validSignature}`);
+  });
+
+  it('a real-shaped key (44 chars, base64-looking) is used as a UTF-8 string, not decoded', () => {
+    const key = 'q3NcR7xk0vJmZs1l4yWbT8uE2pA9dFgH6iKoLnMeQrs=';
+    expect(key).toHaveLength(44);
+    const header = 'sha256=' + crypto.createHmac('sha256', Buffer.from(key, 'utf8')).update(rawBody, 'utf8').digest('base64');
+    expect(verifyMindbodySignature(rawBody, header, key)).toBe(true);
+    const decodedKeyHeader = 'sha256=' + crypto.createHmac('sha256', Buffer.from(key, 'base64')).update(rawBody, 'utf8').digest('base64');
+    expect(verifyMindbodySignature(rawBody, decodedKeyHeader, key)).toBe(false);
+  });
+
+  it('the old "test-signature" back door is shut, with or without a secret', () => {
+    expect(verifyMindbodySignature(rawBody, 'test-signature', webhookSecret)).toBe(false);
+    expect(verifyMindbodySignature(rawBody, 'test-signature', '')).toBe(false);
   });
 
   it.skip('Constant-time property: 1000 iterations comparing matching vs. non-matching signatures', () => {

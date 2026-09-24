@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 
 import { confirmProduction } from './production-guard.js';
 
-// --list and --secret-only only read, so they do not need the production
-// confirmation; every other run changes a live subscription and does.
-if (!process.argv.includes('--list') && !process.argv.includes('--secret-only')) {
+// --list only reads, so it does not need the production confirmation; every
+// other run changes a live subscription and does.
+if (!process.argv.includes('--list')) {
   confirmProduction({
     script: 'register-webhook.js',
     target: 'Mindbody webhook subscription -> production cloud function',
@@ -62,21 +62,26 @@ function getEnv(key) {
  * they only work once `firebase deploy --only functions` has shipped that
  * code, so deploy the functions BEFORE running this with the new list.
  */
+/*
+ * Sep 24 2026: checked against Mindbody's event list (WebhooksDocumentation).
+ * `appointmentBooking.updated` does not exist, and no clientContract.* event
+ * is documented; asking for an unknown event id fails the whole request,
+ * which is the likeliest reason the last subscription never left
+ * PendingActivation. The documented ids come first; the contract ids are
+ * only TRIED (--fresh drops them if Mindbody refuses, then staff.* likewise).
+ */
 const EVENT_IDS = [
   'client.created',
   'client.updated',
   'appointmentBooking.created',
-  'appointmentBooking.updated',
   'appointmentBooking.cancelled',
+  'clientMembershipAssignment.created',
+  'clientMembershipAssignment.cancelled',
   'staff.created',
   'staff.updated',
   'staff.deactivated',
-  'clientContract.created',
-  'clientContract.updated',
-  'clientContract.cancelled',
-  'clientMembershipAssignment.created',
-  'clientMembershipAssignment.cancelled',
 ];
+const MAYBE_EVENT_IDS = ['clientContract.created', 'clientContract.updated', 'clientContract.cancelled'];
 
 /*
  * Options (Renewals round, Sep 2026):
@@ -99,12 +104,22 @@ const argValue = (name) => {
 };
 const LIST_ONLY = args.includes('--list');
 /*
- * --secret-only writes the signing secret of the subscription for this
- * webhook URL to stdout and NOTHING else, so it can be piped straight into
- * `firebase functions:secrets:set MINDBODY_WEBHOOK_SECRET --data-file -`
- * without the secret ever appearing on a screen. Reads only.
+ * Starting fresh (Sep 24 2026). Mindbody returns a subscription's signing
+ * secret ONCE, when it is created, and nobody kept the ones for the three
+ * subscriptions that exist (two deactivated for failed deliveries, one never
+ * activated). So the way back is a new subscription, in three steps the ship
+ * script runs in order with the Firebase secret and a redeploy in between:
+ *
+ *   --fresh --secret-file <path>   create one; its secret goes ONLY to that
+ *                                  file (never the screen), and the line
+ *                                  NEW_SUBSCRIPTION_ID=<id> is printed.
+ *   --activate <id>                PATCH it Active (after Firebase has the secret).
+ *   --delete-except <id>           DELETE every other subscription for this URL.
  */
-const SECRET_ONLY = args.includes('--secret-only');
+const FRESH = args.includes('--fresh');
+const SECRET_FILE = argValue('secret-file');
+const ACTIVATE_ID = argValue('activate');
+const DELETE_EXCEPT = argValue('delete-except');
 const SHOW_SECRET = args.includes('--show-secret');
 const SITE_ID = String(argValue('site') || '5746957').trim();
 
@@ -128,17 +143,66 @@ async function main() {
   }
   const webhookUrl = 'https://us-central1-gen-lang-client-0731527386.cloudfunctions.net/mindbodyWebhook';
 
-  if (SECRET_ONLY) {
-    const res = await fetch('https://mb-api.mindbodyonline.com/push/api/v1/subscriptions', {
-      headers: { 'Api-Key': apiKey, 'SiteId': String(siteId) },
+  const API = 'https://mb-api.mindbodyonline.com/push/api/v1/subscriptions';
+  const headers = { 'Content-Type': 'application/json', 'Api-Key': apiKey, 'SiteId': String(siteId) };
+  const idOf = (s) => s.SubscriptionId || s.subscriptionId || s.id;
+  const listAll = async () => {
+    const r = await fetch(API, { headers });
+    if (!r.ok) throw new Error(`listing subscriptions: HTTP ${r.status} ${await r.text()}`);
+    const d = await r.json();
+    return Array.isArray(d) ? d : d.items || d.Subscriptions || d.subscriptions || [];
+  };
+
+  if (FRESH) {
+    if (!SECRET_FILE) { console.error('--fresh needs --secret-file <path>.'); process.exit(1); }
+    // Documented events first; the undocumented contract ids, then staff, are
+    // dropped if Mindbody refuses the request because of them.
+    const attempts = [[...EVENT_IDS, ...MAYBE_EVENT_IDS], EVENT_IDS, EVENT_IDS.filter((e) => !e.startsWith('staff.'))];
+    for (const eventIds of attempts) {
+      const r = await fetch(API, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ webhookUrl, eventSchemaVersion: 1, eventIds, referenceId: 'journey-2026-09-24' }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        console.error(`Mindbody refused ${eventIds.length} events (HTTP ${r.status}): ${JSON.stringify(body).slice(0, 300)}`);
+        continue;
+      }
+      const key = body.MessageSignatureKey || body.messageSignatureKey;
+      const id = idOf(body);
+      if (!key || !id) { console.error('Created, but Mindbody returned no id or secret:', Object.keys(body)); process.exit(1); }
+      fs.writeFileSync(SECRET_FILE, String(key).trim(), { encoding: 'utf8', mode: 0o600 });
+      console.log(`Created subscription with ${eventIds.length} events: ${eventIds.join(', ')}`);
+      console.log(`Status: ${body.Status || body.status}   secret fingerprint: ${fingerprint(key)} (written to the file, not shown)`);
+      console.log(`NEW_SUBSCRIPTION_ID=${id}`);
+      return;
+    }
+    console.error('Mindbody refused every attempt; nothing was created.');
+    process.exit(1);
+  }
+
+  if (ACTIVATE_ID) {
+    const r = await fetch(`${API}/${encodeURIComponent(ACTIVATE_ID)}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status: 'Active' }),
     });
-    if (!res.ok) { console.error('Error listing subscriptions:', res.status); process.exit(1); }
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : data.items || data.Subscriptions || data.subscriptions || [];
-    const sub = list.find((s) => (s.WebhookUrl || s.webhookUrl) === webhookUrl);
-    const key = sub && (sub.MessageSignatureKey || sub.messageSignatureKey);
-    if (!key) { console.error('No subscription with a signing secret for this webhook URL.'); process.exit(1); }
-    process.stdout.write(String(key).trim());
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) { console.error(`Activation refused (HTTP ${r.status}):`, JSON.stringify(body).slice(0, 300)); process.exit(1); }
+    console.log(`Subscription ${ACTIVATE_ID} is now ${body.Status || body.status || 'Active'}.`);
+    return;
+  }
+
+  if (DELETE_EXCEPT) {
+    const others = (await listAll()).filter(
+      (s) => (s.WebhookUrl || s.webhookUrl) === webhookUrl && idOf(s) !== DELETE_EXCEPT,
+    );
+    for (const s of others) {
+      const r = await fetch(`${API}/${encodeURIComponent(idOf(s))}`, { method: 'DELETE', headers });
+      console.log(`${r.ok ? 'Deleted' : `Could not delete (HTTP ${r.status})`} ${idOf(s)}  (${s.Status || s.status})`);
+    }
+    if (!others.length) console.log('No other subscriptions for this URL.');
     return;
   }
 

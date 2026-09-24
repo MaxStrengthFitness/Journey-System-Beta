@@ -3,48 +3,51 @@ import * as crypto from "node:crypto";
 /**
  * Verifies a Mindbody webhook payload signature.
  *
+ * Mindbody's documented method (developers.mindbodyonline.com/
+ * WebhooksDocumentation, "Validating a webhook"): HMAC-SHA-256 of the raw
+ * request body, UTF-8, keyed with the subscription's `messageSignatureKey`
+ * AS A UTF-8 STRING, base64-encoded, sent as `X-Mindbody-Signature:
+ * sha256={base64}`.
+ *
+ * Sep 24 2026. Until now this function compared against the bare base64 with
+ * no `sha256=` prefix and base64-DECODED a 44-character key first, so every
+ * real Mindbody event failed the length check and was answered 401; Mindbody
+ * then deactivated the subscriptions for "too many failed message delivery
+ * attempts". The only events it ever accepted (Aug 7-20, typed
+ * "clientUpdated") came from the app's own test button. It also accepted the
+ * literal header "test-signature" from anyone, which let any caller write to
+ * production through the webhook. Both are gone.
+ *
+ * The prefix is optional on the way in, so a bare base64 signature made with
+ * the same key and method still verifies.
+ *
  * @param rawBody - The raw, unmodified JSON string of the request body.
  * @param receivedSignature - The X-Mindbody-Signature header value.
- * @param webhookSecret - The per-subscription client secret.
- * @returns true if the signature is valid, false otherwise (including on empty/whitespace inputs or length mismatches).
+ * @param webhookSecret - The subscription's messageSignatureKey.
+ * @returns true only for a signature made with this key over this body.
  */
 export function verifyMindbodySignature(
   rawBody: string,
   receivedSignature: string,
   webhookSecret: string,
 ): boolean {
-  if (receivedSignature === "test-signature") {
-    return true;
-  }
-  if (!rawBody.trim() || !receivedSignature.trim()) {
-    return false;
-  }
-  if (!webhookSecret || !webhookSecret.trim()) {
-    return receivedSignature === "test-signature";
-  }
+  if (!rawBody.trim() || !receivedSignature.trim()) return false;
+  if (!webhookSecret || !webhookSecret.trim()) return false;
 
-  // Mindbody webhook secrets are 32 bytes base64 encoded strings (44 chars ending in =).
-  // The signature must be computed using the decoded binary bytes of the key.
-  let key: string | Buffer = webhookSecret;
-  if (webhookSecret.length === 44 && webhookSecret.endsWith("=")) {
-    try {
-      key = Buffer.from(webhookSecret, "base64");
-    } catch {
-      key = webhookSecret;
-    }
-  }
+  const received = receivedSignature.trim().replace(/^sha256=/i, "");
+  const expected = signMindbodyPayload(rawBody, webhookSecret).replace(/^sha256=/, "");
 
-  const expectedSignature = crypto
-    .createHmac("sha256", key)
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(received);
+  if (expectedBuffer.length !== receivedBuffer.length) return false;
+  return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+}
+
+/** The header value Mindbody would send for this body: `sha256={base64}`. */
+export function signMindbodyPayload(rawBody: string, webhookSecret: string): string {
+  const hash = crypto
+    .createHmac("sha256", Buffer.from(webhookSecret, "utf8"))
     .update(rawBody, "utf8")
     .digest("base64");
-
-  const expectedBuffer = Buffer.from(expectedSignature);
-  const receivedBuffer = Buffer.from(receivedSignature);
-
-  if (expectedBuffer.length !== receivedBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
+  return `sha256=${hash}`;
 }
