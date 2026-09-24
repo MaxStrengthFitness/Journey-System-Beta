@@ -4,6 +4,8 @@ Client codex round, Sep 2026 (`docs/rounds/2026-09-24-client-codex.md`). The pro
 
 This folder is built phase by phase on the `client-codex` branch. So far it holds **the kit**; the shell (`ClientCodex`, the one Save bar's form, the one load per tab) and the pages follow, and each adds its section here.
 
+**Notes are Notes'.** What any page says about a client's notes — how to coach her, injury threads, her notes on each machine, older life notes by pillar, the FORD door's count, the Notes segment's line — comes from `src/features/client-notes/record-selectors.ts`, over the tab's one journal load, and the red line under the bar is Notes' `CriticalLine`. The kit builds no second critical strip and no page writes its own note selection.
+
 ## The kit (`kit/`)
 
 One look for every page, so a trainer learns it once. An area's own stylesheet may lay out its own content; it may not draw a second panel, button, chip or eyebrow.
@@ -44,7 +46,7 @@ None of these uses a regex lookbehind: older iPadOS Safari fails the whole modul
 4. **A regex lookbehind** in code that ships to an iPad.
 5. **A raw invisible or control character** (a no-break space, a zero-width space, a byte-order mark) in any codex source or test file — write the escape.
 
-`CODEX_FILES` is an explicit list, and a file in this folder that is not on it fails the suite, so the folder cannot grow a file the scan never reads. Every page area's phase adds its files (including its files in other folders). `HOSTED_FILES` and `HOSTED_OFF_SCALE_BUDGET` are for components the codex mounts but does not own; they start empty. It also checks the tokens: exactly the five sizes, every colour an alias of a declared app token, touch targets at 40px or more, and `kit.css` drawing only from `--cx-*`.
+`CODEX_FILES` is an explicit list, and a file in this folder that is not on it fails the suite, so the folder cannot grow a file the scan never reads. Every page area's phase adds its files (including its files in other folders) — Notes' critical line is the first: `client-notes/CriticalLine.tsx`, `critical-line.css` and `record-selectors.ts` are on the list, because the shell mounts that line under the bar on five pages. `HOSTED_FILES` and `HOSTED_OFF_SCALE_BUDGET` are for components the codex mounts but does not own; they start empty. It also checks the tokens: exactly the five sizes, every colour an alias of a declared app token, touch targets at 40px or more, and `kit.css` drawing only from `--cx-*`.
 
 `kit/kit.render.test.tsx` mounts every primitive in light and dark, and asserts that every control the kit renders matches a `kit.css` rule that makes it at least 40px tall.
 

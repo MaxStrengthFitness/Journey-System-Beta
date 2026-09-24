@@ -79,6 +79,28 @@ export function mattersOn(entry: MatteringFields, day: string, tz?: string): boo
 }
 
 /**
+ * Has the note's window RUN OUT — its last day has gone by?
+ *
+ * Client codex, Sep 2026. Only a window with an end can end: a RANGE whose
+ * until-day is before `today`, or a one-off DAY that has passed. Never an
+ * ALWAYS note (it waits for someone to resolve it), never a yearly day (it
+ * is only between anniversaries), and never a resolved or archived note —
+ * that is closed, which is a different thing and reads differently.
+ *
+ * This is NOT `!mattersOn(...)`. A note whose start is pushed ahead does not
+ * matter yet, and the card used to read "Ended —" on it: "no lunges from the
+ * 20th" written on the 10th looked finished before it began.
+ */
+export function windowEnded(entry: MatteringFields, today: string, tz?: string): boolean {
+  if (entry.resolvedAt || entry.isArchived) return false;
+  const shape = shapeOf(entry, tz);
+  if (shape === "always") return false;
+  const until = dayOf(entry.effectiveUntil, tz) as string;
+  if (shape === "day" && entry.repeat === "yearly") return false;
+  return until < today;
+}
+
+/**
  * The next day on which a DAY-shaped note matters, on or after `today` —
  * for the Moments panel ("Pat's birthday, Tuesday"). Null for other shapes,
  * for a past one-off, and when nothing is left.

@@ -61,6 +61,11 @@ const CODEX_FILES: readonly string[] = [
   "features/client-codex/kit/pronouns.ts",
   "features/client-codex/kit/index.ts",
   "lib/first-sentences.ts",
+  // Notes' pieces the codex mounts on every page (phase 7): the critical line
+  // under the bar, its stylesheet, and the selectors that write its words.
+  "features/client-notes/CriticalLine.tsx",
+  "features/client-notes/critical-line.css",
+  "features/client-notes/record-selectors.ts",
 ];
 
 /**

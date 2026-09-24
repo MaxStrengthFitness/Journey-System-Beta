@@ -40,7 +40,7 @@ import {
 } from "../../types/journal";
 import type { Machine } from "../../types";
 import { isUnfiled, noteCardLabel } from "../../features/client-notes/note-catalog";
-import { describeWindow, mattersOn, shapeOf } from "../../features/client-notes/mattering";
+import { describeWindow, windowEnded } from "../../features/client-notes/mattering";
 import { studioDateKey } from "../../lib/studio-time";
 import "../../features/client-notes/notes.css";
 
@@ -110,10 +110,12 @@ export function JournalEntryCard({
   // an error — the FORD unfiled tone, never red.
   const unfiled = isUnfiled(entry);
 
-  // A window that has already closed: keep the record, drop the shouting.
-  // A yearly day never "ends"; it is simply between occurrences.
+  // A window that has already run out: keep the record, drop the shouting.
+  // A yearly day never "ends"; it is simply between occurrences, and a start
+  // pushed ahead is waiting, not ended — this card used to say "Ended —" on a
+  // note that had not begun (`windowEnded`, client codex, Sep 2026).
   const today = studioDateKey(new Date()) ?? "";
-  const isExpired = hasWindow && !isResolved && !mattersOn(entry, today) && shapeOf(entry) !== "day";
+  const isExpired = hasWindow && windowEnded(entry, today);
 
   return (
     <article

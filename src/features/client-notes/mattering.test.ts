@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { choiceOf, daysMattering, describeWindow, mattersOn, needsReview, nextOccurrence, shapeOf, startDayOf, windowFromChoice, type MatteringFields } from "./mattering";
+import { choiceOf, daysMattering, describeWindow, mattersOn, needsReview, nextOccurrence, shapeOf, startDayOf, windowEnded, windowFromChoice, type MatteringFields } from "./mattering";
 
 const TZ = "America/New_York";
 const noon = (day: string) => new Date(`${day}T12:00:00-04:00`);
@@ -91,6 +91,54 @@ describe("nextOccurrence", () => {
     expect(nextOccurrence(note({ effectiveFrom: noon("2026-09-01"), effectiveUntil: eod("2026-09-01") }), "2026-09-19", TZ)).toBeNull();
     expect(nextOccurrence(note({ effectiveUntil: eod("2026-12-01") }), "2026-09-19", TZ)).toBeNull();
     expect(nextOccurrence(note(), "2026-09-19", TZ)).toBeNull();
+  });
+});
+
+describe("windowEnded", () => {
+  const today = "2026-09-24";
+
+  it("a range whose until-day has gone by has ended; the until-day itself has not", () => {
+    expect(windowEnded(note({ effectiveFrom: noon("2026-09-01"), effectiveUntil: eod("2026-09-23") }), today, TZ)).toBe(true);
+    expect(windowEnded(note({ effectiveUntil: eod("2026-09-23") }), today, TZ)).toBe(true);
+    expect(windowEnded(note({ effectiveUntil: eod("2026-09-24") }), today, TZ)).toBe(false);
+  });
+
+  it("a live range has not ended", () => {
+    expect(windowEnded(note({ effectiveFrom: noon("2026-09-01"), effectiveUntil: eod("2026-10-01") }), today, TZ)).toBe(false);
+  });
+
+  it("a start pushed ahead is waiting, not ended — the 'Ended —' card bug", () => {
+    const always = note({ occurredAt: noon("2026-09-10"), effectiveFrom: noon("2026-09-30") });
+    expect(mattersOn(always, today, TZ)).toBe(false);
+    expect(windowEnded(always, today, TZ)).toBe(false);
+    const range = note({ occurredAt: noon("2026-09-10"), effectiveFrom: noon("2026-10-01"), effectiveUntil: eod("2026-10-20") });
+    expect(mattersOn(range, today, TZ)).toBe(false);
+    expect(windowEnded(range, today, TZ)).toBe(false);
+  });
+
+  it("a one-off day that has passed has ended; today's has not", () => {
+    expect(windowEnded(note({ effectiveFrom: noon("2026-09-01"), effectiveUntil: eod("2026-09-01") }), today, TZ)).toBe(true);
+    expect(windowEnded(note({ effectiveFrom: noon("2026-09-24"), effectiveUntil: eod("2026-09-24") }), today, TZ)).toBe(false);
+  });
+
+  it("a yearly day never ends: it is only between anniversaries", () => {
+    expect(windowEnded(note({ effectiveFrom: noon("2025-09-01"), effectiveUntil: eod("2025-09-01"), repeat: "yearly" }), today, TZ)).toBe(false);
+  });
+
+  it("an always note never ends on its own", () => {
+    expect(windowEnded(note(), today, TZ)).toBe(false);
+    expect(windowEnded(note({ occurredAt: noon("2020-01-01") }), today, TZ)).toBe(false);
+  });
+
+  it("a resolved or archived note is closed, not ended", () => {
+    const ran = { effectiveFrom: noon("2026-09-01"), effectiveUntil: eod("2026-09-10") };
+    expect(windowEnded(note({ ...ran, resolvedAt: noon("2026-09-05") }), today, TZ)).toBe(false);
+    expect(windowEnded(note({ ...ran, isArchived: true }), today, TZ)).toBe(false);
+  });
+
+  it("reads the until-day in the studio's day, not UTC's", () => {
+    // 11:30 PM Eastern on the 23rd is the 24th in UTC; the window ended on the 23rd.
+    expect(windowEnded(note({ effectiveUntil: new Date("2026-09-23T23:30:00-04:00") }), today, TZ)).toBe(true);
   });
 });
 

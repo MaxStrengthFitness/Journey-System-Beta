@@ -1,0 +1,107 @@
+/* ==========================================================================
+   The critical line — one red line for a critical note that matters today
+   --------------------------------------------------------------------------
+   Client codex, Sep 2026. Under the sub-toggle on FORD, Body & Pulse, Goals
+   & Focus, Story and Account, and on Notes only when a filter hides a
+   critical note. Its own file, so the codex's scale test can read it
+   (kit/scale.test.ts, CODEX_FILES): text at 14 and 12px only, no hex, and
+   nothing clipped — the line WRAPS; a critical note is never cut.
+
+   Colours are the Equipment tokens (--eq-*), which resolve anywhere in the
+   app, so the line looks the same inside the codex and on the old Notes
+   area. Crimson (--eq-alert) is the critical note's and nothing else's: the
+   "couldn't load" state is neutral, because it is not a critical note.
+   ========================================================================== */
+
+.nx-critline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 8px 6px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--eq-alert) 45%, transparent);
+  background: var(--eq-alert-fill);
+  color: var(--eq-ink);
+}
+
+.nx-critline[data-state="failed"] {
+  padding: 10px 14px;
+  border-color: var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+}
+
+.nx-critline__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--eq-alert);
+}
+
+.nx-critline[data-state="failed"] .nx-critline__icon {
+  color: var(--eq-ink-muted);
+}
+
+/* The words take the room; the button wraps under them before they are
+   squeezed. overflow-wrap so a long machine name breaks rather than
+   pushing the page sideways — it is never cut. */
+.nx-critline__text {
+  flex: 1 1 18rem;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.nx-critline__tag {
+  color: var(--eq-alert);
+  font-weight: 700;
+}
+
+.nx-critline__more {
+  color: var(--eq-ink-2);
+}
+
+/* "Some notes couldn't be read" under a line that did load: its own row. */
+.nx-critline__failed {
+  flex: 1 0 100%;
+  margin: 0;
+  padding-left: 30px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+}
+
+.nx-critline__btn {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.nx-critline__btn:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .nx-critline__btn:hover {
+    border-color: var(--eq-alert);
+  }
+}

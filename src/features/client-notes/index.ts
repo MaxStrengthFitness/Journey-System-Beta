@@ -13,6 +13,10 @@ export * from "./threads";
 export { addThreadUpdate, closeThread, reopenThread } from "./thread-write";
 export { NoteThreadCard } from "./NoteThreadCard";
 export * from "./dismissals";
+// The record's note selectors and its one critical line (client codex): every
+// page of Notes & Profile reads the one journal load through these.
+export * from "./record-selectors";
+export { CriticalLine, CRITICAL_LINE_FAILED, type CriticalLineProps } from "./CriticalLine";
 export {
   useNoteDismissals,
   useNoteDismissalsState,
