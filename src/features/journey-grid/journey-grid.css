@@ -1609,6 +1609,10 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 }
 .jg-nb__flag:disabled { cursor: default; }
 .jg-nb__flag--critical { background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10)); border-color: var(--jg-q-poor-text, #e11d48); color: var(--jg-q-poor-text, #e11d48); }
+/* A high-risk condition: plum, the equipment tokens' warning (main.tsx loads
+   them app-wide). Crimson stays for a critical note or an absolute
+   contraindication. */
+.jg-nb__flag--caution { background: var(--eq-warn-fill); border-color: var(--eq-warn); color: var(--eq-warn); }
 .jg-nb__flag--elevated { background: rgba(245, 158, 11, 0.10); border-color: rgba(245, 158, 11, 0.55); color: var(--jg-ink); }
 .jg-nb__flagtext { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jg-nb__flagmore { flex: none; font-size: 11px; font-weight: 800; opacity: 0.8; }
@@ -2288,8 +2292,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
 
 .jg-sbar__sp { flex: 1; min-width: 6px; }
 /* The red-flag marker (fluidity round, Sep 2026). 40px tall, a count, a
-   shield. Amber when there are only heads-ups and moderate conditions; red
-   the moment anything is critical. */
+   shield. Amber when there are only heads-ups and moderate conditions; plum
+   for a high-risk condition; crimson only for a critical note or an absolute
+   contraindication. */
 .jg-sbar__flag {
   flex: none;
   appearance: none;
@@ -2315,6 +2320,16 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   background: var(--jg-q-poor-fill, rgba(225, 29, 72, 0.10));
   color: var(--jg-q-poor-text, #e11d48);
 }
+.jg-sbar__flag--caution {
+  border-color: var(--eq-warn);
+  background: var(--eq-warn-fill);
+  color: var(--eq-warn);
+}
+/* A condition in the "What to know" sheet: the same three tones as the
+   marker, on the edge and the fill; the words stay in the ink. */
+.jg-flagcard { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.06); }
+.jg-flagcard[data-tone="alert"] { border-color: var(--eq-alert); background: var(--eq-alert-fill); }
+.jg-flagcard[data-tone="caution"] { border-color: var(--eq-warn); background: var(--eq-warn-fill); }
 
 .jg-sbar__btn,
 .jg-sbar__trash,

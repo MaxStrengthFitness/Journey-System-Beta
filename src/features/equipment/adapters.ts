@@ -29,7 +29,8 @@
 
 import type { Machine, ClientMachineSetting, ClientMachineStat, ExerciseLog, WorkoutSession } from "../../types";
 import type { MachineCatalogEntry, MachineSettingField } from "../../types/machines";
-import { MACHINE_DATABASE } from "../../data/machine-database";
+import { MACHINE_DATABASE, type MachineKnowledge } from "../../data/machine-database";
+import { CANONICAL_TO_DB_KEY, canonicalMachineId } from "../catalog/machine-identity";
 import { toIsoDay } from "../../lib/client-rollups";
 import { performedOnly } from "../../lib/set-outcome";
 import { tutOf } from "../clinical-review/facts";
@@ -213,17 +214,56 @@ export function buildFields(
  * Setup guide
  * ------------------------------------------------------------------ */
 
+/**
+ * MACHINE_DATABASE's record for a machine.
+ *
+ * The database is keyed by its own slugs ("lumbar_extension"); the floor
+ * carries the catalog's ids ("m-lumbar"). Looking the id up directly found
+ * nothing for any catalog machine, so the first-time set-up guide came up
+ * without its set-up steps (Sep 24 2026). The identity table is the route
+ * the Catalog already takes (features/catalog/adapters.ts).
+ *
+ * The machine's OWN id only, never its lineage: a studio's own machine
+ * (`sm-…`) is "lineage, not inheritance" (types/machines.ts), and the
+ * standard leg press's set-up steps are not a plate-loaded unit's.
+ */
+export function knowledgeOf(machine: Pick<Machine, "id" | "name">): MachineKnowledge | undefined {
+  if (!machine.id) return undefined;
+  if (MACHINE_DATABASE[machine.id]) return MACHINE_DATABASE[machine.id];
+  const key = CANONICAL_TO_DB_KEY[canonicalMachineId(machine.id, machine.name)];
+  return key ? MACHINE_DATABASE[key] : undefined;
+}
+
+/** First value that says something: empty strings and empty lists do not. */
+function firstFilled<T>(...values: (T | null | undefined)[]): T | undefined {
+  for (const v of values) {
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string" && v.trim() === "") continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    return v;
+  }
+  return undefined;
+}
+
+/**
+ * The guide, per field: catalog > static knowledge > legacy prop, as the
+ * header says. The order matters now that `knowledgeOf` finds the static
+ * record for every catalog machine: with the static record first, the
+ * catalog's words — the Academy's, and the ones an admin corrects — would
+ * have been replaced on all twenty machines by the older static copy. The
+ * set-up steps and summary exist only in the static record.
+ */
 export function buildGuide(
   machine: Machine,
   catalog: MachineCatalogEntry | undefined,
 ): MachineGuide | null {
-  const kb = machine.id ? MACHINE_DATABASE[machine.id] : undefined;
+  const kb = knowledgeOf(machine);
 
   const setupCues = kb?.setupCues || [];
-  const executionCues = kb?.executionCues || catalog?.execution?.keyCues || [];
-  const clinicalWarnings = kb?.clinicalWarnings || catalog?.clinicalWarnings || [];
-  const setupSummary = kb?.setup || machine.settings || null;
-  const executionSummary = kb?.execution || catalog?.execution?.cadenceNotes || null;
+  const executionCues = firstFilled(catalog?.execution?.keyCues, kb?.executionCues) || [];
+  const clinicalWarnings = firstFilled(catalog?.clinicalWarnings, kb?.clinicalWarnings) || [];
+  const setupSummary = firstFilled(kb?.setup, machine.settings) || null;
+  const executionSummary = firstFilled(catalog?.execution?.cadenceNotes, kb?.execution) || null;
 
   const empty =
     !setupCues.length &&
@@ -239,9 +279,11 @@ export function buildGuide(
     setupCues,
     executionCues,
     clinicalWarnings,
-    target: kb?.target || catalog?.musculature?.primary?.join(", ") || null,
-    posture: kb?.executionPosture || machine.executionPosture || catalog?.executionPosture || null,
-    requiresHandoff: Boolean(kb?.requiresHandoff ?? machine.requiresHandoff ?? catalog?.execution?.requiresHandoff),
+    target: firstFilled(catalog?.musculature?.primary?.join(", "), kb?.target) || null,
+    posture: firstFilled(catalog?.executionPosture, kb?.executionPosture, machine.executionPosture) || null,
+    requiresHandoff: Boolean(
+      catalog?.execution?.requiresHandoff ?? kb?.requiresHandoff ?? machine.requiresHandoff,
+    ),
     imageUrl: machine.imageUrl || kb?.imageUrl || catalog?.imageUrl,
   };
 }
@@ -431,6 +473,7 @@ export function toEquipmentMachines({
     out.push({
       id,
       name: machine.fullName || machine.name,
+      ...(machine.comparisonKey ? { comparisonKey: machine.comparisonKey } : {}),
       order: Number(machine.order ?? 999),
       kinematic: machine.kinematicClassification || kb?.kinematicClassification || catalog?.kinematicClassification || null,
       category: kb?.category || machine.anatomicalRegion || catalog?.anatomicalRegion || null,

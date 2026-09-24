@@ -118,6 +118,8 @@ export interface MachineUsage {
 export interface EquipmentMachine {
   id: string;
   name: string;
+  /** The catalog machine a studio's own machine is (`basedOn`), when the floor knows it. */
+  comparisonKey?: string;
   order: number;
   /** "Simple Pull", "Compound Push" — the chip under the name. */
   kinematic: string | null;
