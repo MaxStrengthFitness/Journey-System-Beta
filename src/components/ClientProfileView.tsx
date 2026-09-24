@@ -1262,7 +1262,7 @@ export function ClientProfileView({
         authTrainer={authTrainer ?? null}
         onOpenFord={() => {
           setQuickNoteOpen(false);
-          nav.openSection("life");
+          nav.openRecord("ford");
         }}
       />
       <ProfileHeader
@@ -1602,6 +1602,9 @@ export function ClientProfileView({
               onOpenChange={() => nav.setTab("journey")}
               client={client}
               authTrainer={authTrainer ?? null}
+              // The page and card the nav is on, as the long scroll's section
+              // (nav.recordSection is the client codex's temporary shim; the
+              // codex shell replaces this sheet and the shim with it).
               defaultTab={nav.recordSection || "notes"}
               machines={machines}
               trainers={trainers}
@@ -1645,7 +1648,7 @@ export function ClientProfileView({
               onSelectReport={onSelectReport}
               onDeleteReport={setReportToDelete}
               onNewReport={() => setView("progress-report")}
-              onEditMedical={() => nav.openSection("medical")}
+              onEditMedical={() => nav.openRecord("body", "body-watchouts")}
               view={nav.clinicalView}
               onViewChange={nav.setClinicalView}
               disabled={!!hasQuotaError}

@@ -287,7 +287,7 @@ answered to onto its new home.
 
 | File | What it owns |
 | --- | --- |
-| `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the per-client resume. Pure, 23 tests |
+| `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the per-client resume, and (client codex, Sep 2026) the record's pages, the anchor registry and `SECTION_TO_PAGE`. Pure, tested in `profile-nav.test.ts` |
 | `useProfileNav.ts` | the reducer plus sessionStorage and the default-segment context |
 | `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements |
 | `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines |
@@ -298,6 +298,17 @@ answered to onto its new home.
 
 **Where the trainer is is not a string.** It is a tab *and* a segment inside
 it. One reducer owns it; never keep a second copy.
+
+**Notes & Profile is pages, and it always opens on the Overview** (client
+codex, Sep 2026, AJ's decision 1). Its segment is `{ page, anchor }`: one of
+`RECORD_PAGES` (Overview · Notes · FORD · Body & Pulse · Goals & Focus ·
+Story · Account) and, optionally, a card on it from `RECORD_ANCHORS` (or a
+thread, `note-{id}`). Entering the tab remembers nothing; a door that means a
+card uses `openRecord(page, anchor)`. Every old dossier section id still lands
+(`SECTION_TO_PAGE`, the legacy table, and `normalizeLocation` for a handoff
+stored before the change). Until the codex shell replaces it, the long scroll
+still speaks sections: `nav.recordSection` is a temporary shim
+(`sectionForRecord`) that turns a page and card back into one.
 
 **A segment is found by position, not by reading it.** The iPad is held and
 often not looked at. Segments are equal fractions of the full width, the bar

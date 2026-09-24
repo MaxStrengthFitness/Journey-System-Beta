@@ -7,8 +7,8 @@
  * yet.
  *
  * Everything else about where the trainer is — which tab, which segment,
- * which dossier section — comes out of here, and nothing in ClientProfileView
- * keeps a second copy of it.
+ * which page of Notes & Profile and which card on it — comes out of here, and
+ * nothing in ClientProfileView keeps a second copy of it.
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type { DossierSection } from "../../types/journal";
@@ -16,11 +16,14 @@ import {
   DEFAULT_LOCATION,
   initialNavState,
   profileNavReducer,
+  sectionForRecord,
   takeStoredLocation,
   type ClinicalView,
   type ProfileLocation,
   type ProfileTab,
   type ProgrammingView,
+  type RecordAnchor,
+  type RecordPage,
 } from "./profile-nav";
 
 export interface UseProfileNav {
@@ -29,12 +32,26 @@ export interface UseProfileNav {
   /** Programming's segment — meaningful only while that tab is showing. */
   programmingView: ProgrammingView;
   clinicalView: ClinicalView;
-  /** Which dossier section the record tab should land on, if any. */
+  /**
+   * Notes & Profile's page. The Overview whenever the record tab is not
+   * showing: entering the tab always opens there (AJ's decision 1).
+   */
+  recordPage: RecordPage;
+  /** The card on that page a door asked for, if any. */
+  recordAnchor: RecordAnchor | undefined;
+  /**
+   * TEMPORARY (client codex, phase 3): the dossier section the long scroll
+   * should land on for recordPage + recordAnchor (profile-nav's
+   * sectionForRecord). ClientInfoSheet still speaks sections; the codex shell
+   * replaces it and this goes with it.
+   */
   recordSection: DossierSection | undefined;
   setTab: (tab: ProfileTab) => void;
   setProgrammingView: (view: ProgrammingView) => void;
   setClinicalView: (view: ClinicalView) => void;
-  /** Open Notes & Profile at a section. The cross-tab jump every screen uses. */
+  /** Open Notes & Profile at a page, and at a card on it. The cross-tab jump. */
+  openRecord: (page: RecordPage, anchor?: RecordAnchor) => void;
+  /** The pre-codex door: a dossier section, landed on its page and card. */
   openSection: (section: DossierSection) => void;
   go: (to: ProfileLocation) => void;
   /** Accepts any tab id the profile has ever used. See legacyLocation. */
@@ -100,6 +117,11 @@ export function useProfileNav(
     (view: ClinicalView) => rawDispatch({ type: "clinical", view }),
     [],
   );
+  const openRecord = useCallback(
+    (page: RecordPage, anchor?: RecordAnchor) =>
+      rawDispatch(anchor ? { type: "record", page, anchor } : { type: "record", page }),
+    [],
+  );
   const openSection = useCallback(
     (section: DossierSection) => rawDispatch({ type: "section", section }),
     [],
@@ -107,8 +129,13 @@ export function useProfileNav(
   const go = useCallback((to: ProfileLocation) => rawDispatch({ type: "go", to }), []);
   const goLegacy = useCallback((id: string) => rawDispatch({ type: "legacy", id }), []);
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const onRecord = state.location.tab === "record";
+    const recordPage: RecordPage =
+      state.location.tab === "record" ? (state.location.page ?? "overview") : "overview";
+    const recordAnchor =
+      state.location.tab === "record" ? state.location.anchor : undefined;
+    return {
       location: state.location,
       tab: state.location.tab,
       programmingView:
@@ -119,15 +146,16 @@ export function useProfileNav(
         state.location.tab === "clinical"
           ? state.location.view
           : (state.lastClinical ?? "calendar"),
-      recordSection:
-        state.location.tab === "record" ? state.location.section : undefined,
+      recordPage,
+      recordAnchor,
+      recordSection: onRecord ? sectionForRecord(recordPage, recordAnchor) : undefined,
       setTab,
       setProgrammingView,
       setClinicalView,
+      openRecord,
       openSection,
       go,
       goLegacy,
-    }),
-    [state, setTab, setProgrammingView, setClinicalView, openSection, go, goLegacy],
-  );
+    };
+  }, [state, setTab, setProgrammingView, setClinicalView, openRecord, openSection, go, goLegacy]);
 }

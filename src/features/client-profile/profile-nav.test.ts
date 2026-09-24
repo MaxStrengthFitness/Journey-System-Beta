@@ -1,16 +1,33 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { DOSSIER_SECTIONS, type DossierSection } from "../../types/journal";
 import {
   DEFAULT_LOCATION,
+  PAGE_TO_SECTION,
+  RECORD_ANCHORS,
+  RECORD_PAGES,
+  RECORD_PAGE_IDS,
+  SECTION_TO_PAGE,
   defaultProgrammingView,
   initialNavState,
   isLocation,
+  isRecordAnchor,
+  isRecordPage,
   legacyLocation,
+  neighbours,
+  normalizeLocation,
+  noteAnchor,
   openProfileAt,
+  pageOfAnchor,
   profileNavReducer,
   readStoredLocation,
+  recordLocation,
+  sectionForRecord,
+  sectionLocation,
   takeStoredLocation,
   writeStoredLocation,
+  type ProfileLocation,
   type ProfileNavState,
+  type RecordPage,
 } from "./profile-nav";
 
 describe("legacyLocation", () => {
@@ -25,12 +42,85 @@ describe("legacyLocation", () => {
     expect(legacyLocation("setup-check")).toEqual({ tab: "programming", view: "setup" });
   });
 
-  it("sends the journal and the dossier sections into the record", () => {
-    expect(legacyLocation("journal")).toEqual({ tab: "record", section: "notes" });
-    expect(legacyLocation("details")).toEqual({ tab: "record", section: "general" });
-    expect(legacyLocation("lifestyle")).toEqual({ tab: "record", section: "life" });
-    expect(legacyLocation("events")).toEqual({ tab: "record", section: "life" });
-    expect(legacyLocation("medical")).toEqual({ tab: "record", section: "medical" });
+  it("sends the journal and the old record ids onto a page of the codex", () => {
+    expect(legacyLocation("journal")).toEqual({ tab: "record", page: "notes" });
+    // The old Details tab was the whole profile: its front page now.
+    expect(legacyLocation("details")).toEqual({ tab: "record", page: "overview" });
+    expect(legacyLocation("lifestyle")).toEqual({ tab: "record", page: "ford" });
+    expect(legacyLocation("events")).toEqual({ tab: "record", page: "ford" });
+    expect(legacyLocation("medical")).toEqual({
+      tab: "record",
+      page: "body",
+      anchor: "body-watchouts",
+    });
+  });
+
+  it("lands every row of the codex's legacy table exactly", () => {
+    const rows: [string, RecordPage, string?][] = [
+      ["journal", "notes"],
+      ["notes", "notes"],
+      ["overview", "overview"],
+      ["codex", "overview"],
+      ["record", "overview"],
+      ["details", "overview"],
+      ["profile", "overview"],
+      ["identity", "account", "account-contact"],
+      ["general", "account", "account-contact"],
+      ["life", "ford"],
+      ["lifestyle", "ford"],
+      ["ford", "ford"],
+      ["events", "ford"],
+      ["medical", "body", "body-watchouts"],
+      ["body", "body"],
+      ["pulse", "body", "body-pulse"],
+      ["check-in", "body", "body-pulse"],
+      ["assessment", "body", "body-pulse"],
+      ["goals", "goals"],
+      ["focus", "goals", "goals-focus"],
+      ["story", "story"],
+      ["account", "account"],
+      ["admin", "account", "account-membership"],
+      ["membership", "account", "account-membership"],
+      ["contract", "account", "account-membership"],
+    ];
+    for (const [id, page, anchor] of rows) {
+      const want: ProfileLocation = anchor
+        ? { tab: "record", page, anchor }
+        : { tab: "record", page };
+      expect(legacyLocation(id), id).toStrictEqual(want);
+    }
+  });
+
+  it("keeps `reports` on the filed shelf — the Pulse SECTION is a different door", () => {
+    expect(legacyLocation("reports")).toEqual({ tab: "clinical", view: "reports" });
+    expect(sectionLocation("reports")).toEqual({
+      tab: "record",
+      page: "body",
+      anchor: "body-pulse",
+    });
+  });
+
+  it("covers every id ClientInfoSheet's old tab table answered to", () => {
+    // LEGACY_TAB_TO_SECTION, before the codex. Its `reports` meant the Pulse
+    // section and only ever came from the nav itself, so it is the one id that
+    // keeps its Activity Archive meaning here.
+    for (const id of [
+      "identity",
+      "general",
+      "lifestyle",
+      "life",
+      "medical",
+      "goals",
+      "focus",
+      "notes",
+      "journal",
+      "admin",
+      "events",
+    ]) {
+      const to = legacyLocation(id);
+      expect(to.tab, id).toBe("record");
+      expect(isLocation(to), id).toBe(true);
+    }
   });
 
   it("sends History and Clinical into the Activity Archive, on their own segments", () => {
@@ -55,6 +145,184 @@ describe("legacyLocation", () => {
       expect(to).not.toEqual(DEFAULT_LOCATION);
     }
     expect(legacyLocation("journey")).toEqual(DEFAULT_LOCATION);
+  });
+
+  it("has a real home for every old dossier section id", () => {
+    for (const s of DOSSIER_SECTIONS) {
+      const to = legacyLocation(s.id);
+      expect(isLocation(to), s.id).toBe(true);
+      expect(to, s.id).not.toEqual(DEFAULT_LOCATION);
+    }
+  });
+});
+
+describe("the record's pages", () => {
+  it("are AJ's seven, in AJ's order", () => {
+    expect(RECORD_PAGE_IDS).toEqual([
+      "overview",
+      "notes",
+      "ford",
+      "body",
+      "goals",
+      "story",
+      "account",
+    ]);
+    expect(RECORD_PAGES.map((p) => p.label)).toEqual([
+      "Overview",
+      "Notes",
+      "FORD",
+      "Body & Pulse",
+      "Goals & Focus",
+      "Story",
+      "Account",
+    ]);
+  });
+
+  it("name no client and use no pronoun in their Next-card lines", () => {
+    for (const p of RECORD_PAGES) {
+      expect(p.blurb.length, p.id).toBeGreaterThan(0);
+      expect(p.blurb, p.id).not.toMatch(/\b(she|her|hers|he|him|his|they|them|their)\b/i);
+    }
+  });
+
+  it("knows its own ids and nothing else", () => {
+    expect(isRecordPage("ford")).toBe(true);
+    expect(isRecordPage("general")).toBe(false);
+    expect(isRecordPage("")).toBe(false);
+    expect(isRecordPage(undefined)).toBe(false);
+  });
+
+  it("neighbours: the Overview has no before; Account's next is Done, back to the Overview", () => {
+    expect(neighbours("overview")).toEqual({ prev: null, next: "notes", nextIsDone: false });
+    expect(neighbours("notes")).toEqual({ prev: "overview", next: "ford", nextIsDone: false });
+    expect(neighbours("ford")).toEqual({ prev: "notes", next: "body", nextIsDone: false });
+    expect(neighbours("story")).toEqual({ prev: "goals", next: "account", nextIsDone: false });
+    expect(neighbours("account")).toEqual({ prev: "story", next: "overview", nextIsDone: true });
+  });
+
+  it("neighbours walk every page once, forwards and back", () => {
+    let at: RecordPage = "overview";
+    const seen: RecordPage[] = [at];
+    for (let i = 0; i < RECORD_PAGE_IDS.length - 1; i++) {
+      const { next } = neighbours(at);
+      expect(neighbours(next).prev).toBe(at);
+      at = next;
+      seen.push(at);
+    }
+    expect(seen).toEqual(RECORD_PAGE_IDS);
+    expect(neighbours(at).next).toBe("overview");
+  });
+});
+
+describe("the anchor registry", () => {
+  it("holds unique, well-formed ids", () => {
+    expect(new Set(RECORD_ANCHORS).size).toBe(RECORD_ANCHORS.length);
+    for (const a of RECORD_ANCHORS) expect(isRecordAnchor(a), a).toBe(true);
+  });
+
+  it("names every anchor after its page, so the id alone says where it lives", () => {
+    for (const a of RECORD_ANCHORS) {
+      const page = pageOfAnchor(a);
+      expect(page, a).not.toBeNull();
+      expect(a.startsWith(`${page}-`), a).toBe(true);
+    }
+  });
+
+  it("has the Account cards the Story and intake doors point at", () => {
+    // Added to the shell's list by the integration: 'account#on-file' and
+    // where she can train.
+    expect(RECORD_ANCHORS).toContain("account-on-file");
+    expect(RECORD_ANCHORS).toContain("account-train-at");
+  });
+
+  it("puts one thread on Notes, whatever its id", () => {
+    expect(noteAnchor("abc123")).toBe("note-abc123");
+    expect(pageOfAnchor("note-abc123")).toBe("notes");
+    // A synthesised journal id is a real thread id too.
+    const legacy = noteAnchor("legacy:clinicalIncidents:x9");
+    expect(isRecordAnchor(legacy)).toBe(true);
+    expect(pageOfAnchor(legacy)).toBe("notes");
+  });
+
+  it("refuses a thread id that does not fit, and Notes still opens (an id-less client event)", () => {
+    // useClientJournal synthesises `legacy:clientEvents:{date}{title}` for an
+    // event with no id: spaces, and it can run long. A door to that thread
+    // must check before offering the card; if it does not, the page opens.
+    const idless = noteAnchor("legacy:clientEvents:2026-03-01Knee flare after the move");
+    expect(isRecordAnchor(idless)).toBe(false);
+    expect(recordLocation("notes", idless)).toStrictEqual({ tab: "record", page: "notes" });
+  });
+
+  it("refuses a malformed anchor", () => {
+    expect(isRecordAnchor("a b")).toBe(false);
+    expect(isRecordAnchor("")).toBe(false);
+    expect(isRecordAnchor("x".repeat(81))).toBe(false);
+    expect(isRecordAnchor("x".repeat(80))).toBe(true);
+    expect(isRecordAnchor("#ford")).toBe(false);
+    expect(isRecordAnchor('ford"]')).toBe(false);
+    expect(isRecordAnchor(42)).toBe(false);
+  });
+
+  it("does not guess a page for an id with no page prefix", () => {
+    expect(pageOfAnchor("somewhere")).toBeNull();
+    expect(pageOfAnchor("fordx")).toBeNull();
+    expect(pageOfAnchor("ford")).toBeNull();
+    expect(pageOfAnchor("sessions-x")).toBeNull();
+    expect(pageOfAnchor("-ford")).toBeNull();
+  });
+});
+
+describe("recordLocation", () => {
+  it("keeps a good anchor on its own page", () => {
+    expect(recordLocation("ford", "ford-occupation")).toStrictEqual({
+      tab: "record",
+      page: "ford",
+      anchor: "ford-occupation",
+    });
+  });
+
+  it("drops an anchor that is malformed or belongs to another page — the page still opens", () => {
+    expect(recordLocation("ford", "a b")).toStrictEqual({ tab: "record", page: "ford" });
+    expect(recordLocation("ford", "body-watchouts")).toStrictEqual({ tab: "record", page: "ford" });
+    expect(recordLocation("goals", "note-abc")).toStrictEqual({ tab: "record", page: "goals" });
+  });
+
+  it("never writes an undefined key (the location is JSON in sessionStorage)", () => {
+    const loc = recordLocation("notes");
+    expect(Object.keys(loc)).toEqual(["tab", "page"]);
+    expect(Object.keys(recordLocation("notes", undefined))).toEqual(["tab", "page"]);
+    expect(Object.keys(recordLocation("notes", null))).toEqual(["tab", "page"]);
+  });
+});
+
+describe("SECTION_TO_PAGE", () => {
+  it("lands every dossier section on a page, most on a card", () => {
+    const want: Record<DossierSection, [RecordPage, string?]> = {
+      notes: ["notes"],
+      general: ["account", "account-contact"],
+      life: ["ford"],
+      medical: ["body", "body-watchouts"],
+      goals: ["goals"],
+      focus: ["goals", "goals-focus"],
+      reports: ["body", "body-pulse"],
+      admin: ["account", "account-membership"],
+    };
+    for (const s of DOSSIER_SECTIONS) {
+      const [page, anchor] = want[s.id];
+      expect(SECTION_TO_PAGE[s.id], s.id).toEqual(anchor ? { page, anchor } : { page });
+      const loc = sectionLocation(s.id);
+      expect(isLocation(loc), s.id).toBe(true);
+      expect(loc, s.id).toStrictEqual(
+        anchor ? { tab: "record", page, anchor } : { tab: "record", page },
+      );
+    }
+    expect(Object.keys(SECTION_TO_PAGE).sort()).toEqual(DOSSIER_SECTIONS.map((s) => s.id).sort());
+  });
+
+  it("only uses anchors that are in the registry", () => {
+    for (const to of Object.values(SECTION_TO_PAGE)) {
+      if (to.anchor) expect(RECORD_ANCHORS as readonly string[]).toContain(to.anchor);
+    }
   });
 });
 
@@ -145,12 +413,81 @@ describe("profileNavReducer", () => {
     expect(s.lastProgramming).toBe("machines");
   });
 
-  it("jumps to a dossier section and remembers it", () => {
-    let s = profileNavReducer(start(), { type: "section", section: "medical" });
-    expect(s.location).toEqual({ tab: "record", section: "medical" });
+  it("opens a record page, and a card on it", () => {
+    let s = profileNavReducer(start(), { type: "record", page: "ford" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "ford" });
+    s = profileNavReducer(s, { type: "record", page: "ford", anchor: "ford-occupation" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "ford", anchor: "ford-occupation" });
+  });
+
+  it("re-issues the same page and card as a NEW location, so the card is scrolled to again", () => {
+    // The codex shell re-runs its anchor scroll on the location's identity:
+    // the Save bar's "Show" tapped twice must land twice.
+    const a = profileNavReducer(start(), { type: "record", page: "body", anchor: "body-build" });
+    const b = profileNavReducer(a, { type: "record", page: "body", anchor: "body-build" });
+    expect(b.location).toEqual(a.location);
+    expect(b.location).not.toBe(a.location);
+  });
+
+  it("drops a bad anchor from a record action and keeps the page", () => {
+    const s = profileNavReducer(start(), { type: "record", page: "notes", anchor: "a b" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "notes" });
+  });
+
+  it("lands a dossier section on its page", () => {
+    let s = profileNavReducer(start(), { type: "section", section: "life" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "ford" });
+    s = profileNavReducer(s, { type: "section", section: "medical" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "body", anchor: "body-watchouts" });
+  });
+
+  it("opens Notes & Profile on the Overview every time — AJ's decision 1", () => {
+    let s = profileNavReducer(start(), { type: "tab", tab: "record" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "overview" });
+
+    // Visit FORD (a deep link), leave, come back: the Overview, not FORD.
+    s = profileNavReducer(s, { type: "record", page: "ford", anchor: "ford-family" });
     s = profileNavReducer(s, { type: "tab", tab: "journey" });
     s = profileNavReducer(s, { type: "tab", tab: "record" });
-    expect(s.location).toEqual({ tab: "record", section: "medical" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "overview" });
+  });
+
+  it("does not let the record touch the other tabs' memory", () => {
+    let s = start();
+    s = profileNavReducer(s, { type: "programming", view: "routine-b" });
+    s = profileNavReducer(s, { type: "clinical", view: "trends" });
+    s = profileNavReducer(s, { type: "record", page: "goals", anchor: "goals-focus" });
+    s = profileNavReducer(s, { type: "section", section: "admin" });
+    expect(s.lastProgramming).toBe("routine-b");
+    expect(s.lastClinical).toBe("trends");
+    s = profileNavReducer(s, { type: "tab", tab: "programming" });
+    expect(s.location).toEqual({ tab: "programming", view: "routine-b" });
+    s = profileNavReducer(s, { type: "tab", tab: "clinical" });
+    expect(s.location).toEqual({ tab: "clinical", view: "trends" });
+  });
+
+  it("a stray tap on the record tab while on a page does not reset the page", () => {
+    const s = profileNavReducer(start(), { type: "record", page: "story" });
+    expect(profileNavReducer(s, { type: "tab", tab: "record" })).toBe(s);
+  });
+
+  it("keeps no memory of the record in its state", () => {
+    const s = profileNavReducer(start(), { type: "record", page: "account" });
+    expect(Object.keys(s).sort()).toEqual(["lastClinical", "lastProgramming", "location"]);
+  });
+
+  it("normalises what `go` is handed", () => {
+    let s = profileNavReducer(start(), { type: "go", to: { tab: "record" } });
+    expect(s.location).toStrictEqual({ tab: "record", page: "overview" });
+    s = profileNavReducer(s, { type: "go", to: { tab: "record", anchor: "goals-why" } });
+    expect(s.location).toStrictEqual({ tab: "record", page: "goals", anchor: "goals-why" });
+    s = profileNavReducer(s, { type: "go", to: { tab: "clinical", view: "sessions" } });
+    expect(s.location).toEqual({ tab: "clinical", view: "sessions" });
+  });
+
+  it("takes a legacy record id onto its page", () => {
+    const s = profileNavReducer(start(), { type: "legacy", id: "focus" });
+    expect(s.location).toStrictEqual({ tab: "record", page: "goals", anchor: "goals-focus" });
   });
 
   it("seeds the memory from the location it starts on", () => {
@@ -171,7 +508,14 @@ describe("isLocation", () => {
     expect(isLocation({ tab: "programming", view: "setup" })).toBe(true);
     expect(isLocation({ tab: "clinical", view: "trends" })).toBe(true);
     expect(isLocation({ tab: "record" })).toBe(true);
+    expect(isLocation({ tab: "record", page: "ford" })).toBe(true);
+    expect(isLocation({ tab: "record", page: "ford", anchor: "ford-occupation" })).toBe(true);
+    expect(isLocation({ tab: "record", page: "notes", anchor: "note-abc123" })).toBe(true);
+  });
+
+  it("accepts a handoff written before the codex, to be normalised", () => {
     expect(isLocation({ tab: "record", section: "goals" })).toBe(true);
+    expect(isLocation({ tab: "record", section: "medical" })).toBe(true);
   });
 
   it("rejects anything else — session storage is user-writable and outlives a deploy", () => {
@@ -181,6 +525,124 @@ describe("isLocation", () => {
     expect(isLocation({ tab: "programming" })).toBe(false);
     expect(isLocation({ tab: "programming", view: "routine-c" })).toBe(false);
     expect(isLocation({ tab: "clinical", view: "list" })).toBe(false);
+    expect(isLocation({ tab: "record", page: "nonsense" })).toBe(false);
+    expect(isLocation({ tab: "record", page: "ford", anchor: "a b" })).toBe(false);
+    expect(isLocation({ tab: "record", page: "ford", anchor: "x".repeat(81) })).toBe(false);
+    expect(isLocation({ tab: "record", page: 3 })).toBe(false);
+    expect(isLocation({ tab: "record", section: 3 })).toBe(false);
+  });
+});
+
+describe("normalizeLocation", () => {
+  it("lands a pre-codex section on its page and card", () => {
+    expect(normalizeLocation({ tab: "record", section: "medical" })).toStrictEqual({
+      tab: "record",
+      page: "body",
+      anchor: "body-watchouts",
+    });
+    expect(normalizeLocation({ tab: "record", section: "life" })).toStrictEqual({
+      tab: "record",
+      page: "ford",
+    });
+    // The section titled Pulse, not the filed shelf.
+    expect(normalizeLocation({ tab: "record", section: "reports" })).toStrictEqual({
+      tab: "record",
+      page: "body",
+      anchor: "body-pulse",
+    });
+  });
+
+  it("reads an old id that was never a section through the legacy table", () => {
+    expect(normalizeLocation({ tab: "record", section: "lifestyle" })).toStrictEqual({
+      tab: "record",
+      page: "ford",
+    });
+    // Nothing the record knows, and nothing that leaves the tab: the Overview.
+    expect(normalizeLocation({ tab: "record", section: "history" })).toStrictEqual({
+      tab: "record",
+      page: "overview",
+    });
+    expect(normalizeLocation({ tab: "record", section: "rubbish" })).toStrictEqual({
+      tab: "record",
+      page: "overview",
+    });
+  });
+
+  it("opens the Overview for a bare record location, and a page for its anchor", () => {
+    expect(normalizeLocation({ tab: "record" })).toStrictEqual({ tab: "record", page: "overview" });
+    expect(normalizeLocation({ tab: "record", anchor: "account-found-us" })).toStrictEqual({
+      tab: "record",
+      page: "account",
+      anchor: "account-found-us",
+    });
+  });
+
+  it("lets a page win over a stale section", () => {
+    const stale = { tab: "record", page: "story", section: "medical" } as const;
+    expect(normalizeLocation(stale)).toStrictEqual({ tab: "record", page: "story" });
+  });
+
+  it("passes the other tabs through untouched", () => {
+    const loc: ProfileLocation = { tab: "programming", view: "setup" };
+    expect(normalizeLocation(loc)).toBe(loc);
+    expect(normalizeLocation({ tab: "journey" })).toEqual({ tab: "journey" });
+  });
+
+  it("is idempotent", () => {
+    for (const loc of [
+      recordLocation("ford", "ford-dreams"),
+      recordLocation("overview"),
+      sectionLocation("admin"),
+    ]) {
+      expect(normalizeLocation(normalizeLocation(loc))).toStrictEqual(normalizeLocation(loc));
+    }
+  });
+});
+
+describe("the long scroll's landing (temporary, until the codex shell)", () => {
+  it("turns every page back into the section that holds it today", () => {
+    expect(sectionForRecord("notes")).toBe("notes");
+    expect(sectionForRecord("ford")).toBe("life");
+    expect(sectionForRecord("body")).toBe("medical");
+    expect(sectionForRecord("goals")).toBe("goals");
+    expect(sectionForRecord("account")).toBe("general");
+    // No section of their own: the tab's usual landing (Notes, top of the spine).
+    expect(sectionForRecord("overview")).toBeUndefined();
+    expect(sectionForRecord("story")).toBeUndefined();
+    expect(Object.keys(PAGE_TO_SECTION).sort()).toEqual([...RECORD_PAGE_IDS].sort());
+  });
+
+  it("uses the card where the long scroll keeps it in another section", () => {
+    expect(sectionForRecord("body", "body-watchouts")).toBe("medical");
+    expect(sectionForRecord("body", "body-pulse")).toBe("reports");
+    expect(sectionForRecord("body", "body-training-story")).toBe("life");
+    expect(sectionForRecord("goals", "goals-focus")).toBe("focus");
+    expect(sectionForRecord("account", "account-membership")).toBe("admin");
+    expect(sectionForRecord("account", "account-contact")).toBe("general");
+  });
+
+  it("round-trips every dossier section: section → page → the same section", () => {
+    for (const s of DOSSIER_SECTIONS) {
+      const to = SECTION_TO_PAGE[s.id];
+      expect(sectionForRecord(to.page, to.anchor), s.id).toBe(s.id);
+    }
+  });
+
+  it("only ever answers a real dossier section (ClientInfoSheet maps each to itself)", () => {
+    const ids = new Set<string>(DOSSIER_SECTIONS.map((s) => s.id));
+    for (const page of RECORD_PAGE_IDS) {
+      for (const anchor of [undefined, ...RECORD_ANCHORS]) {
+        const s = sectionForRecord(page, anchor);
+        if (s !== undefined) expect(ids.has(s), `${page} ${anchor}`).toBe(true);
+      }
+    }
+  });
+
+  it("sends the two profile doors where they went before", () => {
+    // QuickNoteDialog's "this is about her life" and the Activity Archive's
+    // "edit medical" — ClientProfileView's two openRecord calls.
+    expect(sectionForRecord("ford")).toBe("life");
+    expect(sectionForRecord("body", "body-watchouts")).toBe("medical");
   });
 });
 
@@ -221,6 +683,41 @@ describe("stored location", () => {
     // Consumed: the deep link landed, and Judy opens on Journey from here on.
     expect(takeStoredLocation("judy")).toBeNull();
     expect(readStoredLocation("judy")).toBeNull();
+  });
+
+  it("round-trips a record page and card", () => {
+    writeStoredLocation("judy", { tab: "record", page: "goals", anchor: "goals-reached" });
+    expect(readStoredLocation("judy")).toStrictEqual({
+      tab: "record",
+      page: "goals",
+      anchor: "goals-reached",
+    });
+  });
+
+  it("normalises a handoff stored by a bundle from before the codex, and clears it", () => {
+    window.sessionStorage.setItem(
+      "msf_profile_nav:judy",
+      JSON.stringify({ tab: "record", section: "medical" }),
+    );
+    expect(takeStoredLocation("judy")).toStrictEqual({
+      tab: "record",
+      page: "body",
+      anchor: "body-watchouts",
+    });
+    expect(takeStoredLocation("judy")).toBeNull();
+  });
+
+  it("refuses a stored record location with a page or anchor it does not know", () => {
+    window.sessionStorage.setItem(
+      "msf_profile_nav:a",
+      JSON.stringify({ tab: "record", page: "nonsense" }),
+    );
+    window.sessionStorage.setItem(
+      "msf_profile_nav:b",
+      JSON.stringify({ tab: "record", page: "ford", anchor: "</script>" }),
+    );
+    expect(readStoredLocation("a")).toBeNull();
+    expect(readStoredLocation("b")).toBeNull();
   });
 
   it("takes nothing without a client, and survives storage throwing", () => {

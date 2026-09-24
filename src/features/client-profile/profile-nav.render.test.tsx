@@ -29,11 +29,12 @@
  * layout effect.
  */
 import { describe, expect, it } from "vitest";
-import { StrictMode, act, useEffect, useState } from "react";
+import { StrictMode, act, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ProfileSubnav, type SubnavItem } from "./ProfileSubnav";
 import { useProfileNav } from "./useProfileNav";
-import type { ProfileTab, ProgrammingView } from "./profile-nav";
+import type { ProfileTab, ProgrammingView, RecordPage } from "./profile-nav";
+import type { DossierSection } from "../../types/journal";
 
 /** Mount into a detached host and always unmount, so one failure cannot cascade. */
 async function mount(ui: React.ReactNode): Promise<{ host: HTMLElement; root: Root }> {
@@ -90,6 +91,115 @@ describe("useProfileNav mounts and navigates", () => {
     await tick();
     // A different client is a different screen: never the last one's segment.
     expect(host.textContent).toBe("journey:-");
+    await act(async () => root.unmount());
+  });
+});
+
+describe("useProfileNav opens Notes & Profile at a page", () => {
+  /**
+   * Every step is dispatched from an EFFECT, one per tick — a queued action,
+   * which is what makes React run the reducer during the next render (the
+   * shape of the crash that shipped). The probe prints the record's page,
+   * card and the long scroll's section (the temporary shim).
+   */
+  type Step =
+    | { openRecord: [RecordPage, string?] }
+    | { openSection: DossierSection }
+    | { setTab: ProfileTab }
+    | { legacy: string };
+
+  function RecordProbe({ clientId, steps }: { clientId: string; steps: Step[] }) {
+    const nav = useProfileNav(clientId);
+    const [at, setAt] = useState(0);
+    // StrictMode runs a mount effect twice; each step must still run once.
+    const ran = useRef(-1);
+    useEffect(() => {
+      const step = steps[at];
+      if (!step || ran.current >= at) return;
+      ran.current = at;
+      if ("openRecord" in step) nav.openRecord(...step.openRecord);
+      else if ("openSection" in step) nav.openSection(step.openSection);
+      else if ("setTab" in step) nav.setTab(step.setTab);
+      else nav.goLegacy(step.legacy);
+      setAt((n) => n + 1);
+    }, [at, steps, nav]);
+    return (
+      <span data-testid="where">
+        {nav.tab}|{nav.recordPage}|{nav.recordAnchor ?? "-"}|{nav.recordSection ?? "-"}
+      </span>
+    );
+  }
+
+  async function run(steps: Step[]): Promise<string> {
+    const { host, root } = await mount(<RecordProbe clientId="judy" steps={steps} />);
+    for (let i = 0; i <= steps.length; i++) await tick();
+    const text = host.textContent ?? "";
+    await act(async () => root.unmount());
+    return text;
+  }
+
+  it("reports the Overview while the record is not showing", async () => {
+    expect(await run([])).toBe("journey|overview|-|-");
+  });
+
+  it("opens a page and a card from an effect without crashing", async () => {
+    expect(await run([{ openRecord: ["ford", "ford-occupation"] }])).toBe(
+      "record|ford|ford-occupation|life",
+    );
+  });
+
+  it("lands QuickNoteDialog's FORD door on FORD — the long scroll on Life", async () => {
+    expect(await run([{ openRecord: ["ford"] }])).toBe("record|ford|-|life");
+  });
+
+  it("lands the Activity Archive's edit-medical door on Body's watch-outs", async () => {
+    expect(await run([{ openRecord: ["body", "body-watchouts"] }])).toBe(
+      "record|body|body-watchouts|medical",
+    );
+  });
+
+  it("still takes a dossier section", async () => {
+    expect(await run([{ openSection: "life" }])).toBe("record|ford|-|life");
+    expect(await run([{ openSection: "focus" }])).toBe("record|goals|goals-focus|focus");
+    expect(await run([{ openSection: "reports" }])).toBe("record|body|body-pulse|reports");
+  });
+
+  it("opens the Overview on every entry to the tab, even after a deep link", async () => {
+    expect(await run([{ setTab: "record" }])).toBe("record|overview|-|-");
+    expect(
+      await run([
+        { openRecord: ["goals", "goals-focus"] },
+        { setTab: "journey" },
+        { setTab: "record" },
+      ]),
+    ).toBe("record|overview|-|-");
+  });
+
+  it("forgets the record's page when the tab is left", async () => {
+    expect(await run([{ openRecord: ["account", "account-membership"] }, { setTab: "clinical" }])).toBe(
+      "clinical|overview|-|-",
+    );
+  });
+
+  it("takes a legacy id onto its page", async () => {
+    expect(await run([{ legacy: "admin" }])).toBe("record|account|account-membership|admin");
+  });
+
+  it("goes back to Journey when the client changes, whatever page the record was on", async () => {
+    const swap: { to?: (id: string) => void } = {};
+    const steps: Step[] = [{ openRecord: ["story"] }];
+    function Swapper() {
+      const [id, setId] = useState("judy");
+      swap.to = setId;
+      return <RecordProbe clientId={id} steps={steps} />;
+    }
+    const { host, root } = await mount(<Swapper />);
+    await tick();
+    await tick();
+    expect(host.textContent).toBe("record|story|-|-");
+    await act(async () => swap.to?.("marcus"));
+    await tick();
+    expect(host.textContent).toBe("journey|overview|-|-");
     await act(async () => root.unmount());
   });
 });
