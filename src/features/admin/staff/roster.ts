@@ -36,16 +36,49 @@ export interface MindbodyStaff {
   imageUrl?: string | null;
 }
 
+/**
+ * access_requests holds two kinds of request, told apart by `type`:
+ *
+ *   a sign-up (no type)  AccessRequestView, from someone with no account yet.
+ *                        The rules require fullName and email; the studio is
+ *                        requestedStudioId, and userId is their Auth uid.
+ *   "studio_access"      the studio picker's Request Access, from someone who
+ *                        HAS an account and wants another studio. trainerId is
+ *                        their Auth uid (the rules pin it); the studio is
+ *                        studioId. Before Sep 24 2026 it carried no fullName or
+ *                        email, only trainerName — which is why every name
+ *                        and email here is optional.
+ */
 export interface AccessRequest {
   id: string;
-  fullName: string;
-  email: string;
+  type?: string;
+  fullName?: string;
+  email?: string;
   status?: string;
   userId?: string;
   roleRequested?: string;
   /** The studio they asked to join (My Studio round, Sep 2026) — older requests have none. */
   requestedStudioId?: string | null;
+  /** studio_access: the Auth uid of the person asking. */
+  trainerId?: string;
+  /** studio_access, before Sep 24 2026: the only place a name went. */
+  trainerName?: string;
+  /** studio_access: the studio asked for. */
+  studioId?: string | null;
+  studioName?: string;
   createdAt?: string;
+}
+
+export const STUDIO_ACCESS = "studio_access";
+
+/** What a row says in place of a name nobody gave, rather than crashing on it. */
+export const NAME_NOT_GIVEN = "Name not given";
+
+export const isStudioAccessRequest = (req: AccessRequest) => req.type === STUDIO_ACCESS;
+
+/** The studio a request was made for, whichever kind it is; null when it names none. */
+export function requestStudioId(req: AccessRequest): string | null {
+  return (isStudioAccessRequest(req) ? req.studioId : req.requestedStudioId) || null;
 }
 
 export type StaffState =
@@ -67,6 +100,7 @@ export type MatchedBy = "staffId" | "email" | "name" | null;
 
 export interface StaffRow {
   key: string;
+  /** Never empty: NAME_NOT_GIVEN when no source had one. */
   name: string;
   email?: string;
   initials?: string;
@@ -88,6 +122,24 @@ export interface StaffRow {
 }
 
 const norm = (s?: string) => (s ?? "").trim().toLowerCase();
+
+/** The first real name among the candidates. Firestore data is not typed, so a "string" may not be one. */
+function nameOf(...candidates: unknown[]): string {
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim()) return c.trim();
+  }
+  return NAME_NOT_GIVEN;
+}
+
+/** Can this account already get into the studio? The picker's own test, plus ownership. */
+function worksAt(t: Trainer, studioId: string): boolean {
+  return (
+    t.primaryHomeStudioId === studioId ||
+    Boolean(t.accessibleStudioIds?.includes(studioId)) ||
+    Boolean(t.activeGuestStudioIds?.includes(studioId)) ||
+    Boolean(t.ownedStudioIds?.includes(studioId))
+  );
+}
 
 /** Action first, then the people who need one, then everyone else. */
 const STATE_ORDER: Record<StaffState, number> = {
@@ -162,7 +214,7 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
       for (const t of matches) claimed.add(t.id);
       rows.push({
         key: `mb:${staff.id}`,
-        name: trainer.fullName || staff.fullName,
+        name: nameOf(trainer.fullName, staff.fullName),
         email: trainer.email || staff.email,
         initials: trainer.initials,
         role: trainer.role,
@@ -179,7 +231,7 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
     } else {
       rows.push({
         key: `mb:${staff.id}`,
-        name: staff.displayName || staff.fullName,
+        name: nameOf(staff.displayName, staff.fullName),
         email: staff.email,
         imageUrl: staff.imageUrl ?? null,
         state: "mindbody-only",
@@ -194,7 +246,7 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
     if (claimed.has(t.id)) continue;
     rows.push({
       key: `t:${t.id}`,
-      name: t.fullName,
+      name: nameOf(t.fullName),
       email: t.email,
       initials: t.initials,
       role: t.role,
@@ -208,6 +260,39 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
   /* ---- People waiting to be let in --------------------------------- */
   for (const req of requests) {
     if (norm(req.status) && norm(req.status) !== "pending") continue;
+
+    // A request that names a studio is that studio's to answer
+    // (roles-and-permissions.md, "Letting people in"). One that names none —
+    // an older sign-up — is anyone's, so it shows everywhere. Filtered HERE
+    // rather than on each screen so the "waiting" counts agree with the rows:
+    // the studio_access request, which names its studio as `studioId`, was
+    // missed by the screens' own filter and showed at every studio.
+    const forStudio = requestStudioId(req);
+    if (input.studioId && forStudio && forStudio !== input.studioId) continue;
+
+    if (isStudioAccessRequest(req)) {
+      // Someone with an account asking for another studio. Their account
+      // existing is the premise, not a sign the request is stale — it is
+      // stale once they can get into the studio they asked for.
+      const requester = req.trainerId
+        ? trainers.find((t) => t.id === req.trainerId || t.authUid === req.trainerId)
+        : undefined;
+      if (requester && forStudio && worksAt(requester, forStudio)) continue;
+
+      rows.push({
+        key: `req:${req.id}`,
+        // Before Sep 24 2026 the picker wrote only trainerName, so the
+        // account is the next best source for both.
+        name: nameOf(req.fullName, req.trainerName, requester?.fullName),
+        email: req.email || requester?.email,
+        homeStudioId: requester?.primaryHomeStudioId,
+        state: "awaiting-approval",
+        matchedBy: null,
+        request: req,
+      });
+      continue;
+    }
+
     // Someone whose account already exists has been approved already; the
     // request is stale and showing it would invite a second approval — and
     // the approval path writes trainers/{uid}, so a second one overwrites the
@@ -227,7 +312,7 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
 
     rows.push({
       key: `req:${req.id}`,
-      name: req.fullName,
+      name: nameOf(req.fullName),
       email: req.email,
       state: "awaiting-approval",
       matchedBy: null,
@@ -235,9 +320,14 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
     });
   }
 
+  // State first, then named people A–Z with the nameless after them, then
+  // the key so the order never depends on what Firestore returned first.
   return rows.sort((a, b) => {
     const d = STATE_ORDER[a.state] - STATE_ORDER[b.state];
-    return d !== 0 ? d : a.name.localeCompare(b.name);
+    if (d !== 0) return d;
+    const unnamed = Number(a.name === NAME_NOT_GIVEN) - Number(b.name === NAME_NOT_GIVEN);
+    if (unnamed !== 0) return unnamed;
+    return a.name.localeCompare(b.name) || a.key.localeCompare(b.key);
   });
 }
 

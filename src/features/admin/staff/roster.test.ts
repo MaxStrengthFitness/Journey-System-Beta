@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Trainer } from "../../../types";
 import {
+  NAME_NOT_GIVEN,
   buildStaffRoster,
+  requestStudioId,
   summariseRoster,
   type AccessRequest,
   type MindbodyStaff,
@@ -204,6 +206,186 @@ describe("ordering", () => {
       "mindbody-only",
       "app-only",
     ]);
+  });
+});
+
+/**
+ * The studio picker's Request Access, as it was written until Sep 24 2026:
+ * trainerId, trainerName, studioId — and no fullName or email. Two of these
+ * waiting at once made the sort call localeCompare on undefined and took
+ * down My Studio → Team and Operations → Staff & Roles.
+ */
+const legacyStudioAccess = (over: Partial<AccessRequest> & { id: string }): AccessRequest => ({
+  type: "studio_access",
+  trainerId: "uid-nobody",
+  studioId: "westlake",
+  studioName: "Westlake",
+  status: "Pending",
+  ...over,
+});
+
+describe("a request with no name", () => {
+  it("survives two nameless studio-access requests waiting at once", () => {
+    const requests = [legacyStudioAccess({ id: "r1" }), legacyStudioAccess({ id: "r2", trainerId: "uid-other" })];
+    for (const studioId of ["westlake", null]) {
+      const rows = build({ studioId, requests });
+      expect(rows.map((r) => r.name)).toEqual([NAME_NOT_GIVEN, NAME_NOT_GIVEN]);
+      // Deterministic, whatever order Firestore handed them over in.
+      expect(rows.map((r) => r.key)).toEqual(["req:r1", "req:r2"]);
+      expect(build({ studioId, requests: [...requests].reverse() }).map((r) => r.key)).toEqual(["req:r1", "req:r2"]);
+    }
+  });
+
+  it("survives two nameless sign-ups, and lists the named ahead of them", () => {
+    const rows = build({
+      requests: [
+        request({ id: "r1", fullName: undefined, email: undefined }),
+        request({ id: "r2", fullName: "   ", email: undefined }),
+        request({ id: "r3", fullName: "Cara Crimson", email: "c@x.com" }),
+      ],
+    });
+    expect(rows.map((r) => r.name)).toEqual(["Cara Crimson", NAME_NOT_GIVEN, NAME_NOT_GIVEN]);
+  });
+
+  it("survives a trainer document or a Mindbody record with no name", () => {
+    // Firestore is not typed. A document missing its name is a bad record,
+    // not a reason for the staff screens to go blank.
+    const rows = build({
+      trainers: [
+        trainer({ id: "t1", fullName: undefined as unknown as string }),
+        trainer({ id: "t2", fullName: undefined as unknown as string, email: "t2@x.com" }),
+      ],
+      mindbodyStaff: [
+        staff({ id: "mb1", fullName: undefined as unknown as string, firstName: "", lastName: "" }),
+        staff({ id: "mb2", fullName: undefined as unknown as string, firstName: "", lastName: "" }),
+      ],
+    });
+    expect(rows).toHaveLength(4);
+    expect(rows.every((r) => r.name === NAME_NOT_GIVEN)).toBe(true);
+  });
+});
+
+describe("studio-access requests (the studio picker)", () => {
+  const requester = trainer({
+    id: "doc-17",
+    authUid: "uid-17",
+    fullName: "Dana Doyle",
+    email: "dana@example.com",
+    primaryHomeStudioId: "solon",
+    accessibleStudioIds: ["solon"],
+  });
+  const asked = (over: Partial<AccessRequest> = {}) =>
+    ({
+      id: "r1",
+      type: "studio_access",
+      trainerId: "uid-17",
+      fullName: "Dana Doyle",
+      email: "dana@example.com",
+      studioId: "westlake",
+      status: "Pending",
+      ...over,
+    }) as AccessRequest;
+  const waiting = (rows: ReturnType<typeof build>) => rows.filter((r) => r.state === "awaiting-approval");
+
+  it("shows only at the studio it was made for", () => {
+    expect(waiting(build({ studioId: "westlake", trainers: [requester], requests: [asked()] }))).toHaveLength(1);
+    expect(waiting(build({ studioId: "strongsville", trainers: [requester], requests: [asked()] }))).toEqual([]);
+  });
+
+  it("is not mistaken for an approved sign-up because the person has an account", () => {
+    // Having an account is the premise of this request. In the all-studios
+    // view the requester's email matches their own document, and the sign-up
+    // rule ("an account exists, so it was approved") would hide it.
+    const rows = waiting(build({ studioId: null, trainers: [requester], requests: [asked()] }));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: "Dana Doyle", email: "dana@example.com", homeStudioId: "solon" });
+    expect(rows[0].trainer).toBeUndefined();
+  });
+
+  it("drops once the person can already get into that studio", () => {
+    for (const into of [
+      { accessibleStudioIds: ["solon", "westlake"] },
+      { activeGuestStudioIds: ["westlake"] },
+      { ownedStudioIds: ["westlake"] },
+    ]) {
+      const rows = build({ studioId: null, trainers: [{ ...requester, ...into }], requests: [asked()] });
+      expect(waiting(rows)).toEqual([]);
+    }
+  });
+
+  it("names an older request from its trainerName, then from the account", () => {
+    const fromTrainerName = build({
+      studioId: "westlake",
+      trainers: [requester],
+      requests: [asked({ fullName: undefined, email: undefined, trainerName: "Dana D." })],
+    });
+    expect(waiting(fromTrainerName)[0]).toMatchObject({ name: "Dana D.", email: "dana@example.com" });
+
+    const fromAccount = build({
+      studioId: "westlake",
+      trainers: [requester],
+      requests: [asked({ fullName: undefined, email: undefined })],
+    });
+    expect(waiting(fromAccount)[0]).toMatchObject({ name: "Dana Doyle", email: "dana@example.com" });
+  });
+
+  it("finds the account by document id as well as by Auth uid", () => {
+    const rows = build({
+      studioId: "westlake",
+      trainers: [requester],
+      requests: [asked({ trainerId: "doc-17", fullName: undefined })],
+    });
+    expect(waiting(rows)[0].name).toBe("Dana Doyle");
+  });
+
+  it("does not hide anything for a request with no trainerId", () => {
+    // The same trap as userId: an unguarded `t.authUid === req.trainerId`
+    // would match every document with no authUid.
+    const rows = build({
+      studioId: "westlake",
+      trainers: [trainer({ id: "t9", primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake"] })],
+      requests: [asked({ trainerId: undefined })],
+    });
+    expect(waiting(rows)).toHaveLength(1);
+  });
+});
+
+describe("a sign-up request's studio", () => {
+  it("shows at the studio it names, and in the all-studios view", () => {
+    const requests = [request({ id: "r1", requestedStudioId: "solon" })];
+    expect(build({ studioId: "solon", requests })).toHaveLength(1);
+    expect(build({ studioId: null, requests })).toHaveLength(1);
+  });
+
+  it("is not shown at another studio", () => {
+    const requests = [request({ id: "r1", requestedStudioId: "solon" })];
+    expect(build({ studioId: "westlake", requests })).toEqual([]);
+  });
+
+  it("shows everywhere when it names no studio — an older request is anyone's", () => {
+    for (const requestedStudioId of [undefined, null, ""]) {
+      expect(build({ studioId: "westlake", requests: [request({ id: "r1", requestedStudioId })] })).toHaveLength(1);
+    }
+  });
+
+  it("keeps the waiting count to this studio's own requests", () => {
+    const rows = build({
+      studioId: "westlake",
+      requests: [
+        request({ id: "r1", requestedStudioId: "westlake" }),
+        request({ id: "r2", requestedStudioId: "solon", email: "s@x.com" }),
+        legacyStudioAccess({ id: "r3", studioId: "solon" }),
+      ],
+    });
+    expect(summariseRoster(rows).awaitingApproval).toBe(1);
+  });
+});
+
+describe("requestStudioId", () => {
+  it("reads each kind of request's own field", () => {
+    expect(requestStudioId({ id: "a", requestedStudioId: "solon" })).toBe("solon");
+    expect(requestStudioId({ id: "b", type: "studio_access", studioId: "westlake" })).toBe("westlake");
+    expect(requestStudioId({ id: "c" })).toBeNull();
   });
 });
 

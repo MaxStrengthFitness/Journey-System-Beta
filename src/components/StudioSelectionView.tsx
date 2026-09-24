@@ -21,7 +21,7 @@ import { Studio, FranchiseNetwork, Trainer } from "../types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MaxStrengthLogo } from "./MaxStrengthLogo";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import {
   collection,
   addDoc,
@@ -39,6 +39,7 @@ import { canEnterDemo, splitOutDemo } from "../features/demo-mode/access";
 import { isDemoStudioId } from "../features/demo-mode/is-demo";
 import { SetUpDemoCard } from "../features/demo-mode/SetUpDemoCard";
 import { DEMO_STUDIO_TAGLINE } from "../features/demo-mode/constants";
+import { studioAccessRequest } from "../features/admin/staff/studio-access-request";
 
 interface StudioSelectionViewProps {
   studios: Studio[];
@@ -443,16 +444,20 @@ export function StudioSelectionView({
     };
   }, [mineIdsKey]);
 
+  // A request is keyed on the Auth uid, which on older accounts is not the
+  // trainer document id — the rules pin trainerId to it.
+  const myUid = auth.currentUser?.uid ?? authTrainer?.authUid ?? authTrainer?.id ?? "";
+
   // Which studios has this trainer already asked for?
   useEffect(() => {
-    if (!authTrainer?.id) return;
+    if (!myUid) return;
     let cancelled = false;
 
     const checkRequests = async () => {
       try {
         const q = query(
           collection(db, "access_requests"),
-          where("trainerId", "==", authTrainer.id),
+          where("trainerId", "==", myUid),
           where("type", "==", "studio_access"),
           where("status", "==", "Pending"),
         );
@@ -472,7 +477,7 @@ export function StudioSelectionView({
     return () => {
       cancelled = true;
     };
-  }, [authTrainer?.id]);
+  }, [myUid]);
 
   const networkNameFor = React.useCallback(
     (studio: Studio) => {
@@ -485,16 +490,19 @@ export function StudioSelectionView({
   );
 
   const handleRequestAccess = async (studio: Studio) => {
-    if (!authTrainer || !studio.id) return;
+    if (!authTrainer || !studio.id || !myUid) return;
     setRequestingStudioId(studio.id);
     try {
+      // Name, email and the Auth uid: the staff screens list the request by
+      // the first two, and the rules pin trainerId to the third
+      // (studio-access-request.ts).
       await addDoc(collection(db, "access_requests"), {
-        type: "studio_access",
-        trainerId: authTrainer.id,
-        trainerName: authTrainer.fullName,
-        studioId: studio.id,
-        studioName: studio.name,
-        status: "Pending",
+        ...studioAccessRequest({
+          uid: myUid,
+          authUser: auth.currentUser,
+          trainer: authTrainer,
+          studio: { id: studio.id, name: studio.name },
+        }),
         createdAt: serverTimestamp(),
       });
       setRequestedStudios((prev) => new Set(prev).add(studio.id!));
