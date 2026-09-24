@@ -155,7 +155,12 @@ export function buildRoutineRows(
       // prescribed current weight, else the last one lifted.
       progressionPct: pctSince(num(stat?.firstWeight), num(setting?.currentWeight) ?? num(stat?.lastWeight)),
       timesPerformed: num(stat?.timesPerformed) ?? 0,
-      watchOuts: machineWatchOuts(client?.clinicalFlags, { id: machineId, name: machine?.name, fullName: machine?.fullName }),
+      watchOuts: machineWatchOuts(client?.clinicalFlags, {
+        id: machineId,
+        name: machine?.name,
+        fullName: machine?.fullName,
+        comparisonKey: machine?.comparisonKey,
+      }),
     };
   });
 }

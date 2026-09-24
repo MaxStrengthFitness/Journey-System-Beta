@@ -959,6 +959,12 @@ export interface Machine {
   id?: string;
   name: string;
   fullName?: string;
+  /**
+   * On a floor machine only (`toFloorMachines`): the resolved machine's
+   * `comparisonKey`, `basedOn ?? machineId` — the catalog machine a studio's
+   * own machine is. Never stored on a machine document.
+   */
+  comparisonKey?: string;
   settings?: string; // Repurposed as "Standard Setup Tips"
   trainerTips?: string;
   settingOptions?: string[]; // e.g. ["Seat", "Pads", "Backrest"]

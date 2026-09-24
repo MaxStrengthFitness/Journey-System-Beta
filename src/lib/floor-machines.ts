@@ -86,6 +86,9 @@ export function toFloorMachines(
       // What the studio owns, per the template boundary.
       id: r.machineId,
       name: r.name || legacy?.name || r.machineId,
+      // Lineage: which catalog machine a studio's own machine is, so the
+      // clinical matrix's watch-outs reach "our Hammer leg press" too.
+      ...(r.comparisonKey ? { comparisonKey: r.comparisonKey } : {}),
       order: r.order,
       ...(settingOptions ? { settingOptions } : {}),
       ...(defaults ? { standardSettings: defaults } : {}),

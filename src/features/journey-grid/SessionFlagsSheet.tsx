@@ -13,7 +13,28 @@ import { Button } from "@/components/ui/button";
 import type { Machine } from "../../types";
 import { CriticalStrip } from "../../components/journal/CriticalStrip";
 import { JournalEntryCard } from "../../components/journal/JournalEntryCard";
+import type { WatchOut } from "../../lib/clinical-watchouts";
 import type { SessionFlags } from "./session-flags";
+
+/**
+ * One condition, quoted from the matrix. The tone is the matrix's severity:
+ * crimson for an absolute contraindication only, plum for high risk, amber
+ * for a modification (`.jg-flagcard` in journey-grid.css).
+ */
+function WatchOutItem({ watchOut: w, machines }: { watchOut: WatchOut; machines?: string[] }) {
+  return (
+    <div className="jg-flagcard rounded-xl border p-3" data-tone={w.tone}>
+      <div className="text-[12px] font-black uppercase tracking-wider text-foreground" title={w.conditionFull}>
+        {w.condition}
+      </div>
+      {machines && machines.length > 0 && (
+        <p className="mt-1 text-[12px] font-bold text-foreground">{machines.join(" · ")}</p>
+      )}
+      <p className="mt-1 text-[13px] text-foreground/90">{w.instruction}</p>
+      {w.setup && <p className="mt-1 text-[12px] text-muted-foreground">Set-up: {w.setup}</p>}
+    </div>
+  );
+}
 
 export interface SessionFlagsSheetProps {
   clientFirstName: string;
@@ -56,22 +77,22 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
 
         <div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
           {flags.general.length > 0 && (
-            <section className="space-y-2" aria-label="Conditions">
+            <section className="space-y-2" aria-label="Conditions on every machine">
               <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">On every machine</span>
               {flags.general.map((w, i) => (
-                <div
-                  key={`${w.flagId}-${i}`}
-                  className={
-                    "rounded-xl border p-3 " +
-                    (w.tone === "alert" || w.tone === "caution"
-                      ? "border-rose-500/30 bg-rose-500/[0.06]"
-                      : "border-amber-500/30 bg-amber-500/[0.06]")
-                  }
-                >
-                  <div className="text-[12px] font-black uppercase tracking-wider text-foreground">{w.condition}</div>
-                  <p className="mt-1 text-[13px] text-foreground/90">{w.instruction}</p>
-                  {w.setup && <p className="mt-1 text-[12px] text-muted-foreground">Set-up: {w.setup}</p>}
-                </div>
+                <WatchOutItem key={`${w.flagId}-${i}`} watchOut={w} />
+              ))}
+            </section>
+          )}
+
+          {/* Conditions whose rules name machines (Sep 24 2026). The marker
+              counted them and this sheet left them out, so a client whose one
+              condition was osteoporosis read "1" and opened to nothing. */}
+          {flags.onMachines.length > 0 && (
+            <section className="space-y-2" aria-label="Conditions on certain machines">
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">On these machines</span>
+              {flags.onMachines.map((w, i) => (
+                <WatchOutItem key={`${w.flagId}-${i}`} watchOut={w} machines={w.machines} />
               ))}
             </section>
           )}

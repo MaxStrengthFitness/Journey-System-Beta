@@ -616,8 +616,9 @@ export function WorkoutTrackerView({
       clinicalFlags: selectedClient?.clinicalFlags ?? null,
       criticalEntries: flagJournal.criticalEntries,
       headsUpEntries: flagJournal.headsUpEntries ?? [],
+      floor: floorMachines,
     }),
-    [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries],
+    [selectedClient?.clinicalFlags, flagJournal.criticalEntries, flagJournal.headsUpEntries, floorMachines],
   );
   const flags = useMemo(() => sessionFlags(flagSources), [flagSources]);
   const draftSessionRef = React.useRef<string | null>(null);
@@ -2652,7 +2653,11 @@ export function WorkoutTrackerView({
           {flags.count > 0 && (
             <button
               type="button"
-              className={cn("jg-sbar__flag", flags.severe && "jg-sbar__flag--severe")}
+              className={cn(
+                "jg-sbar__flag",
+                flags.severe && "jg-sbar__flag--severe",
+                flags.caution && "jg-sbar__flag--caution",
+              )}
               onClick={() => setIsShowingFlags(true)}
               aria-label={`${flags.count} ${flags.count === 1 ? "thing" : "things"} to know about ${clientFirstName(selectedClient)}. Open.`}
               title="What to know before you touch the machine"
@@ -3346,8 +3351,17 @@ export function WorkoutTrackerView({
           onAddMachine={() => setIsOrderSheetOpen(true)}
           flagLine={
             gridFocusRow
-              ? flagLineOf(machineFlags(gridFocusRow.machine, flagSources), (e) =>
-                  e.occurredAt ? formatStudioDate(e.occurredAt, { month: "short", day: "numeric" }) : "",
+              ? flagLineOf(
+                  machineFlags(
+                    {
+                      ...gridFocusRow.machine,
+                      // A studio's own machine is matched on its lineage.
+                      comparisonKey: studioFloorById[gridFocusRow.machine.id]?.comparisonKey,
+                    },
+                    flagSources,
+                  ),
+                  (e) =>
+                    e.occurredAt ? formatStudioDate(e.occurredAt, { month: "short", day: "numeric" }) : "",
                 )
               : null
           }

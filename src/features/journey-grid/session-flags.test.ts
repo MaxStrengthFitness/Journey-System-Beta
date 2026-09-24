@@ -55,7 +55,42 @@ describe("sessionFlags", () => {
     const f = sessionFlags({});
     expect(f.count).toBe(0);
     expect(f.severe).toBe(false);
+    expect(f.caution).toBe(false);
     expect(f.general).toEqual([]);
+    expect(f.onMachines).toEqual([]);
+  });
+
+  it("never counts a condition the sheet would not show", () => {
+    // Osteoporosis names only machines. The marker used to read "1" and the
+    // sheet opened to nothing; now the sheet lists it, with the machines.
+    const floor = [
+      { id: "m-leg-press", name: "LEG PRESS" },
+      { id: "m-lumbar", name: "LUMBAR" },
+      { id: "m-chest-press", name: "CHEST PRESS" },
+    ];
+    const f = sessionFlags({ clinicalFlags: ["bone-osteoporosis"], floor });
+    expect(f.count).toBe(1);
+    expect(f.general).toEqual([]);
+    expect(f.onMachines).toHaveLength(1);
+    expect(f.onMachines[0].machines).toEqual(["LEG PRESS", "LUMBAR"]);
+    // A flag id the matrix no longer has is not a thing to know.
+    expect(sessionFlags({ clinicalFlags: ["retired-flag"] }).count).toBe(0);
+  });
+
+  it("counts a condition once however many rules it carries", () => {
+    const f = sessionFlags({ clinicalFlags: ["bone-osteoporosis", "cv-hypertension", "bone-osteoporosis"] });
+    expect(f.count).toBe(2);
+  });
+
+  it("crimson only for an absolute contraindication or a critical note; plum for high risk", () => {
+    expect(sessionFlags({ clinicalFlags: ["cv-hypertension"] })).toMatchObject({ severe: true, caution: false });
+    // High risk, machine-only rules: plum — not crimson, and no longer missed.
+    expect(sessionFlags({ clinicalFlags: ["bone-osteoporosis"] })).toMatchObject({ severe: false, caution: true });
+    expect(sessionFlags({ clinicalFlags: ["cv-aortic-aneurysm"] })).toMatchObject({ severe: false, caution: true });
+    expect(sessionFlags({ clinicalFlags: ["gen-knee"] })).toMatchObject({ severe: false, caution: false });
+    expect(
+      sessionFlags({ clinicalFlags: ["bone-osteoporosis"], criticalEntries: [entry({})] }),
+    ).toMatchObject({ severe: true, caution: false });
   });
 });
 
@@ -93,5 +128,22 @@ describe("machineFlags / flagLineOf", () => {
     expect(mf.watchOuts.length).toBeGreaterThan(0);
     const line = flagLineOf(mf, () => "");
     expect(line?.text.startsWith(mf.watchOuts[0].condition + ":")).toBe(true);
+  });
+
+  it("finds the matrix on the machine as the floor carries it — the catalog id and the studio's name", () => {
+    // The Now Bar on the lumbar machine for a client with degenerative disc
+    // disease: this line never appeared, because the matrix says
+    // "lumbar_extension" and the floor says "m-lumbar" / "LUMBAR".
+    const mf = machineFlags({ id: "m-lumbar", name: "LUMBAR" }, { clinicalFlags: ["spine-ddd"] });
+    expect(mf.watchOuts.map((w) => w.flagId)).toEqual(["spine-ddd"]);
+    expect(flagLineOf(mf, () => "")?.tone).toBe("caution");
+  });
+
+  it("the line's tone follows the matrix: crimson absolute, plum high risk, amber a modification", () => {
+    const tone = (flag: string, machine: { id: string; name: string }) =>
+      flagLineOf(machineFlags(machine, { clinicalFlags: [flag] }), () => "")?.tone;
+    expect(tone("spine-spondylolisthesis", { id: "m-lumbar", name: "LUMBAR" })).toBe("critical");
+    expect(tone("bone-osteoporosis", { id: "m-abs", name: "SEATED ABDOMINALS" })).toBe("caution");
+    expect(tone("gen-neck", { id: "m-neck", name: "CX (4 WAY NECK)" })).toBe("elevated");
   });
 });

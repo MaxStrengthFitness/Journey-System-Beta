@@ -445,6 +445,25 @@ single-joint and splits every cross-studio roll-up.
 treats it as ON. Read through the function, and write an explicit `false` to take
 a machine out.
 
+**The clinical matrix and MACHINE_DATABASE speak a different id language from
+the floor — go through `canonicalMachineId`, and test with catalog ids.**
+(Sep 24 2026.) `clinical-matrix.ts` names machines by MACHINE_DATABASE keys
+(`lumbar_extension`, `abdominals`, `4_way_neck`); the floor carries catalog ids
+(`m-lumbar`, `m-abs`, `m-neck`) and studio names (`LUMBAR`, `CX (4 WAY
+NECK)`). Matching by normalised id-or-name meant nine of the twenty standard
+machines never showed a clinical watch-out anywhere — the tracker's shield, the
+Now Bar, the Machine sheet, the routine rows — and every test passed, because
+every test used the matrix's own key as the machine id. `lib/clinical-watchouts.ts`
+now resolves both sides through `features/catalog/machine-identity.ts` (the one
+table; do not add a second), a studio's own machine is matched on its lineage
+(`comparisonKey`, which `toFloorMachines` now carries), and
+`clinical-watchouts.test.ts` fails if a matrix key stops resolving to a real
+catalog machine. The same mismatch hid the first-time set-up guide's steps
+(`MACHINE_DATABASE[id]` with an `m-…` id): `knowledgeOf` in
+`features/equipment/adapters.ts` is the lookup. **A test for anything that
+matches machines should use the ids the floor actually carries.** Never "fix"
+it by rewriting the matrix's keys — the watch-outs are quoted from it.
+
 **The generator must not read `imageUrl` from `machine-database.ts`.** It bundles
 the data files with esbuild's text loader, so that field comes back as the
 `.webp`'s bytes and gets baked into the generated source — 30 KB per machine.
