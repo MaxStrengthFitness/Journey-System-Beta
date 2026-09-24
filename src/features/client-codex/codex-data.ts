@@ -22,6 +22,8 @@ import type { UseClientFordResult } from "../ford/useClientFord";
 import type { FordReadStatus } from "../ford/read-status";
 import type { FordAuthor } from "../ford/ford-write";
 import type { InBodyScansState } from "../inbody/useInBodyScans";
+import type { FordEntry } from "../ford/types";
+import type { Src, Story, StoryInput } from "../client-story/story";
 import type { NoteDismissalsState } from "../client-notes/dismissal-store";
 import { fordDoorCount, notesOnRecord, notesSummary, type NotesOnRecord, type NotesSummary } from "../client-notes/record-selectors";
 import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
@@ -186,6 +188,58 @@ export function sessionTotalsOf(
 }
 
 /* ------------------------------------------------------------------ */
+/* Story                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The tab's reads as the Story takes them (`buildStory`'s sources): each one
+ * `ready` with its data, or named for what it is — still loading, failed, or
+ * `off` for a read this reader may not make (FORD at a cross-train studio,
+ * which the tab never opens). A source that is not ready makes no moment,
+ * so the Story can say what it could not read instead of drawing less.
+ */
+export function storySourcesOf({
+  journal,
+  fordStatus,
+  fordEntries,
+  inbody,
+  pulse,
+}: {
+  journal: Pick<UseClientJournalResult, "threads" | "focuses" | "loadState" | "capped">;
+  fordStatus: CodexFordStatus;
+  fordEntries: readonly FordEntry[];
+  inbody: Pick<InBodyScansState, "scans" | "loading" | "error">;
+  pulse: CodexPulse;
+}): Pick<StoryInput, "notes" | "focuses" | "ford" | "inbody" | "pulse" | "capped"> {
+  const fromJournal = <T,>(state: JournalLoad | undefined, data: T): Src<T> =>
+    state === "ready" ? { status: "ready", data } : state === "failed" ? { status: "failed" } : { status: "loading" };
+  return {
+    notes: fromJournal(journal.loadState?.notes, journal.threads ?? []),
+    focuses: fromJournal(journal.loadState?.focuses, journal.focuses),
+    ford:
+      fordStatus === "ready"
+        ? { status: "ready", data: fordEntries }
+        : fordStatus === "failed"
+          ? { status: "failed" }
+          : fordStatus === "loading"
+            ? { status: "loading" }
+            : { status: "off" },
+    inbody: inbody.error
+      ? { status: "failed" }
+      : inbody.loading
+        ? { status: "loading" }
+        : { status: "ready", data: inbody.scans },
+    pulse:
+      pulse.status === "ready" && pulse.history
+        ? { status: "ready", data: pulse.history }
+        : pulse.status === "failed"
+          ? { status: "failed" }
+          : { status: "loading" },
+    capped: !!journal.capped,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Programming                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -258,6 +312,12 @@ export interface CodexData {
   coverage: HistoryCoverage;
   /** Her settings and routines, the roster and the studio, as the profile holds them. */
   programming: CodexProgramming;
+  /**
+   * Her story (`buildStory`, client-story/story.ts): built once from all of
+   * the above, for the Story page and the Overview's Story slot. No read of
+   * its own.
+   */
+  story: Story;
 }
 
 /**

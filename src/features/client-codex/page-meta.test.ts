@@ -141,8 +141,10 @@ describe("subnavItems", () => {
   });
 
   describe("Story and Account", () => {
-    it("makes no claim about the story yet", () => {
+    it("says the Story's own line, and nothing when it has none", () => {
       expect(item(subnavItems(input()), "story").meta).toBeNull();
+      expect(item(subnavItems(input({ story: { hint: null } })), "story").meta).toBeNull();
+      expect(item(subnavItems(input({ story: { hint: "since 2019" } })), "story").meta).toBe("since 2019");
     });
 
     it("prints Mindbody's sessions left, never an estimate", () => {

@@ -164,6 +164,11 @@ const CODEX_FILES: readonly string[] = [
   "components/journal/FocusBoard.tsx",
   "features/relay/notes/SharedNotesCard.tsx",
   "features/relay/notes/ClientJotStrip.tsx",
+  // Story (phase 15): the page, its stylesheet, and the pure module that
+  // builds the moments and writes their words. It mounts nothing hosted.
+  "features/client-story/StoryPage.tsx",
+  "features/client-story/story.css",
+  "features/client-story/story.ts",
 ];
 
 /**

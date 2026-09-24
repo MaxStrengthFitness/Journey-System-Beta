@@ -811,6 +811,68 @@ describe("ClientCodex — In one line (phase 11)", () => {
   });
 });
 
+describe("ClientCodex — the Story (phase 15)", () => {
+  const migrated = () =>
+    baseClient({
+      priorHistory: { sessions: 412, importedCount: 0, from: "2019-03-01", through: "2026-09-12", source: "filemaker" },
+      // Before Sep 24 2026, the day this was written: the Story is what has
+      // already happened, and the shell's today is the real one.
+      goalHistory: [{ goal: "Walk 5 miles without stopping", achievedAt: "2026-09-20T17:00:00Z", byName: "Jess" }],
+    } as Partial<Client>);
+  const camino = {
+    id: "moment",
+    clientId: "c1",
+    studioId: "s1",
+    pillar: "dreams",
+    body: "Booked the Camino with Tom.",
+    isPinned: false,
+    isArchived: false,
+    authorId: "uid-marcus",
+    authorName: "Marcus Lee",
+    occurredAt: new Date(2026, 8, 18, 12),
+  };
+
+  it("is built from the tab's one load: its line on the bar, the years before Journey, a FORD moment — and no read of its own", async () => {
+    fake.rows["clients/c1/ford"] = [camino];
+    const host = await mount(migrated());
+    expect(tab(host, "story")?.textContent).toContain("since 2019");
+    const opened = fake.listeners.length;
+    const got = fake.gets.length;
+    await click(tab(host, "story"));
+    expect(fake.listeners.length).toBe(opened);
+    expect(fake.gets.length).toBe(got);
+    const story = panel(host, "story");
+    expect(story.querySelector(".st-since")?.textContent).toMatch(/^With Max Strength since Mar 2019\./);
+    expect(story.querySelector('[data-testid="story-era"]')?.textContent).toContain("Mar 2019 – Sep 2026 · 412 sessions in FileMaker");
+    expect(story.textContent).toContain("Booked the Camino with Tom.");
+    expect(story.textContent).toContain("Goal reached: Walk 5 miles without stopping.");
+    expect(story.textContent).not.toMatch(/\bnew client\b/i);
+  });
+
+  it("opens the card a moment came from", async () => {
+    const host = await mount(migrated());
+    await click(tab(host, "story"));
+    const goal = Array.from(panel(host, "story").querySelectorAll<HTMLButtonElement>("button.st-beat__door")).find((b) =>
+      b.textContent?.includes("Goal reached"),
+    );
+    await withScrollSpy(async (seen) => {
+      await click(goal);
+      expect(selected(host)).toEqual(["cx-tab-goals"]);
+      expect(seen).toContain("goals-reached");
+    });
+  });
+
+  it("tells a cross-train reader FORD is the home studio's, with no FORD listener", async () => {
+    fake.rows["clients/c1/ford"] = [camino];
+    const host = await mount(migrated(), crossTrainer);
+    await click(tab(host, "story"));
+    const story = panel(host, "story");
+    expect(story.textContent).toContain("FORD is kept by the home studio, so FORD moments aren't shown here.");
+    expect(story.textContent).not.toContain("Booked the Camino");
+    expect(fake.listeners.filter((l) => l.path === "clients/c1/ford")).toHaveLength(0);
+  });
+});
+
 describe("ClientCodex — the one Save bar", () => {
   it("draws no bar while nothing is unsaved", async () => {
     const host = await mount();

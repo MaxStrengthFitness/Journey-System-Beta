@@ -1,34 +1,18 @@
 /**
- * STORY — the codex page (shell phase: a placeholder).
+ * STORY — the codex page: the Story area's page (`client-story/StoryPage`)
+ * on the tab's one load.
  *
- * The Story is new: the client's time with Max Strength, newest first, built
- * from what the team already recorded — contracts, the FileMaker era, goals
- * and focuses reached, Pulse rounds, InBody scans, notes, FORD moments. It is
- * built in its own phase, from the tab's one load, with no reads of its own.
- *
- * Until then the page says so plainly. It does not print a "time with us"
- * sentence: for a client who trained here long before Journey, a date or a
- * count worked out without the whole story would be a confident wrong
- * number (docs/business/migration-and-prior-history.md).
+ * A thin adapter (INTEGRATION: pages/*.tsx map the tab's one load onto each
+ * area's page). The story itself is `CodexData.story` — built ONCE by the
+ * shell from what the tab already holds (the journal, FORD for a reader it
+ * lets in, the InBody scans, the Pulse history, the record) and shared with
+ * the Overview's Story slot — so this page reads nothing and writes nothing.
+ * A moment's door is the shell's `go`: a card on another page, or one
+ * thread on Notes (`note-{id}`, which Notes interprets itself).
  */
-import { Card, Page, cap } from "../kit";
+import { StoryPage as StoryArea } from "../../client-story/StoryPage";
 import type { CodexPageProps } from "../codex-data";
 
 export function StoryPage({ data, go }: CodexPageProps) {
-  const p = data.pronouns;
-  return (
-    <Page
-      id="story"
-      title="Story"
-      lede={`${cap(p.possessive)} time with Max Strength, newest first, built from what the team already recorded.`}
-      go={go}
-    >
-      <Card>
-        <p>
-          The story isn't drawn yet. It will be built from what the team has already recorded: the
-          membership, the sessions, goals and focuses reached, Pulse rounds, InBody scans and notes.
-        </p>
-      </Card>
-    </Page>
-  );
+  return <StoryArea story={data.story} pronouns={data.pronouns} go={go} />;
 }

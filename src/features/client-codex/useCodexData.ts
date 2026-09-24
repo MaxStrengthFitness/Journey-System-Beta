@@ -18,6 +18,9 @@
  *               remind me", one document keyed by the Auth uid.
  *   Pulse       no read: derived from the progress-reports listener the
  *               profile already runs on this tab (`pulseFromReports`).
+ *   Story       no read: built once from all of the above (`buildStory`,
+ *               client-story/story.ts) and shared by the Story page and the
+ *               Overview's Story slot, so the two can never disagree.
  *
  * Page-local reads (Goals' shared notes and jots, Body's Pulse draft and
  * machine fit) are NOT here: they belong to a page, and a page mounts only
@@ -37,6 +40,7 @@ import { useNoteDismissalsState } from "../client-notes/dismissal-store";
 import { studioTodayKey } from "../../lib/studio-time";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
+import { buildStory } from "../client-story/story";
 import { pronounsOf } from "./kit/pronouns";
 import { codexAccess } from "./access";
 import {
@@ -44,6 +48,7 @@ import {
   notesOfJournal,
   pulseFromReports,
   runningFocuses,
+  storySourcesOf,
   NO_PROGRAMMING,
   type CodexData,
   type CodexProgramming,
@@ -137,6 +142,21 @@ export function useCodexData({
     [progressReports, clientId, progressReportsStatus],
   );
   const pronouns = useMemo(() => pronounsOf(client), [client]);
+  const fordStatus = codexFordStatus(access.fordReadable, ford.status);
+  // Her story, built once from what the tab already holds (no read): the
+  // Story page and the Overview's Story slot read the same one.
+  const story = useMemo(
+    () =>
+      buildStory({
+        today,
+        client,
+        coverage,
+        totals: sessionTotals,
+        pronouns,
+        ...storySourcesOf({ journal, fordStatus, fordEntries: ford.entries, inbody, pulse }),
+      }),
+    [today, client, coverage, sessionTotals, pronouns, journal, fordStatus, ford.entries, inbody, pulse],
+  );
 
   return useMemo<CodexData>(
     () => ({
@@ -153,7 +173,7 @@ export function useCodexData({
       notes,
       focusesRunning,
       ford,
-      fordStatus: codexFordStatus(access.fordReadable, ford.status),
+      fordStatus,
       inbody,
       progressReports: mine,
       pulse,
@@ -161,6 +181,7 @@ export function useCodexData({
       sessionTotals,
       coverage,
       programming,
+      story,
     }),
     [
       client,
@@ -176,6 +197,7 @@ export function useCodexData({
       notes,
       focusesRunning,
       ford,
+      fordStatus,
       inbody,
       mine,
       pulse,
@@ -183,6 +205,7 @@ export function useCodexData({
       sessionTotals,
       coverage,
       programming,
+      story,
     ],
   );
 }

@@ -12,7 +12,10 @@ import {
   pulseFromReports,
   runningFocuses,
   sessionTotalsOf,
+  storySourcesOf,
 } from "./codex-data";
+import { historyFromDocs } from "../subjective-report/assessment-history";
+import type { FordEntry } from "../ford/types";
 
 const TODAY = "2026-09-24";
 
@@ -200,5 +203,62 @@ describe("sessionTotalsOf", () => {
 
   it("knows no total until Journey's count answers", () => {
     expect(sessionTotalsOf(null, {})).toEqual({ total: null, journey: null, before: 0 });
+  });
+});
+
+describe("storySourcesOf", () => {
+  const journal = (notes: "loading" | "ready" | "failed", focuses: "loading" | "ready" | "failed", capped = false) => ({
+    threads: assembleThreads([]),
+    focuses: [] as UseClientJournalResult["focuses"],
+    loadState: { notes, focuses, sessions: "ready" as const },
+    capped,
+  });
+  const entries = [{ id: "f1" }] as FordEntry[];
+  const history = historyFromDocs([], PULSE_READ_LIMIT);
+  const base = {
+    journal: journal("ready", "ready"),
+    fordStatus: "ready" as const,
+    fordEntries: entries,
+    inbody: { scans: [], loading: false, error: null },
+    pulse: { status: "ready" as const, history },
+  };
+
+  it("hands the Story every source that answered, with its data", () => {
+    const s = storySourcesOf(base);
+    expect(s.notes).toEqual({ status: "ready", data: [] });
+    expect(s.focuses).toEqual({ status: "ready", data: [] });
+    expect(s.ford).toEqual({ status: "ready", data: entries });
+    expect(s.inbody).toEqual({ status: "ready", data: [] });
+    expect(s.pulse).toEqual({ status: "ready", data: history });
+    expect(s.capped).toBe(false);
+  });
+
+  it("names a read still loading or failed — never an empty list", () => {
+    const s = storySourcesOf({
+      ...base,
+      journal: journal("loading", "failed", true),
+      fordStatus: "failed",
+      inbody: { scans: [], loading: true, error: null },
+      pulse: { status: "failed", history: null },
+    });
+    expect(s.notes).toEqual({ status: "loading" });
+    expect(s.focuses).toEqual({ status: "failed" });
+    expect(s.ford).toEqual({ status: "failed" });
+    expect(s.inbody).toEqual({ status: "loading" });
+    expect(s.pulse).toEqual({ status: "failed" });
+    expect(s.capped).toBe(true);
+    expect(storySourcesOf({ ...base, inbody: { scans: [], loading: false, error: "Couldn't load InBody scans." } }).inbody).toEqual({
+      status: "failed",
+    });
+    expect(storySourcesOf({ ...base, fordStatus: "loading" }).ford).toEqual({ status: "loading" });
+    expect(storySourcesOf({ ...base, pulse: { status: "ready", history: null } }).pulse).toEqual({ status: "loading" });
+    expect(storySourcesOf({ ...base, journal: { ...journal("ready", "ready"), loadState: undefined } }).notes).toEqual({
+      status: "loading",
+    });
+  });
+
+  it("is off, not failed, for FORD a reader may not open", () => {
+    expect(storySourcesOf({ ...base, fordStatus: "off" }).ford).toEqual({ status: "off" });
+    expect(storySourcesOf({ ...base, fordStatus: "denied" }).ford).toEqual({ status: "off" });
   });
 });

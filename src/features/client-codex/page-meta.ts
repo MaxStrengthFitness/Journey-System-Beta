@@ -17,12 +17,13 @@
  * filed, else how much is on file. Body & Pulse's is its own too
  * (`bodySubline`, phase 12): the watch-outs on file, else when the Pulse was
  * last saved. Goals & Focus's is `goalsTabHint` (phase 14): the focuses
- * running, else "a goal set", else "no focus running". The line for Account
- * is INTERIM (the shell phase): its area replaces it with the line its page
- * writes. Story
- * says nothing yet: "since 2019" is a claim about the whole story, and the
- * Story page is where it is worked out honestly for a client who trained
- * here long before Journey.
+ * running, else "a goal set", else "no focus running". Story's is
+ * `storyTabHint` (phase 15): the year of the Story's own "since" — "since
+ * 2019" only for a day the record can stand behind as her start, "since 2025
+ * or earlier" for one she was certainly with us by, "in Journey since 2026"
+ * when Journey's own dates are all there is — so the segment and the page
+ * never disagree. The line for Account is INTERIM (the shell phase): its
+ * area replaces it with the line its page writes.
  *
  * Rules: short (the bar wraps at portrait widths, so a long line grows it);
  * words and counts, never a score, a percentage or a traffic light; FORD's
@@ -66,6 +67,8 @@ export interface PageMetaInput {
   pulse?: { day: string | null };
   /** The studio's now, for "Pulse Mar 10" against "Pulse Mar 10, 2025". */
   now?: Date;
+  /** The Story's line (`storyTabHint`); null or left out, the segment has none. */
+  story?: { hint: string | null };
 }
 
 const LOADING = "loading";
@@ -132,7 +135,7 @@ export function subnavItems(input: PageMetaInput): SubnavItem<RecordPage>[] {
       case "goals":
         return { id, label, meta: goalsMeta(input) };
       case "story":
-        return { id, label, meta: null };
+        return { id, label, meta: input.story?.hint ?? null };
       case "account":
         return { id, label, meta: accountMeta(input) };
     }

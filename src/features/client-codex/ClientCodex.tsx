@@ -72,6 +72,7 @@ import {
   type SessionTotals,
 } from "./codex-data";
 import { newestPulseDay } from "./body/page-lines";
+import { storyTabHint } from "../client-story/story";
 import { OverviewPage } from "./pages/OverviewPage";
 import { NotesPage } from "./pages/NotesPage";
 import { FordPage } from "./pages/FordPage";
@@ -213,8 +214,21 @@ export function ClientCodex({
       },
       // Body & Pulse's line: its watch-outs, else the newest saved Pulse.
       pulse: { day: newestPulseDay(data.pulse.history) },
+      // Story's line: the year of the Story's own "since" (the record only).
+      story: { hint: storyTabHint({ client, coverage: data.coverage, today: data.today }) },
     });
-  }, [client, notes, journal.loadState, data.focusesRunning, data.fordStatus, data.ford, data.today, data.pulse, access.fordReadable]);
+  }, [
+    client,
+    notes,
+    journal.loadState,
+    data.focusesRunning,
+    data.fordStatus,
+    data.ford,
+    data.today,
+    data.pulse,
+    data.coverage,
+    access.fordReadable,
+  ]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
