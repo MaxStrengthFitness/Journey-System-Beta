@@ -60,7 +60,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 | Install | `npm ci` | `npm install` fails with an `edgesOut` error |
 | Run locally | `npm run dev` | Port 3000 |
 | Typecheck | `npx tsc --noEmit` | Compare the error **count** to the baseline - **10**, unchanged on `note-threads` (Sep 20 2026; it was 10 on `machine-authoring`, down from 11 when the retired MachineDefinitionForm went); don't expect zero. History by round: `docs/KNOWN-TRAPS.md#baselines` |
-| Tests | `npx vitest run src` | **3,756** passing in 252 files (one skipped) on `catalog-gate` (Sep 21 2026, measured in the cloud container); 3,717 in 251 after the note threads round; 3,683 in 247 after the demo loads round. Run it as `TZ=America/New_York npx vitest run src` - see the date trap. History by round: `docs/KNOWN-TRAPS.md#baselines` |
+| Tests | `npx vitest run src` | **3,771** passing in 251 files on `booking-completed-by-journey` (Sep 24 2026, measured on AJ's PC in a worktree as `npx vitest run --dir src`); 3,756 in 252 (one skipped) on `catalog-gate` (Sep 21 2026, measured in the cloud container); 3,717 in 251 after the note threads round; 3,683 in 247 after the demo loads round. Run it as `TZ=America/New_York npx vitest run src` - see the date trap. History by round: `docs/KNOWN-TRAPS.md#baselines` |
 | Build | `npx vite build` | |
 | Rules tests | `npm run test:rules` | Needs JDK 21. "Port taken" means an old emulator still holds 8080 — stop it first |
 
@@ -92,6 +92,7 @@ How the business works (packages, renewals, roles, where data lives) is in **`do
 - Every query names the studios it reads (`src/lib/tenancy.ts`). Sessions are scoped by **client**, not studio.
 - Never write to a collection from inside a listener on that same collection. A failed read means "unknown", never "empty". No per-client queries in a loop.
 - Keep running totals (`trainerTally`, `machineStats`, trainer rollups) instead of re-reading history when a screen opens.
+- **A booking is done when Journey logged a session for that client that day** (AJ, Sep 24 2026). Bookings never come back Completed or No-Show — the sync and the webhook write Scheduled or Cancelled, and Mindbody's own marking stays manual — so read what happened to one through `src/lib/booking-state.ts`, never from `status` alone. `docs/rounds/2026-09-24-done-means-logged.md` is the round.
 - Firestore rules apply to whole documents: anything some roles must not see goes in its own document.
 - **Don't change the Mindbody integration, Cloud Functions or the Firestore structure without an explicit OK.**
 
