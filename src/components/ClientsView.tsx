@@ -21,6 +21,8 @@ import { queryStudioIds } from "../lib/tenancy";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { ScheduleBlock } from "./schedule/ScheduleBlock";
+import { bookingDay, loggedSessions } from "../lib/booking-state";
+import { sessionsByClientDay } from "../lib/hub-card-state";
 // Import the hook file directly, not the studio-tasks barrel (index.ts).
 // ClientsView is in the initial bundle; pulling the barrel in here would drag
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
@@ -138,6 +140,7 @@ export function ClientsView({
   setView,
   schedules,
   sessions,
+  sessionsKnown = false,
   editingClient,
   setEditingClient,
   formData,
@@ -158,6 +161,11 @@ export function ClientsView({
   setView: (v: View) => void;
   schedules: any[];
   sessions: WorkoutSession[];
+  /**
+   * The session stream has answered for this studio. Until it has (or after
+   * it failed) a finished card says nothing, rather than "Not logged".
+   */
+  sessionsKnown?: boolean;
   editingClient: Client | null;
   setEditingClient: (c: Client | null) => void;
   formData: any;
@@ -503,6 +511,21 @@ export function ClientsView({
     if (!target) return null;
     return clients.find((c) => c.id && String(c.id).trim() === target) || null;
   };
+
+  /*
+   * What each card checks its booking against, built once per stream update
+   * rather than per card: the app's live 24-hour session stream, indexed by
+   * client and STUDIO day. The card used to match "today" with the iPad's
+   * `toDateString()`, which is the wrong day on an iPad set to another zone,
+   * and matched TODAY rather than the booking's day, so a session this
+   * morning marked tomorrow's card. `logged` is null until the stream has
+   * answered: unknown, never "nothing logged" (lib/booking-state).
+   */
+  const workoutSessionOn = React.useMemo(() => sessionsByClientDay(sessions), [sessions]);
+  const logged = React.useMemo(
+    () => loggedSessions(sessionsKnown ? sessions : null),
+    [sessions, sessionsKnown],
+  );
 
   const getClientSessions = (client: Client) => {
     const clientName = `${client.firstName} ${client.lastName}`;
@@ -1302,14 +1325,15 @@ export function ClientsView({
                                         const clientObj =
                                           findClientForSession(session);
                                         const workoutSession = clientObj
-                                          ? sessions.find(
-                                              (s) =>
-                                                s.clientId === clientObj.id &&
-                                                new Date(
-                                                  s.createdAt?.toDate?.() ||
-                                                    s.date,
-                                                ).toDateString() ===
-                                                  new Date().toDateString(),
+                                          ? workoutSessionOn(
+                                              clientObj.id,
+                                              bookingDay({
+                                                startTime:
+                                                  session.startTime ||
+                                                  session.StartDateTime ||
+                                                  session.date,
+                                                status: session.status,
+                                              }),
                                             )
                                           : null;
                                         return (
@@ -1324,6 +1348,8 @@ export function ClientsView({
                                             client={clientObj}
                                             rosterLoading={rosterLoading}
                                             workoutSession={workoutSession}
+                                            logged={logged}
+                                            now={currentTime}
                                             onOpenClient={(clientId) => {
                                               onSelectClient(clientId);
                                               setView("profile");

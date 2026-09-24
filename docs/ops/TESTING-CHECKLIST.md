@@ -765,8 +765,8 @@ before the changes list and the Moments panel can answer.
   pull the schedule now if you are impatient). Booked drops by one, Not
   completed rises by one, Changes today gains a row.
 - [ ] **Never logged is the loud tile, and tapping it lists who to chase.** A
-  booking whose slot ended five minutes ago with nothing marked: the tile is
-  red, the foot says "tap to see who to chase", the list names the client,
+  booking whose slot ended five minutes ago with no Journey session for that
+  client that day (Round 14): the tile is red, the foot says "tap to see who to chase", the list names the client,
   the trainer and the time, and the name opens the client.
 - [ ] **Needs you counts every action on the page and jumps to it.** Tap a
   chip: the page scrolls to that panel and unfolds it if it was folded. "Notes
@@ -1019,6 +1019,55 @@ InBody scans.
 - [ ] **The briefing** for a retired client with nothing under Occupation
   never asks about work.
 
+## Round 15 — Done means logged in Journey · *Sep 24 2026, branch `claude/booking-completed-by-journey`*
+
+AJ: a booking is Completed, for Operations, when a session was logged in
+Journey for that client that day. Mindbody's own marking stays manual. The
+round document is `docs/rounds/2026-09-24-done-means-logged.md`. Needs a real
+booking today and a trainer who can run a session for that client.
+
+- [ ] **Logging a session moves the booking to Done.** Operations → Overview
+  with a booking whose slot has ended and nothing logged: it is on Never logged
+  (tap the tile — the client is on the chase list). On an iPad, start and end a
+  session for that client. Within a few seconds, without reloading, Done rises
+  by one, Never logged falls by one, the client leaves the chase list and Team
+  this week's "Unlogged today" for that trainer drops. *If it fails:* the live
+  read of today's sessions (`useTodaySessions`); check the session's studio is
+  the one the Overview is on.
+- [ ] **A session left open is still chased.** Start a session and do not
+  press End Session; once the slot is five minutes past, the booking is on the
+  chase list. Ending it clears it.
+- [ ] **Nothing is chased by name.** A booking whose client has no Journey
+  profile (the Hub's "not synced" card) stays never logged even if a session
+  was logged for someone with the same name.
+- [ ] **The trainer page's Upcoming lists only what is ahead.** Open your own
+  trainer page (the avatar): no booking from yesterday or from earlier today;
+  the one in its slot right now is listed first; a client whose session you
+  have already ended today is gone.
+- [ ] **The attendance watch does not change until a studio's cutover is
+  set.** With no Journey cutover date on the studio (My Studio → Studio, or
+  Admin → All locations → the studio), the watch reads as before; the field's
+  hint says what setting it will do. Once a cutover is set, a past booking with nothing
+  logged in Journey stops counting as a visit from the next nightly run.
+
+**The Hub card (phase 6).** Needs a client with a flag on the card (the Pulse
+heart or the clinical dot is easiest) booked today. Portrait and landscape.
+
+- [ ] **A late start keeps the flags.** Past the booking's start time with no
+  session started, the card is still white and still shows its flags. The
+  old card went grey at the start time and dropped them. *If it fails:* the
+  card's state (`lib/hub-card-state.ts`).
+- [ ] **Ending the session fades the card.** Start and end a session for
+  that client: within a few seconds, without reloading, the card fades and
+  its flags go, even if the slot is not over.
+- [ ] **A slot nobody logged says so, quietly.** Five minutes after a
+  booking's slot with nothing logged, the card is faded with a small grey
+  "NOT LOGGED". Tapping it opens the client. A card with no profile (the
+  cloud mark) never says it.
+- [ ] **A second booking the same day keeps its flags until it starts.** A
+  client with two bookings today and the first one logged: the later card
+  stays white, with its flags, until its start time.
+
 ---
 
 ## Findings log
@@ -1058,4 +1107,5 @@ Screenshot:
 | 11 — Operations (Sep 19) | 24 | | |
 | 12 — The master merge (Sep 19) | 13 | | |
 | 13 — The Operations overhaul (Sep 19) | 33 | | |
-| **Total** | **228** | | |
+| 14 — Done means logged (Sep 24) | 9 | | |
+| **Total** | **237** | | |

@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { ScheduleEntry, WorkoutSession } from "../../../types";
 import { setActiveTimeZone, studioDateKey } from "../../../lib/studio-time";
+import { loggedSessions } from "../../../lib/booking-state";
 import {
   attentionItems,
   entriesForDay,
@@ -12,6 +13,13 @@ import {
 // Studios operate in US Eastern; pin it so these assertions do not move with
 // whatever machine runs them.
 beforeAll(() => setActiveTimeZone("America/New_York"));
+
+/** Journey holds no session for anyone that day: the booking's own status and the clock decide. */
+const NONE = loggedSessions([]);
+
+/** A completed Journey session for the client that day (AJ, Sep 24 2026: that is what done means). */
+const loggedFor = (clientId: string, day = "08") =>
+  loggedSessions([{ clientId, status: "Completed", startTime: at("08:05", day), date: `2026-09-${day}` } as WorkoutSession]);
 
 /** 2026-09-08 is a Tuesday. Times below are Eastern wall clock (EDT, -04:00). */
 const at = (hhmm: string, day = "08") =>
@@ -70,6 +78,7 @@ describe("summariseFloor", () => {
         entry({ startTime: at("14:00"), endTime: at("14:30") }),
       ],
       now,
+      NONE,
     );
     expect(s.booked).toBe(5);
     expect(s.completed).toBe(2);
@@ -83,6 +92,7 @@ describe("summariseFloor", () => {
     const s = summariseFloor(
       [entry({ startTime: at("09:45"), endTime: at("10:15") })],
       now,
+      NONE,
     );
     expect(s.inProgress).toBe(1);
     expect(s.unresolved).toBe(0);
@@ -95,6 +105,7 @@ describe("summariseFloor", () => {
     const s = summariseFloor(
       [entry({ startTime: at("08:00"), endTime: at("08:30") })],
       now,
+      NONE,
     );
     expect(s.unresolved).toBe(1);
     expect(s.inProgress).toBe(0);
@@ -104,6 +115,7 @@ describe("summariseFloor", () => {
     const s = summariseFloor(
       [entry({ startTime: at("09:26"), endTime: at("09:56") })],
       now,
+      NONE,
     );
     expect(s.unresolved).toBe(0);
     expect(s.inProgress).toBe(1);
@@ -117,6 +129,7 @@ describe("summariseFloor", () => {
         entry({ clientId: "c2", status: "Completed" }),
       ],
       now,
+      NONE,
     );
     expect(s.booked).toBe(3);
     expect(s.clients).toBe(2);
@@ -126,6 +139,7 @@ describe("summariseFloor", () => {
     const s = summariseFloor(
       [entry({ clientId: "c1", status: "Cancelled" })],
       now,
+      NONE,
     );
     expect(s.clients).toBe(0);
     expect(s.booked).toBe(1);
@@ -137,7 +151,50 @@ describe("summariseFloor", () => {
     const s = summariseFloor(
       [entry({ startTime: at("14:00"), endTime: at("14:30") })],
       now,
+      NONE,
     );
+    expect(s.showRate).toBeNull();
+  });
+
+  it("counts a finished slot as done when Journey logged a session for that client that day", () => {
+    // Mindbody bookings never come back "Completed"; the session is the proof.
+    const s = summariseFloor(
+      [
+        entry({ clientId: "c1", startTime: at("08:00"), endTime: at("08:30") }),
+        entry({ clientId: "c2", startTime: at("08:00"), endTime: at("08:30") }),
+      ],
+      now,
+      loggedFor("c1"),
+    );
+    expect(s.completed).toBe(1);
+    expect(s.unresolved).toBe(1);
+    expect(s.showRate).toBeCloseTo(0.5);
+  });
+
+  it("a session logged on another day does not complete today's booking", () => {
+    const s = summariseFloor(
+      [entry({ clientId: "c1", startTime: at("08:00"), endTime: at("08:30") })],
+      now,
+      loggedFor("c1", "07"),
+    );
+    expect(s.completed).toBe(0);
+    expect(s.unresolved).toBe(1);
+  });
+
+  it("when the sessions could not be read, a finished slot is unknown — never unresolved — and the rate waits", () => {
+    const s = summariseFloor(
+      [
+        entry({ status: "Completed" }),
+        entry({ clientId: "c1", startTime: at("08:00"), endTime: at("08:30") }),
+        entry({ startTime: at("14:00"), endTime: at("14:30") }),
+      ],
+      now,
+      null,
+    );
+    expect(s.unknown).toBe(1);
+    expect(s.unresolved).toBe(0);
+    expect(s.completed).toBe(1);
+    expect(s.upcoming).toBe(1);
     expect(s.showRate).toBeNull();
   });
 
@@ -153,6 +210,7 @@ describe("summariseFloor", () => {
         entry({ status: "Cancelled" }),
       ],
       now,
+      NONE,
     );
     expect(s.showRate).toBeCloseTo(0.75);
   });
@@ -269,6 +327,7 @@ describe("attentionItems", () => {
         entry({ status: "No-Show", clientName: "Noshow Ned" }),
       ],
       now,
+      NONE,
     );
     expect(items.map((i) => i.clientName)).toEqual([
       "Noshow Ned",
@@ -281,8 +340,16 @@ describe("attentionItems", () => {
     const items = attentionItems(
       [entry({ startTime: at("11:45"), endTime: at("12:15") })],
       now,
+      NONE,
     );
     expect(items).toEqual([]);
+  });
+
+  it("a finished slot Journey logged is not a row, and neither is one whose sessions could not be read", () => {
+    const booked = [entry({ clientId: "c1", startTime: at("08:00"), endTime: at("08:30") })];
+    expect(attentionItems(booked, now, loggedFor("c1"))).toEqual([]);
+    expect(attentionItems(booked, now, null)).toEqual([]);
+    expect(attentionItems(booked, now, NONE).map((i) => i.kind)).toEqual(["unresolved"]);
   });
 
   it("orders within a kind by time of day", () => {
@@ -292,6 +359,7 @@ describe("attentionItems", () => {
         entry({ status: "No-Show", clientName: "Early", startTime: at("07:00") }),
       ],
       now,
+      NONE,
     );
     expect(items.map((i) => i.clientName)).toEqual(["Early", "Late"]);
   });

@@ -9,12 +9,17 @@
  *
  * Sources: the last two weeks of sessions the Overview already reads
  * (completed since Monday, as Hours counts them), and today's schedule for
- * the sessions still unlogged.
+ * the sessions still unlogged — a booking past its slot with no Journey
+ * session for that client that day (`lib/booking-state`, AJ Sep 24 2026:
+ * the booking itself never comes back "Completed"). When today's sessions
+ * could not be read, nobody's unlogged count is known and `unknownToday`
+ * says how many slots that leaves open.
  */
 import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import type { LoggedSessions } from "../../../lib/booking-state";
 import { sessionDay, trainerKeyOf, type TrainerNames } from "../insights/metrics";
 import { weekStartOf } from "../changes/changes";
-import { attentionItems } from "./floor";
+import { attentionItems, summariseFloor } from "./floor";
 
 export interface TeamRow {
   key: string;
@@ -34,16 +39,20 @@ export interface TeamThisWeek {
   since: string;
   sessions: number;
   unloggedToday: number;
+  /** Today's finished slots whose logging could not be read. Above zero, the unlogged counts are missing — not zero. */
+  unknownToday: number;
 }
 
 export function teamThisWeek(
   sessions: WorkoutSession[],
   todayEntries: ScheduleEntry[],
+  logged: LoggedSessions | null,
   now: Date,
   today: string,
   sessionMinutes: number,
   names: TrainerNames,
   trainerIdsByName: Record<string, string> = {},
+  tz?: string,
 ): TeamThisWeek {
   const since = weekStartOf(today);
   const rows = new Map<string, TeamRow & { clientIds: Set<string> }>();
@@ -69,7 +78,7 @@ export function teamThisWeek(
   }
 
   let unlogged = 0;
-  for (const item of attentionItems(todayEntries, now)) {
+  for (const item of attentionItems(todayEntries, now, logged, tz)) {
     if (item.kind !== "unresolved") continue;
     // The schedule names the trainer; join to a session key by id when the
     // roster knows it, else by the name itself.
@@ -83,5 +92,5 @@ export function teamThisWeek(
   const out = [...rows.values()]
     .map(({ clientIds, ...row }) => ({ ...row, clients: clientIds.size }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  return { rows: out, since, sessions: total, unloggedToday: unlogged };
+  return { rows: out, since, sessions: total, unloggedToday: unlogged, unknownToday: summariseFloor(todayEntries, now, logged, tz).unknown };
 }

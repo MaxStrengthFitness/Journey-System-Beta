@@ -34,6 +34,8 @@ import {
 import { mindbodyConfigured, pullClientCommercial } from "./mindbody-client.ts";
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, studioTodayKey } from "../src/lib/studio-time.ts";
+import { loggedSessions } from "../src/lib/booking-state.ts";
+import { cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
 import {
   CYCLE_KEY_PATTERN,
@@ -144,12 +146,19 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
   };
 
   /* ================= Read everything once ================= */
-  const studioDocs = (await db.collection("studios").get()).docs
-    .map((d): { id: string; name?: string; timezone?: string; mindbodySiteId?: string | number } => ({
+  const allStudioDocs = (await db.collection("studios").get()).docs.map(
+    (d): { id: string; name?: string; timezone?: string; mindbodySiteId?: string | number; journeyCutoverDate?: string | null } => ({
       id: d.id,
       ...(d.data() as Record<string, any>),
-    }))
-    .filter((s) => !options.onlyStudio || s.id === options.onlyStudio);
+    }),
+  );
+  const studioDocs = allStudioDocs.filter((s) => !options.onlyStudio || s.id === options.onlyStudio);
+  // Every studio's cutover, even under --only-studio: a client's booking at
+  // another location is read against THAT studio's day on Journey.
+  const cutovers = allStudioDocs.map((s) => ({
+    id: s.id,
+    journeyCutoverDate: typeof s.journeyCutoverDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.journeyCutoverDate) ? s.journeyCutoverDate : null,
+  }));
 
   const machineNames: Record<string, string> = {};
   (await db.collection("machines").get()).docs.forEach((d) => {
@@ -195,7 +204,12 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
       settings: run.settings,
       today: run.today,
       attendance: [
-        ...attendanceFromSchedules(schedules, now, run.tz),
+        // A booking is a visit when Journey logged a session that day (AJ,
+        // Sep 24 2026); attendance.ts says what an unlogged one is.
+        ...attendanceFromSchedules(schedules, now, run.tz, {
+          logged: loggedSessions(sessions, run.tz),
+          cutoverOf: (studioId) => cutoverOf(cutovers, studioId),
+        }),
         ...attendanceFromSessions(sessions, run.tz, run.today),
       ],
       sessionFeel: feelFromSessions(sessions, run.tz),

@@ -5,12 +5,16 @@
  * lists cost nothing. A single-client screen — the Renewal card, the Brief —
  * can do better: right after a leader presses Sync on the Mindbody card, the
  * stored snapshot is up to a day old. This runs the SAME engine on the same
- * inputs, for one client, with three small reads:
+ * inputs, for one client, with four small reads:
  *
  *   - the client's bookings from 90 days back to 30 ahead,
- *   - their workouts from the last 90 days,
+ *   - their workouts from the last 90 days (a booking is a visit when one
+ *     was logged that day — attendance.ts),
  *   - the first booking ever synced for their studio (before it, attendance
- *     is unknown, not zero).
+ *     is unknown, not zero),
+ *   - their studio, for its Journey cutover. A booking at another studio is
+ *     read with no cutover — the cautious side, which counts it a visit as
+ *     it always was; the nightly job knows every studio's.
  *
  * It replaces the proposal's "recompute" endpoint: that would have needed the
  * database's admin key on the public web service, which render.yaml keeps off
@@ -21,6 +25,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -31,6 +37,8 @@ import {
 import { db } from "../../firebase";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import { getActiveTimeZone, studioTodayKey } from "../../lib/studio-time";
+import { loggedSessions } from "../../lib/booking-state";
+import { cutoverOf } from "../../lib/client-coverage";
 import { buildRenewalSnapshot } from "./engine";
 import {
   attendanceFromSchedules,
@@ -49,6 +57,8 @@ interface Inputs {
   schedules: ScheduleEntry[];
   sessions: WorkoutSession[];
   earliestBooking: unknown;
+  /** The client's studio and its Journey cutover. */
+  studio: { id: string; journeyCutoverDate: string | null };
 }
 
 export interface LiveRenewalState {
@@ -116,14 +126,17 @@ export function useLiveRenewal(
           limit(1),
         ),
       ),
+      getDoc(doc(db, "studios", studioId)),
     ])
-      .then(([schedules, sessions, earliest]) => {
+      .then(([schedules, sessions, earliest, studio]) => {
         if (cancelled) return;
+        const cutover = studio.exists() ? studio.get("journeyCutoverDate") : null;
         setInputs({
           clientId,
           schedules: schedules.docs.map((d) => d.data() as ScheduleEntry),
           sessions: sessions.docs.map((d) => d.data() as WorkoutSession),
           earliestBooking: earliest.empty ? null : earliest.docs[0].get("startTime"),
+          studio: { id: studioId, journeyCutoverDate: typeof cutover === "string" ? cutover : null },
         });
       })
       .catch((err) => {
@@ -152,7 +165,10 @@ export function useLiveRenewal(
       settings,
       today,
       attendance: [
-        ...attendanceFromSchedules(inputs.schedules, now, tz),
+        ...attendanceFromSchedules(inputs.schedules, now, tz, {
+          logged: loggedSessions(inputs.sessions, tz),
+          cutoverOf: (id) => cutoverOf([inputs.studio], id),
+        }),
         ...attendanceFromSessions(inputs.sessions, tz, today),
       ],
       sessionFeel: feelFromSessions(inputs.sessions, tz),
