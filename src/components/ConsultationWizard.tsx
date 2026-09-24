@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
 import {
-  calculateStartingWeight,
   Gender,
   SkillLevel,
   MACHINE_DICTIONARY,
 } from "../lib/consultation-utils";
-import { safeToDate } from "../lib/utils";
+import {
+  ageOnFile,
+  consultationNoteBody,
+  consultationPatch,
+  knownGender,
+  parseAge,
+  suggestedStartingWeight,
+} from "../lib/consultation-answers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,22 +68,11 @@ export function ConsultationWizard({
 }: ConsultationWizardProps) {
   const { error: toastError } = useToast();
   const { activeStudioId } = useActiveStudio();
-  // Step 1: Intake
-  const [gender, setGender] = useState<Gender>(
-    (client.gender as Gender) || "Male",
-  );
-  const [age, setAge] = useState<number>(() => {
-    if (client.age) return client.age;
-    if (client.dateOfBirth) {
-      const birth = safeToDate(client.dateOfBirth);
-      if (birth) {
-        const diffMs = Date.now() - birth.getTime();
-        const ageDate = new Date(diffMs);
-        return Math.abs(ageDate.getUTCFullYear() - 1970);
-      }
-    }
-    return 40;
-  });
+  // Step 1: Intake. Starts from what is on file, and from nothing when
+  // nothing is: an unanswered gender or age is null and is never saved
+  // (lib/consultation-answers.ts — it used to start every client as Male, 40).
+  const [gender, setGender] = useState<Gender | null>(() => knownGender(client.gender));
+  const [age, setAge] = useState<number | null>(() => ageOnFile(client));
   const [occupation, setOccupation] = useState(client.occupation || "");
   const [medical, setMedical] = useState(client.medicalHistory || "");
   const [activity, setActivity] = useState(client.activity || "");
@@ -130,14 +125,16 @@ export function ConsultationWizard({
     setIsSubmitting(true);
 
     try {
-      // 1. Update client profile with data
+      // 1. Update client profile with what was answered, and nothing else.
       await updateDoc(doc(db, "clients", client.id!), {
-        gender,
-        age,
-        occupation,
-        medicalHistory: medical,
-        activity,
-        goals,
+        ...consultationPatch({
+          gender,
+          age,
+          occupation,
+          medicalHistory: medical,
+          activity,
+          goals,
+        }),
         updatedAt: serverTimestamp(),
       });
 
@@ -201,7 +198,7 @@ export function ConsultationWizard({
        * the client is still created — the same shape as the tracker's
        * arrival note.
        */
-      const consultationNote = `Consultation. Age: ${age}, Skill: ${skillLevel}. Goals: ${goals}`;
+      const consultationNote = consultationNoteBody({ age, skillLevel, goals });
       const uid = auth.currentUser?.uid;
       if (uid) {
         try {
@@ -314,8 +311,8 @@ export function ConsultationWizard({
               <div className="flex bg-black/20 border-2 border-white/10 rounded-2xl items-center focus-within:border-[#38BDF8] transition-colors relative h-17">
                 <input
                   type="number"
-                  value={age || ""}
-                  onChange={(e) => setAge(parseInt(e.target.value) || 0)}
+                  value={age ?? ""}
+                  onChange={(e) => setAge(parseAge(e.target.value))}
                   className="bg-transparent w-full h-full text-white text-2xl font-black px-6 outline-none"
                   placeholder="e.g. 45"
                 />
@@ -506,7 +503,8 @@ export function ConsultationWizard({
 
           <div className="space-y-4 flex flex-col gap-4 mt-8">
             {routine.map((machineName, idx) => {
-              const weight = calculateStartingWeight(
+              // No suggestion until gender and age are answered.
+              const weight = suggestedStartingWeight(
                 machineName,
                 gender,
                 age,
@@ -588,11 +586,13 @@ export function ConsultationWizard({
                             </span>
                             <div className="bg-white border-2 border-[#E2E8F0] shadow-sm px-6 py-3 rounded-xl flex items-baseline gap-1.5 min-w-30 justify-center">
                               <span className="text-4xl font-black tracking-tighter text-[#115E8D]">
-                                {weight}
+                                {weight ?? "—"}
                               </span>
-                              <span className="text-sm font-bold text-[#68717A] uppercase">
-                                lbs
-                              </span>
+                              {weight !== null && (
+                                <span className="text-sm font-bold text-[#68717A] uppercase">
+                                  lbs
+                                </span>
+                              )}
                             </div>
                           </div>
                           <Button

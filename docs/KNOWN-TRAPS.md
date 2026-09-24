@@ -184,6 +184,7 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
   - **Note formatting is plain text drawn by `notes/format.ts`** — never store or render HTML, and never use regex lookbehind (older iPadOS Safari throws on parse, which takes the whole bundle down).
   - **Firestore refuses `undefined`.** `saveTaskTemplate` strips it (`withoutUndefined`); a new optional field written from a form needs the same.
 
+
 <a id="rating"></a>
 
 ## Ratings, notes and Pulse - the Dial and Loudness
@@ -463,6 +464,8 @@ the data files with esbuild's text loader, so that field comes back as the
 
 
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.
+
+- **A client document must carry a numeric `remainingSessions`, and a home studio** (Sep 24 2026). `isValidClient` requires `remainingSessions` on every create and update, for everyone, super admins included; and the create rule lets a trainer make a client only at a studio they belong to, so a client with no studio is refused for everyone below super admin. A number that looks invented in `remainingSessions` is the rules' price, not a claim: write `0`, as the Mindbody pull sync, Limbo and temporary profiles all do (packages come from `client.renewal`), and never remove the field. Everything else a new client is not told is left ABSENT — no placeholder height, gender or age (`src/lib/consultation-answers.ts`). New-client intake defaults the studio to the iPad's active studio and will not save a blank one.
 
 <a id="tooling"></a>
 

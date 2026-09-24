@@ -1243,6 +1243,7 @@ export default function AppContent({
       <CreateClientModal
         clients={clients}
         studios={studios}
+        activeStudioId={activeStudioId}
         initialName={newClientOnboardingName}
         onClientCreated={async (clientId, routeToImporter) => {
           setSelectedClientId(clientId);

@@ -1,32 +1,52 @@
 import { useState } from "react";
 import {
-  calculateStartingWeight,
   Gender,
   SkillLevel,
   MachineSelection,
 } from "../lib/consultation-utils";
+import { knownGender, parseAge, suggestedStartingWeight } from "../lib/consultation-answers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Info, Play, FileText, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/**
+ * What the wizard hands back. `gender` and `age` are null when nobody
+ * answered; the caller writes only what is not (lib/consultation-answers.ts).
+ */
+export interface ConsultationSetupData {
+  gender: Gender | null;
+  age: number | null;
+  skillLevel: SkillLevel;
+  routine: { name: MachineSelection; tip: string }[];
+}
+
 interface ConsultationSetupWizardProps {
   clientName: string;
-  onComplete: (routineData: any) => void;
+  /** What is already on file, so the wizard starts there and not on a default. */
+  initialGender?: string | null;
+  initialAge?: number | null;
+  onComplete: (routineData: ConsultationSetupData) => void;
   onCancel?: () => void;
 }
 
 export function ConsultationSetupWizard({
   clientName,
+  initialGender = null,
+  initialAge = null,
   onComplete,
   onCancel,
 }: ConsultationSetupWizardProps) {
-  const [gender, setGender] = useState<Gender>("Male");
-  const [age, setAge] = useState<number>(40);
+  // It used to start every client on Male, 40 — and the tracker saved the
+  // Male, even on Skip. Unanswered is null now, and null is never written.
+  const [gender, setGender] = useState<Gender | null>(() => knownGender(initialGender));
+  const [age, setAge] = useState<number | null>(() => parseAge(initialAge));
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("Novice");
 
+  // The push machine for the introductory routine. Seated Dip for a woman,
+  // Chest Press otherwise — which is what an unanswered gender got before.
   const getMachine2 = (): { name: MachineSelection; tip: string } => {
-    if (gender === "Male") {
+    if (gender !== "Female") {
       return {
         name: "Chest Press",
         tip: "Stool required, elbows slightly lower than hands",
@@ -98,8 +118,8 @@ export function ConsultationSetupWizard({
             <div className="flex bg-bg-dark-2 border-2 border-div-d rounded-2xl items-center focus-within:border-cyan transition-colors relative h-14 sm:h-17">
               <input
                 type="number"
-                value={age || ""}
-                onChange={(e) => setAge(parseInt(e.target.value) || 0)}
+                value={age ?? ""}
+                onChange={(e) => setAge(parseAge(e.target.value))}
                 className="bg-transparent w-full h-full text-white text-xl sm:text-2xl font-black px-6 outline-none"
                 placeholder="e.g. 45"
               />
@@ -141,7 +161,8 @@ export function ConsultationSetupWizard({
 
           <div className="space-y-4">
             {routine.map((machine, idx) => {
-              const weight = calculateStartingWeight(
+              // No suggestion until gender and age are answered.
+              const weight = suggestedStartingWeight(
                 machine.name,
                 gender,
                 age,
@@ -173,11 +194,13 @@ export function ConsultationSetupWizard({
                           </span>
                           <div className="bg-black/30 border-2 border-div-d shadow-sm px-5 py-2.5 rounded-xl flex items-baseline gap-1.5">
                             <span className="text-3xl font-black tracking-tighter text-cta">
-                              {weight}
+                              {weight ?? "—"}
                             </span>
-                            <span className="text-xs font-bold text-ink-d3 uppercase">
-                              lbs
-                            </span>
+                            {weight !== null && (
+                              <span className="text-xs font-bold text-ink-d3 uppercase">
+                                lbs
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
