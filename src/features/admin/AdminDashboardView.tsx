@@ -19,6 +19,7 @@ import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperationsScope } from "./scope-context";
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 
 interface Props {
   authTrainer: Trainer;
@@ -137,6 +138,20 @@ function AdminDashboardShell({
   const [floorView, setFloorView] = useState<"machines" | "fit" | "routines">("machines");
   // Pressing Overview while on it brings the page home from one of its views.
   const [homeSignal, setHomeSignal] = useState(0);
+  /*
+   * The tabs unmount when another is opened, and a Save bar's edits (the
+   * renewal settings, a studio machine on Floor) went with them. Opening
+   * another tab now asks first about the typing inside `tabsScope`
+   * (unsaved changes, Sep 24 2026).
+   */
+  const tabsScope = useLeaveScope();
+  const openTab = (tab: AdminTab, then?: () => void) => {
+    if (tab === activeTab && !then) return;
+    tabsScope.guard(() => {
+      then?.();
+      setActiveTab(tab);
+    });
+  };
 
   const isOwnerTier = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
 
@@ -188,7 +203,7 @@ function AdminDashboardShell({
         type="button"
         onClick={() => {
           if (tab.id === "overview" && isActive) setHomeSignal((n) => n + 1);
-          setActiveTab(tab.id);
+          openTab(tab.id);
         }}
         aria-current={isActive ? "page" : undefined}
         className={cn(
@@ -210,11 +225,10 @@ function AdminDashboardShell({
   /** The Overview's doors: a line or a panel opens a tab, sometimes a view inside it. */
   const openFromOverview = (link: OverviewLink) => {
     if (link === "floor") {
-      setFloorView("fit");
-      setActiveTab("floor");
+      openTab("floor", () => setFloorView("fit"));
       return;
     }
-    setActiveTab(link);
+    openTab(link);
   };
 
   const openMyStudio = onOpenStudioTasks
@@ -258,6 +272,8 @@ function AdminDashboardShell({
 
       <div className="adm-shell__main">
         <ScopeBar />
+
+        <UnsavedChangesScope scope={tabsScope}>
 
         {activeTab === "overview" && (
           <OverviewPage
@@ -342,6 +358,7 @@ function AdminDashboardShell({
 
         {activeTab === "data" && ops.scope.kind === "all" && <PickOneStudio what="Data" />}
         {activeTab === "data" && ops.scope.kind !== "all" && <AdminDataReportsTab key={tabKey} trainers={trainers} clients={clients} studios={studios} activeStudioId={activeStudioId} />}
+        </UnsavedChangesScope>
 
       </div>
     </div>

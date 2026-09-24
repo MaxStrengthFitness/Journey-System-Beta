@@ -21,6 +21,7 @@
  * Under "All my studios" every view needs one studio.
  */
 import { useState } from "react";
+import { UnsavedChangesScope, useLeaveScope } from "../../unsaved-changes";
 import { ClipboardList, Dumbbell, Ruler } from "lucide-react";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { MachinesSection } from "../../my-studio/MachinesSection";
@@ -54,19 +55,23 @@ const VIEWS: Array<{ id: FloorView; label: string; icon: typeof Dumbbell }> = [
 export function AdminFloorTab({ authTrainer, studios, trainers, machines, clients, activeStudioId, isAdmin, onNavigateProfile, initialView = "machines" }: AdminFloorTabProps) {
   const ops = useOperationsScope();
   const [view, setView] = useState<FloorView>(initialView);
+  // Machines holds the floor editor, and a studio machine open in it;
+  // another view unmounts both, so it asks first (unsaved changes, Sep 24 2026).
+  const viewScope = useLeaveScope();
   const studio = studios.find((s) => s.id === activeStudioId) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="adm-segmented self-start" role="tablist" aria-label="Floor view">
         {VIEWS.map((v) => (
-          <button key={v.id} type="button" role="tab" className="adm-seg" aria-selected={view === v.id} onClick={() => setView(v.id)}>
+          <button key={v.id} type="button" role="tab" className="adm-seg" aria-selected={view === v.id} onClick={() => v.id !== view && viewScope.guard(() => setView(v.id))}>
             <v.icon className="w-3.5 h-3.5" />
             {v.label}
           </button>
         ))}
       </div>
 
+      <UnsavedChangesScope scope={viewScope}>
       {ops.scope.kind === "all" ? (
         <PickOneStudio what="The Floor" />
       ) : view === "machines" ? (
@@ -83,6 +88,7 @@ export function AdminFloorTab({ authTrainer, studios, trainers, machines, client
       ) : (
         <AdminRoutineTemplatesTab studios={ops.readable} activeStudioId={activeStudioId} authTrainer={authTrainer} isAdmin={isAdmin} />
       )}
+      </UnsavedChangesScope>
     </div>
   );
 }

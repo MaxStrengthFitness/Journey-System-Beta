@@ -10,7 +10,7 @@
  * own render test.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, act } from "react";
+import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 vi.mock("../features/renewals", async (importOriginal) => {
@@ -82,8 +82,10 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 });
 
 import { VictoryHUDScreen } from "./VictoryHUDScreen";
+import { AppBottomBar } from "./AppBottomBar";
 import { DOSE_SCALE } from "../features/rating";
-import type { Client, WorkoutSession } from "../types";
+import { UnsavedChangesProvider, useGuardedState } from "../features/unsaved-changes";
+import type { Client, View, WorkoutSession } from "../types";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -252,5 +254,98 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen onLeave={onLeave} />);
     await click(buttonByText(host, "Back to Hub"));
     expect(onLeave.mock.calls[0][0]).toEqual({ noteContent: "", importance: "standard", effectiveUntil: null });
+  });
+});
+
+/*
+ * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+ * leaves by Back to Hub, but the bottom bar stays live on this screen and
+ * used to unmount it with the note unfiled. Mounted with the provider and the
+ * real bottom bar, wired the way AppContent wires them: onLeave files, then
+ * sets the view through the same guarded setter the bar uses.
+ */
+describe("the closing note is unsaved work until Back to Hub files it", () => {
+  const filed: unknown[] = [];
+
+  function Host() {
+    const [view, setView] = useGuardedState<View>("workouts");
+    return (
+      <div data-testid="app" data-view={view}>
+        {view === "workouts" && (
+          <Screen
+            onLeave={(closing: unknown) => {
+              // In the SAME tap, the strictest case: the screen has not
+              // re-rendered since Back to Hub was pressed, so only its own
+              // release() keeps this from asking about the note it files.
+              // (leavePostSession awaits the journal write first, which
+              // usually gives React time to re-render — usually.)
+              filed.push(closing);
+              setView("clients");
+            }}
+          />
+        )}
+        <AppBottomBar
+          appMode="trainer"
+          currentView={view}
+          isAdmin={false}
+          hasClient
+          liveSession={undefined}
+          lastLearningView="learning"
+          onNavigate={setView}
+          onResumeSession={() => setView("workouts")}
+        />
+      </div>
+    );
+  }
+
+  const withProvider = (ui: ReactNode) => <UnsavedChangesProvider>{ui}</UnsavedChangesProvider>;
+  const viewOf = (host: HTMLElement) => host.querySelector('[data-testid="app"]')!.getAttribute("data-view");
+  const hub = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll("nav button")).find((b) => b.textContent?.trim() === "Hub");
+  const typeNote = async (host: HTMLElement, text: string) => {
+    const textarea = host.querySelector('textarea[aria-label="Closing note"]') as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, text);
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  const question = () => document.querySelector('[role="alertdialog"]');
+
+  beforeEach(() => {
+    filed.length = 0;
+  });
+
+  it("lets the bottom bar straight through while no note is typed", async () => {
+    const host = await mount(withProvider(<Host />));
+    await click(hub(host));
+    expect(question()).toBeNull();
+    expect(viewOf(host)).toBe("clients");
+  });
+
+  it("asks before the bottom bar leaves with a typed closing note, and keeps it on Keep editing", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Shoulder tender on chest press");
+    await click(hub(host));
+    expect(question()!.textContent).toContain(
+      "You have unsaved changes to the closing note. Leave without saving?",
+    );
+    await click(document.querySelector('[data-action="keep-editing"]'));
+    expect(viewOf(host)).toBe("workouts");
+    expect((host.querySelector('textarea[aria-label="Closing note"]') as HTMLTextAreaElement).value).toBe(
+      "Shoulder tender on chest press",
+    );
+    expect(filed).toHaveLength(0);
+  });
+
+  it("files the note by Back to Hub and goes, without asking about the note it is filing", async () => {
+    const host = await mount(withProvider(<Host />));
+    await typeNote(host, "Shoulder tender on chest press");
+    await click(buttonByText(host, "Back to Hub"));
+    await settle();
+    expect(question()).toBeNull();
+    expect(viewOf(host)).toBe("clients");
+    expect(filed).toEqual([
+      expect.objectContaining({ noteContent: "Shoulder tender on chest press" }),
+    ]);
   });
 });

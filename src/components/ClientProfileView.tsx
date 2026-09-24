@@ -59,6 +59,7 @@ import {
   useProfileNav,
 } from "../features/client-profile";
 import { ClientInfoSheet } from "./ClientInfoSheet";
+import { UnsavedChangesScope, useLeaveScope } from "../features/unsaved-changes";
 import {
   Client,
   Machine,
@@ -454,8 +455,16 @@ export function ClientProfileView({
    * lives in one reducer: see features/client-profile/profile-nav.ts. It also
    * resumes per client, which is why walking to the Journey grid and back
    * lands on the routine you were reading rather than resetting to A.
+   *
+   * UNSAVED CHANGES (Sep 24 2026): the tabs unmount when hidden, so a tab
+   * change asks first about the typing inside them — the record's Save bar,
+   * Setup's drafts, an open Edit Routine drawer. `tabsScope` wraps the tabs
+   * below; nothing outside it (the header, the machine window) is asked
+   * about, because a tab change does not touch it.
    */
+  const tabsScope = useLeaveScope();
   const nav = useProfileNav(clientId, {
+    guard: tabsScope.guard,
     programmingDefault: defaultProgrammingView({
       todayRoutine:
         selectedRoutineTodayId && routines.find((r) => r.id === selectedRoutineTodayId)?.name?.includes("B")
@@ -1344,6 +1353,7 @@ export function ClientProfileView({
         machineNames={machineNames}
       />
 
+      <UnsavedChangesScope scope={tabsScope}>
       <Tabs
         value={activeTab}
         className="w-full flex-1 flex flex-col min-h-0"
@@ -1661,6 +1671,7 @@ export function ClientProfileView({
             been reachable for months, and together they were roughly half this
             file. Deleted; git has them if anything is ever wanted back. */}
       </Tabs>
+      </UnsavedChangesScope>
 
       {showFullChart &&
         clientId &&

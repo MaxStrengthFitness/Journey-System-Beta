@@ -119,11 +119,17 @@ export function MachineEditor({
   // onSave identity and defeat its own memoisation).
   const draftRef = React.useRef<MachineDefinition>(external);
 
-  const form = useDirtyForm<MachineDefinition>(external, async (patch) => {
-    // The last gate. The editor already hides what a studio may not touch, so
-    // in normal use this removes nothing — which is the point of having it.
-    await onSave(scopeOverrides(scope, patch), draftRef.current);
-  });
+  const form = useDirtyForm<MachineDefinition>(
+    external,
+    async (patch) => {
+      // The last gate. The editor already hides what a studio may not touch, so
+      // in normal use this removes nothing — which is the point of having it.
+      await onSave(scopeOverrides(scope, patch), draftRef.current);
+    },
+    // The SAVED name: "You have unsaved changes to Leg Press", even while the
+    // name itself is what is being retyped.
+    { label: external.name || "this new machine" },
+  );
   draftRef.current = form.value;
 
   const [reading, setReading] = React.useState(false);
@@ -171,7 +177,9 @@ export function MachineEditor({
         }`}
         actions={
           <>
-            <AdminButton variant="quiet" onClick={onBack}>
+            {/* Back asks first while the form holds unsaved edits: the
+                editor is a screen its host swaps out, not a tab. */}
+            <AdminButton variant="quiet" onClick={() => form.leave.guard(onBack)}>
               <ArrowLeft className="w-4 h-4" /> {backLabel}
             </AdminButton>
             {/* One screen, two ways to look at it. An admin authoring the

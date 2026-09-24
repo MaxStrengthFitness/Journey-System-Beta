@@ -22,6 +22,7 @@ import "../relay/kit.css";
 import "../relay/planner.css";
 import "../relay/board/relay.css";
 import "./my-studio.css";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
 
 /**
@@ -109,10 +110,21 @@ export function MyStudioView({
   // A shared iPad: the last person was a leader on Team; this one is not.
   const shown: MyStudioSection = sections.some((s) => s.id === section) ? section : "relay";
 
+  /*
+   * A section unmounts when another is chosen, and Studio's three Save bars
+   * and a studio machine being edited under Machines went with it, unsaved
+   * and unannounced. Choosing another section now asks first about the
+   * typing inside `sectionScope` (unsaved changes, Sep 24 2026).
+   */
+  const sectionScope = useLeaveScope();
   const choose = (next: MyStudioSection) => {
-    rememberMyStudioSection(next);
-    setSection(next);
-    setPanel(null);
+    const go = () => {
+      rememberMyStudioSection(next);
+      setSection(next);
+      setPanel(null);
+    };
+    if (next === shown) go();
+    else sectionScope.guard(go);
   };
 
   const todayKey = studioDateKey(new Date()) ?? "";
@@ -207,6 +219,7 @@ export function MyStudioView({
           </span>
         </header>
 
+        <UnsavedChangesScope scope={sectionScope}>
         {shown === "relay" && (
           <PlannerView
             authTrainer={authTrainer}
@@ -230,6 +243,7 @@ export function MyStudioView({
             <StudioSection authTrainer={authTrainer} trainers={trainers} />
           </SectionFrame>
         )}
+        </UnsavedChangesScope>
 
         {shown !== "relay" && (
           <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">

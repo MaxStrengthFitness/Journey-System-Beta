@@ -8,6 +8,8 @@ import type { DossierSection } from "../types/journal";
 import { useActiveStudio } from "../contexts/ActiveStudioContext";
 import { useToast } from "../contexts/ToastContext";
 import { useScrollerPad } from "../features/client-profile/use-scroller-pad";
+import { useUnsavedChanges } from "../features/unsaved-changes";
+import { clientFirstName } from "../lib/client-name";
 import { Button } from "@/components/ui/button";
 import { ClientDossier } from "./client-dossier/ClientDossier";
 
@@ -119,9 +121,17 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
   // form re-syncs from the document only while it has NO unsaved edits.
   const dirtyRef = React.useRef(dirtyFields);
   dirtyRef.current = dirtyFields;
+  // Which client the form was last filled from. A snapshot of the SAME client
+  // must not wipe a half-typed edit; a DIFFERENT client always resets it
+  // (Sep 24 2026). The sheet is not keyed by client, so without this an edit
+  // typed for one client stayed in the form when the profile moved on to the
+  // next, and Save would have written it onto them.
+  const filledFor = React.useRef(client?.id);
   useEffect(() => {
     if ((isOpen || inline) && client) {
-      if (inline && dirtyRef.current.size > 0) return;
+      const sameClient = filledFor.current === client.id;
+      filledFor.current = client.id;
+      if (inline && sameClient && dirtyRef.current.size > 0) return;
       setActiveTab(defaultTab || "notes");
       setFormData({
         firstName: client.firstName || "",
@@ -241,6 +251,37 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
     }
   };
 
+  /** Put every edited field back as the document has it. */
+  const discardEdits = () => {
+    setDirtyFields(new Set());
+    setFormData((prev) => {
+      const reset: Partial<Client> = { ...prev };
+      dirtyFields.forEach((k) => {
+        (reset as Record<string, unknown>)[k as string] = (client as Record<string, unknown>)[k as string] ?? "";
+      });
+      return reset;
+    });
+  };
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). The Save bar's edits are lost when the
+   * profile changes tab, the app changes screen or the client changes — the
+   * profile's tab bar and AppContent ask the unsaved-changes gate before any
+   * of those. `discardEdits` is what "Leave" does here, because this sheet
+   * SURVIVES a client change and must not carry the edit across.
+   */
+  const firstName = clientFirstName(client);
+  const unsaved = useUnsavedChanges(
+    (inline || isOpen) && dirtyFields.size > 0,
+    firstName ? `${firstName}'s profile` : "this client's profile",
+    { onDiscard: discardEdits },
+  );
+  const openMigrationHub = () =>
+    unsaved.guard(() => {
+      onOpenChange(false);
+      window.dispatchEvent(new CustomEvent("open-bulk-import"));
+    });
+
   if (!inline && !isOpen) return null;
 
   return (
@@ -260,10 +301,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/60">
           <Button
             type="button"
-            onClick={() => {
-              onOpenChange(false);
-              window.dispatchEvent(new CustomEvent("open-bulk-import"));
-            }}
+            onClick={openMigrationHub}
             variant="outline"
             className="h-10 rounded-xl border-border text-[10px] font-bold uppercase tracking-widest px-3 flex items-center gap-2 shrink-0"
           >
@@ -292,10 +330,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
         <div className="flex items-center gap-3">
           <Button
             type="button"
-            onClick={() => {
-              onOpenChange(false);
-              window.dispatchEvent(new CustomEvent("open-bulk-import"));
-            }}
+            onClick={openMigrationHub}
             className="h-12 bg-[#0ea5e9]/10 hover:bg-[#0ea5e9]/20 text-[#38BDF8] border border-[#38BDF8]/30 rounded-xl font-bold uppercase italic tracking-widest px-4 shadow-sm transition-all flex items-center gap-2"
           >
             <Maximize className="w-4 h-4" />
@@ -304,7 +339,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onOpenChange(false)}
+            onClick={() => unsaved.guard(() => onOpenChange(false))}
             className="rounded-xl w-12 h-12 text-muted-foreground hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-6 h-6" />
@@ -353,16 +388,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
               <Button
                 variant="ghost"
                 className="h-12 rounded-xl font-bold uppercase tracking-widest text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                onClick={() => {
-                  setDirtyFields(new Set());
-                  setFormData((prev) => {
-                    const reset: Partial<Client> = { ...prev };
-                    dirtyFields.forEach((k) => {
-                      (reset as Record<string, unknown>)[k as string] = (client as Record<string, unknown>)[k as string] ?? "";
-                    });
-                    return reset;
-                  });
-                }}
+                onClick={discardEdits}
               >
                 Discard edits
               </Button>
@@ -371,7 +397,7 @@ export const ClientInfoSheet: React.FC<ClientInfoSheetProps> = ({
           <Button
             variant="outline"
             className="h-12 rounded-xl font-bold uppercase tracking-widest text-[11px] w-full md:w-32 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
-            onClick={() => onOpenChange(false)}
+            onClick={() => unsaved.guard(() => onOpenChange(false))}
           >
             Close
           </Button>

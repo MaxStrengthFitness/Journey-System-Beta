@@ -115,7 +115,9 @@ export function StudioDetailsForm({
   subtitle = "Everything Mindbody needs to file this location's bookings correctly.",
 }: StudioDetailsFormProps) {
   const external = useMemo(() => studioToForm(studio), [studio]);
-  const form = useDirtyForm(external, (patch) => onSave(patch));
+  const form = useDirtyForm(external, (patch) => onSave(patch), {
+    label: studio.name ? `${studio.name}'s details` : "the studio's details",
+  });
 
   const locations = useMindbodyLocations(form.value.mindbodySiteId);
 

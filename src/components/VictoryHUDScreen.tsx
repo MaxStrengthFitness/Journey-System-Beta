@@ -28,6 +28,7 @@ import {
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
@@ -255,6 +256,26 @@ export function VictoryHUDScreen({
   const [leaving, setLeaving] = useState(false);
   const renewalDue = renewalPromptDue(client.renewal);
 
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+   * leaves by "Back to Hub" — but the bottom bar and the header stay live on
+   * this screen, and leaving through THEM unmounted it with the note unfiled.
+   * So a typed closing note, or an unfinished mid-session note still waiting
+   * here, is unsaved work, and those exits ask first. "Back to Hub" is not
+   * asked about: it files both, and `leave` releases the screen before it
+   * navigates.
+   */
+  const closingTyped = notes.trim() !== "";
+  const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
+  const unsaved = useUnsavedChanges(
+    !leaving && (closingTyped || draftWaiting),
+    closingTyped && draftWaiting
+      ? "the closing note and the unfinished note"
+      : closingTyped
+        ? "the closing note"
+        : "the unfinished note",
+  );
+
   // A short burst, then quiet — the numbers are the celebration.
   const [particles] = useState(() =>
     Array.from({ length: 36 }).map((_, i) => ({
@@ -275,6 +296,8 @@ export function VictoryHUDScreen({
   const leave = () => {
     if (leftRef.current) return;
     leftRef.current = true;
+    // Filing, not losing: the navigation onLeave ends with must not ask.
+    unsaved.release();
     setLeaving(true);
     const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
     void onLeave({
