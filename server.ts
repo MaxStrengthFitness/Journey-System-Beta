@@ -1075,6 +1075,15 @@ async function startServer() {
   });
 
   app.post("/api/mindbody/test-webhook", async (req, res) => {
+    // Off unless asked for (Sep 24 2026). It posts a fake client,
+    // "test-client-001", to the LIVE webhook — which is how that record got
+    // into production in August. Practice data belongs in Demo Mode; set
+    // ALLOW_WEBHOOK_TEST=1 on a server that is not production to use this.
+    if (process.env.ALLOW_WEBHOOK_TEST !== "1") {
+      return res.status(403).json({
+        error: "The webhook test is switched off: it writes a fake client into the live database. Use Demo Mode for practice.",
+      });
+    }
     try {
       const webhookSecret = process.env.MINDBODY_WEBHOOK_SECRET;
       const configPath = path.resolve(
