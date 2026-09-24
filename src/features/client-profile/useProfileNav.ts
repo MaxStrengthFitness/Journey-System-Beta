@@ -142,10 +142,22 @@ export function useProfileNav(
       toTab("clinical", () => rawDispatch({ type: "clinical", view })),
     [toTab],
   );
+  /*
+   * Notes & Profile at a page (and a card). It is the client codex's own
+   * page switch AND the cross-tab jump into it (the quick note's FORD door,
+   * the Deep Dive's Edit medical), so it goes through the tab guard like
+   * every other move: from inside the record tab it never asks (the codex
+   * keeps its pages mounted, and its Save bar edits with them), and from
+   * another tab it asks about the typing that tab would take with it.
+   * It dispatched straight through when the codex and the unsaved-changes
+   * guard were written apart (landing, Sep 24 2026).
+   */
   const openRecord = useCallback(
     (page: RecordPage, anchor?: RecordAnchor) =>
-      rawDispatch(anchor ? { type: "record", page, anchor } : { type: "record", page }),
-    [],
+      toTab("record", () =>
+        rawDispatch(anchor ? { type: "record", page, anchor } : { type: "record", page }),
+      ),
+    [toTab],
   );
   const openSection = useCallback(
     (section: DossierSection) =>
