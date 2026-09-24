@@ -503,7 +503,7 @@ export default function AppContent({
     isDataReady,
     schedules,
   );
-  const { sessions } = useSessions(activeStudioId, isDataReady);
+  const { sessions, sessionsKnown } = useSessions(activeStudioId, isDataReady);
 
   /**
    * Background Mindbody pulls. autoSyncEnabled and syncIntervalMinutes have
@@ -1619,6 +1619,7 @@ export default function AppContent({
                     setView={setView}
                     schedules={schedules}
                     sessions={sessions}
+                    sessionsKnown={sessionsKnown}
                     editingClient={editingClient}
                     setEditingClient={setEditingClient}
                     formData={clientFormData}

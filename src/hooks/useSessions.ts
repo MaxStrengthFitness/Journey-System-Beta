@@ -6,9 +6,17 @@ import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
 
 export function useSessions(activeStudioId: string | null, isReady: boolean) {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  /*
+   * Has the stream answered for this studio? `sessions` is [] while loading,
+   * after a failure and when nothing was logged, and only the last is
+   * "nothing logged" — a failed read means unknown, never empty. The Hub's
+   * "Not logged" (lib/hub-card-state) waits for this.
+   */
+  const [sessionsKnown, setSessionsKnown] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
+    setSessionsKnown(false);
 
     const now = new Date();
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -41,8 +49,10 @@ export function useSessions(activeStudioId: string | null, isReady: boolean) {
             (doc) => ({ id: doc.id, ...doc.data() }) as WorkoutSession,
           ),
         );
+        setSessionsKnown(true);
       },
       (error) => {
+        setSessionsKnown(false);
         handleFirestoreError(error, OperationType.GET, "sessions");
       },
     );
@@ -50,5 +60,5 @@ export function useSessions(activeStudioId: string | null, isReady: boolean) {
     return () => unsubscribeSessions();
   }, [activeStudioId, isReady]);
 
-  return { sessions };
+  return { sessions, sessionsKnown };
 }
