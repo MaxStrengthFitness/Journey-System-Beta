@@ -26,6 +26,9 @@ import type { Client, ContractTierOverride, MindbodyContract, MindbodyService } 
 import type { RenewalSnapshot } from "../renewals/types";
 import { mindbodyDayKey } from "../renewals/engine";
 import { studioTodayKey } from "../../lib/studio-time";
+import { studiosInRealm } from "../demo-mode/access";
+import { DEMO_STUDIO_ID } from "../demo-mode/constants";
+import { isDemoRecord } from "../demo-mode/is-demo";
 
 export type CommitmentTerm = 6 | 12 | 18;
 export type PaymentKind = "monthly" | "pif" | "month-to-month" | "sessions-only";
@@ -297,4 +300,20 @@ export function crossStudioClearance(
   if (!client?.homeStudioId || !studioId) return null;
   if (client.homeStudioId === studioId) return "home";
   return (client.approvedCrossTrainStudioIds || []).includes(studioId) ? "approved" : "not-approved";
+}
+
+/**
+ * The studios a leader may approve this client to cross-train at: every
+ * studio in the CLIENT'S realm except their home. The realm rule
+ * (`studiosInRealm`): a Demo Mode client is only ever offered Demo Mode
+ * studios, and a real client is never offered the demo studio. The realm is
+ * read off the client rather than the studio the iPad is in, so a demo
+ * client can never have a real studio id written onto it, whoever opens it.
+ */
+export function crossTrainChoices<T extends { id?: string; isDemo?: boolean }>(
+  studios: T[],
+  client: { homeStudioId?: string | null; studioId?: string | null; isDemo?: boolean } | null | undefined,
+): T[] {
+  const realm = isDemoRecord(client) ? DEMO_STUDIO_ID : null;
+  return studiosInRealm(studios, realm).filter((s) => s.id && s.id !== client?.homeStudioId);
 }

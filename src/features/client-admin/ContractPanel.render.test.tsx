@@ -99,4 +99,20 @@ describe("ContractPanel", () => {
     expect(text).toContain("Mindbody reads as: Committed · 12 months · paying every 4 weeks");
     expect(text).toContain("Use Mindbody's");
   });
+
+  it("offers a Demo Mode client no real studio to cross-train at, and a real client no demo studio", () => {
+    const withDemo = [...studios, { id: "demo-studio", name: "Demo Mode", isDemo: true }] as Studio[];
+    const updateField = vi.fn();
+    const demoClient = { ...client, homeStudioId: "demo-studio" } as Client;
+    let el = mount(<ContractPanel client={demoClient} formData={{}} updateField={updateField} studios={withDemo} />);
+    const names = (e: HTMLElement) => [...e.querySelectorAll(".cadm-choice")].map((b) => b.textContent);
+    expect(names(el)).toEqual([]);
+    expect(el.textContent).toContain("No other studios to approve.");
+    expect(updateField).not.toHaveBeenCalled();
+    act(() => root?.unmount());
+    host?.remove();
+
+    el = mount(<ContractPanel client={client} formData={{}} updateField={updateField} studios={withDemo} />);
+    expect(names(el)).toEqual(["Westlake"]);
+  });
 });

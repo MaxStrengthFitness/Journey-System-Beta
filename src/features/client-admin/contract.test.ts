@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildContractHistory,
   crossStudioClearance,
+  crossTrainChoices,
   parseTierFromName,
   resolveContractTier,
   sessionsOnHand,
@@ -149,5 +150,28 @@ describe("sessionsOnHand / crossStudioClearance", () => {
     expect(crossStudioClearance(c, "westlake")).toBe("approved");
     expect(crossStudioClearance(c, "willoughby")).toBe("not-approved");
     expect(crossStudioClearance(c, null)).toBeNull();
+  });
+});
+
+describe("crossTrainChoices - the realm rule", () => {
+  const all = [
+    { id: "solon", name: "Solon" },
+    { id: "westlake", name: "Westlake" },
+    { id: "demo-studio", name: "Demo Mode", isDemo: true },
+    { id: "demo-two", name: "Second demo", isDemo: true },
+  ];
+  const ids = (xs: { id?: string }[]) => xs.map((x) => x.id);
+
+  it("offers a real client every other real studio and never the demo studio", () => {
+    expect(ids(crossTrainChoices(all, { homeStudioId: "solon" }))).toEqual(["westlake"]);
+  });
+
+  it("offers a Demo Mode client only Demo Mode studios, never a real one", () => {
+    expect(ids(crossTrainChoices(all, { homeStudioId: "demo-studio" }))).toEqual(["demo-two"]);
+    expect(ids(crossTrainChoices(all, { homeStudioId: "demo-studio", isDemo: true }))).not.toContain("solon");
+  });
+
+  it("offers nothing real to a flagged demo client with no home recorded", () => {
+    expect(ids(crossTrainChoices(all, { isDemo: true }))).toEqual(["demo-studio", "demo-two"]);
   });
 });

@@ -10,6 +10,7 @@ import { chipText, dayLabel, paceSentence, SITUATION_TONE } from "../renewals/se
 import {
   buildContractHistory,
   crossStudioClearance,
+  crossTrainChoices,
   currentContract,
   resolveContractTier,
   sessionsOnHand,
@@ -124,11 +125,16 @@ export function ContractPanel({ client, formData, updateField, studios, author, 
   );
   const hereName = studios.find((s) => s.id === activeStudioId)?.name;
   const approved = formData.approvedCrossTrainStudioIds || client.approvedCrossTrainStudioIds || [];
-  const toggleStudio = (id: string) =>
+  /* Only studios in the client's realm are offered, and only they may be
+     toggled: a demo client never gets a real studio id, nor the reverse. */
+  const choices = crossTrainChoices(studios, client);
+  const toggleStudio = (id: string) => {
+    if (!choices.some((s) => s.id === id)) return;
     updateField(
       "approvedCrossTrainStudioIds",
       approved.includes(id) ? approved.filter((s) => s !== id) : [...approved, id],
     );
+  };
 
   const mbId = mindbodyIdOf(client);
 
@@ -264,11 +270,10 @@ export function ContractPanel({ client, formData, updateField, studios, author, 
           {clearance === "not-approved" && hereName ? ` · NOT yet cleared to train at ${hereName}` : ""}
         </p>
         <div className="cadm-picker">
-          {studios.filter((s) => s.id && s.id !== client.homeStudioId).length === 0 ? (
+          {choices.length === 0 ? (
             <p className="cadm-note">No other studios to approve.</p>
           ) : (
-            studios
-              .filter((s) => s.id && s.id !== client.homeStudioId)
+            choices
               .map((s) => {
                 const on = approved.includes(s.id!);
                 return (
