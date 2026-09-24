@@ -16,7 +16,8 @@
 
 import type { SetupMode } from "./setup-draft";
 
-const PREFIX = "msf_fit_open_mode:";
+/** Exported for sign-out, which clears these one-shot handoffs (features/sign-out). */
+export const PREFIX = "msf_fit_open_mode:";
 
 export function writeSetupHint(clientId: string | null | undefined, mode: SetupMode): void {
   if (!clientId) return;

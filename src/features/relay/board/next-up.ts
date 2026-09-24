@@ -23,6 +23,7 @@ import { shiftGroups, type ShiftGroup } from "../../studio-tasks/board";
 import { isOnJob, isUpForGrabs, jobTiming } from "../jobs/jobs";
 import type { TeamJob } from "../jobs/types";
 import { fitsGap, type ShiftPhase } from "./now-context";
+import { forgetOnSignOut } from "../../sign-out/memory";
 
 export type NextUpItem =
   | { kind: "group"; id: string; group: ShiftGroup; title: string; estMinutes: number | null; origin: "floor" }
@@ -198,10 +199,17 @@ export function nextUp(input: NextUpInput): NextUpScored[] {
 }
 
 /* ------------------------------------------------------------------ *
- * "Not me" — snoozed for the rest of this shift phase, on this iPad
+ * "Not me" — snoozed for the rest of this shift phase, on this iPad,
+ * until whoever said it signs out
  * ------------------------------------------------------------------ */
 
 const snoozes = new Map<string, Set<string>>();
+
+// "Not me" is a person talking. The next one to sign in on this iPad has not
+// said it, so they see the item (sign-out round, Sep 24 2026).
+forgetOnSignOut(() => {
+  snoozes.clear();
+});
 
 function snoozeKey(studioId: string, todayKey: string, phase: ShiftPhase): string {
   return `${studioId}|${todayKey}|${phase}`;

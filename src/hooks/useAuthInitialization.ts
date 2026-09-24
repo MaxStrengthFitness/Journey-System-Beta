@@ -18,6 +18,7 @@ import {
   tombstone,
   withoutSuperseded,
 } from "../features/trainer-identity/claim";
+import { endPersonalSession, personChanged } from "../features/sign-out/sign-out";
 
 export function useAuthInitialization() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -29,7 +30,19 @@ export function useAuthInitialization() {
   const [tokenRole, setTokenRole] = useState<string | null>(null);
 
   useEffect(() => {
+    /* Whose sign-in the app last saw: undefined until Firebase first answers. */
+    let lastUid: string | null | undefined = undefined;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      /* A sign-out that did not come through the menu — another tab, an
+         expired account, a Microsoft account from outside the company turned
+         away by the sign-in screen — must forget the last person too. The
+         menu's handleLogout has usually done this already; twice is harmless.
+         Sign-out round, Sep 24 2026 (features/sign-out). */
+      const uid = u?.uid ?? null;
+      if (personChanged(lastUid, uid)) {
+        endPersonalSession({ local: localStorage, session: sessionStorage });
+      }
+      lastUid = uid;
       setUser(u);
       if (u) {
         try {
@@ -261,6 +274,10 @@ export function useAuthInitialization() {
       } else {
         setAuthTrainer(null);
         setNetworks([]);
+        // The last person's role claim. Left here it would still answer
+        // "is this an administrator" for whoever signs in next, until their
+        // own token was read — and forever, if that read failed.
+        setTokenRole(null);
       }
       setIsAuthReady(true);
     });
