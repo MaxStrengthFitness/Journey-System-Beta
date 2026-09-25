@@ -1836,12 +1836,15 @@ export function WorkoutTrackerView({
 
   /** The dose Dial writes the moment it is tapped — no save button. A cleared
       dial stores nothing (`deleteField`): untouched is "not judged", never 0. */
-  const savePostSessionDose = async (dose: DialValue | null) => {
-    if (!postSession?.session.id) return;
+  const savePostSessionDose = async (dose: DialValue | null): Promise<boolean> => {
+    if (!postSession?.session.id) return false;
     try {
       await updateDoc(doc(db, "sessions", postSession.session.id), { dose: dose === null ? deleteField() : dose });
+      return true;
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
+      // The Dial must not say "Saved" over a write that failed.
+      return false;
     }
   };
 

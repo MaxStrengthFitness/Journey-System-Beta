@@ -45,6 +45,11 @@ import { canQuoteLifetime, type HistoryCoverage } from "../lib/prior-history";
 import { canQuoteSessionNumber } from "../lib/client-coverage";
 import { firstTimeTag, sessionNumberTag } from "../lib/history-claims";
 import { clientFirstName } from "../lib/client-name";
+import { packageStanding } from "../features/packages/package-standing";
+import { usePackagesDoor } from "../features/packages/usePackagesDoor";
+import { bookedWeekdays } from "../features/packages/booked-days";
+import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
+import { PackagesSheet } from "../features/packages/PackagesSheet";
 /**
  * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
  *
@@ -106,8 +111,12 @@ export interface VictoryHUDScreenProps {
   journey: JourneyRead;
   schedules?: ScheduleEntry[];
   authTrainer: Trainer | null;
-  /** Writes `sessions.dose` the moment it is tapped; `null` clears it (stores nothing). */
-  onDose: (dose: DialValue | null) => void | Promise<void>;
+  /**
+   * Writes `sessions.dose` the moment it is tapped; `null` clears it (stores
+   * nothing). Resolving to `false` means the write failed: the Dial then
+   * never says "Saved".
+   */
+  onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
   /** Leaves the screen; the closing note (if any) is filed on the way out with its Loudness and "until" day. */
   onLeave: (closing: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
@@ -181,7 +190,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
   })();
   return (
     <li className={`flex items-center gap-3 min-h-11 py-1 border-b border-div-d last:border-b-0 ${performed ? "" : "opacity-60"}`}>
-      <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 truncate">{line.name}</span>
+      <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 break-words">{line.name}</span>
       {performed ? (
         <>
           <span className="font-mono tabular-nums text-[15px] font-bold text-ink-d1 whitespace-nowrap">
@@ -263,6 +272,19 @@ export function VictoryHUDScreen({
   const [renewalLogged, setRenewalLogged] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const renewalDue = renewalPromptDue(client.renewal);
+  // Whether the packages card is possible at all, before anything is read:
+  // a live package, an away pause or a running contract says no here.
+  const preliminaryPackages = useMemo(
+    () =>
+      packageStanding({
+        client,
+        firstName: clientFirstName(client),
+        today: todayKey,
+        settings: null,
+        coverage,
+      }),
+    [client, todayKey, coverage],
+  );
 
   /*
    * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
@@ -328,7 +350,10 @@ export function VictoryHUDScreen({
   const pickDose = (v: DialValue | null) => {
     setDose(v);
     setDoseSaved(false);
-    Promise.resolve(onDose(v)).then(() => setDoseSaved(true));
+    Promise.resolve(onDose(v)).then(
+      (ok) => setDoseSaved(ok !== false),
+      () => setDoseSaved(false),
+    );
   };
 
   /* --- today ------------------------------------------------------------ */
@@ -644,6 +669,22 @@ export function VictoryHUDScreen({
             </motion.div>
           )}
 
+          {/* 3c · packages — for a client with no package on file (the
+                 consultation round, Sep 2026: packages are not decided in the
+                 consultation, and this screen has the least to say about a
+                 new client). Worked out without the studio's table first, so
+                 a client with a package on file never costs a read of it. */}
+          {preliminaryPackages.showDoor && (
+            <PackagesCard
+              client={client}
+              hostedAtStudioId={session.hostedAtStudioId}
+              coverage={coverage}
+              today={todayKey}
+              trainerFullName={authTrainer?.fullName ?? null}
+              bookedWeekdays={bookedWeekdays(schedules, client.id)}
+            />
+          )}
+
           {/* 4 · lifetime — quiet, at the bottom, and only when it is hers.
                  These three run off Journey's own rollups, which start the day
                  Journey first saw her. For a migration client they are a small
@@ -699,5 +740,72 @@ export function VictoryHUDScreen({
         machines={machines}
       />
     </div>
+  );
+}
+
+/**
+ * The packages card: package information on the screen the trainer is
+ * standing at with a client who has no package on file, and the door to the
+ * full packages sheet. Prices sit on the card itself only for a client
+ * Journey holds the whole story of (or a temporary profile); everyone else
+ * gets the sentence and the door (features/packages/package-standing.ts).
+ */
+function PackagesCard({
+  client,
+  hostedAtStudioId,
+  coverage,
+  today,
+  trainerFullName,
+  bookedWeekdays: booked,
+}: {
+  client: Client;
+  hostedAtStudioId: string | null | undefined;
+  coverage: HistoryCoverage;
+  today: string;
+  trainerFullName: string | null;
+  bookedWeekdays: number[];
+}) {
+  const door = usePackagesDoor({ client, hostedAtStudioId, coverage, today });
+  const [open, setOpen] = useState(false);
+  if (!door.standing.showDoor) return null;
+  const failed = door.prices.status === "failed";
+  return (
+    <Card delay={0.26}>
+      <div data-testid="packages-card" className="flex flex-col gap-3">
+        <Kicker>{sheetTitle(door.studioName)}</Kicker>
+        {door.standing.sentence && <p className="text-[13.5px] text-ink-d2">{door.standing.sentence}</p>}
+        {door.rows && (
+          <ul className="flex flex-col">
+            {door.rows.map((r) => (
+              <li key={r.key} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5 border-b border-div-d last:border-b-0">
+                <span className="text-[13.5px] font-semibold text-ink-d1 break-words">{r.name}</span>
+                <span className="text-[12.5px] text-ink-d2 break-words">{r.price}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {door.standing.pricesOnScreen && failed && (
+          <p className="text-[12.5px] text-ink-d3">
+            {door.studioName ? `Couldn’t load ${door.studioName}’s prices.` : "Couldn’t load this studio’s prices."}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+        >
+          {DOOR_BUTTON}
+        </button>
+      </div>
+      <PackagesSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        studioId={door.studioId}
+        studioName={door.studioName}
+        clientFirstName={clientFirstName(client) || null}
+        trainerFullName={trainerFullName}
+        bookedWeekdays={booked}
+      />
+    </Card>
   );
 }
