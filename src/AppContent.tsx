@@ -690,7 +690,15 @@ export default function AppContent({
         win.end,
         activeStudioId,
         activeStudio?.mindbodyLocationId,
+        // Clients this iPad already names are not looked up again: a press
+        // costs a page or two instead of ~7 calls (the lean pull, Sep 25 2026).
+        { skipKnownClientLookups: true },
       );
+      // Today and tomorrow reach every iPad through the live listener. The rest
+      // of the week is a fetched cache, so re-read it here, or the iPad that
+      // pressed Refresh keeps showing days 2-8 as they were until its next
+      // timed re-read (up to fifteen minutes).
+      refreshSchedules();
 
       if (res.errors && res.errors.length > 0) {
         toastError(`Sync completed with issues: ${res.errors[0]}`);

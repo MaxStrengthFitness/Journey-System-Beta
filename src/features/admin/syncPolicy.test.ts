@@ -9,6 +9,10 @@ import {
   intervalWithBackoff,
   nextDueAt,
   normaliseInterval,
+  DEEP_PULL_HOURS,
+  deepPullBlock,
+  wantsDeepPull,
+  withinPullHours,
   type SyncContext,
 } from "./syncPolicy";
 
@@ -203,5 +207,116 @@ describe("claimIsStillDue", () => {
         failures: 2,
       }),
     ).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The lean pull (Sep 25 2026)
+ * ------------------------------------------------------------------ */
+
+const NY = "America/New_York";
+const LA = "America/Los_Angeles";
+/** An instant at a wall-clock time in New York in September (UTC-4). */
+const nyAt = (h: number, m = 0, day = 25) => Date.UTC(2026, 8, day, h + 4, m, 0);
+
+describe("deepPullBlock", () => {
+  it("puts the early morning in the day's first block", () => {
+    expect(deepPullBlock(nyAt(5, 30), NY)).toBe("2026-09-25#0");
+  });
+
+  it("moves to the next block at each deep-pull hour", () => {
+    expect(deepPullBlock(nyAt(9, 59), NY)).toBe("2026-09-25#0");
+    expect(deepPullBlock(nyAt(10, 0), NY)).toBe("2026-09-25#1");
+    expect(deepPullBlock(nyAt(14, 0), NY)).toBe("2026-09-25#2");
+    expect(deepPullBlock(nyAt(18, 0), NY)).toBe("2026-09-25#3");
+    expect(deepPullBlock(nyAt(23, 59), NY)).toBe("2026-09-25#3");
+  });
+
+  it("reads the hour in the studio's own zone, not the device's", () => {
+    // 10:30 in New York is 7:30 in Los Angeles: still the morning block there.
+    expect(deepPullBlock(nyAt(10, 30), NY)).toBe("2026-09-25#1");
+    expect(deepPullBlock(nyAt(10, 30), LA)).toBe("2026-09-25#0");
+  });
+
+  it("has one block per deep-pull hour", () => {
+    expect(DEEP_PULL_HOURS).toEqual([0, 10, 14, 18]);
+  });
+});
+
+describe("wantsDeepPull", () => {
+  it("reaches the whole month when the studio has never pulled", () => {
+    expect(wantsDeepPull(null, nyAt(9), NY)).toBe(true);
+  });
+
+  it("reaches the whole month at the day's first pull", () => {
+    // Last pull at 8 pm yesterday, first pull this morning.
+    expect(wantsDeepPull(nyAt(20, 0, 24), nyAt(5, 30), NY)).toBe(true);
+  });
+
+  it("asks only for today and tomorrow inside the same block", () => {
+    expect(wantsDeepPull(nyAt(10, 5), nyAt(10, 20), NY)).toBe(false);
+    expect(wantsDeepPull(nyAt(5, 30), nyAt(9, 45), NY)).toBe(false);
+  });
+
+  it("reaches the whole month once when a new block starts", () => {
+    expect(wantsDeepPull(nyAt(9, 50), nyAt(10, 5), NY)).toBe(true);
+    // The pull that just ran stamped the lease in the new block.
+    expect(wantsDeepPull(nyAt(10, 5), nyAt(10, 20), NY)).toBe(false);
+  });
+
+  it("retries the whole month after a failed pull rather than waiting for the next block", () => {
+    expect(wantsDeepPull(nyAt(10, 5), nyAt(10, 20), NY, 1)).toBe(true);
+  });
+
+  it("gives about four whole-month pulls in an open day of fifteen-minute pulls", () => {
+    let prev: number | null = nyAt(20, 30, 24);
+    let deep = 0;
+    for (let t = nyAt(4, 30); t <= nyAt(21, 0); t += 16 * MIN) {
+      if (wantsDeepPull(prev, t, NY)) deep++;
+      prev = t;
+    }
+    expect(deep).toBe(4);
+  });
+});
+
+describe("withinPullHours", () => {
+  it("uses 5:30 am to 8 pm, with an hour either side, when no hours are set", () => {
+    expect(withinPullHours(nyAt(4, 29), NY)).toBe(false);
+    expect(withinPullHours(nyAt(4, 30), NY)).toBe(true);
+    expect(withinPullHours(nyAt(21, 0), NY)).toBe(true);
+    expect(withinPullHours(nyAt(21, 1), NY)).toBe(false);
+  });
+
+  it("follows the hours a leader set", () => {
+    const hours = { open: "07:00", close: "19:00" };
+    expect(withinPullHours(nyAt(5, 59), NY, hours)).toBe(false);
+    expect(withinPullHours(nyAt(6, 0), NY, hours)).toBe(true);
+    expect(withinPullHours(nyAt(20, 0), NY, hours)).toBe(true);
+    expect(withinPullHours(nyAt(20, 1), NY, hours)).toBe(false);
+  });
+
+  it("reads the clock in the studio's zone", () => {
+    // 11 pm in New York is 8 pm in Los Angeles: a western studio is still open.
+    expect(withinPullHours(nyAt(23, 0), NY)).toBe(false);
+    expect(withinPullHours(nyAt(23, 0), LA)).toBe(true);
+  });
+});
+
+describe("decideSync — pull hours", () => {
+  it("does not pull after hours", () => {
+    expect(decideSync(ctx({ withinPullHours: false }))).toEqual({
+      run: false,
+      reason: "after-hours",
+      retryInMs: null,
+    });
+  });
+
+  it("pulls as before when the caller does not know the studio's hours", () => {
+    expect(decideSync(ctx()).run).toBe(true);
+    expect(decideSync(ctx({ withinPullHours: true })).run).toBe(true);
+  });
+
+  it("still reports a hidden tab before the hours", () => {
+    expect(decideSync(ctx({ visible: false, withinPullHours: false })).reason).toBe("hidden");
   });
 });

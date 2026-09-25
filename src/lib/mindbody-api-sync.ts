@@ -15,6 +15,7 @@ import { parkPullSyncBooking } from "./mindbody-limbo";
 import { chooseClientDoc, siteOfClient, siteQualifiedClientId } from "./mindbody-site";
 import { extractBookingExtras } from "./mindbody-pass";
 import { authedFetch } from "./authed-fetch";
+import { clientLegalName } from "./client-name";
 import { Trainer, Client, Studio } from "../types";
 import {
   wallClockToInstant,
@@ -25,6 +26,20 @@ import {
   studioDateKey,
   toDate,
 } from "./studio-time";
+
+/**
+ * How a pull should behave beyond its window (the lean pull, Sep 25 2026).
+ *
+ * skipKnownClientLookups — ask Mindbody's client lookup only about clients
+ * Journey does not already hold for this site. The lookup exists to name a
+ * booking and to fill a new or blank client record; for a client the roster
+ * already names, every pull used to pay 1 call per 20 of them to learn the
+ * same name again. The whole-month pull still looks everyone up, which is
+ * what keeps names and blank contact fields current.
+ */
+export interface SyncOptions {
+  skipKnownClientLookups?: boolean;
+}
 
 export interface MindbodySyncResult {
   added: number;
@@ -399,6 +414,17 @@ function studioDayKeyOfInstant(ms: number, tz: string): string {
 export const REFRESH_WINDOW_DAYS = 8;
 export const DEEP_WINDOW_DAYS = 30;
 
+/**
+ * NEAR_WINDOW_DAYS — what the fifteen-minute background pull asks for between
+ * whole-month pulls (the lean pull, Sep 25 2026): today and tomorrow, the two
+ * days the Hub watches live. On a shared site that is one page of 500 instead
+ * of up to eight. Days further out are reached by the whole-month pull a few
+ * times a day (features/admin/syncPolicy.ts, DEEP_PULL_HOURS) and at once by
+ * Refresh. The sweep stays tied to the window like every other pull, so a
+ * near pull never cancels anything beyond tomorrow.
+ */
+export const NEAR_WINDOW_DAYS = 1;
+
 /** The day keys a sync should ask for, in the studio's own day. */
 export function syncWindow(
   timeZone?: string,
@@ -422,6 +448,7 @@ export async function syncMindbodySchedules(
   endDate?: string,
   targetStudioIdOverride?: string | null,
   targetLocationId?: string | number | null,
+  options: SyncOptions = {},
 ): Promise<MindbodySyncResult> {
   const result: MindbodySyncResult = {
     added: 0,
@@ -498,6 +525,30 @@ export async function syncMindbodySchedules(
     return result;
   }
 
+  /*
+   * The clients the lookup may skip: this site's clients the id rule below
+   * (resolveCanonicalClientId) will certainly find, and who already have a
+   * name. Only those. A client the rule would NOT find is created from the
+   * lookup's answer (phase 1), and a skipped lookup would create them nameless.
+   */
+  let skipClientLookupIds: string[] | undefined;
+  if (options.skipKnownClientLookups) {
+    const siteKey = String(siteId).trim();
+    const siteClients = clients.filter((c) => {
+      const theirs = siteOfClient(c, studios || []);
+      return !theirs || theirs === siteKey;
+    });
+    const known = new Set<string>();
+    for (const c of siteClients) {
+      const mb = c.mindbodyClientId ? String(c.mindbodyClientId).trim() : "";
+      if (!mb || known.has(mb)) continue;
+      const resolved = resolveCanonicalClientId(mb, siteClients, siteKey);
+      const record = resolved ? siteClients.find((x) => x.id === resolved) : undefined;
+      if (record && clientLegalName(record)) known.add(mb);
+    }
+    skipClientLookupIds = [...known];
+  }
+
   try {
     const response = await authedFetch("/api/mindbody/staff-appointments", {
       method: "POST",
@@ -520,6 +571,7 @@ export async function syncMindbodySchedules(
          * loop below is the only thing that ever surfaces those).
          */
         locationId: effectiveLocationId ?? undefined,
+        skipClientLookupIds,
         keepLocationIds: studiosOnSite
           .map((s) => s.mindbodyLocationId)
           .filter((id): id is string | number => id !== undefined && id !== null && String(id).trim() !== "")
@@ -939,9 +991,9 @@ export async function syncMindbodySchedules(
             : `${studioName} Rotation`;
         const trainerId = trainer?.id || null;
 
-        const clientName =
-          `${appt.ClientFirstName || ""} ${appt.ClientLastName || ""}`.trim() ||
-          "Unknown Client";
+        const nameFromMindbody =
+          `${appt.ClientFirstName || ""} ${appt.ClientLastName || ""}`.trim();
+        let clientName = nameFromMindbody || "Unknown Client";
 
         const mbClientId = appt.ClientId ? String(appt.ClientId).trim() : null;
 
@@ -959,6 +1011,20 @@ export async function syncMindbodySchedules(
           (isUnplaceable
             ? ((existingByMbId[String(appt.Id)]?.data?.clientId as string | null | undefined) ?? null)
             : null);
+
+        // A pull that skipped this client's lookup (SyncOptions) gets no name
+        // unless Mindbody put one on the appointment. Keep the name the row
+        // already carries, so the row is not rewritten for nothing, or else
+        // the name on Journey's record. Never "Unknown Client" for a client we
+        // hold: that is also a change, and would be written on every pull.
+        if (!nameFromMindbody && clientId) {
+          const kept = existingByMbId[mbId]?.data?.clientName as string | undefined;
+          const record = allClients.find((c) => c.id === clientId);
+          clientName =
+            (kept && kept !== "Unknown Client" ? kept : "") ||
+            clientLegalName(record) ||
+            "Unknown Client";
+        }
 
         if (!clientId && mbClientId && !isUnplaceable) {
           // Phase 1 above creates every client for this studio before the

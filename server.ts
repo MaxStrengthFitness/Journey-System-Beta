@@ -22,6 +22,7 @@ import {
   pickRequestedClient,
 } from "./src/lib/mindbody-demographics-map.ts";
 import { requireStaff } from "./server/auth.ts";
+import { idsToLookUp, parseSkipIds } from "./src/lib/mindbody-lookup-skip.ts";
 import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
@@ -546,8 +547,15 @@ async function startServer() {
           .json({ error: "MINDBODY_API_KEY environment variable is not set." });
       }
 
-      const { siteId, startDate, endDate, staffIds, locationId, keepLocationIds } =
-        req.body || {};
+      const {
+        siteId,
+        startDate,
+        endDate,
+        staffIds,
+        locationId,
+        keepLocationIds,
+        skipClientLookupIds,
+      } = req.body || {};
 
       if (!siteId) {
         return res.status(400).json({ error: "siteId is required" });
@@ -714,7 +722,7 @@ async function startServer() {
             })
           : allAppointments;
 
-      const uniqueClientIds = [
+      const allClientIds = [
         ...new Set(
           appointments
             .map((a: any) => a.Client?.Id || a.ClientId)
@@ -722,6 +730,13 @@ async function startServer() {
             .map((id: any) => String(id)),
         ),
       ];
+      /*
+       * The lean pull (Sep 25 2026): clients the iPad already holds and names
+       * are not looked up again (src/lib/mindbody-lookup-skip.ts). Their rows
+       * still carry their ClientId; the browser names them from its own
+       * records. An older build sends no list and looks everyone up.
+       */
+      const uniqueClientIds = idsToLookUp(allClientIds, parseSkipIds(skipClientLookupIds));
 
       const clientNameMap: Record<
         string,
@@ -861,6 +876,9 @@ async function startServer() {
             ? ` -> ${appointments.length} after dropping siblings`
             : "") +
           `, ${batchPromises.length} client lookup(s) ${clientsMs}ms` +
+          (uniqueClientIds.length !== allClientIds.length
+            ? ` (${allClientIds.length - uniqueClientIds.length} known client(s) not looked up)`
+            : "") +
           (complete ? "" : " -- INCOMPLETE, sweep suppressed"),
       );
 

@@ -34,6 +34,9 @@
  * Firestore.
  */
 
+import { studioDateKey, zonedHM } from "../../lib/studio-time";
+import { shiftHoursOf } from "../relay/board/now-context";
+
 export const MIN_INTERVAL_MINUTES = 5;
 export const MAX_INTERVAL_MINUTES = 240;
 export const DEFAULT_INTERVAL_MINUTES = 15;
@@ -63,6 +66,11 @@ export interface SyncContext {
   visible: boolean;
   online: boolean;
   /**
+   * The studio is inside its pull hours (see `withinPullHours`). Optional so
+   * a caller that does not know the studio's day keeps today's behaviour.
+   */
+  withinPullHours?: boolean;
+  /**
    * Site id present, and a location id too when the site is shared with
    * another studio. Exactly the check the manual Refresh button makes before
    * it will run.
@@ -76,6 +84,7 @@ export type SkipReason =
   | "offline"
   | "hidden"
   | "in-flight"
+  | "after-hours"
   | "not-due";
 
 export type SyncVerdict =
@@ -128,6 +137,12 @@ export function decideSync(ctx: SyncContext): SyncVerdict {
   // caller re-runs this on visibilitychange rather than waiting for a timer.
   if (!ctx.visible) return { run: false, reason: "hidden", retryInMs: null };
 
+  // A front-desk computer left showing Journey overnight used to pull every
+  // fifteen minutes until morning, for a schedule nobody was reading. The
+  // Refresh button is never gated by this; only the background pull is.
+  if (ctx.withinPullHours === false)
+    return { run: false, reason: "after-hours", retryInMs: null };
+
   const due = nextDueAt(ctx);
   if (due == null) return { run: true, reason: "never-synced" };
   if (ctx.now >= due) return { run: true, reason: "due" };
@@ -148,5 +163,90 @@ export function claimIsStillDue(
   return (
     ctx.now >=
     freshLastSyncAt + intervalWithBackoff(ctx.intervalMinutes, ctx.failures)
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * THE LEAN PULL (Sep 25 2026)
+ *
+ * Every background pull used to ask Mindbody for the next 31 days and look
+ * up every client in them again, fifteen minutes after the last one asked
+ * the same thing. At ~12 calls a pull and ~50 pulls a day that was ~600
+ * Mindbody calls a studio a day, nine tenths of Journey's running cost at 50
+ * studios (the Atlas, Sep 25). AJ's brief: far cheaper, without a trainer
+ * missing a same-day cancellation, and Refresh always there to be sure.
+ *
+ * So the fifteen-minute pull now asks only for today and tomorrow — the days
+ * the Hub watches live — and the whole month is asked for a few times a day:
+ * the first pull of the studio's day and the first after each of
+ * DEEP_PULL_HOURS. Which one a pull is follows from ONE fact every iPad
+ * already shares, the lease's `lastScheduleSyncAt`: a pull whose previous
+ * pull fell in an earlier block of the studio's day reaches the whole month.
+ * No new field, so no new permission and no rules deploy.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Studio-local hours at which the next pull reaches the whole month. The
+ * first pull of the day always does (it is in block 0). A booking made for
+ * two or more days out therefore shows within about four hours in open
+ * hours, or at once on Refresh; today and tomorrow are pulled every interval.
+ */
+export const DEEP_PULL_HOURS: readonly number[] = [0, 10, 14, 18];
+
+/** Which block of the studio's day an instant falls in, as "YYYY-MM-DD#n". */
+export function deepPullBlock(ms: number, timeZone: string): string | null {
+  const day = studioDateKey(new Date(ms), timeZone);
+  const hm = zonedHM(new Date(ms), timeZone);
+  if (!day || !hm) return null;
+  let block = 0;
+  DEEP_PULL_HOURS.forEach((h, i) => {
+    if (hm.hour >= h) block = i;
+  });
+  return `${day}#${block}`;
+}
+
+/**
+ * Should the pull about to run reach the whole month?
+ *
+ * Yes when there has never been a pull, when the last one failed (a failed
+ * whole-month pull must not wait four hours for its retry), or when the last
+ * one ran in an earlier block of the studio's day. `previousSyncAt` is the
+ * lease as the claiming device found it, before stamping its own claim.
+ */
+export function wantsDeepPull(
+  previousSyncAt: number | null | undefined,
+  now: number,
+  timeZone: string,
+  failures?: number | null,
+): boolean {
+  if (previousSyncAt == null) return true;
+  if ((failures ?? 0) > 0) return true;
+  const was = deepPullBlock(previousSyncAt, timeZone);
+  const is = deepPullBlock(now, timeZone);
+  if (!was || !is) return true;
+  return was !== is;
+}
+
+/** How far before opening and after closing the background pull still runs. */
+export const PULL_HOURS_MARGIN_MINUTES = 60;
+
+/**
+ * Is the studio inside its pull hours: from an hour before it opens to an hour
+ * after it closes, by the shift hours a leader set (Team → Standards), or
+ * 5:30 am to 8 pm when none are set. Refresh ignores this; it is only the
+ * background pull that stops.
+ */
+export function withinPullHours(
+  now: number,
+  timeZone: string,
+  shiftHours?: Parameters<typeof shiftHoursOf>[0],
+): boolean {
+  const hm = zonedHM(new Date(now), timeZone);
+  if (!hm) return true;
+  const hours = shiftHoursOf(shiftHours);
+  const nowMin = hm.hour * 60 + hm.minute;
+  return (
+    nowMin >= hours.open - PULL_HOURS_MARGIN_MINUTES &&
+    nowMin <= hours.close + PULL_HOURS_MARGIN_MINUTES
   );
 }

@@ -1273,3 +1273,84 @@ describe("syncMindbodySchedules — one Mindbody id, two different people", () =
     expect(scheduleWrites()[0].data.clientId).toBe(QUALIFIED);
   });
 });
+
+describe("syncMindbodySchedules — the lean pull (Sep 25 2026)", () => {
+  const FAR_STUDIO: Studio = {
+    id: "studio-far",
+    name: "Far",
+    ownerId: "o1",
+    timezone: "America/New_York",
+    mindbodySiteId: "5746957",
+    mindbodyLocationId: "1",
+  };
+  const STUDIOS = [...SHARED_SITE_STUDIOS, FAR_STUDIO];
+  const person = (over: Record<string, unknown>) =>
+    ({ height: "", isActive: true, remainingSessions: 0, ...over }) as unknown as Client;
+  // Found by the id rule and named: the only one the lookup may skip.
+  const ANN = person({ id: "mb-a", mindbodyClientId: "mb-a", firstName: "Ann", lastName: "Lee", homeStudioId: "studio-solon" });
+  // Carries the id at a doc the rule does not use: would be CREATED from the lookup's answer.
+  const LEGACY = person({ id: "legacy-7", mindbodyClientId: "mb-l", firstName: "Lou", lastName: "Legacy", homeStudioId: "studio-solon" });
+  // Found, but has no name to lend a booking.
+  const NAMELESS = person({ id: "mb-n", mindbodyClientId: "mb-n", firstName: "", lastName: "", homeStudioId: "studio-solon" });
+  // Another Mindbody site's person: never this site's client.
+  const FAR = person({ id: "mb-f", mindbodyClientId: "mb-f", firstName: "Fay", lastName: "Far", homeStudioId: "studio-far" });
+  const ROSTER = [ANN, LEGACY, NAMELESS, FAR];
+
+  const run = (skip: boolean) =>
+    syncMindbodySchedules(SITE, TRAINERS, ROSTER, STUDIOS, null, undefined, undefined, "studio-solon", "2", {
+      skipKnownClientLookups: skip,
+    });
+  const bodyOf = () => JSON.parse((global.fetch as any).mock.calls[0][1].body);
+  const scheduleOp = (id: string) => batchOps.find((op) => op.path === "schedules" && op.id === id);
+
+  it("asks the server to skip only clients it will certainly find and can name", async () => {
+    mockAppointments([appointment({ Id: 9001, ClientId: "mb-a", LocationId: 2 })]);
+    await run(true);
+    expect(bodyOf().skipClientLookupIds).toEqual(["mb-a"]);
+  });
+
+  it("sends no skip list unless asked, so the whole-month pull still looks everyone up", async () => {
+    mockAppointments([appointment({ Id: 9001, ClientId: "mb-a", LocationId: 2 })]);
+    await run(false);
+    expect(bodyOf().skipClientLookupIds).toBeUndefined();
+  });
+
+  it("names a new booking for a known client from Journey's record when Mindbody sends no name", async () => {
+    mockAppointments([
+      appointment({ Id: 9002, ClientId: "mb-a", ClientFirstName: "", ClientLastName: "", LocationId: 2 }),
+    ]);
+    await run(true);
+    const op = scheduleOp("9002");
+    expect(op?.kind).toBe("set");
+    expect(op?.data.clientId).toBe("mb-a");
+    expect(op?.data.clientName).toBe("Ann Lee");
+  });
+
+  it("keeps the name a row already carries and does not rewrite the row", async () => {
+    // First pull: Mindbody names her, and the row is written with that name.
+    mockAppointments([
+      appointment({ Id: 9003, ClientId: "mb-a", ClientFirstName: "Ann", ClientLastName: "Lee-Smith", LocationId: 2 }),
+    ]);
+    await run(false);
+    const written = scheduleOp("9003")?.data;
+    expect(written?.clientName).toBe("Ann Lee-Smith");
+
+    // A near pull skips her lookup: no name comes back, and nothing else moved.
+    batchOps = [];
+    snapshots.schedules = [{ id: "9003", data: () => ({ ...written }) }];
+    mockAppointments([
+      appointment({ Id: 9003, ClientId: "mb-a", ClientFirstName: "", ClientLastName: "", LocationId: 2 }),
+    ]);
+    const result = await run(true);
+    expect(scheduleOp("9003")).toBeUndefined();
+    expect(result.skipped).toBeGreaterThan(0);
+  });
+
+  it("still calls a booking for a client it cannot place 'Unknown Client'", async () => {
+    mockAppointments([
+      appointment({ Id: 9004, ClientId: null, ClientFirstName: "", ClientLastName: "", LocationId: 2 }),
+    ]);
+    await run(true);
+    expect(scheduleOp("9004")?.data.clientName).toBe("Unknown Client");
+  });
+});

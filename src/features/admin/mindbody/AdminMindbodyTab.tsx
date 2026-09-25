@@ -499,7 +499,11 @@ export function AdminMindbodyTab({
                 <option value="off">Off</option>
               </AdminSelect>
             </AdminField>
-            <AdminField label="Every" htmlFor="mb-interval">
+            <AdminField
+              label="Every"
+              htmlFor="mb-interval"
+              hint="Checks today and tomorrow this often during opening hours, and the whole month four times a day. Refresh on any iPad always checks through next week."
+            >
               <AdminSelect
                 id="mb-interval"
                 value={String(selectedRow.intervalMinutes)}

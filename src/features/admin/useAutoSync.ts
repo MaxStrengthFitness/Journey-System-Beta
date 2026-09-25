@@ -14,8 +14,11 @@ import type { Client, Studio, Trainer } from "../../types";
 import {
   claimIsStillDue,
   decideSync,
+  wantsDeepPull,
+  withinPullHours,
   type SyncVerdict,
 } from "./syncPolicy";
+import { DEFAULT_TIME_ZONE, isValidTimeZone } from "../../lib/studio-time";
 
 /** How often the policy is re-checked when it says "not due yet". */
 const TICK_MS = 60_000;
@@ -23,6 +26,8 @@ const TICK_MS = 60_000;
 export interface AutoSyncState {
   /** The last verdict, for the Integrations screen to explain itself with. */
   verdict: SyncVerdict | null;
+  /** What the last pull this device ran asked for: today and tomorrow, or the month. */
+  lastPull: "near" | "deep" | null;
   running: boolean;
   lastError: string | null;
 }
@@ -65,6 +70,7 @@ export function useAutoSync({
   const [verdict, setVerdict] = useState<SyncVerdict | null>(null);
   const [running, setRunning] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastPull, setLastPull] = useState<"near" | "deep" | null>(null);
 
   // Read through refs inside the timer so a new schedule snapshot — which
   // arrives constantly — does not tear down and rebuild the timer, which is
@@ -79,6 +85,9 @@ export function useAutoSync({
     if (!studio?.id) return;
 
     const now = Date.now();
+    const timeZone = isValidTimeZone(studio.timezone)
+      ? (studio.timezone as string)
+      : DEFAULT_TIME_ZONE;
     const ctx = {
       now,
       enabled: studio.autoSyncEnabled ?? true,
@@ -90,6 +99,7 @@ export function useAutoSync({
         typeof document === "undefined" || document.visibilityState !== "hidden",
       online: typeof navigator === "undefined" ? true : navigator.onLine,
       configured: isSyncConfigured(studio, studios),
+      withinPullHours: withinPullHours(now, timeZone, studio.shiftHours),
     };
 
     const decision = decideSync(ctx);
@@ -101,6 +111,10 @@ export function useAutoSync({
     // this line at once; the transaction is what makes exactly one win.
     const studioRef = doc(db, "studios", studio.id);
     let claimed = false;
+    // Decided inside the claim, from the lease as the winner found it: see
+    // wantsDeepPull. Every device reads the same field, so the studio gets one
+    // whole-month pull per block of its day, whoever happens to win it.
+    let deep = true;
     try {
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(studioRef);
@@ -114,6 +128,12 @@ export function useAutoSync({
         ) {
           return;
         }
+        deep = wantsDeepPull(
+          fresh?.lastScheduleSyncAt ?? null,
+          now,
+          timeZone,
+          fresh?.scheduleSyncFailures ?? 0,
+        );
         // Written BEFORE the sync, not after. A sync that crashes half way
         // must still hold the lease for one interval, or every device retries
         // the failure together — which is the storm this exists to prevent.
@@ -129,18 +149,27 @@ export function useAutoSync({
     runningRef.current = true;
     setRunning(true);
     try {
-      const { syncMindbodySchedules } = await import("../../lib/mindbody-api-sync");
+      const { syncMindbodySchedules, syncWindow, NEAR_WINDOW_DAYS } = await import(
+        "../../lib/mindbody-api-sync"
+      );
+      // The whole month: no window (the default is DEEP_WINDOW_DAYS), and every
+      // client looked up, which is what keeps names and blank contact fields
+      // current. Otherwise today and tomorrow, looking up only clients Journey
+      // has never seen: one page and a lookup or two instead of ~12 calls.
+      const near = deep ? null : syncWindow(timeZone, NEAR_WINDOW_DAYS, new Date(now));
       const res = await syncMindbodySchedules(
         String(studio.mindbodySiteId),
         trainers,
         clients,
         studios,
         null,
-        undefined,
-        undefined,
+        near?.start,
+        near?.end,
         studio.id,
         studio.mindbodyLocationId,
+        { skipKnownClientLookups: !deep },
       );
+      setLastPull(deep ? "deep" : "near");
       const failed = (res.errors?.length ?? 0) > 0;
       setLastError(failed ? res.errors[0] : null);
       await runTransaction(db, async (tx) => {
@@ -199,5 +228,5 @@ export function useAutoSync({
     };
   }, [enabled, activeStudioId, attempt]);
 
-  return { verdict, running, lastError };
+  return { verdict, running, lastError, lastPull };
 }
