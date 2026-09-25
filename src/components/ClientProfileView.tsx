@@ -426,8 +426,10 @@ export function ClientProfileView({
    * not the studio this iPad is at. It also counts Mindbody's own visit
    * number, so a long-standing client nobody has written a prior record for
    * reads "partial" rather than "unknown". One value, handed to Programming
-   * and to every page of Notes & Profile. The home is read as the rules read
-   * it (`recordStudioIdOf`: `homeStudioId`, else the older `studioId`).
+   * and to every page of Notes & Profile. The home is `recordStudioIdOf`:
+   * `homeStudioId`, else the older `studioId` (leniently, also when the home
+   * is null - right for a cutover; who may EDIT the record reads the home as
+   * the update rule does, `ruleStudioIdOf`, in `codexAccess`).
    *
    * The floor screens (the Active Session, the Clients list) still pass the
    * cutover of the studio the iPad is at, so for a cross-train client the

@@ -11,12 +11,21 @@
  *   canEdit       The clients/{id} update rule: an administrator, or anyone
  *                 who trains at or leads the client's HOME studio (the grant
  *                 and Demo Mode included). That is exactly what
- *                 `canRecordInBody` already mirrors (inbody/access.ts), and
- *                 the rule reads the home the same way `getStudioIdFromData`
- *                 does: `homeStudioId`, else the older `studioId`. A
- *                 cross-train studio and a franchise owner who does not work
- *                 there READ the record and are offered no editor.
+ *                 `canRecordInBody` already mirrors (inbody/access.ts), with
+ *                 the home read EXACTLY as `getStudioIdFromData` reads it
+ *                 (`ruleStudioIdOf`, client-profile/prior-history-door.ts):
+ *                 the older `studioId` only when `homeStudioId` is ABSENT. A
+ *                 null or empty home is what the rule sees, and it refuses
+ *                 the write, so nobody but an administrator is offered Edit
+ *                 there — the same answer the prior-history door on the
+ *                 Account page gives. A cross-train studio and a franchise
+ *                 owner who does not work there READ the record and are
+ *                 offered no editor.
  *   fordReadable  The FORD read rule: the same people, plus franchise owners.
+ *                 That rule reads the DETAIL's stamped studio, not the
+ *                 client document, so this uses `homeStudioId` below (the
+ *                 lenient home a detail is stamped with), not the update
+ *                 rule's reading.
  *                 A cross-train visitor is refused FORD by the database, so
  *                 the tab never opens a FORD listener for them (it would only
  *                 fail) and says whose record it is instead.
@@ -36,6 +45,7 @@ import { canRecordInBody } from "../inbody/access";
 import { leadsStudio, worksAt } from "../renewals/permissions";
 import { hasRunOfDemo } from "../demo-mode/access";
 import { FRANCHISE_ROLES } from "../../lib/staff-access";
+import { ruleStudioIdOf } from "../client-profile/prior-history-door";
 
 export interface CodexAccess {
   /** May change the client document (the one Save bar), and so see its editors. */
@@ -44,7 +54,12 @@ export interface CodexAccess {
   fordReadable: boolean;
   /** May add a FORD detail for her (the create rule: trains at or leads her home studio). */
   fordWritable: boolean;
-  /** The studio the record belongs to: `homeStudioId`, else the older `studioId`. */
+  /**
+   * The studio the record belongs to: `homeStudioId`, else the older
+   * `studioId` (`recordStudioIdOf`). For the name, the coverage cutover and
+   * the studio a FORD detail is stamped with — NOT the update rule's
+   * reading, which is `ruleStudioIdOf`.
+   */
   homeStudioId: string | null;
   /** That studio's name, or null while the studios are not loaded (never a guess). */
   homeStudioName: string | null;
@@ -56,7 +71,13 @@ export interface RecordStudioFields {
   studioId?: string | null;
 }
 
-/** The studio the rules treat as the client's own (firestore.rules getStudioIdFromData). */
+/**
+ * The client's own studio, read leniently: `homeStudioId`, else the older
+ * `studioId` — also when the home is null or empty. Right for naming the
+ * studio and for its cutover. NOT the clients/{id} update rule's reading:
+ * `getStudioIdFromData` falls back to `studioId` only when `homeStudioId` is
+ * absent, so a permission uses `ruleStudioIdOf` instead.
+ */
 export function recordStudioIdOf(client: RecordStudioFields | null | undefined): string | null {
   const id = client?.homeStudioId || client?.studioId || "";
   return id ? id : null;
@@ -70,9 +91,11 @@ export function codexAccess(
   studios: readonly Pick<Studio, "id" | "name">[] | null | undefined,
 ): CodexAccess {
   const homeStudioId = recordStudioIdOf(client);
-  const canEdit = canRecordInBody(trainer ?? null, homeStudioId);
+  // The update rule's own reading of the home (absent-only fallback).
+  const canEdit = canRecordInBody(trainer ?? null, ruleStudioIdOf(client));
   const role = typeof trainer?.role === "string" ? trainer.role : "";
-  const fordReadable = canEdit || (Boolean(trainer) && FRANCHISE_ROLES.has(role));
+  const fordReadable =
+    canRecordInBody(trainer ?? null, homeStudioId) || (Boolean(trainer) && FRANCHISE_ROLES.has(role));
   // The FORD create rule has no administrator or franchise clause: only the
   // studio's own people (isTrainerOfStudio), mirrored here.
   const fordWritable =

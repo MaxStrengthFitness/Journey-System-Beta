@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Trainer } from "../../types";
 import { codexAccess, readOnlyLine, recordStudioIdOf } from "./access";
+import { canEditPriorHistory } from "../client-profile/prior-history-door";
 
 /**
  * codexAccess mirrors two rules, and a trainer is offered exactly what they
@@ -96,6 +97,24 @@ describe("codexAccess", () => {
   it("reads the home from the older studioId when homeStudioId is missing", () => {
     expect(recordStudioIdOf({ studioId: "s-home" })).toBe("s-home");
     expect(codexAccess(trainer({ primaryHomeStudioId: "s-home" }), { studioId: "s-home" }, studios).canEdit).toBe(true);
+  });
+
+  it("reads the home as the update rule does: a null or empty home does not fall back to studioId", () => {
+    // firestore.rules getStudioIdFromData: data.get('homeStudioId',
+    // data.get('studioId', null)) - the older field only when the home is
+    // ABSENT. Offering Edit here would be refused at save, while the
+    // prior-history door on the same Account card opens read only.
+    const here = trainer({ primaryHomeStudioId: "s-home" });
+    for (const home of [null, ""]) {
+      const legacy = { homeStudioId: home, studioId: "s-home" };
+      const a = codexAccess(here, legacy, studios);
+      expect(a.canEdit, String(home)).toBe(false);
+      expect(canEditPriorHistory(here, legacy), String(home)).toBe(false);
+      // Still named, and still her studio for FORD (a detail carries its own studio).
+      expect(a.homeStudioId).toBe("s-home");
+      expect(a.fordReadable).toBe(true);
+      expect(codexAccess(trainer({ role: "Admin" }), legacy, studios).canEdit).toBe(true);
+    }
   });
 
   it("lets only administrators edit a client with no studio at all", () => {
