@@ -18,7 +18,7 @@ The website marks Committed "most popular". The app never does: nothing it holds
 - Every package is advertised with **"Get 2 free workouts!"**
 - **"Double Transformation Guarantee"**:
   1. A 30-day satisfaction guarantee: no questions asked, 100% money back. **It covers monthly payers too** (AJ, Sep 24 2026), though the website still marks it as a prepay benefit.
-  2. If a client shows up consistently twice a week, gives 100% effort and is not 100% happy with their progress, the studio buys them 6 months at any other gym. Whether this half also covers monthly payers is **not yet confirmed**; the packages screen says "when you pay in full" until it is.
+  2. If a client shows up consistently twice a week, gives 100% effort and is not 100% happy with their progress, the studio buys them 6 months at any other gym. **It does not cover monthly payers** (AJ, Sep 24 2026: "does not guarantee monthly payers"); the packages screen says "when you pay in full".
 - **Upgrading:** within the first 30 days, or at renewal, a client can upgrade to any other package, however they pay (AJ, Sep 24 2026; the Academy's consultation script). The contract change, and any credit, is done in Mindbody.
 - **What uses a session:** coming in, or cancelling with less than 24 hours' notice (AJ, Sep 24 2026: "You only lose a session if you cancel within 24 hours"). Time away does not.
 
@@ -36,7 +36,7 @@ A "12-month" package bills for 48 weeks, roughly 11 calendar months, when the cl
 
 ## Sessions never expire
 
-AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. **Confirmed for every studio on Sep 24 2026** ("sessions don't expire"). The Academy's consultation script still says 30, 60 or 90 days to use leftover sessions and "we no longer bill you or auto renew you"; both lines are out of date, and softening them is waiting on AJ's word in the chat (the packages round). This is generous and it creates the studio's biggest renewal headache:
+AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. **Confirmed for every studio on Sep 24 2026** ("sessions don't expire"). The Academy's consultation script still says 30, 60 or 90 days to use leftover sessions and "we no longer bill you or auto renew you"; both lines are out of date, and AJ decided on Sep 24 to leave the Academy as it is. This page and the packages screen carry the current rules. This is generous and it creates the studio's biggest renewal headache:
 
 - A client who averages 1.5 visits a week takes about 64 weeks — nearly 15 months — to use a Committed package that bills for 48.
 - Where a contract auto-renews, it renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one.

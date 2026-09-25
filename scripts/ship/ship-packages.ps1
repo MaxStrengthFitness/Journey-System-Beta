@@ -1,6 +1,6 @@
 <#
  ship-packages.ps1  -  the packages screen (consultation build step 1) to master
- SCRIPT-VERSION: v1  (Sep 24 2026)
+ SCRIPT-VERSION: v2  (Sep 24 2026: the cross-train fix, and its rules deploy)
 
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-packages.ps1 prepare
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-packages.ps1 golive
@@ -14,6 +14,10 @@
      3. an adversarial review's ten fixes
      4. the "Packages at {studio}" card on the post-session screen, a machine
         name that wraps, and the dose Dial's "Saved" only when it saved
+     5. a cross-train visitor's Finish saves (docs/KNOWN-TRAPS.md#cross-train):
+        the rules let a trainer at a studio the client is approved at write
+        the session's totals and nothing else, and Finish writes the totals
+        after the session, so a refused total never costs the session
    Then the round written down and this script.
 
  SHIP THE LANDING FIRST, with its own script (ship-landing-sep24.ps1).
@@ -24,13 +28,15 @@
    behind.
 
  WHAT CHANGES IN FIRESTORE
-   Nothing in firestore.rules, firestore.indexes.json or functions\. So
-   there is no rules deploy, no index deploy and no Functions deploy:
-   go-live is the checks, then the push. prepare checks the three against
-   master and STOPS if any changed. The one new field, renewsAutomatically,
-   sits inside a package row of studios/{s}/config/renewals, which the rules
-   do not inspect, and is written only when a studio answers the new
-   "When the payments finish" question.
+   firestore.rules: ONE change, the cross-train branch of the clients update
+   rule (crossTrainSessionTotals). It only ADDS access, so it deploys first:
+   the running app is unaffected, and the new app finds its rules waiting.
+   firestore.indexes.json and functions\: unchanged, so no index deploy and
+   no Functions deploy; prepare checks both against master and STOPS if
+   either changed. The one new stored field, renewsAutomatically, sits
+   inside a package row of studios/{s}/config/renewals, which the rules do
+   not inspect, and is written only when a studio answers the new "When the
+   payments finish" question.
 
  WHAT DEPLOYS WITH THE PUSH (Render: the web service and its cron jobs)
    Only what the landing carries, if it has not shipped yet: prepare lists
@@ -43,8 +49,9 @@
 
  prepare  reads only; writes logs\ and dist\. In order: the branch, a clean
           tree, the fetch, master is in the branch (a fast-forward), the
-          landing is in the branch, what goes live, the rules, indexes and
-          Functions unchanged, the server files that deploy, the case check,
+          landing is in the branch, what goes live, indexes and Functions
+          unchanged, the rules change listed, the Firebase login (golive
+          needs it), the server files that deploy, the case check,
           the typecheck COUNT, the suite in Eastern time, the rules tests
           (THE run that counts; port 8080 checked first, and an emulator
           this run leaves behind is stopped), the production build. Stops at
@@ -57,16 +64,20 @@
           fix) has not been tested, typechecked or built, so prepare runs
           again first.
 
-          Then it asks for GO. Tags master as it is now (the restore point;
-          a tag left from an earlier try is used only if it is still master)
-          and pushes the tag, then pushes packages-screen to master. RENDER
-          DEPLOYS THE APP. Master is never checked out.
+          Then it asks for GO. Deploys firestore.rules to production
+          (project 'prod'; if that fails, nothing is pushed), then tags
+          master as it is now (the restore point; a tag left from an earlier
+          try is used only if it is still master) and pushes the tag, then
+          pushes packages-screen to master. RENDER DEPLOYS THE APP. Master is
+          never checked out.
 
  TO UNDO THE APP: master goes back to the restore tag
    restore/2026-09-24-before-packages (ask Claude; it is a force push of the
    tag to master). Nothing in Firestore needs undoing: a studio's
    renewsAutomatically stays in its package row, which the app before this
-   round ignores.
+   round ignores, and the new rules only let a visitor's session totals
+   through. To undo the rules too, deploy firestore.rules from the tag (ask
+   Claude).
 
  ASCII only on purpose (Windows PowerShell 5.1 reads a script as ANSI).
 #>
@@ -189,13 +200,20 @@ if ($Stage -eq 'prepare') {
   # A pass from an earlier run no longer counts once prepare starts again.
   if (Test-Path $PreparedFile) { Remove-Item -Force $PreparedFile }
 
-  # ---- no rules, index or Functions change: this script deploys none of them --
-  & git --no-optional-locks diff --quiet origin/master $Branch -- firestore.rules firestore.indexes.json functions
+  # ---- no index or Functions change: this script deploys neither -------------
+  & git --no-optional-locks diff --quiet origin/master $Branch -- firestore.indexes.json functions
   if ($LASTEXITCODE -ne 0) {
-    & git --no-optional-locks diff --stat origin/master $Branch -- firestore.rules firestore.indexes.json functions | ForEach-Object { Log "   $_" 'Red' }
-    Stop-Here 'the branch changes firestore.rules, firestore.indexes.json or functions\, which this script does not deploy. Ask Claude.'
+    & git --no-optional-locks diff --stat origin/master $Branch -- firestore.indexes.json functions | ForEach-Object { Log "   $_" 'Red' }
+    Stop-Here 'the branch changes firestore.indexes.json or functions\, which this script does not deploy. Ask Claude.'
   }
-  Log 'firestore.rules, firestore.indexes.json and functions\: unchanged. No rules, index or Functions deploy.' 'Green'
+  Log 'firestore.indexes.json and functions\: unchanged. No index or Functions deploy.' 'Green'
+  Log 'firestore.rules changes (the cross-train branch); the rules tests below must pass, and golive deploys it before the push:' 'Yellow'
+  & git --no-optional-locks diff --stat origin/master $Branch -- firestore.rules | ForEach-Object { Log "   $_" 'Yellow' }
+
+  # golive deploys the rules, so the Firebase login is checked now, not then.
+  $fl = Run 'Firebase login' 'npx firebase login:list'
+  Must $fl 'the Firebase login check'
+  if (-not (@($fl.Output) -match '@')) { Stop-Here 'no Firebase login on this PC. Run: npx firebase login, then prepare again.' }
 
   # ---- what deploys with the web service and its cron jobs --------------------
   $serverFiles = @(& git --no-optional-locks diff --name-only origin/master $Branch -- server.ts server render.yaml | Where-Object { $_ })
@@ -268,10 +286,15 @@ if ($prepared[1] -ne $MasterSha) {
   Stop-Here 'master has moved since prepare passed. Run prepare again.'
 }
 Log "prepare passed on this commit ($($BranchSha.Substring(0, 7))) onto this master ($($MasterSha.Substring(0, 7)))." 'Green'
-Log "golive: the restore point, then $Branch to master. No rules, index or Functions deploy (nothing changed)." 'White'
+Log "golive: the rules to production, the restore point, then $Branch to master. No index or Functions deploy (neither changed)." 'White'
 Write-Host ''
-Write-Host "Pushing $Branch to master deploys the app and its cron jobs on Render." -ForegroundColor Yellow
-if ((Read-Host 'Type GO to push') -ne 'GO') { Log 'Nothing pushed.' 'Yellow'; exit 0 }
+Write-Host "This deploys firestore.rules to production, then pushing $Branch to master deploys the app and its cron jobs on Render." -ForegroundColor Yellow
+if ((Read-Host 'Type GO to deploy the rules and push') -ne 'GO') { Log 'Nothing deployed, nothing pushed.' 'Yellow'; exit 0 }
+
+# ---- the rules first: they only add access, so the running app is unaffected --
+$rules = Run 'deploy firestore.rules (project prod)' 'npx firebase deploy --only firestore:rules --project prod'
+if ($rules.Code -ne 0) { Stop-Here 'the rules deploy failed. The live app is unchanged.' }
+Log 'Rules deployed to production.' 'Green'
 
 $tagOnGitHub = & git --no-optional-locks ls-remote --tags origin "refs/tags/$RestoreTag"
 if (-not $tagOnGitHub) {
@@ -296,5 +319,5 @@ $push = Run "git push origin ${Branch}:master" "git push origin ${Branch}:master
 Must $push 'the push (Render deploys from it)'
 
 Log "GOLIVE COMPLETE. master = $((& git --no-optional-locks rev-parse --short origin/master).Trim())." 'Green'
-Log 'Watch the deploy finish on Render, reload every iPad, then walk Round 17 of docs/ops/TESTING-CHECKLIST.md (and 14 to 16 if the landing came with this push) signed in as a Life Transformer (not an administrator).' 'Green'
+Log 'Watch the deploy finish on Render, reload every iPad, then walk Rounds 17 and 18 of docs/ops/TESTING-CHECKLIST.md (and 14 to 16 if the landing came with this push) signed in as a Life Transformer (not an administrator).' 'Green'
 exit 0

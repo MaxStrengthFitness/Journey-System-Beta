@@ -103,6 +103,6 @@ How big an InBody change must be before any screen calls it a change — each st
 ## Studio boundaries
 
 - Every client has a **home studio** (where they are billed and mainly train).
-- A client can be approved to **cross-train** at other studios; trainers there can then read the client, but editing stays with the home studio.
+- A client can be approved to **cross-train** at other studios; trainers there can then read the client, but editing stays with the home studio. The one exception is a session: a trainer at a studio the client is approved at can run and finish her session there, and Journey updates her session count, last session and starting weights (Sep 24 2026). Her name, her home studio, her approvals, her medical history and her package stay with the home studio.
 - Trainers can have **guest** access to other studios.
 - Queries always name the studios they read (`src/lib/tenancy.ts`), and the rules check the same thing.

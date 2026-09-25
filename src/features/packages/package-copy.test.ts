@@ -157,7 +157,7 @@ describe("the guarantee", () => {
     expect(GUARANTEE_LINES.map((l) => l.rest).join(" ")).not.toMatch(/\bmove\b/);
   });
 
-  it("does not promise the gym clause to monthly payers until AJ says it covers them", () => {
+  it("limits the gym clause to paying in full (AJ, Sep 24: it does not guarantee monthly payers)", () => {
     expect(GUARANTEE_LINES[1].rest).toMatch(/when you pay in full/);
   });
 });

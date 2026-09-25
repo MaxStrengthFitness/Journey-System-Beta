@@ -5,11 +5,10 @@
  * Where the words come from:
  *   - The guarantee and "upgrade in the first 30 days": AJ, Sep 24 2026 (the
  *     consultation proposal's comments). The 30-day money-back covers
- *     monthly payers too; upgrading applies however they pay. Whether the
- *     second clause (six months at another gym) covers monthly payers was
- *     not asked, and the website marks the guarantee as a paid-in-full
- *     benefit, so that clause says "when you pay in full" until AJ says
- *     otherwise.
+ *     monthly payers too; upgrading applies however they pay. The second
+ *     clause (six months at another gym) does NOT cover monthly payers (AJ,
+ *     Sep 24: "does not guarantee monthly payers"), so it says "when you pay
+ *     in full".
  *   - After the last payment: sessions never expire, anywhere (AJ, Sep 24);
  *     whether a package renews by itself is each studio's answer, per
  *     package (renewals/settings.ts `renewsAutomatically`). Until a studio

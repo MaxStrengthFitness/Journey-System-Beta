@@ -1147,6 +1147,29 @@ the last item, a studio leader.
   Today wraps instead of ending in "…"; the dose Dial shows "Saved" only after
   it really saved (turn the iPad's wifi off, tap a dose: no "Saved").
 
+## Round 18 — A cross-train visitor finishes her session · *Sep 24 2026, branch `packages-screen`*
+
+Before this release a trainer at another studio could open a cross-train
+client and start her session, but Finish saved nothing. The fix is in the
+rules and in Finish; the entry is `docs/KNOWN-TRAPS.md#cross-train`. Needs a
+client approved to cross-train at a second studio, and a Life Transformer
+whose home is that second studio.
+
+- [ ] **The visitor's session saves.** Signed in as the visiting trainer, at
+  the second studio: start the client's session, log two or three machines,
+  Finish. The post-session screen appears with no error, and her History
+  (on either iPad) shows today's session with its sets.
+- [ ] **Her totals moved too.** On her profile the session count went up by
+  one and the last session is today; on the next session, the machines you
+  logged start from today's weights. *If the toast "Session saved. {name}'s
+  session count and starting weights didn't update from this iPad." shows:*
+  the rules on the live project are older than this release - redeploy them.
+- [ ] **The visitor still can't edit her record.** As the same visiting
+  trainer, open Notes & Profile: "Read only here · {home} keeps this record.
+  Notes you write still save." - no Edit, no Save bar.
+- [ ] **Her home studio is unchanged.** As a trainer at her home studio, the
+  record edits and saves as before, and a session there finishes as before.
+
 ---
 
 ## Findings log
