@@ -89,6 +89,27 @@ export function priorHistoryDoorText(
     : "None before Journey";
 }
 
+/**
+ * The door as a screen draws it: the words, whether it opens to edit or to
+ * read, and what opens the editor. The profile works it out once and hands
+ * the same object to both doors — the header's Completed sessions tile and
+ * the client codex's Account page (landing, Sep 24 2026) — so the two can
+ * never say different things or apply different rules. The editor itself
+ * lives in ClientProfileView.
+ */
+export interface PriorHistoryDoorState {
+  /** "412 before Journey · FileMaker", or "Add sessions before Journey". */
+  text: string;
+  /** False: the editor opens read-only, because the rules refuse this person's write. */
+  canEdit: boolean;
+  onOpen: () => void;
+}
+
+/** What the door says to a screen reader, on every door. */
+export function priorHistoryDoorLabel(door: Pick<PriorHistoryDoorState, "text" | "canEdit">): string {
+  return `Sessions before Journey: ${door.text}. ${door.canEdit ? "Open to edit." : "Open to read."}`;
+}
+
 /** The editor's fields, as typed. */
 export interface PriorHistoryDraft {
   sessions: string;

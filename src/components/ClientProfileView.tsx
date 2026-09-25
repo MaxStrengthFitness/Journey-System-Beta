@@ -613,6 +613,23 @@ export function ClientProfileView({
     setIsEditingSessionCount(open);
   };
 
+  /*
+   * The door, worked out once and handed to both places that draw it: the
+   * header's Completed sessions tile and the client codex's Account page
+   * (landing, Sep 24 2026). Opening reads the record at the moment of the
+   * tap (through the ref), so a door handed down in a memo never seeds the
+   * editor from an older snapshot.
+   */
+  const openPriorEditor = useRef(openSessionCountEditor);
+  openPriorEditor.current = openSessionCountEditor;
+  const priorHistoryDoor = useMemo(
+    () =>
+      priorDoorText
+        ? { text: priorDoorText, canEdit: canEditPrior, onOpen: () => openPriorEditor.current(true) }
+        : null,
+    [priorDoorText, canEditPrior],
+  );
+
   /**
    * Writes the OFFSET, never the total.
    *
@@ -1107,7 +1124,8 @@ export function ClientProfileView({
    *
    * The session numbers are the header's own ("461 · 49 in Journey · 412
    * before"), so no page can disagree with it; Journey's count is null until
-   * it answers for this client.
+   * it answers for this client. So is the door to Sessions before Journey:
+   * Account draws the header's own (its words, its rule, this view's editor).
    */
   const codexHosts = useMemo<CodexHosts>(
     () => ({
@@ -1119,10 +1137,11 @@ export function ClientProfileView({
       },
       onOpenMachine: openMachineWindow,
       onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
+      priorHistoryDoor,
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setView, openMachineWindow, nav.go, nav.setTab],
+    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.
@@ -1419,15 +1438,7 @@ export function ClientProfileView({
         completedCount={completedTotal}
         sessionsQuotable={canQuoteNumber}
         priorLabel={priorLabel}
-        priorHistoryDoor={
-          priorDoorText
-            ? {
-                text: priorDoorText,
-                canEdit: canEditPrior,
-                onOpen: () => openSessionCountEditor(true),
-              }
-            : undefined
-        }
+        priorHistoryDoor={priorHistoryDoor ?? undefined}
         topTrainer={topTrainer}
         trainers={trainers}
         pkg={clientPackage}

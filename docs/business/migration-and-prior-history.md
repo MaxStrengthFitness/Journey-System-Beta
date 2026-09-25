@@ -97,6 +97,9 @@ FileMaker", or "Add sessions before Journey" when nothing is recorded yet
 who can edit the client — a trainer or leader at their home studio, or an
 administrator, exactly the `clients/{id}` update rule — can change it. Anyone
 else who can open the profile can read it, with who recorded it and when.
+The same door is on **Notes & Profile → Account**, under the contract history
+(whose first tile is the years before Journey): the header's own, with its
+words and its rule, opening the same editor (landing, Sep 24 2026).
 
 The editor asks for the four things a person can know: how many, counted up
 to when, from where, and a note. `statePriorHistory()` in

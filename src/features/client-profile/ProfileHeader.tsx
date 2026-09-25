@@ -34,6 +34,7 @@ import { BrandTiles } from "./BrandTiles";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
 import { sessionCountLabel } from "../../lib/history-claims";
+import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "./prior-history-door";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -122,14 +123,10 @@ export interface ProfileHeaderProps {
 /**
  * The door to Sessions before Journey (Sep 24 2026). The words come from
  * `priorHistoryDoorText`; the editor it opens lives in ClientProfileView.
+ * The type lives beside the rule (prior-history-door.ts), because the
+ * client codex's Account page opens the same door.
  */
-export interface PriorHistoryDoorState {
-  /** "412 before Journey · FileMaker", or "Add sessions before Journey". */
-  text: string;
-  /** False: the editor opens read-only, because the rules refuse this person's write. */
-  canEdit: boolean;
-  onOpen: () => void;
-}
+export type { PriorHistoryDoorState } from "./prior-history-door";
 
 /** What the package tile says about the renewal, and where a tap goes. */
 export interface RenewalTileState {
@@ -290,7 +287,7 @@ function PriorHistoryDoor({ text, canEdit, onOpen }: PriorHistoryDoorState) {
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Sessions before Journey: ${text}. ${canEdit ? "Open to edit." : "Open to read."}`}
+      aria-label={priorHistoryDoorLabel({ text, canEdit })}
       title={canEdit ? "Sessions before Journey — tap to edit" : "Sessions before Journey — tap to read"}
       className="group -my-2 py-2 flex min-h-10 max-w-full items-center text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a548b]"
     >

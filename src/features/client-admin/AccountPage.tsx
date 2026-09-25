@@ -35,7 +35,10 @@
  * and the tab's one FORD stream, so the page opens no listener. The
  * Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it switches
  * to Journey, where imported sessions land, and is offered only to a reader
- * who may change the record.
+ * who may change the record. So is the door to Sessions before Journey
+ * (`priorHistoryDoor`, landing Sep 24 2026): the header's own, drawn again
+ * under the contract history, where the years before Journey are the first
+ * tile.
  */
 import type { Client, Studio } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
@@ -44,6 +47,7 @@ import type { FordAuthor } from "../ford/ford-write";
 import type { CodexFordStatus } from "../client-codex/codex-data";
 import { Page, type CodexGo, type Pronouns } from "../client-codex/kit";
 import type { RecordForm } from "../client-codex/useRecordForm";
+import type { PriorHistoryDoorState } from "../client-profile/prior-history-door";
 import { ContactCard } from "./ContactCard";
 import { IntakeNotesCard } from "./IntakeNotesCard";
 import { MembershipSection } from "./MembershipSection";
@@ -79,6 +83,8 @@ export interface AccountPageProps {
   today: string;
   go: CodexGo;
   onOpenMigrationHub?: () => void;
+  /** The header's door to Sessions before Journey, drawn on the contract history. */
+  priorHistoryDoor?: PriorHistoryDoorState | null;
   /** For ages and "synced 2 days ago"; the real clock when left out. */
   now?: Date;
 }
@@ -96,6 +102,7 @@ export function AccountPage({
   today,
   go,
   onOpenMigrationHub,
+  priorHistoryDoor,
   now,
 }: AccountPageProps) {
   const lede = accountLede(client, canEdit, p);
@@ -131,6 +138,7 @@ export function AccountPage({
           pronouns={p}
           today={today}
           onOpenMigrationHub={onOpenMigrationHub}
+          priorHistoryDoor={priorHistoryDoor}
           now={now}
         />
       </div>

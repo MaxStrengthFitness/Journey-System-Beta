@@ -15,6 +15,11 @@
  * The Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it
  * switches to Journey, where imported sessions land, and the page offers it
  * only to a reader who may change the record.
+ *
+ * Sessions before Journey is the profile's too (`hosts.priorHistoryDoor`,
+ * landing Sep 24 2026): the header's door, handed over whole — its words,
+ * its rule (the clients update rule, `canEditPriorHistory`) and the one
+ * editor — so the page cannot word it or gate it differently.
  */
 import { AccountPage as AccountArea } from "../../client-admin/AccountPage";
 import type { CodexPageProps } from "../codex-data";
@@ -40,6 +45,7 @@ export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
       today={today}
       go={go}
       onOpenMigrationHub={hosts.onOpenMigrationHub}
+      priorHistoryDoor={hosts.priorHistoryDoor ?? null}
     />
   );
 }

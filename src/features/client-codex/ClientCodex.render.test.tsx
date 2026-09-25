@@ -525,6 +525,45 @@ describe("ClientCodex — pages", () => {
     expect(card).toContain("Injury and incident notes couldn't be loaded, so some may be missing.");
   });
 
+  it("opens Sessions before Journey from Account with the profile's own door (landing)", async () => {
+    const onOpen = vi.fn();
+    const withDoor: CodexHosts = {
+      ...hosts,
+      priorHistoryDoor: { text: "Add sessions before Journey", canEdit: true, onOpen },
+    };
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    mounted.push({ root, host });
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <ClientCodex
+            client={baseClient()}
+            authTrainer={homeTrainer}
+            liveTrainer={homeTrainer}
+            machines={MACHINES}
+            trainers={[homeTrainer]}
+            page="account"
+            navStamp={{}}
+            active
+            onNavigate={() => {}}
+            progressReports={[]}
+            progressReportsStatus="ready"
+            sessionTotals={{ total: 12, journey: 12, before: 0 }}
+            coverage="partial"
+            hosts={withDoor}
+          />
+        </StrictMode>,
+      );
+    });
+    await settle();
+    const door = panel(host, "account").querySelector<HTMLElement>('[data-action="prior-history"]');
+    expect(door?.textContent).toBe("Add sessions before Journey");
+    await click(door);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the Migration Hub from Account's fine print", async () => {
     vi.mocked(hosts.onOpenMigrationHub).mockClear();
     const host = await mount(baseClient(), homeTrainer, "account");

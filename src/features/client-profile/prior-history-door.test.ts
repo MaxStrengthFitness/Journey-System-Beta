@@ -4,6 +4,7 @@ import { recordImportedSessions, type PriorHistory } from "../../lib/prior-histo
 import {
   canEditPriorHistory,
   draftFromPrior,
+  priorHistoryDoorLabel,
   priorHistoryDoorText,
   readPriorHistoryDraft,
   recordedByLine,
@@ -167,5 +168,16 @@ describe("recordedByLine", () => {
     expect(recordedByLine(record)).toBeNull();
     expect(recordedByLine({ ...record, recordedByName: "  " })).toBeNull();
     expect(recordedByLine(null)).toBeNull();
+  });
+});
+
+describe("priorHistoryDoorLabel - what every door says to a screen reader", () => {
+  it("names the door and whether it opens to edit or to read, on the header and on Account alike", () => {
+    expect(priorHistoryDoorLabel({ text: "412 before Journey · FileMaker", canEdit: true })).toBe(
+      "Sessions before Journey: 412 before Journey · FileMaker. Open to edit.",
+    );
+    expect(priorHistoryDoorLabel({ text: "None before Journey", canEdit: false })).toBe(
+      "Sessions before Journey: None before Journey. Open to read.",
+    );
   });
 });

@@ -111,6 +111,7 @@ function Harness({
   author = { id: "uid-aj", name: "AJ" },
   coverage = "complete",
   onOpenMigrationHub,
+  priorHistoryDoor,
 }: {
   c: Client;
   probe?: Probe;
@@ -119,6 +120,7 @@ function Harness({
   author?: MembershipSectionProps["author"];
   coverage?: MembershipSectionProps["coverage"];
   onOpenMigrationHub?: () => void;
+  priorHistoryDoor?: MembershipSectionProps["priorHistoryDoor"];
 }) {
   const form = useRecordForm({ client: c, trainerId: "t-aj", canEdit, homeStudioName: "Solon" });
   probe.form = form;
@@ -135,6 +137,7 @@ function Harness({
           pronouns={pronounsOf(c)}
           today={TODAY}
           onOpenMigrationHub={onOpenMigrationHub}
+          priorHistoryDoor={priorHistoryDoor}
           now={NOW}
         />
       </div>
@@ -360,6 +363,55 @@ describe("MembershipSection — the contract history", () => {
   it("says when there is nothing on file, and where Sync is", async () => {
     const host = await mount(<Harness c={client({ mindbodyContracts: {}, mindbodyServices: {} } as Partial<Client>)} />);
     expect(host.textContent).toContain("No contracts or paid-in-full packages on file — Sync at the top of the profile pulls them.");
+  });
+});
+
+/*
+ * Sessions before Journey (landing, Sep 24 2026): AJ asked for the door
+ * from the header's session count AND from Account. The profile hands both
+ * the SAME door (priorHistoryDoorText's words, canEditPriorHistory's rule,
+ * its one editor); the package card draws it under the contract history.
+ */
+describe("MembershipSection — the door to Sessions before Journey", () => {
+  const door = (host: HTMLElement) => pkg(host).querySelector<HTMLButtonElement>('[data-action="prior-history"]');
+
+  it("draws the header's door under the contract history, and opens the profile's editor", async () => {
+    let opened = 0;
+    const c = client({
+      priorHistory: { sessions: 412, from: "2019-03-01", through: "2025-12-31", source: "filemaker", importedCount: 0 },
+    } as Partial<Client>);
+    const host = await mount(
+      <Harness
+        c={c}
+        coverage="partial"
+        priorHistoryDoor={{ text: "412 before Journey · FileMaker", canEdit: true, onOpen: () => (opened += 1) }}
+      />,
+    );
+    const button = door(host)!;
+    expect(button.textContent).toBe("412 before Journey · FileMaker");
+    expect(button.getAttribute("aria-label")).toBe(
+      "Sessions before Journey: 412 before Journey · FileMaker. Open to edit.",
+    );
+    // After the tiles, the first of which is the years before Journey.
+    const timeline = pkg(host).querySelector('[data-testid="contract-timeline"]')!;
+    expect(timeline.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The kit's one button, 40px or taller.
+    expect(button.classList.contains("cx-btn")).toBe(true);
+    await click(button);
+    expect(opened).toBe(1);
+  });
+
+  it("offers a reader the rules refuse the same door, to read", async () => {
+    const host = await mount(
+      <Harness c={client()} canEdit={false} priorHistoryDoor={{ text: "None before Journey", canEdit: false, onOpen: () => {} }} />,
+    );
+    expect(door(host)?.getAttribute("aria-label")).toBe("Sessions before Journey: None before Journey. Open to read.");
+  });
+
+  it("draws no door when the profile hands none (nothing recorded, and this reader may not add it)", async () => {
+    const host = await mount(<Harness c={client()} canEdit={false} priorHistoryDoor={null} />);
+    expect(door(host)).toBeNull();
+    expect(host.textContent).not.toContain("before Journey");
   });
 });
 
