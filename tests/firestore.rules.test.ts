@@ -3240,6 +3240,16 @@ describe("a cross-train visitor's session", () => {
     await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { firstSessionDate: serverTimestamp() }));
   });
 
+  it("lets the visitor's finished Pulse update the client's Pulse summary, and nothing with it", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    const subjectiveSnapshot = {
+      reportId: "pulse1", date: "2026-09-24", overallStatus: "red", overallPercent: 42,
+      proteinStatus: "amber", hydrationStatus: "green", redCategories: ["pain"], flags: ["new-pain"],
+    };
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { subjectiveSnapshot }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { subjectiveSnapshot, medicalHistory: "x" }));
+  });
+
   it("lets the visitor give the counts back when a completed session is deleted from History", async () => {
     const db = testEnv.authenticatedContext("trainerA").firestore();
     await assertSucceeds(

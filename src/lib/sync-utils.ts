@@ -124,6 +124,13 @@ export interface PostSessionData {
 }
 
 /**
+ * Sessions whose client totals landed although the session itself was
+ * refused, so Finish's retry does not count them twice (completeWorkoutSession).
+ * Kept through a sign-out on purpose: it is about a session, not a person.
+ */
+const totalledSessionIds = new Set<string>();
+
+/**
  * Atomic Session Completion Engine
  * Consolidates session parameters, log entries, and machine setting updates
  * into a single writeBatch to prevent partial writes.
@@ -137,7 +144,10 @@ export interface PostSessionData {
  * they landed so the trainer can be told. The rules now let an approved
  * cross-train visitor move exactly these totals (firestore.rules,
  * crossTrainSessionTotals); the split is what keeps any other refusal from
- * costing a session.
+ * costing a session. The machine weights the next session starts from
+ * (clientMachineSettings) stay IN the batch, so a refused total never leaves
+ * them stale. Both writes are queued before either is awaited, so a reload
+ * while offline replays both.
  *
  * The post-session note is NOT in the batch. It is written to the client's
  * Journal (journalEntries, origin post_session) after the batch commits, on
@@ -380,20 +390,32 @@ export async function completeWorkoutSession(
   }
 
   // The session, every set and every setting: one all-or-nothing commit.
-  await batch.commit();
-
-  // Then the client's totals, on their own. A refusal here is reported,
-  // never thrown: the session above is already saved.
-  let totalsSaved: boolean | null = null;
-  if (totalsWrite) {
-    try {
-      await updateDoc(totalsWrite.ref, totalsWrite.updates);
-      totalsSaved = true;
-    } catch (err) {
-      console.error('[finish] the session saved, but the client totals did not', err);
-      totalsSaved = false;
-    }
+  // The totals are queued straight after it, BEFORE either is waited on:
+  // offline, a commit's promise waits for the server, and a reload in that
+  // wait replays only what was already queued (the persistent cache). Queued
+  // together, a reload replays both. A refused total is reported, never
+  // thrown: the session is saved regardless.
+  const committed = batch.commit();
+  const totals: Promise<boolean | null> =
+    totalsWrite && !totalledSessionIds.has(currentSession.id)
+      ? updateDoc(totalsWrite.ref, totalsWrite.updates).then(
+          () => true,
+          (err) => {
+            console.error('[finish] the session saved, but the client totals did not', err);
+            return false;
+          },
+        )
+      : Promise.resolve(totalsWrite ? true : null);
+  try {
+    await committed;
+  } catch (err) {
+    // The totals are their own write, so they may have landed although the
+    // session was refused. Remember it, so the trainer's retry of Finish
+    // does not count this session twice.
+    if ((await totals) === true) totalledSessionIds.add(currentSession.id);
+    throw err;
   }
+  const totalsSaved = await totals;
 
   // 4. The post-session note, into the Journal — after the core is saved,
   //    never inside the batch (see the header comment). The author is the

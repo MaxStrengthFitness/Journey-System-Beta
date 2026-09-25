@@ -1753,12 +1753,12 @@ export function WorkoutTrackerView({
         user.uid,
         sessionExtras,
       );
-      /* The session and its sets are saved whatever happened to the totals
-         (lib/sync-utils.ts). If the totals were refused, say so in one line
-         rather than let the next session start from stale weights unawares. */
+      /* The session, its sets and the machine weights are saved whatever
+         happened to the totals (lib/sync-utils.ts); only the client's running
+         totals can be refused. Say so in one line. */
       if (finished.totalsSaved === false) {
         toastError(
-          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and starting weights didn't update from this iPad.`,
+          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
         );
       }
 

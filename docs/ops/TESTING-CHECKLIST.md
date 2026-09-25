@@ -1162,8 +1162,11 @@ whose home is that second studio.
 - [ ] **Her totals moved too.** On her profile the session count went up by
   one and the last session is today; on the next session, the machines you
   logged start from today's weights. *If the toast "Session saved. {name}'s
-  session count and starting weights didn't update from this iPad." shows:*
-  the rules on the live project are older than this release - redeploy them.
+  session count and last-time numbers didn't update." shows:* the rules on
+  the live project are older than this release - redeploy them.
+- [ ] **The visitor's Pulse lights the red flag.** As the visiting trainer,
+  finish a Pulse for her with a red answer (Notes & Profile -> Body & Pulse).
+  Her card on the Hub shows the red-flag chip, at either studio.
 - [ ] **The visitor still can't edit her record.** As the same visiting
   trainer, open Notes & Profile: "Read only here · {home} keeps this record.
   Notes you write still save." - no Edit, no Save bar.

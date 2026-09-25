@@ -4,8 +4,9 @@
  * A cross-train visitor's Finish used to be refused in full: the client's
  * totals were inside the same all-or-nothing batch as the session and its
  * sets, and the rules refused the totals. Now the batch holds the session,
- * the sets and the settings, and the totals are written after it, on their
- * own. These check the shape of what completeWorkoutSession writes, against
+ * the sets and the settings, and the totals are their own write, queued
+ * straight after it (before either is awaited, so an offline reload replays
+ * both). These check the shape of what completeWorkoutSession writes, against
  * a fake Firestore that records every call.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +16,10 @@ const calls = vi.hoisted(() => ({
   commits: 0,
   updateDocs: [] as Array<{ path: string; data: Record<string, unknown> }>,
   refuseTotals: false,
+  refuseBatch: false,
+  // While set, the batch's commit waits on it, as an offline commit waits
+  // for the server.
+  commitGate: null as Promise<void> | null,
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -27,6 +32,10 @@ vi.mock("firebase/firestore", () => ({
     set: (ref: { path: string }) => calls.batchWrites.push({ op: "set", path: ref.path }),
     commit: async () => {
       calls.commits += 1;
+      if (calls.commitGate) await calls.commitGate;
+      if (calls.refuseBatch) {
+        throw Object.assign(new Error("Missing or insufficient permissions."), { code: "permission-denied" });
+      }
     },
   }),
   updateDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
@@ -68,6 +77,8 @@ beforeEach(() => {
   calls.commits = 0;
   calls.updateDocs = [];
   calls.refuseTotals = false;
+  calls.refuseBatch = false;
+  calls.commitGate = null;
 });
 
 describe("completeWorkoutSession", () => {
@@ -99,6 +110,33 @@ describe("completeWorkoutSession", () => {
     const r = await finish();
     expect(calls.commits).toBe(1);
     expect(r.totalsSaved).toBe(false);
+  });
+
+  it("queues the totals before the session's commit is acknowledged, so an offline reload replays both", async () => {
+    let release!: () => void;
+    calls.commitGate = new Promise<void>((r) => (release = r));
+    const pending = finish();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(calls.commits).toBe(1);
+    expect(calls.updateDocs.map((u) => u.path)).toEqual(["clients/c1"]);
+    release();
+    const r = await pending;
+    expect(r.totalsSaved).toBe(true);
+  });
+
+  it("throws when the session is refused, and a retry does not count the session twice", async () => {
+    calls.refuseBatch = true;
+    const session2 = { ...session, id: "sess-retry" };
+    const run = () =>
+      completeWorkoutSession({} as never, session2, client, logs, undefined, "", trainer, {}, "uid-t1");
+    await expect(run()).rejects.toThrow(/permissions/);
+    expect(calls.updateDocs).toHaveLength(1);
+    calls.refuseBatch = false;
+    const r = await run();
+    expect(calls.commits).toBe(2);
+    expect(calls.updateDocs).toHaveLength(1);
+    expect(r.totalsSaved).toBe(true);
   });
 
   it("has no totals to write without a client", async () => {

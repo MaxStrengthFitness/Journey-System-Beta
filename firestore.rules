@@ -362,6 +362,8 @@ service cloud.firestore {
      *               topTrainerName, topTrainerSessions, machineStats
      *   Start       isRoutineBActive, firstSessionDate
      *   History     the same counters, given back on a delete or an edit
+     *   Pulse       subjectiveSnapshot (finalizeCheckIn: the summary of the
+     *               Pulse the visitor may already write to progressReports)
      * Pure map work on the already-read trainer: no document read.
      */
     function crossTrainSessionTotals(c, t) {
@@ -373,7 +375,8 @@ service cloud.firestore {
              'completedSessions', 'sessionCount', 'lastSessionDate', 'updatedAt',
              'lifetimeReps', 'lifetimeWeight', 'currentMachineMetrics', 'consultationCompleted',
              'trainerTally', 'trainerTallyUpdatedAt', 'topTrainerId', 'topTrainerName',
-             'topTrainerSessions', 'machineStats', 'isRoutineBActive', 'firstSessionDate']);
+             'topTrainerSessions', 'machineStats', 'isRoutineBActive', 'firstSessionDate',
+             'subjectiveSnapshot']);
     }
 
     /*
@@ -1385,9 +1388,10 @@ service cloud.firestore {
       // The one exception is a CROSS-TRAIN VISITOR's session (Sep 24 2026).
       // A trainer at a studio the client is approved to train at
       // (approvedCrossTrainStudioIds, the same list that lets them read the
-      // client) may move exactly the totals a session moves, and nothing
-      // else: not the name, the home studio, the approval list, the notes
-      // or anything medical. Without it a visitor's Finish was refused in
+      // client) may move exactly the totals a session moves, and the summary
+      // of a Pulse they finish, and nothing else: not the name, the home
+      // studio, the approval list, the notes or the medical history.
+      // Without it a visitor's Finish was refused in
       // full and the session never ended (docs/KNOWN-TRAPS.md, cross-train).
       // Checked before the home-studio test so the visitor's path stays cheap
       // inside a finish batch of eight machines.
