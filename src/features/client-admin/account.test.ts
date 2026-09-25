@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { Client, Studio } from "../../types";
+import type { Client, MindbodyContract, Studio } from "../../types";
 import type { RenewalSnapshot } from "../renewals/types";
 import type { PriorHistory } from "../../lib/prior-history";
 import { pronounsOf } from "../client-codex/kit/pronouns";
@@ -479,6 +479,27 @@ describe("membershipTimeline", () => {
     expect(tiles[0]).toMatchObject({ name: "412 sessions in FileMaker", meta: "Before Journey", status: null });
     expect(tiles[1]).toMatchObject({ pills: ["6 mo", "Paid in full"], sessions: "3 of 48 sessions left" });
     expect(tiles[3]).toMatchObject({ statusText: "Active", pills: ["12 mo", "Auto-renews"] });
+  });
+
+  it("shows Auto-renews only when Mindbody's flag says so, never from autopay", () => {
+    const pillsOf = (contract: Partial<MindbodyContract>) =>
+      membershipTimeline(
+        buildContractHistory(
+          {
+            mindbodyContracts: {
+              c: { clientContractId: "c", status: "Active", contractName: "96 Sessions - 2X Week", ...contract },
+            } as Client["mindbodyContracts"],
+          },
+          TODAY,
+        ),
+        null,
+        "complete",
+      )[0].pills;
+    expect(pillsOf({ isAutoRenewing: true })).toEqual(["12 mo", "Auto-renews"]);
+    // A studio without auto-renew, with the payments still running.
+    expect(pillsOf({ isAutoRenewing: false, autopayStatus: "Active" })).toEqual(["12 mo"]);
+    // Autopay alone only says the monthly payments are running.
+    expect(pillsOf({ autopayStatus: "Active" })).toEqual(["12 mo"]);
   });
 
   it("reads a contract start as its UTC day: Mar 2026, never Feb", () => {

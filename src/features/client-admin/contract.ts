@@ -202,6 +202,12 @@ export interface ContractTermRow {
    * that it was cancelled, never when.
    */
   cancelledAt: Date | null;
+  /**
+   * Mindbody's own per-contract flag (`isAutoRenewing`), and nothing else.
+   * Auto-renew is on at some studios and not at others (AJ, Sep 24 2026), and
+   * an active autopay only means the monthly payments are running, so null
+   * when Mindbody hasn't said. Always null for paid-in-full rows.
+   */
   autoRenews: boolean | null;
   /** Sessions it came with and has left — paid-in-full rows only. */
   sessions: { count: number | null; remaining: number | null } | null;
@@ -241,7 +247,6 @@ export function buildContractHistory(
   for (const c of Object.values(client?.mindbodyContracts || {})) {
     const start = toDateSafe(c.startDate);
     const end = toDateSafe(c.endDate);
-    const autopay = (c.autopayStatus || "").toLowerCase();
     const cancelled = c.status === "Cancelled";
     rows.push({
       key: `c-${c.clientContractId}`,
@@ -251,7 +256,7 @@ export function buildContractHistory(
       end,
       status: statusOf(start, end, cancelled, today),
       cancelledAt: cancelled ? toDateSafe(c.cancelledAt) : null,
-      autoRenews: typeof c.isAutoRenewing === "boolean" ? c.isAutoRenewing : autopay ? autopay === "active" : null,
+      autoRenews: typeof c.isAutoRenewing === "boolean" ? c.isAutoRenewing : null,
       sessions: null,
       boughtOnline: String(c.originationLocationId ?? "") === "98",
       tier: parseTierFromName(c.contractName),

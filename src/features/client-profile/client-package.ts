@@ -36,8 +36,13 @@ export interface PackageSummary {
   asOf: number | null;
   /** True when the label/count came from Mindbody (rendered as synced data). */
   fromMindbody: boolean;
-  /** True when the client has an active auto-renewing contract. */
-  autoRenews: boolean;
+  /**
+   * Mindbody's own flag on the newest active contract (`isAutoRenewing`).
+   * Auto-renew is on at some studios and not at others (AJ, Sep 24 2026), and
+   * an active autopay only means the monthly payments are running, so null
+   * when Mindbody hasn't said — never a guess from autopay.
+   */
+  autoRenews: boolean | null;
 }
 
 const toMillis = (v: unknown): number | null => {
@@ -86,12 +91,12 @@ export function resolvePackage(client: Client | null | undefined, upcoming: Sche
     source: "none",
     asOf: null,
     fromMindbody: false,
-    autoRenews: false,
+    autoRenews: null,
   };
   if (!client) return none;
 
   const contract = primaryContract(client);
-  const autoRenews = !!(contract?.isAutoRenewing || (contract?.autopayStatus || "").toLowerCase() === "active");
+  const autoRenews = typeof contract?.isAutoRenewing === "boolean" ? contract.isAutoRenewing : null;
 
   /* ---- 1. membership with a count (pull sync) ---- */
   let membershipHit: { m: MindbodyMembership; remaining: number; at: number } | null = null;
@@ -171,16 +176,21 @@ export function resolvePackage(client: Client | null | undefined, upcoming: Sche
       source: "app",
       asOf: null,
       fromMindbody: false,
-      autoRenews: false,
+      autoRenews: null,
     };
   }
 
   return none;
 }
 
-/** "12 left", "Unlimited", or null. Auto-renewing contracts with no count read as unlimited. */
+/**
+ * "12 left", "Auto-renews", or null. With no count, "Auto-renews" only when
+ * Mindbody's flag says so; otherwise nothing, and the header shows the
+ * package name alone — a contract that won't renew, or one Mindbody hasn't
+ * said about, makes no claim either way.
+ */
 export function remainingLabel(pkg: PackageSummary): string | null {
   if (pkg.remaining !== null) return `${pkg.remaining} left`;
-  if (pkg.autoRenews) return "Auto-renews";
+  if (pkg.autoRenews === true) return "Auto-renews";
   return null;
 }
