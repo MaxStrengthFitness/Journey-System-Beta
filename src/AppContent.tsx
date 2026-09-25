@@ -667,7 +667,7 @@ export default function AppContent({
     try {
       const siteId = String(activeStudio.mindbodySiteId);
 
-      const { syncMindbodySchedules, syncWindow } = await import(
+      const { syncMindbodySchedules, syncWindow, DEEP_WINDOW_DAYS } = await import(
         "./lib/mindbody-api-sync"
       );
       /*
@@ -692,7 +692,12 @@ export default function AppContent({
         activeStudio?.mindbodyLocationId,
         // Clients this iPad already names are not looked up again: a press
         // costs a page or two instead of ~7 calls (the lean pull, Sep 25 2026).
-        { skipKnownClientLookups: true },
+        // And a booking that left the week is checked against the month before
+        // it is called cancelled: it may only have moved further out.
+        {
+          skipKnownClientLookups: true,
+          settleSweepWith: syncWindow(activeStudio?.timezone, DEEP_WINDOW_DAYS),
+        },
       );
       // Today and tomorrow reach every iPad through the live listener. The rest
       // of the week is a fetched cache, so re-read it here, or the iPad that

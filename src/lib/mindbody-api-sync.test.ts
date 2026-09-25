@@ -24,6 +24,8 @@ let reads: any[] = [];
 let refusedClientIds = new Set<string>();
 /** Client ids whose write the "rules" refuse (another studio's client). */
 let refusedWrites = new Set<string>();
+/** When true, a schedules query honours its startTime bounds, as Firestore does. */
+let respectWindow = false;
 
 function makeSnapshot(docs: Array<{ id: string; data: () => any }>) {
   return {
@@ -58,6 +60,20 @@ vi.mock("firebase/firestore", () => {
           });
         }
         return makeSnapshot(docs.filter((d) => byId.value.includes(d.id)));
+      }
+      if (respectWindow) {
+        const bound = (op: string) =>
+          (target.constraints ?? []).find((c: any) => c.field === "startTime" && c.op === op)?.value;
+        const from = bound(">="), to = bound("<=");
+        if (from || to) {
+          return makeSnapshot(
+            docs.filter((d) => {
+              const ms = d.data().startTime?.toMillis?.();
+              if (typeof ms !== "number") return false;
+              return (!from || ms >= from.toMillis()) && (!to || ms <= to.toMillis());
+            }),
+          );
+        }
       }
       return makeSnapshot(docs);
     }),
@@ -101,7 +117,7 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
-import { resolveStudioId, syncMindbodySchedules, syncWindow, REFRESH_WINDOW_DAYS, DEEP_WINDOW_DAYS } from "./mindbody-api-sync";
+import { resolveStudioId, syncMindbodySchedules, syncWindow, REFRESH_WINDOW_DAYS, DEEP_WINDOW_DAYS, NEAR_WINDOW_DAYS } from "./mindbody-api-sync";
 
 const SITE = "29068";
 
@@ -189,6 +205,7 @@ beforeEach(() => {
   reads = [];
   refusedClientIds = new Set();
   refusedWrites = new Set();
+  respectWindow = false;
   vi.clearAllMocks();
 });
 
@@ -1354,3 +1371,135 @@ describe("syncMindbodySchedules — the lean pull (Sep 25 2026)", () => {
     expect(scheduleOp("9004")?.data.clientName).toBe("Unknown Client");
   });
 });
+
+describe("syncMindbodySchedules — moves across the near window (phase 1's review)", () => {
+  const NY = "America/New_York";
+  const DAY = 24 * 60 * 60 * 1000;
+  const person = (over: Record<string, unknown>) =>
+    ({ height: "", isActive: true, remainingSessions: 0, ...over }) as unknown as Client;
+  const ANN = person({ id: "mb-a", mindbodyClientId: "mb-a", firstName: "Ann", lastName: "Lee", homeStudioId: "studio-solon" });
+  const at = (ms: number) => ({ toMillis: () => ms });
+  const row = (id: string, startMs: number, over: Record<string, unknown> = {}) => ({
+    id,
+    data: () => ({
+      mindbodyAppointmentId: id,
+      studioId: "studio-solon",
+      clientId: "mb-a",
+      clientName: "Ann Lee",
+      trainerId: "trainer-1",
+      status: "Scheduled",
+      startTime: at(startMs),
+      ...over,
+    }),
+  });
+  const iso = (ms: number) => new Date(ms).toISOString();
+  function mockAnswerSequence(...answers: any[][]) {
+    let i = 0;
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ appointments: answers[Math.min(i++, answers.length - 1)] }),
+    })) as any;
+  }
+  const opsFor = (id: string) => batchOps.filter((o) => o.path === "schedules" && o.id === id);
+
+  it("updates a booking moved INTO today or tomorrow in place, with its move stamps", async () => {
+    respectWindow = true;
+    const oldMs = Date.now() + 4 * DAY;
+    snapshots.schedules = [row("7001", oldMs)];
+    const newMs = Date.now() + DAY;
+    mockAppointments([
+      appointment({ Id: 7001, ClientId: "mb-a", LocationId: 2, StartDateTime: iso(newMs), EndDateTime: iso(newMs + 1800000) }),
+    ]);
+    const near = syncWindow(NY, NEAR_WINDOW_DAYS);
+
+    await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, near.start, near.end, "studio-solon", "2", {
+      skipKnownClientLookups: true,
+    });
+
+    const [op] = opsFor("7001");
+    expect(op.kind).toBe("update");
+    expect(op.data.movedFromStart.toMillis()).toBe(oldMs);
+    expect(op.data.movedAt).toBeTruthy();
+  });
+
+  it("checks the month before calling a booking that left today or tomorrow cancelled", async () => {
+    respectWindow = true;
+    const tomorrowMs = Date.now() + DAY;
+    snapshots.schedules = [row("7002", tomorrowMs), row("7003", Date.now() + 2 * 3600000)];
+    const movedToMs = Date.now() + 3 * DAY;
+    const stays = appointment({ Id: 7003, ClientId: "mb-a", LocationId: 2, StartDateTime: iso(Date.now() + 2 * 3600000), EndDateTime: iso(Date.now() + 3 * 3600000) });
+    const moved = appointment({ Id: 7002, ClientId: "mb-a", LocationId: 2, StartDateTime: iso(movedToMs), EndDateTime: iso(movedToMs + 1800000) });
+    // The near answer no longer has 7002; the month answer has it three days out.
+    mockAnswerSequence([stays], [stays, moved]);
+    const near = syncWindow(NY, NEAR_WINDOW_DAYS);
+    const month = syncWindow(NY, DEEP_WINDOW_DAYS);
+
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, near.start, near.end, "studio-solon", "2", {
+      skipKnownClientLookups: true,
+      settleSweepWith: month,
+    });
+
+    // The near pull cancelled nothing: it handed the one booking that left to the month.
+    expect(res.sweepDeferred).toBe(1);
+    expect(res.settledWithMonth).toBe(true);
+    expect(opsFor("7002").some((o) => o.data.status === "Cancelled")).toBe(false);
+    const bodies = (global.fetch as any).mock.calls.map((c: any[]) => JSON.parse(c[1].body));
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1].startDate).toBe(month.start);
+    expect(bodies[1].endDate).toBe(month.end);
+    // Filed on its new day as a move.
+    const last = opsFor("7002").at(-1)!;
+    expect(last.data.status).toBe("Scheduled");
+    expect(last.data.movedFromStart.toMillis()).toBe(tomorrowMs);
+  });
+
+  it("does not ask for the month when nothing left the window", async () => {
+    respectWindow = true;
+    snapshots.schedules = [row("7003", Date.now() + 2 * 3600000)];
+    const stays = appointment({ Id: 7003, ClientId: "mb-a", LocationId: 2, StartDateTime: iso(Date.now() + 2 * 3600000), EndDateTime: iso(Date.now() + 3 * 3600000) });
+    mockAnswerSequence([stays]);
+    const near = syncWindow(NY, NEAR_WINDOW_DAYS);
+
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, near.start, near.end, "studio-solon", "2", {
+      settleSweepWith: syncWindow(NY, DEEP_WINDOW_DAYS),
+    });
+
+    expect((global.fetch as any).mock.calls).toHaveLength(1);
+    expect(res.settledWithMonth).toBeUndefined();
+    expect(res.windowComplete).toBe(true);
+  });
+
+  it("keeps looking up clients whose record holds only a placeholder name or a webhook stub", async () => {
+    const placeholder = person({ id: "mb-p", mindbodyClientId: "mb-p", firstName: "Mindbody", lastName: "Client mb-p", homeStudioId: "studio-solon" });
+    const stub = person({ id: "mb-s", mindbodyClientId: "mb-s", firstName: "Sam", lastName: "Stub", isMindbodyStub: true, homeStudioId: "studio-solon" });
+    mockAppointments([appointment({ Id: 7004, ClientId: "mb-a", LocationId: 2 })]);
+
+    await syncMindbodySchedules(SITE, TRAINERS, [ANN, placeholder, stub], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2", {
+      skipKnownClientLookups: true,
+    });
+
+    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).skipClientLookupIds).toEqual(["mb-a"]);
+  });
+
+  it("parks a known client's booking at an unclaimed location under her name, not Unknown Client", async () => {
+    mockAppointments([
+      appointment({ Id: 7005, ClientId: "mb-a", ClientFirstName: "", ClientLastName: "", LocationId: 9 }),
+    ]);
+
+    await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2", {
+      skipKnownClientLookups: true,
+    });
+
+    const parked = setDocOps.find((op) => JSON.stringify(op.data).includes("7005"));
+    expect(parked).toBeTruthy();
+    expect(JSON.stringify(parked!.data)).toContain("Ann Lee");
+    expect(JSON.stringify(parked!.data)).not.toContain("Unknown Client");
+  });
+
+  it("says when Mindbody's answer was short, so the month is not recorded as read", async () => {
+    mockAppointments([appointment({ Id: 7006, ClientId: "mb-a", LocationId: 2 })], { complete: false });
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2");
+    expect(res.windowComplete).toBe(false);
+  });
+});
+

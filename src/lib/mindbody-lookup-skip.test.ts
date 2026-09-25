@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { idsToLookUp, MAX_SKIP_IDS, parseSkipIds } from "./mindbody-lookup-skip";
+import { idsToLookUp, MAX_SKIP_IDS, parseSkipIds, skipForOwnBookings } from "./mindbody-lookup-skip";
 
 describe("parseSkipIds", () => {
   it("keeps plain string and number ids, trimmed", () => {
@@ -36,5 +36,26 @@ describe("idsToLookUp", () => {
   it("looks everyone up when nothing is skipped", () => {
     const ids = ["1", "2"];
     expect(idsToLookUp(ids, new Set())).toBe(ids);
+  });
+});
+
+describe("skipForOwnBookings", () => {
+  const skip = parseSkipIds(["a", "b", "c"]);
+
+  it("keeps looking up a client with a booking at another location", () => {
+    const out = skipForOwnBookings(
+      skip,
+      [
+        { clientId: "a", location: "1" },
+        { clientId: "b", location: "6" }, // a location no studio claims yet
+        { clientId: "c", location: "" }, // no location at all
+      ],
+      "1",
+    );
+    expect([...out]).toEqual(["a"]);
+  });
+
+  it("applies the list as sent when the studio has no own location", () => {
+    expect(skipForOwnBookings(skip, [{ clientId: "b", location: "6" }], null)).toBe(skip);
   });
 });

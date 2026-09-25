@@ -39,6 +39,15 @@ import {
  */
 export interface SyncOptions {
   skipKnownClientLookups?: boolean;
+  /**
+   * A near pull that LOSES a booking from its window cannot tell a
+   * cancellation from a move to a later day: the booking is simply absent
+   * from a two-day answer. With this set, such a pull cancels nothing and
+   * asks Mindbody for this wider window straight away, and that pull files
+   * the booking as whichever it was: moved (with its move stamps) or
+   * cancelled by its own sweep (the review of phase 1, Sep 25 2026).
+   */
+  settleSweepWith?: { start: string; end: string };
 }
 
 export interface MindbodySyncResult {
@@ -48,6 +57,14 @@ export interface MindbodySyncResult {
   errors: string[];
   /** Canonical client docs created because Mindbody knew someone we did not. */
   clientsCreated?: number;
+  /** Mindbody answered for the WHOLE window asked (every page arrived). */
+  windowComplete?: boolean;
+  /** Bookings this pull marked cancelled because they vanished from its window. */
+  swept?: number;
+  /** Bookings that left a near window, handed to the wider pull to decide. */
+  sweepDeferred?: number;
+  /** A settleSweepWith pull ran, and Mindbody answered for its whole window. */
+  settledWithMonth?: boolean;
 }
 
 export interface MindbodyAppointment {
@@ -117,6 +134,20 @@ function resolveCanonicalClientId(
     clientsData.find((c) => c.id && String(c.id).trim() === qualified) ??
     clientsData.find((c) => c.id && String(c.id).trim() === target);
   return canonical ? canonical.id || null : null;
+}
+
+/**
+ * A record whose name is only the stand-in this importer writes when Mindbody
+ * gave none ("Mindbody" / "Client {id}"), or a webhook's booking stub. Neither
+ * is a name to put on a booking, so the lean pull keeps looking such a client
+ * up until Mindbody names them (the review of phase 1, Sep 25 2026).
+ */
+function isPlaceholderRecord(record: Client, mbClientId: string): boolean {
+  if ((record as { isMindbodyStub?: boolean }).isMindbodyStub) return true;
+  return (
+    (record.firstName || "").trim() === "Mindbody" &&
+    (record.lastName || "").trim() === `Client ${mbClientId}`
+  );
 }
 
 /**
@@ -531,20 +562,26 @@ export async function syncMindbodySchedules(
    * name. Only those. A client the rule would NOT find is created from the
    * lookup's answer (phase 1), and a skipped lookup would create them nameless.
    */
+  const siteKey = String(siteId).trim();
+  const siteClients = clients.filter((c) => {
+    const theirs = siteOfClient(c, studios || []);
+    return !theirs || theirs === siteKey;
+  });
+  /** The name on Journey's record for a Mindbody id, when the id rule finds one. */
+  const rosterName = (mbId: string | null | undefined): string => {
+    const id = mbId ? String(mbId).trim() : "";
+    if (!id) return "";
+    const resolved = resolveCanonicalClientId(id, siteClients, siteKey);
+    const record = resolved ? siteClients.find((x) => x.id === resolved) : undefined;
+    return record && !isPlaceholderRecord(record, id) ? clientLegalName(record) : "";
+  };
   let skipClientLookupIds: string[] | undefined;
   if (options.skipKnownClientLookups) {
-    const siteKey = String(siteId).trim();
-    const siteClients = clients.filter((c) => {
-      const theirs = siteOfClient(c, studios || []);
-      return !theirs || theirs === siteKey;
-    });
     const known = new Set<string>();
     for (const c of siteClients) {
       const mb = c.mindbodyClientId ? String(c.mindbodyClientId).trim() : "";
       if (!mb || known.has(mb)) continue;
-      const resolved = resolveCanonicalClientId(mb, siteClients, siteKey);
-      const record = resolved ? siteClients.find((x) => x.id === resolved) : undefined;
-      if (record && clientLegalName(record)) known.add(mb);
+      if (rosterName(mb)) known.add(mb);
     }
     skipClientLookupIds = [...known];
   }
@@ -604,6 +641,7 @@ export async function syncMindbodySchedules(
      * unchanged rather than silently disabling their sweep.
      */
     const answerComplete = data.complete !== false;
+    result.windowComplete = answerComplete;
 
     // Before narrowing to this studio's location, park anything belonging to a
     // location NO studio claims.
@@ -625,6 +663,7 @@ export async function syncMindbodySchedules(
           clientId: a.ClientId ? String(a.ClientId) : null,
           clientName:
             `${a.ClientFirstName || ""} ${a.ClientLastName || ""}`.trim() ||
+            rosterName(a.ClientId) ||
             "Unknown Client",
           staffName:
             `${a.StaffFirstName || ""} ${a.StaffLastName || ""}`.trim() ||
@@ -710,6 +749,33 @@ export async function syncMindbodySchedules(
         };
       }
     });
+
+    /*
+     * A booking Mindbody moved INTO this window from a day outside it is not
+     * in the query above: its row is still stamped for the old day. Written
+     * as new, it replaced the row whole, with no move stamps and its history
+     * dropped (the review of phase 1, Sep 25 2026). So the few answer ids with
+     * no row in the window are read by id — doc id is the appointment id — and
+     * any that exist take the update path with their move stamps. A failed
+     * read here only means those bookings are written as before.
+     */
+    const unseenIds = [...new Set(appointments.map((a) => String(a.Id)))].filter(
+      (id) => !existingByMbId[id],
+    );
+    for (let i = 0; i < unseenIds.length; i += 30) {
+      const chunk = unseenIds.slice(i, i + 30);
+      try {
+        const snap = await getDocs(
+          query(collection(db, "schedules"), where(documentId(), "in", chunk)),
+        );
+        snap.forEach((d) => {
+          const key = String(d.data().mindbodyAppointmentId ?? d.id);
+          if (!existingByMbId[key]) existingByMbId[key] = { docId: d.id, data: d.data() };
+        });
+      } catch (readErr) {
+        console.warn("[sync] could not read rows for bookings moved into the window", readErr);
+      }
+    }
 
     // ------------------------------------------------------------------
     // PHASE 1 — make sure every client on this schedule EXISTS, before any
@@ -927,6 +993,7 @@ export async function syncMindbodySchedules(
               clientId: appt.ClientId ? String(appt.ClientId) : null,
               clientName:
                 `${appt.ClientFirstName || ""} ${appt.ClientLastName || ""}`.trim() ||
+                rosterName(appt.ClientId) ||
                 "Unknown Client",
               staffName:
                 `${appt.StaffFirstName || ""} ${appt.StaffLastName || ""}`.trim() ||
@@ -1022,7 +1089,9 @@ export async function syncMindbodySchedules(
           const record = allClients.find((c) => c.id === clientId);
           clientName =
             (kept && kept !== "Unknown Client" ? kept : "") ||
-            clientLegalName(record) ||
+            (record && mbClientId && !isPlaceholderRecord(record, mbClientId)
+              ? clientLegalName(record)
+              : "") ||
             "Unknown Client";
         }
 
@@ -1226,30 +1295,39 @@ export async function syncMindbodySchedules(
         "Mindbody returned only part of the window, so cancelled bookings were not swept this run. Everything it did return has been saved; try again in a moment.",
       );
     }
-    for (const [mbId, existing] of Object.entries(existingByMbId)) {
-      if (!answerComplete) break;
-      if (
-        !currentMbIds.has(mbId) &&
-        existing.data.status !== "Cancelled" &&
-        inWindow(existing.data.startTime)
-      ) {
-        batch.update(doc(db, "schedules", existing.docId), {
-          status: "Cancelled",
-          lastSyncAt: Timestamp.now(),
-          // The Changes list (Operations overhaul, Sep 2026): WHEN it went,
-          // and that it was the sweep that noticed rather than Mindbody
-          // saying so. The calendar hides a cancelled row; the day's
-          // changes list reads these two fields.
-          cancelledAt: Timestamp.now(),
-          cancelSource: "sweep",
-        });
-        result.updated++;
-        batchCount++;
-        if (batchCount >= 400) {
-          await batch.commit();
-          batch = writeBatch(db);
-          batchCount = 0;
-        }
+    // What left the window. A near pull cannot tell a cancellation from a move
+    // to a later day (either way the booking is simply not in a two-day
+    // answer), so when it was offered a wider window it cancels nothing and
+    // asks that window instead, below. Only a pull that saw the whole span a
+    // booking could have moved within decides it is gone.
+    const leftWindow = answerComplete
+      ? Object.entries(existingByMbId).filter(
+          ([mbId, existing]) =>
+            !currentMbIds.has(mbId) &&
+            existing.data.status !== "Cancelled" &&
+            inWindow(existing.data.startTime),
+        )
+      : [];
+    const settleWith = leftWindow.length > 0 ? options.settleSweepWith : undefined;
+    if (settleWith) result.sweepDeferred = leftWindow.length;
+    for (const [, existing] of settleWith ? [] : leftWindow) {
+      batch.update(doc(db, "schedules", existing.docId), {
+        status: "Cancelled",
+        lastSyncAt: Timestamp.now(),
+        // The Changes list (Operations overhaul, Sep 2026): WHEN it went,
+        // and that it was the sweep that noticed rather than Mindbody
+        // saying so. The calendar hides a cancelled row; the day's
+        // changes list reads these two fields.
+        cancelledAt: Timestamp.now(),
+        cancelSource: "sweep",
+      });
+      result.updated++;
+      result.swept = (result.swept ?? 0) + 1;
+      batchCount++;
+      if (batchCount >= 400) {
+        await batch.commit();
+        batch = writeBatch(db);
+        batchCount = 0;
       }
     }
 
@@ -1263,6 +1341,34 @@ export async function syncMindbodySchedules(
       result.errors.push(
         `Skipped appointments from unmapped MindBody location(s): ${[...unresolvedLocations].join(", ")}. Assign these Location IDs to a studio in Admin → Studios.`,
       );
+    }
+
+    if (settleWith) {
+      // Something left today or tomorrow. Ask for the wider window now: a
+      // booking that moved to next week is updated on its new day with its
+      // move stamps, and one that is truly gone is cancelled by that pull's
+      // sweep, in seconds rather than at the next whole-month pull.
+      const settle = await syncMindbodySchedules(
+        siteId,
+        trainers,
+        clients,
+        studios,
+        targetStaffId,
+        settleWith.start,
+        settleWith.end,
+        targetStudioIdOverride,
+        targetLocationId,
+        { skipKnownClientLookups: options.skipKnownClientLookups },
+      );
+      result.added += settle.added;
+      result.updated += settle.updated;
+      result.skipped += settle.skipped;
+      result.errors.push(...settle.errors);
+      result.swept = (result.swept ?? 0) + (settle.swept ?? 0);
+      if (settle.clientsCreated) {
+        result.clientsCreated = (result.clientsCreated ?? 0) + settle.clientsCreated;
+      }
+      result.settledWithMonth = settle.windowComplete === true;
     }
 
     console.log("✅ [REFRESH SCHEDULE] SYNC COMPLETE RESULT:", result);

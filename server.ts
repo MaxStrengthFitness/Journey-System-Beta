@@ -22,7 +22,7 @@ import {
   pickRequestedClient,
 } from "./src/lib/mindbody-demographics-map.ts";
 import { requireStaff } from "./server/auth.ts";
-import { idsToLookUp, parseSkipIds } from "./src/lib/mindbody-lookup-skip.ts";
+import { idsToLookUp, parseSkipIds, skipForOwnBookings } from "./src/lib/mindbody-lookup-skip.ts";
 import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
@@ -736,7 +736,17 @@ async function startServer() {
        * still carry their ClientId; the browser names them from its own
        * records. An older build sends no list and looks everyone up.
        */
-      const uniqueClientIds = idsToLookUp(allClientIds, parseSkipIds(skipClientLookupIds));
+      const uniqueClientIds = idsToLookUp(
+        allClientIds,
+        skipForOwnBookings(
+          parseSkipIds(skipClientLookupIds),
+          appointments.map((a: any) => ({
+            clientId: String(a.Client?.Id || a.ClientId || ""),
+            location: String(a?.Location?.Id ?? a?.LocationId ?? "").trim(),
+          })),
+          wantLocation,
+        ),
+      );
 
       const clientNameMap: Record<
         string,

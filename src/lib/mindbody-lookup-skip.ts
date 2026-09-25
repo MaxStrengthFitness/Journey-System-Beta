@@ -38,3 +38,24 @@ export function idsToLookUp(uniqueClientIds: string[], skip: Set<string>): strin
   if (skip.size === 0) return uniqueClientIds;
   return uniqueClientIds.filter((id) => !skip.has(String(id).trim()));
 }
+
+/**
+ * The skip list covers only THIS studio's own bookings. On a shared site the
+ * answer also carries bookings at a location no studio claims (and ones with
+ * no location), which the pull parks for an administrator, and that parked
+ * row takes its name from this lookup: skipping it would park the booking as
+ * "Unknown Client" (the review of phase 1, Sep 25 2026). So a client with any
+ * booking outside `ownLocation` is looked up. With no own location (a studio
+ * that has its site to itself), the list applies as sent.
+ */
+export function skipForOwnBookings(
+  skip: Set<string>,
+  bookings: Array<{ clientId: string; location: string }>,
+  ownLocation: string | null,
+): Set<string> {
+  if (!ownLocation || skip.size === 0) return skip;
+  const elsewhere = new Set(
+    bookings.filter((b) => b.location !== ownLocation).map((b) => b.clientId),
+  );
+  return new Set([...skip].filter((id) => !elsewhere.has(id)));
+}

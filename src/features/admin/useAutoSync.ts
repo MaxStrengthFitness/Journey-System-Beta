@@ -8,12 +8,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, runTransaction } from "firebase/firestore";
+import { doc, runTransaction, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { Client, Studio, Trainer } from "../../types";
 import {
   claimIsStillDue,
   decideSync,
+  isFirstDeepOfDay,
   wantsDeepPull,
   withinPullHours,
   type SyncVerdict,
@@ -26,8 +27,6 @@ const TICK_MS = 60_000;
 export interface AutoSyncState {
   /** The last verdict, for the Integrations screen to explain itself with. */
   verdict: SyncVerdict | null;
-  /** What the last pull this device ran asked for: today and tomorrow, or the month. */
-  lastPull: "near" | "deep" | null;
   running: boolean;
   lastError: string | null;
 }
@@ -70,7 +69,6 @@ export function useAutoSync({
   const [verdict, setVerdict] = useState<SyncVerdict | null>(null);
   const [running, setRunning] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
-  const [lastPull, setLastPull] = useState<"near" | "deep" | null>(null);
 
   // Read through refs inside the timer so a new schedule snapshot — which
   // arrives constantly — does not tear down and rebuild the timer, which is
@@ -111,12 +109,18 @@ export function useAutoSync({
     // this line at once; the transaction is what makes exactly one win.
     const studioRef = doc(db, "studios", studio.id);
     let claimed = false;
-    // Decided inside the claim, from the lease as the winner found it: see
+    // Decided inside the claim, from the studio as the winner found it: see
     // wantsDeepPull. Every device reads the same field, so the studio gets one
     // whole-month pull per block of its day, whoever happens to win it.
     let deep = true;
+    let lookUpEveryone = true;
     try {
       await runTransaction(db, async (tx) => {
+        // Firestore runs this again when another device's write wins the race.
+        // Start every run from nothing, or a device that lost still pulls.
+        claimed = false;
+        deep = true;
+        lookUpEveryone = true;
         const snap = await tx.get(studioRef);
         const fresh = snap.data() as Studio | undefined;
         if (
@@ -128,12 +132,9 @@ export function useAutoSync({
         ) {
           return;
         }
-        deep = wantsDeepPull(
-          fresh?.lastScheduleSyncAt ?? null,
-          now,
-          timeZone,
-          fresh?.scheduleSyncFailures ?? 0,
-        );
+        const lastDeepAt = fresh?.lastDeepScheduleSyncAt ?? null;
+        deep = wantsDeepPull(lastDeepAt, now, timeZone);
+        lookUpEveryone = deep && isFirstDeepOfDay(lastDeepAt, now, timeZone);
         // Written BEFORE the sync, not after. A sync that crashes half way
         // must still hold the lease for one interval, or every device retries
         // the failure together — which is the storm this exists to prevent.
@@ -149,27 +150,34 @@ export function useAutoSync({
     runningRef.current = true;
     setRunning(true);
     try {
-      const { syncMindbodySchedules, syncWindow, NEAR_WINDOW_DAYS } = await import(
-        "../../lib/mindbody-api-sync"
-      );
-      // The whole month: no window (the default is DEEP_WINDOW_DAYS), and every
-      // client looked up, which is what keeps names and blank contact fields
-      // current. Otherwise today and tomorrow, looking up only clients Journey
-      // has never seen: one page and a lookup or two instead of ~12 calls.
-      const near = deep ? null : syncWindow(timeZone, NEAR_WINDOW_DAYS, new Date(now));
+      const { syncMindbodySchedules, syncWindow, NEAR_WINDOW_DAYS, DEEP_WINDOW_DAYS } =
+        await import("../../lib/mindbody-api-sync");
+      // Today and tomorrow, or the whole month. Only the day's first month pull
+      // looks every client up with Mindbody (names, blank contact fields); the
+      // rest look up only clients Journey has never seen: one page and a lookup
+      // or two instead of ~12 calls.
+      //
+      // settleSweepWith: when today or tomorrow LOSES a booking, the near pull
+      // cannot tell a cancellation from a move to next week, so it asks for
+      // the month straight away and the booking is filed as whichever it was
+      // (the review of phase 1, Sep 25 2026).
+      const month = syncWindow(timeZone, DEEP_WINDOW_DAYS, new Date(now));
+      const pullWindow = deep ? month : syncWindow(timeZone, NEAR_WINDOW_DAYS, new Date(now));
       const res = await syncMindbodySchedules(
         String(studio.mindbodySiteId),
         trainers,
         clients,
         studios,
         null,
-        near?.start,
-        near?.end,
+        pullWindow.start,
+        pullWindow.end,
         studio.id,
         studio.mindbodyLocationId,
-        { skipKnownClientLookups: !deep },
+        {
+          skipKnownClientLookups: !lookUpEveryone,
+          settleSweepWith: deep ? undefined : month,
+        },
       );
-      setLastPull(deep ? "deep" : "near");
       const failed = (res.errors?.length ?? 0) > 0;
       setLastError(failed ? res.errors[0] : null);
       await runTransaction(db, async (tx) => {
@@ -180,6 +188,19 @@ export function useAutoSync({
           lastScheduleSyncAt: Date.now(),
         });
       });
+      // The month was read whole: record it, so the next whole-month pull waits
+      // for the next block of the day. A warning (an unmapped location, say)
+      // does not stop this; only a short or failed answer does. Best-effort and
+      // on its own: if the permission for this field is not deployed yet, the
+      // next pull simply reaches the month again, and nothing counts as failed.
+      const monthReadWhole = deep ? res.windowComplete === true : res.settledWithMonth === true;
+      if (monthReadWhole) {
+        try {
+          await updateDoc(studioRef, { lastDeepScheduleSyncAt: now });
+        } catch (stampErr) {
+          console.warn("[auto-sync] could not record the whole-month pull", stampErr);
+        }
+      }
     } catch (err) {
       setLastError(err instanceof Error ? err.message : "Sync failed");
       try {
@@ -228,5 +249,5 @@ export function useAutoSync({
     };
   }, [enabled, activeStudioId, attempt]);
 
-  return { verdict, running, lastError, lastPull };
+  return { verdict, running, lastError };
 }

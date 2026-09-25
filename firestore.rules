@@ -1897,8 +1897,10 @@ service cloud.firestore {
       // by administrators, franchise owners and ITS OWN leaders (head trainer,
       // studio leader, studio owner, or the grant) -- AJ, Sep 18. The one
       // thing every iPad still writes is the schedule sync's lease
-      // (features/admin/useAutoSync: lastScheduleSyncAt, scheduleSyncFailures),
-      // so any trainer may touch those two fields and nothing else.
+      // (features/admin/useAutoSync: lastScheduleSyncAt, scheduleSyncFailures,
+      // and since the lean sync of Sep 25 2026 lastDeepScheduleSyncAt, when
+      // the last whole-month pull succeeded), so any trainer may touch those
+      // three fields and nothing else.
       // Demo Mode (Sep 20 2026): `demo-studio` is laid down by the seeder from
       // inside the app, so anybody signed in may bring it into existence. The
       // id is a literal, so this creates exactly one studio and no other, and
@@ -1908,7 +1910,7 @@ service cloud.firestore {
       allow update: if isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId) ||
                        (isAnyAuthenticatedTrainer() &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['lastScheduleSyncAt', 'scheduleSyncFailures']));
+                          .hasOnly(['lastScheduleSyncAt', 'scheduleSyncFailures', 'lastDeepScheduleSyncAt']));
       allow delete: if isSuperAdmin();
 
       // RENEWAL SETTINGS (Renewals round, Sep 2026).

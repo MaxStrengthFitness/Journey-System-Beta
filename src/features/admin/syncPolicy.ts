@@ -179,10 +179,15 @@ export function claimIsStillDue(
  * So the fifteen-minute pull now asks only for today and tomorrow — the days
  * the Hub watches live — and the whole month is asked for a few times a day:
  * the first pull of the studio's day and the first after each of
- * DEEP_PULL_HOURS. Which one a pull is follows from ONE fact every iPad
- * already shares, the lease's `lastScheduleSyncAt`: a pull whose previous
- * pull fell in an earlier block of the studio's day reaches the whole month.
- * No new field, so no new permission and no rules deploy.
+ * DEEP_PULL_HOURS. Which one a pull is follows from one field every iPad
+ * shares, `Studio.lastDeepScheduleSyncAt`: when the last whole-month pull
+ * that SUCCEEDED was claimed. A pull whose last good month pull fell in an
+ * earlier block of the studio's day reaches the whole month.
+ *
+ * Why its own field and not the lease (the review of phase 1, Sep 25): the
+ * lease is stamped at every claim, so a pull that finished just past 10:00,
+ * or a month pull cut off by a closed tab, made the block look done when it
+ * was not, and the month waited four more hours.
  * ------------------------------------------------------------------ */
 
 /**
@@ -208,23 +213,41 @@ export function deepPullBlock(ms: number, timeZone: string): string | null {
 /**
  * Should the pull about to run reach the whole month?
  *
- * Yes when there has never been a pull, when the last one failed (a failed
- * whole-month pull must not wait four hours for its retry), or when the last
- * one ran in an earlier block of the studio's day. `previousSyncAt` is the
- * lease as the claiming device found it, before stamping its own claim.
+ * Yes when no whole-month pull has ever succeeded, or when the last one that
+ * did was claimed in an earlier block of the studio's day. A failed or
+ * unfinished month pull never stamps `lastDeepAt`, so the next pull simply
+ * tries again (after the usual backoff); a failed NEAR pull does not turn
+ * into a month pull, which would only add load while Mindbody is refusing.
  */
 export function wantsDeepPull(
-  previousSyncAt: number | null | undefined,
+  lastDeepAt: number | null | undefined,
   now: number,
   timeZone: string,
-  failures?: number | null,
 ): boolean {
-  if (previousSyncAt == null) return true;
-  if ((failures ?? 0) > 0) return true;
-  const was = deepPullBlock(previousSyncAt, timeZone);
+  if (lastDeepAt == null) return true;
+  const was = deepPullBlock(lastDeepAt, timeZone);
   const is = deepPullBlock(now, timeZone);
   if (!was || !is) return true;
   return was !== is;
+}
+
+/**
+ * Is this the day's FIRST whole-month pull? That one looks every client up
+ * with Mindbody, which is what keeps names and blank contact fields current;
+ * the later month pulls of the day skip clients Journey already names, as
+ * the near pulls do. A name changed in Mindbody therefore reaches a booking
+ * by the next morning, sooner through the webhook's client.updated or a
+ * Master Sync on the profile.
+ */
+export function isFirstDeepOfDay(
+  lastDeepAt: number | null | undefined,
+  now: number,
+  timeZone: string,
+): boolean {
+  if (lastDeepAt == null) return true;
+  const was = studioDateKey(new Date(lastDeepAt), timeZone);
+  const is = studioDateKey(new Date(now), timeZone);
+  return !was || !is || was !== is;
 }
 
 /** How far before opening and after closing the background pull still runs. */

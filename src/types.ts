@@ -1815,6 +1815,15 @@ export interface Studio {
   lastScheduleSyncAt?: number;
   /** Consecutive failed automatic syncs. Reset to 0 on success; drives backoff. */
   scheduleSyncFailures?: number;
+  /**
+   * When the last whole-month pull that SUCCEEDED was claimed, epoch ms (the
+   * lean sync, Sep 25 2026). The fifteen-minute pull asks for today and
+   * tomorrow; a pull whose last whole-month pull fell in an earlier block of
+   * the studio's day reaches the whole month (features/admin/syncPolicy.ts,
+   * wantsDeepPull). Written only after success, so a month pull that fails or
+   * is cut off by a closed tab is simply run again.
+   */
+  lastDeepScheduleSyncAt?: number;
   brandColor?: string;
 }
 

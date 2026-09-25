@@ -2146,6 +2146,9 @@ describe("Firestore Security Rules", () => {
     const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertSucceeds(updateDoc(doc(trainer, "studios", "studioA"), { lastScheduleSyncAt: 1, scheduleSyncFailures: 0 }));
     await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { lastScheduleSyncAt: 2, name: "Sneaked in" }));
+    // The lean sync (Sep 25 2026): when the last whole-month pull succeeded.
+    await assertSucceeds(updateDoc(doc(trainer, "studios", "studioA"), { lastDeepScheduleSyncAt: 3 }));
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { lastDeepScheduleSyncAt: 4, autoSyncEnabled: false }));
   });
 
   it("refuses a studio create to anyone below a franchise owner", async () => {
