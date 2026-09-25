@@ -1741,7 +1741,7 @@ export function WorkoutTrackerView({
         : undefined;
 
       const finalLogs = [...stamped, ...notReached];
-      await completeWorkoutSession(
+      const finished = await completeWorkoutSession(
         db,
         currentSession,
         selectedClient,
@@ -1753,6 +1753,14 @@ export function WorkoutTrackerView({
         user.uid,
         sessionExtras,
       );
+      /* The session and its sets are saved whatever happened to the totals
+         (lib/sync-utils.ts). If the totals were refused, say so in one line
+         rather than let the next session start from stale weights unawares. */
+      if (finished.totalsSaved === false) {
+        toastError(
+          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and starting weights didn't update from this iPad.`,
+        );
+      }
 
       /* The wrap-up note is labelled "something the next trainer should
          know" — and until now it reached only the session document, which
