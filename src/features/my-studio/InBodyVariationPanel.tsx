@@ -75,7 +75,7 @@ export function InBodyVariationPanel({ studioId, studio, trainers }: InBodyVaria
     );
   }, [studioId, toastSuccess]);
 
-  const form = useDirtyForm<VariationForm>(external, onSave);
+  const form = useDirtyForm<VariationForm>(external, onSave, { label: "the InBody variation" });
   draftRef.current = form.value;
 
   const check = useMemo(() => checkVariationForm(form.value), [form.value]);

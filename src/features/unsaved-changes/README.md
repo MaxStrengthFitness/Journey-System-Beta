@@ -53,9 +53,9 @@ Only typing inside the scope is asked about, because only that is about to unmou
 
 ## What is registered (Sep 24 2026)
 
-The client record's Save bar (`ClientInfoSheet` when the round was written; since the landing merge, the client codex's one Save bar, registered in `client-codex/ClientCodex.tsx`) · Programming → Setup's drafts, Quick entry included (`SetupView`) · the Edit Routine drawer (`EditRoutineDrawer`) · the progress report (`ClientProgressReportView`) · the post-session closing note and an unfinished mid-session note (`VictoryHUDScreen`) · every `useDirtyForm` form: the studio and catalog machine editors, My Studio → Studio's details, day and renewal settings, and All locations' studio details.
+The client record's Save bar (`ClientInfoSheet` when the round was written; since the landing merge, the client codex's one Save bar, registered in `client-codex/ClientCodex.tsx`) · Programming → Setup's drafts, Quick entry included (`SetupView`) · the Edit Routine drawer (`EditRoutineDrawer`) · the progress report (`ClientProgressReportView`) · the post-session closing note and an unfinished mid-session note (`VictoryHUDScreen`) · every `useDirtyForm` form: the studio and catalog machine editors, My Studio → Studio's details, day and renewal settings, the InBody variation (named since the landing; it asked about "this page" before), and All locations' studio details.
 
-**Not yet registered**, and worth doing next the same way: the header's quick note (`QuickNoteDialog`), the consultation wizard, the announcement composer, Log past session and the session pop-up's edits (`client-history`), Relay's note editor, and the Pulse panel.
+**Not yet registered**, and worth doing next the same way: the header's quick note (`QuickNoteDialog`), the consultation wizard, the announcement composer, Log past session and the session pop-up's edits (`client-history`), Relay's note editor, the Pulse panel, and two on the client codex: the Notes page's composer (`JournalComposer`, mounted by `client-notes/NotesPage.tsx`; the old journal composer was not registered either) and FORD's In one line editor (`ford/page/OneLinePanel.tsx`, which the Overview's "Write one" opens). The composer is shared with the session sheet, so register it from the host, e.g. `useUnsavedChanges(text !== "", "the note about <name>")`.
 
 ## Tests
 
