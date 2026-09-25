@@ -161,8 +161,11 @@ describe("seedForm", () => {
   // RECORD_FORM_KEY, so the guard here is that every field a Notes & Profile
   // editor writes through updateField IS one: a key outside the list is
   // never seeded (its box would open blank however much is stored) and
-  // updateField refuses the edit.
-  it("seeds every field a Notes & Profile editor writes, with its stored value", () => {
+  // updateField refuses the edit. The original guard held what the record
+  // DISPLAYS from the form, so the reads are held too: a card that shows
+  // `formData.someKey` with no fallback, for a key outside the list, would be
+  // an always-empty box.
+  it("seeds every field a Notes & Profile editor writes or reads from the form, with its stored value", () => {
     const dirs = ["client-codex", "client-admin", "client-life", "ford/page", "goals"].map((d) =>
       resolve(process.cwd(), "src/features", d),
     );
@@ -176,12 +179,19 @@ describe("seedForm", () => {
     };
     dirs.forEach(walk);
     const written = new Set<string>();
+    const read = new Set<string>();
     for (const file of files) {
-      for (const m of readFileSync(file, "utf8").matchAll(/\bupdateField\(\s*"([A-Za-z_]+)"/g)) written.add(m[1]);
+      const text = readFileSync(file, "utf8");
+      for (const m of text.matchAll(/\bupdateField\(\s*"([A-Za-z_]+)"/g)) written.add(m[1]);
+      // formData.key, formData?.key, formData["key"], formData?.["key"]
+      for (const m of text.matchAll(/\bformData(?:\?\.)?(?:\.([A-Za-z_]\w*)|\[\s*["']([A-Za-z_]\w*)["']\s*\])/g)) {
+        read.add(m[1] ?? m[2]);
+      }
     }
-    // Guard against passing vacuously if updateField is ever renamed.
+    // Guard against passing vacuously if updateField or formData is ever renamed.
     expect([...written]).toEqual(expect.arrayContaining(["height", "wingspan", "weight", "occupation", "smartGoal"]));
-    for (const key of written) {
+    expect([...read]).toEqual(expect.arrayContaining(["medicalHistory", "clinicalFlags", "occupation"]));
+    for (const key of new Set([...written, ...read])) {
       expect(isRecordFormKey(key), key).toBe(true);
       expect((seedForm(client({ [key]: "stored" } as Partial<Client>)) as Record<string, unknown>)[key], key).toBe(
         "stored",
