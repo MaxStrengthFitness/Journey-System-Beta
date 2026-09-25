@@ -143,3 +143,33 @@ in `VictoryHUDScreen.render.test.tsx`.
   treat days before the first synced booking as unknown.
 - **The progress report's default narrative** ("Thank you for your
   consistency…") is unchanged. It makes no claim about history on its own.
+
+## On the client codex (landing, Sep 24 2026)
+
+This round was written before the codex, so its screens stopped at the
+codex's edge. At the landing every codex page was checked for the claims
+this round governs (first session, "new", breaks, session numbers, counts,
+"since" dates, "never"), and none needed rewording, because each already
+words them through the coverage and the prior record the profile hands down:
+
+- **Overview**: its Story slot is the Story's own since line; "No notes in
+  Journey yet" and "No Pulse saved in Journey yet" say where they looked.
+- **Story**: "First session." only when Journey holds the whole story and no
+  prior record exists, else "First session recorded in Journey."; the since
+  line counts the prior record's sessions and Journey's apart, adds the
+  coverage caveat, and dates the start from the prior record's `from` or
+  Mindbody's own first visit, never from Journey's first session unless the
+  story is complete (`storySince`).
+- **Body & Pulse, Over time**: counts are "in Journey", imported and logged
+  sessions are named for what they are, and the footer names the sessions
+  before Journey it does not draw.
+- **Account**: the contract history's first tile is the years before
+  Journey (or "Not recorded here" with the caveat); "first visit" only of
+  Mindbody's own date; Mindbody's visit count is labelled as Mindbody's.
+- **Goals & Focus**: makes no claim about her past beyond what is written.
+
+Left open: the header's "Client since" (`clientSinceLabel`) and the Story's
+since line can disagree on the same screen for a long-standing client whose
+only date is the day Journey met her ("Client since Sep 2026" above, "In
+Journey since Sep 2026" below), and the header does not read the prior
+record's `from`. Changing the header's words is AJ's call.
