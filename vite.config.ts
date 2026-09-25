@@ -102,7 +102,17 @@ export default defineConfig(() => {
       // socket but suppress the error overlay — useful when a tool is
       // rewriting files underneath the dev server and every save would
       // otherwise flash a full-screen error for a few hundred milliseconds.
-      hmr: process.env.DISABLE_HMR !== 'true' ? true : { overlay: false },
+      //
+      // A second dev server (a preview given a free PORT because 3000 was
+      // taken) must not share Vite's default socket, 24678: its page would
+      // connect to the FIRST server's socket and reload forever. So off 3000
+      // the socket takes the port after the app's own. On 3000 nothing changes.
+      hmr: (() => {
+        const overlay = process.env.DISABLE_HMR !== 'true';
+        const appPort = Number(process.env.PORT || 3000);
+        if (appPort !== 3000) return overlay ? { port: appPort + 1 } : { port: appPort + 1, overlay: false };
+        return overlay ? true : { overlay: false };
+      })(),
     },
   };
 });
