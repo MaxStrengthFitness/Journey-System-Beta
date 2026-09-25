@@ -261,3 +261,12 @@ export function useActiveStudio() {
   }
   return context;
 }
+
+/**
+ * The same context, or null outside a provider. For a component that only
+ * NAMES a studio and has a sensible answer without one ("Packages" rather
+ * than "Packages at Westlake"), so it can be mounted on its own in a test.
+ */
+export function useOptionalActiveStudio(): ActiveStudioContextType | null {
+  return useContext(ActiveStudioContext) ?? null;
+}

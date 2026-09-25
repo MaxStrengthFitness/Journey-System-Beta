@@ -183,19 +183,21 @@ describe("one package's figures", () => {
 describe("the big number", () => {
   it("every 4 weeks, speaks in the unit the trainer chose", () => {
     const f = figuresFor(trial);
-    expect(priceAs(f, "session", "monthly")).toEqual({ amount: 70, unit: "a session" });
-    expect(priceAs(f, "week", "monthly")).toEqual({ amount: 140, unit: "a week" });
-    expect(priceAs(f, "payment", "monthly")).toEqual({ amount: 560, unit: "every 4 weeks" });
+    expect(priceAs(f, "session", "monthly")).toMatchObject({ amount: 70, unit: "a session" });
+    expect(priceAs(f, "week", "monthly")).toMatchObject({ amount: 140, unit: "a week" });
+    expect(priceAs(f, "payment", "monthly")).toMatchObject({ amount: 560, unit: "every 4 weeks" });
   });
 
   it("paid in full, never words a figure as if it were billed every 4 weeks", () => {
     const f = figuresFor(committed);
-    expect(priceAs(f, "session", "full")).toEqual({ amount: 57, unit: "a session, paid in full" });
-    expect(priceAs(f, "week", "full")).toEqual({ amount: 114, unit: "a week, paid in full" });
-    expect(priceAs(f, "payment", "full")).toEqual({ amount: 5472, unit: "once, in full" });
+    expect(priceAs(f, "session", "full")).toMatchObject({ amount: 57, unit: "a session, paid in full" });
+    expect(priceAs(f, "week", "full")).toMatchObject({ amount: 114, unit: "a week, paid in full" });
+    expect(priceAs(f, "payment", "full")).toMatchObject({ amount: 5472, unit: "once, in full" });
     for (const s of ["session", "week", "payment"] as const) {
       expect(priceAs(f, s, "full").unit).not.toMatch(/4 weeks/);
+      expect(priceAs(f, s, "full").shortUnit).not.toMatch(/4 weeks/);
     }
+    expect(priceAs(f, "session", "full").shortUnit).toBe("a session");
   });
 
   it("labels the third pick for how they pay", () => {

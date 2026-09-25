@@ -185,7 +185,23 @@ const CODEX_FILES: readonly string[] = [
   // The Overview (phase 18): the page is the shell's (above); its words are
   // worked out in one pure module from the selectors each page already uses.
   "features/client-codex/overview-model.ts",
+  // The packages screen (consultation round, Sep 2026): built on the kit,
+  // and every file in its folder must be here (the check below).
+  "features/packages/packages.css",
+  "features/packages/PackagesPanel.tsx",
+  "features/packages/PackagesTrainerNotes.tsx",
+  "features/packages/PackagesSheet.tsx",
+  "features/packages/package-copy.ts",
+  "features/packages/package-table.ts",
+  "features/packages/package-standing.ts",
+  "features/packages/packages-view.ts",
+  "features/packages/prices-state.ts",
+  "features/packages/booked-days.ts",
+  "features/packages/usePackagesDoor.ts",
 ];
+
+/** A folder whose every file must be on CODEX_FILES, like the codex's own. */
+const PACKAGES_DIR = join(SRC, "features", "packages");
 
 /**
  * The only selectors whose rules may clamp lines: a list row's note or beat
@@ -658,6 +674,10 @@ describe("the codex's files", () => {
     for (const full of codeFilesUnder(CODEX_DIR)) {
       const rel = relative(SRC, full).split(sep).join("/");
       expect(listed.has(rel), `${rel} is in the codex folder but not in CODEX_FILES`).toBe(true);
+    }
+    for (const full of codeFilesUnder(PACKAGES_DIR)) {
+      const rel = relative(SRC, full).split(sep).join("/");
+      expect(CODEX_FILES.includes(rel), `${rel} is in the packages folder but not in CODEX_FILES`).toBe(true);
     }
     for (const rel of HOSTED_FILES) expect(CODEX_FILES.includes(rel), `${rel} is on both lists`).toBe(false);
     for (const rel of CODEX_MOUNTED_FILES) {

@@ -1,0 +1,544 @@
+/* ==========================================================================
+   PACKAGES — the screen a trainer turns toward the client.
+
+   The codex kit's tokens and scale only (client-codex/kit/scale.test.ts
+   lists these files): text at 11 / 12 / 14 / 17 / 30px, the app's colours,
+   nothing clipped, nothing tappable under 40px. Every sentence the client is
+   meant to read is 17px; 11 and 12px are for labels, sources and the
+   trainer notes. Blue is the only accent: no hero orange, no crimson.
+
+   Layout is container-driven, so the panel lays itself out the same inside
+   the sheet and, later, inside the consultation: one column on every
+   portrait iPad (744, 820, 834, 1024), two on every landscape one (1133 and
+   up). Two wrapper columns, never one named grid area per section.
+   ========================================================================== */
+
+/* ---- the sheet: head, scrolling body, foot ---------------------------- */
+
+.pk-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--cx-bg);
+  color: var(--cx-ink);
+  container: pk-sheet / inline-size;
+}
+
+.pk-head {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 18px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  border-bottom: 1px solid var(--cx-line);
+  background: var(--cx-surface);
+}
+
+/* Narrow: the title and its two buttons on the first row, the picks under
+   them. Wide: all on one row, so the head stays short on a landscape mini. */
+.pk-head__id {
+  order: 1;
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  align-self: center;
+  min-width: 0;
+}
+
+.pk-head__actions {
+  order: 2;
+  display: flex;
+  flex: none;
+  align-self: flex-start;
+  gap: 8px;
+}
+
+.pk-head__controls {
+  order: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  flex: 1 1 100%;
+  gap: 10px 18px;
+}
+
+.pk-title {
+  margin: 0;
+  color: var(--cx-ink);
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-17);
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.pk-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.pk-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  container: pk / inline-size;
+}
+
+.pk-body > * {
+  flex: none;
+}
+
+.pk-foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--cx-line);
+  background: var(--cx-surface);
+}
+
+.pk-foot .cx-btn {
+  min-height: 48px;
+  min-width: 120px;
+}
+
+.pk-state {
+  display: grid;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+/* ---- the panel -------------------------------------------------------- */
+
+.pk-panel {
+  color: var(--cx-ink);
+}
+
+.pk-inner {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.pk-col {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.pk-lede {
+  display: grid;
+  gap: 4px;
+}
+
+.pk-text {
+  margin: 0;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.pk-text--quiet {
+  color: var(--cx-ink-2);
+}
+
+.pk-lines {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- how long: one column per length, at every width ------------------- */
+
+.pk-lengths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+
+.pk-lengths[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pk-lengths .cx-pick.pk-length {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  width: 100%;
+  min-width: 0;
+  min-height: 112px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.pk-length > span {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.pk-length__months {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--cx-ink);
+  font-family: var(--cx-font-display);
+  font-size: var(--cx-fs-30);
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pk-length__unit {
+  color: var(--cx-ink-3);
+  font-family: var(--cx-font-body);
+  font-size: var(--cx-fs-14);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.pk-length__name {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pk-length__sessions {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 600;
+}
+
+.pk-length__price {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pk-length[aria-pressed="true"] .pk-length__months,
+.pk-length[aria-pressed="true"] .pk-length__name,
+.pk-length[aria-pressed="true"] .pk-length__price {
+  color: var(--cx-live-text);
+}
+
+/* ---- the selected package -------------------------------------------- */
+
+.pk-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.pk-price__unit {
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-17);
+}
+
+.pk-dots {
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  gap: 12px 14px;
+}
+
+.pk-dots__group {
+  display: grid;
+  grid-template-columns: repeat(4, 10px);
+  gap: 4px;
+}
+
+.pk-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cx-live);
+}
+
+/* ---- every 4 weeks: bars from zero, the words under each ---------------- */
+
+.pk-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pk-step {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+
+.pk-step__amount {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+  font-weight: 700;
+}
+
+.pk-step__bar {
+  display: block;
+  width: 70%;
+  border-radius: 8px 8px 3px 3px;
+  background: var(--cx-surface-3);
+}
+
+.pk-step[data-on] .pk-step__bar {
+  background: var(--cx-live);
+}
+
+.pk-step__months {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+}
+
+.pk-step[data-on] .pk-step__months {
+  color: var(--cx-live-text);
+  font-weight: 700;
+}
+
+/* ---- the guarantee ---------------------------------------------------- */
+
+.pk-guarantee {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pk-g;
+}
+
+.pk-guarantee li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  counter-increment: pk-g;
+}
+
+.pk-guarantee li::before {
+  content: counter(pk-g);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--cx-ok-fill);
+  color: var(--cx-ok);
+  font-size: var(--cx-fs-12);
+  font-weight: 800;
+}
+
+.pk-guarantee b {
+  color: var(--cx-ink);
+}
+
+/* ---- your week -------------------------------------------------------- */
+
+.pk-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pk-week .cx-pick {
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.pk-week .cx-pick[data-tall] {
+  align-items: center;
+}
+
+/* ---- life happens ----------------------------------------------------- */
+
+.pk-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.pk-stepper__label {
+  color: var(--cx-ink-3);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+}
+
+.pk-stepper .cx-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+}
+
+.pk-stepper__value {
+  min-width: 80px;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-17);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pk-timeline {
+  position: relative;
+  padding-top: 24px;
+}
+
+.pk-timeline__bar {
+  display: flex;
+  gap: 1px;
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pk-timeline__bar i {
+  flex: 1 1 0;
+  background: var(--cx-live);
+}
+
+.pk-timeline__bar i[data-away] {
+  background: repeating-linear-gradient(135deg, var(--cx-line-2) 0 4px, transparent 4px 8px);
+}
+
+.pk-timeline__tick {
+  position: absolute;
+  top: 0;
+  bottom: -4px;
+  width: 0;
+  border-left: 2px solid var(--cx-ink);
+}
+
+.pk-timeline__label {
+  position: absolute;
+  top: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-12);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pk-timeline__tick[data-side="left"] .pk-timeline__label {
+  right: 6px;
+}
+
+.pk-timeline__tick[data-side="right"] .pk-timeline__label {
+  left: 6px;
+}
+
+/* ---- the trainer notes ------------------------------------------------ */
+
+.pk-notes {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+  color: var(--cx-ink);
+}
+
+.pk-notes__back {
+  justify-self: start;
+}
+
+.pk-fallbacks {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pk-fallbacks li {
+  display: grid;
+  gap: 4px;
+}
+
+.pk-fallbacks b {
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+}
+
+.pk-note {
+  margin: 0;
+  color: var(--cx-ink-2);
+  font-size: var(--cx-fs-14);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.pk-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pk-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  color: var(--cx-ink);
+  font-size: var(--cx-fs-14);
+}
+
+/* ---- wider: two columns, and the head on one row ----------------------- */
+
+@container pk (min-width: 820px) {
+  .pk-inner,
+  .pk-notes {
+    padding: 24px;
+  }
+}
+
+@container pk (min-width: 1100px) {
+  .pk-inner {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: 28px;
+    align-items: start;
+    max-width: 1240px;
+  }
+}
+
+@container pk-sheet (min-width: 1000px) {
+  .pk-head {
+    padding-inline: 24px;
+  }
+
+  .pk-head__controls {
+    order: 2;
+    flex: 0 1 auto;
+  }
+
+  .pk-head__actions {
+    order: 3;
+    align-self: center;
+  }
+}

@@ -194,21 +194,29 @@ export function showAsLabel(showAs: ShowAs, pay: PayMode): string {
  * Every 4 weeks, the three units are real: a session's price, a payment ÷ 4,
  * and the payment. Paid in full there is ONE payment, so the third unit is
  * the whole amount, and "a week" is what the whole works out to per week of
- * the package's own pace, said as such.
+ * the package's own pace, said as such. `shortUnit` is for the length
+ * columns, which sit under the "Paying: In full" pick that already says it;
+ * the big number always carries the whole unit.
  */
-export function priceAs(f: TierFigures, showAs: ShowAs, pay: PayMode): { amount: number | null; unit: string } {
+export function priceAs(
+  f: TierFigures,
+  showAs: ShowAs,
+  pay: PayMode,
+): { amount: number | null; unit: string; shortUnit: string } {
   if (pay === "full") {
-    if (showAs === "payment") return { amount: f.wholeFull, unit: "once, in full" };
+    if (showAs === "payment") return { amount: f.wholeFull, unit: "once, in full", shortUnit: "once" };
     if (showAs === "week") {
       const perWeek =
         f.fullRate !== null && f.visitsPerWeek !== null ? f.fullRate * f.visitsPerWeek : null;
-      return { amount: perWeek, unit: "a week, paid in full" };
+      return { amount: perWeek, unit: "a week, paid in full", shortUnit: "a week" };
     }
-    return { amount: f.fullRate, unit: "a session, paid in full" };
+    return { amount: f.fullRate, unit: "a session, paid in full", shortUnit: "a session" };
   }
-  if (showAs === "payment") return { amount: f.payment, unit: "every 4 weeks" };
-  if (showAs === "week") return { amount: f.payment !== null ? f.payment / WEEKS_PER_PAYMENT : null, unit: "a week" };
-  return { amount: f.rate, unit: "a session" };
+  if (showAs === "payment") return { amount: f.payment, unit: "every 4 weeks", shortUnit: "every 4 weeks" };
+  if (showAs === "week") {
+    return { amount: f.payment !== null ? f.payment / WEEKS_PER_PAYMENT : null, unit: "a week", shortUnit: "a week" };
+  }
+  return { amount: f.rate, unit: "a session", shortUnit: "a session" };
 }
 
 /* ------------------------------------------------------------------ *
