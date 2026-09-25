@@ -96,3 +96,21 @@ export function wallClockToInstant(
   ms = naive - zoneOffsetMs(new Date(ms), zone);
   return new Date(ms);
 }
+
+/**
+ * `YYYY-MM-DD` of an instant as the studio's calendar reads it. The same
+ * answer as src/lib/studio-time.ts's studioDateKey, which the pull uses for a
+ * moved booking's `movedFromDay`: an 8 PM Eastern booking is tomorrow in UTC,
+ * and Operations' week of changes files the move under the day it left.
+ */
+export function studioDayKeyOf(ms: number, tz: string): string {
+  const zone = isValidTimeZone(tz) ? tz : DEFAULT_TIME_ZONE;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ms));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}

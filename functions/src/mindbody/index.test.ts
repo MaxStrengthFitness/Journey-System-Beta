@@ -422,75 +422,207 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     expect(written).not.toHaveProperty("notes");
   });
 
-  it("11. Booking created event maps and writes to schedules collection", async () => {
-    const rawBodyObj = {
-      messageId: "booking-msg-001",
-      eventId: "appointmentBooking.created",
-      eventData: {
-        siteId: 99999,
-        clientId: "client-123",
-        id: "booking-abc",
-        clientName: "Alice Smith",
-        staffName: "Marina",
-        startDateTime: "2024-01-13T10:00:00Z",
-        endDateTime: "2024-01-13T11:00:00Z",
-        serviceName: "Semi-Private Training",
-      },
-    };
-    const rawBody = JSON.stringify(rawBodyObj);
-    const req: WebhookRequest = {
-      rawBody,
-      signatureHeader: signForTest(rawBody, mockSecret),
-    };
+  /*
+   * The booking events as Mindbody documents them (WebhooksDocumentation,
+   * read Sep 25 2026): created and updated carry the whole appointment with
+   * staffId / staffFirstName / staffLastName / appointmentName and UTC times;
+   * cancelled carries ONLY siteId and appointmentId.
+   */
+  const bookingEnvelope = (
+    eventId: string,
+    eventData: Record<string, unknown>,
+    extra: Record<string, unknown> = {},
+  ) => {
+    const rawBody = JSON.stringify({
+      messageId: `booking-${eventId}-${JSON.stringify(eventData).length}-${JSON.stringify(extra).length}`,
+      eventId,
+      eventSchemaVersion: 1,
+      eventInstanceOriginationDateTime: "2026-09-25T14:00:00Z",
+      eventData,
+      ...extra,
+    });
+    return { rawBody, signatureHeader: signForTest(rawBody, mockSecret) } as WebhookRequest;
+  };
+  const created = (over: Record<string, unknown> = {}) => ({
+    siteId: 99999,
+    appointmentId: 121,
+    status: "Scheduled",
+    locationId: 1,
+    clientId: "client-123",
+    clientFirstName: "Alice",
+    clientLastName: "Smith",
+    staffId: 100000012,
+    staffFirstName: "Jane",
+    staffLastName: "Doe",
+    startDateTime: "2026-09-26T14:00:00Z",
+    endDateTime: "2026-09-26T14:30:00Z",
+    appointmentName: "Semi-Private Training",
+    ...over,
+  });
+  const scheduleWrite = (id = "121") => writesTo("schedules").find((w) => w.id === id);
 
-    const response = await handleMindbodyWebhook(deps, req);
+  it("11. appointmentBooking.created writes the booking, finding the trainer by Mindbody staff id", async () => {
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K" };
+
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
 
     expect(response.statusCode).toBe(200);
-    expect(mockSet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientName: "Alice Smith",
-        trainerName: "Marina",
-        trainerId: "trainer-abc",
-        studioId: "studio-123",
-        status: "Scheduled",
-        serviceName: "Semi-Private Training",
-        source: "MindBody",
-        clientId: "client-123",
-      }),
-      { merge: true },
+    const w = scheduleWrite();
+    expect(w?.options).toEqual({ merge: true });
+    expect(w?.data).toMatchObject({
+      clientName: "Alice Smith",
+      trainerId: "trainer-abc",
+      trainerName: "Marina K",
+      studioId: "studio-123",
+      status: "Scheduled",
+      serviceName: "Semi-Private Training",
+      source: "MindBody",
+      clientId: "client-123",
+      mindbodyAppointmentId: "121",
+    });
+    // The UTC time is read as UTC, whatever the studio's zone.
+    expect((w?.data.startTime as Timestamp).toMillis()).toBe(Date.parse("2026-09-26T14:00:00Z"));
+    expect((w?.data.mindbodyEventAt as Timestamp).toMillis()).toBe(Date.parse("2026-09-25T14:00:00Z"));
+  });
+
+  it("11b. a staff id no trainer carries writes no trainer, and keeps the row's when the name is the same", async () => {
+    existingDocs["schedules/121"] = {
+      studioId: "studio-123",
+      status: "Scheduled",
+      trainerId: "trainer-found-by-the-pull",
+      trainerName: "Jane Doe",
+      startTime: Timestamp.fromDate(new Date("2026-09-26T14:00:00Z")),
+    };
+
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.updated", created({ staffId: 555 })),
+    );
+
+    const w = scheduleWrite();
+    expect(w?.data).not.toHaveProperty("trainerId");
+    expect(w?.data).not.toHaveProperty("trainerName");
+  });
+
+  it("12. appointmentBooking.cancelled cancels the booking Journey holds and keeps everything it knew", async () => {
+    existingDocs["schedules/121"] = {
+      studioId: "studio-123",
+      status: "Scheduled",
+      clientName: "Alice Smith",
+      startTime: Timestamp.fromDate(new Date("2026-09-26T14:00:00Z")),
+    };
+
+    const response = await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 121 }),
+    );
+
+    expect(response.statusCode).toBe(200);
+    const w = scheduleWrite();
+    expect(w?.options).toEqual({ merge: true });
+    expect(w?.data.status).toBe("Cancelled");
+    expect(w?.data.cancelSource).toBe("mindbody");
+    expect(w?.data.cancelledAt).toBeDefined();
+    // Status only: the cancellation names no time, client or trainer, so none is written.
+    expect(Object.keys(w?.data ?? {}).sort()).toEqual(
+      ["cancelSource", "cancelledAt", "lastSyncAt", "mindbodyEventAt", "status"].sort(),
     );
   });
 
-  it("12. Booking cancelled event maps and updates status to Cancelled", async () => {
-    const rawBodyObj = {
-      messageId: "booking-msg-002",
-      eventId: "appointmentBooking.cancelled",
-      eventData: {
-        siteId: 99999,
-        clientId: "client-123",
-        id: "booking-abc",
-        clientName: "Alice Smith",
-        staffName: "Marina",
-        startDateTime: "2024-01-13T10:00:00Z",
-        endDateTime: "2024-01-13T11:00:00Z",
-        serviceName: "Semi-Private Training",
-      },
-    };
-    const rawBody = JSON.stringify(rawBodyObj);
-    const req: WebhookRequest = {
-      rawBody,
-      signatureHeader: signForTest(rawBody, mockSecret),
-    };
-
-    const response = await handleMindbodyWebhook(deps, req);
-
-    expect(response.statusCode).toBe(200);
-    expect(mockSet).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "Cancelled",
-      }),
-      { merge: true },
+  it("12b. a cancellation for a booking Journey never held writes nothing", async () => {
+    const response = await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 404 }),
     );
+    expect(response.statusCode).toBe(200);
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+  });
+
+  it("12c. on a shared site a cancellation reaches the booking, not Limbo", async () => {
+    studioDocs = [
+      { id: "studio-solon", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 2 }) },
+      { id: "studio-westlake", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 1 }) },
+    ];
+    existingDocs["schedules/121"] = { studioId: "studio-westlake", status: "Scheduled" };
+
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 121 }),
+    );
+
+    expect(scheduleWrite()?.data.status).toBe("Cancelled");
+    expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+  });
+
+  it("12d. a cancellation naming another site than the booking's studio is ignored", async () => {
+    studioDocs = [
+      { id: "studio-123", data: () => ({ mindbodySiteId: 99999 }) },
+      { id: "studio-far", data: () => ({ mindbodySiteId: 5746957 }) },
+    ];
+    existingDocs["schedules/121"] = { studioId: "studio-far", status: "Scheduled" };
+
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 121 }),
+    );
+
+    expect(writesTo("schedules")).toHaveLength(0);
+  });
+
+  it("12e. a late retry of an older event cannot bring a cancelled booking back", async () => {
+    existingDocs["schedules/121"] = {
+      studioId: "studio-123",
+      status: "Cancelled",
+      mindbodyEventAt: Timestamp.fromDate(new Date("2026-09-25T14:05:00Z")),
+    };
+
+    // The created event happened at 14:00, before the 14:05 cancellation.
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(writesTo("schedules")).toHaveLength(0);
+  });
+
+  it("12f. a new time is stamped as a move, the way the pull stamps one", async () => {
+    const oldStart = Timestamp.fromDate(new Date("2026-09-26T13:00:00Z"));
+    existingDocs["schedules/121"] = { studioId: "studio-123", status: "Scheduled", startTime: oldStart };
+
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.updated", created()));
+
+    const w = scheduleWrite();
+    expect(w?.data.movedFromStart).toBe(oldStart);
+    // 13:00 UTC is 9:00 Eastern on the 26th.
+    expect(w?.data.movedFromDay).toBe("2026-09-26");
+    expect(w?.data.movedAt).toBeDefined();
+    expect(w?.data).not.toHaveProperty("cancelledAt");
+  });
+
+  it("12g. an update that says Cancelled cancels, and a newer one that says Scheduled restores", async () => {
+    existingDocs["schedules/121"] = { studioId: "studio-123", status: "Scheduled" };
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.updated", created({ status: "Cancelled" })),
+    );
+    expect(scheduleWrite()?.data).toMatchObject({ status: "Cancelled", cancelSource: "mindbody" });
+
+    writes = [];
+    existingDocs["schedules/121"] = {
+      studioId: "studio-123",
+      status: "Cancelled",
+      cancelSource: "mindbody",
+      mindbodyEventAt: Timestamp.fromDate(new Date("2026-09-25T13:00:00Z")),
+    };
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.updated", created()));
+    expect(scheduleWrite()?.data).toMatchObject({ status: "Scheduled", cancelledAt: null, cancelSource: null });
+  });
+
+  it("12h. an update without a service name never blanks the one the row has", async () => {
+    existingDocs["schedules/121"] = { studioId: "studio-123", status: "Scheduled", serviceName: "Intro Session" };
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.updated", created({ appointmentName: undefined })),
+    );
+    expect(scheduleWrite()?.data).not.toHaveProperty("serviceName");
   });
 
   describe("multiple studios sharing one MindBody site", () => {

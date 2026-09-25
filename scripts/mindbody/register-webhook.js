@@ -64,16 +64,23 @@ function getEnv(key) {
  */
 /*
  * Sep 24 2026: checked against Mindbody's event list (WebhooksDocumentation).
- * `appointmentBooking.updated` does not exist, and no clientContract.* event
- * is documented; asking for an unknown event id fails the whole request,
- * which is the likeliest reason the last subscription never left
- * PendingActivation. The documented ids come first; the contract ids are
- * only TRIED (--fresh drops them if Mindbody refuses, then staff.* likewise).
+ * No clientContract.* event is documented; asking for an unknown event id
+ * fails the whole request, which is the likeliest reason the last
+ * subscription never left PendingActivation. The documented ids come first;
+ * the contract ids are only TRIED (--fresh drops them if Mindbody refuses,
+ * then staff.* likewise).
+ *
+ * Sep 25 2026 (lean sync): `appointmentBooking.updated` IS documented -- read
+ * again on WebhooksDocumentation, "sent when a change is made to any of the
+ * properties in the appointmentBooking.created event object", same object.
+ * The Sep 24 note that it did not exist was wrong. It is how a new time or a
+ * new trainer reaches the Hub in seconds instead of at the next pull.
  */
 const EVENT_IDS = [
   'client.created',
   'client.updated',
   'appointmentBooking.created',
+  'appointmentBooking.updated',
   'appointmentBooking.cancelled',
   'clientMembershipAssignment.created',
   'clientMembershipAssignment.cancelled',

@@ -3,6 +3,7 @@ import {
   wallClockToInstant,
   isValidTimeZone,
   DEFAULT_TIME_ZONE,
+  studioDayKeyOf,
 } from "./time";
 
 const ET = "America/New_York";
@@ -67,5 +68,16 @@ describe("wallClockToInstant", () => {
     expect(isValidTimeZone(ET)).toBe(true);
     expect(isValidTimeZone("nonsense")).toBe(false);
     expect(isValidTimeZone(undefined)).toBe(false);
+  });
+});
+
+describe("studioDayKeyOf", () => {
+  it("files an evening booking under the studio's day, not UTC's", () => {
+    // 8 PM Eastern on Sep 25 is 00:00 UTC on Sep 26.
+    expect(studioDayKeyOf(Date.UTC(2026, 8, 26, 0, 0), "America/New_York")).toBe("2026-09-25");
+  });
+
+  it("falls back to Eastern for an unusable zone", () => {
+    expect(studioDayKeyOf(Date.UTC(2026, 8, 26, 0, 0), "Not/AZone")).toBe("2026-09-25");
   });
 });
