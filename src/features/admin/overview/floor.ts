@@ -15,7 +15,7 @@
  * and arithmetic about someone's day is worth being sure of.
  */
 
-import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import type { ScheduleEntry } from "../../../types";
 import { studioDateKey, toDate } from "../../../lib/studio-time";
 import { bookingState, type LoggedSessions } from "../../../lib/booking-state";
 
@@ -150,113 +150,6 @@ export function summariseFloor(
 }
 
 /* ==================================================================== *
- * Who is on the floor
- * ==================================================================== */
-
-export interface TrainerLane {
-  trainerId: string | null;
-  trainerName: string;
-  total: number;
-  completed: number;
-  remaining: number;
-  noShow: number;
-  cancelled: number;
-  /** The client they are with right now, if the schedule says so. */
-  nowWith: string | null;
-  /** Start of their next appointment after `now`. */
-  nextAt: Date | null;
-  /** Their first and last appointment today — the shift, as booked. */
-  firstAt: Date | null;
-  lastAt: Date | null;
-  /** True when a session document for them is open right now. */
-  live: boolean;
-}
-
-/**
- * One lane per trainer with something on the books today, ordered by when
- * their day starts. A trainer with only cancellations still gets a lane —
- * "Marina's four bookings all cancelled" is exactly the thing a studio leader
- * needs to see, and dropping the lane hides it.
- */
-export function trainerLanes(
-  entries: ScheduleEntry[],
-  now: Date,
-  liveSessions: WorkoutSession[] = [],
-): TrainerLane[] {
-  const byTrainer = new Map<string, ScheduleEntry[]>();
-  for (const e of entries) {
-    const key = e.trainerId || `name:${e.trainerName || "Unassigned"}`;
-    const list = byTrainer.get(key);
-    if (list) list.push(e);
-    else byTrainer.set(key, [e]);
-  }
-
-  const liveTrainerIds = new Set(
-    liveSessions
-      .filter((s) => s.status === "In-Progress" && s.trainerId)
-      .map((s) => s.trainerId as string),
-  );
-
-  const lanes: TrainerLane[] = [];
-  for (const [key, list] of byTrainer) {
-    const sorted = [...list].sort(
-      (a, b) =>
-        (toDate(a.startTime)?.getTime() ?? 0) -
-        (toDate(b.startTime)?.getTime() ?? 0),
-    );
-    const trainerId = key.startsWith("name:") ? null : key;
-
-    let completed = 0;
-    let noShow = 0;
-    let cancelled = 0;
-    let nowWith: string | null = null;
-    let nextAt: Date | null = null;
-
-    for (const e of sorted) {
-      if (e.status === "Completed") completed += 1;
-      else if (e.status === "No-Show") noShow += 1;
-      else if (e.status === "Cancelled") cancelled += 1;
-
-      if (e.status === "Scheduled") {
-        const start = toDate(e.startTime);
-        const end = toDate(e.endTime);
-        if (start && end && start <= now && now < end && !nowWith) {
-          nowWith = e.clientName || "Client";
-        }
-        if (start && start > now && (!nextAt || start < nextAt)) {
-          nextAt = start;
-        }
-      }
-    }
-
-    const active = sorted.filter((e) => e.status !== "Cancelled");
-    lanes.push({
-      trainerId,
-      trainerName: sorted[0]?.trainerName || "Unassigned",
-      total: active.length,
-      completed,
-      remaining: active.length - completed - noShow,
-      noShow,
-      cancelled,
-      nowWith,
-      nextAt,
-      firstAt: toDate(active[0]?.startTime) ?? null,
-      lastAt: toDate(active[active.length - 1]?.startTime) ?? null,
-      live: trainerId ? liveTrainerIds.has(trainerId) : false,
-    });
-  }
-
-  return lanes.sort((a, b) => {
-    // Anyone mid-session floats to the top; after that, the day's order.
-    if (a.live !== b.live) return a.live ? -1 : 1;
-    const at = a.firstAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    const bt = b.firstAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    if (at !== bt) return at - bt;
-    return a.trainerName.localeCompare(b.trainerName);
-  });
-}
-
-/* ==================================================================== *
  * What fell over
  * ==================================================================== */
 
@@ -312,35 +205,4 @@ export function attentionItems(
     if (a.kind !== b.kind) return ATTENTION_ORDER[a.kind] - ATTENTION_ORDER[b.kind];
     return (a.at?.getTime() ?? 0) - (b.at?.getTime() ?? 0);
   });
-}
-
-/* ==================================================================== *
- * Week shape, for context under today
- * ==================================================================== */
-
-export interface DayLoad {
-  dayKey: string;
-  booked: number;
-  completed: number;
-  missed: number;
-}
-
-/**
- * Appointment counts per studio-local day across whatever range the schedule
- * hook has loaded. Today alone has no shape to it; a leader wants to know
- * whether today is heavy or light before deciding to send someone home.
- */
-export function loadByDay(entries: ScheduleEntry[]): DayLoad[] {
-  const byDay = new Map<string, DayLoad>();
-  for (const e of entries) {
-    const key = studioDateKey(toDate(e.startTime));
-    if (!key) continue;
-    const row =
-      byDay.get(key) ?? { dayKey: key, booked: 0, completed: 0, missed: 0 };
-    row.booked += 1;
-    if (e.status === "Completed") row.completed += 1;
-    if (e.status === "No-Show" || e.status === "Cancelled") row.missed += 1;
-    byDay.set(key, row);
-  }
-  return [...byDay.values()].sort((a, b) => a.dayKey.localeCompare(b.dayKey));
 }

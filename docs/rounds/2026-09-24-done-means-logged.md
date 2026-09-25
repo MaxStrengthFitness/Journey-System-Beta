@@ -96,7 +96,16 @@ one is set. The cutover field (My Studio → Studio) now says this in its hint.
   started. That is the trainer's floor rather than Operations, so it was not
   in this change. Flagged as a separate task.
 - `trainerLanes` and `loadByDay` in `overview/floor.ts` still read the booking
-  alone, but no screen uses them.
+  alone, but no screen uses them. (Deleted at the landing, Sep 24 2026, with
+  their tests.)
+- **The weekly coach report cron** (`server/cron-weekly-coach-report.ts`)
+  counts `status === "Completed"` / `"No-Show"` from `schedules`, which the
+  sync never writes, so it would report zero completed sessions for every
+  coach. It is commented out in `render.yaml`, so nothing ships wrong today.
+  Before it is switched on it must read outcomes through `booking-state.ts`
+  (one `sessions` read per week by `hostedAtStudioId`, then
+  `loggedSessions` / `bookingState`). Named at the landing; its header says
+  so too.
 
 ## Verification (AJ's PC, in a worktree)
 
