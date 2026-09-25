@@ -170,6 +170,7 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
               authTrainer={authTrainer}
               canManage={canManageRenewals(authTrainer, studioId)}
               onClose={() => setBriefClient(null)}
+              studios={studios}
             />
           )}
         </>

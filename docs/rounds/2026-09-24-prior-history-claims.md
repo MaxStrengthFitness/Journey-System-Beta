@@ -173,3 +173,10 @@ since line can disagree on the same screen for a long-standing client whose
 only date is the day Journey met her ("Client since Sep 2026" above, "In
 Journey since Sep 2026" below), and the header does not read the prior
 record's `from`. Changing the header's words is AJ's call.
+
+Closed at the landing (Sep 24 2026, `landing-sep24`): the header, the printed
+report's "Joined" and the Renewal Brief now pass the client's coverage to
+`lib/client-since.ts`, which counts Journey's first session as her start only
+when coverage is "complete" with no prior record - the Story's own rule.
+Otherwise the header and the Brief say "In Journey since" and the report
+prints a dash. The header still does not read the prior record's `from`.

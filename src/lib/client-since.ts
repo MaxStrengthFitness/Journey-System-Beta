@@ -32,6 +32,24 @@
  * Firestore, and so the same rule can be reused by the backfill script.
  */
 import { toDate } from "./studio-time";
+import { priorHistoryOf, type HistoryCoverage } from "./prior-history";
+
+/**
+ * How much of her story Journey holds, when the caller knows it
+ * (`coverageOfClient`, lib/client-coverage.ts). With it, Journey's first
+ * session is proof of when she STARTED only when Journey holds her whole
+ * story - coverage "complete" and no prior record - the same rule the
+ * codex's Story uses (`storySince`, client-story/story.ts). Otherwise it
+ * is only the day Journey met her, and reads "In Journey since".
+ *
+ * Every screen that prints the answer passes it (the profile header, the
+ * printed report's "Joined", the Renewal Brief). Without it the first
+ * session is still counted as proof, which is right only for a caller that
+ * already knows Journey holds her whole story.
+ */
+export interface ClientSinceHistory {
+  coverage: HistoryCoverage;
+}
 
 export type ClientSinceSource =
   /**
@@ -52,7 +70,11 @@ export type ClientSinceSource =
 export interface ClientSince {
   date: Date;
   source: ClientSinceSource;
-  /** False for "journey" — the caller must not label that one "Client since". */
+  /**
+   * False for "journey", and for a first session that does not prove when
+   * she started (see `ClientSinceHistory`): the caller must not label
+   * either one "Client since".
+   */
   fromMindbody: boolean;
 }
 
@@ -64,6 +86,8 @@ interface ClientSinceInput {
   createdAt?: any;
   mindbodyMemberships?: Record<string, { activeDate?: any; assignedAt?: any }>;
   mindbodyContracts?: Record<string, { startDate?: any; agreementDate?: any }>;
+  /** `client.priorHistory`: a stated record of sessions before Journey. */
+  priorHistory?: unknown;
 }
 
 /**
@@ -111,14 +135,24 @@ function earliestCommercialDate(client: ClientSinceInput): Date | null {
  *
  * Then commercial evidence, then - only so a caller can render something -
  * the Journey timestamp, flagged as not being a business date.
+ *
+ * With `history`, Journey's first session is proof only when Journey holds
+ * her whole story (see `ClientSinceHistory`). When it is not, it drops to
+ * just above the Journey timestamp and comes back flagged `fromMindbody:
+ * false`: a long-standing FileMaker client whose only date is the day
+ * Journey met her reads "In Journey since Sep 2026", never "Client since".
  */
 export function resolveClientSince(
   client: ClientSinceInput | null | undefined,
+  history?: ClientSinceHistory,
 ): ClientSince | null {
   if (!client) return null;
 
+  const sessionProves =
+    !history || (history.coverage === "complete" && !priorHistoryOf(client));
+
   const candidates: Array<[ClientSinceSource, any]> = [
-    ["firstSession", client.firstSessionDate],
+    ["firstSession", sessionProves ? client.firstSessionDate : null],
     ["firstAppointment", client.firstAppointmentDate],
     ["mindbodyCreated", client.mindbodyCreatedAt],
   ];
@@ -137,6 +171,13 @@ export function resolveClientSince(
   const commercial = earliestCommercialDate(client);
   if (commercial) {
     return { date: commercial, source: "commercial", fromMindbody: true };
+  }
+
+  if (!sessionProves) {
+    const first = toDate(client.firstSessionDate);
+    if (first && !Number.isNaN(first.getTime()) && first.getFullYear() >= 1990) {
+      return { date: first, source: "firstSession", fromMindbody: false };
+    }
   }
 
   const created = toDate(client.createdAt);
@@ -186,8 +227,9 @@ const MONTHS = [
  */
 export function clientSinceLabel(
   client: ClientSinceInput | null | undefined,
+  history?: ClientSinceHistory,
 ): { label: string; value: string; source: ClientSinceSource } | null {
-  const since = resolveClientSince(client);
+  const since = resolveClientSince(client, history);
   if (!since) return null;
   return {
     label: since.fromMindbody ? "Client since" : "In Journey since",

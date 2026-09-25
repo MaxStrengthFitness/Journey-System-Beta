@@ -1437,6 +1437,7 @@ export function ClientProfileView({
         scheduledSessions={scheduledSessions}
         completedCount={completedTotal}
         sessionsQuotable={canQuoteNumber}
+        coverage={clientCoverage}
         priorLabel={priorLabel}
         priorHistoryDoor={priorHistoryDoor ?? undefined}
         topTrainer={topTrainer}

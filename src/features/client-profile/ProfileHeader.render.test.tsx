@@ -186,4 +186,26 @@ describe("ProfileHeader's session count", () => {
     expect(t?.textContent).toContain("—");
     expect(t?.textContent).not.toMatch(/\b0\b/);
   });
+
+  /*
+   * The header and the codex Story sit on one screen, so they must say the
+   * same thing about when she started. Journey's first session is proof of
+   * that only when Journey holds her whole story.
+   */
+  it("reads 'In Journey since' for a FileMaker client whose only date is Journey's", () => {
+    const filemaker = { ...client, firstSessionDate: "2026-09-02T15:00:00" } as unknown as Client;
+    const el = mount(props({ client: filemaker, coverage: "partial" }));
+    expect(el.textContent).toContain("In Journey since Sep 2026");
+    expect(el.textContent).not.toContain("Client since");
+    act(() => root?.unmount());
+    host?.remove();
+
+    const unknown = mount(props({ client: filemaker }));
+    expect(unknown.textContent).toContain("In Journey since Sep 2026");
+    act(() => root?.unmount());
+    host?.remove();
+
+    const brandNew = mount(props({ client: filemaker, coverage: "complete" }));
+    expect(brandNew.textContent).toContain("Client since Sep 2026");
+  });
 });

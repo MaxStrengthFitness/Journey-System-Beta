@@ -52,6 +52,13 @@ describe("the Brief", () => {
     expect(gainSentence(gains[0])).toBe("Leg Press: 100 → 130 lb, 30% stronger");
   });
 
+  it("says 'In Journey since' when Journey's first session is her only date and her story is not all here", () => {
+    const filemaker = { ...client, firstSessionDate: "2026-09-02T15:00:00" } as Client;
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS, "partial")[0]).toBe("In Journey since Sep 2026");
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS)[0]).toBe("In Journey since Sep 2026");
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS, "complete")[0]).toBe("Client since Sep 2026");
+  });
+
   it("tells the journey from the snapshot", () => {
     expect(journeyLines(client, snap, DEFAULT_RENEWAL_SETTINGS)).toEqual([
       "Trained in 11 of the last 12 weeks",

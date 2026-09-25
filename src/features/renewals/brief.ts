@@ -14,6 +14,7 @@ import { MIN_MACHINE_SESSIONS } from "./engine";
 import { dayLabel, paceSentence } from "./sentences";
 import { callChange, type InBodyVariation } from "../inbody/variation";
 import type { Client } from "../../types";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import type { PackageTier, RenewalSettings, RenewalSnapshot } from "./types";
 
 export interface StrengthGain {
@@ -53,10 +54,21 @@ export function tierOf(settings: RenewalSettings, key: string | null): PackageTi
   return settings.packages.find((p) => p.key === key) ?? null;
 }
 
-/** Their journey in a few plain lines. */
-export function journeyLines(client: Client, s: RenewalSnapshot | null, settings: RenewalSettings): string[] {
+/**
+ * Their journey in a few plain lines.
+ *
+ * `coverage` is how much of her story Journey holds: "Client since" counts
+ * her first session in Journey only when it is all there (lib/client-since),
+ * so the Brief and the profile say the same thing. Absent reads as unknown.
+ */
+export function journeyLines(
+  client: Client,
+  s: RenewalSnapshot | null,
+  settings: RenewalSettings,
+  coverage: HistoryCoverage = "unknown",
+): string[] {
   const lines: string[] = [];
-  const since = clientSinceLabel(client);
+  const since = clientSinceLabel(client, { coverage });
   if (since) lines.push(`${since.label} ${since.value}`);
   if (s) {
     if (s.proof.weeksAttended !== null && s.proof.weeksObserved !== null) {

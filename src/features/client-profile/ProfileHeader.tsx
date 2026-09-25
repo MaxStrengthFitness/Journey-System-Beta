@@ -24,6 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn, parseSessionDate } from "../../lib/utils";
 import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
 import { clientSinceLabel } from "../../lib/client-since";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
@@ -84,6 +85,14 @@ export interface ProfileHeaderProps {
    * "Sessions in Journey" instead of passing it off as her lifetime.
    */
   sessionsQuotable?: boolean;
+  /**
+   * How much of her story Journey holds (`coverageOfClient`). "Client
+   * since" counts her first session in Journey only when it is "complete"
+   * with no prior record - the codex Story's rule - so a FileMaker client
+   * whose only date is the day Journey met her reads "In Journey since",
+   * the same words as the Story beneath. Absent reads as "unknown".
+   */
+  coverage?: HistoryCoverage;
   /**
    * "412 before Journey · FileMaker", when there is history Journey cannot
    * see. The split is not a footnote: it is what stops a two-month trend
@@ -179,7 +188,9 @@ function daysUntil(d: Date): string | null {
  * The rule now lives in lib/client-since.ts, consults the contract and
  * membership dates the commercial sync already writes, and returns its own
  * LABEL -- so a Journey-only date renders as "In Journey since" and cannot
- * pass itself off as a start date at the business.
+ * pass itself off as a start date at the business. Journey's first session
+ * is a Journey-only date too unless Journey holds her whole story, which is
+ * why the header takes the coverage (Sep 24 2026).
  */
 
 /* ------------------------------------------------------------------ */
@@ -312,6 +323,7 @@ export function ProfileHeader({
   scheduledSessions,
   completedCount,
   sessionsQuotable = false,
+  coverage = "unknown",
   priorLabel,
   priorHistoryDoor,
   topTrainer,
@@ -366,7 +378,7 @@ export function ProfileHeader({
 
   /* ---- package ---- */
   const remaining = remainingLabel(pkg);
-  const since = clientSinceLabel(client);
+  const since = clientSinceLabel(client, { coverage });
   // The badge promises medical detail, so it fires on medical detail — not on
   // a general note (client-profile audit: high-visibility alerts).
   const hasFlags = !!(

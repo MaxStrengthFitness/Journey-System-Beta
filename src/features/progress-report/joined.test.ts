@@ -43,6 +43,22 @@ describe("reportJoinedDate — the profile's rule, not the report's old one", ()
     expect(day(reportJoinedDate({ mindbodyCreatedAt: "2017-03-04" }, null))).toBe("2017-03-04");
   });
 
+  it("prints a dash, not the day Journey met her, when Journey does not hold her whole story", () => {
+    // A FileMaker client whose only date is her first session in Journey:
+    // "Joined Sep 2026" would call a twelve-year client new.
+    expect(reportJoinedDate({ firstSessionDate: "2026-09-02" }, "2026-09-02", "partial")).toBeNull();
+    expect(reportJoinedDate({ firstSessionDate: "2026-09-02" }, "2026-09-02", "unknown")).toBeNull();
+    // A prior record means sessions before Journey, whatever the coverage says.
+    expect(
+      reportJoinedDate({ firstSessionDate: "2026-09-02", priorHistory: { sessions: 400, through: "2026-08-31", source: "filemaker" } as never }, null, "complete"),
+    ).toBeNull();
+    expect(day(reportJoinedDate({ firstSessionDate: "2026-09-02" }, null, "complete"))).toBe("2026-09-02");
+    // Mindbody's own date still stands.
+    expect(
+      day(reportJoinedDate({ firstSessionDate: "2026-09-02", firstAppointmentDate: ts("2014-03-01T15:00:00") }, null, "partial")),
+    ).toBe("2014-03-01");
+  });
+
   it("then the earliest contract", () => {
     const d = reportJoinedDate(
       {

@@ -29,6 +29,39 @@ describe("clientSinceLabel", () => {
     expect(clientSinceLabel({ firstSessionDate: ts("2026-09-02T15:00:00") })?.value).toBe("Sep 2026");
   });
 
+  /*
+   * With the coverage: Journey's first session proves when she started only
+   * when Journey holds her whole story (the codex Story's rule), so the
+   * header and the Story cannot disagree about a FileMaker client.
+   */
+  it("labels Journey's first session 'In Journey since' unless Journey holds her whole story", () => {
+    const filemaker = { firstSessionDate: ts("2026-09-02T15:00:00") };
+    for (const coverage of ["partial", "unknown"] as const) {
+      expect(clientSinceLabel(filemaker, { coverage })).toEqual({
+        label: "In Journey since",
+        value: "Sep 2026",
+        source: "firstSession",
+      });
+    }
+    expect(clientSinceLabel(filemaker, { coverage: "complete" })?.label).toBe("Client since");
+    // A prior record means sessions before Journey, whatever coverage says.
+    const prior = { ...filemaker, priorHistory: { sessions: 400, through: "2026-08-31", source: "filemaker" } };
+    expect(resolveClientSince(prior, { coverage: "complete" })?.fromMindbody).toBe(false);
+  });
+
+  it("still takes Mindbody's own dates, and an earlier contract, over Journey's first session", () => {
+    const withVisit = { firstSessionDate: ts("2026-09-02T15:00:00"), firstAppointmentDate: ts("2014-03-01T15:00:00") };
+    expect(resolveClientSince(withVisit, { coverage: "partial" })?.source).toBe("firstAppointment");
+    const withContract = {
+      firstSessionDate: ts("2026-09-02T15:00:00"),
+      mindbodyContracts: { a: { startDate: ts("2019-05-01T12:00:00") } },
+    };
+    expect(resolveClientSince(withContract, { coverage: "partial" })).toMatchObject({ source: "commercial", fromMindbody: true });
+    // ...and Journey's first session over the Journey document's createdAt.
+    const both = { firstSessionDate: ts("2026-09-02T15:00:00"), createdAt: ts("2026-08-01T12:00:00") };
+    expect(resolveClientSince(both, { coverage: "partial" })?.source).toBe("firstSession");
+  });
+
   it("still labels a Journey-only date as Journey's", () => {
     expect(clientSinceLabel({ createdAt: ts("2026-08-01T12:00:00") })?.label).toBe("In Journey since");
   });

@@ -1212,7 +1212,7 @@ export function ClientProgressReportView({
                       Joined:{" "}
                       <span className="text-white/60">
                         {shortDate(
-                          reportJoinedDate(client, report.attendance.firstSessionDate),
+                          reportJoinedDate(client, report.attendance.firstSessionDate, coverage),
                         ) || "—"}
                       </span>
                     </div>
