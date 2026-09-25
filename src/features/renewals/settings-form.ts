@@ -30,6 +30,8 @@ export interface PackageRowForm {
   prepayRatePerSession: string;
   /** Mindbody names, one per line. */
   namesText: string;
+  /** Renews by itself when the payments finish: "yes", "no", or "" (not said). */
+  renews: "" | "yes" | "no";
 }
 
 export interface RenewalSettingsForm {
@@ -62,6 +64,7 @@ export function packageToRow(p: PackageTier): PackageRowForm {
     paymentAmount: numText(p.paymentAmount),
     prepayRatePerSession: numText(p.prepayRatePerSession),
     namesText: p.mindbodyNames.join("\n"),
+    renews: p.renewsAutomatically === true ? "yes" : p.renewsAutomatically === false ? "no" : "",
   };
 }
 
@@ -113,6 +116,9 @@ export function rowToPackage(row: PackageRowForm): PackageTier {
     paymentAmount: parseNumber(row.paymentAmount),
     prepayRatePerSession: parseNumber(row.prepayRatePerSession),
     mindbodyNames: parseNames(row.namesText, MAX_NAMES_PER_PACKAGE),
+    // Written only once the studio answers, so a row nobody touched keeps
+    // the shape it always had.
+    ...(row.renews === "yes" ? { renewsAutomatically: true } : row.renews === "no" ? { renewsAutomatically: false } : {}),
   };
 }
 

@@ -185,6 +185,8 @@ function cleanPackage(raw: any, index: number): PackageTier | null {
     paymentAmount,
     prepayRatePerSession,
     mindbodyNames: cleanNames(raw.mindbodyNames, MAX_NAMES_PER_PACKAGE),
+    // Kept only when the studio answered; a row that never did stays as it was.
+    ...(typeof raw.renewsAutomatically === "boolean" ? { renewsAutomatically: raw.renewsAutomatically } : {}),
   };
 }
 
@@ -204,6 +206,18 @@ function cleanPackages(value: unknown): PackageTier[] {
   // A studio that deleted every package still needs something to measure
   // against; an empty table would make every client "unknown package".
   return out.length > 0 ? out : DEFAULT_PACKAGES;
+}
+
+/**
+ * Whether the stored document holds a package table of its own. A studio
+ * that saved only a threshold has a document with no `packages`, and one
+ * whose every row was unusable falls back to the defaults too; either way
+ * the prices on screen are Max Strength's standard ones, not the studio's.
+ */
+export function hasOwnPackageTable(raw: unknown): boolean {
+  const d = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  if (!Array.isArray(d.packages)) return false;
+  return d.packages.slice(0, MAX_PACKAGES).some((row, i) => cleanPackage(row, i) !== null);
 }
 
 /* ------------------------------------------------------------------ *

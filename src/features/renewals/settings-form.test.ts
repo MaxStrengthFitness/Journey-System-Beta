@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_RENEWAL_SETTINGS } from "./settings";
+import { DEFAULT_PACKAGES, DEFAULT_RENEWAL_SETTINGS } from "./settings";
 import {
   assignNameInForm,
   formToSettings,
@@ -76,5 +76,30 @@ describe("settings form", () => {
     const row = newPackageRow(settingsToForm(DEFAULT_RENEWAL_SETTINGS));
     expect(row.ratePerSession).toBe("");
     expect(row.key).toBe("package-4");
+  });
+});
+
+describe("when the payments finish (packages screen, Sep 24 2026)", () => {
+  it("starts every row the studio never answered as not said, and saves it back unchanged", () => {
+    const form = settingsToForm(DEFAULT_RENEWAL_SETTINGS);
+    expect(form.packages.map((r) => r.renews)).toEqual(["", "", ""]);
+    const { settings } = formToSettings(form);
+    for (const p of settings.packages) expect("renewsAutomatically" in p).toBe(false);
+  });
+
+  it("round-trips a yes and a no", () => {
+    const withAnswers = {
+      ...DEFAULT_RENEWAL_SETTINGS,
+      packages: [
+        { ...DEFAULT_PACKAGES[0], renewsAutomatically: true },
+        { ...DEFAULT_PACKAGES[1], renewsAutomatically: false },
+        DEFAULT_PACKAGES[2],
+      ],
+    };
+    const form = settingsToForm(withAnswers);
+    expect(form.packages.map((r) => r.renews)).toEqual(["yes", "no", ""]);
+    const { settings, problems } = formToSettings(form);
+    expect(problems).toEqual([]);
+    expect(settings).toEqual(withAnswers);
   });
 });

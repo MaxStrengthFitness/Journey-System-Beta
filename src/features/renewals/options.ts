@@ -56,6 +56,11 @@ export function fitNote(tier: PackageTier, pacePerWeek: number | null): string |
   return `At ${pace}× a week, ${tier.sessions} sessions fit its ${billingWeeks} weeks of billing.`;
 }
 
+/** Shortest commitment first, then fewer sessions. The one order every package list uses. */
+export function byPackageLength(a: PackageTier, b: PackageTier): number {
+  return a.months - b.months || a.sessions - b.sessions;
+}
+
 export function optionsFor(
   settings: RenewalSettings,
   currentKey: string | null,
@@ -63,7 +68,7 @@ export function optionsFor(
 ): PackageOption[] {
   const current = settings.packages.find((p) => p.key === currentKey) ?? null;
   return [...settings.packages]
-    .sort((a, b) => a.months - b.months || a.sessions - b.sessions)
+    .sort(byPackageLength)
     .map((tier) => {
       const isCurrent = tier.key === currentKey;
       const perSessionDiff = current ? money(tier.ratePerSession - current.ratePerSession) : null;

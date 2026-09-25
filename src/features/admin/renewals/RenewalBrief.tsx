@@ -52,6 +52,7 @@ import {
 import { gainSentence, healthLines, journeyLines, strengthGains } from "../../renewals/brief";
 import { OUTCOMES, closedOnFor } from "../../renewals/outcomes";
 import { optionsFor, upgradeVerdict } from "../../renewals/options";
+import { formatMoney, signedMoney } from "../../renewals/money";
 import { useClinicalReport, buildReport, rangeForPreset } from "../../clinical-review";
 import { useInBodyVariation } from "../../inbody/useInBodyVariation";
 import type { RenewalOutcome, RenewalStage } from "../../renewals/types";
@@ -68,13 +69,9 @@ export interface RenewalBriefProps {
   onClose: () => void;
 }
 
-const money = (n: number) =>
-  `$${n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;
-
-function signedMoney(n: number | null): string {
-  if (n === null || n === 0) return "—";
-  return `${n < 0 ? "−" : "+"}${money(Math.abs(n))}`;
-}
+// One formatter for every price from the package table (renewals/money.ts),
+// so this Brief and the packages screen never print the same figure two ways.
+const money = formatMoney;
 
 export function RenewalBrief({
   client,

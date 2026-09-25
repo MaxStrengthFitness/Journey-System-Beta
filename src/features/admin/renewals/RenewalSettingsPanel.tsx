@@ -291,6 +291,26 @@ export function RenewalSettingsPanel({
                   />
                 </AdminField>
                 <AdminField
+                  label="When the payments finish"
+                  hint="What the packages screen tells a client. Sessions never expire."
+                  htmlFor={`pkg-${row.key}-renews`}
+                >
+                  <AdminSelect
+                    id={`pkg-${row.key}-renews`}
+                    value={row.renews}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      setRow(row.key, {
+                        renews: e.target.value === "yes" ? "yes" : e.target.value === "no" ? "no" : "",
+                      })
+                    }
+                  >
+                    <option value="">Not said: the screen stays quiet about it</option>
+                    <option value="yes">It renews automatically</option>
+                    <option value="no">It doesn't renew by itself</option>
+                  </AdminSelect>
+                </AdminField>
+                <AdminField
                   label="Names in Mindbody"
                   hint="One per line — contract and pricing-option names, e.g. 144 PIF. Capitals and extra spaces don't matter."
                   wide
