@@ -259,14 +259,13 @@ export function ClientProfileView({
      so the Journey grid can show the loading mark instead of empty cells
      (the sessions arrive a moment before their sets do). */
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [calculatedSessionCount, setCalculatedSessionCount] =
-    useState<number>(0);
   /*
    * What Journey itself holds — completed sessions in Journey, before any
    * prior history — stamped with the client it was counted for (client
-   * codex). `calculatedSessionCount` above starts at 0 and keeps the last
-   * client's total until the next count lands, so it cannot say "not known
-   * yet"; this can. Null until the count query answers for THIS client.
+   * codex). Null until the count query answers for THIS client, so it can
+   * say "not known yet". The header's total and the codex's numbers are
+   * both worked out from this one read (`completedTotal` below,
+   * `sessionTotalsOf` for the codex).
    */
   const [journeyCountRead, setJourneyCountRead] =
     useState<ClientAnswer<number> | null>(null);
@@ -450,16 +449,19 @@ export function ClientProfileView({
 
   /*
    * THE TOTAL THE HEADER AND THE GRID NUMBER FROM (Sep 24 2026).
-   * `calculatedSessionCount` starts at 0, keeps the last client's total until
-   * this client's count lands, and never lands at all when the count query
-   * fails - so a client of four hundred sessions read "Completed sessions 0"
-   * and the grid numbered her loaded page #7 down to #1. Until THIS client
-   * has been counted, the stored total stands in, and with neither the
-   * header says it does not know. Unknown is never zero.
+   * A count that started at 0 and kept the last client's total, and never
+   * landed at all when the count query failed, had a client of four hundred
+   * sessions read "Completed sessions 0" and the grid number her loaded page
+   * #7 down to #1. So: from the ONE stamped read the codex uses too
+   * (`journeyCompletedCount`, plus the prior record's uncounted part - the
+   * one arithmetic rule); until THIS client has been counted, the stored
+   * total stands in, and with neither the header says it does not know.
+   * Unknown is never zero. (The landing, Sep 24: this was a second stamped
+   * copy of the same count, which could disagree with the codex while it
+   * loaded.)
    */
-  const [countedFor, setCountedFor] = useState<string | null>(null);
   const completedTotal: number | null =
-    countedFor === clientId ? calculatedSessionCount : (client?.sessionCount ?? null);
+    totalSessions(journeyCompletedCount, priorHistory) ?? client?.sessionCount ?? null;
 
   useEffect(() => {
     if (!clientId) return;
@@ -481,9 +483,6 @@ export function ClientProfileView({
        */
       const total = totalSessions(journeyCount, priorHistory);
       if (total === null) return;
-
-      setCalculatedSessionCount(total);
-      setCountedFor(clientId);
 
       if (clientSessionCountRef.current !== total) {
         clientSessionCountRef.current = total;
@@ -1128,9 +1127,12 @@ export function ClientProfileView({
    * the old record's did, because imported sessions land there. (The filed
    * reports are the Activity Archive's shelf, below; the codex opens none.)
    *
-   * The session numbers are the header's own ("461 · 49 in Journey · 412
-   * before"), so no page can disagree with it; Journey's count is null until
-   * it answers for this client. So is the door to Sessions before Journey:
+   * The session numbers come from the header's own read ("461 · 49 in
+   * Journey · 412 before": `journeyCompletedCount` and the prior record), so
+   * once it answers no page can disagree with the header. Until it answers
+   * for this client the header shows the stored total and the codex says it
+   * does not know yet - never a second count. The door to Sessions before
+   * Journey is the header's own too:
    * Account draws the header's own (its words, its rule, this view's editor).
    */
   const codexHosts = useMemo<CodexHosts>(
