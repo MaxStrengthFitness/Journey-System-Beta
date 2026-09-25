@@ -102,6 +102,7 @@ import {
 } from "../lib/utils";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
+import { studioFloorOf } from "../lib/floor-machines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -294,7 +295,10 @@ export function ClientProfileView({
   // byId is keyed by machineId and its `order` is already resolved through
   // resolveMachineOrder, so passing it as the override is idempotent: an
   // unrostered machine yields undefined and falls back to the code default.
-  const { byId: studioFloorById } = useStudioMachines(activeStudioId);
+  const { machines: studioFloor, byId: studioFloorById } = useStudioMachines(activeStudioId);
+  // The studio's floor for the codex's Watch-outs: its own machines and their
+  // lineage, which the app-wide `machines` list has neither of.
+  const codexFloor = useMemo(() => studioFloorOf(studioFloor, machines ?? []), [studioFloor, machines]);
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -1151,6 +1155,7 @@ export function ClientProfileView({
       routines,
       studioClients: clients,
       activeStudioId: activeStudioId ?? null,
+      floorMachines: codexFloor,
       status:
         routinesStatus === "failed" || settingsStatus === "failed"
           ? "failed"
@@ -1158,7 +1163,7 @@ export function ClientProfileView({
             ? "loading"
             : "ready",
     }),
-    [clientSettings, routines, clients, activeStudioId, routinesStatus, settingsStatus],
+    [clientSettings, routines, clients, activeStudioId, codexFloor, routinesStatus, settingsStatus],
   );
   const codexSessionTotals = useMemo(
     () => sessionTotalsOf(journeyCompletedCount, client),

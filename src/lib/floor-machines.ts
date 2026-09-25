@@ -99,6 +99,29 @@ export function toFloorMachines(
 }
 
 /**
+ * The studio's floor for a screen that holds the app-wide `machines` list
+ * and the studio's resolved roster (`useStudioMachines(studioId).machines`)
+ * - the client profile, for the codex's Body & Pulse -> Watch-outs.
+ *
+ * The app-wide list is the `machines` collection plus the defaults: it has
+ * no studio's own machines and no lineage (`comparisonKey` is set only
+ * here), so a watch-out judged against it never reaches "our Hammer leg
+ * press" and says "names no machine on this floor" against the whole
+ * catalog rather than the floor. A studio whose roster is empty (not set up
+ * yet) gets the app-wide list back - the same bridge the Active Session
+ * uses - rather than a floor with nothing on it.
+ */
+export function studioFloorOf(
+  resolved: readonly ResolvedMachine[],
+  machines: readonly Machine[],
+): Machine[] {
+  if (resolved.length === 0) return [...machines];
+  const legacyById: Record<string, Machine> = {};
+  for (const m of machines) if (m.id) legacyById[m.id] = m;
+  return toFloorMachines(resolved, legacyById);
+}
+
+/**
  * True when this machine logs a Left and a Right set.
  *
  * It used to be `name.includes("torso rotation")` inline in the tracker,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFloorMachines, dialLabelsOf, isPerSideMachine } from "./floor-machines";
+import { toFloorMachines, dialLabelsOf, isPerSideMachine, studioFloorOf } from "./floor-machines";
 import type { Machine } from "../types";
 import type { ResolvedMachine } from "../types/machines";
 
@@ -25,6 +25,29 @@ const legacyLegPress: Machine = {
   requiresHandoff: true,
   imageUrl: "/legacy.webp",
 };
+
+describe("studioFloorOf — the floor a profile hands the codex", () => {
+  it("carries a studio's own machine and its lineage, which the app-wide list has neither of", () => {
+    const floor = studioFloorOf(
+      [
+        resolved({ machineId: "m-leg-press", name: "LEG PRESS" }),
+        resolved({ machineId: "sm-solon-hammer", name: "Our Hammer Leg Press", source: "studio", comparisonKey: "m-leg-press" } as never),
+      ],
+      [legacyLegPress, { id: "m-chest-press", name: "CHEST PRESS" }],
+    );
+    expect(floor.map((m) => m.id)).toEqual(["m-leg-press", "sm-solon-hammer"]);
+    expect((floor[1] as Machine & { comparisonKey?: string }).comparisonKey).toBe("m-leg-press");
+    // Only what is on this floor: the chest press is not rostered here.
+    expect(floor.some((m) => m.id === "m-chest-press")).toBe(false);
+    // The legacy fields still arrive for a catalog machine.
+    expect(floor[0].trainerTips).toBe("Belt them in before the handoff.");
+  });
+
+  it("falls back to the app-wide list while the studio has no roster", () => {
+    const all = [legacyLegPress];
+    expect(studioFloorOf([], all)).toEqual(all);
+  });
+});
 
 describe("toFloorMachines — the studio's truth over the legacy shape", () => {
   it("keeps every legacy field a floor screen still reads", () => {

@@ -461,6 +461,31 @@ describe("Body & Pulse — watch-outs (they replaced BodyWatchOuts)", () => {
     expect(card.textContent).toContain("“R total knee replacement Mar 2024.”");
   });
 
+  it("finds a studio's own machine by its lineage on the studio's floor, not the app-wide list", async () => {
+    // The profile hands the codex the studio's resolved floor
+    // (programming.floorMachines, from studioFloorOf): the app-wide list has
+    // no studio machines and no comparisonKey, so "Our Lumbar" never showed
+    // and the lumbar instruction read "names no machine on this floor".
+    const onOpenMachine = vi.fn();
+    const floor = [
+      { id: "m-leg-press", name: "Leg Press" },
+      { id: "sm-s1-lumbar", name: "Our Lumbar", comparisonKey: "m-lumbar" },
+    ] as unknown as Machine[];
+    const host = await mount({
+      client: carol({ clinicalFlags: ["spine-ddd"], medicalHistory: "" }),
+      programming: { ...NO_PROGRAMMING, floorMachines: floor },
+      onOpenMachine,
+    });
+    const card = host.querySelector("#body-watchouts")!;
+    expect(card.textContent).not.toContain("names no machine on this floor");
+    await click(card.querySelector('[aria-label="Open Our Lumbar"]'));
+    expect(onOpenMachine).toHaveBeenCalledWith("sm-s1-lumbar");
+
+    // Without the floor (the app-wide list only) the same flag names nothing.
+    const bare = await mount({ client: carol({ clinicalFlags: ["spine-ddd"], medicalHistory: "" }) });
+    expect(bare.querySelector("#body-watchouts")!.textContent).toContain("names no machine on this floor");
+  });
+
   it("says No watch-outs on file when there are none, and offers to set them only to an editor", async () => {
     const host = await mount({ client: carol({ clinicalFlags: [], medicalHistory: "" }) });
     const card = host.querySelector("#body-watchouts")!;

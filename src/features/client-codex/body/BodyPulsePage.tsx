@@ -389,7 +389,7 @@ export function BodyPulsePage({
             flagIds={flagIds}
             medicalHistory={String(formData.medicalHistory ?? client.medicalHistory ?? "")}
             clinicalNotes={String(formData.clinicalNotes ?? client.clinicalNotes ?? "")}
-            floorMachines={machines}
+            floorMachines={programming.floorMachines ?? machines}
             canEdit={canEdit}
             dirty={isDirty("clinicalFlags", "medicalHistory", "clinicalNotes")}
             revision={revision}

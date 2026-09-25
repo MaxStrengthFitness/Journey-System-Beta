@@ -461,7 +461,10 @@ Now Bar, the Machine sheet, the routine rows — and every test passed, because
 every test used the matrix's own key as the machine id. `lib/clinical-watchouts.ts`
 now resolves both sides through `features/catalog/machine-identity.ts` (the one
 table; do not add a second), a studio's own machine is matched on its lineage
-(`comparisonKey`, which `toFloorMachines` now carries), and
+(`comparisonKey`, which `toFloorMachines` now carries — and ONLY it: the
+app-wide `machines` list has no studio machines and no lineage, so a screen
+holding that list goes through `studioFloorOf`, as the client profile does for
+the codex's Watch-outs since the landing), and
 `clinical-watchouts.test.ts` fails if a matrix key stops resolving to a real
 catalog machine. The same mismatch hid the first-time set-up guide's steps
 (`MACHINE_DATABASE[id]` with an `m-…` id): `knowledgeOf` in

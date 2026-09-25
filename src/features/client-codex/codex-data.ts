@@ -258,6 +258,14 @@ export interface CodexProgramming {
   studioClients: readonly Client[];
   activeStudioId: string | null;
   /**
+   * The active studio's floor as the Active Session sees it
+   * (`studioFloorOf`, lib/floor-machines.ts): its own machines and each
+   * one's lineage (`comparisonKey`), which the app-wide `machines` list has
+   * neither of. Watch-outs judges "names no machine on this floor" against
+   * this. Absent (a host that holds no roster) means the app-wide list.
+   */
+  floorMachines?: Machine[];
+  /**
    * Whether her routines and machine settings were read for this client:
    * "loading" until both answered, "failed" when either could not be. Until
    * "ready", the floor never says she has no machines — unknown, not empty.
