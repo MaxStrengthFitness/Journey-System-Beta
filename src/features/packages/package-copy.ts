@@ -28,6 +28,11 @@ import { figuresFor, formatMoney, type Lineup, type Stretch, type TierFigures } 
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/** "12 months", "1 month": every months figure on the screen goes through here. */
+export const monthsText = (n: number): string => plural(n, "month");
+/** Just the word, for the length column that draws the number on its own. */
+export const monthsWord = (n: number): string => (n === 1 ? "month" : "months");
+
 /** "twice a week", "once a week", "3 times a week". */
 export function timesAWeek(visits: number | null): string | null {
   if (visits === null || !Number.isFinite(visits) || visits <= 0) return null;
@@ -50,8 +55,13 @@ export function priceSourceLine(studioName: string | null | undefined, ownTable:
   return studioName ? `${studioName}’s prices` : "This studio’s prices";
 }
 
-export function lede(l: Lineup): { title: string; sub: string } {
-  return l.headlineIsTwiceAWeek
+/**
+ * The line the client's view opens on. "Twice a week" only while every
+ * length on the screen is: once the trainer puts a once-a-week (or other)
+ * package beside them, the claim would be false.
+ */
+export function lede(l: Lineup, extraShown = false): { title: string; sub: string } {
+  return l.headlineIsTwiceAWeek && !extraShown
     ? {
         title: "Every package is the same training: one-on-one, twice a week.",
         sub: "What changes is how long you commit.",
@@ -85,7 +95,9 @@ export function payLines(f: TierFigures, pay: "monthly" | "full"): string[] {
   if (pay === "monthly") {
     if (f.payment !== null) {
       out.push(
-        `${formatMoney(f.payment)} every 4 weeks, ${plural(t.payments, "payment")}. Each one is ${plural(f.sessionsPerPayment, "session")}.`,
+        Number.isInteger(f.sessionsPerPayment)
+          ? `${formatMoney(f.payment)} every 4 weeks, ${plural(t.payments, "payment")}. Each one is ${plural(f.sessionsPerPayment, "session")}.`
+          : `${formatMoney(f.payment)} every 4 weeks, ${plural(t.payments, "payment")}.`,
       );
     }
     if (f.wholeMonthly !== null) {
@@ -135,12 +147,34 @@ export function weekPrompt(firstName: string | null | undefined): string {
 export const SESSION_USE_RULE =
   "A session is only used by coming in, or by cancelling with less than 24 hours’ notice.";
 
+/**
+ * What time away does to this package. Where the studio said the package
+ * renews by itself, the renewal at the last payment is said out loud: the
+ * new package's payments begin while unused sessions carry on (the
+ * "charged while sessions are banked" case in docs/business/renewals.md).
+ * Where it doesn't, the payments simply finish. Where the studio hasn't
+ * said, nothing is implied about what follows: the after-the-last-payment
+ * card says the studio will explain.
+ */
 export function lifeHappensSentence(s: Stretch, t: PackageTier, visits: number | null): string {
   const pace = timesAWeek(visits);
+  const sessions = plural(t.sessions, "session");
   if (s.weeksAway === 0) {
-    return `${pace ? `At ${pace}, the` : "The"} ${plural(t.sessions, "session")} take ${s.trainingWeeks} weeks, the same ${s.billingWeeks} weeks the payments run.`;
+    return `${pace ? `At ${pace}, the` : "The"} ${sessions} take ${s.trainingWeeks} weeks, the same ${s.billingWeeks} weeks the payments run.`;
   }
-  return `With ${plural(s.weeksAway, "week")} away, the ${plural(t.sessions, "session")} take about ${s.totalWeeks} weeks. The payments still end at week ${s.billingWeeks}, and sessions you haven’t used never expire.`;
+  const stretchLine = `With ${plural(s.weeksAway, "week")} away, the ${sessions} take about ${s.totalWeeks} weeks.`;
+  if (t.renewsAutomatically === true && s.totalWeeks > s.billingWeeks) {
+    return `${stretchLine} ${t.label} renews at week ${s.billingWeeks}, when its payments finish, so the new package’s payments begin while your unused sessions carry on. They never expire.`;
+  }
+  if (t.renewsAutomatically === false) {
+    return `${stretchLine} The payments still finish at week ${s.billingWeeks}, and sessions you haven’t used never expire.`;
+  }
+  return `${stretchLine} This package’s ${plural(t.payments, "payment")} finish at week ${s.billingWeeks}, and sessions you haven’t used never expire.`;
+}
+
+/** The label on the timeline's mark. */
+export function timelineMark(t: PackageTier, billingWeeks: number): string {
+  return t.renewsAutomatically === true ? `Renews · week ${billingWeeks}` : `Payments end · week ${billingWeeks}`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -214,7 +248,7 @@ export function moneyFallbacks(args: {
     {
       key: "guarantee",
       title: "The guarantee",
-      body: "It’s the big one: 30 days money back, and 6 months at another gym if they show up twice a week and aren’t happy. It’s on their screen.",
+      body: "It’s the big one: 30 days money back whether they pay every 4 weeks or in full, and, when they pay in full, 6 months at another gym if they show up twice a week and aren’t happy. It’s on their screen.",
     },
   ];
   notes.push(
@@ -300,7 +334,7 @@ export function doorRows(headline: PackageTier[]): DoorRow[] {
         : [`${formatMoney(f.rate)} a session`, f.payment !== null ? `${formatMoney(f.payment)} every 4 weeks` : null]
             .filter(Boolean)
             .join(" · ");
-    return { key: t.key, name: `${t.label} · ${t.months} months`, price };
+    return { key: t.key, name: `${t.label} · ${monthsText(t.months)}`, price };
   });
 }
 

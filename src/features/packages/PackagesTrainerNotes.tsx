@@ -17,6 +17,7 @@ import {
   ACADEMY_LINES,
   ACADEMY_SOURCE,
   moneyFallbacks,
+  monthsText,
   NOTHING_SAVED,
   recommendationNote,
   tableNote,
@@ -49,7 +50,7 @@ function tierLine(t: PackageTier): string {
   const f = figuresFor(t);
   const how = timesAWeek(f.visitsPerWeek);
   const price = f.rate !== null ? `${formatMoney(f.rate)} a session` : "no price set";
-  return [`${t.label}, ${t.months} months`, `${t.sessions} sessions`, how, price].filter(Boolean).join(" · ");
+  return [`${t.label}, ${monthsText(t.months)}`, `${t.sessions} sessions`, how, price].filter(Boolean).join(" · ");
 }
 
 export function PackagesTrainerNotes({ lineup: l, view, dispatch, studioName, ownTable }: PackagesTrainerNotesProps) {
@@ -73,7 +74,7 @@ export function PackagesTrainerNotes({ lineup: l, view, dispatch, studioName, ow
         <Picks
           label="Recommend a length"
           options={[
-            ...l.headline.map((t) => ({ value: t.key, label: `${t.label}, ${t.months} months` })),
+            ...l.headline.map((t) => ({ value: t.key, label: `${t.label}, ${monthsText(t.months)}` })),
             { value: NO_RECOMMENDATION, label: "No recommendation" },
           ]}
           value={view.recommendedKey ?? NO_RECOMMENDATION}

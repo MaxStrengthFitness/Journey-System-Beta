@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RENEWAL_SETTINGS } from "../renewals/settings";
+import { buildRenewalSnapshot } from "../renewals/engine";
 import type { RenewalSnapshot } from "../renewals/types";
-import type { MindbodyContract, MindbodyService } from "../../types";
+import type { Client, MindbodyContract, MindbodyService } from "../../types";
 import { packageStanding, type StandingInput } from "./package-standing";
 
 const TODAY = "2026-09-24";
@@ -85,6 +86,83 @@ describe("has a package: no door", () => {
 describe("away: no door", () => {
   it("never pitches to someone on a pause", () => {
     expect(packageStanding(input({}, { renewal: snap({ situation: "away" }) }))).toMatchObject({ kind: "away", showDoor: false });
+  });
+});
+
+/** A snapshot exactly as the nightly job writes it, from real Mindbody records. */
+function engineSnapshot(over: Partial<Client>): RenewalSnapshot {
+  const client = {
+    id: "c1",
+    firstName: "Judy",
+    lastName: "Visitor",
+    homeStudioId: "westlake",
+    isActive: true,
+    remainingSessions: 0,
+    mindbodyServicesSyncedAt: "2026-09-23",
+    mindbodyCommercialSyncedAt: "2026-09-23",
+    ...over,
+  } as Client;
+  return buildRenewalSnapshot({
+    client,
+    settings: DEFAULT_RENEWAL_SETTINGS,
+    today: TODAY,
+    attendance: [],
+    attendanceSince: "2026-01-01",
+  });
+}
+
+describe("ended: a door, from snapshots the engine really writes", () => {
+  // The contract carries a name the standard table matches, so the engine knows which package it was.
+  const ended = (endDate: string, contractName = "96 Sessions - 2X Week") => ({
+    mindbodyContracts: { "9001": contract({ id: 9001, contractName, startDate: "2025-08-01", endDate }) },
+  });
+
+  it("a contract that ended keeps its cycleKey, and still gets the door", () => {
+    const renewal = engineSnapshot(ended("2026-09-15"));
+    expect(renewal.cycleKey).toBe("9001");
+    expect(renewal.situation).toBe("ended");
+    const s = packageStanding(input({}, { ...ended("2026-09-15"), renewal }));
+    expect(s).toMatchObject({ kind: "ended", showDoor: true, pricesOnScreen: false });
+    expect(s.sentence).toBe("Committed ended Sep 15.");
+  });
+
+  it("says 'their package' when the engine couldn't name it", () => {
+    const over = ended("2026-09-15", "A contract nobody matched");
+    const renewal = engineSnapshot(over);
+    expect(renewal.situation).toBe("ended");
+    expect(packageStanding(input({}, { ...over, renewal })).sentence).toBe("Their package ended Sep 15.");
+  });
+
+  it("a win-back client, lapsed past the studio's window, gets the door too", () => {
+    const renewal = engineSnapshot(ended("2026-03-10"));
+    expect(renewal.situation).toBe("lapsed");
+    const s = packageStanding(input({}, { ...ended("2026-03-10"), renewal }));
+    expect(s.kind).toBe("ended");
+    expect(s.sentence).toBe("No package since Mar 10.");
+  });
+
+  it("an ended contract with a name the studio hasn't matched is 'unknown', worded as such", () => {
+    const over = { ...ended("2026-08-03"), mindbodyServices: { m: service(5, "Mystery Pack", 3) } };
+    const renewal = engineSnapshot(over);
+    expect(renewal.cycleKey).toBe("9001");
+    const s = packageStanding(input({ studioName: "Westlake" }, { ...over, renewal }));
+    expect(s.kind).toBe("unknown");
+    expect(s.sentence).toMatch(/Mystery Pack/);
+  });
+
+  it("a live contract whose name isn't matched is still a package: no door", () => {
+    const over = {
+      mindbodyContracts: { "9002": contract({ id: 9002, contractName: "Odd EFT", startDate: "2026-09-01", endDate: "2027-08-01" }) },
+    };
+    const renewal = engineSnapshot(over);
+    expect(packageStanding(input({}, { ...over, renewal })).kind).toBe("has");
+  });
+
+  it("a live, matched package is 'has', whatever else", () => {
+    const over = { mindbodyContracts: { "9003": contract({ id: 9003, startDate: "2026-09-01", endDate: "2027-08-01" }) } };
+    const renewal = engineSnapshot(over);
+    expect(["on-track", "will-bank", "will-run-out", "unknown"]).toContain(renewal.situation);
+    expect(packageStanding(input({}, { ...over, renewal })).kind).toBe("has");
   });
 });
 

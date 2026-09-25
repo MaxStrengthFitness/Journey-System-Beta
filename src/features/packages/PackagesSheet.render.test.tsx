@@ -305,7 +305,7 @@ describe("the trainer's controls", () => {
     await click(plus());
     expect(dialog()!.querySelector(".pk-stepper__value")?.textContent).toBe("4 weeks");
     expect(dialog()!.querySelector('[data-testid="pk-life-sentence"]')?.textContent).toBe(
-      "With 4 weeks away, the 96 sessions take about 52 weeks. The payments still end at week 48, and sessions you haven’t used never expire.",
+      "With 4 weeks away, the 96 sessions take about 52 weeks. This package’s 12 payments finish at week 48, and sessions you haven’t used never expire.",
     );
     for (let i = 0; i < 20; i++) if (!plus().disabled) await click(plus());
     expect(dialog()!.querySelector(".pk-stepper__value")?.textContent).toBe("16 weeks");
@@ -401,6 +401,51 @@ describe("the trainer notes", () => {
     expect(text()).not.toContain("The whole package is $5,760");
     await click(button("Trainer notes"));
     expect(text()).toMatch(/Committed: 12 payments of \$500 don’t match 96 sessions at \$60/);
+    await unmount(m);
+  });
+});
+
+describe("the review's cases (Sep 24)", () => {
+  const once = { ...DEFAULT_PACKAGES[0], key: "once", label: "Once a week", sessions: 24, ratePerSession: 75, paymentAmount: 300, prepayRatePerSession: 72, mindbodyNames: [] };
+
+  it("keeps the pressed column and the card on the same package when a shown row is hidden again", async () => {
+    hook.state = withPackages([...DEFAULT_PACKAGES, once]);
+    const m = await mount();
+    await click(button("Trainer notes"));
+    await click(button("Show once a week on their screen"));
+    await click(button("Back to the packages"));
+    await click(lengths()[3]);
+    expect(dialog()!.querySelector(".pk-selected .cx-eyebrow")?.textContent).toMatch(/^Once a week/);
+    // With once a week on screen, nothing claims every package is twice a week.
+    expect(dialog()!.querySelector(".pk-lede")?.textContent).not.toMatch(/twice a week/);
+    expect(dialog()!.querySelector(".pk-week")).toBeNull();
+    await click(button("Trainer notes"));
+    await click(button("On their screen"));
+    await click(button("Back to the packages"));
+    const pressed = lengths().filter((b) => b.getAttribute("aria-pressed") === "true");
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0].textContent).toContain("Committed");
+    expect(dialog()!.querySelector(".pk-selected .cx-eyebrow")?.textContent).toMatch(/^Committed/);
+    await unmount(m);
+  });
+
+  it("says 'Total not shown', never a total, for a package whose prices don't add up, paid in full too", async () => {
+    hook.state = withPackages([DEFAULT_PACKAGES[0], { ...DEFAULT_PACKAGES[1], paymentAmount: 500, prepayRatePerSession: 60 }, DEFAULT_PACKAGES[2]]);
+    const m = await mount();
+    await click(button("In full"));
+    await click(button("Paid once"));
+    expect(lengths()[1].textContent).toContain("Total not shown");
+    expect(bigPrice()).toContain("Total not shown");
+    expect(text()).not.toContain("$5,760");
+    await unmount(m);
+  });
+
+  it("says a package renews where the studio said it does, on the timeline too", async () => {
+    hook.state = withPackages([DEFAULT_PACKAGES[0], { ...DEFAULT_PACKAGES[1], renewsAutomatically: true }, DEFAULT_PACKAGES[2]]);
+    const m = await mount();
+    await click(button("One more week away"));
+    expect(dialog()!.querySelector(".pk-timeline__label")?.textContent).toBe("Renews · week 48");
+    expect(dialog()!.querySelector('[data-testid="pk-life-sentence"]')?.textContent).toMatch(/Committed renews at week 48/);
     await unmount(m);
   });
 });

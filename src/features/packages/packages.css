@@ -375,6 +375,12 @@
   align-items: center;
 }
 
+/* A booked day is a fact, not a choice: lit, and never faded the way the
+   kit fades a disabled pick, so "Booked" stays readable. */
+.pk-week .cx-pick[aria-pressed="true"]:disabled {
+  opacity: 1;
+}
+
 /* ---- life happens ----------------------------------------------------- */
 
 .pk-stepper {

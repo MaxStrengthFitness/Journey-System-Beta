@@ -18,6 +18,7 @@ import {
   sheetTitle,
   tableNote,
   tableWarnings,
+  timelineMark,
   timesAWeek,
 } from "./package-copy";
 import { figuresFor, lineup, lowestRateOnShortest, stretch } from "./package-table";
@@ -99,11 +100,25 @@ describe("life happens", () => {
     );
   });
 
-  it("with weeks away, the package stretches and nothing expires", () => {
+  it("with weeks away, the package stretches and nothing expires; nothing is implied about what follows when the studio hasn't said", () => {
     expect(lifeHappensSentence(stretch(trial, 8)!, trial, 2)).toBe(
-      "With 8 weeks away, the 48 sessions take about 32 weeks. The payments still end at week 24, and sessions you haven’t used never expire.",
+      "With 8 weeks away, the 48 sessions take about 32 weeks. This package’s 6 payments finish at week 24, and sessions you haven’t used never expire.",
     );
     expect(lifeHappensSentence(stretch(trial, 1)!, trial, 2)).toMatch(/^With 1 week away/);
+  });
+
+  it("where the package renews by itself, says the new payments begin while unused sessions carry on", () => {
+    const renews = { ...trial, renewsAutomatically: true };
+    expect(lifeHappensSentence(stretch(renews, 8)!, renews, 2)).toBe(
+      "With 8 weeks away, the 48 sessions take about 32 weeks. The Trial renews at week 24, when its payments finish, so the new package’s payments begin while your unused sessions carry on. They never expire.",
+    );
+    expect(timelineMark(renews, 24)).toBe("Renews · week 24");
+  });
+
+  it("where it doesn't renew, says the payments finish", () => {
+    const stops = { ...trial, renewsAutomatically: false };
+    expect(lifeHappensSentence(stretch(stops, 8)!, stops, 2)).toMatch(/The payments still finish at week 24/);
+    expect(timelineMark(stops, 24)).toBe("Payments end · week 24");
   });
 
   it("names how often only in words it can say", () => {
@@ -221,5 +236,34 @@ describe("the post-session card's short list", () => {
   it("says a missing price is missing", async () => {
     const { doorRows } = await import("./package-copy");
     expect(doorRows([{ ...committed, ratePerSession: 0, paymentAmount: 0 }])[0].price).toBe("Price not set yet");
+  });
+});
+
+describe("the review's cases (Sep 24)", () => {
+  it("never prints a fraction of a session", () => {
+    const uneven = { ...committed, sessions: 50, payments: 6, ratePerSession: 60, paymentAmount: 500 };
+    const lines = payLines(figuresFor(uneven), "monthly");
+    expect(lines[0]).toBe("$500 every 4 weeks, 6 payments.");
+    expect(lines.join(" ")).not.toMatch(/\d\.\d+ session/);
+  });
+
+  it("says 1 month, not 1 months", async () => {
+    const { monthsText, monthsWord, doorRows } = await import("./package-copy");
+    expect(monthsText(1)).toBe("1 month");
+    expect(monthsText(12)).toBe("12 months");
+    expect(monthsWord(1)).toBe("month");
+    expect(doorRows([{ ...committed, months: 1, label: "Month to month" }])[0].name).toBe("Month to month · 1 month");
+  });
+
+  it("gives the trainer note the same condition on the gym clause as the client's card", () => {
+    const g = moneyFallbacks({ offer: null, once: [], studioName: "Westlake" })[0];
+    expect(g.body).toMatch(/when they pay in full, 6 months at another gym/);
+    expect(g.body).toMatch(/whether they pay every 4 weeks or in full/);
+  });
+
+  it("drops 'twice a week' from the lede once another frequency is on the screen", () => {
+    const l = lineup({ packages: [...DEFAULT_PACKAGES, onceAWeek] });
+    expect(lede(l).title).toMatch(/twice a week/);
+    expect(lede(l, true).title).not.toMatch(/twice/);
   });
 });

@@ -61,6 +61,36 @@ export function byPackageLength(a: PackageTier, b: PackageTier): number {
   return a.months - b.months || a.sessions - b.sessions;
 }
 
+/** Payments and per-session price may disagree by rounding, never by more. */
+export const WHOLE_PACKAGE_TOLERANCE = 1;
+
+/**
+ * What the whole package comes to, for every screen that says it (the
+ * Renewal Brief, the packages screen), so they can never disagree.
+ *
+ * Every 4 weeks, the client is billed payments × each payment. When that
+ * agrees with sessions × the per-session price to the dollar (`agrees`), the
+ * billed amount is the total; a price stored rounded to the cent ($475 ÷ 8 =
+ * $59.38) would otherwise make it $5,700.48 beside "12 payments of $475".
+ * When they don't agree the table has a typo somewhere, and sessions × rate
+ * is kept as the Brief always showed it; the packages screen withholds it.
+ *
+ * Paid in full: sessions × the paid-in-full rate, or the billed total itself
+ * when the studio set no discount (the rate the cleaner filled in).
+ */
+export function wholePackage(tier: PackageTier): { monthly: number; prepaid: number; agrees: boolean } {
+  const bySessions = tier.sessions * tier.ratePerSession;
+  const billed = tier.payments * tier.paymentAmount;
+  const agrees =
+    tier.ratePerSession > 0 &&
+    tier.paymentAmount > 0 &&
+    Math.abs(billed - bySessions) <= WHOLE_PACKAGE_TOLERANCE;
+  const monthly = money(agrees ? billed : bySessions);
+  const prepayRate = tier.prepayRatePerSession > 0 ? tier.prepayRatePerSession : tier.ratePerSession;
+  const prepaid = prepayRate === tier.ratePerSession ? monthly : money(tier.sessions * prepayRate);
+  return { monthly, prepaid, agrees };
+}
+
 export function optionsFor(
   settings: RenewalSettings,
   currentKey: string | null,
@@ -75,15 +105,16 @@ export function optionsFor(
       const paymentDiff = current ? money(tier.paymentAmount - current.paymentAmount) : null;
       const savingsVsCurrent =
         current && !isCurrent ? money(tier.sessions * (current.ratePerSession - tier.ratePerSession)) : null;
+      const whole = wholePackage(tier);
       return {
         tier,
         isCurrent,
         perSessionDiff,
         paymentDiff,
-        totalMonthly: money(tier.sessions * tier.ratePerSession),
-        totalPrepaid: money(tier.sessions * tier.prepayRatePerSession),
+        totalMonthly: whole.monthly,
+        totalPrepaid: whole.prepaid,
         savingsVsCurrent,
-        prepaySavings: money(tier.sessions * (tier.ratePerSession - tier.prepayRatePerSession)),
+        prepaySavings: money(whole.monthly - whole.prepaid),
         fitNote: fitNote(tier, pacePerWeek),
       };
     });

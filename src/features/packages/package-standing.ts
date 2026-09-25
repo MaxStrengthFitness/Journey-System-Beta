@@ -14,8 +14,12 @@
  *            hand) or in the snapshot. No door; the Renewal conversation
  *            button is the tool for these.
  *   away     on a Vacation / Snowbird / Medical pause. No door.
- *   ended    Journey knows the package and that it ended. A door, worded
- *            from the snapshot ("Committed ended Aug 3"), never "no package".
+ *   ended    Journey knows the package and that it ended (or lapsed: the
+ *            win-back list). A door, worded from the snapshot or the contract
+ *            that ended ("Committed ended Aug 3"), never "no package". The
+ *            engine still keys the renewal on that contract, so the Renewal
+ *            conversation button shows too: the conversation is logged there,
+ *            the packages are shown here.
  *   none     Mindbody was checked and shows no package: no contract, current,
  *            coming or ended, no package sessions, no name the studio hasn't
  *            matched, on the site the studio reads. The only answer that says
@@ -106,8 +110,14 @@ export function packageStanding(input: StandingInput): PackageStanding {
   const snap = client.renewal ?? null;
 
   if (snap?.situation === "away") return NO_DOOR("away");
-  // The Renewal conversation button already stands in this slot.
-  if (snap?.cycleKey) return NO_DOOR("has");
+  // A live package: the Renewal conversation button is the tool. An ENDED
+  // one still carries a cycleKey (the engine keys the renewal on the contract
+  // that ended), so the key alone never means "has a package": only a live
+  // situation does. Ended, lapsed and "unknown" fall through, and the live
+  // contract and pricing-option checks below still catch a package running
+  // today whose name the studio hasn't matched.
+  const live = snap?.situation === "on-track" || snap?.situation === "will-bank" || snap?.situation === "will-run-out";
+  if (snap?.cycleKey && live) return NO_DOOR("has");
 
   // Contracts: whether one is running or coming does not depend on names.
   const index = buildPackageNameIndex(settings ?? DEFAULT_RENEWAL_SETTINGS);
@@ -117,7 +127,9 @@ export function packageStanding(input: StandingInput): PackageStanding {
 
   if (snap && (snap.situation === "ended" || snap.situation === "lapsed")) {
     const when = dayLabel(snap.focusDate, today);
-    const label = snap.packageLabel?.split(" · ")[0] ?? null;
+    // The engine labels only a live package; an ended one is named from the
+    // contract that ended, when the studio's table matches its name.
+    const label = snap.packageLabel?.split(" · ")[0] ?? contracts.lastEnded?.tier?.label ?? null;
     const sentence =
       snap.situation === "ended"
         ? `${label ? `${label} ended` : "Their package ended"}${when ? ` ${when}` : ""}.`

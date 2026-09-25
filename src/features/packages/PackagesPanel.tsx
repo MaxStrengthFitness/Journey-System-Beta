@@ -30,14 +30,18 @@ import {
   LOWERS_EVERY_PAYMENT,
   MISSION_QUOTE,
   MISSION_SOURCE,
+  monthsText,
+  monthsWord,
   payLines,
   SESSION_USE_RULE,
+  timelineMark,
   weekPrompt,
 } from "./package-copy";
 import {
   dotGroups,
   figuresFor,
   formatMoney,
+  frequencyOf,
   lowersEveryPayment,
   MAX_WEEKS_AWAY,
   priceAs,
@@ -71,10 +75,19 @@ const WEEK: ReadonlyArray<{ day: number; short: string }> = [
   { day: 0, short: "Sun" },
 ];
 
+/**
+ * What stands in for a figure the table cannot give: a package with no
+ * price at all, or a total left off because its payments and per-session
+ * price don't multiply out.
+ */
+function missingWords(t: PackageTier): string {
+  return figuresFor(t).priceMissing ? "Price not set yet" : "Total not shown";
+}
+
 /** The price a length shows in its column, in the unit the trainer chose. */
 function columnPrice(t: PackageTier, view: PackagesView): string {
   const p = priceAs(figuresFor(t), view.showAs, view.pay);
-  return p.amount === null ? "Price not set yet" : `${formatMoney(p.amount)} ${p.shortUnit}`;
+  return p.amount === null ? missingWords(t) : `${formatMoney(p.amount)} ${p.shortUnit}`;
 }
 
 function LengthPick({
@@ -82,21 +95,24 @@ function LengthPick({
   view,
   dispatch,
   recLabel,
+  shownKey,
 }: {
   tier: PackageTier;
   view: PackagesView;
   dispatch: Dispatch<PackagesAction>;
   recLabel: string;
+  /** The length the card below describes: the one pressed, always. */
+  shownKey: string | null;
 }) {
   return (
     <Pick
       className="pk-length"
-      pressed={view.selectedKey === tier.key}
+      pressed={shownKey === tier.key}
       onClick={() => dispatch({ type: "select", key: tier.key })}
     >
       <span className="pk-length__months">
         {tier.months}
-        <span className="pk-length__unit">months</span>
+        <span className="pk-length__unit">{monthsWord(tier.months)}</span>
       </span>
       <span className="pk-length__name">{tier.label}</span>
       <span className="pk-length__sessions">{lengthFacts(tier)}</span>
@@ -119,11 +135,21 @@ export function PackagesPanel({
   const alsoId = useId();
   const awayId = useId();
   const recLabel = recommendationLabel(trainerFullName);
-  const intro = lede(l);
 
   const extra: PackageTier[] = [...(view.showOnce ? l.once : []), ...(view.showOther ? l.other : [])];
+  const intro = lede(l, extra.length > 0);
   const all = [...l.headline, ...extra];
-  const selected = all.find((t) => t.key === view.selectedKey) ?? l.headline[0] ?? null;
+  // The length the card describes. A selection that is no longer on the
+  // screen (a row the trainer hid, a table that changed) falls back to the
+  // recommendation, then the first length, and the pressed column follows,
+  // so the columns and the card always name the same package.
+  const selected =
+    all.find((t) => t.key === view.selectedKey) ??
+    all.find((t) => t.key === view.recommendedKey) ??
+    l.headline[0] ??
+    null;
+  const shownKey = selected?.key ?? null;
+  const twiceWeek = l.headlineIsTwiceAWeek && !!selected && frequencyOf(selected) === "twice";
   const f = selected ? figuresFor(selected) : null;
   const big = f ? priceAs(f, view.showAs, view.pay) : null;
   const dots = selected ? dotGroups(selected) : null;
@@ -148,7 +174,7 @@ export function PackagesPanel({
             </h3>
             <div className="pk-lengths" role="group" aria-labelledby={lengthsId} data-count={l.headline.length}>
               {l.headline.map((t) => (
-                <LengthPick key={t.key} tier={t} view={view} dispatch={dispatch} recLabel={recLabel} />
+                <LengthPick key={t.key} tier={t} view={view} dispatch={dispatch} recLabel={recLabel} shownKey={shownKey} />
               ))}
             </div>
             {extra.length > 0 ? (
@@ -158,7 +184,7 @@ export function PackagesPanel({
                 </h3>
                 <div className="pk-lengths" role="group" aria-labelledby={alsoId} data-count={extra.length}>
                   {extra.map((t) => (
-                    <LengthPick key={t.key} tier={t} view={view} dispatch={dispatch} recLabel={recLabel} />
+                    <LengthPick key={t.key} tier={t} view={view} dispatch={dispatch} recLabel={recLabel} shownKey={shownKey} />
                   ))}
                 </div>
               </>
@@ -166,10 +192,10 @@ export function PackagesPanel({
           </section>
 
           {selected && f && big ? (
-            <Card eyebrow={`${selected.label} · ${selected.months} months`} className="pk-selected">
+            <Card eyebrow={`${selected.label} · ${monthsText(selected.months)}`} className="pk-selected">
               <div className="pk-price" data-testid="pk-big-price">
                 {big.amount === null ? (
-                  <span className="pk-text">Price not set yet</span>
+                  <span className="pk-text">{missingWords(selected)}</span>
                 ) : (
                   <>
                     <BigNumber>{formatMoney(big.amount)}</BigNumber>
@@ -215,7 +241,7 @@ export function PackagesPanel({
                       aria-hidden="true"
                       style={{ height: `${Math.round(24 + 96 * r.share)}px` }}
                     />
-                    <span className="pk-step__months">{`${r.months} months`}</span>
+                    <span className="pk-step__months">{monthsText(r.months)}</span>
                   </li>
                 ))}
               </ul>
@@ -237,7 +263,7 @@ export function PackagesPanel({
             </ol>
           </Card>
 
-          {l.headlineIsTwiceAWeek ? (
+          {twiceWeek ? (
             <Card eyebrow="Your week">
               <p className="pk-text">{`“${MISSION_QUOTE}”`}</p>
               <Source>{MISSION_SOURCE}</Source>
@@ -282,7 +308,7 @@ export function PackagesPanel({
                   onClick={() => dispatch({ type: "away", delta: 1 })}
                 />
               </div>
-              <Timeline weeks={life.totalWeeks} away={life.awayWeeks} billingWeeks={life.billingWeeks} />
+              <Timeline weeks={life.totalWeeks} away={life.awayWeeks} billingWeeks={life.billingWeeks} mark={timelineMark(selected, life.billingWeeks)} />
               <Source>Each stripe is a week. Hatched stripes are weeks away.</Source>
               <p className="pk-text" aria-live="polite" data-testid="pk-life-sentence">
                 {lifeHappensSentence(life, selected, f?.visitsPerWeek ?? null)}
@@ -308,7 +334,7 @@ export function PackagesPanel({
 }
 
 /** The weeks as stripes, away weeks hatched, the last payment marked. Decorative: the sentence says it. */
-function Timeline({ weeks, away, billingWeeks }: { weeks: number; away: number[]; billingWeeks: number }) {
+function Timeline({ weeks, away, billingWeeks, mark }: { weeks: number; away: number[]; billingWeeks: number; mark: string }) {
   const awaySet = new Set(away);
   const pct = weeks > 0 ? Math.min(100, (100 * billingWeeks) / weeks) : 100;
   return (
@@ -319,7 +345,7 @@ function Timeline({ weeks, away, billingWeeks }: { weeks: number; away: number[]
         ))}
       </div>
       <span className="pk-timeline__tick" data-side={pct > 55 ? "left" : "right"} style={{ left: `${pct}%` }}>
-        <span className="pk-timeline__label">{`Payments end · week ${billingWeeks}`}</span>
+        <span className="pk-timeline__label">{mark}</span>
       </span>
     </div>
   );

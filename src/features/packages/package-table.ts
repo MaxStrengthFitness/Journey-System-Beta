@@ -32,7 +32,7 @@
  * Pure: no React, no Firebase.
  */
 
-import { byPackageLength } from "../renewals/options";
+import { byPackageLength, WHOLE_PACKAGE_TOLERANCE, wholePackage } from "../renewals/options";
 import { sessionsPerPayment } from "../renewals/settings";
 import type { PackageTier, RenewalSettings } from "../renewals/types";
 
@@ -46,8 +46,8 @@ export type Frequency = "twice" | "once" | "other";
 export const WEEKS_PER_PAYMENT = 4;
 /** The "Life happens" stepper: 0 to 16 weeks away. */
 export const MAX_WEEKS_AWAY = 16;
-/** Payments and per-session price may disagree by rounding, never by more. */
-export const ADDS_UP_TOLERANCE = 1;
+/** Payments and per-session price may disagree by rounding, never by more (renewals/options.ts). */
+export const ADDS_UP_TOLERANCE = WHOLE_PACKAGE_TOLERANCE;
 /**
  * The length the trainer's recommendation starts on (AJ, Sep 24 2026:
  * "allow the trainer to recommend one but auto default to 12"). It is the
@@ -131,9 +131,9 @@ export interface TierFigures {
   fullRate: number | null;
   /** Each 4-weekly payment. */
   payment: number | null;
-  /** sessions × rate (what the Renewal Brief shows), when the table adds up. */
+  /** What the client is billed in all (renewals/options.ts wholePackage), when the table adds up. */
   wholeMonthly: number | null;
-  /** sessions × the paid-in-full rate. */
+  /** Paid in full, the one payment, when the table adds up. */
   wholeFull: number | null;
   /** wholeMonthly − wholeFull, only when it is a real saving. */
   fullSaving: number | null;
@@ -155,12 +155,14 @@ export function figuresFor(tier: PackageTier): TierFigures {
   const payment = tier.paymentAmount > 0 ? tier.paymentAmount : null;
   const fullRate = rate === null ? null : tier.prepayRatePerSession > 0 ? tier.prepayRatePerSession : rate;
 
-  const addsUp =
-    rate !== null &&
-    payment !== null &&
-    Math.abs(tier.payments * payment - tier.sessions * rate) <= ADDS_UP_TOLERANCE;
-  const wholeMonthly = addsUp && rate !== null ? tier.sessions * rate : null;
-  const wholeFull = fullRate !== null ? tier.sessions * fullRate : null;
+  // The same totals the Renewal Brief shows (renewals/options.ts). A package
+  // whose payments and per-session price don't multiply out shows NO total,
+  // however the client pays: the figure would be one of two numbers and
+  // nobody can say which is the typo.
+  const whole = wholePackage(tier);
+  const addsUp = rate !== null && payment !== null && whole.agrees;
+  const wholeMonthly = addsUp ? whole.monthly : null;
+  const wholeFull = addsUp && fullRate !== null ? whole.prepaid : null;
   const rawSaving = wholeMonthly !== null && wholeFull !== null ? wholeMonthly - wholeFull : null;
   const perSessionSaving = rate !== null && fullRate !== null ? rate - fullRate : null;
 

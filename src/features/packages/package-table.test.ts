@@ -325,3 +325,26 @@ describe("names", () => {
     expect(recommendationLabel(null)).toBe("Your trainer’s recommendation");
   });
 });
+
+describe("the review's cases (Sep 24)", () => {
+  it("withholds the paid-in-full total too when the table doesn't add up", () => {
+    const f = figuresFor(tier({ paymentAmount: 500, prepayRatePerSession: 60 }));
+    expect(f.addsUp).toBe(false);
+    expect(f.wholeFull).toBeNull();
+    expect(priceAs(f, "payment", "full").amount).toBeNull();
+    // The per-session prices the studio did set still show.
+    expect(priceAs(f, "session", "full").amount).toBe(60);
+  });
+
+  it("uses the billed amount for the whole, so it matches the payments shown beside it", () => {
+    // $475 every 4 weeks for 96 sessions: the rate is stored rounded, $59.38.
+    const f = figuresFor(tier({ paymentAmount: 475, ratePerSession: 59.38, prepayRatePerSession: 59.38 }));
+    expect(f.addsUp).toBe(true);
+    expect(f.wholeMonthly).toBe(5700);
+    expect(f.wholeFull).toBe(5700);
+    expect(f.fullSaving).toBeNull();
+    const brief = optionsFor({ ...DEFAULT_RENEWAL_SETTINGS, packages: [f.tier] }, null, null)[0];
+    expect(brief.totalMonthly).toBe(5700);
+    expect(brief.prepaySavings).toBe(0);
+  });
+});
