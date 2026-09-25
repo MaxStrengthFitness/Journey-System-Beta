@@ -118,11 +118,14 @@ async function resolveStudio(
         timeZone: match.timeZone,
       };
     }
-    // A location no studio claims, on a site only ONE studio has: that
-    // studio's, exactly as the pull files it (lib/mindbody-api-sync.ts,
-    // resolveStudioId). Parking it instead left the two paths disagreeing on
-    // every booking at a single-studio site whose location was never entered.
-    if (onSite.length !== 1) return { ambiguous: true, unmapped: false };
+    // A location no studio claims, on a site only ONE studio has, and that
+    // studio has claimed no location of its own: that studio's, exactly as
+    // the pull files it (it filters by location only once the studio has
+    // one). A lone studio WITH a location is not assumed to own another
+    // location's bookings: those are parked, or the pull would sweep them.
+    if (onSite.length !== 1 || onSite[0].locationId) {
+      return { ambiguous: true, unmapped: false };
+    }
   }
 
   if (onSite.length === 1)
@@ -164,6 +167,74 @@ function millisOf(value: unknown): number | null {
   }
   const secs = v._seconds ?? v.seconds;
   return typeof secs === "number" ? secs * 1000 : null;
+}
+
+/**
+ * Cancellations that arrived before Journey held the booking (the lean-sync
+ * round, Sep 25 2026): `{siteId}-{appointmentId}` -> when it was cancelled. The
+ * booking's own event reads it, so a created that arrives after its cancel
+ * lands cancelled. Written by this function only; no app screen reads it.
+ */
+const CANCEL_NOTES = "mindbodyBookingCancels";
+
+/** True when this event happened before the last event applied to the row. */
+function isOlderEvent(eventAt: Timestamp | undefined, stored: unknown): boolean {
+  if (!eventAt) return false;
+  const storedMs = millisOf(stored);
+  return storedMs !== null && eventAt.toMillis() < storedMs;
+}
+
+/**
+ * The trainer a booking's Mindbody staff id names AT THIS STUDIO, or null.
+ * Staff ids are numbered per site, so a trainer counts only when their home
+ * studio is the booking's or it is one they may work at: the pull's rule
+ * (lib/mindbody-api-sync.ts). Ambiguity at the studio is no match.
+ */
+async function resolveTrainerForStudio(
+  firestore: Firestore,
+  staffId: string,
+  studioId: string,
+): Promise<{ id: string; fullName: string } | null> {
+  const resolution = await resolveTrainerByStaffId(firestore, staffId);
+  const ids =
+    resolution.kind === "matched"
+      ? [resolution.trainerId]
+      : resolution.kind === "ambiguous"
+        ? resolution.trainerIds
+        : [];
+  if (ids.length === 0) return null;
+  const snaps = await Promise.all(ids.map((id) => firestore.collection("trainers").doc(id).get()));
+  const here: Array<{ id: string; data: Record<string, unknown> }> = [];
+  snaps.forEach((snap, i) => {
+    if (!snap.exists) return;
+    const d = (snap.data() as Record<string, unknown> | undefined) ?? {};
+    if (
+      d.primaryHomeStudioId === studioId ||
+      (Array.isArray(d.accessibleStudioIds) && d.accessibleStudioIds.includes(studioId))
+    ) {
+      here.push({ id: ids[i], data: d });
+    }
+  });
+  if (here.length !== 1) return null;
+  const fullName = here[0].data.fullName;
+  return { id: here[0].id, fullName: typeof fullName === "string" ? fullName : "" };
+}
+
+/**
+ * The health record is one shared document, and the likeliest moment for its
+ * write to fail is the moment Firestore is struggling. It must never decide an
+ * event's fate: a throw here used to skip the retry ledger (losing the event)
+ * or turn an applied event into a retry and a dead letter.
+ */
+async function safeHealthEvent(
+  firestore: Firestore,
+  event: Parameters<typeof recordHealthEvent>[1],
+): Promise<void> {
+  try {
+    await recordHealthEvent(firestore, event);
+  } catch (error) {
+    console.error("Mindbody webhook: the health record was not written", { error: String(error) });
+  }
 }
 
 /** Firestore map keys cannot contain path characters; Mindbody ids are numeric. */
@@ -262,7 +333,7 @@ export async function handleMindbodyWebhook(
 
   // 1. Strict Verification Guard
   if (!verifyMindbodySignature(req.rawBody, signature, deps.webhookSecret)) {
-    await recordHealthEvent(deps.firestore, { type: "signature_failure" });
+    await safeHealthEvent(deps.firestore, { type: "signature_failure" });
     return { statusCode: 401 };
   }
 
@@ -668,7 +739,14 @@ export async function handleMindbodyWebhook(
           console.warn(
             `Mindbody webhook: site ${siteId} maps to multiple studios and the event named no resolvable location; leaving homeStudioId untouched for client ${clientId}.`,
           );
-          await recordLimboEvent(deps.firestore, {
+          // Only a client with no home studio yet needs an administrator: on a
+          // shared site client events never name a location, so every update
+          // for an established client used to add a Limbo item that was false.
+          const known = target ? await resolveClientRef(deps.firestore, target.docId).get() : null;
+          const hasHome = !!(
+            known?.exists && (known.data() as Record<string, unknown> | undefined)?.homeStudioId
+          );
+          if (!hasHome) await recordLimboEvent(deps.firestore, {
             eventId,
             eventType,
             kind: "client",
@@ -736,52 +814,64 @@ export async function handleMindbodyWebhook(
        *     else. No location, so on a shared site it cannot name a studio;
        *     it can only name the booking Journey already holds.
        *
-       * Events arrive in no guaranteed order and possibly more than once. The
-       * guard below keeps the newest: a `created` retried fifteen minutes after
-       * a cancellation must not put the cancelled session back on the Hub.
+       * Events arrive in no guaranteed order, possibly more than once, and
+       * possibly at the same moment (the function runs many at once). So the
+       * row is read, checked and written in ONE transaction, and the newest
+       * event wins (`mindbodyEventAt`). A cancellation that arrives before
+       * Journey holds the booking leaves a note (CANCEL_NOTES) that the
+       * booking's own event reads, so it cannot put a cancelled session on
+       * the Hub.
        */
       const isCancelEvent =
         lowerType.includes("cancel") || lowerType.includes("delete");
-      const isCancelled =
-        isCancelEvent ||
-        (typeof payloadData.status === "string" &&
-          payloadData.status.toLowerCase() === "cancelled");
+      const statusSaysCancelled =
+        typeof payloadData.status === "string" &&
+        payloadData.status.toLowerCase() === "cancelled";
       const eventAt = toUtcTimestamp(parsed.eventInstanceOriginationDateTime);
+      const siteKey = siteId !== undefined ? String(siteId).trim() : "";
 
       const scheduleRef = deps.firestore.collection("schedules").doc(bookingId);
-      const existingDoc = await scheduleRef.get();
-      const existing: Record<string, unknown> | null = existingDoc.exists
-        ? ((existingDoc.data() as Record<string, unknown> | undefined) ?? {})
+      const noteRef = siteKey
+        ? deps.firestore.collection(CANCEL_NOTES).doc(`${siteKey}-${bookingId}`)
         : null;
+      const studiosForSite = await getStudios(deps.firestore);
+      /** A row on another site's studio: appointment ids are unique per SITE only. */
+      const rowIsAnotherSites = (row: Record<string, unknown> | null): boolean => {
+        if (!row || !siteKey || typeof row.studioId !== "string") return false;
+        const owner = studiosForSite.find((s) => s.id === row.studioId);
+        return !!owner && owner.siteId !== siteKey;
+      };
 
-      bookingEvent: {
-        const lastAppliedMs = millisOf(existing?.mindbodyEventAt);
-        if (eventAt && lastAppliedMs !== null && eventAt.toMillis() < lastAppliedMs) {
-          console.warn(
-            `Mindbody webhook: ${eventType} for booking ${bookingId} happened before the last event applied to it; ignored.`,
-          );
-          break bookingEvent;
-        }
-
-        if (isCancelEvent) {
-          // Only the booking Journey holds can be cancelled, and it keeps
-          // everything it knew: the time, the client, the trainer.
+      if (isCancelEvent) {
+        let outcome = "";
+        await deps.firestore.runTransaction(async (tx) => {
+          outcome = "";
+          const snap = await tx.get(scheduleRef);
+          const existing = snap.exists
+            ? ((snap.data() as Record<string, unknown> | undefined) ?? {})
+            : null;
           if (!existing) {
-            console.log(
-              `Mindbody webhook: cancellation for booking ${bookingId}, which Journey never held; nothing to cancel.`,
-            );
-            break bookingEvent;
-          }
-          // Appointment ids are unique per SITE: the row must be this site's.
-          if (siteId !== undefined && typeof existing.studioId === "string") {
-            const studios = await getStudios(deps.firestore);
-            const owner = studios.find((s) => s.id === existing.studioId);
-            if (owner && owner.siteId !== String(siteId).trim()) {
-              console.warn(
-                `Mindbody webhook: cancellation for booking ${bookingId} names site ${siteId}, but the booking belongs to ${existing.studioId} on site ${owner.siteId}; ignored.`,
-              );
-              break bookingEvent;
+            // Journey does not hold it (yet). Leave the note, so the booking's
+            // created or updated event, arriving late, lands cancelled.
+            if (noteRef) {
+              tx.set(noteRef, {
+                siteId: siteKey,
+                appointmentId: bookingId,
+                cancelledEventAt: eventAt ?? Timestamp.now(),
+                recordedAt: FieldValue.serverTimestamp(),
+                expiresAt: Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              });
             }
+            outcome = "noted";
+            return;
+          }
+          if (isOlderEvent(eventAt, existing.mindbodyEventAt)) {
+            outcome = "stale";
+            return;
+          }
+          if (rowIsAnotherSites(existing)) {
+            outcome = "other-site";
+            return;
           }
           const cancel: Record<string, unknown> = {
             status: "Cancelled",
@@ -792,10 +882,17 @@ export async function handleMindbodyWebhook(
             cancel.cancelSource = "mindbody";
           }
           if (eventAt) cancel.mindbodyEventAt = eventAt;
-          await scheduleRef.set(cancel, { merge: true });
-          break bookingEvent;
+          tx.set(scheduleRef, cancel, { merge: true });
+          outcome = "cancelled";
+        });
+        if (outcome === "noted") {
+          console.log(`Mindbody webhook: cancellation for booking ${bookingId}, which Journey does not hold yet; noted.`);
+        } else if (outcome === "stale") {
+          console.warn(`Mindbody webhook: ${eventType} for booking ${bookingId} happened before the last event applied to it; ignored.`);
+        } else if (outcome === "other-site") {
+          console.warn(`Mindbody webhook: cancellation for booking ${bookingId} names site ${siteKey}, but the booking belongs to another site's studio; ignored.`);
         }
-
+      } else {
         // Pass / waitlist / visit-count data, when Mindbody sends any of it.
         // Strictly additive: absent fields write nothing.
         const bookingExtras = extractBookingExtras(payloadData);
@@ -854,10 +951,35 @@ export async function handleMindbodyWebhook(
                   ? payloadData.className
                   : "";
 
+        /** Parks the booking for an administrator instead of writing it. */
+        const park = async (reason: string) => {
+          await recordLimboEvent(deps.firestore, {
+            eventId,
+            eventType,
+            kind: "booking",
+            siteId,
+            locationId,
+            clientId,
+            reason,
+            summary: {
+              bookingId,
+              clientName: clientName || "Unknown Client",
+              // Raw, unconverted: no studio means no timezone to read them against.
+              rawStartDateTime: typeof rawStart === "string" ? rawStart : null,
+              rawEndDateTime: typeof rawEnd === "string" ? rawEnd : null,
+              staffName: staffName || null,
+              serviceName: namedService || null,
+              status: statusSaysCancelled ? "Cancelled" : "Scheduled",
+            },
+            payload: parsed,
+          });
+        };
+
         // Resolved before the times are read: a naive wall-clock string is
         // meaningless without knowing which studio's clock it belongs to.
         let studioId: string | null = null;
         let studioTimeZone = DEFAULT_TIME_ZONE;
+        let parkedReason = "";
         if (siteId) {
           const resolution = await resolveStudio(
             deps.firestore,
@@ -873,205 +995,211 @@ export async function handleMindbodyWebhook(
             // the hub's studio filter and would surface on every location's grid,
             // and a row filed under a guessed studio would show on the wrong
             // roster. Limbo keeps it visible to an admin without either failure.
-            //
-            // NOTE ON TIMES: without a studio there is no timezone to read a
-            // naive string against, so the RAW strings are stored, unconverted.
-            console.warn(
-              `Mindbody webhook: parking booking ${bookingId} in ${LIMBO_QUEUE} — site ${siteId}${
-                locationId !== undefined ? ` / location ${locationId}` : ""
-              } ${resolution.unmapped ? "maps to no studio" : "does not resolve to a single studio"}.`,
-            );
-            await recordLimboEvent(deps.firestore, {
-              eventId,
-              eventType,
-              kind: "booking",
-              siteId,
-              locationId,
-              clientId,
-              reason: resolution.unmapped
-                ? "Booking parked: no studio has this Mindbody site id. Set mindbodySiteId in Admin -> Studios, then run Refresh Schedule to release it onto the roster."
-                : "Booking parked: site is shared by several studios and the event named no resolvable location. Set mindbodyLocationId in Admin -> Studios, then run Refresh Schedule to release it onto the roster.",
-              summary: {
-                bookingId,
-                clientName: clientName || "Unknown Client",
-                // Raw, unconverted — see the note above.
-                rawStartDateTime: typeof rawStart === "string" ? rawStart : null,
-                rawEndDateTime: typeof rawEnd === "string" ? rawEnd : null,
-                staffName: staffName || null,
-                serviceName: namedService || null,
-                status: isCancelled ? "Cancelled" : "Scheduled",
-              },
-              payload: parsed,
-            });
-            await recordHealthEvent(deps.firestore, {
-              type: "webhook_success",
-              hydrationLatencyMs: Math.max(0, Date.now() - processingStartedAt),
-            });
-            return { statusCode: 200 };
+            parkedReason = resolution.unmapped
+              ? "Booking parked: no studio has this Mindbody site id. Set mindbodySiteId in Admin -> Studios, then run Refresh Schedule to release it onto the roster."
+              : "Booking parked: site is shared by several studios and the event named no resolvable location. Set mindbodyLocationId in Admin -> Studios, then run Refresh Schedule to release it onto the roster.";
           }
         }
 
-        // Now that the owning studio is known, read its wall clock. Mindbody's
-        // documented times carry a Z, which wallClockToInstant takes as-is.
-        const startDate = wallClockToInstant(rawStart, studioTimeZone);
-        const endDate = wallClockToInstant(rawEnd, studioTimeZone);
-        const startTime: Timestamp | null = startDate
-          ? Timestamp.fromDate(startDate)
-          : null;
-        const endTime: Timestamp | null = endDate
-          ? Timestamp.fromDate(endDate)
-          : null;
+        if (parkedReason) {
+          console.warn(
+            `Mindbody webhook: parking booking ${bookingId} in ${LIMBO_QUEUE} — site ${siteId}${
+              locationId !== undefined ? ` / location ${locationId}` : ""
+            }.`,
+          );
+          await park(parkedReason);
+        } else {
+          // Now that the owning studio is known, read its wall clock. Mindbody's
+          // documented times carry a Z, which wallClockToInstant takes as-is.
+          const startDate = wallClockToInstant(rawStart, studioTimeZone);
+          const endDate = wallClockToInstant(rawEnd, studioTimeZone);
+          const startTime: Timestamp | null = startDate ? Timestamp.fromDate(startDate) : null;
+          const endTime: Timestamp | null = endDate ? Timestamp.fromDate(endDate) : null;
 
-        // Read from THIS person's record — never the other site's namesake.
-        if (!clientName && clientId && target) {
-          const clientSnap = await resolveClientRef(deps.firestore, target.docId).get();
-          if (clientSnap.exists) {
-            const cData = clientSnap.data();
-            if (cData) {
-              clientName =
-                `${cData.firstName || ""} ${cData.lastName || ""}`.trim();
+          // Read from THIS person's record — never the other site's namesake.
+          if (!clientName && clientId && target) {
+            const clientSnap = await resolveClientRef(deps.firestore, target.docId).get();
+            if (clientSnap.exists) {
+              const cData = clientSnap.data();
+              if (cData) {
+                clientName = `${cData.firstName || ""} ${cData.lastName || ""}`.trim();
+              }
             }
           }
-        }
-        if (!clientName) {
-          clientName =
-            typeof existing?.clientName === "string" && existing.clientName
-              ? existing.clientName
-              : "Unknown Client";
-        }
 
-        /*
-         * The trainer, by Mindbody staff id: at most two single-field queries
-         * (staffResolver). This replaced reading EVERY trainer in the company on
-         * every booking to compare names, which cost a read per trainer per
-         * booking and could match the wrong person by name.
-         *
-         * A staff id no trainer carries writes no trainer, but it must not
-         * erase one the pull found for the same staff member (the pull can
-         * still match by name within the studio): if the staff name is the
-         * one the row already shows, the row's trainer stays.
-         */
-        let trainerId: string | null = null;
-        let trainerName = staffName;
-        if (staffId) {
-          const resolution = await resolveTrainerByStaffId(deps.firestore, staffId);
-          if (resolution.kind === "matched") {
-            trainerId = resolution.trainerId;
-            const trainerSnap = await deps.firestore
-              .collection("trainers")
-              .doc(resolution.trainerId)
-              .get();
-            const fullName = trainerSnap.exists
-              ? (trainerSnap.data() as Record<string, unknown> | undefined)?.fullName
-              : undefined;
-            if (typeof fullName === "string" && fullName.trim()) trainerName = fullName;
+          /*
+           * The trainer, by Mindbody staff id: at most two single-field
+           * queries (staffResolver) and a read of each match. Staff ids are
+           * numbered per SITE, like client ids, so a match counts only when
+           * that trainer works at this booking's studio, exactly the pull's
+           * rule (lib/mindbody-api-sync.ts). This replaced reading EVERY
+           * trainer in the company on every booking to compare names.
+           */
+          let trainer: { id: string; fullName: string } | null = null;
+          if (staffId && studioId) {
+            trainer = await resolveTrainerForStudio(deps.firestore, staffId, studioId);
           }
-        }
-        const keepRowTrainer =
-          trainerId === null &&
-          existing !== null &&
-          typeof existing.trainerName === "string" &&
-          existing.trainerName.trim().toLowerCase() === staffName.trim().toLowerCase();
 
-        const nextStatus = isCancelled ? "Cancelled" : "Scheduled";
-        const scheduleData: Record<string, unknown> = {
-          clientName,
-          studioId,
-          startTime,
-          endTime,
-          status: nextStatus,
-          source: "MindBody",
-          mindbodyAppointmentId: bookingId,
-          lastSyncAt: FieldValue.serverTimestamp(),
-        };
-        if (!keepRowTrainer) {
-          scheduleData.trainerId = trainerId;
-          scheduleData.trainerName = trainerName;
-        }
-        // Never blank a service name a pull already wrote.
-        if (namedService) scheduleData.serviceName = namedService;
-        else if (!existing) scheduleData.serviceName = "Training Session";
-        if (eventAt) scheduleData.mindbodyEventAt = eventAt;
-
-        /*
-         * The same change stamps the pull writes (lib/mindbody-api-sync.ts,
-         * changeStamps), so Operations' week of changes reads a move or a
-         * cancellation the webhook delivered exactly as one the pull found.
-         */
-        if (existing) {
-          const prevStartMs = millisOf(existing.startTime);
-          if (
-            prevStartMs !== null &&
-            startTime !== null &&
-            prevStartMs !== startTime.toMillis() &&
-            existing.status !== "Cancelled"
-          ) {
-            scheduleData.movedFromDay = studioDayKeyOf(prevStartMs, studioTimeZone);
-            scheduleData.movedFromStart = existing.startTime;
-            scheduleData.movedAt = FieldValue.serverTimestamp();
-          }
-          if (nextStatus === "Cancelled" && existing.status !== "Cancelled") {
-            scheduleData.cancelledAt = FieldValue.serverTimestamp();
-            scheduleData.cancelSource = "mindbody";
-          } else if (nextStatus === "Scheduled" && existing.status === "Cancelled") {
-            scheduleData.cancelledAt = null;
-            scheduleData.cancelSource = null;
-          }
-        }
-
-        // Trainers see pass state on the block; only written when reported, so a
-        // payload without pass data never blanks out what a previous one set.
-        if (bookingExtras.pass) scheduleData.mindbodyPass = bookingExtras.pass;
-        if (bookingExtras.bookingOriginatedFromWaitlist !== undefined) {
-          scheduleData.bookingOriginatedFromWaitlist =
-            bookingExtras.bookingOriginatedFromWaitlist;
-        }
-
-        if (clientId) {
-          // ORDERING HAZARD: a booking can arrive before the client.created event
-          // for a brand-new client. Rather than write a clientId that points at
-          // nothing (which the hub self-heals to null, producing an unlinked
-          // block a trainer has to fix by hand), create a stub profile now. The
-          // client event enriches it moments later and clears isMindbodyStub.
-          //
-          // The doc id this returns is used verbatim: if the client still lives
-          // at a legacy doc id, the schedule must point THERE, not at a canonical
-          // path that does not exist yet.
-          const resolvedClient = await ensureCanonicalClient(deps.firestore, {
-            mindbodyClientId: clientId,
-            docId: target?.docId,
-            mindbodySiteId: target?.siteId,
-            profile: {
-              mindbody_name: clientName !== "Unknown Client" ? clientName : undefined,
-              firstName:
-                clientName !== "Unknown Client"
-                  ? clientName.split(" ")[0]
+          let resolvedClientDocId: string | null = null;
+          if (clientId) {
+            // ORDERING HAZARD: a booking can arrive before the client.created event
+            // for a brand-new client. Rather than write a clientId that points at
+            // nothing (which the hub self-heals to null, producing an unlinked
+            // block a trainer has to fix by hand), create a stub profile now. The
+            // client event enriches it moments later and clears isMindbodyStub.
+            const stubName = clientName || "";
+            const resolvedClient = await ensureCanonicalClient(deps.firestore, {
+              mindbodyClientId: clientId,
+              docId: target?.docId,
+              mindbodySiteId: target?.siteId,
+              profile: {
+                mindbody_name: stubName || undefined,
+                firstName: stubName ? stubName.split(" ")[0] : undefined,
+                lastName: stubName ? stubName.split(" ").slice(1).join(" ") || undefined : undefined,
+              },
+              studioId,
+              origin: "booking-stub",
+              // Mindbody's own lifetime visit count for this client at the site.
+              enrichment:
+                bookingExtras.clientsNumberOfVisitsAtSite !== undefined
+                  ? { clientsNumberOfVisitsAtSite: bookingExtras.clientsNumberOfVisitsAtSite }
                   : undefined,
-              lastName:
-                clientName !== "Unknown Client"
-                  ? clientName.split(" ").slice(1).join(" ") || undefined
-                  : undefined,
-            },
-            studioId,
-            origin: "booking-stub",
-            // Mindbody's own lifetime visit count for this client at the site.
-            enrichment:
-              bookingExtras.clientsNumberOfVisitsAtSite !== undefined
-                ? {
-                    clientsNumberOfVisitsAtSite:
-                      bookingExtras.clientsNumberOfVisitsAtSite,
-                  }
-                : undefined,
+            });
+            resolvedClientDocId = resolvedClient.clientDocId;
+          }
+
+          let outcome = "";
+          await deps.firestore.runTransaction(async (tx) => {
+            outcome = "";
+            const snap = await tx.get(scheduleRef);
+            const existing = snap.exists
+              ? ((snap.data() as Record<string, unknown> | undefined) ?? {})
+              : null;
+            const note = noteRef ? await tx.get(noteRef) : null;
+
+            if (isOlderEvent(eventAt, existing?.mindbodyEventAt)) {
+              outcome = "stale";
+              return;
+            }
+            if (rowIsAnotherSites(existing)) {
+              outcome = "other-site";
+              return;
+            }
+            if (!startTime && !existing) {
+              // A new booking with no time it can be placed at: never a
+              // timeless row, which drops out of every day's view.
+              outcome = "no-time";
+              return;
+            }
+
+            // A cancellation that arrived first, and is not older than this event.
+            const noteData = note?.exists ? (note.data() as Record<string, unknown> | undefined) : undefined;
+            const noteMs = millisOf(noteData?.cancelledEventAt);
+            const cancelledFirst =
+              noteMs !== null && (!eventAt || eventAt.toMillis() <= noteMs);
+            const nextStatus = statusSaysCancelled || cancelledFirst ? "Cancelled" : "Scheduled";
+
+            const scheduleData: Record<string, unknown> = {
+              clientName:
+                clientName ||
+                (typeof existing?.clientName === "string" && existing.clientName
+                  ? existing.clientName
+                  : "Unknown Client"),
+              studioId,
+              status: nextStatus,
+              source: "MindBody",
+              mindbodyAppointmentId: bookingId,
+              lastSyncAt: FieldValue.serverTimestamp(),
+            };
+            // Never write a missing time over a good one.
+            if (startTime) scheduleData.startTime = startTime;
+            if (endTime) scheduleData.endTime = endTime;
+
+            // The trainer: the one found at this studio; or, when none is,
+            // keep the row's own trainer if it is the same Mindbody staff
+            // member (by id, else by name), since the pull may have matched
+            // them; otherwise say so with no trainer.
+            if (trainer) {
+              scheduleData.trainerId = trainer.id;
+              scheduleData.trainerName = trainer.fullName || staffName;
+            } else {
+              const sameStaff =
+                existing !== null &&
+                ((staffId !== "" && String(existing.mindbodyStaffId ?? "") === staffId) ||
+                  (typeof existing.trainerName === "string" &&
+                    staffName !== "" &&
+                    existing.trainerName.trim().toLowerCase() === staffName.trim().toLowerCase()));
+              if (!sameStaff) {
+                scheduleData.trainerId = null;
+                scheduleData.trainerName = staffName;
+              }
+            }
+            if (staffId) scheduleData.mindbodyStaffId = staffId;
+
+            // Never blank a service name a pull already wrote.
+            if (namedService) scheduleData.serviceName = namedService;
+            else if (!existing) scheduleData.serviceName = "Training Session";
+            if (eventAt) scheduleData.mindbodyEventAt = eventAt;
+
+            /*
+             * The same change stamps the pull writes (lib/mindbody-api-sync.ts,
+             * changeStamps), so Operations' week of changes reads a move or a
+             * cancellation the webhook delivered exactly as one the pull found.
+             */
+            if (existing) {
+              const prevStartMs = millisOf(existing.startTime);
+              if (
+                prevStartMs !== null &&
+                startTime !== null &&
+                prevStartMs !== startTime.toMillis() &&
+                existing.status !== "Cancelled"
+              ) {
+                scheduleData.movedFromDay = studioDayKeyOf(prevStartMs, studioTimeZone);
+                scheduleData.movedFromStart = existing.startTime;
+                scheduleData.movedAt = FieldValue.serverTimestamp();
+              }
+              if (nextStatus === "Cancelled" && existing.status !== "Cancelled") {
+                scheduleData.cancelledAt = FieldValue.serverTimestamp();
+                scheduleData.cancelSource = "mindbody";
+              } else if (nextStatus === "Scheduled" && existing.status === "Cancelled") {
+                scheduleData.cancelledAt = null;
+                scheduleData.cancelSource = null;
+              }
+            } else {
+              scheduleData.createdAt = FieldValue.serverTimestamp();
+              if (nextStatus === "Cancelled") {
+                scheduleData.cancelledAt = FieldValue.serverTimestamp();
+                scheduleData.cancelSource = "mindbody";
+              }
+            }
+
+            // Trainers see pass state on the block; only written when reported.
+            if (bookingExtras.pass) scheduleData.mindbodyPass = bookingExtras.pass;
+            if (bookingExtras.bookingOriginatedFromWaitlist !== undefined) {
+              scheduleData.bookingOriginatedFromWaitlist =
+                bookingExtras.bookingOriginatedFromWaitlist;
+            }
+            if (resolvedClientDocId) {
+              scheduleData.clientId = resolvedClientDocId;
+              scheduleData.mindbodyClientId = String(clientId);
+            }
+
+            tx.set(scheduleRef, scheduleData, { merge: true });
+            outcome = "written";
           });
-          scheduleData.clientId = resolvedClient.clientDocId;
-          scheduleData.mindbodyClientId = String(clientId);
-        }
 
-        if (!existing) {
-          scheduleData.createdAt = FieldValue.serverTimestamp();
+          if (outcome === "stale") {
+            console.warn(`Mindbody webhook: ${eventType} for booking ${bookingId} happened before the last event applied to it; ignored.`);
+          } else if (outcome === "other-site") {
+            await park(
+              `Booking parked: appointment ${bookingId} on site ${siteKey} has the same id as a booking another site's studio already holds. Assign it by hand.`,
+            );
+          } else if (outcome === "no-time") {
+            await park(
+              "Booking parked: the event carried no start time Journey could read, so it cannot be placed on a day.",
+            );
+          }
         }
-
-        await scheduleRef.set(scheduleData, { merge: true });
       }
     } else if (isStaffEvent) {
       const staffId = extractStaffId(parsed);
@@ -1148,7 +1276,7 @@ export async function handleMindbodyWebhook(
       });
     }
 
-    await recordHealthEvent(deps.firestore, {
+    await safeHealthEvent(deps.firestore, {
       type: "webhook_success",
       hydrationLatencyMs: Math.max(0, Date.now() - processingStartedAt),
     });
@@ -1158,7 +1286,7 @@ export async function handleMindbodyWebhook(
   } catch (error) {
     console.error("Webhook processing error:", { error: String(error) });
 
-    await recordHealthEvent(deps.firestore, { type: "webhook_failure" });
+    await safeHealthEvent(deps.firestore, { type: "webhook_failure" });
 
     // The idempotency record was committed before this business logic ran, so
     // without a release the retry would be waved through as a duplicate and the

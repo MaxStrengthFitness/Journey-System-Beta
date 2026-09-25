@@ -562,6 +562,31 @@ export async function syncMindbodySchedules(
    * name. Only those. A client the rule would NOT find is created from the
    * lookup's answer (phase 1), and a skipped lookup would create them nameless.
    */
+  /** Runs the wider pull a near pull handed its losses to, and folds it in. */
+  const settleWithWiderWindow = async (win: { start: string; end: string }) => {
+    const settle = await syncMindbodySchedules(
+      siteId,
+      trainers,
+      clients,
+      studios,
+      targetStaffId,
+      win.start,
+      win.end,
+      targetStudioIdOverride,
+      targetLocationId,
+      { skipKnownClientLookups: options.skipKnownClientLookups },
+    );
+    result.added += settle.added;
+    result.updated += settle.updated;
+    result.skipped += settle.skipped;
+    result.errors.push(...settle.errors);
+    result.swept = (result.swept ?? 0) + (settle.swept ?? 0);
+    if (settle.clientsCreated) {
+      result.clientsCreated = (result.clientsCreated ?? 0) + settle.clientsCreated;
+    }
+    result.settledWithMonth = settle.windowComplete === true;
+  };
+
   const siteKey = String(siteId).trim();
   const siteClients = clients.filter((c) => {
     const theirs = siteOfClient(c, studios || []);
@@ -696,6 +721,30 @@ export async function syncMindbodySchedules(
     }
 
     if (appointments.length === 0) {
+      // An empty answer never cancels anything by itself: it can be a glitch.
+      // But a NEAR pull with an empty, whole answer may have lost the day's
+      // last booking, so when it was offered a wider window it asks that one,
+      // exactly as it does for any booking that left (the review, Sep 25).
+      if (answerComplete && options.settleSweepWith) {
+        const from = studioDayBoundsForKey(start.slice(0, 10), studioTimeZone).start;
+        const to = studioDayBoundsForKey(end.slice(0, 10), studioTimeZone).end;
+        const held = await getDocs(
+          query(
+            collection(db, "schedules"),
+            where("studioId", "==", targetStudioId),
+            where("startTime", ">=", Timestamp.fromDate(from)),
+            where("startTime", "<=", Timestamp.fromDate(to)),
+          ),
+        );
+        let live = 0;
+        held.forEach((d) => {
+          if (d.data().status !== "Cancelled") live++;
+        });
+        if (live > 0) {
+          result.sweepDeferred = live;
+          await settleWithWiderWindow(options.settleSweepWith);
+        }
+      }
       return result;
     }
 
@@ -769,6 +818,10 @@ export async function syncMindbodySchedules(
           query(collection(db, "schedules"), where(documentId(), "in", chunk)),
         );
         snap.forEach((d) => {
+          // Appointment ids are unique per Mindbody SITE: a row on another
+          // site's studio is someone else's booking, never this one's history.
+          const owner = (studios || []).find((s) => s.id === d.data().studioId);
+          if (owner?.mindbodySiteId && String(owner.mindbodySiteId).trim() !== siteKey) return;
           const key = String(d.data().mindbodyAppointmentId ?? d.id);
           if (!existingByMbId[key]) existingByMbId[key] = { docId: d.id, data: d.data() };
         });
@@ -1348,33 +1401,16 @@ export async function syncMindbodySchedules(
       // booking that moved to next week is updated on its new day with its
       // move stamps, and one that is truly gone is cancelled by that pull's
       // sweep, in seconds rather than at the next whole-month pull.
-      const settle = await syncMindbodySchedules(
-        siteId,
-        trainers,
-        clients,
-        studios,
-        targetStaffId,
-        settleWith.start,
-        settleWith.end,
-        targetStudioIdOverride,
-        targetLocationId,
-        { skipKnownClientLookups: options.skipKnownClientLookups },
-      );
-      result.added += settle.added;
-      result.updated += settle.updated;
-      result.skipped += settle.skipped;
-      result.errors.push(...settle.errors);
-      result.swept = (result.swept ?? 0) + (settle.swept ?? 0);
-      if (settle.clientsCreated) {
-        result.clientsCreated = (result.clientsCreated ?? 0) + settle.clientsCreated;
-      }
-      result.settledWithMonth = settle.windowComplete === true;
+      await settleWithWiderWindow(settleWith);
     }
 
     console.log("✅ [REFRESH SCHEDULE] SYNC COMPLETE RESULT:", result);
     return result;
   } catch (err: any) {
     result.errors.push(err.message);
+    // Mindbody may have answered in full, but Journey did not take it all in:
+    // not a month read, so it is not recorded as one and is tried again.
+    result.windowComplete = false;
   }
 
   return result;

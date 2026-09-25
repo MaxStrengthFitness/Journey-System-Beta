@@ -208,6 +208,9 @@ async function main() {
     for (const s of others) {
       const r = await fetch(`${API}/${encodeURIComponent(idOf(s))}`, { method: 'DELETE', headers });
       console.log(`${r.ok ? 'Deleted' : `Could not delete (HTTP ${r.status})`} ${idOf(s)}  (${s.Status || s.status})`);
+      // The ship script stops on this: an old subscription left active keeps
+      // posting with its old secret, and every delivery fails its signature.
+      if (!r.ok) process.exitCode = 1;
     }
     if (!others.length) console.log('No other subscriptions for this URL.');
     return;

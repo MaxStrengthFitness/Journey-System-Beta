@@ -153,13 +153,14 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
         // The retry ledger runs a transaction on every processing failure.
         // Without this the ledger threw and the handler fell back to a plain
         // 500, so the release-and-dead-letter path was never exercised here.
+        // A transaction reads and writes the same fake documents as everything
+        // else (the booking branch reads, checks and writes its row in one
+        // since the lean-sync round). Documents that were never set read as
+        // missing, which is what the retry ledger's tests expect.
         runTransaction: vi.fn(async (cb: any) =>
           cb({
-            get: vi.fn().mockResolvedValue({
-              exists: false,
-              data: () => undefined,
-            }),
-            set: vi.fn(),
+            get: (ref: any) => ref.get(),
+            set: (ref: any, data: any, options?: any) => ref.set(data, options),
           }),
         ),
       } as unknown as Firestore,
@@ -462,7 +463,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
   const scheduleWrite = (id = "121") => writesTo("schedules").find((w) => w.id === id);
 
   it("11. appointmentBooking.created writes the booking, finding the trainer by Mindbody staff id", async () => {
-    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K" };
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K", primaryHomeStudioId: "studio-123" };
 
     const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
 
@@ -529,7 +530,7 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     );
   });
 
-  it("12b. a cancellation for a booking Journey never held writes nothing", async () => {
+  it("12b. a cancellation for a booking Journey does not hold writes no booking", async () => {
     const response = await handleMindbodyWebhook(
       deps,
       bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 404 }),
@@ -537,6 +538,8 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     expect(response.statusCode).toBe(200);
     expect(writesTo("schedules")).toHaveLength(0);
     expect(writesTo("mindbodyLimbo")).toHaveLength(0);
+    // It leaves a note, so the booking's own event cannot arrive late and restore it.
+    expect(writesTo("mindbodyBookingCancels").map((w) => w.id)).toEqual(["99999-404"]);
   });
 
   it("12c. on a shared site a cancellation reaches the booking, not Limbo", async () => {
@@ -623,6 +626,90 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       bookingEnvelope("appointmentBooking.updated", created({ appointmentName: undefined })),
     );
     expect(scheduleWrite()?.data).not.toHaveProperty("serviceName");
+  });
+
+  it("11c. a staff id that names a trainer at ANOTHER studio names no trainer here", async () => {
+    // Staff ids are numbered per site: trainer-abc carries this id at Westlake.
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K", primaryHomeStudioId: "studio-westlake" };
+
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(scheduleWrite()?.data).toMatchObject({ trainerId: null, trainerName: "Jane Doe", mindbodyStaffId: "100000012" });
+  });
+
+  it("12i. a created that arrives after its own cancellation lands cancelled", async () => {
+    // The cancellation came first (14:05) and found nothing to cancel...
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.cancelled", { siteId: 99999, appointmentId: 121 }, {
+        eventInstanceOriginationDateTime: "2026-09-25T14:05:00Z",
+      }),
+    );
+    const [note] = writesTo("mindbodyBookingCancels");
+    expect(note?.id).toBe("99999-121");
+    existingDocs["mindbodyBookingCancels/99999-121"] = note.data;
+
+    // ...then the booking's created event (14:00) arrives.
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(scheduleWrite()?.data).toMatchObject({ status: "Cancelled", cancelSource: "mindbody" });
+  });
+
+  it("12j. a new booking with no readable start time is parked, never written without a day", async () => {
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.created", created({ startDateTime: undefined, endDateTime: undefined })),
+    );
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(writesTo("mindbodyLimbo")).toHaveLength(1);
+  });
+
+  it("12k. an update with no readable time keeps the row's times", async () => {
+    existingDocs["schedules/121"] = {
+      studioId: "studio-123",
+      status: "Scheduled",
+      startTime: Timestamp.fromDate(new Date("2026-09-26T14:00:00Z")),
+    };
+    await handleMindbodyWebhook(
+      deps,
+      bookingEnvelope("appointmentBooking.updated", created({ startDateTime: undefined, endDateTime: undefined })),
+    );
+    const w = scheduleWrite();
+    expect(w).toBeDefined();
+    expect(w?.data).not.toHaveProperty("startTime");
+    expect(w?.data).not.toHaveProperty("endTime");
+  });
+
+  it("12l. a booking whose id another site's studio already holds is parked, not taken over", async () => {
+    studioDocs = [
+      { id: "studio-123", data: () => ({ mindbodySiteId: 99999 }) },
+      { id: "studio-far", data: () => ({ mindbodySiteId: 5746957 }) },
+    ];
+    existingDocs["schedules/121"] = { studioId: "studio-far", status: "Scheduled", clientName: "Someone Else" };
+
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.updated", created()));
+
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(writesTo("mindbodyLimbo")).toHaveLength(1);
+  });
+
+  it("12m. a lone studio that has its own location does not take another location's bookings", async () => {
+    studioDocs = [{ id: "studio-123", data: () => ({ mindbodySiteId: 99999, mindbodyLocationId: 1 }) }];
+
+    await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created({ locationId: 2 })));
+
+    expect(writesTo("schedules")).toHaveLength(0);
+    expect(writesTo("mindbodyLimbo")).toHaveLength(1);
+  });
+
+  it("12n. a failed health write never loses an applied booking", async () => {
+    vi.mocked(recordHealthEvent).mockRejectedValueOnce(new Error("health doc contended"));
+    existingDocs["trainers/trainer-abc"] = { fullName: "Marina K", primaryHomeStudioId: "studio-123" };
+
+    const response = await handleMindbodyWebhook(deps, bookingEnvelope("appointmentBooking.created", created()));
+
+    expect(response.statusCode).toBe(200);
+    expect(scheduleWrite()?.data.status).toBe("Scheduled");
   });
 
   describe("multiple studios sharing one MindBody site", () => {

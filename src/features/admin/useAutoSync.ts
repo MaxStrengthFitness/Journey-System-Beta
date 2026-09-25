@@ -178,8 +178,13 @@ export function useAutoSync({
           settleSweepWith: deep ? undefined : month,
         },
       );
-      const failed = (res.errors?.length ?? 0) > 0;
-      setLastError(failed ? res.errors[0] : null);
+      // A failure is a pull that did not get the whole answer into Journey.
+      // A warning (an unmapped location, a client profile it could not check)
+      // is not: counting those backed the pull off to every four hours, and
+      // a studio with a lasting warning then saw a same-day cancellation hours
+      // late (the review, Sep 25 2026).
+      const failed = res.windowComplete !== true;
+      setLastError(res.errors?.[0] ?? null);
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(studioRef);
         const prev = (snap.data() as Studio | undefined)?.scheduleSyncFailures ?? 0;
