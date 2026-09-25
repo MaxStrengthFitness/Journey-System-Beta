@@ -13,7 +13,7 @@
  * without reading every conversation. The writes live in useRenewalCycle.ts.
  */
 
-import { dayLabel } from "./sentences";
+import { billingEndPhrase, capitalize, dayLabel } from "./sentences";
 import { studioDateKey } from "../../lib/studio-time";
 import type {
   RenewalConcern,
@@ -184,7 +184,10 @@ export function renewalPromptDue(s: RenewalSnapshot | null | undefined): boolean
 export function promptText(s: RenewalSnapshot): string {
   if (s.situation === "ended") return "Their package has ended. Talk about renewing today?";
   if (s.chargeWarning && s.bankedAtCharge !== null) {
-    return `Auto-renews with about ${s.bankedAtCharge} sessions banked. Talk about it today?`;
+    // Mindbody's own flag says what happens when the payments finish: "Auto-
+    // renews", "Billing ends", or neither when it hasn't said (sentences.ts).
+    const n = s.bankedAtCharge;
+    return `${capitalize(billingEndPhrase(s.autoRenews))} with about ${n} session${n === 1 ? "" : "s"} banked. Talk about it today?`;
   }
   return `Renewal: ${s.sessionsLeft ?? "a few"} left. Talk about it today?`;
 }

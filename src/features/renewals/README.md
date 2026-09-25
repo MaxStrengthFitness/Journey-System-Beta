@@ -4,12 +4,12 @@ Round: **Renewals**, Sep 10–11 2026. The plan is `OPERATIONS-RENEWALS-PROPOSAL
 
 ## The idea in one paragraph
 
-A package runs on **two clocks**. Billing sends a payment every 4 weeks (6, 12 or 18 of them) and then auto-renews. Sessions arrive 8 per payment and never expire. A client who comes 1.5 times a week is still holding sessions when billing finishes. That is the studio's biggest renewal problem, and the reason this feature exists. Every night the app works out both clocks for every client and puts them in exactly **one situation**, always shown as a sentence:
+A package runs on **two clocks**. Billing sends a payment every 4 weeks (6, 12 or 18 of them) and then auto-renews, where the studio has auto-renew on. Sessions arrive 8 per payment and never expire. A client who comes 1.5 times a week is still holding sessions when billing finishes. That is the studio's biggest renewal problem, and the reason this feature exists. Every night the app works out both clocks for every client and puts them in exactly **one situation**, always shown as a sentence:
 
 | Situation | Sentence | Trigger |
 | --- | --- | --- |
 | on-track | "9 sessions left · auto-renews Nov 14 · on pace" | — |
-| will-bank | "Auto-renews Nov 14 with about 16 sessions still banked" | 4+ sessions still banked at the charge (a studio setting). Inside the warning window (30 days) it is "before the charge" |
+| will-bank | "Auto-renews Nov 14 with about 16 sessions still banked" ("Billing ends" when Mindbody says it won't renew, "Payments finish" when it hasn't said) | 4+ sessions still banked at the charge (a studio setting). Inside the warning window (30 days) it is "before the charge", unless Mindbody says the contract won't auto-renew |
 | will-run-out | "Out of sessions around Oct 3, 6 weeks before billing ends" | — |
 | away | "Snowbird until Apr 1 · clocks paused" | Vacation / Snowbird / Medical, or the MIA pause |
 | ended | "Package ended Sep 1 — no new one in Mindbody yet" | Inside the studio's lost window |
@@ -58,6 +58,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 - **Dates are UTC days for Mindbody** (`mindbodyDayKey`) and studio days for everything else.
 - **Pace** is visits a week over the last 8 weeks, rounded to a quarter. It skips away time and never reaches back before the current package or the studio's first synced booking. It needs 21 observed days.
 - **Away beats ended and lapsed.** Snowbirds are not churn.
+- **Auto-renew is Mindbody's per-contract flag (`autoRenews`), never assumed** (AJ, Sep 24 2026: it is on at some studios and not others). `billingEndPhrase()` in `sentences.ts` is the one wording: "auto-renews", "billing ends", or "payments finish" when Mindbody hasn't said. `chargeWarning` needs a charge, so it is never set on a contract Mindbody says won't renew; unknown still warns.
 - **One snapshot write per change.** The job compares with `sameSnapshot` and writes only what changed. Single-client screens work the snapshot out live (`useLiveRenewal`) instead of calling a server endpoint: the web service has no Firestore admin key.
 - **Outcomes** (`outcomes.ts`):
   - A newer package means renewed, upgraded or downgraded (by months). If the newer package has an earlier start, the engine only changed its mind: ignored.

@@ -6,7 +6,8 @@
  * THE MODEL — TWO CLOCKS (docs/business/renewals.md)
  *
  *   Billing clock: a payment every 4 weeks for a fixed number of payments.
- *     When the last one is made, the contract auto-renews.
+ *     When the last one is made, the contract auto-renews — where the studio
+ *     has auto-renew on. Mindbody's per-contract flag says (autoRenews).
  *   Session clock: 8 sessions arrive with each payment, and they NEVER expire.
  *
  * A client who trains exactly twice a week finishes both clocks together.
@@ -772,8 +773,16 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     situation !== "lapsed" &&
     situation !== "away" &&
     !renewalOnBooks;
+  // The warning is about a CHARGE: a new package billed while sessions are
+  // still banked. Auto-renew is on at some studios and not at others (AJ,
+  // Sep 24 2026), so a contract Mindbody says won't renew has no charge
+  // coming: it still banks ("will-bank" says so), and its conversation comes
+  // at the studio's threshold like anyone's. Unknown still warns — a leader
+  // checking a contract that turns out not to renew costs less than a missed
+  // charge.
   const chargeWarning =
     situation === "will-bank" &&
+    autoRenews !== false &&
     chargeDate !== null &&
     chargeDate >= today &&
     daysBetween(today, chargeDate) <= settings.chargeWarnDays;

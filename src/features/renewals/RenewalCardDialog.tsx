@@ -28,6 +28,8 @@ import { LogConversationDialog } from "./LogConversationDialog";
 import { TouchHistory } from "./TouchHistory";
 import {
   SITUATION_TONE,
+  billingEndPhrase,
+  capitalize,
   dayLabel,
   paceSentence,
   proofSentence,
@@ -82,7 +84,7 @@ function Clocks({ s, today }: { s: RenewalSnapshot; today: string }) {
         }
       />
       <Fact
-        label={s.paymentMode === "monthly" ? (s.autoRenews === false ? "Billing ends" : "Auto-renews") : "Package"}
+        label={s.paymentMode === "monthly" ? capitalize(billingEndPhrase(s.autoRenews)) : "Package"}
         value={
           s.paymentMode === "monthly"
             ? dayLabel(s.chargeDate, today) || "Not known"

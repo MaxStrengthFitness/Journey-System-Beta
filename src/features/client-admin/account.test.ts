@@ -270,6 +270,9 @@ describe("packageView", () => {
       worked: true,
     });
     expect(packageView(contracted({ renewal: renewal({ chargeDate: "2027-11-14" }) }), null, TODAY).when).toBe("Renews Nov 14");
+    // Mindbody's own flag: a studio without auto-renew, and a contract Mindbody hasn't said about.
+    expect(packageView(contracted({ renewal: renewal({ autoRenews: false }) }), null, TODAY).when).toBe("Billing ends Mar 14, 2028");
+    expect(packageView(contracted({ renewal: renewal({ autoRenews: null }) }), null, TODAY).when).toBe("Payments finish Mar 14, 2028");
     expect(packageView(contracted({ renewal: renewal({ sessionsLeftSource: "estimate" }) }), null, TODAY).leftWords).toBe(
       "sessions left (estimated)",
     );
@@ -558,6 +561,14 @@ describe("accountGlance", () => {
     expect(g.who).toEqual(g.lines.slice(0, 3));
     expect(g.membership).toEqual(g.lines.slice(3));
     expect(g.foot).toBe("From Mindbody, synced 2 days ago · the renewal is worked out nightly");
+  });
+
+  it("claims no renewal Mindbody hasn't said", () => {
+    const line = (autoRenews: boolean | null) =>
+      accountGlance(contracted({ renewal: renewal({ autoRenews }) }), studios, TODAY, NOW).membership[0];
+    expect(line(true)).toBe("95 sessions left · renews Mar 14, 2028");
+    expect(line(false)).toBe("95 sessions left · billing ends Mar 14, 2028");
+    expect(line(null)).toBe("95 sessions left · payments finish Mar 14, 2028");
   });
 
   it("leaves out what is not on file, and never an unknown tier", () => {

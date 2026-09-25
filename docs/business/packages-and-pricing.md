@@ -12,7 +12,7 @@ Clients commit to 6, 12 or 18 months. Session counts assume training twice a wee
 | Committed (most popular) | 12 months | 96 | $60 | $480 | $57 |
 | Life Transformed | 18 months | 144 | $54 | $432 | $51 |
 
-- **Billed every 4 weeks, with auto-renewal on completion.** Clients can pay monthly or prepay the whole package at the lower prepay rate.
+- **Billed every 4 weeks, with auto-renewal on completion where the studio has it on.** AJ, Sep 24 2026: "auto renew isn't on everywhere but some studios do have it". Mindbody's own per-contract flag says which, and the app reads it rather than assuming. Clients can pay monthly or prepay the whole package at the lower prepay rate.
 - Every package is advertised with **"Get 2 free workouts!"**
 - **"Double Transformation Guarantee"** (marked on the page as a prepay benefit — confirm whether it also covers monthly payers):
   1. A 30-day satisfaction guarantee: no questions asked, 100% money back.
@@ -35,7 +35,7 @@ A "12-month" package bills for 48 weeks, roughly 11 calendar months, when the cl
 AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. This is generous and it creates the studio's biggest renewal headache:
 
 - A client who averages 1.5 visits a week takes about 64 weeks — nearly 15 months — to use a Committed package that bills for 48.
-- The contract auto-renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one.
+- Where auto-renew is on, the contract renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one. Where it is off, billing simply ends and the banked sessions carry on.
 - Cards also decline, which interrupts billing. **Out of scope for now** (AJ, Sep 11 2026): the app shows Mindbody's autopay status and nothing more.
 
 See [renewals.md](renewals.md) for how the studio wants to get ahead of this.

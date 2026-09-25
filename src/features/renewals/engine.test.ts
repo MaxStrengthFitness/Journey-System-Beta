@@ -142,6 +142,48 @@ describe("the two clocks", () => {
     expect(snap.chargeWarning).toBe(true);
   });
 
+  it("warns before the charge only when there may be one: Mindbody's auto-renew flag", () => {
+    // Auto-renew is on at some studios and not at others (AJ, Sep 24 2026).
+    const settings: RenewalSettings = { ...DEFAULT_RENEWAL_SETTINGS, chargeWarnDays: 60 };
+    const withFlag = (isAutoRenewing: boolean | undefined) =>
+      buildRenewalSnapshot(
+        input({
+          settings,
+          client: client({
+            mindbodyContracts: {
+              "9001": contract({
+                id: 9001,
+                startDate: START,
+                endDate: CHARGE,
+                upcomingAutopayEvents: [],
+                ...(isAutoRenewing === undefined ? {} : { isAutoRenewing }),
+              }),
+            },
+            mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 20) },
+          }),
+          attendance: visitsAt(1, "2026-06-01"),
+        }),
+      );
+
+    const renews = withFlag(true);
+    expect(renews.autoRenews).toBe(true);
+    expect(renews.chargeWarning).toBe(true);
+
+    // Billing just ends: the sessions still bank, but nothing is charged on
+    // top of them, so there is no "before the charge".
+    const ends = withFlag(false);
+    expect(ends.autoRenews).toBe(false);
+    expect(ends.situation).toBe("will-bank");
+    expect(ends.bankedAtCharge).toBe(renews.bankedAtCharge);
+    expect(ends.chargeWarning).toBe(false);
+    expect(ends.conversationDue).toBe(renews.conversationDue);
+
+    // Mindbody hasn't said: warn, rather than miss a real charge.
+    const unknown = withFlag(undefined);
+    expect(unknown.autoRenews).toBeNull();
+    expect(unknown.chargeWarning).toBe(true);
+  });
+
   it("is on track at exactly twice a week", () => {
     const snap = monthly({ mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 0) } }, visitsAt(2, "2026-06-01"));
     expect(snap.sessionsLeft).toBe(16);

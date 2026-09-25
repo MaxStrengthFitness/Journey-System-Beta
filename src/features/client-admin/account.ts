@@ -50,7 +50,7 @@
  */
 import type { Client, ContractTierOverride, Studio } from "../../types";
 import type { RenewalSituation } from "../renewals/types";
-import { SITUATION_TONE, chipText, dayLabel, paceSentence, situationSentence } from "../renewals/sentences";
+import { SITUATION_TONE, billingEndPhrase, chipText, dayLabel, paceSentence, situationSentence } from "../renewals/sentences";
 import { mindbodyDayKey } from "../renewals/engine";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { clientLegalName } from "../../lib/client-name";
@@ -488,7 +488,9 @@ export function packageView(
   let when = "No end date on file";
   if (r?.chargeDate) {
     const est = r.chargeDateSource === "estimate" ? " (estimated)" : "";
-    when = `${r.autoRenews === false ? "Billing ends" : "Renews"} ${dayLabel(r.chargeDate, today)}${est}`;
+    // Mindbody's own flag: "Billing ends" when it won't renew, and neither
+    // word when it hasn't said (renewals/sentences.ts, billingEndPhrase).
+    when = `${r.autoRenews === true ? "Renews" : cap(billingEndPhrase(r.autoRenews))} ${dayLabel(r.chargeDate, today)}${est}`;
   } else if (r?.runOutDate) {
     when = `Runs out around ${dayLabel(r.runOutDate, today)} (estimated)`;
   } else if (contractEnd) {
@@ -717,7 +719,7 @@ export function accountGlance(
     renewal = chipText(r, today);
   } else if (r && typeof r.sessionsLeft === "number") {
     const est = r.sessionsLeftSource === "estimate" ? " (estimated)" : "";
-    const renews = r.chargeDate ? `${r.autoRenews === false ? "billing ends" : "renews"} ${dayLabel(r.chargeDate, today)}` : null;
+    const renews = r.chargeDate ? `${r.autoRenews === true ? "renews" : billingEndPhrase(r.autoRenews)} ${dayLabel(r.chargeDate, today)}` : null;
     renewal = joinDots([`${plural(r.sessionsLeft, "session")} left${est}`, renews]);
   }
 

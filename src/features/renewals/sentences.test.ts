@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { chipText, dayLabel, paceLabel, paceSentence, proofSentence, situationSentence } from "./sentences";
+import {
+  bankedAtChargeNote,
+  billingEndPhrase,
+  chipText,
+  dayLabel,
+  paceLabel,
+  paceSentence,
+  proofSentence,
+  situationSentence,
+} from "./sentences";
 import { fitNote, optionsFor, upgradeVerdict } from "./options";
 import { DEFAULT_RENEWAL_SETTINGS, DEFAULT_PACKAGES } from "./settings";
 import type { RenewalSnapshot } from "./types";
@@ -80,6 +89,32 @@ describe("sentences", () => {
 
   it("says 'billing ends' rather than 'auto-renews' when Mindbody says it won't", () => {
     expect(chipText(snap({ autoRenews: false }), TODAY)).toBe("9 left · billing ends Nov 14");
+    expect(situationSentence(snap({ autoRenews: false, situation: "will-bank", bankedAtCharge: 16 }), TODAY)).toBe(
+      "Billing ends Nov 14 with about 16 sessions still banked",
+    );
+  });
+
+  it("claims neither when Mindbody hasn't said", () => {
+    expect(chipText(snap({ autoRenews: null }), TODAY)).toBe("9 left · payments finish Nov 14");
+    expect(situationSentence(snap({ autoRenews: null, situation: "will-bank", bankedAtCharge: 16 }), TODAY)).toBe(
+      "Payments finish Nov 14 with about 16 sessions still banked",
+    );
+    // A snapshot stored before the flag existed.
+    expect(billingEndPhrase(undefined)).toBe("payments finish");
+  });
+
+  it("says what banked sessions mean for the renewal, by the same flag", () => {
+    const note = (autoRenews: boolean | null) =>
+      bankedAtChargeNote(snap({ situation: "will-bank", bankedAtCharge: 16, autoRenews }));
+    expect(note(true)).toBe(
+      "About 16 sessions. Sessions never expire, so they carry over — decide in Mindbody whether the renewal should wait.",
+    );
+    expect(note(false)).toBe(
+      "About 16 sessions. Sessions never expire, so they carry over. The contract doesn't auto-renew, so no new package is charged on top of them.",
+    );
+    expect(note(null)).toBe(
+      "About 16 sessions. Sessions never expire, so they carry over — check in Mindbody whether the contract auto-renews and, if it does, whether the renewal should wait.",
+    );
   });
 
   it("marks an estimated charge date", () => {
