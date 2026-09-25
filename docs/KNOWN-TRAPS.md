@@ -621,7 +621,7 @@ the data files with esbuild's text loader, so that field comes back as the
   never sign out there (it is his session), never click anything that writes,
   and close the tab when done so the app's background sync stops. Sign-in and
   sign-out flows are checked with render tests and on an iPad
-  (`docs/ops/TESTING-CHECKLIST.md`, Round 14), not in that browser.
+  (`docs/ops/TESTING-CHECKLIST.md`, Round 15), not in that browser.
 
 <a id="baselines"></a>
 

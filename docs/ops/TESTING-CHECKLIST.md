@@ -766,7 +766,7 @@ before the changes list and the Moments panel can answer.
   completed rises by one, Changes today gains a row.
 - [ ] **Never logged is the loud tile, and tapping it lists who to chase.** A
   booking whose slot ended five minutes ago with no Journey session for that
-  client that day (Round 14): the tile is red, the foot says "tap to see who to chase", the list names the client,
+  client that day (Round 16): the tile is red, the foot says "tap to see who to chase", the list names the client,
   the trainer and the time, and the name opens the client.
 - [ ] **Needs you counts every action on the page and jumps to it.** Tap a
   chip: the page scrolls to that panel and unfolds it if it was folded. "Notes
