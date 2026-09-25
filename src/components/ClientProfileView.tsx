@@ -64,12 +64,11 @@ import { answerFor, type ClientAnswer } from "../features/client-profile/client-
 import { useProgressReports } from "../features/client-profile/useProgressReports";
 import {
   ClientCodex,
-  recordStudioIdOf,
   sessionTotalsOf,
   type CodexHosts,
   type CodexProgramming,
 } from "../features/client-codex";
-import { canQuoteSessionNumber, coverageOfClient, cutoverOf } from "../lib/client-coverage";
+import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
 import { ExemptFromLeaveScope, UnsavedChangesScope, useLeaveScope } from "../features/unsaved-changes";
 import {
   Client,
@@ -426,16 +425,17 @@ export function ClientProfileView({
    * not the studio this iPad is at. It also counts Mindbody's own visit
    * number, so a long-standing client nobody has written a prior record for
    * reads "partial" rather than "unknown". One value, handed to Programming
-   * and to every page of Notes & Profile. The home is `recordStudioIdOf`:
+   * and to every page of Notes & Profile. The home is `homeCutoverOf`'s:
    * `homeStudioId`, else the older `studioId` (leniently, also when the home
    * is null - right for a cutover; who may EDIT the record reads the home as
    * the update rule does, `ruleStudioIdOf`, in `codexAccess`).
    *
-   * The floor screens (the Active Session, the Clients list) still pass the
-   * cutover of the studio the iPad is at, so for a cross-train client the
-   * two can word coverage differently until they move to the home too.
+   * The floor screens use the same home cutover since the prior-history
+   * sweep (the Active Session, the Clients list and the progress report go
+   * through `homeCutoverOf`, which is this reading), so for a cross-train
+   * client every screen words coverage the same way.
    */
-  const journeyCutover = cutoverOf(studios, recordStudioIdOf(client));
+  const journeyCutover = homeCutoverOf(studios, client);
   const clientCoverage = useMemo(
     () => coverageOfClient(client, journeyCutover),
     [client, journeyCutover],
