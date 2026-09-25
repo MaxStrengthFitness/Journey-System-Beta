@@ -9,14 +9,18 @@ Clients commit to 6, 12 or 18 months. Session counts assume training twice a wee
 | Package | Commitment | Sessions | Rate per session | Payment every 4 weeks | Prepay rate per session |
 | --- | --- | --- | --- | --- | --- |
 | The Trial | 6 months | 48 | $70 | $560 | $67 |
-| Committed (most popular) | 12 months | 96 | $60 | $480 | $57 |
+| Committed | 12 months | 96 | $60 | $480 | $57 |
 | Life Transformed | 18 months | 144 | $54 | $432 | $51 |
 
-- **Billed every 4 weeks, with auto-renewal on completion.** Clients can pay monthly or prepay the whole package at the lower prepay rate.
+The website marks Committed "most popular". The app never does: nothing it holds can back the claim, and the packages screen shows the trainer's own recommendation instead (below).
+
+- **Billed every 4 weeks.** Clients can pay monthly or prepay the whole package at the lower prepay rate. **Auto-renewal is not everywhere** (AJ, Sep 24 2026: "auto renew isn't on everywhere but some studios do have it"): each studio says, per package, whether it renews by itself when the payments finish (My Studio → Studio → Renewals, "When the payments finish"). The website's "auto-renewal upon completion" is one studio's answer, not the company's.
 - Every package is advertised with **"Get 2 free workouts!"**
-- **"Double Transformation Guarantee"** (marked on the page as a prepay benefit — confirm whether it also covers monthly payers):
-  1. A 30-day satisfaction guarantee: no questions asked, 100% money back.
-  2. If a client shows up consistently twice a week, gives 100% effort and is not 100% happy with their progress, the studio buys them 6 months at any other gym.
+- **"Double Transformation Guarantee"**:
+  1. A 30-day satisfaction guarantee: no questions asked, 100% money back. **It covers monthly payers too** (AJ, Sep 24 2026), though the website still marks it as a prepay benefit.
+  2. If a client shows up consistently twice a week, gives 100% effort and is not 100% happy with their progress, the studio buys them 6 months at any other gym. Whether this half also covers monthly payers is **not yet confirmed**; the packages screen says "when you pay in full" until it is.
+- **Upgrading:** within the first 30 days, or at renewal, a client can upgrade to any other package, however they pay (AJ, Sep 24 2026; the Academy's consultation script). The contract change, and any credit, is done in Mindbody.
+- **What uses a session:** coming in, or cancelling with less than 24 hours' notice (AJ, Sep 24 2026: "You only lose a session if you cancel within 24 hours"). Time away does not.
 
 ## What the numbers imply
 
@@ -32,10 +36,10 @@ A "12-month" package bills for 48 weeks, roughly 11 calendar months, when the cl
 
 ## Sessions never expire
 
-AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. This is generous and it creates the studio's biggest renewal headache:
+AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. **Confirmed for every studio on Sep 24 2026** ("sessions don't expire"). The Academy's consultation script still says 30, 60 or 90 days to use leftover sessions and "we no longer bill you or auto renew you"; both lines are out of date, and softening them is waiting on AJ's word in the chat (the packages round). This is generous and it creates the studio's biggest renewal headache:
 
 - A client who averages 1.5 visits a week takes about 64 weeks — nearly 15 months — to use a Committed package that bills for 48.
-- The contract auto-renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one.
+- Where a contract auto-renews, it renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one.
 - Cards also decline, which interrupts billing. **Out of scope for now** (AJ, Sep 11 2026): the app shows Mindbody's autopay status and nothing more.
 
 See [renewals.md](renewals.md) for how the studio wants to get ahead of this.
@@ -69,3 +73,12 @@ So **sessions left = the sessions on hand (pricing options) + 8 for each payment
 Names differ by location. Each studio matches its own Mindbody names to its packages in **My Studio → Studio → Renewals** (Operations → Renewals says how many names are waiting and points there); the nightly job lists every name it met there, with a count of clients. Until a name is matched, those sessions aren't counted, and the client shows up under "Missing Mindbody data".
 
 Still open: whether a "12-month" package really bills 12 times. The settings default to 6 / 12 / 18 payments, and each studio can change them.
+
+## The packages screen (Sep 24 2026)
+
+The screen a trainer turns toward someone who hasn't chosen a package (`src/features/packages/`, its README has the detail). Packages are not decided in the consultation, so it opens from the **post-session screen** for a client with no package on file, and later from the consultation's own packages step. What AJ decided for it:
+
+- **The recommendation** is the trainer's own ("Sam's recommendation"), starts on the 12-month package (the Academy's middle option) and can be moved or cleared in the trainer notes. Never "most popular". Nothing is saved: the consultation record, when it exists, will hold it.
+- **Money fallbacks are trainer notes**, never on the client's view, in this order: the guarantee (the big one), the lowest rate on the shortest commitment (on the standard table, $54 a session on The Trial, 6 payments of $432), once a week (only when the studio's table has a once-a-week package, which is any row with 4 sessions a payment), then a few more sessions (extra free workouts before deciding, or bonus sessions added to a package; in Mindbody, the "Session Comp" pricing option).
+- **After the last payment:** sessions never expire; the package renews automatically only where the studio said so, and otherwise "your studio will explain what happens when your payments finish"; the trainer talks with the client about what comes next before the last payment.
+- **Prices are each studio's own table.** A studio that hasn't saved one shows "Max Strength's standard prices" (this page's table). A table the screen can't stand behind (payments that don't multiply out, a package with no price) is flagged in the trainer notes and the figure is left off, never guessed.
