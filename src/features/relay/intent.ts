@@ -16,6 +16,7 @@
  */
 
 import type { NoteKind } from "./notes/types";
+import { forgetOnSignOut } from "../sign-out/memory";
 
 export type PlannerIntent =
   | { kind: "new-note"; client: { id: string; name: string }; noteKind?: NoteKind }
@@ -44,6 +45,12 @@ export function plannerIntentFromLink(id: string | undefined): PlannerIntent | n
 }
 
 let pending: PlannerIntent | null = null;
+
+// A request left waiting is the last person's ("a new note about Judy"), not
+// the next one's. Sign-out round, Sep 24 2026.
+forgetOnSignOut(() => {
+  pending = null;
+});
 
 export function requestPlanner(intent: PlannerIntent): void {
   pending = intent;

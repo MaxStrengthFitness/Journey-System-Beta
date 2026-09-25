@@ -765,8 +765,8 @@ before the changes list and the Moments panel can answer.
   pull the schedule now if you are impatient). Booked drops by one, Not
   completed rises by one, Changes today gains a row.
 - [ ] **Never logged is the loud tile, and tapping it lists who to chase.** A
-  booking whose slot ended five minutes ago with nothing marked: the tile is
-  red, the foot says "tap to see who to chase", the list names the client,
+  booking whose slot ended five minutes ago with no Journey session for that
+  client that day (Round 16): the tile is red, the foot says "tap to see who to chase", the list names the client,
   the trainer and the time, and the name opens the client.
 - [ ] **Needs you counts every action on the page and jumps to it.** Tap a
   chip: the page scrolls to that panel and unfolds it if it was folded. "Notes
@@ -1018,6 +1018,87 @@ InBody scans.
   back.
 - [ ] **The briefing** for a retired client with nothing under Occupation
   never asks about work.
+
+## Round 15 — Signing out and the Operations gate · *Sep 24 2026, branch `claude/nifty-archimedes-139384`*
+
+What changed is in `src/features/sign-out/README.md` and
+`src/features/admin/operations-access.ts`. You need **one iPad and two
+accounts**: a studio leader (or yourself) and a Life Transformer. Nothing here
+could be walked in Claude's browser, because signing out there would have
+signed AJ out of his own session — this is the only place it gets checked.
+
+**Signing out hands the iPad over**
+
+- [ ] **A leader on Operations signs out; a trainer signs in and lands on the
+  Hub.** As the leader: open a client's profile, then switch to Operations,
+  then Log Out Facility. Sign in as the trainer. They see the Hub, the
+  trainer bottom bar (Hub · Client · Start Session · Learning · My Studio ·
+  Calendar), and no Operations anywhere. *If it fails:* the trainer lands on
+  Operations or on the leader's client — the keyed tree in `App.tsx`
+  (`personKey`) did not remount.
+- [ ] **The Client tab opens the directory, not the leader's client.** *If it
+  fails:* the selected client survived the sign-out.
+- [ ] **A pinned iPad still opens its studio for the next trainer** — if they
+  work there. Pin the studio on the picker, sign out, sign in as a trainer
+  from that studio: no picker, straight in. As someone from another studio:
+  the picker, not the pinned studio.
+- [ ] **My Studio opens on Relay for the trainer** even if the leader left it
+  on Team or Studio.
+- [ ] **A note started mid-session survives.** Start a session, type a note,
+  close the sheet without saving, sign out and back in as the same trainer,
+  resume the session: the words are still there (they belong to the session,
+  not the person).
+
+**Switch Trainer**
+
+- [ ] **Switch Trainer goes to the sign-in screen,** not to "is not
+  registered as an authorized trainer". *If it fails:* the old
+  `handleTrainerLock` is back.
+- [ ] **Google asks which account.** Tap Sign in with Google after Switch
+  Trainer: the account chooser appears, rather than signing the last person
+  straight back in.
+
+**The Operations gate**
+
+- [ ] **The Demo Mode door is shut.** As the trainer: choose Demo Mode, open
+  Operations from the menu (it is offered there), then the gear → tap the
+  studio name → choose your real studio. You land on the Hub with the trainer
+  bottom bar; there is no Operations button. Go back into Demo Mode: still the
+  Hub, until you choose Operations again. *If it fails:* `useGuardedPlace` is
+  not holding the view.
+- [ ] **A studio leader is unaffected:** Operations opens from the menu, from
+  the studio picker's button and from the gear's "Open Operations", at every
+  studio they lead, and stays open when they switch studio.
+## Round 16 — Done means logged in Journey · *Sep 24 2026, branch `claude/booking-completed-by-journey`*
+
+AJ: a booking is Completed, for Operations, when a session was logged in
+Journey for that client that day. Mindbody's own marking stays manual. The
+round document is `docs/rounds/2026-09-24-done-means-logged.md`. Needs a real
+booking today and a trainer who can run a session for that client.
+
+- [ ] **Logging a session moves the booking to Done.** Operations → Overview
+  with a booking whose slot has ended and nothing logged: it is on Never logged
+  (tap the tile — the client is on the chase list). On an iPad, start and end a
+  session for that client. Within a few seconds, without reloading, Done rises
+  by one, Never logged falls by one, the client leaves the chase list and Team
+  this week's "Unlogged today" for that trainer drops. *If it fails:* the live
+  read of today's sessions (`useTodaySessions`); check the session's studio is
+  the one the Overview is on.
+- [ ] **A session left open is still chased.** Start a session and do not
+  press End Session; once the slot is five minutes past, the booking is on the
+  chase list. Ending it clears it.
+- [ ] **Nothing is chased by name.** A booking whose client has no Journey
+  profile (the Hub's "not synced" card) stays never logged even if a session
+  was logged for someone with the same name.
+- [ ] **The trainer page's Upcoming lists only what is ahead.** Open your own
+  trainer page (the avatar): no booking from yesterday or from earlier today;
+  the one in its slot right now is listed first; a client whose session you
+  have already ended today is gone.
+- [ ] **The attendance watch does not change until a studio's cutover is
+  set.** With no Journey cutover date on the studio (My Studio → Studio, or
+  Admin → All locations → the studio), the watch reads as before; the field's
+  hint says what setting it will do. Once a cutover is set, a past booking with nothing
+  logged in Journey stops counting as a visit from the next nightly run.
 
 ---
 

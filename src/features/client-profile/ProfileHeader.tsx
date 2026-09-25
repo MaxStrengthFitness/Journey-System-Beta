@@ -14,14 +14,17 @@
  *    two" is the sentence this tile exists to support.
  *  - Profile Details moved into the tab row; the header keeps exactly one
  *    button, so the eye has nowhere to go but Start Session.
+ *  - (Sep 24 2026) The line under the count is the door to Sessions before
+ *    Journey — see prior-history-door.ts.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronLeft, Clock, History, Maximize, NotebookPen, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, History, Maximize, NotebookPen, Pencil, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
 import { formatStudioTime, toDate, zonedYMD } from "../../lib/studio-time";
 import { clientSinceLabel } from "../../lib/client-since";
+import type { HistoryCoverage } from "../../lib/prior-history";
 import type { Client, ScheduleEntry, WorkoutSession } from "../../types";
 import type { PackageSummary } from "./client-package";
 import { remainingLabel } from "./client-package";
@@ -31,6 +34,8 @@ import type { Trainer } from "../../types";
 import { BrandTiles } from "./BrandTiles";
 import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
+import { sessionCountLabel } from "../../lib/history-claims";
+import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "./prior-history-door";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -68,13 +73,37 @@ export interface ProfileHeaderProps {
   studioName?: string | null;
   sessions: WorkoutSession[];
   scheduledSessions: ScheduleEntry[];
-  completedCount: number;
+  /**
+   * The client's completed-session total, or null while it is not known -
+   * never a 0 standing in for "not counted yet" (Sep 24 2026).
+   */
+  completedCount: number | null;
+  /**
+   * The count may be read as her total (`canQuoteSessionNumber`,
+   * lib/client-coverage.ts). When it is only what Journey has seen - a
+   * migration client nobody has recorded a total for - the tile says
+   * "Sessions in Journey" instead of passing it off as her lifetime.
+   */
+  sessionsQuotable?: boolean;
+  /**
+   * How much of her story Journey holds (`coverageOfClient`). "Client
+   * since" counts her first session in Journey only when it is "complete"
+   * with no prior record - the codex Story's rule - so a FileMaker client
+   * whose only date is the day Journey met her reads "In Journey since",
+   * the same words as the Story beneath. Absent reads as "unknown".
+   */
+  coverage?: HistoryCoverage;
   /**
    * "412 before Journey · FileMaker", when there is history Journey cannot
    * see. The split is not a footnote: it is what stops a two-month trend
    * being read as a twelve-year client's whole story.
    */
   priorLabel?: string | null;
+  /**
+   * The door to Sessions before Journey. When present it takes the place of
+   * `priorLabel` under the count; absent, the label is plain text as before.
+   */
+  priorHistoryDoor?: PriorHistoryDoorState;
   topTrainer: TopTrainerState;
   /** Everyone on the studio's list, to name the trainers in the tally. */
   trainers?: Trainer[];
@@ -99,6 +128,14 @@ export interface ProfileHeaderProps {
    */
   renewal?: RenewalTileState;
 }
+
+/**
+ * The door to Sessions before Journey (Sep 24 2026). The words come from
+ * `priorHistoryDoorText`; the editor it opens lives in ClientProfileView.
+ * The type lives beside the rule (prior-history-door.ts), because the
+ * client codex's Account page opens the same door.
+ */
+export type { PriorHistoryDoorState } from "./prior-history-door";
 
 /** What the package tile says about the renewal, and where a tap goes. */
 export interface RenewalTileState {
@@ -151,7 +188,9 @@ function daysUntil(d: Date): string | null {
  * The rule now lives in lib/client-since.ts, consults the contract and
  * membership dates the commercial sync already writes, and returns its own
  * LABEL -- so a Journey-only date renders as "In Journey since" and cannot
- * pass itself off as a start date at the business.
+ * pass itself off as a start date at the business. Journey's first session
+ * is a Journey-only date too unless Journey holds her whole story, which is
+ * why the header takes the coverage (Sep 24 2026).
  */
 
 /* ------------------------------------------------------------------ */
@@ -165,6 +204,7 @@ function Stat({
   className,
   onClick,
   ariaLabel,
+  door,
 }: {
   label: string;
   icon?: ReactNode;
@@ -180,28 +220,52 @@ function Stat({
   /** Makes the whole tile a button (≥ 40px tall, as every tappable thing is). */
   onClick?: () => void;
   ariaLabel?: string;
+  /** A button of its own, beside the value — the door to Sessions before Journey. */
+  door?: ReactNode;
 }) {
   const pct =
     meter && meter.max > 0
       ? Math.max(0, Math.min(100, (meter.value / meter.max) * 100))
       : null;
-  const Tag = onClick ? "button" : "div";
+  /*
+   * A tile that is a tap AND holds a door cannot be one <button>: a button
+   * may not contain another. So the tile's tap becomes a button stretched
+   * underneath, the words sit over it and let taps fall through, and the door
+   * takes its own taps. The whole tile still opens what it opened before.
+   */
+  const stretched = !!onClick && !!door;
+  const Tag = onClick && !stretched ? "button" : "div";
+  const over = stretched && "relative pointer-events-none";
   return (
     <Tag
-      {...(onClick ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
+      {...(onClick && !stretched ? { type: "button" as const, onClick, "aria-label": ariaLabel } : {})}
       className={cn(
         "relative min-w-0 bg-white dark:bg-slate-950 px-3 xl:px-2.5 py-2 flex flex-col justify-center gap-0.5",
         pct !== null && "pb-2.5",
-        onClick && "text-left min-h-10 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
+        onClick && "text-left min-h-10",
+        onClick && !stretched && "hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors",
         className,
       )}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">{label}</span>
-      <span className="flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50">
+      {stretched && (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={ariaLabel}
+          className="absolute inset-0 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+        />
+      )}
+      <span className={cn("text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none", over)}>{label}</span>
+      <span className={cn("flex items-center gap-2 min-w-0 text-[15px] font-bold leading-tight text-slate-900 dark:text-slate-50", over)}>
         {icon && <span className="shrink-0 text-slate-400 dark:text-slate-500 [&>svg]:w-4 [&>svg]:h-4">{icon}</span>}
-        <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">{children}</span>
+        <span className="min-w-0 flex items-center gap-2 [&>.truncate]:min-w-0">
+          {children}
+          {/* A flex box, not a line of text: on a text line the door would
+              sit on the line's strut and push the tile ~6px taller. */}
+          {door && <span className="min-w-0 flex pointer-events-auto">{door}</span>}
+        </span>
       </span>
-      {sub && <span className="text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate">{sub}</span>}
+      {sub && <span className={cn("text-[11px] font-medium leading-none text-slate-500 dark:text-slate-400 min-w-0 flex items-center [&>*]:min-w-0 [&>span:not(.inline-flex)]:truncate", over)}>{sub}</span>}
       {pct !== null && (
         <span
           className="absolute inset-x-0 bottom-0 h-1 bg-slate-200/80 dark:bg-slate-800 overflow-hidden"
@@ -218,6 +282,38 @@ function Stat({
   );
 }
 
+/**
+ * THE DOOR TO SESSIONS BEFORE JOURNEY.
+ *
+ * At least 40px to the finger without growing the header, whose every pixel
+ * is a Journey grid row: the button pads the chip by 8px above and below and
+ * hands the same 8px back as negative margin, so the row is laid out at the
+ * chip's own height and the tap reaches over the label and the line below.
+ * The outlined chip and the pencil (a chevron when it only reads) make it
+ * look like a door without anyone having to hover. It wraps rather than
+ * truncates: at 1366 landscape it has about 100px beside the count.
+ */
+function PriorHistoryDoor({ text, canEdit, onOpen }: PriorHistoryDoorState) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={priorHistoryDoorLabel({ text, canEdit })}
+      title={canEdit ? "Sessions before Journey — tap to edit" : "Sessions before Journey — tap to read"}
+      className="group -my-2 py-2 flex min-h-10 max-w-full items-center text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a548b]"
+    >
+      <span className="inline-flex min-w-0 items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 px-1 py-px text-[10px] font-bold uppercase tracking-wider leading-tight text-muted-foreground group-hover:text-foreground transition-colors">
+        <span className="min-w-0">{text}</span>
+        {canEdit ? (
+          <Pencil className="w-3 h-3 shrink-0" aria-hidden />
+        ) : (
+          <ChevronRight className="w-3 h-3 shrink-0" aria-hidden />
+        )}
+      </span>
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 
 export function ProfileHeader({
@@ -226,7 +322,10 @@ export function ProfileHeader({
   sessions,
   scheduledSessions,
   completedCount,
+  sessionsQuotable = false,
+  coverage = "unknown",
   priorLabel,
+  priorHistoryDoor,
   topTrainer,
   trainers = [],
   pkg,
@@ -279,7 +378,7 @@ export function ProfileHeader({
 
   /* ---- package ---- */
   const remaining = remainingLabel(pkg);
-  const since = clientSinceLabel(client);
+  const since = clientSinceLabel(client, { coverage });
   // The badge promises medical detail, so it fires on medical detail — not on
   // a general note (client-profile audit: high-visibility alerts).
   const hasFlags = !!(
@@ -562,9 +661,10 @@ export function ProfileHeader({
             removed" (audit, Sep 13). The count stands alone; what is left on
             the CONTRACT is the sub-line, from the renewal snapshot. */}
         <Stat
-          label="Completed sessions"
+          label={sessionCountLabel(sessionsQuotable)}
           onClick={renewal?.onOpen}
           ariaLabel={renewal ? `Renewal: ${renewal.text}. Open the renewal card.` : undefined}
+          door={priorHistoryDoor ? <PriorHistoryDoor {...priorHistoryDoor} /> : undefined}
           sub={
             renewal ? (
               // Renewals round: the package tile speaks for the renewal, and a
@@ -590,8 +690,10 @@ export function ProfileHeader({
             )
           }
         >
-          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">{completedCount}</span>
-          {priorLabel && (
+          <span className="text-2xl font-black leading-none text-[#F06C22] tabular-nums">
+            {completedCount === null ? "—" : completedCount}
+          </span>
+          {!priorHistoryDoor && priorLabel && (
             <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {priorLabel}
             </span>

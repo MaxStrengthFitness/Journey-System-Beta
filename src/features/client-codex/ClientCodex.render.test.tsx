@@ -155,6 +155,14 @@ import { RECORD_ANCHORS, type RecordPage } from "../client-profile/profile-nav";
 import type { Client, Machine, Trainer } from "../../types";
 import { studioTodayKey } from "../../lib/studio-time";
 import { addDays } from "../client-history/model";
+import {
+  ExemptFromLeaveScope,
+  UnsavedChangesProvider,
+  UnsavedChangesScope,
+  useLeaveGuard,
+  useLeaveScope,
+} from "../unsaved-changes";
+import { useProfileNav } from "../client-profile/useProfileNav";
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -515,6 +523,45 @@ describe("ClientCodex — pages", () => {
     const card = panel(host, "body").querySelector("#body-figure")?.textContent ?? "";
     expect(card).not.toContain("No injury or incident notes logged");
     expect(card).toContain("Injury and incident notes couldn't be loaded, so some may be missing.");
+  });
+
+  it("opens Sessions before Journey from Account with the profile's own door (landing)", async () => {
+    const onOpen = vi.fn();
+    const withDoor: CodexHosts = {
+      ...hosts,
+      priorHistoryDoor: { text: "Add sessions before Journey", canEdit: true, onOpen },
+    };
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    mounted.push({ root, host });
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <ClientCodex
+            client={baseClient()}
+            authTrainer={homeTrainer}
+            liveTrainer={homeTrainer}
+            machines={MACHINES}
+            trainers={[homeTrainer]}
+            page="account"
+            navStamp={{}}
+            active
+            onNavigate={() => {}}
+            progressReports={[]}
+            progressReportsStatus="ready"
+            sessionTotals={{ total: 12, journey: 12, before: 0 }}
+            coverage="partial"
+            hosts={withDoor}
+          />
+        </StrictMode>,
+      );
+    });
+    await settle();
+    const door = panel(host, "account").querySelector<HTMLElement>('[data-action="prior-history"]');
+    expect(door?.textContent).toBe("Add sessions before Journey");
+    await click(door);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("opens the Migration Hub from Account's fine print", async () => {
@@ -1020,6 +1067,196 @@ describe("ClientCodex — the one Save bar", () => {
       kind: "error",
       message: "Couldn't save. Nothing was changed. This record can only be changed at Westlake.",
     });
+  });
+});
+
+/**
+ * UNSAVED CHANGES (carried onto the codex at the landing merge, Sep 24 2026).
+ * The old ClientInfoSheet registered its Save bar with the leave warning;
+ * the codex replaced it, so the codex registers instead. Mounted under the
+ * real provider with a button that leaves the way AppContent does.
+ */
+function GuardedHost(props: HostProps) {
+  const leave = useLeaveGuard();
+  const [left, setLeft] = useState(false);
+  return (
+    <div data-left={left ? "1" : "0"}>
+      <button type="button" data-action="leave-app" onClick={() => leave(() => setLeft(true))}>
+        Hub
+      </button>
+      {!left && <Host {...props} />}
+    </div>
+  );
+}
+
+async function mountGuarded(client = baseClient(), trainer = homeTrainer, initial?: RecordPage) {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  await act(async () => {
+    root.render(
+      <StrictMode>
+        <UnsavedChangesProvider>
+          <GuardedHost client={client} trainer={trainer} initial={initial} />
+        </UnsavedChangesProvider>
+      </StrictMode>,
+    );
+  });
+  await settle();
+  mounted.push({ root, host });
+  return host;
+}
+
+describe("ClientCodex — the leave warning", () => {
+  const question = () => document.querySelector('[role="alertdialog"]');
+  const answer = (action: "keep-editing" | "leave") =>
+    document.querySelector<HTMLElement>(`[data-testid="leave-confirm"] [data-action="${action}"]`);
+  const left = (host: HTMLElement) => host.querySelector("[data-left]")!.getAttribute("data-left");
+
+  it("lets the app leave at once while nothing is unsaved", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()).toBeNull();
+    expect(left(host)).toBe("1");
+  });
+
+  it("asks, naming her, before the app leaves with an edit on the Save bar; Keep editing keeps it", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await markRetired(host);
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()?.textContent).toContain("You have unsaved changes to Carol's profile. Leave without saving?");
+    await click(answer("keep-editing"));
+    expect(left(host)).toBe("0");
+    expect(saveBar(host)?.textContent).toContain("1 unsaved change");
+  });
+
+  it("Leave discards the edit and goes, writing nothing", async () => {
+    const host = await mountGuarded(baseClient(), homeTrainer, "ford");
+    await markRetired(host);
+    await click(host.querySelector('[data-action="leave-app"]'));
+    await click(answer("leave"));
+    expect(left(host)).toBe("1");
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("never asks a reader who may not change the record", async () => {
+    const host = await mountGuarded(baseClient(), crossTrainer, "ford");
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()).toBeNull();
+    expect(left(host)).toBe("1");
+  });
+});
+
+/**
+ * The codex inside the profile as ClientProfileView mounts it: the REAL
+ * useProfileNav with the tabs' leave scope as its guard, the codex kept
+ * mounted after its first visit and exempt from that scope, and its page
+ * moves going through the nav's openRecord. A Hub button leaves the way
+ * AppContent does.
+ */
+function ProfileHost({ client, trainer }: { client: Client; trainer: Trainer }) {
+  const tabs = useLeaveScope();
+  const nav = useProfileNav(client.id, { guard: tabs.guard });
+  const leave = useLeaveGuard();
+  const [left, setLeft] = useState(false);
+  const [seen, setSeen] = useState(false);
+  if (nav.tab === "record" && !seen) setSeen(true);
+  if (left) return <div data-left="1" />;
+  return (
+    <div data-left="0" data-tab={nav.tab}>
+      <button type="button" data-action="record" onClick={() => nav.setTab("record")}>
+        Notes & Profile
+      </button>
+      <button type="button" data-action="journey" onClick={() => nav.setTab("journey")}>
+        Journey
+      </button>
+      <button type="button" data-action="leave-app" onClick={() => leave(() => setLeft(true))}>
+        Hub
+      </button>
+      <UnsavedChangesScope scope={tabs}>
+        {seen ? (
+          <ExemptFromLeaveScope scope={tabs}>
+            <ClientCodex
+              key={client.id}
+              client={client}
+              authTrainer={trainer}
+              liveTrainer={trainer}
+              machines={MACHINES}
+              trainers={[trainer]}
+              page={nav.recordPage}
+              anchor={nav.recordAnchor}
+              navStamp={nav.location}
+              active={nav.tab === "record"}
+              onNavigate={nav.openRecord}
+              progressReports={[]}
+              progressReportsStatus="ready"
+              sessionTotals={{ total: 12, journey: 12, before: 0 }}
+              coverage="complete"
+              hosts={hosts}
+            />
+          </ExemptFromLeaveScope>
+        ) : null}
+      </UnsavedChangesScope>
+    </div>
+  );
+}
+
+describe("ClientCodex — the leave warning inside the profile", () => {
+  const question = () => document.querySelector('[role="alertdialog"]');
+  const answer = (action: "keep-editing" | "leave") =>
+    document.querySelector<HTMLElement>(`[data-testid="leave-confirm"] [data-action="${action}"]`);
+
+  async function mountProfile() {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <UnsavedChangesProvider>
+            <ProfileHost client={baseClient()} trainer={homeTrainer} />
+          </UnsavedChangesProvider>
+        </StrictMode>,
+      );
+    });
+    await settle();
+    mounted.push({ root, host });
+    await click(host.querySelector('[data-action="record"]'));
+    return host;
+  }
+
+  it("switches pages with an unsaved edit and never asks: the pages stay mounted, and the edit with them", async () => {
+    const host = await mountProfile();
+    await click(tab(host, "ford"));
+    await markRetired(host);
+    // The sub-toggle, a neighbour and the Save bar's Show are all page moves.
+    await click(tab(host, "account"));
+    expect(question()).toBeNull();
+    expect(selected(host)).toEqual(["cx-tab-account"]);
+    await click(host.querySelector('#cx-panel-account [aria-label^="Previous page"]'));
+    expect(question()).toBeNull();
+    expect(selected(host)).toEqual(["cx-tab-story"]);
+    await click(buttonIn(saveBar(host)!, "Show"));
+    expect(question()).toBeNull();
+    expect(selected(host)).toEqual(["cx-tab-ford"]);
+    expect(saveBar(host)?.textContent).toContain("1 unsaved change · FORD · Occupation");
+  });
+
+  it("changes tab without asking and keeps the edit, but asks when the app would leave the profile", async () => {
+    const host = await mountProfile();
+    await click(tab(host, "ford"));
+    await markRetired(host);
+    await click(host.querySelector('[data-action="journey"]'));
+    expect(question()).toBeNull();
+    expect(host.querySelector("[data-tab]")!.getAttribute("data-tab")).toBe("journey");
+    await click(host.querySelector('[data-action="record"]'));
+    expect(saveBar(host)?.textContent).toContain("1 unsaved change");
+
+    await click(host.querySelector('[data-action="leave-app"]'));
+    expect(question()?.textContent).toContain("You have unsaved changes to Carol's profile.");
+    await click(answer("leave"));
+    expect(host.querySelector("[data-left]")!.getAttribute("data-left")).toBe("1");
+    expect(fake.writes).toEqual([]);
   });
 });
 

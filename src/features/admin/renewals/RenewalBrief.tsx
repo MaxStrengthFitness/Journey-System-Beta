@@ -27,7 +27,8 @@ import {
 } from "../primitives";
 import { useToast } from "../../../contexts/ToastContext";
 import { studioDateKey, studioTodayKey } from "../../../lib/studio-time";
-import type { Client, Machine, Trainer } from "../../../types";
+import type { Client, Machine, Studio, Trainer } from "../../../types";
+import { coverageOfClient, homeCutoverOf } from "../../../lib/client-coverage";
 import { useLiveRenewal } from "../../renewals/useLiveRenewal";
 import {
   updateCycleAsLeader,
@@ -67,6 +68,11 @@ export interface RenewalBriefProps {
   authTrainer: Trainer | null;
   canManage: boolean;
   onClose: () => void;
+  /**
+   * The studios on screen, for the client's home cutover: "Client since"
+   * needs to know whether Journey holds her whole story.
+   */
+  studios?: Studio[];
 }
 
 // One formatter for every price from the package table (renewals/money.ts),
@@ -81,6 +87,7 @@ export function RenewalBrief({
   authTrainer,
   canManage,
   onClose,
+  studios,
 }: RenewalBriefProps) {
   const today = studioTodayKey();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -247,7 +254,7 @@ export function RenewalBrief({
 
               <AdminPanel title="1. Their journey">
                 <div className="adm-brief__lines">
-                  {journeyLines(client, s, settings).map((l) => (
+                  {journeyLines(client, s, settings, coverageOfClient(client, homeCutoverOf(studios, client))).map((l) => (
                     <p key={l}>{l}</p>
                   ))}
                 </div>

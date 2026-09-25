@@ -15,8 +15,9 @@
  * and arithmetic about someone's day is worth being sure of.
  */
 
-import type { ScheduleEntry, WorkoutSession } from "../../../types";
+import type { ScheduleEntry } from "../../../types";
 import { studioDateKey, toDate } from "../../../lib/studio-time";
+import { bookingState, type LoggedSessions } from "../../../lib/booking-state";
 
 /* ==================================================================== *
  * Day filtering
@@ -45,6 +46,10 @@ export interface FloorSummary {
   booked: number;
   /** Distinct people — a client booked twice is still one person. */
   clients: number;
+  /**
+   * Done: a Journey session was completed for the client that day (AJ, Sep
+   * 24 2026 — the booking itself never says so), or Mindbody was marked.
+   */
   completed: number;
   /** Scheduled, and the start time has not arrived. */
   upcoming: number;
@@ -53,26 +58,38 @@ export interface FloorSummary {
   cancelled: number;
   noShow: number;
   /**
-   * Still "Scheduled" although the slot has finished. Nobody marked these
-   * anything — not completed, not a no-show. This is the number that quietly
+   * Past its slot and nothing says it happened — no Journey session for that
+   * client that day, no mark in Mindbody. This is the number that quietly
    * rots a retention report, and no screen in the app surfaced it before.
    */
   unresolved: number;
+  /**
+   * Past its slot, and Journey's sessions could not be read — neither done
+   * nor never logged. Counted so a screen can say the number is missing.
+   */
+  unknown: number;
   /** cancelled + noShow. The retention headline. */
   missed: number;
   /**
    * Completed as a share of everything that was supposed to happen
    * (completed + noShow + unresolved). Null before anything has resolved,
-   * because 0 of 0 is not 0% — it is "the day has not started".
+   * because 0 of 0 is not 0% — it is "the day has not started" — and null
+   * while any slot is unknown, because a rate over part of the day is a
+   * confident wrong number.
    */
   showRate: number | null;
 }
 
-const MINUTE = 60_000;
-
+/**
+ * The day's shape. `logged` is `loggedSessions(...)` over the studio's
+ * Journey sessions for the day (`lib/booking-state`); `null` when they could
+ * not be read, which leaves finished slots unknown rather than unlogged.
+ */
 export function summariseFloor(
   entries: ScheduleEntry[],
   now: Date,
+  logged: LoggedSessions | null,
+  tz?: string,
 ): FloorSummary {
   let completed = 0;
   let upcoming = 0;
@@ -80,6 +97,7 @@ export function summariseFloor(
   let cancelled = 0;
   let noShow = 0;
   let unresolved = 0;
+  let unknown = 0;
   const clientKeys = new Set<string>();
 
   for (const e of entries) {
@@ -90,34 +108,28 @@ export function summariseFloor(
       clientKeys.add(e.clientId || e.mindbodyClientId || e.clientName || "?");
     }
 
-    switch (e.status) {
-      case "Completed":
+    switch (bookingState(e, logged, now, tz)) {
+      case "completed":
         completed += 1;
         break;
-      case "Cancelled":
+      case "cancelled":
         cancelled += 1;
         break;
-      case "No-Show":
+      case "no-show":
         noShow += 1;
         break;
-      default: {
-        const start = toDate(e.startTime);
-        const end = toDate(e.endTime);
-        if (!start) {
-          upcoming += 1;
-          break;
-        }
-        if (start > now) {
-          upcoming += 1;
-        } else if (end && end.getTime() + 5 * MINUTE < now.getTime()) {
-          // Five minutes of slack: a session that ran two minutes over is not
-          // an operational problem, and flagging it as one teaches people to
-          // ignore the flag.
-          unresolved += 1;
-        } else {
-          inProgress += 1;
-        }
-      }
+      case "upcoming":
+        upcoming += 1;
+        break;
+      case "in-progress":
+        inProgress += 1;
+        break;
+      case "never-logged":
+        unresolved += 1;
+        break;
+      case "unknown":
+        unknown += 1;
+        break;
     }
   }
 
@@ -131,116 +143,10 @@ export function summariseFloor(
     cancelled,
     noShow,
     unresolved,
+    unknown,
     missed: cancelled + noShow,
-    showRate: resolved === 0 ? null : completed / resolved,
+    showRate: resolved === 0 || unknown > 0 ? null : completed / resolved,
   };
-}
-
-/* ==================================================================== *
- * Who is on the floor
- * ==================================================================== */
-
-export interface TrainerLane {
-  trainerId: string | null;
-  trainerName: string;
-  total: number;
-  completed: number;
-  remaining: number;
-  noShow: number;
-  cancelled: number;
-  /** The client they are with right now, if the schedule says so. */
-  nowWith: string | null;
-  /** Start of their next appointment after `now`. */
-  nextAt: Date | null;
-  /** Their first and last appointment today — the shift, as booked. */
-  firstAt: Date | null;
-  lastAt: Date | null;
-  /** True when a session document for them is open right now. */
-  live: boolean;
-}
-
-/**
- * One lane per trainer with something on the books today, ordered by when
- * their day starts. A trainer with only cancellations still gets a lane —
- * "Marina's four bookings all cancelled" is exactly the thing a studio leader
- * needs to see, and dropping the lane hides it.
- */
-export function trainerLanes(
-  entries: ScheduleEntry[],
-  now: Date,
-  liveSessions: WorkoutSession[] = [],
-): TrainerLane[] {
-  const byTrainer = new Map<string, ScheduleEntry[]>();
-  for (const e of entries) {
-    const key = e.trainerId || `name:${e.trainerName || "Unassigned"}`;
-    const list = byTrainer.get(key);
-    if (list) list.push(e);
-    else byTrainer.set(key, [e]);
-  }
-
-  const liveTrainerIds = new Set(
-    liveSessions
-      .filter((s) => s.status === "In-Progress" && s.trainerId)
-      .map((s) => s.trainerId as string),
-  );
-
-  const lanes: TrainerLane[] = [];
-  for (const [key, list] of byTrainer) {
-    const sorted = [...list].sort(
-      (a, b) =>
-        (toDate(a.startTime)?.getTime() ?? 0) -
-        (toDate(b.startTime)?.getTime() ?? 0),
-    );
-    const trainerId = key.startsWith("name:") ? null : key;
-
-    let completed = 0;
-    let noShow = 0;
-    let cancelled = 0;
-    let nowWith: string | null = null;
-    let nextAt: Date | null = null;
-
-    for (const e of sorted) {
-      if (e.status === "Completed") completed += 1;
-      else if (e.status === "No-Show") noShow += 1;
-      else if (e.status === "Cancelled") cancelled += 1;
-
-      if (e.status === "Scheduled") {
-        const start = toDate(e.startTime);
-        const end = toDate(e.endTime);
-        if (start && end && start <= now && now < end && !nowWith) {
-          nowWith = e.clientName || "Client";
-        }
-        if (start && start > now && (!nextAt || start < nextAt)) {
-          nextAt = start;
-        }
-      }
-    }
-
-    const active = sorted.filter((e) => e.status !== "Cancelled");
-    lanes.push({
-      trainerId,
-      trainerName: sorted[0]?.trainerName || "Unassigned",
-      total: active.length,
-      completed,
-      remaining: active.length - completed - noShow,
-      noShow,
-      cancelled,
-      nowWith,
-      nextAt,
-      firstAt: toDate(active[0]?.startTime) ?? null,
-      lastAt: toDate(active[active.length - 1]?.startTime) ?? null,
-      live: trainerId ? liveTrainerIds.has(trainerId) : false,
-    });
-  }
-
-  return lanes.sort((a, b) => {
-    // Anyone mid-session floats to the top; after that, the day's order.
-    if (a.live !== b.live) return a.live ? -1 : 1;
-    const at = a.firstAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    const bt = b.firstAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
-    if (at !== bt) return at - bt;
-    return a.trainerName.localeCompare(b.trainerName);
-  });
 }
 
 /* ==================================================================== *
@@ -270,21 +176,20 @@ const ATTENTION_ORDER: Record<AttentionKind, number> = {
  * No-shows lead because they are the only one of the three where a person
  * decided not to come and said nothing. Unresolved slots come next: they are
  * a staff problem, not a client one, but they corrupt every number below them
- * until someone marks them. Cancellations last — most came with notice.
+ * until someone logs them. Cancellations last — most came with notice. A slot
+ * whose sessions could not be read is not a row: nobody knows it needs one.
  */
 export function attentionItems(
   entries: ScheduleEntry[],
   now: Date,
+  logged: LoggedSessions | null,
+  tz?: string,
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const e of entries) {
-    let kind: AttentionKind | null = null;
-    if (e.status === "No-Show") kind = "no-show";
-    else if (e.status === "Cancelled") kind = "cancelled";
-    else if (e.status === "Scheduled") {
-      const end = toDate(e.endTime);
-      if (end && end.getTime() + 5 * MINUTE < now.getTime()) kind = "unresolved";
-    }
+    const state = bookingState(e, logged, now, tz);
+    const kind: AttentionKind | null =
+      state === "no-show" ? "no-show" : state === "cancelled" ? "cancelled" : state === "never-logged" ? "unresolved" : null;
     if (!kind) continue;
     items.push({
       id: e.id || `${e.clientName}-${String(e.startTime)}`,
@@ -300,35 +205,4 @@ export function attentionItems(
     if (a.kind !== b.kind) return ATTENTION_ORDER[a.kind] - ATTENTION_ORDER[b.kind];
     return (a.at?.getTime() ?? 0) - (b.at?.getTime() ?? 0);
   });
-}
-
-/* ==================================================================== *
- * Week shape, for context under today
- * ==================================================================== */
-
-export interface DayLoad {
-  dayKey: string;
-  booked: number;
-  completed: number;
-  missed: number;
-}
-
-/**
- * Appointment counts per studio-local day across whatever range the schedule
- * hook has loaded. Today alone has no shape to it; a leader wants to know
- * whether today is heavy or light before deciding to send someone home.
- */
-export function loadByDay(entries: ScheduleEntry[]): DayLoad[] {
-  const byDay = new Map<string, DayLoad>();
-  for (const e of entries) {
-    const key = studioDateKey(toDate(e.startTime));
-    if (!key) continue;
-    const row =
-      byDay.get(key) ?? { dayKey: key, booked: 0, completed: 0, missed: 0 };
-    row.booked += 1;
-    if (e.status === "Completed") row.completed += 1;
-    if (e.status === "No-Show" || e.status === "Cancelled") row.missed += 1;
-    byDay.set(key, row);
-  }
-  return [...byDay.values()].sort((a, b) => a.dayKey.localeCompare(b.dayKey));
 }

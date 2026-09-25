@@ -67,6 +67,7 @@ import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useSectionState } from "./useSectionState";
 import type { GroupingMode } from "./types";
+import { forgetOnSignOut } from "../sign-out/memory";
 
 /**
  * THE CATALOG, as a wiki.
@@ -154,6 +155,11 @@ type Route =
  * session, like the Planner's tab; a fresh load starts on the floor.
  */
 let rememberedScope: CatalogScope = "floor";
+
+// A sign-out is a fresh load for the next person (Sep 24 2026).
+forgetOnSignOut(() => {
+  rememberedScope = "floor";
+});
 
 export interface CatalogWikiViewProps {
   /** The global list. Used only until this studio's roster is populated. */

@@ -66,7 +66,7 @@ export const REPORT_STEPS: ReportStepDef[] = [
     purpose:
       "Open by congratulating them. Everything here is about showing up — sessions, volume, reps, rest — so the client feels the size of what they've already done before anything else is said.",
     howTo:
-      "Pick the window (blank = since their first session). Switch off any number that won't land for this client. Write the narrative in the second person, as you'd say it out loud — it prints as a quote.",
+      "Pick the window (blank = since their first session in Journey). Switch off any number that won't land for this client. Write the narrative in the second person, as you'd say it out loud — it prints as a quote.",
     clientSees:
       "The big session count, your quote, and the numbers you left switched on.",
   },

@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import { Studio, Trainer, FranchiseNetwork } from "../types";
 import { setActiveTimeZone } from "../lib/studio-time";
-import { getDefaultStudioId, setDefaultStudioId } from "../lib/default-studio";
 import {
   hasPermission as hasPermissionHelper,
   PermissionAction,
@@ -172,10 +171,8 @@ export function ActiveStudioProvider({
   const logout = async () => {
     setActiveStudioId(null);
     setIsAuthenticated(false);
-    // Device preference, not session state -- see App.tsx handleLogout.
-    const pinnedStudioId = getDefaultStudioId();
-    localStorage.clear();
-    setDefaultStudioId(pinnedStudioId);
+    // Storage (keeping this iPad's pinned studio), handoffs and module memory
+    // are forgotten in one place: App.tsx handleLogout, features/sign-out.
     await onLogout();
   };
 

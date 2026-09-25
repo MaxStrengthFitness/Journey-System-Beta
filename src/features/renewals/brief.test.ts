@@ -25,8 +25,10 @@ const client = {
   subjectiveSnapshot: {
     reportId: "r",
     date: "2026-06-02",
-    overallStatus: "green",
-    overallPercent: 72.4,
+    // What snapshotForClient writes: a fraction, and Yellow because 72% is
+    // under the 75% line.
+    overallStatus: "yellow",
+    overallPercent: 0.724,
     proteinStatus: null,
     hydrationStatus: null,
     redCategories: ["sleepRecovery"],
@@ -50,6 +52,13 @@ describe("the Brief", () => {
     expect(gainSentence(gains[0])).toBe("Leg Press: 100 → 130 lb, 30% stronger");
   });
 
+  it("says 'In Journey since' when Journey's first session is her only date and her story is not all here", () => {
+    const filemaker = { ...client, firstSessionDate: "2026-09-02T15:00:00" } as Client;
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS, "partial")[0]).toBe("In Journey since Sep 2026");
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS)[0]).toBe("In Journey since Sep 2026");
+    expect(journeyLines(filemaker, null, DEFAULT_RENEWAL_SETTINGS, "complete")[0]).toBe("Client since Sep 2026");
+  });
+
   it("tells the journey from the snapshot", () => {
     expect(journeyLines(client, snap, DEFAULT_RENEWAL_SETTINGS)).toEqual([
       "Trained in 11 of the last 12 weeks",
@@ -64,7 +73,7 @@ describe("the Brief", () => {
   it("leads with health: InBody, the check-in, the goal", () => {
     expect(healthLines(client, snap, TODAY, DEFAULT_INBODY_VARIATION)).toEqual([
       "InBody since Jan 15: no change bigger than the scanner's normal variation",
-      "Pulse, Jun 2: overall Green (72%)",
+      "Pulse, Jun 2: overall Yellow (72%)",
       "Red on: Sleep & Recovery",
       "Their goal: Carry groceries without back pain",
     ]);
@@ -95,6 +104,14 @@ describe("the Brief", () => {
 
   it("has no InBody line without a scan pair", () => {
     const none = { ...snap, proof: { ...snap.proof, inbody: null } } as RenewalSnapshot;
-    expect(healthLines(client, none, TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe("Pulse, Jun 2: overall Green (72%)");
+    expect(healthLines(client, none, TODAY, DEFAULT_INBODY_VARIATION)[0]).toBe("Pulse, Jun 2: overall Yellow (72%)");
+  });
+
+  it("prints the stored fraction as a percentage, even under half", () => {
+    const red = {
+      ...client,
+      subjectiveSnapshot: { ...client.subjectiveSnapshot!, overallStatus: "red", overallPercent: 0.42 },
+    } as Client;
+    expect(healthLines(red, snap, TODAY, DEFAULT_INBODY_VARIATION)).toContain("Pulse, Jun 2: overall Red (42%)");
   });
 });

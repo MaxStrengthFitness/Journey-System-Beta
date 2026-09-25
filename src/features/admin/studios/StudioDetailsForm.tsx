@@ -115,7 +115,9 @@ export function StudioDetailsForm({
   subtitle = "Everything Mindbody needs to file this location's bookings correctly.",
 }: StudioDetailsFormProps) {
   const external = useMemo(() => studioToForm(studio), [studio]);
-  const form = useDirtyForm(external, (patch) => onSave(patch));
+  const form = useDirtyForm(external, (patch) => onSave(patch), {
+    label: studio.name ? `${studio.name}'s details` : "the studio's details",
+  });
 
   const locations = useMindbodyLocations(form.value.mindbodySiteId);
 
@@ -202,8 +204,8 @@ export function StudioDetailsForm({
             label="Journey cutover date"
             hint={
               form.value.journeyCutoverDate
-                ? "Clients whose first session here is before this day trained before Journey; their earlier history is in FileMaker, so screens say “nothing recorded” rather than “never attempted”."
-                : "The day this studio moved onto Journey. Until it is set, every client here reads as unknown and gets the cautious wording."
+                ? "Clients whose first session here is before this day trained before Journey; their earlier history is in FileMaker, so screens say “nothing recorded” rather than “never attempted”. From this day on, a booking nobody logged in Journey no longer counts as a visit on the attendance watch."
+                : "The day this studio moved onto Journey. Until it is set, every client here reads as unknown and gets the cautious wording, and the attendance watch counts every past booking that was not cancelled as a visit."
             }
             htmlFor="studio-cutover"
           >

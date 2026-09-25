@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   CheckCircle2,
   ArrowLeft,
@@ -60,6 +60,8 @@ import {
   AVG_REST_MIN_GAPS,
   type TrainingHistory,
 } from "../lib/progress-utils";
+import { allTimeLabel, reportSessionWords } from "../lib/history-claims";
+import { priorHistoryOf, type HistoryCoverage } from "../lib/prior-history";
 import type { ClientFocus } from "../types/journal";
 import { cn, parseSessionDate } from "../lib/utils";
 import { OperationType, handleFirestoreError } from "../lib/firestore-errors";
@@ -115,6 +117,7 @@ import { ReportNotOpened } from "../features/progress-report/ReportNotOpened";
 import { studioTodayKey } from "../lib/studio-time";
 import { InBodyReportSection } from "../features/inbody/InBodyReportSection";
 import { useInBodyVariation } from "../features/inbody/useInBodyVariation";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 
 /** Firestore Timestamp | Date | ISO string → "Jan 15, 2026", or null. */
 const shortDate = (v: any): string | null => {
@@ -183,9 +186,18 @@ interface ClientProgressReportViewProps {
   machines: Machine[];
   onBack: () => void;
   existingReportId?: string;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The report is printed and handed to the client, so its session tile
+   * says "Total Sessions" and "First Session" only when Journey holds all of
+   * it; otherwise it counts "Sessions" "Since" the window's first day, plus
+   * any recorded count from before Journey. Cautious by default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export function ClientProgressReportView({
+  coverage = "unknown",
   client,
   trainer,
   machines,
@@ -204,7 +216,7 @@ export function ClientProgressReportView({
   const [showExportOptions, setShowExportOptions] = useState(false);
 
   // Entire Report State
-  const [report, setReport] = useState<ProgressReport>({
+  const [report, setReportState] = useState<ProgressReport>({
     clientId: client.id!,
     trainerId: trainer.id!,
     trainerName: trainer.fullName,
@@ -324,6 +336,28 @@ export function ClientProgressReportView({
     trainerNotes: "",
     createdAt: null,
   });
+
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). The report has no autosave, and leaving
+   * it any way but a save — Back, the bottom bar, the bell — dropped
+   * everything typed, silently. There is no saved copy to compare against,
+   * and the load, the goal carry-over, the auto-populate and the focus
+   * prefill all change `report` without the trainer touching it, so
+   * "different from how it opened" would be dirty on its own. Instead every
+   * TRAINER edit goes through `setReport`, which counts it; the automatic
+   * writes use `setReportState` and count nothing. A save records the count
+   * it wrote, so an edit typed while the save was in flight still counts.
+   */
+  const [editCount, setEditCount] = useState(0);
+  const [savedEditCount, setSavedEditCount] = useState(0);
+  const setReport: typeof setReportState = useCallback((update) => {
+    setEditCount((n) => n + 1);
+    setReportState(update);
+  }, []);
+  useUnsavedChanges(
+    mode === "editing" && editCount !== savedEditCount,
+    "this progress report",
+  );
 
   /**
    * The most recent FINALIZED report for this client other than this one —
@@ -467,7 +501,7 @@ export function ClientProgressReportView({
           setExistingStatus("other-client");
           return;
         }
-        setReport((prev) => ({
+        setReportState((prev) => ({
           ...prev,
           ...data,
           id: snap.id,
@@ -528,7 +562,7 @@ export function ClientProgressReportView({
           // A brand-new report inherits the goal set last time as the goal
           // to review now. An existing report keeps whatever it saved.
           if (!existingReportId) {
-            setReport((r) => ({
+            setReportState((r) => ({
               ...r,
               previousReportId: prev.id ?? null,
               goals: r.goals
@@ -700,7 +734,7 @@ export function ClientProgressReportView({
     const stats = attendanceStatsFrom(history, activeStartDate);
     const ctx = slotContextFor(activeStartDate);
 
-    setReport((prev) => ({
+    setReportState((prev) => ({
       ...prev,
       attendance: {
         ...prev.attendance,
@@ -734,7 +768,7 @@ export function ClientProgressReportView({
     if (mode !== "editing" || focusStatus !== "ready" || refinementFocusArea) return;
     const category = newestActiveCategory(focuses, reportAsOf);
     if (!category) return;
-    setReport((r) =>
+    setReportState((r) =>
       r.roadmap && !r.roadmap.refinementFocusArea
         ? { ...r, roadmap: { ...r.roadmap, refinementFocusArea: category } }
         : r,
@@ -746,6 +780,11 @@ export function ClientProgressReportView({
    * from the history already in memory. Trainer-chosen slots keep their
    * choice with the new numbers; drafted and empty slots are re-drafted.
    */
+  /* The session tile's words (lib/history-claims.ts, Sep 24 2026): a
+     twelve-year client used to be handed "3 Total Sessions · First Session
+     Sep 2" - Journey's count and Journey's first day, as her whole story. */
+  const sessionWords = reportSessionWords(coverage, priorHistoryOf(client));
+
   const handleRecalculateAttendance = (customStartDate?: string) => {
     const activeStartDate = customStartDate || "";
     if (!history) {
@@ -785,6 +824,7 @@ export function ClientProgressReportView({
       );
       return;
     }
+    const editsBeingSaved = editCount;
     setSaving(true);
     try {
       // Recursively remove undefined values to prevent Firestore crashes
@@ -845,9 +885,10 @@ export function ClientProgressReportView({
           sanitizedReport,
         );
         reportId = docRef.id;
-        setReport((prev) => ({ ...prev, id: docRef.id }));
+        setReportState((prev) => ({ ...prev, id: docRef.id }));
       }
-      setReport((prev) => ({ ...prev, focusSnapshot }));
+      setReportState((prev) => ({ ...prev, focusSnapshot }));
+      setSavedEditCount(editsBeingSaved);
 
       if (status === "Finalized") {
         setShowExportOptions(true);
@@ -919,7 +960,7 @@ export function ClientProgressReportView({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              setReport((prev) => ({ ...prev, isManual: false }));
+              setReportState((prev) => ({ ...prev, isManual: false }));
               setMode("editing");
             }}
             className="flex flex-col items-center p-8 bg-white/5 border-2 border-(--pr-hero)/20 rounded-[40px] hover:border-(--pr-hero) transition-all group hover:bg-(--pr-hero)/2 text-center"
@@ -939,7 +980,7 @@ export function ClientProgressReportView({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              setReport((prev) => ({ ...prev, isManual: true }));
+              setReportState((prev) => ({ ...prev, isManual: true }));
               setMode("editing");
               setLoading(false);
             }}
@@ -1039,7 +1080,7 @@ export function ClientProgressReportView({
                     // and let the auto-populate fill the rest. Its Pulse block
                     // stays on the document and is the snapshot the Blueprint
                     // step shows; there is no step to fill for it.
-                    setReport((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
+                    setReportState((r) => ({ ...r, isCheckInOnly: false, status: "Draft", isManual: false }));
                     setPromotedFromCheckIn(true);
                     setActiveStep("celebrate");
                     setMode("editing");
@@ -1171,7 +1212,7 @@ export function ClientProgressReportView({
                       Joined:{" "}
                       <span className="text-white/60">
                         {shortDate(
-                          reportJoinedDate(client, report.attendance.firstSessionDate),
+                          reportJoinedDate(client, report.attendance.firstSessionDate, coverage),
                         ) || "—"}
                       </span>
                     </div>
@@ -1225,11 +1266,16 @@ export function ClientProgressReportView({
                         {realStat(report.attendance.totalSessions)?.toLocaleString() ?? "—"}
                       </p>
                       <p className="text-[11px] font-bold uppercase tracking-widest opacity-90 mt-2 relative z-10">
-                        Total Sessions
+                        {sessionWords.total}
                       </p>
+                      {sessionWords.before && (
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/80 mt-1 relative z-10">
+                          {sessionWords.before}
+                        </p>
+                      )}
                       <div className="mt-3 pt-3 border-t border-white/20 w-full relative z-10">
                         <p className="text-[11px] font-bold uppercase tracking-widest text-white/80">
-                          First Session
+                          {sessionWords.first}
                         </p>
                         <p className="text-[11px] font-bold uppercase tracking-tighter opacity-100 italic">
                           {report.attendance.firstSessionDate
@@ -1725,7 +1771,7 @@ export function ClientProgressReportView({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
-                        Timeframe Start Date (Blank = All Time)
+                        Timeframe Start Date (Blank = {allTimeLabel(coverage)})
                       </Label>
                       {report.attendance.firstSessionDate && (
                         <button
@@ -1736,7 +1782,7 @@ export function ClientProgressReportView({
                           }
                           className="text-[11px] font-bold text-primary uppercase hover:underline"
                         >
-                          Use First Session:{" "}
+                          {sessionWords.useFirst}:{" "}
                           {shortDate(report.attendance.firstSessionDate) ||
                             report.attendance.firstSessionDate}
                         </button>
@@ -1785,7 +1831,7 @@ export function ClientProgressReportView({
                     {[
                       {
                         key: "totalSessions",
-                        label: "Total Sessions Attended (Auto-Top)",
+                        label: `${sessionWords.total} Attended (Auto-Top)`,
                         value: realStat(report.attendance.totalSessions),
                         unit: "",
                         why: "No completed sessions in this window.",

@@ -7,6 +7,8 @@ import { toEquipmentMachines } from "./adapters";
 import { SettingsCard } from "./SettingsCard";
 import { SetupGuide } from "./SetupGuide";
 import type { JournalContext, MutationAuthor } from "./mutations";
+import type { HistoryCoverage } from "../../lib/prior-history";
+import { noMachineHistoryLine, setupPromptLine } from "../../lib/history-claims";
 
 /**
  * IN-SESSION SETUP PROMPT.
@@ -39,6 +41,13 @@ export interface SetupPromptDialogProps {
   onError?: (message: string) => void;
   /** The client's home studio, so the save also reaches that studio's machine-fit index. */
   clientHomeStudioId?: string | null;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The prompt opens on a machine with nothing saved; only a client whose
+   * whole story is here is told it is her first time on it. Defaults to the
+   * cautious wording.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export function SetupPromptDialog({
@@ -52,6 +61,7 @@ export function SetupPromptDialog({
   onSaved,
   onError,
   clientHomeStudioId = null,
+  coverage = "unknown",
 }: SetupPromptDialogProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio, activeStudioId } = useActiveStudio();
@@ -85,11 +95,11 @@ export function SetupPromptDialog({
       <DialogContent className="sm:max-w-[560px] max-h-[86dvh] overflow-y-auto p-0 border-0 bg-transparent shadow-none">
         <div className="eq eq-prompt">
           <header className="eq-prompt__head">
-            <span className="eq-prompt__kicker">First time on this machine</span>
+            <span className="eq-prompt__kicker">{noMachineHistoryLine(coverage)}</span>
             <h2 className="eq-detail__name">{equipment.name}</h2>
             <p className="eq-prompt__sub">
-              Set it up for this client before the first set. The studio standard is shown as a
-              hint — nothing is saved until you confirm.
+              {setupPromptLine(coverage)} The studio standard is shown as a hint — nothing is saved
+              until you confirm.
             </p>
           </header>
 

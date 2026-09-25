@@ -28,6 +28,7 @@ import type { NoteDismissalsState } from "../client-notes/dismissal-store";
 import { fordDoorCount, notesOnRecord, notesSummary, type NotesOnRecord, type NotesSummary } from "../client-notes/record-selectors";
 import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
+import type { PriorHistoryDoorState } from "../client-profile/prior-history-door";
 import { priorHistoryOf, priorUncounted, totalSessions, type HistoryCoverage } from "../../lib/prior-history";
 import type { CodexGo } from "./kit/primitives";
 import type { Pronouns } from "./kit/pronouns";
@@ -257,6 +258,14 @@ export interface CodexProgramming {
   studioClients: readonly Client[];
   activeStudioId: string | null;
   /**
+   * The active studio's floor as the Active Session sees it
+   * (`studioFloorOf`, lib/floor-machines.ts): its own machines and each
+   * one's lineage (`comparisonKey`), which the app-wide `machines` list has
+   * neither of. Watch-outs judges "names no machine on this floor" against
+   * this. Absent (a host that holds no roster) means the app-wide list.
+   */
+  floorMachines?: Machine[];
+  /**
    * Whether her routines and machine settings were read for this client:
    * "loading" until both answered, "failed" when either could not be. Until
    * "ready", the floor never says she has no machines — unknown, not empty.
@@ -336,6 +345,13 @@ export interface CodexHosts {
   onOpenMigrationHub: () => void;
   onOpenMachine?: (machineId: string) => void;
   onOpenSetup?: () => void;
+  /**
+   * The door to Sessions before Journey — the SAME door as the header's
+   * Completed sessions tile (its words, its rule, the profile's one editor),
+   * drawn again on Account's contract history (landing, Sep 24 2026). Null
+   * or left out: no door (nothing recorded, and this reader may not add it).
+   */
+  priorHistoryDoor?: PriorHistoryDoorState | null;
 }
 
 /** What every page gets. */

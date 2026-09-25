@@ -31,6 +31,7 @@ import type { Client, FranchiseNetwork, Studio, Trainer } from "../../../types";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { useToast } from "../../../contexts/ToastContext";
 import { getStudioClientCounts } from "../../../lib/studio-client-count";
+import { UnsavedChangesScope, useLeaveScope } from "../../unsaved-changes";
 import {
   AdminBadge,
   AdminButton,
@@ -131,6 +132,8 @@ export function AdminStudiosTab({
   }, [studios]);
 
   const selected = studios.find((s) => s.id === selectedId) ?? null;
+  // Picking another studio unmounts this one's details form.
+  const detailScope = useLeaveScope();
   const orphans = useMemo(() => findOrphans(networks, studios), [networks, studios]);
 
   /* ---------------- studio writes ---------------- */
@@ -233,7 +236,9 @@ export function AdminStudiosTab({
                   return (
                     <AdminRow
                       key={s.id}
-                      onClick={() => setSelectedId(s.id ?? null)}
+                      onClick={() =>
+                        detailScope.guard(() => setSelectedId(s.id ?? null))
+                      }
                       className={s.id === selectedId ? "adm-row--tappable" : undefined}
                       name={
                         <span className="flex items-center gap-2">
@@ -286,7 +291,14 @@ export function AdminStudiosTab({
         <div className="adm-ov__stack">
           {selected ? (
             <>
+            {/* Keyed and scoped (unsaved changes, Sep 24 2026): the details
+                form three-way merges a new document into unsaved edits, so
+                without the key an edit typed for one studio stayed in the
+                form when another was picked, and Save wrote it THERE. Picking
+                another studio now asks first, and the form starts fresh. */}
+            <UnsavedChangesScope scope={detailScope}>
             <StudioDetailPanel
+              key={selected.id}
               studio={selected}
               authTrainer={authTrainer}
               studios={studios}
@@ -298,6 +310,7 @@ export function AdminStudiosTab({
               onDelete={deleteSelectedStudio}
               onChangeNetwork={changeNetwork}
             />
+            </UnsavedChangesScope>
             <ProvisionalPanel
               studio={selected}
               clients={clients}

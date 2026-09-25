@@ -32,9 +32,31 @@
  * Firestore, and so the same rule can be reused by the backfill script.
  */
 import { toDate } from "./studio-time";
+import { priorHistoryOf, type HistoryCoverage } from "./prior-history";
+
+/**
+ * How much of her story Journey holds, when the caller knows it
+ * (`coverageOfClient`, lib/client-coverage.ts). With it, Journey's first
+ * session is proof of when she STARTED only when Journey holds her whole
+ * story - coverage "complete" and no prior record - the same rule the
+ * codex's Story uses (`storySince`, client-story/story.ts). Otherwise it
+ * is only the day Journey met her, and reads "In Journey since".
+ *
+ * Every screen that prints the answer passes it (the profile header, the
+ * printed report's "Joined", the Renewal Brief). Without it the first
+ * session is still counted as proof, which is right only for a caller that
+ * already knows Journey holds her whole story.
+ */
+export interface ClientSinceHistory {
+  coverage: HistoryCoverage;
+}
 
 export type ClientSinceSource =
-  /** First workout recorded in Journey. The most meaningful answer we have. */
+  /**
+   * First workout recorded IN JOURNEY. For a new client it is her first
+   * session; for a migrating one it is the day Journey first saw her, which
+   * is why it competes with Mindbody's dates rather than outranking them.
+   */
   | "firstSession"
   /** Mindbody's first visit to the site. */
   | "firstAppointment"
@@ -48,7 +70,11 @@ export type ClientSinceSource =
 export interface ClientSince {
   date: Date;
   source: ClientSinceSource;
-  /** False for "journey" — the caller must not label that one "Client since". */
+  /**
+   * False for "journey", and for a first session that does not prove when
+   * she started (see `ClientSinceHistory`): the caller must not label
+   * either one "Client since".
+   */
   fromMindbody: boolean;
 }
 
@@ -60,6 +86,8 @@ interface ClientSinceInput {
   createdAt?: any;
   mindbodyMemberships?: Record<string, { activeDate?: any; assignedAt?: any }>;
   mindbodyContracts?: Record<string, { startDate?: any; agreementDate?: any }>;
+  /** `client.priorHistory`: a stated record of sessions before Journey. */
+  priorHistory?: unknown;
 }
 
 /**
@@ -94,31 +122,62 @@ function earliestCommercialDate(client: ClientSinceInput): Date | null {
 /**
  * Best available start date, with provenance.
  *
- * Order is deliberate: the first workout we can prove, then Mindbody's own
- * two dates, then commercial evidence, then — only so a caller can render
- * something — the Journey timestamp, flagged as not being a business date.
+ * Three dates are proof she was here - the first session recorded in
+ * Journey, Mindbody's first visit, Mindbody's created date - and the
+ * EARLIEST of them wins (Sep 24 2026). Each is only an upper bound on when
+ * she started, so the earliest is the closest to the truth. It used to be
+ * the first one present, in that order, which for a migrating client was
+ * her first JOURNEY session (the Active Session stamps `firstSessionDate`
+ * the first time Journey sees her): a twelve-year client read "Client since
+ * Sep 2026" on her profile, "Joined Sep 2026" on her report, and would
+ * have had her first anniversary celebrated next autumn. For a genuinely
+ * new client the three are days apart and nothing changes.
+ *
+ * Then commercial evidence, then - only so a caller can render something -
+ * the Journey timestamp, flagged as not being a business date.
+ *
+ * With `history`, Journey's first session is proof only when Journey holds
+ * her whole story (see `ClientSinceHistory`). When it is not, it drops to
+ * just above the Journey timestamp and comes back flagged `fromMindbody:
+ * false`: a long-standing FileMaker client whose only date is the day
+ * Journey met her reads "In Journey since Sep 2026", never "Client since".
  */
 export function resolveClientSince(
   client: ClientSinceInput | null | undefined,
+  history?: ClientSinceHistory,
 ): ClientSince | null {
   if (!client) return null;
 
+  const sessionProves =
+    !history || (history.coverage === "complete" && !priorHistoryOf(client));
+
   const candidates: Array<[ClientSinceSource, any]> = [
-    ["firstSession", client.firstSessionDate],
+    ["firstSession", sessionProves ? client.firstSessionDate : null],
     ["firstAppointment", client.firstAppointmentDate],
     ["mindbodyCreated", client.mindbodyCreatedAt],
   ];
 
+  let proven: ClientSince | null = null;
   for (const [source, value] of candidates) {
     const d = toDate(value);
-    if (d && !Number.isNaN(d.getTime()) && d.getFullYear() >= 1990) {
-      return { date: d, source, fromMindbody: true };
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) continue;
+    // Strictly earlier: on a tie the order above decides.
+    if (!proven || d.getTime() < proven.date.getTime()) {
+      proven = { date: d, source, fromMindbody: true };
     }
   }
+  if (proven) return proven;
 
   const commercial = earliestCommercialDate(client);
   if (commercial) {
     return { date: commercial, source: "commercial", fromMindbody: true };
+  }
+
+  if (!sessionProves) {
+    const first = toDate(client.firstSessionDate);
+    if (first && !Number.isNaN(first.getTime()) && first.getFullYear() >= 1990) {
+      return { date: first, source: "firstSession", fromMindbody: false };
+    }
   }
 
   const created = toDate(client.createdAt);
@@ -127,6 +186,31 @@ export function resolveClientSince(
   }
 
   return null;
+}
+
+/**
+ * The OLDEST date anything on the record gives - for "has she been here at
+ * least N months?", where one old date is proof enough.
+ *
+ * `resolveClientSince` falls back to contracts and then to the Journey
+ * document only when none of the three proven dates exists, which is right
+ * for a label; this takes the earliest of ALL of them, including createdAt
+ * (the day Journey met her is still a day she was a client). One old date
+ * anywhere is proof of tenure.
+ */
+export function earliestKnownDate(client: ClientSinceInput | null | undefined): Date | null {
+  if (!client) return null;
+  let best: Date | null = null;
+  const consider = (d: Date | null) => {
+    if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) return;
+    if (!best || d.getTime() < best.getTime()) best = d;
+  };
+  consider(toDate(client.firstSessionDate));
+  consider(toDate(client.firstAppointmentDate));
+  consider(toDate(client.mindbodyCreatedAt));
+  consider(earliestCommercialDate(client));
+  consider(toDate(client.createdAt));
+  return best;
 }
 
 const MONTHS = [
@@ -143,8 +227,9 @@ const MONTHS = [
  */
 export function clientSinceLabel(
   client: ClientSinceInput | null | undefined,
+  history?: ClientSinceHistory,
 ): { label: string; value: string; source: ClientSinceSource } | null {
-  const since = resolveClientSince(client);
+  const since = resolveClientSince(client, history);
   if (!since) return null;
   return {
     label: since.fromMindbody ? "Client since" : "In Journey since",

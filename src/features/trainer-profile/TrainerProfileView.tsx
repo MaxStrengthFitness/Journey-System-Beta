@@ -74,8 +74,8 @@ export function TrainerProfileView({
   const notice = scopeNotice(visibility.scope, firstName);
 
   const upcoming = useMemo(
-    () => (visibility.showSchedule ? upcomingFor(schedules, trainer, clients) : []),
-    [schedules, trainer, clients, visibility.showSchedule],
+    () => (visibility.showSchedule ? upcomingFor(schedules, trainer, clients, sessions) : []),
+    [schedules, trainer, clients, sessions, visibility.showSchedule],
   );
 
   const stats = useMemo(() => deriveTrainerStats(trainer), [trainer]);

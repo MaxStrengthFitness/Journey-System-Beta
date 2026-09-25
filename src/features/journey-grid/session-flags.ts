@@ -26,8 +26,11 @@
 import type { JournalEntry } from "../../types/journal";
 import {
   generalWatchOuts,
+  machineSpecificWatchOuts,
   machineWatchOuts,
+  type NamedWatchOut,
   type WatchOut,
+  type WatchOutMachine,
 } from "../../lib/clinical-watchouts";
 import { clipText } from "../../lib/clip-text";
 
@@ -38,28 +41,51 @@ export interface SessionFlagSources {
   criticalEntries?: readonly JournalEntry[] | null;
   /** From `useClientJournal`: Heads ups still inside their window. */
   headsUpEntries?: readonly JournalEntry[] | null;
+  /**
+   * The studio's floor, so a condition that names machines can say which of
+   * THIS floor's machines it means. Absent, the matrix's own names are used.
+   */
+  floor?: readonly WatchOutMachine[] | null;
 }
 
 export interface SessionFlags {
   /** Watch-outs that apply to every set (no machine named). */
   general: WatchOut[];
+  /** Watch-outs that name machines, with the machines in words. */
+  onMachines: NamedWatchOut[];
   critical: JournalEntry[];
   headsUp: JournalEntry[];
-  /** How many machines carry a machine-specific watch-out or a tied note. */
+  /**
+   * The number on the marker: the conditions, critical notes and heads-ups
+   * the sheet lists — nothing it would not show. It used to count every
+   * clinical flag id while the sheet showed only the every-machine ones, so a
+   * client whose one condition names machines (osteoporosis) read "1" and
+   * opened an empty sheet.
+   */
   count: number;
-  /** Critical notes or any high-risk condition: the marker goes red. */
+  /**
+   * Crimson: a critical note, or an absolute contraindication. Only those —
+   * crimson is the colour of "this is the one that matters".
+   */
   severe: boolean;
+  /** Plum: a high-risk condition, when nothing is severe. */
+  caution: boolean;
 }
 
 export function sessionFlags(src: SessionFlagSources): SessionFlags {
   const general = generalWatchOuts(src.clinicalFlags);
+  const onMachines = machineSpecificWatchOuts(src.clinicalFlags, src.floor ?? []);
   const critical = [...(src.criticalEntries ?? [])];
   const headsUp = [...(src.headsUpEntries ?? [])];
-  const conditions = (src.clinicalFlags ?? []).length;
+  // One per condition, however many rules it carries — and only conditions
+  // the matrix knows, so a stale flag id never counts something unshown.
+  const conditions = new Set([...general, ...onMachines].map((w) => w.flagId)).size;
   const count = conditions + critical.length + headsUp.length;
   // "alert" is the matrix's absolute contraindication; "caution" its high risk.
-  const severe = critical.length > 0 || general.some((w) => w.tone === "alert" || w.tone === "caution");
-  return { general, critical, headsUp, count, severe };
+  const watchOuts = [...general, ...onMachines];
+  const severe = critical.length > 0 || watchOuts.some((w) => w.tone === "alert");
+  const caution = !severe && watchOuts.some((w) => w.tone === "caution");
+  return { general, onMachines, critical, headsUp, count, severe, caution };
 }
 
 export interface MachineFlags {
@@ -69,7 +95,7 @@ export interface MachineFlags {
 }
 
 export function machineFlags(
-  machine: { id?: string | null; name?: string | null; fullName?: string | null } | null | undefined,
+  machine: WatchOutMachine | null | undefined,
   src: SessionFlagSources,
 ): MachineFlags {
   if (!machine?.id) return { watchOuts: [], notes: [] };
@@ -82,7 +108,12 @@ export function machineFlags(
   };
 }
 
-export type FlagTone = "critical" | "elevated";
+/**
+ * critical — crimson: a critical note, or an absolute contraindication.
+ * caution  — plum: a high-risk condition.
+ * elevated — amber: a heads-up, or a condition that needs a modification.
+ */
+export type FlagTone = "critical" | "caution" | "elevated";
 
 export interface FlagLine {
   tone: FlagTone;
@@ -119,7 +150,7 @@ export function flagLineOf(
   }
   const w = mf.watchOuts[0];
   return {
-    tone: w.tone === "alert" || w.tone === "caution" ? "critical" : "elevated",
+    tone: w.tone === "alert" ? "critical" : w.tone === "caution" ? "caution" : "elevated",
     text: `${w.condition}: ${clipText(w.instruction.trim(), LINE_MAX)}`,
     more: total - 1,
   };

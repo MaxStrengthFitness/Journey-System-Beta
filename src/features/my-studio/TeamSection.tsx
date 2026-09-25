@@ -73,16 +73,13 @@ function StaffPanel({
 
   /*
    * A request that named another studio is that studio's to answer; one
-   * that named this studio, or none, is shown here. Older requests carry no
-   * studio at all, so "none" has to count.
+   * that named this studio, or none, is shown here. buildStaffRoster does
+   * that filtering, for both kinds of request, so the rows arrive scoped.
    */
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (r.request?.requestedStudioId && r.request.requestedStudioId !== studioId) return false;
-      return !q || `${r.name} ${r.email ?? ""}`.toLowerCase().includes(q);
-    });
-  }, [rows, search, studioId]);
+    return rows.filter((r) => !q || `${r.name} ${r.email ?? ""}`.toLowerCase().includes(q));
+  }, [rows, search]);
 
   const waiting = visible.filter((r) => r.state === "awaiting-approval").length;
   const selected = visible.find((r) => r.key === selectedKey) ?? null;

@@ -87,3 +87,125 @@ describe("ProfileHeader", () => {
     expect(el.querySelector('[aria-label^="Sync with Mindbody"]')).toBeNull();
   });
 });
+
+describe("ProfileHeader — the door to Sessions before Journey", () => {
+  const doorOf = (el: HTMLElement) =>
+    el.querySelector<HTMLButtonElement>('button[aria-label^="Sessions before Journey"]');
+
+  it("opens the editor from the Completed sessions tile", () => {
+    const onOpen = vi.fn();
+    const el = mount(
+      props({
+        completedCount: 461,
+        priorLabel: "412 before Journey · FileMaker",
+        priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: true, onOpen },
+      }),
+    );
+    const door = doorOf(el)!;
+    expect(door).toBeTruthy();
+    expect(door.textContent).toBe("412 before Journey · FileMaker");
+    expect(door.getAttribute("aria-label")).toContain("Open to edit.");
+    // Nothing tappable under 40px.
+    expect(door.className).toContain("min-h-10");
+    // The door replaces the plain label rather than repeating it.
+    expect(el.textContent!.split("412 before Journey").length - 1).toBe(1);
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the tile's renewal tap beside the door, never a button inside a button", () => {
+    const onOpen = vi.fn();
+    const onRenewal = vi.fn();
+    const el = mount(
+      props({
+        priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: true, onOpen },
+        renewal: { text: "9 left · auto-renews Nov 14", tone: "ok", attention: false, onOpen: onRenewal },
+      }),
+    );
+    expect(el.querySelectorAll("button button")).toHaveLength(0);
+    const renewal = el.querySelector<HTMLButtonElement>('button[aria-label^="Renewal:"]')!;
+    const door = doorOf(el)!;
+    expect(renewal.contains(door)).toBe(false);
+    // Same tile.
+    expect(renewal.parentElement!.contains(door)).toBe(true);
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onRenewal).not.toHaveBeenCalled();
+    act(() => renewal.click());
+    expect(onRenewal).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers it to read, for someone who cannot change it", () => {
+    const onOpen = vi.fn();
+    const el = mount(props({ priorHistoryDoor: { text: "412 before Journey · FileMaker", canEdit: false, onOpen } }));
+    const door = doorOf(el)!;
+    expect(door.getAttribute("aria-label")).toContain("Open to read.");
+    act(() => door.click());
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("says Add when there is nothing recorded yet", () => {
+    const el = mount(props({ priorHistoryDoor: { text: "Add sessions before Journey", canEdit: true, onOpen: () => {} } }));
+    expect(doorOf(el)!.textContent).toBe("Add sessions before Journey");
+  });
+
+  it("leaves the label as plain text when no door is passed", () => {
+    const el = mount(props({ priorLabel: "412 before Journey · FileMaker" }));
+    expect(el.textContent).toContain("412 before Journey · FileMaker");
+    expect(doorOf(el)).toBeNull();
+  });
+});
+
+/*
+ * The completed-session tile (Sep 24 2026). A migrating client's count is
+ * only what Journey has seen, and a count that has not landed is unknown -
+ * the tile used to print "Completed sessions 0" for both.
+ */
+describe("ProfileHeader's session count", () => {
+  const tile = (el: HTMLElement, label: string) =>
+    [...el.querySelectorAll("*")].find((n) => n.children.length === 0 && n.textContent === label)?.closest("div, button");
+
+  it("calls the count her completed sessions when it may be quoted as her total", () => {
+    const el = mount(props({ completedCount: 413, sessionsQuotable: true, priorLabel: "412 before Journey · FileMaker" }));
+    expect(el.textContent).toContain("Completed sessions");
+    expect(el.textContent).toContain("413");
+    expect(el.textContent).toContain("412 before Journey · FileMaker");
+  });
+
+  it("calls it Journey's count when nobody has recorded what came before", () => {
+    const el = mount(props({ completedCount: 3 }));
+    expect(el.textContent).toContain("Sessions in Journey");
+    expect(el.textContent).not.toContain("Completed sessions");
+    expect(tile(el, "Sessions in Journey")?.textContent).toContain("3");
+  });
+
+  it("shows a dash, never a zero, while the count is not known", () => {
+    const el = mount(props({ completedCount: null, sessionsQuotable: true }));
+    const t = tile(el, "Completed sessions");
+    expect(t?.textContent).toContain("—");
+    expect(t?.textContent).not.toMatch(/\b0\b/);
+  });
+
+  /*
+   * The header and the codex Story sit on one screen, so they must say the
+   * same thing about when she started. Journey's first session is proof of
+   * that only when Journey holds her whole story.
+   */
+  it("reads 'In Journey since' for a FileMaker client whose only date is Journey's", () => {
+    const filemaker = { ...client, firstSessionDate: "2026-09-02T15:00:00" } as unknown as Client;
+    const el = mount(props({ client: filemaker, coverage: "partial" }));
+    expect(el.textContent).toContain("In Journey since Sep 2026");
+    expect(el.textContent).not.toContain("Client since");
+    act(() => root?.unmount());
+    host?.remove();
+
+    const unknown = mount(props({ client: filemaker }));
+    expect(unknown.textContent).toContain("In Journey since Sep 2026");
+    act(() => root?.unmount());
+    host?.remove();
+
+    const brandNew = mount(props({ client: filemaker, coverage: "complete" }));
+    expect(brandNew.textContent).toContain("Client since Sep 2026");
+  });
+});

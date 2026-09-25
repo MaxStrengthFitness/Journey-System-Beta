@@ -12,6 +12,8 @@ import { MachineNotes } from "./MachineNotes";
 import { SetupGuide } from "./SetupGuide";
 import { ChangeHistory } from "./ChangeHistory";
 import type { JournalContext, MutationAuthor } from "./mutations";
+import type { HistoryCoverage } from "../../lib/prior-history";
+import { noMachineHistoryBody, noMachineHistoryLine } from "../../lib/history-claims";
 
 /**
  * THE MACHINE SHEET — one place, mid-session, for everything about one
@@ -77,8 +79,15 @@ export interface MachineSheetProps {
    * default and a banner says so — "if a machine is not yet performed by a
    * client, reference our catalog notes so we set them up properly the
    * first time" (audit, Sep 13 2026).
+   *
+   * `firstTime` means only that nothing is on record for this machine. Whether
+   * the banner may call it her FIRST time is `coverage`'s to say: machine
+   * history is not coming across from FileMaker, so a client of twelve years
+   * arrives with every machine empty.
    */
   firstTime?: boolean;
+  /** How much of the client's story Journey holds (lib/client-coverage.ts). Cautious by default. */
+  coverage?: HistoryCoverage;
 }
 
 export function MachineSheet({
@@ -93,6 +102,7 @@ export function MachineSheet({
   onError,
   onSaved,
   firstTime = false,
+  coverage = "unknown",
 }: MachineSheetProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio, activeStudioId } = useActiveStudio();
@@ -207,18 +217,19 @@ export function MachineSheet({
               </p>
             )}
 
-            {/* First time on this machine: the catalog's set-up guide comes
-                up open, ABOVE the dials, so the first set-up is done from
-                the studio's own notes rather than from memory. */}
+            {/* Nothing on record for this machine: the catalog's set-up
+                guide comes up open, ABOVE the dials, so the set-up is done
+                from the studio's own notes rather than from memory. Only a
+                client whose whole story is in Journey is told it is her
+                first time (lib/history-claims.ts). */}
             {firstTime && (
-              <section className="eq-sheet__first" aria-label="First time on this machine">
+              <section className="eq-sheet__first" aria-label={noMachineHistoryLine(coverage)}>
                 <span className="eq-sheet__first-kicker">
                   <Sparkles size={12} strokeWidth={2.6} aria-hidden />
-                  First time on this machine
+                  {noMachineHistoryLine(coverage)}
                 </span>
                 <p className="eq-sheet__first-body">
-                  {client?.firstName || "This client"} has no history here yet. Set up from the guide
-                  {equipment.guide ? " below" : " (none on file for this machine yet)"}, then save the settings so the next trainer has them.
+                  {noMachineHistoryBody(client?.firstName || "This client", coverage, !!equipment.guide)}
                 </p>
               </section>
             )}

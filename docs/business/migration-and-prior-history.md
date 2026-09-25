@@ -88,6 +88,25 @@ Journey can see, the prior record owns what it cannot.** The manual edit writes
 `priorHistory`, and `client.sessionCount` is the sum — the number a trainer
 would say out loud.
 
+### Where a person records it
+
+**Sessions before Journey**, on the client's profile: the line under the
+count on the header's Completed sessions tile — "412 before Journey ·
+FileMaker", or "Add sessions before Journey" when nothing is recorded yet
+(Sep 24 2026; before that the editor existed but nothing opened it). Anyone
+who can edit the client — a trainer or leader at their home studio, or an
+administrator, exactly the `clients/{id}` update rule — can change it. Anyone
+else who can open the profile can read it, with who recorded it and when.
+The same door is on **Notes & Profile → Account**, under the contract history
+(whose first tile is the years before Journey): the header's own, with its
+words and its rule, opening the same editor (landing, Sep 24 2026).
+
+The editor asks for the four things a person can know: how many, counted up
+to when, from where, and a note. `statePriorHistory()` in
+`src/lib/prior-history.ts` turns them into the record and carries
+`importedCount` and `from` over untouched, so re-stating a total never
+un-counts an import.
+
 ### Session numbering
 
 Sessions are numbered from the total, so a long-standing client's next session

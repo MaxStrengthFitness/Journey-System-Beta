@@ -10,6 +10,7 @@ import {
   priorHistoryOf,
   priorUncounted,
   recordImportedSessions,
+  statePriorHistory,
   totalSessions,
   type PriorHistory,
 } from "./prior-history";
@@ -76,6 +77,65 @@ describe("recordImportedSessions", () => {
     expect(p.importedCount).toBe(50);
     expect(recordImportedSessions(p, -5).importedCount).toBe(50);
     expect(recordImportedSessions(p, NaN).importedCount).toBe(50);
+  });
+});
+
+describe("statePriorHistory — a person's edit, as the record", () => {
+  const by = { id: "t-1", name: "Sam Lee" };
+
+  it("writes what was stated, and who stated it", () => {
+    const out = statePriorHistory(
+      null,
+      { sessions: 412, through: "2026-09-12", source: "filemaker", note: "  From the export  " },
+      by,
+    );
+    expect(out).toEqual({
+      sessions: 412,
+      importedCount: 0,
+      from: null,
+      through: "2026-09-12",
+      source: "filemaker",
+      note: "From the export",
+      recordedById: "t-1",
+      recordedByName: "Sam Lee",
+    });
+    // What the screen reads back is a record it will quote.
+    expect(isPriorHistory(out)).toBe(true);
+  });
+
+  it("keeps the importer's count, so re-stating the total never un-counts an import", () => {
+    const existing = { ...recordImportedSessions(base, 50), from: "2014-03-01" };
+    const out = statePriorHistory(existing, { sessions: 420, through: "2026-09-20", source: "paper" }, by);
+    expect(out.importedCount).toBe(50);
+    expect(out.from).toBe("2014-03-01");
+    expect(out.sessions).toBe(420);
+    expect(priorUncounted(out)).toBe(370);
+  });
+
+  it("never names the reconciler's field", () => {
+    const out = statePriorHistory(base, { sessions: 12, through: "2026-09-12", source: "other" }, by);
+    expect(out).not.toHaveProperty("sessionCount");
+  });
+
+  it("leaves nothing undefined for Firestore to refuse", () => {
+    const out = statePriorHistory(
+      { sessions: 3, through: "2026-01-01", source: "paper" },
+      { sessions: 3, through: "2026-01-01", source: "paper", note: "   " },
+      {},
+    );
+    expect(Object.values(out).some((v) => v === undefined)).toBe(false);
+    expect(out.note).toBeNull();
+    expect(out.recordedById).toBeNull();
+    expect(out.recordedByName).toBeNull();
+    expect(out.importedCount).toBe(0);
+  });
+
+  it("stores a whole, non-negative count whatever reaches it", () => {
+    const stated = (n: number) =>
+      statePriorHistory(null, { sessions: n, through: "2026-09-12", source: "other" }, by).sessions;
+    expect(stated(12.7)).toBe(12);
+    expect(stated(-4)).toBe(0);
+    expect(stated(NaN)).toBe(0);
   });
 });
 

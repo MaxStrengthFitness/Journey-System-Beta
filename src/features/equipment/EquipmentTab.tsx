@@ -16,6 +16,7 @@ import type {
   SaveWeightsResult,
 } from "./mutations";
 import type { PaneMode } from "./types";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /**
  * EQUIPMENT TAB — dual-pane.
@@ -60,6 +61,13 @@ export interface EquipmentTabProps {
   activeStudioId?: string | null;
   /** Accepted for prop compatibility with the view it replaces. */
   clientBodyWeight?: number;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The History card says "Never performed" and "First performed" only when
+   * Journey holds all of it; otherwise it names Journey's part. Cautious by
+   * default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 export function EquipmentTab({
@@ -71,6 +79,7 @@ export function EquipmentTab({
   sessions = [],
   authTrainer,
   activeStudioId,
+  coverage = "unknown",
 }: EquipmentTabProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { stats: machineStats } = useMachineStats(client);
@@ -206,6 +215,7 @@ export function EquipmentTab({
             onNoteSaved={toastSuccess}
             progression={progression}
             client={client}
+            coverage={coverage}
           />
         )}
       </div>

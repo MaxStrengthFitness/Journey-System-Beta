@@ -96,7 +96,9 @@ export function RenewalSettingsPanel({
     [studioId],
   );
 
-  const form = useDirtyForm<RenewalSettingsForm>(external, onSave);
+  const form = useDirtyForm<RenewalSettingsForm>(external, onSave, {
+    label: "the renewal settings",
+  });
   // The save callback needs the live draft; a ref keeps onSave's identity stable.
   const draftRef = React.useRef(form.value);
   draftRef.current = form.value;

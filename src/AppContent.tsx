@@ -19,28 +19,21 @@ import {
   AlertTriangle,
   LogOut,
   UserCircle,
-  ClipboardList,
   ChevronRight,
   MessageSquare,
   StickyNote,
   Settings,
   GripVertical,
-  LayoutDashboard,
-  ShieldCheck,
   Play,
-  Calendar,
   Lock,
   Edit3,
   TrendingUp,
-  PlayCircle,
   ChevronDown,
   ChevronUp,
   Building2,
   Search,
   RefreshCw,
   X,
-  GraduationCap,
-  NotebookPen,
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import {
@@ -71,13 +64,12 @@ import {
   FranchiseNetwork,
 } from "./types";
 import { OperationType, handleFirestoreError } from "./lib/firestore-errors";
-import { cutoverOf } from "./lib/client-coverage";
 import { isSessionValid } from "./lib/utils";
+import { coverageOfClient, homeCutoverOf } from "./lib/client-coverage";
 import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
   forgetLiveSession,
-  liveSessionTabLabel,
   peekLiveSessionId,
 } from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
@@ -175,6 +167,7 @@ import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
 import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
+import { useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -202,11 +195,9 @@ const LearningView = lazy(() =>
 );
 import { LoginScreen } from "./components/LoginScreen";
 import { ThemeToggle } from "./components/ThemeToggle";
-import {
-  isOwner,
-  isStudioLeader,
-} from "./lib/permissions";
-import { hasRunOfDemo } from "./features/demo-mode/access";
+import { isOwner } from "./lib/permissions";
+import { mayOpenOperations } from "./features/admin/operations-access";
+import { useGuardedPlace } from "./features/admin/useGuardedPlace";
 import { isDemoStudioId } from "./features/demo-mode/is-demo";
 import { DemoBanner } from "./features/demo-mode/DemoBanner";
 
@@ -252,7 +243,7 @@ import { useClientMutations } from "./hooks/useClientMutations";
 // Learning tab itself is lazy-loaded): the link format the bell, search and
 // notes share.
 import { parseLearningRef, type LearningRef } from "./features/learning/ref";
-import { NavButton } from "./components/NavButton";
+import { AppBottomBar } from "./components/AppBottomBar";
 
 export default function AppContent({
   user,
@@ -364,8 +355,49 @@ export default function AppContent({
     availableStudios,
   ]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [appMode, setAppMode] = useState<"trainer" | "admin">("trainer");
-  const [currentView, setCurrentView] = useState<View>("clients");
+  /*
+   * Who may open Operations: studio leaders and above, and — inside Demo Mode
+   * — everyone. "Full access" is the whole point of the demo studio (AJ, Sep
+   * 20 2026), and the Firestore rules agree, so a trainer practising there can
+   * open the half of the app their own role keeps shut without the database
+   * refusing a single thing they try. Operations scopes itself to the one
+   * realm the app is standing in, so this can never show a real studio's
+   * numbers — see features/admin/scope.ts.
+   *
+   * The menu offers Operations on this, AND the screen itself is held to it
+   * (sign-out round, Sep 24 2026): the view and the app mode below can never
+   * be Operations, or the Admins dashboard, for someone who may not open it —
+   * whether they arrived by the menu, a sign-out that left the last person's
+   * screen, or a studio switch out of Demo Mode. They are sent to the Hub.
+   * See features/admin/operations-access.ts.
+   */
+  const canOpenOperations = mayOpenOperations(authTrainer, activeStudioId);
+  const place = useGuardedPlace({
+    operations: canOpenOperations,
+    admins: isAdmin,
+  });
+  const { currentView, appMode, setAppMode } = place;
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). There is no router, so a screen leaves
+   * the tree when `currentView` (or the client, or the studio) changes — and
+   * everything typed into it goes with it. The screen and the client are
+   * therefore GUARDED state: every change asks the unsaved-changes gate
+   * first, and a screen holding typing gets "You have unsaved changes to …
+   * Leave without saving?" before it is torn down. Guarding the setters
+   * themselves reaches every button that sets them, however many props down.
+   * `guardLeave` covers the navigations that are not these two pieces of
+   * state: a studio switch, sign-out, Switch Trainer, new-client onboarding.
+   * See features/unsaved-changes/README.md.
+   *
+   * The screen is ALSO held to who may open it (useGuardedPlace, above), and
+   * the two compose: the guarded setter below is the one every button uses,
+   * while useGuardedPlace's own refusal (sending someone who may not open
+   * Operations to the Hub) writes the raw setter and never asks — it is not
+   * a navigation anyone chose, and the screen it tears down is one this
+   * person was never allowed to be on.
+   */
+  const guardLeave = useLeaveGuard();
+  const setCurrentView = useGuardedSetter<View>(currentView, place.setCurrentView);
   /*
    * LEARNING LINKS (features/learning/ref.ts). Any page in Learning — a
    * machine, an Academy page, a studio's own page — can be opened from
@@ -375,10 +407,16 @@ export default function AppContent({
    * back to where they arrived twenty taps ago.
    */
   const [learningJump, setLearningJump] = useState<LearningRef | null>(null);
-  const openLearning = useCallback((ref: LearningRef) => {
-    setLearningJump(ref);
-    setCurrentView(ref.kind === "machine" ? "machine-anatomy" : "academy");
-  }, []);
+  const openLearning = useCallback(
+    (ref: LearningRef) =>
+      // The jump is set only once leaving is agreed: set first and then
+      // refused, it would sit there and fire the next time Learning opened.
+      guardLeave(() => {
+        setLearningJump(ref);
+        setCurrentView(ref.kind === "machine" ? "machine-anatomy" : "academy");
+      }),
+    [guardLeave, setCurrentView],
+  );
   const clearLearningJump = useCallback(() => setLearningJump(null), []);
   /*
    * The bottom bar's Learning button reopens whichever section was open last:
@@ -405,7 +443,11 @@ export default function AppContent({
   const [newClientOnboardingName, setNewClientOnboardingName] = useState<
     string | null
   >(null);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  // Guarded like `currentView`: a different client is a different screen,
+  // and the client record stays MOUNTED across the change (see its discard).
+  const [selectedClientId, setSelectedClientId] = useGuardedState<
+    string | null
+  >(null);
   const [selectedClientDoc, setSelectedClientDoc] = useState<Client | null>(
     null,
   );
@@ -667,12 +709,18 @@ export default function AppContent({
   };
 
   const setView = (view: View, data?: { isIntroSession?: boolean }) => {
-    if (data?.isIntroSession) {
-      setIsIntroSession(true);
-    } else {
-      setIsIntroSession(false);
-    }
-    setCurrentView(view);
+    const go = () => {
+      if (data?.isIntroSession) {
+        setIsIntroSession(true);
+      } else {
+        setIsIntroSession(false);
+      }
+      setCurrentView(view);
+    };
+    // The intro flag moves WITH the screen: set, and then the move refused
+    // at "unsaved changes", it would start the next session as an intro.
+    if (view === currentView) go();
+    else guardLeave(go);
   };
 
   /**
@@ -738,14 +786,23 @@ export default function AppContent({
       setCurrentView("workouts");
       return;
     }
-    // Second net: the id the device remembered, read directly — this
-    // survives a heartbeat older than the stream's 60-minute cutoff.
+    // Second net: the id the device remembered, read directly — this works
+    // before the studio's sessions stream has arrived after a reload, and for
+    // a session that stream does not hold.
+    // Sep 24 2026: it is followed only while its session is LIVE. It used to
+    // be followed however old the heartbeat was, so the tab — which reads
+    // "Start Session" once nothing is live — took the trainer back into
+    // yesterday's abandoned session. An abandoned one is still reached from
+    // its client, where the Active Session asks before carrying on with it;
+    // the device just stops pointing at it (the session is not touched).
     const rememberedId = peekLiveSessionId();
     if (rememberedId) {
       try {
         const snap = await getDoc(doc(db, "sessions", rememberedId));
-        const data = snap.exists() ? (snap.data() as { status?: string; clientId?: string }) : null;
-        if (data?.status === "In-Progress" && data.clientId) {
+        const data = snap.exists()
+          ? (snap.data() as { status?: string; clientId?: string; lastHeartbeatAt?: unknown; createdAt?: unknown })
+          : null;
+        if (data?.status === "In-Progress" && data.clientId && isSessionValid(data)) {
           setSelectedClientId(data.clientId);
           setCurrentView("workouts");
           return;
@@ -960,9 +1017,28 @@ export default function AppContent({
     }
   }, [trainers.length, authTrainer?.id, user?.email, tokenRole]);
 
-  const handleTrainerLock = () => {
-    setAuthTrainer(null);
-    localStorage.removeItem("max_strength_trainer_id");
+  /*
+   * The navigations that are not `currentView` or the client, each asking
+   * the unsaved-changes gate first. Every one of them is answered by an
+   * early return below, which unmounts the whole screen.
+   */
+  const openStudioPicker = () => guardLeave(() => setIsChangingStudio(true));
+  const logOut = () => {
+    guardLeave(() => void handleLogout().catch(console.error));
+    return Promise.resolve();
+  };
+  const startNewClientOnboarding = (name: string) =>
+    guardLeave(() => setNewClientOnboardingName(name));
+  /** Trainer · Operations · Admin. Asks only when the screen would change. */
+  const switchAppMode = (mode: "trainer" | "admin", view: View) => {
+    if (view === currentView) {
+      setAppMode(mode);
+      return;
+    }
+    guardLeave(() => {
+      setAppMode(mode);
+      setCurrentView(view);
+    });
   };
 
   /*
@@ -1079,6 +1155,11 @@ export default function AppContent({
       let provider;
       if (providerName === "google") {
         provider = new GoogleAuthProvider();
+        // Always ask which account. On a shared iPad the browser can still
+        // hold the last trainer's Google session, and without this Google may
+        // sign the next person straight back in as them — Switch Trainer
+        // would switch nobody. Microsoft already asks (below).
+        provider.setCustomParameters({ prompt: "select_account" });
       } else {
         provider = new OAuthProvider("microsoft.com");
 
@@ -1274,8 +1355,17 @@ export default function AppContent({
           ref={hubSearchInputRef}
           value={hubSearchTerm}
           onChange={(e) => {
-            setHubSearchTerm(e.target.value);
-            if (currentView !== "clients") setCurrentView("clients");
+            const term = e.target.value;
+            if (currentView === "clients") {
+              setHubSearchTerm(term);
+              return;
+            }
+            // Typing here leaves the screen for the Hub, so it asks first
+            // like any other way out; refused, the letter is not kept.
+            guardLeave(() => {
+              setHubSearchTerm(term);
+              setCurrentView("clients");
+            });
           }}
           placeholder="Search clients"
           aria-label="Search clients"
@@ -1369,12 +1459,17 @@ export default function AppContent({
             openLearning(ref);
             return;
           }
-          if (view === "profile" && id) setSelectedClientId(id);
-          if (view === "studio-tasks") {
-            const intent = plannerIntentFromLink(id);
-            if (intent) requestPlanner(intent);
-          }
-          setCurrentView(view as any);
+          // One question for the whole link, asked before any of it happens:
+          // a Relay intent requested and then refused would open the next
+          // time My Studio did.
+          guardLeave(() => {
+            if (view === "profile" && id) setSelectedClientId(id);
+            if (view === "studio-tasks") {
+              const intent = plannerIntentFromLink(id);
+              if (intent) requestPlanner(intent);
+            }
+            setCurrentView(view as any);
+          });
         }}
       />
       <Button
@@ -1400,19 +1495,8 @@ export default function AppContent({
     afterOverlayClose(go);
   };
 
-  /*
-   * Who is offered Operations from the trainer menu: studio leaders and above,
-   * and — inside Demo Mode — everyone. "Full access" is the whole point of the
-   * demo studio (AJ, Sep 20 2026), and the Firestore rules agree, so a trainer
-   * practising there can open the half of the app their own role keeps shut
-   * without the database refusing a single thing they try.
-   *
-   * Operations scopes itself to the one realm the app is standing in, so this
-   * can never show a real studio's numbers — see features/admin/scope.ts.
-   */
-  const canOpenOperations =
-    isStudioLeader(authTrainer) || hasRunOfDemo(authTrainer, activeStudioId);
-
+  // Who is offered Operations from this menu: `canOpenOperations`, the same
+  // test the screen itself is held to (see useGuardedPlace, near the top).
   const headerTrainerDropdown = authTrainer ? (
     <DropdownMenu open={trainerMenuOpen} onOpenChange={setTrainerMenuOpen}>
       <DropdownMenuTrigger className="w-8 h-8 sm:w-11 sm:h-11 rounded-full font-display italic text-xs sm:text-sm flex items-center justify-center cursor-pointer shadow-sm mx-auto active:scale-95 transition-transform hover:opacity-90 bg-primary text-primary-foreground shrink-0">
@@ -1431,10 +1515,7 @@ export default function AppContent({
               <div className="flex bg-slate-100 dark:bg-bg-dark-3 p-1 rounded-xl">
                 <button
                   onClick={() =>
-                    menuNavigate(() => {
-                      setAppMode("trainer");
-                      setCurrentView("clients");
-                    })
+                    menuNavigate(() => switchAppMode("trainer", "clients"))
                   }
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "trainer" ? "bg-white dark:bg-bg-dark shadow-sm text-sky-600 dark:text-sky-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
@@ -1442,10 +1523,7 @@ export default function AppContent({
                 </button>
                 <button
                   onClick={() =>
-                    menuNavigate(() => {
-                      setAppMode("admin");
-                      setCurrentView("admin-dashboard" as any);
-                    })
+                    menuNavigate(() => switchAppMode("admin", "admin-dashboard"))
                   }
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView !== "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                 >
@@ -1455,10 +1533,7 @@ export default function AppContent({
                 {isAdmin && (
                   <button
                     onClick={() =>
-                      menuNavigate(() => {
-                        setAppMode("admin");
-                        setCurrentView("admins-dashboard" as any);
-                      })
+                      menuNavigate(() => switchAppMode("admin", "admins-dashboard"))
                     }
                     className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${appMode === "admin" && currentView === "admins-dashboard" ? "bg-white dark:bg-bg-dark shadow-sm text-orange-600 dark:text-orange-400" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
                   >
@@ -1489,8 +1564,22 @@ export default function AppContent({
         <DropdownMenuSeparator className="my-2 bg-slate-700" />
 
         <DropdownMenuGroup>
+          {/*
+            SWITCH TRAINER hands this iPad to the next person (sign-out round,
+            Sep 24 2026). It used to clear the trainer profile and leave the
+            Google or Microsoft sign-in in place, which the app reads as "signed
+            in, but not a trainer": a dead end on "not registered as an
+            authorized trainer". It was left from the facility-account days,
+            when one sign-in served the studio and trainers switched with a
+            PIN. PINs are gone and everyone signs in as themselves, so switching
+            trainer IS signing out: the next person gets the sign-in screen
+            with an account chooser, this iPad keeps its pinned studio, and
+            nothing of the last person is left on screen (features/sign-out).
+            For now it is the same as Log Out Facility; whether to merge the two
+            or make the second one also un-pin the iPad is AJ's call.
+          */}
           <DropdownMenuItem
-            onClick={() => menuNavigate(handleTrainerLock)}
+            onClick={() => menuNavigate(() => void logOut())}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-orange-500 hover:bg-orange-500/10 dark:bg-orange-600/10 focus:bg-orange-500/10 focus:text-orange-500 cursor-pointer"
           >
             <Lock className="w-4 h-4" />
@@ -1498,7 +1587,7 @@ export default function AppContent({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => menuNavigate(() => setIsChangingStudio(true))}
+            onClick={() => menuNavigate(openStudioPicker)}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest cursor-pointer hover:bg-slate-700 hover:text-slate-900 dark:text-white dark:hover:text-slate-50 focus:bg-slate-700 focus:text-slate-900"
           >
             <Building2 className="w-4 h-4 text-amber-500" />
@@ -1506,7 +1595,7 @@ export default function AppContent({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => menuNavigate(() => void handleLogout())}
+            onClick={() => menuNavigate(() => void logOut())}
             className="rounded-xl flex items-center gap-3 p-3 font-bold uppercase text-[11px] tracking-widest text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10 focus:text-rose-500 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
@@ -1545,7 +1634,7 @@ export default function AppContent({
           {/* Above the header, and outside the `workouts` condition below, so
               it is on the Active Session too — see DemoBanner.tsx. */}
           {isDemoStudioId(activeStudioId) && (
-            <DemoBanner onLeave={() => setIsChangingStudio(true)} />
+            <DemoBanner onLeave={openStudioPicker} />
           )}
 
           {/* Header */}
@@ -1553,7 +1642,7 @@ export default function AppContent({
             <AppHeader
               variant={theme === "light" ? "light" : "dark"}
               studioName={activeStudioName || undefined}
-              onStudioClick={() => setIsChangingStudio(true)}
+              onStudioClick={openStudioPicker}
               rightControls={headerRightControls}
               trainerDropdown={headerTrainerDropdown}
               searchSlot={headerSearchSlot}
@@ -1594,7 +1683,7 @@ export default function AppContent({
                     kaizenClientIds={kaizenClientIds}
                     liveAuthTrainer={liveAuthTrainer}
                     onUpdateSessions={updateClientSessions}
-                    onStartNewClientOnboarding={setNewClientOnboardingName}
+                    onStartNewClientOnboarding={startNewClientOnboarding}
                     studioRosterReady={rosterStatus === "ready"}
                   />
                 )}
@@ -1610,7 +1699,7 @@ export default function AppContent({
                       authTrainer?.role === "Founder"
                     }
                     activeStudioId={activeStudioId}
-                    journeyCutoverDate={cutoverOf(studios, activeStudioId)}
+                    cutoverStudios={studios}
                     authTrainer={authTrainer}
                     onSelectClient={(id) => {
                       setSelectedClientId(id);
@@ -1695,7 +1784,7 @@ export default function AppContent({
                     setSelectedClientId={setSelectedClientId}
                     showClientPicker={showClientPicker}
                     setShowClientPicker={setShowClientPicker}
-                    onStartNewClientOnboarding={setNewClientOnboardingName}
+                    onStartNewClientOnboarding={startNewClientOnboarding}
                     setClientFormData={setClientFormData}
                     onOpenInfo={(m) => {
                       setInfoMachineId(m.id!);
@@ -1707,7 +1796,7 @@ export default function AppContent({
                     isIntroSession={isIntroSession}
                     rightControls={headerRightControls}
                     trainerDropdown={headerTrainerDropdown}
-                    onStudioClick={() => setIsChangingStudio(true)}
+                    onStudioClick={openStudioPicker}
                   />
                 )}
                 {currentView === "profile" && (
@@ -1719,7 +1808,12 @@ export default function AppContent({
                     authTrainer={authTrainer}
                     trainers={trainers}
                     onDelete={handleDeleteClient}
-                    onSelectReport={reportSelection.openReport}
+                    // Asked before the report is chosen, not only before the
+                    // screen changes: chosen and then refused, the filed
+                    // report would stay selected for the next visit.
+                    onSelectReport={(reportId) =>
+                      guardLeave(() => reportSelection.openReport(reportId))
+                    }
                     onNewReport={reportSelection.newReport}
                     setView={setView}
                     setSelectedClientId={setSelectedClientId}
@@ -1759,6 +1853,7 @@ export default function AppContent({
                       <ClientProgressReportView
                         key={reportEditorKey(selectedClientId, reportId)}
                         client={reportClient}
+                        coverage={coverageOfClient(reportClient, homeCutoverOf(studios, reportClient))}
                         trainer={authTrainer}
                         machines={machines}
                         existingReportId={reportId}
@@ -1839,7 +1934,7 @@ export default function AppContent({
                     trainers={trainers}
                     machines={machines}
                     activeStudioId={activeStudioId}
-                    onLogout={handleLogout}
+                    onLogout={logOut}
                     setView={(view) => setCurrentView(view as any)}
                   />
                 )}
@@ -1879,7 +1974,7 @@ export default function AppContent({
                       }
                       activeStudioId={activeStudioId}
                       onSelectClient={setSelectedClientId}
-                      onStartNewClientOnboarding={setNewClientOnboardingName}
+                      onStartNewClientOnboarding={startNewClientOnboarding}
                       setView={setView}
                       clients={clients}
                       scheduleWindow={{
@@ -1907,123 +2002,18 @@ export default function AppContent({
             </Suspense>
           </main>
 
-          {/* Navigation Bar */}
-          {appMode === "trainer" ? (
-            <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
-              <NavButton
-                active={currentView === "clients"}
-                onClick={() => setCurrentView("clients")}
-                icon={<Users className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Hub"
-              />
-              <NavButton
-                active={[
-                  "profile",
-                  "progress-report",
-                  "client-directory",
-                ].includes(currentView)}
-                onClick={() => {
-                  if (selectedClientId) {
-                    setCurrentView("profile");
-                  } else {
-                    setCurrentView("client-directory");
-                  }
-                }}
-                icon={<ClipboardList className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Client"
-              />
-              <NavButton
-                active={currentView === "workouts"}
-                onClick={() => {
-                  void resumeLiveSession();
-                }}
-                icon={<PlayCircle className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label={liveSessionTabLabel(liveSession)}
-                activeColor={liveSession ? "text-orange-500" : undefined}
-                activeBg={
-                  liveSession
-                    ? "bg-orange-500/10 dark:bg-orange-600/10"
-                    : undefined
-                }
-                activeIndicator={
-                  liveSession
-                    ? "bg-orange-500 dark:bg-orange-600"
-                    : undefined
-                }
-                attention={!!liveSession && currentView !== "workouts"}
-              />
-              {/*
-                LEARNING — the Catalog and the Academy in one slot (Sep 10
-                2026). Six buttons again. NavButton takes `flex-1 min-w-0` so
-                they divide the bar evenly and the labels truncate rather than
-                overflowing on a narrow phone; do not shorten the labels, they
-                are how people find the tab. Which of the two it opens is
-                whichever was open last — see lastLearningView.
-              */}
-              <NavButton
-                active={isLearningView}
-                onClick={() => setCurrentView(lastLearningView)}
-                icon={<GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Learning"
-              />
-              <NavButton
-                active={currentView === "studio-tasks"}
-                onClick={() => setCurrentView("studio-tasks")}
-                icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="My Studio"
-              />
-              <NavButton
-                active={currentView === "calendar"}
-                onClick={() => setCurrentView("calendar")}
-                icon={<Calendar className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Calendar"
-              />
-            </nav>
-          ) : (
-            <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
-              <NavButton
-                active={currentView === "admin-dashboard"}
-                onClick={() => setCurrentView("admin-dashboard" as any)}
-                icon={<LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />}
-                label="Operations"
-                activeColor="text-orange-500"
-                activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-                activeIndicator="bg-orange-500 dark:bg-orange-600"
-              />
-              {/*
-                The Admins dashboard (Operations overhaul, Sep 2026): where the
-                app is managed — the standard template, the master catalog,
-                every location, the machinery. Administrators and the founder.
-              */}
-              {isAdmin && (
-                <NavButton
-                  active={currentView === "admins-dashboard"}
-                  onClick={() => setCurrentView("admins-dashboard" as any)}
-                  icon={<ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />}
-                  label="Admin"
-                  activeColor="text-orange-500"
-                  activeBg="bg-orange-500/10 dark:bg-orange-600/10"
-                  activeIndicator="bg-orange-500 dark:bg-orange-600"
-                />
-              )}
-              {/*
-                The Franchise screen that sat here (owners and admins) folded
-                into Operations on Sep 19 2026: its tiles and locations are the
-                Overview under "All my studios", its team editor was a second
-                Staff & Roles, its composer a second Announcements. One
-                dashboard, one scope.
-              */}
-              {/*
-                "Customize Studio" used to be a third NavButton here. It went to
-                `trainer-hub` - the same place the gear in the header goes, from
-                every screen in the app - under a different name and a different
-                icon. Two routes to one screen is a wrong guess waiting to
-                happen; two routes with different NAMES teaches people the app
-                has two settings screens and they picked the wrong one. The gear
-                stays, because it is reachable from everywhere. Section 16.
-              */}
-            </nav>
-          )}
+          {/* Navigation Bar — every screen change it makes goes through the
+              guarded setCurrentView (unsaved changes, Sep 24 2026). */}
+          <AppBottomBar
+            appMode={appMode}
+            currentView={currentView}
+            isAdmin={isAdmin}
+            hasClient={!!selectedClientId}
+            liveSession={liveSession}
+            lastLearningView={lastLearningView}
+            onNavigate={setCurrentView}
+            onResumeSession={() => void resumeLiveSession()}
+          />
         </div>
 
         {/* Machine Information Deep Dive Dialog */}

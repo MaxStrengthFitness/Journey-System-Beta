@@ -566,7 +566,8 @@ export function normalizeLocation(loc: StoredProfileLocation): ProfileLocation {
  * Resuming
  * ------------------------------------------------------------------ */
 
-const STORE_PREFIX = "msf_profile_nav:";
+/** Exported for sign-out, which clears these one-shot handoffs (features/sign-out). */
+export const STORE_PREFIX = "msf_profile_nav:";
 
 /**
  * Where the trainer was on THIS client, last time.

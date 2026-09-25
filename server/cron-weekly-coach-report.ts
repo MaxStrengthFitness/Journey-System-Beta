@@ -16,6 +16,14 @@
  * session's outcome is recorded (Completed / No-Show / Cancelled / Scheduled).
  * Nothing is inferred: a trainer with no bookings gets no email rather than an
  * email full of zeroes.
+ *
+ * NOT READY TO SWITCH ON (landing, Sep 24 2026): that paragraph is no longer
+ * true. The schedule sync never writes Completed or No-Show, so this counts
+ * zero completed sessions for every coach. Done means a session was LOGGED in
+ * Journey (CLAUDE.md; docs/rounds/2026-09-24-done-means-logged.md): read the
+ * week's `sessions` once by `hostedAtStudioId` and ask
+ * `src/lib/booking-state.ts` (`loggedSessions`, `bookingState`) before
+ * uncommenting this job in render.yaml.
  */
 
 import { Timestamp } from "firebase-admin/firestore";

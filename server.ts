@@ -22,6 +22,7 @@ import {
   pickRequestedClient,
 } from "./src/lib/mindbody-demographics-map.ts";
 import { requireStaff } from "./server/auth.ts";
+import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on("unhandledRejection", (reason, promise) => {
@@ -44,21 +45,16 @@ async function startServer() {
   // Mounted first so it wraps every route and the static handler below.
   app.use(compression());
 
-  // Only the two Gemini image endpoints send big payloads. Applying their 50mb
-  // ceiling to every route meant any POST could allocate 50mb, and Render runs
-  // this as a single process (WEB_CONCURRENCY=1) on a small instance: a few
-  // concurrent large bodies were enough to exhaust its memory.
-  const IMAGE_UPLOAD_PATHS = new Set([
-    "/api/gemini/processChart",
-    "/api/gemini/extractSettings",
-  ]);
-  const largeJson = express.json({ limit: "50mb" });
+  // Every body is capped at 1mb here, except the two Gemini image routes:
+  // they read their own (larger) body AFTER the staff sign-in, so a caller
+  // with no sign-in can't make this process read one. Render runs it as a
+  // single process (WEB_CONCURRENCY=1) on a small instance, and a few
+  // concurrent large bodies were once enough to exhaust its memory. See
+  // server/gemini-routes.ts.
   const standardJson = express.json({ limit: "1mb" });
 
   app.use((req, res, next) =>
-    IMAGE_UPLOAD_PATHS.has(req.path)
-      ? largeJson(req, res, next)
-      : standardJson(req, res, next),
+    isGeminiPath(req.path) ? next() : standardJson(req, res, next),
   );
 
   // Without this, an over-limit body falls to Express's default handler and
@@ -84,31 +80,15 @@ async function startServer() {
     res.json({ ok: true, uptime: process.uptime() });
   });
 
-  app.post("/api/gemini/processChart", async (req, res) => {
-    try {
-      const { images, expectedSessions, pageIndex, totalPages } = req.body;
-      const data = await processLegacyChart(
-        images,
-        expectedSessions,
-        pageIndex,
-        totalPages,
-      );
-      res.json(data);
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/api/gemini/extractSettings", async (req, res) => {
-    try {
-      const { images } = req.body;
-      const data = await extractMachineSettingsFromImage(images);
-      res.json(data);
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
-    }
+  // The legacy chart importer's OCR. Each route carries its own staff sign-in
+  // (the same check as /api/mindbody/*), a per-person limit and its body
+  // ceiling, so where it sits in this file no longer decides who can call it.
+  // Never declare an /api/gemini route here directly: the shared body parser
+  // above skips that path, and the sign-in lives in registerGeminiRoutes.
+  registerGeminiRoutes(app, {
+    requireSignIn: requireStaff(),
+    processLegacyChart,
+    extractMachineSettingsFromImage,
   });
 
   app.post("/api/log-error", (req, res) => {

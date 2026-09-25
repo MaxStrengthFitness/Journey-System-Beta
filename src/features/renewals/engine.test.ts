@@ -488,8 +488,8 @@ describe("flags", () => {
           subjectiveSnapshot: {
             reportId: "r",
             date: "2025-11-20",
-            overallStatus: "Yellow",
-            overallPercent: 60,
+            overallStatus: "yellow",
+            overallPercent: 0.6,
             proteinStatus: null,
             hydrationStatus: null,
             redCategories: ["sleepRecovery"],

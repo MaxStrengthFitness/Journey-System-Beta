@@ -934,10 +934,14 @@ function fordBeats(entries: readonly FordEntry[], tz?: string): StoryBeat[] {
  *   journey   only Journey's own dates: her first session here, else when
  *             Journey's record of her was made. "In Journey since".
  *
- * Deliberately not `resolveClientSince`'s order, which puts Journey's first
- * session FIRST: for a long-standing client with no prior record that reads
- * "Client since Sep 2026" (the header's words — flagged for AJ, not changed
- * here). A confident wrong date is worse than a cautious one.
+ * Its own function, not `resolveClientSince`: it has the "at-least" kind
+ * and reads the prior record's `from`, which that one does not. Both count
+ * Journey's first session as proof of when she started only when Journey
+ * holds her whole story (the header, the report and the Brief pass the
+ * coverage since the landing, Sep 24 2026), so for a long-standing client
+ * whose only date is the day Journey met her the header and this both say
+ * "In Journey since Sep 2026". A confident wrong date is worse than a
+ * cautious one.
  */
 export type StorySinceKind = "client" | "at-least" | "journey";
 

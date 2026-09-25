@@ -24,6 +24,7 @@ import {
   type FormState,
   type SaveStatus,
 } from "./formState";
+import { useUnsavedChanges, type UnsavedHandle } from "../unsaved-changes";
 
 /** How long the green "Saved" confirmation stays up before going quiet. */
 const SAVED_FLASH_MS = 2200;
@@ -43,6 +44,13 @@ export interface DirtyForm<T extends object> {
   changed: (keyof T)[];
   /** True when navigating away would lose typing. */
   unsaved: boolean;
+  /**
+   * This form's place in the app-wide unsaved-changes registry. Every form
+   * built on this hook is registered: a tab or section switch, or the app's
+   * own navigation, asks before tearing it down. `leave.guard(onBack)` is
+   * for a screen's own Back button.
+   */
+  leave: UnsavedHandle;
 }
 
 export function useDirtyForm<T extends object>(
@@ -57,6 +65,13 @@ export function useDirtyForm<T extends object>(
    * the thrown message is surfaced in the save bar.
    */
   onSave: (patch: Partial<T>) => Promise<void>,
+  options?: {
+    /**
+     * Finishes "You have unsaved changes to …" — "the studio's hours",
+     * "Leg Press". Say what the trainer would recognise.
+     */
+    label?: string;
+  },
 ): DirtyForm<T> {
   const [state, setState] = useState<FormState<T>>(() => initForm(external));
 
@@ -98,6 +113,15 @@ export function useDirtyForm<T extends object>(
   );
 
   const discard = useCallback(() => setState((prev) => discardEdits(prev)), []);
+
+  // `unsaved`, not `dirty`: while a save is in flight the typing is on its
+  // way to Firestore, and a screen that leaves itself once the save lands
+  // (a new catalog machine) must not be asked about it.
+  const leave = useUnsavedChanges(
+    hasUnsavedWork(state),
+    options?.label ?? "this page",
+    { onDiscard: discard },
+  );
 
   const save = useCallback(async () => {
     // Read the live state rather than the closed-over one so two quick taps
@@ -149,5 +173,6 @@ export function useDirtyForm<T extends object>(
     patch: changedPatch(state),
     changed: changedKeys(state),
     unsaved: hasUnsavedWork(state),
+    leave,
   };
 }

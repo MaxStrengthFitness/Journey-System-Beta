@@ -30,6 +30,8 @@
  *   3. The settings rail shows the STUDIO's dial labels (phase B).
  *   4. A machine with nothing on file shows no invented "G 0" (phase C).
  *   5. Two dials that share a first letter both survive (phase C).
+ *   6. An abandoned session is asked about, never adopted (Sep 24 2026):
+ *      Start the next morning used to reopen yesterday's session silently.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -116,6 +118,37 @@ const SESSION_DOCS = [
 ];
 
 /**
+ * Sep 24 2026 — the abandoned session. Yesterday's, never finished: its
+ * heartbeat is 22 hours old, which the staleness rule calls abandoned.
+ */
+const STALE_ID = "sess-yesterday";
+const TWENTY_TWO_HOURS_AGO = new Date(Date.now() - 22 * 60 * 60_000);
+const STALE_SESSION_DOCS = [
+  {
+    id: STALE_ID,
+    data: () => ({
+      clientId: CLIENT_ID,
+      status: "In-Progress",
+      sessionNumber: 12,
+      date: "2026-09-23",
+      trainerId: "uid-coach",
+      trainerInitials: "JC",
+      hostedAtStudioId: STUDIO_ID,
+      clientHomeStudioId: STUDIO_ID,
+      sessionMachineIds: ["m-leg-press"],
+      startTime: TWENTY_TWO_HOURS_AGO,
+      createdAt: TWENTY_TWO_HOURS_AGO,
+      lastHeartbeatAt: TWENTY_TWO_HOURS_AGO,
+    }),
+  },
+];
+
+/** Which sessions the client's stream holds; each test may swap it. */
+let sessionDocs: { id: string; data: () => any }[] = SESSION_DOCS;
+/** Single documents a direct `getDoc` can find, by path. */
+let singleDocs: Record<string, any> = {};
+
+/**
  * The client has values for BOTH seat dials on the leg press. Before phase C
  * these collapsed onto "S" and only one survived. The rear delt has nothing
  * at all, which before phase C rendered as "G 0".
@@ -141,7 +174,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   const docsFor = (p: string) => {
     if (p === "machines") return CATALOG_DOCS;
     if (p === `studios/${STUDIO_ID}/roster`) return ROSTER_DOCS;
-    if (p === "sessions") return SESSION_DOCS;
+    if (p === "sessions") return sessionDocs;
     if (p === "clientMachineSettings") return SETTINGS_DOCS;
     return [];
   };
@@ -158,14 +191,30 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     onSnapshot: (q: any, next: any) => {
       const cb = typeof next === "function" ? next : next?.next;
       const docs = docsFor(q?.__path ?? "");
-      cb?.({ docs, size: docs.length, empty: docs.length === 0, forEach: (f: any) => docs.forEach(f) });
+      // Both shapes: the briefing (mounted since the Sep 24 tests) also
+      // listens to single documents, which answer exists()/data().
+      const single = singleDocs[q?.__path ?? ""];
+      cb?.({
+        docs,
+        size: docs.length,
+        empty: docs.length === 0,
+        forEach: (f: any) => docs.forEach(f),
+        id: String(q?.__path ?? "").split("/").pop(),
+        exists: () => single !== undefined,
+        data: () => single,
+      });
       return () => {};
     },
     getDocs: async (q: any) => {
       const docs = docsFor(q?.__path ?? "");
       return { docs, size: docs.length, empty: docs.length === 0, forEach: (f: any) => docs.forEach(f) };
     },
-    getDoc: async () => ({ exists: () => false, data: () => undefined }),
+    getDoc: async (ref: any) => {
+      const data = singleDocs[ref?.__path ?? ""];
+      return data
+        ? { exists: () => true, id: String(ref.__path).split("/").pop(), data: () => data }
+        : { exists: () => false, data: () => undefined };
+    },
     addDoc: async () => ({ id: "new-doc" }),
     setDoc: async (ref: any, data: any, opts?: any) => {
       writes.push({ path: ref.__path, data, merge: !!opts?.merge });
@@ -189,9 +238,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   };
 });
 
+/** The studio list the context hands out; a test may give the studios cutover days. */
+const studioCtx = vi.hoisted(() => ({ studios: undefined as undefined | { id: string; journeyCutoverDate?: string }[] }));
+
 vi.mock("../contexts/ActiveStudioContext", async (importOriginal) => {
   const realMod = await importOriginal<any>();
-  return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID }) };
+  return { ...realMod, useActiveStudio: () => ({ activeStudioId: STUDIO_ID, studios: studioCtx.studios }) };
 });
 
 import { WorkoutTrackerView } from "./WorkoutTrackerView";
@@ -222,6 +274,10 @@ async function mount(ui: React.ReactNode) {
 
 beforeEach(() => {
   writes.length = 0;
+  sessionDocs = SESSION_DOCS;
+  singleDocs = {};
+  localStorage.clear();
+  studioCtx.studios = undefined;
 });
 
 afterEach(async () => {
@@ -262,11 +318,11 @@ const appWideMachines: Machine[] = [
   },
 ];
 
-function Tracker() {
+function Tracker({ who = client }: { who?: Client } = {}) {
   return (
     <WorkoutTrackerView
       clientId={CLIENT_ID}
-      clients={[client]}
+      clients={[who]}
       machines={appWideMachines}
       trainers={[trainer]}
       user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
@@ -324,5 +380,140 @@ describe("the Active Session mounts and draws this studio's floor", () => {
       .map((n) => n.textContent ?? "")
       .join(" ");
     expect(railText).not.toMatch(/\bG\s*0\b/);
+  });
+});
+
+describe("an abandoned session is asked about, never adopted (Sep 24 2026)", () => {
+  const button = (label: string) =>
+    Array.from(document.body.querySelectorAll("button")).find(
+      (b) => (b.textContent ?? "").trim().toLowerCase() === label.toLowerCase(),
+    );
+
+  it("the reported bug: yesterday's session is not reopened — the question is asked over the briefing", async () => {
+    sessionDocs = STALE_SESSION_DOCS;
+    const host = await mount(<Tracker />);
+    // Not the tracker: that was the bug — today's sets landing in yesterday's session.
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+    const body = document.body.textContent ?? "";
+    expect(body).toContain("has an unfinished session");
+    expect(body).toContain("It was never finished.");
+    expect(button("Resume it")).toBeTruthy();
+    expect(button("Start a new session")).toBeTruthy();
+    // Asking writes nothing.
+    expect(writes.filter((w) => w.path === `sessions/${STALE_ID}`)).toEqual([]);
+  });
+
+  it("Resume carries on in that session and marks it running again", async () => {
+    sessionDocs = STALE_SESSION_DOCS;
+    const host = await mount(<Tracker />);
+    await act(async () => {
+      button("Resume it")!.click();
+    });
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    const heartbeat = writes.find((w) => w.path === `sessions/${STALE_ID}`);
+    expect(heartbeat?.data).toHaveProperty("lastHeartbeatAt");
+    // Only the heartbeat: its day, its status and its sets are untouched.
+    expect(Object.keys(heartbeat!.data)).toEqual(["lastHeartbeatAt"]);
+    expect(localStorage.getItem("max_strength_active_session_id")).toBe(STALE_ID);
+  });
+
+  it("Start a new session leaves it exactly as it is and lands on the briefing", async () => {
+    sessionDocs = STALE_SESSION_DOCS;
+    const host = await mount(<Tracker />);
+    await act(async () => {
+      button("Start a new session")!.click();
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+    expect(button("Resume it")).toBeFalsy();
+    expect(writes.filter((w) => w.path === `sessions/${STALE_ID}`)).toEqual([]);
+  });
+
+  it("a live session is still adopted without asking", async () => {
+    // SESSION_DOCS' heartbeat is now: nothing to ask.
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(document.body.textContent ?? "").not.toContain("has an unfinished session");
+  });
+
+  it("the device's remembered session is not adopted for a different client", async () => {
+    // The takeover check used to compare against `selectedClient`, which is
+    // null on the first render, so it adopted the remembered session for
+    // whichever client was opened.
+    sessionDocs = [];
+    localStorage.setItem("max_strength_active_session_id", "sess-other");
+    singleDocs["sessions/sess-other"] = {
+      clientId: "c-someone-else",
+      status: "In-Progress",
+      trainerInitials: "JC",
+      lastHeartbeatAt: new Date(),
+      createdAt: new Date(),
+    };
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+  });
+
+  it("the device's remembered session is not adopted once it is stale", async () => {
+    sessionDocs = [];
+    localStorage.setItem("max_strength_active_session_id", STALE_ID);
+    singleDocs[`sessions/${STALE_ID}`] = STALE_SESSION_DOCS[0].data();
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-sbar")).toBeNull();
+  });
+});
+
+/*
+ * "#12" in the session bar and on today's column is a claim about the client
+ * (Sep 24 2026). For a migration client nobody has recorded a total for, the
+ * number is only what Journey has seen - so it is printed only through the
+ * Hub card's gate, and coverage is judged by the client's HOME studio's
+ * cutover, not the iPad's.
+ */
+describe("the Active Session's session number", () => {
+  const barNumber = (host: HTMLElement) => host.querySelector(".jg-sbar__meta b")?.textContent ?? null;
+  const liveHead = (host: HTMLElement) => host.querySelector(".jg-head--live .jg-head__n")?.textContent ?? null;
+
+  it("prints no number when nobody knows how much of her story Journey holds", async () => {
+    const host = await mount(<Tracker />);
+    expect(host.querySelector(".jg-sbar")).toBeTruthy();
+    expect(barNumber(host)).toBeNull();
+    expect(host.querySelector(".jg-sbar__meta")?.textContent).not.toContain("#");
+    expect(liveHead(host)).toBe("JC");
+  });
+
+  it("prints it for a client Mindbody says is genuinely new", async () => {
+    const host = await mount(<Tracker who={{ ...client, clientsNumberOfVisitsAtSite: 3 } as Client} />);
+    expect(barNumber(host)).toBe("#12");
+    expect(liveHead(host)).toBe("#12 · JC");
+  });
+
+  it("prints it for a long-standing client once her total is recorded", async () => {
+    const recorded = {
+      ...client,
+      clientsNumberOfVisitsAtSite: 400,
+      priorHistory: { sessions: 400, importedCount: 0, through: "2026-09-01", source: "filemaker" },
+    } as Client;
+    const host = await mount(<Tracker who={recorded} />);
+    expect(barNumber(host)).toBe("#12");
+  });
+
+  it("judges coverage by the client's HOME studio's cutover, not the iPad's", async () => {
+    // The iPad is at Solon, which has no cutover; her home is Westlake, which
+    // moved onto Journey before her first session there - so Journey holds her
+    // whole story and the number is hers.
+    studioCtx.studios = [{ id: STUDIO_ID }, { id: "westlake", journeyCutoverDate: "2026-01-01" }];
+    const host = await mount(
+      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
+    );
+    expect(barNumber(host)).toBe("#12");
+
+    // The same client read by Solon's (absent) day would have had no number.
+    studioCtx.studios = [{ id: STUDIO_ID, journeyCutoverDate: "2026-01-01" }, { id: "westlake" }];
+    const other = await mount(
+      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
+    );
+    expect(barNumber(other)).toBeNull();
   });
 });

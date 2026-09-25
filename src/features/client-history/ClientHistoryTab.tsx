@@ -8,6 +8,10 @@ import { trainerLookup } from "./trainers";
 import { routineNamer } from "./model";
 import { useSessionHistory, useSessionLogs } from "./useSessionHistory";
 import type { HistorySession } from "./model";
+import { useClientCoverage } from "../../hooks/useClientCoverage";
+import { canQuoteSessionNumber } from "../../lib/client-coverage";
+import { ownedWindow } from "../../lib/history-claims";
+import { priorHistoryOf } from "../../lib/prior-history";
 
 /**
  * The client profile's History tab: every read and write lives here, every
@@ -58,6 +62,20 @@ export function ClientHistoryTab({
   const trainerFor = useMemo(() => trainerLookup(trainers), [trainers]);
   const routineNameFor = useMemo(() => routineNamer(routines), [routines]);
 
+  /*
+   * What this tab may say about her past (Sep 24 2026). A gap is a break
+   * only where Journey sees every session - from her HOME studio's cutover,
+   * or after her prior record runs through - and a row is numbered only once
+   * her total is known. lib/history-claims.ts.
+   */
+  const { coverage, cutover } = useClientCoverage(client);
+  const prior = useMemo(() => priorHistoryOf(client), [client]);
+  const breakWindow = useMemo(
+    () => ownedWindow({ coverage, prior, cutover }),
+    [coverage, prior, cutover],
+  );
+  const quoteSessionNumbers = canQuoteSessionNumber(client, coverage);
+
   const openSessions = useCallback((sessions: HistorySession[]) => {
     if (sessions.length > 0) setOpened({ key: Date.now(), sessions });
   }, []);
@@ -82,6 +100,9 @@ export function ClientHistoryTab({
         view={view}
         onViewChange={onViewChange}
         hideHeader={hideHeader}
+        breakWindow={breakWindow}
+        prior={prior}
+        quoteSessionNumbers={quoteSessionNumbers}
       />
 
       {opened && (

@@ -46,7 +46,7 @@ Left out on purpose: standing FORD facts, archived and unfiled FORD details, the
 
 The page's line then adds the header's own session numbers (`sessionTotals`, so the two can never disagree): *"With Max Strength since Mar 2019. 412 sessions in FileMaker before Journey, and 49 in Journey."* The where-words are the line's own (`PRIOR_SINCE_WHERE`), each saying "before Journey" once: paper "on paper records before Journey", a trainer's estimate "before Journey (a trainer's estimate)", other just "before Journey". The sub-toggle says the year: "since 2019", "since 2025 or earlier", "in Journey since 2026" (`storyTabHint`).
 
-**Deliberately not the header's `resolveClientSince`**, which ranks Journey's first session FIRST: for a long-standing client with no prior record whose first Journey session was this month, the header reads "Client since Sep 2026". The Story says Mindbody's first visit instead. Flagged for AJ; the header is not changed here.
+**Its own function, not the header's `resolveClientSince`**, because the Story has a "since at least" kind and reads the prior record's `from`. `resolveClientSince` takes the EARLIEST proven date (Journey's first session, Mindbody's first visit, Mindbody's created date), and since the landing (Sep 24 2026) it counts Journey's first session only when the caller's coverage is "complete" with no prior record; otherwise it reads "In Journey since". So for a long-standing client whose only date is the day Journey met her, the header and the Story both say "In Journey since".
 
 ## The page
 

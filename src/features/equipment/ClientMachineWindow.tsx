@@ -12,6 +12,7 @@ import { MachineDetailPanel } from "./MachineDetailPanel";
 import { loadProgression } from "./progression";
 import { useMachineStats } from "./useMachineStats";
 import type { JournalContext } from "./mutations";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 /**
  * THE ONE MACHINE WINDOW — the client profile's answer to "tap a machine".
@@ -56,6 +57,13 @@ export interface ClientMachineWindowProps {
   /** Who writes are attributed to (the Auth uid is used — see author.ts). */
   authTrainer?: Trainer | null;
   activeStudioId?: string | null;
+  /**
+   * How much of the client's story Journey holds (lib/client-coverage.ts).
+   * The History card says "Never performed" and "First performed" only when
+   * Journey holds all of it; otherwise it names Journey's part. Cautious by
+   * default.
+   */
+  coverage?: HistoryCoverage;
 }
 
 const NO_SETTINGS: Record<string, ClientMachineSetting> = {};
@@ -84,6 +92,7 @@ function WindowBody({
   sessions = NO_SESSIONS,
   authTrainer,
   activeStudioId,
+  coverage = "unknown",
 }: ClientMachineWindowProps) {
   const { byId: catalogById } = useMachineCatalog();
   const { activeStudio } = useActiveStudio();
@@ -170,6 +179,7 @@ function WindowBody({
               onNoteSaved={toastSuccess}
               progression={progression}
               client={client}
+              coverage={coverage}
             />
           </div>
         )}

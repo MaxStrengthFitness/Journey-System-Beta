@@ -58,6 +58,7 @@ import { studioTodayKey } from "../../lib/studio-time";
 import { cprTimingCue } from "./cpr-timing";
 import { ClientHistoryTab } from "../client-history";
 import { ClinicalReviewTab } from "../clinical-review";
+import { useClientCoverage } from "../../hooks/useClientCoverage";
 import { ProgressReportArchive } from "../../components/journal/ProgressReportArchive";
 import { ProfileSubnav, type SubnavItem } from "./ProfileSubnav";
 import type { ClinicalView } from "./profile-nav";
@@ -110,6 +111,8 @@ export function ClinicalHistoryTab({
 }: ClinicalHistoryTabProps) {
   // The Deep Dive (view id "trends") is mounted on first visit and kept. See decision 4.
   const [trendsSeen, setTrendsSeen] = useState(view === "trends");
+  // "All time" only when Journey holds her whole story (lib/history-claims.ts).
+  const { coverage } = useClientCoverage(client);
   useEffect(() => {
     if (view === "trends") setTrendsSeen(true);
   }, [view]);
@@ -227,6 +230,7 @@ export function ClinicalHistoryTab({
         <div className="ptab-pane" hidden={view !== "trends"}>
           <ClinicalReviewTab
             client={client}
+            coverage={coverage}
             machines={machines}
             trainers={trainers}
             timeZone={timeZone}

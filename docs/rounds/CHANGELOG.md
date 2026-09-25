@@ -717,6 +717,16 @@ Every completed round, in the order it was written. Nothing here has been edited
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
 
+### 🛬 Built — The landing (Sep 24) — branch `landing-sep24`, one merge per branch, waiting for AJ's go
+
+*Appended out of order, like the codex below it.* The round is `2026-09-24-landing.md`.
+
+Thirteen fixes written against `master` before the client codex existed, merged onto it one at a time with the typecheck and the suite green after each: the dev preview's free port, the Renewal Brief's Pulse percentage, the Deep Dive's part-answered Pulse areas, the wingspan guard (re-applied to the codex's form), named studio access requests and a Team that no longer crashes on a nameless one, the Gemini routes behind the staff sign-in, clinical watch-outs on all twenty machines, stale sessions asked about, sign-out that starts the next person fresh, the Sessions before Journey door, the prior history sweep, the leave warning, and done means logged. Where a fix stopped at the codex's edge it was carried onto the codex's page with a test (the leave warning on the codex's Save bar and its page jumps, the door on the Account page, Watch-outs on the studio's floor); then a review of the whole branch and its fixes ("Client since" agrees with the Story, the record's edit rule reads the home as the rules do, one session count). **No rules, index, Functions or Mindbody change**; `server.ts`, `server/gemini-routes.ts` and `server/renewals-job.ts` deploy with Render. Typecheck 4 (the codex's baseline); tests 4,835 in 303 files at the end of the codex → 5,166 in 325 (`TZ=America/New_York npx vitest run --dir src`); build clean.
+
+- [ ] `scripts/ship/ship-landing-sep24.ps1 prepare`, then `golive` (the restore tag `restore/2026-09-24-before-landing`, then the push).
+- [ ] Walk Rounds 14, 15 and 16 of `docs/ops/TESTING-CHECKLIST.md` on an iPad, signed in as a Life Transformer.
+- [ ] AJ: what Start does with a stale session (`2026-09-24-stale-sessions.md`), and whether to run `scripts/repair-studio-access-requests.ts --commit`.
+
 ### 📖 Built — The client codex (Sep 23–24) — branch `client-codex`, one commit per phase, waiting for AJ's go
 
 *Appended out of order on purpose: the archive was last appended Sep 12, and the rounds between are in `README.md` beside this file.* The round is `2026-09-24-client-codex.md`.

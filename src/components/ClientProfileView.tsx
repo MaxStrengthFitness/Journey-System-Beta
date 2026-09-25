@@ -25,6 +25,7 @@ import {
   priorHistoryLabel,
   priorHistoryOf,
   priorUncounted,
+  statePriorHistory,
   totalSessions,
   type PriorHistorySource,
 } from "../lib/prior-history";
@@ -50,6 +51,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuickNoteDialog } from "../features/client-notes/QuickNoteDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getCompletedSessionCount } from "../lib/session-count-cache";
+import { isEstablishedClient, noReportSentence } from "../lib/history-claims";
+import { earliestKnownDate } from "../lib/client-since";
 import {
   ClinicalHistoryTab,
   PROFILE_TABS,
@@ -61,12 +64,12 @@ import { answerFor, type ClientAnswer } from "../features/client-profile/client-
 import { useProgressReports } from "../features/client-profile/useProgressReports";
 import {
   ClientCodex,
-  recordStudioIdOf,
   sessionTotalsOf,
   type CodexHosts,
   type CodexProgramming,
 } from "../features/client-codex";
-import { coverageOfClient, cutoverOf } from "../lib/client-coverage";
+import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
+import { ExemptFromLeaveScope, UnsavedChangesScope, useLeaveScope } from "../features/unsaved-changes";
 import {
   Client,
   Machine,
@@ -87,6 +90,8 @@ import { useToast } from "../contexts/ToastContext";
 import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
+import { StaleSessionNotice } from "../features/client-profile/StaleSessionNotice";
+import { forgetLiveSession, staleSessionStartedLine } from "../lib/live-session";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
 import {
@@ -96,6 +101,7 @@ import {
 } from "../lib/utils";
 import { useActiveSessionCheck } from "../hooks/useActiveSessionCheck";
 import { useStudioMachines } from "../hooks/useStudioMachines";
+import { studioFloorOf } from "../lib/floor-machines";
 import { resolveMachineOrder } from "../data/machine-display-order";
 import {
   RecentJourneyView,
@@ -105,7 +111,13 @@ import {
 import { EditRoutineDrawer } from "./EditRoutineDrawer";
 import {
   ProfileHeader,
+  canEditPriorHistory,
+  draftFromPrior,
+  priorHistoryDoorText,
+  readPriorHistoryDraft,
+  recordedByLine,
   resolvePackage,
+  statementChangesRecord,
   useTopTrainer,
 } from "../features/client-profile";
 import { isOnRoster, useKaizenRoster } from "../features/trainer-profile";
@@ -247,21 +259,20 @@ export function ClientProfileView({
      so the Journey grid can show the loading mark instead of empty cells
      (the sessions arrive a moment before their sets do). */
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
-  const [calculatedSessionCount, setCalculatedSessionCount] =
-    useState<number>(0);
   /*
    * What Journey itself holds — completed sessions in Journey, before any
    * prior history — stamped with the client it was counted for (client
-   * codex). `calculatedSessionCount` above starts at 0 and keeps the last
-   * client's total until the next count lands, so it cannot say "not known
-   * yet"; this can. Null until the count query answers for THIS client.
+   * codex). Null until the count query answers for THIS client, so it can
+   * say "not known yet". The header's total and the codex's numbers are
+   * both worked out from this one read (`completedTotal` below,
+   * `sessionTotalsOf` for the codex).
    */
   const [journeyCountRead, setJourneyCountRead] =
     useState<ClientAnswer<number> | null>(null);
   const journeyCompletedCount = answerFor(journeyCountRead, clientId);
 
   // Use the new soft lock handoff hook
-  const { activeInProgressSession, isCheckingActiveSession } =
+  const { activeInProgressSession, staleInProgressSession, isCheckingActiveSession } =
     useActiveSessionCheck(clientId);
 
   // Per-studio machine display order (Aug 2026): resolves a studio's own
@@ -282,7 +293,10 @@ export function ClientProfileView({
   // byId is keyed by machineId and its `order` is already resolved through
   // resolveMachineOrder, so passing it as the override is idempotent: an
   // unrostered machine yields undefined and falls back to the code default.
-  const { byId: studioFloorById } = useStudioMachines(activeStudioId);
+  const { machines: studioFloor, byId: studioFloorById } = useStudioMachines(activeStudioId);
+  // The studio's floor for the codex's Watch-outs: its own machines and their
+  // lineage, which the app-wide `machines` list has neither of.
+  const codexFloor = useMemo(() => studioFloorOf(studioFloor, machines ?? []), [studioFloor, machines]);
 
   // Discard Session (round: In-Progress dropdown) — lets a trainer scrap
   // someone else's abandoned/stuck in-progress session right from the
@@ -290,16 +304,20 @@ export function ClientProfileView({
   // deletion sequence WorkoutTrackerView's own "Scrap Session" flow uses
   // (logs, then notes, then the session doc itself) so a discarded session
   // leaves nothing orphaned behind.
-  const [showDiscardActiveSessionConfirm, setShowDiscardActiveSessionConfirm] =
-    useState(false);
+  //
+  // Sep 24 2026: Discard takes the session it was opened for — the live one
+  // from the "In progress" menu, or an abandoned one from the unfinished-
+  // session notice under the header. Before, it could only reach a live
+  // session, and an abandoned one could not be reached from anywhere.
+  const [discardTarget, setDiscardTarget] = useState<WorkoutSession | null>(null);
   const [isDiscardingActiveSession, setIsDiscardingActiveSession] =
     useState(false);
 
   const handleDiscardActiveSession = async () => {
-    if (!activeInProgressSession?.id) return;
+    if (!discardTarget?.id) return;
     setIsDiscardingActiveSession(true);
     try {
-      const sessionId = activeInProgressSession.id;
+      const sessionId = discardTarget.id;
       const logsQ = query(
         collection(db, "exerciseLogs"),
         where("sessionId", "==", sessionId),
@@ -318,14 +336,10 @@ export function ClientProfileView({
       }
       await deleteDoc(doc(db, "sessions", sessionId));
 
-      if (
-        localStorage.getItem("max_strength_active_session_id") === sessionId
-      ) {
-        localStorage.removeItem("max_strength_active_session_id");
-      }
+      forgetLiveSession(sessionId);
 
-      toastSuccess("Active session discarded.");
-      setShowDiscardActiveSessionConfirm(false);
+      toastSuccess("Session discarded.");
+      setDiscardTarget(null);
     } catch (err) {
       console.error("Error discarding active session:", err);
       toastError("Couldn't discard that session. Try again.");
@@ -410,23 +424,44 @@ export function ClientProfileView({
    * not the studio this iPad is at. It also counts Mindbody's own visit
    * number, so a long-standing client nobody has written a prior record for
    * reads "partial" rather than "unknown". One value, handed to Programming
-   * and to every page of Notes & Profile. The home is read as the rules read
-   * it (`recordStudioIdOf`: `homeStudioId`, else the older `studioId`).
+   * and to every page of Notes & Profile. The home is `homeCutoverOf`'s:
+   * `homeStudioId`, else the older `studioId` (leniently, also when the home
+   * is null - right for a cutover; who may EDIT the record reads the home as
+   * the update rule does, `ruleStudioIdOf`, in `codexAccess`).
    *
-   * The floor screens (the Active Session, the Clients list) still pass the
-   * cutover of the studio the iPad is at, so for a cross-train client the
-   * two can word coverage differently until they move to the home too.
+   * The floor screens use the same home cutover since the prior-history
+   * sweep (the Active Session, the Clients list and the progress report go
+   * through `homeCutoverOf`, which is this reading), so for a cross-train
+   * client every screen words coverage the same way.
    */
-  const journeyCutover = cutoverOf(studios, recordStudioIdOf(client));
+  const journeyCutover = homeCutoverOf(studios, client);
   const clientCoverage = useMemo(
     () => coverageOfClient(client, journeyCutover),
     [client, journeyCutover],
   );
+  /* "#N" only through the Hub card's gate (lib/client-coverage.ts). */
+  const canQuoteNumber = canQuoteSessionNumber(client, clientCoverage);
 
   const clientSessionCountRef = useRef<number | undefined>(client?.sessionCount);
   useEffect(() => {
     clientSessionCountRef.current = client?.sessionCount;
   }, [client?.sessionCount]);
+
+  /*
+   * THE TOTAL THE HEADER AND THE GRID NUMBER FROM (Sep 24 2026).
+   * A count that started at 0 and kept the last client's total, and never
+   * landed at all when the count query failed, had a client of four hundred
+   * sessions read "Completed sessions 0" and the grid number her loaded page
+   * #7 down to #1. So: from the ONE stamped read the codex uses too
+   * (`journeyCompletedCount`, plus the prior record's uncounted part - the
+   * one arithmetic rule); until THIS client has been counted, the stored
+   * total stands in, and with neither the header says it does not know.
+   * Unknown is never zero. (The landing, Sep 24: this was a second stamped
+   * copy of the same count, which could disagree with the codex while it
+   * loaded.)
+   */
+  const completedTotal: number | null =
+    totalSessions(journeyCompletedCount, priorHistory) ?? client?.sessionCount ?? null;
 
   useEffect(() => {
     if (!clientId) return;
@@ -448,8 +483,6 @@ export function ClientProfileView({
        */
       const total = totalSessions(journeyCount, priorHistory);
       if (total === null) return;
-
-      setCalculatedSessionCount(total);
 
       if (clientSessionCountRef.current !== total) {
         clientSessionCountRef.current = total;
@@ -481,8 +514,16 @@ export function ClientProfileView({
    * lives in one reducer: see features/client-profile/profile-nav.ts. It also
    * resumes per client, which is why walking to the Journey grid and back
    * lands on the routine you were reading rather than resetting to A.
+   *
+   * UNSAVED CHANGES (Sep 24 2026): the tabs unmount when hidden, so a tab
+   * change asks first about the typing inside them — the record's Save bar,
+   * Setup's drafts, an open Edit Routine drawer. `tabsScope` wraps the tabs
+   * below; nothing outside it (the header, the machine window) is asked
+   * about, because a tab change does not touch it.
    */
+  const tabsScope = useLeaveScope();
   const nav = useProfileNav(clientId, {
+    guard: tabsScope.guard,
     programmingDefault: defaultProgrammingView({
       todayRoutine:
         selectedRoutineTodayId && routines.find((r) => r.id === selectedRoutineTodayId)?.name?.includes("B")
@@ -548,19 +589,51 @@ export function ClientProfileView({
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
 
+  /*
+   * SESSIONS BEFORE JOURNEY (Sep 24 2026). The header's Completed sessions
+   * tile is the door; anyone the clients/{id} update rule lets write this
+   * client edits, anyone else reads. features/client-profile/prior-history-door.ts.
+   */
+  const canEditPrior = canEditPriorHistory(liveAuthTrainer, client);
+  const priorDoorText = priorHistoryDoorText(priorHistory, canEditPrior);
+  const priorReading = readPriorHistoryDraft(
+    { sessions: sessionCountInput, source: priorSource, through: priorThrough, note: priorNote },
+    studioTodayKey(),
+  );
+  const priorCanSave =
+    canEditPrior && priorReading.ok && statementChangesRecord(priorReading.statement, priorHistory);
+
   /**
    * Opening the dialog seeds it from whatever is on the client, so an edit is
    * a correction rather than a re-entry.
    */
   const openSessionCountEditor = (open: boolean) => {
     if (open) {
-      setSessionCountInput(String(priorHistory?.sessions ?? ""));
-      setPriorSource(priorHistory?.source ?? "filemaker");
-      setPriorThrough(priorHistory?.through ?? studioTodayKey());
-      setPriorNote(priorHistory?.note ?? "");
+      const draft = draftFromPrior(priorHistory, studioTodayKey());
+      setSessionCountInput(draft.sessions);
+      setPriorSource(draft.source);
+      setPriorThrough(draft.through);
+      setPriorNote(draft.note);
     }
     setIsEditingSessionCount(open);
   };
+
+  /*
+   * The door, worked out once and handed to both places that draw it: the
+   * header's Completed sessions tile and the client codex's Account page
+   * (landing, Sep 24 2026). Opening reads the record at the moment of the
+   * tap (through the ref), so a door handed down in a memo never seeds the
+   * editor from an older snapshot.
+   */
+  const openPriorEditor = useRef(openSessionCountEditor);
+  openPriorEditor.current = openSessionCountEditor;
+  const priorHistoryDoor = useMemo(
+    () =>
+      priorDoorText
+        ? { text: priorDoorText, canEdit: canEditPrior, onOpen: () => openPriorEditor.current(true) }
+        : null,
+    [priorDoorText, canEditPrior],
+  );
 
   /**
    * Writes the OFFSET, never the total.
@@ -572,25 +645,20 @@ export function ClientProfileView({
    *
    * `importedCount` is deliberately preserved: a historical import may already
    * have turned some of those sessions into real rows, and re-stating the
-   * total must not un-count them.
+   * total must not un-count them. `statePriorHistory` (lib/prior-history.ts)
+   * is that rule, with no `undefined` left in it.
    */
   const handleSaveSessionCount = async () => {
-    if (!clientId) return;
-    const num = parseInt(sessionCountInput, 10);
-    if (isNaN(num) || num < 0) return;
+    if (!clientId || !priorCanSave || !priorReading.ok) return;
 
     try {
       await updateDoc(doc(db, "clients", clientId), {
         priorHistory: {
-          sessions: num,
-          importedCount: priorHistory?.importedCount ?? 0,
-          from: priorHistory?.from ?? null,
-          through: priorThrough || studioTodayKey(),
-          source: priorSource,
-          note: priorNote.trim() || null,
+          ...statePriorHistory(priorHistory, priorReading.statement, {
+            id: authTrainer?.id,
+            name: authTrainer?.fullName,
+          }),
           recordedAt: serverTimestamp(),
-          recordedById: authTrainer?.id ?? null,
-          recordedByName: authTrainer?.fullName ?? null,
         },
         updatedAt: serverTimestamp(),
       });
@@ -962,11 +1030,11 @@ export function ClientProfileView({
    * as the pre-filled value in the Active Session's Today column.
    * ------------------------------------------------------------------ */
   const journeyGridSessions = useMemo(() => {
-    const totalRecords = Math.max(calculatedSessionCount, sessions.length);
+    const totalRecords = Math.max(completedTotal ?? 0, sessions.length);
     return toJourneySessions(
       sessions.map((s, idx) => ({ ...s, sessionNumber: totalRecords - idx })),
     );
-  }, [sessions, calculatedSessionCount]);
+  }, [sessions, completedTotal]);
 
   /**
    * Routine A / B machine ids, for the Journey tab's filters. Matched on the
@@ -1059,9 +1127,13 @@ export function ClientProfileView({
    * the old record's did, because imported sessions land there. (The filed
    * reports are the Activity Archive's shelf, below; the codex opens none.)
    *
-   * The session numbers are the header's own ("461 · 49 in Journey · 412
-   * before"), so no page can disagree with it; Journey's count is null until
-   * it answers for this client.
+   * The session numbers come from the header's own read ("461 · 49 in
+   * Journey · 412 before": `journeyCompletedCount` and the prior record), so
+   * once it answers no page can disagree with the header. Until it answers
+   * for this client the header shows the stored total and the codex says it
+   * does not know yet - never a second count. The door to Sessions before
+   * Journey is the header's own too:
+   * Account draws the header's own (its words, its rule, this view's editor).
    */
   const codexHosts = useMemo<CodexHosts>(
     () => ({
@@ -1073,10 +1145,11 @@ export function ClientProfileView({
       },
       onOpenMachine: openMachineWindow,
       onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
+      priorHistoryDoor,
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setView, openMachineWindow, nav.go, nav.setTab],
+    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.
@@ -1086,6 +1159,7 @@ export function ClientProfileView({
       routines,
       studioClients: clients,
       activeStudioId: activeStudioId ?? null,
+      floorMachines: codexFloor,
       status:
         routinesStatus === "failed" || settingsStatus === "failed"
           ? "failed"
@@ -1093,7 +1167,7 @@ export function ClientProfileView({
             ? "loading"
             : "ready",
     }),
-    [clientSettings, routines, clients, activeStudioId, routinesStatus, settingsStatus],
+    [clientSettings, routines, clients, activeStudioId, codexFloor, routinesStatus, settingsStatus],
   );
   const codexSessionTotals = useMemo(
     () => sessionTotalsOf(journeyCompletedCount, client),
@@ -1266,14 +1340,16 @@ export function ClientProfileView({
         if (latestReport === undefined) return null;
 
         if (latestReport === null) {
-          // Only show "Report Required" if client is older than 3 months
-          const clientCreatedAt =
-            client.createdAt?.toDate?.() ||
-            (client.createdAt ? new Date(client.createdAt) : new Date());
-          const threeMonthsAgo = new Date();
-          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-          if (clientCreatedAt > threeMonthsAgo) {
+          // Only once the client has been with the studio three months -
+          // judged from the oldest date on the record, or a prior record,
+          // never from the day Journey met them: that made every migrating
+          // client look new (lib/history-claims.ts, Sep 24 2026).
+          if (
+            !isEstablishedClient(
+              { earliest: earliestKnownDate(client), prior: priorHistory },
+              new Date(),
+            )
+          ) {
             return null;
           }
 
@@ -1289,8 +1365,7 @@ export function ClientProfileView({
                     Report Required
                   </p>
                   <p className="text-[11px] font-bold opacity-80">
-                    This client has no progress report on file. Please perform
-                    an evaluation.
+                    {noReportSentence(clientCoverage)}
                   </p>
                 </div>
                 <Button
@@ -1369,8 +1444,11 @@ export function ClientProfileView({
         studioName={studios?.find((s) => s.id === client.homeStudioId)?.name}
         sessions={sessions}
         scheduledSessions={scheduledSessions}
-        completedCount={calculatedSessionCount}
+        completedCount={completedTotal}
+        sessionsQuotable={canQuoteNumber}
+        coverage={clientCoverage}
         priorLabel={priorLabel}
+        priorHistoryDoor={priorHistoryDoor ?? undefined}
         topTrainer={topTrainer}
         trainers={trainers}
         pkg={clientPackage}
@@ -1420,7 +1498,7 @@ export function ClientProfileView({
           setView("workouts");
         }}
         onViewCurrentSession={() => setView("workouts")}
-        onDiscardSession={() => setShowDiscardActiveSessionConfirm(true)}
+        onDiscardSession={() => setDiscardTarget(activeInProgressSession)}
         renewal={
           client.renewal
             ? {
@@ -1432,6 +1510,15 @@ export function ClientProfileView({
             : undefined
         }
       />
+      {/* An abandoned session: Start is still offered above, and this is
+          where it can be discarded (features/client-profile/StaleSessionNotice). */}
+      {!activeInProgressSession && staleInProgressSession && (
+        <StaleSessionNotice
+          session={staleInProgressSession}
+          todayKey={studioTodayKey()}
+          onDiscard={() => setDiscardTarget(staleInProgressSession)}
+        />
+      )}
       <RenewalCardDialog
         open={renewalOpen}
         onClose={() => setRenewalOpen(false)}
@@ -1440,6 +1527,7 @@ export function ClientProfileView({
         machineNames={machineNames}
       />
 
+      <UnsavedChangesScope scope={tabsScope}>
       <Tabs
         value={activeTab}
         className="w-full flex-1 flex flex-col min-h-0"
@@ -1496,6 +1584,8 @@ export function ClientProfileView({
             routineAMachineIds={routineAMachineIds}
             routineBMachineIds={routineBMachineIds}
             onOpenMachine={openMachineWindow}
+            sessionNumbers={canQuoteNumber}
+            coverage={clientCoverage}
           />
         </TabsContent>
 
@@ -1603,8 +1693,8 @@ export function ClientProfileView({
               from the profile's In-Progress dropdown so a trainer can clear
               a stuck/abandoned session without opening it first. */}
           <Dialog
-            open={showDiscardActiveSessionConfirm}
-            onOpenChange={(v) => !isDiscardingActiveSession && setShowDiscardActiveSessionConfirm(v)}
+            open={!!discardTarget}
+            onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
           >
             <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
               <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
@@ -1625,16 +1715,20 @@ export function ClientProfileView({
                 <h3 className="text-2xl font-black italic uppercase tracking-tight">
                   {isDiscardingActiveSession
                     ? "Discarding Session..."
-                    : "Discard Active Session?"}
+                    : discardTarget && discardTarget.id !== activeInProgressSession?.id
+                      ? "Discard Unfinished Session?"
+                      : "Discard Active Session?"}
                 </h3>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
                   {isDiscardingActiveSession
                     ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
-                    : `This will end and permanently clear the session ${
-                        activeInProgressSession?.trainerInitials
-                          ? `started by ${activeInProgressSession.trainerInitials}`
-                          : "in progress"
-                      }. All data logged so far will be scrapped and will not be recorded in the database.`}
+                    : [
+                        "This will end and permanently clear this session.",
+                        discardTarget ? staleSessionStartedLine(discardTarget, studioTodayKey()) : "",
+                        "All data logged in it will be scrapped and will not be recorded in the database.",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                 </p>
               </div>
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
@@ -1642,7 +1736,7 @@ export function ClientProfileView({
                   variant="outline"
                   disabled={isDiscardingActiveSession}
                   className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
-                  onClick={() => setShowDiscardActiveSessionConfirm(false)}
+                  onClick={() => setDiscardTarget(null)}
                 >
                   Keep Session
                 </Button>
@@ -1697,25 +1791,29 @@ export function ClientProfileView({
           className="mt-0 focus-visible:outline-none"
         >
           {client && client.id && (recordMounted || activeTab === "record") && (
-            <ClientCodex
-              key={client.id}
-              client={client}
-              authTrainer={authTrainer ?? null}
-              liveTrainer={liveAuthTrainer}
-              machines={machines}
-              trainers={trainers}
-              page={nav.recordPage}
-              anchor={nav.recordAnchor}
-              navStamp={nav.location}
-              active={activeTab === "record"}
-              onNavigate={nav.openRecord}
-              progressReports={progressReports}
-              progressReportsStatus={progressReportsStatus}
-              sessionTotals={codexSessionTotals}
-              coverage={clientCoverage}
-              hosts={codexHosts}
-              programming={codexProgramming}
-            />
+            // Kept mounted across a tab change, so the tab bar never asks about
+            // the record's Save bar; leaving the profile still does.
+            <ExemptFromLeaveScope scope={tabsScope}>
+              <ClientCodex
+                key={client.id}
+                client={client}
+                authTrainer={authTrainer ?? null}
+                liveTrainer={liveAuthTrainer}
+                machines={machines}
+                trainers={trainers}
+                page={nav.recordPage}
+                anchor={nav.recordAnchor}
+                navStamp={nav.location}
+                active={activeTab === "record"}
+                onNavigate={nav.openRecord}
+                progressReports={progressReports}
+                progressReportsStatus={progressReportsStatus}
+                sessionTotals={codexSessionTotals}
+                coverage={clientCoverage}
+                hosts={codexHosts}
+                programming={codexProgramming}
+              />
+            </ExemptFromLeaveScope>
           )}
         </TabsContent>
 
@@ -1760,6 +1858,7 @@ export function ClientProfileView({
             been reachable for months, and together they were roughly half this
             file. Deleted; git has them if anything is ever wanted back. */}
       </Tabs>
+      </UnsavedChangesScope>
 
       {showFullChart &&
         clientId &&
@@ -1843,6 +1942,7 @@ export function ClientProfileView({
         sessions={sessions}
         authTrainer={authTrainer}
         activeStudioId={activeStudioId}
+        coverage={clientCoverage}
       />
 
       <Dialog
@@ -1861,6 +1961,20 @@ export function ClientProfileView({
               What {client.firstName} did before this studio moved onto Journey.
             </DialogDescription>
           </DialogHeader>
+          {/* Who said so — and, for anyone the rules will not let write this
+              client, whose number it is to change. */}
+          {recordedByLine(priorHistory) && (
+            <p className="text-[11px] text-muted-foreground">
+              {recordedByLine(priorHistory)}
+            </p>
+          )}
+          {!canEditPrior && (
+            <p className="rounded-xl border border-border bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[12px] text-slate-600 dark:text-slate-300">
+              Read only. Trainers and leaders at{" "}
+              {studios?.find((s) => s.id === client.homeStudioId)?.name ?? "their home studio"}{" "}
+              can change this.
+            </p>
+          )}
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase tracking-widest">
@@ -1871,9 +1985,15 @@ export function ClientProfileView({
                 inputMode="numeric"
                 value={sessionCountInput}
                 onChange={(e) => setSessionCountInput(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8]"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold text-lg h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
                 placeholder="0"
               />
+              {priorReading.ok === false && priorReading.problem && (
+                <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                  {priorReading.problem}
+                </p>
+              )}
               {/* The app adds its own count on top, so the trainer is never
                   asked for a total they would have to work out — and the
                   reconciler can no longer overwrite what they typed. */}
@@ -1893,9 +2013,10 @@ export function ClientProfileView({
                     key={s}
                     type="button"
                     onClick={() => setPriorSource(s)}
+                    disabled={!canEditPrior}
                     aria-pressed={priorSource === s}
                     className={cn(
-                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors",
+                      "min-h-10 rounded-xl px-3 text-[11px] font-bold uppercase tracking-widest border transition-colors disabled:cursor-default",
                       priorSource === s
                         ? "border-[#38BDF8] bg-[#38BDF8]/15 text-[#0284c7] dark:text-[#8cc4f2]"
                         : "border-border bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
@@ -1915,7 +2036,8 @@ export function ClientProfileView({
                 type="date"
                 value={priorThrough}
                 onChange={(e) => setPriorThrough(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8]"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border font-bold h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
               />
               <p className="text-[11px] text-muted-foreground">
                 Journey owns everything after this day.
@@ -1929,24 +2051,29 @@ export function ClientProfileView({
               <Input
                 value={priorNote}
                 onChange={(e) => setPriorNote(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8]"
-                placeholder="Counted from the FileMaker export"
+                disabled={!canEditPrior}
+                className="bg-slate-50 dark:bg-slate-800 border-border h-12 focus-visible:ring-[#38BDF8] disabled:opacity-100"
+                // Read-only, a placeholder would pass for the note itself.
+                placeholder={canEditPrior ? "Counted from the FileMaker export" : undefined}
               />
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => setIsEditingSessionCount(false)}
-                className="flex-1 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
+                className="flex-1 h-11 border-border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[11px]"
               >
-                Cancel
+                {canEditPrior ? "Cancel" : "Close"}
               </Button>
-              <Button
-                onClick={handleSaveSessionCount}
-                className="flex-2 bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
-              >
-                Save
-              </Button>
+              {canEditPrior && (
+                <Button
+                  onClick={handleSaveSessionCount}
+                  disabled={!priorCanSave}
+                  className="flex-2 h-11 bg-[#38BDF8] hover:bg-[#0284c7] rounded-full font-bold uppercase tracking-widest text-[11px]"
+                >
+                  Save
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

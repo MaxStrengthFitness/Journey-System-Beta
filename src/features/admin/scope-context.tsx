@@ -24,6 +24,8 @@ import type { FranchiseNetwork, Studio, Trainer } from "../../types";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { AdminButton, AdminEmpty, AdminSelect } from "./primitives";
 import { operationsStudios, studiosInScope, type OperationsScope } from "./scope";
+import { forgetOnSignOut } from "../sign-out/memory";
+import { useLeaveGuard } from "../unsaved-changes";
 
 export interface OperationsScopeValue {
   /** Every studio the reader may look at, by name. */
@@ -46,6 +48,11 @@ const Ctx = createContext<OperationsScopeValue | null>(null);
 
 /** Remembered across mounts of the Operations screen, per session. */
 let rememberedSpan = false;
+
+// Per session means per person: sign-out forgets it (Sep 24 2026).
+forgetOnSignOut(() => {
+  rememberedSpan = false;
+});
 
 export function OperationsScopeProvider({
   authTrainer,
@@ -80,18 +87,33 @@ export function OperationsScopeProvider({
     [span, canSpan, activeStudioId],
   );
 
+  /*
+   * A new scope re-keys the open tab, and a new studio is a studio switch,
+   * so either one asks first while a tab holds unsaved typing (unsaved
+   * changes, Sep 24 2026). A pick that changes nothing never asks.
+   */
+  const guardLeave = useLeaveGuard();
   const pickStudio = useCallback(
     (studioId: string) => {
-      rememberedSpan = false;
-      setSpan(false);
-      if (studioId && studioId !== activeStudioId) setActiveStudioId(studioId);
+      const go = () => {
+        rememberedSpan = false;
+        setSpan(false);
+        if (studioId && studioId !== activeStudioId) setActiveStudioId(studioId);
+      };
+      const changes = scope.kind === "all" || (!!studioId && studioId !== activeStudioId);
+      if (changes) guardLeave(go);
+      else go();
     },
-    [activeStudioId, setActiveStudioId],
+    [activeStudioId, setActiveStudioId, scope.kind, guardLeave],
   );
   const pickAll = useCallback(() => {
-    rememberedSpan = true;
-    setSpan(true);
-  }, []);
+    const go = () => {
+      rememberedSpan = true;
+      setSpan(true);
+    };
+    if (scope.kind !== "all") guardLeave(go);
+    else go();
+  }, [scope.kind, guardLeave]);
 
   const value = useMemo<OperationsScopeValue>(
     () => ({

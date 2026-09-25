@@ -26,6 +26,8 @@ import { BrandTiles } from "../client-profile/BrandTiles";
 import { AttendancePanel, CaveatLine, CorrelationMatrix, FormHeatmapPanel, InsightCards, KpiStrip, MethodNote, PainPulsePanel, StallPanel } from "./panels";
 import { TutChart } from "./charts";
 import { shortDateYear } from "./analytics";
+import { allTimeLabel } from "../../lib/history-claims";
+import type { HistoryCoverage } from "../../lib/prior-history";
 
 export const DEEP_DIVE_TITLE = "Kaizen Deep Dive";
 
@@ -36,6 +38,8 @@ export interface ClinicalDashboardProps {
   onPreset: (preset: RangePreset) => void;
   onRegenerate: () => void;
   loading?: boolean;
+  /** How much of the client's story Journey holds; names the widest range. Cautious by default. */
+  coverage?: HistoryCoverage;
 }
 
 function Section({ title, sub, children, right }: { title: string; sub?: string; children: ReactNode; right?: ReactNode }) {
@@ -56,7 +60,15 @@ function Section({ title, sub, children, right }: { title: string; sub?: string;
   );
 }
 
-export function ClinicalDashboard({ report, clientName, presets, onPreset, onRegenerate, loading = false }: ClinicalDashboardProps) {
+export function ClinicalDashboard({
+  report,
+  clientName,
+  presets,
+  onPreset,
+  onRegenerate,
+  loading = false,
+  coverage = "unknown",
+}: ClinicalDashboardProps) {
   const [showAll, setShowAll] = useState(false);
   const { summary } = report;
   const generated = new Date(report.generatedAt);
@@ -71,7 +83,7 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
           <BrandTiles size={7} gap={2} />
           <span className="cr-bar__name">{DEEP_DIVE_TITLE}</span>
           <span className="cr-bar__meta">
-            {clientName} · {rangeLabel(report.range)}
+            {clientName} · {rangeLabel(report.range, coverage)}
             {summary.firstDate && summary.lastDate ? ` · ${shortDateYear(summary.firstDate)} → ${shortDateYear(summary.lastDate)}` : ""} · generated{" "}
             {generated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </span>
@@ -103,7 +115,9 @@ export function ClinicalDashboard({ report, clientName, presets, onPreset, onReg
       <CaveatLine />
 
       {summary.sessions === 0 ? (
-        <div className="cr-empty">No completed sessions with logged sets in this range. Widen the range or pick All time.</div>
+        <div className="cr-empty">
+          No completed sessions with logged sets in this range. Widen the range or pick {allTimeLabel(coverage)}.
+        </div>
       ) : (
         <>
           {/* ---- 1. headline numbers ---- */}

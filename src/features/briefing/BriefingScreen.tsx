@@ -103,6 +103,7 @@ import { useNoteDismissals, dismissThread } from "../client-notes/dismissal-stor
 import type { NoteThread } from "../client-notes/threads";
 import { FOCUS_VISUALS, relativeDay, toDate } from "../../types/journal";
 import { CLINICAL_FLAGS_MATRIX } from "../../data/clinical-matrix";
+import { namedMachines } from "../../lib/clinical-watchouts";
 import { safeToDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import { studioTodayKey } from "../../lib/studio-time";
@@ -593,7 +594,9 @@ export function BriefingScreen({
                   {(openFlag.protocolHandling || []).map((rule, i) => (
                     <p key={i} className="br__flagrule">
                       {(rule.affectedMachineIds || []).length > 0 ? (
-                        <b>{(rule.affectedMachineIds || []).join(", ")}: </b>
+                        // The machines as this floor names them, never the
+                        // matrix's keys ("lumbar_extension").
+                        <b>{namedMachines(rule.affectedMachineIds, machines).join(", ")}: </b>
                       ) : (
                         <b>Every machine: </b>
                       )}

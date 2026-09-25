@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 /**
  * THE OVERVIEW MOUNTS — one studio, over a Firestore that answers with a
- * week of bookings (one cancelled, one never logged), a renewal cycle, a
- * week of sessions (one with pain on the Dial), an open incident, a
- * critical note and the weekly job's watch document. Catches a hook-order
- * slip, a render that throws on a half-empty answer, a panel whose sentence
- * does not match its rows, and an action button that writes the wrong
- * document.
+ * week of bookings (one cancelled, one done because Journey logged it, one
+ * never logged), a renewal cycle, a week of sessions (one with pain on the
+ * Dial), an open incident, a critical note and the weekly job's watch
+ * document. Catches a hook-order slip, a render that throws on a half-empty
+ * answer, a panel whose sentence does not match its rows, and an action
+ * button that writes the wrong document. And the rule AJ set on Sep 24 2026:
+ * a booking is done when a Journey session was logged for that client that
+ * day, and a failed read of the sessions is missing, never "never logged".
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -32,6 +34,8 @@ const dayKey = (n: number) => daysAgo(n).toISOString().slice(0, 10);
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
 
 const writes: Array<{ op: string; path: string; data?: unknown }> = [];
+/** Flip to make the live read of today's sessions fail (the listener's error callback). */
+const failures = vi.hoisted(() => ({ liveSessions: false }));
 
 vi.mock("firebase/firestore", () => {
   // doc(db, "a", "b") and doc(collection(db, "a"), "b") both become "a/b".
@@ -82,7 +86,8 @@ vi.mock("firebase/firestore", () => {
     if (path === "schedules")
       return snap([
         booking("s1", "c1", "Ann Able", today, "08:00", "Completed"),
-        booking("s2", "c2", "Bea Best", today, "07:30", "Scheduled"), // past its slot, nothing marked
+        booking("s2", "c2", "Bea Best", today, "07:30", "Scheduled"), // past its slot — and Journey logged Bea today: done
+        booking("s7", "c4", "Dee Dunn", today, "07:00", "Scheduled"), // past its slot, nothing logged
         booking("s3", "c1", "Ann Able", today, "14:00", "Scheduled"),
         booking("s4", "c3", "Cy Cole", today, "09:30", "Cancelled", { cancelledAt: eastern(today, "07:12"), cancelSource: "sweep" }),
         booking("s5", "c1", "Ann Able", tomorrow, "10:00", "Scheduled"),
@@ -102,9 +107,13 @@ vi.mock("firebase/firestore", () => {
     where: () => ({}),
     orderBy: () => ({}),
     limit: () => ({}),
-    onSnapshot: (target: { path: string }, a: unknown, b?: unknown) => {
+    onSnapshot: (target: { path: string }, a: unknown, b?: unknown, c?: unknown) => {
       const next = (typeof a === "function" ? a : b) as (s: unknown) => void;
-      const t = setTimeout(() => next(target.path.split("/").length % 2 === 0 ? { exists: () => false, data: () => undefined, id: "id" } : answer(target.path)), 0);
+      const fail = (typeof a === "function" ? b : c) as ((e: unknown) => void) | undefined;
+      const t = setTimeout(() => {
+        if (target.path === "sessions" && failures.liveSessions) fail?.(new Error("permission-denied"));
+        else next(target.path.split("/").length % 2 === 0 ? { exists: () => false, data: () => undefined, id: "id" } : answer(target.path));
+      }, 0);
       return () => clearTimeout(t);
     },
     getDocs: async (target: { path?: string }) => answer(target?.path ?? lastCollection),
@@ -181,6 +190,7 @@ afterEach(() => {
   root = null;
   host = null;
   writes.length = 0;
+  failures.liveSessions = false;
   localStorage.clear();
   vi.useRealTimers();
 });
@@ -220,8 +230,11 @@ describe("the Overview", () => {
     const el = await mount((t) => opened.push(t));
     const text = el.textContent ?? "";
 
-    // Today: three live bookings (the cancelled one is a change, not a booking), one done, one never logged.
-    expect(text).toContain("Booked today3");
+    // Today: four live bookings (the cancelled one is a change, not a booking). Two done —
+    // Ann's marked in Mindbody, Bea's because Journey logged a session for her today —
+    // and Dee's never logged. Mindbody never sends "Completed"; Journey's session is the proof.
+    expect(text).toContain("Booked today4");
+    expect(text).toContain("Done2");
     expect(text).toContain("Never logged1");
     expect(text).toContain("tap to see who to chase");
 
@@ -254,8 +267,9 @@ describe("the Overview", () => {
     // Strength: Sunday's read named Bea on the Leg Press.
     expect(text).toContain("Leg Press: down from 10 reps to 5 at 90 lb");
 
-    // Team: a list, not a ranking.
+    // Team: a list, not a ranking — and Dee's is the one unlogged session today.
     expect(text).toContain("AJ Jurgens");
+    expect(text).toContain("1 of today's sessions still unlogged");
     expect(text).toContain("A list, not a ranking.");
 
     // A line opens its tab.
@@ -282,7 +296,27 @@ describe("the Overview", () => {
     expect((watch!.data as { snoozedUntil: string }).snoozedUntil).toBe(dayKey(-7));
 
     await click(buttonByText(el, "Never logged"));
-    expect(el.textContent).toContain("7:30 AM with AJ Jurgens — past its slot, nothing marked.");
+    // Dee is chased; Bea is not — her session is logged.
+    expect(el.textContent).toContain("7:00 AM with AJ Jurgens — past its slot, nothing logged.");
+    expect(el.textContent).not.toContain("7:30 AM with AJ Jurgens — past its slot");
+  });
+
+  it("when today's sessions cannot be read, what was done and never logged are missing — not zero, not a chase", async () => {
+    failures.liveSessions = true;
+    // handleFirestoreError says so out loud; jsdom has no alert to say it with.
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const el = await mount();
+    expect(alert).toHaveBeenCalled();
+    alert.mockRestore();
+    const text = el.textContent ?? "";
+    expect(text).toContain("Done—");
+    expect(text).toContain("Never logged—");
+    expect(text).toContain("Today's Journey sessions could not be read just now");
+    expect(text).toContain("today's logging could not be read");
+    expect(text).not.toMatch(/\dsessions? never logged/);
+    expect(text).not.toContain("Unlogged today");
+    // The tile is not a door to a list nobody can know.
+    expect(buttonByText(el, "Never logged")).toBeUndefined();
   });
 
   it("opens the week's changes and the attendance watch, and comes back", async () => {

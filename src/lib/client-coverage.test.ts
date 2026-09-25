@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { coverageOfClient, cutoverOf } from "./client-coverage";
+import { coverageOfClient, cutoverOf, homeCutoverOf } from "./client-coverage";
 import { NEW_CLIENT_MAX_VISITS } from "./prior-history";
 
 /*
@@ -131,5 +131,28 @@ describe("cutoverOf", () => {
     expect(cutoverOf(studios, "strongsville")).toBeNull();
     expect(cutoverOf(studios, null)).toBeNull();
     expect(cutoverOf(null, "westlake")).toBeNull();
+  });
+});
+
+describe("homeCutoverOf", () => {
+  const studios = [
+    { id: "westlake", journeyCutoverDate: "2026-09-01" },
+    { id: "strongsville", journeyCutoverDate: "2027-01-10" },
+  ];
+
+  it("reads the client's HOME studio, whichever iPad is open", () => {
+    // A Strongsville client on a Westlake iPad is judged by Strongsville's day.
+    expect(homeCutoverOf(studios, { homeStudioId: "strongsville" })).toBe("2027-01-10");
+  });
+
+  it("falls back to the older studioId the way the rules do", () => {
+    expect(homeCutoverOf(studios, { studioId: "westlake" })).toBe("2026-09-01");
+    expect(homeCutoverOf(studios, { homeStudioId: "", studioId: "westlake" })).toBe("2026-09-01");
+  });
+
+  it("is null - unknown - with no home, no studios or no client", () => {
+    expect(homeCutoverOf(studios, {})).toBeNull();
+    expect(homeCutoverOf(studios, null)).toBeNull();
+    expect(homeCutoverOf(undefined, { homeStudioId: "westlake" })).toBeNull();
   });
 });

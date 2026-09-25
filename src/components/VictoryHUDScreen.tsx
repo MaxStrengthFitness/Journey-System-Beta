@@ -28,6 +28,7 @@ import {
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
+import { useUnsavedChanges } from "../features/unsaved-changes";
 import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
@@ -41,6 +42,8 @@ import {
 } from "../lib/post-session";
 
 import { canQuoteLifetime, type HistoryCoverage } from "../lib/prior-history";
+import { canQuoteSessionNumber } from "../lib/client-coverage";
+import { firstTimeTag, sessionNumberTag } from "../lib/history-claims";
 import { clientFirstName } from "../lib/client-name";
 /**
  * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
@@ -151,7 +154,7 @@ function fmtLb(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-function TodayRow({ line }: { line: TodayLine }) {
+function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCoverage }) {
   const performed = line.outcome === "performed";
   const word =
     line.outcome === "practice"
@@ -163,7 +166,12 @@ function TodayRow({ line }: { line: TodayLine }) {
           : "";
   const delta: { text: string; tone: string } | null = (() => {
     if (!performed) return null;
-    if (line.first) return { text: "First time", tone: "text-cyan" };
+    if (line.first) {
+      // Her first time only when Journey holds her whole story; otherwise
+      // there is simply no earlier set on record, and nothing to compare.
+      const tag = firstTimeTag(coverage);
+      return tag ? { text: tag, tone: "text-cyan" } : null;
+    }
     if (line.loadDelta === null) return null;
     if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-cyan" };
     if (line.loadDelta < 0) return { text: `▼ ${fmtLb(line.loadDelta)} lb`, tone: "text-ink-d2" };
@@ -256,6 +264,26 @@ export function VictoryHUDScreen({
   const [leaving, setLeaving] = useState(false);
   const renewalDue = renewalPromptDue(client.renewal);
 
+  /*
+   * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+   * leaves by "Back to Hub" — but the bottom bar and the header stay live on
+   * this screen, and leaving through THEM unmounted it with the note unfiled.
+   * So a typed closing note, or an unfinished mid-session note still waiting
+   * here, is unsaved work, and those exits ask first. "Back to Hub" is not
+   * asked about: it files both, and `leave` releases the screen before it
+   * navigates.
+   */
+  const closingTyped = notes.trim() !== "";
+  const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
+  const unsaved = useUnsavedChanges(
+    !leaving && (closingTyped || draftWaiting),
+    closingTyped && draftWaiting
+      ? "the closing note and the unfinished note"
+      : closingTyped
+        ? "the closing note"
+        : "the unfinished note",
+  );
+
   // A short burst, then quiet — the numbers are the celebration.
   const [particles] = useState(() =>
     Array.from({ length: 36 }).map((_, i) => ({
@@ -276,6 +304,8 @@ export function VictoryHUDScreen({
   const leave = () => {
     if (leftRef.current) return;
     leftRef.current = true;
+    // Filing, not losing: the navigation onLeave ends with must not ask.
+    unsaved.release();
     setLeaving(true);
     const { notes: noteContent, importance: loud, effectiveUntil: until } = notesRef.current;
     void onLeave({
@@ -324,6 +354,9 @@ export function VictoryHUDScreen({
   const startD = safeToDate(session.startTime) || safeToDate(session.createdAt);
   const endD = safeToDate(session.endTime) || new Date();
   const minutes = startD ? Math.max(0, Math.round((endD.getTime() - startD.getTime()) / 60000)) : null;
+  // "session #12" only through the Hub card's gate: the client reads this
+  // screen, and Journey's own count would tell a twelve-year client "#4".
+  const sessionTag = sessionNumberTag(session.sessionNumber, canQuoteSessionNumber(client, coverage));
   const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
   /* --- next ------------------------------------------------------------- */
@@ -371,9 +404,9 @@ export function VictoryHUDScreen({
               {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
             <div className="text-ink-d2 text-[13px]">
-              {todayHeadline(lines)}
+              {todayHeadline(lines, coverage)}
               {minutes !== null ? ` · ${minutes} min` : ""}
-              {session.sessionNumber ? ` · session #${session.sessionNumber}` : ""}
+              {sessionTag ? ` · session ${sessionTag}` : ""}
             </div>
           </motion.div>
 
@@ -385,7 +418,7 @@ export function VictoryHUDScreen({
             </div>
             <ol className="flex flex-col">
               {lines.map((l) => (
-                <TodayRow key={l.machineId} line={l} />
+                <TodayRow key={l.machineId} line={l} coverage={coverage} />
               ))}
             </ol>
             {byRegion.length > 0 && (

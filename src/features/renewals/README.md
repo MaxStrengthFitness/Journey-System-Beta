@@ -25,7 +25,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `types.ts` | Settings, the snapshot, cycles, conversations |
 | `settings.ts`, `settings-form.ts` | Defaults (the website's prices), cleaning, the package-name index, the settings form |
 | `engine.ts` | **The engine.** `buildRenewalSnapshot()` — pure, the same code in the browser and the nightly job |
-| `attendance.ts` | Bookings and workouts → visit rows; `attendanceSince` (unknown before the first synced booking, not zero) |
+| `attendance.ts` | Bookings and workouts → visit rows; `attendanceSince` (unknown before the first synced booking, not zero). A booking is read through `lib/booking-state.ts` (Sep 24 2026): a visit when Journey logged a session for the client that day; an unlogged past booking is still a visit before its studio's `journeyCutoverDate` (or with none set — FileMaker holds that record), and from the cutover on it is neither a visit nor a miss |
 | `sentences.ts`, `options.ts`, `brief.ts` | Words: chips, situations, pace, proof; the package-options table; the Brief's journey and health lines |
 | `conversation.ts` | The 15-second conversation log and the post-session prompt |
 | `pipeline.ts` | Operations lanes, filters, next steps |

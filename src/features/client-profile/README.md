@@ -74,7 +74,27 @@ medium-weight outline button competing with four equal-weight stat tiles.
   (`ClientInfoSheet variant="inline"`). Seven tabs fit a 1024px iPad with no
   horizontal scroll at 13px; the form re-syncs from the client snapshot only
   while no field is dirty, so a background write cannot clobber a half-typed
-  edit.
+  edit. (Since the client codex, Sep 24 2026, the record is
+  `features/client-codex/`; what its form opens with is `seedForm()` in
+  `record-form.ts`, which seeds wingspan — the old form never did, so a
+  stored wingspan showed as an empty box.)
+- **Sessions before Journey has a door (Sep 24 2026).** The line under the
+  Completed sessions count ("412 before Journey · FileMaker") is a 40px
+  button that opens the prior-history editor; with nothing recorded it
+  reads "Add sessions before Journey", and only for someone who could save
+  it. Who may edit mirrors the `clients/{id}` update rule; everyone else who
+  can open the profile gets the editor read-only. That tile is already a
+  button when a renewal is showing, and a button cannot hold another, so
+  `Stat` stretches the tile's own tap underneath and the door sits over it.
+  The pure half is `prior-history-door.ts`; the write is `statePriorHistory`
+  in `lib/prior-history.ts`. See `docs/business/migration-and-prior-history.md`.
+  AJ asked for the door from the session count AND from Account: the profile
+  works the door out once (`PriorHistoryDoorState`, in
+  `prior-history-door.ts`) and hands the same object to the header and to
+  the client codex (`CodexHosts.priorHistoryDoor`), whose Account page draws
+  it under the contract history with the kit's button
+  (landing, Sep 24 2026). `priorHistoryDoorLabel` is what both say to a
+  screen reader.
 - **Start Session is the hero.** Hero-orange gradient, the only orange
   button in the header. When a session is already in progress the same slot
   becomes an amber dropdown (take over / view / discard) — same place, same
