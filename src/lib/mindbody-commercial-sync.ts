@@ -7,6 +7,11 @@ import {
   mapMembershipRecords,
   mapServiceRecords,
 } from "./mindbody-commercial-map";
+import {
+  commercialWritesFrom,
+  type CommercialPayload,
+  type CommercialWrites,
+} from "./mindbody-master-patch";
 
 /**
  * Pulls a client's Mindbody contracts and active memberships and mirrors them
@@ -65,51 +70,16 @@ export function mapServices(
   >;
 }
 
-/** The route's commercial rows. A list that is null (or absent) couldn't be read. */
-export interface CommercialPayload {
-  contracts?: any[] | null;
-  memberships?: any[] | null;
-  services?: any[] | null;
-}
-
-export interface CommercialWrites {
-  /**
-   * For setDoc(..., { merge: true }): contracts and memberships deep-merge
-   * into what the webhook wrote. null when neither list could be read.
-   */
-  merge: Record<string, unknown> | null;
-  /** For updateDoc: the whole pricing-option map. null when that call failed. */
-  services: Record<string, Partial<MindbodyService>> | null;
-  contracts: Record<string, Partial<MindbodyContract>>;
-  memberships: Record<string, Partial<MindbodyMembership>>;
-}
+export type { CommercialPayload, CommercialWrites } from "./mindbody-master-patch";
 
 /**
  * What a commercial pull writes — shared by the Sync button below and by
- * Master Sync (lib/mindbody-master-sync.ts), so both land the same records.
- *
- * `mindbodyCommercialSyncedAt` is stamped only when the contract list was
- * read: the renewal engine takes a stamp with no contracts to mean "Mindbody
- * shows no package", which a failed read must not say. An empty map is left
- * out rather than written, so it can't look authoritative.
+ * Master Sync, so both land the same records. The logic is
+ * lib/mindbody-master-patch.ts (`commercialWritesFrom`); this passes the
+ * browser's Timestamp.
  */
 export function buildCommercialWrites(payload: CommercialPayload, stamp: unknown): CommercialWrites {
-  const contractsKnown = Array.isArray(payload.contracts);
-  const membershipsKnown = Array.isArray(payload.memberships);
-  const contracts = mapContracts(payload.contracts ?? undefined, stamp);
-  const memberships = mapMemberships(payload.memberships ?? undefined, stamp);
-
-  let merge: Record<string, unknown> | null = null;
-  if (contractsKnown || membershipsKnown) {
-    merge = {};
-    if (contractsKnown) merge.mindbodyCommercialSyncedAt = stamp;
-    if (Object.keys(contracts).length > 0) merge.mindbodyContracts = contracts;
-    if (Object.keys(memberships).length > 0) merge.mindbodyMemberships = memberships;
-    if (Object.keys(merge).length === 0) merge = null;
-  }
-
-  const services = Array.isArray(payload.services) ? mapServices(payload.services, stamp) : null;
-  return { merge, services, contracts, memberships };
+  return commercialWritesFrom(payload, stamp, toFirestoreTimestamp) as CommercialWrites;
 }
 
 export interface CommercialSyncResult {

@@ -33,17 +33,29 @@
  * USAGE (PowerShell, from the project folder)
  *   npx tsx scripts/mindbody-sync-report.ts                    # everything
  *   npx tsx scripts/mindbody-sync-report.ts --studio <id>      # one studio
- *   npx tsx scripts/mindbody-sync-report.ts --stale-days 30    # what counts as stale
+ *   npx tsx scripts/mindbody-sync-report.ts --stale-days 30    # count old syncs too
+ *
+ * "To sync" is clients never Master-Synced. Since the cost plan (Sep 26 2026)
+ * a synced client does not go stale on a timer - AJ ranked client details
+ * "only when it changes", and the webhook brings the change - so an old sync
+ * counts only when you ask with --stale-days. For the launch proof (everyone
+ * booked in 30 days or seen in 6 months), use onboard-studio.ts --verify.
  *   npx tsx scripts/mindbody-sync-report.ts --key C:\path\to\key.json
  */
 
 import { connectFirestore, flag, hasFlag, writeReport } from "./lib/admin.ts";
 
-/** What Master Sync costs, counted from server/mindbody-client.ts:315. */
+/** What Master Sync costs, counted from server/mindbody-client.ts pullClientMaster. */
 const CALLS_PER_CLIENT = 5;
-/** Mindbody bills past this many calls a day, at about a third of a cent each. */
-const FREE_CALLS_PER_DAY = 1000;
-const CENTS_PER_CALL = 0.33;
+/**
+ * The price on Mindbody's pricing page (AJ, Sep 26 2026): $0.002 a call, free
+ * only for developers under 5,000 calls a billing cycle. The Sep 2026 invoice
+ * charged no overage past 5,000, so the account may still be on the older
+ * "1,000 a day free" deal - the question for Mindbody is in
+ * docs/rounds/2026-09-26-cost-plan.md. Until it is answered, this prices every
+ * call.
+ */
+const DOLLARS_PER_CALL = 0.002;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -73,14 +85,17 @@ function pct(n: number, of: number): string {
 }
 
 async function main() {
-  const staleDays = Number(flag("stale-days") ?? 30);
+  const staleArg = flag("stale-days");
+  const staleDays = staleArg === undefined ? null : Number(staleArg);
   const onlyStudio = flag("studio");
   const now = Date.now();
   const db = connectFirestore();
 
   console.log("=".repeat(76));
   console.log("Mindbody sync report — READ ONLY, no Mindbody calls, no writes");
-  console.log(`Stale after ${staleDays} days${onlyStudio ? ` · studio ${onlyStudio}` : ""}`);
+  console.log(
+    `${staleDays === null ? "Never-synced clients only" : `Stale after ${staleDays} days`}${onlyStudio ? ` · studio ${onlyStudio}` : ""}`,
+  );
   console.log("=".repeat(76));
 
   /* ---- studios, so the report can say names rather than ids ---- */
@@ -139,7 +154,7 @@ async function main() {
   }
 
   const needsSync = (r: Row) =>
-    r.mindbodyLinked && (r.ageDays === null || r.ageDays > staleDays);
+    r.mindbodyLinked && (r.ageDays === null || (staleDays !== null && r.ageDays > staleDays));
 
   console.log("");
   console.log(
@@ -190,8 +205,7 @@ async function main() {
   const linked = rows.filter((r) => r.mindbodyLinked);
   const todo = rows.filter(needsSync);
   const calls = todo.length * CALLS_PER_CLIENT;
-  const days = Math.ceil(calls / FREE_CALLS_PER_DAY);
-  const ifRushed = Math.max(0, calls - FREE_CALLS_PER_DAY) * (CENTS_PER_CALL / 100);
+  const dollars = calls * DOLLARS_PER_CALL;
 
   console.log("");
   console.log("=".repeat(76));
@@ -199,10 +213,9 @@ async function main() {
   console.log("=".repeat(76));
   console.log(`  Clients in the database        ${rows.length}`);
   console.log(`  Linked to Mindbody             ${linked.length}  ${pct(linked.length, rows.length)}`);
-  console.log(`  Never synced or stale          ${todo.length}`);
+  console.log(`  ${staleDays === null ? "Never synced                 " : "Never synced or stale        "}  ${todo.length}`);
   console.log(`  Mindbody calls to catch up     ${calls.toLocaleString()}  (${CALLS_PER_CLIENT} a client)`);
-  console.log(`  Spread across nights           ${days} day${days === 1 ? "" : "s"}, free`);
-  console.log(`  All in one go                  about $${ifRushed.toFixed(2)}`);
+  console.log(`  At $${DOLLARS_PER_CALL} a call           about $${dollars.toFixed(2)}, once`);
   console.log("");
   console.log(`  Clients with a visit count     ${rows.filter((r) => r.visits !== null).length}`);
   console.log(`  Clients with a prior record    ${rows.filter((r) => r.hasPrior).length}`);
