@@ -28,6 +28,7 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  getDocFromServer,
   limit,
   Timestamp,
   deleteField,
@@ -53,6 +54,7 @@ import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
 import { sendsAtOnce } from "../features/journey-grid/send-at-once";
 import { useSendState } from "../features/session-record/useSendState";
 import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
+import { finishedElsewhere, settleOrQueue } from "../features/session-record/finish-wait";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -74,6 +76,12 @@ interface PostSessionSnapshot {
   journey: JourneyRead;
   /** A mid-session note the trainer started and never saved (fluidity round). */
   draft: SessionNoteDraft | null;
+  /**
+   * Saved on this iPad, and the database has not answered yet: offline, or a
+   * slow connection (session record, Sep 26 2026). The screen says so, and
+   * this goes false when the answer comes.
+   */
+  queued?: boolean;
 }
 
 const LOG_WRITE_DEBOUNCE_MS = 600;
@@ -287,7 +295,7 @@ export function WorkoutTrackerView({
     [studioFloor, legacyMachinesById],
   );
 
-  const { error: toastError } = useToast();
+  const { error: toastError, info: toastInfo } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -945,7 +953,11 @@ export function WorkoutTrackerView({
               pending.clientId === clientId &&
               Date.now() - pending.at < JUST_STARTED_GRACE_MS;
 
-            if (!stillSettling) {
+            /* A Finish in flight clears the session itself, once the
+               post-session screen is ready. Clearing it here, the moment the
+               iPad's copy says Completed, put the briefing on screen and took
+               the End Session dialog away while Finish was still going. */
+            if (!stillSettling && !finishingRef.current) {
               justStartedSessionRef.current = null;
               // Set outside a state updater — updaters must stay pure, and React
               // invokes them twice under StrictMode.
@@ -1690,8 +1702,14 @@ export function WorkoutTrackerView({
      run twice), then the post-session screen reads from a snapshot. The
      Feel toggle writes on its own the moment it is tapped; the closing
      note is written when the trainer leaves the screen. */
+  /* The session a Finish is running for, if one is (session record, Sep 26
+     2026). A second tap must not run it twice: its totals are increments. */
+  const finishingRef = useRef<string | null>(null);
+
   const commitEndSession = async () => {
     if (!currentSession?.id || !selectedClient) return;
+    if (finishingRef.current) return;
+    finishingRef.current = currentSession.id;
 
     // Land anything still debounced before the finish batch reads local state.
     flushAllLogWrites();
@@ -1750,25 +1768,69 @@ export function WorkoutTrackerView({
         : undefined;
 
       const finalLogs = [...stamped, ...notReached];
-      const finished = await completeWorkoutSession(
-        db,
-        currentSession,
-        selectedClient,
-        finalLogs,
-        undefined,
-        currentSessionNotes,
-        authTrainer,
-        clientMachineSettings,
-        user.uid,
-        sessionExtras,
+      const sessionId = currentSession.id;
+
+      /* Finish adds to the client's running totals, so a Finish for a session
+         another iPad already finished would add them again. Ask the database,
+         briefly; offline the answer is no and Finish goes ahead
+         (features/session-record/finish-wait.ts). */
+      const alreadyFinished = await finishedElsewhere(
+        () =>
+          getDocFromServer(doc(db, "sessions", sessionId)).then((snap) =>
+            snap.exists() ? ((snap.data() as WorkoutSession).status ?? null) : null,
+          ),
+        sendState.online,
       );
+
       /* The session, its sets and the machine weights are saved whatever
          happened to the totals (lib/sync-utils.ts); only the client's running
          totals can be refused. Say so in one line. */
-      if (finished.totalsSaved === false) {
-        toastError(
-          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
+      const reportTotals = (finished: { totalsSaved: boolean | null }) => {
+        if (finished.totalsSaved === false) {
+          toastError(
+            `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
+          );
+        }
+      };
+      let queued = false;
+      if (alreadyFinished) {
+        toastInfo("This session was already finished on another iPad, so nothing was counted twice.");
+      } else {
+        /* The writes are on this iPad the moment this is called; what can take
+           forever is the database's answer. Wait a moment for it, not at all
+           while offline, then carry on and say the session is saved on this
+           iPad. A refusal inside that moment is reported, as before. */
+        const finishing = completeWorkoutSession(
+          db,
+          currentSession,
+          selectedClient,
+          finalLogs,
+          undefined,
+          currentSessionNotes,
+          authTrainer,
+          clientMachineSettings,
+          user.uid,
+          sessionExtras,
         );
+        const outcome = await settleOrQueue(finishing, sendState.online);
+        if (outcome.kind === "failed") throw outcome.error;
+        if (outcome.kind === "saved") {
+          reportTotals(outcome.value);
+        } else {
+          queued = true;
+          finishing.then(
+            (finished) => {
+              reportTotals(finished);
+              setPostSession((ps) => (ps && ps.session.id === sessionId ? { ...ps, queued: false } : ps));
+            },
+            (error) => {
+              console.error("[finish] the session was refused when it reached the database", error);
+              toastError(
+                "This session didn't reach the studio's records, but its sets are saved. Open the client, resume the session and press Finish again.",
+              );
+            },
+          );
+        }
       }
 
       /* The wrap-up note is labelled "something the next trainer should
@@ -1836,6 +1898,7 @@ export function WorkoutTrackerView({
         lines,
         journey,
         draft: hasDraftText(noteDraft) ? noteDraft : null,
+        queued,
       });
       clearSessionDraft(currentSession?.id);
       setNoteDraft(null);
@@ -1848,6 +1911,7 @@ export function WorkoutTrackerView({
       handleFirestoreError(error, OperationType.WRITE, "sessions");
     } finally {
       setIsSyncing(false);
+      finishingRef.current = null;
     }
   };
 
@@ -1865,6 +1929,26 @@ export function WorkoutTrackerView({
     }
   };
 
+  /**
+   * A note written from the post-session screen: the write is on this iPad at
+   * once, so the screen waits only a moment for the database's answer and never
+   * while offline (features/session-record/finish-wait.ts). A refusal, now or
+   * when the answer comes later, is said in `failText`.
+   */
+  const noteOrSay = async (write: Promise<string | null>, failText: string) => {
+    const outcome = await settleOrQueue(write, sendState.online);
+    if (outcome.kind === "queued") {
+      write.then(
+        (id) => {
+          if (!id) toastError(failText);
+        },
+        () => toastError(failText),
+      );
+    } else if (outcome.kind === "failed" || !outcome.value) {
+      toastError(failText);
+    }
+  };
+
   /** Files the session's unsaved draft as a note — from the post-session card, or on the way out. */
   const fileSessionDraft = async (text: string, importance: JournalImportance = "standard") => {
     const snap = postSession;
@@ -1874,8 +1958,8 @@ export function WorkoutTrackerView({
     const kind = d?.category && d.category !== "ford" && d.category !== "admin"
       ? NOTE_CATEGORY_META[d.category].kind
       : "general";
-    try {
-      const id = await createJournalEntry(
+    await noteOrSay(
+      createJournalEntry(
         snap.client.id,
         contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
         { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
@@ -1889,11 +1973,9 @@ export function WorkoutTrackerView({
           sessionId: snap.session.id ?? null,
           origin: "in_session",
         },
-      );
-      if (!id) toastError("That note could not be saved — add it from the Journal.");
-    } catch {
-      toastError("That note could not be saved — add it from the Journal.");
-    }
+      ),
+      "That note could not be saved — add it from the Journal.",
+    );
     setPostSession((s) => (s ? { ...s, draft: null } : s));
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
@@ -1906,8 +1988,8 @@ export function WorkoutTrackerView({
     if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
     const body = closing?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
-      try {
-        const id = await createJournalEntry(
+      await noteOrSay(
+        createJournalEntry(
           snap.client.id,
           contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
@@ -1922,11 +2004,9 @@ export function WorkoutTrackerView({
             sessionId: snap.session.id ?? null,
             origin: "post_session",
           },
-        );
-        if (!id) toastError("Session saved. The closing note could not be saved — add it from the Journal.");
-      } catch {
-        toastError("Session saved. The closing note could not be saved — add it from the Journal.");
-      }
+        ),
+        "Session saved. The closing note could not be saved — add it from the Journal.",
+      );
     }
     setPostSession(null);
     setIsPostSessionMode(false);
@@ -2633,6 +2713,7 @@ export function WorkoutTrackerView({
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
+        savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}

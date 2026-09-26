@@ -45,7 +45,15 @@ export function useSendState(): SendState {
   const sent = useCallback(() => {
     const gen = ++generation.current;
     setUnsentSince((since) => since ?? Date.now());
-    waitForPendingWrites(db).then(
+    /* Watching must never break the save it watches: a wait that cannot even
+       start leaves the clock running, and the next sent() tries again. */
+    let waiting: Promise<void>;
+    try {
+      waiting = waitForPendingWrites(db);
+    } catch {
+      return;
+    }
+    waiting.then(
       () => {
         if (generation.current === gen) setUnsentSince(null);
       },

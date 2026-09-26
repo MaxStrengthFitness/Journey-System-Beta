@@ -166,6 +166,8 @@ const SETTINGS_DOCS = [
 ];
 
 const writes: { path: string; data: any; merge?: boolean }[] = [];
+/** Finish's database, per test (session record, Sep 26 2026): does the commit answer, and what does the server say the session is? */
+const finishCtl = { commit: "ok" as "ok" | "hang", serverStatus: undefined as string | undefined };
 
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
@@ -228,8 +230,13 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         writes.push({ path: ref.__path, data, merge: !!opts?.merge }),
       update: (ref: any, data: any) => writes.push({ path: ref.__path, data }),
       delete: () => {},
-      commit: async () => {},
+      commit: () => (finishCtl.commit === "hang" ? new Promise<void>(() => {}) : Promise.resolve()),
     }),
+    getDocFromServer: async () => ({
+      exists: () => finishCtl.serverStatus !== undefined,
+      data: () => ({ status: finishCtl.serverStatus }),
+    }),
+    waitForPendingWrites: () => new Promise<void>(() => {}),
     serverTimestamp: () => ({ __server: true }),
     increment: (n: number) => ({ __inc: n }),
     arrayUnion: (...v: any[]) => ({ __union: v }),
@@ -274,6 +281,9 @@ async function mount(ui: React.ReactNode) {
 
 beforeEach(() => {
   writes.length = 0;
+  finishCtl.commit = "ok";
+  finishCtl.serverStatus = undefined;
+  Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
   singleDocs = {};
   localStorage.clear();
@@ -515,5 +525,73 @@ describe("the Active Session's session number", () => {
       <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
     );
     expect(barNumber(other)).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Finish (session record, Sep 26 2026)
+ * ------------------------------------------------------------------ */
+
+describe("Finish never hangs and never counts a session twice (session record, Sep 26 2026)", () => {
+  const finishButton = () =>
+    Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Finish session");
+  const totalsWrites = () => writes.filter((w) => w.path === `clients/${CLIENT_ID}` && w.data?.completedSessions);
+  const completedWrites = () => writes.filter((w) => w.path === `sessions/${SESSION_ID}` && w.data?.status === "Completed");
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+
+  async function openEndSession() {
+    const host = await mount(<Tracker />);
+    const bar = host.querySelector(".jg-sbar__finish") as HTMLButtonElement | null;
+    expect(bar).not.toBeNull();
+    await act(async () => bar!.click());
+    expect(finishButton()).toBeDefined();
+    return host;
+  }
+
+  it("offline, goes straight to the post-session screen and says the session is saved on this iPad", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    finishCtl.commit = "hang"; // offline, the database never answers
+    await openEndSession();
+    await act(async () => finishButton()!.click());
+    await settle();
+    await settle();
+
+    expect(document.body.textContent).toContain("Session complete · saved on this iPad");
+    // The writes were made, on the iPad, before anything waited.
+    expect(completedWrites()).toHaveLength(1);
+    expect(totalsWrites()).toHaveLength(1);
+  });
+
+  it("does not finish a session another iPad already finished: no second totals, no second session write", async () => {
+    finishCtl.serverStatus = "Completed";
+    await openEndSession();
+    await act(async () => finishButton()!.click());
+    await settle();
+    await settle();
+
+    expect(totalsWrites()).toHaveLength(0);
+    expect(completedWrites()).toHaveLength(0);
+    expect(document.body.textContent).toContain("already finished on another iPad");
+    expect(document.body.textContent).toContain("Session complete");
+  });
+
+  it("finishes once when Finish session is tapped twice at once", async () => {
+    await openEndSession();
+    const button = finishButton()!;
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+    await settle();
+    await settle();
+
+    expect(totalsWrites()).toHaveLength(1);
+    expect(completedWrites()).toHaveLength(1);
+    expect(document.body.textContent).toContain("Session complete · saved");
+    expect(document.body.textContent).not.toContain("saved on this iPad");
   });
 });

@@ -13,7 +13,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | Phase | Commit | What |
 | --- | --- | --- |
 | 1 | `c197615` | A set still waiting to be sent keeps what the trainer typed, and a set is sent the moment it is entered. |
-| 2 | (this commit) | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
+| 2 | `784885e` | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
+| 3 | (this commit) | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
 
 ### Phase 1: what was wrong
 
@@ -53,11 +54,39 @@ Claude's call on where it sits: AJ suggested "a pop up at the bottom right", but
 
 Tests: `send-status.test.ts` covers the rule and its words, including that the words never use developer terms. `SendStatusStrip.render.test.tsx` mounts the line with its hook and shows three things: the Wi-Fi dropping and coming back; a save that hangs, then arrives; and an older save arriving while a newer one is still out. The suite gives 5,524 passing in 349 files and the typecheck 4, measured as in phase 1.
 
+## Phase 3: Finish
+
+### What was wrong
+
+- **Finish hung offline.** A Firestore write is on the iPad the moment it is made. What its promise waits for is the database's answer, and offline that never comes. End Session awaited it, so "Saving…" never ended. Worse, the moment the iPad's own copy said Completed, the sessions stream cleared the session. That put the briefing on screen and took the End Session dialog away. The post-session screen never came, and the trainer was left looking at a briefing for a session they had just finished. That is the Atlas's "Finish with no signal looks finished but only sits on the iPad".
+- **Leaving the post-session screen hung too.** Filing the closing note or an unsaved draft awaited the database the same way, so offline the trainer could not leave the screen.
+- **A second Finish counted everything twice.** Finish adds to the client's running totals with increments. A second Finish for the same session, from another iPad or a quick second tap, added them all again, with no undo.
+
+### What it does
+
+`src/features/session-record/finish-wait.ts`:
+
+- **`settleOrQueue`** waits up to `FINISH_WAIT_MS` (3 s) for the database's answer, and not at all while the iPad knows it is offline. A refusal inside that time is reported as before. Past it, the save is taken as saved on this iPad, and Finish moves on to the post-session screen. That screen says "Session complete · saved on this iPad" and "It sends to the studio's records when the connection is back." It switches back to plain "saved" when the answer comes. If the database refuses the session later, the trainer is told the sets are saved and to resume the session and press Finish again. Filing the closing note and the unsaved draft use the same wait.
+- **`finishedElsewhere`** asks the server, for up to 2 s, whether the session is already Completed. If it is, Finish writes nothing, says "This session was already finished on another iPad, so nothing was counted twice", and still shows the post-session screen, since the trainer is walking the client out either way. Offline, with no answer in time, or if the question cannot be asked, the answer is no and Finish goes ahead: it is never blocked by a question it cannot ask.
+- **One Finish at a time.** `finishingRef` makes a second tap return at once.
+- **The sessions stream leaves a Finish in flight alone.** It no longer clears the session and flips to the briefing while Finish is running; Finish clears it itself once the post-session screen is ready.
+
+### What it cannot close without your OK
+
+One offline Finish that replays later, after another iPad has already finished the same session online, can still add the totals twice. That iPad had no way to ask. Closing it needs a guard on the database side: a rule that refuses a second totals write for one session, or the totals moved into the session trigger. Either is a permissions or Cloud Functions change, so it waits for the permissions round and your explicit OK. Phase 7, which opens a second iPad read-only, removes most of the ways to get there.
+
+### Tests
+
+- `finish-wait.test.ts` covers the wait: an answer, a refusal, a slow connection, offline, an immediate refusal while offline, and a question that cannot be asked.
+- `VictoryHUDScreen.render.test.tsx` covers the two ways the post-session screen names where the session is saved.
+- `WorkoutTrackerView.render.test.tsx` drives Finish through the mounted Active Session. Offline, it goes straight to the post-session screen saying "saved on this iPad", with the writes made. A session the server says is already Completed gets no second totals or session write. A double tap finishes once. Each of the three fixes was taken out in turn, and the matching test failed.
+
+The suite gives 5,540 passing in 350 files, the typecheck 4 and the build passes, measured as in phase 1.
+
 ## Still to come in this round
 
 These come from the review's suggested order, and each will be its own phase:
 
-- Finish that queues instead of hanging, and can never count a session twice.
 - A warning before signing out while a session is running or sets are unsent.
 - A second iPad opening a running session read-only, so a leader can watch it live.
 - An honest sentence on every blank Active Session screen.
