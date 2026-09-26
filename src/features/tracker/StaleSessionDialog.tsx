@@ -27,6 +27,7 @@ export function StaleSessionDialog({
   session,
   begunMachines,
   todayKey,
+  takesOver = false,
   onResume,
   onStartNew,
 }: {
@@ -37,6 +38,11 @@ export function StaleSessionDialog({
    *  "not loaded yet" look the same, so none is never claimed. */
   begunMachines: number | null;
   todayKey: string;
+  /**
+   * Another trainer started it: resuming makes it this trainer's to finish,
+   * as a take-over does (session record, Sep 26 2026), and the question says so.
+   */
+  takesOver?: boolean;
   onResume: () => void;
   onStartNew: () => void;
 }) {
@@ -58,7 +64,7 @@ export function StaleSessionDialog({
           </DialogDescription>
           <p className="text-muted-foreground font-medium text-sm leading-relaxed">
             Resume it to carry on in that session: anything you log goes in
-            under {day}. Or start a new session: the unfinished one is left
+            under {day}.{takesOver ? " Resuming it makes it yours to finish." : ""} Or start a new session: the unfinished one is left
             exactly as it is, and can be discarded from {clientFirstName}'s
             profile.
           </p>

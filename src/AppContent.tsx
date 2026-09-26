@@ -45,6 +45,7 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  waitForPendingWrites,
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
@@ -70,6 +71,7 @@ import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
   forgetLiveSession,
+  myTrainerIds,
   peekLiveSessionId,
 } from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
@@ -161,7 +163,8 @@ import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
 import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
-import { useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
+import { LeaveConfirmDialog, useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
+import { sendSetsNow, signOutQuestion, unsentWritesWaiting } from "./features/session-record/sign-out-check";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -449,6 +452,11 @@ export default function AppContent({
   );
   /** Id of the last client whose fetch finished, successfully or not. */
   const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
+  /* Whether the selected client's own read FAILED, as opposed to finding no
+     record, and a way to ask again: the Active Session says which and offers
+     Try again rather than drawing nothing (session record, Sep 26 2026). */
+  const [selectedClientReadFailed, setSelectedClientReadFailed] = useState(false);
+  const [clientReadAttempt, setClientReadAttempt] = useState(0);
 
   // Derived rather than a flag set inside the effect: effects run *after* render,
   // so a boolean would still read false on the first paint and flash the
@@ -479,11 +487,15 @@ export default function AppContent({
     if (!selectedClientId) {
       setSelectedClientDoc(null);
       setResolvedClientId(null);
+      setSelectedClientReadFailed(false);
       return;
     }
 
     let cancelled = false;
     setSelectedClientDoc(null);
+    setSelectedClientReadFailed(false);
+    // A retry of the same client is loading again, not "no record".
+    setResolvedClientId(null);
 
     const fetchClient = async () => {
       try {
@@ -497,6 +509,7 @@ export default function AppContent({
         }
       } catch (e) {
         console.error("Error fetching client", e);
+        if (!cancelled) setSelectedClientReadFailed(true);
       } finally {
         // Marks the fetch as settled so the profile stops showing the spinner,
         // whether the client was found, missing, or the read failed.
@@ -511,7 +524,7 @@ export default function AppContent({
     return () => {
       cancelled = true;
     };
-  }, [selectedClientId]);
+  }, [selectedClientId, clientReadAttempt]);
 
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
     string | null
@@ -779,9 +792,11 @@ export default function AppContent({
      trainer to the directory while their session was still running. This
      is the trainer's OWN live session, found without a client, so the tab
      can take them straight back. See lib/live-session.ts. */
+  /* Under any id this trainer's sessions may carry (older accounts differ),
+     the same answer the Active Session gives (session record, Sep 26 2026). */
   const myLiveSession = useMemo(
-    () => findMyLiveSession(sessions, authTrainer?.id),
-    [sessions, authTrainer?.id],
+    () => findMyLiveSession(sessions, myTrainerIds(authTrainer, user?.uid)),
+    [sessions, authTrainer, user?.uid],
   );
   const liveSession = currentSession ?? myLiveSession;
 
@@ -1032,8 +1047,24 @@ export default function AppContent({
    * early return below, which unmounts the whole screen.
    */
   const openStudioPicker = () => guardLeave(() => setIsChangingStudio(true));
+  const signOutNow = () => guardLeave(() => void handleLogout().catch(console.error));
+  /* Sign-out asks first when this trainer's own session is still open, or
+     this iPad has saves the database hasn't confirmed: those wait on the
+     iPad for the same person to sign in here again (session record, Sep 26
+     2026). The Active Session sends its waiting sets first, while this
+     person is still signed in. A question, never a block. */
+  const [signOutAsk, setSignOutAsk] = useState<string | null>(null);
   const logOut = () => {
-    guardLeave(() => void handleLogout().catch(console.error));
+    sendSetsNow();
+    void (async () => {
+      const unsent = await unsentWritesWaiting(() => waitForPendingWrites(db));
+      const question = signOutQuestion({
+        openSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+        unsent,
+      });
+      if (question) setSignOutAsk(question);
+      else signOutNow();
+    })();
     return Promise.resolve();
   };
   const startNewClientOnboarding = (name: string) =>
@@ -1795,6 +1826,16 @@ export default function AppContent({
                     rightControls={headerRightControls}
                     trainerDropdown={headerTrainerDropdown}
                     onStudioClick={openStudioPicker}
+                    clientLookup={
+                      !selectedClientId || clients.some((c) => c.id === selectedClientId)
+                        ? "ready"
+                        : isLoadingClient
+                          ? "loading"
+                          : selectedClientReadFailed
+                            ? "failed"
+                            : "missing"
+                    }
+                    onRetryClient={() => setClientReadAttempt((n) => n + 1)}
                   />
                 )}
                 {currentView === "profile" && (
@@ -2637,6 +2678,20 @@ export default function AppContent({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {signOutAsk && (
+          <LeaveConfirmDialog
+            title="Before you sign out"
+            question={signOutAsk}
+            leaveLabel="Sign out anyway"
+            stayLabel="Stay signed in"
+            onStay={() => setSignOutAsk(null)}
+            onLeave={() => {
+              setSignOutAsk(null);
+              signOutNow();
+            }}
+          />
+        )}
 
       </FeedbackProvider>
     </ErrorBoundary>

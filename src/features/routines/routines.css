@@ -234,6 +234,13 @@
   gap: 6px;
   margin-left: auto;
 }
+/* "Used last on Sep 22" (replaced Use today, Sep 26 2026): a fact, not a control. */
+.rt-used {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--eq-ink-faint);
+  white-space: nowrap;
+}
 .rt-switch {
   display: inline-flex;
   align-items: center;

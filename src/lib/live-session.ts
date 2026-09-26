@@ -51,6 +51,7 @@ export interface LiveSessionLike {
   id?: string;
   status?: string;
   trainerId?: string;
+  startedByTrainerId?: string;
   clientId?: string;
   clientName?: string;
   lastHeartbeatAt?: unknown;
@@ -100,15 +101,91 @@ export function splitInProgress<T extends LiveSessionLike>(
 /**
  * The caller's own In-Progress session, if the stream holds one that is
  * still alive. Newest heartbeat wins when (wrongly) more than one exists.
+ * Takes one id, or every id the caller's sessions may carry (`myTrainerIds`).
  */
 export function findMyLiveSession<T extends LiveSessionLike>(
   sessions: readonly T[],
-  trainerId: string | null | undefined,
+  trainerId: string | readonly string[] | null | undefined,
   now: number = Date.now(),
 ): T | undefined {
-  if (!trainerId) return undefined;
-  const mine = sessions.filter((s) => s.trainerId === trainerId && !!s.clientId);
+  const ids = typeof trainerId === "string" ? [trainerId] : (trainerId ?? []);
+  if (ids.length === 0) return undefined;
+  const mine = sessions.filter((s) => !!s.trainerId && ids.includes(s.trainerId) && !!s.clientId);
   return splitInProgress(mine, now).live ?? undefined;
+}
+
+/* ------------------------------------------------------------------ *
+ * WHOSE SESSION IS THIS (session record, Sep 26 2026).
+ *
+ * A second iPad used to open a running session as if it were its own, so a
+ * head trainer looking in could type over the trainer's sets, and two
+ * Finishes counted everything twice. AJ, on the Screen Atlas: leaders
+ * "don't have to be able to edit anything but they should be able to like
+ * kind of follow along", and "the big thing is I still want trainers to be
+ * able to hop back into a session in the event of a iPad dying". So the
+ * trainer running a session records it, from any iPad they sign in on, and
+ * everyone else watches it, live, until they choose to take it over.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Every id this person's sessions may carry. Start writes the trainer
+ * document's id, which differs from the sign-in uid on older accounts, and a
+ * profile claimed from a placeholder began under another id
+ * (features/trainer-identity). Any of them is "me".
+ */
+export function myTrainerIds(
+  trainer: { id?: string | null; authUid?: string | null; claimedFromId?: string | null } | null | undefined,
+  uid?: string | null,
+): string[] {
+  const ids = [trainer?.id, trainer?.authUid, trainer?.claimedFromId, uid]
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean);
+  return Array.from(new Set(ids));
+}
+
+/**
+ * True when another trainer is running the session, so this iPad watches it
+ * rather than recording into it. A session with no trainer on it, or a
+ * person the app cannot identify, is never someone else's: failing that way
+ * would lock a trainer out of their own session, the one thing that must
+ * always work.
+ */
+export function isAnotherTrainersSession(
+  session: { trainerId?: string | null } | null | undefined,
+  myIds: readonly string[],
+): boolean {
+  const runner = (session?.trainerId || "").trim();
+  if (!runner || myIds.length === 0) return false;
+  return !myIds.includes(runner);
+}
+
+export interface TakeOverPatch {
+  trainerId: string;
+  trainerName: string;
+  trainerInitials: string;
+  startedByTrainerId?: string;
+}
+
+/**
+ * What a take-over writes on the session. It becomes the new trainer's to
+ * record and finish, and Finish has always credited whoever finishes (it
+ * writes `trainerId`, lib/sync-utils.ts): the trainer who ran the rest of the
+ * session gets it. The trainer who started it stays on it as
+ * `startedByTrainerId`, which Start has always written; a session from
+ * before that field gets it now, from the trainer being replaced.
+ */
+export function takeOverPatch(
+  session: { trainerId?: string | null; startedByTrainerId?: string | null },
+  me: { id: string; fullName?: string | null; initials?: string | null },
+): TakeOverPatch {
+  const patch: TakeOverPatch = {
+    trainerId: me.id,
+    trainerName: me.fullName || "",
+    trainerInitials: me.initials || "??",
+  };
+  const starter = (session.startedByTrainerId || "").trim();
+  const runner = (session.trainerId || "").trim();
+  return !starter && runner ? { ...patch, startedByTrainerId: runner } : patch;
 }
 
 function storage(): Storage | null {

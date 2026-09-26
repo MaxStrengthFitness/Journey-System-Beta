@@ -127,6 +127,12 @@ export interface VictoryHUDScreenProps {
   unsavedDraft?: SessionNoteDraft | null;
   onSaveDraft?: (text: string) => void | Promise<void>;
   onDropDraft?: () => void;
+  /**
+   * The session is saved on this iPad and the database has not answered yet:
+   * offline, or a slow connection (session record, Sep 26 2026). "Saved" alone
+   * would be a claim about the studio's records that is not true yet.
+   */
+  savedOnThisIpad?: boolean;
   machines?: Machine[];
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
@@ -224,6 +230,7 @@ export function VictoryHUDScreen({
   unsavedDraft = null,
   onSaveDraft,
   onDropDraft,
+  savedOnThisIpad = false,
   machines = [],
   rightControls,
   trainerDropdown,
@@ -424,10 +431,15 @@ export function VictoryHUDScreen({
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
-            <Kicker>Session complete · saved</Kicker>
+            <Kicker>{savedOnThisIpad ? "Session complete · saved on this iPad" : "Session complete · saved"}</Kicker>
             <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
               {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
+            {savedOnThisIpad && (
+              <p className="text-ink-d2 text-[13px] mb-1" role="status">
+                It sends to the studio's records when the connection is back. Nothing more to do.
+              </p>
+            )}
             <div className="text-ink-d2 text-[13px]">
               {todayHeadline(lines, coverage)}
               {minutes !== null ? ` · ${minutes} min` : ""}

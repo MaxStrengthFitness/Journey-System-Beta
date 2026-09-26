@@ -300,6 +300,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **A reader that already has the tab's load passes it in; given one, the piece reads nothing** (client codex, phase 6, Sep 24 2026). `InBodyCard` takes `inbody`, `ClientCheckInPanel` takes `draft` (and `FordSection` took `ford` until the FORD page replaced it in phase 10 — the FORD page has no hook at all); each disables its own hook rather than skipping it (hooks cannot be conditional), exactly as the old journal area (`ClientJournalTab`, deleted in phase 19) did with `journal`. Left out, each reads for itself as before. `useNoteDismissalsState(uid)` says whether the trainer's dismissals have been read (`loading · ready · failed`) — `useNoteDismissals` returns `{}` until then, which cannot be told from "nothing hushed". **ClientProfileView is not remounted per client**, so an answer it holds is stamped with the client it is for and read through `answerFor` (`src/features/client-profile/client-answer.ts`): `progressReportsStatus` (the reports list is not cleared on a client change, so filter it by `clientId` AND wait for `ready`) and `journeyCompletedCount` (null until counted — `calculatedSessionCount` starts at 0 and keeps the last client's total, so never read it as "new").
 
+- **A dialog the header or a notice opens lives in the profile's frame, never inside a tab panel** (session record, phase 6, Sep 26 2026). The profile's tabs draw only the panel on screen, so a dialog drawn inside Programming does not exist while Journey, Notes & Profile or the Activity Archive is showing. The header's Discard and the stale notice's "Discard it" set `discardTarget` and nothing opened; the question then appeared out of nowhere the next time Programming was opened. The Discard question now sits after `</Tabs>`, and `ClientProfileView.discard.test.ts` checks it stays there. The same holds for any dialog a control outside the tabs opens. **A routine card says the Active Session's routine, never a choice the session does not read**: "Use today" wrote `preferredTodayRoutineId`, which the tracker never read, so the card could say A while the session ran B. Both now read `nextRoutine` (`src/features/routines/next-routine.ts`), and the field is retired but still on older records.
+
 <a id="tracker"></a>
 
 ## The Active Session and set data
@@ -312,7 +314,15 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **The session is saved at End Session, once.** `commitEndSession` is the only caller of `completeWorkoutSession` (its counters are `increment()`s — a second call double-counts). The post-session screen only appends: `dose` by `updateDoc`, the closing note by `createJournalEntry`. There is no Finalize button to bring back.
 
-- **`WorkoutTrackerView` draws three screens and the order is a rule**, `lib/tracker-screen.ts`: post-session first while its snapshot exists, then none / briefing / tracker. The client's sessions stream turns pre-session mode on whenever nothing is In-Progress — including the beat after Finish — so never check the briefing before the post-session screen.
+- **Never await the database's answer on the floor** (session record, Sep 26 2026). A write is on the iPad the moment it is made; its promise waits for the SERVER, which offline never answers. Finish, the closing note and the unsaved draft wait through `settleOrQueue` (`src/features/session-record/finish-wait.ts`): at most `FINISH_WAIT_MS`, never while offline, and past it the screen says "saved on this iPad". A new write on the Active Session or the post-session screen does the same, or fires and forgets with a toast on failure. Finish runs once (`finishingRef`) and asks the server first whether another iPad already finished the session (`finishedElsewhere`). The sessions listener leaves a Finish in flight alone; clearing the session there flipped the screen to the briefing mid-Finish.
+
+- **Another trainer's session is watched, never adopted** (session record, phase 7, Sep 26 2026). The Active Session holds it as `watchedSession`, apart from `currentSession`, and draws `WatchingSession` in place of the recording screen, so no effect, sheet or write keyed on `currentSession` runs while watching. Every way a session reaches the screen asks `isAnotherTrainersSession` (`src/lib/live-session.ts`) with `myTrainerIds`: the client's sessions stream, the open-session stream, the device's remembered id and Resume on a stale session. The ids are the trainer document's, the sign-in uid and a claimed placeholder's, because older accounts differ. A new way in must ask it too, and must fail toward recording: a session with no trainer, or a person the app cannot identify, is never someone else's. A take-over writes `takeOverPatch` and is protected for `JUST_STARTED_GRACE_MS` from a snapshot that has not caught up with it. The iPad it was taken from sends its waiting sets (`flushAllLogWrites`) before it turns to watching. The grid's display memos read `shownSession`; a write never does.
+
+- **A write made after sign-out is made as nobody** (session record, Sep 26 2026). Anything queued in a screen and sent on unmount is sent AFTER the sign-out that unmounted it, and the database refuses it. The Active Session sends its waiting sets on `SEND_SETS_NOW_EVENT`, which `logOut` raises first (`src/features/session-record/sign-out-check.ts`). A new screen that queues writes listens for it too. Firestore also keeps each person's unsent writes under that person, so `logOut` asks before signing out with saves unconfirmed.
+
+- **A set still in the write queue wins over the snapshot** (session record, Sep 26 2026). The `exerciseLogs` listener builds `logs` through `keepPendingEdits` (`src/lib/pending-log-edits.ts`), never `setLogs(snapshotMap)`. When another machine's save lands, the snapshot carries this set's older numbers, and a plain rebuild reverts what the trainer is typing. A new writer of set data goes through `queueLogWrite`, so the listener knows the set is pending. A tap that finishes something is sent at once (`sendsAtOnce`), and leaving a typed field sends it (`SessionNowBar`'s `onCommit`). `docs/rounds/2026-09-26-session-record.md`.
+
+- **`WorkoutTrackerView` draws three screens and the order is a rule**, `lib/tracker-screen.ts`: post-session first while its snapshot exists, then none / briefing / tracker. The client's sessions stream turns pre-session mode on whenever nothing is In-Progress — including the beat after Finish — so never check the briefing before the post-session screen. "none" is a real screen since Sep 26 2026 (`NothingOnScreen`, session record): never return null there, because the routing does reach it.
 
 - **Sessions still use the app-wide machine list**, not each studio's roster, so a studio's own or adopted machines aren't in the session picker yet (ROADMAP).
 
@@ -511,10 +521,10 @@ the data files with esbuild's text loader, so that field comes back as the
   with one a rule may refuse, and a write that follows it is queued, not
   awaited. A read grant is not a write grant: when you open a document to
   another studio, list what that studio's screens write to it and test each
-  one.** Still refused for a visitor, knowingly: Use today
-  (`preferredTodayRoutineId`), the machine-stats backfill marker and the
-  consultation wizard's `requiresConsultation` (a prospect cross-training
-  before her first consultation). Tests: `a cross-train visitor's session` in
+  one.** Still refused for a visitor, knowingly: the machine-stats backfill
+  marker and the consultation wizard's `requiresConsultation` (a prospect
+  cross-training before her first consultation). Use today
+  (`preferredTodayRoutineId`) was the third, until it went on Sep 26 2026. Tests: `a cross-train visitor's session` in
   `tests/firestore.rules.test.ts` (the full eight-machine batch fits the
   rules' expression budget) and `src/lib/sync-utils.finish.test.ts`.
 

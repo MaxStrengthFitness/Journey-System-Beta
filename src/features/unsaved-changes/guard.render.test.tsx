@@ -470,3 +470,42 @@ describe("a drawer asks before it closes over unsaved typing", () => {
     expect(drawerOpen()).toBe("0");
   });
 });
+
+describe("the same dialog asks before a sign-out (session record, Sep 26 2026)", () => {
+  it("says it in sign-out words, with Stay signed in as the safe default", async () => {
+    const { LeaveConfirmDialog } = await import("./LeaveConfirmDialog");
+    let stayed = 0;
+    let left = 0;
+    await mount(
+      <LeaveConfirmDialog
+        title="Before you sign out"
+        question="Your session with Judy Daus is still open. It stays open until someone finishes it. Sign out anyway?"
+        leaveLabel="Sign out anyway"
+        stayLabel="Stay signed in"
+        onStay={() => stayed++}
+        onLeave={() => left++}
+      />,
+    );
+    const dialog = document.body.querySelector('[role="alertdialog"]')!;
+    expect(dialog.querySelector("h2")?.textContent).toBe("Before you sign out");
+    expect(dialog.textContent).toContain("Judy Daus is still open");
+    const stay = dialog.querySelector<HTMLButtonElement>('[data-action="keep-editing"]')!;
+    const leave = dialog.querySelector<HTMLButtonElement>('[data-action="leave"]')!;
+    expect(stay.textContent).toBe("Stay signed in");
+    expect(leave.textContent).toBe("Sign out anyway");
+    expect(document.activeElement).toBe(stay);
+    await act(async () => leave.click());
+    expect(left).toBe(1);
+    await act(async () => stay.click());
+    expect(stayed).toBe(1);
+  });
+
+  it("keeps its unsaved-changes words when nothing else is asked for", async () => {
+    const { LeaveConfirmDialog } = await import("./LeaveConfirmDialog");
+    await mount(<LeaveConfirmDialog question="Leave without saving?" onStay={() => {}} onLeave={() => {}} />);
+    const dialog = document.body.querySelector('[role="alertdialog"]')!;
+    expect(dialog.querySelector("h2")?.textContent).toBe("Unsaved changes");
+    expect(dialog.querySelector('[data-action="leave"]')?.textContent).toBe("Leave");
+    expect(dialog.querySelector('[data-action="keep-editing"]')?.textContent).toBe("Keep editing");
+  });
+});

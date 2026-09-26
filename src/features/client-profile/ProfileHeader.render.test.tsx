@@ -4,10 +4,28 @@
  * and the Master Sync button is the one sync trigger on the profile.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client } from "../../types";
 import { ProfileHeader, type ProfileHeaderProps } from "./ProfileHeader";
+
+/* Base UI's menu does not open in jsdom (its positioning never settles), so
+   the running-session menu is drawn open, with plain elements: what is
+   tested is the header's own items, words and handlers. */
+vi.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: ReactNode }) => <div data-testid="menu">{children}</div>,
+  DropdownMenuTrigger: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <button type="button" className={className}>
+      {children}
+    </button>
+  ),
+  DropdownMenuContent: ({ children }: { children: ReactNode }) => <div role="menu">{children}</div>,
+  DropdownMenuItem: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
+    <div role="menuitem" tabIndex={0} onClick={onClick}>
+      {children}
+    </div>
+  ),
+}));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -35,8 +53,8 @@ function props(over: Partial<ProfileHeaderProps> = {}): ProfileHeaderProps {
     pkg: { label: null, remaining: null, total: null, source: "none", asOf: null, fromMindbody: false, autoRenews: null } as never,
     onBack: () => {},
     onStartSession: () => {},
-    onTakeOverSession: () => {},
-    onViewCurrentSession: () => {},
+    onContinueSession: () => {},
+    onWatchSession: () => {},
     onDiscardSession: () => {},
     ...over,
   };
@@ -241,5 +259,64 @@ describe("ProfileHeader's package pill", () => {
       act(() => root?.unmount());
       host?.remove();
     }
+  });
+});
+
+/* The In-progress menu (session record, Sep 26 2026): Continue for this
+   trainer's own session, Watch for anyone else's, and who started it. */
+describe("ProfileHeader's running-session menu", () => {
+  const trainers = [
+    { id: "t-jc", initials: "JC", fullName: "Jane Coach" },
+    { id: "t-aj", initials: "AJ", fullName: "AJ Jurgens" },
+  ] as never;
+  const running = (over: Record<string, unknown> = {}) => ({
+    id: "s1",
+    trainerId: "t-jc",
+    trainerInitials: "JC",
+    startedByTrainerId: "t-jc",
+    startTime: { toMillis: () => Date.UTC(2026, 8, 26, 13, 4) },
+    ...over,
+  });
+  async function openMenu(el: HTMLElement) {
+    // Drawn open by the stand-in above; the trigger is still the header's.
+    expect([...el.querySelectorAll("button")].some((b) => b.textContent?.includes("In progress"))).toBe(true);
+  }
+  const item = (label: string) =>
+    [...document.body.querySelectorAll('[role="menuitem"]')].find((n) => n.textContent?.trim() === label) as
+      | HTMLElement
+      | undefined;
+
+  it("offers Continue for this trainer's own session, and never Take over from here", async () => {
+    const onContinueSession = vi.fn();
+    const el = mount(props({ activeInProgressSession: running(), sessionIsMine: true, onContinueSession, trainers }));
+    await openMenu(el);
+    expect(item("Continue session")).toBeTruthy();
+    expect(item("Watch session")).toBeUndefined();
+    expect(document.body.textContent).not.toContain("Take over session");
+    await act(async () => item("Continue session")!.click());
+    expect(onContinueSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Watch for another trainer's session", async () => {
+    const onWatchSession = vi.fn();
+    const el = mount(props({ activeInProgressSession: running(), sessionIsMine: false, onWatchSession, trainers }));
+    await openMenu(el);
+    expect(item("Watch session")).toBeTruthy();
+    expect(item("Continue session")).toBeUndefined();
+    await act(async () => item("Watch session")!.click());
+    expect(onWatchSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("names who started it, and who took it over, at the studio's time", async () => {
+    const el = mount(
+      props({
+        activeInProgressSession: running({ trainerId: "t-aj", trainerInitials: "AJ" }),
+        sessionIsMine: false,
+        trainers,
+      }),
+    );
+    await openMenu(el);
+    const line = document.body.querySelector('[data-testid="session-started-line"]')?.textContent;
+    expect(line).toBe("Started by JC at 9:04 AM · AJ took it over");
   });
 });

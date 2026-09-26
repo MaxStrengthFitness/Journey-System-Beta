@@ -34,6 +34,7 @@ import {
   type RoutineRow,
 } from "./routine-rows";
 import type { HistoryCoverage } from "../../lib/prior-history";
+import { lastUsedDay, usedLastSentence } from "./next-routine";
 
 export interface RoutinesModelInput {
   client: Client | null | undefined;
@@ -61,8 +62,11 @@ export interface RoutinesModel {
   latestB: RoutineChange | null;
   monthCount: number;
   newest: RoutineChange | null;
-  /** Which prescription the client is training today, if one was chosen. */
+  /** Which prescription the next session runs: the running one's, else the alternation's. */
   todayName: RoutineName | null;
+  /** "Used last on Sep 22" per routine, from Journey's completed sessions; null says nothing. */
+  usedLastA: string | null;
+  usedLastB: string | null;
   /** Machines with a recorded load, over machines prescribed. B counts only when B is on. */
   setUp: number;
   total: number;
@@ -116,6 +120,9 @@ export function useRoutinesModel(input: RoutinesModelInput): RoutinesModel {
         ? "Routine B"
         : null;
 
+  const usedLastA = useMemo(() => usedLastSentence(lastUsedDay(sessions, a.id)), [sessions, a.id]);
+  const usedLastB = useMemo(() => usedLastSentence(lastUsedDay(sessions, b.id)), [sessions, b.id]);
+
   const setUp =
     rowsA.filter((r) => r.weight !== null).length +
     (isBActive ? rowsB.filter((r) => r.weight !== null).length : 0);
@@ -132,6 +139,8 @@ export function useRoutinesModel(input: RoutinesModelInput): RoutinesModel {
     monthCount,
     newest: changes[0] ?? null,
     todayName,
+    usedLastA,
+    usedLastB,
     setUp,
     total,
   };

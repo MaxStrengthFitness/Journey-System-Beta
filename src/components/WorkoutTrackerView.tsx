@@ -28,6 +28,7 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  getDocFromServer,
   limit,
   Timestamp,
   deleteField,
@@ -49,6 +50,23 @@ import {
 } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
+import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
+import { sendsAtOnce } from "../features/journey-grid/send-at-once";
+import { useSendState } from "../features/session-record/useSendState";
+import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
+import { finishedElsewhere, settleOrQueue } from "../features/session-record/finish-wait";
+import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
+import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
+import { nothingKind } from "../features/session-record/nothing-on-screen";
+import { nextRoutine } from "../features/routines/next-routine";
+import { WatchingSession } from "../features/session-record/WatchingSession";
+import {
+  firstOpenMachine,
+  machinesDone,
+  sessionMachineList,
+  takeOverWords,
+  watchWords,
+} from "../features/session-record/watch";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -70,6 +88,12 @@ interface PostSessionSnapshot {
   journey: JourneyRead;
   /** A mid-session note the trainer started and never saved (fluidity round). */
   draft: SessionNoteDraft | null;
+  /**
+   * Saved on this iPad, and the database has not answered yet: offline, or a
+   * slow connection (session record, Sep 26 2026). The screen says so, and
+   * this goes false when the answer comes.
+   */
+  queued?: boolean;
 }
 
 const LOG_WRITE_DEBOUNCE_MS = 600;
@@ -121,7 +145,15 @@ import { outcomeAtFinish, unreachedMachineIds, OUTCOME_LABEL, isBegunLog } from 
 import { canQuoteSessionNumber, coverageOfClient, homeCutoverOf } from "../lib/client-coverage";
 import { sessionNumberTag } from "../lib/history-claims";
 import { sessionTimingFields, toEpochMs } from "../lib/session-timing";
-import { forgetLiveSession, peekLiveSessionId, rememberLiveSession, splitInProgress } from "../lib/live-session";
+import {
+  forgetLiveSession,
+  isAnotherTrainersSession,
+  myTrainerIds,
+  peekLiveSessionId,
+  rememberLiveSession,
+  splitInProgress,
+  takeOverPatch,
+} from "../lib/live-session";
 import { StaleSessionDialog } from "../features/tracker/StaleSessionDialog";
 import { trackerScreen } from "../lib/tracker-screen";
 import {
@@ -210,6 +242,8 @@ export function WorkoutTrackerView({
   rightControls,
   trainerDropdown,
   onStudioClick,
+  clientLookup,
+  onRetryClient,
 }: {
   clientId: string | null;
   clients: Client[];
@@ -231,6 +265,14 @@ export function WorkoutTrackerView({
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
+  /**
+   * Where the chosen client's record stands, when it is not on screen yet:
+   * still loading, a read that failed, or no record (session record, Sep 26
+   * 2026). Decides the sentence the screen says instead of drawing nothing.
+   */
+  clientLookup?: "ready" | "loading" | "failed" | "missing";
+  /** Asks for the client's record again, after a read that failed. */
+  onRetryClient?: () => void;
 }) {
   const { activeStudioId: contextActiveStudioId, activeStudio, studios } =
     useActiveStudio();
@@ -283,7 +325,7 @@ export function WorkoutTrackerView({
     [studioFloor, legacyMachinesById],
   );
 
-  const { error: toastError } = useToast();
+  const { error: toastError, info: toastInfo } = useToast();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [logs, setLogs] = useState<Record<string, ExerciseLog>>({});
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -484,6 +526,33 @@ export function WorkoutTrackerView({
   const [staleSession, setStaleSession] = useState<WorkoutSession | null>(null);
   const [declinedStaleId, setDeclinedStaleId] = useState<string | null>(null);
 
+  /*
+   * WATCHING (session record, Sep 26 2026). A session another trainer is
+   * running is never this iPad's to record (lib/live-session.ts,
+   * `isAnotherTrainersSession`): a head trainer looking in used to be able
+   * to type over the trainer's sets, and a second Finish counted everything
+   * twice. It is held here, apart from `currentSession`, so every effect and
+   * write keyed on the session being recorded stays inert while watching;
+   * the screen is features/session-record/WatchingSession.tsx, and nothing
+   * on it writes. `takenFromHere` is set when the session this iPad was
+   * recording was taken over on another one, so the screen can say so.
+   */
+  const [watchedSession, setWatchedSession] = useState<WorkoutSession | null>(null);
+  const [takenFromHere, setTakenFromHere] = useState(false);
+  const watchedSessionRef = useRef<WorkoutSession | null>(null);
+  useEffect(() => {
+    watchedSessionRef.current = watchedSession;
+  }, [watchedSession]);
+  /* Every id this person's sessions may carry; the listeners read the ref. */
+  const myIds = useMemo(() => myTrainerIds(authTrainer, user?.uid), [authTrainer, user?.uid]);
+  const myIdsRef = useRef(myIds);
+  useEffect(() => {
+    myIdsRef.current = myIds;
+  }, [myIds]);
+  /* A take-over made here, until the stream carries it: a snapshot that has
+     not caught up with the write must not hand the session straight back. */
+  const takingOverRef = useRef<{ id: string; at: number } | null>(null);
+
   /* Machines worked on in the stale session, for the question. Only ever a
      positive count: before the logs arrive "none" and "not loaded yet" look
      the same, so the question never claims nothing was logged. */
@@ -504,15 +573,53 @@ export function WorkoutTrackerView({
   const resumeStaleSession = () => {
     const s = staleSession;
     if (!s?.id) return;
+    /* Another trainer's abandoned session becomes this trainer's to finish,
+       exactly as a take-over does; otherwise this iPad would only watch it. */
+    const patch =
+      authTrainer?.id && isAnotherTrainersSession(s, myIdsRef.current) ? takeOverPatch(s, authTrainer) : null;
+    if (patch) takingOverRef.current = { id: s.id, at: Date.now() };
     currentSessionIdRef.current = s.id;
     setStaleSession(null);
-    setCurrentSession(s);
+    setCurrentSession(patch ? ({ ...s, ...patch } as WorkoutSession) : s);
     setShowRoutinePicker(false);
     setIsPreSessionMode(false);
     rememberLiveSession(s.id);
     updateDoc(doc(db, "sessions", s.id), {
+      ...(patch ?? {}),
       lastHeartbeatAt: serverTimestamp(),
     }).catch((error) => handleFirestoreError(error, OperationType.UPDATE, "sessions"));
+  };
+
+  /* Take over the session this iPad is watching, after the question
+     (WatchingSession). It is this iPad's at once, as Resume is; the other
+     iPad sees the new trainer on the session and turns to watching. Offline
+     the write waits on the iPad like any other, and nothing waits on it. */
+  const takeOverWatchedSession = () => {
+    const s = watchedSession;
+    if (!s?.id || !authTrainer?.id) return;
+    const patch = takeOverPatch(s, authTrainer);
+    takingOverRef.current = { id: s.id, at: Date.now() };
+    currentSessionIdRef.current = s.id;
+    watchedSessionRef.current = null;
+    setWatchedSession(null);
+    setTakenFromHere(false);
+    setCurrentSession({ ...s, ...patch } as WorkoutSession);
+    setShowRoutinePicker(false);
+    setIsPreSessionMode(false);
+    rememberLiveSession(s.id);
+    updateDoc(doc(db, "sessions", s.id), {
+      ...patch,
+      lastHeartbeatAt: serverTimestamp(),
+    }).catch((error) => {
+      /* Refused: the session is still the other trainer's, so this iPad
+         goes back to watching it, and says why. */
+      console.error("[take over] the take-over was not saved", error);
+      takingOverRef.current = null;
+      if (currentSessionIdRef.current === s.id) currentSessionIdRef.current = null;
+      setCurrentSession((cur) => (cur?.id === s.id ? null : cur));
+      setWatchedSession(s);
+      toastError("The take-over didn't go through. Check the connection, then try again.");
+    });
   };
 
   /* ...or chose to leave it. It is not touched: the briefing's Start makes
@@ -542,6 +649,22 @@ export function WorkoutTrackerView({
                And only a LIVE session is adopted here: a stale one is left
                to the client's sessions stream below, which asks. */
             if (
+              data.status === "In-Progress" &&
+              (!clientId || data.clientId === clientId) &&
+              isSessionValid(data) &&
+              isAnotherTrainersSession(data, myIdsRef.current)
+            ) {
+              /* The device remembered a session someone else now runs (it
+                 was taken over): it is watched, and no longer this iPad's
+                 to come back to (session record, Sep 26 2026). */
+              forgetLiveSession(takeoverSessionId);
+              setWatchedSession(data);
+              setSessions((prev) =>
+                prev.some((s) => s.id === data.id) ? prev : [data, ...prev],
+              );
+              setIsPreSessionMode(false);
+              setShowRoutinePicker(false);
+            } else if (
               data.status === "In-Progress" &&
               (!clientId || data.clientId === clientId) &&
               isSessionValid(data)
@@ -794,26 +917,54 @@ export function WorkoutTrackerView({
        * running an open session at once could each adopt the other's. It also
        * cannot be read at all now that `sessions` is rule-scoped.
        */
+      /* Several trainers may each run an open session at once (session
+         record, Sep 26 2026): this iPad records its own, and watches
+         another's only when it has none. It read `limit(1)`, so it adopted
+         whichever open session came first, someone else's included. A
+         studio has a handful at most; the limit is a guard rail. */
       const unassignedQuery = query(
         collection(db, "sessions"),
         where("hostedAtStudioId", "==", contextActiveStudioId ?? "__none__"),
         where("isUnassigned", "==", true),
         where("status", "==", "In-Progress"),
-        limit(1),
+        limit(20),
       );
 
       const unsubscribe = onSnapshot(
         unassignedQuery,
         (snapshot) => {
-          if (!snapshot.empty) {
-            const session = {
-              id: snapshot.docs[0].id,
-              ...snapshot.docs[0].data(),
-            } as WorkoutSession;
-            setCurrentSession(session);
-            setSessions([session]);
+          const open = snapshot.docs.map(
+            (d) => ({ id: d.id, ...d.data() }) as WorkoutSession,
+          );
+          const takingOver = takingOverRef.current;
+          const settlingId =
+            takingOver && Date.now() - takingOver.at < JUST_STARTED_GRACE_MS ? takingOver.id : null;
+          const mine = open.find(
+            (s) => s.id === settlingId || !isAnotherTrainersSession(s, myIdsRef.current),
+          );
+          const onScreen = open.find((s) => s.id === currentSessionIdRef.current);
+          if (mine) {
+            setWatchedSession(null);
+            setTakenFromHere(false);
+            setCurrentSession(mine);
+            setSessions([mine]);
+          } else if (open.length > 0) {
+            if (finishingRef.current) return;
+            /* The open session on screen was taken over on another iPad:
+               what was typed here is sent first, as for a client's session. */
+            if (onScreen) {
+              flushAllLogWrites();
+              forgetLiveSession(onScreen.id);
+              currentSessionIdRef.current = null;
+              setTakenFromHere(true);
+            }
+            const watched = onScreen ?? open[0];
+            setCurrentSession(null);
+            setWatchedSession(watched);
+            setSessions([watched]);
           } else {
             setCurrentSession(null);
+            setWatchedSession(null);
             setSessions([]);
           }
         },
@@ -926,11 +1077,60 @@ export function WorkoutTrackerView({
           const { live, stale } = splitInProgress(sessionsData);
           const inProgress = onScreen ?? live;
           setStaleSession(inProgress ? null : (stale[0] ?? null));
-          if (inProgress) {
+          /* Whose it is (session record, Sep 26 2026): another trainer's
+             session is watched, never recorded into (`watchedSession`). A
+             take-over made here a moment ago is not undone by a snapshot that
+             has not caught up with it, as a fresh Start is not. */
+          const takingOver = takingOverRef.current;
+          const takeOverSettling =
+            !!inProgress &&
+            takingOver?.id === inProgress.id &&
+            Date.now() - takingOver.at < JUST_STARTED_GRACE_MS;
+          const elsewhere =
+            !!inProgress && !takeOverSettling && isAnotherTrainersSession(inProgress, myIdsRef.current);
+          if (inProgress && elsewhere) {
+            /* A Finish running here goes on: its own check decides whether
+               anything is written (features/session-record/finish-wait.ts). */
+            if (!finishingRef.current) {
+              if (onScreen) {
+                /* This iPad was recording it, and it was taken over on
+                   another iPad. Sets typed here were entered before that, so
+                   they are sent, and the device stops pointing at it. */
+                flushAllLogWrites();
+                forgetLiveSession(onScreen.id);
+                currentSessionIdRef.current = null;
+                setTakenFromHere(true);
+              }
+              setCurrentSession(null);
+              setWatchedSession(inProgress);
+              setShowRoutinePicker(false);
+              setIsPreSessionMode(false);
+            }
+          } else if (inProgress) {
+            setWatchedSession(null);
+            setTakenFromHere(false);
             setCurrentSession(inProgress);
             setShowRoutinePicker(false);
             setIsPreSessionMode(false);
           } else {
+            /* The session this iPad was watching ended on the trainer's
+               iPad: say so, rather than let the briefing appear unexplained. */
+            const watched = watchedSessionRef.current;
+            if (watched?.id) {
+              const after = sessionsData.find((s) => s.id === watched.id);
+              watchedSessionRef.current = null;
+              setWatchedSession(null);
+              setTakenFromHere(false);
+              /* Still In-Progress but no longer live: nothing saved for an
+                 hour (lib/live-session.ts). The stale question takes over. */
+              toastInfo(
+                after?.status === "Completed"
+                  ? `${(after.trainerInitials || "").trim() || "The trainer"} finished the session.`
+                  : after?.status === "In-Progress"
+                    ? "Nothing has been saved in this session for over an hour."
+                    : "The session was discarded on another iPad.",
+              );
+            }
             // A session created a moment ago may not be in this snapshot yet, so
             // hold onto it briefly. Bounded on purpose: the previous version kept
             // *any* in-progress session forever, so one that had been completed or
@@ -941,7 +1141,11 @@ export function WorkoutTrackerView({
               pending.clientId === clientId &&
               Date.now() - pending.at < JUST_STARTED_GRACE_MS;
 
-            if (!stillSettling) {
+            /* A Finish in flight clears the session itself, once the
+               post-session screen is ready. Clearing it here, the moment the
+               iPad's copy says Completed, put the briefing on screen and took
+               the End Session dialog away while Finish was still going. */
+            if (!stillSettling && !finishingRef.current) {
               justStartedSessionRef.current = null;
               // Set outside a state updater — updaters must stay pure, and React
               // invokes them twice under StrictMode.
@@ -987,7 +1191,11 @@ export function WorkoutTrackerView({
             const key = `${data.sessionId}_${data.machineId}${data.side ? "_" + data.side : ""}`;
             logsMap[key] = data;
           });
-          setLogs(logsMap);
+          /* A set whose write is still in the queue keeps what the trainer
+             typed: this snapshot may be another machine's save landing, and it
+             carries this set's older numbers (lib/pending-log-edits.ts). */
+          const pending = pendingLogEdits(pendingLogWritesRef.current.values());
+          setLogs((prev) => keepPendingEdits(logsMap, prev, pending));
         },
         (error) => {
           handleFirestoreError(error, OperationType.GET, "exerciseLogs");
@@ -1008,32 +1216,14 @@ export function WorkoutTrackerView({
       const determineAndFetch = async () => {
         const completed = sessions.filter((s) => s.status === "Completed");
         const lastSess = completed[0];
-
-        // Find Routine A and B specifically
-        const routineA = routines.find((r) => r.name === "Routine A");
-        const routineB = routines.find((r) => r.name === "Routine B");
         const isRoutineBActive = selectedClient?.isRoutineBActive || false;
 
-        let target: Routine | null = null;
-
-        // Sequence Selection Logic
-        if (routines.length === 0) {
-          // New Client: Default to Routine A Setup
-          target = { name: "Routine A", machineIds: [], clientId } as Routine;
-        } else if (routineA && routineB && isRoutineBActive) {
-          // Strict Alternation Logic
-          const lastRoutine = routines.find(
-            (r) => r.id === lastSess?.routineId,
-          );
-          if (lastRoutine?.name === "Routine A") {
-            target = routineB;
-          } else {
-            target = routineA;
-          }
-        } else {
-          // Fallback to Routine A or whatever exists
-          target = routineA || routines[0];
-        }
+        /* Strict alternation, in one place since Sep 26 2026 so the profile's
+           routine card says the same (features/routines/next-routine.ts). A
+           client with no routines yet starts a new Routine A. */
+        const target: Routine =
+          nextRoutine(routines, lastSess?.routineId, isRoutineBActive) ??
+          ({ name: "Routine A", machineIds: [], clientId } as Routine);
 
         setTargetRoutine(target);
       };
@@ -1528,7 +1718,10 @@ export function WorkoutTrackerView({
       setShowRoutinePicker(false);
       setIsPreSessionMode(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "sessions");
+      /* Plain words, not the developer toast: Start is the one button a
+         trainer presses with the client standing there (session record). */
+      console.error("[start] the session did not start", error);
+      toastError("The session didn't start. Check the connection, then press Start again.");
     }
   };
 
@@ -1682,8 +1875,14 @@ export function WorkoutTrackerView({
      run twice), then the post-session screen reads from a snapshot. The
      Feel toggle writes on its own the moment it is tapped; the closing
      note is written when the trainer leaves the screen. */
+  /* The session a Finish is running for, if one is (session record, Sep 26
+     2026). A second tap must not run it twice: its totals are increments. */
+  const finishingRef = useRef<string | null>(null);
+
   const commitEndSession = async () => {
     if (!currentSession?.id || !selectedClient) return;
+    if (finishingRef.current) return;
+    finishingRef.current = currentSession.id;
 
     // Land anything still debounced before the finish batch reads local state.
     flushAllLogWrites();
@@ -1742,25 +1941,69 @@ export function WorkoutTrackerView({
         : undefined;
 
       const finalLogs = [...stamped, ...notReached];
-      const finished = await completeWorkoutSession(
-        db,
-        currentSession,
-        selectedClient,
-        finalLogs,
-        undefined,
-        currentSessionNotes,
-        authTrainer,
-        clientMachineSettings,
-        user.uid,
-        sessionExtras,
+      const sessionId = currentSession.id;
+
+      /* Finish adds to the client's running totals, so a Finish for a session
+         another iPad already finished would add them again. Ask the database,
+         briefly; offline the answer is no and Finish goes ahead
+         (features/session-record/finish-wait.ts). */
+      const alreadyFinished = await finishedElsewhere(
+        () =>
+          getDocFromServer(doc(db, "sessions", sessionId)).then((snap) =>
+            snap.exists() ? ((snap.data() as WorkoutSession).status ?? null) : null,
+          ),
+        sendState.online,
       );
+
       /* The session, its sets and the machine weights are saved whatever
          happened to the totals (lib/sync-utils.ts); only the client's running
          totals can be refused. Say so in one line. */
-      if (finished.totalsSaved === false) {
-        toastError(
-          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
+      const reportTotals = (finished: { totalsSaved: boolean | null }) => {
+        if (finished.totalsSaved === false) {
+          toastError(
+            `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
+          );
+        }
+      };
+      let queued = false;
+      if (alreadyFinished) {
+        toastInfo("This session was already finished on another iPad, so nothing was counted twice.");
+      } else {
+        /* The writes are on this iPad the moment this is called; what can take
+           forever is the database's answer. Wait a moment for it, not at all
+           while offline, then carry on and say the session is saved on this
+           iPad. A refusal inside that moment is reported, as before. */
+        const finishing = completeWorkoutSession(
+          db,
+          currentSession,
+          selectedClient,
+          finalLogs,
+          undefined,
+          currentSessionNotes,
+          authTrainer,
+          clientMachineSettings,
+          user.uid,
+          sessionExtras,
         );
+        const outcome = await settleOrQueue(finishing, sendState.online);
+        if (outcome.kind === "failed") throw outcome.error;
+        if (outcome.kind === "saved") {
+          reportTotals(outcome.value);
+        } else {
+          queued = true;
+          finishing.then(
+            (finished) => {
+              reportTotals(finished);
+              setPostSession((ps) => (ps && ps.session.id === sessionId ? { ...ps, queued: false } : ps));
+            },
+            (error) => {
+              console.error("[finish] the session was refused when it reached the database", error);
+              toastError(
+                "This session didn't reach the studio's records, but its sets are saved. Open the client, resume the session and press Finish again.",
+              );
+            },
+          );
+        }
       }
 
       /* The wrap-up note is labelled "something the next trainer should
@@ -1828,6 +2071,7 @@ export function WorkoutTrackerView({
         lines,
         journey,
         draft: hasDraftText(noteDraft) ? noteDraft : null,
+        queued,
       });
       clearSessionDraft(currentSession?.id);
       setNoteDraft(null);
@@ -1840,6 +2084,7 @@ export function WorkoutTrackerView({
       handleFirestoreError(error, OperationType.WRITE, "sessions");
     } finally {
       setIsSyncing(false);
+      finishingRef.current = null;
     }
   };
 
@@ -1857,6 +2102,26 @@ export function WorkoutTrackerView({
     }
   };
 
+  /**
+   * A note written from the post-session screen: the write is on this iPad at
+   * once, so the screen waits only a moment for the database's answer and never
+   * while offline (features/session-record/finish-wait.ts). A refusal, now or
+   * when the answer comes later, is said in `failText`.
+   */
+  const noteOrSay = async (write: Promise<string | null>, failText: string) => {
+    const outcome = await settleOrQueue(write, sendState.online);
+    if (outcome.kind === "queued") {
+      write.then(
+        (id) => {
+          if (!id) toastError(failText);
+        },
+        () => toastError(failText),
+      );
+    } else if (outcome.kind === "failed" || !outcome.value) {
+      toastError(failText);
+    }
+  };
+
   /** Files the session's unsaved draft as a note — from the post-session card, or on the way out. */
   const fileSessionDraft = async (text: string, importance: JournalImportance = "standard") => {
     const snap = postSession;
@@ -1866,8 +2131,8 @@ export function WorkoutTrackerView({
     const kind = d?.category && d.category !== "ford" && d.category !== "admin"
       ? NOTE_CATEGORY_META[d.category].kind
       : "general";
-    try {
-      const id = await createJournalEntry(
+    await noteOrSay(
+      createJournalEntry(
         snap.client.id,
         contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
         { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
@@ -1881,11 +2146,9 @@ export function WorkoutTrackerView({
           sessionId: snap.session.id ?? null,
           origin: "in_session",
         },
-      );
-      if (!id) toastError("That note could not be saved — add it from the Journal.");
-    } catch {
-      toastError("That note could not be saved — add it from the Journal.");
-    }
+      ),
+      "That note could not be saved — add it from the Journal.",
+    );
     setPostSession((s) => (s ? { ...s, draft: null } : s));
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
@@ -1898,8 +2161,8 @@ export function WorkoutTrackerView({
     if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
     const body = closing?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
-      try {
-        const id = await createJournalEntry(
+      await noteOrSay(
+        createJournalEntry(
           snap.client.id,
           contextActiveStudioId || authTrainer?.primaryHomeStudioId || snap.client.homeStudioId || "",
           { id: user.uid, initials: authTrainer?.initials || "", fullName: authTrainer?.fullName || "" },
@@ -1914,11 +2177,9 @@ export function WorkoutTrackerView({
             sessionId: snap.session.id ?? null,
             origin: "post_session",
           },
-        );
-        if (!id) toastError("Session saved. The closing note could not be saved — add it from the Journal.");
-      } catch {
-        toastError("Session saved. The closing note could not be saved — add it from the Journal.");
-      }
+        ),
+        "Session saved. The closing note could not be saved — add it from the Journal.",
+      );
     }
     setPostSession(null);
     setIsPostSessionMode(false);
@@ -1979,6 +2240,11 @@ export function WorkoutTrackerView({
    * A ref rather than state on purpose: this must survive re-renders without
    * causing them, and be readable synchronously from the unmount cleanup.
    */
+  /* Online or not, and whether sent sets have reached the database yet: the
+     line under the session bar (features/session-record). */
+  const sendState = useSendState();
+  const markSent = sendState.sent;
+
   const pendingLogWritesRef = useRef<
     Map<
       string,
@@ -2000,7 +2266,8 @@ export function WorkoutTrackerView({
     ).catch((error) =>
       handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
     );
-  }, []);
+    markSent();
+  }, [markSent]);
 
   const flushAllLogWrites = React.useCallback(() => {
     Array.from(pendingLogWritesRef.current.keys()).forEach(flushLogWrite);
@@ -2045,9 +2312,12 @@ export function WorkoutTrackerView({
     const flushNow = () => flushAllLogWrites();
     window.addEventListener("beforeunload", flushNow);
     document.addEventListener("visibilitychange", flushNow);
+    // Sign-out asks first, while this person is still signed in (session record).
+    window.addEventListener(SEND_SETS_NOW_EVENT, flushNow);
     return () => {
       window.removeEventListener("beforeunload", flushNow);
       document.removeEventListener("visibilitychange", flushNow);
+      window.removeEventListener(SEND_SETS_NOW_EVENT, flushNow);
       flushAllLogWrites();
     };
   }, [flushAllLogWrites]);
@@ -2197,15 +2467,34 @@ export function WorkoutTrackerView({
   // to a name-only check. src/lib/floor-machines.ts.
   const isSidesMachine = (m: Machine) => isPerSideMachine(m);
 
+  /* What the grid draws: the session recorded here, or, while watching, the
+     one another trainer is running (session record, Sep 26 2026). For
+     display only: every write below still keys on `currentSession`, which is
+     null while watching. The watched session's machines follow its own
+     list, which the trainer's iPad rewrites on every add or move. */
+  const shownSession = currentSession ?? watchedSession;
+  const watchedMachineIds = useMemo(
+    () =>
+      watchedSession && !currentSession
+        ? sessionMachineList(
+            watchedSession,
+            routines,
+            floorMachines.map((m) => m.id).filter((id): id is string => !!id),
+          )
+        : [],
+    [watchedSession, currentSession, routines, floorMachines],
+  );
+  const shownMachineIds = watchedSession && !currentSession ? watchedMachineIds : activeMachineIds;
+
   /** Past sessions, oldest → newest. Capped at the 30 the logs listener covers. */
   const gridHistory = useMemo(
     () =>
       toJourneySessions(
         sessions
-          .filter((s) => (currentSession ? s.id !== currentSession.id : true))
+          .filter((s) => (shownSession ? s.id !== shownSession.id : true))
           .slice(0, 30),
       ),
-    [sessions, currentSession],
+    [sessions, shownSession],
   );
 
   const [gridVisible, setGridVisible] = useState(6);
@@ -2229,7 +2518,7 @@ export function WorkoutTrackerView({
         ),
     );
     const historyLogs = (Object.values(logs) as ExerciseLog[]).filter(
-      (l) => !currentSession || l.sessionId !== currentSession.id,
+      (l) => !shownSession || l.sessionId !== shownSession.id,
     );
     const starred = new Set(
       ordered.filter((m) => isBig5Machine(m.name)).map((m) => m.id!),
@@ -2287,16 +2576,16 @@ export function WorkoutTrackerView({
     logs,
     clientMachineSettings,
     studioFloorById,
-    currentSession,
+    shownSession,
     gridHistory,
   ]);
 
   const gridSections = useMemo<GridSection[]>(() => {
     const byId = new Map(gridRows.map((r) => [r.machine.id, r] as const));
-    const routineRows = activeMachineIds
+    const routineRows = shownMachineIds
       .map((id) => byId.get(id))
       .filter(Boolean) as typeof gridRows;
-    const inRoutine = new Set(activeMachineIds);
+    const inRoutine = new Set(shownMachineIds);
     const others = gridRows.filter((r) => !inRoutine.has(r.machine.id));
     return [
       { id: "routine", label: "Today's routine", rows: routineRows, numbered: true },
@@ -2309,7 +2598,7 @@ export function WorkoutTrackerView({
         inactive: true,
       },
     ];
-  }, [gridRows, activeMachineIds, showAllMachines]);
+  }, [gridRows, shownMachineIds, showAllMachines]);
 
   const toNum = (v: unknown): number | null => {
     if (v === undefined || v === null || v === "") return null;
@@ -2320,7 +2609,7 @@ export function WorkoutTrackerView({
   /** Today's values, read straight out of the local `logs` map. */
   const gridLiveValues = useMemo(() => {
     const out: Record<string, LiveSet> = {};
-    const sid = currentSession?.id;
+    const sid = shownSession?.id;
     if (!sid) return out;
     for (const row of gridRows) {
       const id = row.machine.id;
@@ -2356,7 +2645,7 @@ export function WorkoutTrackerView({
       }
     }
     return out;
-  }, [logs, gridRows, currentSession?.id]);
+  }, [logs, gridRows, shownSession?.id]);
 
   /**
    * Where the trainer is working.
@@ -2443,12 +2732,12 @@ export function WorkoutTrackerView({
   /* "Started 2:21 PM" on the session bar — the second thing a trainer
      checks when two iPads sit side by side (the first is the name). */
   const sessionStartedLabel = useMemo(() => {
-    const raw = currentSession?.startTime ?? (currentSession as any)?.clientStartTime;
+    const raw = shownSession?.startTime ?? (shownSession as any)?.clientStartTime;
     if (!raw) return null;
     const d = typeof raw?.toDate === "function" ? raw.toDate() : new Date(raw);
     if (Number.isNaN(d.getTime())) return null;
     return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  }, [currentSession]);
+  }, [shownSession]);
 
   const gridDoneCount = useMemo(
     () =>
@@ -2544,6 +2833,9 @@ export function WorkoutTrackerView({
       setQualityWithGuard(sessionId, machineId, patch.quality, sideL);
     if (patch.qualityR !== undefined && patch.qualityR !== null)
       setQualityWithGuard(sessionId, machineId, patch.qualityR, "Right");
+    /* A tap that finishes something (a quality, practice or skip, the unit,
+       the stopwatch) is sent now, not after the typing wait. */
+    if (sendsAtOnce(patch)) flushAllLogWrites();
   };
 
   const sessionBarNumber = sessionNumberTag(
@@ -2577,7 +2869,11 @@ export function WorkoutTrackerView({
           applySessionMachineIds([...activeMachineIds, id]);
         },
         focusMachineId: gridFocusMachineId,
-        onFocusMachine: setFocusMachineOverride,
+        /* Moving to another machine sends whatever is still waiting on this one. */
+        onFocusMachine: (id: string) => {
+          flushAllLogWrites();
+          setFocusMachineOverride(id);
+        },
         weightStep: 2,
       }
     : undefined;
@@ -2593,6 +2889,7 @@ export function WorkoutTrackerView({
     isPreSessionMode,
     hasClient: !!(clientId && selectedClient),
     hasCurrentSession: !!currentSession,
+    hasWatchedSession: !!watchedSession,
   });
 
   if (screen === "post-session" && postSession) {
@@ -2612,6 +2909,7 @@ export function WorkoutTrackerView({
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
+        savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
@@ -2620,8 +2918,89 @@ export function WorkoutTrackerView({
     );
   }
 
+  if (screen === "watch" && watchedSession?.id) {
+    /* Another trainer's session, read-only and live (session record, Sep 26
+       2026). The same grid as the trainer's own screen, with a Today column
+       that only reads: no change handler that writes, no add, no reorder,
+       and a cell with nothing to do on a tap is not a button. */
+    const runner = (watchedSession.trainerInitials || "").trim();
+    const watchLive: LiveColumn = {
+      session: {
+        id: watchedSession.id,
+        sessionNumber: watchedSession.sessionNumber || sessions.length,
+        date: toIsoDate(watchedSession.date || studioTodayKey()),
+        trainerInitials: runner.toUpperCase(),
+      },
+      routineMachineIds: watchedMachineIds,
+      values: gridLiveValues,
+      onChange: () => {},
+      focusMachineId: firstOpenMachine(watchedMachineIds, gridLiveValues),
+      weightStep: 2,
+    };
+    return (
+      <WatchingSession
+        clientName={
+          selectedClient
+            ? clientDisplayName(selectedClient)
+            : watchedSession.isUnassigned
+              ? "Open session"
+              : (watchedSession.clientName || "").trim() || "This session"
+        }
+        sessionTag={sessionNumberTag(watchedSession.sessionNumber || sessions.length, canQuoteNumber)}
+        runnerInitials={runner || "—"}
+        startedLabel={sessionStartedLabel}
+        timer={{
+          startTime: watchedSession.startTime,
+          fallbackStartTime: (watchedSession as any).clientStartTime,
+          pausedAt: (watchedSession as any).pausedAt,
+          totalPausedMs: (watchedSession as any).totalPausedMs,
+        }}
+        done={machinesDone(watchedMachineIds, gridLiveValues)}
+        total={watchedMachineIds.length}
+        words={watchWords({ runner, takenFromHere, online: sendState.online })}
+        takeOver={
+          authTrainer?.id
+            ? takeOverWords({ runner, clientFirstName: selectedClient ? clientFirstName(selectedClient) : null })
+            : null
+        }
+        onTakeOver={takeOverWatchedSession}
+      >
+        <JourneyGrid
+          sessions={gridVisibleHistory}
+          historySessions={gridHistory}
+          sections={gridSections}
+          live={watchLive}
+          sessionNumbers={canQuoteNumber}
+          coverage={clientCoverage}
+          showStats={false}
+          onLoadOlder={() => setGridVisible((v) => v + 5)}
+          canLoadOlder={gridVisible < gridHistory.length}
+          layout="fill"
+          fit="auto"
+          targetColumns={10}
+          title="Machine"
+        />
+      </WatchingSession>
+    );
+  }
+
   if (screen === "none") {
-    return null; // The app routing will ensure this is never reached by redirecting to ClientDirectoryView instead
+    /* Never a blank page (session record, Sep 26 2026). This used to return
+       null, trusting the routing never to arrive here; it did arrive, when a
+       client's record couldn't be read and when a session left the screen,
+       and the trainer saw nothing but the bottom bar. */
+    return (
+      <NothingOnScreen
+        kind={nothingKind(clientId, clientLookup)}
+        trainerInitials={authTrainer?.initials}
+        onRetry={onRetryClient}
+        onFindClient={() => setView("client-directory")}
+        onHub={() => setView("clients")}
+        rightControls={rightControls}
+        trainerDropdown={trainerDropdown}
+        onStudioClick={onStudioClick}
+      />
+    );
   }
 
   if (screen === "briefing" && selectedClient) {
@@ -2634,6 +3013,7 @@ export function WorkoutTrackerView({
         session={staleSession}
         begunMachines={staleBegunMachines}
         todayKey={studioTodayKey()}
+        takesOver={isAnotherTrainersSession(staleSession, myIds)}
         onResume={resumeStaleSession}
         onStartNew={leaveStaleSession}
       />
@@ -2866,6 +3246,11 @@ export function WorkoutTrackerView({
             </button>
           </div>
         </div>
+      )}
+      {/* Zone 1b — where the sets are, only when there is something to say:
+          offline, or saves waiting on a poor connection (session record). */}
+      {currentSession && (
+        <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
       )}
       {/* Machine Performance Entry Dialog */}
       {editingWeightMachineId &&
@@ -3124,10 +3509,10 @@ export function WorkoutTrackerView({
         open={showAssignDialog}
         clients={clients}
         onSelect={assignSessionToClient}
-        onClose={() => {
-          setShowAssignDialog(false);
-          setCurrentSession(null);
-        }}
+        /* Closing without choosing goes back to the open session, like Keep
+           Training. It used to drop the session from the screen, which then
+           had nothing to draw (session record, Sep 26 2026). */
+        onClose={() => setShowAssignDialog(false)}
         title="Assign Completed Session"
         description="Choose which client's profile should receive this session's data."
       />
@@ -3482,9 +3867,13 @@ export function WorkoutTrackerView({
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
           history={gridHistory}
           onChange={handleGridLiveChange}
+          onCommit={flushAllLogWrites}
           step={2}
           nextName={gridNextRow?.machine.name}
-          onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
+          onNext={() => {
+            flushAllLogWrites();
+            if (gridNextRow) setFocusMachineOverride(gridNextRow.machine.id);
+          }}
           onAddMachine={() => setIsOrderSheetOpen(true)}
           flagLine={
             gridFocusRow

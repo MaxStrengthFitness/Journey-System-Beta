@@ -23,10 +23,22 @@ export function LeaveConfirmDialog({
   question,
   onStay,
   onLeave,
+  title = "Unsaved changes",
+  leaveLabel = "Leave",
+  stayLabel = "Keep editing",
 }: {
   question: string;
   onStay: () => void;
   onLeave: () => void;
+  /**
+   * The same question in other words, for another way of losing something:
+   * sign-out asks "Before you sign out" with "Sign out anyway" and "Stay
+   * signed in" (session record, Sep 26 2026). The safe answer is still the
+   * default, the filled button and what Escape and the scrim mean.
+   */
+  title?: string;
+  leaveLabel?: string;
+  stayLabel?: string;
 }) {
   const stayRef = useRef<HTMLButtonElement>(null);
   const leaveRef = useRef<HTMLButtonElement>(null);
@@ -80,7 +92,7 @@ export function LeaveConfirmDialog({
         className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl"
       >
         <h2 id={titleId} className="text-lg font-bold text-foreground">
-          Unsaved changes
+          {title}
         </h2>
         <p id={bodyId} className="mt-2 text-base leading-relaxed text-foreground">
           {question}
@@ -93,7 +105,7 @@ export function LeaveConfirmDialog({
             onClick={onLeave}
             className="min-h-12 rounded-xl border border-border bg-background px-4 text-sm font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Leave
+            {leaveLabel}
           </button>
           <button
             ref={stayRef}
@@ -102,7 +114,7 @@ export function LeaveConfirmDialog({
             onClick={onStay}
             className="min-h-12 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            Keep editing
+            {stayLabel}
           </button>
         </div>
       </div>

@@ -766,7 +766,6 @@ function buildClient(
       consultationCompleted: true,
       requiresConsultation: false,
       isRoutineBActive: true,
-      preferredTodayRoutineId: demoRoutineId(seed.key, "a"),
       ...rollup,
       ...packageFields,
       ...(seed.priorSessions > 0

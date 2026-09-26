@@ -620,3 +620,34 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
     expect(host.querySelector('[data-testid="dose-card"]')!.textContent).not.toContain("Saved");
   });
 });
+
+describe("the post-session screen says where the session is saved (session record, Sep 26 2026)", () => {
+  const screen = (savedOnThisIpad?: boolean) => (
+    <VictoryHUDScreen
+      client={client}
+      session={session}
+      logs={[]}
+      lines={[]}
+      journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+      schedules={[]}
+      authTrainer={trainer}
+      onDose={vi.fn()}
+      onLeave={vi.fn()}
+      savedOnThisIpad={savedOnThisIpad}
+      machines={[{ id: "m1", name: "Leg Press" } as any]}
+    />
+  );
+
+  it("says 'saved' once the studio's records have the session", async () => {
+    const host = await mount(screen());
+    expect(host.textContent).toContain("Session complete · saved");
+    expect(host.textContent).not.toContain("saved on this iPad");
+    expect(host.textContent).not.toContain("when the connection is back");
+  });
+
+  it("says 'saved on this iPad' while the database has not answered, and that it will send", async () => {
+    const host = await mount(screen(true));
+    expect(host.textContent).toContain("Session complete · saved on this iPad");
+    expect(host.textContent).toContain("It sends to the studio's records when the connection is back. Nothing more to do.");
+  });
+});

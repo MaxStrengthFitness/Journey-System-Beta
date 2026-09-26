@@ -49,11 +49,13 @@ export interface RoutinesTabProps {
   sessions: WorkoutSession[];
   adjustments: RoutineAdjustment[];
   trainers: Trainer[];
-  /** Routine id the client will train on today (`preferredTodayRoutineId`). */
+  /**
+   * Routine id the next session runs: the running session's own, else the
+   * Active Session's alternation (features/routines/next-routine.ts).
+   */
   selectedRoutineTodayId: string | null;
   isBActive: boolean;
   onEdit: (name: RoutineName) => void;
-  onUseToday: (routine: Routine) => void;
   onToggleB: (checked: boolean) => void;
   /** Tapping a machine row — the profile opens its settings sheet. */
   onSelectMachine?: (machineId: string) => void;
@@ -177,14 +179,15 @@ interface PanelProps {
   latest: RoutineChange | null;
   active: boolean;
   isToday: boolean;
+  /** "Used last on Sep 22", from Journey's sessions; null says nothing. */
+  usedLast: string | null;
   disabled: boolean;
   onEdit: () => void;
-  onUseToday: () => void;
   onToggle?: (checked: boolean) => void;
   onSelectMachine?: (id: string) => void;
 }
 
-const RoutinePanel = memo(function RoutinePanel({ name, routine, rows, latest, active, isToday, disabled, onEdit, onUseToday, onToggle, onSelectMachine }: PanelProps) {
+const RoutinePanel = memo(function RoutinePanel({ name, routine, rows, latest, active, isToday, usedLast, disabled, onEdit, onToggle, onSelectMachine }: PanelProps) {
   const letter = name.endsWith("B") ? "B" : "A";
   const drift = templateDrift(routine);
   const count = routine.machineIds.length;
@@ -238,9 +241,9 @@ const RoutinePanel = memo(function RoutinePanel({ name, routine, rows, latest, a
                 <Pencil size={13} strokeWidth={2.4} aria-hidden="true" />
                 Edit
               </button>
-              <button type="button" className={isToday ? "rt-btn rt-btn--hero" : "rt-btn rt-btn--live"} onClick={onUseToday} disabled={disabled || isToday} aria-pressed={isToday}>
-                {isToday ? "Active today" : "Use today"}
-              </button>
+              {/* "Use today" set a choice the session never read (AJ, Sep 26
+                  2026: "Used last on" instead). */}
+              {usedLast && <span className="rt-used">{usedLast}</span>}
             </>
           )}
         </div>
@@ -327,7 +330,6 @@ export function RoutinesTab({
   selectedRoutineTodayId,
   isBActive,
   onEdit,
-  onUseToday,
   onToggleB,
   onSelectMachine,
   disabled = false,
@@ -352,7 +354,7 @@ export function RoutinesTab({
     isBActive,
   });
   const m = model ?? own;
-  const { a, b, rowsA, rowsB, latestA, latestB, monthCount, todayName, setUp, total, newest } = m;
+  const { a, b, rowsA, rowsB, latestA, latestB, monthCount, todayName, usedLastA, usedLastB, setUp, total, newest } = m;
   const [changesOpen, setChangesOpen] = useState(false);
 
   // One prescription at a time also means one Changes list: a trainer reading
@@ -414,9 +416,9 @@ export function RoutinesTab({
           latest={latestA}
           active
           isToday={todayName === "Routine A"}
+          usedLast={usedLastA}
           disabled={disabled}
           onEdit={() => onEdit("Routine A")}
-          onUseToday={() => onUseToday(a)}
           onSelectMachine={onSelectMachine}
         />
         )}
@@ -428,9 +430,9 @@ export function RoutinesTab({
           latest={latestB}
           active={isBActive}
           isToday={todayName === "Routine B"}
+          usedLast={usedLastB}
           disabled={disabled}
           onEdit={() => onEdit("Routine B")}
-          onUseToday={() => onUseToday(b)}
           onToggle={onToggleB}
           onSelectMachine={onSelectMachine}
         />

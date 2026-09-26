@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { ChevronRight, Minus, Pause, Play, Plus, RotateCcw, ShieldAlert, X } from "lucide-react";
 import type { FlagLine } from "./session-flags";
 import {
@@ -28,6 +28,13 @@ export interface SessionNowBarProps {
   /** Every loaded session, oldest -> newest. Drives "last" and "best". */
   history: JourneySession[];
   onChange: (machineId: string, patch: Partial<LiveSet>) => void;
+  /**
+   * The trainer has finished typing into a field on this machine: left it,
+   * or pressed Enter (session record, Sep 26 2026). The field's writes wait
+   * for typing to stop; this tells the tracker to send them now, so a set is
+   * saved the moment it is entered rather than a moment later.
+   */
+  onCommit?: (machineId: string) => void;
   /** Weight stepper increment in lb (MedX-style machines move in 2 lb steps). */
   step?: number;
   /** Next machine in the routine, and the handler that advances to it. */
@@ -308,6 +315,7 @@ function SessionNowBarImpl({
   value,
   history,
   onChange,
+  onCommit,
   step = 2,
   nextName,
   onNext,
@@ -359,6 +367,16 @@ function SessionNowBarImpl({
   const bump = (dir: 1 | -1) => {
     if (!machine) return;
     onChange(machine.id, { weight: Math.max(0, (weight ?? 0) + dir * step) });
+  };
+
+  /* Leaving a typed field sends what was typed; Enter leaves the field. The
+     stepper is not a commit: it is tapped in runs, and the queue gathers a
+     run into one write. */
+  const commit = () => {
+    if (machine) onCommit?.(machine.id);
+  };
+  const enterLeaves = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") e.currentTarget.blur();
   };
 
   /* Tapping the mark that is on takes it OFF — back to plain "completed"
@@ -430,6 +448,8 @@ function SessionNowBarImpl({
             else onChange(machine.id, v.isTSC ? { seconds: n } : { reps: n });
           }}
           onFocus={(e) => e.currentTarget.select()}
+          onBlur={commit}
+          onKeyDown={enterLeaves}
         />
         {v.isTSC && side === "L" && (
           <Stopwatch
@@ -549,6 +569,8 @@ function SessionNowBarImpl({
                   size={3}
                   onChange={(e) => onChange(machine.id, { weight: parseNum(e.target.value) })}
                   onFocus={(e) => e.currentTarget.select()}
+                  onBlur={commit}
+                  onKeyDown={enterLeaves}
                 />
                 <span className="jg-nb__lb" aria-hidden="true">
                   lb

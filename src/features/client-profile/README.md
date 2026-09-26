@@ -144,8 +144,11 @@ machines with numbers" problem with hairline rows.
 **What changed.** `features/routines/` renders both prescriptions in the
 Equipment rail's vocabulary — same tokens (`--eq-*`), same row anatomy: order
 · uppercase name · setup chips · load and last outcome on the right. Both
-fit one portrait screen side by side. Header actions are Edit / Use today /
-Active today plus the Routine B switch; a summary bar carries the machine
+fit one portrait screen side by side. Header actions are Edit plus the
+Routine B switch, with "Used last on Sep 22" beside them (Use today went on
+Sep 26 2026: it set a choice the session never read, and today's routine is
+now the Active Session's own alternation, `routines/next-routine.ts`); a
+summary bar carries the machine
 count, the A/B split, the last change, and today's routine with an "Open
 live session" hero button (which replaced the floating StickyCTA). The
 adjustment journal is a collapsible Changes panel with added/removed

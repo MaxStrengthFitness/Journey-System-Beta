@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { SKIP_REASON_LABEL, SKIP_REASON_SHORT } from "../../lib/set-outcome";
 import type { LiveSet } from "./types";
 import { formatSeconds } from "./stats";
@@ -14,6 +14,11 @@ interface TodayCellProps {
   prescribedWeight?: number;
   /** This is the machine the trainer is standing at. */
   isFocus: boolean;
+  /**
+   * Makes this the machine the Now bar edits. Without it the cell only reads:
+   * a watching iPad (session record, Sep 26 2026) draws a plain cell, never a
+   * button that says "Tap to edit" and does nothing.
+   */
   onFocus?: (machineId: string) => void;
 }
 
@@ -78,36 +83,38 @@ function TodayCellImpl({
     .filter(Boolean)
     .join(" ");
 
+  /* The button IS the cell, so there is no nested interactive element for
+     VoiceOver to trip over inside a gridcell. With nothing to do on a tap,
+     the cell is a plain gridcell. */
+  const cellProps = {
+    className: cls,
+    role: "gridcell",
+    "aria-current": isFocus ? ("step" as const) : undefined,
+    "aria-label": machineName + ", today: " + spoken + (onFocus ? ". Tap to edit this machine." : "."),
+  };
+  /* A function, not a component: a component declared in here would be a
+     new type on every render, and the cell would remount on each tap. */
+  const cell = (children: ReactNode) =>
+    onFocus ? (
+      <button type="button" {...cellProps} onClick={() => onFocus(machineId)}>
+        {children}
+      </button>
+    ) : (
+      <div {...cellProps}>{children}</div>
+    );
+
   if (outcome === "skipped") {
     const why = SKIP_REASON_SHORT[skipReason];
-    return (
-      <button
-        type="button"
-        className={cls}
-        role="gridcell"
-        aria-current={isFocus ? "step" : undefined}
-        aria-label={machineName + ", today: " + spoken + ". Tap to edit this machine."}
-        onClick={() => onFocus?.(machineId)}
-      >
-        <span className="jg-today__skip" aria-hidden="true">
-          <span className="jg-today__skip-glyph">⊘</span>
-          {why && <span className="jg-today__skip-why">{why}</span>}
-        </span>
-      </button>
+    return cell(
+      <span className="jg-today__skip" aria-hidden="true">
+        <span className="jg-today__skip-glyph">⊘</span>
+        {why && <span className="jg-today__skip-why">{why}</span>}
+      </span>,
     );
   }
 
-  return (
-    <button
-      type="button"
-      className={cls}
-      /* The button IS the cell, so there is no nested interactive element
-         for VoiceOver to trip over inside a gridcell. */
-      role="gridcell"
-      aria-current={isFocus ? "step" : undefined}
-      aria-label={machineName + ", today: " + spoken + ". Tap to edit this machine."}
-      onClick={() => onFocus?.(machineId)}
-    >
+  return cell(
+    <>
       <span className="jg-today__w">{weight ?? "—"}</span>
       <span className="jg-today__r" aria-hidden="true">
         {logged ? (
@@ -133,7 +140,7 @@ function TodayCellImpl({
           </span>
         )
       )}
-    </button>
+    </>,
   );
 }
 
