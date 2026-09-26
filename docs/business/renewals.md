@@ -14,7 +14,7 @@ The studio wants clients to see that every session is worth what they pay, becau
 
 ## What goes wrong
 
-- **The auto-renew charges before the sessions are used** — at the studios that have auto-renew on; it isn't on everywhere (AJ, Sep 24 2026). Sessions never expire, so breaks, surgery or a 1.5-visits-a-week habit stretch a 12-month commitment to 14 months or more — and the next package is charged while sessions are still banked. AJ: "it's a big issue, so if studio leaders could be ahead of that it would be awesome."
+- **The auto-renew charges before the sessions are used** — at the studios that have auto-renew on: the franchise studios, and by default; the corporate studios have it off (AJ, Sep 24 and 25 2026). Sessions never expire, so breaks, surgery or a 1.5-visits-a-week habit stretch a 12-month commitment to 14 months or more — and the next package is charged while sessions are still banked. AJ: "it's a big issue, so if studio leaders could be ahead of that it would be awesome."
 - **Cards decline**, which interrupts billing.
 
 ## Why clients leave or hesitate
@@ -50,7 +50,7 @@ Every client gets a **renewal snapshot** each night: both clocks (billing and se
   - A leader's outcome is never overwritten.
   - A renewal already signed in Mindbody counts the night it appears, and the client stops being prompted.
 - **Per-trainer rates** show only in Outcomes, only to leaders, only from 5 outcomes, and are labeled context, not a verdict.
-- **Auto-renew is Mindbody's to say, contract by contract** (Sep 24 2026). Where it is on, the app warns before the charge and says "auto-renews". Where Mindbody says it is off, the app says "billing ends": the sessions still bank and carry over, nothing is charged on top of them, so there is no "before the charge" warning and the conversation comes at the studio's usual threshold. Where Mindbody hasn't said, the words claim neither ("payments finish") and the warning stays on, because a leader checking a contract that turns out not to renew costs less than a missed charge.
+- **Whether a contract auto-renews is decided in one order** (Sep 25 2026; AJ: "the corporate studios do not have auto renewal on but franchise studios do. Studios will have the ability to turn auto renewals off if they want, but it's default on", and "allow trainers to mark a check box on a profile if the client is on auto renewal"). The first that answers wins: **Mindbody's own flag on the contract** (Mindbody owns contracts); else **a trainer's mark on the client's profile for that contract** (the "On auto-renewal" box on Account → the package); else **the package's answer**; else **the studio's answer** (My Studio → Studio → Renewals, "Packages at {studio} renew automatically"); else **the standard: on**. A contract the studio's package table doesn't recognise gets no studio or package answer — only Mindbody or a mark can answer for it — and says "payments finish" until it is matched or marked. Where the answer is yes, the app warns before the charge and says "auto-renews". Where it is no, the app says "billing ends": the sessions still bank and carry over, nothing is charged on top of them, so there is no "before the charge" warning and the conversation comes at the studio's usual threshold. A mark belongs to one contract: on her next contract the studio's answer applies again until someone marks her again. The corporate studios switch their answer to **No** on go-live day.
 
 ## Who does what
 
