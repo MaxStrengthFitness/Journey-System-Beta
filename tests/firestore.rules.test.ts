@@ -778,6 +778,31 @@ describe("Firestore Security Rules", () => {
     await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), surprise: true }));
   });
 
+  // Auto-renewal (Sep 25 2026): whether the studio's packages renew by
+  // themselves — on at the franchise studios, off at the corporate ones, on
+  // by default. A yes or a no, set by the studio's leaders.
+  it("lets a studio's owner answer whether its packages renew by themselves, either way", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertSucceeds(setDoc(ref, { ...validRenewalSettings("ownerA"), packagesRenewAutomatically: false }));
+    await assertSucceeds(setDoc(ref, { packagesRenewAutomatically: true, updatedBy: "ownerA" }, { merge: true }));
+  });
+
+  it("refuses an auto-renewal answer that isn't a yes or a no", async () => {
+    const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertFails(setDoc(ref, { ...validRenewalSettings("ownerA"), packagesRenewAutomatically: "no" }));
+  });
+
+  it("keeps the auto-renewal answer from a trainer who doesn't lead the studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "config", "renewals"), validRenewalSettings("ownerA"));
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const ref = doc(ctx.firestore(), "studios", "studioA", "config", "renewals");
+    await assertFails(setDoc(ref, { packagesRenewAutomatically: false, updatedBy: "trainerA" }, { merge: true }));
+  });
+
   it("keeps the nightly job's names list read-only from the app", async () => {
     const ctx = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" });
     await assertFails(
@@ -814,6 +839,47 @@ describe("Firestore Security Rules", () => {
         updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { renewal: { situation: "lapsed" } }),
       );
     }
+  });
+
+  // The profile's auto-renewal box (Sep 25 2026): a trainer's mark for one
+  // contract, Journey's own field beside `renewal`, never inside it.
+  const autoRenewMark = {
+    renews: false,
+    contractId: "c1",
+    setAt: "2026-09-25T14:00:00.000Z",
+    setById: "trainerA",
+    setByName: "Trainer A",
+  };
+
+  it("lets a trainer at the client's studio mark auto-renewal, and clear the mark", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    const ref = doc(ctx.firestore(), "clients", "renewalClient");
+    await assertSucceeds(updateDoc(ref, { autoRenewMark, lastUpdatedBy: "trainerA" }));
+    await assertSucceeds(updateDoc(ref, { autoRenewMark: null, lastUpdatedBy: "trainerA" }));
+  });
+
+  it("refuses another studio's trainer the auto-renewal mark", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    const ctx = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" });
+    await assertFails(updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), { autoRenewMark }));
+  });
+
+  it("refuses an auto-renewal mark that rides along with a change to the renewal snapshot", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "clients", "renewalClient"), renewalClient);
+    });
+    const ctx = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" });
+    await assertFails(
+      updateDoc(doc(ctx.firestore(), "clients", "renewalClient"), {
+        autoRenewMark,
+        renewal: { situation: "on-track", sessionsLeft: 9, autoRenews: false },
+      }),
+    );
   });
 
   it("denies creating a client that arrives with a renewal snapshot", async () => {
@@ -3480,6 +3546,18 @@ describe("a cross-train visitor's session", () => {
     await assertFails(updateDoc(doc(db, "clients", CLIENT), { ...totals("trainerA"), approvedCrossTrainStudioIds: ["studioA", "studioC"] }));
     await assertFails(updateDoc(doc(db, "clients", CLIENT), { completedSessions: increment(1), medicalHistory: "x" }));
     await assertFails(updateDoc(doc(db, "clients", CLIENT), { completedSessions: increment(1), renewal: { situation: "on-track" } }));
+    // The profile's auto-renewal box is the home studio's to mark (Sep 25 2026).
+    await assertFails(
+      updateDoc(doc(db, "clients", CLIENT), {
+        autoRenewMark: { renews: false, contractId: "c1", setAt: "2026-09-25T14:00:00.000Z", setById: "trainerA" },
+      }),
+    );
+    await assertFails(
+      updateDoc(doc(db, "clients", CLIENT), {
+        ...totals("trainerA"),
+        autoRenewMark: { renews: false, contractId: "c1", setAt: "2026-09-25T14:00:00.000Z", setById: "trainerA" },
+      }),
+    );
   });
 
   it("refuses a trainer at a studio the client is not approved for", async () => {
