@@ -51,6 +51,8 @@ import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
 import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
 import { sendsAtOnce } from "../features/journey-grid/send-at-once";
+import { useSendState } from "../features/session-record/useSendState";
+import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -1985,6 +1987,11 @@ export function WorkoutTrackerView({
    * A ref rather than state on purpose: this must survive re-renders without
    * causing them, and be readable synchronously from the unmount cleanup.
    */
+  /* Online or not, and whether sent sets have reached the database yet: the
+     line under the session bar (features/session-record). */
+  const sendState = useSendState();
+  const markSent = sendState.sent;
+
   const pendingLogWritesRef = useRef<
     Map<
       string,
@@ -2006,7 +2013,8 @@ export function WorkoutTrackerView({
     ).catch((error) =>
       handleFirestoreError(error, OperationType.WRITE, "exerciseLogs"),
     );
-  }, []);
+    markSent();
+  }, [markSent]);
 
   const flushAllLogWrites = React.useCallback(() => {
     Array.from(pendingLogWritesRef.current.keys()).forEach(flushLogWrite);
@@ -2879,6 +2887,11 @@ export function WorkoutTrackerView({
             </button>
           </div>
         </div>
+      )}
+      {/* Zone 1b — where the sets are, only when there is something to say:
+          offline, or saves waiting on a poor connection (session record). */}
+      {currentSession && (
+        <SendStatusStrip online={sendState.online} unsentForMs={sendState.unsentForMs} />
       )}
       {/* Machine Performance Entry Dialog */}
       {editingWeightMachineId &&

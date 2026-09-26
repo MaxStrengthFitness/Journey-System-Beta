@@ -12,7 +12,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 
 | Phase | Commit | What |
 | --- | --- | --- |
-| 1 | (this round's first commit) | A set still waiting to be sent keeps what the trainer typed, and a set is sent the moment it is entered. |
+| 1 | `c197615` | A set still waiting to be sent keeps what the trainer typed, and a set is sent the moment it is entered. |
+| 2 | (this commit) | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
 
 ### Phase 1: what was wrong
 
@@ -36,11 +37,26 @@ A set may now take two or three writes rather than one or two. Writes are the sm
 
 Measured in the cloud container: `TZ=America/New_York npx vitest run --dir src` gives **5,516 passing in 347 files** (5,494 in 344 before, plus 22 in 3). The typecheck shows 4 errors, the baseline. That was measured with `firebase-applet-config.example.json` copied to the git-ignored `firebase-applet-config.json`; without it the container adds two "cannot find module" errors. `npx vite build` passes.
 
+## Phase 2: the line under the session bar
+
+AJ, on the Atlas: "We need to have something that kind of notifies the trainer that they have lost connection ... if the trainer has the screen open and they run out of Wi-fi they should be able to just continue on and write everything in and just once it reconnects it should save what is on the iPad."
+
+The saving already worked: each set goes into the iPad's own copy of the database as it is sent, and Firestore passes it on when it can. What was missing is the sentence. Losing Wi-Fi mid-session showed nothing at all. `src/features/session-record/` now draws one line under the session bar, and only when there is something to say:
+
+- **Offline:** "Offline. Everything you enter is saved on this iPad and sends when the connection is back."
+- **Online, but a save has waited 8 seconds:** "Saved on this iPad. Still sending: the connection is slow." This is studio Wi-Fi with no internet behind it, which the browser still calls online.
+- **Otherwise nothing.** An ordinary save never shows it.
+
+The facts come from the browser's `online` and `offline` events and from Firestore's `waitForPendingWrites`. The tracker calls `sent()` each time it sends a set, and only the newest wait may clear the clock. The line reads nothing and writes nothing.
+
+Claude's call on where it sits: AJ suggested "a pop up at the bottom right", but the bottom of the Active Session is the Now Bar, whose Next button is the loudest control on the screen. So the line sits at the top, under the session bar. It never covers a control and is not tappable. It is never red, because red on the floor is the rep-quality mark. Opening the app from scratch with no signal still needs the standalone app, as AJ said.
+
+Tests: `send-status.test.ts` covers the rule and its words, including that the words never use developer terms. `SendStatusStrip.render.test.tsx` mounts the line with its hook and shows three things: the Wi-Fi dropping and coming back; a save that hangs, then arrives; and an older save arriving while a newer one is still out. The suite gives 5,524 passing in 349 files and the typecheck 4, measured as in phase 1.
+
 ## Still to come in this round
 
 These come from the review's suggested order, and each will be its own phase:
 
-- An "Offline, saving on this iPad" notice while the connection is down.
 - Finish that queues instead of hanging, and can never count a session twice.
 - A warning before signing out while a session is running or sets are unsent.
 - A second iPad opening a running session read-only, so a leader can watch it live.

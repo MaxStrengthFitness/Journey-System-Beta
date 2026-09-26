@@ -1,0 +1,23 @@
+/* The session record's line under the session bar (SendStatusStrip.tsx).
+   Journey Grid tokens only, so light and dark follow the tracker. Never red:
+   red on the floor is the rep-quality mark. */
+.sr-send {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  background: var(--jg-surface-2);
+  border-bottom: 1px solid var(--jg-border);
+  color: var(--jg-ink);
+  font-family: var(--jg-font);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.sr-send[data-kind="sending"] {
+  background: var(--jg-live-fill);
+  color: var(--jg-live-text);
+}
+.sr-send__icon { flex: none; }
+.sr-send__text { min-width: 0; }
