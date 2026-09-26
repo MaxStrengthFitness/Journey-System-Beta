@@ -2,7 +2,9 @@ import { AlertTriangle, CloudOff, HeartPulse } from "lucide-react";
 import { Client, WorkoutSession } from "../../types";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { hubMarkers, isDefaultService, visibleMarkers, type HubMarkerKind } from "../../lib/hub-markers";
-import { safeToDate, getMillis } from "../../lib/utils";
+import type { LoggedSessions } from "../../lib/booking-state";
+import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
+import { safeToDate } from "../../lib/utils";
 import { canQuoteSessionNumber, coverageOfClient } from "../../lib/client-coverage";
 import { NEW_CLIENT_MAX_VISITS } from "../../lib/prior-history";
 import { zonedHM } from "../../lib/studio-time";
@@ -16,8 +18,17 @@ interface ScheduleBlockProps {
   session: any;
   /** Resolved Max Strength client, or null when the Mindbody link is missing. */
   client: Client | null;
-  /** Today's workout session for this client, if one exists. */
+  /** This client's newest workout session on the booking's studio day, if one exists. */
   workoutSession?: WorkoutSession | null;
+  /**
+   * The client-days Journey holds a completed session for
+   * (`loggedSessions` over the app's session stream). `null` while that
+   * stream is loading or after it failed: a finished card then says nothing
+   * rather than "Not logged".
+   */
+  logged?: LoggedSessions | null;
+  /** The Hub's minute clock. */
+  now?: Date;
   onOpenClient: (clientId: string) => void;
   /**
    * The roster is still loading. A block that names a client we don't hold
@@ -43,6 +54,8 @@ const MARKER_TONE: Record<HubMarkerKind, string> = {
   /* Deliberately the quietest tone on the card. It marks what we do NOT
      know, so it must not read as an event worth celebrating. */
   "new-to-journey": "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  /* "Not logged" (lib/hub-card-state) borrows the same tone, for the same
+     reason: it marks a gap in the record, not an event. */
   birthday: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
   back: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
   away: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
@@ -81,21 +94,41 @@ export function ScheduleBlock({
   onOpenClient,
   rosterLoading = false,
   journeyCutoverDate = null,
+  logged = null,
+  now = new Date(),
 }: ScheduleBlockProps) {
   const isUnavailable = Boolean(
     session?.clientName?.toLowerCase().includes("unavailab"),
   );
-  const isInSession = workoutSession?.status === "In-Progress";
-  const isAlreadyCompleted = workoutSession?.status === "Completed";
-  const isCompleted = Boolean(
-    session &&
-      !isInSession &&
-      (session.status === "Completed" ||
-        getMillis(session.startTime || session.StartDateTime) < Date.now()),
+  /*
+   * DONE MEANS LOGGED (AJ, Sep 24 2026). The card used to fade — and drop
+   * its flags — the minute its start time passed, because no booking is ever
+   * "Completed" in Firestore. A trainer a few minutes late lost the red flag
+   * while walking up to read it. Now it stays live until a Journey session
+   * is completed for this client that day, or the slot is over;
+   * lib/hub-card-state says which, on top of lib/booking-state.
+   */
+  const cardState = hubCardState(
+    {
+      clientId: client?.id ?? session?.clientId ?? null,
+      startTime: session?.startTime || session?.StartDateTime || session?.date,
+      endTime: session?.endTime || session?.EndDateTime,
+      status: session?.status,
+    },
+    logged,
+    now,
+    { sessionOpen: workoutSession?.status === "In-Progress" },
   );
+  const isInSession = cardState === "in-session";
+  const isAlreadyCompleted = workoutSession?.status === "Completed";
+  /** Over: faded, flags and markers hidden. */
+  const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client && !isUnavailable;
   /** Names a client, and the roster that would hold them hasn't arrived. */
   const isPending = isUnlinked && rosterLoading && Boolean(session?.clientId);
+  /* A finished slot nobody logged. Only on a linked card: one with no
+     profile (or none YET) already says why nothing could be logged. */
+  const isNotLogged = cardState === "not-logged" && Boolean(client) && !isUnavailable;
 
   // Where the client is in their journey. Unknown until the profile resolves.
   const sessionNumber = client
@@ -132,7 +165,7 @@ export function ScheduleBlock({
     hasCheckInRedFlag,
     checkInFlagLabel,
   } = getClientAlertState(client);
-  const showFlags = !isCompleted && !isUnavailable;
+  const showFlags = !recedes && !isUnavailable;
   const flagPriority = hasPriorityNote && showFlags;
   const flagClinical = hasClinicalHistory && showFlags;
   const flagCheckIn = hasCheckInRedFlag && showFlags;
@@ -150,7 +183,7 @@ export function ScheduleBlock({
      session — a consultation, an InBody scan — still shows. */
   const showService = !isDefaultService(serviceName);
   const markers =
-    !isUnavailable && !isCompleted ? hubMarkers({ client, sessionNumber, serviceName, coverage }) : [];
+    !isUnavailable && !recedes ? hubMarkers({ client, sessionNumber, serviceName, coverage }) : [];
   /* A 30-minute card has one line of chips; the rest fold into "+N". The
      full list is on the profile (and in the tooltip). */
   const { shown: shownMarkers, more: moreMarkers } = visibleMarkers(markers);
@@ -177,7 +210,7 @@ export function ScheduleBlock({
       ? "border-l-slate-300 dark:border-l-slate-600"
       : isUnlinked
         ? "border-l-slate-400 dark:border-l-slate-500"
-        : isCompleted
+        : recedes
           ? "border-l-slate-400 dark:border-l-slate-600"
           : isMilestone
             ? "border-l-orange-500"
@@ -189,7 +222,7 @@ export function ScheduleBlock({
     ? "bg-[repeating-linear-gradient(45deg,#f8fafc,#f8fafc_8px,#eef2f7_8px,#eef2f7_16px)] dark:bg-[repeating-linear-gradient(45deg,#0f172a,#0f172a_8px,#1e293b_8px,#1e293b_16px)] cursor-not-allowed"
     : isUnlinked
       ? "bg-slate-100/80 dark:bg-slate-800/40 outline outline-1 outline-dashed -outline-offset-1 outline-slate-300 dark:outline-slate-700 cursor-default"
-      : isCompleted
+      : recedes
         ? "bg-slate-100/70 dark:bg-slate-800/30 opacity-70 cursor-pointer"
         : isInSession
           ? isMilestone
@@ -292,11 +325,25 @@ export function ScheduleBlock({
           not the plain training session. One line, small caps, and this is
           the line that yields (min-h-0 + overflow-hidden) when the card is
           too short for three. */}
-      {!isUnavailable && (markers.length > 0 || showService) && (
+      {!isUnavailable && (markers.length > 0 || showService || isNotLogged) && (
         <span
           className="flex flex-nowrap items-center gap-1 min-h-0 min-w-0 overflow-hidden pr-5 mt-px"
           title={markerSummary || undefined}
         >
+          {/* Quiet on purpose (AJ, Sep 24): the slot is over and no Journey
+              session was completed for this client today. Faded with the
+              card; it tells whoever forgot End Session, and nobody else. */}
+          {isNotLogged && (
+            <span
+              title="No Journey session was completed for this client today"
+              className={cn(
+                "inline-block shrink-0 rounded-[3px] px-1 text-[8px] font-bold uppercase tracking-wider leading-[13px]",
+                MARKER_TONE["new-to-journey"],
+              )}
+            >
+              Not logged
+            </span>
+          )}
           {shownMarkers.map((m) => (
             <span
               key={m.kind}
@@ -346,7 +393,7 @@ export function ScheduleBlock({
             aria-label={`Session number ${sessionNumber}`}
             className={cn(
               "absolute bottom-0.5 right-1 text-[9px] font-bold tabular-nums leading-none",
-              isCompleted
+              recedes
                 ? "text-slate-400/70"
                 : isMilestone
                   ? "text-orange-500"

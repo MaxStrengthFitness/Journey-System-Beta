@@ -1100,6 +1100,24 @@ booking today and a trainer who can run a session for that client.
   hint says what setting it will do. Once a cutover is set, a past booking with nothing
   logged in Journey stops counting as a visit from the next nightly run.
 
+**The Hub card (phase 6).** Needs a client with a flag on the card (the Pulse
+heart or the clinical dot is easiest) booked today. Portrait and landscape.
+
+- [ ] **A late start keeps the flags.** Past the booking's start time with no
+  session started, the card is still white and still shows its flags. The
+  old card went grey at the start time and dropped them. *If it fails:* the
+  card's state (`lib/hub-card-state.ts`).
+- [ ] **Ending the session fades the card.** Start and end a session for
+  that client: within a few seconds, without reloading, the card fades and
+  its flags go, even if the slot is not over.
+- [ ] **A slot nobody logged says so, quietly.** Five minutes after a
+  booking's slot with nothing logged, the card is faded with a small grey
+  "NOT LOGGED". Tapping it opens the client. A card with no profile (the
+  cloud mark) never says it.
+- [ ] **A second booking the same day keeps its flags until it starts.** A
+  client with two bookings today and the first one logged: the later card
+  stays white, with its flags, until its start time.
+
 ## Round 17 — The packages screen · *Sep 24 2026, branch `packages-screen`*
 
 AJ: packages are not decided in the consultation, so a client with no
@@ -1212,4 +1230,5 @@ Screenshot:
 | 11 — Operations (Sep 19) | 24 | | |
 | 12 — The master merge (Sep 19) | 13 | | |
 | 13 — The Operations overhaul (Sep 19) | 33 | | |
-| **Total** | **228** | | |
+| 16 — Done means logged (Sep 24) | 9 | | |
+| **Total** | **237** | | |
