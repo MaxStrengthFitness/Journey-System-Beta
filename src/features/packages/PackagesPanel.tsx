@@ -157,6 +157,11 @@ export function PackagesPanel({
   const stepRows = steps(l.headline);
   const lowers = lowersEveryPayment(l.headline);
   const life = selected ? stretch(selected, view.weeksAway) : null;
+  // Paid once never renews by itself — the renewal engine's answer for a
+  // package paid in full (no contract, so no auto-renew) and the Brief's
+  // "Paid in full — no auto-renew". The monthly view says the package's own
+  // answer, which lineup() has already filled in (auto-renew.ts).
+  const asPaid = (t: PackageTier): PackageTier => (view.pay === "full" ? { ...t, renewsAutomatically: false } : t);
   const booked = new Set(bookedWeekdays);
 
   return (
@@ -308,10 +313,10 @@ export function PackagesPanel({
                   onClick={() => dispatch({ type: "away", delta: 1 })}
                 />
               </div>
-              <Timeline weeks={life.totalWeeks} away={life.awayWeeks} billingWeeks={life.billingWeeks} mark={timelineMark(selected, life.billingWeeks)} />
+              <Timeline weeks={life.totalWeeks} away={life.awayWeeks} billingWeeks={life.billingWeeks} mark={timelineMark(asPaid(selected), life.billingWeeks)} />
               <Source>Each stripe is a week. Hatched stripes are weeks away.</Source>
               <p className="pk-text" aria-live="polite" data-testid="pk-life-sentence">
-                {lifeHappensSentence(life, selected, f?.visitsPerWeek ?? null)}
+                {lifeHappensSentence(life, asPaid(selected), f?.visitsPerWeek ?? null)}
               </p>
             </Card>
           ) : null}
@@ -319,7 +324,7 @@ export function PackagesPanel({
           {selected ? (
             <Card eyebrow="After your last payment">
               <ul className="pk-lines">
-                {afterLastPayment(selected, studioName).map((line) => (
+                {afterLastPayment(asPaid(selected), studioName).map((line) => (
                   <li key={line} className="pk-text">
                     {line}
                   </li>

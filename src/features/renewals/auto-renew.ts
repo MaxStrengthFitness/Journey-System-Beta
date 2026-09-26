@@ -118,8 +118,8 @@ function sameAnswer(a: AutoRenewAnswer | null | undefined, b: AutoRenewAnswer | 
   return a.renews === b.renews && a.from === b.from;
 }
 
-/** Mindbody's flag on one contract as the client document holds it NOW. */
-function liveMindbodyFlag(
+/** Mindbody's flag on one contract as the client document holds it NOW; undefined when it hasn't said. */
+export function liveMindbodyFlag(
   contracts: Client["mindbodyContracts"] | undefined,
   contractId: string,
 ): boolean | undefined {

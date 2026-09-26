@@ -103,3 +103,45 @@ describe("when the payments finish (packages screen, Sep 24 2026)", () => {
     expect(settings).toEqual(withAnswers);
   });
 });
+
+describe("whether the studio's packages renew by themselves (Sep 25 2026)", () => {
+  it("starts a studio that never answered as not answered, and saves nothing for it", () => {
+    const form = settingsToForm(DEFAULT_RENEWAL_SETTINGS);
+    expect(form.packagesRenewAutomatically).toBe("");
+    const { settings } = formToSettings(form);
+    expect("packagesRenewAutomatically" in settings).toBe(false);
+  });
+
+  it("round-trips a yes and a no", () => {
+    for (const answer of [true, false]) {
+      const s = { ...DEFAULT_RENEWAL_SETTINGS, packagesRenewAutomatically: answer };
+      const form = settingsToForm(s);
+      expect(form.packagesRenewAutomatically).toBe(answer ? "yes" : "no");
+      const { settings, problems } = formToSettings(form);
+      expect(problems).toEqual([]);
+      expect(settings).toEqual(s);
+    }
+  });
+
+  it("writes the studio's answer only once it is one, and never undefined", () => {
+    const form = settingsToForm(DEFAULT_RENEWAL_SETTINGS);
+    const no = { ...form, packagesRenewAutomatically: "no" as const };
+    expect(settingsPatchFromForm({ packagesRenewAutomatically: "no" }, formToSettings(no).settings)).toEqual({
+      packagesRenewAutomatically: false,
+    });
+    const yes = { ...form, packagesRenewAutomatically: "yes" as const };
+    expect(settingsPatchFromForm({ packagesRenewAutomatically: "yes" }, formToSettings(yes).settings)).toEqual({
+      packagesRenewAutomatically: true,
+    });
+    const patch = settingsPatchFromForm({ packagesRenewAutomatically: "" }, formToSettings(form).settings);
+    expect(patch).toEqual({});
+    expect(Object.values(patch)).not.toContain(undefined);
+  });
+
+  it("still writes no renewsAutomatically for a package left 'same as the studio'", () => {
+    const form = { ...settingsToForm(DEFAULT_RENEWAL_SETTINGS), packagesRenewAutomatically: "no" as const };
+    const { settings } = formToSettings(form);
+    const patch = settingsPatchFromForm({ packages: form.packages }, settings);
+    for (const p of patch.packages!) expect("renewsAutomatically" in p).toBe(false);
+  });
+});

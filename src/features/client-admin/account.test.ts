@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { Client, MindbodyContract, Studio } from "../../types";
+import type { AutoRenewMark, Client, ContractTierOverride, MindbodyContract, Studio } from "../../types";
 import type { RenewalSnapshot } from "../renewals/types";
 import type { PriorHistory } from "../../lib/prior-history";
 import { pronounsOf } from "../client-codex/kit/pronouns";
@@ -16,6 +16,7 @@ import {
   accountLede,
   accountTabHint,
   ageAndBirthday,
+  autoRenewView,
   contactFacts,
   isMindbodyLinked,
   membershipTimeline,
@@ -256,6 +257,17 @@ const contracted = (over: Partial<Client> = {}): Client =>
     ...over,
   });
 
+/** A version-2 snapshot of contract "k" (auto-renew decided, Sep 25 2026). */
+const V2 = { version: 2, clientContractId: "k" } as const;
+const mark = (renews: boolean, contractId = "k", over: Partial<AutoRenewMark> = {}): AutoRenewMark => ({
+  renews,
+  contractId,
+  setAt: "2027-03-15T14:00:00.000Z",
+  setById: "uid-aj",
+  setByName: "AJ",
+  ...over,
+});
+
 describe("packageView", () => {
   it("names the package, then its terms, from Mindbody's names", () => {
     const v = packageView(contracted(), null, TODAY);
@@ -269,17 +281,27 @@ describe("packageView", () => {
       left: "95 left",
       leftWords: "sessions left",
       payments: "11 payments to go",
-      when: "Renews Mar 14, 2028",
+      when: "Auto-renews Mar 14, 2028",
       tone: "ok",
       worked: true,
     });
-    expect(packageView(contracted({ renewal: renewal({ chargeDate: "2027-11-14" }) }), null, TODAY).when).toBe("Renews Nov 14");
+    expect(packageView(contracted({ renewal: renewal({ chargeDate: "2027-11-14" }) }), null, TODAY).when).toBe("Auto-renews Nov 14");
     // Mindbody's own flag: a studio without auto-renew, and a contract Mindbody hasn't said about.
     expect(packageView(contracted({ renewal: renewal({ autoRenews: false }) }), null, TODAY).when).toBe("Billing ends Mar 14, 2028");
     expect(packageView(contracted({ renewal: renewal({ autoRenews: null }) }), null, TODAY).when).toBe("Payments finish Mar 14, 2028");
     expect(packageView(contracted({ renewal: renewal({ sessionsLeftSource: "estimate" }) }), null, TODAY).leftWords).toBe(
       "sessions left (estimated)",
     );
+  });
+
+  it("reads a staged auto-renewal untick before Save", () => {
+    const c = contracted({ renewal: renewal({ ...V2, autoRenewsFrom: "default", autoRenewsInherited: { renews: true, from: "default" } }) });
+    expect(packageView(c, null, TODAY).when).toBe("Auto-renews Mar 14, 2028");
+    expect(packageView(c, null, TODAY, undefined, mark(false)).when).toBe("Billing ends Mar 14, 2028");
+    // A saved mark is the default for the pending one.
+    expect(packageView({ ...c, autoRenewMark: mark(false) }, null, TODAY).when).toBe("Billing ends Mar 14, 2028");
+    // Staged back to the studio's answer: null.
+    expect(packageView({ ...c, autoRenewMark: mark(false) }, null, TODAY, undefined, null).when).toBe("Auto-renews Mar 14, 2028");
   });
 
   it("never calls what she holds right now 'left'", () => {
@@ -427,6 +449,183 @@ describe("packageView", () => {
         TODAY,
       ).conversationDue,
     ).toBe(false);
+  });
+});
+
+describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", () => {
+  const her = pronounsOf({ gender: "Female" });
+  const them = pronounsOf(null);
+  const BILLING = "This tells Journey's renewal screens what Mindbody is set to. It doesn't change her billing: auto-renewal itself is changed in Mindbody.";
+  type Over = Partial<Parameters<typeof autoRenewView>[0]>;
+  const view = (client: Client, over: Over = {}) =>
+    autoRenewView({
+      client,
+      pendingMark: client.autoRenewMark ?? null,
+      pendingOverride: null,
+      canEdit: true,
+      pronouns: her,
+      studioName: "Westlake",
+      ...over,
+    });
+  const on = (inherited: { renews: boolean; from: "package" | "studio" | "default" } | null, over: Partial<Client> = {}) =>
+    contracted({
+      renewal: renewal({
+        ...V2,
+        autoRenews: inherited?.renews ?? null,
+        autoRenewsFrom: inherited?.from ?? null,
+        autoRenewsInherited: inherited,
+      }),
+      ...over,
+    });
+
+  it("D2 — the standard, when the studio never answered: ticked, and never called the studio's answer", () => {
+    const v = view(on({ renews: true, from: "default" }));
+    expect(v).toMatchObject({ kind: "pick", pressed: true, canClear: false, contractId: "k" });
+    expect(v.source).toBe(
+      "Westlake hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if she isn't on auto-renewal.",
+    );
+    expect(v.metas).toEqual([BILLING]);
+  });
+
+  it("C — the package's answer, either way", () => {
+    expect(view(on({ renews: true, from: "package" }))).toMatchObject({
+      pressed: true,
+      source: "Westlake set Committed to renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+    });
+    expect(view(on({ renews: false, from: "package" }))).toMatchObject({
+      pressed: false,
+      source: "Westlake set Committed not to renew by itself, so this starts unticked. Tick if she is on auto-renewal.",
+    });
+  });
+
+  it("D — the studio's answer, either way", () => {
+    expect(view(on({ renews: true, from: "studio" }))).toMatchObject({
+      pressed: true,
+      source: "Westlake's packages renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+    });
+    expect(view(on({ renews: false, from: "studio" }))).toMatchObject({
+      pressed: false,
+      source: "Westlake's packages don't renew by themselves, so this starts unticked. Tick if she is on auto-renewal.",
+    });
+  });
+
+  it("D3 — no inherited answer: the package isn't matched and Mindbody is silent", () => {
+    expect(view(on(null))).toMatchObject({
+      kind: "pick",
+      pressed: false,
+      source:
+        "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tick if she is on auto-renewal.",
+    });
+  });
+
+  it("E — a saved mark for this contract names who marked it, and offers the studio's answer back", () => {
+    const c = on({ renews: true, from: "default" }, { autoRenewMark: mark(false) });
+    // As the nightly run wrote it once the mark was saved.
+    c.renewal = { ...c.renewal!, autoRenews: false, autoRenewsFrom: "client" };
+    const v = view(c);
+    expect(v).toMatchObject({ kind: "pick", pressed: false, canClear: true, source: "Marked by AJ · Mar 15, 2027." });
+    expect(v.metas).toEqual([BILLING]);
+    const anon = on({ renews: true, from: "default" }, { autoRenewMark: mark(false, "k", { setByName: undefined }) });
+    expect(view(anon).source).toBe("Marked Mar 15, 2027.");
+  });
+
+  it("F — a staged mark or a staged clear says what Save will do", () => {
+    const c = on({ renews: true, from: "studio" });
+    const staged = view(c, { pendingMark: mark(false) });
+    expect(staged).toMatchObject({ pressed: false, canClear: true, source: "Tap Save changes on the bar to keep it." });
+    const saved = on({ renews: true, from: "studio" }, { autoRenewMark: mark(false) });
+    const cleared = view(saved, { pendingMark: null });
+    expect(cleared).toMatchObject({ pressed: true, canClear: false, source: "Back to the studio's answer when you save." });
+  });
+
+  it("G — saved, while the stored nightly snapshot still disagrees: the lists catch up tonight", () => {
+    const v = view(on({ renews: true, from: "studio" }, { autoRenewMark: mark(false) }));
+    expect(v.pressed).toBe(false);
+    expect(v.metas).toEqual([BILLING, "The renewal lists catch up tonight."]);
+  });
+
+  it("K — a mark from the contract before this one is shown, never used", () => {
+    const v = view(on({ renews: true, from: "studio" }, { autoRenewMark: mark(false, "old") }));
+    expect(v).toMatchObject({
+      pressed: true,
+      canClear: false,
+      source: "Westlake's packages renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
+    });
+    expect(v.metas).toEqual([BILLING, "AJ's mark was for the contract before this one."]);
+  });
+
+  it("A and B — where Mindbody's contract has said, a line and no box", () => {
+    const withFlag = (isAutoRenewing: boolean) =>
+      on(
+        { renews: true, from: "default" },
+        {
+          mindbodyContracts: {
+            k: { ...contracted().mindbodyContracts!.k, isAutoRenewing },
+          } as Client["mindbodyContracts"],
+          autoRenewMark: mark(!isAutoRenewing),
+        },
+      );
+    expect(view(withFlag(true))).toMatchObject({
+      kind: "line",
+      pressed: true,
+      source: "On auto-renewal · Mindbody's contract says so. Change it in Mindbody.",
+    });
+    expect(view(withFlag(false))).toMatchObject({
+      kind: "line",
+      pressed: false,
+      source: "Not on auto-renewal · Mindbody's contract says so. Change it in Mindbody.",
+    });
+  });
+
+  it("H — a reader who may not edit gets the answer in words, and nothing when there is none", () => {
+    const read = (c: Client) => view(c, { canEdit: false });
+    expect(read(on({ renews: true, from: "studio" }))).toMatchObject({
+      kind: "line",
+      source: "On auto-renewal · the studio's answer",
+    });
+    expect(read(on({ renews: true, from: "default" })).source).toBe(
+      "On auto-renewal · the standard answer (the studio hasn't set one)",
+    );
+    const marked = on({ renews: true, from: "studio" }, { autoRenewMark: mark(false) });
+    expect(read(marked).source).toBe("Not on auto-renewal · marked by AJ · Mar 15, 2027");
+    const mindbody = on(
+      { renews: true, from: "default" },
+      { mindbodyContracts: { k: { ...contracted().mindbodyContracts!.k, isAutoRenewing: true } } as Client["mindbodyContracts"] },
+    );
+    expect(read(mindbody).source).toBe("On auto-renewal · Mindbody's contract");
+    expect(read(on(null)).kind).toBeNull();
+  });
+
+  it("I — a snapshot from before tonight's run: the box comes after it", () => {
+    const v1 = contracted({ renewal: renewal({ clientContractId: "k", autoRenews: null }) });
+    expect(view(v1)).toMatchObject({ kind: "note", metas: ["Auto-renewal can be marked here after tonight's renewal run."] });
+    expect(view(v1, { canEdit: false }).kind).toBeNull();
+    // A version-1 flag was Mindbody's own.
+    const v1Flag = contracted({ renewal: renewal({ clientContractId: "k", autoRenews: true }) });
+    expect(view(v1Flag)).toMatchObject({ kind: "line", source: "On auto-renewal · Mindbody's contract says so. Change it in Mindbody." });
+  });
+
+  it("is not there for paid in full, banked sessions, no charge date, or a staged paid-in-full lock", () => {
+    const def = { renews: true, from: "default" } as const;
+    expect(view(on(def, { renewal: renewal({ ...V2, paymentMode: "prepaid", chargeDate: null }) })).kind).toBeNull();
+    expect(view(on(def, { renewal: renewal({ ...V2, paymentMode: "sessions-only" }) })).kind).toBeNull();
+    expect(view(on(def, { renewal: renewal({ ...V2, chargeDate: null }) })).kind).toBeNull();
+    expect(view(contracted()).kind).toBeNull();
+    const lock = (payment: ContractTierOverride["payment"]): ContractTierOverride => ({ term: 12, payment, setAt: "2027-03-15T14:00:00.000Z" });
+    expect(view(on(def), { pendingOverride: lock("pif") }).kind).toBeNull();
+    expect(view(on(def), { pendingOverride: lock("sessions-only") }).kind).toBeNull();
+    expect(view(on(def), { pendingOverride: lock("monthly") }).kind).toBe("pick");
+  });
+
+  it("speaks in the pronoun, and names 'the studio' when it has no name", () => {
+    const v = view(on({ renews: true, from: "default" }), { pronouns: them, studioName: null });
+    expect(v.source).toBe(
+      "The studio hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if they aren't on auto-renewal.",
+    );
+    expect(v.metas[0]).toContain("It doesn't change their billing");
+    expect(view(on({ renews: false, from: "studio" }), { pronouns: them, studioName: "" }).source).toBe(
+      "The studio's packages don't renew by themselves, so this starts unticked. Tick if they are on auto-renewal.",
+    );
   });
 });
 
@@ -578,7 +777,7 @@ describe("accountGlance", () => {
       "68, turns 69 on Apr 2 · Female",
       "Emergency: Tom Brennan, husband",
       "Liability waiver signed Mar 4, 2019",
-      "95 sessions left · renews Mar 14, 2028",
+      "95 sessions left · auto-renews Mar 14, 2028",
       "Committed · 12 months · paying every 4 weeks",
       "Home: Westlake · also trains at Solon",
     ]);
@@ -588,12 +787,23 @@ describe("accountGlance", () => {
     expect(g.foot).toBe("From Mindbody, synced 2 days ago · the renewal is worked out nightly");
   });
 
-  it("claims no renewal Mindbody hasn't said", () => {
+  it("says the decided auto-renew answer in every renewal screen's words, and claims none it hasn't got", () => {
     const line = (autoRenews: boolean | null) =>
       accountGlance(contracted({ renewal: renewal({ autoRenews }) }), studios, TODAY, NOW).membership[0];
-    expect(line(true)).toBe("95 sessions left · renews Mar 14, 2028");
+    expect(line(true)).toBe("95 sessions left · auto-renews Mar 14, 2028");
     expect(line(false)).toBe("95 sessions left · billing ends Mar 14, 2028");
     expect(line(null)).toBe("95 sessions left · payments finish Mar 14, 2028");
+    // A saved "not on auto-renewal" mark reads at once, before tonight's run.
+    const marked = accountGlance(
+      contracted({
+        renewal: renewal({ ...V2, autoRenewsFrom: "studio", autoRenewsInherited: { renews: true, from: "studio" } }),
+        autoRenewMark: mark(false),
+      }),
+      studios,
+      TODAY,
+      NOW,
+    );
+    expect(marked.membership[0]).toBe("95 sessions left · billing ends Mar 14, 2028");
   });
 
   it("leaves out what is not on file, and never an unknown tier", () => {
@@ -617,7 +827,7 @@ describe("accountLede", () => {
   const her = pronounsOf({ gender: "Female" });
   it("is true for the client and the reader", () => {
     expect(accountLede(linked(), true, her)).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname and how she found us are edited here; everything else changes in Mindbody and arrives with the next sync.",
+      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train, the tier lock and auto-renewal are marked here; everything else changes in Mindbody and arrives with the next sync.",
     );
     expect(accountLede(unlinked(), true, her)).toBe(
       "Her contact details as typed into Journey, then her membership. Mindbody does not hold her yet, so her details are typed here until she is linked.",

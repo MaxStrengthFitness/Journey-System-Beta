@@ -304,8 +304,9 @@ describe("the trainer's controls", () => {
     await click(plus());
     await click(plus());
     expect(dialog()!.querySelector(".pk-stepper__value")?.textContent).toBe("4 weeks");
+    // The standard table at a studio that never answered: renews (default ON, Sep 25 2026).
     expect(dialog()!.querySelector('[data-testid="pk-life-sentence"]')?.textContent).toBe(
-      "With 4 weeks away, the 96 sessions take about 52 weeks. This package’s 12 payments finish at week 48, and sessions you haven’t used never expire.",
+      "With 4 weeks away, the 96 sessions take about 52 weeks. Committed renews at week 48, when its payments finish, so the new package’s payments begin while your unused sessions carry on. They never expire.",
     );
     for (let i = 0; i < 20; i++) if (!plus().disabled) await click(plus());
     expect(dialog()!.querySelector(".pk-stepper__value")?.textContent).toBe("16 weeks");
@@ -451,16 +452,41 @@ describe("the review's cases (Sep 24)", () => {
 });
 
 describe("the method's words", () => {
-  it("says sessions never expire, and says auto-renew only where the studio said so", async () => {
+  it("says sessions never expire, and says auto-renew as the package, else the studio, else the standard answers (Sep 25 2026)", async () => {
+    // A studio that never answered: the standard is ON.
     const m = await mount();
     expect(text()).toContain("Sessions you haven’t used never expire.");
-    expect(text()).toContain("Westlake will explain what happens when your payments finish.");
-    expect(text()).not.toContain("renews automatically");
-    await unmount(m);
-    hook.state = withPackages([DEFAULT_PACKAGES[0], { ...DEFAULT_PACKAGES[1], renewsAutomatically: true }, DEFAULT_PACKAGES[2]]);
-    const m2 = await mount();
     expect(text()).toContain("When the payments finish, Committed renews automatically.");
+    expect(text()).not.toContain("will explain");
+    await unmount(m);
+    // A studio switched OFF (the corporate studios).
+    hook.state = state({ settings: { ...DEFAULT_RENEWAL_SETTINGS, packagesRenewAutomatically: false } });
+    const m2 = await mount();
+    expect(text()).toContain("When the payments finish, nothing more is charged unless you choose another package.");
+    expect(text()).not.toContain("renews automatically");
     await unmount(m2);
+    // A studio switched OFF, with this package set to renew: the package wins.
+    hook.state = state({
+      settings: {
+        ...DEFAULT_RENEWAL_SETTINGS,
+        packagesRenewAutomatically: false,
+        packages: [DEFAULT_PACKAGES[0], { ...DEFAULT_PACKAGES[1], renewsAutomatically: true }, DEFAULT_PACKAGES[2]],
+      },
+    });
+    const m3 = await mount();
+    expect(text()).toContain("When the payments finish, Committed renews automatically.");
+    await unmount(m3);
+  });
+
+  it("never says a package paid once renews by itself", async () => {
+    const m = await mount();
+    await click(button("One more week away"));
+    await click(button("In full"));
+    await click(button("Paid once"));
+    expect(text()).not.toContain("renews automatically");
+    expect(dialog()!.querySelector(".pk-timeline__label")?.textContent).not.toMatch(/^Renews/);
+    expect(dialog()!.querySelector('[data-testid="pk-life-sentence"]')?.textContent).not.toMatch(/renews at week/);
+    await unmount(m);
   });
 
   it("draws the dots as a picture with its words", async () => {

@@ -12,6 +12,7 @@
 
 import type { Client, ClientEvent } from "../types";
 import { renewalPromptDue } from "../features/renewals/conversation";
+import { renewalOf } from "../features/renewals/auto-renew";
 import type { HistoryCoverage } from "./prior-history";
 import { canQuoteSessionNumber } from "./client-coverage";
 
@@ -129,7 +130,10 @@ export function hubMarkers(params: {
     }
   }
 
-  if (client.renewal && renewalPromptDue(client.renewal)) out.push({ kind: "renewal", label: "Renewal due" });
+  // With her auto-renewal mark applied (renewals/auto-renew.ts): the Hub and
+  // the briefing say what her profile says, not last night's answer.
+  const renewal = renewalOf(client);
+  if (renewal && renewalPromptDue(renewal)) out.push({ kind: "renewal", label: "Renewal due" });
 
   // One of each kind, first wins.
   const seen = new Set<HubMarkerKind>();

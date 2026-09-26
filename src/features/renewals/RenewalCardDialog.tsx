@@ -28,6 +28,7 @@ import { LogConversationDialog } from "./LogConversationDialog";
 import { TouchHistory } from "./TouchHistory";
 import {
   SITUATION_TONE,
+  autoRenewWordsOf,
   billingEndPhrase,
   capitalize,
   dayLabel,
@@ -94,7 +95,12 @@ function Clocks({ s, today }: { s: RenewalSnapshot; today: string }) {
                 ? "Billing finished"
                 : "Not known"
         }
-        sub={s.paymentMode === "monthly" ? est(s.chargeDateSource) : s.packageLabel ?? undefined}
+        sub={
+          s.paymentMode === "monthly"
+            ? // Where the date and the auto-renew answer came from: "from Mindbody · the studio's answer".
+              [est(s.chargeDateSource), autoRenewWordsOf(s)].filter(Boolean).join(" · ") || undefined
+            : s.packageLabel ?? undefined
+        }
       />
       <Fact label="Pace" value={paceSentence(s)} sub={s.lastVisitDate ? `Last visit ${dayLabel(s.lastVisitDate, today)}` : undefined} />
       <Fact

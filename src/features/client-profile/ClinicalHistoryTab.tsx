@@ -66,6 +66,7 @@ import { useClientCoverage } from "../../hooks/useClientCoverage";
 import { ProgressReportArchive } from "../../components/journal/ProgressReportArchive";
 import { ProfileSubnav, type SubnavItem } from "./ProfileSubnav";
 import type { ClinicalView } from "./profile-nav";
+import { renewalOf } from "../renewals/auto-renew";
 import "./profile-nav.css";
 
 export interface ClinicalHistoryTabProps {
@@ -136,9 +137,11 @@ export function ClinicalHistoryTab({
     [client?.clinicalFlags],
   );
 
+  // Her renewal with her auto-renewal mark applied (auto-renew.ts): the cue
+  // follows the same answer as the profile header.
   const cprCue = useMemo(
-    () => cprTimingCue(client?.renewal, progressReports, studioTodayKey()),
-    [client?.renewal, progressReports],
+    () => cprTimingCue(renewalOf(client), progressReports, studioTodayKey()),
+    [client, progressReports],
   );
 
   const hasMedicalText = Boolean(

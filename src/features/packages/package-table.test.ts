@@ -88,6 +88,24 @@ describe("lineup", () => {
   it("works on whatever the settings cleaner returns for a studio that never saved", () => {
     expect(lineup(normalizeRenewalSettings(undefined)).headline).toHaveLength(3);
   });
+
+  it("answers whether each package renews: its own answer, else the studio's, else the standard ON (Sep 25 2026)", () => {
+    const renews = (l: ReturnType<typeof lineup>) => l.headline.map((t) => t.renewsAutomatically);
+    // A studio that never answered: the standard, ON.
+    expect(renews(lineup({ packages: DEFAULT_PACKAGES }))).toEqual([true, true, true]);
+    // A studio switched OFF (the corporate studios).
+    expect(renews(lineup({ packages: DEFAULT_PACKAGES, packagesRenewAutomatically: false }))).toEqual([false, false, false]);
+    // A package's own yes or no wins over the studio's.
+    const own = [
+      { ...trial, renewsAutomatically: true },
+      { ...committed, renewsAutomatically: false },
+      transformed,
+    ];
+    expect(renews(lineup({ packages: own, packagesRenewAutomatically: false }))).toEqual([true, false, false]);
+    expect(renews(lineup({ packages: own, packagesRenewAutomatically: true }))).toEqual([true, false, true]);
+    // The studio's table itself is left as it was.
+    expect("renewsAutomatically" in transformed).toBe(false);
+  });
 });
 
 describe("the recommendation starts on 12 months", () => {

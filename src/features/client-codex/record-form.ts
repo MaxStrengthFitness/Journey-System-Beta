@@ -82,8 +82,11 @@ export const RECORD_FORM_KEYS = [
   "address",
   "emergencyContactName",
   "emergencyContactPhone",
-  // Account · Membership (the tier lock), her first day, and where they can train
+  // Account · Membership (the tier lock, and whether she is on auto-renewal
+  // — an object bound to its contract, because `false` alone is "nothing"
+  // here), her first day, and where they can train
   "contractTierOverride",
+  "autoRenewMark",
   "firstStudioDay",
   "approvedCrossTrainStudioIds",
   // Account · How they found us
@@ -160,6 +163,7 @@ export const FIELD_HOME: Readonly<Record<RecordFormKey, FieldHome>> = {
   emergencyContactName: CONTACT,
   emergencyContactPhone: CONTACT,
   contractTierOverride: MEMBERSHIP,
+  autoRenewMark: MEMBERSHIP,
   firstStudioDay: FIRST_DAY,
   approvedCrossTrainStudioIds: TRAIN_AT,
   leadSource: FOUND_US,
@@ -193,9 +197,9 @@ export function dirtyWhere(keys: Iterable<RecordFormKey>): SaveBarPlace[] {
  * What an editor shows for a field the record does not have. Text starts
  * empty and a choice starts unpicked — never "Sedentary" or "Novice", which
  * made an unset field look assessed and was written on the first save.
- * A key not listed here (a checklist, a date, the history, the lock) is
- * seeded only when the record has it, so an editor reads "not on file" as
- * the record's own value.
+ * A key not listed here (a checklist, a date, the history, the lock, the
+ * auto-renewal mark) is seeded only when the record has it, so an editor
+ * reads "not on file" as the record's own value.
  */
 const BLANK: Partial<Record<RecordFormKey, unknown>> = {
   occupation: "",

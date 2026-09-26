@@ -133,6 +133,7 @@ import {
   RenewalCardDialog,
   SITUATION_TONE,
   chipText,
+  renewalOf,
   renewalPromptDue,
 } from "../features/renewals";
 import { useRenewalSettings } from "../features/renewals/useRenewalSettings";
@@ -390,6 +391,9 @@ export function ClientProfileView({
 
   // Renewals round (Sep 2026): the package tile opens the Renewal card.
   const [renewalOpen, setRenewalOpen] = useState(false);
+  // Her renewal with her auto-renewal mark applied (auto-renew.ts): an
+  // untick on the package card drops the chip's prompt and dot at once.
+  const renewalNow = useMemo(() => renewalOf(client), [client]);
   const machineNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const m of machines ?? []) if (m.id && m.name) map[m.id] = m.name;
@@ -1505,11 +1509,11 @@ export function ClientProfileView({
         onWatchSession={() => setView("workouts")}
         onDiscardSession={() => setDiscardTarget(activeInProgressSession)}
         renewal={
-          client.renewal
+          renewalNow
             ? {
-                text: chipText(client.renewal, studioTodayKey()),
-                tone: SITUATION_TONE[client.renewal.situation],
-                attention: renewalPromptDue(client.renewal),
+                text: chipText(renewalNow, studioTodayKey()),
+                tone: SITUATION_TONE[renewalNow.situation],
+                attention: renewalPromptDue(renewalNow),
                 onOpen: () => setRenewalOpen(true),
               }
             : undefined

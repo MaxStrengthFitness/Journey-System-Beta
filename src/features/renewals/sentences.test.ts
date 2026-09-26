@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   autoRenewSourceWords,
+  autoRenewWordsOf,
   bankedAtChargeNote,
   billingEndPhrase,
-  chargeDateNote,
+  chargeDateLine,
   chipText,
   dayLabel,
   paceLabel,
@@ -130,16 +131,24 @@ describe("sentences", () => {
     expect(autoRenewSourceWords(undefined)).toBeNull();
   });
 
-  it("notes a charge date's estimate and its answer's source together", () => {
-    expect(chargeDateNote(snap({ chargeDateSource: "estimate", autoRenewsFrom: "studio" }))).toBe(
-      "(estimated) · the studio's answer",
+  it("gives a charge date its estimate and its answer's source together", () => {
+    expect(chargeDateLine(snap({ chargeDateSource: "estimate", autoRenewsFrom: "studio" }), TODAY)).toBe(
+      "Nov 14 (estimated) · the studio's answer",
     );
-    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenewsFrom: "client" }))).toBe("marked on the profile");
-    expect(chargeDateNote(snap({ chargeDateSource: "estimate", autoRenews: null, autoRenewsFrom: null }))).toBe("(estimated)");
-    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: null, autoRenewsFrom: null }))).toBe("");
+    expect(chargeDateLine(snap({ chargeDateSource: "mindbody", autoRenewsFrom: "client" }), TODAY)).toBe(
+      "Nov 14 · marked on the profile",
+    );
+    expect(chargeDateLine(snap({ chargeDateSource: "estimate", autoRenews: null, autoRenewsFrom: null }), TODAY)).toBe(
+      "Nov 14 (estimated)",
+    );
+    expect(chargeDateLine(snap({ chargeDateSource: "mindbody", autoRenews: null, autoRenewsFrom: null }), TODAY)).toBe("Nov 14");
+    expect(chargeDateLine(snap({ chargeDate: null }), TODAY)).toBe("");
     // A version-1 snapshot has no source: its flag was Mindbody's own.
-    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: true }))).toBe("Mindbody's contract");
-    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: null }))).toBe("");
+    expect(autoRenewWordsOf(snap({ autoRenews: true }))).toBe("Mindbody's contract");
+    expect(autoRenewWordsOf(snap({ autoRenews: null }))).toBeNull();
+    expect(autoRenewWordsOf(snap({ autoRenews: true, autoRenewsFrom: "default" }))).toBe(
+      "the standard answer (the studio hasn't set one)",
+    );
   });
 
   it("marks an estimated charge date", () => {

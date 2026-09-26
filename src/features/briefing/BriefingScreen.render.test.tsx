@@ -437,3 +437,64 @@ describe("the pre-session briefing mounts", () => {
     expect("until" in tag).toBe(false);
   });
 });
+
+/*
+ * Auto-renewal (Sep 25 2026): the briefing reads the client's renewal with
+ * her auto-renewal mark applied (renewals/auto-renew.ts, renewalOf). A
+ * trainer's "not on auto-renewal" turns the line's "auto-renews" into
+ * "billing ends", and the before-the-charge warning stops counting toward
+ * "Before you start" — at once, not after tonight's run.
+ */
+describe("the briefing's renewal line follows the auto-renewal mark", () => {
+  const warning = {
+    version: 2,
+    cycleKey: "9001",
+    clientContractId: "9001",
+    situation: "will-bank",
+    paymentMode: "monthly",
+    chargeDate: "2099-10-20",
+    chargeDateSource: "mindbody",
+    bankedAtCharge: 16,
+    sessionsLeft: 30,
+    chargeWarning: true,
+    conversationDue: false,
+    renewalOnBooks: null,
+    autoRenews: true,
+    autoRenewsFrom: "studio",
+    autoRenewsInherited: { renews: true, from: "studio" },
+    flags: [],
+    dataGaps: [],
+  } as any;
+
+  const renewalScreen = (who: Partial<Client>) => (
+    <BriefingScreen
+      authTrainer={trainer}
+      client={{ ...client, renewal: warning, ...who } as Client}
+      targetRoutine={routines[0]}
+      lastSession={null}
+      sessions={sessions}
+      onStart={() => {}}
+      onClose={() => {}}
+      machines={machines}
+      routines={routines}
+      trainers={[trainer]}
+    />
+  );
+  const before = (host: HTMLElement) => host.querySelector<HTMLElement>('[aria-label="Before you start"]')!;
+
+  it("warns before the charge while the package renews", async () => {
+    const host = await mount(renewalScreen({}));
+    expect(before(host).querySelector(".br__quote")?.textContent).toBe("30 left · auto-renews Oct 20, 2099");
+    expect(before(host).textContent).not.toContain("Nothing flagged");
+  });
+
+  it("stops the warning once a trainer marked her not on auto-renewal for this contract", async () => {
+    const autoRenewMark = { renews: false, contractId: "9001", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-aj" };
+    const host = await mount(renewalScreen({ autoRenewMark }));
+    // Sessions still bank when billing ends, so the line stays — in the right words.
+    expect(before(host).querySelector(".br__quote")?.textContent).toBe("30 left · billing ends Oct 20, 2099");
+    expect(before(host).textContent).not.toContain("auto-renews");
+    // No charge is coming, so nothing flags "Before you start".
+    expect(before(host).textContent).toContain("Nothing flagged — clear to go.");
+  });
+});

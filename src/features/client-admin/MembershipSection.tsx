@@ -23,15 +23,19 @@
  *                          stamps, and the Migration Hub
  *
  * EVERY WRITE IS THE RECORD FORM'S: the lock (`contractTierOverride`, named
- * with the Auth uid — the same object ContractPanel built), the cross-train
- * studios, the lead source and the referral. Done only closes an editor and
+ * with the Auth uid — the same object ContractPanel built), the auto-renewal
+ * box (`autoRenewMark`, Sep 25 2026: the same kind of stamped object, bound
+ * to the contract it was ticked on — renewals/auto-renew.ts; every word of
+ * it is account.ts autoRenewView), the cross-train studios, the lead source
+ * and the referral. Done only closes an editor and
  * the Save bar saves ("Account · Membership", "· Where they can train",
  * "· How they found us"). `renewal` is the nightly job's and is never
  * written; nothing here syncs (the header's Master Sync is the one sync).
  *
  * A reader who may not change the record (codexAccess().canEdit false) sees
  * every fact — the client document is readable to a cross-train studio — and
- * no Lock, no studio toggle, no Edit and no Migration Hub, so the rules never
+ * no Lock, no auto-renewal box (its answer in words instead), no studio
+ * toggle, no Edit and no Migration Hub, so the rules never
  * refuse a button the page offered.
  *
  * Colour: a renewal's tone is the package card's left edge (`tabTone`):
@@ -42,17 +46,22 @@ import { useMemo } from "react";
 import {
   CalendarCheck,
   CalendarClock,
+  CheckSquare,
   ChevronDown,
   FileCheck,
   Lock,
   MapPin,
   Package,
+  RefreshCw,
   ScrollText,
+  Square,
+  Undo2,
   Unlock,
   Upload,
   UserPlus,
 } from "lucide-react";
-import type { Client, ContractTierOverride, Studio } from "../../types";
+import type { AutoRenewMark, Client, ContractTierOverride, Studio } from "../../types";
+import { markAfterTap } from "../renewals/auto-renew";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { formatMindbodyDate, toDateSafe, type FirestoreDateLike } from "../../lib/mindbody-dates";
@@ -96,7 +105,17 @@ import {
   type ContractTermRow,
   type PaymentKind,
 } from "./contract";
-import { firstDayView, isMindbodyLinked, membershipTimeline, onFileFacts, packageView, tierSourceLine, type SessionsSplit } from "./account";
+import {
+  AUTO_RENEW_LABEL,
+  autoRenewView,
+  firstDayView,
+  isMindbodyLinked,
+  membershipTimeline,
+  onFileFacts,
+  packageView,
+  tierSourceLine,
+  type SessionsSplit,
+} from "./account";
 import "./client-admin.css";
 
 export interface MembershipSectionProps {
@@ -156,8 +175,12 @@ function PackageCard({
   canEdit,
   today,
   split,
-}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today" | "split"> & {
+  pronouns,
+  studioName,
+}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today" | "split" | "pronouns"> & {
   form: FormPart;
+  /** The client's home studio, named in the auto-renewal box's sentences. */
+  studioName: string | null;
 }) {
   const { formData, updateField, isDirty, revision } = form;
   const picker = useReadEdit({ canEdit, revision });
@@ -165,13 +188,37 @@ function PackageCard({
   // The form holds the unsaved lock (null once it is taken off), the client the saved one.
   const pendingOverride: ContractTierOverride | null =
     "contractTierOverride" in formData ? formData.contractTierOverride ?? null : client.contractTierOverride ?? null;
-  const view = useMemo(() => packageView(client, pendingOverride, today, split), [client, pendingOverride, today, split]);
+  // The same for the auto-renewal mark (null once "Use the studio's answer" is tapped).
+  const pendingMark: AutoRenewMark | null =
+    "autoRenewMark" in formData ? formData.autoRenewMark ?? null : client.autoRenewMark ?? null;
+  const view = useMemo(
+    () => packageView(client, pendingOverride, today, split, pendingMark),
+    [client, pendingOverride, today, split, pendingMark],
+  );
+  const renew = useMemo(
+    () => autoRenewView({ client, pendingMark, pendingOverride, canEdit, pronouns, studioName }),
+    [client, pendingMark, pendingOverride, canEdit, pronouns, studioName],
+  );
   const rows = useMemo(() => buildContractHistory(client, today), [client, today]);
   const tiles = useMemo(
     () => membershipTimeline(rows, priorHistoryOf(client), coverage),
     [rows, client, coverage],
   );
-  const dirty = isDirty("contractTierOverride");
+  const dirty = isDirty("contractTierOverride") || isDirty("autoRenewMark");
+
+  const tapAutoRenew = () => {
+    if (renew.kind !== "pick" || !renew.contractId) return;
+    updateField(
+      "autoRenewMark",
+      markAfterTap({
+        want: !renew.pressed,
+        saved: client.autoRenewMark,
+        contractId: renew.contractId,
+        author,
+        now: new Date(),
+      }),
+    );
+  };
 
   const lock = (term: CommitmentTerm | null, payment: PaymentKind) => {
     const next: ContractTierOverride = {
@@ -256,6 +303,34 @@ function PackageCard({
           {view.worked ? <Source>Worked out each night · Operations → Renewals</Source> : null}
         </div>
       </div>
+
+      {renew.kind ? (
+        <div className="cadm-renew" role="group" aria-label="Auto-renewal">
+          {renew.kind === "pick" ? (
+            <div className="cadm-renew__row">
+              <Pick pressed={renew.pressed} onClick={tapAutoRenew}>
+                {renew.pressed ? <CheckSquare size={18} aria-hidden="true" /> : <Square size={18} aria-hidden="true" />}
+                {AUTO_RENEW_LABEL}
+              </Pick>
+              {renew.canClear ? (
+                <Btn variant="quiet" icon={Undo2} onClick={() => updateField("autoRenewMark", null)}>
+                  Use the studio's answer
+                </Btn>
+              ) : null}
+            </div>
+          ) : null}
+          {renew.kind === "line" ? (
+            <p className="cadm-line" data-testid="auto-renew-line">
+              <RefreshCw size={16} aria-hidden="true" />
+              <span>{renew.source}</span>
+            </p>
+          ) : null}
+          {renew.kind === "pick" && renew.source ? <Source>{renew.source}</Source> : null}
+          {renew.metas.map((m) => (
+            <Meta key={m}>{m}</Meta>
+          ))}
+        </div>
+      ) : null}
 
       {view.status ? (
         <p className="cadm-line">
@@ -647,6 +722,8 @@ function FinePrint({
 
 export function MembershipSection(props: MembershipSectionProps) {
   const { client, form, studios, author, coverage, canEdit, pronouns: p, today, onOpenMigrationHub, split, now } = props;
+  const homeId = recordStudioIdOf(client);
+  const homeStudioName = (homeId ? studios.find((s) => s.id === homeId)?.name?.trim() : null) || null;
   return (
     <>
       <SectionHead
@@ -664,6 +741,8 @@ export function MembershipSection(props: MembershipSectionProps) {
           canEdit={canEdit}
           today={today}
           split={split}
+          pronouns={p}
+          studioName={homeStudioName}
         />
         <div className="cadm-side">
           <TrainAtCard client={client} form={form} studios={studios} canEdit={canEdit} pronouns={p} />

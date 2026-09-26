@@ -287,6 +287,35 @@
   min-width: 0;
 }
 
+/* ---- auto-renewal: the box, its source, and what it does not change ----
+   (Sep 25 2026). The box is the kit's Pick (40px or taller); its label
+   wraps, never truncates, in portrait and landscape. */
+
+.cadm-renew {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cadm-renew__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Pick wraps its children in one span: the icon and the label sit in it. */
+.cadm-renew .cx-pick > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cadm-renew .cx-pick svg {
+  flex: none;
+}
+
 .cadm-picker__list,
 .cadm-picks {
   display: flex;

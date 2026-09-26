@@ -89,14 +89,24 @@ export function autoRenewSourceWords(from: AutoRenewSource | null | undefined): 
   }
 }
 
-/**
- * The note beside a charge date: "(estimated)" when it is one, and where the
- * auto-renew answer came from — "(estimated) · the studio's answer". Empty
- * when there is neither. A version-1 snapshot's flag was Mindbody's own.
- */
-export function chargeDateNote(s: Pick<RenewalSnapshot, "chargeDateSource" | "autoRenews" | "autoRenewsFrom">): string {
+/** Where a snapshot's auto-renew answer came from, in words. A version-1 snapshot's flag was Mindbody's own. */
+export function autoRenewWordsOf(s: Pick<RenewalSnapshot, "autoRenews" | "autoRenewsFrom">): string | null {
   const from = s.autoRenewsFrom !== undefined ? s.autoRenewsFrom : typeof s.autoRenews === "boolean" ? "mindbody" : null;
-  return [s.chargeDateSource === "estimate" ? "(estimated)" : null, autoRenewSourceWords(from)].filter(Boolean).join(" · ");
+  return autoRenewSourceWords(from);
+}
+
+/**
+ * A charge date with what a leader needs beside it: whether it is estimated,
+ * and where the auto-renew answer came from — "Nov 14 (estimated) · the
+ * studio's answer". Empty when there is no charge date.
+ */
+export function chargeDateLine(
+  s: Pick<RenewalSnapshot, "chargeDate" | "chargeDateSource" | "autoRenews" | "autoRenewsFrom">,
+  today: string,
+): string {
+  if (!s.chargeDate) return "";
+  const when = `${dayLabel(s.chargeDate, today)}${s.chargeDateSource === "estimate" ? " (estimated)" : ""}`;
+  return [when, autoRenewWordsOf(s)].filter(Boolean).join(" · ");
 }
 
 function weeksBetween(a: string, b: string): number {

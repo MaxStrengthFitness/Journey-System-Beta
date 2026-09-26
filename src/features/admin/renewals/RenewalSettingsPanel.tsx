@@ -1,8 +1,14 @@
 /**
- * My Studio → Studio → Renewals: when each studio starts the renewal
- * conversation, and its own package table. (It was Operations → Renewals →
- * Settings until the Operations round, Sep 2026 — My Studio is where you run
- * the studio; Operations only points here now.)
+ * My Studio → Studio → Renewals: whether the studio's packages renew by
+ * themselves, when each studio starts the renewal conversation, and its own
+ * package table. (It was Operations → Renewals → Settings until the
+ * Operations round, Sep 2026 — My Studio is where you run the studio;
+ * Operations only points here now.)
+ *
+ * This is the ONE editor of the studio's auto-renew answer (Sep 25 2026; AJ:
+ * the franchise studios have auto-renewal on, the corporate studios off, on
+ * by default). Operations → Renewals flags a studio that hasn't answered and
+ * opens this screen; it never edits the answer itself.
  *
  * AJ, Sep 10 2026: "each studio should be able to customize anything that
  * relates to knowing." Everything the renewal engine measures against is
@@ -16,7 +22,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from "react";
-import { Package, Plus, Timer, Trash2, Tag } from "lucide-react";
+import { Package, Plus, RefreshCw, Timer, Trash2, Tag } from "lucide-react";
 import {
   AdminButton,
   AdminEmpty,
@@ -105,6 +111,12 @@ export function RenewalSettingsPanel({
 
   const { problems } = useMemo(() => formToSettings(form.value), [form.value]);
   const [removing, setRemoving] = useState<PackageRowForm | null>(null);
+  // The studio's auto-renew answer (AJ, Sep 25 2026: on by default, off at
+  // the corporate studios). "Not answered" is offered only while nothing is
+  // saved: once a studio answers, going back to the standard isn't a choice.
+  const unanswered = external.packagesRenewAutomatically === "";
+  const turningOff = form.value.packagesRenewAutomatically === "no" && external.packagesRenewAutomatically !== "no";
+  const studioRenews = form.value.packagesRenewAutomatically !== "no";
 
   const setRow = (key: string, patch: Partial<PackageRowForm>) =>
     form.setField(
@@ -145,6 +157,51 @@ export function RenewalSettingsPanel({
           Only this studio's leaders can change these settings.
         </AdminNotice>
       )}
+
+      <AdminPanel
+        title="Auto-renewal"
+        subtitle="What happens when a package's payments finish. Mindbody's own setting on a contract wins wherever Mindbody has said."
+        icon={<RefreshCw className="w-4 h-4" />}
+      >
+        <div className="space-y-3">
+          {unanswered && (
+            <AdminNotice tone="warn">
+              {studioName} hasn't answered yet, so its packages read as renewing automatically. The corporate studios
+              don't auto-renew: if {studioName} is one of them, choose No and save.
+            </AdminNotice>
+          )}
+          <AdminGrid>
+            <AdminField
+              label={`Packages at ${studioName} renew automatically`}
+              hint="Whether a package starts again by itself when its payments finish. A package below can say otherwise, and a trainer can mark one client on the client's profile."
+              htmlFor="renewals-autorenew"
+            >
+              <AdminSelect
+                id="renewals-autorenew"
+                value={form.value.packagesRenewAutomatically}
+                disabled={!canEdit}
+                onChange={(e) =>
+                  form.setField(
+                    "packagesRenewAutomatically",
+                    e.target.value === "yes" ? "yes" : e.target.value === "no" ? "no" : "",
+                  )
+                }
+              >
+                {unanswered && <option value="">Yes — the standard, not confirmed yet</option>}
+                <option value="yes">Yes, they renew automatically</option>
+                <option value="no">No, billing ends when the payments finish</option>
+              </AdminSelect>
+            </AdminField>
+          </AdminGrid>
+          {turningOff && (
+            <AdminNotice tone="info">
+              Clients with no answer from Mindbody and no mark of their own will read as not renewing, and their
+              before-the-charge warnings stop. If contracts already sold still renew, leave this on or mark those clients
+              on their profiles.
+            </AdminNotice>
+          )}
+        </div>
+      </AdminPanel>
 
       <AdminPanel
         title="When to talk"
@@ -295,7 +352,7 @@ export function RenewalSettingsPanel({
                 </AdminField>
                 <AdminField
                   label="When the payments finish"
-                  hint="What the packages screen tells a client. Sessions never expire."
+                  hint="What the packages screen and the renewal screens say for this package. Sessions never expire."
                   htmlFor={`pkg-${row.key}-renews`}
                 >
                   <AdminSelect
@@ -308,7 +365,7 @@ export function RenewalSettingsPanel({
                       })
                     }
                   >
-                    <option value="">Not said: the screen stays quiet about it</option>
+                    <option value="">{studioRenews ? "Same as the studio (renews)" : "Same as the studio (doesn't renew)"}</option>
                     <option value="yes">It renews automatically</option>
                     <option value="no">It doesn't renew by itself</option>
                   </AdminSelect>

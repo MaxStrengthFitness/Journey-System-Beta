@@ -34,6 +34,7 @@
 
 import { byPackageLength, WHOLE_PACKAGE_TOLERANCE, wholePackage } from "../renewals/options";
 import { sessionsPerPayment } from "../renewals/settings";
+import { packageRenews } from "../renewals/auto-renew";
 import type { PackageTier, RenewalSettings } from "../renewals/types";
 
 export { formatMoney } from "../renewals/money";
@@ -91,8 +92,16 @@ export interface Lineup {
   headlineIsTwiceAWeek: boolean;
 }
 
-export function lineup(settings: Pick<RenewalSettings, "packages">): Lineup {
-  const all = [...settings.packages].sort(byPackageLength);
+/**
+ * The studio's packages, in order. Every tier comes out with
+ * `renewsAutomatically` ANSWERED — its own answer, else the studio's, else
+ * the standard ON (renewals/auto-renew.ts, packageRenews) — so a prospect
+ * hears what a client on the package reads on the renewal screens.
+ */
+export function lineup(settings: Pick<RenewalSettings, "packages" | "packagesRenewAutomatically">): Lineup {
+  const all = [...settings.packages]
+    .sort(byPackageLength)
+    .map((t) => ({ ...t, renewsAutomatically: packageRenews(t, settings) }));
   const twice = all.filter((t) => frequencyOf(t) === "twice");
   if (twice.length === 0) return { headline: all, once: [], other: [], headlineIsTwiceAWeek: false };
   return {
