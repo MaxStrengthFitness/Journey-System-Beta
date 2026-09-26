@@ -443,7 +443,7 @@ export const IMPORTANCE_META: Record<
     short: "Critical",
     chip: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/40",
     ring: "ring-1 ring-rose-500/45",
-    hint: "Pinned, and first on the briefing",
+    hint: "Pinned, first on the briefing, and a red triangle on the Hub card",
   },
 };
 

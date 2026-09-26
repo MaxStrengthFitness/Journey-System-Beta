@@ -1,19 +1,25 @@
 import { Client, ClientEvent } from "../types";
+import type { JournalEntry } from "../types/journal";
+import { criticalNoteLabel } from "./hub-critical-notes";
 
 /**
  * Two distinct at-a-glance signals for a client, derived from data the hub
  * already holds in memory (no extra Firestore reads per schedule block).
  *
- *  - PRIORITY NOTE  -> loud. Something a trainer must read before this session.
+ *  - PRIORITY NOTE  -> loud. Something a trainer must read before this session:
+ *                      a Critical note that matters on the booking's day (read
+ *                      once for the whole day by the Hub and handed in — see
+ *                      hub-critical-notes.ts), or a legacy priority note on the
+ *                      client record.
  *  - CLINICAL       -> subtle. Standing medical/clinical history worth knowing.
  *  - CHECK-IN FLAG  -> coaching. The last 90-day check-in scored Red in
  *                      Protein, Sleep & Recovery or Consistency & Habits
  *                      (the three the reference document says to auto-flag).
  */
 export interface ClientAlertState {
-  /** Loud signal: an explicit high-priority note is outstanding. */
+  /** Loud signal: a live Critical note, or a legacy priority note, is outstanding. */
   hasPriorityNote: boolean;
-  /** Short human label for the priority note (tooltip / aria-label). */
+  /** What it says, in whole sentences (tooltip / aria-label). */
   priorityLabel: string | null;
   /** Subtle signal: the client has clinical history on file. */
   hasClinicalHistory: boolean;
@@ -66,15 +72,31 @@ export const isActiveHighPriorityEvent = (event?: ClientEvent | null): boolean =
   return start !== null ? start >= today : false;
 };
 
-export function getClientAlertState(client?: Client | null): ClientAlertState {
+/**
+ * `criticalNotes` is the client's Critical notes that matter on the booking's
+ * day — `criticalNotesOn(...)` over the Hub's one read. Leave it out, or pass
+ * `[]` while that read is unknown: the legacy fields still speak for
+ * themselves, and nothing is inferred from a read that has not answered.
+ */
+export function getClientAlertState(
+  client?: Client | null,
+  criticalNotes: readonly JournalEntry[] = [],
+): ClientAlertState {
   if (!client) return EMPTY;
 
   const highEvent = (client.events || []).find(isActiveHighPriorityEvent);
   const pinned = client.priorityNote?.trim();
 
-  const hasPriorityNote = Boolean(pinned || highEvent || client.hasPriorityNote);
+  /* The legacy fields: nothing in the app writes them any more, but a record
+     imported with one still carries it, and it is still read. */
+  const legacyPriority = Boolean(pinned || highEvent || client.hasPriorityNote);
+  const legacyWords = pinned || highEvent?.title || null;
+  const criticalWords = criticalNoteLabel(criticalNotes);
+
+  const hasPriorityNote = legacyPriority || criticalNotes.length > 0;
   const priorityLabel =
-    pinned || highEvent?.title || (hasPriorityNote ? "Priority note" : null);
+    [criticalWords, legacyWords].filter(Boolean).join(" · ") ||
+    (hasPriorityNote ? "Priority note" : null);
 
   const hasClinicalHistory = Boolean(
     (client.clinicalProfile && client.clinicalProfile.length > 0) ||

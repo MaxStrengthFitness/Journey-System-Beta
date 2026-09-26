@@ -23,6 +23,7 @@ import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { ScheduleBlock } from "./schedule/ScheduleBlock";
 import { bookingDay, loggedSessions } from "../lib/booking-state";
 import { sessionsByClientDay } from "../lib/hub-card-state";
+import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // Import the hook file directly, not the studio-tasks barrel (index.ts).
 // ClientsView is in the initial bundle; pulling the barrel in here would drag
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
@@ -530,6 +531,20 @@ export function ClientsView({
   const logged = React.useMemo(
     () => loggedSessions(sessionsKnown ? sessions : null),
     [sessions, sessionsKnown],
+  );
+
+  /*
+   * The day's Critical notes (question 12, AJ Sep 24 2026): ONE live read for
+   * every client booked on the day on screen, thirty clients to a query —
+   * never a read per card, and never a count kept on the client. Each card
+   * decides which of its client's notes matter on its own day
+   * (lib/hub-critical-notes). `notesFor` is null for a client whose notes are
+   * unknown, and that card then claims nothing either way.
+   */
+  const criticalNotes = useHubCriticalNotes(
+    todaysSchedules
+      .filter((s) => !s.clientName?.toLowerCase().includes("unavailab"))
+      .map((s) => findClientForSession(s)?.id),
   );
 
   const getClientSessions = (client: Client) => {
@@ -1116,6 +1131,18 @@ export function ClientsView({
               </div>
             </div>
 
+            {/* A failed read is unknown, never empty: with some clients'
+                Critical notes unread, a card without the triangle proves
+                nothing, so the Hub says so once rather than on every card. */}
+            {criticalNotes.status === "incomplete" && (
+              <p
+                role="status"
+                className="shrink-0 px-3 md:px-4 py-1.5 text-[12px] leading-snug text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800"
+              >
+                {"Couldn't check every client's critical notes, so a card without the red triangle may still have one. Each client's briefing still shows them."}
+              </p>
+            )}
+
             {/* Continuous timeline. This element is the ONLY scroller (both axes),
                 which is what lets the trainer header and the time axis stick. */}
             <div ref={timelineRef} className="flex-1 min-h-0 overflow-auto relative">
@@ -1354,6 +1381,9 @@ export function ClientsView({
                                             rosterLoading={rosterLoading}
                                             workoutSession={workoutSession}
                                             logged={logged}
+                                            criticalNotes={
+                                              clientObj ? criticalNotes.notesFor(clientObj.id) : null
+                                            }
                                             now={currentTime}
                                             onOpenClient={(clientId) => {
                                               onSelectClient(clientId);

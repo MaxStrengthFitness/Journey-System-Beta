@@ -23,8 +23,10 @@
  * the clock; "No longer matters" resolves it.
  *
  * Readers: the briefing's critical strip and heads-up rows, the Overview's
- * pain-and-notes panel and its Moments (a DAY note on its day), and the
- * review list. Anything that asks "does this note matter today" asks here.
+ * pain-and-notes panel and its Moments (a DAY note on its day), the review
+ * list, and the Hub card's red triangle (lib/hub-critical-notes.ts, which
+ * asks about the booking's day rather than today). Anything that asks "does
+ * this note matter today" asks here.
  */
 import { studioDateKey, toDate } from "../../lib/studio-time";
 import type { JournalEntry } from "../../types/journal";

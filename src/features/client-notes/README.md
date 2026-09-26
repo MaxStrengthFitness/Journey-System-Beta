@@ -53,3 +53,7 @@ Pure: no React, no Firestore, no clock of its own. `record-selectors.test.ts` ru
 - **Whole sentences, never cut, never "…"** (`firstSentences(body, 90)` from `src/lib`); the line wraps, and the machine is named in full.
 - `failed` says "Notes couldn't be loaded, so a critical note may be missing." instead of drawing nothing — neutral, not crimson, because it is not a critical note.
 - Notes owns it; it imports nothing from the codex. Its stylesheet (`critical-line.css`, `--eq-*` tokens) and the selectors are on the codex's scale test list, so its text stays at 14 and 12px and nothing in it is clipped.
+
+## Outside the record — the Hub card's red triangle
+
+A Critical note also marks the client's appointment card on the Hub (AJ, Sep 24 2026 — question 12 of the Sep 20 audit). It lives outside this folder, in `lib/hub-critical-notes.ts` (the rule) and `hooks/useHubCriticalNotes.ts` (one live read of the day's booked clients' Critical notes, thirty to a query), but it reads with this folder's rules: a Critical thread ROOT that `mattersOn` the booking's studio day, and never a thread update. Like `CriticalLine`, it **ignores dismissals**, and a client whose notes could not be read is unknown, never clear. So anything that changes what "a Critical note that matters" means here changes the Hub too, and `hub-critical-notes.test.ts` / `ScheduleBlock.render.test.tsx` will say so.
