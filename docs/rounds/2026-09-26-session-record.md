@@ -1,6 +1,6 @@
 # The session record — Sep 26 2026
 
-Branch `claude/nifty-lovelace-s7jx47`, cut from master at `1ccb5d7`. **Nothing here is on `master`.** No database, permissions, Cloud Functions or Mindbody change.
+Branch `claude/nifty-lovelace-s7jx47`, cut from master at `1ccb5d7`, and **merged to `master` on Sep 26** at AJ's word ("Let's push master"). That push deployed the app. No database, permissions, Cloud Functions or Mindbody change, so there is nothing else to deploy.
 
 ## Why
 
@@ -75,9 +75,11 @@ Tests: `send-status.test.ts` covers the rule and its words, including that the w
 - **One Finish at a time.** `finishingRef` makes a second tap return at once.
 - **The sessions stream leaves a Finish in flight alone.** It no longer clears the session and flips to the briefing while Finish is running; Finish clears it itself once the post-session screen is ready.
 
-### What it cannot close without your OK
+### What it does not close
 
 One offline Finish that replays later, after another iPad has already finished the same session online, can still add the totals twice. That iPad had no way to ask. Closing it needs a guard on the database side: a rule that refuses a second totals write for one session, or the totals moved into the session trigger. Either is a permissions or Cloud Functions change, so it waits for the permissions round and your explicit OK. Phase 7, which opens a second iPad read-only, removes most of the ways to get there.
+
+AJ, Sep 26 2026: "That scenario is extremely unlikely I think." So it is left as it is, and no guard is planned. If it is ever seen, the guard above is the fix.
 
 ### Tests
 
@@ -184,9 +186,9 @@ AJ, on the Atlas: leaders "don't have to be able to edit anything but they shoul
 
 No database, permissions or Cloud Functions change. A take-over writes three fields Finish already writes, and the rules already let any trainer at the studio update the session.
 
-### What it cannot close without your OK
+### What it does not close
 
-The same as phase 3: the database cannot yet refuse a session's totals twice. Phase 7 removes the everyday way to get there, a second iPad recording into a session. But an offline Finish that replays after another iPad finished online still needs the guard on the database side.
+The same as phase 3: the database cannot yet refuse a session's totals twice. Phase 7 removes the everyday way to get there, a second iPad recording into a session. An offline Finish that replays after another iPad finished online could still count twice. AJ judged that extremely unlikely, and no guard is planned.
 
 ### Tests
 
@@ -211,6 +213,6 @@ The suite gives 5,617 passing in 356 files, the typecheck 4 and the build passes
 
 ## What this round leaves for later
 
-- **The database-side guard for a second Finish** (phases 3 and 7). It is a rules or Cloud Functions change, so it goes with the permissions round and your OK.
+- **No guard on the database side for a second Finish** (phases 3 and 7). The one case left is an offline Finish replayed after another iPad finished online. AJ, Sep 26 2026: "That scenario is extremely unlikely I think." If it is ever seen, the guard is a rules or Cloud Functions change.
 - **Sign-out's three names** (Switch Trainer, Log Out Facility and Settings' Sign out) become one button. That belongs to the sign-out leftovers card.
-- **A walk-through on real iPads.** The render tests mount every screen here; only an iPad shows how they feel. The steps are in `docs/ops/TESTING-CHECKLIST.md` under "Round 5 — Failure modes".
+- **A walk-through on real iPads.** The render tests mount every screen here; only an iPad shows how they feel. AJ, Sep 26: after the Atlas is complete, as the one walk-through on a finished build. The steps are in `docs/ops/TESTING-CHECKLIST.md` under "Round 5 — Failure modes".

@@ -23,6 +23,7 @@ It reads nothing and writes nothing.
 
 - `settleOrQueue` waits up to `FINISH_WAIT_MS` for the database's answer, and not at all while offline. Past that, the save is on the iPad, and the post-session screen says "saved on this iPad" until the answer comes.
 - `finishedElsewhere` asks the server whether another iPad already finished the session. Finish then writes nothing, so the client's totals are never counted twice. Offline, or with no answer, it says no and Finish goes ahead.
+- What this cannot stop: an offline Finish that replays after another iPad finished the same session online. AJ judged that extremely unlikely (Sep 26 2026), so nothing on the database side guards it. Don't add a guard without asking.
 
 ## Sign-out asks first
 
