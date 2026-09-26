@@ -49,6 +49,8 @@ import {
 } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { logDocId } from "../lib/exercise-log-id";
+import { keepPendingEdits, pendingLogEdits } from "../lib/pending-log-edits";
+import { sendsAtOnce } from "../features/journey-grid/send-at-once";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -987,7 +989,11 @@ export function WorkoutTrackerView({
             const key = `${data.sessionId}_${data.machineId}${data.side ? "_" + data.side : ""}`;
             logsMap[key] = data;
           });
-          setLogs(logsMap);
+          /* A set whose write is still in the queue keeps what the trainer
+             typed: this snapshot may be another machine's save landing, and it
+             carries this set's older numbers (lib/pending-log-edits.ts). */
+          const pending = pendingLogEdits(pendingLogWritesRef.current.values());
+          setLogs((prev) => keepPendingEdits(logsMap, prev, pending));
         },
         (error) => {
           handleFirestoreError(error, OperationType.GET, "exerciseLogs");
@@ -2544,6 +2550,9 @@ export function WorkoutTrackerView({
       setQualityWithGuard(sessionId, machineId, patch.quality, sideL);
     if (patch.qualityR !== undefined && patch.qualityR !== null)
       setQualityWithGuard(sessionId, machineId, patch.qualityR, "Right");
+    /* A tap that finishes something (a quality, practice or skip, the unit,
+       the stopwatch) is sent now, not after the typing wait. */
+    if (sendsAtOnce(patch)) flushAllLogWrites();
   };
 
   const sessionBarNumber = sessionNumberTag(
@@ -2577,7 +2586,11 @@ export function WorkoutTrackerView({
           applySessionMachineIds([...activeMachineIds, id]);
         },
         focusMachineId: gridFocusMachineId,
-        onFocusMachine: setFocusMachineOverride,
+        /* Moving to another machine sends whatever is still waiting on this one. */
+        onFocusMachine: (id: string) => {
+          flushAllLogWrites();
+          setFocusMachineOverride(id);
+        },
         weightStep: 2,
       }
     : undefined;
@@ -3482,9 +3495,13 @@ export function WorkoutTrackerView({
           value={gridFocusMachineId ? gridLiveValues[gridFocusMachineId] : undefined}
           history={gridHistory}
           onChange={handleGridLiveChange}
+          onCommit={flushAllLogWrites}
           step={2}
           nextName={gridNextRow?.machine.name}
-          onNext={() => gridNextRow && setFocusMachineOverride(gridNextRow.machine.id)}
+          onNext={() => {
+            flushAllLogWrites();
+            if (gridNextRow) setFocusMachineOverride(gridNextRow.machine.id);
+          }}
           onAddMachine={() => setIsOrderSheetOpen(true)}
           flagLine={
             gridFocusRow
