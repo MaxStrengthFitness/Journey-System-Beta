@@ -329,6 +329,9 @@ async function startServer() {
         String(siteId),
         "staff/imageurl",
         `https://api.mindbodyonline.com/public/v6/staff/${encodeURIComponent(String(staffId))}/imageurl`,
+        // No photo is the normal answer (below): it must not count toward
+        // pausing the site's calls as a failure would.
+        (status) => status === 404,
       );
 
       // A staff member with no photo is the NORMAL answer here, not an error.

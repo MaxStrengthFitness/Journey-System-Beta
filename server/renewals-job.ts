@@ -69,7 +69,6 @@ import {
   sessionsLoggedSince,
   studioIsLive,
 } from "../src/features/renewals/job-plan.ts";
-import { mindbodyDayKey } from "../src/features/renewals/engine.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
 
@@ -382,9 +381,11 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
             bookedToday: (schedulesByClient.get(c.id!) ?? []).some(
               (row) => row.status !== "Cancelled" && studioDateKey(row.startTime, run.tz) === run.today,
             ),
+            // Both days are the studio's: a Sync pressed at 9 pm is still today.
             loggedSincePull: sessionsLoggedSince(
               sessionsByClient.get(c.id!) ?? [],
-              mindbodyDayKey(c.mindbodyServicesSyncedAt),
+              c.mindbodyServicesSyncedAt ? studioDateKey(c.mindbodyServicesSyncedAt, run.tz) : null,
+              run.tz,
             ),
             conversationAt: run.settings.conversationAtSessionsLeft,
           }),

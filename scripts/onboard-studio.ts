@@ -91,12 +91,29 @@ const SCOPE_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 const commit = hasFlag("commit");
 const verify = hasFlag("verify");
 const resync = hasFlag("resync");
-const limit = Number(flag("limit") ?? Infinity);
-const rate = Number(flag("rate") ?? 2);
+/**
+ * A number flag, or the default when it is not given. A value that is not a
+ * positive number STOPS the run: `--max-calls 5OO` must never read as "no
+ * ceiling", because the ceiling is what stands between this script and a
+ * surprise Mindbody bill (the review of Sep 26 2026).
+ */
+function numberFlag(name: string, fallback: number): number {
+  if (!hasFlag(name)) return fallback;
+  const raw = flag(name);
+  const n = Number(raw);
+  if (raw === undefined || raw.startsWith("--") || !Number.isFinite(n) || n <= 0) {
+    console.error(`\nSTOPPED: --${name} needs a positive number, and got "${raw ?? ""}". Nothing was done.`);
+    process.exit(1);
+  }
+  return n;
+}
+
+const limit = numberFlag("limit", Infinity);
+const rate = numberFlag("rate", 2);
 /** One evening's share (AJ, Sep 26): about 100 clients at 5 calls each. */
-const maxCalls = Number(flag("max-calls") ?? 500);
-const monthsBack = Number(flag("months") ?? 6);
-const daysAhead = Number(flag("ahead") ?? 30);
+const maxCalls = numberFlag("max-calls", 500);
+const monthsBack = numberFlag("months", 6);
+const daysAhead = numberFlag("ahead", 30);
 
 /* The server's floor reads its pace from the environment when it loads, so it
    is set before the Mindbody client is imported (below, dynamically). */
@@ -184,7 +201,8 @@ async function main() {
       // A day or two later the window has moved on a little; the kept read
       // still says who counted, and once the studio is live the nightly job
       // syncs anyone new the night before their first session.
-      if (fresh && kept.site === site && Array.isArray(kept.appointments)) {
+      const sameAsk = kept.site === site && kept.monthsBack === monthsBack && kept.daysAhead === daysAhead;
+      if (fresh && sameAsk && Array.isArray(kept.appointments)) {
         appointments = kept.appointments;
         console.log(
           `Appointments: reusing ${kept.appointments.length} read ${String(kept.pulledAt).slice(0, 10)} ` +
@@ -230,7 +248,7 @@ async function main() {
     fs.mkdirSync(path.dirname(scopeFile), { recursive: true });
     fs.writeFileSync(
       scopeFile,
-      JSON.stringify({ site, from, to, pulledAt: new Date().toISOString(), appointments }),
+      JSON.stringify({ site, from, to, monthsBack, daysAhead, pulledAt: new Date().toISOString(), appointments }),
     );
     console.log(`Appointments read: ${appointments.length} (${calls} call${calls === 1 ? "" : "s"})`);
   }
@@ -421,6 +439,10 @@ async function main() {
       : null;
     const existing = (item.existing ?? fresh ?? {}) as any;
     const built = buildMasterSyncPatchWith(existing, res, now, FieldValue.serverTimestamp(), toTs);
+    /* Mindbody could not give every part (contracts, pricing options or
+       memberships): what it gave lands, but not the "synced" stamp, so the
+       next evening's run tries this client again by itself. */
+    if (res.partial) delete built.patch.mindbodyMasterSyncedAt;
     try {
       const batch = db.batch();
       if (fresh) {
@@ -440,7 +462,7 @@ async function main() {
       decision.error = `saving: ${String(err?.message || err).slice(0, 200)}`;
       continue;
     }
-    fs.appendFileSync(resumeFile, `${item.docId}\n`);
+    if (!res.partial) fs.appendFileSync(resumeFile, `${item.docId}\n`);
     decision.outcome = res.partial ? "partial" : fresh ? "created" : "synced";
     decision.changedFields = built.changedFields;
     decision.name = decision.name ?? `${res.demographics?.firstName ?? ""} ${res.demographics?.lastName ?? ""}`.trim();
@@ -460,7 +482,7 @@ async function main() {
   );
   console.log(`Mindbody calls: ${calls} (about $${(calls * DOLLARS_PER_CALL).toFixed(2)})`);
   console.log(`Report: ${file}`);
-  if (count("partial")) console.log("Partial: Mindbody could not give every part; the rest landed. Run again with --resync --limit on those later.");
+  if (count("partial")) console.log("Partial: Mindbody could not give every part; the rest landed, and the next run tries those clients again.");
   if (count("failed")) console.log("Failed ones are in the report with Mindbody's words. A second run tries them again.");
   if (count("over-limit")) console.log("Stopped at the limit: run the same command again to carry on.");
   console.log("Then: --verify, and the list it prints must be empty.");

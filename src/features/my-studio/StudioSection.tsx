@@ -11,6 +11,7 @@ import { useDirtyForm } from "../admin/useDirtyForm";
 import { StudioDetailsForm, type StudioForm } from "../admin/studios/StudioDetailsForm";
 import { studioPatchPayload } from "../admin/studios/studio-writes";
 import { auditStudios, formatAge } from "../admin/mindbody/diagnostics";
+import { useSyncLease, withLease } from "../admin/sync-lease";
 import { RenewalSettingsPanel } from "../admin/renewals/RenewalSettingsPanel";
 import { InBodyVariationPanel } from "./InBodyVariationPanel";
 import { AnnouncementComposer } from "../admin/announcements/AnnouncementComposer";
@@ -117,9 +118,12 @@ function SyncPanel({ trainers }: { trainers: Trainer[] }) {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
+  // The sync lease lives on its own document since the cost plan (Sep 26
+  // 2026, features/admin/sync-lease.ts); the studio's own fields go stale.
+  const lease = useSyncLease(activeStudio?.id);
   const row = useMemo(
-    () => (activeStudio ? auditStudios([activeStudio], trainers, now)[0] : null),
-    [activeStudio, trainers, now],
+    () => (activeStudio ? auditStudios([withLease(activeStudio, lease)], trainers, now)[0] : null),
+    [activeStudio, lease, trainers, now],
   );
   if (!row) return null;
 

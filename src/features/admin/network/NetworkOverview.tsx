@@ -19,6 +19,7 @@ import { Building2, Users } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { AdminBadge, AdminEmpty, AdminPanel, AdminStatTile, AdminTiles } from "../primitives";
 import { auditStudios, type StudioDiagnosis } from "../mindbody/diagnostics";
+import { useSyncLeases, withLease } from "../sync-lease";
 import { attentionCounts, staffCountByStudio, trainerIsIn } from "../franchise/scope";
 import { useOperationsScope } from "../scope-context";
 
@@ -51,7 +52,12 @@ export function NetworkOverview({ studios, trainers, now }: { studios: Studio[];
   );
   const counts = useMemo(() => attentionCounts(staff), [staff]);
   const perStudio = useMemo(() => staffCountByStudio(staff, studioIds), [staff, studioIds]);
-  const audit = useMemo(() => auditStudios(studios, staff, now), [studios, staff, now]);
+  // The sync lease lives on its own document since the cost plan (Sep 26
+  // 2026, features/admin/sync-lease.ts): read for each studio, every 5 minutes.
+  const leaseIds = useMemo(() => studios.map((s) => s.id).filter((id): id is string => Boolean(id)), [studios]);
+  const leases = useSyncLeases(leaseIds, Math.floor(now / 300_000));
+  const leased = useMemo(() => studios.map((s) => (s.id ? withLease(s, leases[s.id]) : s)), [studios, leases]);
+  const audit = useMemo(() => auditStudios(leased, staff, now), [leased, staff, now]);
   const troubled = audit.filter((a) => a.problem !== null).length;
   const canSwitchTo = new Set(switchable.map((s) => s.id));
 

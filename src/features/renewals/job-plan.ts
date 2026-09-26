@@ -34,7 +34,7 @@
  */
 
 import { mindbodyDayKey } from "./engine";
-import { daysBetween } from "../client-history/model";
+import { daysBetween, sessionDayKey } from "../client-history/model";
 import { normalizeMindbodyName, type PackageNameIndex } from "./settings";
 import type { Client } from "../../types";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
@@ -63,18 +63,21 @@ export function studioIsLive(cutover: unknown, tomorrow: string): boolean {
 }
 
 /**
- * Sessions Journey logged (completed) after `sinceDay`, the day of the last
- * pull - the count-down's input. Days are the sessions' own day keys.
+ * Sessions Journey logged (completed) after `sinceDay`, the studio day of the
+ * last pull - the count-down's input. Each session's day is the studio's
+ * (`sessionDayKey`: the start instant when the record has one, since an old
+ * record's `date` is a UTC day).
  */
 export function sessionsLoggedSince(
   sessions: ReadonlyArray<{ date?: unknown; status?: unknown }>,
   sinceDay: string | null,
+  timeZone?: string,
 ): number {
   if (!sinceDay) return 0;
   let n = 0;
   for (const s of sessions) {
     if (s.status !== "Completed") continue;
-    const day = typeof s.date === "string" ? s.date.slice(0, 10) : null;
+    const day = sessionDayKey(s as never, timeZone);
     if (day && day > sinceDay) n++;
   }
   return n;

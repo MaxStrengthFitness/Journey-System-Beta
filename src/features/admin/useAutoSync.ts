@@ -240,6 +240,13 @@ export function useAutoSync({
     }
   }, []);
 
+  // The first look waits for the lease's first answer (attempt returns until
+  // then), so take it the moment the lease arrives rather than a minute later.
+  const leaseArrived = lease !== undefined;
+  useEffect(() => {
+    if (enabled && activeStudioId && leaseArrived) void attempt();
+  }, [enabled, activeStudioId, leaseArrived, attempt]);
+
   useEffect(() => {
     if (!enabled || !activeStudioId) return;
 

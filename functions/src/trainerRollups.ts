@@ -406,19 +406,26 @@ export const recalcTrainerWindows = onSchedule(
 
     for (const trainerDoc of trainers.docs) {
       const tally = tallyWindows(byTrainer.get(trainerDoc.id) || [], nowMs);
-      const seed = hasStats.has(trainerDoc.id) ? {} : seedFromLegacy((trainerDoc.data() as any)?.rollups);
-      batch.set(
-        rollupsRef(firestore, trainerDoc.id),
-        {
-          ...seed,
-          sessionsCoached30d: tally.sessions30d,
-          sessionsCoached90d: tally.sessions90d,
-          clientsCoached90d: tally.clients90d,
-          avgPerWeek: tally.avgPerWeek,
-          windowsUpdatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+      const windows = {
+        sessionsCoached30d: tally.sessions30d,
+        sessionsCoached90d: tally.sessions90d,
+        clientsCoached90d: tally.clients90d,
+        avgPerWeek: tally.avgPerWeek,
+        windowsUpdatedAt: FieldValue.serverTimestamp(),
+      };
+      if (!hasStats.has(trainerDoc.id)) {
+        // First night for this trainer: carry the old totals over in a
+        // transaction, so a session counted between the read above and this
+        // write is never overwritten by the old figure. Once per trainer.
+        const ref = rollupsRef(firestore, trainerDoc.id);
+        const legacy = (trainerDoc.data() as any)?.rollups;
+        await firestore.runTransaction(async (tx) => {
+          const current = await tx.get(ref);
+          tx.set(ref, current.exists ? windows : { ...seedFromLegacy(legacy), ...windows }, { merge: true });
+        });
+        continue;
+      }
+      batch.set(rollupsRef(firestore, trainerDoc.id), windows, { merge: true });
       pending += 1;
       if (pending === 400) {
         await batch.commit();

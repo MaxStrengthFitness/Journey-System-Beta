@@ -286,6 +286,36 @@ export function siteQualifiedClientId(site: string | number, clientId: string | 
   return `${String(site).trim()}-${String(clientId).trim()}`;
 }
 
+/**
+ * Every client a sale names (the cost plan, Sep 26 2026). Mindbody's
+ * clientSale.created names the buyer as `purchasingClientId`, and each item
+ * the client it was bought for as `recipientClientId` - a package bought as a
+ * gift changes the RECIPIENT's balance - rather than a plain `clientId`, which
+ * is read too in case a payload carries one. Unique, in that order.
+ */
+export function saleClientIds(payload: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const add = (v: unknown) => {
+    if (typeof v !== "string" && typeof v !== "number") return;
+    const id = String(v).trim();
+    if (id && !out.includes(id)) out.push(id);
+  };
+  add(payload.purchasingClientId);
+  add(payload.PurchasingClientId);
+  add(payload.clientId);
+  for (const key of ["purchasedItems", "PurchasedItems", "items", "Items"]) {
+    const items = payload[key];
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      if (item && typeof item === "object") {
+        const i = item as Record<string, unknown>;
+        add(i.recipientClientId ?? i.RecipientClientId);
+      }
+    }
+  }
+  return out;
+}
+
 async function resolveClientDocId(
   firestore: Firestore,
   clientId: string | number,
@@ -470,7 +500,24 @@ export async function handleMindbodyWebhook(
         ? await resolveClientDocId(deps.firestore, clientId, siteId)
         : null;
 
-    if (isCommercialEvent && clientId && target) {
+    if (isSaleEvent) {
+      // A sale only marks: the nightly job (features/renewals/job-plan.ts)
+      // pulls anyone marked since their last pull first. Only records Journey
+      // already holds - a sale to someone it has never seen is nothing to act
+      // on, and making a bare record for them would put an empty client in
+      // the collection. Never parked in Limbo: it carries no booking.
+      let marked = 0;
+      for (const id of saleClientIds(payloadData)) {
+        const saleTarget = await resolveClientDocId(deps.firestore, id, siteId);
+        const ref = resolveClientRef(deps.firestore, saleTarget.docId);
+        if (!(await ref.get()).exists) continue;
+        await ref.set({ mindbodyCommercialChangedAt: FieldValue.serverTimestamp() }, { merge: true });
+        marked++;
+      }
+      if (marked === 0) {
+        console.log(`Mindbody webhook: sale event ${eventId} names no client Journey holds; nothing marked.`);
+      }
+    } else if (isCommercialEvent && clientId && target) {
       const clientRef = resolveClientRef(deps.firestore, target.docId);
       const isCancelEvent =
         lowerType.includes("cancel") || lowerType.includes("delete");
@@ -584,11 +631,17 @@ export async function handleMindbodyWebhook(
       // event carries the sessions remaining, so this only marks the client:
       // the nightly job (features/renewals/job-plan.ts) pulls anyone marked
       // since their last pull first, instead of polling every client weekly.
-      updates.mindbodyCommercialChangedAt = now;
-
-      // A merge write on nested maps leaves every other membership, contract
-      // and profile field on the document untouched.
-      await clientRef.set(updates, { merge: true });
+      // An event with a record to keep writes as it always did; one with no
+      // usable id only marks a client Journey already holds, so it never makes
+      // a bare record that holds nothing but the mark.
+      if (Object.keys(updates).length > 0) {
+        updates.mindbodyCommercialChangedAt = now;
+        // A merge write on nested maps leaves every other membership, contract
+        // and profile field on the document untouched.
+        await clientRef.set(updates, { merge: true });
+      } else if ((await clientRef.get()).exists) {
+        await clientRef.set({ mindbodyCommercialChangedAt: now }, { merge: true });
+      }
     } else if (isClientEvent && clientId) {
       // Mindbody-owned facts. These always overwrite: Mindbody is the source of
       // truth for commercial status, and nobody types these in the app.

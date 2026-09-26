@@ -144,6 +144,8 @@ async function callMindbody(
   site: string,
   label: string,
   send: () => Promise<Response>,
+  /** A status that is a normal answer here, not a failure for the breaker (a staff photo's 404). */
+  isNormal: (status: number) => boolean = () => false,
 ): Promise<FloorOutcome> {
   const paused = breakerPausedMs(breakers[site] || NEW_BREAKER, Date.now());
   if (paused > 0) {
@@ -174,7 +176,7 @@ async function callMindbody(
 
     if (res) {
       if (res.ok || !isRetryable(res.status)) {
-        breakers[site] = recordResult(breakers[site] || NEW_BREAKER, res.ok, BREAKER_LIMITS, Date.now());
+        breakers[site] = recordResult(breakers[site] || NEW_BREAKER, res.ok || isNormal(res.status), BREAKER_LIMITS, Date.now());
         return { response: res, status: res.status, error: "", attempts: attempt };
       }
       lastStatus = res.status;
@@ -317,8 +319,9 @@ export async function mindbodyFetch(
   label: string,
   url: string,
   init: RequestInit,
+  isNormal?: (status: number) => boolean,
 ): Promise<Response> {
-  const outcome = await callMindbody(String(site), label, () => fetch(url, init));
+  const outcome = await callMindbody(String(site), label, () => fetch(url, init), isNormal);
   if (outcome.response) return outcome.response;
   return new Response(
     JSON.stringify({ Error: { Message: outcome.error || "Mindbody did not answer." } }),
@@ -332,7 +335,12 @@ export async function mindbodyFetch(
  * fresh one. A sign-in that fails still sends the call without a token, as
  * these routes always did: some endpoints answer without one.
  */
-export async function mindbodyAuthedFetch(site: string, label: string, url: string): Promise<Response> {
+export async function mindbodyAuthedFetch(
+  site: string,
+  label: string,
+  url: string,
+  isNormal?: (status: number) => boolean,
+): Promise<Response> {
   const apiKey = process.env.MINDBODY_API_KEY || "";
   let response: Response | null = null;
   for (let pass = 0; pass < 2; pass++) {
@@ -348,7 +356,7 @@ export async function mindbodyAuthedFetch(site: string, label: string, url: stri
       SiteId: String(site),
     };
     if (userToken) headers.Authorization = userToken;
-    response = await mindbodyFetch(site, label, url, { method: "GET", headers });
+    response = await mindbodyFetch(site, label, url, { method: "GET", headers }, isNormal);
     if (response.status === 401 && userToken && pass === 0) {
       forgetMindbodyToken(String(site), userToken);
       continue;

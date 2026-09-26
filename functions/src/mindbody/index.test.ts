@@ -6,6 +6,7 @@ import {
   toUtcTimestamp,
   WebhookRequest,
   WebhookDeps,
+  saleClientIds,
 } from "./index";
 import { recordHealthEvent } from "./healthState";
 import { tryRecordEvent } from "./idempotency";
@@ -1067,6 +1068,19 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
     });
   });
 
+  describe("saleClientIds (the cost plan)", () => {
+    it("reads the buyer, a plain clientId and every recipient, once each", () => {
+      expect(
+        saleClientIds({
+          purchasingClientId: 100000009,
+          clientId: "100000009",
+          purchasedItems: [{ recipientClientId: "100000010" }, { RecipientClientId: 100000011 }, {}],
+        }),
+      ).toEqual(["100000009", "100000010", "100000011"]);
+      expect(saleClientIds({})).toEqual([]);
+    });
+  });
+
   describe("membership and contract events", () => {
     it("20. clientMembershipAssignment.created writes an active membership record", async () => {
       const rawBody = createValidEnvelope({
@@ -1278,20 +1292,68 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       expect(written.mindbodyMemberships["12"]).toBeDefined();
     });
 
-    it("25b. a sale only marks the client: no profile fields, no package records", async () => {
+    it("25b. a sale marks the buyer and each recipient Journey holds, and nothing else", async () => {
+      // Mindbody names the buyer purchasingClientId and each item's client
+      // recipientClientId - a package bought as a gift changes the recipient.
+      existingDocs["clients/100000009"] = { firstName: "Buyer" };
+      existingDocs["clients/100000010"] = { firstName: "Recipient" };
       const rawBody = createValidEnvelope({
         eventId: "clientSale.created",
-        eventData: { siteId: 99999, clientId: "100000009", saleId: 555, saleDateTime: "2026-09-26T14:00:00Z" },
+        eventData: {
+          siteId: 99999,
+          saleId: 555,
+          purchasingClientId: "100000009",
+          purchasedItems: [
+            { itemId: 1, recipientClientId: "100000010" },
+            { itemId: 2, recipientClientId: "100000009" },
+            { itemId: 3, recipientClientId: "100000999" },
+          ],
+        },
       });
       const response = await handleMindbodyWebhook(deps, {
         rawBody,
         signatureHeader: signForTest(rawBody, mockSecret),
       });
       expect(response.statusCode).toBe(200);
-      expect(mockSet).toHaveBeenCalledTimes(1);
-      const [written, opts] = mockSet.mock.calls[0];
-      expect(opts).toEqual({ merge: true });
-      expect(Object.keys(written)).toEqual(["mindbodyCommercialChangedAt"]);
+      const marks = writesTo("clients");
+      expect(marks.map((w) => w.id)).toEqual(["100000009", "100000010"]);
+      for (const w of marks) {
+        expect(Object.keys(w.data)).toEqual(["mindbodyCommercialChangedAt"]);
+        expect(w.options).toEqual({ merge: true });
+      }
+      // Not parked: a sale carries no booking to file.
+      expect(writesTo("mindbodyLimbo")).toEqual([]);
+    });
+
+    it("25c. a sale to someone Journey has never seen makes no record", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientSale.created",
+        eventData: { siteId: 99999, saleId: 556, purchasingClientId: "100000777" },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(writesTo("clients")).toEqual([]);
+    });
+
+    it("25d. a membership event with no usable id marks only a client Journey holds", async () => {
+      const unknown = createValidEnvelope({
+        eventId: "clientMembershipAssignment.created",
+        eventData: { siteId: 99999, clientId: "100000777" },
+      });
+      await handleMindbodyWebhook(deps, { rawBody: unknown, signatureHeader: signForTest(unknown, mockSecret) });
+      expect(writesTo("clients")).toEqual([]);
+
+      existingDocs["clients/100000009"] = { firstName: "Held" };
+      const held = createValidEnvelope({
+        eventId: "clientMembershipAssignment.created",
+        eventData: { siteId: 99999, clientId: "100000009" },
+      });
+      await handleMindbodyWebhook(deps, { rawBody: held, signatureHeader: signForTest(held, mockSecret) });
+      const [mark] = writesTo("clients");
+      expect(Object.keys(mark.data)).toEqual(["mindbodyCommercialChangedAt"]);
     });
 
     it("26. toUtcTimestamp reads zoneless Mindbody strings as UTC, not host-local", () => {

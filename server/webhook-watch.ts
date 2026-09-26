@@ -43,8 +43,15 @@ export async function checkWebhookSubscriptions(
       method: "GET",
       headers: { "Content-Type": "application/json", "Api-Key": apiKey, SiteId: site },
     });
-    if (r.ok) bodies.push(await r.json().catch(() => null));
-    else errors.push(`site ${site}: HTTP ${r.status}`);
+    if (!r.ok) {
+      errors.push(`site ${site}: HTTP ${r.status}`);
+      continue;
+    }
+    // An answer Journey cannot read is an error, never "no subscription":
+    // that would raise a false alarm on Operations -> Mindbody.
+    const body = await r.json().catch(() => undefined);
+    if (body === undefined || body === null) errors.push(`site ${site}: an answer Journey could not read`);
+    else bodies.push(body);
   }
   const checkedAt = new Date().toISOString();
   const ref = db.doc("system/mindbodyWebhook");

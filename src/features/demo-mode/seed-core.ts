@@ -227,9 +227,10 @@ function buildStudio(ctx: SeedContext): SeedDoc {
       mindbodyMode: "offline",
       locationType: "corporate",
       /*
-       * Before every seeded session, so `historyCoverage()` reads this
-       * studio's records as complete and the Journey grid speaks with
-       * confidence instead of hedging every number.
+       * Before every seeded session: Arwen's prior record predates it. The
+       * other clients are complete because their records say so
+       * (`historyIsComplete`, below) - the date alone no longer makes a
+       * client complete (the cost plan, Sep 26 2026).
        */
       journeyCutoverDate: addDays(ctx.today, -400),
       sessionMinutes: 30,
@@ -788,7 +789,16 @@ function buildClient(
               recordedByName: ctx.seededBy.name,
             },
           }
-        : {}),
+        : {
+            /*
+             * Everyone else started on Journey, and says so. The cutover alone
+             * used to answer that (a first session after it read "complete");
+             * since the cost plan (Sep 26 2026) the date proves nothing without
+             * Mindbody's visit count, which a demo client never has, so the
+             * record says it outright - or every number here would hedge.
+             */
+            historyIsComplete: true,
+          }),
       createdAt: ts(`${startedOn}T12:00:00.000Z`),
       updatedAt: ts(`${ctx.today}T12:00:00.000Z`),
       [DEMO_FLAG]: true,

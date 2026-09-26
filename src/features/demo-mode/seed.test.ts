@@ -11,6 +11,7 @@ import {
 import { DEMO_CLIENTS, DEMO_TRAINERS, totalSessionsFor } from "./roster";
 import { outcomeOf, isPerformedLog } from "../../lib/set-outcome";
 import { totalSessions, priorHistoryOf } from "../../lib/prior-history";
+import { coverageOfClient } from "../../lib/client-coverage";
 
 const TODAY = "2026-09-20";
 const seed = buildDemoSeed({ today: TODAY, seededBy: { id: "u1", name: "AJ Jurgens" } });
@@ -362,6 +363,18 @@ describe("the history is the shape the app's own readers expect", () => {
     expect(runs.length).toBeGreaterThan(3);
     const gained = runs.filter(([, run]) => run[run.length - 1] > run[0]);
     expect(gained.length).toBe(runs.length);
+  });
+});
+
+describe("what the demo clients' history reads as (the cost plan, Sep 26 2026)", () => {
+  it("reads every client who started on Journey as a whole story, and Arwen as partial", () => {
+    const cutover = at(`studios/${DEMO_STUDIO_ID}`)?.journeyCutoverDate as string;
+    const clients = inCollection("clients").map((d) => d.data as Record<string, unknown>);
+    expect(clients.length).toBeGreaterThan(0);
+    for (const c of clients) {
+      const coverage = coverageOfClient(c as never, cutover);
+      expect(coverage).toBe(c.priorHistory ? "partial" : "complete");
+    }
   });
 });
 

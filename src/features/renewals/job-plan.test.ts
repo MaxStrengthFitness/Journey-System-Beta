@@ -127,6 +127,13 @@ describe("sessionsLoggedSince", () => {
     expect(sessionsLoggedSince(sessions, "2026-09-01")).toBe(2);
     expect(sessionsLoggedSince(sessions, null)).toBe(0);
   });
+
+  it("reads a session's day in the studio's zone from its start, not its UTC date", () => {
+    // Started 9 pm Eastern on Sep 1; an old record's date says Sep 2 (UTC).
+    const late = { date: "2026-09-02", status: "Completed", startTime: "2026-09-02T01:00:00.000Z" };
+    expect(sessionsLoggedSince([late], "2026-09-01", "America/New_York")).toBe(0);
+    expect(sessionsLoggedSince([late], "2026-08-31", "America/New_York")).toBe(1);
+  });
 });
 
 describe("names seen", () => {
