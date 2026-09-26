@@ -41,12 +41,13 @@ export interface PackageTier {
    */
   mindbodyNames: string[];
   /**
-   * Whether this package renews by itself when its payments finish (AJ, Sep
-   * 24 2026: "auto renew isn't on everywhere but some studios do have it").
-   * Absent means the studio hasn't said, and no screen says either way. Only
-   * the packages screen reads it; the renewal engine still reads Mindbody's
-   * own flag on the contract. Sessions never expire at any studio (AJ, same
-   * day), so there is no setting for that.
+   * Whether this package renews by itself when its payments finish: this
+   * package's own answer, over the studio's (`RenewalSettings.
+   * packagesRenewAutomatically`). Absent means "same as the studio" (Sep 25
+   * 2026). The packages screen and the renewal engine both read it, through
+   * auto-renew.ts, so a prospect and a client on the package hear the same
+   * thing. Sessions never expire at any studio (AJ, Sep 24), so there is no
+   * setting for that.
    */
   renewsAutomatically?: boolean;
 }
@@ -70,6 +71,15 @@ export interface RenewalSettings {
   payAsYouGoCountsAs: PayAsYouGoCountsAs;
   /** Vacation / Snowbird / Medical time pauses the clocks. Default true. */
   pauseDuringAwayEvents: boolean;
+  /**
+   * Whether this studio's packages renew by themselves when their payments
+   * finish. AJ, Sep 25 2026: the franchise studios have auto-renewal on and
+   * the corporate studios don't; a studio may turn it off, and it is on by
+   * default. Absent means the studio hasn't answered, which reads as ON
+   * (auto-renew.ts, STUDIO_AUTO_RENEW_DEFAULT). A package's own answer wins
+   * over this one; see auto-renew.ts for the whole order.
+   */
+  packagesRenewAutomatically?: boolean;
   /** The studio's package table. */
   packages: PackageTier[];
   /**
@@ -96,6 +106,23 @@ export interface RenewalNamesSeen {
     }
   >;
   updatedAt?: unknown;
+}
+
+/* ------------------------------------------------------------------ *
+ * Auto-renew — decided in one place (auto-renew.ts)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Where an auto-renew answer came from, first to last in the order that
+ * decides it: Mindbody's own flag on the contract, a trainer's mark on the
+ * client's profile for that contract, the package's answer, the studio's
+ * answer, and the standard (the studio never answered, so ON).
+ */
+export type AutoRenewSource = "mindbody" | "client" | "package" | "studio" | "default";
+
+export interface AutoRenewAnswer {
+  renews: boolean;
+  from: AutoRenewSource;
 }
 
 /* ------------------------------------------------------------------ *
@@ -176,11 +203,22 @@ export interface RenewalSnapshot {
   chargeDate: string | null;
   chargeDateSource: "mindbody" | "estimate" | null;
   /**
-   * Mindbody's own per-contract flag: auto-renew is on at some studios and not
-   * at others. Null when Mindbody hasn't said — the words then claim neither
-   * (sentences.ts, billingEndPhrase).
+   * Whether the running contract renews by itself when its payments finish:
+   * the DECIDED answer, in auto-renew.ts's order (Mindbody's contract, the
+   * trainer's mark on this contract, the package's answer, the studio's, the
+   * standard ON). Null only when nothing is running or coming, when the
+   * package isn't matched in Renewal settings and neither Mindbody nor a mark
+   * has answered, or on a version-1 snapshot that Mindbody hadn't flagged —
+   * the words then claim neither (sentences.ts, billingEndPhrase).
    */
   autoRenews: boolean | null;
+  /** Where `autoRenews` came from; null when it is null. Absent on a version-1 snapshot. */
+  autoRenewsFrom?: AutoRenewSource | null;
+  /**
+   * The answer WITHOUT the client's own mark: what the profile's box shows
+   * until a trainer marks this contract. Absent on a version-1 snapshot.
+   */
+  autoRenewsInherited?: AutoRenewAnswer | null;
   /** Sessions left in the whole package: on hand, plus those still to be paid for. */
   sessionsLeft: number | null;
   sessionsLeftSource: "mindbody" | "estimate" | null;
@@ -198,7 +236,8 @@ export interface RenewalSnapshot {
   conversationDue: boolean;
   /**
    * Will bank, and the charge is inside the studio's warning window. Never on
-   * a contract Mindbody says doesn't auto-renew: no charge is coming.
+   * a contract the decided answer says won't renew (`autoRenews` false): no
+   * charge is coming.
    */
   chargeWarning: boolean;
   /** When the package effectively ends — the pipeline's sort key and horizon. */

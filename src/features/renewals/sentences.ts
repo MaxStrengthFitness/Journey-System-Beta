@@ -9,7 +9,7 @@
 
 import { daysBetween } from "../client-history/model";
 import { callChange, type InBodyVariation } from "../inbody/variation";
-import type { RenewalSituation, RenewalSnapshot } from "./types";
+import type { AutoRenewSource, RenewalSituation, RenewalSnapshot } from "./types";
 
 /** "Nov 14", or "Nov 14, 2027" when it isn't this year. */
 export function dayLabel(key: string | null | undefined, today?: string): string {
@@ -37,10 +37,11 @@ export function paceLabel(perWeek: number | null): string {
 
 /**
  * What happens when a contract's payments run out, in the words every renewal
- * screen uses. Mindbody's own per-contract flag decides: auto-renew is on at
- * some studios and not at others (AJ, Sep 24 2026), so the app never assumes
- * it. When Mindbody hasn't said, the words say neither — the payments
- * finishing is true either way.
+ * screen uses. The answer is the DECIDED one (auto-renew.ts: Mindbody's
+ * contract, a trainer's mark, the package's answer, the studio's, the
+ * standard ON). Null is the fallback — a package not matched in Renewal
+ * settings, or a snapshot from before the decision — and then the words say
+ * neither: the payments finishing is true either way.
  */
 export function billingEndPhrase(autoRenews: boolean | null | undefined): string {
   if (autoRenews === true) return "auto-renews";
@@ -61,8 +62,41 @@ function billingEnds(s: RenewalSnapshot, today: string): string {
 export function bankedAtChargeNote(s: RenewalSnapshot): string {
   const head = `About ${sessions(s.bankedAtCharge ?? 0)}. Sessions never expire, so they carry over`;
   if (s.autoRenews === true) return `${head} — decide in Mindbody whether the renewal should wait.`;
-  if (s.autoRenews === false) return `${head}. The contract doesn't auto-renew, so no new package is charged on top of them.`;
+  // The answer may be the studio's or a trainer's mark, not the contract's.
+  if (s.autoRenews === false) return `${head}. Not on auto-renewal, so no new package is charged on top of them.`;
   return `${head} — check in Mindbody whether the contract auto-renews and, if it does, whether the renewal should wait.`;
+}
+
+/**
+ * Where an auto-renew answer came from, in the words the Brief, the Renewal
+ * card and the profile use. "The standard answer" is a studio that never
+ * answered: never credited as "the studio's answer". Null for no answer.
+ */
+export function autoRenewSourceWords(from: AutoRenewSource | null | undefined): string | null {
+  switch (from) {
+    case "mindbody":
+      return "Mindbody's contract";
+    case "client":
+      return "marked on the profile";
+    case "package":
+      return "the package's answer";
+    case "studio":
+      return "the studio's answer";
+    case "default":
+      return "the standard answer (the studio hasn't set one)";
+    default:
+      return null;
+  }
+}
+
+/**
+ * The note beside a charge date: "(estimated)" when it is one, and where the
+ * auto-renew answer came from — "(estimated) · the studio's answer". Empty
+ * when there is neither. A version-1 snapshot's flag was Mindbody's own.
+ */
+export function chargeDateNote(s: Pick<RenewalSnapshot, "chargeDateSource" | "autoRenews" | "autoRenewsFrom">): string {
+  const from = s.autoRenewsFrom !== undefined ? s.autoRenewsFrom : typeof s.autoRenews === "boolean" ? "mindbody" : null;
+  return [s.chargeDateSource === "estimate" ? "(estimated)" : null, autoRenewSourceWords(from)].filter(Boolean).join(" · ");
 }
 
 function weeksBetween(a: string, b: string): number {

@@ -5,9 +5,11 @@
  */
 export type * from "./types";
 export {
+  autoRenewSourceWords,
   chipText,
   SITUATION_TONE,
 } from "./sentences";
+export { renewalOf } from "./auto-renew";
 export {
   promptText,
   renewalPromptDue,

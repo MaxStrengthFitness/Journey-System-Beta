@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { byMonth, conversationDueDate, horizonEnd, laneOf, matchesFilter, nextStep, sortRows, type PipelineRow } from "./pipeline";
+import { byMonth, conversationDueDate, horizonEnd, LANE_HINTS, laneOf, matchesFilter, nextStep, sortRows, type PipelineRow } from "./pipeline";
 import { DEFAULT_RENEWAL_SETTINGS } from "./settings";
 import { DEFAULT_INBODY_VARIATION, normalizeInBodyVariation } from "../inbody/variation";
 import type { RenewalCycle, RenewalSnapshot } from "./types";
@@ -37,6 +37,13 @@ describe("lanes", () => {
     expect(laneOf(ends, null, S, TODAY)).toBe("coming-up");
     // 30 left, due at 10, 2 a week: 10 weeks.
     expect(nextStep(ends, null, S, TODAY)).toBe("Conversation due around Nov 20");
+  });
+
+  it("says the before-the-charge lane holds packages that renew automatically — no 'Mindbody hasn't said' any more", () => {
+    // Auto-renew is decided (auto-renew.ts): an unknown can't be will-bank.
+    expect(LANE_HINTS["before-charge"]).toBe(
+      "Sessions still banked when the payments finish, and the package renews automatically. Talk first, then decide in Mindbody whether to move the renewal.",
+    );
   });
 
   it("puts a due conversation and an ended package in talk-now, until decided", () => {

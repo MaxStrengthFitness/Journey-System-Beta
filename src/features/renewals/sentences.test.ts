@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  autoRenewSourceWords,
   bankedAtChargeNote,
   billingEndPhrase,
+  chargeDateNote,
   chipText,
   dayLabel,
   paceLabel,
@@ -109,12 +111,35 @@ describe("sentences", () => {
     expect(note(true)).toBe(
       "About 16 sessions. Sessions never expire, so they carry over — decide in Mindbody whether the renewal should wait.",
     );
+    // The answer may be the studio's or a trainer's mark, not the contract's.
     expect(note(false)).toBe(
-      "About 16 sessions. Sessions never expire, so they carry over. The contract doesn't auto-renew, so no new package is charged on top of them.",
+      "About 16 sessions. Sessions never expire, so they carry over. Not on auto-renewal, so no new package is charged on top of them.",
     );
     expect(note(null)).toBe(
       "About 16 sessions. Sessions never expire, so they carry over — check in Mindbody whether the contract auto-renews and, if it does, whether the renewal should wait.",
     );
+  });
+
+  it("names where an auto-renew answer came from, never crediting a studio that hasn't answered", () => {
+    expect(autoRenewSourceWords("mindbody")).toBe("Mindbody's contract");
+    expect(autoRenewSourceWords("client")).toBe("marked on the profile");
+    expect(autoRenewSourceWords("package")).toBe("the package's answer");
+    expect(autoRenewSourceWords("studio")).toBe("the studio's answer");
+    expect(autoRenewSourceWords("default")).toBe("the standard answer (the studio hasn't set one)");
+    expect(autoRenewSourceWords(null)).toBeNull();
+    expect(autoRenewSourceWords(undefined)).toBeNull();
+  });
+
+  it("notes a charge date's estimate and its answer's source together", () => {
+    expect(chargeDateNote(snap({ chargeDateSource: "estimate", autoRenewsFrom: "studio" }))).toBe(
+      "(estimated) · the studio's answer",
+    );
+    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenewsFrom: "client" }))).toBe("marked on the profile");
+    expect(chargeDateNote(snap({ chargeDateSource: "estimate", autoRenews: null, autoRenewsFrom: null }))).toBe("(estimated)");
+    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: null, autoRenewsFrom: null }))).toBe("");
+    // A version-1 snapshot has no source: its flag was Mindbody's own.
+    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: true }))).toBe("Mindbody's contract");
+    expect(chargeDateNote(snap({ chargeDateSource: "mindbody", autoRenews: null }))).toBe("");
   });
 
   it("marks an estimated charge date", () => {

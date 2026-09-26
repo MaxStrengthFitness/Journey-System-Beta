@@ -6,8 +6,9 @@
  * THE MODEL — TWO CLOCKS (docs/business/renewals.md)
  *
  *   Billing clock: a payment every 4 weeks for a fixed number of payments.
- *     When the last one is made, the contract auto-renews — where the studio
- *     has auto-renew on. Mindbody's per-contract flag says (autoRenews).
+ *     When the last one is made, the contract auto-renews — where it is on.
+ *     auto-renew.ts decides (autoRenews): Mindbody's flag, a trainer's mark,
+ *     the package's answer, the studio's, the standard ON.
  *   Session clock: 8 sessions arrive with each payment, and they NEVER expire.
  *
  * A client who trains exactly twice a week finishes both clocks together.
@@ -40,6 +41,7 @@ import { addDays, daysBetween, keyOf, toTimelineEvents } from "../client-history
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { toDateSafe } from "../../lib/mindbody-dates";
 import { buildPackageNameIndex, sessionsPerPayment, type PackageNameIndex } from "./settings";
+import { decideAutoRenew } from "./auto-renew";
 import type {
   PackageTier,
   RenewalFlag,
@@ -49,7 +51,12 @@ import type {
   RenewalSnapshot,
 } from "./types";
 
-export const ENGINE_VERSION = 1;
+/**
+ * 2 (Sep 25 2026): `autoRenews` is the DECIDED answer (auto-renew.ts), with
+ * `autoRenewsFrom` and `autoRenewsInherited` beside it. A version-1 snapshot
+ * carried Mindbody's flag alone; `renewalOf` leaves one as it is.
+ */
+export const ENGINE_VERSION = 2;
 
 /** Days in one billing period: payments are every 4 weeks. */
 export const BILLING_PERIOD_DAYS = 28;
@@ -656,10 +663,21 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
       }
     }
   }
-  const autoRenews =
-    current && typeof current.contract.isAutoRenewing === "boolean"
-      ? current.contract.isAutoRenewing
-      : null;
+  // Does it renew by itself when the payments finish? Decided in one place
+  // (auto-renew.ts): Mindbody's flag, the trainer's mark on THIS contract,
+  // the package's answer, the studio's, the standard ON. `inherited` is the
+  // answer without her mark — what the profile's box shows until someone
+  // marks this contract.
+  const autoRenewInputs = {
+    contractId: current?.id ?? null,
+    mindbody: current?.contract.isAutoRenewing,
+    tierMatched: tier !== null,
+    pkg: tier?.renewsAutomatically,
+    studio: settings.packagesRenewAutomatically,
+  };
+  const autoRenewsInherited = decideAutoRenew({ ...autoRenewInputs, mark: null });
+  const autoRenewDecided = decideAutoRenew({ ...autoRenewInputs, mark: client.autoRenewMark ?? null });
+  const autoRenews = autoRenewDecided?.renews ?? null;
 
   /* ---- Session clock ---- */
   const sessionsOnHand: number | null = servicesSynced ? balance.onHand : null;
@@ -774,12 +792,13 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     situation !== "away" &&
     !renewalOnBooks;
   // The warning is about a CHARGE: a new package billed while sessions are
-  // still banked. Auto-renew is on at some studios and not at others (AJ,
-  // Sep 24 2026), so a contract Mindbody says won't renew has no charge
-  // coming: it still banks ("will-bank" says so), and its conversation comes
-  // at the studio's threshold like anyone's. Unknown still warns — a leader
-  // checking a contract that turns out not to renew costs less than a missed
-  // charge.
+  // still banked. Auto-renew is on at the franchise studios and off at the
+  // corporate ones (AJ, Sep 25 2026), so a contract the decided answer says
+  // won't renew has no charge coming: it still banks ("will-bank" says so),
+  // and its conversation comes at the studio's threshold like anyone's.
+  // Unknown now means only an unmatched package, which is never "will-bank"
+  // (no tier, so "unknown"); the `!== false` keeps an old snapshot's null
+  // warning, as it always did.
   const chargeWarning =
     situation === "will-bank" &&
     autoRenews !== false &&
@@ -907,6 +926,8 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     chargeDate,
     chargeDateSource,
     autoRenews,
+    autoRenewsFrom: autoRenewDecided?.from ?? null,
+    autoRenewsInherited,
     sessionsLeft,
     sessionsLeftSource,
     sessionsOnHand,
