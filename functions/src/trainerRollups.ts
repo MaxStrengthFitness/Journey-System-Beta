@@ -14,7 +14,7 @@
  * would read every session that trainer has ever coached.
  *
  * So we count ONCE, at the moment a session is completed, and store the
- * answer on the trainer document. Three pieces:
+ * answer beside the trainer: `trainers/{id}/stats/rollups`. Three pieces:
  *
  *   onSessionRollup      write-time trigger. Lifetime total + lastSessionAt.
  *   recalcTrainerWindows nightly. The rolling windows, which a counter cannot
@@ -25,6 +25,16 @@
  * Division of labour matters: the trigger owns `sessionsCoached` and
  * `lastSessionAt` and touches nothing else, so the nightly job can rewrite
  * every window field without ever racing it.
+ *
+ * WHY A DOCUMENT OF ITS OWN (the cost plan, Sep 26 2026, D3c). The counters
+ * used to live in a `rollups` map ON the trainer document, and every iPad in
+ * the company watches every trainer document (src/hooks/useTrainers.ts). So
+ * each completed session was read once by every connected iPad at every
+ * studio - a cost that grew with the square of the studio count. A
+ * subcollection is outside that listener: now only a screen showing THIS
+ * trainer's numbers reads them. The first write for a trainer carries the old
+ * `trainers/{id}.rollups` over (seedFromLegacy), so a lifetime total never
+ * starts again from zero; the old map is left in place and no longer written.
  */
 import { FieldPath, FieldValue, Firestore, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
@@ -134,6 +144,40 @@ export async function resolveCoachTrainerId(
   return null;
 }
 
+/** Where a trainer's counters live: beside the trainer, not on it (D3c). */
+export function rollupsRef(firestore: Firestore, trainerId: string) {
+  return firestore.collection("trainers").doc(trainerId).collection("stats").doc("rollups");
+}
+
+/** The fields the counters document holds, all carried over from the old map. */
+export const ROLLUP_FIELDS = [
+  "sessionsCoached",
+  "lastSessionAt",
+  "firstSessionAt",
+  "rollupVersion",
+  "rollupUpdatedAt",
+  "sessionsCoached30d",
+  "sessionsCoached90d",
+  "clientsCoached90d",
+  "avgPerWeek",
+  "windowsUpdatedAt",
+] as const;
+
+/**
+ * Pure: the old `trainers/{id}.rollups` map, as the first contents of the
+ * counters document - only the fields it holds, nothing undefined (the Admin
+ * SDK refuses undefined).
+ */
+export function seedFromLegacy(legacy: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!legacy || typeof legacy !== "object") return out;
+  for (const field of ROLLUP_FIELDS) {
+    const v = (legacy as Record<string, unknown>)[field];
+    if (v !== undefined && v !== null) out[field] = v;
+  }
+  return out;
+}
+
 /**
  * Adds one session to a trainer's lifetime total, atomically with the flag
  * that stops it being added twice. Both writes are in one transaction, so
@@ -146,6 +190,7 @@ export async function applyCount(
 ): Promise<{ applied: boolean; reason?: string }> {
   const sessionRef = firestore.doc(sessionPath);
   const trainerRef = firestore.collection("trainers").doc(trainerId);
+  const statsRef = rollupsRef(firestore, trainerId);
 
   return firestore.runTransaction(async (tx) => {
     const snap = await tx.get(sessionRef);
@@ -155,17 +200,34 @@ export async function applyCount(
     if (data.rollupCounted === true) return { applied: false, reason: "already counted" };
     if (data.status !== "Completed") return { applied: false, reason: "no longer completed" };
 
-    tx.set(
-      trainerRef,
-      {
-        rollups: {
+    // Every read before any write, as a transaction requires. The trainer
+    // document is read only the first time, to carry its old total over.
+    const stats = await tx.get(statsRef);
+    const legacy = stats.exists ? null : ((await tx.get(trainerRef)).data() as any)?.rollups;
+
+    if (stats.exists) {
+      tx.set(
+        statsRef,
+        {
           sessionsCoached: FieldValue.increment(1),
           lastSessionAt: FieldValue.serverTimestamp(),
           rollupUpdatedAt: FieldValue.serverTimestamp(),
         },
-      },
-      { merge: true },
-    );
+        { merge: true },
+      );
+    } else {
+      const seed = seedFromLegacy(legacy);
+      tx.set(
+        statsRef,
+        {
+          ...seed,
+          sessionsCoached: Number(seed.sessionsCoached ?? 0) + 1,
+          lastSessionAt: FieldValue.serverTimestamp(),
+          rollupUpdatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
     tx.update(sessionRef, { rollupCounted: true, rollupTrainerId: trainerId });
     return { applied: true };
   });
@@ -178,15 +240,20 @@ export async function applyUncount(
   sessionPath: string | null,
 ): Promise<void> {
   const trainerRef = firestore.collection("trainers").doc(trainerId);
+  const statsRef = rollupsRef(firestore, trainerId);
 
   await firestore.runTransaction(async (tx) => {
-    const trainerSnap = await tx.get(trainerRef);
-    const current = Number((trainerSnap.data() as any)?.rollups?.sessionsCoached ?? 0);
+    const stats = await tx.get(statsRef);
+    const legacy = stats.exists ? null : ((await tx.get(trainerRef)).data() as any)?.rollups;
+    const seed = stats.exists ? {} : seedFromLegacy(legacy);
+    const current = Number(
+      (stats.exists ? (stats.data() as any)?.sessionsCoached : seed.sessionsCoached) ?? 0,
+    );
     const next = Math.max(0, current - 1);
 
     tx.set(
-      trainerRef,
-      { rollups: { sessionsCoached: next, rollupUpdatedAt: FieldValue.serverTimestamp() } },
+      statsRef,
+      { ...seed, sessionsCoached: next, rollupUpdatedAt: FieldValue.serverTimestamp() },
       { merge: true },
     );
     if (sessionPath) {
@@ -323,21 +390,32 @@ export const recalcTrainerWindows = onSchedule(
     // Every trainer gets written, including those with nothing in the window --
     // otherwise a trainer who stopped coaching keeps showing last month's 63.
     const trainers = await firestore.collection("trainers").get();
+    // Which trainers already have their counters document (D3c): the ones
+    // that do not get their old totals carried over with tonight's windows,
+    // so a later count never lands on an empty lifetime figure.
+    const hasStats = new Set<string>();
+    const refs = trainers.docs.map((d) => rollupsRef(firestore, d.id));
+    for (let i = 0; i < refs.length; i += 300) {
+      const snaps = await firestore.getAll(...refs.slice(i, i + 300));
+      snaps.forEach((s, j) => {
+        if (s.exists) hasStats.add(trainers.docs[i + j].id);
+      });
+    }
     let batch = firestore.batch();
     let pending = 0;
 
     for (const trainerDoc of trainers.docs) {
       const tally = tallyWindows(byTrainer.get(trainerDoc.id) || [], nowMs);
+      const seed = hasStats.has(trainerDoc.id) ? {} : seedFromLegacy((trainerDoc.data() as any)?.rollups);
       batch.set(
-        trainerDoc.ref,
+        rollupsRef(firestore, trainerDoc.id),
         {
-          rollups: {
-            sessionsCoached30d: tally.sessions30d,
-            sessionsCoached90d: tally.sessions90d,
-            clientsCoached90d: tally.clients90d,
-            avgPerWeek: tally.avgPerWeek,
-            windowsUpdatedAt: FieldValue.serverTimestamp(),
-          },
+          ...seed,
+          sessionsCoached30d: tally.sessions30d,
+          sessionsCoached90d: tally.sessions90d,
+          clientsCoached90d: tally.clients90d,
+          avgPerWeek: tally.avgPerWeek,
+          windowsUpdatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
       );
@@ -481,7 +559,9 @@ export const backfillTrainerRollups = onCall({ region: REGION }, async (request)
     if (entry.firstSessionAtMs !== null) rollups.firstSessionAt = Timestamp.fromMillis(entry.firstSessionAtMs);
     if (entry.lastSessionAtMs !== null) rollups.lastSessionAt = Timestamp.fromMillis(entry.lastSessionAtMs);
 
-    const patch: Record<string, unknown> = { rollups };
+    // The counters document (D3c). Authoritative: the scan's totals, set.
+    batch.set(rollupsRef(firestore, trainerDoc.id), rollups, { merge: true });
+    pending += 1;
 
     // Repair, while we are here, the one field the Mindbody staff sync depends
     // on. Older trainer documents stored `mindbodyStaffId` as a number, and
@@ -490,12 +570,10 @@ export const backfillTrainerRollups = onCall({ region: REGION }, async (request)
     // profile to fix that by hand.
     const rawStaffId = (trainerDoc.data() as any)?.mindbodyStaffId;
     if (typeof rawStaffId === "number" && Number.isFinite(rawStaffId)) {
-      patch.mindbodyStaffId = String(rawStaffId);
+      batch.set(trainerDoc.ref, { mindbodyStaffId: String(rawStaffId) }, { merge: true });
+      pending += 1;
     }
-
-    batch.set(trainerDoc.ref, patch, { merge: true });
-    pending += 1;
-    if (pending === 400) {
+    if (pending >= 400) {
       await batch.commit();
       batch = firestore.batch();
       pending = 0;

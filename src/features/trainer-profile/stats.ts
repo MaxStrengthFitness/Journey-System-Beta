@@ -2,8 +2,10 @@
  * COACHING LOAD — reading the counters, and being honest when they are not
  * there yet.
  *
- * Everything here comes off `trainer.rollups`, which a Cloud Function
- * maintains (functions/src/trainerRollups.ts). Nothing is counted on this
+ * Everything here comes off the trainer's counters, which a Cloud Function
+ * maintains (functions/src/trainerRollups.ts) - since the cost plan (Sep 26
+ * 2026, D3c) at `trainers/{id}/stats/rollups` (useTrainerRollups), with the
+ * old `trainer.rollups` map read until that document exists. Nothing is counted on this
  * side, because the client only ever holds 24 hours of sessions for one
  * studio — which is exactly why the old profile said "0 Logged Sessions" for
  * a trainer with years of history.
@@ -42,8 +44,10 @@ const num = (value: unknown): number | null =>
 export function deriveTrainerStats(
   trainer: Trainer | null | undefined,
   nowMs: number = Date.now(),
+  /** The counters document, when read: it wins over the old map on the trainer. */
+  counters?: Trainer["rollups"] | null,
 ): TrainerStats {
-  const rollups = trainer?.rollups;
+  const rollups = counters ?? trainer?.rollups;
   const backfilled = typeof rollups?.rollupVersion === "number";
 
   const windowsUpdatedAt = toDate(rollups?.windowsUpdatedAt);

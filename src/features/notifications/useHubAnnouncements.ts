@@ -38,12 +38,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  arrayUnion,
   collection,
   doc,
   onSnapshot,
   query,
-  updateDoc,
+  serverTimestamp,
+  setDoc,
 } from "firebase/firestore";
 import { auth, db } from "../../firebase";
 import type { HubAnnouncement, Trainer } from "../../types";
@@ -97,37 +97,59 @@ export function useHubAnnouncements(
     [all, trainer],
   );
 
-  // Either id counts: see unreadFor and markAnnouncementsRead.
+  /* This person's read-marks (the cost plan, Sep 26 2026, D5): one document
+     of their own, so marking a notice read is not sent to every iPad in the
+     company the way a stamp on the shared announcement was. */
+  const uid = auth.currentUser?.uid ?? null;
+  const [readIds, setReadIds] = useState<ReadonlySet<string>>(() => new Set());
+  useEffect(() => {
+    setReadIds(new Set());
+    if (!trainer || !uid) return;
+    return onSnapshot(
+      doc(db, "announcementReads", uid),
+      (snap) => {
+        const ids = (snap.exists() ? (snap.data()?.ids as Record<string, unknown> | undefined) : undefined) ?? {};
+        setReadIds(new Set(Object.keys(ids).filter((k) => ids[k] === true)));
+      },
+      () => setReadIds(new Set()),
+    );
+  }, [trainer, uid]);
+
+  // Either id counts, and the person's own read-marks: see unreadFor and
+  // markAnnouncementsRead.
   const unread = useMemo(
-    () => unreadFor(announcements, [auth.currentUser?.uid, trainer?.id]),
-    [announcements, trainer],
+    () => unreadFor(announcements, [uid, trainer?.id], readIds),
+    [announcements, trainer, uid, readIds],
   );
 
   return { announcements, unread, unreadCount: unread.length };
 }
 
 /**
- * Stamp this trainer into `readBy` on every announcement passed.
+ * Mark every announcement passed as read by this person, in their own
+ * `announcementReads/{uid}` document (the cost plan, Sep 26 2026, D5).
  *
- * Fire-and-forget on purpose, and per-document rather than batched: a failed
- * write leaves the item looking new, which is the safe direction to fail, and
- * one rejected document must not take the rest of the set with it.
+ * It used to stamp the person into each announcement's `readBy`, and every
+ * iPad in the company watches every announcement, so each stamp reached all
+ * of them. One merge write to a document only this person reads now does the
+ * same job. Fire-and-forget: a failed write leaves the items looking new,
+ * which is the safe direction to fail.
  */
 export function markAnnouncementsRead(
-  trainerId: string | undefined,
+  _trainerId: string | undefined,
   items: HubAnnouncement[],
 ): void {
-  // The sign-in id, not the profile id: since the Learning + Planner round
-  // the rules let a reader add only themselves, by sign-in id. They differ
-  // on older accounts, whose earlier reads unreadFor still honours.
-  const readerId = auth.currentUser?.uid ?? trainerId;
+  // The sign-in id: the rules let a person write only their own read-marks.
+  const readerId = auth.currentUser?.uid;
   if (!readerId) return;
-  for (const a of items) {
-    if (!a.id) continue;
-    updateDoc(doc(db, "hub_announcements", a.id), {
-      readBy: arrayUnion(readerId),
-    }).catch((err) => {
-      console.error("Failed to mark announcement as read:", a.id, err);
-    });
-  }
+  const ids: Record<string, true> = {};
+  for (const a of items) if (a.id) ids[a.id] = true;
+  if (Object.keys(ids).length === 0) return;
+  setDoc(
+    doc(db, "announcementReads", readerId),
+    { ids, updatedAt: serverTimestamp() },
+    { merge: true },
+  ).catch((err) => {
+    console.error("Failed to mark announcements as read:", err);
+  });
 }

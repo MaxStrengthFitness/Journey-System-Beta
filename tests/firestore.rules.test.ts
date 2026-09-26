@@ -2171,6 +2171,27 @@ describe("Firestore Security Rules", () => {
     await assertFails(setDoc(doc(stranger, "studios", "studioA", "sync", "lease"), { lastScheduleSyncAt: 1 }));
   });
 
+  it("lets anyone signed in read a trainer's counters, and nobody write them from the app (the cost plan, D3c)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "trainers", "trainerA", "stats", "rollups"), { sessionsCoached: 12 });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(trainer, "trainers", "trainerA", "stats", "rollups")));
+    await assertFails(setDoc(doc(trainer, "trainers", "trainerA", "stats", "rollups"), { sessionsCoached: 999 }));
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertFails(setDoc(doc(owner, "trainers", "trainerA", "stats", "rollups"), { sessionsCoached: 999 }));
+  });
+
+  it("keeps a person's announcement read-marks to themselves (the cost plan, D5)", async () => {
+    const a = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(setDoc(doc(a, "announcementReads", "trainerA"), { ids: { n1: true } }, { merge: true }));
+    await assertSucceeds(getDoc(doc(a, "announcementReads", "trainerA")));
+    await assertFails(setDoc(doc(a, "announcementReads", "trainerB"), { ids: { n1: true } }));
+    await assertFails(getDoc(doc(a, "announcementReads", "trainerB")));
+    await assertFails(setDoc(doc(a, "announcementReads", "trainerA"), { ids: { n1: true }, role: "Admin" }, { merge: true }));
+    await assertFails(setDoc(doc(a, "announcementReads", "trainerA"), { ids: "everything" }));
+  });
+
   it("refuses a studio create to anyone below a franchise owner", async () => {
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertFails(setDoc(doc(owner, "studios", "studioC"), { name: "Studio C", ownerId: "ownerA", timezone: "America/New_York" }));

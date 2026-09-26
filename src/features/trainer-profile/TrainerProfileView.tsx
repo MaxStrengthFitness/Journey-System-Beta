@@ -20,6 +20,7 @@ import { upcomingFor } from "./adapters";
 import { CoachingLoad } from "./CoachingLoad";
 import { KaizenRoster } from "./KaizenRoster";
 import { deriveTrainerStats } from "./stats";
+import { useTrainerRollups } from "./useTrainerRollups";
 import { useRecentlyCoached } from "./useRecentlyCoached";
 import { resolveProfileVisibility, scopeNotice } from "./visibility";
 import { MyRenewals } from "../renewals/MyRenewals";
@@ -78,7 +79,8 @@ export function TrainerProfileView({
     [schedules, trainer, clients, sessions, visibility.showSchedule],
   );
 
-  const stats = useMemo(() => deriveTrainerStats(trainer), [trainer]);
+  const counters = useTrainerRollups(trainer?.id);
+  const stats = useMemo(() => deriveTrainerStats(trainer, Date.now(), counters), [trainer, counters]);
 
   const { rows: coached } = useRecentlyCoached(trainer, clients, sessions, {
     enabled: visibility.showRecentlyCoached,

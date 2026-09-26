@@ -328,16 +328,25 @@ export function visibleAnnouncements<
  * Takes one id or several. From Sep 2026 (Learning + Planner round) the bell
  * stamps the sign-in id, the only one the rules accept; older accounts whose
  * profile id differs were stamped under that id before. Either one counts.
+ *
+ * `readIds` (the cost plan, Sep 26 2026, D5): the announcements this person's
+ * own `announcementReads/{uid}` document says they opened. The bell writes
+ * there now, not into each announcement's `readBy`, because every iPad in the
+ * company watches every announcement and each stamp reached all of them. A
+ * stamp in `readBy` from before still counts.
  */
-export function unreadFor<T extends { readBy?: string[] }>(
+export function unreadFor<T extends { id?: string; readBy?: string[] }>(
   announcements: T[],
   readerIds: string | null | undefined | Array<string | null | undefined>,
+  readIds?: ReadonlySet<string> | null,
 ): T[] {
   const ids = (Array.isArray(readerIds) ? readerIds : [readerIds]).filter(
     (id): id is string => typeof id === "string" && id.length > 0,
   );
   if (ids.length === 0) return [];
-  return announcements.filter((a) => !ids.some((id) => a.readBy?.includes(id)));
+  return announcements.filter(
+    (a) => !(a.id && readIds?.has(a.id)) && !ids.some((id) => a.readBy?.includes(id)),
+  );
 }
 
 /* ------------------------------------------------------------------ *

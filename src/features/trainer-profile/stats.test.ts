@@ -82,3 +82,18 @@ describe("relativeDay", () => {
     expect(relativeDay(null, NOW)).toBeNull();
   });
 });
+
+describe("deriveTrainerStats reads the counters document first (the cost plan, D3c)", () => {
+  it("prefers the counters document, and falls back to the old map on the trainer", () => {
+    const trainer = { id: "t1", rollups: { sessionsCoached: 412, rollupVersion: 1, sessionsCoached30d: 30 } } as never;
+    const fresh = deriveTrainerStats(trainer, Date.UTC(2026, 8, 26), {
+      sessionsCoached: 413,
+      rollupVersion: 1,
+      sessionsCoached30d: 31,
+    } as never);
+    expect(fresh.lifetime).toBe(413);
+    expect(fresh.last30).toBe(31);
+    const old = deriveTrainerStats(trainer, Date.UTC(2026, 8, 26), null);
+    expect(old.lifetime).toBe(412);
+  });
+});

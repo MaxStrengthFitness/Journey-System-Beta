@@ -511,6 +511,19 @@ describe("unreadFor", () => {
   it("ignores missing ids in the list", () => {
     expect(unreadFor([{ id: "a", readBy: [] }], [undefined, null, ""])).toEqual([]);
   });
+
+  it("counts the person's own read-marks document, and a stamp from before it (the cost plan, D5)", () => {
+    const out = unreadFor(
+      [
+        { id: "marked-here", readBy: [] },
+        { id: "stamped-before", readBy: ["uid-1"] },
+        { id: "unread", readBy: [] },
+      ],
+      "uid-1",
+      new Set(["marked-here"]),
+    );
+    expect(out.map((a) => a.id)).toEqual(["unread"]);
+  });
 });
 
 describe("audienceLabel", () => {

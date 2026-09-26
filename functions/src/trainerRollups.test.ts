@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { FieldValue } from "firebase-admin/firestore";
 import {
+  applyCount,
+  applyUncount,
+  seedFromLegacy,
   planRollup,
   tallyWindows,
   sessionInstantMs,
@@ -152,5 +156,113 @@ describe("foldBackfillPage", () => {
     foldBackfillPage(totals, [{ status: "Completed", trainerId: "t1" }], index);
     foldBackfillPage(totals, [{ status: "Completed", trainerId: "t1" }], index);
     expect(totals.get("t1")?.sessionsCoached).toBe(2);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* The counters' own document (the cost plan, Sep 26 2026, D3c)        */
+/* ------------------------------------------------------------------ */
+
+describe("seedFromLegacy", () => {
+  it("carries the old map over, field by field, with nothing undefined", () => {
+    expect(
+      seedFromLegacy({ sessionsCoached: 412, lastSessionAt: "T", avgPerWeek: 9.5, stray: 1, firstSessionAt: undefined }),
+    ).toEqual({ sessionsCoached: 412, lastSessionAt: "T", avgPerWeek: 9.5 });
+  });
+
+  it("is empty when there was no old map", () => {
+    expect(seedFromLegacy(undefined)).toEqual({});
+    expect(seedFromLegacy("nonsense")).toEqual({});
+  });
+});
+
+/** A Firestore of plain maps, enough for the two counting transactions. */
+function fakeFirestore(seed: Record<string, Record<string, unknown>>) {
+  const store: Record<string, Record<string, unknown>> = JSON.parse(JSON.stringify(seed));
+  const one = FieldValue.increment(1);
+  const stamp = FieldValue.serverTimestamp();
+  const resolve = (prev: unknown, value: any) => {
+    if (value && typeof value.isEqual === "function" && value.isEqual(one)) return Number(prev ?? 0) + 1;
+    if (value && typeof value.isEqual === "function" && value.isEqual(stamp)) return "SERVER_TIME";
+    if (value && typeof value.isEqual === "function" && value.isEqual(FieldValue.delete())) return undefined;
+    return value;
+  };
+  const write = (path: string, data: Record<string, unknown>, merge: boolean) => {
+    const next: Record<string, unknown> = merge ? { ...(store[path] ?? {}) } : {};
+    for (const [k, v] of Object.entries(data)) {
+      const r = resolve(next[k], v);
+      if (r === undefined) delete next[k];
+      else next[k] = r;
+    }
+    store[path] = next;
+  };
+  const ref = (path: string): any => ({
+    path,
+    collection: (c: string) => ({ doc: (id: string) => ref(`${path}/${c}/${id}`) }),
+  });
+  const firestore: any = {
+    doc: (path: string) => ref(path),
+    collection: (c: string) => ({ doc: (id: string) => ref(`${c}/${id}`) }),
+    runTransaction: async (fn: (tx: any) => Promise<unknown>) => {
+      const writes: Array<() => void> = [];
+      const tx = {
+        get: async (r: any) => ({ exists: !!store[r.path], data: () => store[r.path] }),
+        set: (r: any, data: Record<string, unknown>, opts?: { merge?: boolean }) =>
+          writes.push(() => write(r.path, data, !!opts?.merge)),
+        update: (r: any, data: Record<string, unknown>) => writes.push(() => write(r.path, data, true)),
+      };
+      const out = await fn(tx);
+      writes.forEach((w) => w());
+      return out;
+    },
+  };
+  return { firestore, store };
+}
+
+describe("counting into the counters' own document", () => {
+  it("carries the old total over on a trainer's first count, so it never starts again from zero", async () => {
+    const { firestore, store } = fakeFirestore({
+      "trainers/t1": { name: "Ana", rollups: { sessionsCoached: 412, avgPerWeek: 9.5 } },
+      "sessions/s1": { status: "Completed", trainerId: "t1" },
+    });
+    const out = await applyCount(firestore, "sessions/s1", "t1");
+    expect(out.applied).toBe(true);
+    expect(store["trainers/t1/stats/rollups"]).toMatchObject({ sessionsCoached: 413, avgPerWeek: 9.5 });
+    // The trainer document every iPad watches is not written.
+    expect(store["trainers/t1"]).toEqual({ name: "Ana", rollups: { sessionsCoached: 412, avgPerWeek: 9.5 } });
+    expect(store["sessions/s1"]).toMatchObject({ rollupCounted: true, rollupTrainerId: "t1" });
+  });
+
+  it("adds to the counters document once it exists", async () => {
+    const { firestore, store } = fakeFirestore({
+      "trainers/t1": { rollups: { sessionsCoached: 412 } },
+      "trainers/t1/stats/rollups": { sessionsCoached: 500 },
+      "sessions/s1": { status: "Completed", trainerId: "t1" },
+    });
+    await applyCount(firestore, "sessions/s1", "t1");
+    expect(store["trainers/t1/stats/rollups"].sessionsCoached).toBe(501);
+  });
+
+  it("counts a brand-new trainer from one", async () => {
+    const { firestore, store } = fakeFirestore({
+      "trainers/t2": { name: "New" },
+      "sessions/s2": { status: "Completed", trainerId: "t2" },
+    });
+    await applyCount(firestore, "sessions/s2", "t2");
+    expect(store["trainers/t2/stats/rollups"].sessionsCoached).toBe(1);
+  });
+
+  it("takes one back from the carried-over total, and never below zero", async () => {
+    const { firestore, store } = fakeFirestore({
+      "trainers/t1": { rollups: { sessionsCoached: 412 } },
+      "sessions/s1": { status: "In-Progress", rollupCounted: true, rollupTrainerId: "t1" },
+    });
+    await applyUncount(firestore, "t1", "sessions/s1");
+    expect(store["trainers/t1/stats/rollups"].sessionsCoached).toBe(411);
+    expect(store["sessions/s1"].rollupCounted).toBe(false);
+
+    const empty = fakeFirestore({ "trainers/t3": {} });
+    await applyUncount(empty.firestore, "t3", null);
+    expect(empty.store["trainers/t3/stats/rollups"].sessionsCoached).toBe(0);
   });
 });

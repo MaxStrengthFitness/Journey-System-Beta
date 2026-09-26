@@ -1215,6 +1215,16 @@ service cloud.firestore {
 
     match /trainers/{trainerId} {
       allow read: if isAuthenticated();
+
+      // A TRAINER'S COUNTERS (the cost plan, Sep 26 2026, D3c): sessions
+      // coached, the rolling windows. Beside the trainer document rather than
+      // on it, so a completed session is not sent to every iPad in the
+      // company. Read as the trainer is; written only by the Cloud Functions
+      // (functions/src/trainerRollups.ts), which these rules do not govern.
+      match /stats/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
       allow create: if isAuthenticated() && 
                     request.resource.data.primaryHomeStudioId != null &&
                     isValidTrainer(request.resource.data) &&
@@ -2730,6 +2740,19 @@ service cloud.firestore {
     // app: only the people it offers the composer to (canPostAnnouncements)
     // post or change a notice. Everyone else may do the one thing the bell
     // does: add THEMSELVES, by sign-in id, to readBy, and nothing more.
+    // ANNOUNCEMENT READ-MARKS (the cost plan, Sep 26 2026, D5). The bell
+    // marks what a person opened in ONE document of their own, not in each
+    // announcement's readBy: every iPad in the company watches every
+    // announcement, so a stamp there reached all of them. Only the person
+    // reads or writes theirs; it holds a map of announcement ids and a time.
+    match /announcementReads/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow create, update: if isAuthenticated() && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['ids', 'updatedAt'])
+                    && request.resource.data.ids is map;
+      allow delete: if false;
+    }
+
     match /hub_announcements/{announcementId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && hubAnnouncementCreateAllowed();
