@@ -18,7 +18,7 @@
  *    Journey — see prior-history-door.ts.
  */
 import { useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Clock, History, Maximize, NotebookPen, Pencil, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Eye, History, NotebookPen, Pencil, Play, RefreshCw, Trash2, UserCheck, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn, parseSessionDate } from "../../lib/utils";
@@ -36,11 +36,15 @@ import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
 import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } from "../../lib/client-name";
 import { sessionCountLabel } from "../../lib/history-claims";
 import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "./prior-history-door";
+import { whoStartedIt } from "../session-record/watch";
 
 export interface ActiveSessionLike {
   id?: string;
+  trainerId?: string;
   trainerInitials?: string;
+  startedByTrainerId?: string;
   startTime?: { toMillis?: () => number } | null;
+  clientStartTime?: string;
 }
 
 /**
@@ -112,8 +116,15 @@ export interface ProfileHeaderProps {
   isCheckingActiveSession?: boolean;
   onBack: () => void;
   onStartSession: () => void;
-  onTakeOverSession: () => void;
-  onViewCurrentSession: () => void;
+  /**
+   * The running session is this trainer's (lib/live-session.ts): the menu
+   * offers Continue. Someone else's offers Watch, which opens it read-only
+   * with Take over there (session record, Sep 26 2026). Unsaid, it is
+   * treated as theirs to continue: the Active Session decides again anyway.
+   */
+  sessionIsMine?: boolean;
+  onContinueSession: () => void;
+  onWatchSession: () => void;
   onDiscardSession: () => void;
   kaizen?: KaizenToggleState;
   sync?: MasterSyncState;
@@ -334,8 +345,9 @@ export function ProfileHeader({
   onBack,
   onStartSession,
   onQuickNote,
-  onTakeOverSession,
-  onViewCurrentSession,
+  sessionIsMine = true,
+  onContinueSession,
+  onWatchSession,
   onDiscardSession,
   kaizen,
   sync,
@@ -550,19 +562,21 @@ export function ProfileHeader({
             <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2 bg-card border-slate-200 dark:border-slate-800">
               <div className="px-3 py-2 mb-2 border-b border-slate-200 dark:border-slate-800">
                 <p className="text-[11px] font-medium uppercase text-amber-500 tracking-widest">Active session detected</p>
-                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1">
-                  Started by {activeInProgressSession.trainerInitials} at{" "}
-                  {new Date(activeInProgressSession.startTime?.toMillis?.() || 0).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 mt-1" data-testid="session-started-line">
+                  {sessionStartedLine(activeInProgressSession, trainers)}
                 </p>
               </div>
-              <DropdownMenuItem onClick={onTakeOverSession} className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500">
-                <Play className="w-4 h-4" />
-                <span className="font-bold uppercase text-xs">Take over session</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onViewCurrentSession} className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300">
-                <Maximize className="w-4 h-4" />
-                <span className="font-bold uppercase text-xs">View current session</span>
-              </DropdownMenuItem>
+              {sessionIsMine ? (
+                <DropdownMenuItem onClick={onContinueSession} className="rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/20 cursor-pointer flex items-center gap-2 p-3 text-amber-700 dark:text-amber-500">
+                  <Play className="w-4 h-4" />
+                  <span className="font-bold uppercase text-xs">Continue session</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={onWatchSession} className="rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-2 p-3 text-slate-700 dark:text-slate-300">
+                  <Eye className="w-4 h-4" />
+                  <span className="font-bold uppercase text-xs">Watch session</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDiscardSession} className="rounded-xl hover:bg-red-50 dark:hover:bg-red-500/20 cursor-pointer flex items-center gap-2 p-3 text-red-600 dark:text-red-500">
                 <Trash2 className="w-4 h-4" />
                 <span className="font-bold uppercase text-xs">Discard session</span>
@@ -731,4 +745,17 @@ export function ProfileHeader({
       )}
     </header>
   );
+}
+
+/**
+ * "Started by JC at 9:04 AM", with "· AJ took it over" once the session has
+ * changed hands (session record, Sep 26 2026). The time is the studio's, and
+ * any part that cannot be known is left out.
+ */
+function sessionStartedLine(session: ActiveSessionLike, trainers: readonly Trainer[]): string {
+  const { starter, runner, changedHands } = whoStartedIt(session, trainers);
+  const at = toDate((session.startTime as never) ?? null) ?? toDate(session.clientStartTime ?? null);
+  const time = at ? formatStudioTime(at, undefined, "") : "";
+  const started = `Started${starter ? ` by ${starter}` : ""}${time ? ` at ${time}` : ""}`;
+  return changedHands && runner ? `${started} · ${runner} took it over` : started;
 }

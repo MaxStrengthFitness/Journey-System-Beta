@@ -17,7 +17,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | 3 | `d9e2d11`, `b2cc770` | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
 | 4 | `364198f` | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
 | 5 | `2aee3b1`, `edce3d7` | The Active Session never draws a blank page: one sentence and the way on. Closing the Assign picker keeps the open session, and a Start that fails says so in plain words. |
-| 6 | (this commit) | Discard works from every profile tab. "Use today" is gone: each routine card says when it was last used, and the one marked for today is the one the session will actually run. |
+| 6 | `0bddbd9` | Discard works from every profile tab. "Use today" is gone: each routine card says when it was last used, and the one marked for today is the one the session will actually run. |
+| 7 | (this commit) | A second iPad watches a running session, read-only and live. Taking it over is on purpose and asks first; the trainer who finishes gets the session, and it keeps who started it. |
 
 ### Phase 1: what was wrong
 
@@ -161,8 +162,55 @@ The suite gives 5,560 passing in 352 files, the typecheck 4 and the build passes
 
 The suite gives 5,576 passing in 355 files, the typecheck 4 and the build passes.
 
-## Still to come in this round
+## Phase 7: a second iPad watches, and a take-over is on purpose
 
-These come from the review's suggested order, and each will be its own phase:
+AJ, on the Atlas: leaders "don't have to be able to edit anything but they should be able to like kind of follow along", and "the big thing is I still want trainers to be able to hop back into a session in the event of a iPad dying".
 
-- A second iPad opening a running session read-only, so a leader can watch it live.
+### What was wrong
+
+- **Any iPad that opened a running session recorded into it.** A head trainer who opened Judy's session to see how it was going got the trainer's whole screen, with the same Now Bar and the same Finish. A tap could change the trainer's sets, and a second Finish counted everything twice. The profile's menu offered "Take over session" and "View current session", and both did the same thing.
+- **Nothing said whose session it was.** Two iPads on one session looked the same.
+
+### What it does
+
+- **The trainer running a session records it, from any iPad they sign in on.** A crash, a refresh or a dead iPad changes nothing: sign in on another iPad, open the client, and carry on. Whose session it is comes from the session's own trainer (`isAnotherTrainersSession`, `src/lib/live-session.ts`), matched against every id a trainer's sessions can carry, because older accounts have two. When the app cannot tell, it lets the trainer record: locking a trainer out of their own session is the one failure that must not happen.
+- **Everyone else watches.** The Active Session opens read-only and live (`WatchingSession`, `src/features/session-record/`). It shows the session bar with its clock and progress but no Notes, Pulse, Discard or Finish; the same grid, with today's column filling in as each set is saved; and no Now Bar. One line says "JC is running this session on another iPad. You're watching: it updates as each set is saved, and nothing here changes it." Offline, it adds that what is on screen may be behind. Nothing on a watching iPad writes: it is drawn in place of the recording screen, so none of that screen's effects or buttons are there. It costs one read per saved set for each person watching, as the Atlas said.
+- **Taking over is on purpose.** The line has one button, Take over, and it asks first: "JC is running Judy's session on another iPad. If you take it over, you record the rest and finish it, and the session is yours. JC's iPad switches to watching. The session still shows who started it." Keep watching is the default. A take-over writes the new trainer onto the session. JC's iPad sees that, sends any set still waiting on its typing timer, and turns to watching with "AJ took over this session on another iPad."
+- **Credit, as decided on Sep 26: the trainer who finishes gets the session, and it keeps who started it.** Finish already writes the finishing trainer onto the session, and the trainer counts read that. Start already writes `startedByTrainerId`, and a take-over keeps it; on a session older than that field, it is filled in from the trainer being replaced. The History pop-up now says "Started by JC" on a session that changed hands, and the profile's menu says "Started by JC at 9:04 AM · AJ took it over".
+- **When the watched session ends, the watching iPad says so:** "JC finished the session." or "The session was discarded on another iPad." If nothing has been saved in it for over an hour, it says that instead, and the unfinished-session question comes up. Resuming another trainer's abandoned session from that question is a take-over too, and the question says "Resuming it makes it yours to finish."
+- **The profile's menu** offers Continue session for your own session and Watch session for anyone else's; Take over is on the watching screen. Discard is unchanged.
+- **Open sessions** (no client, for a Mindbody outage) follow the same rule. Several trainers can each run one at a studio: an iPad records its own, and watches another's only when it has none. It used to take whichever open session came first, someone else's included.
+- A cell in today's column with nothing to do on a tap is now a plain cell, not a button that says "Tap to edit this machine".
+
+No database, permissions or Cloud Functions change. A take-over writes three fields Finish already writes, and the rules already let any trainer at the studio update the session.
+
+### What it cannot close without your OK
+
+The same as phase 3: the database cannot yet refuse a session's totals twice. Phase 7 removes the everyday way to get there, a second iPad recording into a session. But an offline Finish that replays after another iPad finished online still needs the guard on the database side.
+
+### Tests
+
+- `live-session.test.ts` covers whose session it is: every id, and never locking anyone out when it cannot tell. It also covers what a take-over writes, including the starter kept and filled in on an older session, and the bottom tab finding a session under any of the trainer's ids.
+- `tracker-screen.test.ts`: the watching screen comes straight after the post-session screen.
+- `watch.test.ts` covers the words (no developer terms), the watched session's machine list, where the trainer is and how far along, and who started a session.
+- `WorkoutTrackerView.render.test.tsx` has nine new cases, all run through the mounted Active Session:
+  - another trainer's session opens read-only and writes nothing;
+  - Take over asks, and Keep watching changes nothing;
+  - a take-over writes the new trainer and keeps the starter, and a late snapshot does not hand the session back;
+  - a session taken over elsewhere sends the typed set first, then turns to watching;
+  - the watched session finishing, being discarded and going quiet each say so;
+  - a remembered session someone else now runs is watched and forgotten;
+  - resuming another trainer's abandoned session takes it over;
+  - an open session is recorded when it is your own and watched when it is not.
+
+  Each of the six guards behind these was taken out in turn, and a test failed each time.
+- `ProfileHeader.render.test.tsx`: Continue for your own session, Watch for someone else's, and the started-by line at the studio's time.
+- `SessionDetailDialog.render.test.tsx`: "Started by JC" on a session that changed hands, and nothing on one that did not.
+
+The suite gives 5,617 passing in 356 files, the typecheck 4 and the build passes, measured as in phase 1.
+
+## What this round leaves for later
+
+- **The database-side guard for a second Finish** (phases 3 and 7). It is a rules or Cloud Functions change, so it goes with the permissions round and your OK.
+- **Sign-out's three names** (Switch Trainer, Log Out Facility and Settings' Sign out) become one button. That belongs to the sign-out leftovers card.
+- **A walk-through on real iPads.** The render tests mount every screen here; only an iPad shows how they feel. The steps are in `docs/ops/TESTING-CHECKLIST.md` under "Round 5 — Failure modes".

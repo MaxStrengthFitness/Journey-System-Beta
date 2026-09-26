@@ -166,6 +166,8 @@ const SETTINGS_DOCS = [
 ];
 
 const writes: { path: string; data: any; merge?: boolean }[] = [];
+/** Every listener the screen opened, so a test can send it a new snapshot (another iPad's write). */
+const snapshotListeners: { path: string; emit: () => void }[] = [];
 /** Finish's database, per test (session record, Sep 26 2026): does the commit answer, and what does the server say the session is? */
 const finishCtl = { commit: "ok" as "ok" | "hang", serverStatus: undefined as string | undefined };
 
@@ -192,19 +194,24 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     documentId: () => ({}),
     onSnapshot: (q: any, next: any) => {
       const cb = typeof next === "function" ? next : next?.next;
-      const docs = docsFor(q?.__path ?? "");
-      // Both shapes: the briefing (mounted since the Sep 24 tests) also
-      // listens to single documents, which answer exists()/data().
-      const single = singleDocs[q?.__path ?? ""];
-      cb?.({
-        docs,
-        size: docs.length,
-        empty: docs.length === 0,
-        forEach: (f: any) => docs.forEach(f),
-        id: String(q?.__path ?? "").split("/").pop(),
-        exists: () => single !== undefined,
-        data: () => single,
-      });
+      const at = q?.__path ?? "";
+      const emit = () => {
+        const docs = docsFor(at);
+        // Both shapes: the briefing (mounted since the Sep 24 tests) also
+        // listens to single documents, which answer exists()/data().
+        const single = singleDocs[at];
+        cb?.({
+          docs,
+          size: docs.length,
+          empty: docs.length === 0,
+          forEach: (f: any) => docs.forEach(f),
+          id: String(at).split("/").pop(),
+          exists: () => single !== undefined,
+          data: () => single,
+        });
+      };
+      emit();
+      snapshotListeners.push({ path: at, emit });
       return () => {};
     },
     getDocs: async (q: any) => {
@@ -281,6 +288,7 @@ async function mount(ui: React.ReactNode) {
 
 beforeEach(() => {
   writes.length = 0;
+  snapshotListeners.length = 0;
   finishCtl.commit = "ok";
   finishCtl.serverStatus = undefined;
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
@@ -407,6 +415,8 @@ describe("an abandoned session is asked about, never adopted (Sep 24 2026)", () 
     const body = document.body.textContent ?? "";
     expect(body).toContain("has an unfinished session");
     expect(body).toContain("It was never finished.");
+    // This trainer's own: resuming is not a take-over, and does not say it is.
+    expect(body).not.toContain("makes it yours");
     expect(button("Resume it")).toBeTruthy();
     expect(button("Start a new session")).toBeTruthy();
     // Asking writes nothing.
@@ -671,5 +681,222 @@ describe("the Active Session never draws a blank page (session record, Sep 26 20
     expect(panel?.getAttribute("data-kind")).toBe("no-session");
     await act(async () => buttonNamed(host, "Find a client")!.click());
     expect(setView).toHaveBeenCalledWith("client-directory");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Watching another trainer's session (session record, Sep 26 2026)
+ * ------------------------------------------------------------------ */
+
+describe("a session another trainer is running opens read-only, and live (session record, Sep 26 2026)", () => {
+  /** AJ's session with Judy, running on AJ's iPad. This iPad is Jane's (JC). */
+  const ajsSession = (over: Record<string, unknown> = {}) => [
+    {
+      id: SESSION_ID,
+      data: () => ({ ...SESSION_DOCS[0].data(), trainerId: "t-aj", trainerInitials: "AJ", ...over }),
+    },
+  ];
+  const settle = async () => {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  };
+  /** Another iPad saved something: every sessions listener gets the new state. */
+  const emitSessions = async () => {
+    await act(async () => {
+      for (const l of snapshotListeners.filter((x) => x.path === "sessions")) l.emit();
+    });
+    await settle();
+  };
+  const watching = (host: HTMLElement) => host.querySelector('[data-testid="watching-session"]');
+  const stripTakeOver = (host: HTMLElement) =>
+    Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Take over");
+  const dialogButton = (action: "leave" | "keep-editing") =>
+    document.body.querySelector<HTMLButtonElement>(`[data-testid="leave-confirm"] [data-action="${action}"]`);
+  const sessionWrites = () => writes.filter((w) => w.path.startsWith("sessions/") || w.path.startsWith("exerciseLogs/"));
+
+  it("says who is running it, draws the grid, and has no Finish, no Now bar and no button in today's column", async () => {
+    sessionDocs = ajsSession();
+    const host = await mount(<Tracker />);
+    expect(watching(host)).toBeTruthy();
+    expect(host.textContent).toContain("AJ is running this session on another iPad.");
+    expect(host.textContent).toContain("nothing here changes it");
+    expect(host.textContent).toContain("Leg Press (Hoist)");
+    expect(host.querySelector(".jg-sbar__finish")).toBeNull();
+    expect(host.querySelector(".jg-sbar__trash")).toBeNull();
+    expect(host.querySelector('input[aria-label="reps to failure"]')).toBeNull();
+    // Today's column reads: its cells are not buttons, and never say "Tap to edit".
+    expect(host.querySelectorAll("div.jg-today").length).toBeGreaterThan(0);
+    expect(host.querySelectorAll("button.jg-today")).toHaveLength(0);
+    expect(host.innerHTML).not.toContain("Tap to edit");
+    // Watching writes nothing at all.
+    expect(sessionWrites()).toEqual([]);
+  });
+
+  it("Take over asks first, and Keep watching changes nothing", async () => {
+    sessionDocs = ajsSession();
+    const host = await mount(<Tracker />);
+    await act(async () => stripTakeOver(host)!.click());
+    expect(document.body.textContent).toContain("Take over this session?");
+    expect(document.body.textContent).toContain("AJ is running Judy's session on another iPad.");
+    await act(async () => dialogButton("keep-editing")!.click());
+    expect(watching(host)).toBeTruthy();
+    expect(sessionWrites()).toEqual([]);
+  });
+
+  it("taking over makes it this iPad's to record: the session gets this trainer, and keeps who started it", async () => {
+    sessionDocs = ajsSession();
+    const host = await mount(<Tracker />);
+    await act(async () => stripTakeOver(host)!.click());
+    await act(async () => dialogButton("leave")!.click());
+    await settle();
+
+    const takeOver = writes.find((w) => w.path === `sessions/${SESSION_ID}` && w.data?.trainerId);
+    expect(takeOver?.data).toMatchObject({
+      trainerId: "t-doc",
+      trainerName: "Jane Coach",
+      trainerInitials: "JC",
+      // The fixture predates startedByTrainerId: the trainer replaced is the one who started it.
+      startedByTrainerId: "t-aj",
+    });
+    expect(takeOver?.data).toHaveProperty("lastHeartbeatAt");
+    // Recording here now.
+    expect(watching(host)).toBeNull();
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(localStorage.getItem("max_strength_active_session_id")).toBe(SESSION_ID);
+    // A snapshot that has not caught up with the take-over does not hand it back.
+    await emitSessions();
+    expect(watching(host)).toBeNull();
+  });
+
+  it("a session taken over on another iPad turns this one to watching, and what was typed here is sent first", async () => {
+    localStorage.setItem("max_strength_active_session_id", SESSION_ID);
+    const host = await mount(<Tracker />);
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const typed = () => writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.reps === "11");
+    expect(typed()).toHaveLength(0); // still on the typing timer
+
+    sessionDocs = ajsSession();
+    await emitSessions();
+
+    expect(typed()).toHaveLength(1);
+    expect(watching(host)).toBeTruthy();
+    expect(host.textContent).toContain("AJ took over this session on another iPad.");
+    expect(host.querySelector(".jg-sbar__finish")).toBeNull();
+    // The device no longer points at a session that is not this trainer's.
+    expect(localStorage.getItem("max_strength_active_session_id")).toBeNull();
+  });
+
+  it("says so when the session being watched is finished, and stops watching", async () => {
+    sessionDocs = ajsSession();
+    const host = await mount(<Tracker />);
+    expect(watching(host)).toBeTruthy();
+    sessionDocs = ajsSession({ status: "Completed" });
+    await emitSessions();
+    expect(watching(host)).toBeNull();
+    expect(document.body.textContent).toContain("AJ finished the session.");
+    expect(sessionWrites()).toEqual([]);
+  });
+
+  it("says so when the session being watched is discarded, or goes quiet for an hour", async () => {
+    sessionDocs = ajsSession();
+    const host = await mount(<Tracker />);
+    sessionDocs = [];
+    await emitSessions();
+    expect(watching(host)).toBeNull();
+    expect(document.body.textContent).toContain("The session was discarded on another iPad.");
+
+    sessionDocs = ajsSession();
+    const again = await mount(<Tracker />);
+    expect(watching(again)).toBeTruthy();
+    sessionDocs = ajsSession({ lastHeartbeatAt: TWENTY_TWO_HOURS_AGO, createdAt: TWENTY_TWO_HOURS_AGO });
+    await emitSessions();
+    expect(watching(again)).toBeNull();
+    expect(document.body.textContent).toContain("Nothing has been saved in this session for over an hour.");
+    // Nothing is claimed discarded that was not, and watching wrote nothing.
+    expect(sessionWrites()).toEqual([]);
+  });
+
+  it("watches a remembered session someone else now runs, and forgets it", async () => {
+    sessionDocs = [];
+    localStorage.setItem("max_strength_active_session_id", "sess-other");
+    singleDocs["sessions/sess-other"] = {
+      ...SESSION_DOCS[0].data(),
+      trainerId: "t-aj",
+      trainerInitials: "AJ",
+      createdAt: new Date(),
+    };
+    const host = await mount(<Tracker />);
+    await settle();
+    expect(watching(host)).toBeTruthy();
+    expect(localStorage.getItem("max_strength_active_session_id")).toBeNull();
+  });
+
+  it("resuming another trainer's abandoned session takes it over", async () => {
+    sessionDocs = [{ id: STALE_ID, data: () => ({ ...STALE_SESSION_DOCS[0].data(), trainerId: "t-aj", trainerInitials: "AJ" }) }];
+    const host = await mount(<Tracker />);
+    expect(document.body.textContent).toContain("Resuming it makes it yours to finish.");
+    const resume = Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Resume it");
+    await act(async () => resume!.click());
+    const write = writes.find((w) => w.path === `sessions/${STALE_ID}`);
+    expect(write?.data).toMatchObject({ trainerId: "t-doc", trainerInitials: "JC", startedByTrainerId: "t-aj" });
+    expect(host.querySelector(".jg-sbar__finish")).toBeTruthy();
+    expect(watching(host)).toBeNull();
+  });
+
+  it("an open session: this trainer's own is recorded, another trainer's is watched", async () => {
+    function Open() {
+      return (
+        <WorkoutTrackerView
+          clientId={null}
+          clients={[]}
+          machines={appWideMachines}
+          trainers={[trainer]}
+          user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+          setView={vi.fn()}
+          setSelectedClientId={vi.fn()}
+          showClientPicker={false}
+          setShowClientPicker={vi.fn()}
+          onStartNewClientOnboarding={vi.fn()}
+          authTrainer={trainer}
+          isSyncing={false}
+          setIsSyncing={vi.fn()}
+          schedules={[]}
+          setClientFormData={vi.fn()}
+          onOpenInfo={vi.fn()}
+        />
+      );
+    }
+    const open = (trainerId: string, initials: string) => [
+      {
+        id: "sess-open",
+        data: () => ({
+          isUnassigned: true,
+          status: "In-Progress",
+          trainerId,
+          trainerInitials: initials,
+          hostedAtStudioId: STUDIO_ID,
+          sessionMachineIds: ["m-leg-press"],
+          startTime: new Date(),
+          lastHeartbeatAt: new Date(),
+        }),
+      },
+    ];
+    sessionDocs = open("t-aj", "AJ");
+    const theirs = await mount(<Open />);
+    expect(watching(theirs)).toBeTruthy();
+    expect(theirs.textContent).toContain("Open session");
+    expect(theirs.textContent).toContain("AJ is running this session");
+
+    sessionDocs = open("t-doc", "JC");
+    const mine = await mount(<Open />);
+    expect(watching(mine)).toBeNull();
+    expect(mine.querySelector(".jg-sbar__finish")).toBeTruthy();
   });
 });

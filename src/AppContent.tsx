@@ -71,6 +71,7 @@ import { LoadingArea } from "./components/LoadingMark";
 import {
   findMyLiveSession,
   forgetLiveSession,
+  myTrainerIds,
   peekLiveSessionId,
 } from "./lib/live-session";
 import { afterOverlayClose } from "./lib/scroll-lock";
@@ -791,9 +792,11 @@ export default function AppContent({
      trainer to the directory while their session was still running. This
      is the trainer's OWN live session, found without a client, so the tab
      can take them straight back. See lib/live-session.ts. */
+  /* Under any id this trainer's sessions may carry (older accounts differ),
+     the same answer the Active Session gives (session record, Sep 26 2026). */
   const myLiveSession = useMemo(
-    () => findMyLiveSession(sessions, authTrainer?.id),
-    [sessions, authTrainer?.id],
+    () => findMyLiveSession(sessions, myTrainerIds(authTrainer, user?.uid)),
+    [sessions, authTrainer, user?.uid],
   );
   const liveSession = currentSession ?? myLiveSession;
 

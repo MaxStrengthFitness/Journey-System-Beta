@@ -1026,6 +1026,9 @@ button.jg-stat__btn:active { background: var(--jg-surface-3); }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+/* A Today cell with nothing to do on a tap is a plain cell, not a button:
+   a watching iPad reads the session and cannot change it (session record). */
+div.jg-today { cursor: default; }
 .jg-today__w {
   font-size: calc(var(--jg-w-size) + 1px);
   font-weight: 700;

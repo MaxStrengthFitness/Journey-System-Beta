@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   findMyLiveSession,
+  isAnotherTrainersSession,
   lastSignOfLife,
+  myTrainerIds,
+  takeOverPatch,
   liveSessionTabLabel,
   sessionDayWords,
   splitInProgress,
@@ -163,6 +166,74 @@ describe("findMyLiveSession", () => {
 
   it("returns nothing without a trainer", () => {
     expect(findMyLiveSession([{ id: "c", status: "In-Progress", trainerId: "t1", clientId: "c3" }], null)).toBeUndefined();
+    expect(findMyLiveSession([{ id: "c", status: "In-Progress", trainerId: "t1", clientId: "c3" }], [])).toBeUndefined();
+  });
+
+  it("finds a session recorded under any of the caller's ids (older accounts differ)", () => {
+    const s = findMyLiveSession(
+      [{ id: "c", status: "In-Progress", trainerId: "uid-1", clientId: "c3", ...fresh }],
+      ["t-doc", "uid-1"],
+    );
+    expect(s?.id).toBe("c");
+  });
+});
+
+describe("whose session is this (session record, Sep 26 2026)", () => {
+  it("collects every id the person's sessions may carry, once each", () => {
+    expect(myTrainerIds({ id: "t-doc", authUid: "uid-1", claimedFromId: "placeholder" }, "uid-1")).toEqual([
+      "t-doc",
+      "uid-1",
+      "placeholder",
+    ]);
+    expect(myTrainerIds(null, "uid-1")).toEqual(["uid-1"]);
+    expect(myTrainerIds(undefined, undefined)).toEqual([]);
+  });
+
+  it("is another trainer's when someone else runs it", () => {
+    expect(isAnotherTrainersSession({ trainerId: "t2" }, ["t1", "uid-1"])).toBe(true);
+  });
+
+  it("is mine under any of my ids, from any iPad", () => {
+    expect(isAnotherTrainersSession({ trainerId: "t1" }, ["t1", "uid-1"])).toBe(false);
+    expect(isAnotherTrainersSession({ trainerId: "uid-1" }, ["t1", "uid-1"])).toBe(false);
+  });
+
+  it("never locks anyone out when it cannot tell: no trainer on the session, or no one signed in it knows", () => {
+    expect(isAnotherTrainersSession({ trainerId: "" }, ["t1"])).toBe(false);
+    expect(isAnotherTrainersSession({}, ["t1"])).toBe(false);
+    expect(isAnotherTrainersSession({ trainerId: "t2" }, [])).toBe(false);
+    expect(isAnotherTrainersSession(null, ["t1"])).toBe(false);
+  });
+});
+
+describe("takeOverPatch", () => {
+  const me = { id: "t-aj", fullName: "AJ Jurgens", initials: "AJ" };
+
+  it("makes the session the new trainer's and keeps who started it", () => {
+    expect(takeOverPatch({ trainerId: "t-jc", startedByTrainerId: "t-jc" }, me)).toEqual({
+      trainerId: "t-aj",
+      trainerName: "AJ Jurgens",
+      trainerInitials: "AJ",
+    });
+  });
+
+  it("records the starter on a session from before startedByTrainerId", () => {
+    expect(takeOverPatch({ trainerId: "t-jc" }, me)).toEqual({
+      trainerId: "t-aj",
+      trainerName: "AJ Jurgens",
+      trainerInitials: "AJ",
+      startedByTrainerId: "t-jc",
+    });
+  });
+
+  it("never replaces the starter on a second take-over", () => {
+    expect(takeOverPatch({ trainerId: "t-other", startedByTrainerId: "t-jc" }, me).startedByTrainerId).toBeUndefined();
+  });
+
+  it("writes no undefined, which Firestore refuses", () => {
+    const patch = takeOverPatch({}, { id: "t-aj" });
+    expect(Object.values(patch).every((v) => v !== undefined)).toBe(true);
+    expect(patch).toEqual({ trainerId: "t-aj", trainerName: "", trainerInitials: "??" });
   });
 });
 

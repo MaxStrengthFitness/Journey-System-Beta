@@ -32,4 +32,15 @@ describe("trackerScreen", () => {
   it("draws nothing with no client and no session", () => {
     expect(trackerScreen({ ...base, hasClient: false })).toBe("none");
   });
+
+  it("watches another trainer's session rather than offering a briefing or nothing (Sep 26 2026)", () => {
+    expect(trackerScreen({ ...base, hasWatchedSession: true, isPreSessionMode: true })).toBe("watch");
+    // An open session watched with no client chosen is still a screen.
+    expect(trackerScreen({ ...base, hasWatchedSession: true, hasClient: false })).toBe("watch");
+  });
+
+  it("records its own session over anything watched, and keeps a finished session's screen first", () => {
+    expect(trackerScreen({ ...base, hasWatchedSession: true, hasCurrentSession: true })).toBe("tracker");
+    expect(trackerScreen({ ...base, hasWatchedSession: true, isPostSessionMode: true, hasPostSessionSnapshot: true })).toBe("post-session");
+  });
 });

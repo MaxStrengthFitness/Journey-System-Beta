@@ -15,7 +15,7 @@ import { splitInProgress } from "../lib/live-session";
  * (lib/live-session.ts `splitInProgress`):
  *
  *   - `activeInProgressSession` is the live one — the header's "In
- *     progress" menu (Take over, View, Discard).
+ *     progress" menu (Continue or Watch, and Discard).
  *   - `staleInProgressSession` is the newest abandoned one, shown only when
  *     nothing is live. Start is never withheld because of it; the header
  *     says it is there and offers Discard, and the Active Session asks

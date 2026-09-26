@@ -129,6 +129,34 @@ describe("SessionDetailDialog", () => {
     expect(text()).not.toContain("Edited by");
   });
 
+  it("says who started a session that was taken over, and nothing extra when it was not (Sep 26 2026)", () => {
+    const withStarter = [...trainers, { id: "t-jc", fullName: "Jane Coach", initials: "JC" }] as Trainer[];
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() =>
+      root!.render(
+        <SessionDetailDialog
+          initialSessions={[session({ trainerId: "u1", startedByTrainerId: "t-jc" })]}
+          onClose={() => {}}
+          clientId="c1"
+          machines={machines}
+          trainerFor={() => null}
+          trainers={withStarter}
+          activeStudioId="westlake"
+          clientHomeStudioId="westlake"
+          timeZone="America/New_York"
+        />,
+      ),
+    );
+    expect(text()).toContain("Started by JC");
+    act(() => root?.unmount());
+    host.remove();
+
+    mount(session({ trainerId: "u1", startedByTrainerId: "u1" }));
+    expect(text()).not.toContain("Started by");
+  });
+
   it("says who edited it, and when", () => {
     mount(session({ editedAt: "2026-09-17T16:00:00.000Z", editedByName: "AJ", editCount: 1 }));
     expect(text()).toContain("Edited by AJ on Sep 17");

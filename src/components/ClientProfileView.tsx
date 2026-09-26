@@ -92,7 +92,13 @@ import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
 import { StaleSessionNotice } from "../features/client-profile/StaleSessionNotice";
-import { forgetLiveSession, staleSessionStartedLine } from "../lib/live-session";
+import {
+  forgetLiveSession,
+  isAnotherTrainersSession,
+  myTrainerIds,
+  rememberLiveSession,
+  staleSessionStartedLine,
+} from "../lib/live-session";
 import { StrongConfirmationModal } from "./StrongConfirmationModal";
 
 import {
@@ -1445,16 +1451,16 @@ export function ClientProfileView({
           setView("workouts");
         }}
         onQuickNote={() => setQuickNoteOpen(true)}
-        onTakeOverSession={() => {
-          if (activeInProgressSession?.id) {
-            localStorage.setItem(
-              "max_strength_active_session_id",
-              activeInProgressSession.id,
-            );
-          }
+        /* Continue is this trainer's own session; anyone else's opens
+           read-only, with Take over there (session record, Sep 26 2026). */
+        sessionIsMine={
+          !isAnotherTrainersSession(activeInProgressSession, myTrainerIds(liveAuthTrainer, user?.uid))
+        }
+        onContinueSession={() => {
+          if (activeInProgressSession?.id) rememberLiveSession(activeInProgressSession.id);
           setView("workouts");
         }}
-        onViewCurrentSession={() => setView("workouts")}
+        onWatchSession={() => setView("workouts")}
         onDiscardSession={() => setDiscardTarget(activeInProgressSession)}
         renewal={
           client.renewal

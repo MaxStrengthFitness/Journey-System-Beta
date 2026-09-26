@@ -77,7 +77,7 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **Equipment tab during the backfill** — the "from loaded sessions" label must **disappear on its own** after the first open, without a refresh.
 - [ ] **Generate a 12-month Clinical Report on a real 100-session client. Time it.** Then read every insight card and ask whether a clinician would nod at it. *This is the highest-value item on the page* — the numbers are unit-tested, the judgement is not.
 - [ ] **Journal and History in dark mode.** Neither is harness-verifiable; both subscribe to Firestore, so this is the first real look.
-- [ ] **Start Session when one is already in progress.** Take Over / View / Discard all behave.
+- [ ] **Start Session when one is already in progress.** Your own: Continue session and Discard. Another trainer's: Watch session and Discard, with Take over on the watching screen (session record, Sep 26 2026).
 - [ ] **Predicted problem — try to edit a journal entry you just wrote.** *Expected:* you cannot. The edit mutations exist (`useClientJournal.ts:180,357`) with no UI calling them, so entries are append-only. A mistyped clinical note is permanent. Decide if that is acceptable.
 - [ ] **Predicted problem — save something slow and watch the button.** Four `isSaving*` flags are set and never rendered, so a slow save looks like a dead button and invites a double-tap.
 
@@ -275,7 +275,10 @@ The whole app has been verified against mock data on a good network. This round 
 - [ ] **Force a Firestore quota error** (or simulate one) and watch the screen. *Predicted:* nothing at all. `lastQuotaErrorMessage` is captured and never rendered — so on the floor a quota storm looks like the app quietly not working.
 - [ ] **Import a broken legacy chart.** *Predicted:* silence. `isImporting`, `importStats` and `legacyError` are all set and never displayed.
 - [ ] **Make something throw** on a screen other than Calendar. *Expected:* a white screen — `CalendarView` is the only view with an `ErrorBoundary`, and `ErrorBoundary.tsx` itself is `@ts-nocheck`.
-- [ ] **Two iPads, same client, both hit Start Session.** "Active Session Detected" is per-client, not per-device — see what actually happens.
+- [ ] **Two iPads, same client, two trainers** (session record, Sep 26 2026). JC starts Judy's session on one iPad; AJ opens Judy on the other. *Expected:* AJ's iPad watches: "JC is running this session on another iPad", no Now Bar and no Finish, and each set JC saves appears within a few seconds. Tap Take over and answer Keep watching: nothing changes.
+- [ ] **Take over, then finish.** AJ takes over, and JC's iPad says "AJ took over this session on another iPad" within a few seconds. Any reps JC had typed are in the session. AJ finishes. *Expected:* the session counts once, for AJ, and the History pop-up says "Started by JC".
+- [ ] **A dead iPad.** JC's iPad dies mid-session; JC signs in on another iPad and opens Judy. *Expected:* JC carries on recording, not watching, with every set that was saved.
+- [ ] **Watching, then the trainer finishes.** *Expected:* the watching iPad says "JC finished the session." and shows the briefing.
 - [ ] **File a bug report through the in-app reporter**, then try to close it as an admin. *Expected:* you cannot — `AdminBugReports` has no `updateDoc`. Every report is written `status: "open"` forever and the reporter never hears back.
 - [ ] **"Mindbody is down and a client is standing in front of me."** Walk it through with no sync. *Expected:* there is no path — manual client creation and manual linking were both removed on Aug 30. Decide the answer before beta, not during it.
 

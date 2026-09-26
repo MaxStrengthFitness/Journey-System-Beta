@@ -21,3 +21,41 @@
 }
 .sr-send__icon { flex: none; }
 .sr-send__text { min-width: 0; }
+
+/* Watching another trainer's session (WatchingSession.tsx). The same place
+   and tokens as the line above; the one button is 44px, reachable with the
+   iPad in one hand. Never red. */
+.sr-watch {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  background: var(--jg-live-fill);
+  border-bottom: 1px solid var(--jg-border);
+  color: var(--jg-live-text);
+  font-family: var(--jg-font);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.sr-watch__icon { flex: none; }
+.sr-watch__text { flex: 1; min-width: 0; margin: 0; }
+.sr-watch__offline { font-weight: 700; }
+.sr-watch__take {
+  appearance: none;
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 11px;
+  border: 1px solid var(--jg-border-strong);
+  background: var(--jg-surface);
+  color: var(--jg-ink);
+  font-family: var(--jg-font);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.sr-watch__take:hover { background: var(--jg-surface-2); }
+.sr-watch__take:focus-visible { outline: 2px solid var(--jg-focus-ring); outline-offset: 1px; }

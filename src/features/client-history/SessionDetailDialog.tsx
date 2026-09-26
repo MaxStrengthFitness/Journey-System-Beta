@@ -26,6 +26,7 @@ import { MachinePicker, analyzeRoutine } from "../routine-builder";
 import "../routine-builder/routine-builder.css";
 import { DOSE_SCALE, READINESS_KEYS, READINESS_SCALES, REGION_SCALE, dialWord, doseOf, readinessDial, regionDial } from "../rating";
 import { OUTCOME_LABEL, SKIP_REASON_LABEL, outcomeOf, skipReasonOf } from "../../lib/set-outcome";
+import { whoStartedIt } from "../session-record/watch";
 import {
   editStampOf,
   editStampUpdate,
@@ -498,6 +499,10 @@ export function SessionDetailDialog({
   };
 
   const trainer = selected ? trainerFor(selected) : null;
+  /* A session taken over mid-way is credited to the trainer who finished it,
+     and still says who started it (session record, Sep 26 2026). */
+  const handedOver = selected ? whoStartedIt(selected, trainers) : null;
+  const startedByLine = handedOver?.changedHands && handedOver.starter ? `Started by ${handedOver.starter}` : null;
   const title = selected ? titleFor(selected, timeZone) : { day: "", time: null };
   const routineName = selected ? (routineNameFor ? routineNameFor(selected) : selected.routineName ?? null) : null;
   const letter = routineLetter(routineName);
@@ -530,6 +535,7 @@ export function SessionDetailDialog({
                   <DialogDescription className="hsd-head__sub">
                     {title.time ?? (isLegacySession(selected) ? "Imported" : isBackfilledSession(selected) ? "Logged later" : "No start time")}
                     {selected.isCrossTrain ? " · Cross-train" : ""}
+                    {startedByLine ? ` · ${startedByLine}` : ""}
                     {selected.status !== "Completed" ? " · Not closed out" : ""}
                     {stampLine ? ` · ${stampLine}` : ""}
                   </DialogDescription>

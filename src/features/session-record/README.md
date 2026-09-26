@@ -38,6 +38,15 @@ A question, never a block.
 
 `NothingOnScreen` and `nothing-on-screen.ts` cover the Active Session with nothing to draw: a client still loading, a read that failed, no record, or no session. Each gets the app header, one sentence and the way on. The shell passes `clientLookup` and `onRetryClient` so the tracker knows which case it is.
 
+## Watching, and taking over
+
+A session is recorded by the trainer running it, from any iPad they sign in on; anyone else watches it (AJ, Sep 26 2026: leaders "follow along", and a trainer can always get back into their own session).
+
+- **Whose session it is** is `isAnotherTrainersSession` with `myTrainerIds`, in `src/lib/live-session.ts`. It matches every id a trainer's sessions can carry, and fails toward recording: a session with no trainer, or a person the app cannot identify, is never someone else's.
+- **`WatchingSession`** is the Active Session drawn read-only: the session bar without its buttons, one line from `watchWords` (`watch.ts`), the grid with a Today column that only reads, and no Now Bar. `WorkoutTrackerView` holds the watched session as `watchedSession`, apart from `currentSession`, so nothing that records runs while watching.
+- **Take over** asks first (`takeOverWords`), then writes `takeOverPatch`: the new trainer, with `startedByTrainerId` kept. Finish credits whoever finishes, as it always has. The iPad it was taken from sends its waiting sets and turns to watching.
+- `sessionMachineList`, `firstOpenMachine` and `machinesDone` are what the watching screen reads off the session, by the same rules as the recording screen. `whoStartedIt` names the starter after a take-over, for the profile's menu and the History pop-up.
+
 ## Related pieces elsewhere
 
 - `src/lib/pending-log-edits.ts`: a set whose write is still queued keeps what the trainer typed when another machine's save lands.
