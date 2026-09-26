@@ -175,6 +175,11 @@ export interface RenewalSnapshot {
   /** When billing ends and the package renews. Mindbody's contract end date when known. */
   chargeDate: string | null;
   chargeDateSource: "mindbody" | "estimate" | null;
+  /**
+   * Mindbody's own per-contract flag: auto-renew is on at some studios and not
+   * at others. Null when Mindbody hasn't said — the words then claim neither
+   * (sentences.ts, billingEndPhrase).
+   */
   autoRenews: boolean | null;
   /** Sessions left in the whole package: on hand, plus those still to be paid for. */
   sessionsLeft: number | null;
@@ -191,7 +196,10 @@ export interface RenewalSnapshot {
   situation: RenewalSituation;
   /** Sessions left at or below the studio's threshold. */
   conversationDue: boolean;
-  /** Will bank, and the charge is inside the studio's warning window. */
+  /**
+   * Will bank, and the charge is inside the studio's warning window. Never on
+   * a contract Mindbody says doesn't auto-renew: no charge is coming.
+   */
   chargeWarning: boolean;
   /** When the package effectively ends — the pipeline's sort key and horizon. */
   focusDate: string | null;

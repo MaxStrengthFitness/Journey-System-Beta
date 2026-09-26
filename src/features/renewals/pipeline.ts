@@ -5,7 +5,8 @@
  * §4.2):
  *
  *   before-charge  will bank sessions and the charge is inside the studio's
- *                  warning window — there's a hard date
+ *                  warning window — there's a hard date. Never a contract
+ *                  Mindbody says doesn't auto-renew (engine.ts, chargeWarning)
  *   talk-now       the conversation is due (few sessions left, or the
  *                  package has ended) and nothing has been decided
  *   coming-up      ends inside the planning horizon, by month
@@ -35,7 +36,8 @@ export const LANE_TITLES: Record<PipelineLane, string> = {
 };
 
 export const LANE_HINTS: Record<PipelineLane, string> = {
-  "before-charge": "Will auto-renew with sessions still banked. Talk first, then decide in Mindbody whether to move the renewal.",
+  "before-charge":
+    "Sessions still banked when the payments finish, and the contract auto-renews — or Mindbody hasn't said. Talk first, then decide in Mindbody whether to move the renewal.",
   "talk-now": "Few sessions left, or the package has ended, and nothing decided yet.",
   "coming-up": "Packages ending in the months ahead.",
   lapsed: "No new package since the studio's lost rule, or recorded as lost or pay-as-you-go. A win-back list.",

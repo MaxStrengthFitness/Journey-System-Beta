@@ -14,7 +14,7 @@ The studio wants clients to see that every session is worth what they pay, becau
 
 ## What goes wrong
 
-- **The auto-renew charges before the sessions are used.** Sessions never expire, so breaks, surgery or a 1.5-visits-a-week habit stretch a 12-month commitment to 14 months or more — and the next package is charged while sessions are still banked. AJ: "it's a big issue, so if studio leaders could be ahead of that it would be awesome."
+- **The auto-renew charges before the sessions are used** — at the studios that have auto-renew on; it isn't on everywhere (AJ, Sep 24 2026). Sessions never expire, so breaks, surgery or a 1.5-visits-a-week habit stretch a 12-month commitment to 14 months or more — and the next package is charged while sessions are still banked. AJ: "it's a big issue, so if studio leaders could be ahead of that it would be awesome."
 - **Cards decline**, which interrupts billing.
 
 ## Why clients leave or hesitate
@@ -50,6 +50,7 @@ Every client gets a **renewal snapshot** each night: both clocks (billing and se
   - A leader's outcome is never overwritten.
   - A renewal already signed in Mindbody counts the night it appears, and the client stops being prompted.
 - **Per-trainer rates** show only in Outcomes, only to leaders, only from 5 outcomes, and are labeled context, not a verdict.
+- **Auto-renew is Mindbody's to say, contract by contract** (Sep 24 2026). Where it is on, the app warns before the charge and says "auto-renews". Where Mindbody says it is off, the app says "billing ends": the sessions still bank and carry over, nothing is charged on top of them, so there is no "before the charge" warning and the conversation comes at the studio's usual threshold. Where Mindbody hasn't said, the words claim neither ("payments finish") and the warning stays on, because a leader checking a contract that turns out not to renew costs less than a missed charge.
 
 ## Who does what
 

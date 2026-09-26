@@ -91,8 +91,31 @@ describe("conversations", () => {
         renewalOnBooks: { cycleKey: "9002", packageKey: "committed", startsOn: "2026-11-15" },
       }),
     ).toBe(false);
-    expect(promptText({ ...base, situation: "will-bank", chargeWarning: true, bankedAtCharge: 16 })).toBe(
+    expect(promptText({ ...base, situation: "will-bank", chargeWarning: true, bankedAtCharge: 16, autoRenews: true })).toBe(
       "Auto-renews with about 16 sessions banked. Talk about it today?",
+    );
+  });
+
+  it("says what happens when the payments finish only as Mindbody says it", () => {
+    // Auto-renew is on at some studios and not at others (AJ, Sep 24 2026).
+    const warning = {
+      situation: "will-bank",
+      conversationDue: false,
+      chargeWarning: true,
+      sessionsLeft: 30,
+      bankedAtCharge: 16,
+    } as RenewalSnapshot;
+    expect(promptText({ ...warning, autoRenews: true })).toBe("Auto-renews with about 16 sessions banked. Talk about it today?");
+    // The engine no longer warns on these, but last night's snapshot may still say so.
+    expect(promptText({ ...warning, autoRenews: false })).toBe("Billing ends with about 16 sessions banked. Talk about it today?");
+    // Mindbody hasn't said, or the snapshot predates the flag: neither word.
+    for (const autoRenews of [null, undefined]) {
+      const text = promptText({ ...warning, autoRenews } as RenewalSnapshot);
+      expect(text).toBe("Payments finish with about 16 sessions banked. Talk about it today?");
+      expect(text).not.toMatch(/auto-renew|billing ends/i);
+    }
+    expect(promptText({ ...warning, autoRenews: true, bankedAtCharge: 1 })).toBe(
+      "Auto-renews with about 1 session banked. Talk about it today?",
     );
   });
 });

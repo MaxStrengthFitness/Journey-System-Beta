@@ -38,6 +38,9 @@ import {
 import { LogConversationDialog } from "../../renewals/LogConversationDialog";
 import {
   SITUATION_TONE,
+  bankedAtChargeNote,
+  billingEndPhrase,
+  capitalize,
   dayLabel,
   paceSentence,
   situationSentence,
@@ -338,21 +341,20 @@ export function RenewalBrief({
                     }
                   />
                   <AdminRow
-                    name={s.autoRenews === false ? "Billing ends" : "Auto-renews"}
+                    name={s.paymentMode === "monthly" || s.chargeDate ? capitalize(billingEndPhrase(s.autoRenews)) : "Package"}
                     meta={
                       s.chargeDate
                         ? `${dayLabel(s.chargeDate, today)}${s.chargeDateSource === "estimate" ? " (estimated)" : ""}`
                         : s.paymentMode === "prepaid"
                           ? "Paid in full — no auto-renew"
-                          : "Not known"
+                          : s.paymentMode === "sessions-only"
+                            ? "Billing finished — using banked sessions"
+                            : "Not known"
                     }
                   />
                   <AdminRow name="Pace" meta={paceSentence(s)} />
                   {s.situation === "will-bank" && (
-                    <AdminRow
-                      name="Banked when billing ends"
-                      meta={`About ${s.bankedAtCharge} sessions. Sessions never expire, so they carry over — decide in Mindbody whether the renewal should wait.`}
-                    />
+                    <AdminRow name="Banked when billing ends" meta={bankedAtChargeNote(s)} />
                   )}
                   {s.runOutDate && <AdminRow name="Runs out" meta={`Around ${dayLabel(s.runOutDate, today)} at this pace`} />}
                   {s.flags.map((f) => (

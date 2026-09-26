@@ -31,6 +31,14 @@ describe("lanes", () => {
     expect(laneOf(snap({ situation: "will-bank", chargeWarning: true }), null, S, TODAY)).toBe("before-charge");
   });
 
+  it("plans a contract that won't auto-renew like anyone's: there is no charge to get ahead of", () => {
+    // What the engine writes for one inside the window (engine.ts, chargeWarning).
+    const ends = snap({ situation: "will-bank", chargeWarning: false, autoRenews: false, sessionsLeft: 30, bankedAtCharge: 16 });
+    expect(laneOf(ends, null, S, TODAY)).toBe("coming-up");
+    // 30 left, due at 10, 2 a week: 10 weeks.
+    expect(nextStep(ends, null, S, TODAY)).toBe("Conversation due around Nov 20");
+  });
+
   it("puts a due conversation and an ended package in talk-now, until decided", () => {
     expect(laneOf(snap({ conversationDue: true }), null, S, TODAY)).toBe("talk-now");
     expect(laneOf(snap({ situation: "ended", focusDate: "2026-09-01" }), null, S, TODAY)).toBe("talk-now");

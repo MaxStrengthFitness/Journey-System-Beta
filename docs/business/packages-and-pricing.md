@@ -14,7 +14,7 @@ Clients commit to 6, 12 or 18 months. Session counts assume training twice a wee
 
 The website marks Committed "most popular". The app never does: nothing it holds can back the claim, and the packages screen shows the trainer's own recommendation instead (below).
 
-- **Billed every 4 weeks.** Clients can pay monthly or prepay the whole package at the lower prepay rate. **Auto-renewal is not everywhere** (AJ, Sep 24 2026: "auto renew isn't on everywhere but some studios do have it"): each studio says, per package, whether it renews by itself when the payments finish (My Studio → Studio → Renewals, "When the payments finish"). The website's "auto-renewal upon completion" is one studio's answer, not the company's.
+- **Billed every 4 weeks.** Clients can pay monthly or prepay the whole package at the lower prepay rate. **Auto-renewal is not everywhere** (AJ, Sep 24 2026: "auto renew isn't on everywhere but some studios do have it"): each studio says, per package, whether it renews by itself when the payments finish (My Studio → Studio → Renewals, "When the payments finish"). The website's "auto-renewal upon completion" is one studio's answer, not the company's. **A contract a client already holds is Mindbody's to describe:** its own per-contract flag says whether that contract auto-renews, and the renewal screens and the profile read the flag rather than assuming (Sep 24 2026). The studio's per-package answer is what the packages screen tells someone who has not bought yet.
 - Every package is advertised with **"Get 2 free workouts!"**
 - **"Double Transformation Guarantee"**:
   1. A 30-day satisfaction guarantee: no questions asked, 100% money back. **It covers monthly payers too** (AJ, Sep 24 2026), though the website still marks it as a prepay benefit.
@@ -39,7 +39,7 @@ A "12-month" package bills for 48 weeks, roughly 11 calendar months, when the cl
 AJ, Sep 10 2026: unused sessions are never lost. A client who takes a month off for surgery keeps that month's sessions, even on a month-to-month payment. **Confirmed for every studio on Sep 24 2026** ("sessions don't expire"). The Academy's consultation script still says 30, 60 or 90 days to use leftover sessions and "we no longer bill you or auto renew you"; both lines are out of date, and AJ decided on Sep 24 to leave the Academy as it is. This page and the packages screen carry the current rules. This is generous and it creates the studio's biggest renewal headache:
 
 - A client who averages 1.5 visits a week takes about 64 weeks — nearly 15 months — to use a Committed package that bills for 48.
-- Where a contract auto-renews, it renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one.
+- Where auto-renew is on, the contract renews when the **payments** finish, not when the **sessions** do, so the client is charged for a new package while still holding sessions from the old one. Where it is off, billing simply ends and the banked sessions carry on.
 - Cards also decline, which interrupts billing. **Out of scope for now** (AJ, Sep 11 2026): the app shows Mindbody's autopay status and nothing more.
 
 See [renewals.md](renewals.md) for how the studio wants to get ahead of this.

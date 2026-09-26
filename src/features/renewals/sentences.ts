@@ -35,10 +35,34 @@ export function paceLabel(perWeek: number | null): string {
   return `${Number.isInteger(perWeek) ? perWeek : perWeek.toFixed(2).replace(/0$/, "")}×`;
 }
 
+/**
+ * What happens when a contract's payments run out, in the words every renewal
+ * screen uses. Mindbody's own per-contract flag decides: auto-renew is on at
+ * some studios and not at others (AJ, Sep 24 2026), so the app never assumes
+ * it. When Mindbody hasn't said, the words say neither — the payments
+ * finishing is true either way.
+ */
+export function billingEndPhrase(autoRenews: boolean | null | undefined): string {
+  if (autoRenews === true) return "auto-renews";
+  if (autoRenews === false) return "billing ends";
+  return "payments finish";
+}
+
 function billingEnds(s: RenewalSnapshot, today: string): string {
   const when = dayLabel(s.chargeDate, today);
   const est = s.chargeDateSource === "estimate" ? " (estimated)" : "";
-  return s.autoRenews === false ? `billing ends ${when}${est}` : `auto-renews ${when}${est}`;
+  return `${billingEndPhrase(s.autoRenews)} ${when}${est}`;
+}
+
+/**
+ * What the sessions still banked when billing ends mean for the renewal. Only
+ * a contract that auto-renews charges a new package on top of them.
+ */
+export function bankedAtChargeNote(s: RenewalSnapshot): string {
+  const head = `About ${sessions(s.bankedAtCharge ?? 0)}. Sessions never expire, so they carry over`;
+  if (s.autoRenews === true) return `${head} — decide in Mindbody whether the renewal should wait.`;
+  if (s.autoRenews === false) return `${head}. The contract doesn't auto-renew, so no new package is charged on top of them.`;
+  return `${head} — check in Mindbody whether the contract auto-renews and, if it does, whether the renewal should wait.`;
 }
 
 function weeksBetween(a: string, b: string): number {
@@ -113,7 +137,7 @@ export function situationSentence(s: RenewalSnapshot, today: string): string {
   }
 }
 
-function capitalize(t: string): string {
+export function capitalize(t: string): string {
   return t ? t[0].toUpperCase() + t.slice(1) : t;
 }
 
