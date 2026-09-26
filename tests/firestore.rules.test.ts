@@ -3139,3 +3139,150 @@ describe("Firestore Security Rules", () => {
     });
   });
 });
+
+// ── A CROSS-TRAIN VISITOR FINISHES A SESSION (Sep 24 2026) ──────────────
+//
+// A trainer at studio A, whose client (home studio B) is approved to train at
+// A, could open the client and log every set, but Finish was refused in full:
+// the finish batch moves the client's totals, and only the home studio could
+// change the client. These replay the batch as completeWorkoutSession writes
+// it (src/lib/sync-utils.ts), at a real session's size, and check the visitor
+// can move the session's totals and nothing else.
+describe("a cross-train visitor's session", () => {
+  const CLIENT = "visitorClient";
+  const SESSION = "visitSession";
+  const MACHINES = ["m-leg-press", "m-pulldown", "m-chest-press", "m-compound-row", "m-lumbar", "m-hip-abd", "m-hip-add", "m-neck"];
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      // trainerA works at studioA; the client's home is studioB, approved for A.
+      await setDoc(doc(db, "clients", CLIENT), {
+        firstName: "Casey", lastName: "Visitor", isActive: true, remainingSessions: 10,
+        homeStudioId: "studioB", approvedCrossTrainStudioIds: ["studioA"],
+        completedSessions: 40, sessionCount: 40,
+      });
+      await setDoc(doc(db, "sessions", SESSION), {
+        clientId: CLIENT, trainerId: "trainerA", hostedAtStudioId: "studioA",
+        homeStudioId: "studioB", clientHomeStudioId: "studioB",
+        status: "In Progress", sessionNumber: 41, date: "2026-09-24", trainerInitials: "TA",
+      });
+      for (const m of MACHINES) {
+        await setDoc(doc(db, "exerciseLogs", `${SESSION}_${m}`), {
+          sessionId: SESSION, machineId: m, clientId: CLIENT, weight: "180", reps: "9", studioId: "studioA",
+        });
+      }
+      // A trainer at studio C, which the client is NOT approved for.
+      await setDoc(doc(db, "trainers", "trainerC"), {
+        fullName: "Trainer C", initials: "TC", role: "LifeTransformer",
+        primaryHomeStudioId: "studioC", accessibleStudioIds: ["studioC"],
+      });
+    });
+  });
+
+  const totals = (uid: string): Record<string, unknown> => {
+    const u: Record<string, unknown> = {
+      completedSessions: increment(1),
+      sessionCount: 41,
+      lastSessionDate: "2026-09-24",
+      updatedAt: serverTimestamp(),
+      lifetimeReps: increment(72),
+      lifetimeWeight: increment(12960),
+      consultationCompleted: true,
+      [`trainerTally.${uid}`]: increment(1),
+      topTrainerId: uid,
+      topTrainerName: "Trainer A",
+      topTrainerSessions: 1,
+      trainerTallyUpdatedAt: serverTimestamp(),
+    };
+    for (const m of MACHINES) {
+      u[`currentMachineMetrics.${m}`] = { weight: "180", reps: "9", settings: {}, lastPerformedSessionNumber: 41, lastSessionId: SESSION };
+      u[`machineStats.${m}.timesPerformed`] = increment(1);
+      u[`machineStats.${m}.lastPerformedDate`] = "2026-09-24";
+      u[`machineStats.${m}.lastWeight`] = 180;
+    }
+    return u;
+  };
+
+  const finishBatch = (db: ReturnType<ReturnType<typeof testEnv.authenticatedContext>["firestore"]>, uid: string) => {
+    const b = writeBatch(db);
+    b.update(doc(db, "sessions", SESSION), {
+      status: "Completed", endTime: serverTimestamp(), trainerId: uid, trainerName: "Trainer A", trainerInitials: "TA",
+      clientId: CLIENT, homeStudioId: "studioB", clientHomeStudioId: "studioB", hostedAtStudioId: "studioA",
+    });
+    for (const m of MACHINES) {
+      b.set(doc(db, "exerciseLogs", `${SESSION}_${m}`), {
+        sessionId: SESSION, machineId: m, weight: "180", reps: "9", clientId: CLIENT,
+        homeStudioId: "studioB", clientHomeStudioId: "studioB", studioId: "studioA", updatedAt: serverTimestamp(),
+      }, { merge: true });
+      b.set(doc(db, "clientMachineSettings", `${CLIENT}_${m}`), {
+        clientId: CLIENT, homeStudioId: "studioB", clientHomeStudioId: "studioB", machineId: m,
+        settings: {}, updatedBy: uid, currentWeight: 180, updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    return b;
+  };
+
+  it("lets the visitor finish an eight-machine session: the session, the sets, the settings, then the totals", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    // The session and its sets land first, as Finish now commits them.
+    await assertSucceeds(finishBatch(db, "trainerA").commit());
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), totals("trainerA")));
+  });
+
+  it("lets the whole finish go in one batch too, within the rules' budget", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    const b = finishBatch(db, "trainerA");
+    b.update(doc(db, "clients", CLIENT), totals("trainerA"));
+    await assertSucceeds(b.commit());
+  });
+
+  it("lets the visitor's Start mark Routine B and the first session", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { isRoutineBActive: true }));
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { firstSessionDate: serverTimestamp() }));
+  });
+
+  it("lets the visitor's finished Pulse update the client's Pulse summary, and nothing with it", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    const subjectiveSnapshot = {
+      reportId: "pulse1", date: "2026-09-24", overallStatus: "red", overallPercent: 42,
+      proteinStatus: "amber", hydrationStatus: "green", redCategories: ["pain"], flags: ["new-pain"],
+    };
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { subjectiveSnapshot }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { subjectiveSnapshot, medicalHistory: "x" }));
+  });
+
+  it("lets the visitor give the counts back when a completed session is deleted from History", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "clients", CLIENT), {
+        completedSessions: increment(-1),
+        sessionCount: increment(-1),
+        "trainerTally.trainerA": increment(-1),
+        "machineStats.m-leg-press.timesPerformed": increment(-1),
+      }),
+    );
+  });
+
+  it("refuses the visitor anything beyond a session's totals", async () => {
+    const db = testEnv.authenticatedContext("trainerA").firestore();
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { firstName: "Renamed" }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { ...totals("trainerA"), homeStudioId: "studioA" }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { ...totals("trainerA"), approvedCrossTrainStudioIds: ["studioA", "studioC"] }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { completedSessions: increment(1), medicalHistory: "x" }));
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), { completedSessions: increment(1), renewal: { situation: "on-track" } }));
+  });
+
+  it("refuses a trainer at a studio the client is not approved for", async () => {
+    const db = testEnv.authenticatedContext("trainerC").firestore();
+    await assertFails(updateDoc(doc(db, "clients", CLIENT), totals("trainerC")));
+  });
+
+  it("leaves the client's own studio free to edit the client, as before", async () => {
+    // The existing rule for the client's own studio is unchanged: trainerB, at
+    // studio B, may edit the client as always.
+    const db = testEnv.authenticatedContext("trainerB").firestore();
+    await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { firstName: "Casey" }));
+  });
+});

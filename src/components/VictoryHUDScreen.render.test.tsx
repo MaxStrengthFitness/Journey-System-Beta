@@ -28,6 +28,27 @@ vi.mock("../features/subjective-report", async (importOriginal) => {
   };
 });
 
+/**
+ * The packages card reads the studio's package table. A stand-in answers it,
+ * so each test sets the state it is about (the shared onSnapshot fake below
+ * answers every listener as a query, which a document listener can't read).
+ */
+const renewalSettings = vi.hoisted(() => ({ state: null as any }));
+vi.mock("../features/renewals/useRenewalSettings", async () => {
+  const { DEFAULT_RENEWAL_SETTINGS } = await import("../features/renewals/settings");
+  return {
+    useRenewalSettings: (studioId: string | null | undefined) =>
+      renewalSettings.state ?? {
+        settings: DEFAULT_RENEWAL_SETTINGS,
+        saved: true,
+        ownPackageTable: true,
+        forStudioId: studioId ?? null,
+        loading: false,
+        error: null,
+      },
+  };
+});
+
 vi.mock("../firebase", () => ({
   db: { __fake: true },
   auth: { currentUser: { uid: "uid-jane" } },
@@ -113,6 +134,7 @@ async function mount(ui: React.ReactNode) {
 beforeEach(() => {
   updates.length = 0;
   fordError = null;
+  renewalSettings.state = null;
 });
 
 afterEach(async () => {
@@ -445,5 +467,156 @@ describe("the closing note is unsaved work until Back to Hub files it", () => {
     expect(filed).toEqual([
       expect.objectContaining({ noteContent: "Shoulder tender on chest press" }),
     ]);
+  });
+});
+
+describe("the packages card (consultation round, Sep 2026)", () => {
+  /* The sheet is a base-ui dialog, which wants both. */
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (!("ResizeObserver" in g)) {
+    g.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+  if (typeof window.matchMedia !== "function") {
+    window.matchMedia = ((q: string) => ({
+      matches: false,
+      media: q,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  }
+
+  const checked = { mindbodyServicesSyncedAt: "2026-09-23", mindbodyCommercialSyncedAt: "2026-09-23" };
+
+  function PackagesScreen({ who, coverage = "unknown" }: { who: Partial<Client>; coverage?: "complete" | "partial" | "unknown" }) {
+    return (
+      <VictoryHUDScreen
+        client={{ ...client, ...who } as Client}
+        session={{ ...session, hostedAtStudioId: "s1" } as WorkoutSession}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        coverage={coverage}
+        machines={[]}
+      />
+    );
+  }
+
+  const card = (host: ParentNode) => host.querySelector('[data-testid="packages-card"]');
+
+  it("shows a prospect the lengths and their prices, and opens the full sheet", async () => {
+    const host = await mount(<PackagesScreen who={checked} coverage="complete" />);
+    const c = card(host)!;
+    expect(c).toBeTruthy();
+    expect(c.textContent).toContain("Packages");
+    expect(c.textContent).toContain("Mindbody showed no package for Judy when it was last checked, Sep 23.");
+    expect(c.textContent).toContain("Committed · 12 months");
+    expect(c.textContent).toContain("$60 a session · $480 every 4 weeks");
+    await click(buttonByText(c, "Walk through the packages"));
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).toBeTruthy();
+    expect(dialog!.textContent).toContain("Every package is the same training");
+  });
+
+  it("gives a long-standing client the door and the sentence, but no price list on this screen", async () => {
+    const host = await mount(<PackagesScreen who={checked} coverage="partial" />);
+    const c = card(host)!;
+    expect(c.textContent).toContain("Mindbody showed no package for Judy");
+    expect(c.textContent).not.toContain("$");
+    expect(buttonByText(c, "Walk through the packages")).toBeTruthy();
+  });
+
+  it("says Journey hasn't checked yet, never 'no package', before Mindbody has been read", async () => {
+    const host = await mount(<PackagesScreen who={{}} />);
+    const c = card(host)!;
+    expect(c.textContent).toContain("Journey hasn't checked Mindbody for Judy's package yet.");
+    expect(c.textContent).not.toMatch(/no package|new|first/i);
+  });
+
+  it("is not drawn for a client with a live package: the Renewal conversation is the tool there", async () => {
+    const renewal = { cycleKey: "9001", situation: "on-track", flags: [], dataGaps: [] } as any;
+    const host = await mount(<PackagesScreen who={{ ...checked, renewal }} coverage="complete" />);
+    expect(card(host)).toBeNull();
+    expect(buttonByText(host, "Renewal conversation")).toBeTruthy();
+  });
+
+  it("is not drawn for a client who is away", async () => {
+    const renewal = { cycleKey: null, situation: "away", flags: [], dataGaps: [] } as any;
+    const host = await mount(<PackagesScreen who={{ ...checked, renewal }} coverage="complete" />);
+    expect(card(host)).toBeNull();
+  });
+
+  it("never shows a price it couldn't load", async () => {
+    renewalSettings.state = {
+      settings: (await import("../features/renewals/settings")).DEFAULT_RENEWAL_SETTINGS,
+      saved: false,
+      ownPackageTable: false,
+      forStudioId: "s1",
+      loading: false,
+      error: "Couldn't load",
+    };
+    const host = await mount(<PackagesScreen who={checked} coverage="complete" />);
+    const c = card(host)!;
+    expect(c.textContent).not.toContain("$");
+    // Without the table it can't tell a package name from a stray one, so it says so.
+    expect(c.textContent).toContain("Journey couldn't check Judy's package just now.");
+  });
+
+  it("tells a temporary profile's trainer the prices couldn't load, rather than showing the defaults", async () => {
+    renewalSettings.state = {
+      settings: (await import("../features/renewals/settings")).DEFAULT_RENEWAL_SETTINGS,
+      saved: false,
+      ownPackageTable: false,
+      forStudioId: "s1",
+      loading: false,
+      error: "Couldn't load",
+    };
+    const host = await mount(<PackagesScreen who={{ provisional: true }} coverage="unknown" />);
+    const c = card(host)!;
+    expect(c.textContent).toContain("A temporary profile");
+    expect(c.textContent).not.toContain("$");
+    expect(c.textContent).toContain("Couldn’t load this studio’s prices.");
+  });
+});
+
+describe("the post-session screen's small honesty fixes (packages round)", () => {
+  it("wraps a long machine name rather than cutting it off", async () => {
+    const host = await mount(
+      <VictoryHUDScreen
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[{ machineId: "m1", name: "Seated Leg Press With A Long Studio Name", outcome: "performed", weight: 180, count: 9 } as any]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        machines={[]}
+      />,
+    );
+    const name = Array.from(host.querySelectorAll("li span")).find((el) => el.textContent === "Seated Leg Press With A Long Studio Name")!;
+    expect(name).toBeTruthy();
+    expect(name.className).not.toContain("truncate");
+  });
+
+  it("never says Saved when the dose write failed", async () => {
+    const onDose = vi.fn(async () => false);
+    const host = await mount(<Screen onDose={onDose} />);
+    const radios = Array.from(host.querySelector('[data-testid="dose-dial"]')!.querySelectorAll('[role="radio"]'));
+    await click(radios[2]);
+    expect(onDose).toHaveBeenCalledWith(0);
+    expect(host.querySelector('[data-testid="dose-card"]')!.textContent).not.toContain("Saved");
   });
 });

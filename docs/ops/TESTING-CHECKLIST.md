@@ -1100,6 +1100,79 @@ booking today and a trainer who can run a session for that client.
   hint says what setting it will do. Once a cutover is set, a past booking with nothing
   logged in Journey stops counting as a visit from the next nightly run.
 
+## Round 17 — The packages screen · *Sep 24 2026, branch `packages-screen`*
+
+AJ: packages are not decided in the consultation, so a client with no
+package on file gets the package information on the post-session screen.
+The round document is `docs/rounds/2026-09-24-packages.md`. Needs a client
+with no package in Mindbody (a prospect on a free workout is ideal) and, for
+the last item, a studio leader.
+
+- [ ] **The card appears for a client with no package, and only then.** End a
+  session for a client Mindbody shows with no package: below the note and
+  FORD trays, "Packages at {studio}" with one sentence ("Mindbody showed no
+  package for Judy when it was last checked, Sep 23."). For a client with a
+  live package the card is absent and the Renewal conversation button is
+  there instead. *If it fails:* `features/packages/package-standing.ts`.
+- [ ] **A long-standing client gets the door, never a price list on this
+  screen.** For a FileMaker-era client with no package on file: the sentence
+  and Walk through the packages, and no dollar amounts on the card itself.
+- [ ] **Walk through the packages opens the sheet on 12 months, marked as
+  your recommendation.** The three lengths side by side; Committed pressed and
+  labelled with your first name. Nothing says "most popular".
+- [ ] **Every price is the studio's own.** Compare the three lengths with My
+  Studio → Studio → Renewals. A studio that never saved a table reads "Max
+  Strength's standard prices" under the title.
+- [ ] **Show the price as, and Paying.** A session / A week / Each payment
+  change every column and the big price. In full: the third pick reads "Paid
+  once", the big number is the whole amount once, the saving is said, and the
+  every-4-weeks steps disappear.
+- [ ] **The trainer notes never share the screen with the client's view.**
+  Trainer notes swaps the whole body: your recommendation (move it, clear it),
+  If money is the worry in AJ's order, the Academy's lines, These prices. Back
+  to the packages returns. On the client's view none of it is visible.
+- [ ] **Life happens.** Tap + four times: "4 weeks", the timeline hatches four
+  weeks, the sentence says the sessions take about 52 weeks and never expire.
+  The stepper stops at 0 and 16.
+- [ ] **After your last payment says only what the studio said.** With the
+  package's "When the payments finish" not set: "{studio} will explain what
+  happens when your payments finish." As a leader, set Committed to "It renews
+  automatically" in My Studio → Studio → Renewals and save; reopen the sheet:
+  "When the payments finish, Committed renews automatically", and Life
+  happens says it renews at week 48.
+- [ ] **Portrait and landscape.** One column on a portrait iPad (the lengths
+  still side by side), two in landscape; nothing cut off; every button easy to
+  hit. Light and dark.
+- [ ] **Two small fixes on the post-session screen.** A long machine name in
+  Today wraps instead of ending in "…"; the dose Dial shows "Saved" only after
+  it really saved (turn the iPad's wifi off, tap a dose: no "Saved").
+
+## Round 18 — A cross-train visitor finishes her session · *Sep 24 2026, branch `packages-screen`*
+
+Before this release a trainer at another studio could open a cross-train
+client and start her session, but Finish saved nothing. The fix is in the
+rules and in Finish; the entry is `docs/KNOWN-TRAPS.md#cross-train`. Needs a
+client approved to cross-train at a second studio, and a Life Transformer
+whose home is that second studio.
+
+- [ ] **The visitor's session saves.** Signed in as the visiting trainer, at
+  the second studio: start the client's session, log two or three machines,
+  Finish. The post-session screen appears with no error, and her History
+  (on either iPad) shows today's session with its sets.
+- [ ] **Her totals moved too.** On her profile the session count went up by
+  one and the last session is today; on the next session, the machines you
+  logged start from today's weights. *If the toast "Session saved. {name}'s
+  session count and last-time numbers didn't update." shows:* the rules on
+  the live project are older than this release - redeploy them.
+- [ ] **The visitor's Pulse lights the red flag.** As the visiting trainer,
+  finish a Pulse for her with a red answer (Notes & Profile -> Body & Pulse).
+  Her card on the Hub shows the red-flag chip, at either studio.
+- [ ] **The visitor still can't edit her record.** As the same visiting
+  trainer, open Notes & Profile: "Read only here · {home} keeps this record.
+  Notes you write still save." - no Edit, no Save bar.
+- [ ] **Her home studio is unchanged.** As a trainer at her home studio, the
+  record edits and saves as before, and a session there finishes as before.
+
 ---
 
 ## Findings log

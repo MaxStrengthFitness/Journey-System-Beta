@@ -101,7 +101,7 @@ export function mapMindbodySessions(sessions: any[], trainers: Trainer[]): Parti
   });
 }
 
-import { Firestore, writeBatch, doc, collection, serverTimestamp, increment } from 'firebase/firestore';
+import { Firestore, writeBatch, doc, collection, serverTimestamp, increment, updateDoc, type DocumentReference } from 'firebase/firestore';
 import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioTodayKey } from "./studio-time";
@@ -124,9 +124,30 @@ export interface PostSessionData {
 }
 
 /**
+ * Sessions whose client totals landed although the session itself was
+ * refused, so Finish's retry does not count them twice (completeWorkoutSession).
+ * Kept through a sign-out on purpose: it is about a session, not a person.
+ */
+const totalledSessionIds = new Set<string>();
+
+/**
  * Atomic Session Completion Engine
  * Consolidates session parameters, log entries, and machine setting updates
  * into a single writeBatch to prevent partial writes.
+ *
+ * The client's running totals are NOT in that batch either (Sep 24 2026).
+ * They are written right after it, on their own: a trainer cross-training at
+ * another studio found Finish refused in full, because the one refused write
+ * (the client's totals) took the session, every set and every setting down
+ * with it, and the session never ended. "Never block a save": the session is
+ * saved first, whatever happens to the totals, and `totalsSaved` says whether
+ * they landed so the trainer can be told. The rules now let an approved
+ * cross-train visitor move exactly these totals (firestore.rules,
+ * crossTrainSessionTotals); the split is what keeps any other refusal from
+ * costing a session. The machine weights the next session starts from
+ * (clientMachineSettings) stay IN the batch, so a refused total never leaves
+ * them stale. Both writes are queued before either is awaited, so a reload
+ * while offline replays both.
  *
  * The post-session note is NOT in the batch. It is written to the client's
  * Journal (journalEntries, origin post_session) after the batch commits, on
@@ -135,7 +156,8 @@ export interface PostSessionData {
  * the core first; notes are append-only (docs/ARCHITECTURE.md §1.2).
  *
  * Returns whether the note landed, so the caller can say so. `null` means
- * there was no note to write.
+ * there was no note to write. `totalsSaved` is the same for the client's
+ * totals: null when there was no client to total.
  */
 export async function completeWorkoutSession(
   db: Firestore,
@@ -149,8 +171,8 @@ export async function completeWorkoutSession(
   userId: string,
   /** Extra fields for the session document — the booking match and lateness (lib/session-timing.ts). */
   sessionExtras?: Record<string, unknown>,
-): Promise<{ noteSaved: boolean | null }> {
-  if (!currentSession?.id) return { noteSaved: null };
+): Promise<{ noteSaved: boolean | null; totalsSaved: boolean | null }> {
+  if (!currentSession?.id) return { noteSaved: null, totalsSaved: null };
   const batch = writeBatch(db);
   const homeStudioId = selectedClient?.homeStudioId || null;
 
@@ -247,12 +269,14 @@ export async function completeWorkoutSession(
     }
   }
 
-  // 3. Update client counters & metrics — from PERFORMED sets only. Every
+  // 3. Update client counters & metrics — from PERFORMED sets only.
+  //    Built here, written after the batch (see the header). Every
   // log is saved above (a practice set's numbers and a skip's reason are
   // history), but only a set to failure moves a lifetime total, becomes the
   // machine's current metrics or sets tomorrow's weight (set-outcome.ts).
   const performedLogs = sessionLogs.filter((l: any) => isPerformedLog(l));
 
+  let totalsWrite: { ref: DocumentReference; updates: Record<string, unknown> } | null = null;
   if (selectedClient && selectedClient.id) {
     let totalSessionReps = 0;
     let totalSessionVolume = 0;
@@ -362,16 +386,42 @@ export async function completeWorkoutSession(
       ),
     );
 
-    batch.update(clientRef, clientUpdates);
+    totalsWrite = { ref: clientRef, updates: clientUpdates };
   }
 
-  await batch.commit();
+  // The session, every set and every setting: one all-or-nothing commit.
+  // The totals are queued straight after it, BEFORE either is waited on:
+  // offline, a commit's promise waits for the server, and a reload in that
+  // wait replays only what was already queued (the persistent cache). Queued
+  // together, a reload replays both. A refused total is reported, never
+  // thrown: the session is saved regardless.
+  const committed = batch.commit();
+  const totals: Promise<boolean | null> =
+    totalsWrite && !totalledSessionIds.has(currentSession.id)
+      ? updateDoc(totalsWrite.ref, totalsWrite.updates).then(
+          () => true,
+          (err) => {
+            console.error('[finish] the session saved, but the client totals did not', err);
+            return false;
+          },
+        )
+      : Promise.resolve(totalsWrite ? true : null);
+  try {
+    await committed;
+  } catch (err) {
+    // The totals are their own write, so they may have landed although the
+    // session was refused. Remember it, so the trainer's retry of Finish
+    // does not count this session twice.
+    if ((await totals) === true) totalledSessionIds.add(currentSession.id);
+    throw err;
+  }
+  const totalsSaved = await totals;
 
   // 4. The post-session note, into the Journal — after the core is saved,
   //    never inside the batch (see the header comment). The author is the
   //    signed-in uid, which is what the journalEntries rule pins authorId to.
   const noteBody = (postData?.noteContent || '').trim();
-  if (!noteBody || !selectedClient?.id) return { noteSaved: null };
+  if (!noteBody || !selectedClient?.id) return { noteSaved: null, totalsSaved };
   try {
     const initials = (authTrainer?.initials || (authTrainer?.fullName || '').substring(0, 2) || '??').toUpperCase();
     const id = await createJournalEntry(
@@ -389,9 +439,9 @@ export async function completeWorkoutSession(
         origin: 'post_session',
       },
     );
-    return { noteSaved: id !== null };
+    return { noteSaved: id !== null, totalsSaved };
   } catch (err) {
     console.error('[finish] post-session note did not reach the Journal', err);
-    return { noteSaved: false };
+    return { noteSaved: false, totalsSaved };
   }
 }

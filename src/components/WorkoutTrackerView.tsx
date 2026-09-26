@@ -1741,7 +1741,7 @@ export function WorkoutTrackerView({
         : undefined;
 
       const finalLogs = [...stamped, ...notReached];
-      await completeWorkoutSession(
+      const finished = await completeWorkoutSession(
         db,
         currentSession,
         selectedClient,
@@ -1753,6 +1753,14 @@ export function WorkoutTrackerView({
         user.uid,
         sessionExtras,
       );
+      /* The session, its sets and the machine weights are saved whatever
+         happened to the totals (lib/sync-utils.ts); only the client's running
+         totals can be refused. Say so in one line. */
+      if (finished.totalsSaved === false) {
+        toastError(
+          `Session saved. ${clientFirstName(selectedClient, "The client")}'s session count and last-time numbers didn't update.`,
+        );
+      }
 
       /* The wrap-up note is labelled "something the next trainer should
          know" — and until now it reached only the session document, which
@@ -1836,12 +1844,15 @@ export function WorkoutTrackerView({
 
   /** The dose Dial writes the moment it is tapped — no save button. A cleared
       dial stores nothing (`deleteField`): untouched is "not judged", never 0. */
-  const savePostSessionDose = async (dose: DialValue | null) => {
-    if (!postSession?.session.id) return;
+  const savePostSessionDose = async (dose: DialValue | null): Promise<boolean> => {
+    if (!postSession?.session.id) return false;
     try {
       await updateDoc(doc(db, "sessions", postSession.session.id), { dose: dose === null ? deleteField() : dose });
+      return true;
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, "sessions");
+      // The Dial must not say "Saved" over a write that failed.
+      return false;
     }
   };
 

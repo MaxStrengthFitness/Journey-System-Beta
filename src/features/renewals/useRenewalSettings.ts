@@ -9,13 +9,25 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../firebase";
-import { DEFAULT_RENEWAL_SETTINGS, normalizeRenewalSettings } from "./settings";
+import { DEFAULT_RENEWAL_SETTINGS, hasOwnPackageTable, normalizeRenewalSettings } from "./settings";
 import type { RenewalNamesSeen, RenewalSettings } from "./types";
 
 export interface RenewalSettingsState {
   settings: RenewalSettings;
   /** False until the studio has saved its own settings at least once. */
   saved: boolean;
+  /**
+   * True only when the saved document holds a package table of its own.
+   * `saved` alone is not enough: a studio that changed one threshold has a
+   * document, and still shows Max Strength's standard prices.
+   */
+  ownPackageTable: boolean;
+  /**
+   * The studio these settings were read for; null before the first answer.
+   * For one render after a studio switch the previous studio's table is
+   * still here, so a screen that shows prices checks this matches.
+   */
+  forStudioId: string | null;
   loading: boolean;
   /** A read that failed. The defaults are shown meanwhile — say so, don't hide it. */
   error: string | null;
@@ -29,22 +41,34 @@ export function useRenewalSettings(studioId: string | null | undefined): Renewal
   const [state, setState] = useState<RenewalSettingsState>({
     settings: DEFAULT_RENEWAL_SETTINGS,
     saved: false,
+    ownPackageTable: false,
+    forStudioId: null,
     loading: Boolean(studioId),
     error: null,
   });
 
   useEffect(() => {
     if (!studioId) {
-      setState({ settings: DEFAULT_RENEWAL_SETTINGS, saved: false, loading: false, error: null });
+      setState({
+        settings: DEFAULT_RENEWAL_SETTINGS,
+        saved: false,
+        ownPackageTable: false,
+        forStudioId: null,
+        loading: false,
+        error: null,
+      });
       return;
     }
     setState((prev) => ({ ...prev, loading: true, error: null }));
     return onSnapshot(
       renewalSettingsRef(studioId),
       (snap) => {
+        const raw = snap.exists() ? snap.data() : undefined;
         setState({
-          settings: normalizeRenewalSettings(snap.exists() ? snap.data() : undefined),
+          settings: normalizeRenewalSettings(raw),
           saved: snap.exists(),
+          ownPackageTable: hasOwnPackageTable(raw),
+          forStudioId: studioId,
           loading: false,
           error: null,
         });
@@ -53,6 +77,7 @@ export function useRenewalSettings(studioId: string | null | undefined): Renewal
         console.warn("[renewals] settings read failed:", err);
         setState((prev) => ({
           ...prev,
+          forStudioId: studioId,
           loading: false,
           error: "Couldn't load this studio's renewal settings. Showing the defaults.",
         }));

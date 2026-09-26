@@ -40,6 +40,15 @@ export interface PackageTier {
    * capitals and extra spaces; see normalizeMindbodyName().
    */
   mindbodyNames: string[];
+  /**
+   * Whether this package renews by itself when its payments finish (AJ, Sep
+   * 24 2026: "auto renew isn't on everywhere but some studios do have it").
+   * Absent means the studio hasn't said, and no screen says either way. Only
+   * the packages screen reads it; the renewal engine still reads Mindbody's
+   * own flag on the contract. Sessions never expire at any studio (AJ, same
+   * day), so there is no setting for that.
+   */
+  renewsAutomatically?: boolean;
 }
 
 export type PayAsYouGoCountsAs = "retained" | "lost";

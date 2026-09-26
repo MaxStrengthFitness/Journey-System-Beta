@@ -3,6 +3,7 @@ import {
   DEFAULT_PACKAGES,
   DEFAULT_RENEWAL_SETTINGS,
   buildPackageNameIndex,
+  hasOwnPackageTable,
   newPackageTier,
   normalizeMindbodyName,
   normalizeRenewalSettings,
@@ -131,5 +132,44 @@ describe("validateRenewalSettings", () => {
 describe("sessionsPerPayment", () => {
   it("is 8 on every default package", () => {
     expect(DEFAULT_PACKAGES.map(sessionsPerPayment)).toEqual([8, 8, 8]);
+  });
+});
+
+describe("whether a package renews by itself (packages screen, Sep 24 2026)", () => {
+  it("keeps a studio's yes or no on each package", () => {
+    const s = normalizeRenewalSettings({
+      packages: [
+        { ...DEFAULT_PACKAGES[0], renewsAutomatically: true },
+        { ...DEFAULT_PACKAGES[1], renewsAutomatically: false },
+        DEFAULT_PACKAGES[2],
+      ],
+    });
+    expect(s.packages.map((p) => p.renewsAutomatically)).toEqual([true, false, undefined]);
+    expect("renewsAutomatically" in s.packages[2]).toBe(false);
+  });
+
+  it("drops anything that isn't a yes or a no, so an odd value never reads as an answer", () => {
+    const s = normalizeRenewalSettings({ packages: [{ ...DEFAULT_PACKAGES[0], renewsAutomatically: "yes" }] });
+    expect("renewsAutomatically" in s.packages[0]).toBe(false);
+  });
+
+  it("leaves the standard table exactly as it was", () => {
+    for (const p of DEFAULT_PACKAGES) expect("renewsAutomatically" in p).toBe(false);
+  });
+});
+
+describe("hasOwnPackageTable", () => {
+  it("is false for no document, or one that saved only a threshold", () => {
+    expect(hasOwnPackageTable(undefined)).toBe(false);
+    expect(hasOwnPackageTable({ conversationAtSessionsLeft: 12 })).toBe(false);
+  });
+
+  it("is false when every stored row was unusable, so the standard prices came back", () => {
+    expect(hasOwnPackageTable({ packages: [{ label: "", sessions: 0 }] })).toBe(false);
+    expect(hasOwnPackageTable({ packages: "not a list" })).toBe(false);
+  });
+
+  it("is true once the studio stored a usable row of its own", () => {
+    expect(hasOwnPackageTable({ packages: [DEFAULT_PACKAGES[0]] })).toBe(true);
   });
 });

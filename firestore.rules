@@ -351,6 +351,35 @@ service cloud.firestore {
     }
 
     /*
+     * A cross-train visitor's session moving the client's totals (Sep 24
+     * 2026). The caller works at a studio the client is approved to train at
+     * (the three list checks of clientIsReadableBy, which let them READ the
+     * client), and the write touches only what a session moves:
+     *   Finish      completedSessions, sessionCount, lastSessionDate,
+     *               updatedAt, lifetimeReps, lifetimeWeight,
+     *               currentMachineMetrics, consultationCompleted,
+     *               trainerTally, trainerTallyUpdatedAt, topTrainerId,
+     *               topTrainerName, topTrainerSessions, machineStats
+     *   Start       isRoutineBActive, firstSessionDate
+     *   History     the same counters, given back on a delete or an edit
+     *   Pulse       subjectiveSnapshot (finalizeCheckIn: the summary of the
+     *               Pulse the visitor may already write to progressReports)
+     * Pure map work on the already-read trainer: no document read.
+     */
+    function crossTrainSessionTotals(c, t) {
+      return t != null
+        && (c.get('approvedCrossTrainStudioIds', []).hasAny([t.get('primaryHomeStudioId', '')])
+            || c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('accessibleStudioIds', []))
+            || c.get('approvedCrossTrainStudioIds', []).hasAny(t.get('activeGuestStudioIds', [])))
+        && request.resource.data.diff(c).affectedKeys().hasOnly([
+             'completedSessions', 'sessionCount', 'lastSessionDate', 'updatedAt',
+             'lifetimeReps', 'lifetimeWeight', 'currentMachineMetrics', 'consultationCompleted',
+             'trainerTally', 'trainerTallyUpdatedAt', 'topTrainerId', 'topTrainerName',
+             'topTrainerSessions', 'machineStats', 'isRoutineBActive', 'firstSessionDate',
+             'subjectiveSnapshot']);
+    }
+
+    /*
      * The one document read on this path. Guarded on a non-empty id first:
      * isTrainerOfClient('') builds the malformed path /documents/clients/ and
      * relies on short-circuit to never get there.
@@ -1355,9 +1384,21 @@ service cloud.firestore {
 
       // `resource.data` is the EXISTING document: a trainer may only edit a
       // client their own studio holds, whatever the incoming payload claims.
+      //
+      // The one exception is a CROSS-TRAIN VISITOR's session (Sep 24 2026).
+      // A trainer at a studio the client is approved to train at
+      // (approvedCrossTrainStudioIds, the same list that lets them read the
+      // client) may move exactly the totals a session moves, and the summary
+      // of a Pulse they finish, and nothing else: not the name, the home
+      // studio, the approval list, the notes or the medical history.
+      // Without it a visitor's Finish was refused in
+      // full and the session never ended (docs/KNOWN-TRAPS.md, cross-train).
+      // Checked before the home-studio test so the visitor's path stays cheap
+      // inside a finish batch of eight machines.
       allow update: if isValidClient(request.resource.data)
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['renewal'])
                     && (isSuperAdmin()
+                        || crossTrainSessionTotals(resource.data, callerTrainer())
                         || (isAnyAuthenticatedTrainer()
                             && isTrainerOfStudio(
                                  getStudioIdFromData(resource.data))));
