@@ -21,6 +21,7 @@
  */
 
 import type { Client, MindbodyContract, MindbodyMembership, ScheduleEntry } from "../../types";
+import { lockSaysNothingBills } from "../renewals/auto-renew";
 
 export type PackageSource = "mindbody-membership" | "mindbody-pass" | "mindbody-contract" | "app" | "none";
 
@@ -40,7 +41,10 @@ export interface PackageSummary {
    * Mindbody's own flag on the newest active contract (`isAutoRenewing`).
    * Auto-renew is on at some studios and not at others (AJ, Sep 24 2026), and
    * an active autopay only means the monthly payments are running, so null
-   * when Mindbody hasn't said — never a guess from autopay.
+   * when Mindbody hasn't said — never a guess from autopay. Null, too, under
+   * a coach's paid-in-full or banked-sessions lock: nothing bills, so the
+   * header never says "Auto-renews" where the package card says "Payments
+   * finish" (renewals/auto-renew.ts, step 1).
    */
   autoRenews: boolean | null;
 }
@@ -96,7 +100,10 @@ export function resolvePackage(client: Client | null | undefined, upcoming: Sche
   if (!client) return none;
 
   const contract = primaryContract(client);
-  const autoRenews = typeof contract?.isAutoRenewing === "boolean" ? contract.isAutoRenewing : null;
+  const autoRenews =
+    typeof contract?.isAutoRenewing === "boolean" && !lockSaysNothingBills(client.contractTierOverride)
+      ? contract.isAutoRenewing
+      : null;
 
   /* ---- 1. membership with a count (pull sync) ---- */
   let membershipHit: { m: MindbodyMembership; remaining: number; at: number } | null = null;

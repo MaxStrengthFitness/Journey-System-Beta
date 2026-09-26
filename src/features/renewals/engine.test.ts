@@ -326,15 +326,44 @@ describe("auto-renew, decided in one place (AJ, Sep 25 2026)", () => {
       expect(snap.autoRenewsFrom, payment).toBeNull();
       // The answer without her lock or her mark: what renewalOf rebuilds from once the lock comes off.
       expect(snap.autoRenewsInherited, payment).toEqual({ renews: true, from: "mindbody" });
-      // No "Auto-renews" claim; the warning it always had stays (unknown still warns).
+      // No "Auto-renews" claim, and no "before the charge" warning: nothing bills, so no charge is coming.
       expect(snap.situation, payment).toBe("will-bank");
-      expect(snap.chargeWarning, payment).toBe(true);
+      expect(snap.chargeWarning, payment).toBe(false);
     }
     const studioOn = build({ settings: { packagesRenewAutomatically: true }, client: lock("pif") });
     expect(studioOn.autoRenews).toBeNull();
     expect(studioOn.autoRenewsInherited).toEqual({ renews: true, from: "studio" });
-    // A monthly lock still bills: the order as ever.
-    expect(build({ client: lock("monthly") }).autoRenewsFrom).toBe("default");
+    expect(studioOn.chargeWarning).toBe(false);
+    // A monthly lock still bills: the order as ever, and its warning.
+    const monthly = build({ client: lock("monthly") });
+    expect(monthly.autoRenewsFrom).toBe("default");
+    expect(monthly.chargeWarning).toBe(true);
+  });
+
+  it("never brings a warning back under a lock where Mindbody, the studio, the package or a mark said no", () => {
+    const pif = {
+      contractTierOverride: { term: 12 as const, payment: "pif" as const, setAt: "2026-09-10T15:00:00.000Z", setByName: "AJ" },
+    };
+    const noPackage = DEFAULT_RENEWAL_SETTINGS.packages.map((p) =>
+      p.key === "committed" ? { ...p, renewsAutomatically: false } : p,
+    );
+    const cases: Array<[string, Parameters<typeof build>[0]]> = [
+      ["Mindbody no", { contract: { isAutoRenewing: false } }],
+      ["studio OFF", { settings: { packagesRenewAutomatically: false } }],
+      ["package no", { settings: { packages: noPackage } }],
+      ["mark no", { client: mark(false) }],
+    ];
+    for (const [name, over] of cases) {
+      // Without the lock: the "no" switches the warning off.
+      const bare = build(over);
+      expect(bare.autoRenews, name).toBe(false);
+      expect(bare.chargeWarning, name).toBe(false);
+      // With it: no answer, and still no warning.
+      const locked = build({ ...over, client: { ...over?.client, ...pif } });
+      expect(locked.autoRenews, name).toBeNull();
+      expect(locked.situation, name).toBe("will-bank");
+      expect(locked.chargeWarning, name).toBe(false);
+    }
   });
 
   it("says nothing of auto-renew for a package paid in full, whatever a mark says", () => {

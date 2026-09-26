@@ -113,7 +113,7 @@ describe("RenewalSettingsPanel — the studio's auto-renewal answer", () => {
     const host = await mount(DEFAULT_RENEWAL_SETTINGS);
     await choose(select(host, "renewals-autorenew"), "no");
     expect(host.textContent).toContain(
-      "Clients with no answer from Mindbody and no mark of their own will read as not renewing, and their before-the-charge warnings stop.",
+      "Clients on a package set to “Same as the studio”, with no answer from Mindbody and no mark of their own, will read as not renewing, and their before-the-charge warnings stop. A package set to “It renews automatically” still renews.",
     );
     // The package rows now follow the studio's No.
     expect(options(committed(host))[0]).toEqual(["", "Same as the studio (doesn't renew)"]);

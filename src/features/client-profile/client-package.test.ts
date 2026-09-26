@@ -115,6 +115,23 @@ describe("resolvePackage", () => {
     expect(renews({})).toBeNull();
   });
 
+  it("claims no auto-renewal under a coach's paid-in-full or banked-sessions lock, whatever Mindbody's flag says", () => {
+    const locked = (payment: "pif" | "sessions-only" | "monthly") =>
+      resolvePackage(
+        baseClient({
+          contractTierOverride: { term: 12, payment, setAt: "2026-09-25T14:00:00.000Z" },
+          mindbodyContracts: {
+            "77": { clientContractId: 77, contractName: "12-Month Autopay", status: "Active", isAutoRenewing: true, startDate: "2026-01-01T00:00:00Z" },
+          },
+        }),
+      );
+    expect(locked("pif").autoRenews).toBeNull();
+    expect(remainingLabel({ ...locked("pif"), remaining: null })).toBeNull();
+    expect(locked("sessions-only").autoRenews).toBeNull();
+    // A monthly lock still bills: Mindbody's flag as ever.
+    expect(locked("monthly").autoRenews).toBe(true);
+  });
+
   it("falls back to the app's own package tier and remaining count", () => {
     const pkg = resolvePackage(baseClient({ packageTier: "6-Month", remainingSessions: 7 }));
     expect(pkg).toMatchObject({ source: "app", label: "6-Month", remaining: 7, fromMindbody: false, autoRenews: null });

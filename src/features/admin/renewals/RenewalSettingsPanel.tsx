@@ -195,8 +195,9 @@ export function RenewalSettingsPanel({
           </AdminGrid>
           {turningOff && (
             <AdminNotice tone="info">
-              Clients with no answer from Mindbody and no mark of their own will read as not renewing, and their
-              before-the-charge warnings stop. If contracts already sold still renew, leave this on or mark those clients
+              Clients on a package set to “Same as the studio”, with no answer from Mindbody and no mark of their own,
+              will read as not renewing, and their before-the-charge warnings stop. A package set to “It renews
+              automatically” still renews. If contracts already sold still renew, leave this on or mark those clients
               on their profiles.
             </AdminNotice>
           )}

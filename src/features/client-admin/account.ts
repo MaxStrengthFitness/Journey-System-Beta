@@ -752,6 +752,13 @@ export interface AutoRenewView {
   metas: string[];
   /** "Remove this mark" is offered: a mark for this contract is saved or staged. */
   canClear: boolean;
+  /**
+   * What "Remove this mark" stages: null, or — when the saved mark was made
+   * on an earlier contract — that saved mark itself. The decision already
+   * ignores it, so removing a tap only undoes the tap: the form is clean
+   * again, and the record of the earlier contract's mark is kept.
+   */
+  clearTo: AutoRenewMark | null;
   /** The contract a tap marks. */
   contractId: string | null;
 }
@@ -764,6 +771,7 @@ const NO_AUTO_RENEW_VIEW: AutoRenewView = {
   source: null,
   metas: [],
   canClear: false,
+  clearTo: null,
   contractId: null,
 };
 
@@ -830,6 +838,7 @@ export function autoRenewView({
     source: text,
     metas: [],
     canClear: false,
+    clearTo: null,
     contractId,
   });
   // Mindbody owns contracts: where it has said, the box is its answer, in words.
@@ -851,6 +860,7 @@ export function autoRenewView({
       source: null,
       metas: ["Auto-renewal can be marked here after tonight's renewal run."],
       canClear: false,
+      clearTo: null,
       contractId,
     };
   }
@@ -918,8 +928,10 @@ export function autoRenewView({
     const who = savedMark.setByName?.trim();
     metas.push(`${who ? `${who}'s mark` : "The last mark"} was for the contract before this one.`);
   }
-  // Saved, and the stored nightly snapshot still says otherwise: the lists catch up tonight.
-  if (!staged && (client.renewal?.autoRenews ?? null) !== (saved.autoRenews ?? null)) {
+  // Saved, and the stored nightly snapshot still says otherwise: the lists
+  // catch up tonight. "Saved" is the RECORD — its own lock, not the form's —
+  // so a lock only staged to come off never claims a catch-up.
+  if (!staged && (client.renewal?.autoRenews ?? null) !== (renewalOf(client)?.autoRenews ?? null)) {
     metas.push("The renewal lists catch up tonight.");
   }
 
@@ -932,6 +944,8 @@ export function autoRenewView({
     source,
     metas,
     canClear: pendingHere,
+    // Removing a tap over an earlier contract's saved mark puts that mark back.
+    clearTo: client.autoRenewMark && !markFor(client.autoRenewMark, contractId) ? client.autoRenewMark : null,
     contractId,
   };
 }
@@ -1010,12 +1024,20 @@ function eraTile(prior: PriorHistory | null, coverage: HistoryCoverage): Timelin
  * the prior record's sessions, or — with no record and a story Journey does
  * not hold whole — a "Before Journey" tile, so the list is never read as
  * her whole history. Month labels are Mindbody's UTC days.
+ *
+ * `lock` is the tier lock as the form holds it: under one that says paid in
+ * full or banked sessions, nothing bills, so a running or coming contract's
+ * tile never says "Auto-renews" beside the card's "Payments finish"
+ * (renewals/auto-renew.ts, step 1). An ended contract's tile keeps
+ * Mindbody's record of it.
  */
 export function membershipTimeline(
   rows: readonly ContractTermRow[],
   prior: PriorHistory | null,
   coverage: HistoryCoverage,
+  lock: ContractTierOverride | null = null,
 ): TimelineTile[] {
+  const nothingBills = lockSaysNothingBills(lock);
   const era = eraTile(prior, coverage);
   const ordered = [...rows].sort((a, b) => {
     const at = a.start?.getTime() ?? null;
@@ -1039,7 +1061,7 @@ export function membershipTimeline(
       pills: [
         row.tier?.term ? `${row.tier.term} mo` : null,
         row.kind === "paid-in-full" ? "Paid in full" : null,
-        row.autoRenews ? "Auto-renews" : null,
+        row.autoRenews && !(nothingBills && (row.status === "active" || row.status === "upcoming")) ? "Auto-renews" : null,
         row.boughtOnline ? "Bought online" : null,
       ].filter((p): p is string => !!p),
       sessions:
@@ -1198,7 +1220,7 @@ export function accountLede(
   const how = !canEdit
     ? `Read only here: ${p.possessive} home studio keeps the record.`
     : linked
-      ? `The nickname, how ${p.subject} found us, where ${p.subject} can train, the tier lock and auto-renewal are marked here; everything else changes in Mindbody and arrives with the next sync.`
+      ? `The nickname, how ${p.subject} found us, where ${p.subject} can train, the tier lock and whether ${p.subject} ${agree(p, "is", "are")} on auto-renewal are changed here; everything else changes in Mindbody and arrives with the next sync.`
       : `Mindbody does not hold ${p.object} yet, so ${p.possessive} details are typed here until ${p.subject} ${agree(p, "is", "are")} linked.`;
   return `${opening} ${how}`;
 }

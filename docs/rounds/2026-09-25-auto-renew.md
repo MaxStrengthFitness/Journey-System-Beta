@@ -102,7 +102,8 @@ as "nothing", so an untick over an empty field would never be saved
   Mindbody." A reader who may not change the record (a cross-train studio)
   gets the answer in words. No box for paid in full, banked sessions, or a
   paid-in-full or banked-sessions lock (staged or saved), and under such a
-  lock no screen says "Auto-renews".
+  lock no screen says "Auto-renews" (the contract history's tiles and the
+  header included) and nothing warns "before the charge".
 - **"Payments finish"** now survives only for an unmatched package, under a
   coach's paid-in-full or banked-sessions lock over a contract Mindbody still
   shows running, and for a snapshot from before the first nightly run. At a
@@ -149,7 +150,7 @@ Known lags:
 | | |
 | --- | --- |
 | Typecheck | 4 (baseline) |
-| Suite | 5,584 passing in 349 files after the review's fixes, 5,575 before them (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
+| Suite | 5,593 passing in 350 files after the review's second round of fixes, 5,584 in 349 after the first, 5,575 before them (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
 | Rules tests | 168 passing on the local emulator (162 before); AJ's `npm run test:rules` is the one that counts |
 | Build | green; the nightly renewals job bundles with the new engine |
 | Case duplicates | none |
@@ -172,7 +173,11 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
    golive` does not ask for this; it prints it as its last line, after the
    push.
 3. Until the first nightly run, the box says "Auto-renewal can be marked here
-   after tonight's renewal run" on every client.
+   after tonight's renewal run" on every monthly client whose contract
+   Mindbody hasn't flagged, to a reader who may change the record. A flagged
+   one shows Mindbody's answer in a line ("On auto-renewal · Mindbody's
+   contract says so"); paid in full, banked sessions and a reader who may not
+   change the record show nothing.
 4. The first nightly run rewrites every client's snapshot once (version 2).
    Outcomes are untouched.
 5. The next morning, spot-check one franchise client and one corporate client
@@ -203,6 +208,42 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
 - AJ's second message is quoted word for word, and the business docs keep
   "confirmed" apart from "AJ believes". The lean-sync round points up to its
   shipping step, and `golive` prints it.
+
+## The review's fixes (round 2)
+
+- **No "before the charge" warning under a paid-in-full or banked-sessions
+  lock.** Round 1 made the lock's answer "none", but the warning was only
+  switched off by a "no", so the lock brought it back where Mindbody, the
+  studio, the package or a mark had said no — at a corporate studio switched
+  off, a locked client got a "Before the charge" row and a post-session
+  prompt that an identical unlocked client didn't. The lock means nothing
+  bills, so the engine and `renewalOf` now give no warning under it, and a
+  lock saved today switches it off at once. The "Before the charge" lane's
+  hint ("the package renews automatically") is true of every row again.
+- **"Remove this mark" over a mark from an earlier contract** puts that saved
+  mark back instead of clearing it. Clearing it left a change that couldn't
+  be undone (the Unsaved chip, the leave warning), and saving it deleted the
+  only record of the earlier contract's mark.
+- **"The renewal lists catch up tonight"** compares last night's snapshot
+  with the SAVED record, so a lock only staged to come off no longer claims a
+  catch-up that discarding would cancel.
+- **No "Auto-renews" on the contract history under a lock.** The tile of a
+  running or coming contract drops Mindbody's "Auto-renews" pill under a
+  paid-in-full or banked-sessions lock (staged or saved), and so does the
+  profile header's no-count fallback, so the card never says "Payments
+  finish" above an "Auto-renews" tile. An ended contract's tile keeps
+  Mindbody's record.
+- **The switch-off notice** names the package override: clients on a package
+  set to "Same as the studio" stop reading as renewing; a package set to "It
+  renews automatically" still renews.
+- **The Account lede** says "whether she is on auto-renewal are changed
+  here", not "auto-renewal are marked here".
+- **Tests** pin each fix, and `useLiveRenewal` is mounted for the first time:
+  a failed settings read works out no live renewal, and the fallback is
+  `renewalOf(client)`, never the raw stored snapshot.
+- **The iPad walkthrough** (Round 17's "After your last payment", and a new
+  Round 20) follows the studio's answer, and shipping note 3 says which
+  clients show the "after tonight's run" note.
 
 ## Undo
 
@@ -241,8 +282,8 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
     auto-renewal itself is changed in Mindbody."
 12. Can every studio really turn auto-renewal off in Mindbody? You said you
     believe so; the round assumes it (a studio's answer is Yes or No).
-13. A coach's paid-in-full or banked-sessions lock now means "no answer",
-    even where Mindbody's contract says it auto-renews (the lock is there
-    because Mindbody's reading is wrong for her). The before-the-charge
-    warning it had before this round stays on. OK, or should the lock also
-    turn that warning off?
+13. A coach's paid-in-full or banked-sessions lock now means "no answer" and
+    no before-the-charge warning, even where Mindbody's contract says it
+    auto-renews (the lock is there because Mindbody's reading is wrong for
+    her, and paid in full means nothing more is charged). Before this round
+    a lock over a contract Mindbody showed running still warned. OK?

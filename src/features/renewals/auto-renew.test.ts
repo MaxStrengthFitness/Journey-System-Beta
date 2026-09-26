@@ -208,25 +208,46 @@ describe("renewalOf — one client's renewal, with the mark and Mindbody as they
     expect(r.autoRenewsInherited).toEqual({ renews: false, from: "mindbody" });
   });
 
-  it("claims no renewal under a saved paid-in-full lock, keeps the answer without it, and never turns a warning on or off for it", () => {
+  it("claims no renewal under a saved paid-in-full lock, keeps the answer without it, and gives no warning under it", () => {
     for (const payment of ["pif", "sessions-only"] as const) {
       const r = renewalOf(client({ contractTierOverride: lock(payment), autoRenewMark: mark(true) }))!;
       expect(r.autoRenews, payment).toBeNull();
       expect(r.autoRenewsFrom, payment).toBeNull();
       expect(r.autoRenewsInherited, payment).toEqual({ renews: true, from: "studio" });
-      expect(r.chargeWarning, payment).toBe(true);
+      // Nothing bills, so no charge is coming: the lock saved today switches the warning off at once.
+      expect(r.chargeWarning, payment).toBe(false);
     }
-    // As the engine wrote it under the lock: nothing changes.
+    // As the engine writes it under the lock: nothing changes.
     const stored = client({
-      renewal: snapshot({ autoRenews: null, autoRenewsFrom: null }),
+      renewal: snapshot({ autoRenews: null, autoRenewsFrom: null, chargeWarning: false }),
       contractTierOverride: lock("pif"),
     });
     expect(renewalOf(stored)).toBe(stored.renewal);
-    // The lock comes off: the answer it had without it, at once.
-    expect(renewalOf({ ...stored, contractTierOverride: null })!.autoRenews).toBe(true);
+    // The lock comes off: the answer it had without it, at once; the warning waits for the night.
+    const unlocked = renewalOf({ ...stored, contractTierOverride: null })!;
+    expect(unlocked.autoRenews).toBe(true);
+    expect(unlocked.chargeWarning).toBe(false);
     // A monthly lock bills: no change.
     const monthly = client({ contractTierOverride: lock("monthly") });
     expect(renewalOf(monthly)).toBe(monthly.renewal);
+  });
+
+  it("never brings a warning back under a lock where Mindbody or the studio said no", () => {
+    const mindbodyNo = client({
+      renewal: snapshot({ autoRenews: false, autoRenewsFrom: "mindbody", autoRenewsInherited: { renews: false, from: "mindbody" }, chargeWarning: false }),
+      contractTierOverride: lock("pif"),
+    });
+    expect(renewalOf(mindbodyNo)!.autoRenews).toBeNull();
+    expect(renewalOf(mindbodyNo)!.chargeWarning).toBe(false);
+    const studioOff = client({
+      renewal: snapshot({ autoRenews: false, autoRenewsFrom: "studio", autoRenewsInherited: { renews: false, from: "studio" }, chargeWarning: false }),
+      contractTierOverride: lock("pif"),
+    });
+    expect(renewalOf(studioOff)!.autoRenews).toBeNull();
+    expect(renewalOf(studioOff)!.chargeWarning).toBe(false);
+    // A stored warning under a lock (a snapshot from before the lock rule) is switched off too.
+    const old = client({ renewal: snapshot({ autoRenews: null, autoRenewsFrom: null, chargeWarning: true }), contractTierOverride: lock("pif") });
+    expect(renewalOf(old)!.chargeWarning).toBe(false);
   });
 
   it("rebuilds the standard and an unmatched package from last night's inherited answer", () => {

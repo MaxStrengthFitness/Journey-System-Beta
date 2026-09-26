@@ -190,7 +190,8 @@ function PackageCard({
   // The form holds the unsaved lock (null once it is taken off), the client the saved one.
   const pendingOverride: ContractTierOverride | null =
     "contractTierOverride" in formData ? formData.contractTierOverride ?? null : client.contractTierOverride ?? null;
-  // The same for the auto-renewal mark (null once "Remove this mark" is tapped).
+  // The same for the auto-renewal mark (null once "Remove this mark" is
+  // tapped, or the saved mark back when that one was an earlier contract's).
   const pendingMark: AutoRenewMark | null =
     "autoRenewMark" in formData ? formData.autoRenewMark ?? null : client.autoRenewMark ?? null;
   const view = useMemo(
@@ -203,8 +204,8 @@ function PackageCard({
   );
   const rows = useMemo(() => buildContractHistory(client, today), [client, today]);
   const tiles = useMemo(
-    () => membershipTimeline(rows, priorHistoryOf(client), coverage),
-    [rows, client, coverage],
+    () => membershipTimeline(rows, priorHistoryOf(client), coverage, pendingOverride),
+    [rows, client, coverage, pendingOverride],
   );
   const dirty = isDirty("contractTierOverride") || isDirty("autoRenewMark");
 
@@ -328,7 +329,7 @@ function PackageCard({
                 </Pick>
               ) : null}
               {renew.canClear ? (
-                <Btn variant="quiet" icon={Undo2} onClick={() => updateField("autoRenewMark", null)}>
+                <Btn variant="quiet" icon={Undo2} onClick={() => updateField("autoRenewMark", renew.clearTo)}>
                   {AUTO_RENEW_CLEAR_LABEL}
                 </Btn>
               ) : null}

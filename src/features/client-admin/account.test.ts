@@ -609,6 +609,31 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
       source: "Westlake's packages renew automatically, so this starts ticked. Untick if she isn't on auto-renewal.",
     });
     expect(v.metas).toEqual([BILLING, "AJ's mark was for the contract before this one."]);
+    // Removing a tap made over it puts the earlier contract's mark back, not null.
+    expect(v.clearTo).toEqual(mark(false, "old"));
+    const tapped = view(on({ renews: true, from: "studio" }, { autoRenewMark: mark(false, "old") }), { pendingMark: mark(false) });
+    expect(tapped).toMatchObject({ canClear: true, clearTo: mark(false, "old") });
+    // A saved mark for THIS contract is removed outright.
+    expect(view(on({ renews: true, from: "studio" }, { autoRenewMark: mark(false) })).clearTo).toBeNull();
+    expect(view(on({ renews: true, from: "studio" }), { pendingMark: mark(false) }).clearTo).toBeNull();
+  });
+
+  it("G — a lock only staged to come off never claims the lists catch up tonight", () => {
+    const lock: ContractTierOverride = { term: 12, payment: "pif", setAt: "2027-03-15T14:00:00.000Z" };
+    // As the engine stores it under a saved paid-in-full lock: no answer, no warning.
+    const locked = contracted({
+      contractTierOverride: lock,
+      renewal: renewal({
+        ...V2,
+        autoRenews: null,
+        autoRenewsFrom: null,
+        autoRenewsInherited: { renews: true, from: "default" },
+        chargeWarning: false,
+      }),
+    });
+    const v = view(locked, { pendingOverride: null });
+    expect(v).toMatchObject({ kind: "pick", pressed: true });
+    expect(v.metas).toEqual([BILLING]);
   });
 
   it("A and B — where Mindbody's contract has said, a line and no box", () => {
@@ -771,6 +796,29 @@ describe("membershipTimeline", () => {
     expect(pillsOf({ autopayStatus: "Active" })).toEqual(["12 mo"]);
   });
 
+  it("never says Auto-renews on a running or coming contract under a paid-in-full or banked-sessions lock", () => {
+    const lock = (payment: ContractTierOverride["payment"]): ContractTierOverride => ({ term: 12, payment, setAt: "2027-03-15T14:00:00.000Z" });
+    const history = buildContractHistory(
+      {
+        mindbodyContracts: {
+          run: { clientContractId: "run", status: "Active", contractName: "96 Sessions - 2X Week", isAutoRenewing: true, startDate: "2027-01-01T00:00:00Z", endDate: "2028-01-01T00:00:00Z" },
+          next: { clientContractId: "next", status: "Active", contractName: "96 Sessions - 2X Week", isAutoRenewing: true, startDate: "2028-01-01T00:00:00Z", endDate: "2029-01-01T00:00:00Z" },
+          done: { clientContractId: "done", status: "Active", contractName: "96 Sessions - 2X Week", isAutoRenewing: true, startDate: "2025-01-01T00:00:00Z", endDate: "2026-01-01T00:00:00Z" },
+        } as Client["mindbodyContracts"],
+      },
+      TODAY,
+    );
+    const pills = (l: ContractTierOverride | null) =>
+      Object.fromEntries(membershipTimeline(history, null, "complete", l).map((t) => [t.key, t.pills]));
+    for (const payment of ["pif", "sessions-only"] as const) {
+      expect(pills(lock(payment)), payment).toEqual({ "c-run": ["12 mo"], "c-next": ["12 mo"], "c-done": ["12 mo", "Auto-renews"] });
+    }
+    // No lock, or a lock that still bills: Mindbody's flag as ever.
+    for (const l of [null, lock("monthly")]) {
+      expect(pills(l)).toEqual({ "c-run": ["12 mo", "Auto-renews"], "c-next": ["12 mo", "Auto-renews"], "c-done": ["12 mo", "Auto-renews"] });
+    }
+  });
+
   it("reads a contract start as its UTC day: Mar 2026, never Feb", () => {
     const march = membershipTimeline(
       buildContractHistory(
@@ -890,7 +938,7 @@ describe("accountLede", () => {
   const her = pronounsOf({ gender: "Female" });
   it("is true for the client and the reader", () => {
     expect(accountLede(linked(), true, her)).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train, the tier lock and auto-renewal are marked here; everything else changes in Mindbody and arrives with the next sync.",
+      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train, the tier lock and whether she is on auto-renewal are changed here; everything else changes in Mindbody and arrives with the next sync.",
     );
     expect(accountLede(unlinked(), true, her)).toBe(
       "Her contact details as typed into Journey, then her membership. Mindbody does not hold her yet, so her details are typed here until she is linked.",
@@ -902,6 +950,7 @@ describe("accountLede", () => {
       "Their contact details as typed into Journey, then their membership. Read only here: their home studio keeps the record.",
     );
     expect(accountLede(unlinked(), true, pronounsOf(null))).toContain("until they are linked");
+    expect(accountLede(linked(), true, pronounsOf(null))).toContain("the tier lock and whether they are on auto-renewal are changed here;");
   });
 });
 

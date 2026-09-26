@@ -515,19 +515,62 @@ describe("MembershipSection — auto-renewal", () => {
     ]);
   });
 
-  it("claims no renewal under a saved paid-in-full lock, and offers no box to contradict it", async () => {
+  it("claims no renewal under a saved paid-in-full lock, not even on the contract history, and offers no box to contradict it", async () => {
+    // Mindbody's contract says auto-renewing: the lock is there because that reading is wrong for her.
     const locked = client({
-      renewal: v2(),
+      // As the engine stores it under the lock: no answer, and no warning.
+      renewal: v2({ autoRenews: null, autoRenewsFrom: null, autoRenewsInherited: { renews: true, from: "mindbody" }, chargeWarning: false }),
+      mindbodyContracts: { k: { ...client().mindbodyContracts!.k, isAutoRenewing: true } },
       contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-15T00:00:00Z", setByName: "AJ" },
     } as Partial<Client>);
     const host = await mount(<Harness c={locked} />);
     expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
     expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
+    // The whole card, the contract history's tiles included.
+    expect(pkg(host).querySelector('[data-testid="contract-timeline"]')).not.toBeNull();
     expect(pkg(host).textContent).not.toContain("Auto-renews");
-    // Taking the lock off shows the box, and the answer it has without it.
+    // Taking the lock off: Mindbody's answer, in a line, and on the tile again.
+    await click(buttonByText(host, "Use Mindbody's"));
+    expect(pkg(host).querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
+      "On auto-renewal · Mindbody's contract says so. Change it in Mindbody.",
+    );
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+    expect(pkg(host).querySelector('[data-testid="contract-timeline"]')!.textContent).toContain("Auto-renews");
+  });
+
+  it("shows the box a lock staged to come off leaves, and claims no catch-up for what isn't saved", async () => {
+    const locked = client({
+      renewal: v2({ autoRenews: null, autoRenewsFrom: null, chargeWarning: false }),
+      contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-15T00:00:00Z", setByName: "AJ" },
+    } as Partial<Client>);
+    const host = await mount(<Harness c={locked} />);
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
     await click(buttonByText(host, "Use Mindbody's"));
     expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
     expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+    expect(renewText(host)).not.toContain("The renewal lists catch up tonight.");
+  });
+
+  it("puts an earlier contract's saved mark back when a tap over it is removed: clean, and the mark kept", async () => {
+    const earlier = { renews: false, contractId: "old", setAt: "2026-01-02T14:00:00.000Z", setById: "uid-aj", setByName: "AJ" };
+    const probe: Probe = {};
+    const host = await mount(<Harness c={client({ renewal: v2(), autoRenewMark: earlier } as Partial<Client>)} probe={probe} />);
+    const NOTE = "AJ's mark was for the contract before this one.";
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(renewText(host)).toContain(NOTE);
+    await click(box(host));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: false, contractId: "k" });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    // "Remove this mark" undoes the tap, and only the tap.
+    await click(buttonByText(host, "Remove this mark"));
+    expect(probe.form!.formData.autoRenewMark).toBe(earlier);
+    expect(probe.form!.count).toBe(0);
+    expect(probe.form!.isDirty("autoRenewMark")).toBe(false);
+    expect(pkg(host).textContent).not.toContain("Unsaved");
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
+    expect(renewText(host)).toContain(NOTE);
+    expect(renewText(host)).not.toContain("when you save");
   });
 
   it("says the box arrives after tonight's run on a snapshot from before it", async () => {

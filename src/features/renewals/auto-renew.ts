@@ -18,7 +18,9 @@
  *      bills, so nothing renews. The lock beats even Mindbody's flag: it is
  *      there because Mindbody's reading is wrong for her, and the profile
  *      offers no box under it, so no screen may claim a renewal it
- *      contradicts. The words stay "payments finish", as they were.
+ *      contradicts. The words stay "payments finish", as they were, and
+ *      there is no "before the charge" warning under it: no charge is
+ *      coming (engine.ts, chargeWarning; renewalOf below).
  *   2. Mindbody's own flag on the contract (`isAutoRenewing`, written only by
  *      the webhook). Mindbody owns contracts, so its word beats Journey's.
  *   3. A trainer's mark on the client's profile (`client.autoRenewMark`) FOR
@@ -186,15 +188,25 @@ export function renewalOf(client: RenewalOfClient | null | undefined): RenewalSn
   });
   const autoRenews = decided?.renews ?? null;
   const from = decided?.from ?? null;
-  if (r.autoRenews === autoRenews && (r.autoRenewsFrom ?? null) === from && sameAnswer(stored, inherited)) return r;
+  // The engine's rule: never a "before the charge" warning on a contract
+  // that won't renew, nor under a lock that says nothing bills. Turning one
+  // ON needs the studio's window: tonight.
+  const chargeWarning =
+    decided?.renews === false || lockSaysNothingBills(client?.contractTierOverride) ? false : r.chargeWarning;
+  if (
+    r.autoRenews === autoRenews &&
+    (r.autoRenewsFrom ?? null) === from &&
+    sameAnswer(stored, inherited) &&
+    r.chargeWarning === chargeWarning
+  ) {
+    return r;
+  }
   return {
     ...r,
     autoRenews,
     autoRenewsFrom: from,
     autoRenewsInherited: inherited,
-    // The engine's rule: never a "before the charge" warning on a contract
-    // that won't renew. Turning one ON needs the studio's window: tonight.
-    chargeWarning: decided?.renews === false ? false : r.chargeWarning,
+    chargeWarning,
   };
 }
 

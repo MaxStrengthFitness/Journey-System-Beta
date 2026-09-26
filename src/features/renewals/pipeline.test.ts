@@ -40,7 +40,8 @@ describe("lanes", () => {
   });
 
   it("says the before-the-charge lane holds packages that renew automatically — no 'Mindbody hasn't said' any more", () => {
-    // Auto-renew is decided (auto-renew.ts): an unknown can't be will-bank.
+    // Auto-renew is decided (auto-renew.ts): an unknown can't be will-bank, and
+    // a paid-in-full or banked-sessions lock gives no warning (engine.ts).
     expect(LANE_HINTS["before-charge"]).toBe(
       "Sessions still banked when the payments finish, and the package renews automatically. Talk first, then decide in Mindbody whether to move the renewal.",
     );

@@ -41,7 +41,7 @@ import { addDays, daysBetween, keyOf, toTimelineEvents } from "../client-history
 import { CATEGORY_BY_KEY } from "../subjective-report/questions";
 import { toDateSafe } from "../../lib/mindbody-dates";
 import { buildPackageNameIndex, sessionsPerPayment, type PackageNameIndex } from "./settings";
-import { decideAutoRenew } from "./auto-renew";
+import { decideAutoRenew, lockSaysNothingBills } from "./auto-renew";
 import type {
   PackageTier,
   RenewalFlag,
@@ -801,13 +801,17 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   // corporate ones (AJ, Sep 25 2026), so a contract the decided answer says
   // won't renew has no charge coming: it still banks ("will-bank" says so),
   // and its conversation comes at the studio's threshold like anyone's.
-  // Unknown means an unmatched package, which is never "will-bank" (no tier,
-  // so "unknown"), or a coach's paid-in-full lock over a contract Mindbody
-  // still shows running, which keeps the warning it always had; the
-  // `!== false` also keeps an old snapshot's null warning.
+  // A coach's paid-in-full or banked-sessions lock says nothing bills, so it
+  // has no charge coming either: no warning under it. The decided answer is
+  // null there (auto-renew.ts, step 1), and that null must not bring back a
+  // warning that Mindbody's, the studio's, the package's or a mark's "no"
+  // had switched off. Any other null is an unmatched package, which is never
+  // "will-bank" (no tier, so "unknown"); the `!== false` also keeps an old
+  // snapshot's null warning. renewalOf (auto-renew.ts) keeps the same rule.
   const chargeWarning =
     situation === "will-bank" &&
     autoRenews !== false &&
+    !lockSaysNothingBills(client.contractTierOverride) &&
     chargeDate !== null &&
     chargeDate >= today &&
     daysBetween(today, chargeDate) <= settings.chargeWarnDays;

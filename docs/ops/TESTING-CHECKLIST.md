@@ -1166,12 +1166,22 @@ the last item, a studio leader.
 - [ ] **Life happens.** Tap + four times: "4 weeks", the timeline hatches four
   weeks, the sentence says the sessions take about 52 weeks and never expire.
   The stepper stops at 0 and 16.
-- [ ] **After your last payment says only what the studio said.** With the
-  package's "When the payments finish" not set: "{studio} will explain what
-  happens when your payments finish." As a leader, set Committed to "It renews
-  automatically" in My Studio → Studio → Renewals and save; reopen the sheet:
-  "When the payments finish, Committed renews automatically", and Life
-  happens says it renews at week 48.
+- [ ] **After your last payment says what the studio said** (since the
+  auto-renewal round, Sep 25 2026: an unset package follows the studio's
+  answer, and a studio that never answered reads as the standard, yes).
+  - At a studio that hasn't answered "Packages at {studio} renew
+    automatically", with Committed's "When the payments finish" not set:
+    "When the payments finish, Committed renews automatically", and Life
+    happens says it renews at week 48.
+  - As a leader, set "Packages at {studio} renew automatically" to **No** in
+    My Studio → Studio → Renewals and save; reopen the sheet: "When the
+    payments finish, nothing more is charged unless you choose another
+    package."
+  - Still at No, set Committed to "It renews automatically" and save: it
+    renews again ("Committed renews automatically").
+  - Paying: In full: never "renews automatically", whatever the studio or
+    the package said ("nothing more is charged…").
+  - Put both settings back as they were.
 - [ ] **Portrait and landscape.** One column on a portrait iPad (the lengths
   still side by side), two in landscape; nothing cut off; every button easy to
   hit. Light and dark.
@@ -2537,6 +2547,31 @@ Nothing to deploy first. As a **Studio Leader**, then as the trainer named.
 - [ ] Team jobs: tap "I'll take it" on an up-for-grabs job; the card and the sheet say "Claimed by you 10:12 AM"; on a second iPad the same job says "Claimed by Sam 10:12 AM". Close it: "· done 10:40 AM". Step off: the claim line goes.
 - [ ] As a leader on Operations → Clients → Journey, open a case and name the trainer as owner; on that trainer's Relay → Tracker → Today → Follow-ups the case appears with its day and next step; "Next step" opens the editor; change the step and the day, Save; the leader's page shows the change. Set Paused with a reason: it leaves the trainer's list.
 - [ ] As a leader, post a notice with "Ask everyone to say they've read it" ticked. As a trainer, Relay → Board → Since you were in: the notice is new and shows "I've read it"; Mark all read leaves it new; tap "I've read it": "You said you'd read it · today at …" and the count drops. A notice posted without the tick shows no button.
+## Round 45 — Auto-renewal: the studio's answer and the box on the profile · *Sep 25 2026, branch `auto-renew-checkbox`*
+
+Auto-renewal is decided in one order: Mindbody's contract, else a trainer's
+mark on the profile, else the package's answer, else the studio's, else yes.
+The round document is `docs/rounds/2026-09-25-auto-renew.md`. Walk it **the
+morning after the first nightly run** (before it, the profile says "Auto-renewal
+can be marked here after tonight's renewal run" instead of the box), as a
+studio leader, portrait and landscape.
+
+- [ ] **The studio's answer.** My Studio → Studio → Renewals: the first panel
+  is **Auto-renewal**. At a corporate studio it reads **No**; at a franchise
+  studio, Yes. A studio that never answered says so in a warning.
+- [ ] **The box starts on the inherited answer.** On a monthly client whose
+  Mindbody contract hasn't said (Account → the package): **On auto-renewal**,
+  ticked at a Yes studio and unticked at a No one, with a sentence saying
+  where that came from. Where Mindbody's contract has said, a line instead
+  ("Change it in Mindbody") and no box.
+- [ ] **A tap is a change to save.** Tap the box: "Unsaved" on the card, the
+  date line changes ("Billing ends" / "Auto-renews"), and the Save bar offers
+  "Account · Membership". **Remove this mark** undoes it: no Unsaved, nothing
+  to save. Tap again and Save: "Marked by {you} · {today}."
+- [ ] **A paid-in-full lock.** Lock the tier as "12 mo · paid in full" and
+  save: no box, "Payments finish" on the card, no "Auto-renews" anywhere on
+  the card (the contract history included), and no "Before the charge" for
+  her on Operations → Renewals the next morning.
 
 ---
 
