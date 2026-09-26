@@ -18,7 +18,7 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | 4 | `364198f` | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
 | 5 | `2aee3b1`, `edce3d7` | The Active Session never draws a blank page: one sentence and the way on. Closing the Assign picker keeps the open session, and a Start that fails says so in plain words. |
 | 6 | `0bddbd9` | Discard works from every profile tab. "Use today" is gone: each routine card says when it was last used, and the one marked for today is the one the session will actually run. |
-| 7 | (this commit) | A second iPad watches a running session, read-only and live. Taking it over is on purpose and asks first; the trainer who finishes gets the session, and it keeps who started it. |
+| 7 | `8eeb750` | A second iPad watches a running session, read-only and live. Taking it over is on purpose and asks first; the trainer who finishes gets the session, and it keeps who started it. |
 
 ### Phase 1: what was wrong
 
