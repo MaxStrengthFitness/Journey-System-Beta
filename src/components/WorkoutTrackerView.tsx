@@ -55,6 +55,7 @@ import { sendsAtOnce } from "../features/journey-grid/send-at-once";
 import { useSendState } from "../features/session-record/useSendState";
 import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
 import { finishedElsewhere, settleOrQueue } from "../features/session-record/finish-wait";
+import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -2139,9 +2140,12 @@ export function WorkoutTrackerView({
     const flushNow = () => flushAllLogWrites();
     window.addEventListener("beforeunload", flushNow);
     document.addEventListener("visibilitychange", flushNow);
+    // Sign-out asks first, while this person is still signed in (session record).
+    window.addEventListener(SEND_SETS_NOW_EVENT, flushNow);
     return () => {
       window.removeEventListener("beforeunload", flushNow);
       document.removeEventListener("visibilitychange", flushNow);
+      window.removeEventListener(SEND_SETS_NOW_EVENT, flushNow);
       flushAllLogWrites();
     };
   }, [flushAllLogWrites]);

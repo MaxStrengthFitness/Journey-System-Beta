@@ -45,6 +45,7 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  waitForPendingWrites,
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
@@ -161,7 +162,8 @@ import { FeedbackProvider, FeedbackButton } from "./features/feedback";
 import { NotificationBell } from "./features/notifications";
 import { plannerIntentFromLink, requestPlanner } from "./features/relay/intent";
 import { PlannerReminders } from "./features/relay/reminders/PlannerReminders";
-import { useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
+import { LeaveConfirmDialog, useGuardedSetter, useGuardedState, useLeaveGuard } from "./features/unsaved-changes";
+import { sendSetsNow, signOutQuestion, unsentWritesWaiting } from "./features/session-record/sign-out-check";
 // Type-only, and from the module rather than the barrel, so nothing about the
 // studio-tasks chunk is pulled into the initial bundle.
 import type { ClientTaskAction } from "./features/studio-tasks/types";
@@ -1032,8 +1034,24 @@ export default function AppContent({
    * early return below, which unmounts the whole screen.
    */
   const openStudioPicker = () => guardLeave(() => setIsChangingStudio(true));
+  const signOutNow = () => guardLeave(() => void handleLogout().catch(console.error));
+  /* Sign-out asks first when this trainer's own session is still open, or
+     this iPad has saves the database hasn't confirmed: those wait on the
+     iPad for the same person to sign in here again (session record, Sep 26
+     2026). The Active Session sends its waiting sets first, while this
+     person is still signed in. A question, never a block. */
+  const [signOutAsk, setSignOutAsk] = useState<string | null>(null);
   const logOut = () => {
-    guardLeave(() => void handleLogout().catch(console.error));
+    sendSetsNow();
+    void (async () => {
+      const unsent = await unsentWritesWaiting(() => waitForPendingWrites(db));
+      const question = signOutQuestion({
+        openSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+        unsent,
+      });
+      if (question) setSignOutAsk(question);
+      else signOutNow();
+    })();
     return Promise.resolve();
   };
   const startNewClientOnboarding = (name: string) =>
@@ -2637,6 +2655,20 @@ export default function AppContent({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {signOutAsk && (
+          <LeaveConfirmDialog
+            title="Before you sign out"
+            question={signOutAsk}
+            leaveLabel="Sign out anyway"
+            stayLabel="Stay signed in"
+            onStay={() => setSignOutAsk(null)}
+            onLeave={() => {
+              setSignOutAsk(null);
+              signOutNow();
+            }}
+          />
+        )}
 
       </FeedbackProvider>
     </ErrorBoundary>

@@ -14,7 +14,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | --- | --- | --- |
 | 1 | `c197615` | A set still waiting to be sent keeps what the trainer typed, and a set is sent the moment it is entered. |
 | 2 | `784885e` | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
-| 3 | (this commit) | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
+| 3 | `d9e2d11`, `b2cc770` | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
+| 4 | (this commit) | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
 
 ### Phase 1: what was wrong
 
@@ -83,11 +84,34 @@ One offline Finish that replays later, after another iPad has already finished t
 
 The suite gives 5,540 passing in 350 files, the typecheck 4 and the build passes, measured as in phase 1.
 
+## Phase 4: sign-out
+
+### What was wrong
+
+- **Sign-out asked only about typing.** A trainer could sign out mid-session without a word, and the next person's bottom tab did not know the session was open.
+- **Unsent saves were stranded.** Firestore keeps each person's unsent writes on the iPad under that person, and sends them only while that person is signed in there. Signing out with saves still waiting, typically offline, left them on the iPad until the same trainer signed in on it again. Nothing said so.
+- **The last sets could be sent as nobody.** Sets on the typing timer were sent when the Active Session closed. A sign-out closes it AFTER signing out, so those writes went as nobody and the database refused them.
+
+### What it does
+
+- **Sign-out sends waiting sets first.** `sendSetsNow()` (`src/features/session-record/sign-out-check.ts`) raises an event the Active Session listens for, and the screen sends its waiting sets while this person is still signed in.
+- **Then it asks, when there is a reason to.** It asks when this trainer's own session is still open (the shell's `myLiveSession`), or when Firestore has not confirmed every save within half a second (`unsentWritesWaiting`). The question is the app's one leave dialog, in sign-out words: "Before you sign out", then "Your session with Judy Daus is still open. It stays open until someone finishes it." and, if saves are waiting, that they "wait on this iPad until you sign in here again". The two buttons are "Stay signed in" (the default) and "Sign out anyway". It is a question, never a block, and the unsaved-typing question still follows if there is typing.
+- `LeaveConfirmDialog` takes an optional title and two button labels. Its defaults are the unsaved-changes words, unchanged.
+
+Not in this phase: the three names for sign-out (Switch Trainer, Log Out Facility, Settings' Sign out). Claude's call on Sep 26 was one "Sign out" button that leaves the iPad pinned to its studio. That belongs to the sign-out leftovers card, with its other pieces.
+
+### Tests
+
+- `sign-out-check.test.ts` covers the question's words and the unsent check, including a check that cannot be asked.
+- `guard.render.test.tsx` mounts the dialog in sign-out words and in its default words.
+- `WorkoutTrackerView.render.test.tsx` types a rep count, raises the sign-out event, and sees the set written at once rather than after the timer. With the listener removed, that test fails.
+
+The suite gives 5,551 passing in 351 files, the typecheck 4 and the build passes.
+
 ## Still to come in this round
 
 These come from the review's suggested order, and each will be its own phase:
 
-- A warning before signing out while a session is running or sets are unsent.
 - A second iPad opening a running session read-only, so a leader can watch it live.
 - An honest sentence on every blank Active Session screen.
 - Discard that works from every profile tab.

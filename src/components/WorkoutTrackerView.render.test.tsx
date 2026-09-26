@@ -595,3 +595,22 @@ describe("Finish never hangs and never counts a session twice (session record, S
     expect(document.body.textContent).not.toContain("saved on this iPad");
   });
 });
+
+describe("sign-out sends the sets still waiting on the typing timer first (session record, Sep 26 2026)", () => {
+  it("writes a typed set the moment sign-out asks, not after the timer", async () => {
+    const { sendSetsNow } = await import("../features/session-record/sign-out-check");
+    const host = await mount(<Tracker />);
+    const reps = host.querySelector<HTMLInputElement>('input[aria-label="reps to failure"]');
+    expect(reps).not.toBeNull();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(reps!, "11");
+      reps!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const setWrites = () => writes.filter((w) => w.path.startsWith("exerciseLogs/") && w.data?.reps === "11");
+    // Still on the typing timer: nothing written yet.
+    expect(setWrites()).toHaveLength(0);
+    await act(async () => sendSetsNow());
+    expect(setWrites()).toHaveLength(1);
+  });
+});

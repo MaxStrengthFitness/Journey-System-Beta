@@ -24,6 +24,16 @@ It reads nothing and writes nothing.
 - `settleOrQueue` waits up to `FINISH_WAIT_MS` for the database's answer, and not at all while offline. Past that, the save is on the iPad, and the post-session screen says "saved on this iPad" until the answer comes.
 - `finishedElsewhere` asks the server whether another iPad already finished the session. Finish then writes nothing, so the client's totals are never counted twice. Offline, or with no answer, it says no and Finish goes ahead.
 
+## Sign-out asks first
+
+`sign-out-check.ts`, used by AppContent's `logOut`:
+
+- `sendSetsNow()` has the Active Session send its waiting sets while the person is still signed in.
+- `unsentWritesWaiting` checks whether every save has reached the database.
+- `signOutQuestion` asks, in the app's one leave dialog, when the trainer's own session is still open or saves are waiting on the iPad.
+
+A question, never a block.
+
 ## Related pieces elsewhere
 
 - `src/lib/pending-log-edits.ts`: a set whose write is still queued keeps what the trainer typed when another machine's save lands.
