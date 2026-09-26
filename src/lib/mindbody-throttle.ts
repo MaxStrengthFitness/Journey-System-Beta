@@ -160,3 +160,43 @@ export function recordResult(
   if (fails >= limits.fails) return { fails: 0, openUntil: now + limits.cooldownMs };
   return { fails, openUntil: state.openUntil };
 }
+
+/* ------------------------------------------------------------------ *
+ * How long to keep a staff sign-in (the cost plan, Sep 26 2026, A4)
+ * ------------------------------------------------------------------ *
+ *
+ * The server threw its Mindbody token away 55 minutes after issuing it, on
+ * the belief that tokens die at 60. Mindbody's own answer to `usertoken/issue`
+ * carries an `Expires` time, and its documentation has the token lasting days
+ * when unused, so the sign-in was repeated ~17 times a site a day for nothing
+ * - and if Mindbody counts a sign-in as a call, those were billed.
+ *
+ * So the token is kept until a little before the time Mindbody gave, never
+ * longer than a day. Nothing here has to be right about the true lifetime:
+ * the server also signs in again the moment Mindbody refuses a token (a 401),
+ * so a time read too generously costs one refused call, and one read too
+ * meanly costs one extra sign-in. An `Expires` Journey cannot read, or one
+ * that is already past (a time zone read the wrong way round), falls back to
+ * the old 55 minutes.
+ */
+
+/** The old rule, kept for an answer with no usable `Expires`. */
+export const TOKEN_FALLBACK_MS = 55 * 60_000;
+/** However long Mindbody says, a token is signed for afresh at least daily. */
+export const TOKEN_MAX_KEEP_MS = 24 * 60 * 60_000;
+/** Stop using a token this long before Mindbody says it expires. */
+export const TOKEN_SAFETY_MS = 5 * 60_000;
+
+/** The instant to stop using a token issued at `now`. */
+export function tokenKeepUntil(expires: unknown, now: number): number {
+  const at =
+    typeof expires === "string" && expires.trim() !== ""
+      ? Date.parse(expires)
+      : typeof expires === "number"
+        ? expires
+        : NaN;
+  if (!Number.isFinite(at)) return now + TOKEN_FALLBACK_MS;
+  const keep = at - TOKEN_SAFETY_MS;
+  if (keep <= now) return now + TOKEN_FALLBACK_MS;
+  return Math.min(keep, now + TOKEN_MAX_KEEP_MS);
+}

@@ -241,22 +241,37 @@ export function wantsDeepPull(
   return was !== is;
 }
 
+/** The Monday that starts the week holding a studio day ("YYYY-MM-DD"). */
+export function studioWeekKey(dayKey: string | null): string | null {
+  if (!dayKey || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return null;
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d));
+  const sinceMonday = (day.getUTCDay() + 6) % 7;
+  day.setUTCDate(day.getUTCDate() - sinceMonday);
+  return day.toISOString().slice(0, 10);
+}
+
 /**
- * Is this the day's FIRST whole-month pull? That one looks every client up
- * with Mindbody, which is what keeps names and blank contact fields current;
- * the later month pulls of the day skip clients Journey already names, as
- * the near pulls do. A name changed in Mindbody therefore reaches a booking
- * by the next morning, sooner through the webhook's client.updated or a
- * Master Sync on the profile.
+ * Is this the WEEK's first whole-month pull? That one looks every client up
+ * with Mindbody, which keeps names and blank contact fields current; every
+ * other pull looks up only clients Journey has never named.
+ *
+ * It was the day's first until the cost plan (Sep 26 2026, A5). AJ ranked
+ * client details "only when it changes": the webhook's client.updated brings
+ * a change in seconds and a Master Sync on the profile at once, so looking
+ * every client up again each morning was 4-11 calls a studio a day spent
+ * finding nothing new. Once a week stays as the net under a webhook that
+ * missed one. Keyed on the last month pull that SUCCEEDED, so a failed
+ * Monday pull simply leaves the next one to do it.
  */
-export function isFirstDeepOfDay(
+export function isFirstDeepOfWeek(
   lastDeepAt: number | null | undefined,
   now: number,
   timeZone: string,
 ): boolean {
   if (lastDeepAt == null) return true;
-  const was = studioDateKey(new Date(lastDeepAt), timeZone);
-  const is = studioDateKey(new Date(now), timeZone);
+  const was = studioWeekKey(studioDateKey(new Date(lastDeepAt), timeZone));
+  const is = studioWeekKey(studioDateKey(new Date(now), timeZone));
   return !was || !is || was !== is;
 }
 

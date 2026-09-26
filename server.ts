@@ -12,6 +12,8 @@ import {
 } from "./server/gemini.ts";
 import {
   getMindbodyToken,
+  mindbodyAuthedFetch,
+  mindbodyFetch,
   mindbodyGet,
   pullClientCommercial,
   pullClientMaster,
@@ -195,7 +197,9 @@ async function startServer() {
         Password: password,
       };
 
-      const response = await fetch(
+      const response = await mindbodyFetch(
+        String(siteId),
+        "usertoken/issue (by hand)",
         "https://api.mindbodyonline.com/public/v6/usertoken/issue",
         {
           method: "POST",
@@ -248,32 +252,12 @@ async function startServer() {
         return res.status(400).json({ error: "siteId is required" });
       }
 
-      // Get User Token for authenticated access
-      let userToken: string | undefined;
-      try {
-        userToken = await getMindbodyToken(String(siteId));
-      } catch (tokenErr: any) {
-        console.warn(
-          "Could not get Mindbody token for staff, proceeding without:",
-          tokenErr.message,
-        );
-      }
-
-      const staffHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Api-Key": mindbodyApiKey,
-        SiteId: String(siteId),
-      };
-      if (userToken) {
-        staffHeaders["Authorization"] = userToken;
-      }
-
-      const apiResponse = await fetch(
+      // Through the floor like every other call, signed in when a token can be
+      // had and signed in again if Mindbody refuses it (the cost plan, A4).
+      const apiResponse = await mindbodyAuthedFetch(
+        String(siteId),
+        "staff/staff",
         `https://api.mindbodyonline.com/public/v6/staff/staff?Limit=200`,
-        {
-          method: "GET",
-          headers: staffHeaders,
-        },
       );
 
       if (!apiResponse.ok) {
@@ -341,26 +325,10 @@ async function startServer() {
       if (!siteId) return res.status(400).json({ error: "siteId is required" });
       if (!staffId) return res.status(400).json({ error: "staffId is required" });
 
-      let userToken: string | undefined;
-      try {
-        userToken = await getMindbodyToken(String(siteId));
-      } catch (tokenErr: any) {
-        console.warn(
-          "Could not get Mindbody token for staff image, proceeding without:",
-          tokenErr.message,
-        );
-      }
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Api-Key": mindbodyApiKey,
-        SiteId: String(siteId),
-      };
-      if (userToken) headers["Authorization"] = userToken;
-
-      const apiResponse = await fetch(
+      const apiResponse = await mindbodyAuthedFetch(
+        String(siteId),
+        "staff/imageurl",
         `https://api.mindbodyonline.com/public/v6/staff/${encodeURIComponent(String(staffId))}/imageurl`,
-        { method: "GET", headers },
       );
 
       // A staff member with no photo is the NORMAL answer here, not an error.
@@ -435,7 +403,9 @@ async function startServer() {
         headers["Authorization"] = userToken;
       }
 
-      const apiResponse = await fetch(
+      const apiResponse = await mindbodyFetch(
+        String(siteId),
+        "site/locations",
         "https://api.mindbodyonline.com/public/v6/site/locations",
         {
           method: "GET",
@@ -477,7 +447,9 @@ async function startServer() {
             Limit: "100",
           });
 
-          const apptResponse = await fetch(
+          const apptResponse = await mindbodyFetch(
+            String(siteId),
+            "appointment/staffappointments (locations fallback)",
             `https://api.mindbodyonline.com/public/v6/appointment/staffappointments?${apptParams.toString()}`,
             {
               method: "GET",

@@ -11,7 +11,8 @@ import {
   normaliseInterval,
   DEEP_PULL_HOURS,
   deepPullBlock,
-  isFirstDeepOfDay,
+  isFirstDeepOfWeek,
+  studioWeekKey,
   wantsDeepPull,
   withinPullHours,
   type SyncContext,
@@ -282,20 +283,39 @@ describe("wantsDeepPull", () => {
   });
 });
 
-describe("isFirstDeepOfDay", () => {
-  it("is the first month pull when the last one was yesterday or never", () => {
-    expect(isFirstDeepOfDay(null, nyAt(5, 30), NY)).toBe(true);
-    expect(isFirstDeepOfDay(nyAt(18, 0, 24), nyAt(5, 30), NY)).toBe(true);
+describe("studioWeekKey", () => {
+  it("names the Monday that starts the week", () => {
+    expect(studioWeekKey("2026-09-21")).toBe("2026-09-21"); // a Monday
+    expect(studioWeekKey("2026-09-26")).toBe("2026-09-21"); // Saturday
+    expect(studioWeekKey("2026-09-27")).toBe("2026-09-21"); // Sunday
+    expect(studioWeekKey("2026-09-28")).toBe("2026-09-28"); // the next Monday
+    expect(studioWeekKey("2027-01-01")).toBe("2026-12-28"); // across a year
   });
 
-  it("is not when a month pull already succeeded today", () => {
-    expect(isFirstDeepOfDay(nyAt(5, 30), nyAt(10, 5), NY)).toBe(false);
+  it("is null for anything that is not a studio day", () => {
+    expect(studioWeekKey(null)).toBeNull();
+    expect(studioWeekKey("Sep 26")).toBeNull();
+  });
+});
+
+describe("isFirstDeepOfWeek (the cost plan, A5)", () => {
+  it("is the first month pull when the last one was last week or never", () => {
+    expect(isFirstDeepOfWeek(null, nyAt(5, 30), NY)).toBe(true);
+    // Last good month pull Saturday Sep 19; this is Friday Sep 25.
+    expect(isFirstDeepOfWeek(nyAt(5, 30, 19), nyAt(5, 30), NY)).toBe(true);
   });
 
-  it("reads the day in the studio's zone", () => {
-    // 1 am Sep 26 in New York is still Sep 25 in Los Angeles.
-    const lastDeepLA = Date.UTC(2026, 8, 25, 12, 0); // 5 am in Los Angeles
-    expect(isFirstDeepOfDay(lastDeepLA, nyAt(1, 0, 26), LA)).toBe(false);
+  it("is not when a month pull already succeeded this week", () => {
+    // Monday Sep 21, then Friday Sep 25.
+    expect(isFirstDeepOfWeek(nyAt(5, 30, 21), nyAt(5, 30), NY)).toBe(false);
+    expect(isFirstDeepOfWeek(nyAt(5, 30, 24), nyAt(5, 30), NY)).toBe(false);
+  });
+
+  it("reads the week in the studio's zone", () => {
+    // 1 am Monday Sep 28 in New York is still Sunday Sep 27 in Los Angeles.
+    const lastDeepLA = Date.UTC(2026, 8, 25, 12, 0); // Friday, 5 am in Los Angeles
+    expect(isFirstDeepOfWeek(lastDeepLA, nyAt(1, 0, 28), LA)).toBe(false);
+    expect(isFirstDeepOfWeek(lastDeepLA, nyAt(1, 0, 28), NY)).toBe(true);
   });
 });
 

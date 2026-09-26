@@ -10,6 +10,10 @@ import {
   NEW_BREAKER,
   RETRY_CAP_MS,
   RETRY_BASE_MS,
+  tokenKeepUntil,
+  TOKEN_FALLBACK_MS,
+  TOKEN_MAX_KEEP_MS,
+  TOKEN_SAFETY_MS,
 } from "./mindbody-throttle";
 
 describe("isRetryable", () => {
@@ -173,5 +177,37 @@ describe("the circuit breaker", () => {
     s = recordResult(s, true, limits, 60_000);
     expect(breakerPausedMs(s, 60_000)).toBe(0);
     expect(s.fails).toBe(0);
+  });
+});
+
+describe("tokenKeepUntil (the cost plan, A4)", () => {
+  const NOW = Date.UTC(2026, 8, 26, 14, 0, 0);
+  const HOUR = 60 * 60_000;
+
+  it("keeps a token until a little before the time Mindbody gave", () => {
+    const expires = new Date(NOW + 6 * HOUR).toISOString();
+    expect(tokenKeepUntil(expires, NOW)).toBe(NOW + 6 * HOUR - TOKEN_SAFETY_MS);
+  });
+
+  it("never keeps one longer than a day, whatever Mindbody says", () => {
+    const expires = new Date(NOW + 7 * 24 * HOUR).toISOString();
+    expect(tokenKeepUntil(expires, NOW)).toBe(NOW + TOKEN_MAX_KEEP_MS);
+  });
+
+  it("falls back to 55 minutes when there is no Expires it can read", () => {
+    expect(tokenKeepUntil(undefined, NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+    expect(tokenKeepUntil("", NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+    expect(tokenKeepUntil("not a date", NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+    expect(tokenKeepUntil({}, NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+  });
+
+  it("falls back when the Expires is already past, or inside the safety margin", () => {
+    // A zone-less time read the wrong way round can land in the past.
+    expect(tokenKeepUntil(new Date(NOW - HOUR).toISOString(), NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+    expect(tokenKeepUntil(new Date(NOW + 60_000).toISOString(), NOW)).toBe(NOW + TOKEN_FALLBACK_MS);
+  });
+
+  it("reads an epoch number too", () => {
+    expect(tokenKeepUntil(NOW + 2 * HOUR, NOW)).toBe(NOW + 2 * HOUR - TOKEN_SAFETY_MS);
   });
 });

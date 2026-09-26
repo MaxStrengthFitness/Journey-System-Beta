@@ -39,6 +39,7 @@ import {
   recordResult,
   retryAfterMs,
   takeFromBucket,
+  tokenKeepUntil,
   NEW_BREAKER,
   type BreakerState,
   type BucketState,
@@ -203,7 +204,9 @@ async function callMindbody(
 }
 
 
-// Tokens expire after 60 minutes; they are refreshed at 55 for safety.
+// A token is kept for the life Mindbody gives it, capped at a day
+// (tokenKeepUntil, lib/mindbody-throttle.ts), and dropped the moment Mindbody
+// refuses it (forgetMindbodyToken). It used to be re-issued every 55 minutes.
 const tokenCache: Record<string, { token: string; expiresAt: number }> = {};
 // Calls that start together share one token request instead of each issuing one.
 const tokenInFlight: Record<string, Promise<string> | undefined> = {};
@@ -286,10 +289,73 @@ async function issueMindbodyToken(siteId: string): Promise<string> {
 
   tokenCache[siteId] = {
     token: data.AccessToken,
-    expiresAt: now + 55 * 60 * 1000,
+    expiresAt: tokenKeepUntil(data.Expires, now),
   };
 
   return data.AccessToken;
+}
+
+/**
+ * Mindbody refused this token (a 401): forget it, so the next call signs in
+ * again. Only when it is still the one cached - a call that started with an
+ * older token must not throw away the fresh one another call just got.
+ */
+export function forgetMindbodyToken(siteId: string, token: string): void {
+  if (tokenCache[siteId]?.token === token) delete tokenCache[siteId];
+}
+
+/**
+ * Any Mindbody request, through the floor (token bucket, retry, breaker).
+ * Never throws for an HTTP error, and never returns null: when the floor gave
+ * up or the breaker refused, the answer is a synthetic response carrying
+ * Mindbody's usual error shape, so a route's existing `!response.ok` handling
+ * reads it like any other refusal. For the routes that called `fetch` bare
+ * (the cost plan, A4: sign-in, staff, a staff photo, locations).
+ */
+export async function mindbodyFetch(
+  site: string,
+  label: string,
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const outcome = await callMindbody(String(site), label, () => fetch(url, init));
+  if (outcome.response) return outcome.response;
+  return new Response(
+    JSON.stringify({ Error: { Message: outcome.error || "Mindbody did not answer." } }),
+    { status: outcome.status || 503, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+/**
+ * A GET with the Api-Key, the SiteId and - when one can be had - the staff
+ * token. A refused token (401) is forgotten and the call made once more with a
+ * fresh one. A sign-in that fails still sends the call without a token, as
+ * these routes always did: some endpoints answer without one.
+ */
+export async function mindbodyAuthedFetch(site: string, label: string, url: string): Promise<Response> {
+  const apiKey = process.env.MINDBODY_API_KEY || "";
+  let response: Response | null = null;
+  for (let pass = 0; pass < 2; pass++) {
+    let userToken: string | undefined;
+    try {
+      userToken = await getMindbodyToken(String(site));
+    } catch (tokenErr: any) {
+      console.warn(`Could not get a Mindbody token for ${label}, proceeding without:`, tokenErr?.message);
+    }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Api-Key": apiKey,
+      SiteId: String(site),
+    };
+    if (userToken) headers.Authorization = userToken;
+    response = await mindbodyFetch(site, label, url, { method: "GET", headers });
+    if (response.status === 401 && userToken && pass === 0) {
+      forgetMindbodyToken(String(site), userToken);
+      continue;
+    }
+    break;
+  }
+  return response as Response;
 }
 
 /** Flat rather than a union: without strictNullChecks, `!r.ok` would not narrow one. */
@@ -308,28 +374,39 @@ export async function mindbodyGet(
 ): Promise<MindbodyResult> {
   const apiKey = process.env.MINDBODY_API_KEY;
   if (!apiKey) return { ok: false, status: 500, data: null, error: "MINDBODY_API_KEY is not set." };
-  const userToken = await getMindbodyToken(site);
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (Array.isArray(value)) value.forEach((v) => query.append(key, String(v)));
     else query.append(key, String(value));
   }
-  const outcome = await callMindbody(site, path, () =>
-    fetch(`${MB_BASE}/${path}?${query.toString()}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Api-Key": apiKey,
-        SiteId: site,
-        Authorization: userToken,
-      },
-    }),
-  );
-  const r = outcome.response;
+  /* A refused token (401) is forgotten and the call made once more with a
+     fresh one: tokens are now kept for as long as Mindbody says they last
+     (the cost plan, A4), so a refusal is how Journey learns one has gone. */
+  let outcome: FloorOutcome | null = null;
+  for (let pass = 0; pass < 2; pass++) {
+    const userToken = await getMindbodyToken(site);
+    outcome = await callMindbody(site, path, () =>
+      fetch(`${MB_BASE}/${path}?${query.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Api-Key": apiKey,
+          SiteId: site,
+          Authorization: userToken,
+        },
+      }),
+    );
+    if (outcome.response?.status === 401 && pass === 0) {
+      forgetMindbodyToken(site, userToken);
+      continue;
+    }
+    break;
+  }
+  const r = outcome!.response;
   /* Out of attempts, or the breaker is open. Still not a throw. */
   if (!r) {
-    console.warn(`Mindbody ${path} gave up (Site ${site}):`, outcome.status, outcome.error);
-    return { ok: false, status: outcome.status, data: null, error: outcome.error };
+    console.warn(`Mindbody ${path} gave up (Site ${site}):`, outcome!.status, outcome!.error);
+    return { ok: false, status: outcome!.status, data: null, error: outcome!.error };
   }
   if (!r.ok) {
     const text = await r.text();

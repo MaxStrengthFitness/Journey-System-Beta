@@ -14,7 +14,7 @@ import type { Client, Studio, Trainer } from "../../types";
 import {
   claimIsStillDue,
   decideSync,
-  isFirstDeepOfDay,
+  isFirstDeepOfWeek,
   wantsDeepPull,
   withinPullHours,
   type SyncVerdict,
@@ -134,7 +134,7 @@ export function useAutoSync({
         }
         const lastDeepAt = fresh?.lastDeepScheduleSyncAt ?? null;
         deep = wantsDeepPull(lastDeepAt, now, timeZone);
-        lookUpEveryone = deep && isFirstDeepOfDay(lastDeepAt, now, timeZone);
+        lookUpEveryone = deep && isFirstDeepOfWeek(lastDeepAt, now, timeZone);
         // Written BEFORE the sync, not after. A sync that crashes half way
         // must still hold the lease for one interval, or every device retries
         // the failure together — which is the storm this exists to prevent.
@@ -152,10 +152,10 @@ export function useAutoSync({
     try {
       const { syncMindbodySchedules, syncWindow, NEAR_WINDOW_DAYS, DEEP_WINDOW_DAYS } =
         await import("../../lib/mindbody-api-sync");
-      // Today and tomorrow, or the whole month. Only the day's first month pull
-      // looks every client up with Mindbody (names, blank contact fields); the
-      // rest look up only clients Journey has never seen: one page and a lookup
-      // or two instead of ~12 calls.
+      // Today and tomorrow, or the whole month. Only the week's first month
+      // pull looks every client up with Mindbody (names, blank contact fields);
+      // the rest look up only clients Journey has never seen: one page and a
+      // lookup or two instead of ~12 calls.
       //
       // settleSweepWith: when today or tomorrow LOSES a booking, the near pull
       // cannot tell a cancellation from a move to next week, so it asks for
