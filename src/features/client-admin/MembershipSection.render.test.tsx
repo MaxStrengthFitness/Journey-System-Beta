@@ -370,10 +370,12 @@ describe("MembershipSection — auto-renewal", () => {
     );
     expect(renewText(host)).toContain(BILLING);
     expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
-    expect(buttonByText(host, "Use the studio's answer")).toBeUndefined();
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
+    // One box: there is an answer, so no second "Not on auto-renewal" to pick.
+    expect(pkg(host).querySelectorAll(".cadm-renew .cx-pick")).toHaveLength(1);
   });
 
-  it("stages a stamped mark on a tap, named with the Auth uid; a second tap pins yes; the studio's answer makes it clean", async () => {
+  it("stages a stamped mark on a tap, named with the Auth uid; a second tap pins yes; Remove this mark makes it clean", async () => {
     const probe: Probe = {};
     const host = await mount(<Harness c={client({ renewal: v2() })} probe={probe} />);
     await click(box(host));
@@ -398,8 +400,8 @@ describe("MembershipSection — auto-renewal", () => {
     expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
     expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
 
-    // "Use the studio's answer": nothing of her own, and nothing to save.
-    const clear = buttonByText(host, "Use the studio's answer")!;
+    // "Remove this mark": nothing of her own, and nothing to save.
+    const clear = buttonByText(host, "Remove this mark")!;
     expect(clear.classList.contains("cx-btn")).toBe(true);
     await click(clear);
     expect(probe.form!.formData.autoRenewMark).toBeNull();
@@ -448,7 +450,7 @@ describe("MembershipSection — auto-renewal", () => {
     const c = client({ renewal: v2({ autoRenews: false, autoRenewsFrom: "client" }), autoRenewMark: saved } as Partial<Client>);
     const host = await mount(<Harness c={c} canEdit={false} />);
     expect(box(host)).toBeNull();
-    expect(buttonByText(host, "Use the studio's answer")).toBeUndefined();
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
     expect(pkg(host).querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
       "Not on auto-renewal · marked by AJ · Sep 25, 2026",
     );
@@ -468,6 +470,64 @@ describe("MembershipSection — auto-renewal", () => {
     await click(buttonByText(host, "Lock the tier"));
     await click(buttonByText(host, "12 mo · paid in full"));
     expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+  });
+
+  it("offers both answers when Journey can't tell, neither pressed, and picking one stages it", async () => {
+    const probe: Probe = {};
+    const unmatched = v2({ autoRenews: null, autoRenewsFrom: null, autoRenewsInherited: null });
+    const host = await mount(<Harness c={client({ renewal: unmatched })} probe={probe} />);
+    const picks = () => Array.from(pkg(host).querySelectorAll<HTMLButtonElement>(".cadm-renew .cx-pick"));
+    const pressed = () => picks().map((b) => [b.textContent, b.getAttribute("aria-pressed")]);
+    // Never an unticked box that reads as "no" while saving nothing.
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "false"],
+    ]);
+    expect(renewText(host)).toContain(
+      "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether she is on auto-renewal.",
+    );
+    expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
+    expect(probe.form!.count).toBe(0);
+
+    await click(buttonByText(host, "Not on auto-renewal"));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: false, contractId: "k", setById: "uid-aj" });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "true"],
+    ]);
+    expect(pkg(host).textContent).toContain("Billing ends Jan 1, 2027");
+
+    await click(buttonByText(host, "On auto-renewal"));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: true, contractId: "k" });
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "true"],
+      ["Not on auto-renewal", "false"],
+    ]);
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+
+    // Removing the mark goes back to no answer, said as such.
+    await click(buttonByText(host, "Remove this mark"));
+    expect(probe.form!.count).toBe(0);
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "false"],
+    ]);
+  });
+
+  it("claims no renewal under a saved paid-in-full lock, and offers no box to contradict it", async () => {
+    const locked = client({
+      renewal: v2(),
+      contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-15T00:00:00Z", setByName: "AJ" },
+    } as Partial<Client>);
+    const host = await mount(<Harness c={locked} />);
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+    expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
+    expect(pkg(host).textContent).not.toContain("Auto-renews");
+    // Taking the lock off shows the box, and the answer it has without it.
+    await click(buttonByText(host, "Use Mindbody's"));
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
   });
 
   it("says the box arrives after tonight's run on a snapshot from before it", async () => {

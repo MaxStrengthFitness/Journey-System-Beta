@@ -206,17 +206,19 @@ export interface RenewalSnapshot {
    * Whether the running contract renews by itself when its payments finish:
    * the DECIDED answer, in auto-renew.ts's order (Mindbody's contract, the
    * trainer's mark on this contract, the package's answer, the studio's, the
-   * standard ON). Null only when nothing is running or coming, when the
-   * package isn't matched in Renewal settings and neither Mindbody nor a mark
-   * has answered, or on a version-1 snapshot that Mindbody hadn't flagged —
+   * standard ON). Null only when nothing is running or coming, under a
+   * coach's lock that says paid in full or banked sessions, when the package
+   * isn't matched in Renewal settings and neither Mindbody nor a mark has
+   * answered, or on a version-1 snapshot that Mindbody hadn't flagged —
    * the words then claim neither (sentences.ts, billingEndPhrase).
    */
   autoRenews: boolean | null;
   /** Where `autoRenews` came from; null when it is null. Absent on a version-1 snapshot. */
   autoRenewsFrom?: AutoRenewSource | null;
   /**
-   * The answer WITHOUT the client's own mark: what the profile's box shows
-   * until a trainer marks this contract. Absent on a version-1 snapshot.
+   * The answer WITHOUT the client's own mark or a coach's lock: what the
+   * profile's box shows until a trainer marks this contract. Absent on a
+   * version-1 snapshot.
    */
   autoRenewsInherited?: AutoRenewAnswer | null;
   /** Sessions left in the whole package: on hand, plus those still to be paid for. */

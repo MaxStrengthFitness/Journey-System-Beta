@@ -13,21 +13,26 @@ to the studio's per-package answer, AJ answered:
 
 > just allow trainers to mark a check box on a profile if the client is on auto renewal
 
-and, right after:
+and, right after (word for word):
 
-> the corporate studios do not have auto renewal on but franchise studios do. Studios will have the ability to turn auto renewals off if they want, but it's default on
+> i got confirmation, the corporate studios do not have auto renewal on but franchise studio do. i believe studios will have the ability to turn auto renewals off if they want but its auto default on
 
-So auto-renewal is a **studio policy, on by default**, which a studio (a
-corporate one) turns off; a package may say otherwise; and a trainer can mark
-one client on the profile.
+**Confirmed:** the corporate studios do not auto-renew; the franchise studios
+do. **AJ's belief, not yet confirmed:** every studio can turn auto-renewal off
+if it wants, and it is on by default. So auto-renewal is treated as a **studio
+policy, on by default**, which a studio (a corporate one) turns off; a package
+may say otherwise; and a trainer can mark one client on the profile.
 
 ## The order — decided in one place
 
 `src/features/renewals/auto-renew.ts`, `decideAutoRenew`. The first that
 answers wins:
 
-1. **Nothing running or coming** (paid in full, banked sessions, no package):
-   no answer. Nothing bills, so nothing renews.
+1. **Nothing running or coming** (paid in full, banked sessions, no package),
+   or **a coach's lock on the profile that says paid in full or banked
+   sessions** (`client.contractTierOverride`): no answer. Nothing bills, so
+   nothing renews. The lock beats even Mindbody's flag: it is there because
+   Mindbody's reading is wrong for her.
 2. **Mindbody's own flag on the contract** (`isAutoRenewing`, written only by
    the webhook). Mindbody owns contracts.
 3. **A trainer's mark on the client's profile, for THIS contract**
@@ -60,7 +65,7 @@ profile shows its answer in a line ("Change it in Mindbody") and no box.
 
 | Field | Where | Written by | Read by |
 | --- | --- | --- | --- |
-| `autoRenewMark` `{ renews, contractId, setAt, setById, setByName }` | `clients/{id}`, top level — never inside `renewal` | the codex record form only (Account → the package → **On auto-renewal**), with the Auth uid; `null` from "Use the studio's answer". No sync names it | the renewal engine (nightly and live), `renewalOf`, the package card |
+| `autoRenewMark` `{ renews, contractId, setAt, setById, setByName }` | `clients/{id}`, top level — never inside `renewal` | the codex record form only (Account → the package → **On auto-renewal**), with the Auth uid; `null` from "Remove this mark". No sync names it | the renewal engine (nightly and live), `renewalOf`, the package card |
 | `packagesRenewAutomatically` (boolean; absent = not answered = ON) | `studios/{s}/config/renewals` | My Studio → Studio → Renewals, the studio's leaders | the engine, the packages screen, the settings panel, Operations → Renewals |
 | `autoRenews` (now the decided answer), `autoRenewsFrom`, `autoRenewsInherited` | `clients/{id}.renewal`, engine version 2 | the nightly job only | every renewal screen; the box shows `autoRenewsInherited` until someone marks her |
 
@@ -87,13 +92,21 @@ as "nothing", so an untick over an empty field would never be saved
   if she isn't on auto-renewal."; "Westlake hasn't said whether its packages
   renew by themselves. The standard is yes, …"). A tap is staged on the Save
   bar ("Account · Membership"); a saved mark reads "Marked by AJ · Sep 25,
-  2026."; "Use the studio's answer" clears it. Under it: "This tells Journey's
-  renewal screens what Mindbody is set to. It doesn't change her billing:
-  auto-renewal itself is changed in Mindbody." A reader who may not change the
-  record (a cross-train studio) gets the answer in words. No box for paid in
-  full, banked sessions, or a staged paid-in-full lock.
-- **"Payments finish"** now survives only for an unmatched package and for a
-  snapshot from before the first nightly run. At a studio left ON (and every
+  2026."; "Remove this mark" clears it, and before Save says where that goes
+  back to ("Back to the package's answer", "the studio's answer", "the
+  standard answer", or "no answer"). Where Journey can't tell (Mindbody
+  hasn't said and the package isn't matched), the box is a pair, "On
+  auto-renewal" and "Not on auto-renewal", neither pressed until one is
+  picked. Under it: "This tells Journey's renewal screens what Mindbody is set
+  to. It doesn't change her billing: auto-renewal itself is changed in
+  Mindbody." A reader who may not change the record (a cross-train studio)
+  gets the answer in words. No box for paid in full, banked sessions, or a
+  paid-in-full or banked-sessions lock (staged or saved), and under such a
+  lock no screen says "Auto-renews".
+- **"Payments finish"** now survives only for an unmatched package, under a
+  coach's paid-in-full or banked-sessions lock over a contract Mindbody still
+  shows running, and for a snapshot from before the first nightly run. At a
+  studio left ON (and every
   studio until it answers), screens that said "payments finish" say
   "auto-renews".
 - **The package card says "Auto-renews"**, not "Renews", like every other
@@ -136,7 +149,7 @@ Known lags:
 | | |
 | --- | --- |
 | Typecheck | 4 (baseline) |
-| Suite | 5,575 passing in 349 files (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
+| Suite | 5,584 passing in 349 files after the review's fixes, 5,575 before them (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
 | Rules tests | 168 passing on the local emulator (162 before); AJ's `npm run test:rules` is the one that counts |
 | Build | green; the nightly renewals job bundles with the new engine |
 | Case duplicates | none |
@@ -155,13 +168,41 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
    run**, a leader or an administrator opens **My Studio → Studio → Renewals**
    at each **corporate** studio (AJ names which), sets "Packages at {studio}
    renew automatically" to **No**, and saves. Operations → Renewals and the
-   panel itself flag a studio that hasn't answered.
+   panel itself flag a studio that hasn't answered. `ship-lean-sync.ps1
+   golive` does not ask for this; it prints it as its last line, after the
+   push.
 3. Until the first nightly run, the box says "Auto-renewal can be marked here
    after tonight's renewal run" on every client.
 4. The first nightly run rewrites every client's snapshot once (version 2).
    Outcomes are untouched.
 5. The next morning, spot-check one franchise client and one corporate client
    on the Renewal card and on the package card.
+
+## The review's fixes (round 1)
+
+- **A paid-in-full or banked-sessions lock claims no renewal.** The box hid
+  under such a lock, but the decision ignored it, so the card, the header
+  chip and post-session said "Auto-renews" under "paid in full" with nothing
+  to untick. The lock is now step 1 of the order (`lockSaysNothingBills`), in
+  the engine, in `renewalOf` and in the package card with the form's lock, so
+  a lock staged to come off shows the answer it will have. The answer without
+  the lock is still stored (`autoRenewsInherited`), so taking a lock off shows
+  the right answer at once.
+- **"Remove this mark"**, not "Use the studio's answer": the answer a cleared
+  mark goes back to may be the package's, the standard, or none. The staged
+  sentence names it in the Brief's words.
+- **Where Journey can't tell, two answers, not one unticked box.** An
+  unticked box read as "no" (and announced "not pressed") while saving
+  nothing. Now "On auto-renewal" and "Not on auto-renewal" sit side by side,
+  neither pressed until one is picked.
+- **"Out of sessions around Oct 3, 6 weeks before it renews"**: the
+  will-run-out sentence follows the decided answer ("before billing ends",
+  "before the payments finish"), so it never says "billing ends" under
+  "Auto-renews".
+- A test pins today's Mindbody flag over last night's Mindbody answer.
+- AJ's second message is quoted word for word, and the business docs keep
+  "confirmed" apart from "AJ believes". The lean-sync round points up to its
+  shipping step, and `golive` prints it.
 
 ## Undo
 
@@ -179,7 +220,7 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
    goes back to the studio's answer. OK?
 3. Every tick or untick is kept for that client, even when it matches the
    studio's answer, so a later change of the studio's answer won't move her.
-   "Use the studio's answer" clears it. OK?
+   "Remove this mark" clears it. OK?
 4. Mindbody's own answer beats a trainer's mark, and the profile then shows a
    line instead of a box. Agreed?
 5. Paid in full never renews by itself. The paid-once view on the packages
@@ -194,6 +235,14 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
 9. This adds two stored fields and one key to a Firestore rule (CLAUDE.md asks
    for an explicit OK on a Firestore structure change). OK to ship?
 10. Ship it with `lean-sync`, or as its own release after it?
-11. The words: "On auto-renewal"; "Packages at {studio} renew automatically";
-    "the standard answer (the studio hasn't set one)"; "It doesn't change her
-    billing: auto-renewal itself is changed in Mindbody."
+11. The words: "On auto-renewal"; "Not on auto-renewal"; "Remove this
+    mark"; "Packages at {studio} renew automatically"; "the standard answer
+    (the studio hasn't set one)"; "It doesn't change her billing:
+    auto-renewal itself is changed in Mindbody."
+12. Can every studio really turn auto-renewal off in Mindbody? You said you
+    believe so; the round assumes it (a studio's answer is Yes or No).
+13. A coach's paid-in-full or banked-sessions lock now means "no answer",
+    even where Mindbody's contract says it auto-renews (the lock is there
+    because Mindbody's reading is wrong for her). The before-the-charge
+    warning it had before this round stays on. OK, or should the lock also
+    turn that warning off?

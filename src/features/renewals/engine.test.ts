@@ -314,6 +314,29 @@ describe("auto-renew, decided in one place (AJ, Sep 25 2026)", () => {
     expect(marked.autoRenewsInherited).toBeNull();
   });
 
+  it("claims no renewal under a coach's paid-in-full or banked-sessions lock over a running contract", () => {
+    const lock = (payment: "pif" | "sessions-only" | "monthly") => ({
+      contractTierOverride: { term: 12 as const, payment, setAt: "2026-09-10T15:00:00.000Z", setByName: "AJ" },
+    });
+    for (const payment of ["pif", "sessions-only"] as const) {
+      // Mindbody's flag and a mark included: the lock is there because Mindbody's reading is wrong for her.
+      const snap = build({ contract: { isAutoRenewing: true }, client: { ...lock(payment), ...mark(true) } });
+      expect(snap.paymentMode, payment).toBe("monthly");
+      expect(snap.autoRenews, payment).toBeNull();
+      expect(snap.autoRenewsFrom, payment).toBeNull();
+      // The answer without her lock or her mark: what renewalOf rebuilds from once the lock comes off.
+      expect(snap.autoRenewsInherited, payment).toEqual({ renews: true, from: "mindbody" });
+      // No "Auto-renews" claim; the warning it always had stays (unknown still warns).
+      expect(snap.situation, payment).toBe("will-bank");
+      expect(snap.chargeWarning, payment).toBe(true);
+    }
+    const studioOn = build({ settings: { packagesRenewAutomatically: true }, client: lock("pif") });
+    expect(studioOn.autoRenews).toBeNull();
+    expect(studioOn.autoRenewsInherited).toEqual({ renews: true, from: "studio" });
+    // A monthly lock still bills: the order as ever.
+    expect(build({ client: lock("monthly") }).autoRenewsFrom).toBe("default");
+  });
+
   it("says nothing of auto-renew for a package paid in full, whatever a mark says", () => {
     const snap = buildRenewalSnapshot(
       input({

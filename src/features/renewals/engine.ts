@@ -664,10 +664,11 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     }
   }
   // Does it renew by itself when the payments finish? Decided in one place
-  // (auto-renew.ts): Mindbody's flag, the trainer's mark on THIS contract,
-  // the package's answer, the studio's, the standard ON. `inherited` is the
-  // answer without her mark — what the profile's box shows until someone
-  // marks this contract.
+  // (auto-renew.ts): a coach's paid-in-full lock (no answer), Mindbody's
+  // flag, the trainer's mark on THIS contract, the package's answer, the
+  // studio's, the standard ON. `inherited` is the answer without her mark or
+  // her lock — what the profile's box shows until someone marks this
+  // contract, and what renewalOf rebuilds from once a lock comes off.
   const autoRenewInputs = {
     contractId: current?.id ?? null,
     mindbody: current?.contract.isAutoRenewing,
@@ -676,7 +677,11 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
     studio: settings.packagesRenewAutomatically,
   };
   const autoRenewsInherited = decideAutoRenew({ ...autoRenewInputs, mark: null });
-  const autoRenewDecided = decideAutoRenew({ ...autoRenewInputs, mark: client.autoRenewMark ?? null });
+  const autoRenewDecided = decideAutoRenew({
+    ...autoRenewInputs,
+    mark: client.autoRenewMark ?? null,
+    lock: client.contractTierOverride ?? null,
+  });
   const autoRenews = autoRenewDecided?.renews ?? null;
 
   /* ---- Session clock ---- */
@@ -796,9 +801,10 @@ export function buildRenewalSnapshot(input: RenewalEngineInput): RenewalSnapshot
   // corporate ones (AJ, Sep 25 2026), so a contract the decided answer says
   // won't renew has no charge coming: it still banks ("will-bank" says so),
   // and its conversation comes at the studio's threshold like anyone's.
-  // Unknown now means only an unmatched package, which is never "will-bank"
-  // (no tier, so "unknown"); the `!== false` keeps an old snapshot's null
-  // warning, as it always did.
+  // Unknown means an unmatched package, which is never "will-bank" (no tier,
+  // so "unknown"), or a coach's paid-in-full lock over a contract Mindbody
+  // still shows running, which keeps the warning it always had; the
+  // `!== false` also keeps an old snapshot's null warning.
   const chargeWarning =
     situation === "will-bank" &&
     autoRenews !== false &&

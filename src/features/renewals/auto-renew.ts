@@ -1,17 +1,24 @@
 /**
  * RENEWALS — does this contract renew by itself? Decided in ONE place.
  *
- * AJ, Sep 25 2026, two messages:
+ * AJ, Sep 25 2026, two messages, word for word:
  *   "just allow trainers to mark a check box on a profile if the client is on
  *    auto renewal", and
- *   "the corporate studios do not have auto renewal on but franchise studios
- *    do. Studios will have the ability to turn auto renewals off if they
- *    want, but it's default on."
+ *   "i got confirmation, the corporate studios do not have auto renewal on
+ *    but franchise studio do. i believe studios will have the ability to
+ *    turn auto renewals off if they want but its auto default on"
+ * Confirmed: the corporate studios are off, the franchise studios on. AJ's
+ * belief, not yet confirmed: every studio can switch it off in Mindbody.
  *
  * THE ORDER — the first that answers wins:
  *
  *   1. Nothing running or coming (paid in full, banked sessions, no
- *      package): no answer. Nothing bills, so nothing renews.
+ *      package), or a coach's lock on the profile that says paid in full or
+ *      banked sessions (`client.contractTierOverride`): no answer. Nothing
+ *      bills, so nothing renews. The lock beats even Mindbody's flag: it is
+ *      there because Mindbody's reading is wrong for her, and the profile
+ *      offers no box under it, so no screen may claim a renewal it
+ *      contradicts. The words stay "payments finish", as they were.
  *   2. Mindbody's own flag on the contract (`isAutoRenewing`, written only by
  *      the webhook). Mindbody owns contracts, so its word beats Journey's.
  *   3. A trainer's mark on the client's profile (`client.autoRenewMark`) FOR
@@ -36,12 +43,13 @@
  *
  * WHO READS IT. The engine (engine.ts) decides it every night and in the
  * live Renewal card, and stores the decided answer, where it came from, and
- * the answer WITHOUT her mark on the snapshot. A single-client screen reads
- * `renewalOf(client)`, which re-decides from that snapshot with the mark and
- * Mindbody's flag as they are NOW — so a saved tick, or a webhook that
- * landed today, shows at once. renewalOf only ever turns a warning OFF: the
- * snapshot doesn't carry the studio's warning window, so a warning that a
- * change would turn ON waits for the night. The lists follow the nightly run.
+ * the answer WITHOUT her mark or her lock on the snapshot. A single-client
+ * screen reads `renewalOf(client)`, which re-decides from that snapshot with
+ * the mark, the lock and Mindbody's flag as they are NOW — so a saved tick, a
+ * saved lock, or a webhook that landed today, shows at once. renewalOf only
+ * ever turns a warning OFF: the snapshot doesn't carry the studio's warning
+ * window, so a warning that a change would turn ON waits for the night. The
+ * lists follow the nightly run.
  *
  * Pure: no React, no Firebase. The nightly job imports it through engine.ts.
  * auto-renew.test.ts.
@@ -51,7 +59,7 @@ import type { AutoRenewMark, Client } from "../../types";
 import type { AutoRenewAnswer, PackageTier, RenewalSettings, RenewalSnapshot } from "./types";
 
 /**
- * What a studio that never answered reads as (AJ, Sep 25 2026: "it's
+ * What a studio that never answered reads as (AJ, Sep 25 2026: "its auto
  * default on"). The one place the default lives.
  */
 export const STUDIO_AUTO_RENEW_DEFAULT = true;
@@ -69,6 +77,19 @@ export interface AutoRenewInputs {
   pkg?: unknown;
   /** The studio's `packagesRenewAutomatically`. */
   studio?: unknown;
+  /** `client.contractTierOverride`: a paid-in-full or banked-sessions lock is no answer (step 1). */
+  lock?: unknown;
+}
+
+/**
+ * A coach's lock that says nothing bills: paid in full, or banked sessions
+ * (client-admin/contract.ts). The decision gives no answer under it, and the
+ * profile's box hides under it (client-admin/account.ts, autoRenewView).
+ */
+export function lockSaysNothingBills(lock: unknown): boolean {
+  if (!lock || typeof lock !== "object") return false;
+  const payment = (lock as { payment?: unknown }).payment;
+  return payment === "pif" || payment === "sessions-only";
 }
 
 /** A mark a decision may use: well formed, and made on this contract. */
@@ -94,7 +115,7 @@ function standingAnswer(pkg: unknown, studio: unknown): AutoRenewAnswer {
 
 /** THE order. Null when there is no answer (see the header). */
 export function decideAutoRenew(i: AutoRenewInputs): AutoRenewAnswer | null {
-  if (!i.contractId) return null;
+  if (!i.contractId || lockSaysNothingBills(i.lock)) return null;
   if (typeof i.mindbody === "boolean") return { renews: i.mindbody, from: "mindbody" };
   if (markFor(i.mark, i.contractId)) return { renews: i.mark.renews, from: "client" };
   if (!i.tierMatched) return null;
@@ -133,12 +154,12 @@ export function liveMindbodyFlag(
   return typeof c?.isAutoRenewing === "boolean" ? c.isAutoRenewing : undefined;
 }
 
-export type RenewalOfClient = Partial<Pick<Client, "renewal" | "autoRenewMark" | "mindbodyContracts">>;
+export type RenewalOfClient = Partial<Pick<Client, "renewal" | "autoRenewMark" | "mindbodyContracts" | "contractTierOverride">>;
 
 /**
  * THE accessor for a single client's renewal on screen: the stored snapshot,
- * with auto-renew re-decided from the mark and Mindbody's flag as they are
- * now. Returns the SAME object when nothing changed, and the stored snapshot
+ * with auto-renew re-decided from the mark, the lock and Mindbody's flag as
+ * they are now. Returns the SAME object when nothing changed, and the stored snapshot
  * untouched when it predates this round (version 1), or isn't a monthly
  * contract. Only ever turns `chargeWarning` OFF (see the header).
  */
@@ -156,8 +177,13 @@ export function renewalOf(client: RenewalOfClient | null | undefined): RenewalSn
     pkg: stored?.from === "package" ? stored.renews : undefined,
     studio: stored?.from === "studio" ? stored.renews : undefined,
   };
+  // The inherited answer is without her mark AND her lock, as the engine stores it.
   const inherited = decideAutoRenew({ ...inputs, mark: null });
-  const decided = decideAutoRenew({ ...inputs, mark: client?.autoRenewMark ?? null });
+  const decided = decideAutoRenew({
+    ...inputs,
+    mark: client?.autoRenewMark ?? null,
+    lock: client?.contractTierOverride ?? null,
+  });
   const autoRenews = decided?.renews ?? null;
   const from = decided?.from ?? null;
   if (r.autoRenews === autoRenews && (r.autoRenewsFrom ?? null) === from && sameAnswer(stored, inherited)) return r;
@@ -177,8 +203,8 @@ export function renewalOf(client: RenewalOfClient | null | undefined): RenewalSn
  * answer returns the saved mark itself, so the form is clean again; any
  * other tap is a new, stamped mark — even one that matches the inherited
  * answer, so "yes, she is on it" survives a studio later switching off.
- * Clearing the mark ("Use the studio's answer") is a separate action that
- * stages null.
+ * Clearing the mark ("Remove this mark") is a separate action that stages
+ * null, and the inherited answer applies again.
  */
 export function markAfterTap({
   want,

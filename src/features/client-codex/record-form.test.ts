@@ -279,7 +279,7 @@ describe("nextDirty", () => {
     const c = client();
     const untick = { renews: false, contractId: "k1", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-aj" };
     expect(nextDirty(none, "autoRenewMark", untick, c).has("autoRenewMark")).toBe(true);
-    // Back to "use the studio's answer" over a record that has none: clean.
+    // "Remove this mark" over a record that has none: clean.
     expect(nextDirty(none, "autoRenewMark", null, c).size).toBe(0);
     // The saved mark over itself: clean.
     const saved = client({ autoRenewMark: untick });

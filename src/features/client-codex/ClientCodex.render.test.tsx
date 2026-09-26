@@ -1370,7 +1370,7 @@ describe("ClientCodex — read only", () => {
     // (phase 16), offers them no editor: no nickname, no identity, no lock,
     // no studio to approve, no Edit on how she found us.
     const account = panel(host, "account");
-    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Use Mindbody's", "On auto-renewal", "Use the studio's answer"]) {
+    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Use Mindbody's", "On auto-renewal", "Not on auto-renewal", "Remove this mark"]) {
       expect(buttonIn(account, text), text).toBeUndefined();
     }
     expect(account.querySelectorAll("input, textarea, select, .cx-pick")).toHaveLength(0);

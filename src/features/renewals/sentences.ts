@@ -49,6 +49,18 @@ export function billingEndPhrase(autoRenews: boolean | null | undefined): string
   return "payments finish";
 }
 
+/**
+ * The same answer after "before": "it renews", "billing ends", "the payments
+ * finish" — so "6 weeks before …" never says "billing ends" beside a card
+ * that says "Auto-renews".
+ */
+function billingEndAfterBefore(autoRenews: boolean | null | undefined): string {
+  const phrase = billingEndPhrase(autoRenews);
+  if (phrase === "auto-renews") return "it renews";
+  if (phrase === "payments finish") return "the payments finish";
+  return phrase;
+}
+
 function billingEnds(s: RenewalSnapshot, today: string): string {
   const when = dayLabel(s.chargeDate, today);
   const est = s.chargeDateSource === "estimate" ? " (estimated)" : "";
@@ -166,7 +178,7 @@ export function situationSentence(s: RenewalSnapshot, today: string): string {
     case "will-run-out": {
       const gap = s.runOutDate && s.chargeDate ? weeksBetween(s.runOutDate, s.chargeDate) : null;
       return `Out of sessions around ${dayLabel(s.runOutDate, today)}${
-        gap ? `, ${gap} week${gap === 1 ? "" : "s"} before billing ends` : ""
+        gap ? `, ${gap} week${gap === 1 ? "" : "s"} before ${billingEndAfterBefore(s.autoRenews)}` : ""
       }`;
     }
     case "away":

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
  * MY STUDIO → STUDIO → RENEWALS: the studio's auto-renewal answer (Sep 25
- * 2026). AJ: "the corporate studios do not have auto renewal on but franchise
- * studios do. Studios will have the ability to turn auto renewals off if they
- * want, but it's default on."
+ * 2026). AJ, word for word: "i got confirmation, the corporate studios do not
+ * have auto renewal on but franchise studio do. i believe studios will have
+ * the ability to turn auto renewals off if they want but its auto default on"
  *
  * The write is the point and it is silent when wrong: a studio that never
  * answered must read as ON and SAY it hasn't answered, choosing No must send

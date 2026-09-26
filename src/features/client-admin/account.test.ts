@@ -304,6 +304,26 @@ describe("packageView", () => {
     expect(packageView({ ...c, autoRenewMark: mark(false) }, null, TODAY, undefined, null).when).toBe("Auto-renews Mar 14, 2028");
   });
 
+  it("claims no renewal under a paid-in-full or banked-sessions lock, staged or saved", () => {
+    const c = contracted({
+      renewal: renewal({ ...V2, situation: "will-bank", bankedAtCharge: 6, autoRenewsFrom: "default", autoRenewsInherited: { renews: true, from: "default" } }),
+    });
+    const pif: ContractTierOverride = { term: 12, payment: "pif", setAt: "2027-03-15T00:00:00Z", setByName: "AJ" };
+    expect(packageView(c, null, TODAY).when).toBe("Auto-renews Mar 14, 2028");
+    for (const payment of ["pif", "sessions-only"] as const) {
+      const staged = packageView(c, { ...pif, payment }, TODAY);
+      expect(staged.when, payment).toBe("Payments finish Mar 14, 2028");
+      expect(staged.status, payment).toBe("Payments finish Mar 14, 2028 with about 6 sessions still banked");
+    }
+    // Saved: the form holds the saved lock, and a mark under it claims nothing either.
+    const saved = { ...c, contractTierOverride: pif, autoRenewMark: mark(true) };
+    expect(packageView(saved, pif, TODAY).when).toBe("Payments finish Mar 14, 2028");
+    // Staged to come off: the answer it has without it, before Save.
+    expect(packageView(saved, null, TODAY).when).toBe("Auto-renews Mar 14, 2028");
+    // A monthly lock bills.
+    expect(packageView(c, { ...pif, payment: "monthly" }, TODAY).when).toBe("Auto-renews Mar 14, 2028");
+  });
+
   it("never calls what she holds right now 'left'", () => {
     const v = packageView(contracted(), null, TODAY);
     expect(v).toMatchObject({ left: "7 on hand", leftWords: "sessions on hand in Mindbody", worked: false });
@@ -509,16 +529,33 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
     });
   });
 
-  it("D3 — no inherited answer: the package isn't matched and Mindbody is silent", () => {
+  it("D3 — no inherited answer: both answers offered, neither chosen, and nothing read as 'no'", () => {
     expect(view(on(null))).toMatchObject({
       kind: "pick",
+      pair: true,
+      answer: null,
       pressed: false,
+      canClear: false,
       source:
-        "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tick if she is on auto-renewal.",
+        "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether she is on auto-renewal.",
     });
+    // Picking "no" is an answer, staged and then saved.
+    expect(view(on(null), { pendingMark: mark(false) })).toMatchObject({
+      pair: true,
+      answer: false,
+      pressed: false,
+      canClear: true,
+      source: "Tap Save changes on the bar to keep it.",
+    });
+    const saidNo = on(null, { autoRenewMark: mark(false) });
+    saidNo.renewal = { ...saidNo.renewal!, autoRenews: false, autoRenewsFrom: "client" };
+    expect(view(saidNo)).toMatchObject({ pair: true, answer: false, canClear: true, source: "Marked by AJ · Mar 15, 2027." });
+    // Wherever there is an inherited answer, one box: unticked honestly means "no".
+    expect(view(on({ renews: false, from: "studio" }))).toMatchObject({ pair: false, answer: false });
+    expect(view(on({ renews: true, from: "default" }))).toMatchObject({ pair: false, answer: true });
   });
 
-  it("E — a saved mark for this contract names who marked it, and offers the studio's answer back", () => {
+  it("E — a saved mark for this contract names who marked it, and offers to remove it", () => {
     const c = on({ renews: true, from: "default" }, { autoRenewMark: mark(false) });
     // As the nightly run wrote it once the mark was saved.
     c.renewal = { ...c.renewal!, autoRenews: false, autoRenewsFrom: "client" };
@@ -536,6 +573,26 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
     const saved = on({ renews: true, from: "studio" }, { autoRenewMark: mark(false) });
     const cleared = view(saved, { pendingMark: null });
     expect(cleared).toMatchObject({ pressed: true, canClear: false, source: "Back to the studio's answer when you save." });
+  });
+
+  it("F — a staged clear names where it goes back to: the package's, the standard, or no answer at all", () => {
+    const clear = (inherited: Parameters<typeof on>[0]) => view(on(inherited, { autoRenewMark: mark(true) }), { pendingMark: null });
+    expect(clear({ renews: false, from: "package" })).toMatchObject({
+      pressed: false,
+      source: "Back to the package's answer when you save.",
+    });
+    // The standard is never credited to the studio.
+    expect(clear({ renews: true, from: "default" })).toMatchObject({
+      pressed: true,
+      source: "Back to the standard answer (the studio hasn't set one) when you save.",
+    });
+    expect(clear(null)).toMatchObject({
+      pair: true,
+      answer: null,
+      pressed: false,
+      source:
+        "Back to no answer when you save: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings.",
+    });
   });
 
   it("G — saved, while the stored nightly snapshot still disagrees: the lists catch up tonight", () => {
@@ -615,6 +672,12 @@ describe("autoRenewView — the package card's auto-renewal box (Sep 25 2026)", 
     expect(view(on(def), { pendingOverride: lock("pif") }).kind).toBeNull();
     expect(view(on(def), { pendingOverride: lock("sessions-only") }).kind).toBeNull();
     expect(view(on(def), { pendingOverride: lock("monthly") }).kind).toBe("pick");
+    // Saved, as the form holds it: no box, for any reader.
+    const locked = on(def, { contractTierOverride: lock("pif") });
+    expect(view(locked, { pendingOverride: lock("pif") }).kind).toBeNull();
+    expect(view(locked, { pendingOverride: lock("pif"), canEdit: false }).kind).toBeNull();
+    // A saved lock staged to come off: the box, on the answer it has without it.
+    expect(view(locked, { pendingOverride: null })).toMatchObject({ kind: "pick", pressed: true, answer: true, pair: false });
   });
 
   it("speaks in the pronoun, and names 'the studio' when it has no name", () => {

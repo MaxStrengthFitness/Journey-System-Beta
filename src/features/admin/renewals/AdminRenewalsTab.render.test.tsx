@@ -2,7 +2,7 @@
 /**
  * OPERATIONS → RENEWALS, mounted: a door to the studio's auto-renewal answer,
  * never a second editor of it (Sep 25 2026). A studio that hasn't answered
- * reads as renewing (AJ: "it's default on"), and the corporate studios must
+ * reads as renewing (AJ: "its auto default on"), and the corporate studios must
  * be switched off — so the one notice this screen already had says so, and
  * its button opens My Studio, where the answer is set. A read that is still
  * loading or failed is unknown, never "unanswered".

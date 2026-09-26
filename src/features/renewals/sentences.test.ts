@@ -83,11 +83,19 @@ describe("sentences", () => {
       "Auto-renews Nov 14 with about 16 sessions still banked",
     );
     expect(situationSentence(snap({ situation: "will-run-out", runOutDate: "2026-10-03" }), TODAY)).toBe(
-      "Out of sessions around Oct 3, 6 weeks before billing ends",
+      "Out of sessions around Oct 3, 6 weeks before it renews",
     );
     expect(
       situationSentence(snap({ situation: "away", awayReason: "Snowbird", awayUntil: "2027-04-01" }), TODAY),
     ).toBe("Snowbird until Apr 1, 2027 · clocks paused");
+  });
+
+  it("says how far a run-out falls short in the decided answer's words, never 'billing ends' beside 'Auto-renews'", () => {
+    const runOut = (autoRenews: boolean | null) =>
+      situationSentence(snap({ situation: "will-run-out", runOutDate: "2026-10-03", autoRenews }), TODAY);
+    expect(runOut(true)).toBe("Out of sessions around Oct 3, 6 weeks before it renews");
+    expect(runOut(false)).toBe("Out of sessions around Oct 3, 6 weeks before billing ends");
+    expect(runOut(null)).toBe("Out of sessions around Oct 3, 6 weeks before the payments finish");
   });
 
   it("says 'billing ends' rather than 'auto-renews' when Mindbody says it won't", () => {

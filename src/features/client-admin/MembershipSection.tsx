@@ -106,7 +106,9 @@ import {
   type PaymentKind,
 } from "./contract";
 import {
+  AUTO_RENEW_CLEAR_LABEL,
   AUTO_RENEW_LABEL,
+  AUTO_RENEW_NO_LABEL,
   autoRenewView,
   firstDayView,
   isMindbodyLinked,
@@ -188,7 +190,7 @@ function PackageCard({
   // The form holds the unsaved lock (null once it is taken off), the client the saved one.
   const pendingOverride: ContractTierOverride | null =
     "contractTierOverride" in formData ? formData.contractTierOverride ?? null : client.contractTierOverride ?? null;
-  // The same for the auto-renewal mark (null once "Use the studio's answer" is tapped).
+  // The same for the auto-renewal mark (null once "Remove this mark" is tapped).
   const pendingMark: AutoRenewMark | null =
     "autoRenewMark" in formData ? formData.autoRenewMark ?? null : client.autoRenewMark ?? null;
   const view = useMemo(
@@ -206,12 +208,13 @@ function PackageCard({
   );
   const dirty = isDirty("contractTierOverride") || isDirty("autoRenewMark");
 
-  const tapAutoRenew = () => {
+  // The box flips the answer; each of the pair (Journey can't tell) sets its own.
+  const tapAutoRenew = (want: boolean) => {
     if (renew.kind !== "pick" || !renew.contractId) return;
     updateField(
       "autoRenewMark",
       markAfterTap({
-        want: !renew.pressed,
+        want,
         saved: client.autoRenewMark,
         contractId: renew.contractId,
         author,
@@ -308,13 +311,25 @@ function PackageCard({
         <div className="cadm-renew" role="group" aria-label="Auto-renewal">
           {renew.kind === "pick" ? (
             <div className="cadm-renew__row">
-              <Pick pressed={renew.pressed} onClick={tapAutoRenew}>
+              <Pick pressed={renew.pressed} onClick={() => tapAutoRenew(renew.pair ? true : !renew.pressed)}>
                 {renew.pressed ? <CheckSquare size={18} aria-hidden="true" /> : <Square size={18} aria-hidden="true" />}
                 {AUTO_RENEW_LABEL}
               </Pick>
+              {renew.pair ? (
+                // Journey can't tell: "no" is an answer to give, never what an
+                // unticked box is taken to mean.
+                <Pick pressed={renew.answer === false} onClick={() => tapAutoRenew(false)}>
+                  {renew.answer === false ? (
+                    <CheckSquare size={18} aria-hidden="true" />
+                  ) : (
+                    <Square size={18} aria-hidden="true" />
+                  )}
+                  {AUTO_RENEW_NO_LABEL}
+                </Pick>
+              ) : null}
               {renew.canClear ? (
                 <Btn variant="quiet" icon={Undo2} onClick={() => updateField("autoRenewMark", null)}>
-                  Use the studio's answer
+                  {AUTO_RENEW_CLEAR_LABEL}
                 </Btn>
               ) : null}
             </div>

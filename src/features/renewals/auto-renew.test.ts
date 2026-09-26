@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   STUDIO_AUTO_RENEW_DEFAULT,
   decideAutoRenew,
+  lockSaysNothingBills,
   markAfterTap,
   markFor,
   packageRenews,
   renewalOf,
   type AutoRenewInputs,
 } from "./auto-renew";
-import type { AutoRenewMark, Client } from "../../types";
+import type { AutoRenewMark, Client, ContractTierOverride } from "../../types";
 import type { AutoRenewSource, RenewalSnapshot } from "./types";
 
 const mark = (renews: boolean, contractId = "c1", over: Partial<AutoRenewMark> = {}): AutoRenewMark => ({
@@ -18,6 +19,12 @@ const mark = (renews: boolean, contractId = "c1", over: Partial<AutoRenewMark> =
   setById: "uid-aj",
   setByName: "AJ",
   ...over,
+});
+const lock = (payment: ContractTierOverride["payment"]): ContractTierOverride => ({
+  term: 12,
+  payment,
+  setAt: "2026-09-25T14:00:00.000Z",
+  setByName: "AJ",
 });
 
 describe("decideAutoRenew — the one order", () => {
@@ -77,6 +84,24 @@ describe("decideAutoRenew — the one order", () => {
     expect(decideAutoRenew({ ...i, pkg: 0, studio: false })).toEqual({ renews: false, from: "studio" });
   });
 
+  it("gives no answer under a coach's paid-in-full or banked-sessions lock, whatever Mindbody, a mark or the studio say", () => {
+    for (const payment of ["pif", "sessions-only"] as const) {
+      expect(lockSaysNothingBills(lock(payment))).toBe(true);
+      for (const mindbody of [true, false, undefined])
+        expect(
+          decideAutoRenew({ contractId: "c1", mindbody, mark: mark(true), tierMatched: true, studio: true, lock: lock(payment) }),
+          `${payment} ${mindbody}`,
+        ).toBeNull();
+    }
+    // A monthly or month-to-month lock still bills: the order as ever.
+    for (const payment of ["monthly", "month-to-month"] as const) {
+      expect(lockSaysNothingBills(lock(payment))).toBe(false);
+      expect(decideAutoRenew({ contractId: "c1", tierMatched: true, lock: lock(payment) })).toEqual({ renews: true, from: "default" });
+    }
+    expect(lockSaysNothingBills(null)).toBe(false);
+    expect(lockSaysNothingBills({ payment: "PIF" })).toBe(false);
+  });
+
   it("uses a mark only on the contract it was made on", () => {
     expect(markFor(mark(true), "c1")).toBe(true);
     expect(markFor(mark(true), "c2")).toBe(false);
@@ -114,7 +139,7 @@ describe("renewalOf — one client's renewal, with the mark and Mindbody as they
       ...over,
     }) as RenewalSnapshot;
   const client = (over: Partial<Client> = {}) =>
-    ({ renewal: snapshot(), ...over }) as Pick<Client, "renewal" | "autoRenewMark" | "mindbodyContracts">;
+    ({ renewal: snapshot(), ...over }) as Pick<Client, "renewal" | "autoRenewMark" | "mindbodyContracts" | "contractTierOverride">;
 
   it("returns the same object when nothing changes", () => {
     const c = client();
@@ -168,6 +193,40 @@ describe("renewalOf — one client's renewal, with the mark and Mindbody as they
     expect(r.autoRenewsFrom).toBe("mindbody");
     expect(r.autoRenewsInherited).toEqual({ renews: false, from: "mindbody" });
     expect(r.chargeWarning).toBe(false);
+  });
+
+  it("lets today's Mindbody flag beat last night's Mindbody answer", () => {
+    const r = renewalOf(
+      client({
+        renewal: snapshot({ autoRenews: true, autoRenewsFrom: "mindbody", autoRenewsInherited: { renews: true, from: "mindbody" } }),
+        mindbodyContracts: { c1: { clientContractId: "c1", status: "Active", isAutoRenewing: false } },
+      }),
+    )!;
+    expect(r.autoRenews).toBe(false);
+    expect(r.autoRenewsFrom).toBe("mindbody");
+    expect(r.chargeWarning).toBe(false);
+    expect(r.autoRenewsInherited).toEqual({ renews: false, from: "mindbody" });
+  });
+
+  it("claims no renewal under a saved paid-in-full lock, keeps the answer without it, and never turns a warning on or off for it", () => {
+    for (const payment of ["pif", "sessions-only"] as const) {
+      const r = renewalOf(client({ contractTierOverride: lock(payment), autoRenewMark: mark(true) }))!;
+      expect(r.autoRenews, payment).toBeNull();
+      expect(r.autoRenewsFrom, payment).toBeNull();
+      expect(r.autoRenewsInherited, payment).toEqual({ renews: true, from: "studio" });
+      expect(r.chargeWarning, payment).toBe(true);
+    }
+    // As the engine wrote it under the lock: nothing changes.
+    const stored = client({
+      renewal: snapshot({ autoRenews: null, autoRenewsFrom: null }),
+      contractTierOverride: lock("pif"),
+    });
+    expect(renewalOf(stored)).toBe(stored.renewal);
+    // The lock comes off: the answer it had without it, at once.
+    expect(renewalOf({ ...stored, contractTierOverride: null })!.autoRenews).toBe(true);
+    // A monthly lock bills: no change.
+    const monthly = client({ contractTierOverride: lock("monthly") });
+    expect(renewalOf(monthly)).toBe(monthly.renewal);
   });
 
   it("rebuilds the standard and an unmatched package from last night's inherited answer", () => {
