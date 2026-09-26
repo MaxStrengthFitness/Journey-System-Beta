@@ -41,10 +41,12 @@ def plan_mindbody(N, C, webhook_on=True):
     floor = per_day * OPEN_DAYS + rc.TRAINERS_PER_STUDIO * 4.33
     # Packages: pulled when a sale / contract / membership event says so, a
     # monthly sweep of ACTIVE clients only, and a fresh pull the morning of a
-    # session for anyone Journey counts as near the end of a package.
+    # session for anyone Journey counts as near the end of a package - as
+    # built (job-plan.ts), at most weekly, for the ~30% of clients inside the
+    # studio's conversation threshold (10 sessions by default).
     sales = C / 90 + 0.5                        # a renewal every ~3 months + new clients
-    sweep = C / 30
-    near_end = 0.02 * C
+    sweep = 0.7 * C / 30                        # the rest of the active clients, monthly
+    near_end = 0.3 * C / 7
     renew = 2 * (sales + sweep + near_end) * NIGHTS + NIGHTS / 3   # + a token per site per night (3 studios a site)
     calls = (floor + renew) * N
     return dict(per_day=per_day, renew_per_night=renew / NIGHTS, calls=calls,
