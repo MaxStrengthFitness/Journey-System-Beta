@@ -61,6 +61,7 @@ import {
   useProfileNav,
 } from "../features/client-profile";
 import { answerFor, type ClientAnswer } from "../features/client-profile/client-answer";
+import { completedNewestFirst, nextRoutine } from "../features/routines/next-routine";
 import { useProgressReports } from "../features/client-profile/useProgressReports";
 import {
   ClientCodex,
@@ -231,9 +232,6 @@ export function ClientProfileView({
   const [routineAdjustments, setRoutineAdjustments] = useState<
     RoutineAdjustment[]
   >([]);
-  const [selectedRoutineTodayId, setSelectedRoutineTodayId] = useState<
-    string | null
-  >(null);
 
   // Which routine the Edit Routine drawer is open against ("Routine A" /
   // "Routine B"), or null when closed. All the drawer's own state (machine
@@ -349,6 +347,16 @@ export function ClientProfileView({
   };
 
   const client = clients.find((c) => c.id === clientId);
+
+  /* Which routine the next session runs: the running session's own, else the
+     Active Session's alternation (features/routines/next-routine.ts). "Use
+     today" set a choice the session never read, so the card could say A while
+     the session ran B; it went (AJ, Sep 26 2026: "Used last on" instead). */
+  const selectedRoutineTodayId = useMemo(() => {
+    if (activeInProgressSession?.routineId) return activeInProgressSession.routineId;
+    const last = completedNewestFirst(sessions)[0];
+    return nextRoutine(routines, last?.routineId, !!client?.isRoutineBActive)?.id ?? null;
+  }, [activeInProgressSession?.routineId, sessions, routines, client?.isRoutineBActive]);
 
   // Master Sync (client-profile audit, Sep 2026): the ONE place a trainer
   // refreshes a client from Mindbody. The write lands on the client document,
@@ -740,15 +748,6 @@ export function ClientProfileView({
     return () => unsubscribe();
   }, [clientId, hasQuotaError]);
 
-  useEffect(() => {
-    if (activeInProgressSession?.routineId) {
-      setSelectedRoutineTodayId(activeInProgressSession.routineId);
-    } else if (client?.preferredTodayRoutineId) {
-      setSelectedRoutineTodayId(client.preferredTodayRoutineId);
-    } else {
-      setSelectedRoutineTodayId(null);
-    }
-  }, [activeInProgressSession?.routineId, client?.preferredTodayRoutineId]);
 
   const handlePromptToggleB = (checked: boolean) => {
     setPendingToggleBValue(checked);
@@ -813,48 +812,6 @@ export function ClientProfileView({
       console.error("Error toggling Routine B:", err);
     } finally {
       setIsSavingToggle(false);
-    }
-  };
-
-  const handleUseToday = async (routine: Routine) => {
-    if (!clientId) return;
-
-    let rotId = routine.id;
-    if (rotId.startsWith("temp-")) {
-      const rotName = rotId === "temp-a" ? "Routine A" : "Routine B";
-      const docRef = await addDoc(collection(db, "routines"), {
-        clientId,
-        name: rotName,
-        machineIds: [],
-        createdAt: serverTimestamp(),
-        studioId: client?.homeStudioId || activeStudioId || "",
-      });
-      rotId = docRef.id;
-
-      const qRoutines = query(
-        collection(db, "routines"),
-        where("clientId", "==", clientId),
-      );
-      const snap = await getDocs(qRoutines);
-      setRoutines(
-        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Routine),
-      );
-    }
-
-    try {
-      await updateDoc(doc(db, "clients", clientId), {
-        preferredTodayRoutineId: rotId,
-      });
-
-      if (activeInProgressSession?.id) {
-        await updateDoc(doc(db, "sessions", activeInProgressSession.id), {
-          routineId: rotId,
-        });
-      }
-
-      setSelectedRoutineTodayId(rotId || null);
-    } catch (err) {
-      console.error("Error setting routine today:", err);
     }
   };
 
@@ -1619,7 +1576,6 @@ export function ClientProfileView({
             view={nav.programmingView}
             onViewChange={nav.setProgrammingView}
             onEdit={(name) => setEditRoutineTarget(name)}
-            onUseToday={handleUseToday}
             onToggleB={handlePromptToggleB}
             onSelectMachine={openMachineWindow}
             disabled={!!hasQuotaError}
@@ -1682,77 +1638,6 @@ export function ClientProfileView({
                   className="bg-cta text-white hover:bg-cta-strong rounded-xl uppercase font-bold text-xs shadow-md shadow-cta/15"
                 >
                   {isSavingToggle ? "Saving..." : "Confirm Switch"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Discard Session confirmation (round: Discard Session option) —
-              same delete sequence, same "are you sure" pattern as
-              WorkoutTrackerView's own Scrap Session dialog, just reachable
-              from the profile's In-Progress dropdown so a trainer can clear
-              a stuck/abandoned session without opening it first. */}
-          <Dialog
-            open={!!discardTarget}
-            onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
-          >
-            <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
-              <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
-                    isDiscardingActiveSession
-                      ? "bg-red-500/20 text-red-500 animate-pulse"
-                      : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]",
-                  )}
-                >
-                  {isDiscardingActiveSession ? (
-                    <Loader2 className="w-6 h-6 animate-spin text-red-500" />
-                  ) : (
-                    <Trash2 className="w-6 h-6" />
-                  )}
-                </div>
-                <h3 className="text-2xl font-black italic uppercase tracking-tight">
-                  {isDiscardingActiveSession
-                    ? "Discarding Session..."
-                    : discardTarget && discardTarget.id !== activeInProgressSession?.id
-                      ? "Discard Unfinished Session?"
-                      : "Discard Active Session?"}
-                </h3>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                  {isDiscardingActiveSession
-                    ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
-                    : [
-                        "This will end and permanently clear this session.",
-                        discardTarget ? staleSessionStartedLine(discardTarget, studioTodayKey()) : "",
-                        "All data logged in it will be scrapped and will not be recorded in the database.",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                </p>
-              </div>
-              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  variant="outline"
-                  disabled={isDiscardingActiveSession}
-                  className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
-                  onClick={() => setDiscardTarget(null)}
-                >
-                  Keep Session
-                </Button>
-                <Button
-                  disabled={isDiscardingActiveSession}
-                  className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
-                  onClick={handleDiscardActiveSession}
-                >
-                  {isDiscardingActiveSession ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Discarding...</span>
-                    </>
-                  ) : (
-                    "Discard Session"
-                  )}
                 </Button>
               </div>
             </DialogContent>
@@ -1859,6 +1744,82 @@ export function ClientProfileView({
             file. Deleted; git has them if anything is ever wanted back. */}
       </Tabs>
       </UnsavedChangesScope>
+
+      {/* In the profile's frame, not inside the Programming panel (session
+          record, Sep 26 2026): the tabs mount only the panel on screen, so
+          from Journey, Notes & Profile or the Activity Archive the header's
+          Discard and the notice's "Discard it" did nothing, and the question
+          appeared later, on Programming. */}
+      {/* Discard Session confirmation (round: Discard Session option) —
+          same delete sequence, same "are you sure" pattern as
+          WorkoutTrackerView's own Scrap Session dialog, just reachable
+          from the profile's In-Progress dropdown so a trainer can clear
+          a stuck/abandoned session without opening it first. */}
+      <Dialog
+        open={!!discardTarget}
+        onOpenChange={(v) => !isDiscardingActiveSession && !v && setDiscardTarget(null)}
+      >
+        <DialogContent className="sm:max-w-100 rounded-[32px] p-0 overflow-hidden border-none shadow-2xl dark:shadow-none">
+          <div className="bg-white dark:bg-bg-dark p-8 text-foreground space-y-3">
+            <div
+              className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center mb-2 transition-all",
+                isDiscardingActiveSession
+                  ? "bg-red-500/20 text-red-500 animate-pulse"
+                  : "bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.4)]",
+              )}
+            >
+              {isDiscardingActiveSession ? (
+                <Loader2 className="w-6 h-6 animate-spin text-red-500" />
+              ) : (
+                <Trash2 className="w-6 h-6" />
+              )}
+            </div>
+            <h3 className="text-2xl font-black italic uppercase tracking-tight">
+              {isDiscardingActiveSession
+                ? "Discarding Session..."
+                : discardTarget && discardTarget.id !== activeInProgressSession?.id
+                  ? "Discard Unfinished Session?"
+                  : "Discard Active Session?"}
+            </h3>
+            <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+              {isDiscardingActiveSession
+                ? "Scrapping all logged sets, timers, and notes. Cleaning database records..."
+                : [
+                    "This will end and permanently clear this session.",
+                    discardTarget ? staleSessionStartedLine(discardTarget, studioTodayKey()) : "",
+                    "All data logged in it will be scrapped and will not be recorded in the database.",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+            </p>
+          </div>
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-bg-dark border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="outline"
+              disabled={isDiscardingActiveSession}
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-50"
+              onClick={() => setDiscardTarget(null)}
+            >
+              Keep Session
+            </Button>
+            <Button
+              disabled={isDiscardingActiveSession}
+              className="h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 disabled:opacity-80 flex items-center justify-center gap-2"
+              onClick={handleDiscardActiveSession}
+            >
+              {isDiscardingActiveSession ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Discarding...</span>
+                </>
+              ) : (
+                "Discard Session"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {showFullChart &&
         clientId &&

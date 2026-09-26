@@ -756,6 +756,7 @@ export interface Client {
   subjectiveSnapshot?: ClientSubjectiveSnapshot | null;
   events?: ClientEvent[];
   isRoutineBActive?: boolean;
+  /** Retired Sep 26 2026 with "Use today": nothing writes or reads it. Older records still carry it. */
   preferredTodayRoutineId?: string;
   remainingSessions: number;
   legacy_filemaker_id?: string;

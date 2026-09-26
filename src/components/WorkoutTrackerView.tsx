@@ -58,6 +58,7 @@ import { finishedElsewhere, settleOrQueue } from "../features/session-record/fin
 import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
 import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
 import { nothingKind } from "../features/session-record/nothing-on-screen";
+import { nextRoutine } from "../features/routines/next-routine";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -1041,32 +1042,14 @@ export function WorkoutTrackerView({
       const determineAndFetch = async () => {
         const completed = sessions.filter((s) => s.status === "Completed");
         const lastSess = completed[0];
-
-        // Find Routine A and B specifically
-        const routineA = routines.find((r) => r.name === "Routine A");
-        const routineB = routines.find((r) => r.name === "Routine B");
         const isRoutineBActive = selectedClient?.isRoutineBActive || false;
 
-        let target: Routine | null = null;
-
-        // Sequence Selection Logic
-        if (routines.length === 0) {
-          // New Client: Default to Routine A Setup
-          target = { name: "Routine A", machineIds: [], clientId } as Routine;
-        } else if (routineA && routineB && isRoutineBActive) {
-          // Strict Alternation Logic
-          const lastRoutine = routines.find(
-            (r) => r.id === lastSess?.routineId,
-          );
-          if (lastRoutine?.name === "Routine A") {
-            target = routineB;
-          } else {
-            target = routineA;
-          }
-        } else {
-          // Fallback to Routine A or whatever exists
-          target = routineA || routines[0];
-        }
+        /* Strict alternation, in one place since Sep 26 2026 so the profile's
+           routine card says the same (features/routines/next-routine.ts). A
+           client with no routines yet starts a new Routine A. */
+        const target: Routine =
+          nextRoutine(routines, lastSess?.routineId, isRoutineBActive) ??
+          ({ name: "Routine A", machineIds: [], clientId } as Routine);
 
         setTargetRoutine(target);
       };

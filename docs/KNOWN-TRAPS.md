@@ -300,6 +300,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **A reader that already has the tab's load passes it in; given one, the piece reads nothing** (client codex, phase 6, Sep 24 2026). `InBodyCard` takes `inbody`, `ClientCheckInPanel` takes `draft` (and `FordSection` took `ford` until the FORD page replaced it in phase 10 — the FORD page has no hook at all); each disables its own hook rather than skipping it (hooks cannot be conditional), exactly as the old journal area (`ClientJournalTab`, deleted in phase 19) did with `journal`. Left out, each reads for itself as before. `useNoteDismissalsState(uid)` says whether the trainer's dismissals have been read (`loading · ready · failed`) — `useNoteDismissals` returns `{}` until then, which cannot be told from "nothing hushed". **ClientProfileView is not remounted per client**, so an answer it holds is stamped with the client it is for and read through `answerFor` (`src/features/client-profile/client-answer.ts`): `progressReportsStatus` (the reports list is not cleared on a client change, so filter it by `clientId` AND wait for `ready`) and `journeyCompletedCount` (null until counted — `calculatedSessionCount` starts at 0 and keeps the last client's total, so never read it as "new").
 
+- **A dialog the header or a notice opens lives in the profile's frame, never inside a tab panel** (session record, phase 6, Sep 26 2026). The profile's tabs draw only the panel on screen, so a dialog drawn inside Programming does not exist while Journey, Notes & Profile or the Activity Archive is showing. The header's Discard and the stale notice's "Discard it" set `discardTarget` and nothing opened; the question then appeared out of nowhere the next time Programming was opened. The Discard question now sits after `</Tabs>`, and `ClientProfileView.discard.test.ts` checks it stays there. The same holds for any dialog a control outside the tabs opens. **A routine card says the Active Session's routine, never a choice the session does not read**: "Use today" wrote `preferredTodayRoutineId`, which the tracker never read, so the card could say A while the session ran B. Both now read `nextRoutine` (`src/features/routines/next-routine.ts`), and the field is retired but still on older records.
+
 <a id="tracker"></a>
 
 ## The Active Session and set data
@@ -517,10 +519,10 @@ the data files with esbuild's text loader, so that field comes back as the
   with one a rule may refuse, and a write that follows it is queued, not
   awaited. A read grant is not a write grant: when you open a document to
   another studio, list what that studio's screens write to it and test each
-  one.** Still refused for a visitor, knowingly: Use today
-  (`preferredTodayRoutineId`), the machine-stats backfill marker and the
-  consultation wizard's `requiresConsultation` (a prospect cross-training
-  before her first consultation). Tests: `a cross-train visitor's session` in
+  one.** Still refused for a visitor, knowingly: the machine-stats backfill
+  marker and the consultation wizard's `requiresConsultation` (a prospect
+  cross-training before her first consultation). Use today
+  (`preferredTodayRoutineId`) was the third, until it went on Sep 26 2026. Tests: `a cross-train visitor's session` in
   `tests/firestore.rules.test.ts` (the full eight-machine batch fits the
   rules' expression budget) and `src/lib/sync-utils.finish.test.ts`.
 

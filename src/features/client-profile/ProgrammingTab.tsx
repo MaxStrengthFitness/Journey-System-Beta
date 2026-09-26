@@ -96,7 +96,6 @@ export interface ProgrammingTabProps {
   view: ProgrammingView;
   onViewChange: (view: ProgrammingView) => void;
   onEdit: (name: RoutineName) => void;
-  onUseToday: (routine: Routine) => void;
   onToggleB: (checked: boolean) => void;
   onSelectMachine?: (machineId: string) => void;
   disabled?: boolean;
@@ -122,7 +121,6 @@ export function ProgrammingTab({
   view,
   onViewChange,
   onEdit,
-  onUseToday,
   onToggleB,
   onSelectMachine,
   disabled = false,
@@ -314,7 +312,6 @@ export function ProgrammingTab({
     selectedRoutineTodayId,
     isBActive,
     onEdit,
-    onUseToday,
     onToggleB,
     onSelectMachine,
     disabled,

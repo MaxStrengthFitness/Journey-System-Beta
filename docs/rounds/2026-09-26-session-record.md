@@ -16,7 +16,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | 2 | `784885e` | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
 | 3 | `d9e2d11`, `b2cc770` | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
 | 4 | `364198f` | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
-| 5 | (this commit) | The Active Session never draws a blank page: one sentence and the way on. Closing the Assign picker keeps the open session, and a Start that fails says so in plain words. |
+| 5 | `2aee3b1`, `edce3d7` | The Active Session never draws a blank page: one sentence and the way on. Closing the Assign picker keeps the open session, and a Start that fails says so in plain words. |
+| 6 | (this commit) | Discard works from every profile tab. "Use today" is gone: each routine card says when it was last used, and the one marked for today is the one the session will actually run. |
 
 ### Phase 1: what was wrong
 
@@ -138,9 +139,30 @@ The suite gives 5,551 passing in 351 files, the typecheck 4 and the build passes
 
 The suite gives 5,560 passing in 352 files, the typecheck 4 and the build passes.
 
+## Phase 6: the profile's Discard, and which routine is today's
+
+### What was wrong
+
+- **Discard did nothing from three of the profile's four tabs.** The header's In-Progress menu and the stale-session notice both offer Discard, and both are on screen from every tab. The question they open was drawn inside the Programming panel, and the tabs draw only the panel on screen. From Journey, Notes & Profile or the Activity Archive, the tap did nothing. The question then appeared later, out of nowhere, the next time the trainer opened Programming. That is the Atlas's "Discard only works from one tab".
+- **The routine card and the session could disagree.** "Use today" saved a choice on the client (`preferredTodayRoutineId`) that the Active Session never read. The session always runs its own strict alternation: with Routine B on, B after an A session and A after anything else. So the card could say "Routine A today" while the session was about to run B. The choice also never expired, so a tap in March still said "today" in September.
+
+### What it does
+
+- **The Discard question lives in the profile's frame,** outside the tabs, so it opens wherever the trainer is. It is the same dialog with the same words, the same delete and the same "Keep Session", only moved.
+- **"Use today" is gone** (AJ, on the Atlas: "we can get rid of 'use today' and that can be replaced with a 'Used last on'"). Each routine card says "Used last on Sep 22", with the year when it was not this year, or "Used today". It says nothing for a routine Journey has no session on, because a migrated client's use of it may be in FileMaker.
+- **The routine marked for today is the one the session will run.** The alternation now lives in one place, `src/features/routines/next-routine.ts`, and the Active Session and the profile both read it. A session already running keeps its own routine. Both order sessions the same way, by the session's own date, as the History grid does.
+- **Nothing writes `preferredTodayRoutineId` any more,** and the demo seed stopped writing it. Older client records still carry it, and nothing reads it. It is not deleted: that would be a change to the database, and it costs nothing where it is.
+
+### Tests
+
+- `next-routine.test.ts` covers the alternation, the order of completed sessions, the day each routine was last used and the sentence, including the year and a plain day never moving across time zones.
+- `RoutinesTab.render.test.tsx` mounts the routine card. There is no Use today button, a routine with a session says "Used last on", one without says nothing, and today's routine is the one the session will run.
+- `ClientProfileView.discard.test.ts` reads the profile's source and checks the Discard question is drawn once, after the tabs close. The profile is too large to mount in a test, so this guards the move itself.
+
+The suite gives 5,576 passing in 355 files, the typecheck 4 and the build passes.
+
 ## Still to come in this round
 
 These come from the review's suggested order, and each will be its own phase:
 
 - A second iPad opening a running session read-only, so a leader can watch it live.
-- Discard that works from every profile tab.
