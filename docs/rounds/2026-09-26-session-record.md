@@ -213,6 +213,10 @@ The suite gives 5,617 passing in 356 files, the typecheck 4 and the build passes
 
 ## What this round leaves for later
 
+- **Three items from the Atlas's session-record card, not built in this round:**
+  - fix (4), "Resume it" on an old session can overwrite a machine already logged there;
+  - fix (6), Finish can stamp a real set "not reached";
+  - the wrap-up note, a half-typed pain location and the post-session notes live only on the screen until they are saved.
 - **No guard on the database side for a second Finish** (phases 3 and 7). The one case left is an offline Finish replayed after another iPad finished online. AJ, Sep 26 2026: "That scenario is extremely unlikely I think." If it is ever seen, the guard is a rules or Cloud Functions change.
 - **Sign-out's three names** (Switch Trainer, Log Out Facility and Settings' Sign out) become one button. That belongs to the sign-out leftovers card.
 - **A walk-through on real iPads.** The render tests mount every screen here; only an iPad shows how they feel. AJ, Sep 26: after the Atlas is complete, as the one walk-through on a finished build. The steps are in `docs/ops/TESTING-CHECKLIST.md` under "Round 5 — Failure modes".
