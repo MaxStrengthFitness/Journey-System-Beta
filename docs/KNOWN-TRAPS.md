@@ -318,7 +318,7 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **A set still in the write queue wins over the snapshot** (session record, Sep 26 2026). The `exerciseLogs` listener builds `logs` through `keepPendingEdits` (`src/lib/pending-log-edits.ts`), never `setLogs(snapshotMap)`. When another machine's save lands, the snapshot carries this set's older numbers, and a plain rebuild reverts what the trainer is typing. A new writer of set data goes through `queueLogWrite`, so the listener knows the set is pending. A tap that finishes something is sent at once (`sendsAtOnce`), and leaving a typed field sends it (`SessionNowBar`'s `onCommit`). `docs/rounds/2026-09-26-session-record.md`.
 
-- **`WorkoutTrackerView` draws three screens and the order is a rule**, `lib/tracker-screen.ts`: post-session first while its snapshot exists, then none / briefing / tracker. The client's sessions stream turns pre-session mode on whenever nothing is In-Progress — including the beat after Finish — so never check the briefing before the post-session screen.
+- **`WorkoutTrackerView` draws three screens and the order is a rule**, `lib/tracker-screen.ts`: post-session first while its snapshot exists, then none / briefing / tracker. The client's sessions stream turns pre-session mode on whenever nothing is In-Progress — including the beat after Finish — so never check the briefing before the post-session screen. "none" is a real screen since Sep 26 2026 (`NothingOnScreen`, session record): never return null there, because the routing does reach it.
 
 - **Sessions still use the app-wide machine list**, not each studio's roster, so a studio's own or adopted machines aren't in the session picker yet (ROADMAP).
 
