@@ -1,5 +1,7 @@
 # What Journey will cost to run: a model built from the code
 
+*Sep 26: the plan built on this model, with AJ's ranking of what has to be fresh, is `docs/rounds/2026-09-26-cost-plan.md` (arithmetic in `cost-plan-model.py`).*
+
 *Sep 25 2026. Built from branch `lean-sync` (master, plus the unshipped packages release, plus the lean Mindbody sync). I only read code and changed nothing: no Firestore writes and no Mindbody calls. The arithmetic is in `running-costs-model.py` next to this file (`python docs/business/running-costs-model.py`).*
 
 ---
