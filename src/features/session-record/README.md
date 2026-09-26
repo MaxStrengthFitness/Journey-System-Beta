@@ -17,6 +17,13 @@ The line sits at the top so it never covers the Now Bar's buttons at the bottom 
 
 It reads nothing and writes nothing.
 
+## Finish never hangs, and never counts twice
+
+`finish-wait.ts`, used by `WorkoutTrackerView`'s `commitEndSession` and its post-session note writes:
+
+- `settleOrQueue` waits up to `FINISH_WAIT_MS` for the database's answer, and not at all while offline. Past that, the save is on the iPad, and the post-session screen says "saved on this iPad" until the answer comes.
+- `finishedElsewhere` asks the server whether another iPad already finished the session. Finish then writes nothing, so the client's totals are never counted twice. Offline, or with no answer, it says no and Finish goes ahead.
+
 ## Related pieces elsewhere
 
 - `src/lib/pending-log-edits.ts`: a set whose write is still queued keeps what the trainer typed when another machine's save lands.
