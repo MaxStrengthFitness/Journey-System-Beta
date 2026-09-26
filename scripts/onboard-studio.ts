@@ -245,12 +245,35 @@ async function main() {
   const decisions: Decision[] = [];
   const work: Array<{ studio: any; entry: ScopeEntry; docId: string; create: boolean; existing: any }> = [];
 
-  for (const studio of chosen) {
-    const locationId = shared ? String(studio.mindbodyLocationId).trim() : null;
-    const scope = scopeFromAppointments(appointments, { today, locationId });
+  /* A client who trains at two of the studios in this run (the shared site)
+     is in both lists. Each is handled once, under the studio where they have
+     the most bookings in the window - which is also the home a new record is
+     given - so nobody is synced twice or made twice. */
+  const scopes = chosen.map((studio) =>
+    scopeFromAppointments(appointments!, {
+      today,
+      locationId: shared ? String(studio.mindbodyLocationId).trim() : null,
+    }),
+  );
+  const homeOf = new Map<string, { studio: number; bookings: number }>();
+  scopes.forEach((scope, si) => {
+    for (const entry of scope) {
+      const had = homeOf.get(entry.mindbodyClientId);
+      if (!had || entry.bookings > had.bookings) {
+        homeOf.set(entry.mindbodyClientId, { studio: si, bookings: entry.bookings });
+      }
+    }
+  });
+
+  for (const [si, studio] of chosen.entries()) {
+    const scope = scopes[si].filter((entry) => homeOf.get(entry.mindbodyClientId)?.studio === si);
+    const elsewhere = scopes[si].length - scope.length;
     const trained = scope.filter((s) => s.reasons.includes("trained")).length;
     const booked = scope.filter((s) => s.reasons.includes("booked")).length;
-    console.log(`\n${studio.name ?? studio.id}: ${scope.length} clients count (${trained} trained recently, ${booked} booked soon)`);
+    console.log(
+      `\n${studio.name ?? studio.id}: ${scope.length} clients count (${trained} trained recently, ${booked} booked soon)` +
+        (elsewhere ? `, and ${elsewhere} more are handled under the studio where they train most` : ""),
+    );
 
     /* Two reads a client, in batches - the plain number and the site-qualified
        one - never a query in a loop. */

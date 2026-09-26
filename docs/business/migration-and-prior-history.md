@@ -147,6 +147,16 @@ Absent a cutover date, every client is "unknown" and gets the cautious wording.
 That is the right default: during migration, unknown and migration look
 identical and only one of the two wordings is safe.
 
+**"Started on Journey" is known from Mindbody's visit count, never from the
+date alone** (the cost plan, Sep 26 2026). A first Journey session on or after
+the cutover proves nothing by itself: it is exactly the twelve-year client
+whose first Journey session fell in the studio's first week. So a client reads
+as a whole story only when Mindbody's lifetime count (from a Master Sync, the
+pre-launch sync or the nightly sync of anyone booked who never was) says she is
+new; with no count she is "unknown". Before Sep 26 the date alone answered
+"complete", on the belief that every schedule pull carried the count; it does
+not (`lib/prior-history.ts`).
+
 This also retires `machineStatsBackfilledAt` as a gate. That marker existed
 because `machineStats` only counts sessions since the running total existed —
 true for a migration client, and those clients no longer get a number quoted at

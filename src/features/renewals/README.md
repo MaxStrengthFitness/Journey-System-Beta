@@ -31,7 +31,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `pipeline.ts` | Operations lanes, filters, next steps |
 | `outcomes.ts` | How a package ended — the nightly job's decisions |
 | `rates.ts` | Outcomes counted up for the leader-only Outcomes view; quarters |
-| `job-plan.ts` | Who gets a Mindbody pull tonight; Mindbody names seen |
+| `job-plan.ts` | Who gets a Mindbody pull tonight (packages when a sale happens, the cost plan, Sep 26 2026: a sale / contract / membership event first, then near the end of a package on a day they train, then never pulled, then a month old - never a past client on a timer); only at studios that have gone live (`studioIsLive`); Mindbody names seen |
 | `permissions.ts` | Who may do what — mirrors `firestore.rules` |
 | `use*.ts` | Firestore reads and writes. Nothing else here touches Firebase |
 | `*.tsx` | Trainer surfaces: the Renewal card, the log dialog, the briefing line, the Hub lane, My renewals |
@@ -56,6 +56,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 
 - **Sessions left = sessions on hand (pricing options) + 8 for each payment still to come.** The count is Mindbody's; an estimate says so. Complimentary "Session Comp" sessions count; unmatched pricing options don't, and they show as data gaps.
 - **Dates are UTC days for Mindbody** (`mindbodyDayKey`) and studio days for everything else.
+- **Sessions left is Mindbody's number as of the last pull, never a count-down** (the cost plan, Sep 26 2026). The nightly job counts down (sessions left at the pull, less the sessions Journey logged since) only to decide WHEN to ask Mindbody again - near the studio's conversation threshold, the morning of a day they train, at most weekly. A screen never shows the count-down.
 - **Pace** is visits a week over the last 8 weeks, rounded to a quarter. It skips away time and never reaches back before the current package or the studio's first synced booking. It needs 21 observed days.
 - **Away beats ended and lapsed.** Snowbirds are not churn.
 - **Auto-renew is Mindbody's per-contract flag (`autoRenews`), never assumed** (AJ, Sep 24 2026: it is on at some studios and not others). `billingEndPhrase()` in `sentences.ts` is the one wording: "auto-renews", "billing ends", or "payments finish" when Mindbody hasn't said. `chargeWarning` needs a charge, so it is never set on a contract Mindbody says won't renew; unknown still warns.
