@@ -44,8 +44,8 @@ The "if it fails" half matters more than the tick box. Most of these were writte
 - [ ] **The sign-in screen** at 1366×1024 landscape, and again with the on-screen keyboard up. Every button reachable. *If it fails:* this is the worst one on the list — a trainer cannot get into the app at all. `AppContent.tsx:1325`, root has `overflow-hidden` at `:1327` and zero scrollers beneath it.
 - [ ] **Studio selector — scroll to Strongsville.** Every location reachable, all 40. *If it fails:* known, root cause found, `StudioSelectionView.tsx:159`. Note *how far* you get before it dies — that tells you how urgent the redesign is versus the one-line fix.
 - [ ] **Access Request screen** (sign in as a user with no trainer profile). *If it fails:* `AccessRequestView.tsx:113`, same defect, and this is a first-run experience.
-- [ ] **Consultation wizard** — every step, landscape, with the keyboard up on a text step. *If it fails:* `ConsultationWizard.tsx:225` — this strands a trainer **mid-consultation with a client sitting there**.
-- [ ] **Consultation setup wizard** from inside the tracker. *If it fails:* `ConsultationSetupWizard.tsx:56`, same.
+- [ ] ~~**Consultation wizard**~~ — nothing opens it since Sep 24 2026 (the Relay "Assessment" task is the Pulse task and opens the client's Pulse). Check that instead: a Pulse task on the board lands on Notes & Profile → Body & Pulse.
+- [ ] **Consultation setup wizard** from inside the tracker. *If it fails:* `ConsultationSetupWizard.tsx:56`, same. Since Sep 24 2026 it opens on the client's gender and age as recorded, or on nothing, and a starting weight reads "—" until both are answered. Skip must leave a recorded gender alone.
 - [ ] **While you are here:** on the sign-in screen and Access Request, check the avatar image renders. *Predicted:* `AccessRequestView.tsx:176` passes `src=""` when there is no photo, which makes the browser re-request the page as an image.
 
 **All five share one fix** (`h-full overflow-y-auto` on the view's own root). Verify them together after the fix, not one at a time.

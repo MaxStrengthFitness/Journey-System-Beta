@@ -169,6 +169,7 @@ import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
 import { VictoryHUDScreen } from "./VictoryHUDScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
+import { ageOnFile, demographicsPatch } from "../lib/consultation-answers";
 import { studioTodayKey } from "../lib/studio-time";
 
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
@@ -2647,17 +2648,20 @@ export function WorkoutTrackerView({
         <>
           <ConsultationSetupWizard
             clientName={clientFirstName(selectedClient)}
+            initialGender={selectedClient.gender ?? null}
+            initialAge={ageOnFile(selectedClient)}
             onComplete={async (setupData) => {
-              // Optional: update client with gender/age setup
+              // The gender only when one was picked. This used to write the
+              // wizard's "Male" default over whatever was on file, on Skip too.
               await updateDoc(doc(db, "clients", selectedClient.id!), {
-                gender: setupData.gender || selectedClient.gender,
+                ...demographicsPatch({ gender: setupData.gender }),
                 consultationCompleted: true,
                 requiresConsultation: false,
                 updatedAt: serverTimestamp(),
               }).catch((e) => console.error(e));
 
               if (setupData.routine && setupData.routine.length > 0) {
-                const machineNames = setupData.routine.map((r: any) => r.name);
+                const machineNames: string[] = setupData.routine.map((r) => r.name);
                 const customMachineIds = floorMachines
                   .filter((m) => machineNames.includes(m.name))
                   .map((m) => m.id as string);

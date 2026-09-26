@@ -20,7 +20,7 @@
 import { zonedHM } from "../../lib/studio-time";
 import { addDays, weekdayOf } from "./recurrence";
 import {
-  CLIENT_ACTION_LABEL,
+  clientActionInSentence,
   SHIFT_LABEL,
   taskScopeOf,
   type TaskShift,
@@ -153,7 +153,7 @@ export function taskSentence(
         ? t.target.clientId
           ? `, for ${ctx.clientName?.(t.target.clientId) || "a client"}${
               t.target.action && t.target.action !== "custom"
-                ? ` (opens the ${CLIENT_ACTION_LABEL[t.target.action].toLowerCase()})`
+                ? ` (opens the ${clientActionInSentence(t.target.action)})`
                 : ""
             }`
           : ", with a client"

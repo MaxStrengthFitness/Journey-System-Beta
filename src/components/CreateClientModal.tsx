@@ -15,6 +15,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { Client, Studio } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
+import { canSaveNewClient, newClientPayload } from "../lib/consultation-answers";
 import { cn } from "@/lib/utils";
 
 // Reusing Select component since it's already implemented in other files or can be imported.
@@ -26,6 +27,12 @@ interface CreateClientModalProps {
   onClose: () => void;
   onClientCreated: (clientId: string, routeToImporter?: boolean) => void;
   studios: Studio[];
+  /**
+   * The studio this iPad is working in. The home studio starts on it and can
+   * be changed but not left blank: the rules refuse a client with no studio
+   * for everyone below super admin.
+   */
+  activeStudioId?: string | null;
 }
 
 export function CreateClientModal({
@@ -34,6 +41,7 @@ export function CreateClientModal({
   onClose,
   onClientCreated,
   studios,
+  activeStudioId = null,
 }: CreateClientModalProps) {
   const nameParts = initialName.trim().split(" ");
   const [firstName, setFirstName] = useState(nameParts[0] || "");
@@ -44,7 +52,7 @@ export function CreateClientModal({
   const [email, setEmail] = useState("");
   const [gender, setGender] = useState<string>("");
   const [age, setAge] = useState<string>("");
-  const [homeStudioId, setHomeStudioId] = useState<string>("");
+  const [homeStudioId, setHomeStudioId] = useState<string>(activeStudioId || "");
   const [discoveryNotes, setDiscoveryNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState<"prospect" | "existing">(
@@ -56,8 +64,10 @@ export function CreateClientModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<Client | null>(null);
 
+  const canSave = canSaveNewClient({ firstName, lastName, homeStudioId });
+
   const executeSave = async (force: boolean = false) => {
-    if (!firstName || !lastName) return;
+    if (!canSave) return;
 
     if (!force) {
       const exactMatch = clients.find(
@@ -74,29 +84,18 @@ export function CreateClientModal({
     setIsSubmitting(true);
 
     try {
-      const clientData: any = {
+      // Only what was answered: no placeholder height, no invented package,
+      // no blank fields (lib/consultation-answers.ts).
+      const clientData = newClientPayload({
+        kind: activeTab,
         firstName,
         lastName,
-        phone: phone || null,
-        email: email || null,
-        discoveryNotes: discoveryNotes || null, // Stage 1 Notes
-        isActive: true,
-        completedSessions: 0,
-        sessionCount: 0,
-        remainingSessions: activeTab === "prospect" ? 1 : 10,
-        gender: gender || null,
-        age: age ? parseInt(age, 10) : null,
-        height: "5'10\"", // Default, to be updated in Stage 2
-        homeStudioId: homeStudioId || null,
-        consultationCompleted: activeTab === "existing",
-        requiresConsultation: activeTab === "prospect",
-      };
-
-      // Clean up properties that are undefined if any stuck around
-      Object.keys(clientData).forEach((key) => {
-        if (clientData[key] === undefined) {
-          clientData[key] = null;
-        }
+        phone,
+        email,
+        gender,
+        age,
+        homeStudioId,
+        discoveryNotes,
       });
 
       const docRef = await addDoc(collection(db, "clients"), {
@@ -286,20 +285,27 @@ export function CreateClientModal({
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">
-                  Home Studio (Optional)
+                  Home Studio
                 </Label>
                 <select
                   value={homeStudioId}
                   onChange={(e) => setHomeStudioId(e.target.value)}
                   className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-border text-foreground focus:border-[#F06C22] focus:ring-0 rounded-xl font-bold px-3"
                 >
-                  <option value="">Select Studio</option>
+                  <option value="" disabled>
+                    Select Studio
+                  </option>
                   {studios.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
                   ))}
                 </select>
+                {!homeStudioId && (
+                  <p className="text-[12px] font-bold text-muted-foreground ml-1">
+                    Pick the studio they train at to save.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -380,7 +386,7 @@ export function CreateClientModal({
           </Button>
           <Button
             onClick={handleSaveClick}
-            disabled={isSubmitting || !firstName || !lastName}
+            disabled={isSubmitting || !canSave}
             className="w-full sm:flex-2 h-14 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all active:scale-95 bg-[#F06C22] hover:bg-[#F06C22]/90 text-white cursor-pointer"
           >
             {isSubmitting ? (

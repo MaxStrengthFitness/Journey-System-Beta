@@ -123,6 +123,20 @@ describe("taskSentence", () => {
     );
   });
 
+  it("calls the stored 'assessment' action the Pulse, capital P (Sep 24 2026)", () => {
+    const s = taskSentence(
+      task({
+        scope: "personal",
+        kind: "client",
+        target: { kind: "client", clientId: "c1", action: "assessment" },
+        recurrence: { type: "once", onDate: "2026-09-17" },
+      }),
+      { todayKey: TODAY, clientName: () => "Grace Ahn" },
+    );
+    expect(s).toContain("for Grace Ahn (opens the Pulse).");
+    expect(s).not.toMatch(/assessment/i);
+  });
+
   it("says a one-off studio task tells its author, unless switched off", () => {
     const once = task({ recurrence: { type: "once", onDate: "2026-09-25" } });
     expect(taskSentence(once, { todayKey: TODAY })).toMatch(/^Once, Fri, Sep 25, on every machine\. .* You'll hear when it's done\.$/);
