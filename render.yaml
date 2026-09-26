@@ -265,6 +265,11 @@ services:
       # Clients pulled from Mindbody a night, across all studios.
       - key: RENEWALS_MAX_PULLS
         value: "300"
+      # Never-synced clients booked today or tomorrow, Master-Synced a night
+      # (5 calls each). The cost plan, Sep 26 2026: "everyone else syncs the
+      # day they book".
+      - key: FIRST_SYNC_MAX
+        value: "60"
       # "true" works everything out and writes nothing (the log says what it
       # would have done). Leave "false" once the first run has been checked.
       - key: RENEWALS_DRY_RUN

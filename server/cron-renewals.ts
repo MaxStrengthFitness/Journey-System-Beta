@@ -14,6 +14,8 @@
  *   MINDBODY_API_KEY, MINDBODY_SOURCE_NAME,
  *   MINDBODY_SOURCE_PASSWORD                         read-only Mindbody pulls
  *   RENEWALS_MAX_PULLS    optional; clients pulled a night (default 300 = ~600 calls)
+ *   FIRST_SYNC_MAX        optional; never-synced clients booked today or tomorrow
+ *                         Master-Synced a night (default 60 = ~300 calls)
  *   RENEWALS_DRY_RUN      optional; "true" computes everything and writes nothing
  */
 
@@ -23,9 +25,12 @@ import { runRenewals } from "./renewals-job.ts";
 
 void runCron("cron-renewals", async () => {
   const maxPulls = Number(process.env.RENEWALS_MAX_PULLS);
+  const maxFirstSyncs = Number(process.env.FIRST_SYNC_MAX);
   await runRenewals({
     db: getDb(),
     dryRun: process.env.RENEWALS_DRY_RUN === "true",
     maxPulls: Number.isFinite(maxPulls) && maxPulls >= 0 ? maxPulls : undefined,
+    maxFirstSyncs:
+      process.env.FIRST_SYNC_MAX && Number.isFinite(maxFirstSyncs) && maxFirstSyncs >= 0 ? maxFirstSyncs : undefined,
   });
 });

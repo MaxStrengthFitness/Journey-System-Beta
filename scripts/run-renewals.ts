@@ -14,6 +14,8 @@
  *   npx tsx scripts/run-renewals.ts --pull             # dry run, WITH Mindbody pulls (read-only)
  *   npx tsx scripts/run-renewals.ts --commit           # write snapshots and pulled data
  *   npx tsx scripts/run-renewals.ts --commit --studio <studioId> --max-pulls 50
+ *   npx tsx scripts/run-renewals.ts --commit --first-sync-max 20
+ *       (never-synced clients booked today or tomorrow, Master-Synced: 5 calls each)
  *
  * Mindbody: each pulled client costs 2 calls; the first 1,000 calls a day are
  * free. --max-pulls caps it (default 300). Without --pull or --commit, no
@@ -27,6 +29,7 @@ async function main() {
   const commit = hasFlag("commit");
   const pull = commit || hasFlag("pull");
   const maxPulls = flag("max-pulls") !== undefined ? Number(flag("max-pulls")) : undefined;
+  const maxFirstSyncs = flag("first-sync-max") !== undefined ? Number(flag("first-sync-max")) : undefined;
   const db = connectFirestore();
   console.log(
     commit
@@ -38,6 +41,7 @@ async function main() {
     dryRun: !commit,
     noPulls: !pull,
     maxPulls: Number.isFinite(maxPulls) ? maxPulls : undefined,
+    maxFirstSyncs: Number.isFinite(maxFirstSyncs) ? maxFirstSyncs : undefined,
     onlyStudio: flag("studio"),
     log: (line) => console.log(line),
   });

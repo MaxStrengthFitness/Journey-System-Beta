@@ -7,6 +7,9 @@
  *
  *   1. For every studio: read its renewal settings and its clients, and build
  *      each client's snapshot from what is already stored.
+ *   1b. Master-Sync anyone booked today or tomorrow who has never been synced
+ *      (the cost plan, Sep 26 2026, B5: "everyone else syncs the day they
+ *      book"), inside its own nightly budget - lib/first-booking-sync.ts.
  *   2. Pull Mindbody (contracts + pricing options) for the clients who most
  *      need it, across all studios — near a renewal, never pulled, or a month
  *      stale — inside a nightly budget, and rebuild those snapshots.
@@ -31,9 +34,11 @@ import {
   type Firestore,
   type WriteBatch,
 } from "firebase-admin/firestore";
-import { mindbodyConfigured, pullClientCommercial } from "./mindbody-client.ts";
+import { mindbodyConfigured, pullClientCommercial, pullClientMaster } from "./mindbody-client.ts";
+import { buildMasterSyncPatchWith, type MasterSyncFound } from "../src/lib/mindbody-master-patch.ts";
+import { DEFAULT_FIRST_SYNC_MAX, firstSyncOrder, needsFirstSync } from "../src/lib/first-booking-sync.ts";
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
-import { DEFAULT_TIME_ZONE, isValidTimeZone, studioTodayKey } from "../src/lib/studio-time.ts";
+import { DEFAULT_TIME_ZONE, isValidTimeZone, studioDateKey, studioTodayKey } from "../src/lib/studio-time.ts";
 import { loggedSessions } from "../src/lib/booking-state.ts";
 import { cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
@@ -72,6 +77,8 @@ export interface RenewalsRunOptions {
   noPulls?: boolean;
   /** Clients to pull from Mindbody tonight, across all studios. */
   maxPulls?: number;
+  /** Never-synced clients booked today or tomorrow to Master-Sync tonight (5 calls each). */
+  maxFirstSyncs?: number;
   onlyStudio?: string;
   now?: Date;
   log?: (line: string) => void;
@@ -85,6 +92,9 @@ export interface RenewalsRunSummary {
   outcomesWritten: number;
   pulls: number;
   pullFailures: number;
+  /** Never-synced clients booked today or tomorrow, Master-Synced tonight. */
+  firstSyncs: number;
+  firstSyncFailures: number;
   mindbodyCalls: number;
   bySituation: Record<string, number>;
 }
@@ -141,6 +151,8 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     outcomesWritten: 0,
     pulls: 0,
     pullFailures: 0,
+    firstSyncs: 0,
+    firstSyncFailures: 0,
     mindbodyCalls: 0,
     bySituation: {},
   };
@@ -253,12 +265,86 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     summary.clients += run.clients.length;
   }
 
+  /* ================= 1b. Sync on first booking ================= */
+  // Anyone booked today or tomorrow whom Journey has never Master-Synced:
+  // the pre-launch sync covered the studio's clients, and this is how
+  // everyone after it arrives (lib/first-booking-sync.ts). Master Sync's own
+  // patch (lib/mindbody-master-patch.ts), so the fields are the button's.
+  // Their commercial data comes with it, so they skip tonight's pulls below.
+  const firstSynced = new Set<string>();
+  if (canPull) {
+    const due = runs
+      .filter((run) => run.site)
+      .flatMap((run) => {
+        const tomorrow = studioTodayKey(new Date(now.getTime() + DAY_MS), run.tz);
+        return run.clients.flatMap((c) => {
+          const days = (schedulesByClient.get(c.id!) ?? [])
+            .filter((row) => row.status !== "Cancelled")
+            .map((row) => studioDateKey(row.startTime, run.tz))
+            .filter((d): d is string => typeof d === "string");
+          if (!needsFirstSync(c, days, run.today, tomorrow)) return [];
+          const firstDay = days.filter((d) => d === run.today || d === tomorrow).sort()[0];
+          return [{ run, c, id: c.id!, firstDay }];
+        });
+      })
+      .sort(firstSyncOrder);
+    const budget = Math.max(0, options.maxFirstSyncs ?? DEFAULT_FIRST_SYNC_MAX);
+    const chosen = due.slice(0, budget);
+    if (due.length > 0) {
+      log(
+        `${due.length} never-synced client${due.length === 1 ? "" : "s"} booked today or tomorrow; ` +
+          `${dryRun ? "would sync" : "syncing"} ${chosen.length}${due.length > chosen.length ? ` (budget ${budget}; the rest tomorrow night or on the profile's Sync)` : ""}.`,
+      );
+    }
+    if (!dryRun) {
+      const toTs = (d: Date) => Timestamp.fromDate(d);
+      await pool(chosen, PULL_CONCURRENCY, async ({ run, c }) => {
+        try {
+          const pull = await pullClientMaster(run.site, mindbodyIdOf(c)!);
+          summary.mindbodyCalls += pull.calls;
+          if (!pull.response || pull.response.found !== true) {
+            summary.firstSyncFailures++;
+            return;
+          }
+          const res = pull.response as MasterSyncFound;
+          const built = buildMasterSyncPatchWith(c, res, now, FieldValue.serverTimestamp(), toTs);
+          const ref = db.doc(`clients/${c.id}`);
+          const batch = db.batch();
+          if (built.mergeMaps) batch.set(ref, built.mergeMaps, { merge: true });
+          batch.update(ref, built.patch);
+          await batch.commit();
+          summary.firstSyncs++;
+          firstSynced.add(c.id!);
+
+          // Rebuild in memory exactly as the write lands, stamps as tonight:
+          // the flat fields replace, the contract and membership maps merge
+          // record by record, as the batch above does.
+          const mem = buildMasterSyncPatchWith(c, res, now, Timestamp.fromDate(now), toTs);
+          Object.assign(c, mem.patch);
+          const maps = (mem.mergeMaps ?? {}) as Record<string, any>;
+          if (maps.mindbodyCommercialSyncedAt) c.mindbodyCommercialSyncedAt = maps.mindbodyCommercialSyncedAt;
+          for (const key of ["mindbodyContracts", "mindbodyMemberships"] as const) {
+            const incoming = maps[key] as Record<string, Record<string, unknown>> | undefined;
+            if (!incoming) continue;
+            const merged: Record<string, any> = { ...((c as any)[key] ?? {}) };
+            for (const [k, v] of Object.entries(incoming)) merged[k] = { ...(merged[k] ?? {}), ...v };
+            (c as any)[key] = merged;
+          }
+          run.snapshots.set(c.id!, build(run, c));
+        } catch (err: any) {
+          summary.firstSyncFailures++;
+          log(`Master Sync on first booking failed for a client at ${run.name}: ${err?.message || err}`);
+        }
+      });
+    }
+  }
+
   /* ================= 2. Mindbody pulls, most urgent first ================= */
   if (canPull) {
     const candidates = runs
       .filter((run) => run.site)
       .flatMap((run) =>
-        run.clients.map((c) => ({
+        run.clients.filter((c) => !firstSynced.has(c.id!)).map((c) => ({
           run,
           c,
           rank: pullRank({ client: c, current: run.snapshots.get(c.id!)!, today: run.today }),
@@ -414,6 +500,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     `Done${dryRun ? " (dry run — nothing written)" : ""}. ${summary.clients} clients, ` +
       `${summary.snapshotsWritten} snapshots ${dryRun ? "would change" : "written"}, ` +
       `${summary.outcomesWritten} outcomes ${dryRun ? "would be recorded" : "recorded"}, ` +
+      `${summary.firstSyncs} first-booking syncs (${summary.firstSyncFailures} failed), ` +
       `${summary.pulls} Mindbody pulls (${summary.mindbodyCalls} calls, ${summary.pullFailures} failed). ` +
       `Situations: ${Object.entries(summary.bySituation)
         .map(([k, v]) => `${k} ${v}`)
