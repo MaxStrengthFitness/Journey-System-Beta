@@ -150,7 +150,7 @@ Known lags:
 | | |
 | --- | --- |
 | Typecheck | 4 (baseline) |
-| Suite | 5,593 passing in 350 files after the review's second round of fixes, 5,584 in 349 after the first, 5,575 before them (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
+| Suite | 5,597 passing in 350 files after the review's third round of fixes, 5,593 after the second, 5,584 in 349 after the first, 5,575 before them (`TZ=America/New_York npx vitest run --dir src`, on AJ's PC) — 5,494 in 344 on `loose-ends-sep26` before |
 | Rules tests | 168 passing on the local emulator (162 before); AJ's `npm run test:rules` is the one that counts |
 | Build | green; the nightly renewals job bundles with the new engine |
 | Case duplicates | none |
@@ -160,17 +160,25 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
 
 ## Shipping notes, in order
 
-1. **The rules deploy first.** `renewalSettingsValid` checks the whole merged
-   document: under the old rules the first save of the studio's answer is
-   refused, and once it is stored every later renewal-settings save at that
-   studio would be. `lean-sync`'s `golive` stage already deploys the rules
-   before the push.
+1. **Its own release: `scripts/ship/ship-auto-renew.ps1`**, `prepare` then
+   `golive`, from the project folder on `auto-renew-checkbox`. `lean-sync`
+   went live on Sep 25 without this round (master `1ccb5d7`), so
+   `ship-lean-sync.ps1` is not the way: it would ship nothing new, and its
+   restore tag is the commit before lean-sync. `prepare` checks the
+   typecheck count, the suite in Eastern time, `npm run test:rules` and the
+   build. `golive` deploys **the rules first**: `renewalSettingsValid` checks
+   the whole merged document, so under the old rules the first save of the
+   studio's answer is refused, and once it is stored every later
+   renewal-settings save at that studio would be. It then tags
+   `restore/2026-09-26-before-auto-renew` at master as it is, and pushes. If
+   that tag already names another commit, it stops before deploying
+   anything.
 2. **The same day, right after the push and before that night's renewals
    run**, a leader or an administrator opens **My Studio → Studio → Renewals**
    at each **corporate** studio (AJ names which), sets "Packages at {studio}
    renew automatically" to **No**, and saves. Operations → Renewals and the
-   panel itself flag a studio that hasn't answered. `ship-lean-sync.ps1
-   golive` does not ask for this; it prints it as its last line, after the
+   panel itself flag a studio that hasn't answered. `ship-auto-renew.ps1
+   golive` can't do this for you; it prints it as its last lines, after the
    push.
 3. Until the first nightly run, the box says "Auto-renewal can be marked here
    after tonight's renewal run" on every monthly client whose contract
@@ -245,10 +253,44 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
   Round 20) follows the studio's answer, and shipping note 3 says which
   clients show the "after tonight's run" note.
 
+## The review's fixes (round 3)
+
+- **Its own release.** `lean-sync` went live on Sep 25 (master `1ccb5d7`)
+  before this branch's first commit, so the shipping notes' "lean-sync's
+  golive already deploys the rules" could never happen: merged the normal
+  way, the live rules would refuse every save of the studio's answer, and
+  the corporate studios couldn't be switched to No. Rerunning
+  `ship-lean-sync.ps1` would reuse its restore tag, which is the commit
+  before lean-sync, so "undo" would take lean-sync back too. This round now
+  ships with `scripts/ship/ship-auto-renew.ps1` (shipping note 1): its own
+  rules deploy, its own restore tag (and a stop, before anything deploys,
+  if that tag already names another commit), and the corporate-studio
+  switch as its last lines. This branch's edits to `ship-lean-sync.ps1` are
+  reverted, and the lean-sync round says it shipped without this one. The
+  open question "ship it with lean-sync?" is gone.
+- **The Account lede no longer says auto-renewal is "changed here".** The
+  box under it says her billing is changed in Mindbody. The lede now says
+  "whether she is on auto-renewal is noted here for Journey's renewal
+  screens" (round 2's "changed here" is replaced).
+- **The Renewal card names each source for what it describes.** Under an
+  "Auto-renews" label, "from Mindbody · the studio's answer" read as
+  Mindbody backing the renewal claim. It is now "date from Mindbody · the
+  studio's answer" ("estimated date · marked on the profile").
+- **The renewals README** says when "Payments finish" appears on a will-bank
+  contract (a paid-in-full or banked-sessions lock over a running contract,
+  or a version-1 snapshot; an unmatched package is "unknown", never
+  will-bank), and that since version 2 a null answer never warns.
+- **A test pins Mindbody over a mark** when the record on screen carries no
+  Mindbody flag and last night's answer was Mindbody's (`renewalOf`'s
+  fallback). Reduce the fallback to today's flag alone and it fails.
+
 ## Undo
 
-Rolling back the app alone is safe: the app before this round drops the
-studio's key when it reads the settings, and ignores `autoRenewMark`. **Do not
+To roll back the app, push `restore/2026-09-26-before-auto-renew` to master
+(ask Claude); `ship-auto-renew.ps1 golive` makes it at master as it was just
+before the push, so it takes back this round and nothing else. That is safe:
+the app before this round drops the studio's key when it reads the settings,
+and ignores `autoRenewMark`. **Do not
 roll `firestore.rules` back** to before this round while any studio has
 `packagesRenewAutomatically` stored — its renewal settings could no longer be
 saved — or first delete the key from each `studios/{s}/config/renewals`.
@@ -275,14 +317,13 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
    including a corporate studio's new answer (an existing rule). Keep that?
 9. This adds two stored fields and one key to a Firestore rule (CLAUDE.md asks
    for an explicit OK on a Firestore structure change). OK to ship?
-10. Ship it with `lean-sync`, or as its own release after it?
-11. The words: "On auto-renewal"; "Not on auto-renewal"; "Remove this
+10. The words: "On auto-renewal"; "Not on auto-renewal"; "Remove this
     mark"; "Packages at {studio} renew automatically"; "the standard answer
     (the studio hasn't set one)"; "It doesn't change her billing:
     auto-renewal itself is changed in Mindbody."
-12. Can every studio really turn auto-renewal off in Mindbody? You said you
+11. Can every studio really turn auto-renewal off in Mindbody? You said you
     believe so; the round assumes it (a studio's answer is Yes or No).
-13. A coach's paid-in-full or banked-sessions lock now means "no answer" and
+12. A coach's paid-in-full or banked-sessions lock now means "no answer" and
     no before-the-charge warning, even where Mindbody's contract says it
     auto-renews (the lock is there because Mindbody's reading is wrong for
     her, and paid in full means nothing more is charged). Before this round

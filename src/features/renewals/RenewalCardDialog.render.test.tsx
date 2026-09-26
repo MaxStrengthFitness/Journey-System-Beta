@@ -115,17 +115,46 @@ async function mount(s: RenewalSnapshot) {
   return document.querySelector<HTMLElement>('[role="dialog"]')!;
 }
 
+/** The small line under a Fact, found by the Fact's label: "date from Mindbody · the studio's answer". */
+function factSub(dialog: HTMLElement, label: string): string | null {
+  const heading = [...dialog.querySelectorAll("p")].find((p) => p.textContent === label);
+  const lines = heading?.parentElement?.querySelectorAll("p");
+  return lines && lines.length === 3 ? lines[2].textContent : null;
+}
+
 describe("the Renewal card names where the auto-renew answer came from", () => {
   it("says the studio's answer, beside where the date came from", async () => {
     const dialog = await mount(snapshot());
-    expect(dialog.textContent).toContain("Auto-renews");
-    expect(dialog.textContent).toContain("from Mindbody · the studio's answer");
+    expect(factSub(dialog, "Auto-renews")).toBe("date from Mindbody · the studio's answer");
   });
 
   it("says a trainer marked it on the profile", async () => {
     const dialog = await mount(snapshot({ autoRenews: false, autoRenewsFrom: "client", chargeDateSource: "estimate" }));
-    expect(dialog.textContent).toContain("Billing ends");
-    expect(dialog.textContent).toContain("estimated · marked on the profile");
+    expect(factSub(dialog, "Billing ends")).toBe("estimated date · marked on the profile");
+  });
+
+  it("never puts a bare 'from Mindbody' under 'Auto-renews' beside an answer that isn't Mindbody's", async () => {
+    for (const from of ["studio", "default", "package", "client"] as const) {
+      const dialog = await mount(snapshot({ autoRenewsFrom: from }));
+      const parts = (factSub(dialog, "Auto-renews") ?? "").split(" · ");
+      expect(parts[0], from).toBe("date from Mindbody");
+      expect(parts, from).not.toContain("from Mindbody");
+      expect(parts, from).toHaveLength(2);
+      for (const m of mounted) {
+        await act(async () => m.root.unmount());
+        m.host.remove();
+      }
+      mounted = [];
+      document.body.innerHTML = "";
+    }
+    // Where Mindbody said both, it is named twice, each for what it said.
+    const dialog = await mount(snapshot({ autoRenewsFrom: "mindbody" }));
+    expect(factSub(dialog, "Auto-renews")).toBe("date from Mindbody · Mindbody's contract");
+  });
+
+  it("still says where the date came from when nothing has said whether it renews", async () => {
+    const dialog = await mount(snapshot({ autoRenews: null, autoRenewsFrom: null }));
+    expect(factSub(dialog, "Payments finish")).toBe("date from Mindbody");
   });
 
   it("never credits the studio with an answer it hasn't given", async () => {

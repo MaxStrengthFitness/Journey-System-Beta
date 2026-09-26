@@ -71,6 +71,10 @@ function Fact({ label, value, sub }: { label: string; value: React.ReactNode; su
 
 function Clocks({ s, today }: { s: RenewalSnapshot; today: string }) {
   const est = (src: string | null) => (src === "estimate" ? "estimated" : src === "mindbody" ? "from Mindbody" : undefined);
+  // The charge date's source, named as the DATE's: under an "Auto-renews"
+  // label a bare "from Mindbody" reads as the source of the renewal claim,
+  // beside an answer that may be the studio's or the standard.
+  const dateFrom = (src: string | null) => (src === "estimate" ? "estimated date" : src === "mindbody" ? "date from Mindbody" : undefined);
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <Fact
@@ -97,8 +101,9 @@ function Clocks({ s, today }: { s: RenewalSnapshot; today: string }) {
         }
         sub={
           s.paymentMode === "monthly"
-            ? // Where the date and the auto-renew answer came from: "from Mindbody · the studio's answer".
-              [est(s.chargeDateSource), autoRenewWordsOf(s)].filter(Boolean).join(" · ") || undefined
+            ? // Where the date and the auto-renew answer came from, each named:
+              // "date from Mindbody · the studio's answer".
+              [dateFrom(s.chargeDateSource), autoRenewWordsOf(s)].filter(Boolean).join(" · ") || undefined
             : s.packageLabel ?? undefined
         }
       />

@@ -938,7 +938,7 @@ describe("accountLede", () => {
   const her = pronounsOf({ gender: "Female" });
   it("is true for the client and the reader", () => {
     expect(accountLede(linked(), true, her)).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train, the tier lock and whether she is on auto-renewal are changed here; everything else changes in Mindbody and arrives with the next sync.",
+      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train and the tier lock are changed here, and whether she is on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
     );
     expect(accountLede(unlinked(), true, her)).toBe(
       "Her contact details as typed into Journey, then her membership. Mindbody does not hold her yet, so her details are typed here until she is linked.",
@@ -950,7 +950,15 @@ describe("accountLede", () => {
       "Their contact details as typed into Journey, then their membership. Read only here: their home studio keeps the record.",
     );
     expect(accountLede(unlinked(), true, pronounsOf(null))).toContain("until they are linked");
-    expect(accountLede(linked(), true, pronounsOf(null))).toContain("the tier lock and whether they are on auto-renewal are changed here;");
+    expect(accountLede(linked(), true, pronounsOf(null))).toContain("the tier lock are changed here, and whether they are on auto-renewal is noted here for Journey's renewal screens;");
+  });
+
+  it("never says auto-renewal is changed here: the box under it says it is changed in Mindbody", () => {
+    for (const p of [her, pronounsOf(null)]) {
+      const lede = accountLede(linked(), true, p);
+      expect(lede).not.toMatch(/auto-renewal (is|are) changed here/);
+      expect(lede).not.toMatch(/auto-renewal[^;]*changed here/);
+    }
   });
 });
 

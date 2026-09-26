@@ -1220,7 +1220,10 @@ export function accountLede(
   const how = !canEdit
     ? `Read only here: ${p.possessive} home studio keeps the record.`
     : linked
-      ? `The nickname, how ${p.subject} found us, where ${p.subject} can train, the tier lock and whether ${p.subject} ${agree(p, "is", "are")} on auto-renewal are changed here; everything else changes in Mindbody and arrives with the next sync.`
+      ? // Auto-renewal is NOTED here, never changed: the box below says its
+        // billing is changed in Mindbody (autoRenewView), so the lede must not
+        // say otherwise.
+        `The nickname, how ${p.subject} found us, where ${p.subject} can train and the tier lock are changed here, and whether ${p.subject} ${agree(p, "is", "are")} on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.`
       : `Mindbody does not hold ${p.object} yet, so ${p.possessive} details are typed here until ${p.subject} ${agree(p, "is", "are")} linked.`;
   return `${opening} ${how}`;
 }

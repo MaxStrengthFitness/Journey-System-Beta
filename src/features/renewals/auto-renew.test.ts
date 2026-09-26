@@ -195,6 +195,25 @@ describe("renewalOf — one client's renewal, with the mark and Mindbody as they
     expect(r.chargeWarning).toBe(false);
   });
 
+  it("keeps last night's Mindbody answer over a mark when the record on screen carries no Mindbody flag", () => {
+    // The snapshot says the answer came from Mindbody; the client object has
+    // no mindbodyContracts. Mindbody still outranks the trainer's mark.
+    const c = client({
+      renewal: snapshot({
+        autoRenews: false,
+        autoRenewsFrom: "mindbody",
+        autoRenewsInherited: { renews: false, from: "mindbody" },
+        chargeWarning: false,
+      }),
+      autoRenewMark: mark(true),
+    });
+    expect(c.mindbodyContracts).toBeUndefined();
+    const r = renewalOf(c)!;
+    expect(r.autoRenews).toBe(false);
+    expect(r.autoRenewsFrom).toBe("mindbody");
+    expect(r).toBe(c.renewal);
+  });
+
   it("lets today's Mindbody flag beat last night's Mindbody answer", () => {
     const r = renewalOf(
       client({

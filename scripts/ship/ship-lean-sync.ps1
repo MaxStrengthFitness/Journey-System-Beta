@@ -22,14 +22,10 @@
                  tests, and a production build. Records what it tested.
  golive          only what prepare tested. Deploys firestore.rules (one field
                  added to what any trainer's iPad may write on its studio: when
-                 the last whole-month pull succeeded; and one key a studio's
-                 renewal settings may hold: packagesRenewAutomatically, whether
-                 its packages renew automatically), tags the restore point,
+                 the last whole-month pull succeeded), tags the restore point,
                  then pushes lean-sync to master: RENDER DEPLOYS THE APP AND THE
                  SERVER and the lean pull starts. The webhook code rides along
-                 but is NOT deployed by this stage. Its last line is the one
-                 step it cannot do for you: switching each corporate studio's
-                 auto-renewal answer to No, before that night's renewals run.
+                 but is NOT deployed by this stage.
  webhooks-check  reads only: every subscription Mindbody holds for the webhook.
  webhooks-on     starts the webhook fresh (the same five steps as the Sep 24
                  script): a new subscription that now includes
@@ -38,9 +34,7 @@
  webhooks-test   prints the three-minute test to do in Mindbody. Changes nothing.
 
  To undo the app and server: push the restore tag to master (ask Claude). The
- rules change only adds (a field a trainer may write, and a renewal-settings
- key), so it can stay - and it MUST stay once any studio has saved its
- auto-renewal answer (docs/rounds/2026-09-25-auto-renew.md, Undo).
+ rules change only adds one field a trainer may write, so it can stay.
  To undo the webhook: deactivate its subscription (node
  scripts\mindbody\register-webhook.js --list shows it); the pull carries on.
 
@@ -217,7 +211,7 @@ if ($Stage -eq 'prepare') {
   & git --no-optional-locks diff --quiet origin/master $Branch -- firestore.indexes.json
   if ($LASTEXITCODE -ne 0) { Stop-Here 'the branch changes firestore.indexes.json, which this round should not. Ask Claude.' }
   Log 'firestore.indexes.json: unchanged. No index deploy.' 'Green'
-  Log 'firestore.rules changes (one field on the studio sync lease, and the renewal-settings key packagesRenewAutomatically); the rules tests below must pass, and golive deploys it before the push:' 'Yellow'
+  Log 'firestore.rules changes (one field on the studio sync lease); the rules tests below must pass, and golive deploys it before the push:' 'Yellow'
   & git --no-optional-locks diff --stat origin/master $Branch -- firestore.rules | ForEach-Object { Log "   $_" 'Yellow' }
   Log 'functions\ changes (the webhook). golive does NOT deploy it; webhooks-on does, after golive.' 'Yellow'
 
@@ -312,8 +306,4 @@ Log "GOLIVE COMPLETE. master = $((& git --no-optional-locks rev-parse --short or
 Log 'When Render shows the deploy Live, reload Journey on every iPad and front-desk computer: one left on the old app keeps making the old month-long pulls.' 'Green'
 Log 'Then: Render -> the web service -> Logs, search "client lookup". A near pull reads "1 page(s)" and "N known client(s) not looked up". Send Claude a few lines.' 'Green'
 Log 'Then, when you are ready for the webhook: ship-lean-sync.ps1 webhooks-check, then webhooks-on.' 'Green'
-# Auto-renewal is ON wherever a studio has not answered (the standard), and the
-# corporate studios do not auto-renew. Nothing here can set it: a person must.
-Log 'NOW, before tonight''s renewals run: at each corporate studio, My Studio -> Studio -> Renewals -> "Packages at {studio} renew automatically" = No -> Save.' 'Yellow'
-Log 'Until then every studio reads as auto-renewing. Operations -> Renewals flags each studio that has not answered.' 'Yellow'
 exit 0
