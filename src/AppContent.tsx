@@ -451,6 +451,11 @@ export default function AppContent({
   );
   /** Id of the last client whose fetch finished, successfully or not. */
   const [resolvedClientId, setResolvedClientId] = useState<string | null>(null);
+  /* Whether the selected client's own read FAILED, as opposed to finding no
+     record, and a way to ask again: the Active Session says which and offers
+     Try again rather than drawing nothing (session record, Sep 26 2026). */
+  const [selectedClientReadFailed, setSelectedClientReadFailed] = useState(false);
+  const [clientReadAttempt, setClientReadAttempt] = useState(0);
 
   // Derived rather than a flag set inside the effect: effects run *after* render,
   // so a boolean would still read false on the first paint and flash the
@@ -481,11 +486,15 @@ export default function AppContent({
     if (!selectedClientId) {
       setSelectedClientDoc(null);
       setResolvedClientId(null);
+      setSelectedClientReadFailed(false);
       return;
     }
 
     let cancelled = false;
     setSelectedClientDoc(null);
+    setSelectedClientReadFailed(false);
+    // A retry of the same client is loading again, not "no record".
+    setResolvedClientId(null);
 
     const fetchClient = async () => {
       try {
@@ -499,6 +508,7 @@ export default function AppContent({
         }
       } catch (e) {
         console.error("Error fetching client", e);
+        if (!cancelled) setSelectedClientReadFailed(true);
       } finally {
         // Marks the fetch as settled so the profile stops showing the spinner,
         // whether the client was found, missing, or the read failed.
@@ -513,7 +523,7 @@ export default function AppContent({
     return () => {
       cancelled = true;
     };
-  }, [selectedClientId]);
+  }, [selectedClientId, clientReadAttempt]);
 
   const [selectedProfileTrainerId, setSelectedProfileTrainerId] = useState<
     string | null
@@ -1813,6 +1823,16 @@ export default function AppContent({
                     rightControls={headerRightControls}
                     trainerDropdown={headerTrainerDropdown}
                     onStudioClick={openStudioPicker}
+                    clientLookup={
+                      !selectedClientId || clients.some((c) => c.id === selectedClientId)
+                        ? "ready"
+                        : isLoadingClient
+                          ? "loading"
+                          : selectedClientReadFailed
+                            ? "failed"
+                            : "missing"
+                    }
+                    onRetryClient={() => setClientReadAttempt((n) => n + 1)}
                   />
                 )}
                 {currentView === "profile" && (

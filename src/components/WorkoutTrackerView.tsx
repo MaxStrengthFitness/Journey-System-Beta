@@ -56,6 +56,8 @@ import { useSendState } from "../features/session-record/useSendState";
 import { SendStatusStrip } from "../features/session-record/SendStatusStrip";
 import { finishedElsewhere, settleOrQueue } from "../features/session-record/finish-wait";
 import { SEND_SETS_NOW_EVENT } from "../features/session-record/sign-out-check";
+import { NothingOnScreen } from "../features/session-record/NothingOnScreen";
+import { nothingKind } from "../features/session-record/nothing-on-screen";
 
 /**
  * How long a set's Firestore write waits for the trainer to stop typing.
@@ -223,6 +225,8 @@ export function WorkoutTrackerView({
   rightControls,
   trainerDropdown,
   onStudioClick,
+  clientLookup,
+  onRetryClient,
 }: {
   clientId: string | null;
   clients: Client[];
@@ -244,6 +248,14 @@ export function WorkoutTrackerView({
   rightControls?: React.ReactNode;
   trainerDropdown?: React.ReactNode;
   onStudioClick?: () => void;
+  /**
+   * Where the chosen client's record stands, when it is not on screen yet:
+   * still loading, a read that failed, or no record (session record, Sep 26
+   * 2026). Decides the sentence the screen says instead of drawing nothing.
+   */
+  clientLookup?: "ready" | "loading" | "failed" | "missing";
+  /** Asks for the client's record again, after a read that failed. */
+  onRetryClient?: () => void;
 }) {
   const { activeStudioId: contextActiveStudioId, activeStudio, studios } =
     useActiveStudio();
@@ -1549,7 +1561,10 @@ export function WorkoutTrackerView({
       setShowRoutinePicker(false);
       setIsPreSessionMode(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, "sessions");
+      /* Plain words, not the developer toast: Start is the one button a
+         trainer presses with the client standing there (session record). */
+      console.error("[start] the session did not start", error);
+      toastError("The session didn't start. Check the connection, then press Start again.");
     }
   };
 
@@ -2727,7 +2742,22 @@ export function WorkoutTrackerView({
   }
 
   if (screen === "none") {
-    return null; // The app routing will ensure this is never reached by redirecting to ClientDirectoryView instead
+    /* Never a blank page (session record, Sep 26 2026). This used to return
+       null, trusting the routing never to arrive here; it did arrive, when a
+       client's record couldn't be read and when a session left the screen,
+       and the trainer saw nothing but the bottom bar. */
+    return (
+      <NothingOnScreen
+        kind={nothingKind(clientId, clientLookup)}
+        trainerInitials={authTrainer?.initials}
+        onRetry={onRetryClient}
+        onFindClient={() => setView("client-directory")}
+        onHub={() => setView("clients")}
+        rightControls={rightControls}
+        trainerDropdown={trainerDropdown}
+        onStudioClick={onStudioClick}
+      />
+    );
   }
 
   if (screen === "briefing" && selectedClient) {
@@ -3235,10 +3265,10 @@ export function WorkoutTrackerView({
         open={showAssignDialog}
         clients={clients}
         onSelect={assignSessionToClient}
-        onClose={() => {
-          setShowAssignDialog(false);
-          setCurrentSession(null);
-        }}
+        /* Closing without choosing goes back to the open session, like Keep
+           Training. It used to drop the session from the screen, which then
+           had nothing to draw (session record, Sep 26 2026). */
+        onClose={() => setShowAssignDialog(false)}
         title="Assign Completed Session"
         description="Choose which client's profile should receive this session's data."
       />

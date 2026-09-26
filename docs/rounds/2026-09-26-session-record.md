@@ -15,7 +15,8 @@ The Atlas's loose end "The session record: every way it can be lost or blocked" 
 | 1 | `c197615` | A set still waiting to be sent keeps what the trainer typed, and a set is sent the moment it is entered. |
 | 2 | `784885e` | One line under the session bar while the iPad is offline, or while saves wait on a poor connection. |
 | 3 | `d9e2d11`, `b2cc770` | Finish never hangs, says "saved on this iPad" when that is the truth, and never counts a session twice from a double tap or a second iPad. |
-| 4 | (this commit) | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
+| 4 | `364198f` | Sign-out sends the waiting sets first, and asks before leaving an open session or unsent saves behind. |
+| 5 | (this commit) | The Active Session never draws a blank page: one sentence and the way on. Closing the Assign picker keeps the open session, and a Start that fails says so in plain words. |
 
 ### Phase 1: what was wrong
 
@@ -108,10 +109,38 @@ Not in this phase: the three names for sign-out (Switch Trainer, Log Out Facilit
 
 The suite gives 5,551 passing in 351 files, the typecheck 4 and the build passes.
 
+## Phase 5: never a blank page
+
+### What was wrong
+
+- **A client's record that couldn't be read gave a blank page.** When the Active Session had neither a client nor a session to draw, it returned nothing, trusting the routing never to arrive there. It did arrive. A client outside the roster is read once, and a failed read was only logged, so the trainer saw a blank page under the bottom bar: no header, no sentence, no way to tell whether the session was lost.
+- **Closing the Assign picker without choosing dropped the session.** On an open session, the session left the screen, and the page went blank the same way.
+- **A failed Start showed the developer toast.** Anything other than being offline gave "Firestore Action Failed: write on sessions…".
+
+### What it does
+
+- **One sentence and the way on.** `NothingOnScreen` (`src/features/session-record/`) keeps the app header, so the menu, studio and sign-out are where they always are. Under it is one sentence for the case (`nothing-on-screen.ts`), then "Back to the Hub" and the way forward:
+  - "Opening the client's record…" while it loads.
+  - "Couldn't read this client's record." with Try again.
+  - "Journey has no record for this client." with Find a client.
+  - "No session is open here." with Find a client.
+- **The shell says which case it is.** It keeps whether the selected client's read failed, where before it only logged it, and a retry counter that re-runs the read. It hands the tracker `clientLookup` and `onRetryClient`. A retry is "loading" again, never a flash of "no record".
+- **Closing the Assign picker** goes back to the open session, like Keep Training.
+- **A failed Start** says "The session didn't start. Check the connection, then press Start again." The error still goes to the console for diagnosis. Start does not hang offline: the screen picks up the new session from the iPad's own copy.
+
+### Tests
+
+- `nothing-on-screen.test.ts` covers the four cases, their words (no developer terms) and which way forward each offers.
+- `WorkoutTrackerView.render.test.tsx` mounts the tracker with no client on screen:
+  - a failed read says so, and Try again and Back to the Hub do what they say;
+  - a record still loading says it is opening;
+  - with no client and no session, it offers Find a client.
+
+The suite gives 5,560 passing in 352 files, the typecheck 4 and the build passes.
+
 ## Still to come in this round
 
 These come from the review's suggested order, and each will be its own phase:
 
 - A second iPad opening a running session read-only, so a leader can watch it live.
-- An honest sentence on every blank Active Session screen.
 - Discard that works from every profile tab.

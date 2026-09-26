@@ -614,3 +614,62 @@ describe("sign-out sends the sets still waiting on the typing timer first (sessi
     expect(setWrites()).toHaveLength(1);
   });
 });
+
+describe("the Active Session never draws a blank page (session record, Sep 26 2026)", () => {
+  function Bare(props: { clientId: string | null; lookup?: "ready" | "loading" | "failed" | "missing"; setView: any; onRetry?: () => void }) {
+    return (
+      <WorkoutTrackerView
+        clientId={props.clientId}
+        clients={[]}
+        machines={appWideMachines}
+        trainers={[trainer]}
+        user={{ uid: "uid-coach", email: "coach@maxstrengthfitness.com" } as any}
+        setView={props.setView}
+        setSelectedClientId={vi.fn()}
+        showClientPicker={false}
+        setShowClientPicker={vi.fn()}
+        onStartNewClientOnboarding={vi.fn()}
+        authTrainer={trainer}
+        isSyncing={false}
+        setIsSyncing={vi.fn()}
+        schedules={[]}
+        setClientFormData={vi.fn()}
+        onOpenInfo={vi.fn()}
+        clientLookup={props.lookup}
+        onRetryClient={props.onRetry}
+      />
+    );
+  }
+  const buttonNamed = (host: HTMLElement, name: string) =>
+    Array.from(host.querySelectorAll("button")).find((b) => b.textContent?.trim() === name);
+
+  it("says a client's record couldn't be read, and offers Try again and the Hub", async () => {
+    sessionDocs = [];
+    const setView = vi.fn();
+    const onRetry = vi.fn();
+    const host = await mount(<Bare clientId={CLIENT_ID} lookup="failed" setView={setView} onRetry={onRetry} />);
+    const panel = host.querySelector('[data-testid="nothing-on-screen"]');
+    expect(panel?.getAttribute("data-kind")).toBe("failed");
+    expect(panel?.textContent).toContain("Couldn't read this client's record.");
+    await act(async () => buttonNamed(host, "Try again")!.click());
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    await act(async () => buttonNamed(host, "Back to the Hub")!.click());
+    expect(setView).toHaveBeenCalledWith("clients");
+  });
+
+  it("says it is opening the record while the client is still loading", async () => {
+    sessionDocs = [];
+    const host = await mount(<Bare clientId={CLIENT_ID} lookup="loading" setView={vi.fn()} />);
+    expect(host.querySelector('[data-testid="nothing-on-screen"]')?.textContent).toContain("Opening the client's record");
+  });
+
+  it("with no client and no session, says so and offers a client search", async () => {
+    sessionDocs = [];
+    const setView = vi.fn();
+    const host = await mount(<Bare clientId={null} setView={setView} />);
+    const panel = host.querySelector('[data-testid="nothing-on-screen"]');
+    expect(panel?.getAttribute("data-kind")).toBe("no-session");
+    await act(async () => buttonNamed(host, "Find a client")!.click());
+    expect(setView).toHaveBeenCalledWith("client-directory");
+  });
+});

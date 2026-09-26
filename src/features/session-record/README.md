@@ -34,6 +34,10 @@ It reads nothing and writes nothing.
 
 A question, never a block.
 
+## Never a blank page
+
+`NothingOnScreen` and `nothing-on-screen.ts` cover the Active Session with nothing to draw: a client still loading, a read that failed, no record, or no session. Each gets the app header, one sentence and the way on. The shell passes `clientLookup` and `onRetryClient` so the tracker knows which case it is.
+
 ## Related pieces elsewhere
 
 - `src/lib/pending-log-edits.ts`: a set whose write is still queued keeps what the trainer typed when another machine's save lands.
