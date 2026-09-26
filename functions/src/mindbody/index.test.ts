@@ -1267,6 +1267,33 @@ describe("handleMindbodyWebhook (Inline Upsert)", () => {
       );
     });
 
+    it("25a. a membership or contract event marks the client for the nightly pull (the cost plan, Part C)", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientMembershipAssignment.created",
+        eventData: { siteId: 99999, clientId: "100000009", membershipId: 12, membershipName: "Gold" },
+      });
+      await handleMindbodyWebhook(deps, { rawBody, signatureHeader: signForTest(rawBody, mockSecret) });
+      const [written] = mockSet.mock.calls[0];
+      expect(written).toHaveProperty("mindbodyCommercialChangedAt");
+      expect(written.mindbodyMemberships["12"]).toBeDefined();
+    });
+
+    it("25b. a sale only marks the client: no profile fields, no package records", async () => {
+      const rawBody = createValidEnvelope({
+        eventId: "clientSale.created",
+        eventData: { siteId: 99999, clientId: "100000009", saleId: 555, saleDateTime: "2026-09-26T14:00:00Z" },
+      });
+      const response = await handleMindbodyWebhook(deps, {
+        rawBody,
+        signatureHeader: signForTest(rawBody, mockSecret),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(mockSet).toHaveBeenCalledTimes(1);
+      const [written, opts] = mockSet.mock.calls[0];
+      expect(opts).toEqual({ merge: true });
+      expect(Object.keys(written)).toEqual(["mindbodyCommercialChangedAt"]);
+    });
+
     it("26. toUtcTimestamp reads zoneless Mindbody strings as UTC, not host-local", () => {
       expect(toUtcTimestamp("2019-03-20T00:00:00")).toEqual(
         Timestamp.fromDate(new Date("2019-03-20T00:00:00Z")),

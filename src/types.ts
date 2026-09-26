@@ -803,6 +803,14 @@ export interface Client {
   mindbodyServices?: Record<string, MindbodyService>;
   /** Firestore Timestamp of the last successful pricing-option pull. */
   mindbodyServicesSyncedAt?: any;
+  /**
+   * Firestore Timestamp: when Mindbody last told us (by webhook) that this
+   * client's packages changed - a contract, membership or sale event. Newer
+   * than `mindbodyServicesSyncedAt` means the nightly job pulls them first
+   * (features/renewals/job-plan.ts, the cost plan, Sep 26 2026). Written by
+   * the webhook only.
+   */
+  mindbodyCommercialChangedAt?: any;
 
   /* ------------------------------------------------------------------ *
    * MINDBODY-OWNED IDENTITY & COMPLIANCE (Sep 2026)

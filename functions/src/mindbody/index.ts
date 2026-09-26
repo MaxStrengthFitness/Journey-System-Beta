@@ -419,7 +419,12 @@ export async function handleMindbodyWebhook(
     // must not fall through to the profile upsert.
     const isMembershipEvent = lowerType.includes("clientmembershipassignment");
     const isContractEvent = lowerType.includes("clientcontract");
-    const isCommercialEvent = isMembershipEvent || isContractEvent;
+    // A sale (the cost plan, Sep 26 2026): it carries no package record Journey
+    // keeps, only the news that one changed, so it only marks the client for
+    // the nightly job's pull (mindbodyCommercialChangedAt, below). Without this
+    // branch its name would have routed it into the client-profile upsert.
+    const isSaleEvent = lowerType.includes("clientsale");
+    const isCommercialEvent = isMembershipEvent || isContractEvent || isSaleEvent;
 
     // Staff events are pulled out BEFORE the client test, and every branch
     // below is now a positive test rather than a leftover.
@@ -575,11 +580,15 @@ export async function handleMindbodyWebhook(
         }
       }
 
+      // Packages changed in Mindbody (the cost plan, Sep 26 2026, Part C). No
+      // event carries the sessions remaining, so this only marks the client:
+      // the nightly job (features/renewals/job-plan.ts) pulls anyone marked
+      // since their last pull first, instead of polling every client weekly.
+      updates.mindbodyCommercialChangedAt = now;
+
       // A merge write on nested maps leaves every other membership, contract
       // and profile field on the document untouched.
-      if (Object.keys(updates).length > 0) {
-        await clientRef.set(updates, { merge: true });
-      }
+      await clientRef.set(updates, { merge: true });
     } else if (isClientEvent && clientId) {
       // Mindbody-owned facts. These always overwrite: Mindbody is the source of
       // truth for commercial status, and nobody types these in the app.

@@ -89,6 +89,13 @@ const EVENT_IDS = [
   'staff.deactivated',
 ];
 const MAYBE_EVENT_IDS = ['clientContract.created', 'clientContract.updated', 'clientContract.cancelled'];
+/*
+ * Sep 26 2026 (the cost plan, Part C): a sale is how Journey learns a
+ * client's packages changed, so the nightly job pulls them first instead of
+ * polling everyone. Tried on its own rung of the ladder below, so a refusal of
+ * the sale id cannot also drop the contract ids (or the other way round).
+ */
+const SALE_EVENT_IDS = ['clientSale.created'];
 
 /*
  * Options (Renewals round, Sep 2026):
@@ -164,7 +171,13 @@ async function main() {
     if (!SECRET_FILE) { console.error('--fresh needs --secret-file <path>.'); process.exit(1); }
     // Documented events first; the undocumented contract ids, then staff, are
     // dropped if Mindbody refuses the request because of them.
-    const attempts = [[...EVENT_IDS, ...MAYBE_EVENT_IDS], EVENT_IDS, EVENT_IDS.filter((e) => !e.startsWith('staff.'))];
+    const attempts = [
+      [...EVENT_IDS, ...MAYBE_EVENT_IDS, ...SALE_EVENT_IDS],
+      [...EVENT_IDS, ...MAYBE_EVENT_IDS],
+      [...EVENT_IDS, ...SALE_EVENT_IDS],
+      EVENT_IDS,
+      EVENT_IDS.filter((e) => !e.startsWith('staff.')),
+    ];
     for (const eventIds of attempts) {
       const r = await fetch(API, {
         method: 'POST',

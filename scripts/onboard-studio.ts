@@ -33,22 +33,33 @@
  *   - A GENTLE PACE: 2 calls a second by default (--rate), through the same
  *     token bucket, retry and breaker the server uses. That limiter is per
  *     process, so this one does not share Render's: run it in the evening,
- *     after the studios' pull hours. A stop after --max-calls (default 3000),
- *     resumable.
+ *     after the studios' pull hours.
+ *   - ONE EVENING'S SHARE AT A TIME (AJ, Sep 26 2026: "we have time to get
+ *     the 3 corporate studios ready before getting them on the app - that
+ *     would be smarter than a 100 dollar bill"). A run stops at --max-calls,
+ *     500 by default (about 100 clients), and the next evening's run carries
+ *     on from the resume log. The dry run says how many evenings a studio
+ *     takes. If the account has the daily free allowance the Sep 2026 invoice
+ *     suggests, a share this size may cost nothing at all.
  *   - A failed appointments page stops the run before anything is written:
  *     a short list would leave people out and look whole.
+ *   - WHO COUNTS IS READ ONCE A WEEK, not every evening: the appointments
+ *     that decide it (20-120 calls) are kept in backups/ - four fields each,
+ *     no names - and reused for 7 days. --verify always reads them fresh, as
+ *     the proof must; --refresh-scope forces it.
  *
  * USAGE (PowerShell, from the project folder - it needs .env's Mindbody keys
  * and service-account.json, like the other data scripts)
  *   npx tsx scripts/onboard-studio.ts --studio solon                 # dry run
  *   npx tsx scripts/onboard-studio.ts --studio solon --commit --limit 25
- *   npx tsx scripts/onboard-studio.ts --studio solon --commit        # the rest
+ *   npx tsx scripts/onboard-studio.ts --studio solon --commit        # the next evening's share
  *   npx tsx scripts/onboard-studio.ts --studio solon --verify        # the proof
  *   npx tsx scripts/onboard-studio.ts --studio westlake,strongsville,willoughby
  *       (the shared site: one appointments pull for all three)
  *
  * Flags: --commit, --verify, --limit N, --resync, --rate N (calls a second),
- * --max-calls N, --months N (6), --ahead N (30), --key <service account>.
+ * --max-calls N (500), --months N (6), --ahead N (30), --refresh-scope,
+ * --key <service account>.
  */
 
 import fs from "fs";
@@ -74,13 +85,16 @@ const CALLS_PER_CLIENT = 5;
 /** The pricing page AJ sent (Sep 26 2026). Check it against the invoice. */
 const DOLLARS_PER_CALL = 0.002;
 const PAGE = 500;
+/** How long the appointments that decide who counts are reused. */
+const SCOPE_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 
 const commit = hasFlag("commit");
 const verify = hasFlag("verify");
 const resync = hasFlag("resync");
 const limit = Number(flag("limit") ?? Infinity);
 const rate = Number(flag("rate") ?? 2);
-const maxCalls = Number(flag("max-calls") ?? 3000);
+/** One evening's share (AJ, Sep 26): about 100 clients at 5 calls each. */
+const maxCalls = Number(flag("max-calls") ?? 500);
 const monthsBack = Number(flag("months") ?? 6);
 const daysAhead = Number(flag("ahead") ?? 30);
 
@@ -161,31 +175,65 @@ async function main() {
 
   /* ---- who counts: one appointments pull, a month at a time ---- */
   let calls = 0;
-  const appointments: ScopeAppointment[] = [];
-  for (const chunk of windowChunks(from, to, 31)) {
-    let offset = 0;
-    for (;;) {
-      const r = await mb.mindbodyGet(site, "appointment/staffappointments", {
-        StartDate: `${chunk.start}T00:00:00`,
-        EndDate: `${chunk.end}T23:59:59`,
-        Limit: PAGE,
-        Offset: offset,
-      });
-      calls++;
-      if (!r.ok) {
-        die(
-          `Mindbody refused the appointments for ${chunk.start}-${chunk.end} (${r.status}: ${String(r.error).slice(0, 200)}). ` +
-            "Nothing was written: a short list would leave people out and look whole.",
+  const scopeFile = path.resolve(process.cwd(), "backups", `onboard-${wanted.join("+")}.scope.json`);
+  let appointments: ScopeAppointment[] | null = null;
+  if (!verify && !hasFlag("refresh-scope") && fs.existsSync(scopeFile)) {
+    try {
+      const kept = JSON.parse(fs.readFileSync(scopeFile, "utf-8"));
+      const fresh = Date.now() - Date.parse(kept.pulledAt) < SCOPE_KEEP_MS;
+      // A day or two later the window has moved on a little; the kept read
+      // still says who counted, and once the studio is live the nightly job
+      // syncs anyone new the night before their first session.
+      if (fresh && kept.site === site && Array.isArray(kept.appointments)) {
+        appointments = kept.appointments;
+        console.log(
+          `Appointments: reusing ${kept.appointments.length} read ${String(kept.pulledAt).slice(0, 10)} ` +
+            `for ${kept.from} to ${kept.to} (--refresh-scope to read again)`,
         );
       }
-      const page: ScopeAppointment[] = r.data?.Appointments || r.data?.appointments || [];
-      appointments.push(...page);
-      const total = Number(r.data?.PaginationResponse?.TotalResults ?? 0);
-      offset += PAGE;
-      if (page.length < PAGE || offset >= total) break;
+    } catch {
+      appointments = null;
     }
   }
-  console.log(`Appointments read: ${appointments.length} (${calls} call${calls === 1 ? "" : "s"})`);
+  if (!appointments) {
+    const read: ScopeAppointment[] = [];
+    for (const chunk of windowChunks(from, to, 31)) {
+      let offset = 0;
+      for (;;) {
+        const r = await mb.mindbodyGet(site, "appointment/staffappointments", {
+          StartDate: `${chunk.start}T00:00:00`,
+          EndDate: `${chunk.end}T23:59:59`,
+          Limit: PAGE,
+          Offset: offset,
+        });
+        calls++;
+        if (!r.ok) {
+          die(
+            `Mindbody refused the appointments for ${chunk.start}-${chunk.end} (${r.status}: ${String(r.error).slice(0, 200)}). ` +
+              "Nothing was written: a short list would leave people out and look whole.",
+          );
+        }
+        const page: ScopeAppointment[] = r.data?.Appointments || r.data?.appointments || [];
+        read.push(...page);
+        const total = Number(r.data?.PaginationResponse?.TotalResults ?? 0);
+        offset += PAGE;
+        if (page.length < PAGE || offset >= total) break;
+      }
+    }
+    // Four fields each and no names: enough to decide who counts again.
+    appointments = read.map((a) => ({
+      ClientId: (a.Client?.Id ?? a.ClientId) as string | number | undefined,
+      LocationId: (a.Location?.Id ?? a.LocationId) as string | number | undefined,
+      StartDateTime: a.StartDateTime,
+      Status: a.Status,
+    }));
+    fs.mkdirSync(path.dirname(scopeFile), { recursive: true });
+    fs.writeFileSync(
+      scopeFile,
+      JSON.stringify({ site, from, to, pulledAt: new Date().toISOString(), appointments }),
+    );
+    console.log(`Appointments read: ${appointments.length} (${calls} call${calls === 1 ? "" : "s"})`);
+  }
 
   /* ---- per studio: the scope, the records, the plan ---- */
   const resumeFile = path.resolve(process.cwd(), "backups", `onboard-${wanted.join("+")}.resume.txt`);
@@ -288,8 +336,13 @@ async function main() {
     `To sync: ${work.length} (${work.filter((w) => w.create).length} new to Journey)` +
       ` · already synced ${count("already-synced")} · done earlier ${count("done-this-run")} · two-id records ${count("conflict")}`,
   );
+  const perEvening = Math.max(1, Math.floor(Math.max(0, maxCalls - calls) / CALLS_PER_CLIENT));
+  const evenings = Math.max(1, Math.ceil(todo.length / perEvening));
   console.log(
-    `This run: ${todo.length} client(s), about ${estimate.toLocaleString()} Mindbody calls, about $${(estimate * DOLLARS_PER_CALL).toFixed(2)}`,
+    `All of them: about ${estimate.toLocaleString()} Mindbody calls, about $${(estimate * DOLLARS_PER_CALL).toFixed(2)}`,
+  );
+  console.log(
+    `At ${maxCalls} calls a run (--max-calls), about ${perEvening} clients an evening: ${evenings} evening${evenings === 1 ? "" : "s"}.`,
   );
 
   if (!commit) {

@@ -11,8 +11,10 @@
  *      (the cost plan, Sep 26 2026, B5: "everyone else syncs the day they
  *      book"), inside its own nightly budget - lib/first-booking-sync.ts.
  *   2. Pull Mindbody (contracts + pricing options) for the clients who most
- *      need it, across all studios — near a renewal, never pulled, or a month
- *      stale — inside a nightly budget, and rebuild those snapshots.
+ *      need it, across all studios — a sale Mindbody told us about, near the
+ *      end of a package on a day they train, never pulled, or a month stale
+ *      (features/renewals/job-plan.ts) — inside a nightly budget, and rebuild
+ *      those snapshots. Only at studios that have gone live (studioIsLive).
  *   3. Record how packages ended (renewed, upgraded, downgraded, lost) on
  *      their renewal cycles — features/renewals/outcomes.ts decides; a
  *      leader's outcome is never overwritten.
@@ -59,7 +61,15 @@ import {
   normalizeRenewalSettings,
   type PackageNameIndex,
 } from "../src/features/renewals/settings.ts";
-import { mindbodyIdOf, namesSeenFrom, pullOrder, pullRank } from "../src/features/renewals/job-plan.ts";
+import {
+  mindbodyIdOf,
+  namesSeenFrom,
+  pullOrder,
+  pullRank,
+  sessionsLoggedSince,
+  studioIsLive,
+} from "../src/features/renewals/job-plan.ts";
+import { mindbodyDayKey } from "../src/features/renewals/engine.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
 
@@ -104,7 +114,14 @@ interface StudioRun {
   name: string;
   tz: string;
   today: string;
+  tomorrow: string;
   site: string;
+  /**
+   * The studio has gone live (its Journey cutover date is set and has come):
+   * only then does tonight's job ask Mindbody about its clients. Before it,
+   * scripts/onboard-studio.ts brings them in at a pace AJ chooses (Sep 26).
+   */
+  live: boolean;
   settings: RenewalSettings;
   nameIndex: PackageNameIndex;
   attendanceSince: string | null;
@@ -246,12 +263,15 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
       .get();
     const clientsSnap = await db.collection("clients").where("homeStudioId", "==", studio.id).get();
     const seenSnap = await db.doc(`studios/${studio.id}/config/renewalsSeen`).get();
+    const tomorrow = studioTodayKey(new Date(now.getTime() + DAY_MS), tz);
     const run: StudioRun = {
       id: studio.id,
       name: typeof studio.name === "string" ? studio.name : studio.id,
       tz,
       today: studioTodayKey(now, tz),
+      tomorrow,
       site: studio.mindbodySiteId ? String(studio.mindbodySiteId).trim() : "",
+      live: studioIsLive(studio.journeyCutoverDate, tomorrow),
       settings,
       nameIndex: buildPackageNameIndex(settings),
       attendanceSince: earliest.empty ? null : attendanceSinceOf(earliest.docs[0].get("startTime"), tz),
@@ -273,10 +293,17 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
   // Their commercial data comes with it, so they skip tonight's pulls below.
   const firstSynced = new Set<string>();
   if (canPull) {
+    const waiting = runs.filter((run) => run.site && !run.live);
+    if (waiting.length > 0) {
+      log(
+        `Not live yet, so no Mindbody pulls for their clients tonight: ${waiting.map((r) => r.name).join(", ")} ` +
+          `(set the Journey cutover date on My Studio -> Studio; until then, scripts/onboard-studio.ts).`,
+      );
+    }
     const due = runs
-      .filter((run) => run.site)
+      .filter((run) => run.site && run.live)
       .flatMap((run) => {
-        const tomorrow = studioTodayKey(new Date(now.getTime() + DAY_MS), run.tz);
+        const tomorrow = run.tomorrow;
         return run.clients.flatMap((c) => {
           const days = (schedulesByClient.get(c.id!) ?? [])
             .filter((row) => row.status !== "Cancelled")
@@ -342,12 +369,25 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
   /* ================= 2. Mindbody pulls, most urgent first ================= */
   if (canPull) {
     const candidates = runs
-      .filter((run) => run.site)
+      .filter((run) => run.site && run.live)
       .flatMap((run) =>
         run.clients.filter((c) => !firstSynced.has(c.id!)).map((c) => ({
           run,
           c,
-          rank: pullRank({ client: c, current: run.snapshots.get(c.id!)!, today: run.today }),
+          rank: pullRank({
+            client: c,
+            current: run.snapshots.get(c.id!)!,
+            today: run.today,
+            // The count-down that decides "near the end" (job-plan.ts, rank 1).
+            bookedToday: (schedulesByClient.get(c.id!) ?? []).some(
+              (row) => row.status !== "Cancelled" && studioDateKey(row.startTime, run.tz) === run.today,
+            ),
+            loggedSincePull: sessionsLoggedSince(
+              sessionsByClient.get(c.id!) ?? [],
+              mindbodyDayKey(c.mindbodyServicesSyncedAt),
+            ),
+            conversationAt: run.settings.conversationAtSessionsLeft,
+          }),
         })),
       )
       .filter((x) => x.rank !== null)

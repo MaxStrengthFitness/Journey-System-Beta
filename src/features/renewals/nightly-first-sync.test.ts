@@ -97,9 +97,11 @@ function fakeDb(collections: Record<string, Docs>) {
 const NOW = new Date(Date.UTC(2026, 10, 2, 7, 30));
 const at = (iso: string) => Timestamp.fromDate(new Date(iso));
 
-function world() {
-  return fakeDb({
-    studios: { solon: { name: "Solon", mindbodySiteId: "5746957", timezone: "America/New_York" } },
+function world(cutover: string | null = "2026-10-01") {
+  const db = fakeDb({
+    studios: {
+      solon: { name: "Solon", mindbodySiteId: "5746957", timezone: "America/New_York", journeyCutoverDate: "2026-10-01" },
+    },
     machines: {},
     schedules: {
       b1: { clientId: "100000001", studioId: "solon", startTime: at("2026-11-02T14:00:00Z"), status: "Scheduled" },
@@ -128,6 +130,8 @@ function world() {
       "100000005": { firstName: "Ed", lastName: "Fox", mindbodyClientId: "100000005", homeStudioId: "solon" },
     },
   });
+  db.store.studios.solon.journeyCutoverDate = cutover;
+  return db;
 }
 
 const found = (id: string, visits: number) => ({
@@ -186,6 +190,32 @@ describe("the nightly job's sync on first booking", () => {
     await runRenewals({ db, now: NOW, dryRun: true, log: () => {} });
     expect(mb.master).not.toHaveBeenCalled();
     expect(writes.filter((w) => w.path.startsWith("clients/"))).toEqual([]);
+  });
+
+  it("asks Mindbody nothing about a studio that has not gone live (AJ, Sep 26)", async () => {
+    for (const cutover of [null, "2026-11-20"]) {
+      mb.master.mockClear();
+      mb.commercial.mockClear();
+      const { db } = world(cutover);
+      const summary = await runRenewals({ db, now: NOW, log: () => {} });
+      expect(mb.master).not.toHaveBeenCalled();
+      expect(mb.commercial).not.toHaveBeenCalled();
+      expect(summary.firstSyncs).toBe(0);
+    }
+  });
+
+  it("counts a studio going live tomorrow as live, so its first clients are ready", async () => {
+    const { db } = world("2026-11-03");
+    const summary = await runRenewals({ db, now: NOW, log: () => {} });
+    expect(summary.firstSyncs).toBe(2);
+  });
+
+  it("pulls first a client whose package Mindbody said changed", async () => {
+    const { db, store } = world();
+    store.clients["100000003"].mindbodyServicesSyncedAt = at("2026-10-28T10:00:00Z");
+    store.clients["100000003"].mindbodyCommercialChangedAt = at("2026-11-01T18:00:00Z");
+    await runRenewals({ db, now: NOW, maxPulls: 1, log: () => {} });
+    expect(mb.commercial.mock.calls.map((c) => c[1])).toEqual(["100000003"]);
   });
 
   it("counts a client Mindbody does not know as a failure and writes nothing for them", async () => {
