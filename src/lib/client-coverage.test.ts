@@ -48,9 +48,17 @@ describe("coverageOfClient", () => {
     expect(coverageOfClient({ firstSessionDate: "2026-08-14" }, "2026-09-01")).toBe("partial");
   });
 
-  it("is complete for a client who started after their studio moved over", () => {
-    expect(coverageOfClient({ firstSessionDate: "2026-09-01" }, "2026-09-01")).toBe("complete");
-    expect(coverageOfClient({ firstSessionDate: "2026-09-12" }, "2026-09-01")).toBe("complete");
+  it("is unknown for a never-synced client who started after their studio moved over (the cost plan, A6)", () => {
+    // Launch day: a long-time client nobody has synced yet has her first
+    // Journey session. The date alone used to call her complete - "New", "#1".
+    expect(coverageOfClient({ firstSessionDate: "2026-09-01" }, "2026-09-01")).toBe("unknown");
+    expect(coverageOfClient({ firstSessionDate: "2026-09-12" }, "2026-09-01")).toBe("unknown");
+  });
+
+  it("is complete for a client who started after their studio moved over once her sync says she is new", () => {
+    expect(
+      coverageOfClient({ firstSessionDate: "2026-09-12", clientsNumberOfVisitsAtSite: 1 }, "2026-09-01"),
+    ).toBe("complete");
   });
 
   it("is unknown for a client with no first session and no prior record", () => {
@@ -60,9 +68,8 @@ describe("coverageOfClient", () => {
 });
 
 /*
- * Mindbody's own visit count, which rides in on every schedule pull. This is
- * the only one of these signals that is populated today, for every client the
- * Hub has loaded, with nothing synced and nobody typing anything.
+ * Mindbody's own visit count, which arrives with a Master Sync and on the
+ * webhook's client.updated (not on the schedule pull - the Sep 22 sync plan).
  */
 describe("coverageOfClient and Mindbody's visit count", () => {
   it("treats five visits or fewer as genuinely new", () => {

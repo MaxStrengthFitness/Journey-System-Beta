@@ -248,11 +248,12 @@ describe("useLiveSchedule mounts with a live window and a fetched week", () => {
     expect(constraintsOf(liveQuery).from?.toISOString()).toBe("2026-09-15T04:00:00.000Z");
     expect(constraintsOf(liveQuery).to?.toISOString()).toBe("2026-09-18T03:59:59.999Z");
 
-    // Twelve hours of 15-minute ticks re-read the week, and nothing else
-    // fires in a loop: about one read per stale period, not per snapshot.
+    // Twelve hours of hourly ticks (the cost plan, Sep 26 2026: fifteen
+    // minutes before) re-read the week, and nothing else fires in a loop:
+    // about one read per stale period, not per snapshot.
     const later = scheduleReads().length - readsAtMount;
-    expect(later).toBeGreaterThanOrEqual(40);
-    expect(later).toBeLessThanOrEqual(50);
+    expect(later).toBeGreaterThanOrEqual(10);
+    expect(later).toBeLessThanOrEqual(14);
   });
 
   it("clears the fetched cache on a studio switch", async () => {

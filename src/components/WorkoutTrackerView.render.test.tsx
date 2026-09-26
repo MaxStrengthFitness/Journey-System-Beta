@@ -520,20 +520,28 @@ describe("the Active Session's session number", () => {
   });
 
   it("judges coverage by the client's HOME studio's cutover, not the iPad's", async () => {
-    // The iPad is at Solon, which has no cutover; her home is Westlake, which
-    // moved onto Journey before her first session there - so Journey holds her
-    // whole story and the number is hers.
-    studioCtx.studios = [{ id: STUDIO_ID }, { id: "westlake", journeyCutoverDate: "2026-01-01" }];
-    const host = await mount(
-      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
-    );
+    // A cutover is trusted in one direction only: a first session BEFORE it
+    // proves she was training there before Journey (the cost plan, A6, Sep 26
+    // 2026, took away the other direction). Her Mindbody count says new, so
+    // only the cutover can take her number away - and only her HOME's may.
+    const who = {
+      ...client,
+      homeStudioId: "westlake",
+      firstSessionDate: "2026-03-02",
+      clientsNumberOfVisitsAtSite: 3,
+    } as Client;
+
+    // The iPad is at Solon, which moved over later than her first session;
+    // her home, Westlake, has no cutover. Judged by her home, the count
+    // stands and the number is hers.
+    studioCtx.studios = [{ id: STUDIO_ID, journeyCutoverDate: "2026-06-01" }, { id: "westlake" }];
+    const host = await mount(<Tracker who={who} />);
     expect(barNumber(host)).toBe("#12");
 
-    // The same client read by Solon's (absent) day would have had no number.
-    studioCtx.studios = [{ id: STUDIO_ID, journeyCutoverDate: "2026-01-01" }, { id: "westlake" }];
-    const other = await mount(
-      <Tracker who={{ ...client, homeStudioId: "westlake", firstSessionDate: "2026-03-02" } as Client} />,
-    );
+    // Her HOME moved over after her first session: she predates Journey there,
+    // so there is no number, whatever the iPad's studio says.
+    studioCtx.studios = [{ id: STUDIO_ID }, { id: "westlake", journeyCutoverDate: "2026-06-01" }];
+    const other = await mount(<Tracker who={who} />);
     expect(barNumber(other)).toBeNull();
   });
 });

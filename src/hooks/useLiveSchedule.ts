@@ -40,7 +40,7 @@ import {
  *            at the studio's midnight for an iPad left open overnight.
  *   FETCHED  everything else, through `ensureRange`. One `getDocs` per range,
  *            cached by document id, with per-day coverage so a range already
- *            read in the last 15 minutes costs nothing. The week ahead
+ *            read in the last hour costs nothing. The week ahead
  *            (`WEEK_AHEAD_DAYS`) is fetched on mount and again every
  *            `SCHEDULE_STALE_MS` while the tab is visible, which keeps the
  *            Hub's day tabs, the Operations week load and the trainer's
@@ -218,7 +218,7 @@ export function useLiveSchedule(activeStudioId: string | null, isReady: boolean)
     // A few seconds past the stale mark, not exactly on it: the read the first
     // tick starts lands a moment AFTER the interval begins counting, so a tick
     // exactly SCHEDULE_STALE_MS later would still find every day fresh and
-    // skip — and the week would actually refresh every 30 minutes.
+    // skip — and the week would actually refresh at twice the interval.
     const interval = setInterval(tick, SCHEDULE_STALE_MS + 5_000);
     const onVisible = () => {
       if (document.visibilityState === "visible") tick();

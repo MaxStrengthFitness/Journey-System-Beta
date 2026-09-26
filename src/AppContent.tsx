@@ -711,7 +711,7 @@ export default function AppContent({
       // Today and tomorrow reach every iPad through the live listener. The rest
       // of the week is a fetched cache, so re-read it here, or the iPad that
       // pressed Refresh keeps showing days 2-8 as they were until its next
-      // timed re-read (up to fifteen minutes).
+      // timed re-read (up to an hour).
       refreshSchedules();
 
       if (res.errors && res.errors.length > 0) {

@@ -31,9 +31,9 @@ export interface CoverageClient {
   /** A Timestamp, a Date or a yyyy-mm-dd string - whatever the doc carries. */
   firstSessionDate?: unknown;
   /**
-   * Mindbody's lifetime visit count at the site. It arrives on every schedule
-   * pull, so unlike everything else here it is already populated for every
-   * client the Hub has loaded - which is what makes the gate work today.
+   * Mindbody's lifetime visit count at the site. It arrives with a Master Sync
+   * and on the webhook's client.updated, not on the schedule pull; a client
+   * who has never been synced has none, and reads as unknown.
    */
   clientsNumberOfVisitsAtSite?: number;
 }

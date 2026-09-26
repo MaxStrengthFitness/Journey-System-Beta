@@ -225,8 +225,8 @@ describe("freshnessLabel", () => {
 });
 
 describe("constants", () => {
-  it("keeps the roster's week and a 15-minute freshness", () => {
+  it("keeps the roster's week and an hour's freshness (the cost plan, Sep 26 2026)", () => {
     expect(WEEK_AHEAD_DAYS).toBe(8);
-    expect(SCHEDULE_STALE_MS).toBe(15 * 60 * 1000);
+    expect(SCHEDULE_STALE_MS).toBe(60 * 60 * 1000);
   });
 });

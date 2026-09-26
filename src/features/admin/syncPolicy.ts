@@ -39,7 +39,13 @@ import { shiftHoursOf } from "../relay/board/now-context";
 
 export const MIN_INTERVAL_MINUTES = 5;
 export const MAX_INTERVAL_MINUTES = 240;
-export const DEFAULT_INTERVAL_MINUTES = 15;
+/**
+ * Thirty minutes since the cost plan (AJ, Sep 26 2026): a change to today or
+ * tomorrow has to reach the iPads within about half an hour, and the webhook
+ * brings most of them in seconds, so the pull is the guarantee rather than
+ * the messenger. A studio's own `syncIntervalMinutes` still wins.
+ */
+export const DEFAULT_INTERVAL_MINUTES = 30;
 
 /** Stop backing off here. Four hours is "someone has to look at this". */
 export const MAX_BACKOFF_MS = 4 * 60 * 60 * 1000;
@@ -176,10 +182,12 @@ export function claimIsStillDue(
  * studios (the Atlas, Sep 25). AJ's brief: far cheaper, without a trainer
  * missing a same-day cancellation, and Refresh always there to be sure.
  *
- * So the fifteen-minute pull now asks only for today and tomorrow — the days
- * the Hub watches live — and the whole month is asked for a few times a day:
- * the first pull of the studio's day and the first after each of
- * DEEP_PULL_HOURS. Which one a pull is follows from one field every iPad
+ * So the interval pull now asks only for today and tomorrow — the days the
+ * Hub watches live — and the whole month is asked for once a day, at the
+ * first pull of the studio's day (the cost plan, Sep 26: AJ ranked days 3–30
+ * as "once each morning"; it was four times a day, at the first pull after
+ * each of 0:00, 10:00, 14:00 and 18:00). Which one a pull is follows from one
+ * field every iPad
  * shares, `Studio.lastDeepScheduleSyncAt`: when the last whole-month pull
  * that SUCCEEDED was claimed. A pull whose last good month pull fell in an
  * earlier block of the studio's day reaches the whole month.
@@ -191,12 +199,14 @@ export function claimIsStillDue(
  * ------------------------------------------------------------------ */
 
 /**
- * Studio-local hours at which the next pull reaches the whole month. The
- * first pull of the day always does (it is in block 0). A booking made for
- * two or more days out therefore shows within about four hours in open
- * hours, or at once on Refresh; today and tomorrow are pulled every interval.
+ * Studio-local hours at which the next pull reaches the whole month: only the
+ * day's first pull, before the studio opens (block 0 starts at midnight and
+ * the pull hours an hour before opening). A booking made for two or more days
+ * out therefore shows at once by the webhook, the next morning without it,
+ * or at once on Refresh for anything in the next week; today and tomorrow
+ * are pulled every interval. Adding an hour here adds a month pull a day.
  */
-export const DEEP_PULL_HOURS: readonly number[] = [0, 10, 14, 18];
+export const DEEP_PULL_HOURS: readonly number[] = [0];
 
 /** Which block of the studio's day an instant falls in, as "YYYY-MM-DD#n". */
 export function deepPullBlock(ms: number, timeZone: string): string | null {

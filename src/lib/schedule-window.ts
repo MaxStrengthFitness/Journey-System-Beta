@@ -17,7 +17,7 @@
  *            is the cheapest way to get that. Yesterday because a session that
  *            ran late last night still has to resolve on the Hub this morning.
  *   FETCHED  everything else, on demand and cached by day. The rest of the
- *            week is refreshed every 15 minutes while the screen is visible,
+ *            week is refreshed every hour while the screen is visible,
  *            and any range the calendar navigates to is fetched once and then
  *            re-fetched only when it goes stale or the user taps Refresh.
  *
@@ -34,8 +34,17 @@ import {
   toDate,
 } from "./studio-time";
 
-/** A fetched day older than this is re-read on the next visible tick. */
-export const SCHEDULE_STALE_MS = 15 * 60_000;
+/**
+ * A fetched day older than this is re-read on the next visible tick.
+ *
+ * An hour since the cost plan (Sep 26 2026, D2). The fetched days are day 2
+ * onward - today and tomorrow are the live listener - and since the month is
+ * pulled from Mindbody once each morning, those days only change in
+ * Firestore at that pull, by webhook, or on a Refresh. Re-reading them every
+ * fifteen minutes on every iPad read the same unchanged rows four times an
+ * hour. Refresh and waking the iPad still re-read at once.
+ */
+export const SCHEDULE_STALE_MS = 60 * 60_000;
 
 /**
  * How far ahead the always-fetched window reaches, in studio days.

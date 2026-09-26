@@ -119,7 +119,7 @@ export function CalendarView({
    * Ask the hook for whatever is on screen. The prop object is rebuilt on
    * every AppContent render, so the effect keys on the (stable) callback, not
    * the object — otherwise it would fire every render. A range already read
-   * in the last 15 minutes costs nothing; see `rangeToFetch`.
+   * in the last hour costs nothing; see `rangeToFetch`.
    */
   const ensureRange = scheduleWindow?.ensureRange;
   useEffect(() => {

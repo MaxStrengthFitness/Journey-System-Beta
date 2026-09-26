@@ -270,13 +270,14 @@ export function historyCoverage(
   }
 
   /*
-   * MINDBODY'S OWN COUNT - the signal that works today, with nothing synced.
+   * MINDBODY'S OWN COUNT.
    *
-   * Every appointment Mindbody returns carries ClientsNumberOfVisitsAtSite,
-   * and the schedule pull writes it onto the client on every pull
-   * (lib/mindbody-api-sync.ts; the webhook does the same). So it is already
-   * on every client the Hub has ever loaded - no Master Sync, no FileMaker
-   * import, nobody typing anything. AJ, Sep 22 2026.
+   * Lifetime visits at the site. It arrives with a Master Sync (the profile's
+   * button, the pre-launch sync, the nightly sync of anyone booked who never
+   * had one) and on the webhook's client.updated - NOT on the schedule pull,
+   * as this comment used to say (the Sep 22 sync plan found that out: the
+   * pull's fields are class-booking fields and 1:1 appointments never carry
+   * them). Because FileMaker was linked to Mindbody, the count is accurate.
    *
    * It decides only whether Journey CAN be holding her whole story. Above
    * the threshold it cannot: Journey is months old and she has been coming
@@ -291,13 +292,17 @@ export function historyCoverage(
     return visits <= NEW_CLIENT_MAX_VISITS ? "complete" : "partial";
   }
   /*
-   * No record, but the studio has said when it moved over: a client whose
-   * first session here predates that day was training before Journey existed,
-   * so their history is partial whether or not anyone has written the number
-   * down. A client who started after it began here, so Journey has all of it.
+   * Mindbody has said nothing, so this client has never been synced - and a
+   * first Journey session on or after the cutover proves nothing on its own:
+   * it is exactly the twelve-year client whose first Journey session fell in
+   * the studio's first week (the comment above the cutover check). This used
+   * to answer "complete" here, on the belief that every client the Hub had
+   * loaded carried a visit count; they do not, so on launch day every
+   * long-time client nobody had synced yet read "New" and "#1" (the cost
+   * plan, Sep 26 2026, A6). Unknown says less and is never wrong; the nightly
+   * sync of anyone booked who has never been synced brings the count, and a
+   * genuinely new client then reads complete from it.
    */
-  /* Mindbody said nothing, but she started after the studio moved over. */
-  if (cutover && client?.firstJourneyDay) return "complete";
   return "unknown";
 }
 

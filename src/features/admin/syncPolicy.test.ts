@@ -221,26 +221,22 @@ const LA = "America/Los_Angeles";
 const nyAt = (h: number, m = 0, day = 25) => Date.UTC(2026, 8, day, h + 4, m, 0);
 
 describe("deepPullBlock", () => {
-  it("puts the early morning in the day's first block", () => {
+  it("puts the whole studio day in one block (the cost plan: the month once each morning)", () => {
+    expect(deepPullBlock(nyAt(0, 0), NY)).toBe("2026-09-25#0");
     expect(deepPullBlock(nyAt(5, 30), NY)).toBe("2026-09-25#0");
+    expect(deepPullBlock(nyAt(10, 0), NY)).toBe("2026-09-25#0");
+    expect(deepPullBlock(nyAt(18, 0), NY)).toBe("2026-09-25#0");
+    expect(deepPullBlock(nyAt(23, 59), NY)).toBe("2026-09-25#0");
   });
 
-  it("moves to the next block at each deep-pull hour", () => {
-    expect(deepPullBlock(nyAt(9, 59), NY)).toBe("2026-09-25#0");
-    expect(deepPullBlock(nyAt(10, 0), NY)).toBe("2026-09-25#1");
-    expect(deepPullBlock(nyAt(14, 0), NY)).toBe("2026-09-25#2");
-    expect(deepPullBlock(nyAt(18, 0), NY)).toBe("2026-09-25#3");
-    expect(deepPullBlock(nyAt(23, 59), NY)).toBe("2026-09-25#3");
+  it("reads the day in the studio's own zone, not the device's", () => {
+    // 1:30 am in New York is 10:30 pm the day before in Los Angeles.
+    expect(deepPullBlock(nyAt(1, 30), NY)).toBe("2026-09-25#0");
+    expect(deepPullBlock(nyAt(1, 30), LA)).toBe("2026-09-24#0");
   });
 
-  it("reads the hour in the studio's own zone, not the device's", () => {
-    // 10:30 in New York is 7:30 in Los Angeles: still the morning block there.
-    expect(deepPullBlock(nyAt(10, 30), NY)).toBe("2026-09-25#1");
-    expect(deepPullBlock(nyAt(10, 30), LA)).toBe("2026-09-25#0");
-  });
-
-  it("has one block per deep-pull hour", () => {
-    expect(DEEP_PULL_HOURS).toEqual([0, 10, 14, 18]);
+  it("has one block a day", () => {
+    expect(DEEP_PULL_HOURS).toEqual([0]);
   });
 });
 
@@ -250,41 +246,39 @@ describe("wantsDeepPull", () => {
   });
 
   it("reaches the whole month at the day's first pull", () => {
-    // Last good month pull at 6 pm yesterday, first pull this morning.
-    expect(wantsDeepPull(nyAt(18, 0, 24), nyAt(5, 30), NY)).toBe(true);
+    // Last good month pull at 5:30 yesterday, first pull this morning.
+    expect(wantsDeepPull(nyAt(5, 30, 24), nyAt(4, 30), NY)).toBe(true);
   });
 
-  it("asks only for today and tomorrow while this block's month pull stands", () => {
-    expect(wantsDeepPull(nyAt(10, 5), nyAt(10, 20), NY)).toBe(false);
-    expect(wantsDeepPull(nyAt(5, 30), nyAt(9, 45), NY)).toBe(false);
+  it("asks only for today and tomorrow for the rest of the day once the morning's month pull stands", () => {
+    expect(wantsDeepPull(nyAt(4, 30), nyAt(9, 45), NY)).toBe(false);
+    expect(wantsDeepPull(nyAt(4, 30), nyAt(10, 20), NY)).toBe(false);
+    expect(wantsDeepPull(nyAt(4, 30), nyAt(18, 5), NY)).toBe(false);
   });
 
-  it("reaches the whole month once a new block starts", () => {
-    expect(wantsDeepPull(nyAt(5, 30), nyAt(10, 5), NY)).toBe(true);
+  it("is not fooled by a near pull that finished just past midnight (review finding)", () => {
+    // The last GOOD month pull was yesterday morning; a lease stamped at
+    // 00:00:04 by a late near pull does not count, so the first pull of the
+    // morning still reaches the month.
+    expect(wantsDeepPull(nyAt(4, 30, 24), nyAt(4, 30), NY)).toBe(true);
   });
 
-  it("is not fooled by a near pull that finished just past a block's start (review finding)", () => {
-    // The month pull stood at 5:30. A near pull claimed at 9:59:55 finished at
-    // 10:00:04; the lease says 10:00:04, but the last GOOD month pull is still
-    // 5:30, so the 10:15 pull reaches the month.
-    expect(wantsDeepPull(nyAt(5, 30), nyAt(10, 15), NY)).toBe(true);
+  it("tries the month again when the morning's never finished (review finding)", () => {
+    // A month pull claimed at 4:30 whose tab was closed stamped nothing, so
+    // the last good one is still yesterday's and the 5:00 pull tries again.
+    expect(wantsDeepPull(nyAt(4, 30, 24), nyAt(5, 0), NY)).toBe(true);
   });
 
-  it("tries the month again when the last one never finished (review finding)", () => {
-    // A month pull claimed at 10:05 whose tab was closed stamped nothing.
-    expect(wantsDeepPull(nyAt(5, 30), nyAt(10, 20), NY)).toBe(true);
-  });
-
-  it("gives four whole-month pulls in an open day of fifteen-minute pulls", () => {
-    let lastDeep: number | null = nyAt(18, 30, 24);
+  it("gives one whole-month pull in an open day of thirty-minute pulls", () => {
+    let lastDeep: number | null = nyAt(4, 30, 24);
     let deep = 0;
-    for (let t = nyAt(4, 30); t <= nyAt(21, 0); t += 16 * MIN) {
+    for (let t = nyAt(4, 30); t <= nyAt(21, 0); t += 31 * MIN) {
       if (wantsDeepPull(lastDeep, t, NY)) {
         deep++;
         lastDeep = t;
       }
     }
-    expect(deep).toBe(4);
+    expect(deep).toBe(1);
   });
 });
 

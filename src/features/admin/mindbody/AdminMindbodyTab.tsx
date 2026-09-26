@@ -502,7 +502,7 @@ export function AdminMindbodyTab({
             <AdminField
               label="Every"
               htmlFor="mb-interval"
-              hint="Checks today and tomorrow this often during opening hours, and the whole month four times a day. Refresh on any iPad always checks through next week."
+              hint="Checks today and tomorrow this often during opening hours, and the whole month once each morning. Refresh on any iPad always checks through next week."
             >
               <AdminSelect
                 id="mb-interval"

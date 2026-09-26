@@ -190,9 +190,19 @@ describe("historyCoverage", () => {
 describe("historyCoverage against the studio's cutover", () => {
   const CUTOVER = "2027-09-18"; // the day that studio moved onto Journey
 
-  it("is complete for a client whose first session is on or after the cutover", () => {
-    expect(historyCoverage({ firstJourneyDay: "2027-09-18" }, CUTOVER)).toBe("complete");
-    expect(historyCoverage({ firstJourneyDay: "2027-11-02" }, CUTOVER)).toBe("complete");
+  it("is unknown for a client who started on or after the cutover and has never been synced (the cost plan, A6)", () => {
+    // A first session after the cutover proves nothing on its own: she may be
+    // a twelve-year client whose first Journey session fell in the first week.
+    expect(historyCoverage({ firstJourneyDay: "2027-09-18" }, CUTOVER)).toBe("unknown");
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02" }, CUTOVER)).toBe("unknown");
+  });
+
+  it("is complete for a client who started after the cutover once Mindbody's count says she is new", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02", mindbodyVisits: 1 }, CUTOVER)).toBe("complete");
+  });
+
+  it("is partial for a client who started after the cutover when Mindbody's count says otherwise", () => {
+    expect(historyCoverage({ firstJourneyDay: "2027-11-02", mindbodyVisits: 300 }, CUTOVER)).toBe("partial");
   });
 
   it("is partial for a client who was training before it", () => {

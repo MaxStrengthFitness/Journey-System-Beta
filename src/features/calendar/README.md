@@ -230,7 +230,7 @@ two things merged into one list:
 | Part | What | Why |
 |---|---|---|
 | **Live** | yesterday · today · tomorrow, one `onSnapshot` | Today must be right the moment Mindbody changes; a listener is the cheapest way to get that. Yesterday because a session that ran late last night still has to resolve on the Hub this morning. |
-| **Fetched** | anything else, one `getDocs` per range, cached by day | The old listener watched 24 h back to 30 days ahead, and every sync that rewrote `lastSyncAt` billed all of it to every open iPad. Fetched days are fresh within **15 minutes** (`SCHEDULE_STALE_MS`), and a day read more recently than that costs nothing to ask for again. |
+| **Fetched** | anything else, one `getDocs` per range, cached by day | The old listener watched 24 h back to 30 days ahead, and every sync that rewrote `lastSyncAt` billed all of it to every open iPad. Fetched days are fresh within **an hour** (`SCHEDULE_STALE_MS`; 15 minutes until the cost plan, Sep 26 2026, when the month pull became once a morning), and a day read more recently than that costs nothing to ask for again. |
 
 The calendar's part (`CalendarView`, `visibleRange` in `selectors.ts`): an
 effect keyed on the view mode and the selected date asks the hook for the
