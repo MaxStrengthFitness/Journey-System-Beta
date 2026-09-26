@@ -41,6 +41,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   orderBy,
@@ -92,6 +93,7 @@ import {
   type StudioDiagnosis,
 } from "./diagnostics";
 import { useSyncLeases, withLease } from "../sync-lease";
+import { watchLine, type WebhookWatch } from "../../../lib/webhook-watch";
 import { studioTodayKey } from "../../../lib/studio-time";
 
 interface Props {
@@ -174,6 +176,24 @@ export function AdminMindbodyTab({
   );
   const estate = useMemo(() => summariseEstate(rows), [rows]);
   const service = useMemo(() => summariseHealth(health, now), [health, now]);
+
+  /* Mindbody's own record of the webhook subscription, checked nightly
+     (server/webhook-watch.ts). Read once when the tab opens. */
+  const [webhookWatch, setWebhookWatch] = useState<WebhookWatch | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getDoc(doc(db, "system", "mindbodyWebhook"))
+      .then((snap) => {
+        if (!cancelled) setWebhookWatch(snap.exists() ? (snap.data() as WebhookWatch) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setWebhookWatch(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const webhookLine = useMemo(() => watchLine(webhookWatch, now), [webhookWatch, now]);
   const selectedRow = rows.find((r) => r.studioId === selected?.id) ?? null;
 
   /* ---------------- live connection check ---------------- */
@@ -392,6 +412,16 @@ export function AdminMindbodyTab({
             </ul>
           )}
         </div>
+      </AdminNotice>
+
+      {/* 1b. Is Mindbody's webhook still on? (the cost plan, A7) */}
+      <AdminNotice tone={webhookLine.tone}>
+        {webhookLine.tone === "ok" ? (
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        ) : (
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+        )}
+        <div>{webhookLine.text}</div>
       </AdminNotice>
 
       {checkResult && (

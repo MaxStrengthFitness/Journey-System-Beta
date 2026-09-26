@@ -2192,6 +2192,12 @@ describe("Firestore Security Rules", () => {
     await assertFails(setDoc(doc(a, "announcementReads", "trainerA"), { ids: "everything" }));
   });
 
+  it("lets anyone signed in read the webhook watch, and nobody write it (the cost plan, A7)", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDoc(doc(trainer, "system", "mindbodyWebhook")));
+    await assertFails(setDoc(doc(trainer, "system", "mindbodyWebhook"), { active: true }));
+  });
+
   it("refuses a studio create to anyone below a franchise owner", async () => {
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertFails(setDoc(doc(owner, "studios", "studioC"), { name: "Studio C", ownerId: "ownerA", timezone: "America/New_York" }));

@@ -1,7 +1,10 @@
 /**
  * Render Cron Job entry point: the nightly renewals job (server/renewals-job.ts).
  *
- * CONTACTS NOBODY and writes nothing to Mindbody. It reads bookings, workouts
+ * CONTACTS NOBODY and writes nothing to Mindbody. After the renewals job it
+ * asks Mindbody whether Journey's webhook subscription is still on
+ * (server/webhook-watch.ts, one GET a site) and keeps the answer at
+ * system/mindbodyWebhook for Operations -> Mindbody. It reads bookings, workouts
  * and each studio's renewal settings, pulls contracts and pricing options from
  * Mindbody for the clients who most need it, and rewrites the renewal
  * snapshot on each client document where it changed.
@@ -22,6 +25,7 @@
 import { runCron } from "./cron-runtime.ts";
 import { getDb } from "./firebase-admin.ts";
 import { runRenewals } from "./renewals-job.ts";
+import { checkWebhookSubscriptions } from "./webhook-watch.ts";
 
 void runCron("cron-renewals", async () => {
   const maxPulls = Number(process.env.RENEWALS_MAX_PULLS);
@@ -33,4 +37,10 @@ void runCron("cron-renewals", async () => {
     maxFirstSyncs:
       process.env.FIRST_SYNC_MAX && Number.isFinite(maxFirstSyncs) && maxFirstSyncs >= 0 ? maxFirstSyncs : undefined,
   });
+  // Is Mindbody's webhook still on? (the cost plan, A7) Never fails the job.
+  try {
+    await checkWebhookSubscriptions(getDb(), { dryRun: process.env.RENEWALS_DRY_RUN === "true" });
+  } catch (err: any) {
+    console.warn("[webhook-watch] the check failed:", err?.message || err);
+  }
 });

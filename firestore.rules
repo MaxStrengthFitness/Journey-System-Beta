@@ -2852,5 +2852,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Whether Mindbody's webhook subscription is on (the cost plan, Sep 26
+    // 2026, A7): written nightly by the renewals cron through the Admin SDK,
+    // read by Operations -> Mindbody. Status and event names only, never the
+    // subscription's signing key.
+    match /system/mindbodyWebhook {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
   }
 }
