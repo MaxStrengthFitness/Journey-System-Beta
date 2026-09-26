@@ -35,6 +35,7 @@
  */
 
 import { studioDateKey, zonedHM } from "../../lib/studio-time";
+import type { Studio } from "../../types";
 import { shiftHoursOf } from "../relay/board/now-context";
 
 export const MIN_INTERVAL_MINUTES = 5;
@@ -297,4 +298,52 @@ export function withinPullHours(
     nowMin >= hours.open - PULL_HOURS_MARGIN_MINUTES &&
     nowMin <= hours.close + PULL_HOURS_MARGIN_MINUTES
   );
+}
+
+/* ------------------------------------------------------------------ *
+ * THE LEASE'S OWN DOCUMENT (the cost plan, Sep 26 2026, D3b)
+ *
+ * The lease moved from `studios/{id}` to `studios/{id}/sync/lease`
+ * (features/admin/sync-lease.ts has the why and the Firestore half). These
+ * are the pure rules for reading it through the move.
+ * ------------------------------------------------------------------ */
+
+export interface SyncLease {
+  /** When the last pull was CLAIMED (ms): the shared clock every iPad reads. */
+  lastScheduleSyncAt?: number | null;
+  /** Consecutive failed pulls; reset on success. Drives the backoff. */
+  scheduleSyncFailures?: number | null;
+  /** When the last whole-month pull that succeeded was claimed (ms). */
+  lastDeepScheduleSyncAt?: number | null;
+}
+
+export const LEASE_FIELDS = ["lastScheduleSyncAt", "scheduleSyncFailures", "lastDeepScheduleSyncAt"] as const;
+
+const leaseNum = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+/**
+ * The lease to decide with: the lease document's fields, each falling back to
+ * the one still on the studio document from before the move, so the first
+ * pull after the move is not every iPad thinking the studio never synced.
+ */
+export function leaseOf(
+  lease: SyncLease | null | undefined,
+  studio: Pick<Studio, "lastScheduleSyncAt" | "scheduleSyncFailures" | "lastDeepScheduleSyncAt"> | null | undefined,
+): { lastScheduleSyncAt: number | null; scheduleSyncFailures: number | null; lastDeepScheduleSyncAt: number | null } {
+  return {
+    lastScheduleSyncAt: leaseNum(lease?.lastScheduleSyncAt) ?? leaseNum(studio?.lastScheduleSyncAt),
+    scheduleSyncFailures: leaseNum(lease?.scheduleSyncFailures) ?? leaseNum(studio?.scheduleSyncFailures),
+    lastDeepScheduleSyncAt: leaseNum(lease?.lastDeepScheduleSyncAt) ?? leaseNum(studio?.lastDeepScheduleSyncAt),
+  };
+}
+
+/** The studio with its lease folded in, for screens that read the old fields. */
+export function withLease<T extends Studio>(studio: T, lease: SyncLease | null | undefined): T {
+  const l = leaseOf(lease, studio);
+  return {
+    ...studio,
+    lastScheduleSyncAt: l.lastScheduleSyncAt ?? undefined,
+    scheduleSyncFailures: l.scheduleSyncFailures ?? undefined,
+    lastDeepScheduleSyncAt: l.lastDeepScheduleSyncAt ?? undefined,
+  };
 }

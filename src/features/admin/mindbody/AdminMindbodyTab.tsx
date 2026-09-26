@@ -91,6 +91,7 @@ import {
   type LogLine,
   type StudioDiagnosis,
 } from "./diagnostics";
+import { useSyncLeases, withLease } from "../sync-lease";
 import { studioTodayKey } from "../../../lib/studio-time";
 
 interface Props {
@@ -158,9 +159,18 @@ export function AdminMindbodyTab({
   // A leader's view never leaves the studio the app is in.
   const selected = studios.find((s) => s.id === (company ? (selectedId ?? activeStudioId) : activeStudioId));
 
+  // The sync lease lives on its own document since the cost plan (Sep 26
+  // 2026, features/admin/sync-lease.ts): read once for every studio listed,
+  // and again every five minutes while this tab is open.
+  const leaseIds = useMemo(() => studios.map((s) => s.id).filter((id): id is string => Boolean(id)), [studios]);
+  const leases = useSyncLeases(leaseIds, Math.floor(now / 300_000));
+  const leased = useMemo(
+    () => studios.map((s) => (s.id ? withLease(s, leases[s.id]) : s)),
+    [studios, leases],
+  );
   const rows = useMemo(
-    () => auditStudios(studios, trainers, now),
-    [studios, trainers, now],
+    () => auditStudios(leased, trainers, now),
+    [leased, trainers, now],
   );
   const estate = useMemo(() => summariseEstate(rows), [rows]);
   const service = useMemo(() => summariseHealth(health, now), [health, now]);

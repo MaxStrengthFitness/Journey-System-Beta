@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, runTransaction, updateDoc } from "firebase/firestore";
+import { runTransaction, setDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { Client, Studio, Trainer } from "../../types";
 import {
@@ -20,6 +20,7 @@ import {
   type SyncVerdict,
 } from "./syncPolicy";
 import { DEFAULT_TIME_ZONE, isValidTimeZone } from "../../lib/studio-time";
+import { leaseOf, leaseRef, useSyncLease, type SyncLease } from "./sync-lease";
 
 /** How often the policy is re-checked when it says "not due yet". */
 const TICK_MS = 60_000;
@@ -70,17 +71,31 @@ export function useAutoSync({
   const [running, setRunning] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
+  // The shared lease, on its own document since the cost plan (Sep 26 2026,
+  // D3b): only this studio's iPads watch it (features/admin/sync-lease.ts).
+  const lease = useSyncLease(enabled ? activeStudioId : null);
+
   // Read through refs inside the timer so a new schedule snapshot — which
   // arrives constantly — does not tear down and rebuild the timer, which is
   // how a "every 15 minutes" timer becomes "every render".
-  const latest = useRef({ studios, activeStudioId, trainers, clients });
-  latest.current = { studios, activeStudioId, trainers, clients };
+  const latest = useRef<{
+    studios: Studio[];
+    activeStudioId: string | null;
+    trainers: Trainer[];
+    clients: Client[];
+    lease: SyncLease | null | undefined;
+  }>({ studios, activeStudioId, trainers, clients, lease });
+  latest.current = { studios, activeStudioId, trainers, clients, lease };
   const runningRef = useRef(false);
 
   const attempt = useCallback(async () => {
-    const { studios, activeStudioId, trainers, clients } = latest.current;
+    const { studios, activeStudioId, trainers, clients, lease } = latest.current;
     const studio = studios.find((s) => s.id === activeStudioId) ?? null;
     if (!studio?.id) return;
+    // Wait for the lease's first answer: deciding on nothing would have every
+    // iPad that just opened try to claim at once.
+    if (lease === undefined) return;
+    const shared = leaseOf(lease, studio);
 
     const now = Date.now();
     const timeZone = isValidTimeZone(studio.timezone)
@@ -90,8 +105,8 @@ export function useAutoSync({
       now,
       enabled: studio.autoSyncEnabled ?? true,
       intervalMinutes: studio.syncIntervalMinutes,
-      lastSyncAt: studio.lastScheduleSyncAt ?? null,
-      failures: studio.scheduleSyncFailures ?? 0,
+      lastSyncAt: shared.lastScheduleSyncAt,
+      failures: shared.scheduleSyncFailures ?? 0,
       inFlight: runningRef.current,
       visible:
         typeof document === "undefined" || document.visibilityState !== "hidden",
@@ -107,7 +122,7 @@ export function useAutoSync({
     // Claim the shared lease. The local studio snapshot can be a few seconds
     // stale, and on a floor with several iPads several of them will reach
     // this line at once; the transaction is what makes exactly one win.
-    const studioRef = doc(db, "studios", studio.id);
+    const ref = leaseRef(studio.id);
     let claimed = false;
     // Decided inside the claim, from the studio as the winner found it: see
     // wantsDeepPull. Every device reads the same field, so the studio gets one
@@ -121,24 +136,24 @@ export function useAutoSync({
         claimed = false;
         deep = true;
         lookUpEveryone = true;
-        const snap = await tx.get(studioRef);
-        const fresh = snap.data() as Studio | undefined;
+        const snap = await tx.get(ref);
+        const fresh = leaseOf(snap.exists() ? (snap.data() as SyncLease) : null, studio);
         if (
-          !claimIsStillDue(fresh?.lastScheduleSyncAt ?? null, {
+          !claimIsStillDue(fresh.lastScheduleSyncAt, {
             now,
-            intervalMinutes: fresh?.syncIntervalMinutes ?? studio.syncIntervalMinutes,
-            failures: fresh?.scheduleSyncFailures ?? 0,
+            intervalMinutes: studio.syncIntervalMinutes,
+            failures: fresh.scheduleSyncFailures ?? 0,
           })
         ) {
           return;
         }
-        const lastDeepAt = fresh?.lastDeepScheduleSyncAt ?? null;
+        const lastDeepAt = fresh.lastDeepScheduleSyncAt;
         deep = wantsDeepPull(lastDeepAt, now, timeZone);
         lookUpEveryone = deep && isFirstDeepOfWeek(lastDeepAt, now, timeZone);
         // Written BEFORE the sync, not after. A sync that crashes half way
         // must still hold the lease for one interval, or every device retries
         // the failure together — which is the storm this exists to prevent.
-        tx.update(studioRef, { lastScheduleSyncAt: now });
+        tx.set(ref, { lastScheduleSyncAt: now }, { merge: true });
         claimed = true;
       });
     } catch {
@@ -186,12 +201,13 @@ export function useAutoSync({
       const failed = res.windowComplete !== true;
       setLastError(res.errors?.[0] ?? null);
       await runTransaction(db, async (tx) => {
-        const snap = await tx.get(studioRef);
-        const prev = (snap.data() as Studio | undefined)?.scheduleSyncFailures ?? 0;
-        tx.update(studioRef, {
-          scheduleSyncFailures: failed ? prev + 1 : 0,
-          lastScheduleSyncAt: Date.now(),
-        });
+        const snap = await tx.get(ref);
+        const prev = leaseOf(snap.exists() ? (snap.data() as SyncLease) : null, studio).scheduleSyncFailures ?? 0;
+        tx.set(
+          ref,
+          { scheduleSyncFailures: failed ? prev + 1 : 0, lastScheduleSyncAt: Date.now() },
+          { merge: true },
+        );
       });
       // The month was read whole: record it, so the next whole-month pull waits
       // for the next block of the day. A warning (an unmapped location, say)
@@ -201,7 +217,7 @@ export function useAutoSync({
       const monthReadWhole = deep ? res.windowComplete === true : res.settledWithMonth === true;
       if (monthReadWhole) {
         try {
-          await updateDoc(studioRef, { lastDeepScheduleSyncAt: now });
+          await setDoc(ref, { lastDeepScheduleSyncAt: now }, { merge: true });
         } catch (stampErr) {
           console.warn("[auto-sync] could not record the whole-month pull", stampErr);
         }
@@ -210,10 +226,10 @@ export function useAutoSync({
       setLastError(err instanceof Error ? err.message : "Sync failed");
       try {
         await runTransaction(db, async (tx) => {
-          const snap = await tx.get(studioRef);
+          const snap = await tx.get(ref);
           const prev =
-            (snap.data() as Studio | undefined)?.scheduleSyncFailures ?? 0;
-          tx.update(studioRef, { scheduleSyncFailures: prev + 1 });
+            leaseOf(snap.exists() ? (snap.data() as SyncLease) : null, studio).scheduleSyncFailures ?? 0;
+          tx.set(ref, { scheduleSyncFailures: prev + 1 }, { merge: true });
         });
       } catch {
         /* the failure counter is best-effort; never mask the sync error */

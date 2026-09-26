@@ -12,6 +12,8 @@ import {
   DEEP_PULL_HOURS,
   deepPullBlock,
   isFirstDeepOfWeek,
+  leaseOf,
+  withLease,
   studioWeekKey,
   wantsDeepPull,
   withinPullHours,
@@ -358,5 +360,42 @@ describe("decideSync — pull hours", () => {
 
   it("still reports a hidden tab before the hours", () => {
     expect(decideSync(ctx({ visible: false, withinPullHours: false })).reason).toBe("hidden");
+  });
+});
+
+describe("the lease's own document (the cost plan, D3b)", () => {
+  const studio = { id: "s", name: "S", lastScheduleSyncAt: 100, scheduleSyncFailures: 2, lastDeepScheduleSyncAt: 50 } as never;
+
+  it("reads the lease document first", () => {
+    expect(leaseOf({ lastScheduleSyncAt: 900, scheduleSyncFailures: 0, lastDeepScheduleSyncAt: 800 }, studio)).toEqual({
+      lastScheduleSyncAt: 900,
+      scheduleSyncFailures: 0,
+      lastDeepScheduleSyncAt: 800,
+    });
+  });
+
+  it("falls back to the studio document's old fields, field by field, until the lease has them", () => {
+    expect(leaseOf(null, studio)).toEqual({ lastScheduleSyncAt: 100, scheduleSyncFailures: 2, lastDeepScheduleSyncAt: 50 });
+    expect(leaseOf({ lastScheduleSyncAt: 900 }, studio)).toEqual({
+      lastScheduleSyncAt: 900,
+      scheduleSyncFailures: 2,
+      lastDeepScheduleSyncAt: 50,
+    });
+  });
+
+  it("is never-synced only when neither says anything", () => {
+    expect(leaseOf(undefined, { id: "s" } as never)).toEqual({
+      lastScheduleSyncAt: null,
+      scheduleSyncFailures: null,
+      lastDeepScheduleSyncAt: null,
+    });
+  });
+
+  it("folds the lease into a studio for the screens that read the old fields", () => {
+    const folded = withLease(studio, { lastScheduleSyncAt: 900, scheduleSyncFailures: 0 }) as unknown as Record<string, unknown>;
+    expect(folded.lastScheduleSyncAt).toBe(900);
+    expect(folded.scheduleSyncFailures).toBe(0);
+    expect(folded.lastDeepScheduleSyncAt).toBe(50);
+    expect(folded.name).toBe("S");
   });
 });

@@ -22,6 +22,46 @@ type HealthDoc = {
 };
 
 /**
+ * A success within this long of the last recorded one, on a doc that is
+ * already healthy, changes nothing a reader shows - so it is not written.
+ */
+export const HEALTH_QUIET_MS = 60 * 1000;
+
+/**
+ * Does this event change what system/health says? (The cost plan, Sep 26
+ * 2026, D3a.)
+ *
+ * Every iPad in the company watches system/health (MindbodyHealthContext),
+ * so each write is read once by every connected iPad - and this used to be
+ * written on EVERY webhook event, the one bookkeeping write the webhook
+ * going live would have added to that fan-out. Now a success that lands
+ * within HEALTH_QUIET_MS of the last recorded success, on a doc that stays
+ * healthy with nothing else changed, is skipped: at most one write a minute
+ * while events stream in, and every change of status still written at once.
+ * Failures, signature failures, subscription and DLQ events always write.
+ */
+export function healthWriteNeeded(
+  before: Omit<HealthDoc, "updatedAt"> | null,
+  after: Omit<HealthDoc, "updatedAt">,
+  event: HealthEvent,
+  now: number,
+): boolean {
+  if (!before || event.type !== "webhook_success") return true;
+  if (before.status !== after.status) return true;
+  if (after.status !== "healthy") return true;
+  if (
+    before.dlqDepth !== after.dlqDepth ||
+    before.signatureFailures24h !== after.signatureFailures24h ||
+    before.webhookSubscriptionActive !== after.webhookSubscriptionActive
+  ) {
+    return true;
+  }
+  const last = before.lastSuccessfulEventAt;
+  const lastMs = last && typeof last.toMillis === "function" ? last.toMillis() : null;
+  return lastMs === null || now - lastMs >= HEALTH_QUIET_MS;
+}
+
+/**
  * Records a health event and recomputes the system/health status.
  *
  * Status derivation priority order:
@@ -66,9 +106,11 @@ export async function recordHealthEvent(
       hydrationP95LatencyMs: 0,
     };
 
+    let before: Omit<HealthDoc, "updatedAt"> | null = null;
     if (sn.exists) {
       const existing = sn.data() as Omit<HealthDoc, "updatedAt">;
       data = { ...data, ...existing };
+      before = { ...data };
     }
 
     const now = Date.now();
@@ -114,6 +156,8 @@ export async function recordHealthEvent(
     } else {
       data.status = "healthy";
     }
+
+    if (!healthWriteNeeded(before, data, event, now)) return;
 
     const finalData: HealthDoc = {
       ...data,

@@ -278,4 +278,46 @@ describe('recordHealthEvent', () => {
     await expect(recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: -1 }))
       .rejects.toThrow(RangeError);
   });
+
+  it('16. a success within a minute of the last, on a healthy doc, is not written again (the cost plan, D3a)', async () => {
+    vi.setSystemTime(new Date('2026-09-26T12:00:00Z'));
+    await recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: 100 });
+    const first = mockDb.snapshot('system/health')!;
+
+    vi.setSystemTime(new Date('2026-09-26T12:00:30Z'));
+    await recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: 250 });
+    const second = mockDb.snapshot('system/health')!;
+    expect(second).toBe(first); // the same object: no write happened
+    expect(second.hydrationP95LatencyMs).toBe(100);
+
+    vi.setSystemTime(new Date('2026-09-26T12:01:05Z'));
+    await recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: 300 });
+    const third = mockDb.snapshot('system/health')!;
+    expect(third).not.toBe(first);
+    expect(third.hydrationP95LatencyMs).toBe(300);
+    expect((third.lastSuccessfulEventAt as Timestamp).toMillis()).toBe(Date.parse('2026-09-26T12:01:05Z'));
+  });
+
+  it('17. a success that changes the status is always written', async () => {
+    vi.setSystemTime(new Date('2026-09-26T12:00:00Z'));
+    mockDb.seed('system/health', {
+      status: 'degraded',
+      lastSuccessfulEventAt: Timestamp.fromMillis(Date.parse('2026-09-26T11:59:50Z')),
+      lastFailureAt: null,
+      dlqDepth: 0,
+      signatureFailures24h: 0,
+      webhookSubscriptionActive: true,
+      hydrationP95LatencyMs: 50,
+    });
+    await recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: 80 });
+    expect(mockDb.snapshot('system/health')!.status).toBe('healthy');
+  });
+
+  it('18. a failure is always written, however recent the last success', async () => {
+    vi.setSystemTime(new Date('2026-09-26T12:00:00Z'));
+    await recordHealthEvent(firestore(), { type: 'webhook_success', hydrationLatencyMs: 100 });
+    vi.setSystemTime(new Date('2026-09-26T12:00:10Z'));
+    await recordHealthEvent(firestore(), { type: 'webhook_failure' });
+    expect(mockDb.snapshot('system/health')!.lastFailureAt).toBeTruthy();
+  });
 });

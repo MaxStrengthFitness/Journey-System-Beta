@@ -2151,6 +2151,26 @@ describe("Firestore Security Rules", () => {
     await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { lastDeepScheduleSyncAt: 4, autoSyncEnabled: false }));
   });
 
+  // The cost plan (Sep 26 2026, D3b): the lease moved to its own document so
+  // a stamp is no longer sent to every iPad in the company.
+  it("lets any trainer's iPad claim the sync lease document, with the three numbers and nothing else", async () => {
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const lease = doc(trainer, "studios", "studioA", "sync", "lease");
+    await assertSucceeds(setDoc(lease, { lastScheduleSyncAt: 1 }, { merge: true }));
+    await assertSucceeds(setDoc(lease, { scheduleSyncFailures: 0, lastScheduleSyncAt: 2 }, { merge: true }));
+    await assertSucceeds(setDoc(lease, { lastDeepScheduleSyncAt: 3 }, { merge: true }));
+    await assertSucceeds(getDoc(lease));
+    await assertFails(setDoc(lease, { lastScheduleSyncAt: 4, name: "Sneaked in" }, { merge: true }));
+    await assertFails(setDoc(lease, { lastScheduleSyncAt: "yesterday" }, { merge: true }));
+    await assertFails(setDoc(doc(trainer, "studios", "studioA", "sync", "other"), { lastScheduleSyncAt: 1 }));
+    await assertFails(deleteDoc(lease));
+  });
+
+  it("refuses the sync lease to someone signed in who is not a trainer", async () => {
+    const stranger = testEnv.authenticatedContext("stranger", { email: "stranger@test.com" }).firestore();
+    await assertFails(setDoc(doc(stranger, "studios", "studioA", "sync", "lease"), { lastScheduleSyncAt: 1 }));
+  });
+
   it("refuses a studio create to anyone below a franchise owner", async () => {
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
     await assertFails(setDoc(doc(owner, "studios", "studioC"), { name: "Studio C", ownerId: "ownerA", timezone: "America/New_York" }));

@@ -1954,6 +1954,27 @@ service cloud.firestore {
                           .hasOnly(['lastScheduleSyncAt', 'scheduleSyncFailures', 'lastDeepScheduleSyncAt']));
       allow delete: if isSuperAdmin();
 
+      // THE SCHEDULE SYNC'S LEASE (the cost plan, Sep 26 2026, D3b).
+      // The three fields above moved to their own document,
+      // studios/{id}/sync/lease (features/admin/sync-lease.ts): every iPad
+      // in the company watches every studio document, so each stamp on the
+      // studio was read by all of them; a subcollection is outside that
+      // listener, so a stamp here reaches only that studio's iPads. Any
+      // trainer's iPad claims it, as it could the old fields, and it holds
+      // those three numbers and nothing else. The old-field allowance above
+      // stays until every iPad has reloaded onto this build.
+      match /sync/{docId} {
+        allow read: if isAuthenticated();
+        allow create, update: if isAnyAuthenticatedTrainer()
+                    && docId == 'lease'
+                    && request.resource.data.keys()
+                         .hasOnly(['lastScheduleSyncAt', 'scheduleSyncFailures', 'lastDeepScheduleSyncAt'])
+                    && (!('lastScheduleSyncAt' in request.resource.data) || request.resource.data.lastScheduleSyncAt is number)
+                    && (!('scheduleSyncFailures' in request.resource.data) || request.resource.data.scheduleSyncFailures is number)
+                    && (!('lastDeepScheduleSyncAt' in request.resource.data) || request.resource.data.lastDeepScheduleSyncAt is number);
+        allow delete: if isSuperAdmin();
+      }
+
       // RENEWAL SETTINGS (Renewals round, Sep 2026).
       //
       //   config/renewals      the studio's thresholds and package table.
