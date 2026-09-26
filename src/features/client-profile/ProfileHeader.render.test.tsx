@@ -32,7 +32,7 @@ function props(over: Partial<ProfileHeaderProps> = {}): ProfileHeaderProps {
     scheduledSessions: [],
     completedCount: 12,
     topTrainer: { top: null, source: "tally", backfilling: false },
-    pkg: { label: null, remaining: null, total: null, source: "none", asOf: null, fromMindbody: false, autoRenews: false } as never,
+    pkg: { label: null, remaining: null, total: null, source: "none", asOf: null, fromMindbody: false, autoRenews: null } as never,
     onBack: () => {},
     onStartSession: () => {},
     onTakeOverSession: () => {},
@@ -207,5 +207,39 @@ describe("ProfileHeader's session count", () => {
 
     const brandNew = mount(props({ client: filemaker, coverage: "complete" }));
     expect(brandNew.textContent).toContain("Client since Sep 2026");
+  });
+});
+
+/*
+ * With no renewal snapshot and no count, the package pill used to read
+ * "Auto-renews" whenever autopay was active. Auto-renew is on at some studios
+ * and not at others (AJ, Sep 24 2026), so only Mindbody's own flag may say it;
+ * otherwise the pill is the package name alone.
+ */
+describe("ProfileHeader's package pill", () => {
+  const monthly = (autoRenews: boolean | null) =>
+    ({
+      label: "12-Month Autopay",
+      remaining: null,
+      total: null,
+      source: "mindbody-contract",
+      asOf: null,
+      fromMindbody: true,
+      autoRenews,
+    }) as ProfileHeaderProps["pkg"];
+  const pill = (el: HTMLElement) => el.querySelector('[title="Synced from Mindbody"]')?.textContent;
+
+  it("says Auto-renews when Mindbody's flag says so", () => {
+    expect(pill(mount(props({ pkg: monthly(true) })))).toBe("Auto-renews · 12-Month Autopay");
+  });
+
+  it("names the package and claims nothing when Mindbody hasn't said, or says it won't", () => {
+    for (const autoRenews of [null, false]) {
+      const el = mount(props({ pkg: monthly(autoRenews) }));
+      expect(pill(el)).toBe("12-Month Autopay");
+      expect(el.textContent).not.toContain("Auto-renews");
+      act(() => root?.unmount());
+      host?.remove();
+    }
   });
 });

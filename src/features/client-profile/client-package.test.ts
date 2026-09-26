@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { remainingLabel, resolvePackage } from "./client-package";
-import type { Client, ScheduleEntry } from "../../types";
+import type { Client, MindbodyContract, ScheduleEntry } from "../../types";
 
 const baseClient = (extra: Partial<Client> = {}): Client =>
   ({
@@ -96,9 +96,28 @@ describe("resolvePackage", () => {
     expect(pkg.autoRenews).toBe(true);
   });
 
+  /*
+   * Auto-renew is on at some studios and not at others (AJ, Sep 24 2026), and
+   * an active autopay only means the monthly payments are running.
+   */
+  it("takes auto-renew from Mindbody's flag alone, never from autopay", () => {
+    const renews = (contract: Partial<MindbodyContract>) =>
+      resolvePackage(
+        baseClient({
+          mindbodyContracts: {
+            "77": { clientContractId: 77, contractName: "12-Month Autopay", status: "Active", startDate: "2026-01-01T00:00:00Z", ...contract },
+          },
+        }),
+      ).autoRenews;
+    expect(renews({ isAutoRenewing: true })).toBe(true);
+    expect(renews({ isAutoRenewing: false, autopayStatus: "Active" })).toBe(false);
+    expect(renews({ autopayStatus: "Active" })).toBeNull();
+    expect(renews({})).toBeNull();
+  });
+
   it("falls back to the app's own package tier and remaining count", () => {
     const pkg = resolvePackage(baseClient({ packageTier: "6-Month", remainingSessions: 7 }));
-    expect(pkg).toMatchObject({ source: "app", label: "6-Month", remaining: 7, fromMindbody: false });
+    expect(pkg).toMatchObject({ source: "app", label: "6-Month", remaining: 7, fromMindbody: false, autoRenews: null });
   });
 
   it("treats packageTier 'None' as no label", () => {
@@ -117,7 +136,21 @@ describe("resolvePackage", () => {
 describe("remainingLabel", () => {
   it("reads the count, or auto-renewal, or nothing", () => {
     expect(remainingLabel({ remaining: 12, autoRenews: false } as any)).toBe("12 left");
+    expect(remainingLabel({ remaining: 12, autoRenews: null } as any)).toBe("12 left");
     expect(remainingLabel({ remaining: null, autoRenews: true } as any)).toBe("Auto-renews");
     expect(remainingLabel({ remaining: null, autoRenews: false } as any)).toBeNull();
+  });
+
+  it("claims no auto-renewal Mindbody hasn't flagged, even with autopay running", () => {
+    const pkg = resolvePackage(
+      baseClient({
+        remainingSessions: undefined as unknown as number,
+        mindbodyContracts: {
+          "77": { clientContractId: 77, contractName: "12-Month Autopay", status: "Active", autopayStatus: "Active", startDate: "2026-01-01T00:00:00Z" },
+        },
+      }),
+    );
+    expect(pkg).toMatchObject({ source: "mindbody-contract", remaining: null, autoRenews: null });
+    expect(remainingLabel(pkg)).toBeNull();
   });
 });

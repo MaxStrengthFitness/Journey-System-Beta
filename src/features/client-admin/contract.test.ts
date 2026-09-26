@@ -102,7 +102,8 @@ describe("buildContractHistory", () => {
       "c-gone:cancelled",
     ]);
     expect(rows[0]).toMatchObject({ key: "c-nxt", status: "upcoming" });
-    expect(rows.find((r) => r.key === "c-cur")).toMatchObject({ autoRenews: true, boughtOnline: true, tier: { term: 12 } });
+    // Autopay running is not auto-renew: Mindbody's flag never said.
+    expect(rows.find((r) => r.key === "c-cur")).toMatchObject({ autoRenews: null, boughtOnline: true, tier: { term: 12 } });
     expect(rows.find((r) => r.key === "s-p2")).toMatchObject({ kind: "paid-in-full", sessions: { count: 144, remaining: 0 } });
     expect(rows.some((r) => r.key === "s-p1")).toBe(false);
     expect(rows[rows.length - 1].status).toBe("cancelled");
@@ -154,6 +155,32 @@ describe("buildContractHistory", () => {
     const rows = buildContractHistory(client, now);
     // `gone` is cancelled but was never stamped.
     expect(rows.map((r) => r.cancelledAt)).toEqual(rows.map(() => null));
+  });
+
+  /*
+   * Auto-renew is on at some studios and not at others (AJ, Sep 24 2026), and
+   * an active autopay only means the monthly payments are running. The row
+   * says auto-renews only from Mindbody's own per-contract flag.
+   */
+  it("takes auto-renew from Mindbody's flag alone, never from autopay", () => {
+    const rows = buildContractHistory(
+      {
+        mindbodyContracts: {
+          yes: { clientContractId: "yes", status: "Active" as const, contractName: "96 Sessions - 2X Week", isAutoRenewing: true },
+          no: { clientContractId: "no", status: "Active" as const, contractName: "96 Sessions - 2X Week", isAutoRenewing: false, autopayStatus: "Active" },
+          paying: { clientContractId: "paying", status: "Active" as const, contractName: "96 Sessions - 2X Week", autopayStatus: "Active" },
+          stopped: { clientContractId: "stopped", status: "Active" as const, contractName: "96 Sessions - 2X Week", autopayStatus: "Inactive" },
+          silent: { clientContractId: "silent", status: "Active" as const, contractName: "96 Sessions - 2X Week" },
+        },
+      },
+      now,
+    );
+    const renews = (key: string) => rows.find((r) => r.key === key)?.autoRenews;
+    expect(renews("c-yes")).toBe(true);
+    expect(renews("c-no")).toBe(false);
+    expect(renews("c-paying")).toBeNull();
+    expect(renews("c-stopped")).toBeNull();
+    expect(renews("c-silent")).toBeNull();
   });
 });
 
