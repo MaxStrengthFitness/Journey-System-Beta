@@ -717,6 +717,16 @@ Every completed round, in the order it was written. Nothing here has been edited
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
 
+### 📒 Built — The whole-read record (Sep 27) — branch `coverage-record`, four commits on `bfa9cda`, to ship after the voice review follow-up
+
+*Appended out of order, like the rounds below it.* The round is `2026-09-27-coverage-record.md`; the proposal it comes from is `2026-09-27-openings.md` (phase 2).
+
+The first piece of Openings, shipped on its own so the weeks start counting now (AJ: "sounds good"). After a pull Mindbody answered for its whole window (`windowComplete`, and a lost booking's wider pull whole too), the iPad that pulled writes down which studio days it read in full, one small document per studio per month: `studios/{s}/scheduleCoverage/{yyyy-mm}`, `days`, add-only. The background pull and the header's and calendar's Refresh record today and tomorrow; Operations → Mindbody's Sync records every day it asked for up to tomorrow, so a past "Pull from" records its past days. A day counts only when read on the day before, the day, or after, on the studio's own clock. No Mindbody call, no read, no listener, no index; each iPad writes a day once (a memory forgotten at sign-out), both months at a month's end in one batch, and a failed write is let go quietly. The header's Refresh moved out of `AppContent` into `useScheduleRefresh`, word for word. One new rules block: the studio's people read it; anyone who works there adds (the write resolves the caller once: with `writesForStudio` itself a guest's write ran out of the 1,000-expression budget, measured in the emulator at 2,107 evaluations; as built the costliest is 907). Nothing reads it yet: the Sunday job and Openings' usual week come in the Openings round. Typecheck 4; the suite 6,457 in 425 files (53 new in 5); rules tests 187 (7 new); `TZ=America/New_York`, in a worktree on AJ's PC.
+
+- [ ] `scripts/ship/ship-coverage-record.ps1 -Stage prepare`, then `-Stage golive` (checks master already holds `bfa9cda`; the restore tag `restore/2026-09-27-before-coverage-record`, the rules, then the push).
+- [ ] After a day live: open the Firebase console (the named database) → `studios/{a studio}/scheduleCoverage/2026-09` (or `2026-10`) holds today and tomorrow.
+- [ ] AJ, later and only if wanted: the eight-week back-read from Operations → Mindbody (not now, by his answer of Sep 27).
+
 ### 🔁 Built — The voice review follow-up (Sep 27) — branch `voice-review-followup`, seven units and their loose ends, waiting for AJ's go
 
 *Appended out of order, like the rounds below it.* The round is `2026-09-27-voice-review-followup.md`.

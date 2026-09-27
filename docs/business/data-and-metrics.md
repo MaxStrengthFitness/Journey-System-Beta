@@ -130,6 +130,14 @@ Every number the codex shows about her history keeps the migration rules: the St
 | `bug_reports/{id}.userId` | The feedback drawer — the filer's Firebase **Auth uid** since Sep 27 2026 (it was the trainer document id, which differs on older accounts) | Trainer Settings' "Your reports" (`useMyFeedback`), under the read rule that compares it to the signed-in uid. Older reports an older account filed under its trainer document id stay unreadable to their author, as they always were |
 | `networks/{id}.relayFocus.setAt` | Operations → Overview → All my studios, on each focus save | Its first reader: the Focus editor's "Set by {name} on {date}." line (it was a write with no reader) |
 
+## What the whole-read record added (Sep 27 2026)
+
+The first piece of Openings, shipped on its own (`docs/rounds/2026-09-27-coverage-record.md`):
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `studios/{s}/scheduleCoverage/{yyyy-mm}.days` — the studio days a pull Mindbody answered in full read, on the day before, the day or after (at most 31 a month, add-only) | The iPad that pulled, straight after a whole pull: the background pull and the header's and calendar's Refresh record today and tomorrow; Operations → Mindbody's Sync records every day it asked for, up to tomorrow (`features/openings/coverage-record.ts`) | **To come, on purpose:** the Sunday job (which past days count toward Openings' usual week) and the report script, in the Openings round (`2026-09-27-openings.md`, phases 3 and 4); `wasReadInFull` in `features/openings/coverage.ts` is their question already. It is written ahead of its reader because a day can't be recorded as read in full after the fact, and without the record Openings could call a partly read week "usually has room" |
+
 ---
 
 ## The audit this implies
