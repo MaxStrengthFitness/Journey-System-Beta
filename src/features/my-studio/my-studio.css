@@ -77,6 +77,12 @@
   padding: 0 1rem 6rem;
 }
 
+/* The standing weeks, first on Team (voice-review round, Sep 27 2026). */
+.ms__weeks {
+  flex: none;
+  padding: 0.75rem 1rem 0;
+}
+
 /* Who is waiting to be let in, at the top of Team (voice-review round,
    Sep 27 2026): the button scrolls to the studio's staff below. */
 .ms__waiting {

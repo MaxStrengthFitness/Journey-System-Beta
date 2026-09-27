@@ -175,3 +175,40 @@
 .stw-actions__msg { margin: 0 auto 0 0; font-size: 13px; font-weight: 700; }
 .stw-actions__msg--ok { color: var(--eq-ok); }
 .stw-actions__msg--error { color: var(--eq-alert); }
+
+/* --- My Studio -> Team: the next seven days, and each person's week ---- */
+
+.stw-team { display: grid; gap: 18px; }
+.stw-team__head {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.stw-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stw-finding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--eq-ink);
+}
+
+.stw-review {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+}
+.stw-review__title { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--eq-ink); }

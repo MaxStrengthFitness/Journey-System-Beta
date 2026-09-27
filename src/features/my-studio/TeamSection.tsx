@@ -8,6 +8,7 @@ import { STATE_BADGE, STUDIO_TIER_ROLES, StaffEditor } from "../admin/staff/Staf
 import { useStaffRoster } from "../admin/staff/useStaffRoster";
 import { ProvisionalPanel } from "../admin/provisional/ProvisionalPanel";
 import { TeamPanel } from "../relay/team/TeamPanel";
+import { StandingWeeksPanel } from "../standing-week/StandingWeeksPanel";
 import "../admin/admin.css";
 
 /**
@@ -19,6 +20,11 @@ import "../admin/admin.css";
  * week, this studio's staff and who is waiting to be let in) and what the
  * studio holds them to (the standing duties, the loops left open, the
  * vault). relay/team/TeamPanel.tsx says what went and where.
+ *
+ * Standing weeks come first (the same round): each trainer's usual week,
+ * proposed on My Profile and agreed here, and the next seven days' bookings
+ * checked against the agreed weeks — the free slots a leader can fill
+ * (standing-week/StandingWeeksPanel.tsx).
  *
  * Round: My Studio, Sep 2026. Relay's Team tab (its panels, the standards,
  * the vault — relay/team/TeamPanel) is the top half. The bottom half is what the studio's leaders could not do from
@@ -70,6 +76,11 @@ export function TeamSection({ authTrainer, clients, trainers, onOpenClient }: Te
               Let them in
             </button>
           </AdminNotice>
+        </div>
+      )}
+      {activeStudio && (
+        <div className="adm ms__weeks">
+          <StandingWeeksPanel studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} clients={clients ?? NONE} />
         </div>
       )}
       <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={onOpenClient} />
