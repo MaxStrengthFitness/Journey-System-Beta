@@ -10,6 +10,7 @@ import {
   inAhead,
   inOnPastDay,
   pastRow,
+  regularsAt,
   whyNotJudged,
   wordAt,
   type PlacedBooking,
@@ -127,5 +128,16 @@ describe("the next 7 days", () => {
     expect(freeAt(["t-pat", "t-sam"], { placed: [], rotation: 1 })).toEqual({ free: ["t-pat", "t-sam"], room: 1, namesKnown: false });
     expect(wordAt(true, ["t-sam"], { placed: [], rotation: 0, booked: 0 })).toBe("none");
     expect(wordAt(true, ["t-sam"], { placed: ["t-sam"], rotation: 0, booked: 1 })).toBe("full");
+  });
+});
+
+describe("today's regulars at a time", () => {
+  it("counts regulars within 15 minutes of the half-hour, of trainers still here", () => {
+    const regular = (id: string, start: string) => ({ id, weekday: 1, start, clientId: `c-${id}`, clientName: id });
+    const withRegulars = standingWeek({ final: { hours: [{ weekday: 1, from: "07:00", to: "10:00" }], regulars: [regular("a", "08:00"), regular("b", "08:15"), regular("c", "08:20"), regular("d", "09:00")] } });
+    expect(regularsAt([withRegulars], 1, 480)).toBe(2);
+    expect(regularsAt([withRegulars], 1, 510)).toBe(2);
+    expect(regularsAt([withRegulars], 1, 480, () => false)).toBe(0);
+    expect(regularsAt([standingWeek({ final: null })], 1, 480)).toBe(0);
   });
 });

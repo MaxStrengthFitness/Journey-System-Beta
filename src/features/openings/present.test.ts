@@ -1,0 +1,340 @@
+import { describe, expect, it } from "vitest";
+import type { WeekCheck } from "../standing-week/check";
+import { normalizeMark } from "./marks";
+import type { NextDaysLine } from "./next-days";
+import type { Offer } from "./offer";
+import {
+  CHECK_IN_MINDBODY,
+  NO_OFFERS,
+  OFFER_FOOT,
+  backFromSentence,
+  builtLine,
+  cancellationsLine,
+  chips,
+  lineDetail,
+  lineSentence,
+  markLines,
+  nameBook,
+  nextDaysStateSentence,
+  notCountedLines,
+  notEnoughSentence,
+  offerSentence,
+  offerWho,
+  outnumberedLine,
+  overviewLines,
+  regularsLine,
+  rotationDaySentence,
+  sinceLine,
+  summaryStateSentence,
+  teamLine,
+  thisWeekSentence,
+  timesWithRoomByDay,
+  unagreedLine,
+  usualSentence,
+  usuallyBookedLine,
+  usuallyInLine,
+  whoSays,
+  wordLabel,
+} from "./present";
+import type { CellWeek, OpeningsSummary, SummaryDay } from "./summary-doc";
+import { usualTime, type UsualTime } from "./usual";
+import { MONDAYS, TZ } from "./fixtures";
+
+type Spec = { day?: SummaryDay; cell?: CellWeek };
+const F: Spec = { cell: { s: "f", b: 2, i: ["0", "1"] } };
+const R: Spec = { cell: { s: "r", b: 1, i: ["0", "1"] } };
+const N: Spec = { cell: { s: "n", i: ["0", "1"] } };
+const U: Spec = { day: { n: 30, x: "r" } };
+const J = (b: number): Spec => ({ day: { n: 4, q: "a" }, cell: { s: "b", b } });
+
+/** The weeks of Monday Nov 23 back to Monday Oct 5 (for a Thanksgiving Thursday). */
+const LATER = ["2026-11-23", "2026-11-16", "2026-11-09", "2026-11-02", "2026-10-26", "2026-10-19", "2026-10-12", "2026-10-05"];
+
+function at(key: string, specs: Spec[], mondays = MONDAYS): UsualTime {
+  const wd = key[0];
+  const s: OpeningsSummary = {
+    v: 1,
+    builtAt: "2026-11-08T07:00:00.000Z",
+    tz: TZ,
+    row: 30,
+    since: "2026-09-14",
+    weeks: specs.map((sp, i) => ({ m: mondays[i], d: { [wd]: sp.day ?? { n: 30, j: 1 } } })),
+    who: { "0": { id: "t-pat", n: "Pat Moss" }, "1": { id: "t-sam", n: "Sam Lee" } },
+    agreed: {},
+    cells: { [key]: Object.fromEntries(specs.flatMap((sp, i) => (sp.cell ? [[String(i), sp.cell]] : []))) },
+  };
+  return usualTime(s, key);
+}
+
+const names = nameBook([
+  { id: "t-sam", name: "Sam Lee" },
+  { id: "t-pat", name: "Pat Moss" },
+  { id: "t-kim", name: "Kim Ray" },
+]);
+const NOBODY = { trainerId: null };
+const SAM = { trainerId: "t-sam", uid: "uid-sam" };
+
+describe("names (AJ's relaxed answer: everyone at the studio sees them)", () => {
+  it("first names, the whole name when two share one, never cut short", () => {
+    expect(names("t-sam")).toBe("Sam");
+    const twins = nameBook([{ id: "a", name: "Alex Doe" }, { id: "b", name: "Alex Moore-Whitfield" }]);
+    expect(twins("b")).toBe("Alex Moore-Whitfield");
+    expect(names("t-unknown")).toBe("a trainer");
+  });
+
+  it("the person looking is 'you', first; everyone else in name order", () => {
+    expect(whoSays(["t-sam", "t-pat"], names, SAM)).toBe("you and Pat");
+    expect(whoSays(["t-sam", "t-pat", "t-kim"], names, NOBODY)).toBe("Kim, Pat and Sam");
+    expect(whoSays(["t-sam", "t-pat", "t-kim"], names, SAM)).toBe("you, Kim and Pat");
+  });
+
+  it("the chips: With you, Anyone, then one per trainer in name order, with no counts", () => {
+    expect(chips(["t-sam", "t-pat", "t-kim"], names, SAM).map((c) => c.label)).toEqual(["With you", "Anyone", "With Kim", "With Pat"]);
+    expect(chips(["t-pat"], names, NOBODY).map((c) => c.label)).toEqual(["Anyone", "With Pat"]);
+  });
+});
+
+describe("the usual word, in the proposal's own sentences", () => {
+  it("Always full, Usually full, Usually has room, Mixed", () => {
+    expect(usualSentence(at("1-0800", [F, F, F, F, F, F, F, F]))).toBe("Monday 8:00 AM · Always full: full in all of the last 8 Mondays.");
+    expect(usualSentence(at("1-0830", [F, F, F, F, F, F, F, R]))).toBe("Monday 8:30 AM · Usually full: full in 7 of the last 8 Mondays.");
+    expect(usualSentence(at("2-1030", [R, N, N, R, N, N, F, F]))).toBe("Tuesday 10:30 AM · Usually has room: room in 6 of the last 8 Tuesdays, and nobody booked in 4 of them.");
+    expect(usualSentence(at("4-1700", [F, F, F, F, R, R, R, R]))).toBe("Thursday 5:00 PM · Mixed: full in 4 of the last 8 Thursdays.");
+    expect(usualSentence(at("1-0800", [F, F, F, F, F, F, U, U]))).toBe("Monday 8:00 AM · Always full: full in all of the 6 Mondays judged.");
+  });
+
+  it("N booked, Rotation, not enough weeks yet, blank", () => {
+    expect(usualSentence(at("3-0600", [J(5), J(3), J(3), J(3), J(3), J(3), J(2), U]))).toBe(
+      "Wednesday 6:00 AM · Usually 3 booked (3 or more in 6 of the 7 Wednesdays counted). Room can't be judged yet: not every trainer's week is agreed.",
+    );
+    const rota: Spec = { cell: { s: "o", b: 5, r: 5 } };
+    expect(usualSentence(at("6-0900", [rota, rota, rota, rota, rota, rota, rota, rota]))).toBe("Saturday 9:00 AM · Usually 5 booked on the rotation. Saturdays run on the rotation: ask the front desk.");
+    expect(usualSentence(at("5-1900", [F, F, F, U, U, U, U, U]))).toBe("Friday 7:00 PM · Not enough weeks yet: 3 Fridays counted so far.");
+    expect(usualSentence(at("5-1900", [F, U, U, U, U, U, U, U]))).toBe("Friday 7:00 PM · Not enough weeks yet: 1 Friday counted so far.");
+    expect(usualSentence(at("1-1900", [{}, {}, {}, {}, {}, {}, {}, {}]))).toBe("Monday 7:00 PM · Nothing booked, and nobody in.");
+  });
+
+  it("the grid's button words", () => {
+    expect(wordLabel(at("1-0800", [F, F, F, F, F, F, F, F]))).toBe("Always full");
+    expect(wordLabel(at("3-0600", [J(3), J(3), J(3), J(3), U, U, U, U]))).toBe("3 booked");
+    expect(wordLabel(at("5-1900", [F, U, U, U, U, U, U, U]))).toBe("–");
+    expect(wordLabel(at("1-1900", [{}, {}, {}, {}, {}, {}, {}, {}]))).toBe("");
+  });
+});
+
+describe("the time's sheet", () => {
+  it("names the days left out, and why", () => {
+    const monday = at("1-0800", [F, F, F, U, F, { day: { n: 30, q: "p" }, cell: { s: "b", b: 2 } }, F, F]);
+    expect(notCountedLines(monday, TZ)).toEqual(["Not judged: Mon, Sep 28. A booking that day couldn't be placed with a trainer.", "Not counted: Mon, Oct 12. Journey didn't read it in full."]);
+    const closed: Spec = { day: { n: 2, x: "c" } };
+    const busy: Spec = { ...F, day: { n: 38, j: 1 } };
+    const thanksgiving = at("4-1700", [closed, busy, busy, busy, busy, busy, busy, busy], LATER);
+    expect(notCountedLines(thanksgiving, TZ)).toEqual(["Not counted: Thu, Nov 26, 2 bookings (a Thursday usually has 38). Closed, or nearly."]);
+  });
+
+  it("cancellations, more booked than in, usually booked, usually in, regulars", () => {
+    const cancelled: Spec = { cell: { s: "f", b: 3, c: 1, l: 1, i: ["1"] } };
+    const early: Spec = { cell: { s: "f", b: 3, c: 1, i: ["1"] } };
+    const u = at("1-0800", [cancelled, cancelled, early, { cell: { s: "f", b: 2, i: ["1"] } }, F, F, { cell: { s: "f", b: 3, i: ["0", "1"] } }, { cell: { s: "f", b: 3, i: ["0", "1"] } }]);
+    expect(cancellationsLine(u)).toBe("Cancelled in 3 of the last 8 Mondays (2 of them late).");
+    expect(outnumberedLine(u)).toBe("More booked than the agreed weeks have in, in 6 of the last 8 Mondays. Someone's usual week may be missing this time.");
+    expect(usuallyBookedLine(u)).toBe("Usually 2 booked.");
+    expect(usuallyInLine(u, names, NOBODY)).toBe("Usually in: Sam.");
+    expect(usuallyInLine(u, names, SAM)).toBe("Usually in: you.");
+    expect(regularsLine(4, "1-0800")).toBe("4 regulars at Monday 8:00 AM on the agreed weeks.");
+    expect(regularsLine(1, "1-0800")).toBe("1 regular at Monday 8:00 AM on the agreed weeks.");
+    expect(regularsLine(0, "1-0800")).toBeNull();
+    // Below the minimum, nothing is said.
+    expect(usuallyInLine(at("1-0800", [F, F, F, U, U, U, U, U]), names, NOBODY)).toBeNull();
+    expect(cancellationsLine(at("1-0800", [F, F, F, F, F, F, F, F]))).toBeNull();
+  });
+
+  it("a mark first, then what the bookings say; the disagreement before both; the review after 60 days", () => {
+    const jo = (mark: "full" | "room") => normalizeMark("1-0800", { weekday: 1, time: "08:00", mark, by: { id: "uid-jo", name: "Jo Park" }, at: new Date("2026-10-03T14:00:00Z") })!;
+    const fiveOfEight = at("1-0800", [F, F, F, F, F, R, R, R]);
+    expect(markLines(fiveOfEight, jo("full"), NOBODY, "2026-10-10", TZ)).toEqual(["Marked Always full by Jo, Oct 3.", "The bookings say: full in 5 of the last 8 Mondays."]);
+    const roomy = at("1-0800", [R, R, R, R, R, R, F, F]);
+    expect(markLines(roomy, jo("full"), NOBODY, "2026-12-06", TZ)).toEqual([
+      "The bookings disagree: room in 6 of the last 8 Mondays.",
+      "Marked Always full by Jo, Oct 3.",
+      "Marked 64 days ago. Still true?",
+    ]);
+    expect(markLines(roomy, jo("room"), { trainerId: "t-jo", uid: "uid-jo" }, "2026-10-10", TZ)[0]).toBe("Marked Usually has room by you, Oct 3.");
+  });
+});
+
+describe("above the grid", () => {
+  it("the since line, the built line, and the sentence before four weeks", () => {
+    const s = { since: "2026-10-05", weeks: [{ m: "2026-11-02", d: {} }, { m: "2026-09-14", d: {} }] };
+    expect(sinceLine(s, 6, TZ)).toBe("From the weeks Journey has read in full since Oct 5 (6 weeks).");
+    expect(sinceLine({ ...s, since: "2026-08-03" }, 8, TZ)).toBe("From the last 8 weeks, all read in full.");
+    expect(sinceLine({ ...s, since: null }, 0, TZ)).toBeNull();
+    expect(builtLine({ builtAt: "2026-10-04T07:00:00.000Z" }, TZ)).toBe("Built Sunday, Oct 4.");
+    expect(notEnoughSentence(2, "2026-10-05", "2026-10-25", TZ)).toBe(
+      "The usual week needs 4 weeks Journey has read in full. It has 2 so far, counted since Oct 5. The first words can come on Sunday, Oct 25.",
+    );
+    expect(notEnoughSentence(0, null, "2026-11-15", TZ)).toBe("The usual week needs 4 weeks Journey has read in full. It has none so far. The first words can come on Sunday, Nov 15.");
+  });
+
+  it("whose week isn't agreed, by name, or the one sentence when none is", () => {
+    const team = [
+      { id: "t-sam", name: "Sam Lee" },
+      { id: "t-kim", name: "Kim Ray" },
+      { id: "t-pat", name: "Pat Moss" },
+    ];
+    expect(unagreedLine(team, [], "Westlake", names)).toBe(
+      "Who's in comes from the standing weeks leaders agree on Team. None is agreed at Westlake yet, so this shows how many are usually booked, not whether there's room.",
+    );
+    const agreed = (trainerId: string) => ({ trainerId, final: { hours: [], regulars: [] } });
+    expect(unagreedLine(team, [agreed("t-sam"), agreed("t-pat")], "Westlake", names)).toBe("Kim's week isn't agreed yet.");
+    expect(unagreedLine(team, [agreed("t-sam")], "Westlake", names)).toBe("Kim's and Pat's weeks aren't agreed yet.");
+    expect(unagreedLine(team, team.map((t) => agreed(t.id)), "Westlake", names)).toBeNull();
+  });
+
+  it("the summary's own states", () => {
+    expect(summaryStateSentence("never", "Westlake")).toBe("The usual week is built early each Sunday. The first one comes this Sunday.");
+    expect(summaryStateSentence("unreadable", "Westlake")).toBe("Can't read the usual week just now.");
+    expect(summaryStateSentence("unlinked", "Westlake")).toBe("Westlake's bookings aren't linked to Journey, so Openings can't read them.");
+  });
+});
+
+const line = (over: Partial<NextDaysLine> = {}): NextDaysLine => ({
+  dateKey: "2026-10-05",
+  row: 480,
+  key: "1-0800",
+  reasons: [],
+  usual: { word: "usually-full", usuallyBooked: 4 } as UsualTime,
+  mark: null,
+  usuallyFull: true,
+  bookedNow: 3,
+  room: { count: 1, with: [] },
+  trainerIds: ["t-sam"],
+  clients: [],
+  ...over,
+});
+const finding = (over = {}) => ({ kind: "open" as const, dateKey: "2026-10-05", start: "08:00", trainerId: "t-sam", trainerName: "Sam Lee", clientId: "c-judy", clientName: "Judy Smith", ...over });
+
+describe("next 7 days", () => {
+  it("a line names no client: 'a regular' or 'a cancellation'", () => {
+    const l = line({ reasons: [{ kind: "regular-open", finding: finding() }], clients: [{ clientId: "c-judy", clientName: "Judy Smith", trainerId: "t-sam", reason: "regular-open" }] });
+    const s = lineSentence(l, names, NOBODY, TZ, { kind: "booked-again", day: "2026-10-19" });
+    expect(s).toBe("Mon, Oct 5 · 8:00 AM · usually full · room with 1 trainer. A regular isn't booked this week; booked again from Mon, Oct 19.");
+    expect(s).not.toContain("Judy");
+    expect(lineSentence({ ...l, room: { count: 1, with: ["t-sam"] } }, names, NOBODY, TZ)).toBe("Mon, Oct 5 · 8:00 AM · usually full · room with Sam. A regular isn't booked this week.");
+    expect(lineSentence({ ...l, room: { count: 1, with: ["t-sam"] } }, names, SAM, TZ)).toContain("room with you.");
+  });
+
+  it("a cancellation, a move, and a usually-full time with room", () => {
+    const cancelled = line({
+      dateKey: "2026-10-08",
+      row: 1050,
+      key: "4-1730",
+      usual: { word: "booked", usuallyBooked: 4 } as UsualTime,
+      usuallyFull: false,
+      room: null,
+      reasons: [{ kind: "cancellation", cancelledOn: "2026-10-02", clientId: "c-bob", clientName: "Bob Hart", trainerId: "t-pat" }],
+      clients: [{ clientId: "c-bob", clientName: "Bob Hart", trainerId: "t-pat", reason: "cancellation" }],
+    });
+    expect(lineSentence(cancelled, names, NOBODY, TZ)).toBe("Thu, Oct 8 · 5:30 PM · usually 4 booked. A cancellation on Oct 2, not rebooked (3 booked now).");
+    const moved = line({ reasons: [{ kind: "regular-moved", finding: finding({ kind: "moved", movedTo: { dateKey: "2026-10-06", start: "09:30", trainerName: "Sam Lee", sameTrainer: true } }) }] });
+    expect(lineSentence(moved, names, NOBODY, TZ)).toBe("Mon, Oct 5 · 8:00 AM · usually full · room with 1 trainer. A regular is booked Tue, Oct 6 at 9:30 AM instead.");
+    expect(lineSentence(line({ reasons: [{ kind: "usually-full" }], room: { count: 1, with: ["t-pat"] } }), names, NOBODY, TZ)).toBe(
+      "Mon, Oct 5 · 8:00 AM · usually full · room with Pat. Nothing is booked with them yet.",
+    );
+    const marked = normalizeMark("1-0800", { weekday: 1, time: "08:00", mark: "full", by: { id: "u", name: "Jo" }, at: null })!;
+    expect(lineSentence(line({ usual: { word: "mixed" } as UsualTime, mark: marked, reasons: [{ kind: "usually-full" }] }), names, NOBODY, TZ)).toContain("· marked always full ·");
+  });
+
+  it("a tap reveals the clients by name", () => {
+    const l = line({
+      reasons: [
+        { kind: "regular-open", finding: finding() },
+        { kind: "cancellation", cancelledOn: "2026-10-02", clientId: "c-bob", clientName: "Bob Hart", trainerId: "t-pat" },
+      ],
+      clients: [
+        { clientId: "c-judy", clientName: "Judy Smith", trainerId: "t-sam", reason: "regular-open" },
+        { clientId: "c-bob", clientName: "Bob Hart", trainerId: "t-pat", reason: "cancellation" },
+      ],
+    });
+    expect(lineDetail(l, names, NOBODY, TZ)).toEqual(["Judy Smith, Sam's regular, isn't booked this week.", "Bob Hart cancelled on Oct 2 (with Pat)."]);
+    expect(lineDetail(l, names, SAM, TZ)[0]).toBe("Judy Smith, your regular, isn't booked this week.");
+  });
+
+  it("what the list says when it can't tell, isn't linked, or has nothing agreed", () => {
+    for (const state of ["loading", "failed", "offline"] as const) {
+      expect(nextDaysStateSentence({ state, agreedAny: true, lines: [] }, "Westlake")).toBe("Can't tell yet. The next 7 days' bookings haven't come back from the server.");
+    }
+    expect(nextDaysStateSentence({ state: "unconnected", agreedAny: true, lines: [] }, "Westlake")).toBe("Westlake's bookings aren't linked to Journey, so Openings can't read them.");
+    expect(nextDaysStateSentence({ state: "ready", agreedAny: false, lines: [] }, "Westlake")).toBe("No standing week is agreed yet, so this lists cancellations only.");
+    expect(nextDaysStateSentence({ state: "ready", agreedAny: true, lines: [] }, "Westlake")).toBe("Nothing has opened up in the next 7 days.");
+    expect(nextDaysStateSentence({ state: "ready", agreedAny: true, lines: [line()] }, "Westlake")).toBeNull();
+    expect(CHECK_IN_MINDBODY).toBe("Check it in Mindbody before you promise it.");
+  });
+
+  it("booked again from, each of its answers", () => {
+    expect(backFromSentence({ kind: "booked-again", day: "2026-10-19" }, TZ)).toBe("Booked again from Mon, Oct 19.");
+    expect(backFromSentence({ kind: "next-on-file", day: "2026-10-19" }, TZ)).toBe("Next booking on file: Mon, Oct 19.");
+    expect(backFromSentence({ kind: "none-30" }, TZ)).toBe("Not booked in the next 30 days.");
+    expect(backFromSentence({ kind: "none-7" }, TZ)).toBe("Not booked in the next 7 days; can't tell after that yet.");
+    expect(backFromSentence({ kind: "cant-tell" }, TZ)).toBe("Can't tell yet.");
+  });
+});
+
+describe("a new regular time", () => {
+  const offer = (over: Partial<Offer> = {}): Offer => ({
+    key: "2-1030",
+    weekday: 2,
+    row: 630,
+    usual: at("2-1030", [R, R, R, R, R, R, F, F]),
+    mark: null,
+    who: ["t-pat"],
+    coming: { state: "free", days: ["2026-10-13", "2026-10-20", "2026-10-27"] },
+    thisWeek: { day: "2026-10-06", state: "room" },
+    ...over,
+  });
+
+  it("in the proposal's words, with this week beside it and the foot", () => {
+    expect(offerSentence(offer(), TZ)).toBe("Tuesday 10:30 AM · usually has room: room in 6 of the last 8 Tuesdays, and free on the next 3 Tuesdays on file.");
+    expect(offerSentence(offer({ coming: { state: "cant-check", days: [] } }), TZ)).toBe("Tuesday 10:30 AM · usually has room: room in 6 of the last 8 Tuesdays. Can't check the coming Tuesdays yet.");
+    expect(offerSentence(offer({ coming: { state: "checking", days: [] } }), TZ)).toContain("Checking the coming weeks…");
+    expect(thisWeekSentence(offer(), TZ)).toBe("This Tuesday, Oct 6: room.");
+    expect(thisWeekSentence(offer({ thisWeek: { day: "2026-10-06", state: "full" } }), TZ)).toBe("This Tuesday, Oct 6: full.");
+    expect(thisWeekSentence(offer({ thisWeek: null }), TZ)).toBeNull();
+    expect(offerWho(offer(), names, NOBODY)).toBe("With Pat");
+    expect(OFFER_FOOT).toBe("Check it in Mindbody before you promise it. Journey doesn't book.");
+    expect(NO_OFFERS).toBe("No usual times with room right now. The front desk can see every opening in Mindbody.");
+  });
+
+  it("a time offered on a mark says who marked it and what the bookings say", () => {
+    const mark = normalizeMark("2-1030", { weekday: 2, time: "10:30", mark: "room", by: { id: "uid-jo", name: "Jo Park" }, at: new Date("2026-10-03T14:00:00Z") })!;
+    expect(offerSentence(offer({ mark, usual: at("2-1030", [F, F, F, F, R, R, R, R]) }), TZ)).toBe(
+      "Tuesday 10:30 AM · marked Usually has room by Jo, Oct 3 (the bookings say: full in 4 of the last 8 Tuesdays), and free on the next 3 Tuesdays on file.",
+    );
+  });
+});
+
+describe("the Wrap-up's times, Team's line, the Overview's line", () => {
+  it("times with room grouped by day, this week's only marked", () => {
+    const days = timesWithRoomByDay(
+      [
+        { dateKey: "2026-10-05", row: 690, thisWeekOnly: false },
+        { dateKey: "2026-10-05", row: 360, thisWeekOnly: false },
+        { dateKey: "2026-10-05", row: 480, thisWeekOnly: true },
+        { dateKey: "2026-10-06", row: 540, thisWeekOnly: false },
+      ],
+      TZ,
+    );
+    expect(days.map((d) => d.sentence)).toEqual(["Mon, Oct 5: 6:00 AM · 8:00 AM (this week only) · 11:30 AM", "Tue, Oct 6: 9:00 AM"]);
+    expect(rotationDaySentence(6)).toBe("Saturdays run on the rotation. Ask the front desk.");
+  });
+
+  it("Team keeps one line and a door; the Overview a line for a usually-full time with room", () => {
+    const check = (n: number): WeekCheck => ({ state: "ready", findings: Array.from({ length: n }, () => finding()), slots: 9, awaySlots: 0 });
+    expect(teamLine(check(3))).toBe("3 free slots in the next 7 days · See them on Openings.");
+    expect(teamLine(check(1))).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(teamLine(check(0))).toBeNull();
+    expect(teamLine({ ...check(3), state: "offline" })).toBeNull();
+    const lines = [line(), line({ dateKey: "2026-10-09" }), line({ usuallyFull: false })];
+    expect(overviewLines(lines, "2026-10-05", TZ)).toEqual(["Mon, Oct 5 · 8:00 AM, usually full, has room · See it on Openings."]);
+  });
+});

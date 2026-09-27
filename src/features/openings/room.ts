@@ -58,7 +58,8 @@
  */
 import type { ScheduleEntry } from "../../types";
 import { toDate, type DateLike } from "../../lib/studio-time";
-import { awayOn, type StandingWeekDoc, type WorkHours } from "../standing-week/week";
+import { SLOT_TOLERANCE_MINUTES } from "../standing-week/check";
+import { awayOn, minutesOf, type StandingWeekDoc, type WorkHours } from "../standing-week/week";
 import { weekdayOf } from "../studio-tasks/recurrence";
 import { takesClientsAt } from "./agreed";
 import type { Place } from "./whose";
@@ -156,6 +157,25 @@ export function inAhead(docs: readonly StandingWeekDoc[], dateKey: string, row: 
     if (takesClientsAt(doc.final.hours, weekday, row)) out.add(doc.trainerId);
   }
   return [...out].sort();
+}
+
+/**
+ * How many regulars today's agreed weeks put at a time: a regular within the
+ * standing week's own tolerance of the half-hour's start, of a trainer who
+ * still works at the studio. For the time's sheet ("4 regulars at Monday
+ * 8:00 AM on the agreed weeks").
+ */
+export function regularsAt(docs: readonly StandingWeekDoc[], weekday: number, row: number, worksHere?: (trainerId: string) => boolean): number {
+  let n = 0;
+  for (const doc of docs) {
+    if (!doc.final || !doc.trainerId) continue;
+    if (worksHere && !worksHere(doc.trainerId)) continue;
+    for (const r of doc.final.regulars) {
+      const at = minutesOf(r.start);
+      if (r.weekday === weekday && at !== null && Math.abs(at - row) <= SLOT_TOLERANCE_MINUTES) n += 1;
+    }
+  }
+  return n;
 }
 
 /** What is booked at one half-hour. */
