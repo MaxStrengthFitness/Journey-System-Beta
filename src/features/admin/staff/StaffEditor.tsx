@@ -51,6 +51,7 @@ export const STATE_BADGE: Record<
   "awaiting-approval": { label: "Waiting for approval", tone: "hero" },
   temporary: { label: "Temporary", tone: "warn" },
   placeholder: { label: "Never signed in", tone: "warn" },
+  account: { label: "Has an account", tone: "neutral" },
 };
 
 /** What a studio's own leaders may hand out (AJ, Sep 18): never owner or admin. */

@@ -93,7 +93,14 @@ export type StaffState =
   /** A temporary profile minted while Mindbody was unavailable. */
   | "temporary"
   /** An admin-created document nobody has claimed by signing in. */
-  | "placeholder";
+  | "placeholder"
+  /**
+   * Has an account; Mindbody's staff list was not read, so whether it
+   * matches is unknown — under "All my studios" (the match is per studio),
+   * or while the list loads or could not be read. Never called "No Mindbody
+   * match": a failed read is unknown, not empty.
+   */
+  | "account";
 
 /** How an account was matched to a Mindbody staff member. */
 export type MatchedBy = "staffId" | "email" | "name" | null;
@@ -148,6 +155,7 @@ const STATE_ORDER: Record<StaffState, number> = {
   temporary: 2,
   "mindbody-only": 3,
   linked: 4,
+  account: 4,
   "app-only": 5,
 };
 
@@ -157,24 +165,41 @@ export interface RosterInput {
   requests: AccessRequest[];
   /** Restricts the list to one studio when set. */
   studioId?: string | null;
+  /**
+   * With no `studioId`: restricts the list to these studios — Operations'
+   * "All my studios", which is the reader's studios, never the company
+   * (voice review follow-up, Sep 27 2026). Absent means no restriction.
+   */
+  studioIds?: readonly string[] | null;
+  /**
+   * Whether Mindbody's staff list was actually read. False (under "All my
+   * studios", or while it loads or after it failed) and an account with no
+   * match is "account", not "No Mindbody match". Defaults to true.
+   */
+  mindbodyChecked?: boolean;
+}
+
+/** On the list for this studio: home, also works at, or owns it. */
+function listedAt(t: Trainer, studioId: string): boolean {
+  return (
+    t.primaryHomeStudioId === studioId ||
+    Boolean(t.accessibleStudioIds?.includes(studioId)) ||
+    Boolean(t.ownedStudioIds?.includes(studioId))
+  );
 }
 
 export function buildStaffRoster(input: RosterInput): StaffRow[] {
   const { mindbodyStaff, requests } = input;
+  const mindbodyChecked = input.mindbodyChecked ?? true;
 
   // Tombstoned documents are filtered in CODE, not by a Firestore query:
   // where("supersededByUid","==",null) excludes every document that has never
   // carried the field, which today is nearly all of them.
   const trainers = input.trainers.filter((t) => !isMergedAway(t));
 
-  const scoped = input.studioId
-    ? trainers.filter(
-        (t) =>
-          t.primaryHomeStudioId === input.studioId ||
-          t.accessibleStudioIds?.includes(input.studioId!) ||
-          t.ownedStudioIds?.includes(input.studioId!),
-      )
-    : trainers;
+  // One studio, or the reader's studios, or (with neither) everyone.
+  const inScope: string[] | null = input.studioId ? [input.studioId] : input.studioIds ? [...input.studioIds] : null;
+  const scoped = inScope ? trainers.filter((t) => inScope.some((id) => listedAt(t, id))) : trainers;
 
   const byStaffId = new Map<string, Trainer[]>();
   const byEmail = new Map<string, Trainer[]>();
@@ -251,7 +276,9 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
       initials: t.initials,
       role: t.role,
       homeStudioId: t.primaryHomeStudioId,
-      state: stateOfTrainer(t, "app-only"),
+      // "No Mindbody match" only when Mindbody's list was read and they are
+      // not on it; otherwise nobody knows yet.
+      state: stateOfTrainer(t, mindbodyChecked ? "app-only" : "account"),
       matchedBy: null,
       trainer: t,
     });
@@ -268,7 +295,7 @@ export function buildStaffRoster(input: RosterInput): StaffRow[] {
     // the studio_access request, which names its studio as `studioId`, was
     // missed by the screens' own filter and showed at every studio.
     const forStudio = requestStudioId(req);
-    if (input.studioId && forStudio && forStudio !== input.studioId) continue;
+    if (inScope && forStudio && !inScope.includes(forStudio)) continue;
 
     if (isStudioAccessRequest(req)) {
       // Someone with an account asking for another studio. Their account

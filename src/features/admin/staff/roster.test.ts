@@ -407,3 +407,37 @@ describe("summariseRoster", () => {
     expect(s.total).toBe(4);
   });
 });
+
+describe("All my studios is the reader's studios (voice review follow-up, Sep 27 2026)", () => {
+  const people = [
+    trainer({ id: "t-solon", fullName: "Sam Solon" }),
+    trainer({ id: "t-west", fullName: "Wes West", primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake"] }),
+    trainer({ id: "t-float", fullName: "Flo Float", primaryHomeStudioId: "willoughby", accessibleStudioIds: ["willoughby", "solon"] }),
+    trainer({ id: "t-far", fullName: "Far Away", primaryHomeStudioId: "strongsville", accessibleStudioIds: ["strongsville"] }),
+  ];
+  const requests = [
+    request({ id: "r-solon", fullName: "Nia Solon", email: "nia@x.com", requestedStudioId: "solon" }),
+    request({ id: "r-far", fullName: "Olu Far", email: "olu@x.com", requestedStudioId: "strongsville" }),
+    request({ id: "r-any", fullName: "Any Where", email: "any@x.com" }),
+  ];
+
+  it("lists only the people and the requests at those studios, and a request that names none", () => {
+    const rows = build({ trainers: people, requests, studioIds: ["solon", "westlake"] });
+    expect(rows.map((r) => r.name).sort()).toEqual(["Any Where", "Flo Float", "Nia Solon", "Sam Solon", "Wes West"]);
+  });
+
+  it("lists everyone when no studios are given", () => {
+    expect(build({ trainers: people })).toHaveLength(4);
+  });
+
+  it("says an account 'has an account', not 'No Mindbody match', when Mindbody's list was not read", () => {
+    const unchecked = build({ trainers: people, studioIds: ["solon"], mindbodyChecked: false });
+    expect(unchecked.map((r) => r.state)).toEqual(["account", "account"]);
+    expect(summariseRoster(unchecked).unmatched).toBe(0);
+    // Read, and nobody on it: that IS no match.
+    const checked = build({ trainers: people, studioIds: ["solon"] });
+    expect(checked.map((r) => r.state)).toEqual(["app-only", "app-only"]);
+    // A placeholder is still a placeholder either way.
+    expect(build({ trainers: [trainer({ id: "p", pendingClaim: true })], mindbodyChecked: false })[0].state).toBe("placeholder");
+  });
+});

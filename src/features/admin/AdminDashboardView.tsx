@@ -20,6 +20,7 @@ import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperatio
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
 import { mayOpenOperations } from "./operations-access";
+import { isEveryStudioRole } from "../renewals/permissions";
 import { AdminNotice } from "./primitives";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 
@@ -356,7 +357,28 @@ function AdminDashboardShell({
           />
         )}
 
-        {activeTab === "users" && <AdminStaffTab key={tabKey} trainers={trainers} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} onRefresh={onRefresh} />}
+        {/* One editor for a studio's own team (voice review follow-up, Sep 27
+            2026): owners and administrators edit here; the studio tier reads,
+            with a door to My Studio → Team, where they let people in. */}
+        {activeTab === "users" && (
+          <AdminStaffTab
+            key={tabKey}
+            trainers={trainers}
+            studios={studios}
+            activeStudioId={activeStudioId}
+            isAdmin={isAdmin}
+            canEdit={isOwnerTier || isEveryStudioRole(authTrainer)}
+            onOpenTeam={
+              onOpenStudioTasks
+                ? () => {
+                    rememberMyStudioSection("team");
+                    onOpenStudioTasks();
+                  }
+                : undefined
+            }
+            onRefresh={onRefresh}
+          />
+        )}
 
         {activeTab === "insights" && <InsightsAndHours key={tabKey} studios={studios} trainers={trainers} activeStudioId={activeStudioId ?? null} />}
 
