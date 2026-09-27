@@ -320,17 +320,20 @@ Atlas), recorded exactly as he approved it:
 
 From immediate floor needs (Journey) down to the deepest historical ledger
 (Activity Archive). `PROFILE_TABS` is that order and a client always opens on
-the first of them; `profile-nav.test.ts` fails if either moves.
+the first of them; `profile-nav.test.ts` fails if either moves, and
+`src/components/ClientProfileView.tabs.test.ts` holds the drawn tab row to
+`PROFILE_TABS` (one list, triggers only from the map, the four panels in the
+same order, and the literal `grid-cols-4` equal to the number of tabs).
 
 ### 9.1 The files
 
 | File | What it owns |
 | --- | --- |
-| `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the per-client resume, and (client codex, Sep 2026) the record's pages, the anchor registry and `SECTION_TO_PAGE`. Pure, tested in `profile-nav.test.ts` |
-| `useProfileNav.ts` | the reducer plus sessionStorage and the default-segment context |
+| `profile-nav.ts` | the model — `ProfileLocation`, the reducer, the legacy map, the one-time handoff (`openProfileAt` / `takeStoredLocation`: a client always opens on Journey unless another screen hands off a location once), and (client codex, Sep 2026) the record's pages, the anchor registry and `SECTION_TO_PAGE`. Pure, tested in `profile-nav.test.ts` |
+| `useProfileNav.ts` | the reducer plus the handoff read on mount and the default-segment context |
 | `ProfileSubnav.tsx` | the one sub-toggle all three consolidated tabs use, and the two sticky measurements; `wrap`, `idPrefix` and `flagTone` for the codex's seven pages |
-| `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines |
-| `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Trends / Reports, and the clinical strip |
+| `ProgrammingTab.tsx` | shell — Routine A / Routine B / All Machines / Setup |
+| `ClinicalHistoryTab.tsx` | shell — Calendar / Sessions / Deep Dive (view id `trends`) / Reports, and the clinical strip (its "Edit in Body & Pulse" opens the watch-outs card) |
 | `useProgressReports.ts` | the profile's one progress-reports listener (newest 50) and whether it answered for THIS client — the banner, the Archive's shelf and the codex's Pulse history all read it. Render test: `useProgressReports.render.test.tsx` |
 | `features/client-codex/` | Notes & Profile — the codex shell (`ClientCodex`) and its seven pages. Read its README |
 | `profile-nav.css` | `--psub-*` tokens, the shell, the strip, and the wrap variant (scoped to `[data-wrap]`, held there by `profile-nav-css.test.ts`) |
@@ -356,8 +359,8 @@ codex). The record panel is `keepMounted` from the first time the tab is
 opened on this client, so coming back re-reads nothing and an unsaved record
 edit survives a trip to Journey; `ClientCodex` is keyed on the client, so
 another client starts fresh. Inside it the Overview mounts with the tab and
-every other page on its first visit, then stays (the All Machines and Trends
-precedent below). The progress-reports listener (`useProgressReports`) stays
+every other page on its first visit, then stays (the All Machines, Setup and
+Deep Dive precedent below). The progress-reports listener (`useProgressReports`) stays
 open with it, so switching between Notes & Profile and the Activity Archive no
 longer re-subscribes.
 
@@ -393,11 +396,14 @@ and nothing clips, is a separate change with its own look at an iPad.
 
 **Switching a sub-view costs no fetch.** Every pane reads what the profile
 already loaded, or keeps its own gate. If a future pane needs a read of its
-own, gate it the way Trends does — on an explicit action, not on the toggle.
+own, gate it the way the Deep Dive does — on an explicit action (Build the
+Deep Dive), not on the toggle.
 
 **Mount, hide, unmount.** Routine A/B and Reports unmount when hidden.
-All Machines and Trends are mounted on first use and hidden thereafter,
-because they hold a selection and a generated report respectively. Calendar
+All Machines, Setup and the Deep Dive (view id `trends`) are mounted on first
+use and hidden thereafter, because they hold a selection, the set-up drafts
+(the unsaved-changes guard relies on it: a move within a tab never asks) and
+a built report respectively. Calendar
 and Sessions are *one* mount of `ClientHistoryTab`. Do not tidy any of these
 into plain conditional renders.
 
@@ -405,9 +411,9 @@ into plain conditional renders.
 background.** The app shell is a bounded 100dvh column; an inner `p-6`
 container is what scrolls, and every engine pins a sticky box inside that
 padding. `ProfileSubnav` measures it into `--psub-stick-top` — the same fix
-`--hist-stick-top` is in the History tab — and publishes its own height as
-`--psub-stuck-h` so History's month headers stop under it rather than behind
-it.
+`--hist-stick-top` is in the Activity Archive's calendar (`client-history`) —
+and publishes its own height as `--psub-stuck-h` so the calendar's month
+headers stop under it rather than behind it.
 
 ### 9.3 Shells, not rewrites
 
@@ -420,8 +426,9 @@ dialog, the discard dialog and the Edit Routine drawer sit beside
 `ProgrammingTab` rather than inside it. The codex is the exception, on
 purpose: its pages write the record through its one form (the Save bar's
 one `updateDoc`), notes and FORD through their own writers, and nothing
-else; the doors that LEAVE the tab (the Planner, the Archive's reports, a
-machine, the Set-up, the Migration Hub) are still the profile's, handed in
+else; the doors that LEAVE the tab (Relay, through the old Planner door; the
+Archive's reports; a machine; the Set-up; the Migration Hub) are still the
+profile's, handed in
 as `CodexHosts`. Since the cleanup (phase 19) the codex asks for no report
 door: the filed reports are the Archive's shelf.
 

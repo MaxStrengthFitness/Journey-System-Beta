@@ -29,10 +29,11 @@
  *
  * From immediate floor needs down to the deepest historical ledger.
  * `PROFILE_TABS` below is that order, and profile-nav.test.ts fails if it
- * moves.
+ * moves; ClientProfileView.tabs.test.ts holds the drawn tab row to it.
  *
- * Two of those carry more than one view, so a tab is no longer a single
- * string: it is a tab AND a position inside it. That pair is a
+ * Three of those carry more than one view (Programming's segments, Notes &
+ * Profile's pages, the Activity Archive's segments), so a tab is no longer a
+ * single string: it is a tab AND a position inside it. That pair is a
  * `ProfileLocation`, and it is the only thing the profile stores about where
  * the trainer is.
  *
@@ -50,8 +51,10 @@
  *
  *   3. OLD LINKS STILL LAND. `legacyLocation()` maps every tab id the app has
  *      ever used — including the six-tab and seven-tab vocabularies — onto a
- *      location, so a `setActiveTab("journal")` anywhere in the codebase (or
- *      in a trainer's muscle memory) still arrives somewhere sane.
+ *      location. No screen passes an old id any more; what still needs the
+ *      table is a handoff stored before a change and read after a deploy
+ *      (normalizeLocation), and any future door holding only an old id
+ *      (useProfileNav's goLegacy and openSection, kept for that).
  *
  * The client codex (Sep 2026) turned Notes & Profile from one long scroll of
  * dossier sections into PAGES — an Overview and six more — so the record
@@ -348,9 +351,10 @@ export function defaultProgrammingView(args: {
 
 /**
  * Every tab id the profile has ever answered to, mapped onto where that
- * subject lives now. Callers elsewhere in the app (and the deep links in the
- * Hub, the briefing and the directory) keep passing these strings; they are
- * translated here rather than chased down one at a time.
+ * subject lives now. Today's doors pass a ProfileLocation (the Hub, Relay's
+ * tasks, Back to Reports, Machine fit), so this table serves a handoff stored
+ * before a change (normalizeLocation) and any future door that holds only an
+ * old id (goLegacy), translated here rather than chased down one at a time.
  *
  * The record's ids land on a codex PAGE (and a card, where one helps) since
  * Sep 2026. "details" and "profile" were the old Details tab — the whole
@@ -576,20 +580,22 @@ export function normalizeLocation(loc: StoredProfileLocation): ProfileLocation {
 }
 
 /* ------------------------------------------------------------------ *
- * Resuming
+ * The one-time handoff
  * ------------------------------------------------------------------ */
 
 /** Exported for sign-out, which clears these one-shot handoffs (features/sign-out). */
 export const STORE_PREFIX = "msf_profile_nav:";
 
 /**
- * Where the trainer was on THIS client, last time.
+ * The handoff another screen left for THIS client, read without consuming it
+ * (takeStoredLocation, below, is the read that consumes it).
  *
- * Per client, not per app: coming back to Judy should resume Judy's screen,
- * and opening Marcus straight afterwards should not inherit it. Session
- * storage rather than local — a tab left open for a week resuming on last
- * Tuesday's segment is surprise, not service. Every access is wrapped:
- * storage throws in a private window and returns null in the harness.
+ * Keyed per client, so a handoff meant for Judy never lands on Marcus.
+ * Session storage rather than local — a handoff left over from last week
+ * landing on today's visit is surprise, not service. Every access is
+ * wrapped: storage throws in a private window and returns null in the
+ * harness. (It was the per-client resume until the fluidity round; see
+ * takeStoredLocation.)
  *
  * A handoff written by an older bundle can outlive a deploy, so what comes
  * back is normalised: a pre-codex `{ tab: "record", section: "medical" }`
@@ -613,9 +619,10 @@ export function readStoredLocation(clientId: string | null | undefined): Profile
  * Fluidity round, Sep 2026 — AJ's call: **a client always opens on Journey.**
  * The stored location stopped being a memory of where the trainer was and
  * became a one-shot INTENT written by a screen that is deliberately sending
- * them somewhere else (Operations -> Machine fit is the only one today). It
- * is read once and removed, so the deep link lands and the next visit to that
- * client is Journey again, like every other visit.
+ * them somewhere else: the Hub card's Past sessions, Relay's Pulse and InBody
+ * tasks, Back to Reports from a progress report, and Operations -> Machine
+ * fit. It is read once and removed, so the deep link lands and the next visit
+ * to that client is Journey again, like every other visit.
  *
  * Resuming per client read well on paper and badly on a floor: a trainer who
  * had glanced at Programming last Tuesday walked up to the iPad, tapped the
@@ -649,11 +656,14 @@ export function writeStoredLocation(
  * Open a client's profile AT a location, from a screen outside the profile.
  *
  * The profile always mounts fresh when it is reached from another view (the
- * Hub, a search result), and on mount it resumes whatever is stored for that
- * client - so storing the location first IS the navigation. Call this, then
- * switch the view to "profile". Used by the Hub's History button, which used
- * to open a separate legacy History screen (deleted in the beta-prep trim,
- * Sep 17 2026) and now lands on Activity Archive -> Sessions.
+ * Hub, a search result), and on mount it takes whatever handoff is stored for
+ * that client - so storing the location first IS the navigation. Call this, then
+ * switch the view to "profile". Used by the Hub card's Past sessions button
+ * (it said History, and opened a separate legacy History screen until the
+ * beta-prep trim, Sep 17 2026), which lands on Activity Archive -> Sessions;
+ * by Relay's Pulse and InBody tasks (Body & Pulse, at the card); and by Back
+ * to Reports from a progress report. Machine fit writes the same key through
+ * writeStoredLocation.
  */
 export function openProfileAt(
   clientId: string | null | undefined,

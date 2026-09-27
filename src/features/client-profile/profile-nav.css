@@ -75,7 +75,8 @@
    The shell. Sticky, because every pane under it is longer than a screen and
    a switch you have to scroll back up to find is a switch nobody uses.
    `top: 0` is against the page scroller — the profile scrolls the page, not a
-   box (see the History tab's note on --hist-stick-top for the same reason).
+   box (see client-history.css's note on --hist-stick-top, the Activity
+   Archive's calendar, for the same reason).
    -------------------------------------------------------------------------- */
 .psub-shell {
   position: sticky;
@@ -309,9 +310,10 @@
   min-width: 0;
 }
 
-/* A read-only fact strip — Clinical History's flags, Programming's counts.
-   Read-only on purpose: these facts are EDITED in exactly one place (the
-   dossier), and a second editable copy is how two screens start disagreeing. */
+/* A read-only fact strip — the Activity Archive's flags, Programming's counts.
+   Read-only on purpose: these facts are EDITED in exactly one place (Notes &
+   Profile → Body & Pulse, the watch-outs card), and a second editable copy is
+   how two screens start disagreeing. */
 .ptab-strip {
   display: flex;
   flex-wrap: wrap;
