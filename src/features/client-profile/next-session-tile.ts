@@ -18,3 +18,16 @@ export function nextSessionHeadline(day: string | null, time: string): string | 
 export function bookedLabel(scheduledCount: number): string {
   return `${Math.max(1, scheduledCount)} booked`;
 }
+
+/**
+ * The bookings the tile may speak of: the ones still booked (Sep 26 2026).
+ *
+ * A cancelled booking keeps its row (status "Cancelled", with the stamps the
+ * Changes list reads), and the profile's read of her upcoming bookings took
+ * every row. So a cancellation could be the NEXT SESSION, and was counted in
+ * "2 booked". The post-session screen's `nextBookingFor` and the packages
+ * screen's `bookedWeekdays` already skipped them.
+ */
+export function stillBooked<T extends { status?: string | null }>(rows: readonly T[]): T[] {
+  return rows.filter((row) => row.status !== "Cancelled");
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookedLabel, nextSessionHeadline } from "./next-session-tile";
+import { bookedLabel, nextSessionHeadline, stillBooked } from "./next-session-tile";
 
 describe("nextSessionHeadline", () => {
   it("joins the day and the time with a dot so a narrow tile wraps between them", () => {
@@ -18,5 +18,20 @@ describe("bookedLabel", () => {
     expect(bookedLabel(1)).toBe("1 booked");
     expect(bookedLabel(3)).toBe("3 booked");
     expect(bookedLabel(0)).toBe("1 booked");
+  });
+});
+
+describe("stillBooked", () => {
+  it("never offers a cancelled booking as the next session, nor counts it as booked", () => {
+    const rows = [
+      { id: "mon", status: "Cancelled" },
+      { id: "wed", status: "Scheduled" },
+      { id: "fri", status: "Scheduled" },
+      { id: "old", status: undefined },
+    ];
+    const booked = stillBooked(rows);
+    expect(booked.map((r) => r.id)).toEqual(["wed", "fri", "old"]);
+    expect(booked[0].id).toBe("wed");
+    expect(bookedLabel(booked.length)).toBe("3 booked");
   });
 });
