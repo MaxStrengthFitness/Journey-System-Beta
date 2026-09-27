@@ -1,7 +1,8 @@
 # The whole-read record — which days Journey read in full from Mindbody
 
-*Sep 27 2026. Branch `coverage-record`, five commits on `bfa9cda` (the voice
-review follow-up): four phases and what the review found. The first, stand-alone piece of Openings: phase 2 of
+*Sep 27 2026. Branch `coverage-record`, six commits on `bfa9cda` (the voice
+review follow-up): four phases, what the review found, and the session
+header's fix, which ships with it. The first, stand-alone piece of Openings: phase 2 of
 `2026-09-27-openings.md`, shipped ahead of the rest so the weeks start
 counting now.*
 
@@ -173,6 +174,16 @@ live (its prepare stage checks that master already contains `bfa9cda`):
 
 To undo the app: push the restore tag to master. The rules can stay; nothing
 else reads the collection.
+
+**Also in this ship: the session's header** (`724fe1f`, cherry-picked from
+the branch `session-header`, `872dd31`). Found by the Screen Atlas's helpers
+on the live app: the header's studio name defaulted to "SOLON", and the
+briefing, the Wrap-up and the never-blank screen passed none, so every studio
+read SOLON above every session; the Wrap-up's header was also fixed to its
+dark look, white on white in the light theme. The three screens now get the
+active studio's name, the Wrap-up's header follows the theme, and the header
+invents no studio name or initials (`AppHeader.render.test.tsx` holds it).
+App only: no rules, no data.
 
 ## Measured
 
