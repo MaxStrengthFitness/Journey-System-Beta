@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { missedList, teamRecord, teamSummary, teamWindow, type TeamRecordInput } from "./accountability";
+import { missedList, teamRecord, teamWindow, type TeamRecordInput } from "./accountability";
 import type { TaskInstance, TaskTemplate } from "../../studio-tasks/types";
 import type { TeamJob } from "../jobs/types";
 import type { InitiativeProgress } from "../../studio-tasks/initiatives";
@@ -90,7 +90,9 @@ describe("teamRecord — what counts against a person", () => {
       text: "Missed 2 assigned tasks: Closing checklist (Mon), Closing checklist (Sat).",
       tone: "flag",
     });
-    expect(r[0].person.id).toBe("t-marcus");
+    // Missing something does not move Marcus to the top: people are listed by
+    // name (voice-review round, Sep 27 2026).
+    expect(r.map((p) => p.person.id)).toEqual(["t-aj", "t-dana", "t-marcus", "t-priya"].filter((id) => r.some((p) => p.person.id === id)));
   });
 
   it("does not hold a task against the person named on it when someone else finished it", () => {
@@ -236,7 +238,7 @@ describe("teamRecord — people and order", () => {
     expect(byId(r, "t-guest").standing).toBe("behind");
   });
 
-  it("orders people behind first, then on track, then quiet", () => {
+  it("lists people by name, never behind first (recognition, never ranking — voice-review round)", () => {
     const r = teamRecord(
       input({
         instances: [
@@ -245,20 +247,14 @@ describe("teamRecord — people and order", () => {
         ],
       }),
     );
-    expect(r.map((p) => p.standing)).toEqual(["behind", "on-track", "quiet", "quiet"]);
+    const names = r.map((p) => p.person.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    // The one who missed something is where their name puts them, not first.
+    expect(r.findIndex((p) => p.standing === "behind")).toBe(names.indexOf(MARCUS.name));
   });
 });
 
-describe("teamSummary and teamWindow", () => {
-  it("adds up the team", () => {
-    const r = teamRecord(
-      input({
-        instances: [inst({ assignedTo: MARCUS }), inst({ assignedTo: PRIYA, status: "done", completedBy: PRIYA })],
-      }),
-    );
-    const s = teamSummary(r, [job({ dueOn: "2026-09-01" }), job({ assigneeIds: ["x"] }), job({ status: "done" })], TODAY);
-    expect(s).toEqual({ assignedPast: 2, assignedPastDone: 1, behind: 1, jobsOpen: 2, jobsOverdue: 1, upForGrabs: 1 });
-  });
+describe("teamWindow", () => {
 
   it("reads the last seven studio days, today included", () => {
     expect(teamWindow(TODAY)).toEqual({ from: "2026-09-10", to: TODAY });

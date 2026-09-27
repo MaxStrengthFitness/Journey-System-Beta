@@ -157,7 +157,7 @@ The round is `docs/rounds/2026-09-16-planner-rework.md`. Two iPads, one signed i
 - [ ] **Both iPads tick a different part at the same moment.** *Expected:* both ticks stay. *If one vanishes:* something rewrote `parts` whole.
 - [ ] **The trainer taps I'll take it, then closes the job with a note.** *Expected:* the head trainer's bell rings "taken", then "finished"; the job moves to **Finished lately**.
 - [ ] **The head trainer switches to a studio they only visit.** *Expected:* no **Team** tab and no **Post a job** there.
-- [ ] **Team tab after an assigned task is left undone yesterday.** *Expected:* that person is at the top, with "Missed *task* on *day*". A task someone else finished is not held against them. Today's open tasks are never "missed".
+- [ ] **Team tab after an assigned task is left undone yesterday.** *Expected:* that person's card (people are in name order, never moved to the top) says "Missed *task* on *day*", with no "Behind" label. A task someone else finished is not held against them. Today's open tasks are never "missed".
 - [ ] **New reminder for 5 minutes from now, "5 min before".** Leave the app open on any screen. *Expected:* the bell rings once, even with the same trainer signed in on both iPads; the Calendar shows it in the strip above the month.
 - [ ] **Write a note over two sittings.** Add two working notes, close the app, reopen, add a third on the other iPad, then save the note on the first. *Expected:* all three jots are still there. Fold one in with **Add to the note**.
 - [ ] **Formatting:** a heading, a checklist and a link. *Expected:* read mode draws them; ticking a box saves; the link opens in a new tab.
@@ -179,7 +179,7 @@ The round is `docs/rounds/2026-09-16-relay.md`. Two iPads at the same studio, on
 - [ ] **A note in two panes.** Open a note in landscape. *Expected:* working notes on the left, the note on the right; Lift into the note carries a jot across; the kind under File it reads as suggested once you link a client and write "shoulder pain" (Injury plan), and stays put once you tap a kind yourself. In portrait, the Log / Note switch under the bar swaps panes.
 - [ ] **Publish audiences.** Share with one colleague and tick Hand it off. *Expected:* their copy has a **Take it over** button. A franchise owner also sees **All MSF studios**: sharing there shows the note under From colleagues on an iPad at ANOTHER studio.
 - [ ] **The client's record.** Open a client → Notes & Profile. *Expected:* "Your working notes" under Plans from the team shows your last jots about them; adding one there appears in the Planner note's log; the other iPad (a different trainer) does not see it.
-- [ ] **Team tab as the head trainer.** *Expected:* Who's in today lists each person with a load bar from the schedule; This month shows counts for the five cohorts; Route to team on Renewals due posts a team job with one part per client that the trainer's iPad sees; The studio's day saves shift hours and the Now Bar's phase follows them on both iPads; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section).
+- [ ] **Team tab as the head trainer (people and standards since Sep 27 2026).** *Expected:* no Who's in today and no client groups (the Hub and Operations answer those); people by name, each with the sentences of their week; under The studio's standards, Open loops lists an ask nobody picked up for a day, a machine flagged on the Floor Map or reported on the shift list (once), and an overdue job; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section). A pending sign-in request shows "waiting to be let in" at the top, and Let them in scrolls to the staff list.
 - [ ] **Kudos.** On the other iPad's Pulse line about your work, tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
 - [ ] **The Calendar.** *Expected:* the strip above the month says Relay and shows a timed studio task on every day it falls, a team job on its due day with initials, a hand-off in blue; Mine narrows it to yours; a tap lands in Relay on the right tab.
 - [ ] **The network as a franchise owner (Operations → Overview → Looking at: All my studios, since Sep 27 2026).** *Expected:* no Network tab in Relay; under All my studios, Focus this quarter (one per network you own) — Set the focus shows a banner on the Floor of every studio in it; Launch an initiative asks first and names every studio, then shows under Initiatives on each studio's board; no ranking of studios anywhere. An owner with one studio finds both at the foot of that studio's Overview.
@@ -513,8 +513,8 @@ studio's record for anything that saves — the Studio section writes the real
 
 **Team**
 
-- [ ] **The cockpit** is what Relay → Team was (Round 3's Team checks: who's
-  in today, cohorts, open loops, the vault).
+- [ ] **People and standards** (Sep 27 2026): Round 3's Team checks, without
+  who's in today or the client groups; open loops and the vault stay.
 - [ ] **Letting someone in.** From a fresh browser, request access naming
   this studio. On the head trainer's iPad: the request shows under the
   studio's staff with a waiting badge; the role list stops at Studio Leader

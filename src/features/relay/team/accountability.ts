@@ -314,33 +314,13 @@ export function teamRecord(input: TeamRecordInput): PersonRecord[] {
         lines,
       } satisfies PersonRecord;
     })
-    .sort((a, b) => {
-      const rank: Record<Standing, number> = { behind: 0, "on-track": 1, quiet: 2 };
-      const weight = (r: PersonRecord) =>
-        r.week.missed.length * 3 + r.jobs.overdue.length * 2 + r.holding.length + r.week.leftOpen.length;
-      return rank[a.standing] - rank[b.standing] || weight(b) - weight(a) || a.person.name.localeCompare(b.person.name);
-    });
-}
-
-export interface TeamSummary {
-  assignedPast: number;
-  assignedPastDone: number;
-  behind: number;
-  jobsOpen: number;
-  jobsOverdue: number;
-  upForGrabs: number;
-}
-
-export function teamSummary(records: PersonRecord[], jobs: TeamJob[], todayKey: string): TeamSummary {
-  const open = jobs.filter((j) => j.status === "open");
-  return {
-    assignedPast: records.reduce((n, r) => n + r.week.assigned, 0),
-    assignedPastDone: records.reduce((n, r) => n + r.week.assignedDone, 0),
-    behind: records.filter((r) => r.standing === "behind").length,
-    jobsOpen: open.length,
-    jobsOverdue: open.filter((j) => jobTiming(j, todayKey) === "overdue").length,
-    upForGrabs: open.filter((j) => j.assigneeIds.length === 0).length,
-  };
+    // By name (voice-review round, Sep 27 2026). They were ordered behind
+    // first and then by a weight nobody saw (missed x3, overdue x2, ...),
+    // which made the list a ranking of the team. Recognition, never ranking
+    // (AJ's Do it on "Recognition turns into ranking", and question 4: per
+    // trainer, "no list sorted worst first"). Each card's own sentences say
+    // what that person has on them; no card outranks another.
+    .sort((a, b) => a.person.name.localeCompare(b.person.name));
 }
 
 /** The window the Team tab reads: the last seven studio days, today included. */

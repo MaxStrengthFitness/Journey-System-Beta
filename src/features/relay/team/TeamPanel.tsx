@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Hand, Heart, Plus, ShieldCheck, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ClipboardList, Heart, Plus, ShieldCheck, Users } from "lucide-react";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { auth } from "../../../firebase";
 import { studioDateKey } from "../../../lib/studio-time";
@@ -19,27 +19,44 @@ import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
 import { useRelayMaybe } from "../board/RelayContext";
-import { CohortPanel, OpenLoops, WhosInToday } from "../board/TeamCockpit";
+import { OpenLoops } from "../board/TeamCockpit";
 import { VaultPanel } from "../board/VaultPanel";
 import { kudosReceived } from "../board/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
-import { teamRecord, teamSummary, type PersonRecord } from "./accountability";
+import { teamRecord, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
 import "../kit.css";
 import "./team.css";
 
 /**
- * TEAM — the Planner's fourth tab, for head trainers and studio leaders.
+ * TEAM — My Studio's Team section: PEOPLE AND STANDARDS.
  *
  * Round: Planner rework, Sep 2026. AJ: leaders "need to be able to see what
  * the team is assigned, what they've completed and what they are failing to
  * do and who might be failing to do so."
  *
- *   the week in four numbers  assigned work done, people behind, jobs, grabs
- *   one card per person       behind first; sentences, never a score
- *   the studio's standards    what used to be Manage on the Studio tab: the
- *                             standing task list, the last seven days per
- *                             task, initiatives, unanswered requests, flags
+ * Voice-review round, Sep 27 2026: Team's purpose had become unclear — it
+ * also answered the Hub's question (who's in today) and Operations' (which
+ * clients are due a renewal, not seen lately, having a birthday), each by a
+ * rule of its own. AJ: "Execute the people and standards pivot. Stripping
+ * out the hub and operations duplicate gives the team tab a distinct
+ * standalone purpose." So Team is now:
+ *
+ *   people                    one card per person, BY NAME — each card the
+ *                             sentences of their week, their kudos, a job
+ *                             for them; no ranking, no "Behind" verdict
+ *                             (recognition, never ranking; question 4)
+ *   the studio's standards    the standing task list and how each duty went
+ *                             these seven days, initiatives, the loops left
+ *                             open (unanswered asks, flagged machines,
+ *                             overdue jobs, aged-out asks)
+ *   the vault                 and, beside this panel, the studio's staff
+ *
+ * Gone, with where each question is answered: who's in today (the Hub, any
+ * of seven days); the month's client groups (Operations: Renewals, the
+ * attendance watch on the studio's own break days, the week's moments and
+ * the Delight queue); the week in four tiles (each person's sentences, and
+ * the Floor for today's jobs).
  *
  * The arithmetic, and what is deliberately never counted, is in
  * ./accountability.ts. Reads: the week's task instances once (shared with the
@@ -92,7 +109,6 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
       }),
     [roster, todayKey, compliance.instances, templates, teamJobs.jobs, openRequests, initiatives],
   );
-  const summary = useMemo(() => teamSummary(records, teamJobs.jobs, todayKey), [records, teamJobs.jobs, todayKey]);
   // Relay: kudos received this week, per person, from what this tab already reads.
   const kudosByPerson = useMemo(
     () => kudosReceived({ instances: compliance.instances, jobs: teamJobs.jobs, requests: openRequests }),
@@ -125,8 +141,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           <div className="pl__panel-titles">
             <h2 className="pl__h2">Your team</h2>
             <p className="pl__sub">
-              How {studioName}'s last {DAYS} days went — the work with people's names on it, who finished it, and who
-              is behind.
+              The people who work at {studioName} and what the studio holds them to: each person's last {DAYS} days, the
+              standing duties, and the loops left open.
             </p>
           </div>
           <div className="pl__panel-actions">
@@ -154,61 +170,10 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           </div>
         </div>
 
-        <div className="tm-summary" role="list" aria-label="This week">
-          <SummaryTile
-            icon={<CheckCircle2 size={16} aria-hidden />}
-            label="Assigned tasks"
-            value={
-              loading
-                ? "…"
-                : summary.assignedPast === 0
-                  ? "None assigned"
-                  : `${summary.assignedPastDone} of ${summary.assignedPast} done`
-            }
-            note={summary.assignedPast === 0 ? "Assign from the Studio tab's shift list." : "Before today"}
-          />
-          <SummaryTile
-            icon={<AlertTriangle size={16} aria-hidden />}
-            label="Behind"
-            tone={summary.behind > 0 ? "flag" : "calm"}
-            value={loading ? "…" : summary.behind === 0 ? "Nobody" : `${summary.behind} of ${records.length} people`}
-            note={summary.behind > 0 ? "Cards below, worst first" : "Everything named is on track"}
-          />
-          <SummaryTile
-            icon={<ClipboardList size={16} aria-hidden />}
-            label="Team jobs"
-            tone={summary.jobsOverdue > 0 ? "flag" : "calm"}
-            value={teamJobs.loading ? "…" : `${summary.jobsOpen} open`}
-            note={summary.jobsOverdue > 0 ? `${summary.jobsOverdue} overdue` : "None overdue"}
-          />
-          <SummaryTile
-            icon={<Hand size={16} aria-hidden />}
-            label="Up for grabs"
-            tone={summary.upForGrabs > 0 ? "hero" : "calm"}
-            value={teamJobs.loading ? "…" : summary.upForGrabs === 0 ? "None" : `${summary.upForGrabs} waiting`}
-            note={summary.upForGrabs > 0 ? "Nobody has taken them yet" : "Every job has someone"}
-          />
-        </div>
-
-        <p className="tm-fair">
-          <ShieldCheck size={14} aria-hidden />
-          Only work with someone's name on it counts here — tasks you assigned, tasks they took, jobs they're on,
-          requests they claimed. A task someone else finished is done and isn't held against anyone. Notes are never
-          counted.
-        </p>
-
         {readError && (
           <p className="rk-empty" role="alert">
             {readError}
           </p>
-        )}
-
-        {relay && (
-          <>
-            <WhosInToday roster={roster} jobs={teamJobs.jobs} />
-            <OpenLoops requests={openRequests} jobs={teamJobs.jobs} machineNames={machineNames} />
-            <CohortPanel roster={roster} />
-          </>
         )}
 
         <section aria-labelledby="tm-people" className="tm-people">
@@ -216,6 +181,12 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             <Users size={14} aria-hidden />
             People <span className="pl__count">{records.length}</span>
           </h3>
+          <p className="tm-fair">
+            <ShieldCheck size={14} aria-hidden />
+            By name, never ranked. Only work with someone's name on it counts here — tasks you assigned, tasks they
+            took, jobs they're on, requests they claimed. A task someone else finished is done and isn't held against
+            anyone. Notes are never counted.
+          </p>
           {roster.length === 0 ? (
             <p className="rk-empty">
               Nobody has {studioName} as their home studio yet, so there is no team to show. Trainers appear here once
@@ -254,14 +225,14 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             The studio's standards
           </h3>
           <p className="pl__list-note">
-            The standing duties {studioName} is held to, how each one went this week, initiatives, and what's been
-            flagged. Trainers see the standing duties on the Studio tab on the days they fall due.
+            The standing duties {studioName} is held to, how each one went this week, initiatives, and the loops left
+            open. Trainers see the standing duties on Relay's Floor on the days they fall due.
           </p>
+          {relay && <OpenLoops requests={openRequests} jobs={teamJobs.jobs} machineNames={machineNames} reported={flaggedRows} />}
           <ManagePanel
             studioId={studioId}
             templates={templates}
             categories={categories}
-            flaggedRows={flaggedRows}
             author={author}
             trainers={trainers}
             compliance={compliance}
@@ -318,37 +289,6 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
   );
 }
 
-function SummaryTile({
-  icon,
-  label,
-  value,
-  note,
-  tone = "calm",
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  note: string;
-  tone?: "calm" | "flag" | "hero";
-}) {
-  return (
-    <div className={`tm-tile tm-tile--${tone}`} role="listitem">
-      <span className="tm-tile__label">
-        {icon}
-        {label}
-      </span>
-      <span className="tm-tile__value">{value}</span>
-      <span className="tm-tile__note">{note}</span>
-    </div>
-  );
-}
-
-const STANDING_LABEL: Record<PersonRecord["standing"], string> = {
-  behind: "Behind",
-  "on-track": "On track",
-  quiet: "Nothing assigned",
-};
-
 function PersonCard({
   record,
   role,
@@ -367,7 +307,7 @@ function PersonCard({
 }) {
   const first = record.person.name.split(" ")[0] || record.person.name;
   return (
-    <article className={`tm-card tm-card--${record.standing}`}>
+    <article className="tm-card">
       <header className="tm-card__head">
         <Avatar name={record.person.name} />
         <span className="tm-card__who">
@@ -382,13 +322,6 @@ function PersonCard({
             <Heart size={12} aria-hidden /> {kudos}
           </span>
         )}
-        <span
-          className={`rk-tag${
-            record.standing === "behind" ? " rk-tag--flag" : record.standing === "on-track" ? " rk-tag--done" : ""
-          }`}
-        >
-          {STANDING_LABEL[record.standing]}
-        </span>
       </header>
       <ul className="tm-card__lines">
         {record.lines.map((line, i) => (

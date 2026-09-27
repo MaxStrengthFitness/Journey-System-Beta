@@ -149,7 +149,7 @@ function CareSheet({ machineId, machineName, rows, actions, deepDays }: { machin
       await flagMachine({ studioId: relay.studioId, machineId, machineName, note, author, leaderId: activeStudio?.headTrainerId ?? null });
       setFlagging(false);
       setNote("");
-      toastSuccess("Flagged — it's on the Team tab's open loops.");
+      toastSuccess("Flagged — leaders see it on My Studio → Team, under Open loops.");
     } catch (err) {
       console.warn("[relay] flag failed:", err);
       toastError("Could not flag that. Check your connection.");

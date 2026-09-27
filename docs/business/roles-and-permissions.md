@@ -25,7 +25,7 @@ The app stores a role code on each trainer document; people see the label. Sever
 | **Owner** | Owner, Franchise Owner | several studios, from Operations |
 | **Company** | Founder / Overseer, System Administrator | the standard: the catalog, the standard set, the company routines, every studio |
 
-**The grant** is `managedStudioIds` on the trainer document — one entry per studio the person helps run, whatever their role. "To allow studios to develop their trainers into leadership we need to allow leadership to be able to give trainers access to these menus" (AJ, Sep 18). It is handed out on My Studio → Team (or Operations → Staff & Roles), never by the person themselves, and only for a studio the giver runs. It opens My Studio's leader sections; it does **not** open the Operations dashboard.
+**The grant** is `managedStudioIds` on the trainer document — one entry per studio the person helps run, whatever their role. "To allow studios to develop their trainers into leadership we need to allow leadership to be able to give trainers access to these menus" (AJ, Sep 18). It is handed out on My Studio → Team (Operations → Staff & Roles does not offer it — checked in the code, Sep 27 2026), never by the person themselves, and only for a studio the giver runs. It opens My Studio's leader sections; it does **not** open the Operations dashboard.
 
 `leadsHere(trainer, studioId)` in `src/features/relay/leads.ts` is the app's one answer to "does this person run this studio", and `trainerLeads` in `firestore.rules` is the same answer for writes.
 

@@ -9,24 +9,26 @@
  * shifts. But they do not need a second feature — they need the same
  * documents answering a different question.
  *
- * So: no new data model, no second board. A toggle, and three panels that ask
- * things the daily list cannot answer.
+ * So: no new data model, no second board. Panels that ask things the daily
+ * list cannot answer.
  *
  *   Compliance    is closing actually getting done on Sundays?
- *   Requests      what has been floating unanswered the longest?
- *   Flagged       which machines are broken and who said so?
+ *   Initiatives   how is each of the leader's asks going?
+ *   Aged out      which asks ran out of time with nobody on them?
  *
- * Sorted worst-first throughout. The value of a review panel is finding what
- * slipped, and a manager should not have to scan a wall of green to find it.
+ * Compliance is sorted worst-first: the value of a review panel is finding
+ * what slipped, and a manager should not have to scan a wall of green to
+ * find it. That ranks DUTIES, never people. The unanswered asks and the
+ * flagged machines were two more panels here; since the voice-review round
+ * (Sep 27 2026) they are Team's Open loops (relay/board/TeamCockpit.tsx), one
+ * list with one rule, beside this one.
  */
 
 import { useState } from "react";
 import {
-  AlertTriangle,
   CalendarCheck,
   ClipboardList,
   Clock,
-  MessageSquare,
   Plus,
   Target,
 } from "lucide-react";
@@ -42,7 +44,7 @@ import type { InitiativeTarget } from "./initiatives";
 import type { Trainer } from "../../types";
 import { newTemplateId, saveTaskTemplate, type TaskAuthor } from "./mutations";
 import { categoryLabel } from "./types";
-import type { StudioTaskCategory, TaskRow, TaskTemplate } from "./types";
+import type { StudioTaskCategory, TaskTemplate } from "./types";
 
 /**
  * STARTER LISTS.
@@ -150,8 +152,6 @@ export interface ManagePanelProps {
   studioId: string | null;
   templates: TaskTemplate[];
   categories?: StudioTaskCategory[];
-  /** Today's flagged rows, already computed by the board. */
-  flaggedRows: TaskRow[];
   author?: TaskAuthor | null;
   /** Opens the full form on a blank studio template. */
   onNewTask?: () => void;
@@ -175,7 +175,6 @@ export function ManagePanel({
   studioId,
   templates,
   categories,
-  flaggedRows,
   author,
   onNewTask,
   onEditTask,
@@ -265,14 +264,6 @@ export function ManagePanel({
       setBusy(null);
     }
   };
-
-  // Oldest first here, unlike the board: an unanswered ask from Tuesday is the
-  // one a manager needs to chase, not the one posted five minutes ago.
-  const stale = [...openRequests].sort((a, b) => {
-    const ms = (v: unknown) =>
-      (v as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
-    return ms(a.createdAt) - ms(b.createdAt);
-  });
 
   return (
     <div className="stm">
@@ -517,30 +508,6 @@ export function ManagePanel({
         </div>
       </section>
 
-      <section className="stm__panel">
-        <header className="stm__head">
-          <MessageSquare size={14} aria-hidden />
-          <h2 className="stm__title">Unanswered requests</h2>
-          <span className="stm__hint">Oldest first</span>
-        </header>
-        {stale.length === 0 ? (
-          <p className="stm__empty">Nothing outstanding.</p>
-        ) : (
-          <ul className="stm__list">
-            {stale.map((r) => (
-              <li key={r.id} className="stm__item">
-                <span className="stm__item-title">{r.title}</span>
-                <span className="stm__item-sub">
-                  {r.createdBy.name} · {ago(r.createdAt)} old ·{" "}
-                  {r.claimedBy ? `${r.claimedBy.name} has it` : "unclaimed"}
-                  {r.replyCount > 0 ? ` · ${r.replyCount} replies` : " · no replies"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
       {expired.length > 0 && (
         <section className="stm__panel">
           <header className="stm__head">
@@ -569,31 +536,6 @@ export function ManagePanel({
         </section>
       )}
 
-      <section className="stm__panel">
-        <header className="stm__head">
-          <AlertTriangle size={14} aria-hidden />
-          <h2 className="stm__title">Flagged machines</h2>
-        </header>
-        {flaggedRows.length === 0 ? (
-          <p className="stm__empty">Nothing flagged today.</p>
-        ) : (
-          <ul className="stm__list">
-            {flaggedRows.map((r) => (
-              <li key={r.id} className="stm__item">
-                <span className="stm__item-title">
-                  {r.machineName ?? r.title}
-                </span>
-                <span className="stm__item-sub">
-                  {r.instance?.note || "A trainer reported a problem."}
-                  {r.instance?.completedBy?.name
-                    ? ` — ${r.instance.completedBy.name}`
-                    : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }
