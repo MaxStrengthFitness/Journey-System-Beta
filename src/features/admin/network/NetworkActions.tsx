@@ -10,9 +10,10 @@
  *                        house form (useDirtyForm + SaveBar): only the lines
  *                        that changed are written, a focus that arrives after
  *                        the page opened is taken up rather than wiped, and a
- *                        half-typed line asks before the page is left. Every
- *                        Floor in the network shows it (relay/board/
- *                        FocusBanner).
+ *                        half-typed line asks before the page is left. At
+ *                        rest it says who set it and on which day ("Set by
+ *                        Ann Owner on Sep 27, 2026."). Every Floor in the
+ *                        network shows it (relay/board/FocusBanner).
  *   Launch an initiative one ask at every studio in the reader's "All my
  *                        studios" (never Demo Mode's, by the realm rule in
  *                        scope.ts), after a confirmation that names each
@@ -56,6 +57,7 @@ import {
   LAUNCH_FLOWS,
   PER_TRAINER_CHOICES,
   focusFields,
+  focusSetLine,
   focusWrite,
   focusableNetworks,
   launchOutcome,
@@ -115,7 +117,6 @@ function FocusEditor({ network, by, title }: { network: FranchiseNetwork; by: { 
   );
   const form = useDirtyForm<FocusFields>(external, onSave, { label: `the focus for ${network.name}` });
   const idp = `nw-focus-${network.id}`;
-  const setBy = rf?.setBy?.name;
   const anySet = Boolean(external.mastery || external.machine || external.note);
 
   return (
@@ -130,7 +131,7 @@ function FocusEditor({ network, by, title }: { network: FranchiseNetwork; by: { 
           onSave={() => void form.save()}
           onDiscard={form.discard}
           saveLabel="Set the focus"
-          idle={anySet ? (setBy ? `Set by ${setBy}.` : "Set.") : "No focus yet: the Floors show nothing."}
+          idle={anySet ? focusSetLine(rf) : "No focus yet: the Floors show nothing."}
         />
       }
     >

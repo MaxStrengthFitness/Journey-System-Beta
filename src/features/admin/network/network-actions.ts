@@ -30,6 +30,7 @@ import type { FranchiseNetwork, Trainer } from "../../../types";
 import { isEveryStudioRole } from "../../renewals/permissions";
 import { isDemoStudioId } from "../../demo-mode/is-demo";
 import { focusOf } from "../../relay/board/focus";
+import { formatStudioDate, toDate, type DateLike } from "../../../lib/studio-time";
 import type { CreateRequestInput } from "../../studio-tasks/requests";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
 import type { ClientTaskAction } from "../../studio-tasks/types";
@@ -81,6 +82,26 @@ export interface FocusFields {
 }
 
 export const FOCUS_LIMITS: Readonly<Record<keyof FocusFields, number>> = { mastery: 120, machine: 120, note: 500 };
+
+/**
+ * The focus editor's idle line: who set the focus, and on which day as the
+ * studio's day (lib/studio-time; the studios are Eastern). Every save writes
+ * `relayFocus.setAt`, and this is what reads it, so an owner can see a focus
+ * set two quarters ago for what it is. "Set by Ann Owner on Sep 27, 2026."
+ * A save still on its way to the server has no time yet, so it says who only.
+ */
+export function focusSetLine(
+  focus: { setBy?: { name?: string } | null; setAt?: unknown } | null | undefined,
+  tz?: string,
+): string {
+  const name = focus?.setBy?.name?.trim();
+  const at = toDate(focus?.setAt as DateLike);
+  const day = at ? formatStudioDate(at, { month: "short", day: "numeric", year: "numeric" }, tz) : null;
+  if (name && day) return `Set by ${name} on ${day}.`;
+  if (name) return `Set by ${name}.`;
+  if (day) return `Set on ${day}.`;
+  return "Set.";
+}
 
 /** The focus form's committed value, from the network document. */
 export function focusFields(network: { relayFocus?: unknown } | null | undefined): FocusFields {

@@ -1,17 +1,19 @@
 import { Sparkles } from "lucide-react";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
-import { focusOf } from "./focus";
+import { focusHeadline, focusOf } from "./focus";
 
-/** The network's focus this quarter, as a quiet line on the Floor. */
+/**
+ * The network's focus this quarter, as a quiet line on the Floor. It is set
+ * on Operations → Overview → All my studios (admin/network/NetworkActions).
+ */
 export function FocusBanner() {
   const { network } = useActiveStudio();
   const focus = focusOf(network);
   if (!focus) return null;
-  const parts = [focus.mastery && `Mastery: ${focus.mastery}`, focus.machine && `Try the ${focus.machine}`].filter(Boolean);
   return (
     <p className="fb">
       <Sparkles size={13} aria-hidden />
-      <span className="fb__what">This quarter · {parts.join(" · ")}</span>
+      <span className="fb__what">{focusHeadline(focus)}</span>
       {focus.note && <span className="fb__note">{focus.note}</span>}
     </p>
   );

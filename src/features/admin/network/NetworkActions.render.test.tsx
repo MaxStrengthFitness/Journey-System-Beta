@@ -145,6 +145,17 @@ describe("Focus this quarter", () => {
     expect(button(el, "Set the focus")).toBeUndefined();
   });
 
+  it("says who set the focus and on which day while nothing is being edited", async () => {
+    const setAt = { toDate: () => new Date("2026-09-28T02:30:00Z") };
+    const el = await render({ networks: [ohio({ mastery: "Hip hinge", machine: "", note: "", setBy: { id: "uid-ann", name: "Ann Owner" }, setAt })] });
+    expect(el.textContent).toContain("Set by Ann Owner on Sep 27, 2026.");
+  });
+
+  it("says there is no focus yet when none is set", async () => {
+    const el = await render({ networks: [ohio()] });
+    expect(el.textContent).toContain("No focus yet: the Floors show nothing.");
+  });
+
   it("tells an owner with no network there is nowhere to keep one", async () => {
     const el = await render({ networks: [] });
     expect(el.textContent).toContain("No network yet");

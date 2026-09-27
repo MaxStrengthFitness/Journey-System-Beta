@@ -3,6 +3,7 @@ import type { FranchiseNetwork } from "../../../types";
 import {
   focusableNetworks,
   focusFields,
+  focusSetLine,
   focusWrite,
   launchOutcome,
   launchRequest,
@@ -90,6 +91,24 @@ describe("focusWrite", () => {
 
   it("writes nothing for an empty patch", () => {
     expect(focusWrite({}, by, "AT")).toEqual({});
+  });
+
+  it("says who set the focus and on which day, as the studio's Eastern day", () => {
+    // 02:30 UTC on Sep 28 is still Sep 27 in Ohio.
+    const at = new Date("2026-09-28T02:30:00Z");
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: at }, "America/New_York")).toBe("Set by Ann Owner on Sep 27, 2026.");
+    // A Firestore Timestamp, and one that lost its prototype in the cache.
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: { toDate: () => at } }, "America/New_York")).toBe("Set by Ann Owner on Sep 27, 2026.");
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: { seconds: at.getTime() / 1000, nanoseconds: 0 } }, "America/New_York")).toBe(
+      "Set by Ann Owner on Sep 27, 2026.",
+    );
+  });
+
+  it("says who only while the save's time is on its way, and the day only when nobody is named", () => {
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: null })).toBe("Set by Ann Owner.");
+    expect(focusSetLine({ setAt: new Date("2026-07-01T16:00:00Z") }, "America/New_York")).toBe("Set on Jul 1, 2026.");
+    expect(focusSetLine({})).toBe("Set.");
+    expect(focusSetLine(undefined)).toBe("Set.");
   });
 
   it("reads a network with no focus as three empty lines", () => {

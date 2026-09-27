@@ -25,3 +25,13 @@ export function focusOf(network: { relayFocus?: unknown } | null | undefined): R
   if (!raw || (!raw.mastery && !raw.machine && !raw.note)) return null;
   return { mastery: raw.mastery ?? "", machine: raw.machine ?? "", note: raw.note ?? "", setBy: raw.setBy, setAt: raw.setAt };
 }
+
+/**
+ * The banner's first line: "This quarter · Mastery: Hip hinge · Try the Leg
+ * Curl", or plain "This quarter" when only the line for the floor is set, so
+ * the Floor never shows a separator with nothing after it.
+ */
+export function focusHeadline(focus: Pick<RelayFocus, "mastery" | "machine">): string {
+  const parts = [focus.mastery && `Mastery: ${focus.mastery}`, focus.machine && `Try the ${focus.machine}`].filter(Boolean);
+  return parts.length > 0 ? `This quarter · ${parts.join(" · ")}` : "This quarter";
+}
