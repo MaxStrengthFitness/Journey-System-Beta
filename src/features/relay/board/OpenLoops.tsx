@@ -12,11 +12,12 @@ import { useMachineCare } from "./machine-care-store";
  * OPEN LOOPS — what will embarrass the studio if nobody acts, on My Studio →
  * Team under the studio's standards.
  *
- * Round: Relay, Sep 2026, when it was one of four panels in the Team
- * cockpit. The voice-review round (Sep 27 2026) made Team "people and
- * standards" and took out the panels that repeated the Hub and Operations:
- * who's in today (the Hub answers it for any of seven days, floaters
- * included) and the month's client groups with "Route to team" (Operations
+ * Round: Relay, Sep 2026, when it was one of four panels on Relay's old Team
+ * tab (this file was TeamCockpit.tsx until the voice review follow-up, Sep
+ * 27 2026; the class names still say `tc`). The voice-review round made
+ * Team "people and standards" and took out the panels that repeated the Hub
+ * and Operations: who's in today (the Hub answers it for any of seven days,
+ * floaters included) and the month's client groups with "Route to team" (Operations
  * answers them: Renewals, the attendance watch on the studio's own break
  * days, the week's moments and the Delight queue; the one group with no
  * other home, Routine B off, went with them). Open loops stayed: an ask
@@ -83,9 +84,10 @@ export function OpenLoops({
   return (
     <section className="tc" aria-labelledby="tc-loops">
       <header className="rl-h">
-        <h3 className="rl-h__title" id="tc-loops">
+        {/* h4: under Team's "The studio's standards" (h3). */}
+        <h4 className="rl-h__title" id="tc-loops">
           <AlertTriangle size={13} aria-hidden /> Open loops
-        </h3>
+        </h4>
         <span className="rl-h__sub">{total === 0 ? "nothing hanging" : `${total} to close`}</span>
       </header>
       {total === 0 ? (

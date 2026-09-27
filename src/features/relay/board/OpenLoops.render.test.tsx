@@ -19,7 +19,7 @@ vi.mock("./machine-care-store", () => ({
 }));
 
 import type { TaskInstance } from "../../studio-tasks/types";
-import { OpenLoops } from "./TeamCockpit";
+import { OpenLoops } from "./OpenLoops";
 
 const report = (over: Partial<TaskInstance>): TaskInstance =>
   ({

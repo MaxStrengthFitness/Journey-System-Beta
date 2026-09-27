@@ -19,7 +19,7 @@ import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
 import { useRelayMaybe } from "../board/RelayContext";
-import { OpenLoops } from "../board/TeamCockpit";
+import { OpenLoops } from "../board/OpenLoops";
 import { VaultPanel } from "../board/VaultPanel";
 import { kudosReceived } from "../board/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
