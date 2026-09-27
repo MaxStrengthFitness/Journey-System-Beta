@@ -572,10 +572,13 @@
   font-weight: 700;
   cursor: pointer;
 }
+/* Selected in the brand blue, as every pick in My Studio is (it was ink
+   until Sep 27 2026). The kind's own colour stays on its dot. */
 .ne__kind[aria-pressed="true"] {
-  border-color: var(--st-ink-2);
-  background: var(--st-surface-2);
-  color: var(--st-ink);
+  border-color: var(--st-live);
+  background: var(--st-live-fill);
+  color: var(--st-live);
+  box-shadow: inset 0 0 0 1px var(--st-live);
   font-weight: 800;
 }
 .ne__kind:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
@@ -1021,10 +1024,8 @@
   background: transparent;
   color: var(--st-ink-2);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .wl__btn:hover { background: var(--st-surface-2); color: var(--st-live); }

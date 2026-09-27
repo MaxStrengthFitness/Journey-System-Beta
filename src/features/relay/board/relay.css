@@ -410,15 +410,15 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border: 0;
   border-radius: 999px;
   /* The one loud action, so orange, but the deep orange: white on the
-     bright one is 3.55:1, too faint for a 12px label (--st-hero-on is 6.0:1
-     here, and near-black on the lifted orange in dark). */
+     bright one is 3.55:1, too faint for a 14px label (--st-hero-on is 6.0:1
+     here, and near-black on the lifted orange in dark). The label is in the
+     button voice every button in My Studio uses since Sep 27 2026: 14px,
+     bold, sentence case (look.test.ts). */
   background: var(--st-hero-text);
   color: var(--st-hero-on);
   font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   box-shadow: 0 8px 24px var(--st-shadow);
   cursor: pointer;
 }
@@ -603,10 +603,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   background: var(--st-live);
   color: var(--st-live-on);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }

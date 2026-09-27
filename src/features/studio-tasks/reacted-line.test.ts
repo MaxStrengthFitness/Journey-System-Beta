@@ -26,4 +26,10 @@ describe("reactedLine: who replied to an ask, in view", () => {
       reactedLine(reactionSummary({ reactions: { "got-it": { u1: { name: "Sam Lee" }, u2: { name: "" }, u3: { name: " " } } } })),
     ).toBe("Got it: Sam Lee, 2 others");
   });
+
+  it("says 'people', not 'others', when nobody before them is named", () => {
+    expect(reactedLine(reactionSummary({ reactions: { "got-it": { u1: { name: "" }, u2: { name: " " } } } }))).toBe(
+      "Got it: 2 people",
+    );
+  });
 });

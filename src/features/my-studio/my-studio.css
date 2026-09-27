@@ -68,6 +68,46 @@
   gap: 0.5rem;
 }
 
+/* The machine's door on Operations → Floor (MachinesSection without My
+   Studio's shell). In My Studio the frame is the height of the screen, so
+   the door is a column beside the list (landscape) or a sheet at the foot
+   of the screen (portrait). Operations bounds nothing: the frame is as tall
+   as the machine list and the whole page is one scroller (AppContent's
+   <main>), so the door opened at the top of a long list, or at its foot,
+   off-screen. Here it rides that scroller instead, sticky, and the list
+   scrolls under it. Its height is the screen less the app's header and
+   bottom bar and Operations' own top (about 11rem on an iPad; 12rem is the
+   margin). Voice review follow-up, Sep 27 2026. */
+.ms__frame--hosted {
+  --ms-hosted-chrome: 12rem;
+}
+@media (min-width: 900px) {
+  .ms__frame--hosted > .cp {
+    position: sticky;
+    top: 0.75rem;
+    align-self: flex-start;
+    max-height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+}
+@media (max-width: 899px) {
+  /* The door follows the list rather than lying over the frame, so sticky
+     can hold it at the foot of the screen while the list is in view. */
+  .ms__frame--hosted {
+    flex-direction: column;
+  }
+  .ms__frame--hosted > .cp {
+    position: sticky;
+    left: auto;
+    right: auto;
+    bottom: 0;
+    height: 55dvh;
+    max-height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+  .ms__frame--hosted > .cp--tall {
+    height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+}
+
 /* The Team section: people and standards (relay/team/TeamPanel, which brings
    its own .st__scroll) and the studio's staff below it, as ONE page. The
    panel's scroller is unwound here so the whole section scrolls together;

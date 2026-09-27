@@ -491,7 +491,16 @@ export function StudioInventoryManager({
         <div className="flex items-center gap-2 p-8 text-sm text-[var(--adm-ink-muted)]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading equipment…
         </div>
-      ) : visible.length === 0 ? null : (
+      ) : visible.length === 0 ? (
+        /* Nothing to list. A search that matches nothing says so, rather
+           than leaving a blank page under the box; an empty floor is the
+           caller's to explain (MachinesSection's empty state). */
+        search.trim() ? (
+          <p className="text-sm text-[var(--adm-ink-muted)]">
+            No machine here matches &ldquo;{search.trim()}&rdquo;.
+          </p>
+        ) : null
+      ) : (
         /* One list in the Operations kit's rows (a hairline between rows,
            one border round the list), the same as the other lists on
            Machines, instead of a stock card per machine inside the panel.

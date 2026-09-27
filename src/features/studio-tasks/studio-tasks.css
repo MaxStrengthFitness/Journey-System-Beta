@@ -167,14 +167,23 @@
 .st__row-action:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
 /* ── buttons ────────────────────────────────────────────────────────────── */
+/* The button voice (Sep 27 2026): 14px, bold, sentence case, at least 40px
+   tall. A save is solid blue writing in --st-live-on (--primary); green is
+   for marking a task done and nothing else (--done). */
 .st__btn { min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--st-border-strong);
   border-radius: 10px; background: var(--st-surface); color: var(--st-ink); font: inherit;
-  font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: 14px; font-weight: 700;
   cursor: pointer; white-space: nowrap; }
 .st__btn:hover { background: var(--st-surface-2); }
 .st__btn:disabled { opacity: 0.55; cursor: default; }
 .st__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.st__btn--done { border-color: transparent; background: var(--st-done); color: var(--st-done-on); }
+/* A filled button keeps its fill under the pointer: the plain hover above
+   is a light grey, and an iPad keeps :hover after a tap, so a tapped green
+   button used to turn grey with its white words still on it. */
+.st__btn--primary,
+.st__btn--primary:hover { border-color: transparent; background: var(--st-live); color: var(--st-live-on); }
+.st__btn--done,
+.st__btn--done:hover { border-color: transparent; background: var(--st-done); color: var(--st-done-on); }
 .st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); }
 
 /* ==========================================================================
@@ -264,8 +273,8 @@
 .stq__new { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.7rem; border: 1px solid var(--st-border);
   border-radius: 10px; background: var(--st-surface); color: var(--st-ink-2);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; }
 .stq__new:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
 .stq__composer { padding: 0.75rem 0.875rem; border-bottom: 1px solid var(--st-border);
@@ -274,8 +283,8 @@
 .stq__kind { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-muted);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; cursor: pointer; }
+  font: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; }
 /* Selected in the brand blue, as every other pick on the board is. */
 .stq__kind[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live);
   background: var(--st-live-fill); box-shadow: inset 0 0 0 1px var(--st-live); }
@@ -288,8 +297,8 @@
 .stq__post { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--st-live);
   border-radius: 10px; background: var(--st-live); color: var(--st-live-on);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; cursor: pointer; }
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; }
 .stq__post:disabled { border-color: var(--st-border); background: var(--st-surface-3);
   color: var(--st-ink-muted); cursor: default; }
 
@@ -315,8 +324,8 @@
 .stq__act { display: inline-flex; align-items: center; gap: 0.25rem;
   min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 10px; background: var(--st-surface-2); color: var(--st-ink-2);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; }
 .stq__act[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live); }
 .stq__act:disabled { opacity: 0.5; cursor: default; }
 .stq__act:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
@@ -460,8 +469,8 @@
 .stm__preset { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.7rem; border: 1px dashed var(--st-border-strong);
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-2);
-  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  font: inherit; font-size: 14px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; }
 .stm__preset:hover { background: var(--st-surface-2); }
 .stm__preset:disabled { opacity: 0.5; cursor: default; }
 .stm__preset:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }

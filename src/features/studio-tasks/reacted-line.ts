@@ -10,8 +10,10 @@ import type { reactionSummary } from "./requests";
  * Park, Jo Diaz". In the order the replies are offered, by name, never
  * counted against anyone.
  *
- * A reply whose person has no stored name still counts: it reads "someone",
- * so the line never claims fewer people than the button's count.
+ * A reply whose person has no stored name still counts, so the line never
+ * claims fewer people than the button's count: one is "someone"; more are
+ * "2 people", or "2 others" after a name ("others" needs someone named
+ * before it).
  */
 export function reactedLine(summary: ReturnType<typeof reactionSummary>): string | null {
   const parts = summary
@@ -19,7 +21,8 @@ export function reactedLine(summary: ReturnType<typeof reactionSummary>): string
     .map((r) => {
       const named = r.names.map((n) => n.trim()).filter(Boolean);
       const unnamed = r.ids.length - named.length;
-      const who = [...named, ...(unnamed > 0 ? [unnamed === 1 ? "someone" : `${unnamed} others`] : [])];
+      const rest = unnamed === 1 ? "someone" : named.length > 0 ? `${unnamed} others` : `${unnamed} people`;
+      const who = [...named, ...(unnamed > 0 ? [rest] : [])];
       return `${r.label}: ${who.join(", ")}`;
     });
   return parts.length ? parts.join(" · ") : null;

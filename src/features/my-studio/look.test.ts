@@ -259,6 +259,125 @@ describe("controls in My Studio", () => {
   });
 });
 
+/**
+ * The button voice (Sep 27 2026): a button says what it does in 14px bold
+ * sentence case, as the codex's .cx-btn does; a chip (a filter, a kind) in
+ * 12px bold sentence case, as .cx-chip-btn and the note's kind chips do.
+ * These were 11px spaced capitals until then, which made every button on
+ * My Studio read as a label.
+ */
+const BUTTON_CLASSES = [
+  "st__btn",
+  "stq__new",
+  "stq__post",
+  "stq__act",
+  "stm__preset",
+  "sh__claim",
+  "sh__assign",
+  "sh__markall",
+  "sh__confirm",
+  "sh__mine",
+  "pl__btn",
+  "cf",
+  "nu__do",
+  "tj-open",
+  "tj-done__toggle",
+  "wl__btn",
+] as const;
+const CHIP_CLASSES = ["stq__kind", "sh__chip", "rls__chip", "ne__kind"] as const;
+
+/** Every plain `.cls { ... }` rule, media queries included, as one body. */
+const definition = (cls: string) => {
+  const found = RULES.filter((r) => r.selectors.length === 1 && r.selectors[0] === `.${cls}`);
+  expect(found.length, `.${cls} is defined`).toBeGreaterThan(0);
+  return found.map((r) => r.body).join(";");
+};
+
+describe("My Studio's buttons", () => {
+  it("speak in the button voice: 14px, bold, sentence case", () => {
+    for (const cls of BUTTON_CLASSES) {
+      const body = definition(cls);
+      expect(declared(body, "font-size"), cls).toEqual(["14px"]);
+      expect(declared(body, "font-weight"), cls).toEqual(["700"]);
+      expect(declared(body, "text-transform"), cls).toEqual([]);
+      expect(declared(body, "letter-spacing"), cls).toEqual([]);
+    }
+  });
+
+  it("and chips in the chip voice: 12px, bold, sentence case", () => {
+    for (const cls of CHIP_CLASSES) {
+      const body = definition(cls);
+      expect(declared(body, "font-size"), cls).toEqual(["12px"]);
+      expect(declared(body, "font-weight"), cls).toEqual(["700"]);
+      expect(declared(body, "text-transform"), cls).toEqual([]);
+    }
+  });
+
+  it("are never restyled back into capitals by a variant or a media query", () => {
+    for (const cls of [...BUTTON_CLASSES, ...CHIP_CLASSES]) {
+      for (const r of rulesFor(cls)) {
+        expect(declared(r.body, "text-transform").filter((v) => v === "uppercase"), r.selectors.join(", ")).toEqual([]);
+      }
+    }
+  });
+
+  it("save in solid blue writing in --st-live-on, and keep the fill under a finger", () => {
+    // Green is for marking a task done; a save is blue (THE LOOK, Sep 27 2026).
+    const primary = RULES.filter((r) => r.selectors.includes(".st__btn--primary"));
+    expect(primary.length).toBe(1);
+    expect(primary[0].selectors).toContain(".st__btn--primary:hover");
+    expect(declared(primary[0].body, "background")).toEqual(["var(--st-live)"]);
+    expect(declared(primary[0].body, "color")).toEqual(["var(--st-live-on)"]);
+    const done = RULES.find((r) => r.selectors.includes(".st__btn--done"));
+    expect(done?.selectors).toContain(".st__btn--done:hover");
+  });
+});
+
+describe("what is selected in My Studio", () => {
+  it("is blue, never ink (Sep 27 2026: a note's kind and the Calendar's All were ink)", () => {
+    const selected = [
+      '.ne__kind[aria-pressed="true"]',
+      '.rls__chip[aria-pressed="true"]',
+      '.stq__kind[aria-pressed="true"]',
+      ".sh__chip--on",
+      '.sh__mine[aria-pressed="true"]',
+    ];
+    for (const sel of selected) {
+      const rule = RULES.find((r) => r.selectors.includes(sel));
+      expect(rule, sel).toBeDefined();
+      const paint = [...declared(rule!.body, "background"), ...declared(rule!.body, "border-color")];
+      expect(paint.some((v) => v.startsWith("var(--st-live")), sel).toBe(true);
+      expect(paint.some((v) => /--st-ink/.test(v)), sel).toBe(false);
+    }
+  });
+});
+
+/**
+ * Operations → Floor mounts Machines without My Studio's shell, where
+ * nothing bounds the frame's height, so the machine's door opened at the top
+ * or the foot of a long list, off-screen (voice review follow-up review,
+ * Sep 27 2026). There it rides the page's scroller, sticky. Checked on a
+ * portrait and a landscape iPad-sized page in headless Chrome when it was
+ * made; this holds the rules and the switch that turns them on.
+ */
+describe("the machine's door on Operations → Floor", () => {
+  it("is sticky to the page's scroller, in portrait and in landscape", () => {
+    const door = RULES.filter((r) => r.selectors.includes(".ms__frame--hosted > .cp"));
+    expect(door.length).toBe(2);
+    for (const r of door) {
+      expect(declared(r.body, "position")).toEqual(["sticky"]);
+      expect(declared(r.body, "max-height")).toEqual(["calc(100dvh - var(--ms-hosted-chrome))"]);
+    }
+    expect(door.some((r) => declared(r.body, "bottom").includes("0"))).toBe(true);
+    expect(door.some((r) => declared(r.body, "top").length === 1)).toBe(true);
+  });
+
+  it("is switched on only where there is no Relay shell around Machines", () => {
+    const src = read("features/my-studio/MachinesSection.tsx");
+    expect(src).toMatch(/className=\{relay \? "pl__frame" : "pl__frame ms__frame--hosted"\}/);
+  });
+});
+
 /* ------------------------------------------------------------------ */
 
 describe("My Studio's type", () => {

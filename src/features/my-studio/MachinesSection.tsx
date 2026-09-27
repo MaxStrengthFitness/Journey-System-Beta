@@ -243,8 +243,12 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   const doorMachine = door ? byId[door.machineId] ?? null : null;
   const doorName = doorMachine?.name ?? doorEntry?.machineId ?? "";
 
+  // Without My Studio's shell (Operations → Floor) nothing bounds this
+  // frame's height, so the machine's door rides the page's own scroller
+  // instead of sitting at the top or the foot of a long list, off-screen
+  // (my-studio.css, .ms__frame--hosted).
   return (
-    <div className="pl__frame">
+    <div className={relay ? "pl__frame" : "pl__frame ms__frame--hosted"}>
       <div className="pl__body adm ms__page" role="tabpanel" id="ms-panel" aria-labelledby="ms-tab-machines">
         {/* ── New in the MSF standard ─────────────────────────────────── */}
         {!loading && gaps.newInStandard.length > 0 && (
