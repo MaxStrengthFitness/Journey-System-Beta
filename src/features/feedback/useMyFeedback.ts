@@ -19,10 +19,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { onSnapshot, query, where } from "firebase/firestore";
 import { collection } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import type { FeedbackReport } from "./types";
 
-export function useMyFeedback(userId: string | null | undefined) {
+/**
+ * Read by the signed-in person's Auth uid (voice review follow-up, Sep 27
+ * 2026). The read rule lets a trainer read a report whose `userId` is their
+ * Auth uid (firestore.rules, bug_reports), and on an older account the uid
+ * and the trainer document's id differ, so a query by the document's id was
+ * refused outright. Reports are filed under the uid too (./mutations.ts).
+ * A report an older account filed under its document id before then was
+ * never readable by that trainer and still is not: asking for it as well
+ * would only turn the whole read into a refusal. The signed-in tree is
+ * keyed on the person (sign-out round), so the uid read here is current.
+ */
+export function useMyFeedback() {
+  const userId = auth.currentUser?.uid ?? null;
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

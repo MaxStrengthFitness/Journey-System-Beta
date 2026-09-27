@@ -130,7 +130,8 @@ export function TrainerSettingsView({
   onOpenOperations,
 }: TrainerSettingsViewProps) {
   const { open } = useFeedback();
-  const { reports, counts, error: reportsError } = useMyFeedback(authTrainer?.id);
+  // By the signed-in Auth uid, which the read rule compares to (the hook says why).
+  const { reports, counts, error: reportsError } = useMyFeedback();
 
   const studioName = (id?: string | null) => studios.find((s) => s.id === id)?.name || "—";
   const activeStudio = studios.find((s) => s.id === activeStudioId);

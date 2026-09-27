@@ -4,7 +4,8 @@
  *
  * The listener turned a refused read into an empty list, so Settings hid
  * "Your reports" as though there were none: a failed read shown as empty.
- * It now hands back the error, and a later good read clears it.
+ * It now hands back the error, and a later good read clears it. It asks by
+ * the signed-in Auth uid, the id the read rule compares a report to.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
@@ -17,8 +18,9 @@ const fs = vi.hoisted(() => ({
   next: null as null | ((snap: unknown) => void),
   fail: null as null | ((err: unknown) => void),
   unsubscribed: 0,
+  auth: { currentUser: null as null | { uid: string } },
 }));
-vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: null } }));
+vi.mock("../../firebase", () => ({ db: {}, auth: fs.auth }));
 vi.mock("firebase/firestore", () => ({
   collection: (_db: unknown, path: string) => ({ path }),
   where: (...args: unknown[]) => {
@@ -41,8 +43,8 @@ let root: Root;
 let host: HTMLDivElement;
 let seen: ReturnType<typeof useMyFeedback> | null = null;
 
-function Probe({ id }: { id: string | null }) {
-  seen = useMyFeedback(id);
+function Probe() {
+  seen = useMyFeedback();
   return null;
 }
 
@@ -51,6 +53,7 @@ beforeEach(() => {
   fs.next = null;
   fs.fail = null;
   seen = null;
+  fs.auth.currentUser = { uid: "uid-1" };
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -65,9 +68,14 @@ const snap = (docs: { id: string; data: Record<string, unknown> }[]) => ({
 });
 
 describe("useMyFeedback", () => {
+  it("asks for the reports filed under the signed-in Auth uid, the id the read rule compares", async () => {
+    await act(async () => root.render(<Probe />));
+    expect(fs.wheres).toEqual([["userId", "==", "uid-1"]]);
+  });
+
   it("hands back the error when the read is refused, instead of an empty list that looks like none", async () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    await act(async () => root.render(<Probe id="t1" />));
+    await act(async () => root.render(<Probe />));
     expect(seen!.error).toBeNull();
     await act(async () => fs.fail!(new Error("Missing or insufficient permissions.")));
     expect(seen!.error).toBe("Couldn't load your reports.");
@@ -78,7 +86,7 @@ describe("useMyFeedback", () => {
 
   it("reads the trainer's reports, newest first, and a good read clears an old error", async () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    await act(async () => root.render(<Probe id="t1" />));
+    await act(async () => root.render(<Probe />));
     await act(async () => fs.fail!(new Error("offline")));
     await act(async () =>
       fs.next!(
@@ -95,7 +103,8 @@ describe("useMyFeedback", () => {
   });
 
   it("asks for nothing, and says nothing is wrong, before anyone is signed in", async () => {
-    await act(async () => root.render(<Probe id={null} />));
+    fs.auth.currentUser = null;
+    await act(async () => root.render(<Probe />));
     expect(fs.next).toBeNull();
     expect(seen!.error).toBeNull();
     expect(seen!.reports).toEqual([]);
