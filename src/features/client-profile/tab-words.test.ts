@@ -6,8 +6,10 @@
  * (the Equipment tab, the History tab, the Journal) lingered in messages a
  * trainer reads after something went wrong, which is exactly when a wrong
  * direction costs the most. Each message below now says where the thing
- * really is. These screens are too large to mount here, so the words are held
- * in their source.
+ * really is, and two buttons that landed on Journey (Relay's InBody task,
+ * leaving a progress report) now land where they say. These screens are too
+ * large to mount here, so the words and the handoffs are held in their
+ * source; profile-nav.test.ts holds that each handoff lands.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -52,6 +54,54 @@ describe("messages name today's places", () => {
     const source = read("components/ClientProgressReportView.tsx");
     expect(source).not.toContain("Lead Practitioner Wrap-Up");
     expect(source).toContain("Your closing note, printed at the end of the report");
+  });
+});
+
+describe("buttons land where they say", () => {
+  const app = read("AppContent.tsx");
+  const between = (from: string, to: string) => {
+    const start = app.indexOf(from);
+    const end = app.indexOf(to, start);
+    expect(start, from).toBeGreaterThan(-1);
+    expect(end, to).toBeGreaterThan(start);
+    return app.slice(start, end);
+  };
+
+  it("Relay's InBody task opens Body & Pulse at the InBody card, asked first", () => {
+    const task = between("const openClientTask = (", "<MyStudioView");
+    expect(task).toMatch(/action === "inbody"\s*\?\s*recordLocation\("body", "body-inbody"\)/);
+    expect(task).toMatch(/action === "assessment"\s*\?\s*recordLocation\("body", "body-pulse"\)/);
+    // Written only if the move goes ahead (the unsaved-changes gate holds it).
+    expect(task).toContain("guardLeave(() => openProfileAt(clientId, at))");
+    expect(task).not.toContain("has no screen of its own");
+  });
+
+  it("leaving a progress report hands off to the Activity Archive's Reports", () => {
+    const back = between("const backToRecord = () =>", "if (!reportClient)");
+    expect(back).toContain("guardLeave(");
+    expect(back).toContain('openProfileAt(selectedClientId, { tab: "clinical", view: "reports" })');
+    expect(back).toContain('setCurrentView("profile")');
+    // The handoff is written before the view changes: the profile mounts
+    // fresh and takes it on mount.
+    expect(back.indexOf("openProfileAt(")).toBeLessThan(back.indexOf('setCurrentView("profile")'));
+  });
+
+  it("and the report's words say Reports, never the record", () => {
+    for (const path of ["components/ClientProgressReportView.tsx", "features/progress-report/ReportNotOpened.tsx"]) {
+      const source = read(path);
+      expect(source, path).not.toContain("Back to the record");
+      expect(source, path).not.toContain("Go back to the record");
+      expect(source, path).toContain("Back to Reports");
+    }
+    expect(read("components/ClientProgressReportView.tsx")).toContain(
+      "Go back to Reports and start again from there.",
+    );
+  });
+
+  it("the setup-needed alert names Programming and Notes & Profile, not the Equipment tab", () => {
+    const source = read("components/ClientProfileView.tsx");
+    expect(source).not.toContain("'Equipment' tab");
+    expect(source).toMatch(/Set up their routine in Programming, and their details\s+in Notes &amp; Profile\./);
   });
 });
 

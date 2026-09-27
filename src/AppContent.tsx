@@ -1894,12 +1894,12 @@ export default function AppContent({
                   (() => {
                     // A client task points at the screen where the work is
                     // actually done, rather than being a tick that claims it
-                    // happened. 'inbody' has no screen of its own yet, so it
-                    // lands on the profile — the closest honest destination.
+                    // happened. 'inbody' opens Notes & Profile → Body & Pulse
+                    // at the InBody card, where a scan is added (it landed on
+                    // Journey until the voice review follow-up, Sep 27 2026).
                     // 'assessment' is the Pulse task (the key predates the
-                    // name): Notes & Profile → Body & Pulse, at the Pulse
-                    // card. It used to open the Initial Consultation wizard
-                    // (Sep 24 2026).
+                    // name): the same page, at the Pulse card. It used to
+                    // open the Initial Consultation wizard (Sep 24 2026).
                     const openClientTask = (
                       clientId: string,
                       action?: ClientTaskAction,
@@ -1912,9 +1912,17 @@ export default function AppContent({
                         reportSelection.newReport();
                         return;
                       }
-                      if (action === "assessment") {
-                        openProfileAt(clientId, recordLocation("body", "body-pulse"));
-                      }
+                      // Handed off only if the move goes ahead: asked about
+                      // unsaved typing and told to stay, a handoff written
+                      // anyway would send the next visit to this client
+                      // somewhere nobody asked for.
+                      const at =
+                        action === "assessment"
+                          ? recordLocation("body", "body-pulse")
+                          : action === "inbody"
+                            ? recordLocation("body", "body-inbody")
+                            : null;
+                      if (at) guardLeave(() => openProfileAt(clientId, at));
                       setCurrentView("profile");
                     };
                     return (
@@ -2002,7 +2010,17 @@ export default function AppContent({
                     const reportClient = clients.find(
                       (c) => c.id === selectedClientId,
                     );
-                    const backToRecord = () => setCurrentView("profile");
+                    // Back to the Activity Archive's Reports, where reports
+                    // are kept and most are started, and where the one just
+                    // filed now sits. A one-time handoff (openProfileAt), and
+                    // written only if the move goes ahead (the report's own
+                    // typing is asked about first): the next visit to this
+                    // client opens on Journey as usual.
+                    const backToRecord = () =>
+                      guardLeave(() => {
+                        openProfileAt(selectedClientId, { tab: "clinical", view: "reports" });
+                        setCurrentView("profile");
+                      });
                     if (!reportClient) {
                       return (
                         <ReportNotOpened

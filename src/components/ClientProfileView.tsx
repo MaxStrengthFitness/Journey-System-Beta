@@ -1323,8 +1323,8 @@ export function ClientProfileView({
                     Profile Setup Needed
                   </p>
                   <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest mt-0.5">
-                    Set up their routine in the 'Equipment' tab or head to
-                    profile details to build their profile.
+                    Set up their routine in Programming, and their details
+                    in Notes &amp; Profile.
                   </p>
                 </div>
               </div>

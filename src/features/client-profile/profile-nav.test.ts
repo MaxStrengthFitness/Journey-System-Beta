@@ -734,6 +734,31 @@ describe("stored location", () => {
     expect(() => openProfileAt(null, { tab: "journey" })).not.toThrow();
   });
 
+  it("every handoff another screen writes lands where its button says", () => {
+    // Voice review follow-up (Sep 27 2026): Relay's InBody task opened on
+    // Journey and leaving a progress report did too. Each door below is the
+    // exact location its caller hands off; the profile opens on what comes
+    // back, once, and the next visit is Journey again.
+    const doors: [string, ProfileLocation][] = [
+      // The Hub card's "Past sessions" (ClientsView).
+      ["hub-past-sessions", { tab: "clinical", view: "sessions" }],
+      // Relay's Pulse task and InBody task (AppContent's openClientTask).
+      ["relay-pulse", recordLocation("body", "body-pulse")],
+      ["relay-inbody", recordLocation("body", "body-inbody")],
+      // "Back to Reports" from a progress report (AppContent's backToRecord).
+      ["back-to-reports", { tab: "clinical", view: "reports" }],
+      // Operations -> Machine fit's Check (AdminMachineFitTab).
+      ["machine-fit", { tab: "programming", view: "setup" }],
+    ];
+    for (const [clientId, to] of doors) {
+      openProfileAt(clientId, to);
+      expect(takeStoredLocation(clientId), clientId).toStrictEqual(to);
+      expect(takeStoredLocation(clientId), clientId).toBeNull();
+    }
+    // The InBody task lands on the InBody card itself, not just the page.
+    expect(recordLocation("body", "body-inbody")).toEqual({ tab: "record", page: "body", anchor: "body-inbody" });
+  });
+
   it("returns null for an unknown client, no client, and rubbish", () => {
     expect(readStoredLocation("nobody")).toBeNull();
     expect(readStoredLocation(null)).toBeNull();

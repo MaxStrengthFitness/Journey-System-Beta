@@ -3,7 +3,8 @@
  * loading, the report belongs to someone else, or it could not be read.
  *
  * One plain sentence and a way back. It never offers to start a report —
- * whatever went wrong, the trainer goes back to the record and chooses again
+ * whatever went wrong, the trainer goes back to the client's Reports (the
+ * Activity Archive, where AppContent's handoff lands them) and chooses again
  * from there, where the name on the screen is the client they will get.
  *
  * Imported directly (not through the folder's index) because AppContent
@@ -32,7 +33,7 @@ export function ReportNotOpened({
         onClick={onBack}
         className="text-(--pr-on-navy-2) hover:text-(--pr-on-navy) hover:bg-(--pr-raise-2) font-bold uppercase tracking-[0.3em] text-[11px] h-12 px-8"
       >
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to the record
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Reports
       </Button>
     </div>
   );
