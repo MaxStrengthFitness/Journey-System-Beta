@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Info } from "lucide-react";
+import { useUnsavedChanges } from "../unsaved-changes";
 import {
   PAGE_SECTIONS,
   PAGE_SECTION_LABEL,
@@ -37,6 +38,14 @@ import {
  * `busy` is owned by the caller, which is the thing that actually knows
  * whether Firestore answered. The card this pattern comes from once rendered
  * "Stored Successfully" DURING the request and reverted to "Save" on failure.
+ *
+ * TYPING NEVER VANISHES (voice review follow-up, Sep 27 2026)
+ * -----------------------------------------------------------
+ * Anything typed and not yet saved is registered with the unsaved-changes
+ * guard, so the bottom bar, Learning's sections and the page's own links ask
+ * before they take it away, and so does Cancel. "Leave" is the same as
+ * Cancel: the host closes the editor, so a half-written note can never ride
+ * along to the next page and be saved there.
  */
 
 export interface WikiEditorValues {
@@ -84,6 +93,22 @@ export function WikiEditor({
   const tags = useMemo(
     () => tagText.split(",").map((t) => t.trim()).filter(Boolean),
     [tagText],
+  );
+
+  const changed =
+    (!fixedTitle && title !== (initial?.title ?? "")) ||
+    summary !== (initial?.summary ?? "") ||
+    body !== (initial?.body ?? "") ||
+    section !== (initial?.section ?? (kind === "page" ? "method" : undefined)) ||
+    tagText !== (initial?.tags ?? []).join(", ");
+  const unsaved = useUnsavedChanges(
+    changed,
+    kind === "overlay"
+      ? `the note on ${fixedTitle ?? "this page"}`
+      : initial?.title
+        ? `“${initial.title}”`
+        : "the new page",
+    { onDiscard: onCancel },
   );
 
   const draft: StudioWikiDraft = {
@@ -210,7 +235,7 @@ export function WikiEditor({
         <button
           type="button"
           className="wk__btn"
-          onClick={onCancel}
+          onClick={() => unsaved.guard(onCancel)}
           disabled={busy}
         >
           Cancel

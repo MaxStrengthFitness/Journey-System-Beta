@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UserCog } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
+import { useUnsavedChanges } from "../unsaved-changes";
 import { saveStudioMachineNotes } from "./mutations";
 
 /**
@@ -10,9 +11,18 @@ import { saveStudioMachineNotes } from "./mutations";
  * mutations.ts. What matters here is that the UI never claims a save that did
  * not happen: the version this replaces set one boolean and rendered "Stored
  * Successfully" DURING the request, reverting to "Save Notes" on failure.
+ *
+ * Typing that is not saved is registered with the unsaved-changes guard
+ * (voice review follow-up, Sep 27 2026): the bottom bar, Learning's sections,
+ * the machine page's links and My Studio's sections ask before they take it
+ * away. "Leave" puts the note back to what is saved, because the card itself
+ * can survive a navigation (a studio switch keeps the same machine page), and
+ * a draft typed for one studio must never be saved onto the next.
  */
 export interface StudioNotesCardProps {
   machineId: string;
+  /** For the leave question: "Solon's notes on the Chest Press". */
+  machineName?: string;
   studioId: string | null;
   studioName?: string;
   /** Current value from Firestore, via the adapter. */
@@ -24,6 +34,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function StudioNotesCard({
   machineId,
+  machineName,
   studioId,
   studioName,
   value,
@@ -50,6 +61,18 @@ export function StudioNotesCard({
   }, [machineId, value, dirty]);
 
   const scope = studioName ?? "this studio";
+
+  useUnsavedChanges(
+    dirty && draft !== value,
+    `${scope}’s notes on ${machineName ?? "this machine"}`,
+    {
+      onDiscard: () => {
+        setDraft(value);
+        setDirty(false);
+        setState("idle");
+      },
+    },
+  );
 
   const save = async () => {
     if (!studioId) {

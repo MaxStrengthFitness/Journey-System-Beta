@@ -728,6 +728,7 @@ export function CatalogWikiView({
           studioNotes={
             <StudioNotesCard
               machineId={selected.id}
+              machineName={selected.name}
               studioId={activeStudioId}
               studioName={activeStudio?.name}
               value={selected.studioNotes}

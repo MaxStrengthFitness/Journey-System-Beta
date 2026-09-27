@@ -1,4 +1,5 @@
 import { BodyModel } from "../../components/anatomy";
+import { useWikiPageGuard } from "../wiki/page-guard";
 import type { MachineAnatomy } from "./anatomy";
 
 /**
@@ -41,6 +42,9 @@ export function MachineFigure({
   onGenderChange,
   onRegionClick,
 }: MachineFigureProps) {
+  // A muscle is a link to another machine's page: it asks about typing on
+  // this one first (features/wiki/page-guard).
+  const guard = useWikiPageGuard();
   return (
     <div>
       <div className="wk__figure">
@@ -49,7 +53,7 @@ export function MachineFigure({
           secondary={anatomy.secondary}
           gender={gender}
           view={view}
-          onRegionClick={onRegionClick}
+          onRegionClick={onRegionClick ? (slug) => guard(() => onRegionClick(slug)) : undefined}
         />
       </div>
 

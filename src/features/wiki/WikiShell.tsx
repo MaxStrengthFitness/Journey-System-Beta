@@ -1,5 +1,11 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
+import {
+  UnsavedChangesScope,
+  useLeaveScope,
+  type LeaveScope,
+} from "../unsaved-changes";
+import { WikiPageGuardContext } from "./page-guard";
 import {
   WikiSectionSwitch,
   activeSectionLabel,
@@ -40,6 +46,16 @@ import {
  * bottom nav is a sibling after it, so there is no viewport maths here and no
  * padding to clear a bar that is not overlapping anything. Nested scrollers
  * are what buried Clinical Warnings in a half-screen box last round.
+ *
+ * TYPING ON A PAGE (voice review follow-up, Sep 27 2026)
+ * ------------------------------------------------------
+ * A page is plain state, so the trail swapped it without asking and a half-
+ * written studio note went with it. The page is now a leave scope
+ * (features/unsaved-changes): the back arrow, the crumbs, the section's own
+ * root and a search that replaces the page all ask first when something on
+ * the page holds unsaved typing, and links inside the page ask through
+ * `useWikiPageGuard` (./page-guard). The masthead's search does not ask: it
+ * hides the page rather than unmounting it.
  */
 
 export interface WikiCrumb {
@@ -74,14 +90,26 @@ export interface WikiShellProps {
 }
 
 export function WikiShell({
-  crumbs,
+  crumbs: rawCrumbs,
   scrollKey,
-  onOpenSearch,
+  onOpenSearch: rawOpenSearch,
   searchLabel = "Search",
   actions,
   children,
   className,
 }: WikiShellProps) {
+  // The page is a leave scope: every way off it that the shell draws asks
+  // about the typing on it first (see the header).
+  const page = useLeaveScope();
+  const crumbs = useMemo(
+    () =>
+      rawCrumbs.map((c) => {
+        const go = c.onClick;
+        return go ? { ...c, onClick: () => page.guard(go) } : c;
+      }),
+    [rawCrumbs, page],
+  );
+  const onOpenSearch = rawOpenSearch ? () => page.guard(rawOpenSearch) : undefined;
   const up = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
   // Inside the Learning tab the bar also carries the Catalog | Academy switch
   // — see ./sections. Outside it, `sections` is null and nothing below changes.
@@ -106,6 +134,9 @@ export function WikiShell({
         hideTrail={hideTrail}
         pageKey={pageKey}
         keepsPlace={keepsPlace}
+        page={page}
+        // The Learning tab's own search hides the page and never unmounts
+        // it, so only a page's own search screen asks.
         onOpenSearch={sections.onSearch ?? onOpenSearch}
         searchLabel={sections.searchLabel ?? searchLabel}
         actions={actions}
@@ -196,7 +227,7 @@ export function WikiShell({
         </div>
       </header>
 
-      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace} page={page}>
         {children}
       </PageScroller>
     </div>
@@ -229,6 +260,7 @@ function MastheadShell({
   hideTrail,
   pageKey,
   keepsPlace,
+  page,
   onOpenSearch,
   searchLabel,
   actions,
@@ -242,6 +274,7 @@ function MastheadShell({
   hideTrail: boolean;
   pageKey: string;
   keepsPlace: boolean;
+  page: LeaveScope;
   onOpenSearch?: () => void;
   searchLabel: string;
   actions?: ReactNode;
@@ -330,7 +363,7 @@ function MastheadShell({
         </div>
       )}
 
-      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace} page={page}>
         {children}
       </PageScroller>
     </div>
@@ -355,10 +388,12 @@ function MastheadShell({
 function PageScroller({
   pageKey,
   keepsPlace,
+  page,
   children,
 }: {
   pageKey: string;
   keepsPlace: boolean;
+  page: LeaveScope;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -375,7 +410,9 @@ function PageScroller({
       ref={ref}
       onScroll={(e) => placeOf.set(keyRef.current, e.currentTarget.scrollTop)}
     >
-      {children}
+      <UnsavedChangesScope scope={page}>
+        <WikiPageGuardContext.Provider value={page.guard}>{children}</WikiPageGuardContext.Provider>
+      </UnsavedChangesScope>
     </div>
   );
 }

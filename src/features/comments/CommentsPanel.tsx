@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { MessageSquare, PencilLine, Trash2 } from "lucide-react";
 import { whenLabel } from "../wiki/studio-wiki";
 import { learningRefKey, toStoredLearningRef, type LearningRef } from "../learning/ref";
+import { useUnsavedChanges } from "../unsaved-changes";
 import { useCommentsContext } from "./CommentsContext";
 import { useComments } from "./hooks";
 import { deleteComment, editComment, postComment } from "./mutations";
@@ -232,6 +233,25 @@ function Composer({
   const [problem, setProblem] = useState<string | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
+  // Words typed and not posted: the unsaved-changes guard asks before the
+  // bottom bar, a section or a link on the page takes them away (voice
+  // review follow-up, Sep 27 2026). An edit's Cancel asks too.
+  const unsaved = useUnsavedChanges(
+    body.trim() !== (initial?.body ?? "").trim(),
+    initial ? "your comment" : "the comment you are writing",
+    {
+      onDiscard: () => {
+        if (onCancel) {
+          onCancel();
+          return;
+        }
+        setBody(initial?.body ?? "");
+        setCaret(0);
+        setPicked(initial?.mentions ?? []);
+      },
+    },
+  );
+
   const mention = activeMention(body, caret);
   const open =
     mention && mention.start !== dismissedAt && !tagIsFinished(people, mention.query) ? mention : null;
@@ -354,7 +374,7 @@ function Composer({
         {problem && <span className="cm__error">{problem}</span>}
         <span className="cm__row-actions">
           {onCancel && (
-            <button type="button" className="cm__btn" onClick={onCancel} disabled={busy}>
+            <button type="button" className="cm__btn" onClick={() => unsaved.guard(onCancel)} disabled={busy}>
               Cancel
             </button>
           )}
