@@ -27,11 +27,25 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(join(here, "..", ...p), "utf8");
 
+/**
+ * The Catalog's upkeep card is the .stu block of studio-tasks.css, and only
+ * that block: the rest of the sheet is Relay's. The same slice
+ * learning-tokens.test.ts takes.
+ */
+function upkeepBlock(): string {
+  const css = read("studio-tasks", "studio-tasks.css");
+  const start = css.indexOf(".stu {");
+  const lane = css.indexOf("REQUESTS LANE", start);
+  if (start < 0 || lane < 0) throw new Error("the .stu block moved");
+  return css.slice(start, css.lastIndexOf("/*", lane));
+}
+
 const SHEETS: Record<string, string> = {
   "wiki/wiki.css": read("wiki", "wiki.css"),
   "learning/learning.css": read("learning", "learning.css"),
   "catalog/catalog.css": read("catalog", "catalog.css"),
   "comments/comments.css": read("comments", "comments.css"),
+  "studio-tasks/studio-tasks.css .stu": upkeepBlock(),
 };
 
 interface Rule {
@@ -110,6 +124,8 @@ const TAPS: Record<string, "height" | "square"> = {
   ".cm__link": "height",
   ".cm__pick": "height",
   ".cm__btn": "height",
+  ".stu__tick": "square",
+  ".stu__note": "height",
 };
 
 describe("Learning's controls are 40px or more", () => {

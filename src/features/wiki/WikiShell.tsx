@@ -55,8 +55,11 @@ import {
  * (features/unsaved-changes): the back arrow, the crumbs, the section's own
  * root and a search that replaces the page all ask first when something on
  * the page holds unsaved typing, and links inside the page ask through
- * `useWikiPageGuard` (./page-guard). The masthead's search does not ask: it
- * hides the page rather than unmounting it.
+ * `useWikiPageGuard` (./page-guard). OPENING the masthead's search does not
+ * ask, because it only hides the page; PICKING a result does replace the
+ * page, so LearningView asks then, as it does for every door that opens a
+ * page from outside the page (a tile on the Overview, a machine chip on an
+ * Academy page).
  */
 
 export interface WikiCrumb {
@@ -136,8 +139,9 @@ export function WikiShell({
         pageKey={pageKey}
         keepsPlace={keepsPlace}
         page={page}
-        // The Learning tab's own search hides the page and never unmounts
-        // it, so only a page's own search screen asks.
+        // Opening the Learning tab's own search hides the page and never
+        // unmounts it, so it does not ask here; LearningView asks when a
+        // result is picked. A page's own search screen asks as it opens.
         onOpenSearch={sections.onSearch ?? onOpenSearch}
         searchLabel={sections.searchLabel ?? searchLabel}
         actions={actions}

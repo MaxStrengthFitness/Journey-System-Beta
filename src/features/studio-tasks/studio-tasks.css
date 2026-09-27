@@ -178,8 +178,11 @@
   border: 1px solid var(--wk-border); border-radius: 10px; background: var(--wk-surface); }
 .stu__task[data-done] .stu__task-name { color: var(--wk-ink-muted); }
 
+/* An undone tick is drawn only by its border, so the border is in the muted
+   ink (5.8:1 on white): the strong border colour was 2.2:1, under the 3:1 a
+   control's outline needs. */
 .stu__tick { flex: none; display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border: 2px solid var(--wk-border-strong); border-radius: 10px;
+  width: 40px; height: 40px; border: 2px solid var(--wk-ink-muted); border-radius: 10px;
   background: transparent; color: transparent; cursor: pointer; }
 /* The tick in the card's own surface colour: white on the light green, near
    black on the dark theme's brighter green (white there was 1.9:1). */

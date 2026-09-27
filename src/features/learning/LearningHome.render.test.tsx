@@ -116,7 +116,7 @@ describe("the Learning front page, mounted", () => {
     expect(names).toEqual(expect.arrayContaining(["Chest Press", "Leg Press"]));
   });
 
-  it("opens a machine from its tile, through the page's guard", async () => {
+  it("opens a machine from its tile", async () => {
     fx.machines = [machine("m-chest-press", "Chest Press")];
     onOpen.mockClear();
     await mount();

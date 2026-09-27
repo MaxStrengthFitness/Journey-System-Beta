@@ -257,6 +257,8 @@ describe("one meaning per colour in Learning", () => {
     const block = code(upkeepBlock());
     expect(block).not.toMatch(/var\(--st-/);
     expect(block).toMatch(/\.stu__flag\s*\{[^}]*color:\s*var\(--wk-warn\)/);
+    // An undone tick is only its border: the muted ink, which reaches 3:1.
+    expect(block).toMatch(/\.stu__tick\s*\{[^}]*border:\s*2px solid var\(--wk-ink-muted\)/);
   });
 
   it("makes every Save solid blue with its on-colour, never orange", () => {

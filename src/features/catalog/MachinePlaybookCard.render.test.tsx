@@ -5,12 +5,15 @@
  * A tip's confirmations were a tick and a bare number whose meaning ("N
  * trainers confirmed this") lived only in a hover tooltip, which an iPad
  * never shows. They are said in words now.
+ *
+ * The card lives in studio-tasks/ but only the Catalog's machine page mounts
+ * it, so its test sits here, with the page it belongs to.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { PlaybookEntry } from "./playbook";
-import { MachinePlaybookCard, confirmedBy } from "./MachinePlaybookCard";
+import type { PlaybookEntry } from "../studio-tasks/playbook";
+import { MachinePlaybookCard, confirmedBy } from "../studio-tasks/MachinePlaybookCard";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
