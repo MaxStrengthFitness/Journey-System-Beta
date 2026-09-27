@@ -231,6 +231,16 @@ const norm = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, 
 const isRotation = (name: string) => /(^|\s)rotation$/.test(name);
 
 /**
+ * A booking's staff name that is the studio rotation ("{studio} Rotation"),
+ * read exactly as `trainerOf` reads it. Openings (features/openings/whose.ts)
+ * asks it to tell the rotation from a booking that names nobody, which
+ * `trainerOf` answers alike ("unknown").
+ */
+export function isRotationName(name: string | null | undefined): boolean {
+  return isRotation(norm(name));
+}
+
+/**
  * The booking's trainer against the slot's (WHOSE BOOKING above):
  *
  *   same      the trainer's: by trainer id, by staff id at this site, or by name
@@ -238,10 +248,16 @@ const isRotation = (name: string) => /(^|\s)rotation$/.test(name);
  *   unknown   nobody's in particular: the rotation, or no staff named
  *   unlinked  a staff member Journey couldn't link, under another name or
  *             another staff id: proves nothing either way
+ *
+ * Exported for Openings (features/openings/whose.ts), which places each
+ * booking with a trainer by this very rule, so the two can't disagree.
  */
-type Whose = "same" | "other" | "unknown" | "unlinked";
+export type Whose = "same" | "other" | "unknown" | "unlinked";
 
-function trainerOf(b: BookingView, s: Slot): Whose {
+export function trainerOf(
+  b: Pick<BookingView, "trainerName" | "trainerId" | "staffId">,
+  s: Pick<Slot, "trainerId" | "trainerName" | "staffId">,
+): Whose {
   const name = norm(b.trainerName);
   if (isRotation(name)) return "unknown";
   if (b.trainerId) return b.trainerId === s.trainerId ? "same" : "other";
