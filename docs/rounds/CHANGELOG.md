@@ -726,6 +726,16 @@ AJ went through the live app at iPad size and pointed at things; each was fixed 
 - [ ] See the grid open on the newest session on a real iPad, and a busy month of the client calendar upright.
 - [ ] AJ: which "sessions left" a profile shows (header 36 left vs Account 48 on hand), and whether Operations → Changes should use the calendar's real-rebook rule.
 
+### 🎙️ Built — The voice review and the standing week (Sep 27) — branch `claude/wizardly-davinci-x3onwn`, one commit per phase, waiting for AJ's go
+
+*Appended out of order, like the rounds below it.* The rounds are `2026-09-27-voice-review.md` and `2026-09-27-standing-week.md`.
+
+AJ's voice review of the Screen Atlas, built: the post-session screen is the **Wrap-up** (briefing is strictly pre-session), with the End Session box as the **Note for the next trainer** and the Wrap-up's **Profile note** that can stay on the profile without reaching the briefing; the profile's four tabs by depth, recorded word for word and held by a test; the network's focus and launch moved to Operations → All my studios and the ranking of studios dropped; Relay as Floor · Mine · Notes for the trainer between clients; Team as people and standards; Settings in the calm card and Learning in the app's palette (the clinical warnings in the app's caution plum). Then the **standing week** (option A): a trainer proposes their usual week on My Profile, a leader agrees it on Team, and the next seven days' Mindbody bookings are checked against it — never written to Mindbody. One new rules block (`studios/{s}/standingWeeks`), no index, no function. Typecheck 4; tests 5,863 in 377 files; rules tests 173 (the cloud container).
+
+- [ ] `scripts/ship/ship-voice-review.ps1 prepare`, then `golive` (the rules first, the restore tag `restore/2026-09-27-before-voice-review-golive`, then the push).
+- [ ] Walk Round 20 of `docs/ops/TESTING-CHECKLIST.md` on two iPads: a Life Transformer's and a head trainer's.
+- [ ] AJ: the open questions at the foot of `2026-09-27-voice-review.md` (the two sign-out names, the Hub's outline for a free slot, Changes and the real-rebook rule).
+
 ### 🛬 Built — The landing (Sep 24) — branch `landing-sep24`, one merge per branch, waiting for AJ's go
 
 *Appended out of order, like the codex below it.* The round is `2026-09-24-landing.md`.

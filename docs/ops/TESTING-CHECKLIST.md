@@ -1268,6 +1268,21 @@ Transformer's iPad and a head trainer's, portrait and landscape.
 - [ ] **The profile's four tabs** run Journey · Programming · Notes & Profile ·
   Activity Archive, in that order.
 
+**Settings and Learning**
+
+- [ ] **Settings reads plainly.** Tap the gear (its label is "Trainer
+  Settings"): My account shows the role's name ("Life Transformer", "Studio
+  Leader"), never "HeadTrainer"; Mindbody says Linked, or "Not linked — a
+  studio leader links you on My Studio → Team", readable in both themes. My
+  studio says how many people are on the team and no machine count.
+- [ ] **Open Operations opens Operations mode.** As a head trainer, Settings ->
+  Open Operations: the Operations bar is underneath and the menu's App Mode
+  says Operations. As a Life Transformer: no Operations card at all.
+- [ ] **Learning's warnings are the app's caution colour.** Learning -> Catalog
+  -> a machine with clinical warnings: the box is plum, not amber, in light
+  and dark. In dark mode, the orange buttons (a wiki page's Save, the studio
+  setting sheet's Save) have dark text you can read.
+
 **The standing week — the trainer (My Profile)**
 
 - [ ] **The card is on your own profile, at your studio.** Open your own
