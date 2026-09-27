@@ -52,6 +52,34 @@ export interface InitiativeTarget {
 }
 
 /**
+ * The target as it is WRITTEN: only what was chosen, never `undefined`.
+ *
+ * Firestore's browser library refuses a document holding `undefined` before
+ * the write leaves the iPad, so one blank field sinks the whole initiative.
+ * Relay's Network form and Team's "Route to team" both sent
+ * `dueOn: undefined` on their default "No date" and `perTrainer: undefined`
+ * on "No number": the launch posted at 0 of N studios and the route said
+ * "check your connection" (voice-review round, Sep 27 2026). Every door now
+ * goes through here.
+ *
+ * `perTrainer` keeps a 0 ("no number, participation only" — the same shape
+ * whether or not a count was chosen); a negative or fractional count is
+ * rounded into range; a count that isn't a number is left out. `dueOn` is
+ * kept only as a YYYY-MM-DD day.
+ */
+export function targetForWrite(target: InitiativeTarget): InitiativeTarget {
+  const perTrainer =
+    typeof target.perTrainer === "number" && Number.isFinite(target.perTrainer)
+      ? Math.max(0, Math.round(target.perTrainer))
+      : null;
+  return {
+    ...(target.action ? { action: target.action } : {}),
+    ...(perTrainer === null ? {} : { perTrainer }),
+    ...(typeof target.dueOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(target.dueOn) ? { dueOn: target.dueOn } : {}),
+  };
+}
+
+/**
  * One client a trainer logged against an initiative.
  *
  * The client id IS stored here, unlike the playbook. That is deliberate and

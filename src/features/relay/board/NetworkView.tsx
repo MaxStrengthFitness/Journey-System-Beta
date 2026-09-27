@@ -135,7 +135,7 @@ export function NetworkView() {
     let ok = 0;
     for (const s of studios) {
       try {
-        await createRequest({ studioId: s.id, author, kind: "initiative", title: title.trim(), detail: `A network initiative for every studio.`, target: { action, perTrainer: perTrainer || undefined, dueOn: dueOn ?? undefined }, priority: "normal", expiry: "none" });
+        await createRequest({ studioId: s.id, author, kind: "initiative", title: title.trim(), detail: `A network initiative for every studio.`, target: { action, perTrainer, ...(dueOn ? { dueOn } : {}) }, priority: "normal", expiry: "none" });
         ok += 1;
       } catch (err) {
         console.warn(`[relay] initiative at ${s.id} failed:`, err);

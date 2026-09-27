@@ -198,7 +198,7 @@ function RouteToTeamSheet({ cohort, members, roster, onOpenChange }: { cohort: C
           kind: "initiative",
           title: title.trim() || COHORT_LABEL[cohort],
           detail: `${COHORT_LABEL[cohort]}: ${members.map((m) => m.name).slice(0, 20).join(", ")}${members.length > 20 ? ` and ${members.length - 20} more` : ""}`,
-          target: { action, perTrainer: perTrainer || undefined, dueOn: dueOn ?? undefined },
+          target: { action, perTrainer, ...(dueOn ? { dueOn } : {}) },
           priority: "normal",
           expiry: "none",
         });
