@@ -2,7 +2,9 @@
    TEAM — My Studio → Team: people and standards
    --------------------------------------------------------------------------
    Round: Planner rework, Sep 2026 (it was Relay's Team tab then). On the
-   --st-* tokens; prefix .tm-.
+   --st-* tokens; prefix .tm-. Since Sep 27 2026 every card on Team is the
+   header-strip card and every heading the one small-capitals style
+   (planner.css .pl__list-head).
    ========================================================================== */
 
 .tm-fair {
@@ -31,19 +33,29 @@
 }
 .tm-cards > li { display: flex; min-width: 0; }
 
+/* A person's card is a header-strip card, like every other card on Team
+   (the standing duties, the open loops, the vault, the Operations-kit
+   panels): one border, 14px corners, the person in a tinted strip, the
+   week's lines under it. Until Sep 27 2026 it was a plain padded box. */
 .tm-card {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
   min-width: 0;
-  padding: 12px 14px;
   border: 1px solid var(--st-border);
   border-radius: var(--st-radius);
   background: var(--st-surface);
+  overflow: hidden;
 }
 
-.tm-card__head { display: flex; align-items: center; gap: 0.625rem; }
+.tm-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 10px 14px;
+  background: var(--st-surface-2);
+  border-bottom: 1px solid var(--st-border);
+}
 .tm-card__head .rk-avatar { width: 34px; height: 34px; font-size: 12px; }
 .tm-card__who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .tm-card__name { font-size: 14px; font-weight: 800; overflow-wrap: anywhere; }
@@ -55,7 +67,7 @@
   color: var(--st-ink-muted);
 }
 
-.tm-card__lines { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tm-card__lines { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 12px 14px; list-style: none; }
 .tm-line {
   position: relative;
   padding-left: 14px;
@@ -82,8 +94,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: auto;
-  padding-top: 8px;
+  margin: auto 14px 0;
+  padding: 8px 0 12px;
   border-top: 1px solid var(--st-border);
 }
 .tm-card__foot .tj-open { display: inline-flex; align-items: center; gap: 4px; }

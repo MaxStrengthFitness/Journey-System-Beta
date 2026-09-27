@@ -27,10 +27,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { db, auth } from "../../../firebase";
 import { seedStandardSet } from "../equipment/seed";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
   ArrowUpDown, GripVertical, RotateCcw, Check, X, Pencil,
@@ -40,7 +38,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { RosterStatus } from "../../../types/machines";
 import { StudioMachineEditor } from "./StudioMachineEditor";
 import type { EditScope } from "../../../lib/machine-template";
-import { AdminButton } from "../primitives";
+import { AdminBadge, AdminButton, AdminNotice } from "../primitives";
 import "../admin.css";
 
 /**
@@ -86,17 +84,17 @@ function SortableFloorRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5",
+        "flex items-center gap-3 rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)] px-3 py-1",
         isDragging && "opacity-80 shadow-lg",
       )}
     >
-      <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-muted-foreground">
+      <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-[var(--adm-ink-muted)]">
         {position}
       </span>
-      <span className="min-w-0 flex-1 break-words font-bold uppercase">{name}</span>
+      <span className="adm-row__name min-w-0 flex-1">{name}</span>
       <button
         type="button"
-        className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing"
+        className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg text-[var(--adm-ink-muted)] active:cursor-grabbing"
         aria-label={`Reorder ${name}`}
         {...attributes}
         {...listeners}
@@ -202,15 +200,7 @@ export function StudioInventoryManager({
   );
 
   if (!studioId) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            Select a studio to manage its equipment.
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return <AdminNotice tone="info">Select a studio to manage its equipment.</AdminNotice>;
   }
 
   /** Add a catalog machine to this roster, or flip its status. */
@@ -405,7 +395,7 @@ export function StudioInventoryManager({
               Equipment {studioName ? `· ${studioName}` : ""}
             </h2>
           )}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--adm-ink-muted)]">
             {ownedCount} machine{ownedCount === 1 ? "" : "s"} in service. Trainers running a
             session here see exactly this list.
           </p>
@@ -474,7 +464,7 @@ export function StudioInventoryManager({
            that does not exist once the filter clears. Search is hidden above
            for the same reason. */
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--adm-ink-muted)]">
             Drag to set the order trainers see. This is the sequence used by the
             Catalog, the client&rsquo;s Journey grid and the Active Session.
           </p>
@@ -498,111 +488,112 @@ export function StudioInventoryManager({
           </DndContext>
         </div>
       ) : loading ? (
-        <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 p-8 text-sm text-[var(--adm-ink-muted)]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading equipment…
         </div>
-      ) : (
-        <div className="flex flex-col gap-2">
+      ) : visible.length === 0 ? null : (
+        /* One list in the Operations kit's rows (a hairline between rows,
+           one border round the list), the same as the other lists on
+           Machines, instead of a stock card per machine inside the panel.
+           Voice review follow-up, Sep 27 2026. */
+        <div className="adm-rows overflow-hidden rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)]">
           {visible.map((m) => {
             const rostered = rosteredIds.has(m.machineId);
             const owned = rostered && m.rosterStatus !== "inactive";
             return (
-              <Card
+              <div
                 key={m.machineId}
-                className={owned ? "" : "opacity-60"}
+                className={cn(
+                  "flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between",
+                  !owned && "opacity-60",
+                )}
               >
-                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold uppercase">{m.name}</span>
-                      {m.source === "custom" && (
-                        <Badge variant="secondary" className="text-[10px]">Ours</Badge>
-                      )}
-                      {m.rosterStatus === "maintenance" && (
-                        <Badge variant="outline" className="gap-1 text-[10px]">
-                          <Wrench className="h-3 w-3" /> Maintenance
-                        </Badge>
-                      )}
-                      {m.overriddenFields.length > 0 && (
-                        <Badge variant="outline" className="text-[10px]">
-                          {m.overriddenFields.length} override
-                          {m.overriddenFields.length === 1 ? "" : "s"}
-                        </Badge>
-                      )}
-                      {m.catalogStatus === "retired" && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Retired from catalog
-                        </Badge>
-                      )}
-                      {m.execution?.neverToFailure && (
-                        <Badge variant="destructive" className="gap-1 text-[10px]">
-                          <ShieldAlert className="h-3 w-3" /> Never to failure
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 break-words text-xs text-muted-foreground">
-                      {m.movementPattern} · gap {m.universalBaseline?.startingWeightStackGap || "—"}
-                    </p>
-                    {flags?.[m.machineId] && (
-                      <p className="mt-1 text-xs font-semibold text-muted-foreground">{flags[m.machineId]}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="adm-row__name">{m.name}</span>
+                    {m.source === "custom" && <AdminBadge tone="neutral">Ours</AdminBadge>}
+                    {m.rosterStatus === "maintenance" && (
+                      <AdminBadge tone="warn" icon={<Wrench className="h-3 w-3" aria-hidden />}>
+                        Maintenance
+                      </AdminBadge>
+                    )}
+                    {m.overriddenFields.length > 0 && (
+                      <AdminBadge tone="neutral">
+                        {m.overriddenFields.length} override
+                        {m.overriddenFields.length === 1 ? "" : "s"}
+                      </AdminBadge>
+                    )}
+                    {m.catalogStatus === "retired" && (
+                      <AdminBadge tone="neutral">Retired from catalog</AdminBadge>
+                    )}
+                    {m.execution?.neverToFailure && (
+                      <AdminBadge tone="alert" icon={<ShieldAlert className="h-3 w-3" aria-hidden />}>
+                        Never to failure
+                      </AdminBadge>
                     )}
                   </div>
+                  <p className="adm-row__meta break-words">
+                    {m.movementPattern} · gap {m.universalBaseline?.startingWeightStackGap || "—"}
+                  </p>
+                  {flags?.[m.machineId] && (
+                    <p className="adm-row__meta font-semibold">{flags[m.machineId]}</p>
+                  )}
+                </div>
 
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {onOpenMachine && rostered && (
-                      <AdminButton size="sm" variant="quiet" onClick={() => onOpenMachine(m.machineId)}>
-                        Open
-                      </AdminButton>
-                    )}
-                    {/* The door that did not exist. A custom machine could
-                        not be edited at all once saved, and a catalog
-                        machine's local copy could only override its name. */}
-                    {rostered && !readOnly && (
-                      <AdminButton
-                        variant="quiet"
-                        size="sm"
-                        onClick={() => setEditing({ kind: "entry", machineId: m.machineId })}
-                      >
-                        <Pencil className="h-3.5 w-3.5" aria-hidden />
-                        {m.source === "custom" ? "Edit" : "Set up for us"}
-                      </AdminButton>
-                    )}
-                    {owned && !readOnly && (
-                      <label className="flex min-h-10 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-                        <Switch
-                          checked={m.rosterStatus === "maintenance"}
-                          onCheckedChange={(c) =>
-                            setRosterStatus(m.machineId, c ? "maintenance" : "active")
-                          }
-                        />
-                        Out of service
-                      </label>
-                    )}
-
-                    {readOnly ? null : owned ? (
-                      <AdminButton
-                        variant="ghost" size="sm"
-                        busy={busy === m.machineId}
-                        onClick={() =>
-                          m.source === "custom"
-                            ? removeFromRoster(m.machineId)
-                            : setRosterStatus(m.machineId, "inactive")
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {onOpenMachine && rostered && (
+                    <AdminButton size="sm" variant="quiet" onClick={() => onOpenMachine(m.machineId)}>
+                      Open
+                    </AdminButton>
+                  )}
+                  {/* The door that did not exist. A custom machine could
+                      not be edited at all once saved, and a catalog
+                      machine's local copy could only override its name. */}
+                  {rostered && !readOnly && (
+                    <AdminButton
+                      variant="quiet"
+                      size="sm"
+                      onClick={() => setEditing({ kind: "entry", machineId: m.machineId })}
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      {m.source === "custom" ? "Edit" : "Set up for us"}
+                    </AdminButton>
+                  )}
+                  {owned && !readOnly && (
+                    <label className="flex min-h-10 cursor-pointer items-center gap-1.5 text-xs text-[var(--adm-ink-muted)]">
+                      <Switch
+                        checked={m.rosterStatus === "maintenance"}
+                        onCheckedChange={(c) =>
+                          setRosterStatus(m.machineId, c ? "maintenance" : "active")
                         }
-                      >
-                        {busy !== m.machineId && "We don't have this"}
-                      </AdminButton>
-                    ) : (
-                      <AdminButton
-                        variant="quiet" size="sm"
-                        busy={busy === m.machineId}
-                        onClick={() => setRosterStatus(m.machineId, "active")}
-                      >
-                        {busy !== m.machineId && <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> We have this</>}
-                      </AdminButton>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      />
+                      Out of service
+                    </label>
+                  )}
+
+                  {readOnly ? null : owned ? (
+                    <AdminButton
+                      variant="ghost" size="sm"
+                      busy={busy === m.machineId}
+                      onClick={() =>
+                        m.source === "custom"
+                          ? removeFromRoster(m.machineId)
+                          : setRosterStatus(m.machineId, "inactive")
+                      }
+                    >
+                      {busy !== m.machineId && "We don't have this"}
+                    </AdminButton>
+                  ) : (
+                    <AdminButton
+                      variant="quiet" size="sm"
+                      busy={busy === m.machineId}
+                      onClick={() => setRosterStatus(m.machineId, "active")}
+                    >
+                      {busy !== m.machineId && <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> We have this</>}
+                    </AdminButton>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>

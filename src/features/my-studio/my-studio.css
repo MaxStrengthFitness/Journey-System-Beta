@@ -20,7 +20,8 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 0 1rem 6rem;
+  /* The first card sits a gap below the masthead rather than on its line. */
+  padding: 0.875rem 1rem 6rem;
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
@@ -45,13 +46,15 @@
   flex-direction: column;
   gap: 1.25rem;
 }
+/* The door's section heads are the one heading style (planner.css,
+   .pl__list-head): small upright capitals, 12px. */
 .ms__door-h {
   margin: 0 0 0.25rem;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 .ms__door-sub {
   margin: 0 0 0.625rem;

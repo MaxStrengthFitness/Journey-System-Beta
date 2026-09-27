@@ -286,6 +286,44 @@ describe("My Studio's type", () => {
     expect(px(declared(head.body, "font-size")[0])).toBeLessThanOrEqual(12);
   });
 
+  it("has one heading style for every card and section head (Sep 27 2026)", () => {
+    // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h"]) {
+      const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
+      expect(head, cls).toBeDefined();
+      expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);
+      expect(declared(head.body, "font-weight"), cls).toEqual(["800"]);
+      expect(declared(head.body, "letter-spacing"), cls).toEqual(["0.12em"]);
+      expect(declared(head.body, "text-transform"), cls).toEqual(["uppercase"]);
+      expect(declared(head.body, "font-style"), cls).toEqual([]);
+    }
+  });
+
+  it("draws Team's cards as header-strip cards: one border, 14px corners, a tinted head (Sep 27 2026)", () => {
+    const cards: [card: string, head: string][] = [
+      [".tm-card", ".tm-card__head"], // a person's week
+      [".tc", ".tc > .rl-h"], // open loops, the vault
+      [".stm__panel", ".stm__head"], // the standing duties and their seven days
+    ];
+    for (const [card, head] of cards) {
+      const c = RULES.find((r) => r.selectors.includes(card));
+      const h = RULES.find((r) => r.selectors.includes(head));
+      expect(c && declared(c.body, "border"), card).toEqual(["1px solid var(--st-border)"]);
+      expect(c && declared(c.body, "border-radius"), card).toEqual(["var(--st-radius)"]);
+      expect(c && declared(c.body, "overflow"), card).toEqual(["hidden"]);
+      expect(h && declared(h.body, "background"), head).toEqual(["var(--st-surface-2)"]);
+      expect(h && declared(h.body, "border-bottom"), head).toEqual(["1px solid var(--st-border)"]);
+    }
+  });
+
+  it("draws Machines' floor list as the Operations kit's rows and badges, not a stock card per machine", () => {
+    const src = read("features/admin/machines/StudioInventoryManager.tsx");
+    expect(src).not.toMatch(/from "@\/components\/ui\/card"/);
+    expect(src).not.toMatch(/from "@\/components\/ui\/badge"/);
+    expect(src).toMatch(/className="adm-rows /);
+    expect(src).toMatch(/<AdminBadge/);
+  });
+
   it("draws Relay's own tabs as a second, lighter level under My Studio's", () => {
     const row = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tabs"));
     const tab = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tab"));

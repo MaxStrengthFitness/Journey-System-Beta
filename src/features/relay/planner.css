@@ -267,16 +267,19 @@
   overflow: hidden;
 }
 
+/* A section head: the one heading style in My Studio (Sep 27 2026), the same
+   small upright capitals as a card's head (.pl__h2, .rl-h__title,
+   .stm__title, .ms__door-h; My Profile's .tp-card__title). */
 .pl__list-head {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.5rem;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 .pl__count {
   min-width: 1.5rem;
