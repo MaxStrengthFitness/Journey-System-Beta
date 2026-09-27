@@ -10,7 +10,7 @@ import { AwayEditor } from "./AwayEditor";
 import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
 import { serverRead } from "./server-read";
 import { useServerWait } from "./useServerWait";
-import { formOf, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
+import { formOf, reviewSentence, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
 import { agreeWeek, removeWeek, setAway } from "./store";
 import { bookingsKnown, teamWeeks, waitingSentence, type TeamWeekRow } from "./team";
 import { useStandingWeeks } from "./useStandingWeeks";
@@ -34,7 +34,8 @@ import "./standing-week.css";
  *                         someone else is booked in. Read only; nothing is
  *                         written to Mindbody, and an unread day is "can't
  *                         tell", never "open".
- *   each person's week    by name, never ranked: where it stands, and Review
+ *   each person's         by name, never ranked: where it stands, and Review
+ *   standing week
  *                         to agree a proposal as it is or changed first.
  *                         Opening another person's week while one holds a
  *                         leader's changes asks first (a leave scope).
@@ -136,9 +137,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
           )}
         </section>
 
-        <section aria-labelledby="stw-people">
-          <h3 className="stw-team__head" id="stw-people">
-            Each person's week
+        <section aria-labelledby="stw-each-week">
+          <h3 className="stw-team__head" id="stw-each-week">
+            Each person's standing week
           </h3>
           {waiting && <AdminNotice tone="info">{waiting}</AdminNotice>}
           {/* Unread, the list would call everyone "hasn't proposed" and offer
@@ -275,7 +276,9 @@ function WeekReview({
   return (
     <div className="stw-review" role="region" aria-label={`${row.name}'s week`}>
       <h4 className="stw-review__title">{row.name}'s week</h4>
-      <p className="stw-status">{row.onStaff ? teamWeekSentence(doc, row.name, tz) : `${row.name} no longer works at ${studio.name}.`}</p>
+      <p className="stw-status" data-testid="review-status">
+        {row.onStaff ? reviewSentence(doc, row.name, tz) : `${row.name} no longer works at ${studio.name}.`}
+      </p>
       {changes.length > 0 && (
         <ul className="stw-changes" aria-label="What the change does">
           {changes.map((c) => (

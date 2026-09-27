@@ -45,7 +45,7 @@
 .stw-dash { color: var(--eq-ink-muted); font-weight: 700; }
 
 .stw-quiet {
-  color: var(--eq-ink-faint);
+  color: var(--eq-ink-muted);
   font-size: 13px;
   font-style: italic;
   min-height: 40px;

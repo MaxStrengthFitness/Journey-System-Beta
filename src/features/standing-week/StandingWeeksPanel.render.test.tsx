@@ -166,9 +166,13 @@ describe("Standing weeks on Team", () => {
   });
 
   it("agrees a proposal as it stands, signed by the leader", async () => {
+    fake.weeks = { ...fake.weeks, docs: [{ ...fake.weeks.docs[0], proposedBy: { id: "t-sam", name: "Sam Lee" } }, fake.weeks.docs[1]] };
     await mount();
     await click("Review: Sam Lee");
     expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
+    // Who proposed it, and when: proposedBy's reader.
+    expect(host.querySelector("[data-testid='review-status']")?.textContent?.trim()).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    expect(host.querySelector("#stw-each-week")?.textContent?.trim()).toBe("Each person's standing week");
     await click("Agree this week");
     expect(fake.writes).toHaveLength(1);
     const w = fake.writes[0];

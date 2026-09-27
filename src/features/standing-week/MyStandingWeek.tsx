@@ -85,9 +85,9 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
       </div>
       <div className="tp-card__body">
         {loading ? (
-          <p className="tp-empty">Reading your week…</p>
+          <p className="stw-hint">Reading your week…</p>
         ) : error ? (
-          <p className="tp-empty" role="status">
+          <p className="stw-hint" role="status">
             {error}
           </p>
         ) : (

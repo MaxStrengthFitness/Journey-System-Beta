@@ -206,6 +206,24 @@ export function teamWeekSentence(doc: StandingWeekDoc | null, name: string, tz?:
   }
 }
 
+/**
+ * The Review's line, for the leader deciding: who proposed the week and
+ * when — "Proposed by Sam Lee on Sep 27. Not agreed yet." It is where
+ * `proposedBy` is read (every number has a reader); an agreed week, or none,
+ * reads as the row does.
+ */
+export function reviewSentence(doc: StandingWeekDoc | null, name: string, tz?: string): string {
+  const by = doc?.proposedBy?.name?.trim() || name.trim() || "the trainer";
+  switch (weekStatus(doc)) {
+    case "proposed":
+      return `Proposed by ${by}${on(doc!.proposedAt, tz)}. Not agreed yet.`;
+    case "changed":
+      return `${agreedBy(doc!, tz)} A change proposed by ${by}${on(doc!.proposedAt, tz)}.`;
+    default:
+      return teamWeekSentence(doc, name, tz);
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * What a proposal changes
  * ------------------------------------------------------------------ */

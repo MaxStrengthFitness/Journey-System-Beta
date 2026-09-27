@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awayLabel, mayReadWeeks, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
+import { awayLabel, mayReadWeeks, reviewSentence, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /** What a standing week says on screen (voice-review round, Sep 27 2026). */
@@ -167,5 +167,23 @@ describe("who may read a studio's standing weeks", () => {
     expect(mayReadWeeks(at("Admin", "westlake"), "solon")).toBe(true);
     expect(mayReadWeeks(null, "solon")).toBe(false);
     expect(mayReadWeeks(at("LifeTransformer", "solon"), null)).toBe(false);
+  });
+});
+
+describe("the Review's line (voice review follow-up)", () => {
+  const week: StandingWeek = { hours: [{ weekday: 1, from: "07:00", to: "13:00" }], regulars: [] };
+  const base: StandingWeekDoc = { id: "uid-sam", studioId: "solon", trainerUid: "uid-sam", trainerId: "t-sam", trainerName: "Sam Lee", proposed: null, final: null };
+  const TZ = "America/New_York";
+
+  it("names who proposed the week and when", () => {
+    const d = { ...base, proposed: week, proposedAt: new Date("2026-09-27T14:00:00Z"), proposedBy: { id: "uid-sam", name: "Sam Lee" } };
+    expect(reviewSentence(d, "Sam Lee", TZ)).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    const changed = { ...d, proposed: { ...week, regulars: [] , note: "x" }, final: week, finalAt: new Date("2026-09-20T14:00:00Z"), finalBy: { id: "uid-pat", name: "Pat Doe" } };
+    expect(reviewSentence(changed, "Sam Lee", TZ)).toBe("Agreed by Pat Doe on Sep 20. A change proposed by Sam Lee on Sep 27.");
+  });
+
+  it("falls back to the person's name, and reads an agreed week or none as the row does", () => {
+    expect(reviewSentence({ ...base, proposed: week, proposedAt: new Date("2026-09-27T14:00:00Z") }, "Sam Lee", TZ)).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    expect(reviewSentence(null, "Sam Lee", TZ)).toBe("Sam hasn't proposed a standing week here.");
   });
 });

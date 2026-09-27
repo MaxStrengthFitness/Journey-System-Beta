@@ -101,7 +101,7 @@ export interface DemoWeekSlot {
 }
 
 /**
- * The standing week. Order matters only in that it fixes which booking gets
+ * The demo week. Order matters only in that it fixes which booking gets
  * which occurrence number, so leave existing rows where they are.
  */
 export const DEMO_WEEK: DemoWeekSlot[] = [
