@@ -95,10 +95,11 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  * There is NO save button. The session was submitted when End Session was
  * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
  *
- * The screen is DARK whatever the app theme is, so every token-driven
- * feature mounted on it (the Dial, Loudness, the two trays) is wrapped in a
- * `.dark` + `data-theme="dark"` container that pins `--eq-*` and the FORD /
- * notes tokens to their dark values.
+ * The screen follows the app theme: its surfaces are the `bg-dark` / `ink-d`
+ * tokens, which go light in the light theme. Only the token-driven features
+ * mounted on it (the Dial, Loudness, the two trays) stay dark whatever the
+ * theme, each wrapped in a `.dark` + `data-theme="dark"` container that pins
+ * `--eq-*` and the FORD / notes tokens to their dark values.
  */
 
 export interface WrapUpScreenProps {
@@ -688,9 +689,9 @@ export function WrapUpScreen({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.24 }}
               className="mx-5"
-              /* This screen is dark whatever the app theme is, so the FORD
-                 tokens are pinned to their dark values rather than resolving
-                 against the document. */
+              /* The trays stay dark whatever the app theme is (see the
+                 header), so the FORD tokens are pinned to their dark values
+                 rather than resolving against the document. */
               data-theme="dark"
             >
               <FordSweep

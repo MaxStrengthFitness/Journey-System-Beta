@@ -173,9 +173,9 @@ export function AdminDataReportsTab({
             clients with no home studio, so they were invisible to every studio
             screen, and it never told the client's record how many sessions it
             had imported. Until the migration exists, a client's pre-Journey
-            history is <b>Sessions before Journey</b> on their profile (tap the
-            line under Completed sessions), and a single past session is
-            logged from the client's History tab.
+            history is <b>Sessions before Journey</b> on their profile (Notes
+            &amp; Profile, then Account), and a single past session is logged
+            with Log past session on the client's Activity Archive.
           </AdminNotice>
         </div>
       </AdminPanel>

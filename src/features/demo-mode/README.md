@@ -113,8 +113,11 @@ realism: the Hub opens on today, and a trainer who lands on an empty grid
 concludes the demo is broken rather than that the studio is shut.
 
 One booking in the run is **cancelled**, so Operations → Overview → Changes has
-something to find. It lands on a client with another booking that week, so it
-reads as a reschedule rather than a cancellation — the more useful of the two.
+something to find. It lands on a client with another booking that week — her
+standing one, booked a fortnight earlier like every demo appointment — so since
+Sep 26 (only a real rebook reads as a reschedule, `isRealRebook`) it reads as a
+cancellation whose proof names the booking she still holds: the case a
+twice-a-week studio sees most.
 
 The Hub resolves a block STRICTLY (`clients/{clientId}` or "Not synced", never
 a name match), so `clientId` is the field the whole round is about.

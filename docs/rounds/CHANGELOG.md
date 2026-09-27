@@ -717,6 +717,14 @@ Every completed round, in the order it was written. Nothing here has been edited
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
 
+### 🧽 Built — Stale words after the Sep 26–27 releases (Sep 27) — branch `claude/ecstatic-leakey-6d203e`, one commit, waiting for AJ's go
+
+*Appended out of order, like the rounds below it.* Words only: no behaviour, data, rules, index, Functions or Mindbody change.
+
+What the screens and comments said that the Sep 26–27 releases had made untrue. **Operations → Changes**: the page's header said any other booking that week made a cancellation a reschedule; since Sep 26 only a real rebook does (booked within 12 hours before the cancellation or after it, and not already past — `isRealRebook`), and it now says so; the Overview's README and the Demo Mode README said the same and are corrected (the demo's cancellation reads as a cancellation that names her standing booking). **Operations → Data and Admins → Data** pointed to "the line under Completed sessions" for Sessions before Journey; it is on Notes & Profile → Account only since `16613ad`, and a past session is logged on the Activity Archive, not a History tab. **The new-version README** (and two comments beside it) named `server.ts` for `version.json`; it is `serveBuiltApp` in `server/served-files.ts`. **The Wrap-up's comments** said the screen is dark whatever the theme; it follows the theme, and only the Dial, Loudness and the trays stay dark. **The sync's comments** (`lib/mindbody-api-sync.ts`, `types.ts`, `changes.ts`) called the pull fifteen-minute and the month pull a few times a day (now every 30 minutes, the month once each morning), and said the webhook writes no cancellation stamp (it stamps `cancelledAt` and the moves). Typecheck 4; tests 6,027 in 391 files, as on master (`TZ=America/New_York npx vitest run --dir src` in a worktree on AJ's PC).
+
+- [ ] AJ's go, then the push to `master` (it deploys; nothing else to run).
+
 ### 🔎 Shipped — The app review (Sep 26, evening) — straight to `master`, four pushes
 
 *Appended out of order, like the entries below it.* The round is `2026-09-26-app-review.md`.

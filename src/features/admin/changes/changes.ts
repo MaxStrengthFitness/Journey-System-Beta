@@ -35,8 +35,8 @@
  *   calendar entirely (greying it out clutters the calendar); the list is
  *   where it is recorded.
  *
- * WHAT IT REFUSES TO SAY. A cancelled row with no `cancelledAt` (written by
- * the webhook, or before the round) is still a cancellation for its day —
+ * WHAT IT REFUSES TO SAY. A cancelled row with no `cancelledAt` (written
+ * before the round) is still a cancellation for its day —
  * the list just cannot say when it was noticed. A row moved twice keeps only
  * its latest origin, so the middle day's list forgets it; that is the price
  * of stamps on the booking rather than a log, and it is rare enough.

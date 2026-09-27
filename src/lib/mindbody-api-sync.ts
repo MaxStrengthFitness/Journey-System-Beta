@@ -374,8 +374,10 @@ function rowStartMs(value: unknown): number | null {
  *     (its answer said cancelled), "sweep" below (it vanished from the
  *     answer). Cleared when a cancelled booking comes back as Scheduled, so a
  *     restored booking does not keep reading as a cancellation.
- * The webhook (functions/src) still writes `status` alone; a cancellation it
- * delivers shows on the list with no time until it, too, stamps.
+ * The webhook (functions/src/mindbody/index.ts) writes the same stamps for
+ * what it delivers — `cancelledAt` with cancelSource "mindbody", and the
+ * moved-from fields — so a cancellation it brings in seconds shows on the
+ * list with its time.
  */
 export function changeStamps(
   curr: Record<string, any>,
@@ -447,13 +449,15 @@ export const REFRESH_WINDOW_DAYS = 8;
 export const DEEP_WINDOW_DAYS = 30;
 
 /**
- * NEAR_WINDOW_DAYS — what the fifteen-minute background pull asks for between
- * whole-month pulls (the lean pull, Sep 25 2026): today and tomorrow, the two
+ * NEAR_WINDOW_DAYS — what the thirty-minute background pull asks for between
+ * whole-month pulls (the lean pull, Sep 25 2026; thirty minutes since the
+ * cost plan, Sep 26, `DEFAULT_INTERVAL_MINUTES`): today and tomorrow, the two
  * days the Hub watches live. On a shared site that is one page of 500 instead
- * of up to eight. Days further out are reached by the whole-month pull a few
- * times a day (features/admin/syncPolicy.ts, DEEP_PULL_HOURS) and at once by
- * Refresh. The sweep stays tied to the window like every other pull, so a
- * near pull never cancels anything beyond tomorrow.
+ * of up to eight. Days further out are reached by the whole-month pull once
+ * each morning, at the studio's first pull of the day
+ * (features/admin/syncPolicy.ts, DEEP_PULL_HOURS), and at once by Refresh.
+ * The sweep stays tied to the window like every other pull, so a near pull
+ * never cancels anything beyond tomorrow.
  */
 export const NEAR_WINDOW_DAYS = 1;
 

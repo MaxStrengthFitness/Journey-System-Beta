@@ -9,8 +9,8 @@
  * button.
  *
  * vite.config.ts names each build and writes that name twice: into the app
- * (`__APP_BUILD__`) and beside it (`/version.json`, which server.ts sends
- * uncached). Comparing the two is how an open app learns a deploy happened.
+ * (`__APP_BUILD__`) and beside it (`/version.json`, which `serveBuiltApp` in
+ * server/served-files.ts sends uncached). Comparing the two is how an open app learns a deploy happened.
  * Nothing else is compared: a DIFFERENT name is a new version, whether it is
  * newer or a rollback, because either way the old files are gone.
  *

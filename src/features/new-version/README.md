@@ -12,7 +12,7 @@ There is no service worker, on purpose: a caching service worker is the usual wa
 
 ## What it does
 
-1. **Every build carries a name.** `vite.config.ts` names each production build: the time it was made, plus the commit when Render says which. It writes the name into the app (`__APP_BUILD__`, read by `build.ts`) and beside it as `version.json`. `server.ts` sends that file `no-store`, ahead of the static handler that would cache it for an hour. `window.__appVersion` carries the name, so bug reports say which version broke.
+1. **Every build carries a name.** `vite.config.ts` names each production build: the time it was made, plus the commit when Render says which. It writes the name into the app (`__APP_BUILD__`, read by `build.ts`) and beside it as `version.json`. `serveBuiltApp` in `server/served-files.ts` (which `server.ts` mounts in production) sends that file `no-store`, ahead of the static handler that would cache it for an hour. `window.__appVersion` carries the name, so bug reports say which version broke.
 
 2. **It looks for a new version when Journey comes back on screen.** That covers the iPad being unlocked, the app being brought back from the app switcher, a page restored from the back-forward cache, the connection returning, arriving at the Hub, and a screen whose file couldn't be loaded.
    - There is no timer.

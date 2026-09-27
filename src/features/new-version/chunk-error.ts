@@ -2,10 +2,10 @@
  * "THIS SCREEN'S FILE COULD NOT BE LOADED" (new-version round, Sep 26 2026).
  *
  * Journey fetches each screen the first time it is opened (React.lazy). After a
- * deploy the old screen files are gone, server.ts answers 404 for them, and the
- * browser refuses the import. React remembers that refusal for as long as the
- * page lives, so only a reload brings the screen back. Two ways to know an
- * error is one of these:
+ * deploy the old screen files are gone, the server answers 404 for them
+ * (`serveBuiltApp` in server/served-files.ts), and the browser refuses the
+ * import. React remembers that refusal for as long as the page lives, so only
+ * a reload brings the screen back. Two ways to know an error is one of these:
  *
  *   - Vite says so. Its preload helper dispatches `vite:preloadError` on window
  *     with the error as `payload` before the error reaches React. main.tsx

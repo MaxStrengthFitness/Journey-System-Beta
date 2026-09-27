@@ -6,8 +6,11 @@
  * each with its count; pick a day and read its list. A change is held
  * against THE DAY THE SESSION WAS FOR (so Friday's list fills up across
  * the week and clears once Friday is over), and a cancellation is read as
- * a reschedule when the client holds another booking that week —
- * changes.ts has the rules. Every row opens the client.
+ * a reschedule only when the client really rebooked: another booking that
+ * week which appeared with the cancellation (at most twelve hours before it
+ * was stamped, or after) and had not already happened. A booking she held
+ * all along is not a rebook — changes.ts has the rules (`isRealRebook`).
+ * Every row opens the client.
  */
 import { useMemo, useState } from "react";
 import { ArrowLeft, CalendarClock } from "lucide-react";
@@ -59,7 +62,7 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, o
       <AdminHeader
         icon={<CalendarClock className="w-5 h-5" />}
         title={`${studio.name} — Changes`}
-        subtitle="Cancellations and moves, held against the day the session was for. A day's list clears when that day ends; a cancellation with another booking the same week reads as a reschedule."
+        subtitle="Cancellations and moves, held against the day the session was for. A day's list clears when that day ends. A cancellation reads as a reschedule only when the client rebooked: another session that week, booked within 12 hours before the cancellation or any time after it, and not already past. A booking they already held doesn't count."
         actions={
           <AdminButton variant="quiet" onClick={onBack}>
             <ArrowLeft className="w-4 h-4" /> Overview
