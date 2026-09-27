@@ -36,7 +36,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   // same level as a head trainer or studio leader AT THAT STUDIO (AJ, Sep 18)
   // -- so the label says so. The multi-studio owner keeps "Franchise Owner".
   StudioOwner: "Studio Owner",
-  HeadTrainer: "Studio Leader",
+  // Voice review follow-up (Sep 27 2026): AJ named the studio tier's picker
+  // "Trainer, Head trainer, Studio Leader/Owner". A head trainer read
+  // "Studio Leader" too, so the picker offered Studio Leader twice.
+  HeadTrainer: "Head Trainer",
   Trainer: "Life Transformer",
 };
 

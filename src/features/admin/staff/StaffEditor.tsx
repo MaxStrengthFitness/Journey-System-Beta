@@ -54,7 +54,12 @@ export const STATE_BADGE: Record<
   account: { label: "Has an account", tone: "neutral" },
 };
 
-/** What a studio's own leaders may hand out (AJ, Sep 18): never owner or admin. */
+/**
+ * What a studio's own leaders may hand out (AJ, Sep 18): never owner or admin.
+ * Life Transformer, Head Trainer, Studio Leader — one label each since the
+ * voice review follow-up (Sep 27 2026); a head trainer used to read "Studio
+ * Leader" as well, so the picker offered it twice.
+ */
 export const STUDIO_TIER_ROLES: UserRole[] = ["LifeTransformer", "HeadTrainer", "StudioLeader"];
 /** What a franchise owner may hand out from Operations: the studio tier and the owner tier, never an administrator. */
 export const OWNER_TIER_ROLES: UserRole[] = [...STUDIO_TIER_ROLES, "StudioOwner", "Owner"];
@@ -330,7 +335,7 @@ export function StaffEditor({
               {grantStudioId && (
                 <AdminField
                   label="Can manage My Studio"
-                  hint={`Opens the Machines, Team and Studio sections at ${grantStudioName} without changing their role — how a studio grows its next leader.`}
+                  hint={`Opens Team and Studio at ${grantStudioName}, and lets them change its machines, without changing their role — how a studio grows its next leader.`}
                 >
                   <AdminSelect
                     value={managesHere ? "yes" : "no"}

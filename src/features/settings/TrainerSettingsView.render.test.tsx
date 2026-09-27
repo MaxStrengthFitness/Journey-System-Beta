@@ -65,7 +65,7 @@ const fact = (label: string) =>
 describe("Trainer Settings", () => {
   it("names the role, never its key", async () => {
     await mount(person({ role: "HeadTrainer" }));
-    expect(fact("Role")).toBe("Studio Leader");
+    expect(fact("Role")).toBe("Head Trainer");
     await mount(person({ role: "LifeTransformer" }));
     expect(fact("Role")).toBe("Life Transformer");
   });

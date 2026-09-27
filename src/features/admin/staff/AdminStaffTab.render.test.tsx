@@ -136,7 +136,8 @@ describe("Staff & Roles for owners and administrators", () => {
     expect(row).toBeDefined();
     await act(async () => row!.click());
     const options = [...el.querySelectorAll("option")].map((o) => o.textContent);
-    expect(options).toContain("Franchise Owner");
+    // The owner tier: the studio tier's three, then Studio Owner and Franchise Owner.
+    expect(options.slice(0, 5)).toEqual(["Life Transformer", "Head Trainer", "Studio Leader", "Studio Owner", "Franchise Owner"]);
     expect(options).not.toContain("System Administrator");
   });
 });
