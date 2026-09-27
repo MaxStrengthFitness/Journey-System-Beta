@@ -193,10 +193,13 @@ import { MachineSheet } from "../features/equipment/MachineSheet";
 /* Lazy, and the reason is measurable: the assessment panel is a 162 kB
    chunk (50 kB gzipped) that most sessions never open. A static import
    would put it on the critical path of the one screen a trainer opens
-   forty times a day, to pay for a panel they open once a quarter. */
-const ClientCheckInPanel = React.lazy(() =>
-  import("./journal/ClientCheckInPanel").then((m) => ({ default: m.ClientCheckInPanel })),
-);
+   forty times a day, to pay for a panel they open once a quarter. It is
+   fetched once in the background after the app opens instead
+   (features/new-version/warm-up.ts), off the critical path, so a deploy
+   mid-day cannot leave a session without it. */
+import { loadClientCheckInPanel } from "./journal/load-check-in-panel";
+import { LoadBoundary } from "../features/new-version/LoadBoundary";
+const ClientCheckInPanel = React.lazy(loadClientCheckInPanel);
 import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
 import { WrapUpScreen } from "./WrapUpScreen";
@@ -3984,19 +3987,24 @@ export function WorkoutTrackerView({
                 </Button>
               </div>
               <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
-                <React.Suspense
-                  fallback={
-                    <div className="flex items-center justify-center py-16 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the Pulse…
-                    </div>
-                  }
-                >
-                  <ClientCheckInPanel
-                    client={selectedClient}
-                    trainer={authTrainer || null}
-                    machines={floorMachines}
-                  />
-                </React.Suspense>
+                {/* Pulse's file gone after a deploy says so here, in the
+                    panel, and never takes the session's screen with it
+                    (features/new-version). */}
+                <LoadBoundary kind="panel" panel="Pulse">
+                  <React.Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-16 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the Pulse…
+                      </div>
+                    }
+                  >
+                    <ClientCheckInPanel
+                      client={selectedClient}
+                      trainer={authTrainer || null}
+                      machines={floorMachines}
+                    />
+                  </React.Suspense>
+                </LoadBoundary>
               </div>
             </motion.div>
           </div>

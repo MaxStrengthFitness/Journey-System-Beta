@@ -127,12 +127,14 @@ import { AppHeader } from "./components/AppHeader";
 import { useTheme } from "./components/ThemeProvider";
 import { ClientsView } from "./components/ClientsView";
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-// Lazy-loaded: downloaded on first visit to this view, not at app start.
-const WorkoutTrackerView = lazy(() =>
+// And fetched once in the background after the app opens (new-version round,
+// Sep 26 2026: features/new-version/warm-up.ts), with Pulse, so a deploy
+// mid-day cannot stop a session from opening. One loader for both.
+const loadWorkoutTracker = () =>
   import("./components/WorkoutTrackerView").then((m) => ({
     default: m.WorkoutTrackerView,
-  })),
-);
+  }));
+const WorkoutTrackerView = lazy(loadWorkoutTracker);
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
 const AdminDashboardView = lazy(() =>
   import("./features/admin/AdminDashboardView").then((m) => ({
@@ -195,10 +197,38 @@ const LearningView = lazy(() =>
 import { LoginScreen } from "./components/LoginScreen";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { isOwner } from "./lib/permissions";
-import { mayOpenOperations } from "./features/admin/operations-access";
+import { HUB_PLACE, mayOpenOperations } from "./features/admin/operations-access";
 import { useGuardedPlace } from "./features/admin/useGuardedPlace";
 import { isDemoStudioId } from "./features/demo-mode/is-demo";
 import { DemoBanner } from "./features/demo-mode/DemoBanner";
+import { useNewVersion } from "./features/new-version/useNewVersion";
+import { NewVersionLine } from "./features/new-version/NewVersionLine";
+import { LoadBoundary, ScreenRecoveryProvider } from "./features/new-version/LoadBoundary";
+import { warmUp } from "./features/new-version/warm-up";
+import { loadClientCheckInPanel } from "./components/journal/load-check-in-panel";
+
+/*
+ * Screens a reload for a new version may put a trainer back on (new-version
+ * round, Sep 26 2026: features/new-version, "where you were"). Only screens
+ * that stand on their own: the progress report, another trainer's profile, the
+ * chart importer and Mindbody each need a choice made on the way in, so a
+ * reload from one of them lands on the Hub, as a reload always did.
+ */
+const RETURNABLE_VIEWS: ReadonlySet<string> = new Set<View>([
+  "clients",
+  "workouts",
+  "calendar",
+  "trainer-hub",
+  "profile",
+  "client-directory",
+  "studio-tasks",
+  "learning",
+  "machine-anatomy",
+  "academy",
+  "admin-dashboard",
+  "admins-dashboard",
+]);
+const isReturnableView = (view: string) => RETURNABLE_VIEWS.has(view);
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -872,6 +902,50 @@ export default function AppContent({
     if (selectedClientId) setCurrentView("workouts");
     else setCurrentView("client-directory");
   }, [currentSession, myLiveSession, selectedClientId]);
+
+  /*
+   * A NEW VERSION (new-version round, Sep 26 2026). Every push to master
+   * deploys, and a deploy deletes the screen files an open app has not
+   * fetched yet. This notices a new version when Journey comes back on
+   * screen, loads it by itself only on the Hub, and never over the Active
+   * Session, this trainer's open session, saves still sending, typing or a
+   * session note draft. Everywhere else the line under the header says so.
+   * See features/new-version/README.md.
+   */
+  const shellReady =
+    !!user && !!authTrainer && !!activeStudioId && !isChangingStudio && newClientOnboardingName === null;
+  const newVersion = useNewVersion({
+    view: currentView,
+    hubView: HUB_PLACE.view,
+    sessionView: "workouts",
+    shellReady,
+    uid: user?.uid ?? null,
+    clientId: selectedClientId,
+    ownSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+    waitForPendingWrites: () => waitForPendingWrites(db),
+    isKnownView: isReturnableView,
+    restorePlace: (place) => {
+      if (place.clientId) setSelectedClientId(place.clientId);
+      setCurrentView(place.view as View);
+    },
+  });
+  const screenRecovery = useMemo(
+    () => ({
+      recover: newVersion.recoverScreen,
+      tap: newVersion.tapScreen,
+      ownSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+    }),
+    [newVersion.recoverScreen, newVersion.tapScreen, myLiveSession],
+  );
+  // The Active Session and Pulse, fetched once the shell is up and quiet, so
+  // a deploy later in the day cannot stop a session from opening
+  // (features/new-version/warm-up.ts). Once per page.
+  const warmedUp = useRef(false);
+  useEffect(() => {
+    if (!shellReady || warmedUp.current) return;
+    warmedUp.current = true;
+    warmUp([loadWorkoutTracker, loadClientCheckInPanel]);
+  }, [shellReady]);
   // Derived state for the active studio name
   const activeStudioName = useMemo(() => {
     if (!activeStudioId) return null;
@@ -1735,10 +1809,19 @@ export default function AppContent({
             />
           )}
 
+          {/* A new version is waiting: one quiet line, never on the Active
+              Session (features/new-version). */}
+          <NewVersionLine line={newVersion.line} busy={newVersion.busy} onLoad={newVersion.loadNow} />
+
           {/* Main Content */}
           <main
             className={`w-full max-w-full mx-auto relative ${currentView === "workouts" ? "flex-1 min-h-0 p-2 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950 flex flex-col" : currentView === "clients" || currentView === "client-directory" || isLearningView || currentView === "studio-tasks" ? "flex-1 min-h-0 overflow-hidden bg-slate-50 dark:bg-slate-950 p-0 flex flex-col" : "flex-1 min-h-0 p-6 overflow-y-auto overscroll-contain bg-slate-50 dark:bg-slate-950"}`}
           >
+            {/* A screen whose file a deploy removed replaces only itself, and
+                recovers when it is safe to; any other error goes on up to the
+                ErrorBoundary as before (features/new-version). */}
+            <ScreenRecoveryProvider value={screenRecovery}>
+            <LoadBoundary kind="screen" resetKey={currentView} sessionScreen={currentView === "workouts"}>
             <Suspense fallback={<ViewLoader />}>
               <AnimatePresence mode="wait">
                 {currentView === "client-directory" && (
@@ -2046,6 +2129,9 @@ export default function AppContent({
                       </div>
                     }
                   >
+                    {/* Inside the calendar's own boundary, so a missing file
+                        is recovered rather than called "Schedule Unavailable". */}
+                    <LoadBoundary kind="screen">
                     <CalendarView
                       schedules={schedules}
                       trainers={trainers}
@@ -2070,6 +2156,7 @@ export default function AppContent({
                         isFetching: isFetchingSchedules || isRefreshingSchedule,
                       }}
                     />
+                    </LoadBoundary>
                   </ErrorBoundary>
                 )}
                 {currentView === "chart-importer" && (
@@ -2086,6 +2173,8 @@ export default function AppContent({
                 )}
               </AnimatePresence>
             </Suspense>
+            </LoadBoundary>
+            </ScreenRecoveryProvider>
           </main>
 
           {/* Navigation Bar — every screen change it makes goes through the

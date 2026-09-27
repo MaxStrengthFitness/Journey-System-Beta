@@ -47,13 +47,13 @@ async function listen(app: express.Express) {
 
 /** GET without URL normalisation, so "/./x" reaches the server as written. */
 function rawGet(port: number, path: string) {
-  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+  return new Promise<{ status: number; body: string; cacheControl?: string }>((resolve, reject) => {
     http
       .get({ host: "127.0.0.1", port, path }, (res) => {
         let body = "";
         res.setEncoding("utf8");
         res.on("data", (chunk) => (body += chunk));
-        res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body, cacheControl: res.headers["cache-control"] }));
       })
       .on("error", reject);
   });
@@ -226,6 +226,19 @@ describe("the production server (dist/)", () => {
     }
 
     expect((await get("/assets/missing-Zz99.js")).status).toBe(404);
+  });
+
+  it("sends the build's name never cached, and a 404 rather than the shell when it is missing", async () => {
+    writeTree(dist, { "version.json": '{"version":"test-build"}' });
+    const name = await get("/version.json");
+    expect(name.status).toBe(200);
+    expect(name.body).toContain("test-build");
+    expect(name.cacheControl).toBe("no-store");
+
+    rmSync(join(dist, "version.json"));
+    const missing = await get("/version.json");
+    expect(missing.status).toBe(404);
+    expect(missing.body).not.toContain("SHELL");
   });
 });
 

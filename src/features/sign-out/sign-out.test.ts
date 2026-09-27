@@ -14,6 +14,7 @@ import { forgetOnSignOut, forgetPersonalMemory } from "./memory";
 import { DEFAULT_STUDIO_KEY } from "../../lib/default-studio";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
+import { PLACE_KEY, RELOAD_KEY } from "../new-version/reload-once";
 import { sessionDraftKey } from "../client-notes/session-draft";
 import { clearPlannerIntent, peekPlannerIntent, requestPlanner } from "../relay/intent";
 import { rememberMyStudioSection, rememberedMyStudioSection } from "../my-studio/section-memory";
@@ -96,8 +97,8 @@ describe("clearPersonalStorage — the iPad keeps its studio, nothing else", () 
 });
 
 describe("clearSessionHandoffs — one-shot handoffs go, note drafts stay", () => {
-  it("names the profile's opening place and machine fit's Setup hint", () => {
-    expect(SESSION_HANDOFF_PREFIXES).toEqual([PROFILE_NAV_PREFIX, SETUP_HINT_PREFIX]);
+  it("names the profile's opening place, machine fit's Setup hint and where a new version returns to", () => {
+    expect(SESSION_HANDOFF_PREFIXES).toEqual([PROFILE_NAV_PREFIX, SETUP_HINT_PREFIX, PLACE_KEY]);
   });
 
   it("removes every handoff, for every client, and keeps a note a trainer started mid-set", () => {
@@ -105,12 +106,15 @@ describe("clearSessionHandoffs — one-shot handoffs go, note drafts stay", () =
       [PROFILE_NAV_PREFIX + "judy"]: JSON.stringify({ tab: "programming", view: "setup" }),
       [SETUP_HINT_PREFIX + "judy"]: "check",
       [PROFILE_NAV_PREFIX + "marcus"]: JSON.stringify({ tab: "journey" }),
+      [PLACE_KEY]: JSON.stringify({ view: "profile", clientId: "judy", uid: "u1", at: 1 }),
+      [RELOAD_KEY]: JSON.stringify({ target: "b2", at: 1 }),
       [sessionDraftKey("session-9")]: JSON.stringify({ body: "Left knee sore on the leg press" }),
       unrelated: "x",
     });
     clearSessionHandoffs(session);
     // Removing while walking by index would have skipped every second one.
-    expect(session.keys()).toEqual([sessionDraftKey("session-9"), "unrelated"].sort());
+    // The new-version loop guard belongs to the iPad, so it stays.
+    expect(session.keys()).toEqual([RELOAD_KEY, sessionDraftKey("session-9"), "unrelated"].sort());
   });
 
   it("does nothing to an empty or missing store", () => {

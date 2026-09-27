@@ -11,6 +11,9 @@ import './features/catalog/catalog.css';
 import './features/studio-tasks/studio-tasks.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { APP_BUILD } from './features/new-version/build';
+import { noteChunkLoadError } from './features/new-version/chunk-error';
+import { versionStore } from './features/new-version/version-store';
 
 declare global {
   interface Window {
@@ -25,6 +28,22 @@ declare global {
 // Tell the buffering handlers in index.html to stand down. From here on this
 // module is the only thing that reports client errors.
 window.__appLoaded = true;
+
+// Which build this is (new-version round, Sep 26 2026): a bug report carries
+// it (features/feedback/capture.ts), so "it broke" arrives with the version it
+// broke in. Declared long ago and never set until now.
+window.__appVersion = APP_BUILD;
+
+// A screen's file could not be loaded (new-version round, Sep 26 2026): after
+// a deploy the old files are gone. Vite says so here before React hears of it.
+// Remember the error, so the screen's boundary knows it for what it is, and
+// ask the server at once whether a new version is live. NOT preventDefault():
+// the error must still reach React, whose boundary replaces only that screen
+// and recovers when it is safe (features/new-version/LoadBoundary.tsx).
+window.addEventListener('vite:preloadError', (event) => {
+  noteChunkLoadError((event as Event & { payload?: unknown }).payload);
+  void versionStore.check({ maxAgeMs: 0 });
+});
 
 // index.html used to register its own window.onerror and unhandledrejection
 // handlers posting to the same endpoint, so every client error was reported

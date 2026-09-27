@@ -51,7 +51,7 @@ The alternative is one line in `index.html`: `apple-mobile-web-app-status-bar-st
 
 - **Sign in again inside the Home Screen app.** It has its own storage, separate from Safari: the sign-in, the pinned studio (pin it again on each iPad), the theme and Firestore's offline copy all start fresh. On a shared iPad the Safari tab and the icon are two separate sign-ins, so studios should use the icon only.
 - **Sets waiting to send in a Safari tab stay in Safari.** Finish or sync a session before switching to the icon.
-- **There is no reload button.** A new version arrives when the app is opened fresh. Swipe it away in the app switcher and tap the icon.
+- **A new version loads by itself on the Hub; elsewhere a line under the header offers it** (`src/features/new-version/`, Sep 27 2026). There is still no reload button of the app's own: swiping it away in the app switcher and tapping the icon also opens the newest version.
 
 ## Before telling trainers to use it
 

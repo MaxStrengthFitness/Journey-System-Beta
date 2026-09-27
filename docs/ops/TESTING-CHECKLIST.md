@@ -1339,6 +1339,44 @@ Transformer's iPad and a head trainer's, portrait and landscape.
 
 ---
 
+## Round 21 — A new version, picked up safely · *Sep 26 2026, branch `new-version`*
+
+What an open Journey does when a new version is pushed. The round document is
+`docs/rounds/2026-09-26-new-version.md`. Walk it at the **next real deploy**
+(any push to `master`), with two iPads open on the live app before the push:
+one in Safari, one from the Home Screen icon if you have it. Nothing to deploy
+first. Wait for Render to say the deploy is live before each step.
+
+- [ ] **Left on the Hub.** Lock an iPad on the Hub before the push. After it,
+  unlock it: a moment of loading, then the Hub again. (A bug report sent from
+  it afterwards carries the new build's name as `appVersion`, for whoever
+  reads the report.) *If it doesn't load:* `useNewVersion`, the Hub moment.
+- [ ] **Left on a profile.** Leave the second iPad on a client's profile over
+  the push, then lock and unlock it. The line under the header reads "A new
+  version of Journey is ready. It loads by itself next time you're on the
+  Hub." with **Load now**. It is not red and makes no sound. Tap Load now:
+  the same profile comes back.
+- [ ] **A screen not opened yet.** On an iPad that has been open since
+  before the push, open a screen it hasn't opened since (the calendar, say,
+  or Learning). *Pass:* a moment of loading, then that screen. *Fail:*
+  "Something went wrong".
+- [ ] **Mid-session.** Start a Demo Mode session, then push. The Active
+  Session carries on untouched, with no line and no reload. Open Pulse: it
+  opens (it was fetched when the app opened). Finish, then tap Back to Hub: a
+  moment of loading, then the Hub.
+- [ ] **Your session open, elsewhere.** With your session still running, go
+  to another client's profile over a push. The line says "It will load after
+  your session with …" and offers nothing to press. Go back and finish the
+  session, and the Hub loads the new version.
+- [ ] **Typing.** Type into a client's record without saving, then tap Load
+  now: the app asks "You have unsaved changes to …". Keep editing keeps it,
+  and Leave loads the new version.
+- [ ] **No connection.** With Wi-Fi off, lock and unlock on the Hub: nothing
+  reloads, and there is never a blank screen. Wi-Fi back on, lock and unlock
+  again: it loads.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.

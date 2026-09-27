@@ -1,16 +1,56 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, type Plugin} from 'vite';
 
-export default defineConfig(() => {
+/*
+ * THE BUILD'S NAME (new-version round, Sep 26 2026). Every production build is
+ * named by the moment it was made, plus the commit when Render says which one
+ * it is building. The time makes every build's name unique: the same commit
+ * rebuilt with different settings produces different files, and an open app
+ * must see that as a new version. The commit is only there so a person reading
+ * a bug report can find the code. Neither is a secret.
+ *
+ * The app carries the name (`__APP_BUILD__`, read by
+ * src/features/new-version/build.ts), and the build writes it beside the app
+ * as `version.json`, which server.ts sends uncached. An open app compares the
+ * two to learn that a deploy has happened. Outside a build (the dev server,
+ * the tests) the name is "dev", and nothing compares anything.
+ */
+function buildName(): string {
+  const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const commit = (process.env.RENDER_GIT_COMMIT || '').trim().slice(0, 7);
+  return commit ? `${at}-${commit}` : at;
+}
+
+function versionFile(build: string): Plugin {
   return {
-    plugins: [react(), tailwindcss()],
+    name: 'journey-version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: `${JSON.stringify({ build })}\n`,
+      });
+    },
+  };
+}
+
+export default defineConfig(({ command }) => {
+  const appBuild = command === 'build' ? buildName() : 'dev';
+  return {
+    plugins: [react(), tailwindcss(), versionFile(appBuild)],
+    // The ONLY `define`, and it is the build's name above: public on purpose.
+    //
     // No `define` for GEMINI_API_KEY. `define` is a build-time text
     // substitution into the CLIENT bundle: any component that referenced
     // process.env.GEMINI_API_KEY would have shipped the real key to every
     // browser in a public .js file. The key is server-only and server/gemini.ts
     // reads it from the real environment at runtime.
+    define: {
+      __APP_BUILD__: JSON.stringify(appBuild),
+    },
     build: {
       outDir: "dist",
       emptyOutDir: false,
