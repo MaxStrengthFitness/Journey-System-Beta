@@ -70,7 +70,7 @@ const SUN_9AM = Date.parse("2026-09-27T13:00:00Z");
 const near = (over: Partial<CoverageInput> = {}): CoverageInput => ({
   studioId: "westlake",
   window: { start: "2026-09-27", end: "2026-09-28" },
-  answer: { windowComplete: true },
+  answer: { windowComplete: true, studioAnswered: 12 },
   startedAt: SUN_9AM,
   timeZone: "America/New_York",
   ...over,
@@ -128,7 +128,21 @@ describe("a partial answer", () => {
     expect(await recordCoverage(near({ answer: { windowComplete: false } }))).toBe("nothing");
     expect(await recordCoverage(near({ answer: {} }))).toBe("nothing");
     expect(await recordCoverage(near({ answer: null }))).toBe("nothing");
-    expect(await recordCoverage(near({ answer: { windowComplete: true, sweepDeferred: 1, settledWithMonth: false } }))).toBe("nothing");
+    expect(await recordCoverage(near({ answer: { windowComplete: true, studioAnswered: 12, sweepDeferred: 1, settledWithMonth: false } }))).toBe("nothing");
+    expect(fake.batches).toBe(0);
+    expect(written()).toEqual([]);
+  });
+
+  it("records nothing for a whole answer that held none of the studio's bookings", async () => {
+    // The sync swept nothing on it: a glitch, or a wrong Location ID.
+    expect(await recordCoverage(near({ answer: { windowComplete: true, studioAnswered: 0 } }))).toBe("nothing");
+    expect(await recordCoverage(near({ answer: { windowComplete: true } }))).toBe("nothing");
+    // A near pull that lost a booking, settled by a month that came back empty.
+    expect(
+      await recordCoverage(
+        near({ answer: { windowComplete: true, studioAnswered: 12, sweepDeferred: 1, settledWithMonth: true, settleAnswered: 0 } }),
+      ),
+    ).toBe("nothing");
     expect(fake.batches).toBe(0);
     expect(written()).toEqual([]);
   });
@@ -203,7 +217,7 @@ describe("a failed write", () => {
   });
 
   it("never rejects, whatever the answer holds", async () => {
-    await expect(recordCoverage({ studioId: "westlake", window: undefined, answer: { windowComplete: true }, startedAt: NaN })).resolves.toBe("nothing");
+    await expect(recordCoverage({ studioId: "westlake", window: undefined, answer: { windowComplete: true, studioAnswered: 12 }, startedAt: NaN })).resolves.toBe("nothing");
     await expect(recordCoverage(near({ window: { start: 20260927 as unknown as string, end: "2026-09-28" } }))).resolves.toBe("nothing");
   });
 });

@@ -142,7 +142,7 @@ async function pullNow() {
 
 describe("Operations -> Mindbody's Sync", () => {
   it("records every day a back-read asked for after a whole answer, a month's end as two documents", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     setDate("mb-from", "2026-08-31");
     setDate("mb-to", "2026-09-26");
     await pullNow();
@@ -159,7 +159,7 @@ describe("Operations -> Mindbody's Sync", () => {
   });
 
   it("records today and tomorrow from the month ahead it opens on", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     await pullNow();
     expect(pullMock.mock.calls[0].slice(5, 7)).toEqual(["2026-09-27", "2026-10-27"]);
     expect(fake.commits.flat().map((w) => [w.path, w.data])).toEqual([
@@ -173,6 +173,16 @@ describe("Operations -> Mindbody's Sync", () => {
     setDate("mb-to", "2026-09-26");
     await pullNow();
     expect(pullMock).toHaveBeenCalledTimes(1);
+    expect(fake.commits).toEqual([]);
+  });
+
+  it("records nothing after a whole back-read that held none of the studio's bookings", async () => {
+    // A wrong Location ID answers empty and whole: the sync swept nothing.
+    fake.answer = { windowComplete: true, studioAnswered: 0 };
+    setDate("mb-from", "2026-08-31");
+    setDate("mb-to", "2026-09-26");
+    await pullNow();
+    expect(pullMock.mock.calls[0].slice(5, 8)).toEqual(["2026-08-31", "2026-09-26", "solon"]);
     expect(fake.commits).toEqual([]);
   });
 });

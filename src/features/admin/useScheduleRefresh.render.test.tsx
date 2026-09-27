@@ -101,7 +101,7 @@ async function press(range?: { from: Date; to: Date }) {
 
 describe("the header's Refresh", () => {
   it("pulls the week ahead and records today and tomorrow after a whole answer", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     await press();
     expect(pullMock).toHaveBeenCalledTimes(1);
     // The pull as it was: the week ahead, for Solon, settling against the month.
@@ -129,8 +129,24 @@ describe("the header's Refresh", () => {
     expect(fake.toasts[0]).toMatch(/^error: Sync completed with issues: Mindbody returned only part/);
   });
 
+  it("records nothing when a lost booking's month came back whole but empty, and says what it did as before", async () => {
+    // The week lost a booking and handed it to the month; the month held none
+    // of Solon's bookings, so it returned before its sweep and decided nothing.
+    fake.answer = { windowComplete: true, studioAnswered: 12, sweepDeferred: 1, settledWithMonth: true, settleAnswered: 0 };
+    await press();
+    expect(pullMock).toHaveBeenCalledTimes(1);
+    expect(fake.commits).toEqual([]);
+    expect(fake.toasts).toEqual(["ok: Schedule refreshed: 2 added, 1 updated."]);
+  });
+
+  it("records nothing after a whole answer that held none of the studio's bookings", async () => {
+    fake.answer = { windowComplete: true, studioAnswered: 0 };
+    await press();
+    expect(fake.commits).toEqual([]);
+  });
+
   it("writes the same days once, however often it is pressed", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     await press();
     await press();
     expect(pullMock).toHaveBeenCalledTimes(2);
@@ -147,7 +163,7 @@ describe("the header's Refresh", () => {
 
 describe("the calendar's Refresh", () => {
   it("pulls the days on screen from today, and records today and tomorrow after a whole answer", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     // A month on screen that began last week.
     await press({ from: new Date("2026-09-21T16:00:00Z"), to: new Date("2026-10-31T16:00:00Z") });
     expect(pullMock.mock.calls[0].slice(5, 7)).toEqual(["2026-09-27", "2026-10-31"]);

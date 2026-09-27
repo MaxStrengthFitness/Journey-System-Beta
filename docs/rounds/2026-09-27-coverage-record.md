@@ -1,7 +1,7 @@
 # The whole-read record — which days Journey read in full from Mindbody
 
-*Sep 27 2026. Branch `coverage-record`, four commits on `bfa9cda` (the voice
-review follow-up). The first, stand-alone piece of Openings: phase 2 of
+*Sep 27 2026. Branch `coverage-record`, five commits on `bfa9cda` (the voice
+review follow-up): four phases and what the review found. The first, stand-alone piece of Openings: phase 2 of
 `2026-09-27-openings.md`, shipped ahead of the rest so the weeks start
 counting now.*
 
@@ -44,10 +44,22 @@ before, on the day itself, or any time after**, so:
 the pull began, so the record can only ever be too modest. A pull at 11:30 PM
 Eastern is still today's; at 12:30 AM it is the new day's.
 
-One case more than `windowComplete`: a near pull that **lost** a booking hands
-it to a wider pull to decide whether it moved or was cancelled
-(`settleSweepWith`). Until that pull is whole too, Journey still holds, on
-today or tomorrow, a booking Mindbody no longer has, so nothing is recorded.
+Two cases more than `windowComplete`:
+
+- **An answer holding none of the studio's bookings records nothing.** The
+  sync returns before its sweep on an empty answer ("it can be a glitch"), so
+  it checked nothing Journey holds for those days: a Mindbody hiccup, or a
+  studio whose Location ID is wrong, which answers empty and whole on every
+  pull and would otherwise have every day recorded as read in full with none
+  of its bookings. The sync says how many of the studio's bookings its answer
+  held (`studioAnswered`, a result field: nothing it asks or writes changed).
+  A studio that really is closed goes unrecorded, the modest way round:
+  Openings leaves an empty day out anyway.
+- **A near pull that lost a booking** hands it to a wider pull to decide
+  whether it moved or was cancelled (`settleSweepWith`). Until that pull is
+  whole, and holds the studio's bookings (`settleAnswered`: an empty one
+  returns before its sweep too), Journey may still hold, on today or
+  tomorrow, a booking Mindbody no longer has, so nothing is recorded.
 
 The pure half is `src/features/openings/coverage.ts` (whole or not, the days,
 the month documents, and the reader's question `wasReadInFull`, where a failed
@@ -62,7 +74,9 @@ for word so it could be tested) and
 
 - **It never asks Mindbody anything.** No new call, no new timer, no wider
   window. What a pull asks for, how often, and what it writes to `schedules`
-  are exactly as they were.
+  are exactly as they were. The sync gained two result fields
+  (`studioAnswered`, `settleAnswered`: how many of the studio's bookings an
+  answer held), counted from what it already has.
 - **It never writes the same day twice from one iPad.** A small memory on the
   iPad (`recorded`, forgotten at sign-out with `forgetOnSignOut`) holds the
   days it has written, and holds them while a write is in flight, so a Refresh
@@ -73,8 +87,9 @@ for word so it could be tested) and
 - **It never tells the trainer anything.** A failed write is let go quietly and
   the next whole pull on that iPad tries the same days again. Both months at a
   month's end go in one batch: all or nothing.
-- **A partial answer records nothing**, nor does a pull that failed, a blank
-  "Pull from", or a studio that isn't linked.
+- **A partial answer records nothing**, nor does an answer that held none of
+  the studio's bookings, a pull that failed, a blank "Pull from", or a studio
+  that isn't linked.
 - **It has no reader yet.** Openings' usual week and the Sunday job read it in
   a later round (`2026-09-27-openings.md`, phases 3 and 4). Until then the
   record simply grows, which is the point: those weeks can't be counted later.
@@ -162,21 +177,28 @@ else reads the collection.
 ## Measured
 
 - Typecheck: 4 errors, the baseline, after every commit.
-- New tests: 53 in 5 files. `coverage.test.ts` (28: whole or not, the days,
-  a back-read, the month's end, 11:30 PM and 12:30 AM Eastern, the Sunday the
-  clocks go back, the reader), `coverage-record.test.ts` (11: the exact paths
-  and data, nothing undefined, never twice, in flight, sign-out, a refused
-  commit), and one render or hook test for each call site
-  (`useAutoSync.coverage.render.test.tsx` 4, `useScheduleRefresh.render.test.tsx`
-  7, `AdminMindbodyTab.coverage.render.test.tsx` 3). Each call site's "whole"
-  case fails with its call taken out.
-- The suite: **6,457 passing in 425 files** (6,404 in 420 on
-  `voice-review-followup`; `TZ=America/New_York npx vitest run --dir src`, in
-  a worktree on AJ's PC). One earlier whole run had a source-walking test
+- New tests: 62 in 5 files, and 4 in `lib/mindbody-api-sync.test.ts`.
+  `coverage.test.ts` (31: whole or not, an empty answer, a settle that came
+  back empty, the days, a back-read, the month's end, 11:30 PM and 12:30 AM
+  Eastern, the Sunday the clocks go back, the reader),
+  `coverage-record.test.ts` (12: the exact paths and data, nothing undefined,
+  never twice, in flight, sign-out, a refused commit, an empty answer), and
+  one render or hook test for each call site
+  (`useAutoSync.coverage.render.test.tsx` 6, `useScheduleRefresh.render.test.tsx`
+  9, `AdminMindbodyTab.coverage.render.test.tsx` 4), each with an empty whole
+  answer that records nothing. The sync's four: `studioAnswered` after the
+  location filter, 0 on an empty answer (the live booking untouched), and
+  `settleAnswered` 0 and 2 for a settle pull that came back empty or not,
+  with `settledWithMonth` as it was. Each call site's "whole" case fails with
+  its call taken out.
+- The suite: **6,470 passing in 425 files** after the review's fixes (6,457
+  before them; 6,404 in 420 on `voice-review-followup`;
+  `TZ=America/New_York npx vitest run --dir src`, in a worktree on AJ's PC). One earlier whole run had a source-walking test
   (`src/data/machine-order.test.ts`) time out at 5 seconds under load; alone,
   and in the run after, it passed.
 - Rules tests: 187 (180 before), seven in the new describe block "the
-  whole-read record".
+  whole-read record". The review's fixes changed no rule, so they were not
+  run again.
 
 ## Seen on the way
 
@@ -186,3 +208,38 @@ else reads the collection.
   only. The background pull doesn't run then (it keeps to the studio's hours,
   `withinPullHours`), and the record records only what a window covered.
   Left as it is: nothing about the pull changes in this round.
+- **A day recorded as read in full can still be missing a booking the sync
+  skipped one at a time.** `windowComplete` means every page arrived, not that
+  every booking was written: one with an unreadable start time, or one whose
+  own write threw inside the per-appointment loop, is skipped with an error
+  and the flag stays true (both rare, and both older than this round). The
+  Openings round should know it. A stricter test, the sync counting the
+  bookings it could not write and `readWhole` refusing any pull with one,
+  touches the sync's loop and waits for AJ's OK.
+
+## What the review found
+
+A review of the four phases, checked finding by finding, found one real hole
+and one wording slip; fixed in `Coverage record: what the review found`.
+
+- **An empty answer was recorded as read in full** (two reviewers found it by
+  different roads). The sync sets `windowComplete` before its location filter
+  and returns before its sweep when the studio's answer is empty, so the
+  morning month pull, Operations → Mindbody's Sync and every settle pull
+  (none of which has a wider window to ask) reported a whole read having
+  checked nothing Journey holds. A near pull that lost a booking and handed
+  it to a month that came back empty got past the guard the builder wrote for
+  exactly that case, because the empty month still set `settledWithMonth`. A
+  studio with a wrong Location ID would have had every day recorded with none
+  of its bookings. The sync now reports `studioAnswered` (and `settleAnswered`
+  for the pull it handed its losses to), and `readWhole` refuses a count of 0.
+  `settledWithMonth` is untouched: the background pull reads it to decide when
+  the month is next pulled. A trap in `docs/KNOWN-TRAPS.md` (Mindbody).
+- **`PullAnswer.windowComplete`'s comment promised "and Journey took it in".**
+  It only means every page arrived; corrected, and the gap is under "Seen on
+  the way" above.
+- **Two index lines compared the 907 to the 1,000-expression budget.** On the
+  emulator's coverage counts the budget runs out at about 2,100 (a guest
+  refused at 2,107, a home trainer through at 2,069), so 907 is well under
+  half of it. The rounds index and the CHANGELOG now say so, as KNOWN-TRAPS
+  and the table above already did.

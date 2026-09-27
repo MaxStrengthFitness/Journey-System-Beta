@@ -25,7 +25,8 @@ import {
 const EASTERN = "America/New_York";
 /** Sun Sep 27 2026, 9:00 AM Eastern (EDT, UTC-4). */
 const SUN_9AM = new Date("2026-09-27T13:00:00Z");
-const whole = { windowComplete: true };
+/** A whole answer that held the studio's bookings (the sync swept on it). */
+const whole = { windowComplete: true, studioAnswered: 12 };
 
 describe("the numbers", () => {
   it("counts a read for a day from the day before it, and holds a month to 31 days", () => {
@@ -38,8 +39,25 @@ describe("the numbers", () => {
 describe("a whole answer", () => {
   it("is one Mindbody answered for its whole window and Journey took in", () => {
     expect(readWhole(whole)).toBe(true);
-    expect(readWhole({ windowComplete: true, sweepDeferred: 0 })).toBe(true);
-    expect(readWhole({ windowComplete: true, sweepDeferred: 2, settledWithMonth: true })).toBe(true);
+    expect(readWhole({ windowComplete: true, studioAnswered: 12, sweepDeferred: 0 })).toBe(true);
+    expect(
+      readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 2, settledWithMonth: true, settleAnswered: 40 }),
+    ).toBe(true);
+  });
+
+  it("is not an answer holding none of the studio's bookings: the sync swept nothing on it", () => {
+    // mindbody-api-sync.ts returns before its sweep on an empty answer ("it
+    // can be a glitch"), and a wrong Location ID answers empty on every pull.
+    expect(readWhole({ windowComplete: true })).toBe(false);
+    expect(readWhole({ windowComplete: true, studioAnswered: 0 })).toBe(false);
+    expect(readWhole({ windowComplete: true, studioAnswered: 0, sweepDeferred: 0 })).toBe(false);
+  });
+
+  it("is an empty near answer that lost a booking once a month that held bookings settled it", () => {
+    // The month's own sweep covered today and tomorrow and decided the loss.
+    expect(
+      readWhole({ windowComplete: true, studioAnswered: 0, sweepDeferred: 1, settledWithMonth: true, settleAnswered: 40 }),
+    ).toBe(true);
   });
 
   it("is not a partial answer, a failed pull, or an older proxy's silence", () => {
@@ -51,8 +69,20 @@ describe("a whole answer", () => {
 
   it("is not a near pull that lost a booking until the wider pull that settles it was whole too", () => {
     // Journey still holds, on today or tomorrow, a booking Mindbody no longer has.
-    expect(readWhole({ windowComplete: true, sweepDeferred: 1 })).toBe(false);
-    expect(readWhole({ windowComplete: true, sweepDeferred: 1, settledWithMonth: false })).toBe(false);
+    expect(readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 1 })).toBe(false);
+    expect(readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 1, settledWithMonth: false })).toBe(false);
+    expect(
+      readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 1, settledWithMonth: false, settleAnswered: 40 }),
+    ).toBe(false);
+  });
+
+  it("is not a near pull whose settling month came back empty: that pull returned before its sweep too", () => {
+    // Whole, so settledWithMonth is true, but the lost booking was neither
+    // found nor cancelled.
+    expect(
+      readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 1, settledWithMonth: true, settleAnswered: 0 }),
+    ).toBe(false);
+    expect(readWhole({ windowComplete: true, studioAnswered: 5, sweepDeferred: 2, settledWithMonth: true })).toBe(false);
   });
 });
 

@@ -23,14 +23,20 @@ three pull the whole studio; a pull limited to some trainers must never call it.
 
 - **A day counts only when read on the day before, the day, or after.** A read
   two days early proves nothing: bookings keep changing until then.
-- **A partial answer records nothing**, and neither does a near pull whose lost
-  booking was handed to a wider pull that came back short.
+- **A partial answer records nothing**, and neither does an answer that held
+  none of the studio's bookings (the sync returned before its sweep, so it
+  checked nothing Journey holds: `studioAnswered` 0), nor a near pull whose
+  lost booking was handed to a wider pull that came back short or empty
+  (`settleAnswered` 0). `windowComplete` alone says only that every page
+  arrived (docs/KNOWN-TRAPS.md, Mindbody).
 - **Nothing about the pull changes.** No Mindbody call, no timer, no window.
 - **Add-only.** The rules keep every day already recorded, and the app never
   deletes a month (`match /scheduleCoverage/{month}` in `firestore.rules`).
   The write asks who works at the studio with the caller resolved once
   (`coverageWriterAllowed`): `writesForStudio` itself ran a guest's write out
-  of the 1,000-expression budget (docs/KNOWN-TRAPS.md).
+  of the 1,000-expression budget (docs/KNOWN-TRAPS.md: on the emulator's
+  coverage counts it runs out at about 2,100, and the costliest write as
+  built is 907).
 
 ## What comes next
 

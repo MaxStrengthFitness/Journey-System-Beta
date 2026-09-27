@@ -65,6 +65,16 @@ export interface MindbodySyncResult {
   sweepDeferred?: number;
   /** A settleSweepWith pull ran, and Mindbody answered for its whole window. */
   settledWithMonth?: boolean;
+  /**
+   * This studio's bookings in Mindbody's answer, after the location filter.
+   * 0 means the pull returned before its sweep: it checked nothing Journey
+   * holds for the window (an empty answer can be a glitch, or a wrong
+   * Location ID). Read by the whole-read record (features/openings/coverage.ts);
+   * a result field only, it changes nothing the pull asks or writes.
+   */
+  studioAnswered?: number;
+  /** The settleSweepWith pull's own `studioAnswered`, when one ran. */
+  settleAnswered?: number;
 }
 
 export interface MindbodyAppointment {
@@ -633,6 +643,7 @@ export async function syncMindbodySchedules(
       result.clientsCreated = (result.clientsCreated ?? 0) + settle.clientsCreated;
     }
     result.settledWithMonth = settle.windowComplete === true;
+    result.settleAnswered = settle.studioAnswered ?? 0;
   };
 
   const siteKey = String(siteId).trim();
@@ -767,6 +778,7 @@ export async function syncMindbodySchedules(
           String(a.LocationId).trim() === effectiveLocationId,
       );
     }
+    result.studioAnswered = appointments.length;
 
     if (appointments.length === 0) {
       // An empty answer never cancels anything by itself: it can be a glitch.

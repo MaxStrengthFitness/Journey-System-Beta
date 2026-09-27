@@ -79,30 +79,54 @@ export function addDays(day: string, n: number): string {
 
 /**
  * What a pull says about itself (`MindbodySyncResult` in
- * lib/mindbody-api-sync.ts; only these three fields are read).
+ * lib/mindbody-api-sync.ts; only these five fields are read).
  */
 export interface PullAnswer {
-  /** Mindbody answered for the WHOLE window (every page arrived) and Journey took it in. */
+  /**
+   * Mindbody answered for the WHOLE window (every page arrived). Not a
+   * promise every booking was written: one with an unreadable start time, or
+   * one whose own write threw, is skipped with an error and this stays true
+   * (the per-appointment loop in lib/mindbody-api-sync.ts).
+   */
   windowComplete?: boolean;
   /** Bookings that left a near window, handed to a wider pull to settle. */
   sweepDeferred?: number;
   /** That wider pull ran, and its answer was whole. */
   settledWithMonth?: boolean;
+  /** This studio's bookings in the answer; 0 means the pull swept nothing. */
+  studioAnswered?: number;
+  /** The wider pull's own `studioAnswered`. */
+  settleAnswered?: number;
 }
 
 /**
  * Did Journey take in Mindbody's whole answer for the window?
  *
- * `windowComplete` is the test the sync lease already uses. One case more: a
- * near pull that LOST a booking hands it to a wider pull to decide whether it
- * moved or was cancelled (`settleSweepWith`). Until that pull is whole too,
- * Journey still holds, on today or tomorrow, a booking Mindbody no longer
- * has, so the day is not recorded.
+ * `windowComplete` is the test the sync lease already uses. Two cases more:
+ *
+ *   - An answer holding none of this studio's bookings. The sync returns
+ *     before its sweep ("an empty answer never cancels anything by itself: it
+ *     can be a glitch"), so nothing Journey holds for those days was checked:
+ *     a Mindbody hiccup, or a studio whose Location ID is wrong, which would
+ *     otherwise record every day as read in full with none of its bookings.
+ *     A studio that really is closed goes unrecorded, which errs the modest
+ *     way: the reader's closure test leaves an empty day out anyway.
+ *   - A near pull that LOST a booking hands it to a wider pull to decide
+ *     whether it moved or was cancelled (`settleSweepWith`). Until that pull
+ *     is whole, and holds bookings (an empty one returns before its sweep
+ *     too), Journey may still hold, on today or tomorrow, a booking Mindbody
+ *     no longer has, so the day is not recorded. The wider window always
+ *     covers the near one (`settleWindowFor`), so its answer is the one that
+ *     decides.
+ *
+ * A missing count is refused: the record can only ever be too modest.
  */
 export function readWhole(answer: PullAnswer | null | undefined): boolean {
   if (!answer || answer.windowComplete !== true) return false;
-  if ((answer.sweepDeferred ?? 0) > 0 && answer.settledWithMonth !== true) return false;
-  return true;
+  if ((answer.sweepDeferred ?? 0) > 0) {
+    return answer.settledWithMonth === true && (answer.settleAnswered ?? 0) > 0;
+  }
+  return (answer.studioAnswered ?? 0) > 0;
 }
 
 /**

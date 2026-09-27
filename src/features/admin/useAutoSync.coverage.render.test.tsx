@@ -131,7 +131,7 @@ const asked = () => ({ start: pullMock.mock.calls[0][5], end: pullMock.mock.call
 
 describe("the background pull", () => {
   it("records today and tomorrow after a whole answer, in this studio's month document", async () => {
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     await pullOnce();
     // The pull itself is as it was: today and tomorrow, for Westlake.
     expect(asked()).toEqual({ start: "2026-09-27", end: "2026-09-28" });
@@ -149,7 +149,7 @@ describe("the background pull", () => {
 
   it("records only today and tomorrow from the morning's whole month", async () => {
     fake.deep = true;
-    fake.answer = { windowComplete: true };
+    fake.answer = { windowComplete: true, studioAnswered: 12 };
     await pullOnce();
     expect(asked()).toEqual({ start: "2026-09-27", end: "2026-10-27" });
     expect(fake.commits.flat().map((w) => w.data)).toEqual([{ days: { __arrayUnion: ["2026-09-27", "2026-09-28"] } }]);
@@ -163,8 +163,26 @@ describe("the background pull", () => {
   });
 
   it("records nothing when a lost booking's wider pull came back short", async () => {
-    fake.answer = { windowComplete: true, sweepDeferred: 1, settledWithMonth: false };
+    fake.answer = { windowComplete: true, studioAnswered: 12, sweepDeferred: 1, settledWithMonth: false };
     await pullOnce();
     expect(fake.commits).toEqual([]);
+  });
+
+  it("records nothing when a lost booking's wider pull came back whole but empty", async () => {
+    // The month returned before its sweep: the lost booking was neither found nor cancelled.
+    fake.answer = { windowComplete: true, studioAnswered: 12, sweepDeferred: 1, settledWithMonth: true, settleAnswered: 0 };
+    await pullOnce();
+    expect(fake.commits).toEqual([]);
+  });
+
+  it("records nothing after a whole month that held none of the studio's bookings, and the pull is as it was", async () => {
+    // A Mindbody hiccup, or a wrong Location ID: the sync swept nothing.
+    fake.deep = true;
+    fake.answer = { windowComplete: true, studioAnswered: 0 };
+    await pullOnce();
+    expect(asked()).toEqual({ start: "2026-09-27", end: "2026-10-27" });
+    expect(fake.commits).toEqual([]);
+    // The month's stamp is the pull's own business, and unchanged.
+    expect(fake.leaseWrites.some((w) => w && typeof w === "object" && "lastDeepScheduleSyncAt" in w)).toBe(true);
   });
 });
