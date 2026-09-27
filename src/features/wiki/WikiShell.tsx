@@ -5,6 +5,7 @@ import {
   useLeaveScope,
   type LeaveScope,
 } from "../unsaved-changes";
+import { forgetOnSignOut } from "../sign-out/memory";
 import { WikiPageGuardContext } from "./page-guard";
 import {
   WikiSectionSwitch,
@@ -409,5 +410,15 @@ function PageScroller({
  * Where the reader left each page, for the session (review, Learning +
  * Planner round): coming back up to a long index used to land at its top.
  * Only top-level pages read it back.
+ *
+ * Forgotten at sign-out (voice review follow-up, Sep 27 2026): a sign-out
+ * remounts the tree but keeps this module, so the next person on a shared
+ * iPad landed where the last one had been reading.
  */
 const placeOf = new Map<string, number>();
+forgetOnSignOut(() => placeOf.clear());
+
+/** For tests: how many pages have a remembered place. */
+export function rememberedPlaces(): number {
+  return placeOf.size;
+}

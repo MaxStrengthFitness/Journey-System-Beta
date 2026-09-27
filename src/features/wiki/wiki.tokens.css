@@ -124,7 +124,9 @@
      it: the index card, the row stripe, the article eyebrow, the infobox
      header. That consistency is the whole of "colour-coded categories" —
      a colour that means something different on two screens teaches nothing.
-     Values match --cat-accent-* so nothing shifts hue mid-migration. */
+     They are Learning's own; the old Catalog's copies (--cat-accent-*)
+     went with it. A category colour that colours WORDS uses its -text
+     shade below. */
   --wk-cat-push:      #ef5302;
   --wk-cat-pull:      #0a548b;
   --wk-cat-legs:      #1c7a52;

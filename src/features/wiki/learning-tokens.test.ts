@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -91,7 +91,10 @@ describe.each(Object.entries(palettes))("--%s-* is the app's palette", (prefix, 
 
   it("says caution in the app's plum, never amber", () => {
     for (const block of [p.light, p.dark]) {
-      expect(block[`--${prefix}-warn-strong`]).toBe(block[`--${prefix}-warn`]);
+      // --cat-warn-strong had no reader and went on Sep 27 2026; where a
+      // palette still has one, it is the same plum.
+      const strong = block[`--${prefix}-warn-strong`];
+      if (strong !== undefined) expect(strong).toBe(block[`--${prefix}-warn`]);
     }
     expect(p.light[`--${prefix}-warn`]).toBe(eq.light["--eq-warn"]);
   });
@@ -109,6 +112,31 @@ describe.each(Object.entries(palettes))("--%s-* is the app's palette", (prefix, 
     expect(p.dark[`--${prefix}-live-on`]).toBe(eq.dark["--eq-live-on"]);
     expect(ratio(p.light[`--${prefix}-live-on`], p.light[`--${prefix}-live`])).toBeGreaterThanOrEqual(4.5);
     expect(ratio(p.dark[`--${prefix}-live-on`], p.dark[`--${prefix}-live`])).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+/** Every source file under src/features, for "does anything read this token". */
+function featureSources(): string {
+  const root = join(here, "..");
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (/\.(css|tsx?)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) out.push(readFileSync(path, "utf8"));
+    }
+  };
+  walk(root);
+  return out.join("\n");
+}
+
+describe("--cat-* has no token without a reader", () => {
+  it("defines only what the studio cards and How it's used read", () => {
+    // The old Catalog's twenty (rail widths, the picker's accents, the
+    // figure's colours, orange) sat here unread for ten days after it went.
+    const sources = featureSources().split(CATALOG).join("");
+    const unread = Object.keys(palettes.cat.light).filter((token) => !sources.includes(`var(${token}`));
+    expect(unread).toEqual([]);
   });
 });
 
