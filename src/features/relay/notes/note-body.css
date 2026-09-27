@@ -1,9 +1,11 @@
 /* ==========================================================================
    A NOTE'S BODY, DRAWN — and its toolbar (Planner rework, Sep 2026)
    --------------------------------------------------------------------------
-   Used in the Planner and on the client profile ("Plans from the team"),
-   which may render before the --st-* tokens are loaded — so every token has
-   a fallback that inherits from the surrounding card.
+   Used in Relay's Notes and on the client profile (Goals & Focus, "Plans
+   from the team"). The --st-* tokens are loaded for the whole app
+   (src/main.tsx imports studio-tasks.css), so they are always there: the
+   hex fallbacks this file used to carry never applied and went on Sep 27
+   2026.
    ========================================================================== */
 
 .nb { display: flex; flex-direction: column; gap: 0.625rem; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
@@ -14,7 +16,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-muted, inherit);
+  color: var(--st-ink-muted);
 }
 .nb__p { margin: 0; white-space: pre-wrap; }
 .nb__ul, .nb__ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; }
@@ -24,12 +26,12 @@
 .nb__quote {
   margin: 0;
   padding: 0.375rem 0.75rem;
-  border-left: 3px solid var(--st-border-strong, currentColor);
-  color: var(--st-ink-2, inherit);
+  border-left: 3px solid var(--st-border-strong);
+  color: var(--st-ink-2);
   white-space: pre-wrap;
 }
-.nb__hr { width: 100%; margin: 0.25rem 0; border: 0; border-top: 1px solid var(--st-border, rgba(127, 127, 127, 0.3)); }
-.nb__a { color: var(--st-live, #2563eb); text-decoration: underline; text-underline-offset: 2px; }
+.nb__hr { width: 100%; margin: 0.25rem 0; border: 0; border-top: 1px solid var(--st-border); }
+.nb__a { color: var(--st-live); text-decoration: underline; text-underline-offset: 2px; }
 .nb strong { font-weight: 800; }
 
 .nb__check {
@@ -47,18 +49,18 @@
   cursor: pointer;
 }
 .nb__check--static { cursor: default; }
-.nb__check:focus-visible { outline: 2px solid var(--st-live, #2563eb); outline-offset: 2px; border-radius: 6px; }
+.nb__check:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 6px; }
 .nb__box {
   flex: none;
   position: relative;
   width: 20px;
   height: 20px;
   margin-top: 2px;
-  border: 2px solid var(--st-border-strong, currentColor);
+  border: 2px solid var(--st-border-strong);
   border-radius: 6px;
-  background: var(--st-surface, transparent);
+  background: var(--st-surface);
 }
-.nb__li--done .nb__box { border-color: var(--st-done, #16a34a); background: var(--st-done, #16a34a); }
+.nb__li--done .nb__box { border-color: var(--st-done); background: var(--st-done); }
 .nb__li--done .nb__box::after {
   content: "";
   position: absolute;
@@ -66,20 +68,20 @@
   top: 1px;
   width: 6px;
   height: 11px;
-  border: solid var(--st-surface, #fff);
+  border: solid var(--st-done-on);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
-.nb__li--done .nb__check-text { color: var(--st-ink-muted, inherit); text-decoration: line-through; }
+.nb__li--done .nb__check-text { color: var(--st-ink-muted); text-decoration: line-through; }
 
 .nb-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--st-border, rgba(127, 127, 127, 0.3));
+  border: 1px solid var(--st-border);
   border-radius: 10px;
-  background: var(--st-surface-2, transparent);
+  background: var(--st-surface-2);
 }
 .nb-tool {
   display: grid;
@@ -89,9 +91,9 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--st-ink-2, inherit);
+  color: var(--st-ink-2);
   cursor: pointer;
 }
-.nb-tool:hover { background: var(--st-surface, transparent); color: var(--st-live, inherit); }
-.nb-tool:focus-visible { outline: 2px solid var(--st-live, #2563eb); outline-offset: -2px; }
+.nb-tool:hover { background: var(--st-surface); color: var(--st-live); }
+.nb-tool:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
 .nb-tool:disabled { opacity: 0.5; cursor: default; }

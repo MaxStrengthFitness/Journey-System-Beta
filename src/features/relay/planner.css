@@ -4,10 +4,11 @@
    Round: Learning + Planner, Sep 2026.
 
    On the Studio Hub's --st-* tokens (features/studio-tasks/studio-tasks.css),
-   which carry the same values as Learning's --wk-*: the Planner masthead is
-   deliberately the same shape as Learning's — title, sections, and the
-   context on the right — so the two tabs AJ asked to be given "a good header"
-   got the same one. Nothing here writes a hex value.
+   which carry the app's values (equipment.tokens.css), as Learning's --wk-*
+   do — both since Sep 27 2026. The masthead is deliberately the same shape
+   as Learning's — title, sections, and the context on the right — so the two
+   tabs AJ asked to be given "a good header" got the same one. Nothing here
+   writes a hex value.
    ========================================================================== */
 
 .pl {
@@ -162,14 +163,15 @@
 .pl__btn--primary {
   background: var(--st-live);
   border-color: var(--st-live);
-  color: var(--st-surface);
+  color: var(--st-live-on);
 }
-/* No red in the --st-* set (the kaizen red is reserved): destructive
-   confirmations use the flag colours, which read as "careful". */
+/* A destructive confirmation is the app's critical crimson, as the admin
+   kit's is (.adm-btn--danger) — never the kaizen red, which is rep quality's
+   alone. It was the caution colour until Sep 27 2026. */
 .pl__btn--danger {
-  background: var(--st-flag-fill);
-  border-color: var(--st-flag-border);
-  color: var(--st-flag);
+  background: var(--st-alert-fill);
+  border-color: var(--st-alert);
+  color: var(--st-alert);
 }
 
 /* ------------------------------------------------------------------ *
@@ -302,7 +304,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 .pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
 

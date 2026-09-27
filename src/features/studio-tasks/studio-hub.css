@@ -128,10 +128,10 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 
-/* Who is on it / who closed it. Lifted out of the faint meta colour because
+/* Who is on it / who closed it. Lifted out of the muted meta colour because
    it is the one part of that line carrying a person's name, and a name that
    reads as decoration is a name nobody looks for. */
 .sh__credit {
@@ -215,17 +215,20 @@
   text-transform: uppercase;
   cursor: pointer;
 }
-.sh__assign:hover { border-color: var(--st-hero); color: var(--st-hero); }
+/* The studio's orange, because an assignment is the floor's shared work: the
+   rim in the bright orange, the words in the deep one (small orange text is
+   --st-hero-text), on the orange wash rather than the caution colour's. */
+.sh__assign:hover { border-color: var(--st-hero); color: var(--st-hero-text); }
 .sh__assign:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 .sh__assign:disabled { opacity: 0.5; cursor: not-allowed; }
 .sh__assign--on {
   border-style: solid;
   border-color: var(--st-hero);
-  background: var(--st-flag-fill);
-  color: var(--st-hero);
+  background: var(--st-hero-fill);
+  color: var(--st-hero-text);
 }
 
-.sh__credit--assigned { color: var(--st-hero); }
+.sh__credit--assigned { color: var(--st-hero-text); }
 
 /* Five controls will not fit a 52px row on a phone. The icons carry the
    meaning; the labels are the luxury that goes first. */
@@ -241,7 +244,7 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
   white-space: nowrap;
 }
 
@@ -317,7 +320,7 @@
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 
 .sh__row-flag {
@@ -328,7 +331,7 @@
   place-items: center;
   border: 0;
   background: none;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
   cursor: pointer;
   border-radius: 8px;
 }
@@ -429,7 +432,7 @@
   place-items: center;
   border: 0;
   background: none;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
   cursor: pointer;
 }
 
@@ -476,7 +479,7 @@
 
 .sh__entry-meta {
   font-size: 11px;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 
 .sh__entry-age {
@@ -493,7 +496,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 
 .sh__entry-text {
@@ -617,10 +620,11 @@
   cursor: pointer;
 }
 
+/* Selected in the brand blue, like every other selection on the board. */
 .sh__chip--on {
-  background: var(--st-hero);
-  border-color: var(--st-hero);
-  color: #fff;
+  background: var(--st-live);
+  border-color: var(--st-live);
+  color: var(--st-live-on);
 }
 
 .sh__chip-count {
@@ -692,7 +696,7 @@
  */
 .sh__client--done .sh__client-name,
 .sh__client--done .sh__client-what {
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
   text-decoration: line-through;
 }
 

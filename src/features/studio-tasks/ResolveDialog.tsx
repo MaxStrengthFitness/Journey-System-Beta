@@ -165,7 +165,7 @@ export function ResolveDialog({
                   className={cn(
                     "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border",
                     keep
-                      ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                       : "border-input bg-card text-transparent",
                   )}
                 >
@@ -251,7 +251,7 @@ export function ResolveDialog({
             type="button"
             disabled={!canSubmit}
             onClick={() => void submit()}
-            className="h-10 rounded-xl bg-cta-strong px-5 text-[11px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 rounded-xl bg-[var(--st-live)] px-5 text-[11px] font-black uppercase tracking-widest text-[var(--st-live-on)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving
               ? "Saving…"

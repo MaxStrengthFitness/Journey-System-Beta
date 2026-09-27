@@ -13,6 +13,26 @@
    overlapping anything.
 
    Contrast checked to WCAG 2.1 AA: text >= 4.5:1, non-text UI >= 3:1.
+
+   ONE PALETTE (voice review follow-up, Sep 27 2026). Every colour here with
+   an original in equipment.tokens.css carries that original's value, light
+   and dark, as --wk-* (Learning) and --adm-* (the admin kit) already do, and
+   studio-tokens.test.ts holds it. The names are My Studio's own, so the map
+   is written out there: --st-done is --eq-ok, --st-flag is --eq-warn. What
+   each colour MEANS is the app's:
+     - live (blue): anything you can act on, and what is selected. A solid
+       blue button writes in --st-live-on.
+     - hero (orange): the one loud action (Capture), the studio's shared work
+       on the board, and the Floor Map's heat. Solid orange is 3.55:1 with
+       white, so anything with a label fills with --st-hero-text and writes
+       in --st-hero-on; small orange text is --st-hero-text.
+     - flag (plum): caution — a flagged machine, a late job, a tight gap. It
+       was amber until Sep 27 2026, so a machine flagged on the Floor Map was
+       amber here and plum everywhere else.
+     - alert (crimson): critical, and the destructive button.
+     - done (green): finished. A solid green button writes in --st-done-on.
+   The ink-faint grey is 3.3:1 and decorative only (dots, chevrons, an icon
+   beside a label); anything a person reads is --st-ink-muted or darker.
    ========================================================================== */
 
 :root {
@@ -20,22 +40,29 @@
   --st-surface:       #ffffff;
   --st-surface-2:     #e8eef2;
   --st-surface-3:     #dae1e6;
-  --st-border:        #d3dadf;
-  --st-border-strong: #a9b2b9;
+  --st-border:        #d3dadf;   /* 1.4:1 hairline          */
+  --st-border-strong: #a9b2b9;   /* 2.2:1 control boundary  */
 
-  --st-ink:       #121c23;
-  --st-ink-2:     #3e4952;
-  --st-ink-muted: #5b6770;
-  --st-ink-faint: #848e95;
+  --st-ink:       #121c23;   /* 17.3:1 */
+  --st-ink-2:     #3e4952;   /*  9.2:1 */
+  --st-ink-muted: #5b6770;   /*  5.8:1 — the smallest ink a person reads */
+  --st-ink-faint: #848e95;   /*  3.3:1 — decorative only */
 
   --st-done:      #1c7a52;   /* 4.9:1 */
   --st-done-fill: #e3f1ea;
+  --st-done-on:   #ffffff;   /* 5.3:1 on --st-done */
   --st-live:      #0a548b;   /* 7.9:1 */
   --st-live-fill: #e6eef3;
-  --st-flag:        #8a5300; /* 5.1:1 */
-  --st-flag-fill:   #fdf3e3;
-  --st-flag-border: #e5c48f;
-  --st-hero:      #ef5302;
+  --st-live-on:   #ffffff;   /* 7.9:1 on --st-live */
+  --st-flag:        #a2457e; /* 5.7:1 */
+  --st-flag-fill:   #f4e9f0;
+  --st-flag-border: #a2457e;
+  --st-hero:      #ef5302;   /* 3.55:1 — bars, rails and icons, never a label */
+  --st-hero-text: #bc2c00;   /* 6.0:1 on white */
+  --st-hero-fill: #fde7dc;
+  --st-hero-on:   #ffffff;   /* 6.0:1 on --st-hero-text */
+  --st-alert:      #c0203f;  /* 5.9:1 */
+  --st-alert-fill: #fce3e8;
 
   --st-radius: 14px;
   --st-shadow: rgba(18, 28, 35, 0.10);
@@ -54,14 +81,23 @@
   --st-ink-muted: #8b98a4;
   --st-ink-faint: #63707c;
 
-  --st-done:      #34d399;
-  --st-done-fill: rgba(52, 211, 153, 0.12);
-  --st-live:      #38bdf8;
-  --st-live-fill: rgba(56, 189, 248, 0.12);
-  --st-flag:        #fbbf24;
-  --st-flag-fill:   rgba(251, 191, 36, 0.10);
-  --st-flag-border: rgba(251, 191, 36, 0.32);
-  --st-hero:      #ff6a1f;
+  /* Dark is not a flip: the fills become low-alpha washes, the text tones
+     lift, and a solid button writes in near-black rather than white. */
+  --st-done:      #4ec08c;
+  --st-done-fill: rgba(78, 192, 140, 0.13);
+  --st-done-on:   #04121c;
+  --st-live:      #4a9fd8;
+  --st-live-fill: rgba(74, 159, 216, 0.14);
+  --st-live-on:   #04121c;
+  --st-flag:        #d98cbd;
+  --st-flag-fill:   rgba(217, 140, 189, 0.14);
+  --st-flag-border: rgba(217, 140, 189, 0.32);
+  --st-hero:      #f36d21;
+  --st-hero-text: #ff9455;
+  --st-hero-fill: rgba(243, 109, 33, 0.14);
+  --st-hero-on:   #1a0c04;
+  --st-alert:      #f2718c;
+  --st-alert-fill: rgba(242, 113, 140, 0.13);
 
   --st-shadow: rgba(0, 0, 0, 0.5);
 }
@@ -137,8 +173,7 @@
 .st__btn:hover { background: var(--st-surface-2); }
 .st__btn:disabled { opacity: 0.55; cursor: default; }
 .st__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
-.st__btn--primary { border-color: transparent; background: var(--st-live); color: #fff; }
-.st__btn--done { border-color: transparent; background: var(--st-done); color: #fff; }
+.st__btn--done { border-color: transparent; background: var(--st-done); color: var(--st-done-on); }
 .st__btn--ghost { border-color: transparent; background: transparent; color: var(--st-ink-muted); }
 
 /* ==========================================================================
@@ -240,20 +275,22 @@
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-muted);
   font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; cursor: pointer; }
-.stq__kind[aria-pressed="true"] { border-color: var(--st-hero); color: var(--st-ink);
-  background: var(--st-surface); box-shadow: inset 0 0 0 1px var(--st-hero); }
+/* Selected in the brand blue, as every other pick on the board is. */
+.stq__kind[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live);
+  background: var(--st-live-fill); box-shadow: inset 0 0 0 1px var(--st-live); }
 
 .stq__row { display: flex; gap: 0.4rem; }
 .stq__input { flex: 1; min-width: 0; min-height: 40px; padding: 0 0.7rem;
   border: 1px solid var(--st-border); border-radius: 10px;
   background: var(--st-surface); color: var(--st-ink); font: inherit; font-size: 13px; }
+/* Posting is a save: solid brand blue. Orange is Capture's alone. */
 .stq__post { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--st-hero);
-  border-radius: 10px; background: var(--st-hero); color: #fff;
+  min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--st-live);
+  border-radius: 10px; background: var(--st-live); color: var(--st-live-on);
   font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; cursor: pointer; }
 .stq__post:disabled { border-color: var(--st-border); background: var(--st-surface-3);
-  color: var(--st-ink-faint); cursor: default; }
+  color: var(--st-ink-muted); cursor: default; }
 
 .stq__empty { margin: 0; padding: 0.875rem; color: var(--st-ink-muted);
   font-size: 12px; line-height: 1.5; }
@@ -294,7 +331,7 @@
   text-transform: uppercase; color: var(--st-live); }
 .stq__reply-body { flex: 1; min-width: 8rem; font-size: 12px; color: var(--st-ink);
   overflow-wrap: anywhere; }
-.stq__reply-when { font-size: 9px; font-weight: 700; color: var(--st-ink-faint); }
+.stq__reply-when { font-size: 9px; font-weight: 700; color: var(--st-ink-muted); }
 
 /* ── shelf life and one-tap replies (Sep 6) ─────────────────────────────── */
 
@@ -305,9 +342,9 @@
   align-self: center; margin-right: 0.15rem; font-size: 10px; font-weight: 800;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
 
-/* Time remaining, inline in the sub-line. Amber, not red: a request winding
-   down is not a problem, and spending the alert colour on it would leave
-   nothing louder for a flagged machine. */
+/* Time remaining, inline in the sub-line. The caution plum, not the alert
+   crimson: a request winding down is not a problem, and spending the alert
+   colour on it would leave nothing louder for what is critical. */
 .stq__ttl { display: inline-flex; align-items: center; gap: 0.2rem;
   margin-left: 0.4rem; padding: 1px 5px; border-radius: 999px;
   background: var(--st-flag-fill); color: var(--st-flag);
@@ -334,7 +371,7 @@
   background: var(--st-surface); color: var(--st-ink-2);
   font-size: 9px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stq__react[aria-pressed="true"] .stq__react-n { background: var(--st-live);
-  color: #fff; }
+  color: var(--st-live-on); }
 
 @media (max-width: 480px) {
   /* The 3.25rem indent lines the reactions up under the title on a tablet.
@@ -347,7 +384,7 @@
    Round: Settings tiers & Task Board, Sep 2026.
 
    The compliance grid is a dot per template per day rather than numbers: a
-   manager is scanning for the red, not reading counts, and seven columns of
+   manager is scanning for the gaps, not reading counts, and seven columns of
    "3/22" is a wall nobody parses. The exact figures are in the title
    attribute for the one row that turns out to matter.
    ========================================================================== */
@@ -363,7 +400,7 @@
 .stm__title { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase; }
 .stm__hint { margin-left: auto; font-size: 9px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-faint); }
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
 
 .stm__empty { margin: 0; padding: 0.875rem; color: var(--st-ink-muted);
   font-size: 12px; line-height: 1.5; }
@@ -383,7 +420,7 @@
 .stm__grid-title { display: block; font-size: 12px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
 .stm__grid-sub { display: block; font-size: 9px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--st-ink-faint); }
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--st-ink-muted); }
 
 .stm__cell { display: inline-block; width: 14px; height: 14px; border-radius: 4px;
   background: var(--st-surface-3); }

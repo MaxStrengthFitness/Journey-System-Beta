@@ -133,7 +133,7 @@ export function PostInitiativeDialog({
                   className={cn(
                     "min-h-10 rounded-xl border px-3 text-[12px] font-bold",
                     action === a
-                      ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                       : "border-div-d bg-card text-ink-d2",
                   )}
                 >
@@ -157,7 +157,7 @@ export function PostInitiativeDialog({
                   className={cn(
                     "min-h-10 min-w-10 rounded-xl border px-3 text-[13px] font-black tabular",
                     perTrainer === n
-                      ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                       : "border-div-d bg-card text-ink-d2",
                   )}
                 >
@@ -176,7 +176,7 @@ export function PostInitiativeDialog({
                 className={cn(
                   "min-h-10 rounded-xl border px-3 text-[12px] font-bold",
                   perTrainer === 0
-                    ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                    ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                     : "border-div-d bg-card text-ink-d2",
                 )}
               >
@@ -260,7 +260,7 @@ export function PostInitiativeDialog({
             type="button"
             disabled={!canPost}
             onClick={() => void submit()}
-            className="h-10 rounded-xl bg-cta-strong px-5 text-[11px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 rounded-xl bg-[var(--st-live)] px-5 text-[11px] font-black uppercase tracking-widest text-[var(--st-live-on)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Posting…" : "Post to the board"}
           </button>

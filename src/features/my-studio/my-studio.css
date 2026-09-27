@@ -2,10 +2,12 @@
    MY STUDIO — the studio's home on the bottom bar (My Studio round, Sep 2026)
    --------------------------------------------------------------------------
    The shell reuses Relay's masthead, frame, Context Panel and Capture button
-   (features/planner/planner.css, relay/relay.css) so the four sections read
-   as one screen. What is here is only what the other sections add: a plain
-   scrolling body for a section that has no scroller of its own. Tokens are
-   the Studio Hub's --st-*; nothing here writes a hex value.
+   (features/relay/planner.css, relay/board/relay.css) so the four sections
+   read as one screen. What is here is only what the other sections add: a
+   plain scrolling body for a section that has no scroller of its own. Tokens
+   are the Studio Hub's --st-*, except the waiting notice's link, which sits
+   among Team's admin-kit panels and takes their blue (--adm-live-text);
+   nothing here writes a hex value.
    ========================================================================== */
 
 /* A section body that scrolls as one page (the Team panel brings .st__scroll
@@ -51,9 +53,9 @@
   gap: 0.5rem;
 }
 
-/* The Team section: the Team cockpit (planner/team/TeamPanel, which brings
+/* The Team section: people and standards (relay/team/TeamPanel, which brings
    its own .st__scroll) and the studio's staff below it, as ONE page. The
-   cockpit's scroller is unwound here so the whole section scrolls together;
+   panel's scroller is unwound here so the whole section scrolls together;
    .ms__team is the scroller instead. */
 .ms__team {
   flex: 1;
