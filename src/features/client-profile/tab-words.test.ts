@@ -76,6 +76,24 @@ describe("buttons land where they say", () => {
     expect(task).not.toContain("has no screen of its own");
   });
 
+  it("the Hub card's Past sessions opens Sessions, handed off only once the move is agreed", () => {
+    const hub = read("components/ClientsView.tsx");
+    expect(hub).toContain("const guardLeave = useLeaveGuard();");
+    // The button whose label is Past sessions, from its guard to its move.
+    const label = hub.indexOf(">Past sessions</span>");
+    const start = hub.lastIndexOf("guardLeave(() => {", label);
+    expect(start).toBeGreaterThan(-1);
+    const move = 'setView("profile");';
+    const end = hub.indexOf(move, start);
+    expect(end).toBeGreaterThan(start);
+    expect(end).toBeLessThan(label);
+    const door = hub.slice(start, end + move.length);
+    expect(door).toContain("onSelectClient(client.id!);");
+    expect(door).toContain('openProfileAt(client.id!, { tab: "clinical", view: "sessions" });');
+    // Nowhere else in the Hub writes a handoff outside the guard.
+    expect(hub.split("openProfileAt(").length - 1).toBe(1);
+  });
+
   it("leaving a progress report hands off to the Activity Archive's Reports", () => {
     const back = between("const backToRecord = () =>", "if (!reportClient)");
     expect(back).toContain("guardLeave(");
@@ -96,6 +114,22 @@ describe("buttons land where they say", () => {
     expect(read("components/ClientProgressReportView.tsx")).toContain(
       "Go back to Reports and start again from there.",
     );
+  });
+
+  it("every way out of a report is named Back to Reports, on screen or to a screen reader", () => {
+    // The finished report's plain "Back" and the editor's arrow stay short on
+    // screen; their names say where they land.
+    const source = read("components/ClientProgressReportView.tsx");
+    const exits = source.split("onClick={onBack}").slice(0, -1);
+    expect(exits.length).toBeGreaterThanOrEqual(3);
+    let from = 0;
+    for (let i = 0; i < exits.length; i++) {
+      const at = source.indexOf("onClick={onBack}", from);
+      const open = source.lastIndexOf("<Button", at);
+      const close = source.indexOf("</Button>", at);
+      expect(source.slice(open, close), `exit ${i + 1}`).toContain("Back to Reports");
+      from = at + 1;
+    }
   });
 
   it("the setup-needed alert names Programming and Notes & Profile, not the Equipment tab", () => {

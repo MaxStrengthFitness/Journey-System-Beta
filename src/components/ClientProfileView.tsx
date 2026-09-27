@@ -563,7 +563,7 @@ export function ClientProfileView({
 
   /*
    * NOTES & PROFILE STAYS MOUNTED after its first visit (client codex, Sep
-   * 2026) — the All Machines and Trends precedent. Returning to the tab
+   * 2026) — the All Machines, Setup and Deep Dive precedent. Returning to the tab
    * re-reads nothing, and an unsaved edit survives a trip to Journey (the
    * codex's Save bar says where it is). Stamped with the client, so another
    * client's profile starts unmounted again. Worked out during render, so the

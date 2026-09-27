@@ -1064,9 +1064,12 @@ export function ClientProgressReportView({
         <div className="max-w-4xl mx-auto px-6 py-4 space-y-4 print-area">
           {/* Controls */}
           <div className="flex justify-between items-center no-print">
+            {/* Short on screen for the row's width; the name says where it lands. */}
             <Button
               variant="ghost"
               onClick={onBack}
+              aria-label="Back to Reports"
+              title="Back to Reports"
               className="h-12 text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
