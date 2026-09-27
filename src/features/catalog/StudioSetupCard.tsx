@@ -242,6 +242,7 @@ export function StudioSetupCard({
               className="ssc__addbtn"
               onClick={addOption}
               disabled={!draft.trim()}
+              aria-label={`Add this setting to ${machineName}`}
             >
               <Plus size={14} aria-hidden />
             </button>

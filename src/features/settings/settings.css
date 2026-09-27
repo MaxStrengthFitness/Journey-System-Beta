@@ -86,20 +86,20 @@
 .stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .stg-report {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--eq-border);
   font-size: 13px;
 }
+/* The whole report, wrapped: the row opens nothing, so a two-line cut-off
+   left the rest unreadable (voice review follow-up, Sep 27 2026). */
 .stg-report__text {
   flex: 1;
   min-width: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .stg-status { flex: none; font-size: 12px; font-weight: 800; }

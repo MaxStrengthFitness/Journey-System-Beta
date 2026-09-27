@@ -91,8 +91,9 @@
   flex: 1 1 auto;
   min-width: 0;
   /* The trail can outgrow a phone. It scrolls horizontally rather than
-     wrapping, so the bar stays one row tall and the CURRENT page — the end of
-     the trail — is what stays in view. */
+     wrapping, so the bar stays one row tall, and WikiShell's Trail scrolls it
+     to its end whenever it changes: the CURRENT page, the end of the trail,
+     is what stays in view. */
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -109,10 +110,15 @@
 }
 .wk__crumbs li { display: inline-flex; align-items: center; gap: 0.125rem; }
 
+/* 40px tall, like every tap in the app: the text stays small, the target
+   does not (voice review follow-up, Sep 27 2026). */
 .wk__crumb {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
   border: 0;
   background: none;
-  padding: 0.25rem 0.25rem;
+  padding: 0 0.375rem;
   font: inherit;
   font-size: 11px;
   font-weight: 800;
@@ -133,7 +139,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-border-strong);
   border-radius: var(--wk-radius-pill);
@@ -228,11 +234,13 @@
 .wk__mast-search:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
 .wk__mast-search:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 .wk__mast-search svg { flex: none; }
+/* Wraps rather than cutting off: "Search Learning" is two words, and the
+   pill grows a line before it clips one (below 640px the magnifier alone
+   carries it). */
 .wk__mast-search-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 /* Row two: the trail and the page's actions, on the page's own ground. */
@@ -838,7 +846,7 @@
 }
 .wk__warnings-more {
   margin-top: 0.5rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-warn-border);
   border-radius: var(--wk-radius-pill);
@@ -898,7 +906,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-border);
   border-radius: var(--wk-radius-pill);
@@ -1043,18 +1051,34 @@
 }
 .wk__search-input::-webkit-search-cancel-button { display: none; }
 
+/* A 40px target around the 24px circle you see: the circle is drawn behind
+   the cross, the button is the whole square (voice review follow-up). */
 .wk__search-clear {
+  position: relative;
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
+  margin-right: -0.5rem;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: var(--wk-surface-3);
+  background: transparent;
   color: var(--wk-ink-2);
   cursor: pointer;
 }
+.wk__search-clear::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--wk-surface-3);
+}
+.wk__search-clear svg { position: relative; }
+.wk__search-clear:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
 
 .wk__search-results {
   flex: 1;
@@ -1324,8 +1348,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  min-height: 32px;
-  padding: 0 0.625rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
   border: 1px solid var(--wk-border);
   border-radius: var(--wk-radius-pill);
   background: var(--wk-surface-2);

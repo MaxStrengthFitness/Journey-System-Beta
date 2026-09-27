@@ -151,6 +151,7 @@
   border-bottom: 0;
 }
 
+/* A setting's name wraps: never cut (voice review follow-up, Sep 27 2026). */
 .ssc__name {
   flex: 1;
   min-width: 0;
@@ -159,15 +160,14 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--cat-ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+/* Every control on this card is 40px: it is used standing at the machine. */
 .ssc__value {
   width: 4.5rem;
   flex: none;
-  height: 2rem;
+  height: 40px;
   padding: 0 0.5rem;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
@@ -191,8 +191,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
   background: var(--cat-surface-2);
@@ -215,7 +215,7 @@
 .ssc__draft {
   flex: 1;
   min-width: 0;
-  height: 2rem;
+  height: 40px;
   padding: 0 0.6rem;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
@@ -229,7 +229,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  height: 2.25rem;
+  min-height: 40px;
   /* A Save, so solid brand blue like every other (voice review follow-up,
      Sep 27 2026). Orange is Start Session's; it was this button's for a day. */
   border: 1px solid var(--cat-live);

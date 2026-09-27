@@ -158,6 +158,12 @@ describe("a machine's studio setup", () => {
     expect(addField().value).toBe("Back pad");
   });
 
+  it("names its icon-only buttons for a screen reader", async () => {
+    await mount(card(true));
+    expect(host.querySelector(".ssc__addbtn")?.getAttribute("aria-label")).toBe("Add this setting to Chest Press");
+    expect(host.querySelector(".ssc__remove")?.getAttribute("aria-label")).toBe("Remove Seat");
+  });
+
   it("never asks a trainer who can only read the settings", async () => {
     await mount(card(false));
     await click(away());

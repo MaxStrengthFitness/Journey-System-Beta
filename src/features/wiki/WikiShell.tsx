@@ -168,47 +168,13 @@ export function WikiShell({
           />
         )}
 
-        {/* An <ol> rather than a row of buttons: the trail is an ordered
-            structure and screen readers announce it as one. On a Learning
-            section's index the trail would only repeat the switch, so an empty
-            spacer holds its place and keeps search on the right. */}
+        {/* On a Learning section's index the trail would only repeat the
+            switch, so an empty spacer holds its place and keeps search on
+            the right. The trail itself is <Trail> below. */}
         {hideTrail ? (
           <div className="wk__crumbs" aria-hidden />
         ) : (
-          <nav className="wk__crumbs" aria-label="Breadcrumb">
-            <ol>
-              {crumbs.map((c, i) => {
-                const last = i === crumbs.length - 1;
-                return (
-                  <li key={`${c.label}-${i}`}>
-                    {i > 0 && (
-                      <ChevronRight
-                        size={13}
-                        className="wk__crumb-sep"
-                        aria-hidden
-                      />
-                    )}
-                    {c.onClick && !last ? (
-                      <button
-                        type="button"
-                        className="wk__crumb"
-                        onClick={c.onClick}
-                      >
-                        {c.label}
-                      </button>
-                    ) : (
-                      <span
-                        className="wk__crumb wk__crumb--here"
-                        aria-current={last ? "page" : undefined}
-                      >
-                        {c.label}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
+          <Trail crumbs={crumbs} />
         )}
 
         <div className="wk__bar-actions">
@@ -332,32 +298,7 @@ function MastheadShell({
           {hideTrail ? (
             <div className="wk__crumbs" aria-hidden />
           ) : (
-            <nav className="wk__crumbs" aria-label="Breadcrumb">
-              <ol>
-                {crumbs.map((c, i) => {
-                  const last = i === crumbs.length - 1;
-                  return (
-                    <li key={`${c.label}-${i}`}>
-                      {i > 0 && (
-                        <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />
-                      )}
-                      {c.onClick && !last ? (
-                        <button type="button" className="wk__crumb" onClick={c.onClick}>
-                          {c.label}
-                        </button>
-                      ) : (
-                        <span
-                          className="wk__crumb wk__crumb--here"
-                          aria-current={last ? "page" : undefined}
-                        >
-                          {c.label}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+            <Trail crumbs={crumbs} />
           )}
           {actions && <div className="wk__bar-actions">{actions}</div>}
         </div>
@@ -367,6 +308,53 @@ function MastheadShell({
         {children}
       </PageScroller>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The trail
+ * ------------------------------------------------------------------ */
+
+/**
+ * The breadcrumb, in both layouts.
+ *
+ * An <ol> rather than a row of buttons: the trail is an ordered structure and
+ * screen readers announce it as one. It scrolls sideways rather than wrapping
+ * so the bar stays one row, and a trail that outgrows the bar is scrolled to
+ * its END whenever it changes, so the page you are on (the last crumb, a
+ * machine's or a page's whole name) is the part in view. Nothing did that
+ * until the voice review follow-up (Sep 27 2026): a long trail showed its
+ * start and cut the current name at the edge.
+ */
+function Trail({ crumbs }: { crumbs: WikiCrumb[] }) {
+  const ref = useRef<HTMLElement>(null);
+  const trail = crumbs.map((c) => c.label).join(" / ");
+  useLayoutEffect(() => {
+    const nav = ref.current;
+    if (nav) nav.scrollLeft = nav.scrollWidth;
+  }, [trail]);
+  return (
+    <nav className="wk__crumbs" aria-label="Breadcrumb" ref={ref}>
+      <ol>
+        {crumbs.map((c, i) => {
+          const last = i === crumbs.length - 1;
+          return (
+            <li key={`${c.label}-${i}`}>
+              {i > 0 && <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />}
+              {c.onClick && !last ? (
+                <button type="button" className="wk__crumb" onClick={c.onClick}>
+                  {c.label}
+                </button>
+              ) : (
+                <span className="wk__crumb wk__crumb--here" aria-current={last ? "page" : undefined}>
+                  {c.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
