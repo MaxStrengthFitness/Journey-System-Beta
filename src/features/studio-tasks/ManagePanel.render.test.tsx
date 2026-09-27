@@ -20,14 +20,26 @@ vi.mock("firebase/firestore", () => ({
   Timestamp: { fromDate: (d: Date) => d },
 }));
 vi.mock("../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
+const reads = vi.hoisted(() => ({ requestsFor: [] as (string | null)[], submissionsFor: [] as string[] }));
 vi.mock("./useStudioRequests", () => ({
-  useStudioRequests: () => ({ open: [], expired: [], recentlyResolved: [], loading: false }),
+  useStudioRequests: (studioId: string | null) => {
+    reads.requestsFor.push(studioId);
+    return { open: [], expired: [], recentlyResolved: [], loading: false };
+  },
+}));
+vi.mock("./playbook-mutations", () => ({
+  watchSubmissions: (_s: string, requestId: string) => {
+    reads.submissionsFor.push(requestId);
+    return () => {};
+  },
 }));
 vi.mock("./useTaskCompliance", () => ({
   useTaskCompliance: () => ({ rows: [], dateKeys: [], loading: false, error: null, instances: [], machineIds: [], machineNames: {} }),
 }));
 
+import type { ComponentProps } from "react";
 import type { TaskTemplate } from "./types";
+import type { TaskRequest } from "./requests";
 import { ManagePanel } from "./ManagePanel";
 
 const template = { id: "close", studioId: "s1", title: "Closing checklist", kind: "facility", category: "ops", target: { kind: "facility" }, recurrence: { type: "daily" }, active: true } as TaskTemplate;
@@ -56,14 +68,14 @@ const compliance = {
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function mount() {
+async function mount(extra: Partial<ComponentProps<typeof ManagePanel>> = {}) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <ManagePanel studioId="s1" templates={[template]} compliance={compliance as never} />
+        <ManagePanel studioId="s1" templates={[template]} compliance={compliance as never} {...extra} />
       </StrictMode>,
     );
   });
@@ -75,6 +87,8 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  reads.requestsFor = [];
+  reads.submissionsFor = [];
 });
 
 describe("ManagePanel's seven days", () => {
@@ -101,6 +115,43 @@ describe("ManagePanel's seven days", () => {
     await act(async () => duty!.click());
     expect(duty?.getAttribute("aria-expanded")).toBe("true");
     expect(el.textContent).toContain("Mon: 2 of 3 done, 1 with a problem reported · Tue: 3 of 3 done · Wed: not due");
+  });
+
+  it("opens no second requests or submissions listener when Team hands it what it reads", async () => {
+    const initiative = {
+      id: "ini-1",
+      kind: "initiative",
+      status: "open",
+      title: "Five progress reports",
+      target: { perTrainer: 5 },
+      createdBy: { id: "t-lead", name: "Lee Leader" },
+      replyCount: 0,
+    } as unknown as TaskRequest;
+    const progress = {
+      started: 1,
+      met: 0,
+      expected: 2,
+      totalEntries: 3,
+      ratio: 0,
+      perTrainer: [
+        { trainerId: "t-a", trainerName: "Ann Park", count: 3, target: 5, met: false, entries: [] },
+        { trainerId: "t-b", trainerName: "Bo Chen", count: 0, target: 5, met: false, entries: [] },
+      ],
+    };
+    const el = await mount({
+      requests: { open: [initiative], expired: [] },
+      initiativeProgress: new Map([["ini-1", progress]]),
+    });
+    expect(el.textContent).toContain("Five progress reports");
+    expect(el.textContent).toContain("0 of 2 trainers done");
+    expect(el.textContent).toContain("Ann Park");
+    expect(reads.requestsFor.every((s) => s === null)).toBe(true);
+    expect(reads.submissionsFor).toEqual([]);
+  });
+
+  it("reads for itself when nothing is handed to it", async () => {
+    await mount();
+    expect(reads.requestsFor).toContain("s1");
   });
 
   it("puts its headings under Team's h3", async () => {

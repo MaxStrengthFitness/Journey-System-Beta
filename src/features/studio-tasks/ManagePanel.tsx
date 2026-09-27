@@ -43,11 +43,11 @@ import { formatStudioDate } from "../../lib/studio-time";
 import { useToast } from "../../contexts/ToastContext";
 import { useTaskCompliance, type ComplianceCell } from "./useTaskCompliance";
 import { useStudioRequests } from "./useStudioRequests";
-import { createRequest } from "./requests";
+import { createRequest, type TaskRequest } from "./requests";
 import { PostInitiativeDialog } from "./PostInitiativeDialog";
 import { InitiativeRollup } from "./InitiativeRollup";
 import { studioRoster } from "./initiatives";
-import type { InitiativeTarget } from "./initiatives";
+import type { InitiativeProgress, InitiativeTarget } from "./initiatives";
 import type { Trainer } from "../../types";
 import { newTemplateId, saveTaskTemplate, type TaskAuthor } from "./mutations";
 import { categoryLabel } from "./types";
@@ -215,6 +215,14 @@ export interface ManagePanelProps {
    * for itself.
    */
   compliance?: ReturnType<typeof useTaskCompliance>;
+  /**
+   * The studio's open and aged-out asks, and each open initiative's roll-up
+   * by request id, when the caller already reads them (Team does). Without
+   * them the panel reads for itself — the same rule either way, so the
+   * numbers cannot drift; passing them only saves the second listener.
+   */
+  requests?: { open: TaskRequest[]; expired: TaskRequest[] };
+  initiativeProgress?: ReadonlyMap<string, InitiativeProgress>;
 }
 
 export function ManagePanel({
@@ -226,13 +234,16 @@ export function ManagePanel({
   onEditTask,
   trainers,
   compliance,
+  requests,
+  initiativeProgress,
 }: ManagePanelProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   // Hooks can't be skipped, so an injected read turns this one off (no studio
   // means no query) rather than running a second copy of it.
   const own = useTaskCompliance(compliance ? null : studioId, templates, 7);
   const { rows, dateKeys, loading, error: complianceError } = compliance ?? own;
-  const { open: openRequests, expired } = useStudioRequests(studioId);
+  const ownRequests = useStudioRequests(requests ? null : studioId);
+  const { open: openRequests, expired } = requests ?? ownRequests;
   const [busy, setBusy] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [postingBusy, setPostingBusy] = useState(false);
@@ -557,6 +568,7 @@ export function ManagePanel({
                   target={r.target}
                   roster={roster}
                   currentUserId={author?.id ?? null}
+                  progress={initiativeProgress?.get(r.id)}
                 />
               </li>
             ))}

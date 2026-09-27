@@ -60,8 +60,11 @@ import "./team.css";
  *
  * The arithmetic, and what is deliberately never counted, is in
  * ./accountability.ts. Reads: the week's task instances once (shared with the
- * seven-day table below — no second read), the team jobs listener, the open
- * requests the board already reads, and one listener per open initiative.
+ * seven-day table below — no second read), today's shift list, the team
+ * jobs, the studio's requests (one listener, shared with the standards
+ * panel), and one submissions listener per open initiative (shared with its
+ * roll-up card) — voice review follow-up, Sep 27 2026: the standards panel
+ * and each roll-up used to open second copies of the last two.
  */
 
 export interface TeamPanelProps {
@@ -86,10 +89,14 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
   const { categories } = useStudioTaskCategories(studioId);
   const compliance = useTaskCompliance(studioId, templates, DAYS);
   const teamJobs = useTeamJobs(studioId);
-  const { open: openRequests, recentlyResolved } = useStudioRequests(studioId);
+  const { open: openRequests, expired, recentlyResolved } = useStudioRequests(studioId);
 
   const roster = useMemo(() => studioRoster(trainers ?? [], studioId), [trainers, studioId]);
   const initiatives = useInitiativeProgress(studioId, openRequests, roster);
+  // Handed to the standards panel, so Team opens one requests listener and
+  // one submissions listener per initiative, not two of each.
+  const requestLists = useMemo(() => ({ open: openRequests, expired }), [openRequests, expired]);
+  const progressById = useMemo(() => new Map(initiatives.map((i) => [i.id, i.progress] as const)), [initiatives]);
   const roleOf = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of trainers ?? []) if (t.id && t.role) m.set(t.id, ROLE_LABELS[t.role] ?? t.role);
@@ -260,6 +267,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             author={author}
             trainers={trainers}
             compliance={compliance}
+            requests={requestLists}
+            initiativeProgress={progressById}
             onNewTask={() => {
               setManagerIntent({ mode: "new", scope: "studio" });
               setManaging(true);

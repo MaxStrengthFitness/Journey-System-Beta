@@ -43,7 +43,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, UserRound } from "lucide-react";
 import { watchSubmissions } from "./playbook-mutations";
 import { initiativeProgress } from "./initiatives";
-import type { InitiativeSubmission, InitiativeTarget } from "./initiatives";
+import type { InitiativeProgress, InitiativeSubmission, InitiativeTarget } from "./initiatives";
 
 export interface InitiativeRollupProps {
   studioId: string | null;
@@ -53,6 +53,12 @@ export interface InitiativeRollupProps {
   roster: { id: string; name: string }[];
   /** Highlight this trainer's own row. */
   currentUserId?: string | null;
+  /**
+   * The roll-up, when the screen already listens to this initiative's
+   * submissions (My Studio → Team does, for its people cards). Without it —
+   * on Relay's Floor — the card listens for itself.
+   */
+  progress?: InitiativeProgress;
 }
 
 export function InitiativeRollup({
@@ -61,24 +67,30 @@ export function InitiativeRollup({
   target,
   roster,
   currentUserId,
+  progress: given,
 }: InitiativeRollupProps) {
   const [subs, setSubs] = useState<InitiativeSubmission[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const listen = !given;
 
   /*
    * Live rather than a one-shot read: this is the card a manager leaves open
    * on a Friday afternoon while the floor finishes, and a stale roll-up is
    * the thing that makes someone chase a trainer who already logged it.
+   * One listener per initiative per screen: when the screen passes the
+   * roll-up in, this card opens none of its own (voice review follow-up,
+   * Sep 27 2026 — Team used to open two).
    */
   useEffect(() => {
-    if (!studioId || !requestId) return;
+    if (!listen || !studioId || !requestId) return;
     return watchSubmissions(studioId, requestId, setSubs);
-  }, [studioId, requestId]);
+  }, [listen, studioId, requestId]);
 
-  const progress = useMemo(
+  const own = useMemo(
     () => initiativeProgress(subs, roster, target),
     [subs, roster, target],
   );
+  const progress = given ?? own;
 
   const per = target?.perTrainer ?? 0;
 
