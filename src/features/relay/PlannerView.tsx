@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users } from "lucide-react";
+import { LayoutGrid, Plus, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
@@ -191,6 +191,3 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
     </>
   );
 }
-
-// The notebook icon is still the bottom bar's; the masthead's bolt is Relay's own.
-export { NotebookPen as PlannerNavIcon };

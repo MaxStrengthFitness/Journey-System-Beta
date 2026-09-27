@@ -5,10 +5,11 @@
    (features/relay/planner.css, relay/board/relay.css) so the four sections
    read as one screen. What is here is only what the other sections add: a
    plain scrolling body for a section that has no scroller of its own. Tokens
-   are the Studio Hub's --st-*, except the waiting notice's link, which sits
-   among Team's admin-kit panels and takes their blue (--adm-live-text);
-   nothing here writes a hex value, and look.test.ts holds that for every
-   stylesheet My Studio draws with.
+   are the Studio Hub's --st-*, except where a rule sits among the Operations
+   kit's panels (Machines, Studio, Team's staff) and takes their --adm-*:
+   the waiting notice's link, and the sentences inside a panel (.ms__line,
+   .ms__note, .ms__quiet). Nothing here writes a hex value, and look.test.ts
+   holds that for every stylesheet My Studio draws with.
    ========================================================================== */
 
 /* A section body that scrolls as one page (the Team panel brings .st__scroll
@@ -25,6 +26,16 @@
   gap: 0.875rem;
 }
 .ms__page > * { flex: none; }
+
+/* Sentences inside an Operations-kit panel on Machines and Studio. They
+   were inline colour styles until Sep 27 2026. */
+.ms__line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--adm-ink); }
+.ms__line--muted { color: var(--adm-ink-muted); }
+.ms__line--lead { margin-bottom: 0.75rem; }
+/* A small note under a panel's fields: where a default comes from, what to do next. */
+.ms__note { margin: 0.75rem 0 0; font-size: 12px; line-height: 1.45; color: var(--adm-ink-muted); }
+/* A quiet line standing in for an empty or loading list in a flush panel. */
+.ms__quiet { margin: 0; padding: 1rem 14px; font-size: 14px; color: var(--adm-ink-muted); }
 
 /* The machine's door (Machines section): the settings card and the notes
    box stacked in the Context Panel, with the three actions under them. The

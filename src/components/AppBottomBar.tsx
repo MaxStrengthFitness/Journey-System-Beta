@@ -10,11 +10,11 @@
  * before the bar can tear it down. See features/unsaved-changes.
  */
 import {
+  Building2,
   Calendar,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
-  NotebookPen,
   PlayCircle,
   ShieldCheck,
   Users,
@@ -108,7 +108,10 @@ export function AppBottomBar({
       <NavButton
         active={currentView === "studio-tasks"}
         onClick={() => onNavigate("studio-tasks")}
-        icon={<NotebookPen className="w-5 h-5 sm:w-6 sm:h-6" />}
+        // The building, as on My Studio's own masthead (MyStudioView). It was
+        // the Planner's notebook until Sep 27 2026, and the notebook is the
+        // notes icon everywhere else.
+        icon={<Building2 className="w-5 h-5 sm:w-6 sm:h-6" />}
         label="My Studio"
       />
       <NavButton

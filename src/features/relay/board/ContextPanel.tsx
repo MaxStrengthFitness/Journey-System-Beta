@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import type { PanelContent } from "./RelayContext";
+// Its own stylesheet (.cp): Operations → Floor opens Machines' door with no
+// Relay shell around it, so the panel cannot count on the shell's imports.
+import "./relay.css";
 
 /**
  * THE CONTEXT PANEL — detail beside the board, never on top of it.

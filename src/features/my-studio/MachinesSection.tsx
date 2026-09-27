@@ -39,7 +39,16 @@ import {
   type CatalogSubmissionDoc,
   type RosterSubmissionMarker,
 } from "./floor";
+// Every stylesheet this section draws with, imported here and not left to
+// the shell: Operations → Floor mounts this section without My Studio's
+// shell, so it cannot count on MyStudioView's imports (.pl__frame, .pl__body
+// and the door's .cp from planner.css and relay.css, .ms__* from
+// my-studio.css). css-imports.test.ts holds it.
 import "../admin/admin.css";
+import "../studio-tasks/studio-tasks.css";
+import "../relay/planner.css";
+import "../relay/board/relay.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → MACHINES — the floor, and what the studio has done to it.
@@ -320,11 +329,9 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
               <AdminNotice tone="warn">{shared.error}</AdminNotice>
             </div>
           ) : shared.loading ? (
-            <div className="p-4 text-sm" style={{ color: "var(--adm-ink-muted)" }}>Loading…</div>
+            <p className="ms__quiet">Loading…</p>
           ) : sharedEntries.length === 0 ? (
-            <div className="p-4 text-sm" style={{ color: "var(--adm-ink-muted)" }}>
-              No studio has shared a machine yet.
-            </div>
+            <p className="ms__quiet">No studio has shared a machine yet.</p>
           ) : (
             <AdminRows>
               {sharedEntries.map((e) => (
@@ -703,11 +710,11 @@ function OfferDialog({
           <DialogTitle className="uppercase tracking-tight">Offer {machineName} to the MSF catalog</DialogTitle>
         </DialogHeader>
         <div className="adm flex flex-col gap-3">
-          <p className="text-sm" style={{ color: "var(--adm-ink-muted)" }}>
+          <p className="ms__line ms__line--muted">
             Corporate reviews it. If it is published, {studioName} is moved onto the catalog version so every studio starts from the same machine, and your history comes with it.
           </p>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--adm-ink-muted)" }}>
+            <span className="adm-label">
               A note for corporate (optional)
             </span>
             <AdminTextarea

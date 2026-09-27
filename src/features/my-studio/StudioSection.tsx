@@ -19,7 +19,9 @@ import { DEFAULT_SESSION_MINUTES, MAX_SESSION_MINUTES, MIN_SESSION_MINUTES, sess
 import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalSettings";
 import { DEFAULT_DEEP_CLEAN_DAYS } from "../relay/board/machine-care";
 import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../relay/board/now-context";
+import { mayOpenOperations } from "../admin/operations-access";
 import "../admin/admin.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → STUDIO — the studio's own record, in one place.
@@ -94,7 +96,7 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
         subtitle="Your studio's own record. The name, the time zone, the Mindbody link and when you moved onto Journey."
       />
 
-      <SyncPanel trainers={trainers ?? NONE} />
+      <SyncPanel trainers={trainers ?? NONE} opensOperations={mayOpenOperations(authTrainer, studioId)} />
 
       <HoursPanel />
 
@@ -111,7 +113,13 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
  * Mindbody: one sentence a leader can act on
  * ------------------------------------------------------------------ */
 
-function SyncPanel({ trainers }: { trainers: Trainer[] }) {
+/**
+ * `opensOperations`: whether this person may open Operations, where pulling
+ * the schedule by hand and the event log live (Operations → Mindbody shows a
+ * studio leader their own studio). A trainer with the grant runs My Studio
+ * but not Operations, so they are told to ask their studio leader.
+ */
+function SyncPanel({ trainers, opensOperations }: { trainers: Trainer[]; opensOperations: boolean }) {
   const { activeStudio } = useActiveStudio();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -149,10 +157,12 @@ function SyncPanel({ trainers }: { trainers: Trainer[] }) {
         </AdminBadge>
       }
     >
-      <p className="text-sm" style={{ color: "var(--adm-ink)" }}>{line}</p>
+      <p className="ms__line">{line}</p>
       {row.problem && row.link !== "offline" && (
-        <p className="mt-2 text-xs" style={{ color: "var(--adm-ink-muted)" }}>
-          Pulling the schedule by hand and the event log live on Operations → Mindbody, which is an administrator's screen — tell one.
+        <p className="ms__note">
+          {opensOperations
+            ? "To pull the schedule by hand, or read the event log, open Operations → Mindbody."
+            : "Pulling the schedule by hand and the event log are on Operations → Mindbody, which your studio leader can open. Ask them."}
         </p>
       )}
     </AdminPanel>
@@ -169,7 +179,7 @@ interface HoursForm {
   closing: string;
   close: string;
   deepCleanDays: string;
-  /** The booked length of a session — what Operations → Hours counts (Operations round). */
+  /** The booked length of a session — what Operations → Insights → Hours counts (Operations round). */
   sessionMinutes: string;
 }
 
@@ -204,7 +214,7 @@ function HoursPanel() {
       deepCleanIntervalDays: days,
       sessionMinutes: slot,
     });
-    toastSuccess("Saved — the Now Bar, the rings and Operations → Hours follow it.");
+    toastSuccess("Saved — the Now Bar, the rings and Operations → Insights → Hours follow it.");
   }, { label: "the studio's day" });
 
   const bad = [form.value.open, form.value.mid, form.value.closing, form.value.close].some(
@@ -263,7 +273,7 @@ function HoursPanel() {
         </AdminField>
         <AdminField
           label="A session is"
-          hint={`Minutes per booked session — the slot Operations → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
+          hint={`Minutes per booked session — the slot Operations → Insights → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
           htmlFor="ms-session-minutes"
         >
           <AdminInput
@@ -277,7 +287,7 @@ function HoursPanel() {
           />
         </AdminField>
       </AdminGrid>
-      <p className="mt-3 text-xs" style={{ color: "var(--adm-ink-muted)" }}>
+      <p className="ms__note">
         Defaults are {minutesToClock(DEFAULT_SHIFT_HOURS.open)} / {minutesToClock(DEFAULT_SHIFT_HOURS.mid)} /{" "}
         {minutesToClock(DEFAULT_SHIFT_HOURS.closing)} / {minutesToClock(DEFAULT_SHIFT_HOURS.close)}.
       </p>
@@ -295,7 +305,7 @@ function RenewalsPanel({ studioId, studioName }: { studioId: string; studioName:
   if (loading) {
     return (
       <AdminPanel title="Renewals" icon={<CalendarClock className="w-3.5 h-3.5" />}>
-        <p className="text-sm" style={{ color: "var(--adm-ink-muted)" }}>Loading this studio's renewal settings…</p>
+        <p className="ms__line ms__line--muted">Loading this studio's renewal settings…</p>
       </AdminPanel>
     );
   }
@@ -371,17 +381,15 @@ function StudioAnnouncements({
   if (!authTrainer || !authorId) return null;
 
   return (
-    <div className="ms__announce">
-      <AnnouncementComposer
-        author={{ id: authorId, fullName: authTrainer.fullName }}
-        studios={[{ id: studioId, name: studioName }]}
-        networks={[]}
-        scopes={["studio"]}
-        fixedStudioId={studioId}
-        published={live}
-        title="Announcements"
-        subtitle={`To everyone at ${studioName}, in the alerts bell. Company-wide notices are posted from Operations.`}
-      />
-    </div>
+    <AnnouncementComposer
+      author={{ id: authorId, fullName: authTrainer.fullName }}
+      studios={[{ id: studioId, name: studioName }]}
+      networks={[]}
+      scopes={["studio"]}
+      fixedStudioId={studioId}
+      published={live}
+      title="Announcements"
+      subtitle={`To everyone at ${studioName}, in the alerts bell. Company-wide notices are posted from Operations.`}
+    />
   );
 }

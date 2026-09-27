@@ -2,7 +2,8 @@
  * Turning a details-form patch into the Firestore write.
  *
  * My Studio round, Sep 2026. Two screens save the same form
- * (StudioDetailsForm): Operations → Studios and My Studio → Studio. The
+ * (StudioDetailsForm): Admins → All locations (Operations → Studios until the
+ * Operations overhaul, Sep 19) and My Studio → Studio. The
  * conversions below used to live inline in the Operations tab; they are
  * here so both doors write the same shape. Only the fields the form rendered
  * and the person changed are in `patch` — that is the whole point of the
