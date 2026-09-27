@@ -109,7 +109,11 @@ import { bookingsKnown } from "../src/features/standing-week/team.ts";
 import { staffIdsAt } from "../src/features/standing-week/check.ts";
 import { normalizeDoc, type StandingWeekDoc } from "../src/features/standing-week/week.ts";
 import { withoutUndefined } from "../src/features/studio-tasks/task-wizard.ts";
-import { COVERAGE_COLLECTION, recordedDays, type CoverageRecord } from "../src/features/openings/coverage.ts";
+import { bookingDay, isStaffBlock } from "../src/lib/booking-state.ts";
+import { weekdayOf } from "../src/features/studio-tasks/recurrence.ts";
+import { COVERAGE_COLLECTION, addDays, recordedDays, wasReadInFull, type CoverageRecord } from "../src/features/openings/coverage.ts";
+import { cancellationOf } from "../src/features/openings/room.ts";
+import { OPENINGS_WEEKDAYS } from "../src/features/openings/rows.ts";
 import {
   SKIP_ABOVE_BYTES,
   coverageMonths,
@@ -325,6 +329,149 @@ export function buildDocument(input: FoldInput): BuiltDocument {
 }
 
 export const kib = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KiB`;
+
+/* ------------------------------------------------------------------ *
+ * THE REPORT (scripts/openings-report.ts, always read-only). What AJ checks
+ * against Mindbody's own report before trusting a word: per week, the rows
+ * on file, the cancellations, the Mindbody "Unavailable" blocks
+ * (`isStaffBlock`), the rows the webhook has touched, and each day as the
+ * summary has it. Nothing here decides anything: the days' verdicts are the
+ * built summary's own, the cancellations `cancellationOf`'s and the record
+ * `wasReadInFull`'s.
+ * ------------------------------------------------------------------ */
+
+/** A day as the built summary has it. */
+export type ReportDayStatus = "judged" | "not-agreed" | "not-placed" | "not-read" | "closed";
+
+export interface ReportDay {
+  day: string;
+  weekday: number;
+  /** Live bookings on file that day (the summary's `n`). */
+  booked: number;
+  status: ReportDayStatus;
+  /** The whole-read record for that day: true, false, or null when its month couldn't be read. */
+  recorded: boolean | null;
+}
+
+export interface ReportCancellations {
+  /** Stamped at least LATE_CANCEL_HOURS before the start. */
+  early: number;
+  late: number;
+  /** Stamped at or after its own start (a back-read found it). */
+  afterStart: number;
+  /** No stamp (the old sweep, or before stamps began): not counted anywhere. */
+  unstamped: number;
+}
+
+export interface ReportWeek {
+  monday: string;
+  /** Rows read for Monday to Saturday of this week, "Unavailable" blocks included. */
+  rows: number;
+  cancelled: ReportCancellations;
+  unavailable: number;
+  /** Rows carrying the webhook's event stamp (`mindbodyEventAt`); the rest only a pull has written. */
+  webhook: number;
+  days: ReportDay[];
+}
+
+export interface OpeningsReport {
+  first: string;
+  last: string;
+  weeksCounted: number;
+  bytes: number;
+  refused: string | null;
+  previousState: SummaryRead["state"];
+  /** Each month of the record the window touches: the days it holds, or null when it couldn't be read. */
+  months: { month: string; days: number | null }[];
+  /** Monday-to-Saturday days of the window: recorded as read in full, not, and can't tell. */
+  daysInWindow: number;
+  daysRecorded: number;
+  daysCantTell: number;
+  rows: number;
+  /** Rows on a Sunday: read, never folded (Openings is Monday to Saturday). */
+  sundayRows: number;
+  /** Rows with no start time Journey can read. */
+  unreadable: number;
+  unavailable: number;
+  webhook: number;
+  cancelled: ReportCancellations;
+  weeks: ReportWeek[];
+}
+
+const STATUS_OF = (d: OpeningsSummary["weeks"][number]["d"][string] | undefined): ReportDayStatus => {
+  if (!d || d.x === "r") return "not-read";
+  if (d.x === "c") return "closed";
+  if (d.j === 1) return "judged";
+  return d.q === "p" ? "not-placed" : "not-agreed";
+};
+
+const noCancellations = (): ReportCancellations => ({ early: 0, late: 0, afterStart: 0, unstamped: 0 });
+
+/** The report for one studio, from its reads and the document built from them. Pure. */
+export function openingsReport(read: StudioRead, built: BuiltDocument): OpeningsReport {
+  const { window, input } = read;
+  const tz = input.tz;
+  const weeks: ReportWeek[] = window.mondays.map((monday, i) => ({
+    monday,
+    rows: 0,
+    cancelled: noCancellations(),
+    unavailable: 0,
+    webhook: 0,
+    days: OPENINGS_WEEKDAYS.map((weekday) => {
+      const day = addDays(monday, weekday - 1);
+      const stored = built.doc.weeks[i]?.d[String(weekday)];
+      return { day, weekday, booked: stored?.n ?? 0, status: STATUS_OF(stored), recorded: wasReadInFull(day, input.coverage) };
+    }),
+  }));
+
+  const total = { rows: 0, sundayRows: 0, unreadable: 0, unavailable: 0, webhook: 0, cancelled: noCancellations() };
+  const tally = (into: { cancelled: ReportCancellations; unavailable: number; webhook: number }, b: ScheduleEntry) => {
+    if ((b as { mindbodyEventAt?: unknown }).mindbodyEventAt) into.webhook += 1;
+    if (isStaffBlock(b)) {
+      into.unavailable += 1;
+      return;
+    }
+    const c = cancellationOf(b);
+    if (c === "early") into.cancelled.early += 1;
+    else if (c === "late") into.cancelled.late += 1;
+    else if (c === "after-start") into.cancelled.afterStart += 1;
+    else if (c === "unstamped") into.cancelled.unstamped += 1;
+  };
+  for (const b of read.bookings) {
+    total.rows += 1;
+    tally(total, b);
+    const day = bookingDay(b, tz);
+    if (!day) {
+      total.unreadable += 1;
+      continue;
+    }
+    const weekday = weekdayOf(day);
+    if (weekday === 0) {
+      total.sundayRows += 1;
+      continue;
+    }
+    const week = weeks[window.mondays.indexOf(addDays(day, 1 - weekday))];
+    if (!week) continue;
+    week.rows += 1;
+    tally(week, b);
+  }
+
+  const days = weeks.flatMap((w) => w.days);
+  return {
+    first: window.first,
+    last: window.last,
+    weeksCounted: built.weeksCounted,
+    bytes: built.bytes,
+    refused: built.refused,
+    previousState: read.previousState,
+    months: [...input.coverage.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([month, set]) => ({ month, days: set ? set.size : null })),
+    daysInWindow: days.length,
+    daysRecorded: days.filter((d) => d.recorded === true).length,
+    daysCantTell: days.filter((d) => d.recorded === null).length,
+    ...total,
+    weeks,
+  };
+}
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 

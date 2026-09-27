@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runMachineTrends } from "../../../server/machine-trends-job";
+import { buildDocument, openingsReport, readOpeningsStudios, readOpeningsTrainers, readStudio } from "../../../server/openings-step";
 import { readSummary } from "../openings/summary-doc";
 import { usualWeek } from "../openings/usual";
 
@@ -421,5 +422,57 @@ describe("the weekly job — step 8, Openings", () => {
     const source = readFileSync(join(__dirname, "../../../server/openings-step.ts"), "utf8");
     expect(source).not.toMatch(/from\s+["'][^"']*mindbody/i);
     expect(source).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it("counts none of a month of the record it can't read, and still writes the studio from the rest", async () => {
+    const { db, store } = fakeDb(withOpenings(), { failOn: "scheduleCoverage/2026-08" });
+    const summary = await runMachineTrends({ db, now: NOW, log: quiet });
+    expect(summary.openings).toEqual({ studios: 3, written: 3, skipped: 0 });
+    const westlake = readSummary(openingsOf(store, "westlake"));
+    expect(westlake.state).toBe("ok");
+    if (westlake.state !== "ok") return;
+    // The weeks of Jul 27, Aug 31, Sep 7 and Sep 14 still have a counted day; the four in August don't.
+    expect(usualWeek(westlake.summary).weeksCounted).toBe(4);
+    expect(westlake.summary.weeks[3].d["1"]).toEqual({ n: 1, x: "r" });
+  });
+});
+
+describe("the Openings report (scripts/openings-report.ts)", () => {
+  it("counts each week's rows, Unavailable blocks, cancellations and webhook rows, from the step's own reads, and writes nothing", async () => {
+    const data = withOpenings();
+    (data.schedules.w0 as Record<string, unknown>).mindbodyEventAt = "2026-09-10T10:00:00.000Z";
+    // Cancelled two hours before Monday Sep 7's 9:00: late.
+    data.schedules.late = {
+      studioId: "westlake",
+      clientId: "wl",
+      clientName: "Late Client",
+      trainerId: "t-sam",
+      trainerName: "Sam Lee",
+      startTime: eastern(WINDOW_MONDAYS[1], 9),
+      endTime: eastern(WINDOW_MONDAYS[1], 9, 30),
+      status: "Cancelled",
+      cancelledAt: eastern(WINDOW_MONDAYS[1], 7),
+    };
+    data.schedules.sunday = { studioId: "westlake", clientName: "Sunday Client", trainerName: "Sam Lee", startTime: eastern("2026-09-13", 9), status: "Scheduled" };
+    const { db, written } = fakeDb(data);
+    const { linked, unlinked } = await readOpeningsStudios(db, ["westlake", "sandbox"]);
+    expect(linked.map((s) => s.id)).toEqual(["westlake"]);
+    expect(unlinked.map((s) => s.id)).toEqual(["sandbox"]);
+    const read = await readStudio(db, linked[0], await readOpeningsTrainers(db), NOW);
+    const report = openingsReport(read, buildDocument(read.input));
+
+    expect(report).toMatchObject({ first: "2026-07-27", last: "2026-09-19", weeksCounted: 8, daysInWindow: 48, daysRecorded: 48, daysCantTell: 0, refused: null, previousState: "ok" });
+    expect(report).toMatchObject({ rows: 11, sundayRows: 1, unreadable: 0, unavailable: 1, webhook: 1 });
+    expect(report.cancelled).toEqual({ early: 0, late: 1, afterStart: 0, unstamped: 0 });
+    expect(report.weeks[0]).toMatchObject({ monday: "2026-09-14", rows: 2, unavailable: 1, webhook: 1 });
+    expect(report.weeks[1].cancelled.late).toBe(1);
+    // Monday Sep 14 as the summary has it: one live booking (the block isn't one), counted and judged.
+    expect(report.weeks[0].days[0]).toEqual({ day: "2026-09-14", weekday: 1, booked: 1, status: "judged", recorded: true });
+    expect(report.months).toEqual([
+      { month: "2026-07", days: 31 },
+      { month: "2026-08", days: 31 },
+      { month: "2026-09", days: 20 },
+    ]);
+    expect(written).toEqual([]);
   });
 });
