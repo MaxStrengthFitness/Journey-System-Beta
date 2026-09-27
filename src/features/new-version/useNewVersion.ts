@@ -320,6 +320,7 @@ export function useNewVersion(options: NewVersionOptions): NewVersionHandle {
     now.shellReady && isNewBuild(running, state.live)
       ? newVersionLine({
           onSessionScreen: now.view === now.sessionView,
+          onHub: now.view === now.hubView,
           ownSessionClientName: now.ownSessionClientName,
           sending,
         })

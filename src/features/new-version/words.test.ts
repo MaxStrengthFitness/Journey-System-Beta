@@ -2,11 +2,18 @@ import { describe, expect, it } from "vitest";
 import { brokenPanelWords, brokenScreenWords, newVersionLine } from "./words";
 
 describe("newVersionLine", () => {
-  const CLEAR = { onSessionScreen: false, ownSessionClientName: null, sending: false };
+  const CLEAR = { onSessionScreen: false, onHub: false, ownSessionClientName: null, sending: false };
 
   it("says when it will load, and offers Load now", () => {
     expect(newVersionLine(CLEAR)).toEqual({
       text: "A new version of Journey is ready. It loads by itself next time you're on the Hub.",
+      offerLoad: true,
+    });
+  });
+
+  it("promises no moment on the Hub itself, where something held it", () => {
+    expect(newVersionLine({ ...CLEAR, onHub: true })).toEqual({
+      text: "A new version of Journey is ready.",
       offerLoad: true,
     });
   });

@@ -29,6 +29,12 @@ const SAVES = "once this iPad's saves reach the studio's records";
 export interface LineFacts {
   /** The Active Session's screen is showing: the line is never drawn there. */
   onSessionScreen: boolean;
+  /**
+   * The Hub is showing. Something held the load there (typing, no answer
+   * from the server, a reload that did not take), so the line promises no
+   * moment and just offers it.
+   */
+  onHub: boolean;
   /** This trainer's own open session's client, or null when none is open. */
   ownSessionClientName: string | null;
   /** The last try found saves still sending. */
@@ -50,6 +56,7 @@ export function newVersionLine(facts: LineFacts): LineWords | null {
   if (facts.sending) {
     return { text: `${READY} It will load ${SAVES}.`, offerLoad: false };
   }
+  if (facts.onHub) return { text: READY, offerLoad: true };
   return { text: `${READY} It loads by itself next time you're on the Hub.`, offerLoad: true };
 }
 

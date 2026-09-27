@@ -249,7 +249,9 @@ describe("on the Hub", () => {
         land();
         await vi.advanceTimersByTimeAsync(0);
       });
-      expect(line()?.textContent).toContain("It loads by itself next time you're on the Hub.");
+      // On the Hub itself the line promises no moment; it offers the load.
+      expect(line()?.textContent).toContain("A new version of Journey is ready.");
+      expect(line()?.textContent).not.toContain("saves");
       expect(loadNowButton()).not.toBeNull();
     } finally {
       vi.useRealTimers();
