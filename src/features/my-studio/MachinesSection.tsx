@@ -467,6 +467,7 @@ function MachineDoor({
         <p className="ms__door-sub">Anyone at {studioName} can write here: the pad that sticks, the footstool, what to watch for.</p>
         <StudioNotesCard
           machineId={entry.machineId}
+          machineName={machineName}
           studioId={studioId}
           studioName={studioName}
           value={noteValue}

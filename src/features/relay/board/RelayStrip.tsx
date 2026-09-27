@@ -106,7 +106,7 @@ export function RelayStrip({
         <button type="button" className="rls__chip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
           All
         </button>
-        <button type="button" className="rls__chip rls__chip--mine" aria-pressed={filter === "mine"} onClick={() => setFilter("mine")}>
+        <button type="button" className="rls__chip" aria-pressed={filter === "mine"} onClick={() => setFilter("mine")}>
           Mine
         </button>
       </div>

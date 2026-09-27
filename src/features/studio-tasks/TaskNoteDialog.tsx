@@ -114,7 +114,7 @@ export function TaskNoteDialog({
             </button>
             <button
               type="button"
-              className="st__btn st__btn--done"
+              className={flagged ? "st__btn st__btn--primary" : "st__btn st__btn--done"}
               onClick={submit}
               disabled={!canSubmit}
             >

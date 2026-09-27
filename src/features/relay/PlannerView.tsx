@@ -31,7 +31,7 @@ import "./board/relay.css";
  * changes how the work is SEEN and CAPTURED:
  *
  *   the Now Bar      pinned on every tab — the shift phase, the trainer's next
- *                    session and minutes free, and the Pulse (relay/NowBar)
+ *                    session and minutes free, and "Just now" (relay/board/NowBar)
  *   Floor            the studio's shared board: Next up, the shift rings, the
  *                    floor map, asks, the playbook (studio-tasks/StudioHubView)
  *   Mine             the trainer's own list: today, handed to you, follow-ups,

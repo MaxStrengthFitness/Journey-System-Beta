@@ -72,7 +72,7 @@ import { ToastProvider } from "../../contexts/ToastContext";
 import { NotesPage, type NotesPageProps } from "./NotesPage";
 import { notesOnRecord } from "./record-selectors";
 import { assembleThreads } from "./threads";
-import type { Client, Machine } from "../../types";
+import type { Client, Machine, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 import type { UseClientJournalResult } from "../../hooks/useClientJournal";
 
@@ -123,7 +123,7 @@ const crit = entry({
 });
 const lifeCrit = entry({ id: "life-crit", kind: "life", category: "Other", importance: "critical", body: "Husband in hospital this week — go gently.", occurredAt: day("2026-09-02") });
 const headsUp = entry({ id: "hu", kind: "coaching", category: "Pace", importance: "elevated", body: "Camino walks at weekends — Monday legs may be tired.", occurredAt: day("2026-09-15"), effectiveUntil: day("2026-10-03", 23) });
-const agedOff = entry({ id: "old-hu", kind: "preference", importance: "elevated", body: "Wrap-up: a bit sore after the move.", occurredAt: day("2026-08-20") });
+const agedOff = entry({ id: "old-hu", kind: "preference", importance: "elevated", body: "A bit sore after the move.", occurredAt: day("2026-08-20") });
 const eq1 = entry({ id: "eq1", kind: "equipment", machineId: "m-leg", body: "Seat 7, gap 6.\nBack angle P2." });
 const pref1 = entry({ id: "pref1", kind: "preference", body: "Fan on, no music." });
 const coach1 = entry({ id: "coach1", kind: "coaching", category: "Posture", body: "Count her into the turnaround." });
@@ -434,6 +434,26 @@ describe("NotesPage — the tray and the doors", () => {
 
     await rerender(host, propsFor(ALL, { intent: { key: 1, request: { kind: "thread", threadId: "raw-crit" } } }));
     expect(host.querySelector('[data-testid="sweep-raw-crit"]')?.classList.contains("nx-focus")).toBe(true);
+  });
+
+  it("labels the Note for the next trainer in the tray and offers it no Discard; any other unfiled note keeps Discard", async () => {
+    // The End Session box files an unfiled Heads up and copies its words onto
+    // the session (`sessions.notes`). The page's tray has no mark of its own,
+    // so it matches the note against that copy (AJ, Sep 27 2026: the note is
+    // for the next briefing, and can also be filed to the profile).
+    const words = "Knee was sore on the leg press today.";
+    const nextTrainer = entry({ id: "nt", kind: "general", origin: "post_session", importance: "elevated", sessionId: "s-9", body: words, occurredAt: day("2026-09-24") });
+    const loose = entry({ id: "loose", kind: "general", origin: "in_session", body: "Ask about the new shoes.", occurredAt: day("2026-09-24") });
+    const list = [...ALL, nextTrainer, loose];
+    const journal = journalOf(list, { recentSessions: [{ id: "s-9", notes: words } as unknown as WorkoutSession] });
+    const host = await mount(propsFor(list, { journal }));
+
+    const card = host.querySelector('[data-testid="sweep-nt"]')!;
+    expect(card.textContent).toContain("Note for the next trainer · on the next briefing");
+    expect([...card.querySelectorAll("button")].some((b) => /Discard/.test(b.textContent ?? ""))).toBe(false);
+
+    const other = host.querySelector('[data-testid="sweep-loose"]')!;
+    expect([...other.querySelectorAll("button")].some((b) => /Discard/.test(b.textContent ?? ""))).toBe(true);
   });
 
   it("opens a standing thread a door asks for, once per move", async () => {

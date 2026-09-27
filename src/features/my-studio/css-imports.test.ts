@@ -37,6 +37,7 @@ const HOSTS = [
   "features/my-studio/MachinesSection.tsx",
   "features/my-studio/StudioSection.tsx",
   "features/my-studio/InBodyVariationPanel.tsx",
+  "features/my-studio/TeamSection.tsx",
   "features/relay/board/ContextPanel.tsx",
 ] as const;
 

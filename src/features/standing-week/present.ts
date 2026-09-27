@@ -82,9 +82,10 @@ export function outsideHours(week: StandingWeek, r: Regular): boolean {
 }
 
 /**
- * The trainer works at the studio: home, also works at, or a guest there.
- * The rules ask the same question (firestore.rules, trainerWorksAt), and
- * everyone works at the Demo studio.
+ * May this trainer ACT at the studio (propose a week there)? Home, also works
+ * at, or a guest there. The rules ask the same question (firestore.rules,
+ * trainerWorksAt), and everyone may act at the Demo studio. This is
+ * authorisation, not membership: who Team LISTS is lib/who-works-here.ts.
  */
 export function worksAt(
   t: Pick<Trainer, "primaryHomeStudioId" | "accessibleStudioIds" | "activeGuestStudioIds"> | null | undefined,

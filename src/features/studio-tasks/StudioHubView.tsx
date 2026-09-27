@@ -32,7 +32,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
 import { studioDateKey, formatStudioDate } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
-import { isStudioLeader } from "../../lib/permissions";
 import type { Client, Trainer } from "../../types";
 import type { ClientTaskAction, TaskRow } from "./types";
 import {
@@ -83,9 +82,9 @@ export interface StudioHubViewProps {
   /** For naming client tasks and opening them. */
   clients?: Client[];
   /**
-   * Everyone on the app, filtered here to this studio's own team. Feeds the
-   * initiative roll-up's denominator — see studioRoster for why it is primary
-   * home studio only.
+   * Everyone on the app, filtered here to this studio's own team: everyone who
+   * works here (studioRoster, lib/who-works-here.ts). Feeds the initiative
+   * roll-up's denominator and the pickers.
    */
   trainers?: Trainer[];
   /**

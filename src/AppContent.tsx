@@ -2094,7 +2094,9 @@ export default function AppContent({
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
                     }}
-                    onOpenStudioTasks={() => setCurrentView("studio-tasks")}
+                    // Operations' doors into My Studio (Staff & Roles, Renewals) switch back
+                    // to trainer mode, or My Studio opens with Operations' bottom bar.
+                    onOpenStudioTasks={() => switchAppMode("trainer", "studio-tasks")}
                   />
                 )}
                 {currentView === "admins-dashboard" && authTrainer && (

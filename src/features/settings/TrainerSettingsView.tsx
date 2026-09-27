@@ -42,6 +42,7 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 import { mayOpenOperations } from "../admin/operations-access";
+import { whoWorksHere } from "../../lib/who-works-here";
 import { useFeedback, useMyFeedback, FEEDBACK_KIND_SHORT } from "../feedback";
 import type { FeedbackKind } from "../feedback";
 import "./settings.css";
@@ -141,9 +142,9 @@ export function TrainerSettingsView({
     .filter((id) => id && id !== authTrainer?.primaryHomeStudioId)
     .map(studioName);
 
-  const teamCount = trainers.filter(
-    (t) => !t.supersededByUid && (t.primaryHomeStudioId === activeStudioId || t.accessibleStudioIds?.includes(activeStudioId || "")),
-  ).length;
+  // Team's own rule for who works here, so this count and My Studio -> Team
+  // never disagree (voice review follow-up, Sep 27 2026).
+  const teamCount = whoWorksHere(trainers, activeStudioId).length;
 
   const role = authTrainer?.role ? (ROLE_LABELS[authTrainer.role] ?? authTrainer.role) : "Life Transformer";
   // The menu, the route and the Operations shell ask the same question.

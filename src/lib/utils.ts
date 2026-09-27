@@ -515,28 +515,6 @@ export const getRoleColor = (role: string | undefined): string => {
   }
 };
 
-export const getRoleDisplayName = (role: string | undefined): string => {
-  switch (role) {
-    case "Founder":
-      return "Founder";
-    case "Admin":
-      return "Admin";
-    case "Overseer":
-      return "Overseer";
-    case "Owner":
-    case "FranchiseOwner":
-    case "StudioOwner":
-      return "Owner";
-    case "StudioLeader":
-    case "HeadTrainer":
-      return "Studio Leader";
-    case "Trainer":
-    case "LifeTransformer":
-    default:
-      return "Life Transformer";
-  }
-};
-
 export function generateSearchTokens(fullName: string): string[] {
   const name = fullName.toLowerCase().trim();
   const tokens = new Set<string>();

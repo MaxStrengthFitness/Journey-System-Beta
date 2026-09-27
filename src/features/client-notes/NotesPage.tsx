@@ -50,6 +50,7 @@ import type { HistoryCoverage } from "../../lib/prior-history";
 import { JournalComposer } from "../../components/journal/JournalComposer";
 import type { SessionNoteDraft } from "./session-draft";
 import { NoteSweep } from "./NoteSweep";
+import { isNextTrainerNoteOfSessions } from "./note-catalog";
 import { NotesCatalog } from "./NotesCatalog";
 import type { CatalogIntent, NotesIntent } from "./notes-intent";
 import { discardUnfiledEntry, fileUnfiledEntry } from "./file-unfiled";
@@ -321,6 +322,7 @@ export function NotesPage({
         clientFirstName={client.firstName || ""}
         onFile={fileUnfiledEntry}
         onDiscard={author ? discardUnfiledEntry : undefined}
+        isNextTrainerNote={(e) => isNextTrainerNoteOfSessions(e, journal.recentSessions ?? [])}
       />
 
       <NotesCatalog

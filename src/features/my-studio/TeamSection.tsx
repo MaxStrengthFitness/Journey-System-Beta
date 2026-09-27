@@ -10,6 +10,7 @@ import { ProvisionalPanel } from "../admin/provisional/ProvisionalPanel";
 import { TeamPanel } from "../relay/team/TeamPanel";
 import { StandingWeeksPanel } from "../standing-week/StandingWeeksPanel";
 import "../admin/admin.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → TEAM — people and standards.
