@@ -454,7 +454,7 @@ company are set to on that machine and what they lift at each value.
 
 The bottom-bar tab where a studio is *run*. Four sections:
 
-- **Relay** — the studio's shared board. Floor · Mine · Notes · Network. Team
+- **Relay** — the studio's shared board. Floor · Mine · Notes (Network moved to Operations → All my studios on Sep 27 2026). Team
   jobs (one job, several people, parts, a due day), personal reminders, kudos,
   private notes that can be shared. It used to be called the To-Do, then the
   Planner. AJ's own brief suggested "Studio Command Center" and asked for

@@ -40,7 +40,7 @@ this folder's screens too — moved, not rewritten.
 | System tools | `system/` |
 | Data (any studio) | `data/` |
 | Legacy chart importer (its own screen) | `import/` |
-| The network view under "All my studios" | `network/`; the old Franchise screen's pieces in `franchise/` |
+| The network view under "All my studios" | `network/` (`NetworkOverview` the setup health; `NetworkActions` the network's focus and a launch at every studio, moved from Relay → Network on Sep 27 2026, the ranking dropped); the old Franchise screen's pieces in `franchise/` |
 
 The kit every tab composes: `primitives.tsx`, `formState.ts`,
 `useDirtyForm.ts`, `admin.css`, `admin.tokens.css`.
@@ -160,4 +160,8 @@ my studios** — read through `useOperationsScope()` (`scope.ts`,
   its day, renewal settings, its notices — have one editor, on My Studio →
   Studio. An Operations tab that needs one points there
   (`rememberMyStudioSection` from `my-studio/section-memory.ts`, then the
-  view switch) rather than rendering the form a second time.
+  view switch) rather than rendering the form a second time. What belongs to
+  the NETWORK rather than a studio — an announcement to several studios, the
+  network's focus this quarter, an initiative launched at every studio
+  (`network/NetworkActions.tsx`, Sep 27 2026) — has no editor on My Studio to
+  duplicate, so Operations is where it is written.

@@ -98,7 +98,6 @@ export function MyStudioView({
 }: MyStudioViewProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
   const canLead = reachesTier(authTrainer, activeStudioId, "leads");
-  const canNetwork = reachesTier(authTrainer, activeStudioId, "network");
   const sections = SECTIONS.filter((s) => !s.tier || canLead);
 
   // A request from a client's profile or a notification always lands on the
@@ -159,7 +158,6 @@ export function MyStudioView({
       machines: machines ?? NONE,
       now,
       canLead,
-      canNetwork,
       panel,
       openCapture,
       openPanel,
@@ -177,7 +175,6 @@ export function MyStudioView({
       machines,
       now,
       canLead,
-      canNetwork,
       panel,
       openCapture,
       openPanel,

@@ -4,20 +4,24 @@
 (`features/my-studio/MyStudioView`), which owns the masthead, the Relay
 context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
-the studio's staff), so the board's tabs are **Floor · Mine · Notes · Network**.
+the studio's staff), and the Network tab moved to Operations → All my studios
+(voice-review round, Sep 27 2026; its ranking of studios was dropped), so the
+board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
+between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
 
 **Relay (Sep 16 2026)** rebuilt the Planner as the studio's asynchronous
 board and each trainer's second brain: the Now Bar, one Capture composer,
 Next up and the Floor Map on the Floor, Mine's four lanes, the two-pane note
-editor, the Team cockpit and the vault, the Network tab, the Calendar layer,
+editor, the Team cockpit and the vault, the Network tab (now on Operations), the Calendar layer,
 kudos. Everything Relay added lives in `board/` (its own README there; it was
 `planner/relay/` until the beta-prep trim renamed this folder from
 `features/planner/` to `features/relay/` on Sep 17 2026); the round is
 `docs/rounds/2026-09-16-relay.md`. The view id stays `studio-tasks`.
 
 The tabs were **Floor · Mine · Notes · Team · Network** until the My Studio
-round moved Team out; the table below describes what each one was before
+round moved Team out and the voice-review round (Sep 27 2026) moved Network
+to Operations; the table below describes what each one was before
 Relay and still holds.
 
 Round: Learning + Planner, Sep 2026. AJ's brief:

@@ -231,14 +231,18 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Your team");
   });
 
-  it("offers the Network tab only to a franchise or super role, and it mounts", async () => {
+  it("has no Network tab, even for a franchise owner: it moved to Operations (voice-review round, Sep 27 2026)", async () => {
+    // AJ: "Relay must prioritize the trainers transitioning between clients."
+    // The network's focus and launch are on Operations → All my studios, and
+    // the ranking of studios was dropped.
     const h = await mount({ ...(lead as object), role: "FranchiseOwner" });
-    expect(tab("Network")).toBeTruthy();
+    expect(tab("Network")).toBeUndefined();
+    expect(tab("Floor")).toBeTruthy();
+    expect(tab("Mine")).toBeTruthy();
+    expect(tab("Notes")).toBeTruthy();
     expect(tab("Team")).toBeTruthy();
-    await click(tab("Network"));
-    expect(h.textContent).toContain("The network");
-    expect(h.textContent).toContain("Launch an initiative");
-    expect(h.textContent).toContain("Studios are ranked here; people never are.");
+    expect(h.textContent).not.toContain("Launch an initiative");
+    expect(h.textContent).not.toContain("Studios are ranked here");
   });
 
   it("never offers the Team section to a trainer", async () => {

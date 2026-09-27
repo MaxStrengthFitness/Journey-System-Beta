@@ -32,8 +32,9 @@ not a ranking either - values are ordered by how many people use them. Below
 Cost: one read per machine per app session, through `useMachineTrend.ts`'s
 module cache, and only once the foldable is open.
 
-`studios[]` is deliberately NOT shown. A studio-vs-studio table outside the
-Network tab is the ranking the house rules keep out of a studio's own screens.
+`studios[]` is deliberately NOT shown. A studio-vs-studio table is the ranking
+the house rules keep out of a studio's own screens (the Network tab's ranking
+was dropped on Sep 27 2026, too: its numbers were wrong during the migration).
 
 ## The document
 

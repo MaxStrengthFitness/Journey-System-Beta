@@ -39,7 +39,6 @@ export interface RelayContextValue {
   machines: Machine[];
   now: NowContext;
   canLead: boolean;
-  canNetwork: boolean;
   /** What the Context Panel is showing, so each section's frame can draw it. */
   panel: PanelContent | null;
   openCapture: (preset?: CapturePreset) => void;

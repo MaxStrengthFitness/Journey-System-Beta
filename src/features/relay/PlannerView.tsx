@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Globe, LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users } from "lucide-react";
+import { LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
@@ -10,7 +10,6 @@ import { clearPlannerIntent, peekPlannerIntent, type PlannerIntent } from "./int
 import { useRelay } from "./board/RelayContext";
 import { NowBar } from "./board/NowBar";
 import { ContextPanel } from "./board/ContextPanel";
-import { NetworkView } from "./board/NetworkView";
 import { useClosedRings } from "./board/rings";
 import { forgetOnSignOut } from "../sign-out/memory";
 import "../studio-tasks/studio-tasks.css";
@@ -38,14 +37,16 @@ import "./board/relay.css";
  *   Mine             the trainer's own list: today, handed to you, follow-ups,
  *                    growth (MyTasksPanel)
  *   Notes            working notes beside the note, publish with an audience
- *   Network          franchise owners and administrators: focus, initiatives
- *                    across studios, the studio leaderboard (relay/NetworkView)
  *   Capture          one composer for all of it, under the right thumb
  *   Context Panel    detail beside the board, never a modal over it
  *
  * Team — who's in, cohorts, open loops, the vault — was Relay's fourth tab
  * and is My Studio's Team section now, beside this studio's staff (My Studio
- * round, Sep 2026).
+ * round, Sep 2026). Network — the network's focus, initiatives across
+ * studios and a ranking of studios — was the other fourth tab, for franchise
+ * owners and the company. It moved to Operations → All my studios in the
+ * voice-review round (Sep 27 2026: "Relay must prioritize the trainers
+ * transitioning between clients"), and the ranking was dropped.
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
@@ -61,12 +62,12 @@ import "./board/relay.css";
  * matches the view id and is imported by the Catalog and Operations too.
  */
 
-export type PlannerTab = "floor" | "mine" | "notes" | "network";
+export type PlannerTab = "floor" | "mine" | "notes";
 
 let rememberedTab: PlannerTab = "floor";
 
 // The next person on this iPad starts on the Floor, not on the last one's
-// Notes or Network. Sign-out round, Sep 24 2026.
+// Notes. Sign-out round, Sep 24 2026.
 forgetOnSignOut(() => {
   rememberedTab = "floor";
 });
@@ -78,11 +79,10 @@ export interface PlannerViewProps {
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
 }
 
-const TABS: { id: PlannerTab; label: string; icon: typeof Users; tier?: "network" }[] = [
+const TABS: { id: PlannerTab; label: string; icon: typeof Users }[] = [
   { id: "floor", label: "Floor", icon: LayoutGrid },
   { id: "mine", label: "Mine", icon: UserRound },
   { id: "notes", label: "Notes", icon: StickyNote },
-  { id: "network", label: "Network", icon: Globe, tier: "network" },
 ];
 
 /** Which tab an arrival request opens. */
@@ -94,8 +94,8 @@ function tabFor(intent: PlannerIntent): PlannerTab {
 
 export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }: PlannerViewProps) {
   const { activeStudioId } = useActiveStudio();
-  const { now, canNetwork, panel, openCapture, closePanel } = useRelay();
-  const tabs = TABS.filter((t) => !t.tier || canNetwork);
+  const { now, panel, openCapture, closePanel } = useRelay();
+  const tabs = TABS;
 
   // A request from a client's profile or a notification, read on arrival —
   // see ./intent.ts. Held until the trainer changes tab, so it acts once.
@@ -107,8 +107,7 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
     if (intent) rememberedTab = tabFor(intent);
     return rememberedTab;
   });
-  // A shared iPad: the last person was a franchise owner on Network; this one is not.
-  const shown: PlannerTab = tab === "network" && !canNetwork ? "floor" : tab;
+  const shown: PlannerTab = tab;
 
   const clearIntent = useCallback(() => setIntent(null), []);
   const choose = (next: PlannerTab) => {
@@ -176,7 +175,6 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
               onOpenClient={openClient}
             />
           )}
-          {shown === "network" && <NetworkView />}
         </div>
         <ContextPanel content={panel} onClose={closePanel} />
       </div>

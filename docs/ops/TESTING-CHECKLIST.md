@@ -182,7 +182,7 @@ The round is `docs/rounds/2026-09-16-relay.md`. Two iPads at the same studio, on
 - [ ] **Team tab as the head trainer.** *Expected:* Who's in today lists each person with a load bar from the schedule; This month shows counts for the five cohorts; Route to team on Renewals due posts a team job with one part per client that the trainer's iPad sees; The studio's day saves shift hours and the Now Bar's phase follows them on both iPads; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section).
 - [ ] **Kudos.** On the other iPad's Pulse line about your work, tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
 - [ ] **The Calendar.** *Expected:* the strip above the month says Relay and shows a timed studio task on every day it falls, a team job on its due day with initials, a hand-off in blue; Mine narrows it to yours; a tap lands in Relay on the right tab.
-- [ ] **Network as a franchise owner.** *Expected:* the Network tab; setting a focus shows a banner on the Floor of every studio; Launch an initiative shows under Initiatives on each studio's board; Studios lists a number per studio (a dash on loops means the index is still building).
+- [ ] **The network as a franchise owner (Operations → Overview → Looking at: All my studios, since Sep 27 2026).** *Expected:* no Network tab in Relay; under All my studios, Focus this quarter (one per network you own) — Set the focus shows a banner on the Floor of every studio in it; Launch an initiative asks first and names every studio, then shows under Initiatives on each studio's board; no ranking of studios anywhere. An owner with one studio finds both at the foot of that studio's Overview.
 - [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens and Relay draws (color-mix and the swipe rows degrade gracefully; no blank app).
 
 ### Hub sync fixes · *branch `hub-sync-fixes` (Sep 16)*
@@ -453,7 +453,8 @@ studio's record for anything that saves — the Studio section writes the real
 **The shell**
 
 - [ ] **The bottom bar says My Studio**, and opens on **Relay** with four tabs
-  (Floor · Mine · Notes · Network) under the studio's name — no Team tab.
+  (Floor · Mine · Notes) under the studio's name — no Team tab, and no Network
+  tab since Sep 27 2026 (it is on Operations → All my studios).
   Everything from the Relay walkthrough (Round 3) still works from here:
   Capture, the Now Bar, Next up, swipe, the Floor Map.
 - [ ] **The trainer's iPad shows Relay and Machines only.** The head trainer's

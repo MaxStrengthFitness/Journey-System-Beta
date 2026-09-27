@@ -31,7 +31,7 @@ redesign it into something that assumes people are simultaneously present.
 
 | Section | Who | What |
 | --- | --- | --- |
-| **Relay** | everyone at the studio | the board, untouched: Floor · Mine · Notes · Network, the Now Bar, Capture (`features/planner/PlannerView`) |
+| **Relay** | everyone at the studio | the board: Floor · Mine · Notes (Network moved to Operations → All my studios, Sep 27 2026), the Now Bar, Capture (`features/planner/PlannerView`) |
 | **Machines** | everyone reads and leaves machine notes; leaders edit | the floor, what is new in the MSF standard (adopted, never pushed), the machine's door (the studio's standard settings, the floor's notes, local set-up, upkeep), "Offer to the MSF catalog" on the studio's own machines, machines shared by other MSF studios |
 | **Team** | the studio tier | the Team cockpit (was Relay's Team tab) and this studio's staff: who is waiting for an account, roles up to studio leader, the grant, the Mindbody link, temporary profiles |
 | **Studio** | the studio tier | the studio's own record: details, the Mindbody link, the Journey cutover date, shift hours and the deep-clean interval, the InBody variation (how big a change the scanner must see before any screen calls it one — `InBodyVariationPanel`, client codex Sep 2026; `features/inbody/README.md`), renewal settings and packages, the studio's announcements, sync status |
