@@ -249,3 +249,22 @@ describe("describeChange", () => {
     expect(describeChange(change, TZ).proof).toContain("When it changed was not recorded.");
   });
 });
+
+describe("changesForDay — Mindbody Unavailable blocks (Openings round, Sep 27 2026)", () => {
+  it("a cancelled or moved Unavailable block never shows in Changes", () => {
+    const entries = [
+      row({ id: "u1", clientId: undefined, clientName: "Unavailable", status: "Cancelled", cancelledAt: at("2026-09-16", "07:12") }),
+      row({ id: "u2", clientId: undefined, clientName: "UNAVAILABLE", startTime: at("2026-09-18", "14:00"), movedFromDay: "2026-09-18", movedFromStart: at("2026-09-18", "10:00") }),
+    ];
+    expect(changesForDay(entries, "2026-09-18", TZ)).toEqual([]);
+    expect(changeCounts(entries, ["2026-09-18"], TZ)).toEqual({ "2026-09-18": 0 });
+  });
+
+  it("an Unavailable block is never read as a client's rebook", () => {
+    // A block that happens to carry her client id, created with the cancellation.
+    const cancelled = row({ id: "a", status: "Cancelled", cancelledAt: at("2026-09-16", "07:00") });
+    const block = row({ id: "u", clientName: "Unavailable", startTime: at("2026-09-19", "11:00"), createdAt: at("2026-09-16", "07:05") });
+    const [change] = changesForDay([cancelled, block], "2026-09-18", TZ);
+    expect(change).toMatchObject({ reading: "cancellation", movedTo: null, alsoBooked: null });
+  });
+});

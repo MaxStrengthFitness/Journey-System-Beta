@@ -400,3 +400,25 @@ describe("mondayOf", () => {
     expect(mondayOf("2026-10-01")).toBe("2026-09-28");
   });
 });
+
+describe("checkWeek — Mindbody Unavailable blocks (Openings round, Sep 27 2026)", () => {
+  const block = (day: string, clock: string, over: Partial<ScheduleEntry> = {}) => booking(day, clock, { clientId: undefined, clientName: "Unavailable", ...over });
+
+  it("never takes a slot: the regular is simply not booked", () => {
+    const c = checkWeek(input({ bookings: [block("2026-09-28", "08:00"), booking("2026-10-01", "08:00")] }));
+    expect(c.findings.map((f) => f.kind)).toEqual(["open"]);
+    expect(c.findings[0]).not.toHaveProperty("takenBy");
+  });
+
+  it("never keeps a slot, even carrying the regular's client id", () => {
+    const c = checkWeek(input({ bookings: [block("2026-09-28", "08:00", { clientId: "c-judy" }), booking("2026-10-01", "08:00")] }));
+    expect(c.findings.map((f) => f.kind)).toEqual(["open"]);
+  });
+
+  it("never moves a slot", () => {
+    const moved = block("2026-09-29", "09:30", { clientId: "c-judy", movedFromDay: "2026-09-28", movedFromStart: new Date("2026-09-28T08:00:00-04:00") });
+    const c = checkWeek(input({ bookings: [moved, booking("2026-10-01", "08:00")] }));
+    expect(c.findings[0]).toMatchObject({ kind: "open" });
+    expect(c.findings[0]).not.toHaveProperty("movedTo");
+  });
+});

@@ -82,6 +82,12 @@
  * the slot. Past slots earlier today are simply open, like any other (AJ:
  * "Unbooked slots are just open").
  *
+ * A MINDBODY "UNAVAILABLE" BLOCK (a row whose client name says
+ * "Unavailable") is a trainer's time blocked off, not a booking
+ * (lib/booking-state.ts, isStaffBlock; the Openings round, Sep 27 2026): it
+ * never takes, keeps or moves a slot. Before this the check could say
+ * "Unavailable is booked in Judy's slot".
+ *
  * WHEN IT SAYS NOTHING. A failed or unfinished read, or a studio whose
  * Mindbody isn't connected, gives a state and no findings: an unread day is
  * "can't tell", never "open". An answer only this iPad's cache gave is not a
@@ -90,6 +96,7 @@
  * PURE MODULE.
  */
 import type { ScheduleEntry, Trainer } from "../../types";
+import { isStaffBlock } from "../../lib/booking-state";
 import { formatStudioDate, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { scheduleStart } from "../../lib/schedule-window";
 import { isRealRebook } from "../admin/changes/changes";
@@ -331,7 +338,11 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   if (!input.connected) return empty("unconnected");
   if (input.read !== "ready") return empty(input.read);
 
-  const rows = input.bookings.map((b, i) => viewOf(b, i, input.tz)).filter((b): b is BookingView => b !== null);
+  // A Mindbody "Unavailable" block is a trainer's time blocked off, never a
+  // booking: it takes, keeps and moves no slot (isStaffBlock; Openings, Sep 27).
+  const rows = input.bookings
+    .map((b, i) => (isStaffBlock(b) ? null : viewOf(b, i, input.tz)))
+    .filter((b): b is BookingView => b !== null);
   const bookings = rows.filter((b) => !b.cancelled);
   const cancellations = rows.filter((b) => b.cancelled);
 
