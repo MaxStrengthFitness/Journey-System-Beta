@@ -1547,8 +1547,19 @@ export function ClientProfileView({
             ever scrolling sideways — and four tracks is roomier than seven
             was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
             at 13px with space to spare. `truncate` is the belt to that
-            suspender. The sub-toggle inside Programming and the Activity Archive
-            is the level below this one; see features/client-profile. */}
+            suspender. The level below this one is the one sub-toggle
+            (ProfileSubnav) three of the tabs carry: Programming's four
+            segments, Notes & Profile's seven pages and the Activity Archive's
+            four segments; see features/client-profile.
+
+            The row is PROFILE_TABS and nothing else, in AJ's order (by
+            depth; don't reorder, merge or add a tab without asking).
+            `grid-cols-4` is a literal because Tailwind cannot build a class
+            name at runtime; ClientProfileView.tabs.test.ts holds it equal to
+            PROFILE_TABS.length, and holds one trigger per entry and the four
+            panels below in the same order. The chosen tab's look comes from
+            the TabsTrigger wrapper's `data-active` styling (Base UI marks the
+            chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
             <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
@@ -1557,7 +1568,7 @@ export function ClientProfileView({
                   key={tab.id}
                   value={tab.id}
                   title={tab.blurb}
-                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] data-[state=active]:shadow-sm transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>
