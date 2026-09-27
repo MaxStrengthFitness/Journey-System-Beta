@@ -14,10 +14,12 @@ import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 const feedback = vi.hoisted(() => ({
   open: vi.fn(),
   reports: [] as { id: string; description: string; status: string }[],
+  error: null as string | null,
 }));
 vi.mock("../feedback", () => ({
   useFeedback: () => ({ open: feedback.open }),
   useMyFeedback: () => ({
+    error: feedback.error,
     reports: feedback.reports,
     counts: {
       total: feedback.reports.length,
@@ -43,6 +45,7 @@ let host: HTMLDivElement;
 beforeEach(() => {
   feedback.open.mockReset();
   feedback.reports = [];
+  feedback.error = null;
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -118,5 +121,23 @@ describe("Trainer Settings", () => {
     ]);
     await act(async () => (host.querySelector(".stg-kind") as HTMLButtonElement).click());
     expect(feedback.open).toHaveBeenCalledWith("bug");
+  });
+
+  it("shows a whole report, never two lines of it", async () => {
+    const long = "The grid froze after the third machine. ".repeat(8).trim();
+    feedback.reports = [{ id: "f1", description: long, status: "open" }];
+    await mount(person({}));
+    expect(host.querySelector(".stg-report__text")?.textContent).toBe(long);
+  });
+
+  it("says it couldn't load the reports, rather than hiding them as if there were none", async () => {
+    feedback.error = "Couldn't load your reports.";
+    await mount(person({}));
+    const problem = host.querySelector(".stg-problem");
+    expect(problem?.textContent).toBe("Couldn't load your reports. Try again in a moment.");
+    expect(problem?.getAttribute("role")).toBe("status");
+    expect(host.textContent).not.toContain("Your reports ·");
+    // The ways to file one are still there.
+    expect(host.querySelectorAll(".stg-kind")).toHaveLength(3);
   });
 });

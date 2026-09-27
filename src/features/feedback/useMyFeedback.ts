@@ -10,6 +10,10 @@
  * Ordered client-side rather than with orderBy so this needs no composite
  * index: `userId ==` alone is covered by Firestore's automatic single-field
  * index, and a report list is a handful of documents.
+ *
+ * A read that fails is "unknown", never "no reports" (voice review
+ * follow-up, Sep 27 2026): the error comes back as `error`, and Settings
+ * says it could not load them rather than quietly hiding the section.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -21,24 +25,29 @@ import type { FeedbackReport } from "./types";
 export function useMyFeedback(userId: string | null | undefined) {
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) {
       setReports([]);
+      setError(null);
       return;
     }
     setLoading(true);
+    setError(null);
     const unsub = onSnapshot(
       query(collection(db, "bug_reports"), where("userId", "==", userId)),
       (snap) => {
         setReports(
           snap.docs.map((d) => ({ ...(d.data() as FeedbackReport), id: d.id })),
         );
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error("Error loading your feedback:", err);
         setReports([]);
+        setError("Couldn't load your reports.");
         setLoading(false);
       },
     );
@@ -61,5 +70,5 @@ export function useMyFeedback(userId: string | null | undefined) {
     return { open, resolved, total: reports.length };
   }, [reports]);
 
-  return { reports: sorted, counts, loading };
+  return { reports: sorted, counts, loading, error };
 }

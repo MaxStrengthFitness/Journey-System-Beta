@@ -1624,11 +1624,11 @@ export default function AppContent({
         variant="ghost"
         size="icon"
         onClick={() => setCurrentView("trainer-hub")}
-        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : "active:text-orange-500"}`}
+        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : ""}`}
         title="Trainer Settings"
         aria-label="Trainer Settings"
       >
-        <Settings className="w-5 h-5 sm:w-6 sm:h-6 transition-colors hover:stroke-orange-500" />
+        <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
       </Button>
     </div>
   );

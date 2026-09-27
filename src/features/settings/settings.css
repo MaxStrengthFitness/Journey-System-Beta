@@ -98,6 +98,9 @@
   color: var(--eq-ink-muted);
 }
 
+/* The reports could not be read: said in words, in the caution plum. */
+.stg-problem { margin: 0; font-size: 14px; font-weight: 700; color: var(--eq-warn); }
+
 .stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .stg-report {
   display: flex;

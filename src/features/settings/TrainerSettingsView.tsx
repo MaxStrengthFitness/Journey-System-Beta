@@ -130,7 +130,7 @@ export function TrainerSettingsView({
   onOpenOperations,
 }: TrainerSettingsViewProps) {
   const { open } = useFeedback();
-  const { reports, counts } = useMyFeedback(authTrainer?.id);
+  const { reports, counts, error: reportsError } = useMyFeedback(authTrainer?.id);
 
   const studioName = (id?: string | null) => studios.find((s) => s.id === id)?.name || "—";
   const activeStudio = studios.find((s) => s.id === activeStudioId);
@@ -172,8 +172,13 @@ export function TrainerSettingsView({
         </div>
 
         {/* A trainer who never sees what happened to a report stops filing
-            them. This is the loop, and it is why the hero is not just a form. */}
-        {counts.total > 0 && (
+            them. This is the loop, and it is why the hero is not just a form.
+            A read that failed says so: it is not the same as "no reports". */}
+        {reportsError ? (
+          <p className="stg-problem" role="status">
+            Couldn't load your reports. Try again in a moment.
+          </p>
+        ) : counts.total > 0 && (
           <>
             <p className="stg-label">
               Your reports · {counts.open} open · {counts.resolved} closed
