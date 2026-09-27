@@ -28,6 +28,7 @@
 import { DEFAULT_STUDIO_KEY } from "../../lib/default-studio";
 import { STORE_PREFIX as PROFILE_NAV_PREFIX } from "../client-profile/profile-nav";
 import { PREFIX as SETUP_HINT_PREFIX } from "../machine-fit/ui/open-hint";
+import { PLACE_KEY as NEW_VERSION_PLACE_KEY } from "../new-version/reload-once";
 import { forgetPersonalMemory } from "./memory";
 
 /** The part of the Web Storage interface this module uses. */
@@ -48,8 +49,14 @@ export const DEVICE_KEYS: readonly string[] = [DEFAULT_STUDIO_KEY];
  * to the next: written by a tap, read once by the screen it opens. Left
  * behind, the next person's first tap on that client obeys the last person's.
  * Note drafts (`msf_session_note:`) are deliberately NOT here — see the top.
+ * Neither is the new-version loop guard, which belongs to the iPad; the place
+ * a reload for a new version returns to belongs to the person, so it is.
  */
-export const SESSION_HANDOFF_PREFIXES: readonly string[] = [PROFILE_NAV_PREFIX, SETUP_HINT_PREFIX];
+export const SESSION_HANDOFF_PREFIXES: readonly string[] = [
+  PROFILE_NAV_PREFIX,
+  SETUP_HINT_PREFIX,
+  NEW_VERSION_PLACE_KEY,
+];
 
 /** Clear local storage, keeping only what belongs to the iPad. */
 export function clearPersonalStorage(storage: StorageLike | null | undefined): void {
