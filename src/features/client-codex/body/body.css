@@ -141,6 +141,9 @@
   display: grid;
   gap: 4px;
   justify-items: center;
+  /* The figure is a box with nothing in flow to size it (both of its svgs
+     are laid over it), so its column gives it a width to fill. */
+  width: 100%;
   margin: 0;
 }
 
@@ -152,29 +155,43 @@
   text-transform: uppercase;
 }
 
+/* The Catalog's figure (components/anatomy BodyModel) with the marks in a
+   second svg of the same viewBox laid exactly over it. The box is the
+   model's own 1:2, so both svgs scale the same way and stay aligned. */
 .bp-fig {
-  display: block;
+  position: relative;
   width: 100%;
-  max-width: 130px;
-  height: auto;
+  max-width: 150px;
+  aspect-ratio: 1 / 2;
 }
 
-.bp-fig__b {
-  fill: var(--cx-surface-2);
-  stroke: var(--cx-line-2);
-  stroke-width: 1.2;
+.bp-fig__body,
+.bp-fig__marks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* A glance, not a control: the region list beside it is the target. */
+  pointer-events: none;
+}
+
+.bp-fig__body svg {
+  width: 100%;
+  height: 100%;
 }
 
 .bp-fig__onfile {
   fill: var(--cx-warn);
   stroke: var(--cx-surface);
-  stroke-width: 1.5;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
 }
 
 .bp-fig__told {
   fill: none;
   stroke: var(--cx-ink);
-  stroke-width: 2;
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
 }
 
 .bp-fig [data-hl] {

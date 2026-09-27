@@ -717,6 +717,15 @@ Every completed round, in the order it was written. Nothing here has been edited
 
 Six of these rounds still carry an open **Verify on the iPad** box. Those boxes are the source material for `TESTING-CHECKLIST.md`; they stay here so the acceptance criteria sit next to the work they describe.
 
+### 🔎 Shipped — The app review (Sep 26, evening) — straight to `master`, four pushes
+
+*Appended out of order, like the entries below it.* The round is `2026-09-26-app-review.md`.
+
+AJ went through the live app at iPad size and pointed at things; each was fixed and shipped the same evening. The calendar's Refresh asks Mindbody for the days on screen, not only Journey's copy (`screenSyncWindow`, `settleWindowFor`). The profile's Journey grid opens on the newest session: it pinned before the sets landed and widened every column, then its own late scroll event switched the pin off, and no observer reported the widening; the grid now re-pins in the commit that brings the rows and spends its own echo. Sessions before Journey moved to the head of Account. A cancelled booking can no longer be the NEXT SESSION (`stillBooked`). Where it matters draws the Catalog's body figure (`BodyModel`, `figureGenderOf`), with spots measured from the model's paths on all four figures and a tapped row lighting its area (`areas`, `areaSlugs`). The client calendar shows her bookings: booked, stamped cancellations only, moves, and "rebooked" only when the other booking appeared with the cancellation (AJ's call). No rules, index or function change.
+
+- [ ] See the grid open on the newest session on a real iPad, and a busy month of the client calendar upright.
+- [ ] AJ: which "sessions left" a profile shows (header 36 left vs Account 48 on hand), and whether Operations → Changes should use the calendar's real-rebook rule.
+
 ### 🛬 Built — The landing (Sep 24) — branch `landing-sep24`, one merge per branch, waiting for AJ's go
 
 *Appended out of order, like the codex below it.* The round is `2026-09-24-landing.md`.

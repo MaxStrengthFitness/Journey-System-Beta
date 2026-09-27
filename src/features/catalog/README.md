@@ -528,6 +528,13 @@ is what makes it reusable — keep it absolutely. Likely next consumers: the
 pre-session `BodyStateTracker` (which currently uses the flat `BODY_REGIONS` text
 list), the progress report's pain map, and the client prescription visualizer.
 
+Consumers today: the Catalog (`MachineFigure`), the Routine Builder
+(`RoutineFigure`), and the client codex's Where it matters (Sep 26 2026), which
+draws the Pulse's pain map and the watch-outs on it and lights a body area by the
+Pulse's own region names (`areas`, translated by `areaSlugs` in
+`types/machines.ts`, the one place the library's names are written).
+`figureGenderOf` is the one answer to "which figure is this client drawn on".
+
 ### 6.2 Editing the mapping from the machine editor
 
 `MachineDefinition` already has `primaryMuscles`, `secondaryMuscles`,

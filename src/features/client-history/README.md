@@ -45,9 +45,13 @@ and the months tile: 3 across in iPad portrait (a whole year on one screen at
 | Sand | covered by a Vacation / Snowbird / Medical event | Says "away, and we knew" — the break explains itself |
 | Orange ring | today | The only orange on the tab; orange stays the hero colour |
 | Orange corner dot | another client event that day | Named under the month, never inside a cell |
+| Blue outline | booked, not yet happened (Sep 26 2026) | The visit's own blue: the colour says "a visit", the outline says "not yet" |
+| × in the bottom-left corner | a booking for that day was cancelled | A quiet glyph in the second ink, diagonally away from the event dot |
+| → in the bottom-left corner | a booking left that day for another | Same corner, same ink; a day with both shows the × |
 
 Tapping a visit opens the session. Tapping a month's name opens the List view
-at that month (or the nearest older month with sessions).
+at that month (or the nearest older month with sessions). Every booking mark
+is also written under its month, one line each — section 8.
 
 **Why no trainer colours in the grid:** the questions are when, how often, and
 where the gaps are. A cell coloured by trainer answers "who", and five colours in
@@ -90,6 +94,9 @@ hatch, with the away event that explains them.
 - **Reads:** opening the tab costs up to 200 session reads (was 30). Sets are
   the expensive part (~8 per session) and are only read for months someone
   scrolls to in the list.
+- `useClientBookings` (Sep 26 2026) — ONE `getDocs` of her `schedules` rows
+  per opening of the tab, from the Monday before the first month the calendar
+  draws, no upper bound. About 115 rows a client-year. Section 8.
 
 ## 6. Rules worth knowing
 
@@ -196,16 +203,111 @@ that collection's own `update` rule. Both were super-admin-and-franchise-owner
 only, so the Delete Session button in this dialog had never worked for a Life
 Transformer or a Studio Leader. **Needs a rules deploy.**
 
-## 8. Files
+## 8. Her bookings on the calendar (Sep 26 2026)
+
+AJ, reviewing the Activity Archive's calendar: "we could always show the
+clients upcoming sessions also on this calendar view. We can also log like,
+oh, here was a canceled session ... Are the rescheduled sessions here? Are
+there upcoming sessions here? Are there past sessions? It's like kind of like
+the whole history and they're all looking at it just from above."
+
+The calendar drew the past from her **sessions** (what Journey logged). It now
+lays her **bookings** (`schedules`, what Mindbody holds) over them, for the
+three things a session cannot say. `bookings.ts` is the pure half.
+
+| Mark | When | Rule |
+|---|---|---|
+| **Booked** (blue outline) | a booking whose start is later than now — today's later bookings too | Read through `lib/booking-state.ts`, never from `status` alone: a booking on a day Journey logged a session for her is done, not still to come |
+| **Cancelled** (×) | status "Cancelled" **and** a `cancelledAt` stamp | With another live booking the same Monday-to-Sunday week it is read as a reschedule — the Operations Changes list's own rule (`admin/changes/changes.ts`, `changesForDay`), not a second one |
+| **Moved** (→) | `movedFromDay` names the day | Marks the day the booking LEFT and says where it lives now. A new time on the same day is not a move |
+
+**A cancellation from before the stamps is never drawn.** Until about Sep 16
+2026 an old sweep marked every past booking "Cancelled" on every sync, and
+those rows were never repaired. They carry no `cancelledAt` — the stamps
+arrived with the Operations overhaul, about Sep 19. Drawn, they would cover a
+client's summer in cancellations that never happened. So the calendar shows
+only the cancellations Journey saw happen, and a trainer should read an
+empty August as "none recorded", not "none".
+
+**Only a real rebook says "rebooked"** (AJ, Sep 26 2026). The Changes list
+reads a cancellation with any other live booking that week as a reschedule,
+and for a twice-a-week client that other booking is nearly always her
+standing Thursday, booked all along. Here the other booking is named only when
+it first appeared around or after the cancellation — its `createdAt`, when
+Journey first wrote the row, at most 12 hours before the cancellation was
+stamped (`isRealRebook`, `REBOOK_WINDOW_MS`: the front desk often books the
+new slot first). A standing booking, or one with no `createdAt`, leaves the
+line at "cancelled". Nothing new is stored.
+
+**Nobody rebooks into the past.** The Changes list falls back to a booking
+EARLIER in the week when there is no later one; for a Tue/Thu client who
+cancels Thursday, that is Tuesday's session, already over when she cancelled.
+Here a same-week booking that had started by the time the cancellation was
+stamped is never named as where it went, and the line says "cancelled".
+
+These two are the places the calendar reads a row differently from
+Operations → Changes, which still applies AJ's same-week rule as it stands.
+
+**Past still-booked rows add nothing.** The visit layer speaks for the past,
+and no booking can prove a no-show: bookings never come back Completed
+(`docs/rounds/2026-09-24-done-means-logged.md`). There is no "missed" mark.
+
+**The range runs forward** to the month of the last mark — usually the last
+upcoming booking — so next month shows when she is booked in it. A month
+still ahead counts "3 booked" in place of sessions; a year still ahead says
+what is in it ("4 booked · 1 cancelled").
+
+**Words, not only marks.** Under each month, one line per mark, in the month's
+event style and in time order — it wraps rather than cuts, because it carries
+a trainer's name:
 
 ```
-model.ts               pure: day keys, cadence, calendar + list models, summaries (36 tests)
+Sep 18 · moved to Tue Sep 22
+Sep 20 · cancelled
+Sep 23 · cancelled, rebooked Fri Sep 25
+Mon Sep 28 · 3:00 PM · booked with Giovanni
+```
+
+A day with two cancellations gives each its time. The trainer is the roster's
+first name when the booking is linked to a trainer, else Mindbody's; the pull's
+no-staff placeholder ("Solon Rotation") names no one. Each cell's spoken label
+carries the same lines. The legend shows Booked, Cancelled and Moved only when
+the calendar draws one.
+
+**The read.** `useClientBookings` asks once her sessions have settled, because
+the first day the calendar draws comes from them: `clientId ==`, `startTime >=`
+the Monday on or before the 1st of the first visit's month (so the same-week
+rule sees that whole week), `orderBy startTime asc`, no upper bound, cancelled
+rows included. The composite index and the rule were already there (the
+renewals' live read and the profile header ask the same shape). "Load full
+history" moves the first month back and asks again from there. The profile
+does not remount this tab between clients, so what is held names the client it
+was read for and a late answer for the last client is dropped.
+
+**A failed read is unknown, never "no bookings".** The calendar draws no
+booking layer and the legend says "Bookings did not load — check the
+connection and open the tab again." An answer from the offline cache counts as
+failed: it may hold a fraction of her bookings, or last week's version of them.
+While the read is on its way the legend says "Loading bookings…".
+
+**Not done:** the List view does not show bookings, and a client with no
+sessions yet still gets the empty state, not her upcoming bookings.
+
+## 9. Files
+
+```
+model.ts               pure: day keys, cadence, calendar + list models, summaries (41 tests)
+bookings.ts            pure: her bookings as calendar marks (booked, cancelled,
+                       moved), where the read starts, the words under a month
+                       (30 tests, calendar-with-bookings included)
 session-edits.ts       pure: the edit stamp, the machine-vote delta, who owns the
                        client's counters, the shape of a set added by hand (25 tests)
 trainers.ts            session → TrainerRef, same tones as the Calendar tab
 useSessionHistory.ts   the listener and the per-session set loader
-HistoryView.tsx        the tab, from props only (the harness renders this)
-HistoryCalendar.tsx    years → month cards → day cells
+useClientBookings.ts   the one read of her bookings (+ ClientHistoryTab.render.test)
+HistoryView.tsx        the tab, from props only (the harness renders this; + a
+                       render test: breaks, session numbers, her bookings)
+HistoryCalendar.tsx    years → month cards → day cells, the booking glyph
 HistoryStats.tsx       four tiles, the on-a-break notice, the legend
 HistoryList.tsx        month cards, session rows, break rows
 SessionDetailDialog.tsx  one session in full: edit, add and remove machines, the

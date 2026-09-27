@@ -111,6 +111,7 @@ function Harness({
   fordStatus = "ready",
   fordEntries = [],
   fordCanAdd = true,
+  priorHistoryDoor,
 }: {
   c: Client;
   probe?: Probe;
@@ -120,6 +121,7 @@ function Harness({
   fordStatus?: CodexFordStatus;
   fordEntries?: FordEntry[];
   fordCanAdd?: boolean;
+  priorHistoryDoor?: AccountPageProps["priorHistoryDoor"];
 }) {
   const form = useRecordForm({ client: c, trainerId: "t-aj", canEdit, homeStudioName: "Westlake" });
   probe.form = form;
@@ -139,6 +141,7 @@ function Harness({
           today={TODAY}
           go={go}
           onOpenMigrationHub={onOpenMigrationHub}
+          priorHistoryDoor={priorHistoryDoor}
           now={NOW}
         />
       </div>
@@ -495,6 +498,56 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
   });
 });
 
+/*
+ * Sessions before Journey (landing, Sep 24 2026; moved Sep 26): AJ asked for
+ * the door from the header's session count AND from Account. The profile
+ * hands both the SAME door (priorHistoryDoorText's words,
+ * canEditPriorHistory's rule, its one editor). It was drawn under the
+ * contract history, 1,700px down an upright iPad, where AJ did not find it;
+ * it is now in the page's head, the first thing Account offers.
+ */
+describe("AccountPage — the door to Sessions before Journey", () => {
+  const doors = (host: HTMLElement) => host.querySelectorAll<HTMLButtonElement>('[data-action="prior-history"]');
+
+  it("sits in the page's head, above every card, and opens the profile's editor", async () => {
+    let opened = 0;
+    const host = await mount(
+      <Harness
+        c={carol()}
+        priorHistoryDoor={{ text: "412 before Journey · FileMaker", canEdit: true, onOpen: () => (opened += 1) }}
+      />,
+    );
+    expect(doors(host)).toHaveLength(1);
+    const button = doors(host)[0];
+    expect(button.closest(".cx-page-head")).not.toBeNull();
+    expect(button.textContent).toBe("412 before Journey · FileMaker");
+    expect(button.getAttribute("aria-label")).toBe(
+      "Sessions before Journey: 412 before Journey · FileMaker. Open to edit.",
+    );
+    // Before the first card, not under the contract history.
+    const contact = host.querySelector("#account-contact")!;
+    expect(button.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(host.querySelector('[aria-label="The package"] [data-action="prior-history"]')).toBeNull();
+    // The kit's one button, 40px or taller.
+    expect(button.classList.contains("cx-btn")).toBe(true);
+    await click(button);
+    expect(opened).toBe(1);
+  });
+
+  it("offers a reader the rules refuse the same door, to read", async () => {
+    const host = await mount(
+      <Harness c={carol()} canEdit={false} priorHistoryDoor={{ text: "None before Journey", canEdit: false, onOpen: () => {} }} />,
+    );
+    expect(doors(host)[0]?.getAttribute("aria-label")).toBe("Sessions before Journey: None before Journey. Open to read.");
+  });
+
+  it("draws no door when the profile hands none (nothing recorded, and this reader may not add it)", async () => {
+    const host = await mount(<Harness c={carol()} canEdit={false} priorHistoryDoor={null} />);
+    expect(doors(host)).toHaveLength(0);
+    expect(host.querySelector(".cx-page-head__actions")).toBeNull();
+  });
+});
+
 describe("AccountPage — the page", () => {
   it("has every card a door lands on, once", async () => {
     const host = await mount(<Harness c={carol()} />);
@@ -545,7 +598,9 @@ describe("AccountPage — the page", () => {
   });
 
   it("draws nothing with a Tailwind size or colour", async () => {
-    const host = await mount(<Harness c={carol()} />);
+    const host = await mount(
+      <Harness c={carol()} priorHistoryDoor={{ text: "Add sessions before Journey", canEdit: true, onOpen: () => {} }} />,
+    );
     const classes = Array.from(host.querySelectorAll("[class]")).map((el) => el.getAttribute("class") || "");
     expect(classes.filter((c) => /\btext-(xs|sm|base|lg|\[)|\b(?:bg|text|border)-(?:slate|sky|amber|rose|red|emerald)-/.test(c))).toEqual([]);
   });

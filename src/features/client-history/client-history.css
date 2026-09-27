@@ -14,6 +14,11 @@
      plum   (--eq-warn)        "hasn't been in for N days" — the house warning
      green / grey / crimson    rep quality, from the Journey grid's own tokens
 
+   Her bookings (Sep 26 2026) add no colour: a booked day ahead is the visit
+   blue as an OUTLINE, and a cancellation or a move is a small glyph in the
+   second ink (--hist-mark) — quiet, so a month of them never out-shouts the
+   visits.
+
    Crimson is the kaizen mark and is reserved for rep quality (CLAUDE.md).
    The ongoing break used to borrow it; it is the equipment tokens' warning
    plum now (Sep 24 2026) — and it only appears at all where Journey sees
@@ -35,6 +40,10 @@
   --hist-visit-2:   var(--cal-heat-5);
   --hist-visit-ink: var(--cal-heat-ink-hi);
   --hist-today:     var(--cal-hero);
+  /* A booking still to come: the visit's own blue, drawn as a ring. */
+  --hist-booked:    var(--hist-visit);
+  /* The cancelled / moved glyph: 9.2:1 light, 8.6:1 dark — legible at 6px. */
+  --hist-mark:      var(--cal-ink-2);
   /* Hatch lines: slate at 30% so a break reads as texture, not as a colour. */
   --hist-hatch:     rgba(91, 103, 112, 0.30);
   /* Away: the calendar's amber tone 4, at fill / text / edge strength. */
@@ -208,6 +217,17 @@
 }
 .hist-swatch--away { background: var(--hist-away-fill); border-color: var(--hist-away-edge); }
 .hist-swatch--today { box-shadow: inset 0 0 0 2px var(--hist-today); border-color: transparent; }
+.hist-swatch--booked { box-shadow: inset 0 0 0 2px var(--hist-booked); border-color: transparent; }
+.hist-swatch--glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hist-mark);
+}
+.hist-swatch--glyph .hist-glyph { width: 10px; height: 10px; }
+/* "Loading bookings…" / "Bookings did not load …": what the calendar is not
+   drawing yet, said once, in the legend's own voice. */
+.hist-legend__status { color: var(--cal-ink-muted); font-style: italic; }
 
 /* ---------- Year ------------------------------------------------------- */
 
@@ -416,6 +436,63 @@
 }
 .hist-cell--visit.hist-cell--marker::after { background: var(--hist-visit-ink); }
 
+/* HER BOOKINGS (Sep 26 2026, bookings.ts).
+   A booking still to come is the visit blue as an OUTLINE: the colour says
+   "a visit", the outline says "not yet". It never fades with the rest of the
+   future — it is the one thing ahead worth reading. A visit's fill wins on a
+   day that has both (HistoryCalendar only outlines a day with no visit). */
+.hist-cell--booked {
+  opacity: 1;
+  background: var(--cal-surface);
+  box-shadow: inset 0 0 0 2px var(--hist-booked);
+  color: var(--cal-live-text);
+  font-weight: 900;
+}
+/* Today, booked later today: today's orange ring outside, the booking's
+   blue just inside it. */
+.hist-cell--booked.hist-cell--today {
+  box-shadow: inset 0 0 0 2px var(--hist-today), inset 0 0 0 4px var(--hist-booked);
+  color: var(--cal-ink);
+}
+/* A cancellation or a move: a small glyph in the bottom-left corner,
+   diagonally away from the event dot. Sized and inset with the cell, so it
+   sits in the space under the number at every size: 6% + 24% is 6px of a
+   20px landscape cell, whose number leaves ~6.7px free beneath it. A day
+   carrying one is never faded, even before the first visit or ahead of
+   today. */
+.hist-cell--changed { opacity: 1; }
+.hist-cell__mark {
+  position: absolute;
+  left: 6%;
+  bottom: 6%;
+  width: 24%;
+  height: 24%;
+  color: var(--hist-mark);
+  pointer-events: none;
+}
+/* The small grids — 6-across landscape (~20px cells) and 2-across on a phone
+   (~17px, with the full-size number) — tuck it tighter into the corner, still
+   clear of the number. (After the rule above: a container query adds no
+   specificity, so it has to come later to win.) */
+@container hist (min-width: 1000px) {
+  .hist-cell__mark { left: 4%; bottom: 4%; width: 21%; height: 21%; }
+}
+@container hist (max-width: 539px) {
+  .hist-cell__mark { left: 3%; bottom: 3%; width: 20%; height: 20%; }
+}
+.hist-cell__mark .hist-glyph { width: 100%; height: 100%; }
+.hist-cell--visit .hist-cell__mark { color: var(--hist-visit-ink); }
+.hist-cell--away .hist-cell__mark { color: var(--hist-away-ink); }
+
+.hist-glyph { display: block; flex: 0 0 auto; overflow: visible; }
+.hist-glyph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .hist-month__events { display: flex; flex-direction: column; gap: 2px; padding: 1px 2px 0; }
 .hist-month__event {
   display: flex;
@@ -439,6 +516,43 @@
 .hist-month__event > span { overflow: hidden; text-overflow: ellipsis; }
 .hist-month__event--away { color: var(--hist-away-ink); }
 .hist-month__event--away > i { border-radius: 2px; background: var(--hist-away-edge); }
+
+/* Her bookings under the month, one line each, headed by the glyph the cell
+   draws. Unlike an event line these WRAP rather than cut: a line carries a
+   trainer's name, and names are never truncated. */
+.hist-month__bookings {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 1px 2px 0;
+  list-style: none;
+}
+.hist-month__booking {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--cal-ink-muted);
+  overflow-wrap: break-word;
+}
+.hist-month__booking > .hist-glyph {
+  width: 9px;
+  height: 9px;
+  margin-top: 2px;
+  color: var(--hist-mark);
+}
+.hist-month__booking--booked { color: var(--cal-ink-2); }
+.hist-glyph--booked {
+  border-radius: 3px;
+  background: var(--cal-surface);
+  box-shadow: inset 0 0 0 1.5px var(--hist-booked);
+}
+/* A month still ahead counts what she is booked for, in the booking blue. */
+.hist-month--quiet .hist-month__count--booked b { color: var(--cal-live-text); }
 
 /* ---------- Footer / empty ------------------------------------------- */
 

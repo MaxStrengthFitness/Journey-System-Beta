@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar as CalendarIcon, RefreshCw, Users } from "lucide-react";
 import { ScheduleEntry, Trainer } from "../types";
 import { studioDateKey } from "../lib/studio-time";
@@ -50,6 +50,13 @@ type FilterMode = "all" | "sessions" | "events";
 export interface ScheduleWindowControls {
   ensureRange(from: Date, to: Date, force?: boolean): void;
   refresh(): void;
+  /**
+   * Asks Mindbody for the days on screen and resolves when that is written
+   * (AJ, Sep 26 2026). Optional: without it Refresh re-reads only what
+   * Journey already holds, which cannot show a change Mindbody has not
+   * sent yet.
+   */
+  pullFromMindbody?(from: Date, to: Date): Promise<void>;
   lastFetchedAt: number | null;
   isFetching: boolean;
 }
@@ -129,15 +136,30 @@ export function CalendarView({
   }, [ensureRange, viewMode, selectedDate]);
 
   /**
-   * Refresh re-reads BOTH the week the rest of the app keeps fresh and the
-   * range on screen, forced. Only the week would leave someone looking at
-   * next month with a caption saying "Updated just now" over stale days.
+   * Refresh asks Mindbody for the days on screen - the month in Month, the
+   * week in Week, the day in Day - and then re-reads BOTH the week the rest
+   * of the app keeps fresh and the range on screen, forced. Re-reading alone
+   * only showed what Journey already held: a booking made in Mindbody for
+   * later this month waited for the next morning's pull (AJ, Sep 26 2026).
+   * Only the week would leave someone looking at next month with a caption
+   * saying "Updated just now" over stale days.
    */
-  const refreshSchedules = () => {
+  const latestWindow = useRef(scheduleWindow);
+  latestWindow.current = scheduleWindow;
+  const refreshSchedules = async () => {
     if (!scheduleWindow) return;
-    scheduleWindow.refresh();
     const { from, to } = visibleRange(viewMode, selectedDate);
-    scheduleWindow.ensureRange(from, to, true);
+    // The pull reports its own trouble; the re-read below runs either way,
+    // since a failed pull still leaves Journey's copy worth showing.
+    if (scheduleWindow.pullFromMindbody) {
+      await scheduleWindow.pullFromMindbody(from, to).catch(() => undefined);
+    }
+    // The controls as they are NOW: a pull takes seconds, and a studio
+    // switched meanwhile must not have the old studio's rows read into it.
+    const current = latestWindow.current;
+    if (!current) return;
+    current.refresh();
+    current.ensureRange(from, to, true);
   };
 
   // The caption ("Updated 3 min ago") has to age while nothing else changes.
@@ -438,7 +460,7 @@ export function CalendarView({
             <button
               type="button"
               className="cal-refresh__btn"
-              onClick={refreshSchedules}
+              onClick={() => void refreshSchedules()}
               disabled={scheduleWindow.isFetching}
               aria-label="Refresh the schedule"
             >

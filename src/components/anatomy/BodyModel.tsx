@@ -1,6 +1,16 @@
 import { useMemo } from "react";
 import Body, { type ExtendedBodyPart, type Slug } from "react-muscle-highlighter";
-import { MuscleId, toBodySlugs } from "../../types/machines";
+import { MuscleId, areaSlugs, toBodySlugs } from "../../types/machines";
+
+/**
+ * Which figure a client is drawn on: female for "Female" (or "F"), male for
+ * everything else, "Other" and unknown included — the model has no third
+ * figure. The Routine Builder and the client codex both ask here.
+ */
+export function figureGenderOf(value: string | null | undefined): "male" | "female" {
+  const g = (value ?? "").trim().toLowerCase();
+  return g === "female" || g === "f" ? "female" : "male";
+}
 
 /**
  * BODY MODEL — the single render boundary for the anatomy figure.
@@ -28,6 +38,11 @@ export interface BodyModelProps {
   primary?: MuscleId[];
   /** Assisting and stabilizing muscles — rendered at lower intensity. */
   secondary?: MuscleId[];
+  /**
+   * Body areas to light in the primary colour, in the Pulse's names ("knee",
+   * "lower_back"): the client codex's Where it matters. See areaSlugs().
+   */
+  areas?: readonly string[];
 
   gender: "male" | "female";
   view: "front" | "back";
@@ -58,9 +73,12 @@ const ALL_SLUGS: Slug[] = [
   "trapezius", "triceps", "upper-back",
 ];
 
+const NO_AREAS: readonly string[] = [];
+
 export function BodyModel({
   primary = [],
   secondary = [],
+  areas = NO_AREAS,
   gender,
   view,
   scale = 1,
@@ -70,7 +88,7 @@ export function BodyModel({
   border = "none",
 }: BodyModelProps) {
   const data = useMemo<ExtendedBodyPart[]>(() => {
-    const primarySlugs = new Set(toBodySlugs(primary));
+    const primarySlugs = new Set([...toBodySlugs(primary), ...areaSlugs(areas)]);
     // A region that is primary must not also render as secondary — the
     // library paints in order and the lighter pass would win.
     const secondarySlugs = new Set(
@@ -87,7 +105,7 @@ export function BodyModel({
             : baseFill,
       },
     }));
-  }, [primary, secondary, colors, baseFill]);
+  }, [primary, secondary, areas, colors, baseFill]);
 
   return (
     <Body

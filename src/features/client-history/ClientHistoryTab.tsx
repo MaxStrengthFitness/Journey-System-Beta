@@ -5,9 +5,11 @@ import { HistoryView, type HistoryViewMode } from "./HistoryView";
 import { LogPastSessionDialog } from "./LogPastSessionDialog";
 import { SessionDetailDialog } from "./SessionDetailDialog";
 import { trainerLookup } from "./trainers";
-import { routineNamer } from "./model";
+import { routineNamer, toVisitDays, todayKey } from "./model";
 import { useSessionHistory, useSessionLogs } from "./useSessionHistory";
 import type { HistorySession } from "./model";
+import { bookingsReadFrom } from "./bookings";
+import { useClientBookings } from "./useClientBookings";
 import { useClientCoverage } from "../../hooks/useClientCoverage";
 import { canQuoteSessionNumber } from "../../lib/client-coverage";
 import { ownedWindow } from "../../lib/history-claims";
@@ -76,6 +78,23 @@ export function ClientHistoryTab({
   );
   const quoteSessionNumbers = canQuoteSessionNumber(client, coverage);
 
+  /*
+   * Her bookings, laid over the calendar (Sep 26 2026, bookings.ts): one read
+   * from the first day the calendar draws, once her sessions have settled so
+   * that day is known. Only sessions that are HERS count — for the one render
+   * after a switch, the listener still holds the last client's.
+   */
+  const today = todayKey(new Date(), timeZone);
+  const readFrom = useMemo(() => {
+    if (history.status === "loading") return null;
+    const own = history.sessions.filter((s) => s.clientId === clientId);
+    return bookingsReadFrom(toVisitDays(own, timeZone, today).days);
+  }, [history.status, history.sessions, clientId, timeZone, today]);
+  const bookings = useClientBookings(clientId, readFrom, !disabled, timeZone);
+  // Nothing asked yet because her sessions are still arriving: still loading.
+  const bookingsStatus =
+    bookings.status === "idle" && history.status === "loading" && !disabled ? "loading" : bookings.status;
+
   const openSessions = useCallback((sessions: HistorySession[]) => {
     if (sessions.length > 0) setOpened({ key: Date.now(), sessions });
   }, []);
@@ -97,6 +116,8 @@ export function ClientHistoryTab({
         onOpenSessions={openSessions}
         onLogPast={() => setLogPastOpen(true)}
         timeZone={timeZone}
+        bookings={bookings.rows}
+        bookingsStatus={bookingsStatus}
         view={view}
         onViewChange={onViewChange}
         hideHeader={hideHeader}

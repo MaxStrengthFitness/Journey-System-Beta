@@ -42,12 +42,10 @@ import { useMemo } from "react";
 import {
   CalendarClock,
   ChevronDown,
-  ChevronRight,
   FileCheck,
   Lock,
   MapPin,
   Package,
-  Pencil,
   ScrollText,
   Unlock,
   Upload,
@@ -59,7 +57,6 @@ import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { formatMindbodyDate, toDateSafe, type FirestoreDateLike } from "../../lib/mindbody-dates";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { masterSyncLabel } from "../client-profile/sync-label";
-import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "../client-profile/prior-history-door";
 import {
   BigNumber,
   Btn,
@@ -117,11 +114,6 @@ export interface MembershipSectionProps {
   today: string;
   /** The Migration Hub (OCR import); the profile switches to Journey, where imports land. */
   onOpenMigrationHub?: () => void;
-  /**
-   * The door to Sessions before Journey: the header's own (its words, its
-   * rule, the profile's editor), under the contract history. Null: no door.
-   */
-  priorHistoryDoor?: PriorHistoryDoorState | null;
   /** For "synced 2 days ago"; the real clock when left out. */
   now?: Date;
 }
@@ -156,8 +148,7 @@ function PackageCard({
   coverage,
   canEdit,
   today,
-  priorHistoryDoor,
-}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today" | "priorHistoryDoor"> & {
+}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today"> & {
   form: FormPart;
 }) {
   const { formData, updateField, isDirty, revision } = form;
@@ -292,20 +283,6 @@ function PackageCard({
             </li>
           ))}
         </ol>
-      ) : null}
-      {priorHistoryDoor ? (
-        // The header's door, again where the years before Journey are the
-        // first tile: the same words, the same rule, the profile's one editor.
-        <div>
-          <Btn
-            iconEnd={priorHistoryDoor.canEdit ? Pencil : ChevronRight}
-            aria-label={priorHistoryDoorLabel(priorHistoryDoor)}
-            data-action="prior-history"
-            onClick={priorHistoryDoor.onOpen}
-          >
-            {priorHistoryDoor.text}
-          </Btn>
-        </div>
       ) : null}
       {rows.length === 0 ? (
         <Meta>
@@ -599,8 +576,7 @@ function FinePrint({
 /* ------------------------------------------------------------------ */
 
 export function MembershipSection(props: MembershipSectionProps) {
-  const { client, form, studios, author, coverage, canEdit, pronouns: p, today, onOpenMigrationHub, priorHistoryDoor, now } =
-    props;
+  const { client, form, studios, author, coverage, canEdit, pronouns: p, today, onOpenMigrationHub, now } = props;
   return (
     <>
       <SectionHead
@@ -617,7 +593,6 @@ export function MembershipSection(props: MembershipSectionProps) {
           coverage={coverage}
           canEdit={canEdit}
           today={today}
-          priorHistoryDoor={priorHistoryDoor}
         />
         <div className="cadm-side">
           <TrainAtCard client={client} form={form} studios={studios} canEdit={canEdit} pronouns={p} />

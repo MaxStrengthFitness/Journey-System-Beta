@@ -495,12 +495,52 @@ describe("Body & Pulse — watch-outs (they replaced BodyWatchOuts)", () => {
 });
 
 describe("Body & Pulse — where it matters", () => {
-  it("draws the flag's diamond on the midline and her ring on her right knee", async () => {
+  it("draws the flag's diamond on the midline and her ring on her right knee, on her figure", async () => {
     const host = await mount();
     const diamond = host.querySelector('rect.bp-fig__onfile[data-region="knee"]')!;
-    expect(diamond.getAttribute("transform")).toBe("rotate(45 60 203)");
+    expect(diamond.getAttribute("transform")).toBe("rotate(45 320 1023)");
     const ring = host.querySelector('circle.bp-fig__told[data-region="knee"]')!;
-    expect(ring.getAttribute("cx")).toBe("49");
+    expect(ring.getAttribute("cx")).toBe("265");
+  });
+
+  it("is the Catalog's figure, hers, with the marks laid over it in its own coordinates", async () => {
+    const host = await mount();
+    const card = host.querySelector("#body-figure")!;
+    const figures = Array.from(card.querySelectorAll<HTMLElement>(".bp-fig"));
+    expect(figures).toHaveLength(2);
+    for (const [fig, view] of [
+      [figures[0], "front"],
+      [figures[1], "back"],
+    ] as const) {
+      // The model's own svg: Carol is drawn on the female figure.
+      const model = fig.querySelector(".bp-fig__body svg")!;
+      expect(model.getAttribute("aria-label")).toBe(`female-body-${view}`);
+      // One coordinate space, or the rings drift off the joints.
+      expect(fig.querySelector(".bp-fig__marks")!.getAttribute("viewBox")).toBe(model.getAttribute("viewBox"));
+      // The figure speaks once, for both layers.
+      expect(fig.getAttribute("role")).toBe("img");
+      expect(fig.querySelector(".bp-fig__body")!.getAttribute("aria-hidden")).toBe("true");
+    }
+    expect(figures[0].getAttribute("aria-label")).toBe(
+      "Front of the body: a watch-out on file at the knee; she told us about the knee",
+    );
+  });
+
+  it("lights her knees in the codex's blue while the knee row is open, and only then", async () => {
+    const host = await mount();
+    const knees = () => Array.from(host.querySelectorAll<SVGPathElement>('.bp-fig__body path[data-part="knees"]'));
+    expect(knees().length).toBeGreaterThan(0);
+    expect(knees().every((k) => k.getAttribute("fill") === "var(--cx-muscle)")).toBe(true);
+    const row = Array.from(host.querySelectorAll<HTMLButtonElement>(".bp-region__btn")).find((b) =>
+      b.textContent?.startsWith("Knee"),
+    )!;
+    await click(row);
+    expect(knees().every((k) => k.getAttribute("fill") === "var(--cx-muscle-lit)")).toBe(true);
+    // Nothing else lights with it.
+    const lit = Array.from(host.querySelectorAll('.bp-fig__body path[fill="var(--cx-muscle-lit)"]'));
+    expect(lit.every((p) => p.getAttribute("data-part") === "knees")).toBe(true);
+    await click(row);
+    expect(knees().every((k) => k.getAttribute("fill") === "var(--cx-muscle)")).toBe(true);
   });
 
   it("opens a region row's sentences on tap, beside the button rather than inside it", async () => {

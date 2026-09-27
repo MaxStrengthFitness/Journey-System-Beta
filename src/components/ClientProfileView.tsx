@@ -91,6 +91,7 @@ import { useToast } from "../contexts/ToastContext";
 import { runMasterSync } from "../lib/mindbody-master-sync";
 import { mindbodyIdOf } from "../lib/mindbody-id";
 import { masterSyncLabel } from "../features/client-profile/sync-label";
+import { stillBooked } from "../features/client-profile/next-session-tile";
 import { StaleSessionNotice } from "../features/client-profile/StaleSessionNotice";
 import {
   forgetLiveSession,
@@ -1209,6 +1210,10 @@ export function ClientProfileView({
 
   useEffect(() => {
     if (!clientId || !user) return;
+    // This view is not remounted between clients: without the reset, the last
+    // client's next session showed under the new name until the read landed.
+    setScheduledSessions([]);
+    let live = true;
     const fetchSchedules = async () => {
       try {
         const q = query(
@@ -1219,9 +1224,14 @@ export function ClientProfileView({
           limit(50),
         );
         const snap = await getDocs(q);
+        if (!live) return;
+        // Still booked only: a cancelled booking keeps its row, and it was
+        // read as the NEXT SESSION and counted in "N booked" (Sep 26 2026).
         setScheduledSessions(
-          snap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
+          stillBooked(
+            snap.docs.map(
+              (doc) => ({ id: doc.id, ...doc.data() }) as ScheduleEntry,
+            ),
           ),
         );
       } catch (error: any) {
@@ -1229,6 +1239,9 @@ export function ClientProfileView({
       }
     };
     fetchSchedules();
+    return () => {
+      live = false;
+    };
   }, [clientId, user?.uid]);
 
   if (!client) {

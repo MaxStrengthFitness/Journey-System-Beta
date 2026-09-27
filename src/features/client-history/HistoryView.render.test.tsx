@@ -20,6 +20,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { HistoryView, type HistoryViewProps } from "./HistoryView";
 import type { HistorySession } from "./model";
 import type { PriorHistory } from "../../lib/prior-history";
+import type { ScheduleEntry, Trainer } from "../../types";
+import { wallClockToInstant } from "../../lib/studio-time";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -147,5 +149,128 @@ describe("the History list's session numbers", () => {
   it("numbers on top of the sessions before Journey once it is", async () => {
     const host = await mount({ view: "list", onViewChange: () => {}, quoteSessionNumbers: true, prior });
     expect(numbers(host)).toEqual(["S417", "S416", "S415", "S414", "S413"]);
+  });
+});
+
+/*
+ * Her bookings on the calendar (Sep 26 2026, bookings.ts). AJ: "here was a
+ * canceled session ... Are the rescheduled sessions here? Are there upcoming
+ * sessions here?" — upcoming days outlined, cancellations Journey saw happen
+ * and moves marked in the cell's corner, and every one of them written under
+ * its month.
+ */
+describe("the calendar with her bookings", () => {
+  const ET = "America/New_York";
+  const at = (day: string, hm: string) => wallClockToInstant(`${day}T${hm}:00`, ET)!;
+  /* Thursday Sep 24 2026, 10:00 AM Eastern. */
+  const NOW = at(TODAY, "10:00");
+  const trainers = [{ id: "t1", fullName: "Giovanni Rossi", initials: "GR" }] as Trainer[];
+
+  const booking = (id: string, day: string, hm: string, extra: Partial<ScheduleEntry> = {}): ScheduleEntry => ({
+    id,
+    clientId: "c1",
+    clientName: "Helen Marsh",
+    trainerId: "t1",
+    trainerName: "Giovanni Rossi",
+    studioId: "solon",
+    startTime: at(day, hm),
+    endTime: new Date(at(day, hm).getTime() + 30 * 60_000),
+    status: "Scheduled",
+    serviceName: "Strength 30",
+    source: "MindBody",
+    createdAt: null,
+    ...extra,
+  });
+
+  const bookings: ScheduleEntry[] = [
+    // The old sweep's: "Cancelled" with no stamp. Never drawn.
+    booking("old-sweep", "2026-09-09", "15:00", { status: "Cancelled" }),
+    // Cancelled, and Journey saw it happen. Nothing else booked that week.
+    booking("gone", "2026-09-16", "15:00", { status: "Cancelled", cancelledAt: at("2026-09-15", "19:00"), cancelSource: "mindbody" }),
+    // Moved from Fri Sep 18 to Tue Sep 22 (both past).
+    booking("moved", "2026-09-22", "15:00", { movedFromDay: "2026-09-18", movedFromStart: at("2026-09-18", "15:00") }),
+    // Later today, next Tuesday, and into October.
+    booking("today", TODAY, "15:00"),
+    booking("tue", "2026-09-29", "15:00"),
+    booking("oct", "2026-10-06", "15:00"),
+  ];
+
+  const withBookings = (over: Partial<HistoryViewProps> = {}) =>
+    mount({ trainers, now: NOW, bookings, bookingsStatus: "ready", ...over });
+
+  const cell = (host: HTMLElement, day: string) => host.querySelector<HTMLElement>(`[data-day="${day}"]`)!;
+  const lines = (host: HTMLElement, month: string) =>
+    Array.from(host.querySelectorAll(`[aria-label="${month} bookings"] li`)).map((li) => li.textContent);
+  const legend = (host: HTMLElement) => host.querySelector(".hist-legend")?.textContent ?? "";
+
+  it("outlines the days she is booked, today's later booking included, and draws next month", async () => {
+    const host = await withBookings();
+    expect(cell(host, TODAY).className).toContain("hist-cell--booked");
+    expect(cell(host, TODAY).className).toContain("hist-cell--today");
+    expect(cell(host, "2026-09-29").className).toContain("hist-cell--booked");
+    expect(cell(host, "2026-09-29").getAttribute("aria-label")).toContain("booked with Giovanni");
+    // October is on the calendar only because she is booked in it.
+    expect(cell(host, "2026-10-06").className).toContain("hist-cell--booked");
+    const october = host.querySelector('section[aria-label^="October 2026"]');
+    expect(october?.getAttribute("aria-label")).toBe("October 2026: 1 booked");
+    expect(october?.querySelector(".hist-month__count")?.textContent).toBe("1booked");
+  });
+
+  it("marks a cancellation Journey saw and a move in the cell's corner, and never the old sweep's", async () => {
+    const host = await withBookings();
+    expect(cell(host, "2026-09-16").className).toContain("hist-cell--changed");
+    expect(cell(host, "2026-09-16").querySelector(".hist-cell__mark svg")).not.toBeNull();
+    expect(cell(host, "2026-09-18").className).toContain("hist-cell--changed");
+    expect(cell(host, "2026-09-18").getAttribute("aria-label")).toContain("moved to Tue Sep 22");
+    expect(cell(host, "2026-09-09").className).not.toContain("hist-cell--changed");
+    expect(cell(host, "2026-09-09").querySelector(".hist-cell__mark")).toBeNull();
+  });
+
+  it("writes every mark under its month, one line each", async () => {
+    const host = await withBookings();
+    expect(lines(host, "September")).toEqual([
+      "Sep 16 · cancelled",
+      "Sep 18 · moved to Tue Sep 22",
+      "Thu Sep 24 · 3:00 PM · booked with Giovanni",
+      "Tue Sep 29 · 3:00 PM · booked with Giovanni",
+    ]);
+    expect(lines(host, "October")).toEqual(["Tue Oct 6 · 3:00 PM · booked with Giovanni"]);
+    // The old sweep's row says nothing anywhere.
+    expect(host.textContent).not.toContain("Sep 9 · cancelled");
+  });
+
+  it("names in the legend only what the calendar draws", async () => {
+    const host = await withBookings();
+    expect(legend(host)).toContain("Booked");
+    expect(legend(host)).toContain("Cancelled");
+    expect(legend(host)).toContain("Moved");
+
+    const onlyAhead = await withBookings({ bookings: [booking("tue", "2026-09-29", "15:00")] });
+    expect(legend(onlyAhead)).toContain("Booked");
+    expect(legend(onlyAhead)).not.toContain("Cancelled");
+    expect(legend(onlyAhead)).not.toContain("Moved");
+  });
+
+  it("draws the past only, as before, without her bookings", async () => {
+    const host = await mount({ trainers, now: NOW });
+    expect(host.querySelector(".hist-cell--booked")).toBeNull();
+    expect(host.querySelector(".hist-month__bookings")).toBeNull();
+    expect(legend(host)).not.toContain("Booked");
+    expect(host.querySelector('section[aria-label^="October 2026"]')).toBeNull();
+  });
+
+  it("says so when the read failed, and draws no booking layer — unknown, never 'no bookings'", async () => {
+    const host = await withBookings({ bookingsStatus: "error" });
+    expect(legend(host)).toContain("Bookings did not load");
+    expect(host.querySelector(".hist-cell--booked")).toBeNull();
+    expect(host.querySelector(".hist-cell__mark")).toBeNull();
+    expect(host.querySelector(".hist-month__bookings")).toBeNull();
+    expect(host.querySelector('section[aria-label^="October 2026"]')).toBeNull();
+  });
+
+  it("says so while the read is on its way", async () => {
+    const host = await withBookings({ bookings: [], bookingsStatus: "loading" });
+    expect(legend(host)).toContain("Loading bookings");
+    expect(host.querySelector(".hist-cell--booked")).toBeNull();
   });
 });

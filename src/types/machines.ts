@@ -207,6 +207,53 @@ export function toBodySlugs(ids: MuscleId[]): string[] {
   return [...out];
 }
 
+/**
+ * BODY AREAS — the places a client names, as the body model's regions.
+ *
+ * Where it matters (the client codex's Body & Pulse page, Sep 26 2026) draws
+ * the Catalog's figure, and a tapped row lights its area on it. The keys are
+ * the Pulse pain map's regions (subjective-report `BodyRegion`) plus the
+ * abdomen, which a hernia flag names. Kept here because this is the only
+ * place the library's names may be written.
+ *
+ * Three joints have no region of their own on the model — the elbow, the
+ * hip and the middle of the back — so they light nothing; their marks still
+ * sit on the right spot. The groin is the adductors, the nearest the model
+ * has.
+ */
+const BODY_AREA_SLUGS: Record<string, readonly string[]> = {
+  neck: ['neck'],
+  shoulder: ['deltoids'],
+  upper_back: ['upper-back', 'trapezius'],
+  mid_back: [],
+  lower_back: ['lower-back'],
+  chest: ['chest'],
+  abdomen: ['abs', 'obliques'],
+  elbow: [],
+  wrist_hand: ['hands'],
+  hip: [],
+  glute: ['gluteal'],
+  groin: ['adductors'],
+  thigh: ['quadriceps'],
+  hamstring: ['hamstring'],
+  knee: ['knees'],
+  calf_shin: ['calves', 'tibialis'],
+  ankle: ['ankles'],
+  foot: ['feet'],
+};
+
+/** True when the figure knows this body area (even one that lights nothing). */
+export function isBodyArea(area: string): boolean {
+  return Object.prototype.hasOwnProperty.call(BODY_AREA_SLUGS, area);
+}
+
+/** The body model's slugs for a set of body areas, de-duplicated. */
+export function areaSlugs(areas: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const area of areas) for (const slug of BODY_AREA_SLUGS[area] ?? []) out.add(slug);
+  return [...out];
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // SETTING FIELDS
 // ─────────────────────────────────────────────────────────────────────

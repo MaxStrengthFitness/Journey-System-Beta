@@ -73,6 +73,7 @@ import { readArrivals, regionTaps } from "./arrivals";
 import { buildTimeline, timelineWindow } from "./timeline";
 import { BuildCard } from "./BuildCard";
 import { WhereItMattersCard } from "./WhereItMattersCard";
+import { figureGenderOf } from "../../../components/anatomy";
 import { WatchOutsCard } from "./WatchOutsCard";
 import { OnOurFloorCard } from "./OnOurFloorCard";
 import { MeasuredToldCard } from "./MeasuredToldCard";
@@ -371,6 +372,7 @@ export function BodyPulsePage({
             onEditWork={() => go("ford", "ford-occupation")}
           />
           <WhereItMattersCard
+            gender={figureGenderOf(client.gender)}
             flagIds={flagIds}
             pain={pain}
             pulseStatus={toldStatus}

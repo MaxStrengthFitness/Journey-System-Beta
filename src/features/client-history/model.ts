@@ -10,6 +10,7 @@
  *   - which calendar day a session belongs to (sessionDayKey),
  *   - what counts as a break, and how long it was (findGaps / computeCadence),
  *   - the year → month → day model the calendar renders (buildCalendar),
+ *     with her bookings laid on it (the marks themselves are bookings.ts),
  *   - the month sections, rows and break dividers the list renders (buildList),
  *   - what one session amounted to, from its sets (summarizeSession).
  *
@@ -23,6 +24,8 @@ import { calculateExerciseVolume, parseSessionDate } from "../../lib/utils";
 import { isPerformedLog } from "../../lib/set-outcome";
 import { studioDateKey, toDate } from "../../lib/studio-time";
 import { canClaimGap, WHOLE_STORY, type OwnedWindow } from "../../lib/history-claims";
+// Types only: bookings.ts imports this module's values, so nothing runs in a circle.
+import type { BookingLayer, BookingMark } from "./bookings";
 
 /** A session as History reads it. `trainerName` is written by the live flow but not declared. */
 export type HistorySession = WorkoutSession & { trainerName?: string };
@@ -446,6 +449,14 @@ export interface DayCellModel {
   sessions: HistorySession[];
   /** A non-away client event lands on this day (progress report, alert, …). */
   hasMarker: boolean;
+  /** A booking still to come on this day (bookings.ts). Drawn as an outline; a visit's fill wins. */
+  booked: boolean;
+  /** A booking for this day was cancelled, and Journey saw it happen. */
+  cancelled: boolean;
+  /** A booking left this day for another. */
+  moved: boolean;
+  /** Every booking mark on this day, soonest first — the cell's spoken label reads them. */
+  bookings: BookingMark[];
 }
 
 export interface MonthModel {
@@ -462,6 +473,12 @@ export interface MonthModel {
   cells: (DayCellModel | null)[];
   /** Events touching this month, for the card's footnote. */
   events: TimelineEvent[];
+  /** Booking marks on this month's days, soonest first — written under the month, one line each. */
+  bookings: BookingMark[];
+  /** Bookings still to come this month. */
+  booked: number;
+  /** Every day of the month is after today. */
+  ahead: boolean;
 }
 
 export interface YearModel {
@@ -472,6 +489,12 @@ export interface YearModel {
   perWeek: number | null;
   /** Breaks that overlap this year. */
   breakCount: number;
+  /** Booking marks drawn in this year's months, by kind — the legend names only what is drawn. */
+  booked: number;
+  cancelled: number;
+  moved: number;
+  /** Every day of the year is after today: drawn only because she is booked in it. */
+  ahead: boolean;
 }
 
 const MONTH_NAMES = [
@@ -488,15 +511,23 @@ export interface BuildCalendarInput {
   events: TimelineEvent[];
   cadence: CadenceStats;
   today: DayKey;
+  /**
+   * Her bookings, as bookings.ts reads them: still to come, cancelled, moved.
+   * The range runs forward to the month of the last one. None: the calendar
+   * draws the past only, as it always did.
+   */
+  bookings?: BookingLayer;
 }
 
 /**
  * Newest year first; inside a year, January → the latest month, because that
  * is how every calendar a person has ever read runs. The range starts at the
- * first visit on record and ends at today's month — no empty future months, no
- * empty months before the client existed.
+ * first visit on record and ends at today's month — or, when she is booked
+ * ahead, at the month of her last booking (Sep 26 2026), so next month shows
+ * when she is booked in it. No empty months before the client existed, and no
+ * empty future months past the last thing drawn in them.
  */
-export function buildCalendar({ days, events, cadence, today }: BuildCalendarInput): YearModel[] {
+export function buildCalendar({ days, events, cadence, today, bookings }: BuildCalendarInput): YearModel[] {
   if (!cadence.first) return [];
 
   const visits = new Map(days.map((d) => [d.key, d]));
@@ -505,10 +536,19 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
     breaks.some((g) => g.ongoing && key > g.from && key <= g.to);
   const awayOn = (key: DayKey) => events.some((e) => e.away && key >= e.from && key <= e.to);
   const markerOn = (key: DayKey) => events.some((e) => !e.away && key >= e.from && key <= e.to);
+  const marksOn = new Map<DayKey, BookingMark[]>();
+  for (const mark of bookings?.marks ?? []) {
+    const list = marksOn.get(mark.day) ?? [];
+    list.push(mark);
+    marksOn.set(mark.day, list);
+  }
 
   const start = parseKey(cadence.first);
-  // A session typed with a future date still gets its month drawn.
-  const end = parseKey(cadence.last && cadence.last > today ? cadence.last : today);
+  // A session typed with a future date still gets its month drawn, and so
+  // does the month of the last booking.
+  let endKey = cadence.last && cadence.last > today ? cadence.last : today;
+  if (bookings?.lastDay && bookings.lastDay > endKey) endKey = bookings.lastDay;
+  const end = parseKey(endKey);
   const months: MonthModel[] = [];
 
   for (let y = start.year, m = start.month; y < end.year || (y === end.year && m <= end.month); ) {
@@ -521,6 +561,7 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
 
     let sessions = 0;
     let visitDays = 0;
+    const monthMarks: BookingMark[] = [];
     for (let d = 1; d <= count; d++) {
       const key = keyOf(y, m, d);
       const visit = visits.get(key);
@@ -534,6 +575,8 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
       else if (awayOn(key)) state = "away";
       else if (inBreak(key)) state = "break";
       else state = "rest";
+      const marks = marksOn.get(key) ?? [];
+      monthMarks.push(...marks);
       cells.push({
         key,
         day: d,
@@ -541,6 +584,10 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
         isToday: key === today,
         sessions: visit?.sessions ?? [],
         hasMarker: markerOn(key),
+        booked: marks.some((mark) => mark.kind === "booked"),
+        cancelled: marks.some((mark) => mark.kind === "cancelled"),
+        moved: marks.some((mark) => mark.kind === "moved"),
+        bookings: marks,
       });
     }
     while (cells.length < 42) cells.push(null);
@@ -555,6 +602,9 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
       visitDays,
       cells,
       events: events.filter((e) => e.from <= lastKey && e.to >= firstKey),
+      bookings: monthMarks,
+      booked: monthMarks.filter((mark) => mark.kind === "booked").length,
+      ahead: firstKey > today,
     });
 
     m += 1;
@@ -580,12 +630,17 @@ export function buildCalendar({ days, events, cadence, today }: BuildCalendarInp
       const spanEnd = today < yearEnd ? today : yearEnd;
       const spanDays = daysBetween(spanStart, spanEnd) + 1;
       const visitDays = list.reduce((n, mo) => n + mo.visitDays, 0);
+      const marks = list.flatMap((mo) => mo.bookings);
       return {
         year,
         months: list,
         sessions: list.reduce((n, mo) => n + mo.sessions, 0),
         perWeek: spanDays > 0 ? visitDays / Math.max(1, spanDays / 7) : null,
         breakCount: breaks.filter((g) => g.from <= yearEnd && g.to >= yearStart).length,
+        booked: marks.filter((mark) => mark.kind === "booked").length,
+        cancelled: marks.filter((mark) => mark.kind === "cancelled").length,
+        moved: marks.filter((mark) => mark.kind === "moved").length,
+        ahead: yearStart > today,
       };
     });
 }
