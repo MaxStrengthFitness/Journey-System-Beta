@@ -675,6 +675,14 @@ export function JourneyGrid({
           })
         : null;
     ro?.observe(el);
+    // The timeline too, not only its frame. Session tracks are
+    // `minmax(col, 1fr)` in a max-content grid, so every column widens to the
+    // widest cell once the sets land - AFTER the pin, with the scroller's own
+    // box unchanged and nothing re-rendered that re-pins. That left a freshly
+    // opened profile a column or two short of the newest session (AJ, Sep 26
+    // 2026: "The trainer should not have to scroll through to get to today").
+    const timeline = el.querySelector(".jg-grid");
+    if (timeline) ro?.observe(timeline);
     return () => {
       ro?.disconnect();
       el.removeEventListener("pointerdown", touch);
