@@ -91,7 +91,7 @@ export function TeamJobsLane({
           {title}
           {open.length > 0 && <span className="tj-lane__count tabular">{open.length}</span>}
         </h3>
-        {grabs > 0 && !mineOnly && <span className="pk-tag pk-tag--hero">{grabs} up for grabs</span>}
+        {grabs > 0 && !mineOnly && <span className="rk-tag rk-tag--hero">{grabs} up for grabs</span>}
         {canPost && onPost && (
           <button type="button" className="pl__btn tj-lane__post" onClick={onPost}>
             <Plus size={14} aria-hidden />
@@ -101,11 +101,11 @@ export function TeamJobsLane({
       </header>
 
       {error ? (
-        <p className="pk-empty">{error}</p>
+        <p className="rk-empty">{error}</p>
       ) : loading && visible.length === 0 ? (
-        <p className="pk-empty">Loading team jobs…</p>
+        <p className="rk-empty">Loading team jobs…</p>
       ) : open.length === 0 ? (
-        <p className="pk-empty">
+        <p className="rk-empty">
           {mineOnly
             ? "You're not on any team jobs."
             : canPost
@@ -175,11 +175,11 @@ function JobCard({
     >
       <button type="button" className="tj-card__main" onClick={() => onOpen(job)}>
         <span className="tj-card__top">
-          {onIt && isOpen && <span className="pk-tag pk-tag--live">You're on it</span>}
-          {grabs && <span className="pk-tag pk-tag--hero">Up for grabs</span>}
-          {!isOpen && <span className="pk-tag pk-tag--done">Finished</span>}
+          {onIt && isOpen && <span className="rk-tag rk-tag--live">You're on it</span>}
+          {grabs && <span className="rk-tag rk-tag--hero">Up for grabs</span>}
+          {!isOpen && <span className="rk-tag rk-tag--done">Finished</span>}
           {due && (
-            <span className={`pk-tag${isOpen && timing === "overdue" ? " pk-tag--flag" : isOpen && timing === "today" ? " pk-tag--live" : ""}`}>
+            <span className={`rk-tag${isOpen && timing === "overdue" ? " rk-tag--flag" : isOpen && timing === "today" ? " rk-tag--live" : ""}`}>
               {due}
             </span>
           )}
@@ -187,7 +187,7 @@ function JobCard({
         <span className="tj-card__title">{job.title}</span>
         {hasParts ? (
           <span className="tj-card__progress">
-            <span className={`pk-bar${progress.allDone ? " pk-bar--done" : ""}`} aria-hidden>
+            <span className={`rk-bar${progress.allDone ? " rk-bar--done" : ""}`} aria-hidden>
               <span style={{ width: `${pct}%` }} />
             </span>
             <span className="tj-card__count tabular">

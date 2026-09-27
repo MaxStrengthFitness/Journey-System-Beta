@@ -171,22 +171,22 @@ export function NetworkView() {
             <span className="rl-h__sub">shown on every studio's Floor</span>
           </header>
           {!network?.id ? (
-            <p className="pk-empty">This studio isn't in a network yet, so there is nowhere to keep a shared focus.</p>
+            <p className="rk-empty">This studio isn't in a network yet, so there is nowhere to keep a shared focus.</p>
           ) : (
             <div className="vault__form">
-              <div className="pk-row">
-                <label className="pk-field">
-                  <span className="pk-label">Mastery series</span>
-                  <input className="pk-input" value={mastery} maxLength={120} placeholder="Hip hinge" onChange={(e) => setMastery(e.target.value)} />
+              <div className="rk-row">
+                <label className="rk-field">
+                  <span className="rk-label">Mastery series</span>
+                  <input className="rk-input" value={mastery} maxLength={120} placeholder="Hip hinge" onChange={(e) => setMastery(e.target.value)} />
                 </label>
-                <label className="pk-field">
-                  <span className="pk-label">Machine to try</span>
-                  <input className="pk-input" value={machine} maxLength={120} placeholder="Leg Curl" onChange={(e) => setMachine(e.target.value)} />
+                <label className="rk-field">
+                  <span className="rk-label">Machine to try</span>
+                  <input className="rk-input" value={machine} maxLength={120} placeholder="Leg Curl" onChange={(e) => setMachine(e.target.value)} />
                 </label>
               </div>
-              <label className="pk-field">
-                <span className="pk-label">A line for the floor</span>
-                <input className="pk-input" value={note} maxLength={500} placeholder="Five clients on the leg curl by October." onChange={(e) => setNote(e.target.value)} />
+              <label className="rk-field">
+                <span className="rk-label">A line for the floor</span>
+                <input className="rk-input" value={note} maxLength={500} placeholder="Five clients on the leg curl by October." onChange={(e) => setNote(e.target.value)} />
               </label>
               <div className="pl__panel-actions">
                 <button type="button" className="pl__btn pl__btn--primary" disabled={!focusDirty || savingFocus} onClick={() => void saveFocus()}>
@@ -205,39 +205,39 @@ export function NetworkView() {
             <span className="rl-h__sub">one ask, posted at every studio</span>
           </header>
           <div className="vault__form">
-            <label className="pk-field">
-              <span className="pk-label">What</span>
-              <input className="pk-input" value={title} maxLength={200} placeholder="50 InBody scans per studio" onChange={(e) => setTitle(e.target.value)} />
+            <label className="rk-field">
+              <span className="rk-label">What</span>
+              <input className="rk-input" value={title} maxLength={200} placeholder="50 InBody scans per studio" onChange={(e) => setTitle(e.target.value)} />
             </label>
-            <div className="pk-field">
-              <span className="pk-label">Which flow</span>
-              <div className="pk-chips">
+            <div className="rk-field">
+              <span className="rk-label">Which flow</span>
+              <div className="rk-chips">
                 {(["assessment", "progress-report", "inbody", "custom"] as ClientTaskAction[]).map((a) => (
-                  <button key={a} type="button" className="pk-chip" aria-pressed={action === a} onClick={() => setAction(a)}>
+                  <button key={a} type="button" className="rk-chip" aria-pressed={action === a} onClick={() => setAction(a)}>
                     {CLIENT_ACTION_LABEL[a]}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="pk-row">
-              <div className="pk-field">
-                <span className="pk-label">Each trainer</span>
-                <div className="pk-chips">
+            <div className="rk-row">
+              <div className="rk-field">
+                <span className="rk-label">Each trainer</span>
+                <div className="rk-chips">
                   {[0, 3, 5, 8, 10].map((n) => (
-                    <button key={n} type="button" className="pk-chip" aria-pressed={perTrainer === n} onClick={() => setPerTrainer(n)}>
+                    <button key={n} type="button" className="rk-chip" aria-pressed={perTrainer === n} onClick={() => setPerTrainer(n)}>
                       {n === 0 ? "No number" : n}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="pk-field">
-                <span className="pk-label">By when</span>
-                <div className="pk-chips">
-                  <button type="button" className="pk-chip" aria-pressed={dueOn === null} onClick={() => setDueOn(null)}>
+              <div className="rk-field">
+                <span className="rk-label">By when</span>
+                <div className="rk-chips">
+                  <button type="button" className="rk-chip" aria-pressed={dueOn === null} onClick={() => setDueOn(null)}>
                     No date
                   </button>
                   {dueChoices(relay.now.todayKey).map((c) => (
-                    <button key={c.label} type="button" className="pk-chip" aria-pressed={dueOn === c.dateKey} onClick={() => setDueOn(c.dateKey)}>
+                    <button key={c.label} type="button" className="rk-chip" aria-pressed={dueOn === c.dateKey} onClick={() => setDueOn(c.dateKey)}>
                       {c.label}
                     </button>
                   ))}
@@ -260,7 +260,7 @@ export function NetworkView() {
             <span className="rl-h__sub">{loading ? "counting…" : "new in Journey this month · loops closed this week"}</span>
           </header>
           {stats.length === 0 ? (
-            <p className="pk-empty">{loading ? "Counting…" : "No studios to compare."}</p>
+            <p className="rk-empty">{loading ? "Counting…" : "No studios to compare."}</p>
           ) : (
             <div className="nw__boards">
               <ol className="nw__board" aria-label="New clients this month">
@@ -285,7 +285,7 @@ export function NetworkView() {
               </ol>
             </div>
           )}
-          <p className="pk-hint">
+          <p className="rk-hint">
             <Globe size={11} aria-hidden /> A dash means the count couldn't be read — the loops number needs the taskInstances index (status, localDate) to have finished building.
           </p>
         </section>

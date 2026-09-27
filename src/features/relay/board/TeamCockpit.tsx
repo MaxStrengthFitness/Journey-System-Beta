@@ -57,7 +57,7 @@ export function WhosInToday({ roster, jobs }: { roster: Person[]; jobs: TeamJob[
         <span className="rl-h__sub">from the schedule · tap a name to hand them a job</span>
       </header>
       {people.length === 0 ? (
-        <p className="pk-empty">Nobody has this studio as their home studio yet.</p>
+        <p className="rk-empty">Nobody has this studio as their home studio yet.</p>
       ) : (
         <ul className="tc__list">
           {people.map((p) => (
@@ -215,27 +215,27 @@ function RouteToTeamSheet({ cohort, members, roster, onOpenChange }: { cohort: C
 
   return (
     <Dialog open={cohort !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="pk-sheet sm:max-w-xl">
+      <DialogContent className="rk-sheet sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="pk-title">
+          <DialogTitle className="rk-title">
             <ArrowRight size={18} aria-hidden /> Route to the team
           </DialogTitle>
           {cohort && (
-            <p className="pk-lede">
+            <p className="rk-lede">
               {COHORT_LABEL[cohort]} · {members.length} {members.length === 1 ? "client" : "clients"}
             </p>
           )}
         </DialogHeader>
-        <div className="pk-body">
-          <label className="pk-field">
-            <span className="pk-label">What to do for each of them</span>
-            <input className="pk-input" value={title} maxLength={160} onChange={(e) => setTitle(e.target.value)} />
+        <div className="rk-body">
+          <label className="rk-field">
+            <span className="rk-label">What to do for each of them</span>
+            <input className="rk-input" value={title} maxLength={160} onChange={(e) => setTitle(e.target.value)} />
           </label>
-          <div className="pk-field">
-            <span className="pk-label">Which flow it opens</span>
-            <div className="pk-chips" role="group" aria-label="Which flow">
+          <div className="rk-field">
+            <span className="rk-label">Which flow it opens</span>
+            <div className="rk-chips" role="group" aria-label="Which flow">
               {(["progress-report", "assessment", "inbody", "custom"] as ClientTaskAction[]).map((a) => (
-                <button key={a} type="button" className="pk-chip" aria-pressed={action === a} onClick={() => setAction(a)}>
+                <button key={a} type="button" className="rk-chip" aria-pressed={action === a} onClick={() => setAction(a)}>
                   {CLIENT_ACTION_LABEL[a]}
                 </button>
               ))}
@@ -253,26 +253,26 @@ function RouteToTeamSheet({ cohort, members, roster, onOpenChange }: { cohort: C
           {how === "job" ? (
             <PeoplePicker people={roster} selected={people} onChange={setPeople} meId={relay.uid} label="Who's on it (or leave it up for grabs)" max={30} />
           ) : (
-            <div className="pk-field">
-              <span className="pk-label">How many each</span>
-              <div className="pk-chips">
+            <div className="rk-field">
+              <span className="rk-label">How many each</span>
+              <div className="rk-chips">
                 {[0, 3, 5, 8, 10].map((n) => (
-                  <button key={n} type="button" className="pk-chip" aria-pressed={perTrainer === n} onClick={() => setPerTrainer(n)}>
+                  <button key={n} type="button" className="rk-chip" aria-pressed={perTrainer === n} onClick={() => setPerTrainer(n)}>
                     {n === 0 ? "No number" : n}
                   </button>
                 ))}
               </div>
-              {perTrainer > 0 && <p className="pk-hint">That is {perTrainer * roster.length} across {roster.length} trainers.</p>}
+              {perTrainer > 0 && <p className="rk-hint">That is {perTrainer * roster.length} across {roster.length} trainers.</p>}
             </div>
           )}
-          <div className="pk-field">
-            <span className="pk-label">By when</span>
-            <div className="pk-chips">
-              <button type="button" className="pk-chip" aria-pressed={dueOn === null} onClick={() => setDueOn(null)}>
+          <div className="rk-field">
+            <span className="rk-label">By when</span>
+            <div className="rk-chips">
+              <button type="button" className="rk-chip" aria-pressed={dueOn === null} onClick={() => setDueOn(null)}>
                 No date
               </button>
               {dueChoices(todayKey).map((c) => (
-                <button key={c.label} type="button" className="pk-chip" aria-pressed={dueOn === c.dateKey} onClick={() => setDueOn(c.dateKey)}>
+                <button key={c.label} type="button" className="rk-chip" aria-pressed={dueOn === c.dateKey} onClick={() => setDueOn(c.dateKey)}>
                   {c.label}
                 </button>
               ))}
@@ -280,7 +280,7 @@ function RouteToTeamSheet({ cohort, members, roster, onOpenChange }: { cohort: C
           </div>
           {how === "job" && <Toggle checked={notify} onChange={setNotify} title="Tell me when it's finished" body="Your bell rings once when the last part is ticked." />}
         </div>
-        <div className="pk-foot">
+        <div className="rk-foot">
           <button type="button" className="pl__btn" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </button>
@@ -323,7 +323,7 @@ export function OpenLoops({ requests, jobs, machineNames }: { requests: TaskRequ
         <span className="rl-h__sub">{total === 0 ? "nothing hanging" : `${total} to close`}</span>
       </header>
       {total === 0 ? (
-        <p className="pk-empty">Every ask has a name on it, nothing is flagged, no job is overdue.</p>
+        <p className="rk-empty">Every ask has a name on it, nothing is flagged, no job is overdue.</p>
       ) : (
         <ul className="tc__loops">
           {unanswered.map((r) => (

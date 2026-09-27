@@ -670,7 +670,7 @@ export function NoteEditor({
             <span className="ne__label">
               <NotebookPen size={13} aria-hidden /> The note
             </span>
-            <div className="pk-seg ne__mode" role="group" aria-label="Write or read">
+            <div className="rk-seg ne__mode" role="group" aria-label="Write or read">
               <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
                 <PenLine size={14} aria-hidden />
                 Write

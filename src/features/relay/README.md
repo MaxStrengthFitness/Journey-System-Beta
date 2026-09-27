@@ -70,7 +70,7 @@ this.
 - **Leader-only parts follow the studio the iPad is in** (`leads.ts`, the same answer as the `teamJobs` rules). `isStudioLeader` alone would offer a visiting head trainer buttons the rules refuse.
 - **A reminder is a personal task with a set time** and `remindMinutesBefore` (`reminders/`). The trainer's own iPad writes the bell notification while the app is open (`PlannerReminders`, mounted in `AppContent`), at a fixed id so two iPads ring once; up to `LATE_GRACE_MINUTES` late. Nothing is pushed, texted or emailed.
 - **The task form is a wizard** (`studio-tasks/TaskWizard.tsx`, pure steps in `task-wizard.ts`) ending with a sentence. `saveTaskTemplate` strips `undefined` — Firestore refuses it.
-- **Shared kit** (`kit.tsx`, `kit.css`): avatars, toggles, segmented controls, the people picker, and the `.pk-*` / `.tw-*` / `.gb` styles, all on the `--st-*` tokens.
+- **Shared kit** (`kit.tsx`, `kit.css`): avatars, toggles, segmented controls, the people picker, and the `.rk-*` / `.tw-*` / `.gb` styles, all on the `--st-*` tokens.
 
 ## Files
 

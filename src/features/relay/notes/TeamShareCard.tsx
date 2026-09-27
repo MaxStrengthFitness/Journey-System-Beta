@@ -181,12 +181,12 @@ export function TeamShareCard({
 
             <div className="ne__team-row">
               <span className="ne__label">For how long</span>
-              <div className="pk-chips" role="group" aria-label="For how long">
+              <div className="rk-chips" role="group" aria-label="For how long">
                 {expiryChoices(todayKey).map((c) => (
                   <button
                     key={c.label}
                     type="button"
-                    className="pk-chip"
+                    className="rk-chip"
                     aria-pressed={!pickDate && value.expiresOn === c.expiresOn}
                     onClick={() => {
                       setPickDate(false);
@@ -196,14 +196,14 @@ export function TeamShareCard({
                     {c.label}
                   </button>
                 ))}
-                <button type="button" className="pk-chip" aria-pressed={pickDate} onClick={() => setPickDate(true)}>
+                <button type="button" className="rk-chip" aria-pressed={pickDate} onClick={() => setPickDate(true)}>
                   Pick a date
                 </button>
               </div>
               {pickDate && (
                 <input
                   type="date"
-                  className="pk-input ne__team-date"
+                  className="rk-input ne__team-date"
                   min={todayKey}
                   value={value.expiresOn ?? ""}
                   onChange={(e) => set({ expiresOn: e.target.value || null })}
@@ -215,7 +215,7 @@ export function TeamShareCard({
             <label className="ne__team-row">
               <span className="ne__label">A line for them (optional)</span>
               <input
-                className="pk-input"
+                className="rk-input"
                 value={value.message}
                 maxLength={SHARE_MESSAGE_MAX}
                 placeholder="Covering my Tuesdays while I'm away — follow week 2."

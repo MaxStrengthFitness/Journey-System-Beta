@@ -89,7 +89,7 @@
 .tm-card--quiet { background: var(--st-bg); }
 
 .tm-card__head { display: flex; align-items: center; gap: 0.625rem; }
-.tm-card__head .pk-avatar { width: 34px; height: 34px; font-size: 12px; }
+.tm-card__head .rk-avatar { width: 34px; height: 34px; font-size: 12px; }
 .tm-card__who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .tm-card__name { font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
 .tm-card__role {

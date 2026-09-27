@@ -2,7 +2,7 @@
    PLANNER KIT — the few controls every Planner dialog and panel shares
    --------------------------------------------------------------------------
    Round: Planner rework, Sep 2026. On the --st-* tokens (global, so they
-   reach dialogs rendered in a portal outside .pl). Prefix .pk-.
+   reach dialogs rendered in a portal outside .pl). Prefix .rk-.
 
    One vocabulary for "pick one", "pick several", "on/off" and "a labelled
    field", so the task wizard, the job composer and the share sheet feel like
@@ -11,13 +11,13 @@
    target at least 40px.
    ========================================================================== */
 
-.pk-sheet {
+.rk-sheet {
   color: var(--st-ink);
   background: var(--st-surface);
 }
-.pk-sheet *, .pk-sheet *::before, .pk-sheet *::after { box-sizing: border-box; }
+.rk-sheet *, .rk-sheet *::before, .rk-sheet *::after { box-sizing: border-box; }
 
-.pk-title {
+.rk-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -29,16 +29,16 @@
   letter-spacing: -0.01em;
   color: var(--st-ink);
 }
-.pk-title svg { flex: none; color: var(--st-live); }
+.rk-title svg { flex: none; color: var(--st-live); }
 
-.pk-lede {
+.rk-lede {
   margin: 0.25rem 0 0;
   font-size: 12px;
   line-height: 1.55;
   color: var(--st-ink-muted);
 }
 
-.pk-body {
+.rk-body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -49,33 +49,33 @@
   padding: 2px 2px 4px;
 }
 
-.pk-field { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
-.pk-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.pk-row > .pk-field { flex: 1 1 12rem; }
+.rk-field { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
+.rk-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.rk-row > .rk-field { flex: 1 1 12rem; }
 
-.pk-label {
+.rk-label {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
-.pk-hint {
+.rk-hint {
   margin: 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--st-ink-muted);
 }
-.pk-problem {
+.rk-problem {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--st-flag);
 }
 
-.pk-input,
-.pk-select,
-.pk-textarea {
+.rk-input,
+.rk-select,
+.rk-textarea {
   width: 100%;
   min-height: 44px;
   padding: 0.625rem 0.75rem;
@@ -86,17 +86,17 @@
   font: inherit;
   font-size: 14px;
 }
-.pk-textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
-.pk-input::placeholder,
-.pk-textarea::placeholder { color: var(--st-ink-faint); }
-.pk-input:focus-visible,
-.pk-select:focus-visible,
-.pk-textarea:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.pk-input[aria-invalid="true"],
-.pk-textarea[aria-invalid="true"] { border-color: var(--st-flag); }
+.rk-textarea { min-height: 88px; resize: vertical; line-height: 1.5; }
+.rk-input::placeholder,
+.rk-textarea::placeholder { color: var(--st-ink-faint); }
+.rk-input:focus-visible,
+.rk-select:focus-visible,
+.rk-textarea:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.rk-input[aria-invalid="true"],
+.rk-textarea[aria-invalid="true"] { border-color: var(--st-flag); }
 
 /* Pick one — a segmented control. Segments are equal widths. */
-.pk-seg {
+.rk-seg {
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -104,7 +104,7 @@
   border-radius: 12px;
   background: var(--st-surface-2);
 }
-.pk-seg > button {
+.rk-seg > button {
   flex: 1 1 0;
   display: inline-flex;
   align-items: center;
@@ -124,18 +124,18 @@
   cursor: pointer;
   text-align: center;
 }
-.pk-seg > button[aria-pressed="true"] {
+.rk-seg > button[aria-pressed="true"] {
   background: var(--st-surface);
   color: var(--st-live);
   box-shadow: 0 1px 2px var(--st-shadow);
 }
-.pk-seg > button:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
-.pk-seg > button svg { flex: none; }
+.rk-seg > button:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+.rk-seg > button svg { flex: none; }
 
 /* Pick several — chips. */
-.pk-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
-.pk-chips--scroll { max-height: 11rem; overflow-y: auto; padding: 2px; }
-.pk-chip {
+.rk-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.rk-chips--scroll { max-height: 11rem; overflow-y: auto; padding: 2px; }
+.rk-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -151,17 +151,17 @@
   cursor: pointer;
   text-align: left;
 }
-.pk-chip[aria-pressed="true"] {
+.rk-chip[aria-pressed="true"] {
   border-color: var(--st-live);
   background: var(--st-live-fill);
   color: var(--st-live);
 }
-.pk-chip:disabled { opacity: 0.5; cursor: default; }
-.pk-chip:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.pk-chip svg { flex: none; }
+.rk-chip:disabled { opacity: 0.5; cursor: default; }
+.rk-chip:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.rk-chip svg { flex: none; }
 
 /* A person, drawn as initials in a disc. */
-.pk-avatar {
+.rk-avatar {
   flex: none;
   display: inline-grid;
   place-items: center;
@@ -174,13 +174,13 @@
   font-weight: 900;
   letter-spacing: 0.02em;
 }
-.pk-chip[aria-pressed="true"] .pk-avatar { background: var(--st-live); color: var(--st-surface); }
-.pk-avatars { display: inline-flex; }
-.pk-avatars .pk-avatar { width: 24px; height: 24px; border: 2px solid var(--st-surface); }
-.pk-avatars .pk-avatar + .pk-avatar { margin-left: -7px; }
+.rk-chip[aria-pressed="true"] .rk-avatar { background: var(--st-live); color: var(--st-surface); }
+.rk-avatars { display: inline-flex; }
+.rk-avatars .rk-avatar { width: 24px; height: 24px; border: 2px solid var(--st-surface); }
+.rk-avatars .rk-avatar + .rk-avatar { margin-left: -7px; }
 
 /* On/off, with the sentence beside it. The whole row is the target. */
-.pk-toggle {
+.rk-toggle {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -195,12 +195,12 @@
   text-align: left;
   cursor: pointer;
 }
-.pk-toggle:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-.pk-toggle[aria-checked="true"] { border-color: var(--st-live); background: var(--st-live-fill); }
-.pk-toggle__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.pk-toggle__title { font-size: 13px; font-weight: 800; }
-.pk-toggle__body { font-size: 11px; line-height: 1.5; color: var(--st-ink-muted); }
-.pk-toggle__knob {
+.rk-toggle:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.rk-toggle[aria-checked="true"] { border-color: var(--st-live); background: var(--st-live-fill); }
+.rk-toggle__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rk-toggle__title { font-size: 13px; font-weight: 800; }
+.rk-toggle__body { font-size: 11px; line-height: 1.5; color: var(--st-ink-muted); }
+.rk-toggle__knob {
   flex: none;
   position: relative;
   width: 44px;
@@ -210,7 +210,7 @@
   background: var(--st-surface-3);
   transition: background 120ms ease;
 }
-.pk-toggle__knob::after {
+.rk-toggle__knob::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -222,11 +222,11 @@
   box-shadow: 0 1px 2px var(--st-shadow);
   transition: transform 120ms ease;
 }
-.pk-toggle[aria-checked="true"] .pk-toggle__knob { background: var(--st-live); }
-.pk-toggle[aria-checked="true"] .pk-toggle__knob::after { transform: translateX(18px); }
+.rk-toggle[aria-checked="true"] .rk-toggle__knob { background: var(--st-live); }
+.rk-toggle[aria-checked="true"] .rk-toggle__knob::after { transform: translateX(18px); }
 
 /* The sentence that says what will happen — the review line of every form. */
-.pk-summary {
+.rk-summary {
   margin: 0;
   padding: 0.75rem 0.875rem;
   border-left: 3px solid var(--st-live);
@@ -237,7 +237,7 @@
   color: var(--st-ink);
 }
 
-.pk-foot {
+.rk-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -246,27 +246,27 @@
   padding-top: 0.75rem;
   border-top: 1px solid var(--st-border);
 }
-.pk-foot__left { margin-right: auto; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.rk-foot__left { margin-right: auto; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 /* A progress bar: done over total. Colour is never the only cue — the
    numbers sit beside it. */
-.pk-bar {
+.rk-bar {
   position: relative;
   height: 6px;
   border-radius: 999px;
   background: var(--st-surface-3);
   overflow: hidden;
 }
-.pk-bar > span {
+.rk-bar > span {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
   background: var(--st-live);
 }
-.pk-bar--done > span { background: var(--st-done); }
+.rk-bar--done > span { background: var(--st-done); }
 
 /* Small status words: DUE FRIDAY, OVERDUE, UP FOR GRABS. */
-.pk-tag {
+.rk-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -282,15 +282,15 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-.pk-tag svg { flex: none; }
-.pk-tag--live { border-color: transparent; background: var(--st-live-fill); color: var(--st-live); }
-.pk-tag--flag { border-color: var(--st-flag-border); background: var(--st-flag-fill); color: var(--st-flag); }
-.pk-tag--done { border-color: transparent; background: var(--st-done-fill); color: var(--st-done); }
-.pk-tag--hero { border-color: transparent; background: var(--st-hero); color: #fff; }
+.rk-tag svg { flex: none; }
+.rk-tag--live { border-color: transparent; background: var(--st-live-fill); color: var(--st-live); }
+.rk-tag--flag { border-color: var(--st-flag-border); background: var(--st-flag-fill); color: var(--st-flag); }
+.rk-tag--done { border-color: transparent; background: var(--st-done-fill); color: var(--st-done); }
+.rk-tag--hero { border-color: transparent; background: var(--st-hero); color: #fff; }
 
 /* A step indicator for the task wizard. */
-.pk-steps { display: flex; gap: 0.375rem; }
-.pk-step {
+.rk-steps { display: flex; gap: 0.375rem; }
+.rk-step {
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
@@ -308,20 +308,20 @@
   text-align: left;
   cursor: pointer;
 }
-.pk-step::before {
+.rk-step::before {
   content: "";
   display: block;
   height: 4px;
   border-radius: 999px;
   background: var(--st-surface-3);
 }
-.pk-step[data-state="done"] { color: var(--st-ink-2); }
-.pk-step[data-state="done"]::before { background: var(--st-done); }
-.pk-step[aria-current="step"] { color: var(--st-live); }
-.pk-step[aria-current="step"]::before { background: var(--st-live); }
-.pk-step:disabled { cursor: default; }
+.rk-step[data-state="done"] { color: var(--st-ink-2); }
+.rk-step[data-state="done"]::before { background: var(--st-done); }
+.rk-step[aria-current="step"] { color: var(--st-live); }
+.rk-step[aria-current="step"]::before { background: var(--st-live); }
+.rk-step:disabled { cursor: default; }
 
-.pk-empty {
+.rk-empty {
   margin: 0;
   padding: 1rem;
   border: 1px dashed var(--st-border-strong);
@@ -333,8 +333,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pk-toggle__knob,
-  .pk-toggle__knob::after { transition: none; }
+  .rk-toggle__knob,
+  .rk-toggle__knob::after { transition: none; }
 }
 
 /* ------------------------------------------------------------------ *
@@ -345,7 +345,7 @@
 .tw-day { min-width: 3.25rem; justify-content: center; }
 .tw-narrow { max-width: 14rem; }
 .tw-time { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.pk-label svg { display: inline; vertical-align: -1px; }
+.rk-label svg { display: inline; vertical-align: -1px; }
 
 .tw-list {
   margin: 0;
@@ -392,8 +392,8 @@
 .tw-item__sub { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); }
 
 /* A search box with its icon inside. */
-.pk-search { position: relative; display: block; }
-.pk-search > svg {
+.rk-search { position: relative; display: block; }
+.rk-search > svg {
   position: absolute;
   left: 12px;
   top: 50%;
@@ -401,7 +401,7 @@
   color: var(--st-ink-faint);
   pointer-events: none;
 }
-.pk-search > .pk-input { padding-left: 2.25rem; }
+.rk-search > .rk-input { padding-left: 2.25rem; }
 
 /* ------------------------------------------------------------------ *
  * At a glance — the Studio tab's top band (GlanceBand.tsx)
@@ -470,7 +470,7 @@
 }
 .gb__tile--flag .gb__value { color: var(--st-flag); }
 .gb__note { font-size: 11px; font-weight: 600; line-height: 1.35; color: var(--st-ink-muted); }
-.gb__tile .pk-bar { margin: 2px 0; }
+.gb__tile .rk-bar { margin: 2px 0; }
 
 /* Anchors the band scrolls to sit below the sticky header. */
 #planner-shift, #planner-jobs, #planner-board { scroll-margin-top: 110px; }

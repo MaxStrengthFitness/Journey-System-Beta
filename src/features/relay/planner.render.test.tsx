@@ -147,7 +147,7 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("No sessions on your schedule");
     expect(h.textContent).toContain("Next up");
     expect(h.textContent).toContain("Nothing waiting on the Floor.");
-    expect(h.querySelectorAll(".sr__ring")).toHaveLength(3);
+    expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");

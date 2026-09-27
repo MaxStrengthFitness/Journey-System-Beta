@@ -198,7 +198,7 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
         </p>
 
         {readError && (
-          <p className="pk-empty" role="alert">
+          <p className="rk-empty" role="alert">
             {readError}
           </p>
         )}
@@ -217,12 +217,12 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             People <span className="pl__count">{records.length}</span>
           </h3>
           {roster.length === 0 ? (
-            <p className="pk-empty">
+            <p className="rk-empty">
               Nobody has {studioName} as their home studio yet, so there is no team to show. Trainers appear here once
               their profile names this studio.
             </p>
           ) : loading && !readError ? (
-            <p className="pk-empty">Loading the week…</p>
+            <p className="rk-empty">Loading the week…</p>
           ) : (
             <ul className="tm-cards">
               {records.map((r) => (
@@ -378,13 +378,13 @@ function PersonCard({
           {role && <span className="tm-card__role">{role}</span>}
         </span>
         {kudos > 0 && (
-          <span className="pk-tag tm-card__kudos" aria-label={`${kudos} kudos this week`}>
+          <span className="rk-tag tm-card__kudos" aria-label={`${kudos} kudos this week`}>
             <Heart size={12} aria-hidden /> {kudos}
           </span>
         )}
         <span
-          className={`pk-tag${
-            record.standing === "behind" ? " pk-tag--flag" : record.standing === "on-track" ? " pk-tag--done" : ""
+          className={`rk-tag${
+            record.standing === "behind" ? " rk-tag--flag" : record.standing === "on-track" ? " rk-tag--done" : ""
           }`}
         >
           {STANDING_LABEL[record.standing]}

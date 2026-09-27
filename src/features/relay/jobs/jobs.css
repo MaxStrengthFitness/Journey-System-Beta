@@ -94,7 +94,7 @@
   overflow-wrap: anywhere;
 }
 .tj-card__progress { display: flex; align-items: center; gap: 8px; }
-.tj-card__progress .pk-bar { flex: 1 1 auto; }
+.tj-card__progress .rk-bar { flex: 1 1 auto; }
 .tj-card__count {
   flex: none;
   font-size: 11px;

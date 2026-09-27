@@ -190,26 +190,26 @@ export function CaptureSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="pk-sheet cs sm:max-w-2xl">
+      <DialogContent className="rk-sheet cs sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="pk-title">
+          <DialogTitle className="rk-title">
             <Zap size={18} aria-hidden />
             Capture
           </DialogTitle>
         </DialogHeader>
 
-        <div className="pk-body cs__body">
+        <div className="rk-body cs__body">
           {error && (
-            <p className="pk-problem" role="alert">
+            <p className="rk-problem" role="alert">
               {error}
             </p>
           )}
 
-          <label className="pk-field">
+          <label className="rk-field">
             <span className="sr-only">What is it</span>
             <textarea
               ref={textRef}
-              className="pk-textarea cs__text"
+              className="rk-textarea cs__text"
               rows={2}
               value={state.text}
               placeholder="What is it? A second line is the detail."
@@ -219,11 +219,11 @@ export function CaptureSheet({
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void submit();
               }}
             />
-            {problemFor("text") && <p className="pk-problem">{problemFor("text")}</p>}
+            {problemFor("text") && <p className="rk-problem">{problemFor("text")}</p>}
           </label>
 
-          <div className="pk-field">
-            <span className="pk-label">For</span>
+          <div className="rk-field">
+            <span className="rk-label">For</span>
             <Seg
               value={state.destination}
               options={destinations.map((d) => ({ value: d, label: DESTINATION_LABEL[d] }))}
@@ -233,7 +233,7 @@ export function CaptureSheet({
           </div>
 
           {state.destination === "floor" && (
-            <div className="pk-field">
+            <div className="rk-field">
               {relay.canLead && (
                 <Seg
                   value={state.floorForm}
@@ -246,12 +246,12 @@ export function CaptureSheet({
                 />
               )}
               {state.floorForm === "ask" && (
-                <div className="pk-chips" role="group" aria-label="What kind of ask">
+                <div className="rk-chips" role="group" aria-label="What kind of ask">
                   {ASK_KINDS.map((k) => (
                     <button
                       key={k}
                       type="button"
-                      className="pk-chip"
+                      className="rk-chip"
                       aria-pressed={state.askKind === k}
                       title={REQUEST_KIND_HINT[k]}
                       onClick={() => edit({ askKind: k })}
@@ -265,7 +265,7 @@ export function CaptureSheet({
           )}
 
           {state.destination === "someone" && (
-            <div className="pk-field">
+            <div className="rk-field">
               {relay.canLead && (
                 <Seg
                   value={state.someoneForm}
@@ -285,13 +285,13 @@ export function CaptureSheet({
                 label={state.someoneForm === "handoff" ? "Who" : "Who's on it"}
                 max={state.someoneForm === "handoff" ? 1 : 30}
               />
-              {problemFor("people") && <p className="pk-problem">{problemFor("people")}</p>}
+              {problemFor("people") && <p className="rk-problem">{problemFor("people")}</p>}
               {state.someoneForm === "job" && (
                 <>
-                  <label className="pk-field">
-                    <span className="pk-label">Parts to tick off (optional, one per line)</span>
+                  <label className="rk-field">
+                    <span className="rk-label">Parts to tick off (optional, one per line)</span>
                     <textarea
-                      className="pk-textarea"
+                      className="rk-textarea"
                       rows={3}
                       value={state.partLines}
                       onChange={(e) => edit({ partLines: e.target.value })}
@@ -310,44 +310,44 @@ export function CaptureSheet({
           )}
 
           {/* The chips: what it is about, when, how often, how long. */}
-          <div className="pk-chips cs__chips" role="group" aria-label="Details">
-            <button type="button" className="pk-chip" aria-pressed={picker === "machine" || state.machineIds !== null} onClick={() => togglePicker("machine")}>
+          <div className="rk-chips cs__chips" role="group" aria-label="Details">
+            <button type="button" className="rk-chip" aria-pressed={picker === "machine" || state.machineIds !== null} onClick={() => togglePicker("machine")}>
               <Dumbbell size={13} aria-hidden /> {machineChip}
             </button>
-            <button type="button" className="pk-chip" aria-pressed={picker === "client" || state.client !== null} onClick={() => togglePicker("client")}>
+            <button type="button" className="rk-chip" aria-pressed={picker === "client" || state.client !== null} onClick={() => togglePicker("client")}>
               <UserRound size={13} aria-hidden /> {state.client?.name ?? "Client"}
             </button>
-            <button type="button" className="pk-chip" aria-pressed={picker === "when" || Boolean(state.date || state.time || state.shift !== "any")} onClick={() => togglePicker("when")}>
+            <button type="button" className="rk-chip" aria-pressed={picker === "when" || Boolean(state.date || state.time || state.shift !== "any")} onClick={() => togglePicker("when")}>
               <CalendarDays size={13} aria-hidden /> {whenChipLabel(state, todayKey)}
             </button>
             {(state.destination === "me" || (state.destination === "floor" && state.floorForm === "task")) && (
-              <button type="button" className="pk-chip" aria-pressed={picker === "repeat" || state.repeat !== "once"} onClick={() => togglePicker("repeat")}>
+              <button type="button" className="rk-chip" aria-pressed={picker === "repeat" || state.repeat !== "once"} onClick={() => togglePicker("repeat")}>
                 <Repeat size={13} aria-hidden /> {repeatChipLabel(state)}
               </button>
             )}
-            <button type="button" className="pk-chip" aria-pressed={picker === "duration" || state.estMinutes !== null} onClick={() => togglePicker("duration")}>
+            <button type="button" className="rk-chip" aria-pressed={picker === "duration" || state.estMinutes !== null} onClick={() => togglePicker("duration")}>
               <Timer size={13} aria-hidden /> {state.estMinutes ? `~${state.estMinutes} min` : "~min"}
             </button>
           </div>
 
           {picker === "machine" && (
             <div className="cs__picker">
-              <div className="pk-chips">
-                <button type="button" className="pk-chip" aria-pressed={state.machineIds === "all"} onClick={() => edit({ machineIds: state.machineIds === "all" ? null : "all" })}>
+              <div className="rk-chips">
+                <button type="button" className="rk-chip" aria-pressed={state.machineIds === "all"} onClick={() => edit({ machineIds: state.machineIds === "all" ? null : "all" })}>
                   Every machine
                 </button>
-                <button type="button" className="pk-chip" onClick={() => { edit({ machineIds: null }); setPicker(null); }}>
+                <button type="button" className="rk-chip" onClick={() => { edit({ machineIds: null }); setPicker(null); }}>
                   No machine
                 </button>
               </div>
-              <div className="pk-chips pk-chips--scroll" role="group" aria-label="Machines">
+              <div className="rk-chips rk-chips--scroll" role="group" aria-label="Machines">
                 {machines.map((m) => {
                   const on = Array.isArray(state.machineIds) && state.machineIds.includes(m.machineId);
                   return (
                     <button
                       key={m.machineId}
                       type="button"
-                      className="pk-chip"
+                      className="rk-chip"
                       aria-pressed={on}
                       onClick={() => {
                         const cur = Array.isArray(state.machineIds) ? state.machineIds : [];
@@ -359,9 +359,9 @@ export function CaptureSheet({
                     </button>
                   );
                 })}
-                {machines.length === 0 && <p className="pk-hint">No equipment is set up for this studio yet.</p>}
+                {machines.length === 0 && <p className="rk-hint">No equipment is set up for this studio yet.</p>}
               </div>
-              {problemFor("machines") && <p className="pk-problem">{problemFor("machines")}</p>}
+              {problemFor("machines") && <p className="rk-problem">{problemFor("machines")}</p>}
             </div>
           )}
 
@@ -384,26 +384,26 @@ export function CaptureSheet({
 
           {picker === "when" && (
             <div className="cs__picker">
-              <div className="pk-chips" role="group" aria-label="Which day">
+              <div className="rk-chips" role="group" aria-label="Which day">
                 {[
                   { key: null, label: "Today" },
                   { key: addDays(todayKey, 1), label: "Tomorrow" },
                   { key: addDays(todayKey, 7), label: "In a week" },
                 ].map((d) => (
-                  <button key={String(d.key)} type="button" className="pk-chip" aria-pressed={state.date === d.key} onClick={() => edit({ date: d.key })}>
+                  <button key={String(d.key)} type="button" className="rk-chip" aria-pressed={state.date === d.key} onClick={() => edit({ date: d.key })}>
                     {d.label}
                   </button>
                 ))}
                 <input
                   type="date"
-                  className="pk-input tw-day"
+                  className="rk-input tw-day"
                   aria-label="Pick a date"
                   min={todayKey}
                   value={state.date ?? ""}
                   onChange={(e) => edit({ date: e.target.value || null })}
                 />
               </div>
-              {problemFor("date") && <p className="pk-problem">{problemFor("date")}</p>}
+              {problemFor("date") && <p className="rk-problem">{problemFor("date")}</p>}
               <Seg<TaskShift>
                 value={state.shift}
                 options={TASK_SHIFTS.map((s) => ({ value: s, label: SHIFT_LABEL[s] }))}
@@ -411,38 +411,38 @@ export function CaptureSheet({
                 label="Which part of the day"
               />
               <div className="tw-time">
-                <label className="pk-field">
-                  <span className="pk-label">At a set time (optional)</span>
+                <label className="rk-field">
+                  <span className="rk-label">At a set time (optional)</span>
                   <input
                     type="time"
-                    className="pk-input tw-narrow"
+                    className="rk-input tw-narrow"
                     value={state.time ?? ""}
                     onChange={(e) => edit({ time: e.target.value || null, remindMinutesBefore: e.target.value ? state.remindMinutesBefore : null })}
                   />
                 </label>
                 {state.time && (
-                  <button type="button" className="pk-chip" onClick={() => edit({ time: null, remindMinutesBefore: null })}>
+                  <button type="button" className="rk-chip" onClick={() => edit({ time: null, remindMinutesBefore: null })}>
                     Clear
                   </button>
                 )}
               </div>
-              {problemFor("time") && <p className="pk-problem">{problemFor("time")}</p>}
+              {problemFor("time") && <p className="rk-problem">{problemFor("time")}</p>}
               {state.destination === "me" && state.time && (
-                <div className="pk-field">
-                  <span className="pk-label">
+                <div className="rk-field">
+                  <span className="rk-label">
                     <Bell size={11} aria-hidden /> Your bell
                   </span>
-                  <div className="pk-chips">
+                  <div className="rk-chips">
                     {REMIND_CHOICES.map((c) => (
-                      <button key={String(c.value)} type="button" className="pk-chip" aria-pressed={state.remindMinutesBefore === c.value} onClick={() => edit({ remindMinutesBefore: c.value })}>
+                      <button key={String(c.value)} type="button" className="rk-chip" aria-pressed={state.remindMinutesBefore === c.value} onClick={() => edit({ remindMinutesBefore: c.value })}>
                         {c.label}
                       </button>
                     ))}
                   </div>
-                  <p className="pk-hint">Rings on this iPad while the app is open. Nothing is pushed to a phone.</p>
+                  <p className="rk-hint">Rings on this iPad while the app is open. Nothing is pushed to a phone.</p>
                 </div>
               )}
-              {problemFor("remind") && <p className="pk-problem">{problemFor("remind")}</p>}
+              {problemFor("remind") && <p className="rk-problem">{problemFor("remind")}</p>}
             </div>
           )}
 
@@ -465,14 +465,14 @@ export function CaptureSheet({
                 label="How often"
               />
               {state.repeat === "weekly" && (
-                <div className="pk-chips" role="group" aria-label="Which days">
+                <div className="rk-chips" role="group" aria-label="Which days">
                   {DAYS.map((d, i) => {
                     const on = state.daysOfWeek.includes(i);
                     return (
                       <button
                         key={i}
                         type="button"
-                        className="pk-chip tw-day"
+                        className="rk-chip tw-day"
                         aria-pressed={on}
                         aria-label={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i]}
                         onClick={() => edit({ daysOfWeek: on ? state.daysOfWeek.filter((x) => x !== i) : [...state.daysOfWeek, i] })}
@@ -483,21 +483,21 @@ export function CaptureSheet({
                   })}
                 </div>
               )}
-              {state.repeat === "monthly" && <p className="pk-hint">On the same day of the month as the date chosen (today unless you pick one).</p>}
-              {problemFor("days") && <p className="pk-problem">{problemFor("days")}</p>}
+              {state.repeat === "monthly" && <p className="rk-hint">On the same day of the month as the date chosen (today unless you pick one).</p>}
+              {problemFor("days") && <p className="rk-problem">{problemFor("days")}</p>}
             </div>
           )}
 
           {picker === "duration" && (
             <div className="cs__picker">
-              <div className="pk-chips" role="group" aria-label="About how long">
+              <div className="rk-chips" role="group" aria-label="About how long">
                 {DURATION_CHOICES.map((m) => (
-                  <button key={m} type="button" className="pk-chip" aria-pressed={state.estMinutes === m} onClick={() => edit({ estMinutes: state.estMinutes === m ? null : m })}>
+                  <button key={m} type="button" className="rk-chip" aria-pressed={state.estMinutes === m} onClick={() => edit({ estMinutes: state.estMinutes === m ? null : m })}>
                     ~{m} min
                   </button>
                 ))}
               </div>
-              <p className="pk-hint">So Next up can offer it when there's room for it before your next session.</p>
+              <p className="rk-hint">So Next up can offer it when there's room for it before your next session.</p>
             </div>
           )}
 
@@ -508,9 +508,9 @@ export function CaptureSheet({
 
           {more && (
             <div className="cs__picker">
-              <label className="pk-field">
-                <span className="pk-label">Category</span>
-                <select className="pk-select" value={state.category ?? ""} onChange={(e) => edit({ category: e.target.value || null })}>
+              <label className="rk-field">
+                <span className="rk-label">Category</span>
+                <select className="rk-select" value={state.category ?? ""} onChange={(e) => edit({ category: e.target.value || null })}>
                   <option value="">Choose for me</option>
                   {CATEGORY_CHOICES.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -529,12 +529,12 @@ export function CaptureSheet({
             </div>
           )}
 
-          <p className="pk-summary cs__sentence" aria-live="polite">
+          <p className="rk-summary cs__sentence" aria-live="polite">
             {sentence}
           </p>
         </div>
 
-        <div className="pk-foot">
+        <div className="rk-foot">
           <button type="button" className="pl__btn" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </button>

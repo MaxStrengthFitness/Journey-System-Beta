@@ -25,18 +25,18 @@ export function ShiftRings({ rows, onOpen }: { rows: TaskRow[]; onOpen?: () => v
   }, [relay?.studioId, closed]);
   const phase = relay?.now.phase ?? "mid";
   return (
-    <div className="sr" role="group" aria-label="The shift">
+    <div className="shr" role="group" aria-label="The shift">
       {rings.map((ring) => (
         <button
           key={ring.phase}
           type="button"
-          className={cn("sr__ring", ring.closed && "sr__ring--closed", ring.phase === phase && "sr__ring--now")}
+          className={cn("shr__ring", ring.closed && "shr__ring--closed", ring.phase === phase && "shr__ring--now")}
           onClick={onOpen}
           aria-label={`${RING_LABEL[ring.phase]}: ${ring.done} of ${ring.total} done`}
         >
           <RingSvg ring={ring} />
-          <span className="sr__label">{RING_LABEL[ring.phase]}</span>
-          <span className="sr__count">{ring.total ? `${ring.done}/${ring.total}` : "—"}</span>
+          <span className="shr__label">{RING_LABEL[ring.phase]}</span>
+          <span className="shr__count">{ring.total ? `${ring.done}/${ring.total}` : "—"}</span>
         </button>
       ))}
     </div>
@@ -46,10 +46,10 @@ export function ShiftRings({ rows, onOpen }: { rows: TaskRow[]; onOpen?: () => v
 function RingSvg({ ring }: { ring: Ring }) {
   const dash = C * (1 - ring.fraction);
   return (
-    <svg className="sr__svg" viewBox="0 0 56 56" width="56" height="56" aria-hidden>
-      <circle className="sr__track" cx="28" cy="28" r={R} fill="none" strokeWidth="6" />
+    <svg className="shr__svg" viewBox="0 0 56 56" width="56" height="56" aria-hidden>
+      <circle className="shr__track" cx="28" cy="28" r={R} fill="none" strokeWidth="6" />
       <circle
-        className="sr__fill"
+        className="shr__fill"
         cx="28"
         cy="28"
         r={R}

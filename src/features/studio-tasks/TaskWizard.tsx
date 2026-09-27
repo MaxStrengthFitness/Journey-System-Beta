@@ -131,12 +131,12 @@ export function TaskWizard({
 
   return (
     <div className="tw">
-      <nav className="pk-steps" aria-label="Steps">
+      <nav className="rk-steps" aria-label="Steps">
         {WIZARD_STEPS.map((s, i) => (
           <button
             key={s}
             type="button"
-            className="pk-step"
+            className="rk-step"
             aria-current={s === step ? "step" : undefined}
             data-state={i < stepIndex || (!isNew && s !== step) ? "done" : undefined}
             // A new task walks forward; an edit can jump anywhere.
@@ -149,13 +149,13 @@ export function TaskWizard({
         ))}
       </nav>
 
-      <div className="pk-body">
+      <div className="rk-body">
         {step === "what" && (
           <>
-            <label className="pk-field">
-              <span className="pk-label">Title</span>
+            <label className="rk-field">
+              <span className="rk-label">Title</span>
               <input
-                className="pk-input"
+                className="rk-input"
                 value={draft.title}
                 autoFocus
                 maxLength={160}
@@ -163,13 +163,13 @@ export function TaskWizard({
                 placeholder={personal ? "Call Priya's physio" : "Wipe down and sanitize"}
                 aria-invalid={Boolean(problemFor("title"))}
               />
-              {problemFor("title") && <p className="pk-problem">{problemFor("title")}</p>}
+              {problemFor("title") && <p className="rk-problem">{problemFor("title")}</p>}
             </label>
 
-            <label className="pk-field">
-              <span className="pk-label">Instructions (optional)</span>
+            <label className="rk-field">
+              <span className="rk-label">Instructions (optional)</span>
               <textarea
-                className="pk-textarea"
+                className="rk-textarea"
                 value={draft.detail ?? ""}
                 maxLength={2000}
                 onChange={(e) => set("detail", e.target.value)}
@@ -177,8 +177,8 @@ export function TaskWizard({
               />
             </label>
 
-            <div className="pk-field">
-              <span className="pk-label">What is it about</span>
+            <div className="rk-field">
+              <span className="rk-label">What is it about</span>
               <Seg
                 label="What is it about"
                 value={draft.kind}
@@ -201,12 +201,12 @@ export function TaskWizard({
             </div>
 
             {draft.target.kind === "machine" && (
-              <div className="pk-field">
-                <span className="pk-label">Which machines</span>
-                <div className="pk-chips">
+              <div className="rk-field">
+                <span className="rk-label">Which machines</span>
+                <div className="rk-chips">
                   <button
                     type="button"
-                    className="pk-chip"
+                    className="rk-chip"
                     aria-pressed={draft.target.machineIds === "all"}
                     onClick={() => set("target", { kind: "machine", machineIds: "all" })}
                   >
@@ -214,7 +214,7 @@ export function TaskWizard({
                   </button>
                   <button
                     type="button"
-                    className="pk-chip"
+                    className="rk-chip"
                     aria-pressed={draft.target.machineIds !== "all"}
                     onClick={() => set("target", { kind: "machine", machineIds: [] })}
                   >
@@ -222,9 +222,9 @@ export function TaskWizard({
                   </button>
                 </div>
                 {draft.target.machineIds === "all" ? (
-                  <p className="pk-hint">Equipment added later is included automatically.</p>
+                  <p className="rk-hint">Equipment added later is included automatically.</p>
                 ) : (
-                  <div className="pk-chips pk-chips--scroll" role="group" aria-label="Machines">
+                  <div className="rk-chips rk-chips--scroll" role="group" aria-label="Machines">
                     {machines.map((m) => {
                       const ids = draft.target.kind === "machine" && draft.target.machineIds !== "all" ? draft.target.machineIds : [];
                       const on = ids.includes(m.machineId);
@@ -232,7 +232,7 @@ export function TaskWizard({
                         <button
                           key={m.machineId}
                           type="button"
-                          className="pk-chip"
+                          className="rk-chip"
                           aria-pressed={on}
                           onClick={() =>
                             set("target", {
@@ -246,23 +246,23 @@ export function TaskWizard({
                       );
                     })}
                     {machines.length === 0 && (
-                      <p className="pk-hint">
+                      <p className="rk-hint">
                         No equipment is set up for this studio yet. Add machines in Operations → Machines, or pick
                         “Every machine”.
                       </p>
                     )}
                   </div>
                 )}
-                {problemFor("machines") && <p className="pk-problem">{problemFor("machines")}</p>}
+                {problemFor("machines") && <p className="rk-problem">{problemFor("machines")}</p>}
               </div>
             )}
 
             {draft.target.kind === "client" && (
-              <div className="pk-row">
-                <label className="pk-field">
-                  <span className="pk-label">Which client</span>
+              <div className="rk-row">
+                <label className="rk-field">
+                  <span className="rk-label">Which client</span>
                   <select
-                    className="pk-select"
+                    className="rk-select"
                     value={draft.target.clientId ?? ""}
                     onChange={(e) =>
                       set("target", {
@@ -282,13 +282,13 @@ export function TaskWizard({
                         </option>
                       ))}
                   </select>
-                  <span className="pk-hint">Today's clients. For anyone else, link them from a note or a job.</span>
-                  {problemFor("client") && <p className="pk-problem">{problemFor("client")}</p>}
+                  <span className="rk-hint">Today's clients. For anyone else, link them from a note or a job.</span>
+                  {problemFor("client") && <p className="rk-problem">{problemFor("client")}</p>}
                 </label>
-                <label className="pk-field">
-                  <span className="pk-label">Tapping it opens</span>
+                <label className="rk-field">
+                  <span className="rk-label">Tapping it opens</span>
                   <select
-                    className="pk-select"
+                    className="rk-select"
                     value={draft.target.action ?? "custom"}
                     onChange={(e) =>
                       set("target", {
@@ -304,7 +304,7 @@ export function TaskWizard({
                       </option>
                     ))}
                   </select>
-                  <span className="pk-hint">The task opens the real screen rather than being a tick that claims it.</span>
+                  <span className="rk-hint">The task opens the real screen rather than being a tick that claims it.</span>
                 </label>
               </div>
             )}
@@ -313,8 +313,8 @@ export function TaskWizard({
 
         {step === "when" && (
           <>
-            <div className="pk-field">
-              <span className="pk-label">How often</span>
+            <div className="rk-field">
+              <span className="rk-label">How often</span>
               <Seg
                 label="How often"
                 value={draft.recurrence.type}
@@ -330,9 +330,9 @@ export function TaskWizard({
             </div>
 
             {draft.recurrence.type === "weekly" && (
-              <div className="pk-field">
-                <span className="pk-label">Which days</span>
-                <div className="pk-chips" role="group" aria-label="Which days">
+              <div className="rk-field">
+                <span className="rk-label">Which days</span>
+                <div className="rk-chips" role="group" aria-label="Which days">
                   {DAYS.map((d, i) => {
                     const days = draft.recurrence.daysOfWeek ?? [];
                     const on = days.includes(i);
@@ -340,7 +340,7 @@ export function TaskWizard({
                       <button
                         key={d}
                         type="button"
-                        className="pk-chip tw-day"
+                        className="rk-chip tw-day"
                         aria-pressed={on}
                         onClick={() =>
                           setRecurrence({ daysOfWeek: on ? days.filter((x) => x !== i) : [...days, i].sort() })
@@ -352,45 +352,45 @@ export function TaskWizard({
                   })}
                 </div>
                 {(draft.recurrence.daysOfWeek ?? []).length === 0 && (
-                  <p className="pk-hint">No days picked — it runs every day until you choose some.</p>
+                  <p className="rk-hint">No days picked — it runs every day until you choose some.</p>
                 )}
               </div>
             )}
 
             {draft.recurrence.type === "monthly" && (
-              <label className="pk-field">
-                <span className="pk-label">Day of the month</span>
+              <label className="rk-field">
+                <span className="rk-label">Day of the month</span>
                 <input
                   type="number"
                   min={1}
                   max={31}
-                  className="pk-input tw-narrow"
+                  className="rk-input tw-narrow"
                   value={draft.recurrence.dayOfMonth ?? 1}
                   onChange={(e) => setRecurrence({ dayOfMonth: Math.min(31, Math.max(1, Number(e.target.value) || 1)) })}
                 />
                 {(draft.recurrence.dayOfMonth ?? 1) > 28 && (
-                  <p className="pk-hint">Months without this day are skipped, never moved.</p>
+                  <p className="rk-hint">Months without this day are skipped, never moved.</p>
                 )}
               </label>
             )}
 
             {draft.recurrence.type === "once" && (
-              <label className="pk-field">
-                <span className="pk-label">Which day</span>
+              <label className="rk-field">
+                <span className="rk-label">Which day</span>
                 <input
                   type="date"
-                  className="pk-input tw-narrow"
+                  className="rk-input tw-narrow"
                   value={draft.recurrence.onDate ?? ""}
                   onChange={(e) => setRecurrence({ onDate: e.target.value })}
                   aria-invalid={Boolean(problemFor("date"))}
                 />
-                {problemFor("date") && <p className="pk-problem">{problemFor("date")}</p>}
+                {problemFor("date") && <p className="rk-problem">{problemFor("date")}</p>}
               </label>
             )}
 
-            <div className="pk-field">
-              <span className="pk-label">When in the day</span>
-              <div className="pk-chips" role="group" aria-label="When in the day">
+            <div className="rk-field">
+              <span className="rk-label">When in the day</span>
+              <div className="rk-chips" role="group" aria-label="When in the day">
                 {TASK_SHIFTS.map((sft: TaskShift) => {
                   const shifts = draft.recurrence.shifts ?? ["any"];
                   const on = shifts.includes(sft);
@@ -398,7 +398,7 @@ export function TaskWizard({
                     <button
                       key={sft}
                       type="button"
-                      className="pk-chip"
+                      className="rk-chip"
                       aria-pressed={on}
                       onClick={() => {
                         // 'any' is exclusive: all day, or specific shifts.
@@ -417,19 +417,19 @@ export function TaskWizard({
                 })}
               </div>
               {(draft.recurrence.shifts ?? []).filter((s) => s !== "any").length > 1 && (
-                <p className="pk-hint">Opening and closing are separate — closing isn't done by having opened.</p>
+                <p className="rk-hint">Opening and closing are separate — closing isn't done by having opened.</p>
               )}
             </div>
 
-            <div className="pk-row">
-              <label className="pk-field">
-                <span className="pk-label">
+            <div className="rk-row">
+              <label className="rk-field">
+                <span className="rk-label">
                   <Clock size={12} aria-hidden /> At a set time (optional)
                 </span>
                 <span className="tw-time">
                   <input
                     type="time"
-                    className="pk-input tw-narrow"
+                    className="rk-input tw-narrow"
                     value={normaliseTime(draft.timeOfDay) ?? ""}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -452,15 +452,15 @@ export function TaskWizard({
                     </button>
                   )}
                 </span>
-                <span className="pk-hint">
+                <span className="rk-hint">
                   {personal ? "Orders your list, and lets the bell remind you." : "Orders the list. Nothing enforces it."}
                 </span>
-                {problemFor("time") && <p className="pk-problem">{problemFor("time")}</p>}
+                {problemFor("time") && <p className="rk-problem">{problemFor("time")}</p>}
               </label>
             </div>
 
             {personal && (
-              <div className="pk-field">
+              <div className="rk-field">
                 <Toggle
                   checked={typeof draft.remindMinutesBefore === "number"}
                   disabled={!normaliseTime(draft.timeOfDay)}
@@ -473,12 +473,12 @@ export function TaskWizard({
                   }
                 />
                 {typeof draft.remindMinutesBefore === "number" && (
-                  <div className="pk-chips" role="group" aria-label="How early">
+                  <div className="rk-chips" role="group" aria-label="How early">
                     {REMIND_OPTIONS.map((o) => (
                       <button
                         key={o.minutes}
                         type="button"
-                        className="pk-chip"
+                        className="rk-chip"
                         aria-pressed={draft.remindMinutesBefore === o.minutes}
                         onClick={() => set("remindMinutesBefore", o.minutes)}
                       >
@@ -488,7 +488,7 @@ export function TaskWizard({
                     ))}
                   </div>
                 )}
-                {problemFor("remind") && <p className="pk-problem">{problemFor("remind")}</p>}
+                {problemFor("remind") && <p className="rk-problem">{problemFor("remind")}</p>}
               </div>
             )}
           </>
@@ -496,9 +496,9 @@ export function TaskWizard({
 
         {step === "rules" && (
           <>
-            <label className="pk-field">
-              <span className="pk-label">Category</span>
-              <select className="pk-select" value={draft.category} onChange={(e) => set("category", e.target.value)}>
+            <label className="rk-field">
+              <span className="rk-label">Category</span>
+              <select className="rk-select" value={draft.category} onChange={(e) => set("category", e.target.value)}>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}
@@ -525,11 +525,11 @@ export function TaskWizard({
               />
             )}
 
-            <p className="pk-summary" aria-live="polite">
+            <p className="rk-summary" aria-live="polite">
               {sentence}
             </p>
             {showProblems && problems.length > 0 && (
-              <p className="pk-problem">
+              <p className="rk-problem">
                 {problems[0].message} ({WIZARD_STEP_LABEL[problems[0].step]} step)
               </p>
             )}
@@ -537,9 +537,9 @@ export function TaskWizard({
         )}
       </div>
 
-      <div className="pk-foot">
+      <div className="rk-foot">
         {!isNew && (
-          <div className="pk-foot__left">
+          <div className="rk-foot__left">
             <button type="button" className={`pl__btn${confirmDelete ? " pl__btn--danger" : ""}`} onClick={onDelete} disabled={busy}>
               <Trash2 size={14} aria-hidden />
               {confirmDelete ? "Delete for good?" : "Delete"}
@@ -566,7 +566,7 @@ export function TaskWizard({
         )}
       </div>
       {confirmDelete && (
-        <p className="pk-hint">
+        <p className="rk-hint">
           Finished days point at this task; deleting it loses the record of every time it was done. Retiring it (from
           the list) keeps the history and stops it appearing.
         </p>

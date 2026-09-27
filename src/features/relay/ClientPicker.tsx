@@ -54,14 +54,14 @@ export function ClientPicker({
   };
 
   return (
-    <div className="pk-field">
+    <div className="rk-field">
       {picked.length > 0 && (
-        <div className="pk-chips" aria-label="Chosen clients">
+        <div className="rk-chips" aria-label="Chosen clients">
           {picked.map((p) => (
             <button
               key={p.id}
               type="button"
-              className="pk-chip"
+              className="rk-chip"
               aria-pressed
               onClick={() => onChange(picked.filter((x) => x.id !== p.id))}
               aria-label={`Remove ${p.name}`}
@@ -72,10 +72,10 @@ export function ClientPicker({
           ))}
         </div>
       )}
-      <label className="pk-search">
+      <label className="rk-search">
         <Search size={15} aria-hidden />
         <input
-          className="pk-input"
+          className="rk-input"
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder="Search clients by name"
@@ -83,7 +83,7 @@ export function ClientPicker({
           {...NAME_SEARCH_PROPS}
         />
       </label>
-      <p className="pk-hint">
+      <p className="rk-hint">
         {words.length === 0
           ? "On today's schedule — or type a name to search your studio."
           : searching
@@ -95,12 +95,12 @@ export function ClientPicker({
                 : ""}
       </p>
       {options.length > 0 && (
-        <div className="pk-chips pk-chips--scroll" role="group" aria-label="Clients">
+        <div className="rk-chips rk-chips--scroll" role="group" aria-label="Clients">
           {options.map((c) => (
             <button
               key={c.id}
               type="button"
-              className="pk-chip"
+              className="rk-chip"
               aria-pressed={pickedIds.has(c.id!)}
               disabled={!pickedIds.has(c.id!) && picked.length >= max}
               onClick={() => toggle(c)}
