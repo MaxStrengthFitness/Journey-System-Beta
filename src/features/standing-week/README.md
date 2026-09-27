@@ -61,10 +61,15 @@ like; the agreed week is what the studio runs on.
 whose Mindbody isn't linked (`bookingsKnown`), gives a sentence and no
 findings. The Demo studio's week is seeded, so it is checked.
 
-**What counts as a move is the Overview's rule.** A regular booked another
-day, time or trainer in the same Monday–Sunday week is "moved"
-(`admin/changes/changes.ts` reads a reschedule the same way), and the
-trainer's own slot is then free.
+**A move is claimed only with proof.** The slot is "moved" when Mindbody
+moved that very booking (`movedFromStart`), when she is booked at her time
+with another trainer, or when her booking for it was cancelled (a stamped
+cancellation) and a REAL rebook followed that Monday–Sunday week — the
+client calendar's `isRealRebook` (`client-history/bookings.ts`; AJ, Sep 26
+2026: "rebooked" only for a real rebook). Any other booking that week proves
+nothing: a twice-a-week client's standing Thursday was booked all along.
+Without proof the slot is simply open; either way the trainer's slot is
+free.
 
 **Whose booking it is.** The sync writes the trainer's id when it matched the
 Mindbody staff member to a Journey trainer, and only the staff member's name

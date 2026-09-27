@@ -1306,9 +1306,10 @@ Transformer's iPad and a head trainer's, portrait and landscape.
   this week at that time with that trainer: nothing is listed for her ("All N
   agreed slots are booked as usual"). Give it a regular who is NOT booked
   that day: "{Trainer}'s {day} at {time} is open: {her} isn't booked for it."
-  with a **Free slot** badge. Book her another day that week in Mindbody and
-  wait for the sync: the line says she is booked then instead. Book someone
-  else in her slot: it says who.
+  with a **Free slot** badge. In Mindbody, MOVE her booking to another day
+  that week and wait for the sync: the line says she is booked then instead.
+  A booking she already had another day that week is never called her move
+  (the slot just reads open). Book someone else in her slot: it says who.
 - [ ] **Can't tell is never open.** On a studio whose Mindbody is not linked
   (or turn Wi-Fi off before opening Team): it says the week can't be checked,
   or couldn't be read — no slot is called open.

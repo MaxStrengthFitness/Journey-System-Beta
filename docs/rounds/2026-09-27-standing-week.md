@@ -127,14 +127,20 @@ For each agreed regular slot in the next seven studio days:
 | Found in the bookings | What it says |
 | --- | --- |
 | The regular, with that trainer, within 15 minutes of the slot | nothing — it's as usual |
-| The regular booked elsewhere that Monday–Sunday week (another day, time or trainer) | **Moved**: "Judy is booked Tue Oct 7 at 9:30 instead" — and the trainer's slot is open |
+| The regular's slot went somewhere Journey can prove: Mindbody moved that booking, or she is booked at her time with another trainer, or her booking was cancelled and a **real rebook** followed that Monday–Sunday week (see below) | **Moved**: "Judy is booked Tue Oct 7 at 9:30 instead" — and the trainer's slot is open |
 | The regular not booked that week at all | **Open**: "Sam's Mon Oct 6, 8:00 is open — Judy isn't booked" |
 | Someone else booked with that trainer in the slot | **Taken**: "Bob is booked in Judy's slot" |
 | The day's bookings could not be read, or Mindbody isn't connected | **Can't tell** |
 
-A cancelled booking is no booking. "Monday–Sunday week" is the Operations
-Overview's reschedule rule (`admin/changes/changes.ts`), so the two screens
-never disagree about what a move is.
+A cancelled booking is no booking. **A real rebook** is the client
+calendar's rule from master's app review (`client-history/bookings.ts`,
+`isRealRebook`; AJ, Sep 26 2026: "rebooked" only for a real rebook): the
+other booking first appeared around or after the cancellation. Merely having
+another booking that week is not a move — a twice-a-week client's standing
+Thursday was booked all along — so without proof the slot is simply open.
+(The first cut used the Operations Changes list's looser rule, any other
+booking that week; master's review found what that says about a Tue/Thu
+client, and this follows the calendar.)
 
 **Whose booking it is.** The schedule sync writes the trainer's id when it
 matched the Mindbody staff member to a Journey trainer, and only the staff
@@ -171,14 +177,18 @@ All five were built on Sep 27 2026, one commit each ("Standing week 1" to
 - **Agreeing writes the week as both `final` and `proposed`**, so a leader
   who changes a proposal before agreeing it isn't reported as "a change
   since it was agreed".
+- **A move is claimed only with proof** (Mindbody moved the booking, she is
+  booked at her time with another trainer, or a real rebook followed a
+  stamped cancellation), after master's app review ruled the same for the
+  client calendar.
 - **A booking's trainer is matched by id, then by name** (the sync writes
   only the staff name when it couldn't match a Journey trainer), and a
   booking naming no staff member never "takes" a slot.
 - **The sentences** are "Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith
-  isn't booked for it." (and "... is booked on Tue, Sep 29 at 9:30 AM
-  instead.", "Bob Jones is booked in Judy Smith's Mon, Sep 28 at 8:00 AM slot
-  with Sam."), with a **Free slot** badge where the trainer has the time
-  free.
+  isn't booked for it." (and, with proof of a move, "... is booked on Tue,
+  Sep 29 at 9:30 AM instead."; "Bob Jones is booked in Judy Smith's Mon, Sep
+  28 at 8:00 AM slot with Sam."), with a **Free slot** badge where the
+  trainer has the time free.
 
 ## Deploy order
 

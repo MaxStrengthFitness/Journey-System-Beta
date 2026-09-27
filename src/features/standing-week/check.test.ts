@@ -98,11 +98,34 @@ describe("checkWeek — what differs", () => {
     expect(c.findings.map((f) => f.kind)).toEqual(["open"]);
   });
 
-  it("names a move within the Monday–Sunday week, and the trainer's slot is free", () => {
-    const c = checkWeek(input({ bookings: [booking("2026-09-29", "09:30"), booking("2026-10-01", "08:00")] }));
+  it("never calls another booking that week her move without proof", () => {
+    // Her Tuesday booking may have been there all along (AJ, Sep 26: "rebooked"
+    // only for a real rebook). The slot is open; nothing is said about Tuesday.
+    const c = checkWeek(input({ bookings: [booking("2026-09-29", "09:30", { createdAt: new Date("2026-09-01T12:00:00Z") }), booking("2026-10-01", "08:00")] }));
+    expect(c.findings[0]).toMatchObject({ kind: "open" });
+    expect(c.findings[0]).not.toHaveProperty("movedTo");
+    expect(findingSentence(c.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
+  });
+
+  it("names the move when Mindbody moved that very booking", () => {
+    const moved = booking("2026-09-29", "09:30", { movedFromDay: "2026-09-28", movedFromStart: new Date("2026-09-28T08:00:00-04:00") });
+    const c = checkWeek(input({ bookings: [moved, booking("2026-10-01", "08:00")] }));
     expect(c.findings[0]).toMatchObject({ kind: "moved", movedTo: { dateKey: "2026-09-29", start: "09:30", sameTrainer: true } });
     expect(isFreeSlot(c.findings[0])).toBe(true);
     expect(findingSentence(c.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith is booked on Tue, Sep 29 at 9:30 AM instead.");
+  });
+
+  it("names a rebook after a cancellation only when the new booking came with it", () => {
+    const cancelled = booking("2026-09-28", "08:00", { status: "Cancelled", cancelledAt: new Date("2026-09-25T14:00:00Z") });
+    const rebook = booking("2026-09-30", "10:00", { createdAt: new Date("2026-09-25T13:30:00Z") });
+    const real = checkWeek(input({ bookings: [cancelled, rebook, booking("2026-10-01", "08:00")] }));
+    expect(real.findings[0]).toMatchObject({ kind: "moved", movedTo: { dateKey: "2026-09-30", start: "10:00" } });
+    // The same booking, made weeks before the cancellation: her standing one, not a rebook.
+    const standing = { ...rebook, createdAt: new Date("2026-09-01T12:00:00Z") };
+    expect(checkWeek(input({ bookings: [cancelled, standing, booking("2026-10-01", "08:00")] })).findings[0].kind).toBe("open");
+    // A cancellation Journey never saw happen (no stamp) proves nothing either.
+    const unstamped = { ...cancelled, cancelledAt: null };
+    expect(checkWeek(input({ bookings: [unstamped, rebook, booking("2026-10-01", "08:00")] })).findings[0].kind).toBe("open");
   });
 
   it("says who she is booked with when the move is to another trainer", () => {

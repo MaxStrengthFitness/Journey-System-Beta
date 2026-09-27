@@ -13,15 +13,22 @@
  *   as usual   the regular is booked with that trainer within 15 minutes of
  *              the slot (or with no trainer matched: nothing proves it isn't
  *              theirs) — nothing is said
- *   moved      the regular is booked elsewhere that Monday–Sunday week, on
- *              another day, time or trainer — the trainer's slot is free
+ *   moved      the regular's slot went somewhere Journey can PROVE: Mindbody
+ *              moved that very booking (`movedFromStart`), or she is booked
+ *              at her time with another trainer, or her booking for the slot
+ *              was cancelled and a REAL rebook followed that Monday–Sunday
+ *              week — the trainer's slot is free
  *   open       the regular isn't booked for it — the slot is free
  *   taken      another client is booked with the trainer in the slot
  *
- * Monday–Sunday is the Overview's reschedule rule (admin/changes/changes.ts),
- * so the two screens agree on what a move is. A cancelled booking is no
- * booking. Only the days read are judged: nothing here claims she "isn't
- * booked that week", only that she isn't booked FOR THE SLOT.
+ * A REAL REBOOK is the client calendar's rule (client-history/bookings.ts,
+ * `isRealRebook`; AJ, Sep 26 2026): the other booking first appeared around
+ * or after the cancellation. Any other booking that week is NOT called her
+ * reschedule — a twice-a-week client's standing Thursday was booked all
+ * along, and "booked Thursday instead" would be a confident wrong claim. So
+ * without proof, the slot is simply open. A cancelled booking is no booking.
+ * Only the days read are judged: nothing here claims she "isn't booked that
+ * week", only that she isn't booked FOR THE SLOT.
  *
  * WHOSE BOOKING. The schedule sync writes a trainer's id when it matched the
  * Mindbody staff member to a Journey trainer, and only the staff member's
@@ -38,8 +45,9 @@
  * PURE MODULE.
  */
 import type { ScheduleEntry } from "../../types";
-import { formatStudioDate, studioDateKey, zonedHM } from "../../lib/studio-time";
+import { formatStudioDate, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { scheduleStart } from "../../lib/schedule-window";
+import { isRealRebook } from "../client-history/bookings";
 import { addDays, weekdayOf } from "../studio-tasks/recurrence";
 import { minutesToClock } from "../relay/board/now-context";
 import { minutesOf, type StandingWeekDoc } from "./week";
@@ -89,6 +97,7 @@ export interface WeekCheckInput {
 
 interface BookingView {
   id: string;
+  cancelled: boolean;
   dateKey: string;
   minutes: number;
   start: string;
@@ -96,25 +105,38 @@ interface BookingView {
   clientName: string;
   trainerId: string | null;
   trainerName: string;
+  /** When Journey first wrote the row: what tells a real rebook from a standing booking. */
+  createdAt: unknown;
+  /** Stamped by the pull or the webhook when Journey saw the cancellation. */
+  cancelledAt: Date | null;
+  /** Where Mindbody moved this booking FROM (the sync's change stamps). */
+  movedFrom: { dateKey: string; minutes: number } | null;
 }
 
+const clockOfHM = (hm: { hour: number; minute: number }) => `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}`;
+
 function viewOf(entry: ScheduleEntry, index: number, tz?: string): BookingView | null {
-  if (entry.status === "Cancelled") return null;
   const at = scheduleStart(entry);
   if (!at) return null;
   const dateKey = studioDateKey(at, tz);
   const hm = zonedHM(at, tz);
   if (!dateKey || !hm) return null;
-  const minutes = hm.hour * 60 + hm.minute;
+  const was = toDate(entry.movedFromStart ?? null);
+  const wasDay = was ? studioDateKey(was, tz) : null;
+  const wasHM = was ? zonedHM(was, tz) : null;
   return {
     id: entry.id ?? `row-${index}`,
+    cancelled: entry.status === "Cancelled",
     dateKey,
-    minutes,
-    start: `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}`,
+    minutes: hm.hour * 60 + hm.minute,
+    start: clockOfHM(hm),
     clientId: entry.clientId || null,
     clientName: entry.clientName || "",
     trainerId: entry.trainerId || null,
     trainerName: entry.trainerName || "",
+    createdAt: entry.createdAt ?? null,
+    cancelledAt: toDate(entry.cancelledAt ?? null),
+    movedFrom: wasDay && wasHM ? { dateKey: wasDay, minutes: wasHM.hour * 60 + wasHM.minute } : null,
   };
 }
 
@@ -170,7 +192,9 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   if (!input.connected) return empty("unconnected");
   if (input.read !== "ready") return empty(input.read);
 
-  const bookings = input.bookings.map((b, i) => viewOf(b, i, input.tz)).filter((b): b is BookingView => b !== null);
+  const rows = input.bookings.map((b, i) => viewOf(b, i, input.tz)).filter((b): b is BookingView => b !== null);
+  const bookings = rows.filter((b) => !b.cancelled);
+  const cancellations = rows.filter((b) => b.cancelled);
 
   // Pass 1: every slot kept as usual, and the bookings that kept them.
   const usedAsUsual = new Set<string>();
@@ -183,14 +207,10 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
     else unusual.push(s);
   }
 
-  // Pass 2: what happened to each of the others.
+  // Pass 2: what happened to each of the others — only what Journey can prove.
   const findings: SlotFinding[] = [];
   for (const s of unusual) {
-    const monday = mondayOf(s.dateKey);
-    const sunday = addDays(monday, 6);
-    const elsewhere = bookings
-      .filter((b) => !usedAsUsual.has(b.id) && isFor(b, s) && b.dateKey >= monday && b.dateKey <= sunday)
-      .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.minutes - b.minutes)[0];
+    const elsewhere = whereItWent(s, bookings, cancellations, usedAsUsual);
     const other = bookings.find((b) => trainerOf(b, s) === "same" && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && !isFor(b, s));
     const base = { dateKey: s.dateKey, start: s.start, trainerId: s.trainerId, trainerName: s.trainerName, clientId: s.clientId, clientName: s.clientName };
     const movedTo = elsewhere
@@ -202,6 +222,36 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   }
   findings.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || minutesOf(a.start)! - minutesOf(b.start)! || a.trainerName.localeCompare(b.trainerName));
   return { state: "ready", findings, slots: slots.length };
+}
+
+/**
+ * Where the regular's slot went, when Journey can prove it — else nothing,
+ * and the slot is simply open. In order of certainty:
+ *
+ *   1. Mindbody moved that very booking out of the slot (`movedFromStart`).
+ *   2. She is booked at her time that day, with another trainer.
+ *   3. Her booking for the slot was cancelled (a stamped cancellation), and
+ *      another booking that Monday–Sunday week first appeared around or
+ *      after it (`isRealRebook`).
+ *
+ * A booking already keeping one of her other agreed slots is never her
+ * move: one booking keeps one slot.
+ */
+function whereItWent(s: Slot, bookings: BookingView[], cancellations: BookingView[], used: Set<string>): BookingView | null {
+  const free = bookings.filter((b) => !used.has(b.id) && isFor(b, s));
+  const moved = free.find((b) => b.movedFrom && b.movedFrom.dateKey === s.dateKey && near(b.movedFrom.minutes, s.minutes));
+  if (moved) return moved;
+  const withAnother = free.find((b) => b.dateKey === s.dateKey && near(b.minutes, s.minutes));
+  if (withAnother) return withAnother;
+  const cancelled = cancellations.find((c) => isFor(c, s) && c.dateKey === s.dateKey && near(c.minutes, s.minutes) && c.cancelledAt);
+  if (!cancelled) return null;
+  const monday = mondayOf(s.dateKey);
+  const sunday = addDays(monday, 6);
+  return (
+    free
+      .filter((b) => b.dateKey >= monday && b.dateKey <= sunday && isRealRebook({ createdAt: b.createdAt }, cancelled.cancelledAt))
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.minutes - b.minutes)[0] ?? null
+  );
 }
 
 /** A finding whose trainer has the time free: the slot to fill. */
