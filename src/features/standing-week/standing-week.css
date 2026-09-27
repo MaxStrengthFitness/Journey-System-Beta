@@ -263,3 +263,21 @@
 /* Team: who is away in the next seven days, said once each. */
 .stw-away-lines { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
 .stw-away-line { font-size: 14px; color: var(--eq-ink-2); }
+
+/* --- a colleague's agreed week, read only (voice review follow-up) ------ */
+
+.stw-read { display: grid; gap: 0; margin: 8px 0 0; }
+.stw-read__day {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--eq-border);
+}
+@media (min-width: 700px) {
+  .stw-read__day { grid-template-columns: 120px 1fr; gap: 12px; }
+}
+.stw-read__name { margin: 0; font-size: 14px; font-weight: 800; color: var(--eq-ink); }
+.stw-read__body { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.stw-read__hours { font-size: 14px; color: var(--eq-ink-2); }
+.stw-read__regulars { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 14px; color: var(--eq-ink); }

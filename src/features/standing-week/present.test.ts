@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awayLabel, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
+import { awayLabel, mayReadWeeks, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /** What a standing week says on screen (voice-review round, Sep 27 2026). */
@@ -154,5 +154,18 @@ describe("days away, labelled", () => {
   it("names the first and last day, or the one day", () => {
     expect(awayLabel({ from: "2026-10-05", to: "2026-10-09" }, "America/New_York")).toBe("Mon, Oct 5 – Fri, Oct 9");
     expect(awayLabel({ from: "2026-10-05", to: "2026-10-05" }, "America/New_York")).toBe("Mon, Oct 5");
+  });
+});
+
+describe("who may read a studio's standing weeks", () => {
+  const at = (role: string, home: string) => ({ role, primaryHomeStudioId: home, accessibleStudioIds: [home], activeGuestStudioIds: [] });
+  it("is whoever works there, and whoever reads every studio's", () => {
+    expect(mayReadWeeks(at("LifeTransformer", "solon"), "solon")).toBe(true);
+    expect(mayReadWeeks(at("LifeTransformer", "westlake"), "solon")).toBe(false);
+    expect(mayReadWeeks(at("HeadTrainer", "westlake"), "solon")).toBe(false);
+    expect(mayReadWeeks(at("FranchiseOwner", "westlake"), "solon")).toBe(true);
+    expect(mayReadWeeks(at("Admin", "westlake"), "solon")).toBe(true);
+    expect(mayReadWeeks(null, "solon")).toBe(false);
+    expect(mayReadWeeks(at("LifeTransformer", "solon"), null)).toBe(false);
   });
 });

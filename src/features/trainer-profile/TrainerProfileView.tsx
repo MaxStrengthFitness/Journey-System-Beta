@@ -26,7 +26,8 @@ import { useRecentlyCoached } from "./useRecentlyCoached";
 import { resolveProfileVisibility, scopeNotice } from "./visibility";
 import { MyRenewals } from "../renewals/MyRenewals";
 import { MyStandingWeek } from "../standing-week/MyStandingWeek";
-import { worksAt } from "../standing-week/present";
+import { ColleagueStandingWeek } from "../standing-week/ColleagueStandingWeek";
+import { mayReadWeeks, worksAt } from "../standing-week/present";
 import "./trainer-profile.css";
 
 /**
@@ -174,6 +175,23 @@ export function TrainerProfileView({
           clients={clients}
         />
       )}
+
+      {/* Voice review follow-up (Sep 27 2026), AJ: "schedules are open to
+          all". A colleague's agreed week and days away, read only, at the
+          studio the iPad is in: where they work, where you may read the
+          weeks, and where you share a floor (it names their regulars). */}
+      {visibility.scope !== "self" &&
+        visibility.showSchedule &&
+        activeStudioId &&
+        worksAt(trainer, activeStudioId) &&
+        mayReadWeeks(authTrainer, activeStudioId) && (
+          <ColleagueStandingWeek
+            trainer={trainer}
+            studioId={activeStudioId}
+            studioName={active?.activeStudio?.name ?? "this studio"}
+            tz={active?.activeStudio?.timezone || undefined}
+          />
+        )}
 
       {(visibility.showSchedule || visibility.showRecentlyCoached) && (
         <div className="tp-band tp-band--even">
