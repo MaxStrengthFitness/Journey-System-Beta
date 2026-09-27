@@ -45,9 +45,25 @@ describe("focusableNetworks", () => {
     expect(focusableNetworks({ id: "t-admin", role: "Founder" }, NETWORKS, ["solon"]).map((n) => n.id)).toEqual(["n-east"]);
   });
 
-  it("gives an owner the networks they own, by ownerId or ownerIds", () => {
-    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-ohio"]);
-    expect(focusableNetworks({ id: "t-own2", role: "Owner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-east"]);
+  it("gives an owner, like the company, every network that holds a studio in their scope (AJ, Sep 27 2026)", () => {
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["westlake", "strongsville"]).map((n) => n.id)).toEqual(["n-ohio"]);
+    expect(focusableNetworks({ id: "t-own2", role: "Owner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-east", "n-ohio", "n-west"]);
+  });
+
+  it("offers an owner a network that holds their studio even when the network does not list them", () => {
+    // "Choose later" makes a network with no owner, and nothing lists one afterwards.
+    const ownerless = [net("n-lake", "Lake", ["willoughby"])];
+    expect(focusableNetworks({ id: "t-new", role: "FranchiseOwner" }, ownerless, ["willoughby"]).map((n) => n.id)).toEqual(["n-lake"]);
+    // ...and not a network that holds none of the studios in scope.
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["solon"]).map((n) => n.id)).toEqual(["n-east"]);
+  });
+
+  it("offers nothing from inside Demo Mode, whose scope is the practice studio alone", () => {
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["demo-studio"])).toEqual([]);
+    expect(focusableNetworks({ id: "t-admin", role: "Admin" }, NETWORKS, ["demo-studio"])).toEqual([]);
+    // Even a network that somehow listed the practice studio stays out of reach from it.
+    const mixed = [net("n-mixed", "Mixed", ["demo-studio", "westlake"], "t-own")];
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, mixed, ["demo-studio"])).toEqual([]);
   });
 
   it("gives a studio leader none", () => {

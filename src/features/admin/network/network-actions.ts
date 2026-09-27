@@ -28,6 +28,7 @@
  */
 import type { FranchiseNetwork, Trainer } from "../../../types";
 import { isEveryStudioRole } from "../../renewals/permissions";
+import { isDemoStudioId } from "../../demo-mode/is-demo";
 import { focusOf } from "../../relay/board/focus";
 import type { CreateRequestInput } from "../../studio-tasks/requests";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
@@ -42,12 +43,19 @@ export function mayActForNetwork(trainer: Pick<Trainer, "role"> | null | undefin
   return isEveryStudioRole(trainer as Trainer | null | undefined);
 }
 
-const COMPANY = new Set(["Admin", "Founder", "Overseer"]);
-
 /**
- * The networks this reader may set a focus for, among the studios in scope:
- * the company every network that holds one of them, an owner the networks
- * they own. A studio leader gets none. By name.
+ * The networks this reader may set a focus for: every network that holds a
+ * studio in scope, for a franchise owner exactly as for the company. AJ, Sep
+ * 27 2026: an owner may set the focus of every network that holds a studio in
+ * their scope, as Relay allowed (Relay → Network edited the network holding
+ * the studio the owner stood in, whether or not the network listed them, and
+ * a network made with "Choose later" never lists an owner). The rules agree:
+ * any franchise owner may update a network.
+ *
+ * The practice studio never counts. Inside Demo Mode the scope is Demo Mode
+ * alone, so no real network's focus is offered there, even if a network were
+ * ever to list the practice studio: from inside Demo Mode you see Demo Mode
+ * and nothing else (demo-mode/access.ts). A studio leader gets none. By name.
  */
 export function focusableNetworks(
   trainer: Pick<Trainer, "id" | "role"> | null | undefined,
@@ -55,14 +63,10 @@ export function focusableNetworks(
   studioIds: readonly string[],
 ): FranchiseNetwork[] {
   if (!trainer || !mayActForNetwork(trainer)) return [];
-  const inScope = new Set(studioIds);
-  const company = COMPANY.has(trainer.role);
+  const inScope = new Set(studioIds.filter((id) => !isDemoStudioId(id)));
+  if (inScope.size === 0) return [];
   return networks
-    .filter((n) => {
-      if (!n.id) return false;
-      if (company) return (n.studioIds ?? []).some((id) => inScope.has(id));
-      return n.ownerId === trainer.id || (n.ownerIds ?? []).includes(trainer.id);
-    })
+    .filter((n) => Boolean(n.id) && (n.studioIds ?? []).some((id) => inScope.has(id)))
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 }
 

@@ -60,7 +60,7 @@ vi.mock("firebase/firestore", () => {
 
 import { OverviewPage } from "../overview/OverviewPage";
 import { OperationsScopeProvider, ScopeBar } from "../scope-context";
-import type { Studio, Trainer } from "../../../types";
+import type { FranchiseNetwork, Studio, Trainer } from "../../../types";
 
 const studios = [
   { id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957", mindbodyMode: "live" },
@@ -83,16 +83,16 @@ const trainers = [
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function mount(reader: Trainer = owner, inScope: Studio[] = studios) {
+async function mount(reader: Trainer = owner, inScope: Studio[] = studios, at = "solon", networks: FranchiseNetwork[] = []) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <OperationsScopeProvider authTrainer={reader} studios={inScope} networks={[]} isAdmin={false} activeStudioId="solon">
+        <OperationsScopeProvider authTrainer={reader} studios={inScope} networks={networks} isAdmin={false} activeStudioId={at}>
           <ScopeBar />
-          <OverviewPage authTrainer={reader} studios={inScope} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
+          <OverviewPage authTrainer={reader} studios={inScope} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId={at} networks={networks} />
         </OperationsScopeProvider>
       </StrictMode>,
     );
@@ -158,5 +158,29 @@ describe("a franchise owner who sees one studio", () => {
     expect(el.querySelector("#ops-scope")).toBeNull();
     expect(el.textContent).toContain("Solon — Overview");
     expect(el.textContent).toContain("Launch at 1 studio");
+  });
+});
+
+describe("a franchise owner inside Demo Mode", () => {
+  it("is offered no real network's focus at the foot of the practice studio's Overview (the realm rule)", async () => {
+    const franchiseOwner = { ...owner, role: "FranchiseOwner" } as unknown as Trainer;
+    const demo = { id: "demo-studio", name: "Demo Studio", isDemo: true, timezone: "America/New_York" } as unknown as Studio;
+    const ohio: FranchiseNetwork = {
+      id: "n-ohio",
+      name: "Ohio",
+      studioIds: ["solon", "westlake"],
+      ownerId: "owner",
+      relayFocus: { mastery: "Hip hinge", machine: "Leg Curl", note: "" },
+    };
+    const el = await mount(franchiseOwner, [demo, ...studios], "demo-studio", [ohio]);
+    // One studio in the realm, so no "All my studios" to choose.
+    expect(el.querySelector("#ops-scope")).toBeNull();
+    expect(el.textContent).toContain("Demo Studio — Overview");
+    expect(el.querySelector("#nw-focus-n-ohio-mastery")).toBeNull();
+    expect(el.textContent).not.toContain("Hip hinge");
+    expect(el.textContent).toContain("Demo Studio is not in a network");
+    // The launch stays inside the realm: it would post at the practice studio only.
+    expect(el.textContent).toContain("Launch at 1 studio");
+    expect(el.textContent).not.toContain("Posts at Solon");
   });
 });

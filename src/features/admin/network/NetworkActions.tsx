@@ -20,9 +20,14 @@
  *                        Launch again posts there only.
  *
  * Shown to the people who saw Relay → Network: franchise owners and the
- * company (mayActForNetwork). OverviewPage mounts it under "All my studios",
- * and for such a reader who can see only one studio (no "All my studios" to
- * choose), under that studio's Overview, so nobody who had it lost it.
+ * company (mayActForNetwork). Each of them is offered the focus of every
+ * network that holds a studio in their scope (focusableNetworks), which is
+ * the reach Relay gave an owner: the network holding the studio they stood
+ * in, whether or not it listed them. OverviewPage mounts this under "All my
+ * studios", and for such a reader who can see only one studio (no "All my
+ * studios" to choose) at the foot of that studio's Overview. Inside Demo Mode
+ * that one studio is the practice studio, so no real network's focus is
+ * offered there and a launch posts at the practice studio only.
  */
 import { useCallback, useMemo, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -81,7 +86,9 @@ export function NetworkActions({ trainer, uid, studios, networks, todayKey }: Ne
     <>
       {focusable.length === 0 ? (
         <AdminPanel title="Focus this quarter" subtitle="Shown on every Floor in the network, as a quiet line." icon={<Sparkles className="w-4 h-4" />}>
-          <AdminEmpty title="No network yet">None of these studios is in a network of yours, so there is nowhere to keep a shared focus.</AdminEmpty>
+          <AdminEmpty title="No network yet">
+            {studios.length === 1 ? `${studios[0].name} is not in a network` : "None of these studios is in a network"}, so there is nowhere to keep a shared focus.
+          </AdminEmpty>
         </AdminPanel>
       ) : (
         focusable.map((n) => <FocusEditor key={n.id} network={n} by={by} title={focusable.length > 1 ? `Focus this quarter · ${n.name}` : "Focus this quarter"} />)
