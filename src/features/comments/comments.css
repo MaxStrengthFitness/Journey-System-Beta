@@ -133,7 +133,7 @@
   resize: vertical;
 }
 .cm__input:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
-.cm__input::placeholder { color: var(--wk-ink-faint); }
+.cm__input::placeholder { color: var(--wk-ink-muted); }
 
 /* The people to tag, under the box — never over the words being typed. */
 .cm__picker {

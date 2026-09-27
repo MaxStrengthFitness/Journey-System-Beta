@@ -137,9 +137,27 @@
   --wk-cat-hips-fill:      #fbe8f0;
   --wk-cat-other-fill:     #eceff1;
 
-  /* ── the figure ───────────────────────────────────────────────────── */
+  /* The same six as WORDS (a code chip, a group head, an eyebrow, a count)
+     and as a glyph on a fill: each reads at 4.5:1 or more on its fill, the
+     card and the page, and learning-tokens.test.ts measures it. The bright
+     accent above is for stripes and rules. Push and posterior are darker
+     here (5.0 and 5.8 to 1 on their fills; the accents are 3.0 and 3.9). */
+  --wk-cat-push-text:      #bc2c00;
+  --wk-cat-pull-text:      #0a548b;
+  --wk-cat-legs-text:      #1c7a52;
+  --wk-cat-posterior-text: #8a5300;
+  --wk-cat-trunk-text:     #8a4f9e;
+  --wk-cat-hips-text:      #b5306f;
+  --wk-cat-other-text:     #5b6770;
+
+  /* ── the figure (catalog/MachineFigure passes these to the body) ─────
+     The worked muscles against the rest of the body is the one contrast the
+     figure exists for: 3.2:1 here, 4.1:1 in dark, held by
+     learning-tokens.test.ts. The assisting muscles sit on the other side of
+     the body's grey from the worked ones (paler here, dimmer in dark), so
+     the two blues never read as one. */
   --wk-muscle-primary:   #0a548b;
-  --wk-muscle-secondary: #6fb4e4;
+  --wk-muscle-secondary: #b9dcf5;
   --wk-muscle-base:      #9aa6ae;
 }
 
@@ -201,7 +219,18 @@
   --wk-cat-hips-fill:      rgba(244, 114, 182, 0.14);
   --wk-cat-other-fill:     rgba(139, 152, 164, 0.12);
 
-  --wk-muscle-primary:   #0a548b;
-  --wk-muscle-secondary: #6fb4e4;
-  --wk-muscle-base:      #4b555c;
+  /* On near-black the bright accents already read (5.3:1 or more on their
+     washes), so the text shades are the accents themselves. */
+  --wk-cat-push-text:      #ff6a1f;
+  --wk-cat-pull-text:      #38bdf8;
+  --wk-cat-legs-text:      #34d399;
+  --wk-cat-posterior-text: #fbbf24;
+  --wk-cat-trunk-text:     #c084fc;
+  --wk-cat-hips-text:      #f472b6;
+  --wk-cat-other-text:     #8b98a4;
+
+  /* The worked muscles in the live blue, brightest on near-black. */
+  --wk-muscle-primary:   #4a9fd8;
+  --wk-muscle-secondary: #2d6690;
+  --wk-muscle-base:      #2f3942;
 }

@@ -367,7 +367,7 @@
   margin-bottom: 0.25rem;
   border-radius: 9px;
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
 }
 .wk__cat-label {
   font-size: 13px;
@@ -408,7 +408,7 @@
   padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--wk-border);
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -485,7 +485,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 .wk__row-badges { flex: none; display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: flex-end; }
 .wk__row-chev { flex: none; color: var(--wk-ink-faint); }
@@ -499,7 +499,7 @@
   padding: 0.1875rem 0.375rem;
   border-radius: 7px;
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -551,7 +551,7 @@
 .wk__badge--ok      { background: var(--wk-ok-fill); border-color: var(--wk-ok); color: var(--wk-ok); }
 .wk__badge--warn    { background: var(--wk-warn-fill); border-color: var(--wk-warn-border); color: var(--wk-warn); }
 .wk__badge--alert   { background: var(--wk-alert-fill); border-color: var(--wk-alert); color: var(--wk-alert); }
-.wk__badge--accent  { background: var(--wk-accent-fill); border-color: var(--wk-accent); color: var(--wk-accent); }
+.wk__badge--accent  { background: var(--wk-accent-fill); border-color: var(--wk-accent); color: var(--wk-accent-text); }
 
 /* ------------------------------------------------------------------ *
  * Article
@@ -570,7 +570,7 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--wk-accent, var(--wk-ink-muted));
+  color: var(--wk-accent-text, var(--wk-ink-muted));
 }
 
 .wk__h1 {
@@ -613,7 +613,7 @@
   padding: 0.5rem 0.875rem;
   border-bottom: 1px solid var(--wk-border);
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -689,7 +689,10 @@
   font-weight: 600;
   color: var(--wk-ink-2);
 }
-.wk__muscle-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+/* The key to the figure's two blues. A hairline ring, because the assisting
+   muscles' blue is pale by design (it sits on the far side of the body's
+   grey from the worked muscles' blue). */
+.wk__muscle-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--wk-border-strong); }
 .wk__muscle--primary   .wk__muscle-dot { background: var(--wk-muscle-primary); }
 .wk__muscle--primary   { color: var(--wk-ink); font-weight: 700; }
 .wk__muscle--synergist .wk__muscle-dot { background: var(--wk-muscle-secondary); }
@@ -787,7 +790,7 @@
 .wk__fold-summary::-webkit-details-marker { display: none; }
 .wk__fold-summary:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
 .wk__fold-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.wk__fold-meta { flex: none; color: var(--wk-ink-faint); font-size: 10px; }
+.wk__fold-meta { flex: none; color: var(--wk-ink-muted); font-size: 10px; }
 .wk__fold-chev { flex: none; color: var(--wk-ink-faint); transition: transform 140ms ease; }
 .wk__fold[open] .wk__fold-chev { transform: rotate(180deg); }
 .wk__fold-body { padding: 0 1rem 1rem; border-top: 1px solid var(--wk-border); padding-top: 0.875rem; }
@@ -883,7 +886,7 @@
   height: 32px;
   border-radius: 10px;
   background: var(--wk-accent-fill, var(--wk-live-fill));
-  color: var(--wk-accent, var(--wk-live-text));
+  color: var(--wk-accent-text, var(--wk-live-text));
 }
 .wk__linkcard-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wk__linkcard-title { font-size: 14px; font-weight: 700; color: var(--wk-ink); overflow-wrap: anywhere; }
@@ -908,7 +911,7 @@
 }
 .wk__chip:hover { border-color: var(--wk-accent, var(--wk-live)); background: var(--wk-accent-fill, var(--wk-live-fill)); }
 .wk__chip:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
-.wk__chip svg { color: var(--wk-accent, var(--wk-ink-faint)); }
+.wk__chip svg { color: var(--wk-accent-text, var(--wk-ink-muted)); }
 
 /* ------------------------------------------------------------------ *
  * Segmented control
@@ -1074,7 +1077,7 @@
   text-transform: uppercase;
   color: var(--wk-ink-muted);
 }
-.wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-faint); }
+.wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-muted); }
 
 .wk__search-list {
   border: 1px solid var(--wk-border);
@@ -1102,7 +1105,7 @@
 .wk__hit + .wk__hit { border-top: 1px solid var(--wk-border); }
 .wk__hit:hover { background: var(--wk-surface-2); }
 .wk__hit:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
-.wk__hit-icon { flex: none; color: var(--wk-accent, var(--wk-ink-faint)); }
+.wk__hit-icon { flex: none; color: var(--wk-accent-text, var(--wk-ink-muted)); }
 .wk__hit-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wk__hit-title { font-size: 14px; font-weight: 600; color: var(--wk-ink); overflow-wrap: anywhere; }
 .wk__hit-meta {
@@ -1110,7 +1113,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1183,7 +1186,7 @@
 .wk__source {
   margin: 0;
   font-size: 11px;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 .wk__source code {
   font-size: 11px;
@@ -1341,7 +1344,7 @@
   padding-top: 0.5rem;
   border-top: 1px solid var(--wk-border);
   font-size: 11px;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 
 .wk__addnote {

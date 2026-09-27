@@ -23,6 +23,10 @@ import { describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (...p: string[]) => readFileSync(join(here, ...p), "utf8");
+/** A file in another feature folder: src("catalog", "catalog.css"). */
+const src = (...p: string[]) => read("..", ...p);
+/** The source with its comments taken out, so a comment can name a colour. */
+const code = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 const EQUIPMENT = read("..", "equipment", "equipment.tokens.css");
 const WIKI = read("wiki.tokens.css");
 const CATALOG = read("..", "catalog", "catalog.tokens.css");
@@ -47,12 +51,23 @@ const palettes = {
 const SHARED = Object.keys(eq.light).filter((k) => !["--eq-rail-w", "--eq-radius", "--eq-focus-ring"].includes(k));
 
 const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-function luminance(h: string): number {
+function rgb(h: string): number[] {
   const n = parseInt(h.slice(1), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => channel(c / 255));
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+/** A colour as painted over `ground`: an rgba() wash is composited first. */
+function painted(c: string, ground: string): number[] {
+  const m = c.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+  if (!m) return rgb(c);
+  const a = Number(m[4]);
+  const g = rgb(ground);
+  return [0, 1, 2].map((i) => Math.round(Number(m[i + 1]) * a + g[i] * (1 - a)));
+}
+function luminance(c: string | number[]): number {
+  const [r, g, b] = (typeof c === "string" ? rgb(c) : c).map((v) => channel(v / 255));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
-function ratio(a: string, b: string): number {
+function ratio(a: string | number[], b: string | number[]): number {
   const [la, lb] = [luminance(a), luminance(b)];
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
@@ -105,12 +120,73 @@ describe("the critical colour", () => {
 });
 
 /* ------------------------------------------------------------------ *
- * One meaning per colour (voice review follow-up, Sep 27 2026)
+ * Readable categories and a readable figure (voice review follow-up)
  * ------------------------------------------------------------------ */
 
-const src = (...p: string[]) => read("..", ...p);
-/** The source with its comments taken out, so a comment can name a colour. */
-const code = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const ACCENTS = ["push", "pull", "legs", "posterior", "trunk", "hips", "other"] as const;
+
+describe.each([
+  ["light", palettes.wk.light],
+  ["dark", palettes.wk.dark],
+] as const)("Learning's category colours as words, in %s", (_theme, wk) => {
+  it.each(ACCENTS)("%s reads at 4.5:1 on its fill, the card and the page", (accent) => {
+    const text = wk[`--wk-cat-${accent}-text`];
+    expect(text, `--wk-cat-${accent}-text`).toMatch(/^#[0-9a-f]{6}$/i);
+    const surface = wk["--wk-surface"];
+    const fill = painted(wk[`--wk-cat-${accent}-fill`], surface);
+    expect(ratio(text, fill), "on its fill").toBeGreaterThanOrEqual(4.5);
+    expect(ratio(text, surface), "on the card").toBeGreaterThanOrEqual(4.5);
+    expect(ratio(text, wk["--wk-bg"]), "on the page").toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws the worked muscles at 3:1 or more against the rest of the body", () => {
+    expect(ratio(wk["--wk-muscle-primary"], wk["--wk-muscle-base"])).toBeGreaterThanOrEqual(3);
+    // The assisting muscles never read as the same blue as the worked ones.
+    expect(ratio(wk["--wk-muscle-primary"], wk["--wk-muscle-secondary"])).toBeGreaterThanOrEqual(2);
+    expect(ratio(wk["--wk-muscle-secondary"], wk["--wk-muscle-base"])).toBeGreaterThanOrEqual(1.5);
+  });
+});
+
+describe("where an accent colours words or a glyph", () => {
+  it("uses the readable shade, and keeps the bright accent for stripes and rules", () => {
+    const css = code(src("wiki", "wiki.css")) + code(src("learning", "learning.css"));
+    // Any `color:` that reads the accent reads --wk-accent-text.
+    expect(css.match(/(?<![-\w])color:\s*var\(--wk-accent[,)]/g) ?? []).toEqual([]);
+    expect(src("wiki", "categories.ts")).toMatch(/"--wk-accent-text": accentTextVar\(accent\)/);
+  });
+
+  it("the Catalog's figure is painted with those tokens, never the model's built-in hex", () => {
+    const figure = code(src("catalog", "MachineFigure.tsx"));
+    expect(figure).toMatch(/colors=\{MUSCLE_COLOURS\}/);
+    expect(figure).toMatch(/baseFill=\{BODY_COLOUR\}/);
+    expect(figure).toContain('"var(--wk-muscle-primary)", "var(--wk-muscle-secondary)"');
+    expect(figure).toContain('"var(--wk-muscle-base)"');
+  });
+});
+
+describe("readable words are never in the faint ink", () => {
+  it("keeps --*-ink-faint for chevrons, separators, icons and bullets", () => {
+    // Every rule that reads the faint ink, by selector: each is decorative.
+    const DECORATIVE = /(chev|-sep|-go|-icon|svg|::before|bullet)/;
+    for (const [name, css] of Object.entries({
+      "wiki/wiki.css": src("wiki", "wiki.css"),
+      "learning/learning.css": src("learning", "learning.css"),
+      "catalog/catalog.css": src("catalog", "catalog.css"),
+      "comments/comments.css": src("comments", "comments.css"),
+      "machine-trends/machine-trends.css": src("machine-trends", "machine-trends.css"),
+    })) {
+      for (const m of code(css).matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+        if (!/color:\s*var\(--(wk|cat)-ink-faint\)/.test(m[2])) continue;
+        const selector = m[1].trim().split("\n").pop()!.trim();
+        expect(selector, `${name}: ${selector}`).toMatch(DECORATIVE);
+      }
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * One meaning per colour (voice review follow-up, Sep 27 2026)
+ * ------------------------------------------------------------------ */
 
 /** Learning's own stylesheets: the Catalog, the Academy, the front page and what they mount. */
 const STYLESHEETS: Record<string, string> = {

@@ -87,7 +87,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--cat-ink-faint);
+  color: var(--cat-ink-muted);
   padding: 0.25rem 0.75rem 0.25rem 0;
   border-bottom: 1px solid var(--cat-border);
 }
@@ -135,5 +135,5 @@
 .mt__withheld {
   font-size: 0.75rem;
   font-style: italic;
-  color: var(--cat-ink-faint);
+  color: var(--cat-ink-muted);
 }

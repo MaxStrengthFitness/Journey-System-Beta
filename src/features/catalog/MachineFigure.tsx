@@ -23,7 +23,16 @@ import type { MachineAnatomy } from "./anatomy";
  * the first thing under the machine title and read as the page's primary
  * action; below, the figure is what you see first and the switch is where
  * your thumb already is.
+ *
+ * ITS COLOURS ARE LEARNING'S TOKENS (voice review follow-up, Sep 27 2026).
+ * It passed none, so BodyModel's built-in hex applied in both themes: the
+ * worked muscles (#0A548B) and the rest of the body (#4B555C) were 1.04:1
+ * apart, the one thing the figure is for. It now passes --wk-muscle-*, as
+ * the codex's BodyFigure passes its own, and learning-tokens.test.ts holds
+ * the worked muscles at 3:1 or more against the rest in both themes.
  */
+const MUSCLE_COLOURS: [string, string] = ["var(--wk-muscle-primary)", "var(--wk-muscle-secondary)"];
+const BODY_COLOUR = "var(--wk-muscle-base)";
 export interface MachineFigureProps {
   anatomy: MachineAnatomy;
   view: "front" | "back";
@@ -53,6 +62,8 @@ export function MachineFigure({
           secondary={anatomy.secondary}
           gender={gender}
           view={view}
+          colors={MUSCLE_COLOURS}
+          baseFill={BODY_COLOUR}
           onRegionClick={onRegionClick ? (slug) => guard(() => onRegionClick(slug)) : undefined}
         />
       </div>
