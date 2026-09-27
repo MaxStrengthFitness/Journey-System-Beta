@@ -106,6 +106,24 @@ export function loggedSessions(
   return { has: (clientId, day) => days.has(keyOf(clientId, day)) };
 }
 
+/**
+ * A MINDBODY "UNAVAILABLE" BLOCK: a trainer's time blocked off, not a booking
+ * (Openings round, Sep 27 2026; docs/rounds/2026-09-27-openings.md).
+ *
+ * Such a row reaches the schedule with "Unavailable" where a client's name
+ * would be, and the Calendar, the Hub and Relay already draw it as blocked
+ * time by this same test on the client name (ScheduleBlock, CalendarView,
+ * relay/board/now-context). Nothing in the sync writes one on purpose, so
+ * scripts/openings-report.ts counts them before anything relies on them.
+ *
+ * A staff block is never a booking: it never takes, keeps or moves a
+ * standing-week slot (standing-week/check.ts), never shows in Operations →
+ * Changes (admin/changes/changes.ts), and never counts on Openings.
+ */
+export function isStaffBlock(booking: { clientName?: string | null } | null | undefined): boolean {
+  return /unavailab/i.test(booking?.clientName ?? "");
+}
+
 /** The booking's studio day, `yyyy-mm-dd`, or null when it has no readable start. */
 export function bookingDay(booking: BookingLike, tz?: string): string | null {
   return studioDateKey(toDate(booking.startTime as never), tz);
