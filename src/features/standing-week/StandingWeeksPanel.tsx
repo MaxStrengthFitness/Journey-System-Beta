@@ -7,6 +7,8 @@ import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, 
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
 import { useUnsavedChanges } from "../unsaved-changes";
 import { checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
+import { serverRead } from "./server-read";
+import { useServerWait } from "./useServerWait";
 import { formOf, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
 import { agreeWeek, removeWeek } from "./store";
 import { bookingsKnown, teamWeeks, waitingSentence, type TeamWeekRow } from "./team";
@@ -59,7 +61,11 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   // The week's bookings are read only when there is something to check them
   // against: an agreed week, at a studio whose Mindbody is linked.
   const needsBookings = bookingsKnown(studio) && checked.some((d) => d.final);
-  const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz);
+  // Only the server's answer is a read: a cache-only snapshot (offline, or
+  // before the server answers) would call every slot the cache lacks open.
+  const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz, { confirmed: true });
+  const wait = useServerWait(needsBookings && (schedule.loading || schedule.fromCache));
+  const read = serverRead({ loading: schedule.loading, failed: schedule.failed, fromCache: schedule.fromCache, ...wait });
   const check = useMemo(
     () =>
       checkWeek({
@@ -67,10 +73,10 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
         bookings: schedule.entries,
         today,
         tz,
-        read: schedule.loading ? "loading" : schedule.failed ? "failed" : "ready",
+        read,
         connected: bookingsKnown(studio),
       }),
-    [checked, schedule.entries, schedule.loading, schedule.failed, today, tz, studio],
+    [checked, schedule.entries, read, today, tz, studio],
   );
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;
@@ -111,8 +117,12 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
             Each person's week
           </h3>
           {waiting && <AdminNotice tone="info">{waiting}</AdminNotice>}
+          {/* Unread, the list would call everyone "hasn't proposed" and offer
+              "Set a week" over a proposal nobody has seen: it waits. */}
+          {weeks.error && <p className="stw-hint">{weeks.error}</p>}
+          {weeks.loading && <p className="stw-hint">Reading the standing weeks…</p>}
           {!weeks.loading && !weeks.error && rows.length === 0 && <p className="stw-hint">Nobody works at {studio.name} yet.</p>}
-          {!weeks.error && (
+          {!weeks.loading && !weeks.error && (
             <AdminRows>
               {rows.map((r) => (
                 <AdminRow

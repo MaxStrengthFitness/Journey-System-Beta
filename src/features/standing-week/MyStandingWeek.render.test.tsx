@@ -25,7 +25,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     ...real,
     doc: ref,
     collection: ref,
-    onSnapshot: (r: { path: string }, next: (snap: unknown) => void, fail: (err: unknown) => void) => {
+    onSnapshot: (r: { path: string }, _options: unknown, next: (snap: unknown) => void, fail: (err: unknown) => void) => {
       fake.listeners.push({ path: r.path, next, fail });
       return () => {};
     },

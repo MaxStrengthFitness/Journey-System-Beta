@@ -41,7 +41,8 @@
  *
  * WHEN IT SAYS NOTHING. A failed or unfinished read, or a studio whose
  * Mindbody isn't connected, gives a state and no findings: an unread day is
- * "can't tell", never "open".
+ * "can't tell", never "open". An answer only this iPad's cache gave is not a
+ * read (server-read.ts): offline, the check says so in its own sentence.
  *
  * PURE MODULE.
  */
@@ -51,6 +52,7 @@ import { scheduleStart } from "../../lib/schedule-window";
 import { isRealRebook } from "../admin/changes/changes";
 import { addDays, weekdayOf } from "../studio-tasks/recurrence";
 import { minutesToClock } from "../relay/board/now-context";
+import type { ServerRead } from "./server-read";
 import { minutesOf, type StandingWeekDoc } from "./week";
 
 /** How far a booking may start from the slot and still be the slot. */
@@ -74,7 +76,7 @@ export interface SlotFinding {
   takenBy?: { clientName: string };
 }
 
-export type WeekCheckState = "ready" | "loading" | "failed" | "unconnected" | "nothing-agreed";
+export type WeekCheckState = "ready" | "loading" | "failed" | "offline" | "unconnected" | "nothing-agreed";
 
 export interface WeekCheck {
   state: WeekCheckState;
@@ -91,7 +93,8 @@ export interface WeekCheckInput {
   today: string;
   days?: number;
   tz?: string;
-  read: "ready" | "loading" | "failed";
+  /** Whether the bookings were read (server-read.ts): only "ready" is an answer. */
+  read: ServerRead;
   /** The studio's Mindbody is linked (or it is the Demo studio, whose week is seeded). */
   connected: boolean;
 }
@@ -296,6 +299,8 @@ export function stateSentence(check: WeekCheck): string {
       return "Reading the week's bookings…";
     case "failed":
       return "The week's bookings couldn't be read just now, so nothing here says a slot is open. It tries again on its own.";
+    case "offline":
+      return "Can't tell: this iPad can't reach the week's bookings just now, so nothing here says a slot is open. It checks again once it's back online.";
     case "ready":
       return check.slots === 0
         ? "No agreed regular falls in the next seven days."
