@@ -101,11 +101,18 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  * There is NO save button. The session was submitted when End Session was
  * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
  *
- * The screen follows the app theme: its surfaces are the `bg-dark` / `ink-d`
- * tokens, which go light in the light theme. Only the token-driven features
- * mounted on it (the Dial, Loudness, the two trays) stay dark whatever the
- * theme, each wrapped in a `.dark` + `data-theme="dark"` container that pins
- * `--eq-*` and the FORD / notes tokens to their dark values.
+ * The screen follows the app theme, all of it. Its surfaces are the
+ * `bg-dark` / `ink-d` tokens, which go light in the light theme, and every
+ * colour on it is a token that reads in both: brand blue (`--eq-live*`) for
+ * the kicker and a gain, green (`--eq-ok`) for booked and saved, plum
+ * (`--eq-warn`) for a caution (nothing booked, a note left unsaved), the
+ * journey grid's gold star for a max-strength set, and the chart palette for
+ * where the work went. Until Sep 27 2026 the Dial, Loudness and the two trays
+ * were pinned dark (a `.dark` + `data-theme="dark"` wrapper left over from
+ * when the whole screen was), which on the light theme drew dark slabs and
+ * white words on a white card; they now resolve against the document like
+ * everywhere else they are drawn. `src/neutral-ramp.test.ts` counts this
+ * file's colours with every other theme-aware screen's.
  */
 
 export interface WrapUpScreenProps {
@@ -163,16 +170,22 @@ export interface WrapUpScreenProps {
   onStudioClick?: () => void;
 }
 
+/* Where the work went: one colour per body region, from the app's chart
+   palette (`--chart-*`, index.css), which is a data palette and reads in both
+   themes. Not the brand's meaning colours: green is "done" and plum is a
+   caution, and a muscle group is neither. The region's name and share are
+   written beside every bar, so the colour is never the only way to tell. */
 const GROUP_TONE: Record<string, string> = {
-  "Lower Body": "bg-emerald-500",
-  "Upper Body": "bg-cyan",
-  "Core & Spine": "bg-orange-500",
-  Other: "bg-indigo-500",
+  "Lower Body": "bg-chart-1",
+  "Upper Body": "bg-chart-5",
+  "Core & Spine": "bg-chart-2",
+  Other: "bg-chart-3",
 };
+const OTHER_TONE = GROUP_TONE.Other;
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em]">{children}</div>
+    <div className="font-display italic text-(--eq-live-text) text-[11px] uppercase tracking-[0.16em]">{children}</div>
   );
 }
 
@@ -209,12 +222,12 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
       // Her first time only when Journey holds her whole story; otherwise
       // there is simply no earlier set on record, and nothing to compare.
       const tag = firstTimeTag(coverage);
-      return tag ? { text: tag, tone: "text-cyan" } : null;
+      return tag ? { text: tag, tone: "text-(--eq-live-text)" } : null;
     }
     if (line.loadDelta === null) return null;
-    if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-cyan" };
+    if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-(--eq-live-text)" };
     if (line.loadDelta < 0) return { text: `▼ ${fmtLb(line.loadDelta)} lb`, tone: "text-ink-d2" };
-    if ((line.countDelta ?? 0) > 0) return { text: `▲ +${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === 1 ? "" : "s")}`, tone: "text-cyan" };
+    if ((line.countDelta ?? 0) > 0) return { text: `▲ +${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === 1 ? "" : "s")}`, tone: "text-(--eq-live-text)" };
     if ((line.countDelta ?? 0) < 0) return { text: `▼ ${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === -1 ? "" : "s")}`, tone: "text-ink-d2" };
     return { text: "Held", tone: "text-ink-d3" };
   })();
@@ -225,12 +238,13 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
         <>
           <span className="font-mono tabular-nums text-[15px] font-bold text-ink-d1 whitespace-nowrap">
             {line.weight !== null ? fmtLb(line.weight) : "–"}
-            <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">lb</span>
+            <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">lb</span>
             <span className="text-ink-d3 mx-1">×</span>
             {line.count ?? "–"}
-            {line.isTSC && <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">s</span>}
+            {line.isTSC && <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">s</span>}
           </span>
-          {line.quality === 3 && <Star size={14} className="text-amber-400 fill-current shrink-0" aria-label="Max-strength set" />}
+          {/* The journey grid's own gold star for a max-strength set. */}
+          {line.quality === 3 && <Star size={14} className="text-(--jg-q-star) fill-current shrink-0" aria-label="Max-strength set" />}
           {delta && <span className={`w-20 text-right text-[11px] font-bold whitespace-nowrap ${delta.tone}`}>{delta.text}</span>}
         </>
       ) : (
@@ -342,13 +356,17 @@ export function WrapUpScreen({
         : "the unfinished note",
   );
 
-  // A short burst, then quiet — the numbers are the celebration.
+  /* The confetti: a short burst as the screen opens, a little over a second,
+     then quiet. AJ kept it (Sep 27 2026, asked in the Sep 21 audit and again
+     in the voice review: "I like it keep it"). It never blocks a tap
+     (pointer-events-none) and never repeats. Its colours are tokens, so it
+     shows on the light theme's pale page as well as the dark one. */
   const [particles] = useState(() =>
     Array.from({ length: 36 }).map((_, i) => ({
       id: i,
       x: (Math.random() - 0.5) * 360,
       y: (Math.random() - 0.6) * 300 - 40,
-      tone: ["bg-cta", "bg-cyan", "bg-emerald-400", "bg-amber-300", "bg-white"][i % 5],
+      tone: ["bg-cta", "bg-cyan", "bg-(--eq-ok)", "bg-(--jg-q-star)", "bg-(--eq-live)"][i % 5],
       size: Math.random() * 7 + 4,
       delay: Math.random() * 0.15,
     })),
@@ -496,10 +514,10 @@ export function WrapUpScreen({
                 <div className="flex flex-col gap-1.5">
                   {byRegion.map(([g, v]) => (
                     <div key={g} className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${GROUP_TONE[g] ?? "bg-indigo-500"}`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${GROUP_TONE[g] ?? OTHER_TONE}`} />
                       <span className="w-24 text-[12px] text-ink-d2">{g}</span>
                       <span className="flex-1 h-1.5 rounded-full bg-bg-dark-3 overflow-hidden">
-                        <span className={`block h-full ${GROUP_TONE[g] ?? "bg-indigo-500"}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
+                        <span className={`block h-full ${GROUP_TONE[g] ?? OTHER_TONE}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
                       </span>
                       <span className="w-10 text-right font-mono text-[11px] text-ink-d3">{Math.round((100 * v) / tonnage)}%</span>
                     </div>
@@ -524,7 +542,7 @@ export function WrapUpScreen({
               <div className="flex flex-wrap gap-1.5">
                 {journey.byGroup.map((g) => (
                   <span key={g.group} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-bg-dark-3 border border-div-d text-ink-d2">
-                    {g.group} <span className={g.pct > 0 ? "text-cyan" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
+                    {g.group} <span className={g.pct > 0 ? "text-(--eq-live-text)" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
                   </span>
                 ))}
               </div>
@@ -534,8 +552,9 @@ export function WrapUpScreen({
           {/* 3 · next */}
           <Card delay={0.18}>
             <Kicker>Next</Kicker>
-            <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-emerald-500/30 bg-emerald-500/10" : "border-orange-500/40 bg-orange-500/10"}`}>
-              {next ? <CalendarCheck2 size={18} className="text-emerald-400 shrink-0" /> : <CalendarX2 size={18} className="text-orange-400 shrink-0" />}
+            {/* Booked is done (green); nothing booked is a caution (plum). */}
+            <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)" : "border-(--eq-warn)/40 bg-(--eq-warn-fill)"}`}>
+              {next ? <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" /> : <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" />}
               <span className="text-[13.5px] font-semibold text-ink-d1">
                 {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
               </span>
@@ -547,13 +566,13 @@ export function WrapUpScreen({
                 moment it is still theirs to finish. */}
             {unsavedDraft && (
               <div
-                className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3"
+                className="flex flex-col gap-2 rounded-xl border border-(--eq-warn)/40 bg-(--eq-warn-fill) p-3"
                 role="region"
                 aria-label="Unsaved note from this session"
                 data-testid="unsaved-draft"
               >
                 <div className="flex items-center gap-2">
-                  <MessageSquareText size={16} className="text-amber-400 shrink-0" aria-hidden="true" />
+                  <MessageSquareText size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
                   <span className="text-[13px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
                 </div>
                 <textarea
@@ -563,9 +582,10 @@ export function WrapUpScreen({
                   aria-label="Unsaved note"
                 />
                 <div className="flex gap-2">
+                  {/* A save: solid brand blue, its own on-colour. */}
                   <button
                     type="button"
-                    className="min-h-10 flex-1 rounded-xl bg-cyan text-bg-dark-1 text-[12px] font-bold uppercase tracking-wider disabled:opacity-50"
+                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[13px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy || !draftText.trim()}
                     onClick={async () => {
                       setDraftBusy(true);
@@ -580,7 +600,7 @@ export function WrapUpScreen({
                   </button>
                   <button
                     type="button"
-                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[12px] font-bold uppercase tracking-wider"
+                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[13px] font-bold"
                     disabled={draftBusy}
                     onClick={onDropDraft}
                   >
@@ -594,13 +614,13 @@ export function WrapUpScreen({
             <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · profile note · Pulse</div>
 
             {/* The dose Dial — the trainer's own judgement, saved as it is
-                tapped. Wrapped dark so the rating tokens resolve for this
-                screen whatever the app theme is. */}
-            <div className="dark flex flex-col gap-2" data-theme="dark" data-testid="dose-card">
+                tapped. It follows the app theme like the rest of the screen,
+                as it does everywhere else the Dial is drawn. */}
+            <div className="flex flex-col gap-2" data-testid="dose-card">
               <div className="flex items-baseline justify-between">
                 <span className="font-display italic text-ink-d1 text-[15px] uppercase">How did it land?</span>
                 {doseSaved && dose !== null && (
-                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1">
                     <Check size={12} strokeWidth={3} /> Saved
                   </span>
                 )}
@@ -627,7 +647,7 @@ export function WrapUpScreen({
                 Loudness's own hint says where it goes; at Note the generic
                 hint ("found by its category") would be wrong for a note
                 that is filed unfiled, so it says the plain fact instead. */}
-            <div className="dark flex flex-col gap-2" data-theme="dark">
+            <div className="flex flex-col gap-2" data-testid="profile-note-loudness">
               <Loudness value={importance} onChange={setImportance} hint={importance !== "standard"} />
               {importance === "standard" && (
                 <span className="text-[11px] text-ink-d3" data-testid="profile-note-hint">
@@ -656,7 +676,7 @@ export function WrapUpScreen({
                 onClick={() => setShowPulse(true)}
                 className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
               >
-                <HeartPulse className="w-4 h-4 text-cyan" />
+                <HeartPulse className="w-4 h-4 text-(--eq-live)" />
                 Update Pulse
               </button>
               {/* Always reachable while a package is on file ("there's not
@@ -671,7 +691,7 @@ export function WrapUpScreen({
                       : "border-div-d bg-bg-dark-3 text-ink-d1"
                   }`}
                 >
-                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-cyan"}`} />
+                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-(--eq-live)"}`} />
                   {renewalLogged
                     ? "Renewal conversation saved ✓"
                     : renewalDue
@@ -688,8 +708,7 @@ export function WrapUpScreen({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.22 }}
-              className="mx-5 dark"
-              data-theme="dark"
+              className="mx-5"
             >
               <NoteSweep
                 entries={unfiledNotes}
@@ -698,7 +717,6 @@ export function WrapUpScreen({
                 onFile={fileUnfiledEntry}
                 onDiscard={discardUnfiledEntry}
                 isNextTrainerNote={(entry) => isNextTrainerNote(entry, nextTrainerMark)}
-                dark
               />
             </motion.div>
           )}
@@ -708,10 +726,6 @@ export function WrapUpScreen({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.24 }}
               className="mx-5"
-              /* The trays stay dark whatever the app theme is (see the
-                 header), so the FORD tokens are pinned to their dark values
-                 rather than resolving against the document. */
-              data-theme="dark"
             >
               <FordSweep
                 clientId={client.id}
@@ -754,7 +768,7 @@ export function WrapUpScreen({
               { label: "Lifetime reps", value: fmtBig(lifetime.reps) },
             ].map((t) => (
               <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
                 <div className="font-mono text-[15px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}

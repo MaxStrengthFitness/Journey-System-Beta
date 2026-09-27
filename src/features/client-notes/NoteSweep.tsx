@@ -58,10 +58,13 @@ export interface NoteSweepProps {
    * it off. It can still be filed, which leaves it there.
    */
   isNextTrainerNote?: (entry: JournalEntry) => boolean;
-  /** Mounted on a dark surface (the post-session screen): resolves the tokens for it. */
-  dark?: boolean;
 }
 
+/*
+ * It follows the app theme wherever it is mounted. Until Sep 27 2026 a `dark`
+ * prop pinned it dark for the Wrap-up, which was dark in both themes once;
+ * the Wrap-up follows the theme now, so the prop went.
+ */
 export function NoteSweep({
   entries,
   machines,
@@ -69,7 +72,6 @@ export function NoteSweep({
   onFile,
   onDiscard,
   isNextTrainerNote,
-  dark = false,
 }: NoteSweepProps) {
   // Cards leave the moment they are tapped. The write follows; if it fails
   // the stream puts the card back, because the note genuinely is not filed.
@@ -103,7 +105,7 @@ export function NoteSweep({
   };
 
   const name = clientFirstName || "this client";
-  const cls = `nc-sweep${dark ? " dark" : ""}`;
+  const cls = "nc-sweep";
 
   if (queue.length === 0 && filed === 0) return null;
 

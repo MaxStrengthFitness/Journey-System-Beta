@@ -189,9 +189,10 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen onDose={onDose} />);
     const dial = host.querySelector('[data-testid="dose-dial"]')!;
     expect(dial).toBeTruthy();
-    // Dark whatever the theme: the rating tokens resolve under .dark.
-    expect(host.querySelector('[data-testid="dose-card"]')!.className).toContain("dark");
-    expect(host.querySelector('[data-testid="dose-card"]')!.getAttribute("data-theme")).toBe("dark");
+    // It follows the app theme (Sep 27 2026): nothing pins it dark, so on the
+    // light theme it is not a dark slab with white words on a white card.
+    expect(host.querySelector('[data-testid="dose-card"]')!.className.split(/\s+/)).not.toContain("dark");
+    expect(host.querySelector('[data-testid="dose-card"]')!.hasAttribute("data-theme")).toBe(false);
 
     const radios = Array.from(dial.querySelectorAll('[role="radio"]'));
     expect(radios).toHaveLength(5);
@@ -255,7 +256,9 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen />);
     const tray = host.querySelector('[data-testid="note-sweep"]')!;
     expect(tray).toBeTruthy();
-    expect(tray.className).toContain("dark");
+    // Follows the app theme like the rest of the screen.
+    expect(tray.className.split(/\s+/)).not.toContain("dark");
+    expect(tray.closest("[data-theme]")).toBeNull();
     expect(tray.textContent).toContain("To file · 1");
     expect(tray.textContent).toContain("Knee clicked on leg press");
     expect(tray.textContent).toContain("Leg Press");
@@ -739,6 +742,67 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
     await click(radios[2]);
     expect(onDose).toHaveBeenCalledWith(0);
     expect(host.querySelector('[data-testid="dose-card"]')!.textContent).not.toContain("Saved");
+  });
+});
+
+/*
+ * THE LOOK (voice review follow-up, Sep 27 2026). The Wrap-up follows the app
+ * theme, all of it, and every colour is a token that reads in both themes.
+ * The confetti burst stays: AJ, "I like it keep it."
+ */
+describe("the Wrap-up follows the theme, and keeps its confetti", () => {
+  const PALETTE = /(?:^|\s)(?:bg|text|border|ring|fill|stroke)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}(?![\w-])/;
+
+  function FullScreen() {
+    return (
+      <WrapUpScreen
+        client={{ ...client, renewal: { cycleKey: "9001", situation: "on-track", flags: [], dataGaps: [] } } as any}
+        session={session}
+        logs={[{ id: "l1", machineId: "m1", sessionId: "sess1", weight: "180", reps: "9", outcome: "performed" } as any]}
+        lines={[
+          { machineId: "m1", name: "Leg Press", outcome: "performed", weight: 180, count: 9, isTSC: false, quality: 3, loadDelta: 5, countDelta: 0, first: false },
+        ] as any}
+        journey={{ enough: true, pct: 21, machines: 4, since: "2026-07-01", byGroup: [{ group: "Lower Body", pct: 26, machines: 2 }, { group: "Upper Body", pct: 14, machines: 2 }], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        unsavedDraft={{ body: "Mentioned her daughter's wedding", category: null } as any}
+        machines={[{ id: "m1", name: "Leg Press", anatomicalRegion: "Lower Body" } as any]}
+      />
+    );
+  }
+
+  it("pins nothing dark: no .dark class and no data-theme anywhere inside it", async () => {
+    const host = await mount(<FullScreen />);
+    expect(host.querySelector("[data-theme]")).toBeNull();
+    expect(Array.from(host.querySelectorAll("[class]")).some((el) => el.classList.contains("dark"))).toBe(false);
+  });
+
+  it("draws no Tailwind palette colour of its own: every colour it sets is a token", async () => {
+    const host = await mount(<FullScreen />);
+    // The To-file tray is the notes feature's own component (its category
+    // chips carry their own dots); this is about what the Wrap-up draws.
+    const offenders = Array.from(host.querySelectorAll("[class]"))
+      .filter((el) => !el.closest('[data-testid="note-sweep"]'))
+      .map((el) => el.getAttribute("class") ?? "")
+      .filter((c) => PALETTE.test(c));
+    expect(offenders).toEqual([]);
+  });
+
+  it("says a save in brand blue on its own on-colour, in sentence case", async () => {
+    const host = await mount(<FullScreen />);
+    const save = buttonByText(host.querySelector('[data-testid="unsaved-draft"]')!, "Save note")!;
+    expect(save.className).toContain("bg-(--eq-live)");
+    expect(save.className).toContain("text-(--eq-live-on)");
+    expect(save.className).not.toContain("uppercase");
+  });
+
+  it("bursts its confetti once as it opens, out of the way of every tap", async () => {
+    const host = await mount(<FullScreen />);
+    const layer = host.querySelector(".pointer-events-none.z-50")!;
+    expect(layer).toBeTruthy();
+    expect(layer.children).toHaveLength(36);
   });
 });
 
