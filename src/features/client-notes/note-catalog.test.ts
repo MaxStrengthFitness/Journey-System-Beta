@@ -6,8 +6,11 @@ import {
   FILING_CATEGORIES,
   NOTE_CATEGORIES,
   NOTES_PAGE_CATEGORIES,
+  JOURNAL_BODY_LIMIT,
   buildCatalog,
+  isNextTrainerNote,
   isUnfiled,
+  journalBodyOf,
   matchesSearch,
   monthKeyOf,
   noteCardLabel,
@@ -322,5 +325,62 @@ describe("capture now, tag at teardown", () => {
     const raw = entry({ kind: "general", origin: "in_session" });
     expect(noteCategoryOf(raw)).toBe("preference");
     expect(noteCardLabel(raw)).toBe("Note");
+  });
+});
+
+/*
+ * The Note for the next trainer (voice-review follow-up, Sep 27 2026). The
+ * Wrap-up's To-file tray keeps it (it can be filed to the profile) but labels
+ * it and offers no Discard, so it has to know which card it is.
+ */
+describe("isNextTrainerNote", () => {
+  const words = "Right knee sore after the move. Go light on leg press.";
+  const written = () =>
+    entry({
+      id: "j-next",
+      kind: "general",
+      body: words,
+      importance: "elevated",
+      sessionId: "sess1",
+      origin: "post_session",
+    });
+  const mark = { sessionId: "sess1", id: null, body: words };
+
+  it("finds it by its id once the journal write has answered", () => {
+    expect(isNextTrainerNote(written(), { ...mark, id: "j-next", body: "" })).toBe(true);
+    expect(isNextTrainerNote(entry({ id: "someone-else", kind: "general" }), { ...mark, id: "j-next" })).toBe(false);
+  });
+
+  it("finds it before then by what Finish wrote: this session, post-session, a Heads up, the same words", () => {
+    expect(isNextTrainerNote(written(), mark)).toBe(true);
+    // The body the journal holds is trimmed.
+    expect(isNextTrainerNote({ ...written(), body: `  ${words}\n` }, mark)).toBe(true);
+  });
+
+  it("does not take another note from the same session for it", () => {
+    // A note saved mid-session, same words or not.
+    expect(isNextTrainerNote({ ...written(), origin: "in_session" }, mark)).toBe(false);
+    // Another session's.
+    expect(isNextTrainerNote({ ...written(), sessionId: "sess2" }, mark)).toBe(false);
+    // A Profile note at Note loudness.
+    expect(isNextTrainerNote({ ...written(), importance: "standard" }, mark)).toBe(false);
+    // Different words.
+    expect(isNextTrainerNote({ ...written(), body: "Something else" }, mark)).toBe(false);
+  });
+
+  it("finds nothing without a mark, or with an empty one", () => {
+    expect(isNextTrainerNote(written(), null)).toBe(false);
+    expect(isNextTrainerNote(written(), undefined)).toBe(false);
+    expect(isNextTrainerNote(written(), { sessionId: "sess1", id: null, body: "" })).toBe(false);
+    expect(isNextTrainerNote(written(), { sessionId: null, id: null, body: words })).toBe(false);
+  });
+
+  it("journalBodyOf is the body the journal keeps: trimmed and cut at 5000", () => {
+    expect(JOURNAL_BODY_LIMIT).toBe(5000);
+    expect(journalBodyOf("  hello \n")).toBe("hello");
+    expect(journalBodyOf(null)).toBe("");
+    // Cut at 5000, then trimmed: the space the cut lands after goes too.
+    expect(journalBodyOf(`${"a".repeat(4999)} ${"b".repeat(100)}`)).toBe("a".repeat(4999));
+    expect(journalBodyOf("x".repeat(6000))).toHaveLength(5000);
   });
 });

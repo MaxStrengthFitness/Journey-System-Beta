@@ -58,6 +58,8 @@ vi.mock("../firebase", () => ({
 const updates: { path: string; data: any }[] = [];
 /** When set, the client's FORD listener errors with this code instead of answering. */
 let fordError: string | null = null;
+/** More of this session's journal entries, beside the mid-session one below. */
+let moreJournal: { id: string; data: () => Record<string, unknown> }[] = [];
 
 const unfiledDoc = {
   id: "raw",
@@ -98,7 +100,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         error?.({ code: fordError, message: fordError });
         return () => {};
       }
-      const docs = q?.__path === "journalEntries" ? [unfiledDoc] : [];
+      const docs = q?.__path === "journalEntries" ? [unfiledDoc, ...moreJournal] : [];
       next({ docs, size: docs.length, empty: docs.length === 0 });
       return () => {};
     },
@@ -135,6 +137,7 @@ async function mount(ui: React.ReactNode) {
 beforeEach(() => {
   updates.length = 0;
   fordError = null;
+  moreJournal = [];
   renewalSettings.state = null;
 });
 
@@ -327,6 +330,103 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen onLeave={onLeave} />);
     await click(buttonByText(host, "Back to Hub"));
     expect(onLeave.mock.calls[0][0]).toEqual({ noteContent: "", importance: "standard", effectiveUntil: null });
+  });
+});
+
+/*
+ * THE NOTE FOR THE NEXT TRAINER (voice-review follow-up, Sep 27 2026). AJ:
+ * "Ideally the end session note is made for the next sessions pre session
+ * briefing but also can be filed to the profile". Finish writes it as an
+ * unfiled Heads up, so it comes back in the To-file tray: it stays, it says
+ * what it is, it can be filed, and it cannot be discarded off the briefing.
+ */
+describe("the Note for the next trainer in the Wrap-up's To-file tray", () => {
+  const words = "Right knee sore after the move. Go light on leg press.";
+  const nextDoc = (over: Record<string, unknown> = {}) => ({
+    id: "next",
+    data: () => ({
+      ...unfiledDoc.data(),
+      body: words,
+      importance: "elevated",
+      machineId: null,
+      origin: "post_session",
+      ...over,
+    }),
+  });
+
+  function NextScreen({ note }: { note: { id: string | null; body: string } | null }) {
+    return (
+      <WrapUpScreen
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        nextTrainerNote={note}
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+      />
+    );
+  }
+
+  it("keeps it in the tray, labelled for the next trainer, with no Discard — the other note keeps its Discard", async () => {
+    moreJournal = [nextDoc()];
+    const host = await mount(<NextScreen note={{ id: null, body: words }} />);
+    const tray = host.querySelector('[data-testid="note-sweep"]')!;
+    expect(tray.textContent).toContain("To file · 2");
+
+    const card = tray.querySelector('[data-testid="sweep-next"]')!;
+    expect(card.textContent).toContain(words);
+    expect(card.querySelector('[data-testid="sweep-next-trainer"]')!.textContent).toContain(
+      "Note for the next trainer · on the next briefing",
+    );
+    // Still a Heads up, and still fileable.
+    expect(card.textContent).toContain("Heads up");
+    expect(buttonByText(card, "Preference")).toBeTruthy();
+    expect(buttonByText(card, "Discard")).toBeUndefined();
+
+    const other = tray.querySelector('[data-testid="sweep-raw"]')!;
+    expect(other.querySelector('[data-testid="sweep-next-trainer"]')).toBeNull();
+    expect(buttonByText(other, "Discard")).toBeTruthy();
+  });
+
+  it("files it to the profile by kind and category only, so it stays a Heads up on the briefing", async () => {
+    moreJournal = [nextDoc()];
+    const host = await mount(<NextScreen note={{ id: null, body: words }} />);
+    await click(buttonByText(host.querySelector('[data-testid="sweep-next"]')!, "Injury"));
+    expect(updates).toHaveLength(1);
+    expect(updates[0].path).toBe("journalEntries/next");
+    expect(Object.keys(updates[0].data).sort()).toEqual(["category", "kind", "updatedAt"]);
+    expect(updates[0].data).toMatchObject({ kind: "injury", category: null });
+    expect(host.querySelector('[data-testid="sweep-next"]')).toBeNull();
+  });
+
+  it("knows it by the journal's id once the write has answered", async () => {
+    // The words were edited since (History can edit the session's copy);
+    // the id is what the journal write returned.
+    moreJournal = [nextDoc({ body: "Knee sore." })];
+    const host = await mount(<NextScreen note={{ id: "next", body: words }} />);
+    const card = host.querySelector('[data-testid="sweep-next"]')!;
+    expect(card.querySelector('[data-testid="sweep-next-trainer"]')).toBeTruthy();
+    expect(buttonByText(card, "Discard")).toBeUndefined();
+  });
+
+  it("does not mistake another Heads up from this session for it", async () => {
+    moreJournal = [nextDoc({ body: "A different Heads up saved during the session.", origin: "in_session" })];
+    const host = await mount(<NextScreen note={{ id: null, body: words }} />);
+    const card = host.querySelector('[data-testid="sweep-next"]')!;
+    expect(card.querySelector('[data-testid="sweep-next-trainer"]')).toBeNull();
+    expect(buttonByText(card, "Discard")).toBeTruthy();
+  });
+
+  it("with no note from End Session, every card keeps its Discard", async () => {
+    moreJournal = [nextDoc()];
+    const host = await mount(<NextScreen note={null} />);
+    expect(host.querySelector('[data-testid="sweep-next-trainer"]')).toBeNull();
+    expect(buttonByText(host.querySelector('[data-testid="sweep-next"]')!, "Discard")).toBeTruthy();
   });
 });
 

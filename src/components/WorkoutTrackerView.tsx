@@ -89,6 +89,13 @@ interface PostSessionSnapshot {
   /** A mid-session note the trainer started and never saved (fluidity round). */
   draft: SessionNoteDraft | null;
   /**
+   * The Note for the next trainer Finish wrote, so the Wrap-up can tell its
+   * card apart in the To-file tray: the words as the journal holds them, and
+   * the entry's id once the journal write answers (null until then, and for
+   * good while offline). Null when the End Session box was empty.
+   */
+  nextTrainerNote: { id: string | null; body: string } | null;
+  /**
    * Saved on this iPad, and the database has not answered yet: offline, or a
    * slow connection (session record, Sep 26 2026). The screen says so, and
    * this goes false when the answer comes.
@@ -180,7 +187,7 @@ import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal"
 import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
 import { SessionFlagsSheet } from "../features/journey-grid/SessionFlagsSheet";
 import { formatStudioDate } from "../lib/studio-time";
-import { NOTE_CATEGORY_META } from "../features/client-notes/note-catalog";
+import { NOTE_CATEGORY_META, journalBodyOf } from "../features/client-notes/note-catalog";
 import {
   clearSessionDraft,
   hasDraftText,
@@ -2017,9 +2024,13 @@ export function WorkoutTrackerView({
          it); it ALSO files to the journal as a Heads up, which is the one
          loudness the briefing shows for the next three weeks. Outside the
          batch, like every journal write. A note only for the profile is the
-         Wrap-up's Profile note, filed at Note loudness. */
-      const wrap = (currentSessionNotes || "").trim();
-      if (wrap) {
+         Wrap-up's Profile note, filed at Note loudness.
+         Being unfiled, it comes back in the Wrap-up's To-file tray, where it
+         can be filed to the profile (AJ, Sep 27 2026) but not discarded. The
+         snapshot carries its words now and its id when the write answers, so
+         the Wrap-up can tell its card apart (isNextTrainerNote). */
+      const nextTrainerNote = journalBodyOf(currentSessionNotes);
+      if (nextTrainerNote) {
         createJournalEntry(
           selectedClient.id,
           contextActiveStudioId || authTrainer?.primaryHomeStudioId || selectedClient.homeStudioId || "",
@@ -2027,14 +2038,24 @@ export function WorkoutTrackerView({
           {
             kind: "general",
             category: null,
-            body: wrap.slice(0, 5000),
+            body: nextTrainerNote,
             importance: "elevated",
             machineId: null,
             focusId: null,
             sessionId: currentSession.id ?? null,
             origin: "post_session",
           },
-        ).catch(() => toastError("Session saved. The note for the next trainer could not reach the journal — add it from Notes."));
+        ).then(
+          (id) => {
+            if (!id) return;
+            setPostSession((ps) =>
+              ps && ps.session.id === sessionId && ps.nextTrainerNote
+                ? { ...ps, nextTrainerNote: { ...ps.nextTrainerNote, id } }
+                : ps,
+            );
+          },
+          () => toastError("Session saved. The note for the next trainer could not reach the journal — add it from Notes."),
+        );
       }
 
       /* The read the post-session screen shows: today against the last
@@ -2077,6 +2098,7 @@ export function WorkoutTrackerView({
         lines,
         journey,
         draft: hasDraftText(noteDraft) ? noteDraft : null,
+        nextTrainerNote: nextTrainerNote ? { id: null, body: nextTrainerNote } : null,
         queued,
       });
       clearSessionDraft(currentSession?.id);
@@ -2915,6 +2937,7 @@ export function WorkoutTrackerView({
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
+        nextTrainerNote={postSession.nextTrainerNote}
         savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}

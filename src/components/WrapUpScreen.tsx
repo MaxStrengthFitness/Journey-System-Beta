@@ -19,6 +19,7 @@ import { PulseQuickLogDialog } from "../features/subjective-report";
 import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
 import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/client-notes";
+import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
 import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
 import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
@@ -82,7 +83,12 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  *   3b. WHAT THEY TOLD YOU — two trays, both silent when empty, which is
  *      most sessions. Notes first: anything saved during the session with no
  *      category yet ("capture now, tag at teardown") comes back as a card
- *      with the categories underneath — one tap files it. Then FORD:
+ *      with the categories underneath — one tap files it. The Note for the
+ *      next trainer comes back here too (Finish writes it as an unfiled
+ *      Heads up): AJ, Sep 27 2026, "made for the next sessions pre session
+ *      briefing but also can be filed to the profile". So its card says
+ *      "Note for the next trainer" and has no Discard, which would take it
+ *      off the next briefing; filing it keeps it there. Then FORD:
  *      anything caught with "Remember this" that has no letter on it yet.
  *      They sit here, after Next and before Lifetime, because filing three
  *      sentences is seconds and Pulse is minutes — short thing first is
@@ -138,6 +144,13 @@ export interface WrapUpScreenProps {
   unsavedDraft?: SessionNoteDraft | null;
   onSaveDraft?: (text: string) => void | Promise<void>;
   onDropDraft?: () => void;
+  /**
+   * The Note for the next trainer Finish just wrote, if any: its words as the
+   * journal holds them, and the journal entry's id once the write has
+   * answered (voice-review follow-up, Sep 27 2026). It comes back in the
+   * To-file tray, labelled, with no Discard (`isNextTrainerNote`).
+   */
+  nextTrainerNote?: { id: string | null; body: string } | null;
   /**
    * The session is saved on this iPad and the database has not answered yet:
    * offline, or a slow connection (session record, Sep 26 2026). "Saved" alone
@@ -241,6 +254,7 @@ export function WrapUpScreen({
   unsavedDraft = null,
   onSaveDraft,
   onDropDraft,
+  nextTrainerNote = null,
   savedOnThisIpad = false,
   machines = [],
   rightControls,
@@ -264,6 +278,10 @@ export function WrapUpScreen({
   // sheet used. Only the unfiled ones are kept; a filed note leaves on the
   // next snapshot.
   const [unfiledNotes, setUnfiledNotes] = useState<JournalEntry[]>([]);
+  // The Note for the next trainer is one of them, and its card is told apart.
+  const nextTrainerMark: NextTrainerNoteMark | null = nextTrainerNote
+    ? { sessionId: session.id ?? null, id: nextTrainerNote.id, body: nextTrainerNote.body }
+    : null;
   useEffect(() => {
     if (!session.id) return;
     const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));
@@ -679,6 +697,7 @@ export function WrapUpScreen({
                 clientFirstName={clientFirstName(client, "them")}
                 onFile={fileUnfiledEntry}
                 onDiscard={discardUnfiledEntry}
+                isNextTrainerNote={(entry) => isNextTrainerNote(entry, nextTrainerMark)}
                 dark
               />
             </motion.div>

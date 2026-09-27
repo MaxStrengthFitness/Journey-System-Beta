@@ -186,6 +186,73 @@ export function splitUnfiled<T extends Pick<JournalEntry, "kind" | "isLegacy">>(
   return { unfiled, filed };
 }
 
+/* ------------------------------------------------------------------ */
+/* THE NOTE FOR THE NEXT TRAINER                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The End Session box's note, as the journal holds it (voice-review
+ * follow-up, Sep 27 2026). AJ: "Ideally the end session note is made for the
+ * next sessions pre session briefing but also can be filed to the profile".
+ *
+ * Finish writes it twice: onto the session document (`sessions.notes`, which
+ * History, the export and the journal's read-only "Session summary" read) and
+ * into the journal as an unfiled Heads up, which is what the next briefing
+ * shows for three weeks. Being unfiled, it comes straight back in the
+ * Wrap-up's To-file tray. It stays there, so it can be filed to the profile,
+ * but it is labelled for what it is and offers no Discard: a discard archives
+ * it, and an archived note leaves the next briefing. Filing changes only its
+ * kind and category (`fileUnfiledEntry`), so a filed one is still a Heads up
+ * and still on the briefing.
+ */
+
+/** How much of a note the journal keeps: every journal write cuts the body here. */
+export const JOURNAL_BODY_LIMIT = 5000;
+
+/**
+ * The body a journal entry gets for `text`: trimmed, cut at
+ * JOURNAL_BODY_LIMIT, trimmed again (createJournalEntry trims what it is
+ * handed). The session document keeps the whole text, so a comparison
+ * between the two copies goes through this.
+ */
+export function journalBodyOf(text: string | null | undefined): string {
+  return (text ?? "").trim().slice(0, JOURNAL_BODY_LIMIT).trim();
+}
+
+/**
+ * What the Wrap-up knows about the note Finish just wrote. `id` is the
+ * journal entry's id once the write has answered (null while it has not:
+ * offline, the entry is already in the local stream but its write has not
+ * come back). `body` is the text as the journal holds it (`journalBodyOf`).
+ */
+export interface NextTrainerNoteMark {
+  sessionId: string | null;
+  id: string | null;
+  body: string;
+}
+
+/**
+ * Is `entry` the Note for the next trainer that `mark` describes? By its id
+ * when the write has answered. Before that, by what Finish wrote: this
+ * session, `origin: "post_session"`, a Heads up, the same words. Nothing
+ * stored marks the note on its own (the Profile note shares its origin), so
+ * the words are what tell it from anything else written for this session.
+ */
+export function isNextTrainerNote(
+  entry: Pick<JournalEntry, "id" | "sessionId" | "origin" | "importance" | "body">,
+  mark: NextTrainerNoteMark | null | undefined,
+): boolean {
+  if (!mark) return false;
+  if (mark.id && entry.id === mark.id) return true;
+  if (!mark.sessionId || !mark.body) return false;
+  return (
+    entry.sessionId === mark.sessionId &&
+    entry.origin === "post_session" &&
+    entry.importance === "elevated" &&
+    (entry.body ?? "").trim() === mark.body
+  );
+}
+
 /** Where an adapter-produced entry came from when it is an import, not a coach's note. */
 const IMPORT_ORIGINS: ReadonlySet<JournalOrigin> = new Set<JournalOrigin>([
   "profile",

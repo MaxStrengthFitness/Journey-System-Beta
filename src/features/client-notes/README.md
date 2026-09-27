@@ -20,6 +20,10 @@ Notes & Profile's second page (client codex, phase 9). The codex's adapter (`cli
 - **Doors into the page** (`notes-intent.ts`): `note-{id}` opens that thread (clearing a filter that hides it, opening its row, unfolding Resolved) and brings it into view; a thread still in the To-file tray brings its tray card into view; `notes-compose` opens the composer; `notes-resolved` unfolds Resolved. The shell hands them over keyed by the move, so each is acted on once, and a door used while the notes load waits for them.
 - **The page's own words use the pronoun** (`possessive`), never the name — the header owns the name.
 
+## The Note for the next trainer in the Wrap-up's tray — `isNextTrainerNote`
+
+AJ, Sep 27 2026: "Ideally the end session note is made for the next sessions pre session briefing but also can be filed to the profile". Finish writes the End Session box as an unfiled Heads up (and copies it onto `sessions.notes`), so it comes straight back in the Wrap-up's To-file tray. It stays there, so it can be filed, but its card says **"Note for the next trainer · on the next briefing"** and has **no Discard**: a discard archives it, and the journal drops archived notes, so it would leave the next briefing. Filing writes only `kind` and `category` (`fileUnfiledEntry`), so a filed one is still a Heads up on the briefing (`file-unfiled.test.ts` proves it with `isHeadsUpLive` and `briefingNotes`). The Wrap-up tells the card apart with `isNextTrainerNote` (`note-catalog.ts`): by the journal entry's id once the write answers, and before that by this session, `origin: "post_session"`, a Heads up and the same words (`journalBodyOf`: trimmed and cut at 5,000, as every journal write is). Nothing stored marks it on its own: the Profile note shares its origin. The Notes page's tray is not told (it has no mark), so it still offers Discard there, where the trainer is choosing deliberately.
+
 Settled life notes (a birthday, an anniversary) **still show on Notes** in this phase (`notesOnRecord`'s `lifeOnFord` is off); the FORD phase moves them into their pillars and turns it on.
 
 ## `mattering.ts` — when a note matters, and when its window has ended

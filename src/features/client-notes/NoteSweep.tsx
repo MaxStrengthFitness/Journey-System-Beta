@@ -11,7 +11,11 @@
  *   - the Active Session sheet, under "This session", for this session's
  *     unfiled notes (so a trainer who has a second between machines can
  *     file the last one);
- *   - the post-session screen, with the session's unfiled notes;
+ *   - the Wrap-up (the post-session screen), with the session's unfiled
+ *     notes. The Note for the next trainer is one of them (Finish writes it
+ *     as an unfiled Heads up): its card says so and has no Discard, because
+ *     it is on the next briefing and a discard would take it off. Filing it
+ *     to the profile keeps it there (voice-review follow-up, Sep 27 2026);
  *   - the Notes page of the record, under the composer, for everything
  *     outstanding. A loud note wears its Loudness pill here (client codex):
  *     an unfiled critical note sits in this tray, not in Open, and the
@@ -32,7 +36,7 @@
  * works wherever it is mounted and the test can assert the write.
  */
 import { useMemo, useState } from "react";
-import { Check, Dumbbell, Inbox, Trash2 } from "lucide-react";
+import { Check, Dumbbell, Forward, Inbox, Trash2 } from "lucide-react";
 import type { Machine } from "../../types";
 import { FOCUS_CATEGORIES, IMPORTANCE_META, type FocusCategory, type JournalEntry } from "../../types/journal";
 import { LOUDNESS_TONE } from "../rating/Loudness";
@@ -47,11 +51,26 @@ export interface NoteSweepProps {
   clientFirstName: string;
   onFile: (entryId: string, category: FilingCategory, p?: FocusCategory | null) => Promise<void>;
   onDiscard?: (entryId: string) => Promise<void>;
+  /**
+   * Which card is the Note for the next trainer (the Wrap-up passes it; see
+   * `isNextTrainerNote` in note-catalog.ts). That card says so and offers no
+   * Discard: it is on the next trainer's briefing, and a discard would take
+   * it off. It can still be filed, which leaves it there.
+   */
+  isNextTrainerNote?: (entry: JournalEntry) => boolean;
   /** Mounted on a dark surface (the post-session screen): resolves the tokens for it. */
   dark?: boolean;
 }
 
-export function NoteSweep({ entries, machines, clientFirstName, onFile, onDiscard, dark = false }: NoteSweepProps) {
+export function NoteSweep({
+  entries,
+  machines,
+  clientFirstName,
+  onFile,
+  onDiscard,
+  isNextTrainerNote,
+  dark = false,
+}: NoteSweepProps) {
   // Cards leave the moment they are tapped. The write follows; if it fails
   // the stream puts the card back, because the note genuinely is not filed.
   const [settled, setSettled] = useState<Set<string>>(new Set());
@@ -78,7 +97,7 @@ export function NoteSweep({ entries, machines, clientFirstName, onFile, onDiscar
   };
 
   const discard = (entry: JournalEntry) => {
-    if (!onDiscard) return;
+    if (!onDiscard || isNextTrainerNote?.(entry)) return;
     settle(entry.id);
     void onDiscard(entry.id).catch(() => {});
   };
@@ -114,8 +133,17 @@ export function NoteSweep({ entries, machines, clientFirstName, onFile, onDiscar
 
       {queue.map((entry) => {
         const machine = entry.machineId ? machines.find((m) => m.id === entry.machineId) : null;
+        const forNextTrainer = isNextTrainerNote?.(entry) ?? false;
         return (
           <article key={entry.id} className="nc-sweep__card" id={`sweep-${entry.id}`} data-testid={`sweep-${entry.id}`}>
+            {/* The End Session box's note: already on its way to the next
+                trainer, so the card says where it is going before it asks
+                for a category. Same quiet line as the machine below. */}
+            {forNextTrainer ? (
+              <span className="nc-sweep__machine" data-testid="sweep-next-trainer">
+                <Forward className="h-3 w-3" aria-hidden /> Note for the next trainer · on the next briefing
+              </span>
+            ) : null}
             <p className="nc-sweep__quote">“{entry.body}”</p>
             {/* An unfiled note waits here rather than in Open, so a loud one
                 must still look loud (client codex): the Loudness words and
@@ -158,7 +186,7 @@ export function NoteSweep({ entries, machines, clientFirstName, onFile, onDiscar
 
             <div className="nc-sweep__foot">
               <span>{entry.authorInitials}</span>
-              {onDiscard ? (
+              {onDiscard && !forNextTrainer ? (
                 <button type="button" className="nc-btn nc-btn--quiet" onClick={() => discard(entry)}>
                   <Trash2 className="h-3.5 w-3.5" aria-hidden /> Discard
                 </button>

@@ -218,6 +218,55 @@ describe("useClientJournal.loadState", () => {
   });
 });
 
+/*
+ * The Note for the next trainer, filed on the Wrap-up (voice-review follow-up,
+ * Sep 27 2026). Filing changes its kind and category and nothing else, so the
+ * hook still hands it to the briefing as a Heads up. Discarding archives it,
+ * which is why the Wrap-up offers no Discard on it.
+ */
+describe("useClientJournal.headsUpEntries and the Note for the next trainer", () => {
+  const note = (over: Record<string, unknown> = {}) => ({
+    id: "j-next",
+    clientId: "c1",
+    studioId: "s1",
+    kind: "general",
+    category: null,
+    body: "Knee sore after the move.",
+    importance: "elevated",
+    machineId: null,
+    focusId: null,
+    threadId: null,
+    sessionId: "s-a",
+    origin: "post_session",
+    authorId: "uid-ann",
+    authorInitials: "AN",
+    authorName: "Ann",
+    occurredAt: new Date(Date.now() - 60_000),
+    effectiveFrom: null,
+    effectiveUntil: null,
+    resolvedAt: null,
+    isArchived: false,
+    searchTags: [],
+    ...over,
+  });
+
+  it("hands it to the briefing unfiled, and still once it is filed under a category", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note()]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+    await answer("journalEntries", [note({ kind: "preference" })]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+    await answer("journalEntries", [note({ kind: "coaching", category: "Pace" })]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+  });
+
+  it("drops it once it is archived — what a discard would do", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note({ isArchived: true })]);
+    expect(last!.headsUpEntries).toEqual([]);
+  });
+});
+
 describe("useClientJournal.recentSessions", () => {
   it("is the ONE sessions listener the hook already runs: the client's 40 newest, by date", async () => {
     await mount(<Probe client={clientA} />);

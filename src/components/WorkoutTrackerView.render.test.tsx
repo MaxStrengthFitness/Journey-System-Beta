@@ -145,6 +145,8 @@ const STALE_SESSION_DOCS = [
 
 /** Which sessions the client's stream holds; each test may swap it. */
 let sessionDocs: { id: string; data: () => any }[] = SESSION_DOCS;
+/** Journal entries written during the test (addDoc), served back to every journalEntries listener. */
+let journalDocs: { id: string; data: () => any }[] = [];
 /** Single documents a direct `getDoc` can find, by path. */
 let singleDocs: Record<string, any> = {};
 
@@ -180,6 +182,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     if (p === `studios/${STUDIO_ID}/roster`) return ROSTER_DOCS;
     if (p === "sessions") return sessionDocs;
     if (p === "clientMachineSettings") return SETTINGS_DOCS;
+    if (p === "journalEntries") return journalDocs;
     return [];
   };
 
@@ -224,7 +227,15 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         ? { exists: () => true, id: String(ref.__path).split("/").pop(), data: () => data }
         : { exists: () => false, data: () => undefined };
     },
-    addDoc: async () => ({ id: "new-doc" }),
+    // A journal entry lands in the local stream at once, as Firestore's own
+    // cache does, and then the write answers with its id.
+    addDoc: async (coll: any, data: any) => {
+      if (coll?.__path !== "journalEntries") return { id: "new-doc" };
+      const id = `j-${journalDocs.length + 1}`;
+      journalDocs = [...journalDocs, { id, data: () => data }];
+      snapshotListeners.filter((l) => l.path === "journalEntries").forEach((l) => l.emit());
+      return { id };
+    },
     setDoc: async (ref: any, data: any, opts?: any) => {
       writes.push({ path: ref.__path, data, merge: !!opts?.merge });
     },
@@ -293,6 +304,7 @@ beforeEach(() => {
   finishCtl.serverStatus = undefined;
   Object.defineProperty(navigator, "onLine", { configurable: true, get: () => true });
   sessionDocs = SESSION_DOCS;
+  journalDocs = [];
   singleDocs = {};
   localStorage.clear();
   studioCtx.studios = undefined;
@@ -583,6 +595,39 @@ describe("Finish never hangs and never counts a session twice (session record, S
     );
     // "Wrap-up" is the post-session screen's name now, not this box's.
     expect(document.body.textContent).not.toContain("Wrap-up note");
+  });
+
+  it("brings the Note for the next trainer back on the Wrap-up to be filed, labelled, and never discarded (AJ, Sep 27 2026)", async () => {
+    await openEndSession();
+    const box = document.getElementById("next-trainer-note") as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(box, "  Knee sore after the move.  ");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => finishButton()!.click());
+    await settle();
+    await settle();
+
+    // Finish wrote it to the session and to the journal as a Heads up.
+    expect(completedWrites()[0].data.notes).toBe("Knee sore after the move.");
+    expect(journalDocs).toHaveLength(1);
+    expect(journalDocs[0].data()).toMatchObject({
+      body: "Knee sore after the move.",
+      importance: "elevated",
+      kind: "general",
+      origin: "post_session",
+      sessionId: SESSION_ID,
+    });
+
+    // It is back on the Wrap-up, in the To-file tray: said for what it is,
+    // fileable, and with no Discard (a discard would take it off the briefing).
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
+    const card = document.querySelector('[data-testid="sweep-j-1"]')!;
+    expect(card).toBeTruthy();
+    expect(card.textContent).toContain("Note for the next trainer · on the next briefing");
+    const buttons = Array.from(card.querySelectorAll("button")).map((b) => b.textContent?.trim());
+    expect(buttons).toContain("Preference");
+    expect(buttons.some((t) => t?.includes("Discard"))).toBe(false);
   });
 
   it("offline, goes straight to the Wrap-up and says the session is saved on this iPad", async () => {
