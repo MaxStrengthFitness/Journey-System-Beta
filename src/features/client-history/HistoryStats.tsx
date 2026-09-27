@@ -13,6 +13,8 @@ import {
   type TimelineEvent,
 } from "./model";
 import { PRIOR_SOURCE_LABEL, priorUncounted, type PriorHistory } from "../../lib/prior-history";
+import type { BookingsStatus } from "./bookings";
+import { BookingGlyph } from "./HistoryCalendar";
 
 /**
  * Four numbers, each answering one question a trainer asks about attendance:
@@ -194,12 +196,35 @@ export const OnBreakNotice = memo(function OnBreakNotice({
   );
 });
 
-export function HistoryLegend() {
+export interface HistoryLegendProps {
+  /** The calendar draws a booked day / a cancellation / a move. Each is in the key only when it is drawn. */
+  booked?: boolean;
+  cancelled?: boolean;
+  moved?: boolean;
+  /**
+   * The read of her bookings (bookings.ts). While it loads, or when it
+   * failed, the calendar draws no booking layer and this says so in one line —
+   * a failed read is unknown, never "no bookings".
+   */
+  bookingsStatus?: BookingsStatus;
+}
+
+export function HistoryLegend({
+  booked = false,
+  cancelled = false,
+  moved = false,
+  bookingsStatus = "idle",
+}: HistoryLegendProps = {}) {
   return (
     <div className="hist-legend" aria-label="Legend">
       <span className="hist-legend__item">
         <i className="hist-swatch hist-swatch--visit" aria-hidden /> Visit
       </span>
+      {booked && (
+        <span className="hist-legend__item">
+          <i className="hist-swatch hist-swatch--booked" aria-hidden /> Booked
+        </span>
+      )}
       <span className="hist-legend__item">
         <i className="hist-swatch hist-swatch--break" aria-hidden /> Break (2+ weeks)
       </span>
@@ -209,6 +234,32 @@ export function HistoryLegend() {
       <span className="hist-legend__item">
         <i className="hist-swatch hist-swatch--today" aria-hidden /> Today
       </span>
+      {cancelled && (
+        <span className="hist-legend__item">
+          <span className="hist-swatch hist-swatch--glyph" aria-hidden>
+            <BookingGlyph kind="cancelled" />
+          </span>{" "}
+          Cancelled
+        </span>
+      )}
+      {moved && (
+        <span className="hist-legend__item">
+          <span className="hist-swatch hist-swatch--glyph" aria-hidden>
+            <BookingGlyph kind="moved" />
+          </span>{" "}
+          Moved
+        </span>
+      )}
+      {bookingsStatus === "loading" && (
+        <span className="hist-legend__status" role="status">
+          Loading bookings…
+        </span>
+      )}
+      {bookingsStatus === "error" && (
+        <span className="hist-legend__status" role="status">
+          Bookings did not load — check the connection and open the tab again.
+        </span>
+      )}
       <span className="hist-legend__hint">Tap a day to open it · tap a month for its list</span>
     </div>
   );

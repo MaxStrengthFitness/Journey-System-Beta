@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, History, List as ListIcon, PlusCircle } from "lucide-react";
-import type { ClientEvent, ExerciseLog, Routine, Trainer } from "../../types";
+import type { ClientEvent, ExerciseLog, Routine, ScheduleEntry, Trainer } from "../../types";
+import { loggedSessions } from "../../lib/booking-state";
 import { HistoryCalendar } from "./HistoryCalendar";
+import { NO_BOOKINGS, bookingLayer, type BookingsStatus } from "./bookings";
 import { HistoryList } from "./HistoryList";
 import { HistoryLegend, HistoryStats, OnBreakNotice } from "./HistoryStats";
 import { trainerLookup } from "./trainers";
@@ -46,7 +48,20 @@ export interface HistoryViewProps {
   onLogPast?: () => void;
   /** Injected by the harness so screenshots do not drift with the date. */
   today?: DayKey;
+  /** The same, for "still to come": a booking is upcoming while its start is after this. */
+  now?: Date;
   timeZone?: string;
+  /**
+   * Her bookings (`schedules`), cancelled rows included, from the first day
+   * the calendar draws (bookings.ts). The calendar lays them over the visits:
+   * booked days ahead, cancellations Journey saw happen, moves.
+   */
+  bookings?: readonly ScheduleEntry[];
+  /**
+   * Where that read is. Only a "ready" read is drawn; loading or failed, the
+   * legend says so in one line. Defaults to "ready" when `bookings` is given.
+   */
+  bookingsStatus?: BookingsStatus;
   defaultView?: HistoryViewMode;
   /**
    * Controlled mode. The Activity Archive promotes Calendar and List to its own
@@ -95,7 +110,10 @@ export function HistoryView({
   onOpenSessions,
   onLogPast,
   today: todayProp,
+  now: nowProp,
   timeZone,
+  bookings,
+  bookingsStatus = bookings ? "ready" : "idle",
   defaultView = "calendar",
   view: viewProp,
   onViewChange,
@@ -105,6 +123,9 @@ export function HistoryView({
   quoteSessionNumbers = false,
 }: HistoryViewProps) {
   const today = todayProp ?? todayKey(new Date(), timeZone);
+  // To the minute, so the booking layer below is worked out again at most
+  // once a minute rather than on every render.
+  const nowMs = nowProp ? nowProp.getTime() : Math.floor(Date.now() / 60_000) * 60_000;
   const currentYear = parseKey(today).year;
   const controlled = viewProp !== undefined;
   const [ownView, setOwnView] = useState<HistoryViewMode>(defaultView);
@@ -126,9 +147,34 @@ export function HistoryView({
   const cadence = useMemo(() => computeCadence(days, today, breakWindow), [days, today, breakWindow]);
   /* Sessions before Journey that exist only as a number. */
   const priorOffset = priorUncounted(prior);
+  /*
+   * Her bookings over the visits (Sep 26 2026, bookings.ts). A booking on a
+   * day Journey logged a session for her is done, not still to come
+   * (lib/booking-state.ts), so the read of her sessions goes in too.
+   */
+  const logged = useMemo(() => loggedSessions(sessions, timeZone), [sessions, timeZone]);
+  const rosterNames = useMemo(
+    () => new Map(trainers.filter((t) => t.id && t.fullName).map((t) => [t.id, t.fullName] as const)),
+    [trainers],
+  );
+  const layer = useMemo(
+    () =>
+      bookingsStatus === "ready" && bookings
+        ? bookingLayer({ rows: bookings, now: new Date(nowMs), tz: timeZone, logged, rosterNames })
+        : NO_BOOKINGS,
+    [bookingsStatus, bookings, nowMs, timeZone, logged, rosterNames],
+  );
   const years = useMemo(
-    () => buildCalendar({ days, events: timeline, cadence, today }),
-    [days, timeline, cadence, today],
+    () => buildCalendar({ days, events: timeline, cadence, today, bookings: layer }),
+    [days, timeline, cadence, today, layer],
+  );
+  const drawn = useMemo(
+    () => ({
+      booked: years.some((y) => y.booked > 0),
+      cancelled: years.some((y) => y.cancelled > 0),
+      moved: years.some((y) => y.moved > 0),
+    }),
+    [years],
   );
   const list = useMemo(
     () =>
@@ -291,8 +337,18 @@ export function HistoryView({
 
           {view === "calendar" ? (
             <>
-              <HistoryLegend />
-              <HistoryCalendar years={years} onOpenDay={onOpenSessions} onOpenMonth={openMonthInList} />
+              <HistoryLegend
+                booked={drawn.booked}
+                cancelled={drawn.cancelled}
+                moved={drawn.moved}
+                bookingsStatus={bookingsStatus}
+              />
+              <HistoryCalendar
+                years={years}
+                timeZone={timeZone}
+                onOpenDay={onOpenSessions}
+                onOpenMonth={openMonthInList}
+              />
             </>
           ) : (
             <HistoryList
