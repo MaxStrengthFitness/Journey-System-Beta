@@ -619,9 +619,26 @@ export function JourneyGrid({
    */
   const olderAskedAt = useRef<string | null | undefined>(undefined);
 
+  /**
+   * The scroll event a pin of the grid's OWN is still owed: where it put
+   * itself (the browser's clamped scrollLeft), or null when no echo is due.
+   * That event arrives a frame after the pin, and the columns may have
+   * widened in between — the sets landed — so by then the spot reads as
+   * "parked away from the newest column". The first event at exactly this
+   * spot is the pin's echo, never the trainer, and is spent on arrival (AJ,
+   * Sep 26 2026: the live profile still opened short of the newest session
+   * after the widening was watched, because the echo had switched the pin off
+   * first). A pin that did not move the grid owes no echo: the browser sends
+   * none, and a trainer's own scroll to that spot must still count.
+   */
+  const pinnedAt = useRef<number | null>(null);
+
   const scrollToEnd = useCallback(() => {
     const el = scrollerRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
+    if (!el) return;
+    const before = el.scrollLeft;
+    el.scrollLeft = el.scrollWidth;
+    if (el.scrollLeft !== before) pinnedAt.current = el.scrollLeft;
   }, []);
 
   useLayoutEffect(() => {
@@ -654,9 +671,13 @@ export function JourneyGrid({
     };
     // The pin comes off only when the grid is actually parked away from the
     // newest column. Gesture-agnostic on purpose: a drag on an iPad, a
-    // trackpad swipe and an arrow key all arrive here as one scroll event,
-    // and `scrollToEnd()` lands ON the edge so it never trips this.
+    // trackpad swipe and an arrow key all arrive here as one scroll event.
+    // `scrollToEnd()` lands ON the edge, and its own late echo — the spot it
+    // set, read after the columns grew — is not the trainer (`pinnedAt`).
     const onScroll = () => {
+      const echo = pinnedAt.current;
+      pinnedAt.current = null;
+      if (echo !== null && Math.abs(el.scrollLeft - echo) < 1) return;
       const colW =
         el.querySelector<HTMLElement>(".jg-head[data-session-id]")?.offsetWidth ||
         DEFAULT_COLUMN_WIDTH;
@@ -905,10 +926,18 @@ export function JourneyGrid({
    * commit, and a measure that WIDENS the columns leaves the grid short of
    * the newest session. Re-pin on the solved size — unless the trainer has
    * scrolled into history themselves. Fluidity round, Sep 2026.
+   *
+   * And on new rows. A client's sets land after her sessions, and their
+   * cells widen every column (`minmax(col, 1fr)` in a max-content grid) —
+   * in the same commit as the rows, so re-pinning here, where reading the
+   * width lays the new cells out first, lands on the newest column before
+   * anything is painted. The observers alone missed it on the live app (Sep
+   * 26 2026): the browser moved the scroll position itself while laying out
+   * the wider columns, and no observation reported the change.
    */
   useLayoutEffect(() => {
     if (!userScrolled.current) scrollToEnd();
-  }, [fitVars, scrollToEnd]);
+  }, [fitVars, sections, scrollToEnd]);
 
   const effectiveMaxH = layout === "page" ? undefined : layout === "viewport" ? viewportMaxH : maxHeight;
   const style = {

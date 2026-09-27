@@ -131,6 +131,59 @@ describe("JourneyGrid keeps a freshly opened profile on the newest session", () 
     await unmount();
   });
 
+  it("does not mistake its own pin's late scroll event for the trainer scrolling back", async () => {
+    // Seen on the live app, Sep 26: the pin's scroll event is delivered a
+    // frame after the pin, and when the sets land in between, the spot the
+    // grid chose reads as "parked short of the newest column". That echo used
+    // to switch the pin off, so the widening that followed was ignored.
+    const { scroller, timeline } = await mountProfileGrid();
+    const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 0 };
+    fakeLayout(scroller, box);
+    // The grid pins itself at its first look at the real size.
+    await act(async () => {
+      for (const o of watching(timeline)) o.callback();
+    });
+    expect(box.scrollLeft).toBe(379);
+
+    // The sets land and the columns widen before the pin's event arrives...
+    box.scrollWidth = 1133;
+    await act(async () => {
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    // ...and when the widening is noticed, the grid still goes to the newest.
+    await act(async () => {
+      for (const o of watching(timeline)) o.callback();
+    });
+    expect(box.scrollLeft).toBe(460);
+    await unmount();
+  });
+
+  it("re-pins in the same commit as the sets that widen it, with no observer involved", async () => {
+    // The live app, Sep 26: no resize observation reported the widening at
+    // all, and the browser moved the scroll position itself while laying out
+    // the wider columns. The rows arriving is the one moment that is certain.
+    RecordingObserver.all = [];
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    const sessions = sessionsOf(14);
+    const empty: JourneyRow[] = rowsFor(sessions).map((r) => ({ ...r, sets: {} }));
+    await act(async () => {
+      root!.render(<RecentJourneyView sessions={sessions} rows={empty} layout="page" resetKey="judy" />);
+    });
+    const scroller = host.querySelector<HTMLElement>(".jg-scroller")!;
+    const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
+    fakeLayout(scroller, box);
+
+    // The sets land; laid out, the columns are wider.
+    box.scrollWidth = 1133;
+    await act(async () => {
+      root!.render(<RecentJourneyView sessions={sessions} rows={rowsFor(sessions)} layout="page" resetKey="judy" />);
+    });
+    expect(box.scrollLeft).toBe(460);
+    await unmount();
+  });
+
   it("leaves a trainer who has scrolled back into history where they are", async () => {
     const { scroller, timeline } = await mountProfileGrid();
     const box = { scrollWidth: 1052, clientWidth: 673, scrollLeft: 379 };
