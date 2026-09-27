@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Mounts the post-session screen (reporting round, Sep 2026) against a fake
- * Firestore. It proves what the thirty seconds walking a client out now
- * offers: the dose Dial with the five DOSE words that saves the moment it is
- * tapped, the closing note's Loudness (Note · Heads up · Critical, Note
+ * Mounts the Wrap-up — the post-session screen (reporting round, Sep 2026;
+ * named in the voice-review round, Sep 27 2026) — against a fake Firestore.
+ * It proves what the thirty seconds walking a client out now offers: the dose
+ * Dial with the five DOSE words that saves the moment it is tapped, the
+ * Profile note's Loudness (Note · Heads up · Critical, Note
  * checked) with "Matters until" behind Heads up, the To-file tray showing
  * this session's unfiled notes, and that leaving files the note with its
  * loudness. The renewal dialog and Update Pulse are stubbed — each has its
@@ -110,7 +111,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   };
 });
 
-import { VictoryHUDScreen } from "./VictoryHUDScreen";
+import { WrapUpScreen } from "./WrapUpScreen";
 import { AppBottomBar } from "./AppBottomBar";
 import { DOSE_SCALE } from "../features/rating";
 import { UnsavedChangesProvider, useGuardedState } from "../features/unsaved-changes";
@@ -164,7 +165,7 @@ const trainer = { id: "t-doc", fullName: "Jane Coach", initials: "JC", role: "Li
 
 function Screen({ onDose = vi.fn(), onLeave = vi.fn() }: { onDose?: (v: any) => void; onLeave?: (c: any) => void }) {
   return (
-    <VictoryHUDScreen
+    <WrapUpScreen
       client={client}
       session={session}
       logs={[]}
@@ -351,7 +352,7 @@ describe("the post-session screen and a client's history", () => {
 
   function HistoryScreen({ coverage, who = client }: { coverage?: "complete" | "partial" | "unknown"; who?: Client }) {
     return (
-      <VictoryHUDScreen
+      <WrapUpScreen
         client={who}
         coverage={coverage}
         session={{ ...session, sessionNumber: 4 }}
@@ -517,7 +518,7 @@ describe("the packages card (consultation round, Sep 2026)", () => {
 
   function PackagesScreen({ who, coverage = "unknown" }: { who: Partial<Client>; coverage?: "complete" | "partial" | "unknown" }) {
     return (
-      <VictoryHUDScreen
+      <WrapUpScreen
         client={{ ...client, ...who } as Client}
         session={{ ...session, hostedAtStudioId: "s1" } as WorkoutSession}
         logs={[]}
@@ -613,7 +614,7 @@ describe("the packages card (consultation round, Sep 2026)", () => {
 describe("the post-session screen's small honesty fixes (packages round)", () => {
   it("wraps a long machine name rather than cutting it off", async () => {
     const host = await mount(
-      <VictoryHUDScreen
+      <WrapUpScreen
         client={client}
         session={session}
         logs={[]}
@@ -643,7 +644,7 @@ describe("the post-session screen's small honesty fixes (packages round)", () =>
 
 describe("the post-session screen says where the session is saved (session record, Sep 26 2026)", () => {
   const screen = (savedOnThisIpad?: boolean) => (
-    <VictoryHUDScreen
+    <WrapUpScreen
       client={client}
       session={session}
       logs={[]}

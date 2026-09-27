@@ -159,7 +159,7 @@ AJ's own tour, Sep 21 2026.
 | **Client directory** | Search the clients at the studio you're in, and reach your Kaizen roster |
 | **Kaizen roster** | A trainer's own bookmarked clients — the regulars they're watching, so they aren't searching "Jeff… Jeff what?" every time. Per trainer, on `trainers/{uid}.kaizenRoster` |
 | **Client profile** | Opened from the directory or the roster: the whole record of a person |
-| **Start Session** | The door to the Active Session — briefing, live grid, post-session. Rank 1 and 2 |
+| **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Rank 1 and 2 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
 | **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |
 | **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going |

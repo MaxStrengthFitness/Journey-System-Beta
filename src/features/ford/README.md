@@ -281,7 +281,7 @@ moved it.
   studio to read by) or `denied` (a cross-train visitor: they can read the
   client document but not her FORD), and neither may be drawn as "Nothing
   here yet". The FORD page, the briefing cue, the Active Session sheet and
-  the post-session sweep each say "couldn't be read" or "kept by the client's
+  the Wrap-up's sweep each say "couldn't be read" or "kept by the client's
   home studio" instead (`FORD_READ_NOTICE`, `fordReadNotice`). A visitor is
   offered no capture, because the rules refuse that write too; a failed read
   still offers one — a failed READ is no reason to refuse a WRITE. A client

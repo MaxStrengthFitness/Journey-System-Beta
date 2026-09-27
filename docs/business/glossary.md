@@ -52,7 +52,10 @@ Words the studios use, and what they mean in the app. The full training-method g
 | Hub | The studio's shared screen: today's shift, clients waiting, the board, the playbook |
 | Journey Grid | A client's machine-by-session history, and the live session view |
 | Now bar | The fixed bar in a live session showing the current machine and what's next |
-| Briefing | The pre-session screen: check-in, critical notes, plan |
+| Briefing | The pre-session screen, and only that: check-in, critical notes, plan |
+| Wrap-up | The post-session screen, walking the client out: today's sets, the journey, what's next, the Profile note and the Pulse. "Briefing is strictly pre-session while wrap up is post-session" (AJ, Sep 27 2026). Called "the post session briefing" in conversation before it had a name |
+| Note for the next trainer | The note box in the End Session dialog. It files as a Heads up, so it shows on the next trainer's briefing for three weeks. Was "Wrap-up note" until Sep 27 2026 |
+| Profile note | The Wrap-up's own note. At Note loudness it stays on the client's profile and never reaches the briefing; Heads up or Critical sends it there too. Was "the closing note" until Sep 27 2026 |
 | Kaizen Roster | A trainer's running list of clients they are keeping an eye on, each with a reason |
 | 90-day check-in | The subjective progress report: 8 categories scored Green / Yellow / Red |
 | Learning | The Catalog (machines) and the Academy (method), in one tab |

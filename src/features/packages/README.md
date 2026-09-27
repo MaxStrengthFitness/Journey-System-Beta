@@ -10,14 +10,14 @@ Packages are not decided in the consultation. A prospect tries their free workou
 | --- | --- |
 | `package-table.ts` | The table read for a person deciding: per session, a week, each payment; paid in full as ONE payment; totals (the same sums as the Renewal Brief); "a longer commitment lowers every payment" only when this table shows it; once-a-week rows kept aside; the recommendation's starting length; the Academy's lowest-rate offer for the trainer notes; life happens in weeks; the dots. Pure. |
 | `package-copy.ts` | Every sentence the screen says, with its source. Pure, and tested for what each sentence claims. |
-| `package-standing.ts` | Should the post-session screen offer the packages, and what may it say about this client's package: has / away / ended / none / unknown. Pure; reads the client's Mindbody records with the engine's own `pickContracts` / `sessionBalance`. |
+| `package-standing.ts` | Should the Wrap-up offer the packages, and what may it say about this client's package: has / away / ended / none / unknown. Pure; reads the client's Mindbody records with the engine's own `pickContracts` / `sessionBalance`. |
 | `prices-state.ts` | Whether prices may be shown yet: never the defaults a refused read left behind, never the last studio's table after a switch. |
 | `packages-view.ts` | The trainer's taps as a pure reducer (selection, recommendation, how the price is shown, how they pay, weeks away, days, the trainer-notes switch). |
 | `booked-days.ts` | The weekdays of the client's coming bookings, in studio time. |
 | `usePackagesDoor.ts` | What the post-session card shows, and whose table it reads. |
 | `PackagesPanel.tsx` | The client's view, no dialog, so the consultation can mount it. |
 | `PackagesTrainerNotes.tsx` | The trainer's view, never on screen with the client's. |
-| `PackagesSheet.tsx` | The full-screen dialog the post-session screen opens. |
+| `PackagesSheet.tsx` | The full-screen dialog the Wrap-up opens. |
 | `packages.css` | Codex kit tokens and scale only. |
 
 ## The decisions, and why
@@ -31,7 +31,7 @@ Packages are not decided in the consultation. A prospect tries their free workou
 - **Sessions never expire; auto-renew only where the studio said so** (AJ, Sep 24). `PackageTier.renewsAutomatically` is stored inside the package row (the rules don't inspect rows) only once a studio answers; the settings editor asks it per package.
 - **The recommendation starts on 12 months** (AJ: "allow the trainer to recommend one but auto default to 12"), is the trainer's own ("Sam's recommendation"), never "most popular", and is held on screen only.
 - **The guarantee:** the money-back covers monthly payers (AJ); the six-months-at-another-gym half does not (AJ, Sep 24: "does not guarantee monthly payers"), so it says "when you pay in full"; "upgrade", never "move" (a downgrade is a refund question nobody has answered).
-- **Who is offered the packages** (`package-standing.ts` header): only "none" says there is no package, and it says when Mindbody was checked. Prices appear on the post-session screen itself only for a client whose whole story Journey holds (coverage complete) or a temporary profile; everyone else gets the door and the prices wait in the sheet. A long-standing client is never shown a price list because a record looks empty.
+- **Who is offered the packages** (`package-standing.ts` header): only "none" says there is no package, and it says when Mindbody was checked. Prices appear on the Wrap-up itself only for a client whose whole story Journey holds (coverage complete) or a temporary profile; everyone else gets the door and the prices wait in the sheet. A long-standing client is never shown a price list because a record looks empty.
 - **Whose table:** the client's home studio (the nightly job prices them against it), falling back to where the session was hosted.
 
 ## Not done yet

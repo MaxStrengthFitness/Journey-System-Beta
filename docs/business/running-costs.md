@@ -221,7 +221,7 @@ How the counts were built:
 | Where the reads come from | 80 clients | 210 clients |
 | --- | --- | --- |
 | Hub re-reads days 2–8 every 15 minutes (`useLiveSchedule.ts:208-222`) | 42,000 | 111,000 |
-| Screens around each session: profile, Active Session, post-session (~900 each) | 24,000 | 63,000 |
+| Screens around each session: profile, Active Session, Wrap-up (~900 each) | 24,000 | 63,000 |
 | Reconnect reloads of what the studio's iPads watch: roster capped at 1,500 (`useStudioRoster.ts:104-108`), three live days (`useLiveSchedule.ts:256-267`), 24 hours of sessions (`useSessions.ts:31-37`), tasks, notes | 8,500 | 16,500 |
 | Session and client changes sent to the studio's iPads, including heartbeats every 30 seconds (`WorkoutTrackerView.tsx:79`, `:2155-2163`) | 4,000 | 10,500 |
 | The pull's own reads: the two-day window 56× and the month window 4× (`mindbody-api-sync.ts:782-789`) | 6,300 | 16,800 |

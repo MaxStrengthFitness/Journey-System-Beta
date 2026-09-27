@@ -199,7 +199,7 @@ const ClientCheckInPanel = React.lazy(() =>
 );
 import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
-import { VictoryHUDScreen } from "./VictoryHUDScreen";
+import { WrapUpScreen } from "./WrapUpScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
 import { ageOnFile, demographicsPatch } from "../lib/consultation-answers";
 import { studioTodayKey } from "../lib/studio-time";
@@ -2897,7 +2897,7 @@ export function WorkoutTrackerView({
 
   if (screen === "post-session" && postSession) {
     return (
-      <VictoryHUDScreen
+      <WrapUpScreen
         client={postSession.client}
         coverage={clientCoverage}
         session={postSession.session}

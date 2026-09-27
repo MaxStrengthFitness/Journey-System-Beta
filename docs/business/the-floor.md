@@ -1,8 +1,8 @@
 # The floor — what a session actually is
 
 AJ's own account, Sep 18 2026 (`For Clarity 2`), distilled. **Read this before
-touching the Active Session, the Now Bar, the briefing or the post-session
-screen.** Every one of those screens is furniture for the room described here.
+touching the Active Session, the Now Bar, the briefing or the Wrap-up (the
+post-session screen).** Every one of those screens is furniture for the room described here.
 
 ## The definition everything rests on
 
@@ -36,7 +36,7 @@ AJ, Sep 21 2026. Twenty minutes, twice a week, one-on-one only. There is no
 class, no lounge and nobody hanging around afterwards, so **a studio in this
 format has almost no natural opportunity to build community.** The
 relationship therefore gets built on purpose, in the minutes on either side of
-the set — which is what the pre-session briefing and the post-session sweep
+the set — which is what the pre-session briefing and the post-session Wrap-up
 are really for, as much as the coaching.
 
 **FORD** (Family, Occupation, Recreation, Dreams) is the frame for what to
@@ -162,7 +162,7 @@ wait for the session to end and none of which may take them off the tracker:
 The quick note at the top of the session already exists. What it needs: **a
 draft that survives**. Start writing, close it to spot a set or read the chart,
 reopen and continue. At the end, if something is written and not saved, the
-post-session screen says so and lets the trainer finish it or drop it.
+Wrap-up says so and lets the trainer finish it or drop it.
 
 ## Cold starts
 

@@ -101,7 +101,7 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  * notes tokens to their dark values.
  */
 
-export interface VictoryHUDScreenProps {
+export interface WrapUpScreenProps {
   /**
    * How much of this client's story Journey holds (lib/client-coverage.ts).
    *
@@ -226,7 +226,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
   );
 }
 
-export function VictoryHUDScreen({
+export function WrapUpScreen({
   client,
   session,
   logs,
@@ -246,7 +246,7 @@ export function VictoryHUDScreen({
   trainerDropdown,
   onStudioClick,
   coverage = "unknown",
-}: VictoryHUDScreenProps) {
+}: WrapUpScreenProps) {
   const [dose, setDose] = useState<DialValue | null>(null);
   const [doseSaved, setDoseSaved] = useState(false);
   const [notes, setNotes] = useState("");

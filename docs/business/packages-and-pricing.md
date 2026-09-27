@@ -76,7 +76,7 @@ Still open: whether a "12-month" package really bills 12 times. The settings def
 
 ## The packages screen (Sep 24 2026)
 
-The screen a trainer turns toward someone who hasn't chosen a package (`src/features/packages/`, its README has the detail). Packages are not decided in the consultation, so it opens from the **post-session screen** for a client with no package on file, and later from the consultation's own packages step. What AJ decided for it:
+The screen a trainer turns toward someone who hasn't chosen a package (`src/features/packages/`, its README has the detail). Packages are not decided in the consultation, so it opens from the **Wrap-up** (the post-session screen) for a client with no package on file, and later from the consultation's own packages step. What AJ decided for it:
 
 - **The recommendation** is the trainer's own ("Sam's recommendation"), starts on the 12-month package (the Academy's middle option) and can be moved or cleared in the trainer notes. Never "most popular". Nothing is saved: the consultation record, when it exists, will hold it.
 - **Money fallbacks are trainer notes**, never on the client's view, in this order: the guarantee (the big one), the lowest rate on the shortest commitment (on the standard table, $54 a session on The Trial, 6 payments of $432), once a week (only when the studio's table has a once-a-week package, which is any row with 4 sessions a payment), then a few more sessions (extra free workouts before deciding, or bonus sessions added to a package; in Mindbody, the "Session Comp" pricing option).
