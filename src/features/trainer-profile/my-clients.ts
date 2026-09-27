@@ -170,14 +170,18 @@ export function myClientRows(
 export const WHAT_MY_CLIENTS_COUNTS =
   "Sessions with you on record in Journey. Past sessions logged by hand count; imported sessions count only where the import linked them to you. Clients whose home is another studio aren't listed, nor are clients marked inactive.";
 
-/** While the studio has no cutover date. Null once it has one. */
-export function myClientsCutoverLine(studioName: string, cutover: string | null | undefined): string | null {
-  return typeof cutover === "string" && /^\d{4}-\d{2}-\d{2}$/.test(cutover)
-    ? null
-    : `${studioName} is still moving off FileMaker, so older sessions may be missing.`;
+/**
+ * While the studio has no cutover date, or it has not come yet: a cutover set
+ * ahead of time is a studio still on FileMaker, as the renewals job reads it.
+ * Null from the cutover day on.
+ */
+export function myClientsCutoverLine(studioName: string, cutover: string | null | undefined, today: string): string | null {
+  const day = typeof cutover === "string" && /^\d{4}-\d{2}-\d{2}$/.test(cutover) ? cutover : null;
+  if (day && day <= today) return null;
+  return `${studioName} is still moving off FileMaker, so older sessions may be missing.`;
 }
 
-/** While the client list is loading or has failed — never an empty list. */
+/** While the client list is loading, has failed, or isn't known to be read — never an empty list. */
 export const CANT_READ_CLIENTS = "Can't read the client list just now.";
 
 /** The server answered and nobody at the studio has sessions with you. */

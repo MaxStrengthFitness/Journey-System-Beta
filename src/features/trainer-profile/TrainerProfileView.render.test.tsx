@@ -210,6 +210,15 @@ describe("My standing week on the trainer page", () => {
     expect(el.querySelector("[data-testid='my-clients']")?.textContent).toContain("Can't read the client list just now.");
   });
 
+  it("after the roster's read failed, a booked client read by id is not the list: it says it can't read", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "error" });
+    const mine = el.querySelector("[data-testid='my-clients']")!;
+    expect(mine.querySelectorAll("[data-testid='my-client-row']")).toHaveLength(0);
+    expect(mine.textContent).toContain("Can't read the client list just now.");
+    expect(mine.textContent).not.toContain("Judy Daus");
+  });
+
   it("keeps My clients off a colleague's page: it is the trainer's own", async () => {
     const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
     expect((await render(colleague, "solon")).querySelector("[data-testid='my-clients']")).toBeNull();

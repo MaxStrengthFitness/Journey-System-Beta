@@ -63,7 +63,9 @@ export interface TrainerProfileViewProps {
   /**
    * The studio client list's state (`useStudioRoster`), so My clients can say
    * "can't read" while it loads or after its read failed rather than listing
-   * nobody. Absent: an empty list reads as still loading.
+   * nobody. Absent (AppContent doesn't pass it yet — a handoff of the
+   * Openings round): My clients never says you trained nobody, and with no
+   * rows says it can't read.
    */
   rosterStatus?: RosterStatus;
 }

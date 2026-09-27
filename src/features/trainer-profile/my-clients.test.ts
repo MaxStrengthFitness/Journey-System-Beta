@@ -141,11 +141,17 @@ describe("the last session, through history-claims", () => {
 });
 
 describe("the card's words", () => {
-  it("says what it counts, and that the studio is still moving off FileMaker while it has no cutover", () => {
+  it("says what it counts, and that the studio is still moving off FileMaker until its cutover comes", () => {
     expect(WHAT_MY_CLIENTS_COUNTS).toContain("Sessions with you on record in Journey.");
     expect(WHAT_MY_CLIENTS_COUNTS).not.toMatch(/all time|since/i);
-    expect(myClientsCutoverLine("Westlake", null)).toBe("Westlake is still moving off FileMaker, so older sessions may be missing.");
-    expect(myClientsCutoverLine("Westlake", "2026-10-01")).toBeNull();
+    const line = "Westlake is still moving off FileMaker, so older sessions may be missing.";
+    expect(myClientsCutoverLine("Westlake", null, TODAY)).toBe(line);
+    // A cutover set ahead of time: FileMaker is still the live system.
+    expect(myClientsCutoverLine("Westlake", "2026-10-01", TODAY)).toBe(line);
+    // From the cutover day on, the line goes.
+    expect(myClientsCutoverLine("Westlake", "2026-09-30", TODAY)).toBeNull();
+    expect(myClientsCutoverLine("Westlake", "2026-09-01", TODAY)).toBeNull();
+    expect(myClientsCutoverLine("Westlake", "not a date", TODAY)).toBe(line);
     expect(noClientsSentence("Westlake")).toBe("No clients at Westlake have sessions with you on record in Journey yet.");
   });
 });

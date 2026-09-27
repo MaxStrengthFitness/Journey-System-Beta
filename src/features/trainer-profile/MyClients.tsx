@@ -38,8 +38,12 @@ export interface MyClientsProps {
   /** This studio's `journeyCutoverDate`. */
   cutover: string | null;
   /**
-   * The studio client list's state, from `useStudioRoster`. Absent (a caller
-   * that doesn't pass it yet): an empty list reads as still loading.
+   * The studio client list's state, from `useStudioRoster`. Absent (AppContent
+   * doesn't pass it yet — a handoff of the Openings round): the card lists
+   * the rows it can work out, but never says "no clients have sessions with
+   * you" — the list it holds may be a single client opened earlier, or booked
+   * visitors read by id after the roster's read failed — so with no rows it
+   * says it can't read.
    */
   rosterStatus?: RosterStatus;
   tz?: string;
@@ -59,19 +63,24 @@ export function MyClients({
 }: MyClientsProps) {
   const [showAll, setShowAll] = useState(false);
   const today = studioTodayKey(new Date(), tz);
-  const status: RosterStatus = rosterStatus ?? (clients.length > 0 ? "ready" : "loading");
+  // Rows are worked out from a list the caller says was read, or — when it
+  // doesn't say — from whatever list it holds.
+  const readable = rosterStatus === "ready" || (rosterStatus === undefined && clients.length > 0);
 
   const ids = useMemo(() => myTrainerIds(trainer, uid), [trainer, uid]);
   const rosterIds = useMemo(() => new Set((trainer.kaizenRoster ?? []).map((e) => e.clientId)), [trainer.kaizenRoster]);
   const rows = useMemo(
-    () => (status === "ready" ? myClientRows(clients, { studioId, ids, rosterIds, cutover, today }) : []),
-    [status, clients, studioId, ids, rosterIds, cutover, today],
+    () => (readable ? myClientRows(clients, { studioId, ids, rosterIds, cutover, today }) : []),
+    [readable, clients, studioId, ids, rosterIds, cutover, today],
   );
+  // "No clients have sessions with you" only off a list known to be read in
+  // full: an unread, failed or unknown list with no rows says it can't read.
+  const cantRead = !readable || (rows.length === 0 && rosterStatus !== "ready");
 
   const shown = showAll ? rows : rows.slice(0, MY_CLIENTS_SHOWN);
   const lately = shown.filter((r) => r.coachedLately);
   const others = shown.filter((r) => !r.coachedLately);
-  const migrating = myClientsCutoverLine(studioName, cutover);
+  const migrating = myClientsCutoverLine(studioName, cutover, today);
 
   return (
     <section className="tp-card tp-mc" aria-labelledby="my-clients-title" data-testid="my-clients">
@@ -79,14 +88,14 @@ export function MyClients({
         <h2 className="tp-card__title" id="my-clients-title">
           My clients
         </h2>
-        {status === "ready" && rows.length > 0 && (
+        {!cantRead && rows.length > 0 && (
           <span className="tp-card__count">
             {rows.length} {rows.length === 1 ? "client" : "clients"}
           </span>
         )}
       </div>
 
-      {status !== "ready" ? (
+      {cantRead ? (
         <div className="tp-card__body">
           <p className="tp-mc__state" role="status" data-testid="my-clients-state">
             {CANT_READ_CLIENTS}
@@ -112,7 +121,7 @@ export function MyClients({
       )}
 
       <div className="tp-card__body tp-mc__foot">
-        {status === "ready" && rows.length > MY_CLIENTS_SHOWN && (
+        {!cantRead && rows.length > MY_CLIENTS_SHOWN && (
           <button type="button" className="tp-btn" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
             {showAll ? `Show the first ${MY_CLIENTS_SHOWN}` : `Show all ${rows.length}`}
           </button>

@@ -75,8 +75,9 @@ plain, dense and calm. This is now too.
 │ MY RENEWALS · MY STANDING WEEK (your own page)                           │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ YOUR WEEK AT WESTLAKE (your own page)            This week and last      │
-│   Clients trained 7 · Sessions 18 · Session time 9 h (18 × 30 min)       │
-│   First session to last  24 h 10 min over 4 days                        │
+│   Clients trained 7 · Sessions 18                                        │
+│   Session time 9 h (18 sessions × 30 min)                                │
+│   First session to last  24 h 10 min over 4 days                         │
 │   Mon, Sep 28: 6:58 to 9:34 AM, and 4:02 to 7:10 PM (9 sessions).        │
 ├────────────────────────────────┬─────────────────────────────────────────┤
 │ UPCOMING · 6 booked            │ RECENTLY COACHED · last 30 days         │
@@ -344,11 +345,18 @@ with the team); My clients is who you have TRAINED, for "my off time".
   session came after it, so it is made only where Journey owns the days
   after it (`canClaimGap` over `ownedWindow`, judged by the client's home
   studio's cutover); otherwise "Last in Journey: Sep 25". While the studio
-  has no cutover date the card says older sessions may be missing.
+  has no cutover date, or it has not come yet (a cutover set ahead of time
+  is a studio still on FileMaker), the card says older sessions may be
+  missing.
 - **Loading and failed.** The page takes the roster's state as
   `rosterStatus`. While it is loading, or its read has failed, the card says
-  **"Can't read the client list just now"** and lists nobody. A caller that
-  doesn't pass it: an empty list reads as still loading.
+  **"Can't read the client list just now"** and lists nobody — even though
+  the list the page holds is then not empty: it carries a client opened
+  earlier, and after a failed read the booked clients read by id. A caller
+  that doesn't pass the state never gets "No clients at ... have sessions
+  with you": with no rows the card says it can't read. AppContent passing
+  `rosterStatus` is what makes the failed state show whenever a client has
+  been opened; until it does, a failed read can still show a partial list.
 
 ---
 
