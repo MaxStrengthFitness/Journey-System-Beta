@@ -20,6 +20,8 @@ const EXPECTED: Record<string, string> = {
   "AppContent.tsx": 'kind="screen"',
   // Pulse, inside the Active Session: LoadBoundary kind="panel".
   "components/WorkoutTrackerView.tsx": 'kind="panel"',
+  // The Hub's Opportunities layer (Sep 27 2026): the Hub may reload itself.
+  "components/ClientsView.tsx": 'kind="screen"',
 };
 
 function sourceFiles(dir: string): string[] {

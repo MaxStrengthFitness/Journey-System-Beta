@@ -1,0 +1,37 @@
+/* The Hub's layer switch — prefix hl-. Colour from equipment.tokens.css. */
+@import "../equipment/equipment.tokens.css";
+
+.hl-switch {
+  flex: none;
+  display: inline-flex;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--eq-surface);
+}
+
+.hl-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hl-btn + .hl-btn {
+  border-left: 1px solid var(--eq-border);
+}
+
+.hl-btn[aria-pressed="true"] {
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.hl-btn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
+}

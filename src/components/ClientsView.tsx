@@ -57,6 +57,17 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { openProfileAt } from "../features/client-profile/profile-nav";
 import { homeCutoverOf } from "../lib/client-coverage";
+import { LoadBoundary } from "../features/new-version/LoadBoundary";
+import { LoadingArea } from "./LoadingMark";
+import { LayerSwitch, type HubLayer } from "../features/hub-opportunities/LayerSwitch";
+
+/*
+ * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
+ * opened, so the Hub's own bundle stays as it was. Inside a LoadBoundary
+ * (lazy-screens.test.ts): a deploy that removed its file replaces only the
+ * layer, and recovers on the Hub, where a reload is allowed.
+ */
+const RunSheet = React.lazy(() => import("../features/hub-opportunities/RunSheet"));
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
 const SLOT_MINUTES = 30;
@@ -197,6 +208,8 @@ export function ClientsView({
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
+  /** Schedule (the grid, unchanged) or Opportunities (the run-sheet). Always opens on Schedule. */
+  const [layer, setLayer] = useState<HubLayer>("schedule");
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const selectedDayRef = useRef<HTMLButtonElement | null>(null);
 
@@ -489,11 +502,12 @@ export function ClientsView({
     }
     if (landedOnRef.current === key) return;
     const el = timelineRef.current;
-    if (!el) return;
+    // Hidden under the Opportunities layer: land when Schedule is back.
+    if (!el || layer !== "schedule") return;
     landedOnRef.current = key;
     const top = Math.max(0, nowLineTop - Math.round(el.clientHeight / 3));
     el.scrollTo({ top, behavior: "auto" });
-  }, [nowLineTop, selectedDate]);
+  }, [nowLineTop, selectedDate, layer]);
 
   /**
    * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
@@ -1047,6 +1061,9 @@ export function ClientsView({
                 a trainer is actually accountable for on the floor: how many
                 sessions, how much still to do. */}
             <div className="shrink-0 flex items-center gap-3 md:gap-4 px-3 md:px-4 h-12 border-b border-slate-200 dark:border-slate-800">
+              {/* The Hub's two layers (Sep 27 2026). The strip stays put; only
+                  the body below it changes, and the day is shared. */}
+              <LayerSwitch value={layer} onChange={setLayer} />
               <div
                 // Two tiles, not four (Sep 6). `grid-cols-2` rather than a
                 // flex row: with equal columns the pair keeps a stable,
@@ -1145,7 +1162,7 @@ export function ClientsView({
 
             {/* Continuous timeline. This element is the ONLY scroller (both axes),
                 which is what lets the trainer header and the time axis stick. */}
-            <div ref={timelineRef} className="flex-1 min-h-0 overflow-auto relative">
+            <div ref={timelineRef} className="flex-1 min-h-0 overflow-auto relative" hidden={layer !== "schedule"}>
               <div
                 className="relative"
                 style={{
@@ -1405,6 +1422,37 @@ export function ClientsView({
                 </table>
               </div>
             </div>
+
+            {/* Opportunities: every client booked on the day on screen, sorted
+                by what matters today (features/hub-opportunities). It reads
+                the Hub's bookings, roster, sessions and Critical notes — the
+                same read the cards use — and nothing per client. */}
+            {layer === "opportunities" && (
+              <LoadBoundary kind="screen" resetKey="hub-opportunities">
+                <React.Suspense fallback={<LoadingArea label={"Opening Opportunities\u2026"} />}>
+                  <RunSheet
+                    day={calendarLabelKey(selectedDate)}
+                    now={currentTime}
+                    schedules={schedules || []}
+                    clients={clients}
+                    sessions={sessions}
+                    sessionsKnown={sessionsKnown}
+                    studios={cutoverStudios}
+                    activeStudioId={activeStudioId}
+                    authTrainer={authTrainer}
+                    uid={auth.currentUser?.uid ?? null}
+                    trainers={sortedTrainers}
+                    criticalFor={criticalNotes.notesFor}
+                    onOpenProfile={(id) => onSelectClient(id)}
+                    onStartSession={(id) => {
+                      // The Hub search card's own path to a session.
+                      onSelectClient(id);
+                      setView("workouts");
+                    }}
+                  />
+                </React.Suspense>
+              </LoadBoundary>
+            )}
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6">
