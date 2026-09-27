@@ -5,7 +5,7 @@ import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Studio, Trainer } from "../../types";
 import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
-import { useUnsavedChanges } from "../unsaved-changes";
+import { UnsavedChangesScope, useLeaveScope, useUnsavedChanges } from "../unsaved-changes";
 import { AwayEditor } from "./AwayEditor";
 import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
 import { serverRead } from "./server-read";
@@ -36,6 +36,8 @@ import "./standing-week.css";
  *                         tell", never "open".
  *   each person's week    by name, never ranked: where it stands, and Review
  *                         to agree a proposal as it is or changed first.
+ *                         Opening another person's week while one holds a
+ *                         leader's changes asks first (a leave scope).
  *
  * Team is the studio tier's section; the rules are the boundary
  * (firestore.rules, standingWeeks: a leader agrees, a trainer proposes).
@@ -54,6 +56,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   const today = studioTodayKey(new Date(), tz);
   const weeks = useStandingWeeks(studioId);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  // Opening another person's week, or closing this one from its row, would
+  // take a leader's half-changed week away: it asks first (unsaved-changes).
+  const reviewScope = useLeaveScope();
 
   const rows = useMemo(() => teamWeeks(trainers, weeks.docs, studioId), [trainers, weeks.docs, studioId]);
   // Only the weeks of people who still work here are checked: a week left
@@ -153,7 +158,7 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
                       variant={r.status === "proposed" || r.status === "changed" ? "primary" : "quiet"}
                       aria-expanded={reviewing === r.uid}
                       aria-label={`${actionLabel(r)}: ${r.name}`}
-                      onClick={() => setReviewing(reviewing === r.uid ? null : r.uid)}
+                      onClick={() => reviewScope.guard(() => setReviewing(reviewing === r.uid ? null : r.uid))}
                     >
                       {actionLabel(r)}
                     </AdminButton>
@@ -163,16 +168,18 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
             </AdminRows>
           )}
           {open && (
-            <WeekReview
-              key={open.uid}
-              row={open}
-              studio={studio}
-              authTrainer={authTrainer}
-              clients={clients}
-              tz={tz}
-              today={today}
-              onDone={() => setReviewing(null)}
-            />
+            <UnsavedChangesScope scope={reviewScope}>
+              <WeekReview
+                key={open.uid}
+                row={open}
+                studio={studio}
+                authTrainer={authTrainer}
+                clients={clients}
+                tz={tz}
+                today={today}
+                onDone={() => setReviewing(null)}
+              />
+            </UnsavedChangesScope>
           )}
         </section>
       </div>

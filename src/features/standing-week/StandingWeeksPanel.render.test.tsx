@@ -50,6 +50,7 @@ vi.mock("../admin/changes/useWeekSchedule", () => ({
 }));
 
 import { StandingWeeksPanel } from "./StandingWeeksPanel";
+import { UnsavedChangesProvider } from "../unsaved-changes";
 
 const studio = { id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957" } as unknown as Studio;
 const person = (id: string, fullName: string) =>
@@ -263,5 +264,56 @@ describe("Standing weeks on Team", () => {
     expect(host.querySelector("[aria-label='Wednesday: starts']")).not.toBeNull();
     await click("Agree this week");
     expect(fake.writes[0].data).toMatchObject({ final: again });
+  });
+});
+
+describe("a leader's changes never vanish (voice review follow-up)", () => {
+  async function mountGuarded() {
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <UnsavedChangesProvider>
+            <StandingWeeksPanel studio={studio} authTrainer={pat} trainers={trainers} clients={clients} />
+          </UnsavedChangesProvider>
+        </StrictMode>,
+      );
+    });
+  }
+  const bodyButton = (label: string) => {
+    const b = [...document.body.querySelectorAll("button")].find((x) => x.textContent?.trim() === label);
+    if (!b) throw new Error(`No button "${label}" in the page`);
+    return b as HTMLButtonElement;
+  };
+  const question = () => document.body.querySelector("[role='alertdialog']")?.textContent ?? "";
+
+  it("asks before another person's review takes the changes away, and keeps them on Keep editing", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Remove Judy Smith from Monday");
+    await click("Review: Sam Lee");
+    expect(question()).toContain("You have unsaved changes to Ann's standing week. Leave without saving?");
+    // Keep editing: Ann's week is still open, still changed.
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).toBeNull();
+    expect(button("Agree it as changed")).toBeTruthy();
+    // Tapping Ann's own button again, to close it, asks too; Leave goes.
+    await click("Change: Ann Park");
+    expect(question()).toContain("Ann's standing week");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).toBeNull();
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("moves between reviews without asking when nothing was changed", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Review: Sam Lee");
+    expect(question()).toBe("");
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
   });
 });
