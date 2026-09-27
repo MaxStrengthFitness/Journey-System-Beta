@@ -246,20 +246,29 @@ export function CaptureSheet({
                 />
               )}
               {state.floorForm === "ask" && (
-                <div className="rk-chips" role="group" aria-label="What kind of ask">
-                  {ASK_KINDS.map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      className="rk-chip"
-                      aria-pressed={state.askKind === k}
-                      title={REQUEST_KIND_HINT[k]}
-                      onClick={() => edit({ askKind: k })}
-                    >
-                      {REQUEST_KIND_LABEL[k]}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="rk-chips" role="group" aria-label="What kind of ask">
+                    {ASK_KINDS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className="rk-chip"
+                        aria-pressed={state.askKind === k}
+                        aria-describedby={state.askKind === k ? "cs-kind-hint" : undefined}
+                        onClick={() => edit({ askKind: k })}
+                      >
+                        {REQUEST_KIND_LABEL[k]}
+                      </button>
+                    ))}
+                  </div>
+                  {/* What the chosen kind means, in view: until Sep 27 2026
+                      it was only a hover tooltip on each chip, which an iPad
+                      cannot show. The Floor's own composer puts the same
+                      line in its placeholder (RequestsLane). */}
+                  <p className="rk-hint" id="cs-kind-hint">
+                    {REQUEST_KIND_HINT[state.askKind]}
+                  </p>
+                </>
               )}
             </div>
           )}

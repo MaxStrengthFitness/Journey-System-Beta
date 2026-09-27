@@ -247,7 +247,9 @@ export function MyStudioView({
         )}
         </UnsavedChangesScope>
 
-        {shown !== "relay" && (
+        {/* Capture steps aside while the Context Panel is open, so it never
+            covers the panel's foot; Machines' own door is caught in relay.css. */}
+        {shown !== "relay" && !panel && (
           <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
             <Plus size={22} aria-hidden />
             <span className="cf__label">Capture</span>

@@ -151,7 +151,8 @@ describe("My Studio", () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
-    expect(h.textContent).toContain("Pulse");
+    // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
+    expect(h.textContent).toContain("Just now");
     expect(h.textContent).toContain("No sessions on your schedule");
     expect(h.textContent).toContain("Next up");
     expect(h.textContent).toContain("Nothing waiting on the Floor.");

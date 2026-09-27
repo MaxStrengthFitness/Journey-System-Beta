@@ -180,7 +180,9 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
         <ContextPanel content={panel} onClose={closePanel} />
       </div>
 
-      {shown !== "notes" && (
+      {/* Capture steps aside while the Context Panel is open: the panel's
+          foot (an ask's Done, Next up's Mark all) sits in the same corner. */}
+      {shown !== "notes" && !panel && (
         <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
           <Plus size={22} aria-hidden />
           <span className="cf__label">Capture</span>

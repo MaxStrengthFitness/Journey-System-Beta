@@ -374,10 +374,14 @@
 .stq__react[aria-pressed="true"] .stq__react-n { background: var(--st-live);
   color: var(--st-live-on); }
 
+/* Who replied, under the replies (it was a hover tooltip until Sep 27 2026). */
+.stq__reacted { margin: -0.2rem 0 0; padding: 0 0.875rem 0.6rem 3.25rem;
+  font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+
 @media (max-width: 480px) {
   /* The 3.25rem indent lines the reactions up under the title on a tablet.
      On a phone that indent costs more than the alignment buys. */
-  .stq__reacts { padding-left: 0.875rem; }
+  .stq__reacts, .stq__reacted { padding-left: 0.875rem; }
 }
 
 /* ==========================================================================

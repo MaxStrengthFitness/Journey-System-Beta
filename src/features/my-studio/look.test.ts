@@ -121,6 +121,8 @@ const NAME_CLASSES = [
   "ini__name", // a trainer, in the initiative roll-up
   "pt__line", // the Now Bar's teammate line: a teammate's name and what they did
   "pt__who",
+  "ds__name", // a client on the opened day strip's list
+  "stq__reacted", // who replied to an ask
   "tm-card__name", // a person's card on Team
   "tj-card__title", // a team job
   "tj-person__name",
@@ -225,6 +227,18 @@ const TAP_CLASSES = [
 ] as const;
 
 const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
+
+describe("the Now Bar", () => {
+  it("never hides the teammates line, which holds the only kudos button (it was hidden in portrait until Sep 27 2026)", () => {
+    for (const r of rulesFor("rnb__pulse")) {
+      expect(declared(r.body, "display"), r.selectors.join(", ")).not.toContain("none");
+      expect(declared(r.body, "visibility"), r.selectors.join(", ")).not.toContain("hidden");
+    }
+    for (const r of rulesFor("pt__kudos")) {
+      expect(declared(r.body, "display"), r.selectors.join(", ")).not.toContain("none");
+    }
+  });
+});
 
 describe("controls in My Studio", () => {
   it("on Machines' floor list are the Operations kit's 40px buttons, not the 28-32px stock ones", () => {
