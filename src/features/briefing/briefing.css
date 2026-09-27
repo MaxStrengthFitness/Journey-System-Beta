@@ -553,7 +553,10 @@
   position: sticky;
   bottom: 0;
   z-index: 20;
-  padding: 12px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  /* No home-indicator inset here: the bar sits above AppBottomBar, which
+     pays it (features/home-screen). Adding it again was 20px of dead space
+     under Start session. */
+  padding: 12px 14px 14px;
   margin-top: 4px;
   background: linear-gradient(
     to top,

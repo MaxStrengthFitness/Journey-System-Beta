@@ -542,7 +542,7 @@ export function EditRoutineDrawer({
       <DialogContent
         showCloseButton={false}
         style={dialogPositionStyle}
-        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] h-[94dvh] max-h-[94dvh] overflow-hidden flex flex-col p-0 gap-0 bg-card rounded-2xl border border-div-l"
+        className="w-[97vw] sm:max-w-[97vw] xl:max-w-[1360px] h-[calc(94dvh_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px))] max-h-[calc(94dvh_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px))] overflow-hidden flex flex-col p-0 gap-0 bg-card rounded-2xl border border-div-l"
       >
         <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-div-l shrink-0 space-y-4 max-h-[42dvh] overflow-y-auto overscroll-contain touch-pan-y">
           <div className="flex items-start justify-between gap-4">

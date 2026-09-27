@@ -302,8 +302,9 @@ button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset
   flex: none;
   display: flex;
   gap: 0.5rem;
+  /* No home-indicator inset: the panel is inside the app shell, above
+     AppBottomBar, which pays it (features/home-screen). */
   padding: 0.75rem 1rem;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   border-top: 1px solid var(--st-border);
   background: var(--st-surface);
 }
@@ -345,8 +346,10 @@ button.nb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset
 
 .cf {
   position: absolute;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  /* Inside the app shell, above AppBottomBar, which pays the home-indicator
+     inset (features/home-screen); an iPad has no side insets. */
+  right: 1rem;
+  bottom: 1rem;
   z-index: 6;
   display: inline-flex;
   align-items: center;

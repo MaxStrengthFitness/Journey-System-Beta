@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
+import { syncThemeColor } from "@/features/home-screen/theme-color"
 
 type Theme = "dark" | "light" | "system"
 
@@ -42,10 +43,13 @@ export function ThemeProvider({
         : "light"
 
       root.classList.add(systemTheme)
-      return
+    } else {
+      root.classList.add(theme)
     }
 
-    root.classList.add(theme)
+    // The system chrome (an installed app's status bar or title bar) follows
+    // the header's colour for the theme just applied.
+    syncThemeColor()
   }, [theme])
 
   const value = {

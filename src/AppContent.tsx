@@ -243,6 +243,7 @@ import { useClientMutations } from "./hooks/useClientMutations";
 // notes share.
 import { parseLearningRef, type LearningRef } from "./features/learning/ref";
 import { AppBottomBar } from "./components/AppBottomBar";
+import { StatusBarStrip } from "./features/home-screen/StatusBarStrip";
 
 export default function AppContent({
   user,
@@ -1704,6 +1705,18 @@ export default function AppContent({
         theme={theme}
       >
         <div className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full">
+          {/* The iPad status bar's inset, paid once for every screen in the
+              shell (features/home-screen). 0px outside the Home Screen app;
+              the bottom inset is AppBottomBar's. */}
+          <StatusBarStrip
+            tone={
+              isDemoStudioId(activeStudioId)
+                ? "demo"
+                : currentView === "workouts"
+                  ? "session"
+                  : "header"
+            }
+          />
           {/* Above the header, and outside the `workouts` condition below, so
               it is on the Active Session too — see DemoBanner.tsx. */}
           {isDemoStudioId(activeStudioId) && (

@@ -59,7 +59,7 @@ export function SessionFlagsSheet({ clientFirstName, flags, machines, onClose }:
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-slate-50 shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+        className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-slate-50 pt-safe pb-safe shadow-2xl dark:border-slate-800 dark:bg-slate-950"
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div className="flex flex-col">

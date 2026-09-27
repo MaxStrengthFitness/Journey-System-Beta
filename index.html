@@ -2,12 +2,56 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets the page run under the iPad status bar and the
+         home indicator, and is what makes env(safe-area-inset-*) report real
+         values. Without it every inset in the app is 0. The app pads for the
+         insets itself: src/features/home-screen/README.md. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- iPad Safari otherwise guesses that "54 LB 7 REPS" on a routine row is
          an address or a phone number and underlines it. Nothing in this app
          is a link unless it is drawn as one. -->
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
     <title>Max Strength App</title>
+
+    <!-- The Home Screen web app (Safari: Share -> Add to Home Screen).
+         src/features/home-screen/README.md explains every line of this. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Journey" />
+    <!-- The page draws under the status bar, whose clock and battery are
+         always WHITE in this style. Dark theme: the header's own colour runs
+         up behind them. Light theme: the .status-band below paints a dark
+         strip, or the clock would be white on white. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- The dark header (--bg-dark-2). ThemeProvider keeps it in step with
+         the theme; the script below sets it before the first paint. -->
+    <meta name="theme-color" content="#16263D" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <script>
+      // The theme before the first paint. ThemeProvider (src/components/
+      // ThemeProvider.tsx) owns the theme once React runs; until then <html>
+      // has no .dark class, so a Home Screen launch painted the LIGHT ground
+      // for a moment even though the app defaults to dark, and under the
+      // translucent status bar that is a white clock on a near-white screen.
+      // Same key, same default ("dark", from main.tsx) and same "system" rule
+      // as ThemeProvider; the colours are the header's (--bg-dark-2).
+      (function () {
+        var theme = "dark";
+        try {
+          theme = localStorage.getItem("journey-system-theme") || "dark";
+        } catch (e) {}
+        if (theme === "system") {
+          theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        if (theme !== "light") theme = "dark";
+        document.documentElement.classList.add(theme);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "light" ? "#FFFFFF" : "#16263D");
+      })();
+    </script>
     <script>
       // Buffer only. Errors that happen before the app bundle finishes loading
       // (a chunk that failed to download, a syntax error in the entry) would
@@ -37,6 +81,10 @@
     </script>
   </head>
   <body>
+    <!-- The strip under the iPad status bar, on every screen including the
+         sign-in, the crash page and every sheet. Its height is the status
+         bar's inset, so it is 0px in a Safari tab. index.css, "Safe areas". -->
+    <div class="status-band" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

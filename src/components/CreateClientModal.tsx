@@ -116,8 +116,11 @@ export function CreateClientModal({
   const handleSaveClick = () => executeSave(false);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col max-h-[95dvh] rounded-[32px] overflow-hidden relative text-foreground">
+    // Rendered before the app shell exists (AppContent returns it early), so it
+    // keeps clear of the iPad status bar and home indicator itself
+    // (features/home-screen), and the card may use all the height between.
+    <div className="fixed inset-0 z-40 flex items-center justify-center px-4 sm:px-6 pt-safe-4 pb-safe-4 sm:pt-safe-6 sm:pb-safe-6 bg-slate-900/60 dark:bg-slate-950/90 backdrop-blur-sm">
+      <Card className="w-full max-w-2xl bg-card border border-slate-200 dark:border-slate-800 shadow-2xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col max-h-full rounded-[32px] overflow-hidden relative text-foreground">
         {duplicateWarning && (
           <div className="absolute inset-0 z-50 bg-slate-950/40 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6">
             <div className="bg-card border border-amber-500 rounded-[24px] p-8 max-w-md w-full shadow-2xl relative overflow-hidden">

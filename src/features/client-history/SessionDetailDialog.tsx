@@ -519,7 +519,7 @@ export function SessionDetailDialog({
   return (
     <>
       <Dialog open={daySessions.length > 0} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="hsd max-w-[calc(100%-2rem)] sm:max-w-[min(56rem,calc(100%-2rem))] max-h-[94dvh] w-full p-0 gap-0 overflow-hidden flex flex-col rounded-2xl">
+        <DialogContent className="hsd max-w-[calc(100%-2rem)] sm:max-w-[min(56rem,calc(100%-2rem))] max-h-[calc(94dvh_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px))] w-full p-0 gap-0 overflow-hidden flex flex-col rounded-2xl">
           {selected && (
             <>
               <header className="hsd-head">

@@ -50,7 +50,7 @@ export function AppBottomBar({
     currentView === "academy";
 
   return appMode === "trainer" ? (
-    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
+    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-[#68717A]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "clients"}
         onClick={() => onNavigate("clients")}
@@ -119,7 +119,7 @@ export function AppBottomBar({
       />
     </nav>
   ) : (
-    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around z-30">
+    <nav className="flex-none bg-white dark:bg-bg-dark border-t border-orange-500/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2 sm:px-6 min-h-14 sm:min-h-20 pb-safe flex items-center justify-around z-30">
       <NavButton
         active={currentView === "admin-dashboard"}
         onClick={() => onNavigate("admin-dashboard")}

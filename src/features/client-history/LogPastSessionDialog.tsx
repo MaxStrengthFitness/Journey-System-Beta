@@ -309,7 +309,7 @@ export function LogPastSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="hsd lps max-w-[calc(100%-2rem)] sm:max-w-[min(52rem,calc(100%-2rem))] max-h-[94dvh] w-full p-0 gap-0 overflow-hidden flex flex-col rounded-2xl">
+      <DialogContent className="hsd lps max-w-[calc(100%-2rem)] sm:max-w-[min(52rem,calc(100%-2rem))] max-h-[calc(94dvh_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px))] w-full p-0 gap-0 overflow-hidden flex flex-col rounded-2xl">
         <DialogHeader className="lps-head">
           <DialogTitle className="hsd-head__day flex items-center gap-2">
             <CalendarPlus className="w-5 h-5" style={{ color: "var(--cal-live-text)" }} aria-hidden />

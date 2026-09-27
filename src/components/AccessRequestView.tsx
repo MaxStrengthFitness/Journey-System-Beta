@@ -123,7 +123,7 @@ export default function AccessRequestView({
      * own, centring an overflowing flex child clips the TOP of it, which is
      * worse than the original bug because it hides the heading.
      */
-    <div className="touch-pane overflow-y-auto overscroll-contain bg-[#1c1d1f] relative text-white font-sans">
+    <div className="touch-pane border-t-safe overflow-y-auto overscroll-contain bg-[#1c1d1f] relative text-white font-sans">
       {/* Background Ambience — fixed, so it covers the viewport rather than
           scrolling away with a long form. */}
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#3a352c] via-[#1c1d1f] to-[#121212] opacity-85"></div>

@@ -563,7 +563,7 @@ export function StudioSelectionView({
      * momentum scrolling for older iPadOS, and a 100vh height that `dvh`
      * upgrades where it is supported rather than depending on it.
      */
-    <div className="touch-pane overflow-y-auto overscroll-contain bg-background text-ink-d1">
+    <div className="touch-pane border-t-safe overflow-y-auto overscroll-contain bg-background text-ink-d1">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}

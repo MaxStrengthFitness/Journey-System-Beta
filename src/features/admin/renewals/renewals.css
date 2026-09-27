@@ -37,7 +37,10 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px;
+  /* A full-height panel over the shell, so it clears the iPad status bar
+     itself (features/home-screen). Its body's 32px of bottom padding already
+     clears the home indicator. */
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 16px;
   border-bottom: 1px solid var(--adm-border);
   background: var(--adm-surface);
 }

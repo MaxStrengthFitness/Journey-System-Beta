@@ -217,7 +217,7 @@ export function FordDetailDialog({
           components/ui/dialog.tsx), and a dialog taller than the screen
           scrolls rather than clipping: with the gesture open and the iPad
           keyboard up, Save must stay reachable. */}
-      <DialogContent className="ford-scope max-w-lg sm:max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto p-0 gap-0">
+      <DialogContent className="ford-scope max-w-lg sm:max-w-lg max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-top,0px)_-_env(safe-area-inset-bottom,0px))] overflow-y-auto p-0 gap-0">
         <div className="ford-capture p-4">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">

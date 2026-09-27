@@ -979,6 +979,9 @@
 .pq-dialog__sub { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sr-ink-muted); }
 .pq-dialog__close { margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: none; border-radius: 12px; background: var(--sr-surface-2); color: var(--sr-ink-2); cursor: pointer; }
 .pq-dialog__body { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px; }
+/* Below 700px (a narrow Split View or Stage Manager window) the panel sits on
+   the bottom edge, over the home indicator (features/home-screen). */
+@media (max-width: 699px) { .pq-dialog__body { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); } }
 
 /* ==========================================================================
    THE PULSE PANEL CHROME (reporting round, Sep 2026)
@@ -1161,7 +1164,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  /* Full screen over everything, so it clears the iPad status bar itself
+     (features/home-screen); the footer below pays the home indicator. */
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
   border-bottom: 1px solid var(--sr-border);
   background: var(--sr-surface);
 }

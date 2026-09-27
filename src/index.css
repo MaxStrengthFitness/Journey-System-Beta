@@ -579,3 +579,83 @@
     }
   }
 }
+
+/* =====================================================================
+   SAFE AREAS — the iPad status bar and home indicator.
+
+   index.html asks for `viewport-fit=cover` and a `black-translucent`
+   status bar, so in the Home Screen app the page runs edge to edge: the
+   status bar (clock, battery; about 24px) is drawn OVER the top of the
+   page and the home indicator (about 20px) over the bottom. The insets
+   are 0 in a Safari tab, so everything below is a no-op there.
+
+   THE RULE: each inset is paid ONCE, by the element at the true edge of
+   the screen, never by something stacked above it.
+     top    — the app shell (AppContent) pays it with its StatusBarStrip.
+              Anything portalled over the shell that reaches the top of
+              the screen (a full-height sheet or slide-over) pays its own.
+     bottom — AppBottomBar pays it on every signed-in screen. Anything
+              drawn inside <main> sits above the bar and must NOT add it
+              again (that was 20px of dead space under Start session).
+              Only layers that cover the bar pay their own.
+   src/features/home-screen/README.md has the list, and
+   home-screen.test.ts keeps it: a new use of safe-area-inset in src/
+   has to be added there with its reason.
+   ===================================================================== */
+
+/* pt-safe / pb-safe: exactly the inset. pt-safe-4 / pb-safe-6: the inset
+   PLUS that much of the spacing scale, for an edge that needs breathing
+   room above the home indicator as well. top-safe-3: the same for an
+   absolutely placed child (padding never moves one), such as a sheet's
+   close button. h-safe-top: a box as tall as the status bar (the shell's
+   strip). */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility pt-safe-* {
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--spacing) * --value(integer));
+}
+@utility pb-safe-* {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing) * --value(integer));
+}
+@utility top-safe-* {
+  top: calc(env(safe-area-inset-top, 0px) + var(--spacing) * --value(integer));
+}
+@utility h-safe-top {
+  height: env(safe-area-inset-top, 0px);
+}
+/* border-t-safe: for a full-screen SCROLL PANE outside the shell (the studio
+   picker, the access request). Padding would scroll away with the content
+   and let cards slide up under the clock; a transparent top border as tall
+   as the status bar keeps the pane's background there and clips its content
+   below it. */
+@utility border-t-safe {
+  border-top: env(safe-area-inset-top, 0px) solid transparent;
+}
+
+/* The status band (index.html, first child of <body>). Always there, on
+   every screen, above every sheet and toast, and never in the way of a
+   tap. In the dark theme it is clear, so each screen's own dark top runs
+   up behind the clock. In the light theme every top surface is white or
+   near white, and a black-translucent status bar always draws WHITE text,
+   so the band paints the one dark neutral that is the same in both themes
+   — without it the clock and battery are invisible. */
+.status-band {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--n-900);
+  z-index: 2147483000;
+  pointer-events: none;
+}
+.dark .status-band {
+  background: transparent;
+}
+@media print {
+  .status-band {
+    display: none;
+  }
+}
