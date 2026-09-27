@@ -95,7 +95,7 @@ import {
   type ContractTermRow,
   type PaymentKind,
 } from "./contract";
-import { isMindbodyLinked, membershipTimeline, onFileFacts, packageView, tierSourceLine } from "./account";
+import { isMindbodyLinked, membershipTimeline, onFileFacts, packageView, tierSourceLine, type SessionsSplit } from "./account";
 import "./client-admin.css";
 
 export interface MembershipSectionProps {
@@ -114,6 +114,12 @@ export interface MembershipSectionProps {
   today: string;
   /** The Migration Hub (OCR import); the profile switches to Journey, where imports land. */
   onOpenMigrationHub?: () => void;
+  /**
+   * Left in the contract and extra (`sessionsSplit`), worked out ONCE by the
+   * profile so the package card and the header say the same pair. Null or
+   * left out: the on-hand total speaks, as before.
+   */
+  split?: SessionsSplit | null;
   /** For "synced 2 days ago"; the real clock when left out. */
   now?: Date;
 }
@@ -148,7 +154,8 @@ function PackageCard({
   coverage,
   canEdit,
   today,
-}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today"> & {
+  split,
+}: Pick<MembershipSectionProps, "client" | "author" | "coverage" | "canEdit" | "today" | "split"> & {
   form: FormPart;
 }) {
   const { formData, updateField, isDirty, revision } = form;
@@ -157,7 +164,7 @@ function PackageCard({
   // The form holds the unsaved lock (null once it is taken off), the client the saved one.
   const pendingOverride: ContractTierOverride | null =
     "contractTierOverride" in formData ? formData.contractTierOverride ?? null : client.contractTierOverride ?? null;
-  const view = useMemo(() => packageView(client, pendingOverride, today), [client, pendingOverride, today]);
+  const view = useMemo(() => packageView(client, pendingOverride, today, split), [client, pendingOverride, today, split]);
   const rows = useMemo(() => buildContractHistory(client, today), [client, today]);
   const tiles = useMemo(
     () => membershipTimeline(rows, priorHistoryOf(client), coverage),
@@ -576,7 +583,7 @@ function FinePrint({
 /* ------------------------------------------------------------------ */
 
 export function MembershipSection(props: MembershipSectionProps) {
-  const { client, form, studios, author, coverage, canEdit, pronouns: p, today, onOpenMigrationHub, now } = props;
+  const { client, form, studios, author, coverage, canEdit, pronouns: p, today, onOpenMigrationHub, split, now } = props;
   return (
     <>
       <SectionHead
@@ -593,6 +600,7 @@ export function MembershipSection(props: MembershipSectionProps) {
           coverage={coverage}
           canEdit={canEdit}
           today={today}
+          split={split}
         />
         <div className="cadm-side">
           <TrainAtCard client={client} form={form} studios={studios} canEdit={canEdit} pronouns={p} />

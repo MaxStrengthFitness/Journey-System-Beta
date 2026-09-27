@@ -16,15 +16,12 @@
  *              later bookings included. Read through lib/booking-state.ts,
  *              never from `status` alone (CLAUDE.md, done-means-logged).
  *   CANCELLED  a booking Journey SAW being cancelled: status "Cancelled" AND
- *              a `cancelledAt` stamp. With another live booking the same
- *              Monday-to-Sunday week it MAY be a reschedule, by the
+ *              a `cancelledAt` stamp. It reads as a reschedule by the
  *              Operations Changes list's own rule (admin/changes/changes.ts,
- *              `changesForDay`) rather than a second one — but it is named as
- *              "rebooked" only when that booking first appeared around or
- *              after the cancellation (`isRealRebook`, AJ, Sep 26 2026: a
- *              twice-a-week client's standing Thursday is not a rebook), and
- *              never when it had already started (nobody rebooks into the
- *              past; see below).
+ *              `changesForDay`), not a second one: only a REAL rebook, one
+ *              that appeared with the cancellation and had not already
+ *              happened (`isRealRebook`, AJ, Sep 26 2026: a twice-a-week
+ *              client's standing Thursday is not a rebook).
  *   MOVED      a booking that left this day for another (`movedFromDay`).
  *              A time change inside the same day is not a move: the day still
  *              has her booking.
@@ -92,31 +89,6 @@ export function isStampedCancellation(row: Pick<ScheduleEntry, "status" | "cance
   return row.status === "Cancelled" && toDate(row.cancelledAt ?? null) !== null;
 }
 
-/**
- * How long before the cancellation her other booking may have first appeared
- * and still be its rebook. The front desk often books the new slot first and
- * cancels the old one after, and the thirty-minute pull can see the two on
- * different runs; a booking Journey saw days before is her standing one.
- */
-export const REBOOK_WINDOW_MS = 12 * 60 * 60 * 1000;
-
-/**
- * A REAL rebook (AJ, Sep 26 2026): the other booking that week first
- * appeared around or after the cancellation — `createdAt`, when Journey first
- * wrote the row. The Changes list's rule reads ANY other live booking that
- * week as the reschedule, and for a twice-a-week client that is nearly always
- * her standing Thursday, booked all along: "cancelled, rebooked Thu" would be
- * a confident wrong claim about most cancellations. With no `createdAt` to go
- * on, nothing is claimed.
- */
-export function isRealRebook(
-  other: Pick<ScheduleEntry, "createdAt"> | undefined,
-  cancelledAt: Date | null,
-): boolean {
-  if (!other || !cancelledAt) return false;
-  const created = toDate(other.createdAt ?? null);
-  return created !== null && created.getTime() >= cancelledAt.getTime() - REBOOK_WINDOW_MS;
-}
 
 /**
  * The trainer's first name, the way the rest of the History tab names people
@@ -186,25 +158,11 @@ export function bookingLayer({ rows, now, tz, logged, rosterNames }: BookingLaye
       if (change.kind === "cancelled") {
         // Unstamped: the old sweep's, or older than the stamps. Not drawn.
         if (!stamped.has(change.id)) continue;
-        // Nobody rebooks into the past. The Changes list falls back to a
-        // booking EARLIER in the week when there is no later one, and for a
-        // Tue/Thu client cancelling Thursday that is Tuesday's session,
-        // already over when she cancelled. "Cancelled, rebooked Tue" would
-        // be a confident wrong claim, so a destination that had started by
-        // the time the cancellation was stamped is not named. Nor is one she
-        // already held: only a booking that appeared with the cancellation
-        // is its rebook (`isRealRebook`).
-        const other = to
-          ? all.find((r) => r.status !== "Cancelled" && toDate(r.startTime)?.getTime() === to.start.getTime())
-          : undefined;
-        const rebook =
-          to &&
-          change.detectedAt &&
-          to.start.getTime() > change.detectedAt.getTime() &&
-          isRealRebook(other, change.detectedAt)
-            ? to
-            : null;
-        marks.push({ kind: "cancelled", id: change.id, day, start: change.originalStart, trainer: null, to: rebook });
+        // `movedTo` is set only for a REAL rebook — one that appeared with
+        // the cancellation and had not already happened (changes.ts,
+        // `isRealRebook`): a standing booking, or Tuesday's session already
+        // over when she cancelled Thursday, is never named as where it went.
+        marks.push({ kind: "cancelled", id: change.id, day, start: change.originalStart, trainer: null, to });
       } else if (to && to.day !== day) {
         marks.push({ kind: "moved", id: change.id, day, start: change.originalStart, trainer: null, to });
       }

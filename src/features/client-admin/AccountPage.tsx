@@ -52,6 +52,7 @@ import type { CodexFordStatus } from "../client-codex/codex-data";
 import { Btn, Page, type CodexGo, type Pronouns } from "../client-codex/kit";
 import type { RecordForm } from "../client-codex/useRecordForm";
 import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "../client-profile/prior-history-door";
+import type { SessionsSplit } from "./account";
 import { ContactCard } from "./ContactCard";
 import { IntakeNotesCard } from "./IntakeNotesCard";
 import { MembershipSection } from "./MembershipSection";
@@ -89,6 +90,8 @@ export interface AccountPageProps {
   onOpenMigrationHub?: () => void;
   /** The header's door to Sessions before Journey, drawn in the page's head. Null: no door. */
   priorHistoryDoor?: PriorHistoryDoorState | null;
+  /** Left in the contract and extra — the header's own pair (`sessionsSplit`). */
+  split?: SessionsSplit | null;
   /** For ages and "synced 2 days ago"; the real clock when left out. */
   now?: Date;
 }
@@ -107,6 +110,7 @@ export function AccountPage({
   go,
   onOpenMigrationHub,
   priorHistoryDoor,
+  split,
   now,
 }: AccountPageProps) {
   const lede = accountLede(client, canEdit, p);
@@ -155,6 +159,7 @@ export function AccountPage({
           pronouns={p}
           today={today}
           onOpenMigrationHub={onOpenMigrationHub}
+          split={split}
           now={now}
         />
       </div>

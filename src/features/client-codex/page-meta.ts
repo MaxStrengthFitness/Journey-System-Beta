@@ -42,7 +42,7 @@ import { fordSubnavLine } from "../ford/page-model";
 import type { ComingUpRow } from "../ford/coming-up";
 import { bodySubline } from "./body/page-lines";
 import { goalsTabHint } from "../goals/goals-page";
-import { accountTabHint } from "../client-admin/account";
+import { accountTabHint, type SessionsSplit } from "../client-admin/account";
 import { plural } from "./kit/text";
 import type { CodexFordStatus } from "./codex-data";
 
@@ -72,6 +72,8 @@ export interface PageMetaInput {
   now?: Date;
   /** The Story's line (`storyTabHint`); null or left out, the segment has none. */
   story?: { hint: string | null };
+  /** Left in the contract and extra, the header's pair (`sessionsSplit`); Account's line reads it. */
+  split?: SessionsSplit | null;
 }
 
 const LOADING = "loading";
@@ -129,7 +131,7 @@ export function subnavItems(input: PageMetaInput): SubnavItem<RecordPage>[] {
       case "story":
         return { id, label, meta: input.story?.hint ?? null };
       case "account":
-        return { id, label, meta: accountTabHint(input.client) };
+        return { id, label, meta: accountTabHint(input.client, input.split) };
     }
   });
 }

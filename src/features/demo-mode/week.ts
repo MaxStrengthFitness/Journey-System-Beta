@@ -159,9 +159,11 @@ export interface DemoBooking {
  * Two days out rather than tomorrow so it is a change somebody has time to do
  * something about, and never today, where the Hub would be showing a hole in
  * a grid a trainer is standing in front of. The client it lands on has another
- * booking that week, so `changesForDay` reads it as a RESCHEDULE and the row
- * says where it moved to — which is the more interesting of the two readings
- * and the one that needs a second booking to demonstrate at all.
+ * booking that week — her standing one, booked a fortnight ago like every demo
+ * appointment — so since AJ's Sep 26 call (only a REAL rebook reads as a
+ * reschedule, `isRealRebook` in admin/changes) `changesForDay` reads it as a
+ * cancellation and the proof names the booking she still holds: the case a
+ * twice-a-week studio sees most.
  */
 const CANCEL_FROM_DAY = 2;
 const CANCEL_SEARCH_DAYS = 6;

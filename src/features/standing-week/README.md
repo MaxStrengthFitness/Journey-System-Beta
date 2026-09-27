@@ -73,10 +73,12 @@ findings. The Demo studio's week is seeded, so it is checked.
 **A move is claimed only with proof.** The slot is "moved" when Mindbody
 moved that very booking (`movedFromStart`), when she is booked at her time
 with another trainer, or when her booking for it was cancelled (a stamped
-cancellation) and a REAL rebook followed that Monday–Sunday week — the
-client calendar's `isRealRebook` (`client-history/bookings.ts`; AJ, Sep 26
-2026: "rebooked" only for a real rebook). Any other booking that week proves
-nothing: a twice-a-week client's standing Thursday was booked all along.
+cancellation) and a REAL rebook followed that Monday–Sunday week — one that
+appeared with the cancellation and starts after it: `isRealRebook`
+(`admin/changes/changes.ts`, the one rule Operations → Changes and the client
+calendar read too; AJ, Sep 26 2026: "rebooked" only for a real rebook). Any
+other booking that week proves nothing: a twice-a-week client's standing
+Thursday was booked all along.
 Without proof the slot is simply open; either way the trainer's slot is
 free.
 

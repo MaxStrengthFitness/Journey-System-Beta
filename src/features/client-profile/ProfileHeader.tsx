@@ -37,6 +37,7 @@ import { clientDisplayName, clientInitials, clientLegalName, goesByNickname } fr
 import { sessionCountLabel } from "../../lib/history-claims";
 import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "./prior-history-door";
 import { whoStartedIt } from "../session-record/watch";
+import { contractWords, extraWords, splitSpeaks, type SessionsSplit } from "../client-admin/account";
 
 export interface ActiveSessionLike {
   id?: string;
@@ -112,6 +113,13 @@ export interface ProfileHeaderProps {
   /** Everyone on the studio's list, to name the trainers in the tally. */
   trainers?: Trainer[];
   pkg: PackageSummary;
+  /**
+   * Left in the contract and extra, worked out once by the profile
+   * (`sessionsSplit`, AJ Sep 26 2026) — Account prints the same pair. With no
+   * renewal on the tile it takes the Mindbody pill's place: "36 left in
+   * contract" and "+12 extra". Null or left out: the pill, as before.
+   */
+  sessionsSplit?: SessionsSplit | null;
   activeInProgressSession?: ActiveSessionLike | null;
   isCheckingActiveSession?: boolean;
   onBack: () => void;
@@ -340,6 +348,7 @@ export function ProfileHeader({
   topTrainer,
   trainers = [],
   pkg,
+  sessionsSplit,
   activeInProgressSession,
   isCheckingActiveSession = false,
   onBack,
@@ -686,6 +695,23 @@ export function ProfileHeader({
               <span className={cn("inline-flex items-center gap-1.5 min-w-0 max-w-full text-[11px] font-bold", RENEWAL_TONE[renewal.tone])}>
                 {renewal.attention && <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" aria-hidden="true" />}
                 <span className="truncate">{renewal.text}</span>
+              </span>
+            ) : splitSpeaks(sessionsSplit) ? (
+              // Left in the contract, and what she was given on top: two
+              // pills that wrap rather than truncate, so neither count is
+              // ever cut off in a narrow tile (AJ, Sep 26 2026).
+              <span className="inline-flex flex-wrap items-center gap-1 min-w-0 max-w-full">
+                {[contractWords(sessionsSplit), extraWords(sessionsSplit)]
+                  .filter((w): w is string => !!w)
+                  .map((w) => (
+                    <span
+                      key={w}
+                      className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#0a548b]/10 text-[#0a548b] dark:bg-[#5198d8]/15 dark:text-[#8cc4f2]"
+                      title="From her Mindbody pricing options"
+                    >
+                      {w}
+                    </span>
+                  ))}
               </span>
             ) : pkg.source === "none" ? undefined : (
               <span

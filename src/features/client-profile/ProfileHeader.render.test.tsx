@@ -262,6 +262,47 @@ describe("ProfileHeader's package pill", () => {
   });
 });
 
+/*
+ * Left in the contract, and extra (AJ, Sep 26 2026). Judy Daus's tile read
+ * "36 LEFT · PIF" while Account read "48 on hand": her paid-in-full option's
+ * 36 and a Session Comp's 12. The profile now works the split out once and the
+ * tile prints the pair — two pills that wrap, so neither count is cut off.
+ */
+describe("ProfileHeader's sessions left: in the contract, and extra", () => {
+  const pif = {
+    label: "PIF",
+    remaining: 36,
+    total: null,
+    source: "mindbody-membership",
+    asOf: null,
+    fromMindbody: true,
+    autoRenews: null,
+  } as ProfileHeaderProps["pkg"];
+  const pills = (el: HTMLElement) =>
+    [...el.querySelectorAll('[title="From her Mindbody pricing options"]')].map((p) => p.textContent);
+
+  it("prints what is left in the contract and the extra sessions, in place of the Mindbody pill", () => {
+    const el = mount(
+      props({ pkg: pif, sessionsSplit: { contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 } }),
+    );
+    expect(pills(el)).toEqual(["36 left in contract", "+12 extra"]);
+    expect(el.querySelector('[title="Synced from Mindbody"]')).toBeNull();
+    // The two pills wrap rather than truncate.
+    expect(el.querySelector('[title="From her Mindbody pricing options"]')?.className).not.toContain("truncate");
+  });
+
+  it("says on hand for a contract that comes a payment at a time, and names no extras she does not have", () => {
+    const el = mount(props({ pkg: pif, sessionsSplit: { contract: 5, hasContract: true, perPayment: true, extra: 0, other: 0 } }));
+    expect(pills(el)).toEqual(["5 on hand in contract"]);
+  });
+
+  it("keeps the Mindbody pill until the split is known", () => {
+    const el = mount(props({ pkg: pif, sessionsSplit: null }));
+    expect(pills(el)).toEqual([]);
+    expect(el.querySelector('[title="Synced from Mindbody"]')?.textContent).toBe("36 left · PIF");
+  });
+});
+
 /* The In-progress menu (session record, Sep 26 2026): Continue for this
    trainer's own session, Watch for anyone else's, and who started it. */
 describe("ProfileHeader's running-session menu", () => {

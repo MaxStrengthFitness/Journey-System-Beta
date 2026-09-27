@@ -81,44 +81,96 @@ describe("changesForDay — day-bucketing", () => {
 });
 
 describe("changesForDay — cancellation vs reschedule", () => {
-  it("reads a cancellation as a reschedule when the client holds another booking that week", () => {
+  /* Cancelled on Monday the 14th at 8 AM; a REBOOK is a booking Journey first
+     saw around then (AJ, Sep 26: only a real rebook). */
+  const CANCELLED_AT = at("2026-09-14", "08:00");
+  const REBOOKED_AT = at("2026-09-14", "08:05");
+  const STANDING_SINCE = at("2026-08-20", "07:00");
+
+  it("reads a cancellation as a reschedule when she rebooked that week", () => {
     const entries = [
-      row({ id: "gone", status: "Cancelled" }),
-      // Same client, same week (Sat the 19th), a different booking.
-      row({ id: "kept", startTime: at("2026-09-19", "11:00"), trainerName: "Sara" }),
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      // Same client, same week (Sat the 19th), booked as she cancelled.
+      row({ id: "rebook", startTime: at("2026-09-19", "11:00"), trainerName: "Sara", createdAt: REBOOKED_AT }),
     ];
     const [change] = changesForDay(entries, "2026-09-18", TZ);
     expect(change.reading).toBe("reschedule");
     expect(change.movedTo?.sameBooking).toBe(false);
     expect(change.movedTo?.trainerName).toBe("Sara");
     expect(change.movedTo?.start).toEqual(at("2026-09-19", "11:00"));
+    expect(change.alsoBooked).toBeNull();
   });
 
-  it("a booking NEXT week does not make it a reschedule", () => {
-    const entries = [row({ id: "gone", status: "Cancelled" }), row({ id: "next", startTime: at("2026-09-22", "09:00") })];
+  it("never reads her standing booking as the reschedule — a twice-a-week client still coming Saturday", () => {
+    const entries = [
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      row({ id: "standing", startTime: at("2026-09-19", "11:00"), trainerName: "Sara", createdAt: STANDING_SINCE }),
+    ];
     const [change] = changesForDay(entries, "2026-09-18", TZ);
     expect(change.reading).toBe("cancellation");
     expect(change.movedTo).toBeNull();
+    expect(change.alsoBooked?.start).toEqual(at("2026-09-19", "11:00"));
+  });
+
+  it("counts the new slot booked a few hours before the cancellation (the desk books first), not a day before", () => {
+    const withCreated = (createdAt: Date) => [
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      row({ id: "other", startTime: at("2026-09-19", "11:00"), createdAt }),
+    ];
+    expect(changesForDay(withCreated(at("2026-09-14", "04:00")), "2026-09-18", TZ)[0].reading).toBe("reschedule");
+    expect(changesForDay(withCreated(at("2026-09-13", "08:00")), "2026-09-18", TZ)[0].reading).toBe("cancellation");
+  });
+
+  it("never names a booking that had already happened when she cancelled: nobody rebooks into the past", () => {
+    // A Tue/Thu client cancels Friday's session on Wednesday; Tuesday is over.
+    const entries = [
+      row({ id: "gone", status: "Cancelled", cancelledAt: at("2026-09-16", "18:00") }),
+      row({ id: "tue", startTime: at("2026-09-15", "09:00"), createdAt: at("2026-09-16", "17:00") }),
+    ];
+    const [change] = changesForDay(entries, "2026-09-18", TZ);
+    expect(change.reading).toBe("cancellation");
+    expect(change.alsoBooked?.start).toEqual(at("2026-09-15", "09:00"));
+  });
+
+  it("claims no rebook for a cancellation with no stamp, or a booking with no createdAt", () => {
+    const unstamped = [row({ id: "gone", status: "Cancelled" }), row({ id: "other", startTime: at("2026-09-19", "11:00"), createdAt: REBOOKED_AT })];
+    expect(changesForDay(unstamped, "2026-09-18", TZ)[0].reading).toBe("cancellation");
+    const unknownCreated = [row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }), row({ id: "other", startTime: at("2026-09-19", "11:00") })];
+    expect(changesForDay(unknownCreated, "2026-09-18", TZ)[0].reading).toBe("cancellation");
+  });
+
+  it("a booking NEXT week does not make it a reschedule", () => {
+    const entries = [
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      row({ id: "next", startTime: at("2026-09-22", "09:00"), createdAt: REBOOKED_AT }),
+    ];
+    const [change] = changesForDay(entries, "2026-09-18", TZ);
+    expect(change.reading).toBe("cancellation");
+    expect(change.movedTo).toBeNull();
+    expect(change.alsoBooked).toBeNull();
   });
 
   it("another client's booking is not this client's reschedule", () => {
-    const entries = [row({ id: "gone", status: "Cancelled" }), row({ id: "other", clientId: "c2", clientName: "Mark Lee", startTime: at("2026-09-19", "11:00") })];
+    const entries = [
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      row({ id: "other", clientId: "c2", clientName: "Mark Lee", startTime: at("2026-09-19", "11:00"), createdAt: REBOOKED_AT }),
+    ];
     expect(changesForDay(entries, "2026-09-18", TZ)[0].reading).toBe("cancellation");
   });
 
   it("matches by name when the sync never linked a client id", () => {
     const entries = [
-      row({ id: "gone", status: "Cancelled", clientId: undefined }),
-      row({ id: "kept", clientId: undefined, clientName: "jane smith", startTime: at("2026-09-19", "11:00") }),
+      row({ id: "gone", status: "Cancelled", clientId: undefined, cancelledAt: CANCELLED_AT }),
+      row({ id: "kept", clientId: undefined, clientName: "jane smith", startTime: at("2026-09-19", "11:00"), createdAt: REBOOKED_AT }),
     ];
     expect(changesForDay(entries, "2026-09-18", TZ)[0].reading).toBe("reschedule");
   });
 
   it("prefers the booking after the cancelled one over one earlier in the week", () => {
     const entries = [
-      row({ id: "gone", status: "Cancelled" }),
-      row({ id: "before", startTime: at("2026-09-15", "09:00"), trainerName: "Early" }),
-      row({ id: "after", startTime: at("2026-09-19", "09:00"), trainerName: "Later" }),
+      row({ id: "gone", status: "Cancelled", cancelledAt: CANCELLED_AT }),
+      row({ id: "before", startTime: at("2026-09-15", "09:00"), trainerName: "Early", createdAt: REBOOKED_AT }),
+      row({ id: "after", startTime: at("2026-09-19", "09:00"), trainerName: "Later", createdAt: REBOOKED_AT }),
     ];
     expect(changesForDay(entries, "2026-09-18", TZ)[0].movedTo?.trainerName).toBe("Later");
   });
@@ -157,13 +209,30 @@ describe("describeChange", () => {
 
   it("a reschedule names where it went, with the weekday when it is another day", () => {
     const [change] = changesForDay(
-      [row({ id: "gone", status: "Cancelled", cancelledAt: at("2026-09-16", "07:12"), cancelSource: "mindbody" }), row({ id: "kept", startTime: at("2026-09-19", "11:00"), trainerName: "Sara" })],
+      [
+        row({ id: "gone", status: "Cancelled", cancelledAt: at("2026-09-16", "07:12"), cancelSource: "mindbody" }),
+        row({ id: "kept", startTime: at("2026-09-19", "11:00"), trainerName: "Sara", createdAt: at("2026-09-16", "07:10") }),
+      ],
       "2026-09-18",
       TZ,
     );
     const text = describeChange(change, TZ);
     expect(text.sentence).toBe("Cancelled 9:00 AM with Tom — but booked Sat 11:00 AM with Sara, so read it as a reschedule.");
     expect(text.proof).toBe("Mindbody reported it at 7:12 AM on Wed, Sep 16.");
+  });
+
+  it("a cancellation beside her standing booking names it, rather than saying nothing else is booked", () => {
+    const [change] = changesForDay(
+      [
+        row({ id: "gone", status: "Cancelled", cancelledAt: at("2026-09-16", "07:12"), cancelSource: "mindbody" }),
+        row({ id: "standing", startTime: at("2026-09-19", "11:00"), trainerName: "Sara", createdAt: at("2026-08-20", "07:00") }),
+      ],
+      "2026-09-18",
+      TZ,
+    );
+    const text = describeChange(change, TZ);
+    expect(text.sentence).toBe("Cancelled — 9:00 AM with Tom.");
+    expect(text.proof).toBe("Already booked Sat 11:00 AM this week, so not a rebook. Mindbody reported it at 7:12 AM on Wed, Sep 16.");
   });
 
   it("a move Mindbody made reads as a move", () => {

@@ -21,9 +21,10 @@
  *   open       the regular isn't booked for it — the slot is free
  *   taken      another client is booked with the trainer in the slot
  *
- * A REAL REBOOK is the client calendar's rule (client-history/bookings.ts,
- * `isRealRebook`; AJ, Sep 26 2026): the other booking first appeared around
- * or after the cancellation. Any other booking that week is NOT called her
+ * A REAL REBOOK is the Changes list's rule, which the client calendar reads
+ * too (admin/changes/changes.ts, `isRealRebook`; AJ, Sep 26 2026): the other
+ * booking first appeared around or after the cancellation, and had not
+ * already happened by then. Any other booking that week is NOT called her
  * reschedule — a twice-a-week client's standing Thursday was booked all
  * along, and "booked Thursday instead" would be a confident wrong claim. So
  * without proof, the slot is simply open. A cancelled booking is no booking.
@@ -47,7 +48,7 @@
 import type { ScheduleEntry } from "../../types";
 import { formatStudioDate, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { scheduleStart } from "../../lib/schedule-window";
-import { isRealRebook } from "../client-history/bookings";
+import { isRealRebook } from "../admin/changes/changes";
 import { addDays, weekdayOf } from "../studio-tasks/recurrence";
 import { minutesToClock } from "../relay/board/now-context";
 import { minutesOf, type StandingWeekDoc } from "./week";
@@ -98,6 +99,8 @@ export interface WeekCheckInput {
 interface BookingView {
   id: string;
   cancelled: boolean;
+  /** The booking's start, the instant: a rebook starts after the cancellation. */
+  startAt: Date;
   dateKey: string;
   minutes: number;
   start: string;
@@ -127,6 +130,7 @@ function viewOf(entry: ScheduleEntry, index: number, tz?: string): BookingView |
   return {
     id: entry.id ?? `row-${index}`,
     cancelled: entry.status === "Cancelled",
+    startAt: at,
     dateKey,
     minutes: hm.hour * 60 + hm.minute,
     start: clockOfHM(hm),
@@ -232,7 +236,7 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
  *   2. She is booked at her time that day, with another trainer.
  *   3. Her booking for the slot was cancelled (a stamped cancellation), and
  *      another booking that Monday–Sunday week first appeared around or
- *      after it (`isRealRebook`).
+ *      after it and starts after it (`isRealRebook`).
  *
  * A booking already keeping one of her other agreed slots is never her
  * move: one booking keeps one slot.
@@ -249,7 +253,7 @@ function whereItWent(s: Slot, bookings: BookingView[], cancellations: BookingVie
   const sunday = addDays(monday, 6);
   return (
     free
-      .filter((b) => b.dateKey >= monday && b.dateKey <= sunday && isRealRebook({ createdAt: b.createdAt }, cancelled.cancelledAt))
+      .filter((b) => b.dateKey >= monday && b.dateKey <= sunday && isRealRebook({ createdAt: b.createdAt, startTime: b.startAt }, cancelled.cancelledAt))
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.minutes - b.minutes)[0] ?? null
   );
 }

@@ -126,6 +126,10 @@ describe("checkWeek — what differs", () => {
     // A cancellation Journey never saw happen (no stamp) proves nothing either.
     const unstamped = { ...cancelled, cancelledAt: null };
     expect(checkWeek(input({ bookings: [unstamped, rebook, booking("2026-10-01", "08:00")] })).findings[0].kind).toBe("open");
+    // Nor does a booking that had already happened when she cancelled: nobody rebooks into the past.
+    const lateCancel = { ...cancelled, cancelledAt: new Date("2026-09-29T16:00:00Z") };
+    const already = booking("2026-09-29", "09:30", { createdAt: new Date("2026-09-29T06:00:00Z") });
+    expect(checkWeek(input({ bookings: [lateCancel, already, booking("2026-10-01", "08:00")] })).findings[0].kind).toBe("open");
   });
 
   it("says who she is booked with when the move is to another trainer", () => {

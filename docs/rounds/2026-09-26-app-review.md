@@ -170,25 +170,53 @@ cancellation (its `createdAt`, at most 12 hours before the cancellation was
 stamped), and never when it had already happened. Operations → Changes still
 reads it the old way.
 
+## 7. AJ's answers to the review's two questions
+
+**Sessions left** (AJ: "How many left in their contract is the correct
+number, but due to the fact clients can be given sessions that also plays a
+part, so a left in contract and then extra sessions works"). Judy Daus's
+fine print held "96 Sessions - PIF: 36 of 96" and "Session Comp: 12 of 12";
+the header printed one Mindbody membership's 36 as "36 LEFT · PIF", Account
+added every option up to "48 on hand". Now `sessionsSplit`
+(`client-admin/account.ts`) sorts each option: **extra** (the studio's
+extra-sessions names, "Session Comp" by default), **contract** (the studio's
+package names, or a name that says what package it is — Solon spells it "96
+Sessions - PIF", which the default table does not have), or **other**
+(never guessed). The profile works it out once with the home studio's table
+and hands it to the header ("36 left in contract" · "+12 extra") and to
+Account (the card's "36 left · sessions left in the contract · +12 extra
+sessions, on top of the contract", the sub-toggle's "36 left +12 extra"). A
+contract that comes a payment at a time says "on hand", never left in the
+contract, until the renewal counts the payments to come. A renewal the
+nightly job worked out still speaks for itself.
+
+**Operations → Changes** (AJ: "100% run it"). The client calendar's real-
+rebook rule moved into `changesForDay` itself (`isRealRebook`,
+`REBOOK_WINDOW_MS`), so Operations → Changes, the Overview and the calendar
+read a booking one way. A cancellation beside her standing booking is a
+cancellation whose proof names it: "Already booked Sat 11:00 AM this week,
+so not a rebook." An unstamped cancellation cannot be matched to a rebook,
+and reads as a cancellation. Demo Mode's seeded cancellation now reads as
+one, which is what its data says (every demo booking was made a fortnight
+ago).
+
 ---
 
 ## Found, not fixed
 
-- **Two numbers for sessions left on one profile.** Judy Daus's header reads
-  "36 left · PIF" while her Account tab reads "48 on hand". They are different
-  measures: the header is her main package's count (`resolvePackage`), the tab
-  is every Mindbody pricing option she holds added up (`onHandTotal`). Both may
-  be true, but one screen should not say two numbers without saying why. For
-  AJ: which one a trainer should see, and where.
+- **Sessions left, still to carry through** (after section 7): the renewal
+  snapshot's `sessionsLeft` counts comps, so a worked-out renewal's chip
+  ("N left · runs out ~…") and the renewal screens still add the extras in;
+  separating them there is the renewal engine's change, and whether extras
+  should hold off the renewal conversation is AJ's call. The Hub's search
+  results and the trainer profile's Upcoming list still read the stale app
+  field `remainingSessions`.
 - **The Catalog's figure ignores the theme.** `MachineFigure` passes no colours,
   so `BodyModel` paints its raw-hex defaults in light and dark alike. The codex
   now passes tokens; the Catalog could do the same (`--wk-muscle-*` exist and
   are unused by the figure).
 - **Duplicate ids from the anatomy library** remain on the Catalog and the
   Routine Builder pages (the codex handles its own).
-- **Operations → Changes calls a standing booking a reschedule.** The same
-  twice-a-week case the client calendar now reads correctly. The calendar's
-  `isRealRebook` is the fix, if AJ wants it there too.
 - **The client calendar, not yet:** the List view does not show bookings; a
   client with no sessions still gets the empty state rather than her upcoming
   bookings; a month with eight or more bookings ahead grows tall on an upright
@@ -205,9 +233,9 @@ reads it the old way.
 | | |
 | --- | --- |
 | Typecheck | 4 (the baseline) |
-| Suite | **5,744** passing in 364 files with the client calendar (`TZ=America/New_York npx vitest run --dir src`, AJ's PC); 5,699 in 362 after the grid's second fix; 5,697 after the body figure; 5,690 after the first four |
+| Suite | **5,761** passing in 364 files with AJ's two answers built; 5,744 with the client calendar (`TZ=America/New_York npx vitest run --dir src`, AJ's PC); 5,699 in 362 after the grid's second fix; 5,697 after the body figure; 5,690 after the first four |
 | Build | `npx vite build` before every push from the second on, and the server bundle |
-| Live | Checked on the live app after the 22:16 deploy: the Hub's button pulled the week (163 bookings at Solon, 0 added, 0 updated, no errors); the grid still short, which led to the second fix |
+| Live | Checked on the live app after the 22:16 deploy: the Hub's button pulled the week (163 bookings at Solon, 0 added, 0 updated, no errors); the grid still short, which led to the second fix. After the 23:12 deploy (everything above), in a visible tab at iPad size: Judy Daus's grid opened on the newest session (476 of 476, columns widened to 63px); the header read "36 LEFT IN CONTRACT" and "+12 EXTRA"; Account "36 left +12 extra" and "36 left · sessions left in the contract · +12 extra sessions, on top of the contract"; her calendar "Mon Sep 28 · 3:00 PM · booked with Marina" and October "1 booked"; the calendar's Refresh pulled the days on screen (253 bookings at Solon, 0 added, 2 updated, no errors) |
 
 ## Shipped
 
@@ -218,4 +246,6 @@ Pushes to `master`, no rules, index or function change:
 2. `55ce329` the body figure (pushed 22:09).
 3. `d87e7b4` the grid's second fix (pushed 22:32).
 4. `2ff7886` the client calendar · `08262bc` "rebooked" only for a real rebook ·
-   this document.
+   this document (pushed 22:39).
+5. `c82ecdc` Operations → Changes: a reschedule only for a real rebook · the
+   sessions split (header and Account) · section 7.

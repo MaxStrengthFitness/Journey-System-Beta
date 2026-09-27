@@ -144,8 +144,9 @@ See `2026-09-27-standing-week.md`. In short:
   lists the free slots, the regulars booked elsewhere, and the slots someone
   else is booked in.
 - Nothing is written to Mindbody.
-- A move is claimed only with proof: after merging master, the check follows
-  the client calendar's "real rebook" rule from the app review.
+- A move is claimed only with proof: after merging master, the check reads
+  the app review's "real rebook" rule — the one Operations → Changes and the
+  client calendar read (`isRealRebook`, `admin/changes/changes.ts`).
 
 ### Voice review 9 — Settings, and Learning's colours (`8c7df37`)
 
@@ -189,7 +190,7 @@ deployed yet" rather than failing quietly.
 | | |
 | --- | --- |
 | Typecheck | 4 (the baseline) |
-| Suite | **5,866** passing in 377 files (`TZ=America/New_York npx vitest run --dir src`, the cloud container, after merging master) |
+| Suite | **5,883** passing in 377 files (`TZ=America/New_York npx vitest run --dir src`, the cloud container, after merging master) |
 | Rules tests | 173, in the cloud container; AJ's run is the one that counts |
 | Build | `npm run build` and `npm run build:backend` |
 | Case check | no two tracked files differ only by case |
@@ -202,9 +203,6 @@ deployed yet" rather than failing quietly.
 - **The standing week on the Hub.** An agreed slot with no booking could show
   as a faint outline in the trainer's column. It isn't built: the Hub's open
   slots were removed on Sep 6 as "a sales question".
-- **Operations → Changes still calls any other booking that week a
-  reschedule.** The client calendar and the standing week now use the
-  real-rebook rule. The app review offered `isRealRebook` for Changes too.
 - **The same "Admin → Studios" wording inside `lib/mindbody-api-sync.ts`**
   (the sync's own messages and Limbo reasons) was left alone, because that
   file is the Mindbody integration.

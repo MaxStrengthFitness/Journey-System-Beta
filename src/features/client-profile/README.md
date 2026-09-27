@@ -70,6 +70,14 @@ medium-weight outline button competing with four equal-weight stat tiles.
   count-first ("12 left") because the number is the thing that changes the
   conversation at the desk; the package name can truncate, the count never
   does.
+- **Left in the contract, and extra** (AJ, Sep 26 2026). With no renewal on
+  the tile, the pill gives way to the pair Account prints: "36 left in
+  contract" and "+12 extra", two pills that wrap rather than truncate.
+  `sessionsSplit` (client-admin/account.ts) works it out once, in this view,
+  from her Mindbody pricing options and the home studio's package table;
+  a contract that comes a payment at a time reads "on hand in contract".
+  Judy Daus read "36 LEFT · PIF" here and "48 on hand" on Account — her
+  paid-in-full option and a Session Comp, added up in one place only.
 - **Profile Details is the seventh tab**, rendered inline
   (`ClientInfoSheet variant="inline"`). Seven tabs fit a 1024px iPad with no
   horizontal scroll at 13px; the form re-syncs from the client snapshot only

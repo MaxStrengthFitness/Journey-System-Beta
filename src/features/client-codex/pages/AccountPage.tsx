@@ -46,6 +46,7 @@ export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
       go={go}
       onOpenMigrationHub={hosts.onOpenMigrationHub}
       priorHistoryDoor={hosts.priorHistoryDoor ?? null}
+      split={hosts.sessionsSplit ?? null}
     />
   );
 }

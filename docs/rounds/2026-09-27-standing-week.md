@@ -132,15 +132,16 @@ For each agreed regular slot in the next seven studio days:
 | Someone else booked with that trainer in the slot | **Taken**: "Bob is booked in Judy's slot" |
 | The day's bookings could not be read, or Mindbody isn't connected | **Can't tell** |
 
-A cancelled booking is no booking. **A real rebook** is the client
-calendar's rule from master's app review (`client-history/bookings.ts`,
-`isRealRebook`; AJ, Sep 26 2026: "rebooked" only for a real rebook): the
-other booking first appeared around or after the cancellation. Merely having
-another booking that week is not a move — a twice-a-week client's standing
-Thursday was booked all along — so without proof the slot is simply open.
-(The first cut used the Operations Changes list's looser rule, any other
-booking that week; master's review found what that says about a Tue/Thu
-client, and this follows the calendar.)
+A cancelled booking is no booking. **A real rebook** is the rule from
+master's app review, which Operations → Changes and the client calendar both
+read (`admin/changes/changes.ts`, `isRealRebook`; AJ, Sep 26 2026:
+"rebooked" only for a real rebook): the other booking first appeared around
+or after the cancellation, and had not already happened by then. Merely
+having another booking that week is not a move — a twice-a-week client's
+standing Thursday was booked all along — so without proof the slot is simply
+open. (The first cut used the Changes list's old rule, any other booking that
+week; master's review found what that says about a Tue/Thu client, and
+Changes, the calendar and this check now read one rule.)
 
 **Whose booking it is.** The schedule sync writes the trainer's id when it
 matched the Mindbody staff member to a Journey trainer, and only the staff
