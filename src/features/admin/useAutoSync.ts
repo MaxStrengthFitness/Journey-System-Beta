@@ -21,6 +21,7 @@ import {
 } from "./syncPolicy";
 import { DEFAULT_TIME_ZONE, isValidTimeZone } from "../../lib/studio-time";
 import { leaseOf, leaseRef, useSyncLease, type SyncLease } from "./sync-lease";
+import { recordCoverage } from "../openings/coverage-record";
 
 /** How often the policy is re-checked when it says "not due yet". */
 const TICK_MS = 60_000;
@@ -193,6 +194,11 @@ export function useAutoSync({
           settleSweepWith: deep ? undefined : month,
         },
       );
+      // A whole answer: write down the days it read in full, today and
+      // tomorrow (features/openings/coverage-record.ts). It asks Mindbody
+      // nothing, waits for nothing, and says nothing if it fails; this iPad
+      // writes each day once.
+      void recordCoverage({ studioId: studio.id, window: pullWindow, answer: res, startedAt: now, timeZone });
       // A failure is a pull that did not get the whole answer into Journey.
       // A warning (an unmapped location, a client profile it could not check)
       // is not: counting those backed the pull off to every four hours, and
