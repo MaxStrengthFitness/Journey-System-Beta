@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Eye } from "lucide-react";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { useOptionalActiveStudio } from "../../contexts/ActiveStudioContext";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import type {
   Client,
@@ -24,6 +25,8 @@ import { useTrainerRollups } from "./useTrainerRollups";
 import { useRecentlyCoached } from "./useRecentlyCoached";
 import { resolveProfileVisibility, scopeNotice } from "./visibility";
 import { MyRenewals } from "../renewals/MyRenewals";
+import { MyStandingWeek } from "../standing-week/MyStandingWeek";
+import { worksAt } from "../standing-week/present";
 import "./trainer-profile.css";
 
 /**
@@ -65,6 +68,8 @@ export function TrainerProfileView({
   setView,
 }: TrainerProfileViewProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const active = useOptionalActiveStudio();
+  const activeStudioId = active?.activeStudioId ?? null;
 
   const visibility = useMemo(
     () => resolveProfileVisibility(authTrainer, trainer),
@@ -154,6 +159,20 @@ export function TrainerProfileView({
       {/* Renewals round (Sep 2026): the trainer's own list only. */}
       {visibility.scope === "self" && (
         <MyRenewals trainer={trainer} onSelectClient={openClient} />
+      )}
+
+      {/* Voice-review round (Sep 27 2026): the trainer proposes their usual
+          week at the studio the iPad is in; a leader agrees it on My Studio
+          -> Team. Only where they work, which is what the rules ask too. The
+          document is keyed by the Auth uid, never trainer.id. */}
+      {visibility.scope === "self" && activeStudioId && worksAt(trainer, activeStudioId) && (
+        <MyStandingWeek
+          trainer={trainer}
+          authUid={auth.currentUser?.uid ?? trainer.authUid ?? trainer.id}
+          studioId={activeStudioId}
+          studioName={active?.activeStudio?.name ?? "this studio"}
+          clients={clients}
+        />
       )}
 
       {(visibility.showSchedule || visibility.showRecentlyCoached) && (

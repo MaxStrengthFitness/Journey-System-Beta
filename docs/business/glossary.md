@@ -52,8 +52,14 @@ Words the studios use, and what they mean in the app. The full training-method g
 | Hub | The studio's shared screen: today's shift, clients waiting, the board, the playbook |
 | Journey Grid | A client's machine-by-session history, and the live session view |
 | Now bar | The fixed bar in a live session showing the current machine and what's next |
-| Briefing | The pre-session screen: check-in, critical notes, plan |
+| Briefing | The pre-session screen, and only that: check-in, critical notes, plan |
+| Wrap-up | The post-session screen, walking the client out: today's sets, the journey, what's next, the Profile note and the Pulse. "Briefing is strictly pre-session while wrap up is post-session" (AJ, Sep 27 2026). Called "the post session briefing" in conversation before it had a name |
+| Note for the next trainer | The note box in the End Session dialog. It files as a Heads up, so it shows on the next trainer's briefing for three weeks. Was "Wrap-up note" until Sep 27 2026 |
+| Profile note | The Wrap-up's own note. At Note loudness it stays on the client's profile and never reaches the briefing; Heads up or Critical sends it there too. Was "the closing note" until Sep 27 2026 |
 | Kaizen Roster | A trainer's running list of clients they are keeping an eye on, each with a reason |
+| Standing week | A trainer's usual week at a studio: the hours they work and their **regulars**. The trainer proposes it on My Profile; a studio leader agrees it on My Studio → Team (Sep 27 2026) |
+| Regular | A client a trainer sees at the same time each week ("Judy, Monday 8:00"). Booked by the front desk in Mindbody as a recurring appointment; Journey only checks the bookings against the agreed week |
+| Free slot | An agreed regular's time this week that the regular isn't booked for — she's away, or booked another day — so the trainer has the time free and the studio can fill it |
 | 90-day check-in | The subjective progress report: 8 categories scored Green / Yellow / Red |
 | Learning | The Catalog (machines) and the Academy (method), in one tab |
 | Limbo | Mindbody events the app couldn't match to a studio, waiting for an admin |

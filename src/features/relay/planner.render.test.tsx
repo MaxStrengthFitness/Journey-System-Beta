@@ -34,6 +34,9 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
   }),
 }));
 
+/** Pending access requests the fake answers `access_requests` with; empty unless a test sets it. */
+const fakeData = vi.hoisted(() => ({ accessRequests: [] as { id: string; data: Record<string, unknown> }[] }));
+
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => ({ path: parts.filter((p) => typeof p === "string").join("/"), id: "id" });
   const emptySnap = {
@@ -58,6 +61,11 @@ vi.mock("firebase/firestore", () => {
     onSnapshot: (target: { path: string }, a: unknown, b?: unknown) => {
       const next = (typeof a === "function" ? a : b) as (s: unknown) => void;
       const isDoc = target.path.split("/").length % 2 === 0;
+      if (target.path === "access_requests" && fakeData.accessRequests.length > 0) {
+        const docs = fakeData.accessRequests.map((r) => ({ id: r.id, data: () => r.data }));
+        const t = setTimeout(() => next({ ...emptySnap, docs, size: docs.length, empty: false, forEach: (f: (d: unknown) => void) => docs.forEach(f) }), 0);
+        return () => clearTimeout(t);
+      }
       const t = setTimeout(() => next(isDoc ? emptyDoc : emptySnap), 0);
       return () => clearTimeout(t);
     },
@@ -147,7 +155,7 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("No sessions on your schedule");
     expect(h.textContent).toContain("Next up");
     expect(h.textContent).toContain("Nothing waiting on the Floor.");
-    expect(h.querySelectorAll(".sr__ring")).toHaveLength(3);
+    expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");
@@ -168,12 +176,18 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("New note");
     await click(tab("Team"));
     expect(h.textContent).toContain("Your team");
-    expect(h.textContent).toContain("Who's in today");
-    expect(h.textContent).toContain("Open loops");
-    expect(h.textContent).toContain("This month");
-    expect(h.textContent).toContain("Renewals due");
-    expect(h.textContent).toContain("The vault");
+    // People and standards (voice-review round, Sep 27 2026): the panels that
+    // repeated the Hub (who's in today) and Operations (the month's client
+    // groups) are gone, and so are the four tiles and the "Behind" verdict.
+    expect(h.textContent).not.toContain("Who's in today");
+    expect(h.textContent).not.toContain("This month");
+    expect(h.textContent).not.toContain("Renewals due");
+    expect(h.textContent).not.toContain("Up for grabs");
+    expect(h.textContent).toContain("By name, never ranked.");
     expect(h.textContent).toContain("Only work with someone's name on it counts");
+    expect(h.textContent).toContain("The studio's standards");
+    expect(h.textContent).toContain("Open loops");
+    expect(h.textContent).toContain("The vault");
     // The studio's staff, under the cockpit (My Studio round).
     expect(h.textContent).toContain("Solon's staff");
     expect(h.textContent).toContain("Temporary");
@@ -231,14 +245,35 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Your team");
   });
 
-  it("offers the Network tab only to a franchise or super role, and it mounts", async () => {
+  it("says at the top of Team who is waiting to be let in (voice-review round, Sep 27 2026)", async () => {
+    fakeData.accessRequests = [{ id: "r1", data: { status: "Pending", fullName: "Nia New", email: "nia@example.com", userId: "u-nia" } }];
+    try {
+      const h = await mount(lead);
+      await click(tab("Team"));
+      await settle();
+      expect(h.textContent).toContain("One person is waiting to be let in.");
+      const go = [...h.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Let them in");
+      expect(go).toBeDefined();
+      // The staff list's own badge counts everyone waiting too.
+      expect(h.textContent).toContain("1 waiting");
+      expect(h.querySelector("#team-staff")).not.toBeNull();
+    } finally {
+      fakeData.accessRequests = [];
+    }
+  });
+
+  it("has no Network tab, even for a franchise owner: it moved to Operations (voice-review round, Sep 27 2026)", async () => {
+    // AJ: "Relay must prioritize the trainers transitioning between clients."
+    // The network's focus and launch are on Operations → All my studios, and
+    // the ranking of studios was dropped.
     const h = await mount({ ...(lead as object), role: "FranchiseOwner" });
-    expect(tab("Network")).toBeTruthy();
+    expect(tab("Network")).toBeUndefined();
+    expect(tab("Floor")).toBeTruthy();
+    expect(tab("Mine")).toBeTruthy();
+    expect(tab("Notes")).toBeTruthy();
     expect(tab("Team")).toBeTruthy();
-    await click(tab("Network"));
-    expect(h.textContent).toContain("The network");
-    expect(h.textContent).toContain("Launch an initiative");
-    expect(h.textContent).toContain("Studios are ranked here; people never are.");
+    expect(h.textContent).not.toContain("Launch an initiative");
+    expect(h.textContent).not.toContain("Studios are ranked here");
   });
 
   it("never offers the Team section to a trainer", async () => {

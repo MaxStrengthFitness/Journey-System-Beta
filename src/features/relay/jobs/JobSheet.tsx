@@ -85,7 +85,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
   };
 
   const body = () => {
-    if (!job) return <p className="pk-hint">This job is no longer on the board.</p>;
+    if (!job) return <p className="rk-hint">This job is no longer on the board.</p>;
     const parts = sortedParts(job);
     const progress = jobProgress(job);
     const onIt = isOnJob(job, me?.id);
@@ -97,30 +97,30 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
 
     return (
       <>
-        <div className="pk-body">
+        <div className="rk-body">
           {error && (
-            <p className="pk-problem" role="alert">
+            <p className="rk-problem" role="alert">
               {error}
             </p>
           )}
 
           <div className="tj-sheet__tags">
-            {job.status === "done" && <span className="pk-tag pk-tag--done">Finished</span>}
-            {job.status === "cancelled" && <span className="pk-tag">Cancelled</span>}
-            {isOpen && grabs && !onIt && <span className="pk-tag pk-tag--hero">Up for grabs</span>}
-            {isOpen && grabs && onIt && <span className="pk-tag pk-tag--live">Open to anyone</span>}
+            {job.status === "done" && <span className="rk-tag rk-tag--done">Finished</span>}
+            {job.status === "cancelled" && <span className="rk-tag">Cancelled</span>}
+            {isOpen && grabs && !onIt && <span className="rk-tag rk-tag--hero">Up for grabs</span>}
+            {isOpen && grabs && onIt && <span className="rk-tag rk-tag--live">Open to anyone</span>}
             {due && (
-              <span className={`pk-tag${isOpen && timing === "overdue" ? " pk-tag--flag" : isOpen && timing === "today" ? " pk-tag--live" : ""}`}>
+              <span className={`rk-tag${isOpen && timing === "overdue" ? " rk-tag--flag" : isOpen && timing === "today" ? " rk-tag--live" : ""}`}>
                 {due}
               </span>
             )}
-            <span className="pk-tag">Posted by {job.createdBy.name}</span>
+            <span className="rk-tag">Posted by {job.createdBy.name}</span>
           </div>
 
           {job.detail && <p className="tj-sheet__detail">{job.detail}</p>}
 
-          <section className="pk-field" aria-labelledby="tj-people">
-            <span className="pk-label" id="tj-people">
+          <section className="rk-field" aria-labelledby="tj-people">
+            <span className="rk-label" id="tj-people">
               Who's on it
             </span>
             {editingPeople ? (
@@ -166,7 +166,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
             ) : (
               <div className="tj-people">
                 {job.assignees.length === 0 ? (
-                  <p className="pk-hint">Nobody yet — it's up for grabs.</p>
+                  <p className="rk-hint">Nobody yet — it's up for grabs.</p>
                 ) : (
                   <ul className="tj-people__list">
                     {job.assignees.map((a) => (
@@ -223,14 +223,14 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
           </section>
 
           {parts.length > 0 && (
-            <section className="pk-field" aria-labelledby="tj-parts">
-              <span className="pk-label tj-parts__head" id="tj-parts">
+            <section className="rk-field" aria-labelledby="tj-parts">
+              <span className="rk-label tj-parts__head" id="tj-parts">
                 Parts
                 <span className="tabular">
                   {progress.done} of {progress.total}
                 </span>
               </span>
-              <div className={`pk-bar${progress.allDone ? " pk-bar--done" : ""}`} aria-hidden>
+              <div className={`rk-bar${progress.allDone ? " rk-bar--done" : ""}`} aria-hidden>
                 <span style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }} />
               </div>
               <ul className="tj-parts">
@@ -278,12 +278,12 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
           )}
 
           {isOpen && closing && (
-            <section className="pk-field" aria-labelledby="tj-close">
-              <span className="pk-label" id="tj-close">
+            <section className="rk-field" aria-labelledby="tj-close">
+              <span className="rk-label" id="tj-close">
                 {job.requiresNote ? "Closing message (needed)" : "Closing message (optional)"}
               </span>
               <textarea
-                className="pk-textarea"
+                className="rk-textarea"
                 value={note}
                 autoFocus
                 maxLength={1000}
@@ -291,7 +291,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
                 onChange={(e) => setNote(e.target.value)}
               />
               {!progress.allDone && parts.length > 0 && (
-                <p className="pk-hint">
+                <p className="rk-hint">
                   {progress.total - progress.done} part{progress.total - progress.done === 1 ? " is" : "s are"} not ticked.
                   Closing still works — say why in the message.
                 </p>
@@ -300,9 +300,9 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
           )}
         </div>
 
-        <div className="pk-foot">
+        <div className="rk-foot">
           {canLead && (
-            <div className="pk-foot__left">
+            <div className="rk-foot__left">
               {confirmDelete ? (
                 <>
                   <button
@@ -393,18 +393,18 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
             )
           )}
         </div>
-        {isOpen && closing && noteProblem && note.length > 0 && <p className="pk-problem">{noteProblem}</p>}
+        {isOpen && closing && noteProblem && note.length > 0 && <p className="rk-problem">{noteProblem}</p>}
       </>
     );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="pk-sheet sm:max-w-xl">
+      <DialogContent className="rk-sheet sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="pk-title">{job?.title ?? "Team job"}</DialogTitle>
+          <DialogTitle className="rk-title">{job?.title ?? "Team job"}</DialogTitle>
           {job && (
-            <p className="pk-lede">
+            <p className="rk-lede">
               {peopleLine(job.assignees, me?.id)}
               {job.assignees.length ? (job.assignees.length === 1 ? " is on it." : " are on it.") : "."}
             </p>

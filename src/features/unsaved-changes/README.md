@@ -27,7 +27,7 @@ useUnsavedChanges(isDirty, "this progress report", { onDiscard });
 
 - `label` finishes the sentence *"You have unsaved changes to …"*, so it is a noun phrase: "Sam's profile", "Routine A", "the studio's day".
 - `onDiscard` throws the typing away. **Give it whenever the screen can survive a navigation.** The client record stays mounted when the client changes. Without a discard, "Leave" would carry one client's half-typed edit onto the next client.
-- The hook returns `guard(proceed)`, which asks about this screen only (a drawer's own close, an editor's own Back). It also returns `release()`, for a button that saves *and* leaves in one tap (the post-session screen files its note on the way out).
+- The hook returns `guard(proceed)`, which asks about this screen only (a drawer's own close, an editor's own Back). It also returns `release()`, for a button that saves *and* leaves in one tap (the Wrap-up files its note on the way out).
 - Every form built on `admin/useDirtyForm` is registered automatically. Pass `{ label }` as its third argument. `form.leave.guard(onBack)` covers the screen's own Back.
 
 **A component that switches between its children uses a scope:**
@@ -53,7 +53,7 @@ Only typing inside the scope is asked about, because only that is about to unmou
 
 ## What is registered (Sep 24 2026)
 
-The client record's Save bar (`ClientInfoSheet` when the round was written; since the landing merge, the client codex's one Save bar, registered in `client-codex/ClientCodex.tsx`) · Programming → Setup's drafts, Quick entry included (`SetupView`) · the Edit Routine drawer (`EditRoutineDrawer`) · the progress report (`ClientProgressReportView`) · the post-session closing note and an unfinished mid-session note (`VictoryHUDScreen`) · every `useDirtyForm` form: the studio and catalog machine editors, My Studio → Studio's details, day and renewal settings, the InBody variation (named since the landing; it asked about "this page" before), and All locations' studio details.
+The client record's Save bar (`ClientInfoSheet` when the round was written; since the landing merge, the client codex's one Save bar, registered in `client-codex/ClientCodex.tsx`) · Programming → Setup's drafts, Quick entry included (`SetupView`) · the Edit Routine drawer (`EditRoutineDrawer`) · the progress report (`ClientProgressReportView`) · the Wrap-up's Profile note (the closing note until Sep 27) and an unfinished mid-session note (`WrapUpScreen`) · every `useDirtyForm` form: the studio and catalog machine editors, My Studio → Studio's details, day and renewal settings, the InBody variation (named since the landing; it asked about "this page" before), and All locations' studio details.
 
 **Not yet registered**, and worth doing next the same way: the header's quick note (`QuickNoteDialog`), the consultation wizard, the announcement composer, Log past session and the session pop-up's edits (`client-history`), Relay's note editor, the Pulse panel, and two on the client codex: the Notes page's composer (`JournalComposer`, mounted by `client-notes/NotesPage.tsx`; the old journal composer was not registered either) and FORD's In one line editor (`ford/page/OneLinePanel.tsx`, which the Overview's "Write one" opens). The composer is shared with the session sheet, so register it from the host, e.g. `useUnsavedChanges(text !== "", "the note about <name>")`.
 
@@ -61,4 +61,4 @@ The client record's Save bar (`ClientInfoSheet` when the round was written; sinc
 
 - `registry.test.ts`: the gate itself.
 - `guard.render.test.tsx`: the real `AppBottomBar`, the real `useProfileNav` with a scope, and a real Base UI dialog closed by Escape.
-- `components/VictoryHUDScreen.render.test.tsx`: the post-session screen asks before the bottom bar leaves with a typed note, and "Back to Hub" files it without asking.
+- `components/WrapUpScreen.render.test.tsx`: the Wrap-up (the post-session screen) asks before the bottom bar leaves with a typed note, and "Back to Hub" files it without asking.

@@ -179,7 +179,7 @@ export function AdminLimboQueue({ studios }: Props) {
       <AdminHeader
         icon={<Inbox className="w-5 h-5" />}
         title="Limbo Queue"
-        subtitle="Mindbody events that could not be matched to a studio. They are held here rather than discarded — usually because a studio is missing its Mindbody site or location id in Admin → Studios. Assign a studio to release them."
+        subtitle="Mindbody events that could not be matched to a studio. They are held here rather than discarded — usually because a studio is missing its Mindbody site or location id (My Studio → Studio, or Admins → All locations). Assign a studio to release them."
         actions={
           <AdminButton onClick={load} busy={isLoading}>
             {!isLoading && <RefreshCw className="w-3.5 h-3.5" />}

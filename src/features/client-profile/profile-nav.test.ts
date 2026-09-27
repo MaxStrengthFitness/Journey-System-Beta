@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { DossierSection } from "../../types/journal";
 import {
   DEFAULT_LOCATION,
+  PROFILE_TABS,
   RECORD_ANCHORS,
   RECORD_PAGES,
   RECORD_PAGE_IDS,
@@ -169,6 +170,25 @@ describe("legacyLocation", () => {
       expect(isLocation(to), id).toBe(true);
       expect(to, id).not.toEqual(DEFAULT_LOCATION);
     }
+  });
+});
+
+describe("the profile's four tabs", () => {
+  /*
+   * AJ, Sep 27 2026 (the voice review of the Screen Atlas), recorded exactly
+   * as approved: "The four tabs run by depth: Journey (what she has done,
+   * the glance on the floor), Programming (what she's meant to do), Notes &
+   * Profile (who she is), Activity Archive (the whole record). Don't
+   * reorder, merge or add a tab without asking."
+   */
+  it("run by depth, in AJ's order", () => {
+    expect(PROFILE_TABS.map((t) => t.id)).toEqual(["journey", "programming", "record", "clinical"]);
+    expect(PROFILE_TABS.map((t) => t.label)).toEqual(["Journey", "Programming", "Notes & Profile", "Activity Archive"]);
+  });
+
+  it("open on the shallowest of them, Journey", () => {
+    expect(DEFAULT_LOCATION).toEqual({ tab: "journey" });
+    expect(PROFILE_TABS[0].id).toBe(DEFAULT_LOCATION.tab);
   });
 });
 

@@ -256,9 +256,9 @@ export function TaskManager({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="pk-sheet sm:max-w-2xl">
+      <DialogContent className="rk-sheet sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="pk-title">
+          <DialogTitle className="rk-title">
             {draft && !openWith && (
               <button type="button" className="st__row-action" onClick={close} aria-label="Back to the task list">
                 <ChevronLeft size={18} aria-hidden />
@@ -279,7 +279,7 @@ export function TaskManager({
                 : "All your tasks"}
           </DialogTitle>
           {!draft && (
-            <p className="pk-lede">
+            <p className="rk-lede">
               {canManageStudio
                 ? "The duties this studio is held to, and your own. Trainers see the studio's on the Studio tab on the days they fall due."
                 : "Everything on your own list, including the ones that aren't due today. Only you see these."}
@@ -289,9 +289,9 @@ export function TaskManager({
 
         {!draft && (
           <>
-            <div className="pk-body">
+            <div className="rk-body">
               {sorted.length === 0 ? (
-                <p className="pk-empty">Nothing yet.</p>
+                <p className="rk-empty">Nothing yet.</p>
               ) : (
                 <ul className="tw-list">
                   {sorted.map((t) => (
@@ -300,9 +300,9 @@ export function TaskManager({
                         <span className="tw-item__title">
                           {t.title}
                           {canManageStudio && taskScopeOf(t) === "personal" && (
-                            <span className="pk-tag">Just you</span>
+                            <span className="rk-tag">Just you</span>
                           )}
-                          {!t.active && <span className="pk-tag">Retired</span>}
+                          {!t.active && <span className="rk-tag">Retired</span>}
                         </span>
                         <span className="tw-item__sub">
                           {categoryLabel(t.category, categories)} ·{" "}
@@ -317,7 +317,7 @@ export function TaskManager({
                 </ul>
               )}
             </div>
-            <div className="pk-foot">
+            <div className="rk-foot">
               <button
                 type="button"
                 className="pl__btn"

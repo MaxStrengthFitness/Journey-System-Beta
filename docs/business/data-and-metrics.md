@@ -101,10 +101,20 @@ The client codex (`docs/rounds/2026-09-24-client-codex.md`) kept this rule for e
 | **In one line** — `clients/{id}/ford/one-line` | The FORD page's In one line panel (the team's sentence, last writer wins) | The top of the FORD page and the Overview's FORD slot, with who wrote it last |
 | **Follow up next time** — `followUp`, `followUpAt`, `followUpBy` on a FORD detail | The FORD detail dialog, only when the question changes; "Asked it" clears it | The pillar's Ask next line on the FORD page. The briefing does not read it yet: showing it there is a floor change waiting on AJ |
 | **The InBody normal variation** — `studios/{id}.inbodyVariation` | My Studio → Studio | The InBody card, Body & Pulse (Measured and told, Over time), the progress report, the Renewal Brief, the renewal card, the pipeline and its Upgrade candidates filter |
-| **How she arrives and leaves** — the briefing's readiness answers and the post-session dose on each `sessions` document | The briefing and the post-session screen (unchanged) | Now also Body & Pulse → Over time and the figure's region list, from the 40 sessions the journal already streams — a reader, not a new read |
+| **How she arrives and leaves** — the briefing's readiness answers and the post-session dose on each `sessions` document | The briefing and the Wrap-up (unchanged) | Now also Body & Pulse → Over time and the figure's region list, from the 40 sessions the journal already streams — a reader, not a new read |
 | `recoveryMetric` on the client | **Nothing any more** (decision: retire it from the screen) | **Nothing.** It stays on old records by AJ's choice; the record form refuses the key, so no screen can write it again. It is kept, not a bug: no reader and no writer |
-| `fordSummary.pinned` on the client | The FORD rollup, after every FORD save (now for trainers too, since the FORD read was fixed) | **Nothing.** A write with no reader — and FORD text on a document cross-train studios can read. Whether to stop writing it is waiting on AJ; `counts` and `nextDate` beside it do have readers (Relay, cohorts) |
+| `fordSummary.pinned` on the client | The FORD rollup, after every FORD save (now for trainers too, since the FORD read was fixed) | **Nothing.** A write with no reader — and FORD text on a document cross-train studios can read. Whether to stop writing it is waiting on AJ; `counts` and `nextDate` beside it do have readers (Relay → Mine's follow-ups read `nextDate`; the record's FORD door reads `counts`. Team's "Dates they mentioned" group read them too until it went on Sep 27 2026) |
 | `lastUpdatedBy` on the client | The Save bar (as the old form did) | Nothing yet — carried over unchanged, on the work list |
+
+## What the standing week added, and who reads it (Sep 27 2026)
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review) |
+| `…final` (+ `finalAt`, `finalBy`) | A studio leader, on My Studio → Team → Review → Agree | Team's week check (the next seven days' bookings against it) and its rows; My Profile ("Agreed by … on …", and what a change would change) |
+| `…trainerId`, `trainerName` | Both writes | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+
+The week check counts nothing and ranks nobody: it says, one sentence per slot, where the bookings differ from the agreed weeks.
 
 Every number the codex shows about her history keeps the migration rules: the Story's since line and the header's session counts are one computation, a FileMaker client is never called new, and a count of her Journey sessions says "in Journey".
 

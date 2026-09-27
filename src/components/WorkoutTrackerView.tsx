@@ -199,7 +199,7 @@ const ClientCheckInPanel = React.lazy(() =>
 );
 import { SessionJournalSidebar } from "./journal/SessionJournalSidebar";
 import { BriefingScreen } from "../features/briefing";
-import { VictoryHUDScreen } from "./VictoryHUDScreen";
+import { WrapUpScreen } from "./WrapUpScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
 import { ageOnFile, demographicsPatch } from "../lib/consultation-answers";
 import { studioTodayKey } from "../lib/studio-time";
@@ -2006,12 +2006,15 @@ export function WorkoutTrackerView({
         }
       }
 
-      /* The wrap-up note is labelled "something the next trainer should
-         know" — and until now it reached only the session document, which
-         the next trainer's briefing never reads. It still goes there (the
-         History list and the export read it); it ALSO files to the journal
-         as a Heads up, which is the one loudness the briefing shows for the
-         next three weeks. Outside the batch, like every journal write. */
+      /* The note for the next trainer (the End Session box; "the wrap-up
+         note" until the voice-review round, Sep 27 2026, when Wrap-up became
+         the post-session screen's name). Until the reporting round it reached
+         only the session document, which the next trainer's briefing never
+         reads. It still goes there (the History list and the export read
+         it); it ALSO files to the journal as a Heads up, which is the one
+         loudness the briefing shows for the next three weeks. Outside the
+         batch, like every journal write. A note only for the profile is the
+         Wrap-up's Profile note, filed at Note loudness. */
       const wrap = (currentSessionNotes || "").trim();
       if (wrap) {
         createJournalEntry(
@@ -2028,7 +2031,7 @@ export function WorkoutTrackerView({
             sessionId: currentSession.id ?? null,
             origin: "post_session",
           },
-        ).catch(() => toastError("Session saved. The wrap-up note could not reach the journal — add it from Notes."));
+        ).catch(() => toastError("Session saved. The note for the next trainer could not reach the journal — add it from Notes."));
       }
 
       /* The read the post-session screen shows: today against the last
@@ -2178,7 +2181,7 @@ export function WorkoutTrackerView({
             origin: "post_session",
           },
         ),
-        "Session saved. The closing note could not be saved — add it from the Journal.",
+        "Session saved. The profile note could not be saved — add it from Notes.",
       );
     }
     setPostSession(null);
@@ -2894,7 +2897,7 @@ export function WorkoutTrackerView({
 
   if (screen === "post-session" && postSession) {
     return (
-      <VictoryHUDScreen
+      <WrapUpScreen
         client={postSession.client}
         coverage={clientCoverage}
         session={postSession.session}
@@ -3646,15 +3649,28 @@ export function WorkoutTrackerView({
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-                    Wrap-up note (optional)
+                  {/* The note for the next trainer (voice-review round, Sep 27
+                      2026 — "the end session note is for the next trainer").
+                      It files as a Heads up, the loudness the briefing shows
+                      for three weeks. A note only for the profile is the
+                      Wrap-up's Profile note, one screen on. */}
+                  <label
+                    htmlFor="next-trainer-note"
+                    className="text-xs font-black uppercase tracking-widest text-muted-foreground"
+                  >
+                    Note for the next trainer (optional)
                   </label>
                   <Textarea
+                    id="next-trainer-note"
                     value={currentSessionNotes}
                     onChange={(e) => setCurrentSessionNotes(e.target.value)}
-                    placeholder="A reminder for later, or something the next trainer should know…"
+                    placeholder="What should the next trainer know before the next session?"
+                    aria-describedby="next-trainer-note-hint"
                     className="min-h-25 border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-bg-dark resize-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus-visible:ring-orange-500 focus-visible:border-orange-500"
                   />
+                  <p id="next-trainer-note-hint" className="text-xs text-muted-foreground">
+                    Shows on their briefing for the next three weeks. A note just for the profile goes on the Wrap-up, next.
+                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button

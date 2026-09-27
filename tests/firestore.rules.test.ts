@@ -3333,3 +3333,137 @@ describe("a cross-train visitor's session", () => {
     await assertSucceeds(updateDoc(doc(db, "clients", CLIENT), { firstName: "Casey" }));
   });
 });
+
+// ── THE STANDING WEEK (voice-review round, Sep 27 2026) ─────────────────
+//
+// studios/{s}/standingWeeks/{uid}: a trainer's usual week at a studio. The
+// trainer proposes it (the proposal fields only), a leader agrees it, and the
+// studio's people read it. docs/rounds/2026-09-27-standing-week.md.
+describe("the standing week", () => {
+  const week = (over: Record<string, unknown> = {}) => ({
+    hours: [{ weekday: 1, from: "07:00", to: "13:00" }],
+    regulars: [{ id: "r1", weekday: 1, start: "08:00", clientId: "clientA", clientName: "Judy Smith" }],
+    ...over,
+  });
+  const proposal = (uid: string, over: Record<string, unknown> = {}) => ({
+    studioId: "studioA",
+    trainerUid: uid,
+    trainerId: uid,
+    trainerName: "Trainer A",
+    proposed: week(),
+    proposedAt: serverTimestamp(),
+    proposedBy: { id: uid, name: "Trainer A" },
+    ...over,
+  });
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const weekRef = (db: ReturnType<typeof as>, studioId: string, uid: string) => doc(db, "studios", studioId, "standingWeeks", uid);
+  const agreement = (by: string, over: Record<string, unknown> = {}) => ({
+    final: week(),
+    finalAt: serverTimestamp(),
+    finalBy: { id: by, name: "Owner A" },
+    ...over,
+  });
+
+  async function seedAgreed() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", "studioA", "standingWeeks", "trainerA"), {
+        ...proposal("trainerA", { proposedAt: new Date("2026-09-20T12:00:00Z") }),
+        final: week(),
+        finalAt: new Date("2026-09-21T12:00:00Z"),
+        finalBy: { id: "ownerA", name: "Owner A" },
+      });
+    });
+  }
+
+  it("lets a trainer propose their own week, and read the studio's weeks", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA"), { merge: true }));
+    await assertSucceeds(getDoc(weekRef(db, "studioA", "trainerA")));
+    await assertSucceeds(getDocs(collection(db, "studios", "studioA", "standingWeeks")));
+    // Proposing again, and taking the proposal back.
+    await assertSucceeds(
+      setDoc(weekRef(db, "studioA", "trainerA"), { proposed: week({ note: "Mornings only" }), proposedAt: serverTimestamp() }, { merge: true }),
+    );
+    await assertSucceeds(updateDoc(weekRef(db, "studioA", "trainerA"), { proposed: null, proposedAt: serverTimestamp() }));
+  });
+
+  it("never lets a trainer agree a week, or write someone else's", async () => {
+    const db = as("trainerA");
+    // Their own week, agreed by themselves.
+    await assertFails(setDoc(weekRef(db, "studioA", "trainerA"), { ...proposal("trainerA"), ...agreement("trainerA") }));
+    // Someone else's week, and a studio they don't work at.
+    await assertFails(setDoc(weekRef(db, "studioA", "ownerA"), proposal("ownerA", { proposedBy: { id: "trainerA", name: "Trainer A" } })));
+    await assertFails(setDoc(weekRef(db, "studioB", "trainerA"), proposal("trainerA", { studioId: "studioB" })));
+    // Once agreed, the agreement stays the leader's; the proposal stays theirs.
+    await seedAgreed();
+    await assertFails(updateDoc(weekRef(db, "studioA", "trainerA"), { final: week({ regulars: [] }) }));
+    await assertFails(updateDoc(weekRef(db, "studioA", "trainerA"), { finalBy: { id: "trainerA", name: "Trainer A" } }));
+    await assertFails(updateDoc(weekRef(db, "studioA", "trainerA"), { final: null, finalAt: null, finalBy: null }));
+    await assertSucceeds(
+      updateDoc(weekRef(db, "studioA", "trainerA"), {
+        proposed: week({ regulars: [] }),
+        proposedAt: serverTimestamp(),
+        proposedBy: { id: "trainerA", name: "Trainer A" },
+      }),
+    );
+    await assertFails(deleteDoc(weekRef(db, "studioA", "trainerA")));
+  });
+
+  it("keeps the weeks to the studio's own people", async () => {
+    await seedAgreed();
+    const elsewhere = as("trainerB");
+    await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "standingWeeks")));
+    await assertFails(getDoc(weekRef(elsewhere, "studioA", "trainerA")));
+    await assertFails(getDoc(weekRef(testEnv.unauthenticatedContext().firestore(), "studioA", "trainerA")));
+  });
+
+  it("lets the studio's leader agree, change and remove a week, signed in their own name", async () => {
+    const owner = as("ownerA");
+    // A leader may set a week nobody proposed; they never sign a proposal in the trainer's name.
+    await assertFails(setDoc(weekRef(owner, "studioA", "trainerA"), { ...proposal("trainerA"), ...agreement("ownerA") }));
+    await assertSucceeds(setDoc(weekRef(owner, "studioA", "trainerA"), { ...proposal("trainerA", { proposedBy: null }), ...agreement("ownerA") }));
+    // Agreed as somebody else, or backdated.
+    await assertFails(updateDoc(weekRef(owner, "studioA", "trainerA"), agreement("trainerA")));
+    await assertFails(updateDoc(weekRef(owner, "studioA", "trainerA"), agreement("ownerA", { finalAt: new Date("2026-01-01T12:00:00Z") })));
+    // Changed and agreed again; the proposal brought into line with it.
+    await assertSucceeds(
+      updateDoc(weekRef(owner, "studioA", "trainerA"), { ...agreement("ownerA", { final: week({ regulars: [] }) }), proposed: week({ regulars: [] }) }),
+    );
+    // Not at a studio they don't run.
+    await assertFails(setDoc(weekRef(owner, "studioB", "trainerB"), { ...proposal("trainerB", { studioId: "studioB" }), ...agreement("ownerA") }));
+    await assertSucceeds(deleteDoc(weekRef(owner, "studioA", "trainerA")));
+  });
+
+  it("counts the grant: a trainer who runs the studio may agree a colleague's week", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), "trainers", "trainerA"), { managedStudioIds: ["studioA"] });
+    });
+    const granted = as("trainerA");
+    await assertSucceeds(
+      setDoc(weekRef(granted, "studioA", "ownerA"), {
+        ...proposal("ownerA", { proposedBy: null, trainerName: "Owner A" }),
+        ...agreement("trainerA"),
+      }),
+    );
+  });
+
+  it("holds the week's shape", async () => {
+    const owner = as("ownerA");
+    const bad = [
+      { studioId: "studioB" },
+      { trainerUid: "someoneElse" },
+      { trainerId: "" },
+      { colour: "blue" },
+      { proposed: week({ note: "x".repeat(501) }) },
+      { proposed: week({ hours: Array.from({ length: 15 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
+      { proposed: week({ regulars: Array.from({ length: 81 }, (_, i) => ({ id: `r${i}`, weekday: 1, start: "08:00", clientId: "c", clientName: "C" })) }) },
+      { proposed: { hours: [], regulars: [], extra: true } },
+      { proposed: "Mondays" },
+    ];
+    for (const over of bad) {
+      await assertFails(setDoc(weekRef(owner, "studioA", "trainerA"), proposal("trainerA", { proposedBy: null, ...over })));
+    }
+    // A trainer's proposal, backdated.
+    await assertFails(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposedAt: new Date("2026-01-01T12:00:00Z") })));
+  });
+});

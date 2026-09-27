@@ -106,26 +106,26 @@ export function VaultPanel() {
 
       {draft && (
         <div className="vault__form">
-          <label className="pk-field">
-            <span className="pk-label">{draft.kind === "incident" ? "What happened" : "Business or person"}</span>
-            <input className="pk-input" value={draft.title} maxLength={160} onChange={(e) => setDraft({ ...draft, title: e.target.value })} autoFocus />
+          <label className="rk-field">
+            <span className="rk-label">{draft.kind === "incident" ? "What happened" : "Business or person"}</span>
+            <input className="rk-input" value={draft.title} maxLength={160} onChange={(e) => setDraft({ ...draft, title: e.target.value })} autoFocus />
           </label>
           {draft.kind === "incident" && (
-            <label className="pk-field">
-              <span className="pk-label">On</span>
-              <input type="date" className="pk-input tw-day" value={draft.onDate ?? ""} onChange={(e) => setDraft({ ...draft, onDate: e.target.value || null })} />
+            <label className="rk-field">
+              <span className="rk-label">On</span>
+              <input type="date" className="rk-input tw-day" value={draft.onDate ?? ""} onChange={(e) => setDraft({ ...draft, onDate: e.target.value || null })} />
             </label>
           )}
-          <label className="pk-field">
-            <span className="pk-label">{draft.kind === "incident" ? "Who was involved" : "Contact, referral code"}</span>
-            <input className="pk-input" value={draft.people} maxLength={500} onChange={(e) => setDraft({ ...draft, people: e.target.value })} placeholder={draft.kind === "incident" ? "Names — staff or clients" : "Name, phone, code"} />
+          <label className="rk-field">
+            <span className="rk-label">{draft.kind === "incident" ? "Who was involved" : "Contact, referral code"}</span>
+            <input className="rk-input" value={draft.people} maxLength={500} onChange={(e) => setDraft({ ...draft, people: e.target.value })} placeholder={draft.kind === "incident" ? "Names — staff or clients" : "Name, phone, code"} />
           </label>
-          <label className="pk-field">
-            <span className="pk-label">{draft.kind === "incident" ? "What happened, what was done, what follows" : "The arrangement"}</span>
-            <textarea className="pk-textarea" rows={4} value={draft.body} maxLength={5000} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+          <label className="rk-field">
+            <span className="rk-label">{draft.kind === "incident" ? "What happened, what was done, what follows" : "The arrangement"}</span>
+            <textarea className="rk-textarea" rows={4} value={draft.body} maxLength={5000} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
           </label>
-          {problem && <p className="pk-problem">{problem}</p>}
-          <div className="pk-foot">
+          {problem && <p className="rk-problem">{problem}</p>}
+          <div className="rk-foot">
             <button type="button" className="pl__btn" onClick={() => setDraft(null)} disabled={busy}>
               Cancel
             </button>
@@ -137,11 +137,11 @@ export function VaultPanel() {
       )}
 
       {error ? (
-        <p className="pk-empty">{error}</p>
+        <p className="rk-empty">{error}</p>
       ) : loading ? (
-        <p className="pk-empty">Opening the vault…</p>
+        <p className="rk-empty">Opening the vault…</p>
       ) : shown.length === 0 ? (
-        <p className="pk-empty">{kind === "incident" ? "No incidents logged." : "No partners yet — local businesses, referral codes, clients who run their own."}</p>
+        <p className="rk-empty">{kind === "incident" ? "No incidents logged." : "No partners yet — local businesses, referral codes, clients who run their own."}</p>
       ) : (
         <ul className="vault__list">
           {shown.map((e) => (
@@ -166,7 +166,7 @@ export function VaultPanel() {
           ))}
         </ul>
       )}
-      <p className="pk-hint">{VAULT_KIND_LABEL.incident}s and {VAULT_KIND_LABEL.partner.toLowerCase()}s are read by this studio's leaders, franchise owners and administrators only — never by the floor, never on a client's record.</p>
+      <p className="rk-hint">{VAULT_KIND_LABEL.incident}s and {VAULT_KIND_LABEL.partner.toLowerCase()}s are read by this studio's leaders, franchise owners and administrators only — never by the floor, never on a client's record.</p>
     </section>
   );
 }

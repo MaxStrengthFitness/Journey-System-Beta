@@ -317,7 +317,7 @@ function AskDetail({ request: r }: { request: TaskRequest }) {
           <ExternalLink size={13} aria-hidden /> {client.firstName} {client.lastName}
         </button>
       )}
-      <p className="pk-hint">Comments and the full thread are on the board below.</p>
+      <p className="rk-hint">Comments and the full thread are on the board below.</p>
     </>
   );
 }
@@ -327,7 +327,7 @@ function AskFoot({ request, onClose }: { request: TaskRequest; onClose: (r: Task
   const [busy, setBusy] = useState(false);
   return (
     <div className="nu__foot">
-      <input className="pk-input" placeholder="A closing note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+      <input className="rk-input" placeholder="A closing note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
       <button
         type="button"
         className="pl__btn pl__btn--primary"

@@ -1,6 +1,6 @@
 import { Sparkles } from "lucide-react";
 import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
-import { focusOf } from "./NetworkView";
+import { focusOf } from "./focus";
 
 /** The network's focus this quarter, as a quiet line on the Floor. */
 export function FocusBanner() {

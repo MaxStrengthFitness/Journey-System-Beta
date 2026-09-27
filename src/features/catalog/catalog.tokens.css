@@ -51,12 +51,14 @@
   --cat-ok:      #1c7a52;     /* 4.9:1 */
   --cat-ok-fill: #e3f1ea;
 
-  /* ── amber: clinical warnings. Never collapsed, so it must read at a
-        glance without being shouty enough to be tuned out. ───────────── */
-  --cat-warn:        #8a5300;   /* 5.1:1 on white */
-  --cat-warn-strong: #b26a00;
-  --cat-warn-fill:   #fdf3e3;
-  --cat-warn-border: #e5c48f;   /* 3.0:1 */
+  /* ── the caution colour: clinical warnings. Never collapsed, so it must
+        read at a glance without being shouty enough to be tuned out. The
+        app's plum since Sep 27 2026 (it was amber); learning-tokens.test.ts
+        holds every colour here to its equipment.tokens.css original. ──── */
+  --cat-warn:        #a2457e;   /* 5.1:1 on white */
+  --cat-warn-strong: #a2457e;
+  --cat-warn-fill:   #f4e9f0;
+  --cat-warn-border: #a2457e;   /* 3.0:1 */
 
   /* ── the figure ───────────────────────────────────────────────────── */
   --cat-muscle-primary:   #0a548b;
@@ -91,21 +93,21 @@
 
   /* Dark is not a flip. Saturated orange vibrates on near-black, so fills
      become low-alpha washes and text tones lift instead of darken. */
-  --cat-hero:      #ff6a1f;
-  --cat-hero-text: #ff8c4d;   /* 7.2:1 on surface */
-  --cat-hero-fill: rgba(255, 106, 31, 0.14);
+  --cat-hero:      #f36d21;
+  --cat-hero-text: #ff9455;   /* 7.2:1 on surface */
+  --cat-hero-fill: rgba(243, 109, 33, 0.14);
 
-  --cat-live:      #38bdf8;
-  --cat-live-text: #7dd3fc;   /* 9.4:1 */
-  --cat-live-fill: rgba(56, 189, 248, 0.12);
+  --cat-live:      #4a9fd8;
+  --cat-live-text: #7cc0ee;   /* 9.4:1 */
+  --cat-live-fill: rgba(74, 159, 216, 0.14);
 
-  --cat-ok:      #34d399;
-  --cat-ok-fill: rgba(52, 211, 153, 0.12);
+  --cat-ok:      #4ec08c;
+  --cat-ok-fill: rgba(78, 192, 140, 0.13);
 
-  --cat-warn:        #fbbf24;   /* 10.4:1 on surface */
-  --cat-warn-strong: #fcd34d;
-  --cat-warn-fill:   rgba(251, 191, 36, 0.10);
-  --cat-warn-border: rgba(251, 191, 36, 0.32);
+  --cat-warn:        #d98cbd;   /* 10.4:1 on surface */
+  --cat-warn-strong: #d98cbd;
+  --cat-warn-fill:   rgba(217, 140, 189, 0.14);
+  --cat-warn-border: rgba(217, 140, 189, 0.32);
 
   --cat-muscle-primary:   #0a548b;
   --cat-muscle-secondary: #6fb4e4;
@@ -119,4 +121,6 @@
   --cat-accent-posterior: #fbbf24;
   --cat-accent-core:      #c084fc;
   --cat-accent-other:     #8b98a4;
+  --cat-hero-on: #1a0c04;
+
 }

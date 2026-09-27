@@ -96,7 +96,7 @@ export function dateWithYear(value: unknown): string | null {
 export const ORIGIN_WORDS: Readonly<Record<FordOrigin, string>> = {
   in_session: "Caught mid-session",
   briefing: "Caught in the briefing",
-  post_session: "Caught after the session",
+  post_session: "Caught at the wrap-up",
   profile: "Added on the profile",
   legacy: "From the old events list",
   mindbody_intake: "Added from the Mindbody account notes",

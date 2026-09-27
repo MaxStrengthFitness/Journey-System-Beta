@@ -37,6 +37,17 @@ vi.mock("firebase/firestore", () => {
 vi.mock("./KaizenRoster", () => ({ KaizenRoster: () => null }));
 vi.mock("./EditTrainerModal", () => ({ EditTrainerModal: () => null }));
 vi.mock("../renewals/MyRenewals", () => ({ MyRenewals: () => null }));
+// The standing week (voice-review round, Sep 27 2026) has its own render
+// test; here only WHERE it shows is checked, so it is a marker.
+const activeHolder = vi.hoisted(() => ({ value: null as null | { activeStudioId: string; activeStudio: { name: string } } }));
+vi.mock("../../contexts/ActiveStudioContext", () => ({ useOptionalActiveStudio: () => activeHolder.value }));
+vi.mock("../standing-week/MyStandingWeek", () => ({
+  MyStandingWeek: ({ studioName, authUid }: { studioName: string; authUid: string }) => (
+    <section data-testid="standing-week" data-uid={authUid}>
+      {studioName}
+    </section>
+  ),
+}));
 
 import { TrainerProfileView } from "./TrainerProfileView";
 import type { Client, ScheduleEntry, Studio, Trainer, WorkoutSession } from "../../types";
@@ -110,5 +121,38 @@ describe("the trainer page's Upcoming", () => {
     const names = [...card!.querySelectorAll(".tp-row__name")].map((n) => n.textContent);
     expect(names).toEqual(["Now Nia", "Later Lee", "Tomorrow Tam"]);
     expect(card!.textContent).toContain("3 booked");
+  });
+});
+
+describe("My standing week on the trainer page", () => {
+  const render = async (viewer: Trainer, studioId: string) => {
+    activeHolder.value = { activeStudioId: studioId, activeStudio: { name: studioId === "solon" ? "Solon" : "Westlake" } };
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(
+        <TrainerProfileView trainer={trainer} authTrainer={viewer} schedules={[]} sessions={[]} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />,
+      );
+    });
+    return host;
+  };
+  afterEach(() => {
+    activeHolder.value = null;
+  });
+
+  it("shows on your own page, at a studio you work at, keyed by your Auth uid", async () => {
+    const el = await render(trainer, "solon");
+    const card = el.querySelector("[data-testid='standing-week']");
+    expect(card?.textContent).toBe("Solon");
+    expect(card?.getAttribute("data-uid")).toBe("t1");
+  });
+
+  it("stays off a colleague's page, and off a studio you don't work at", async () => {
+    const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
+    expect((await render(colleague, "solon")).querySelector("[data-testid='standing-week']")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    expect((await render(trainer, "westlake")).querySelector("[data-testid='standing-week']")).toBeNull();
   });
 });

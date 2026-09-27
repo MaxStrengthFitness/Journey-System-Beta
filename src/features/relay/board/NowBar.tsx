@@ -71,26 +71,26 @@ export function NowBar({ now, studioId, closedRings = 0 }: NowBarProps) {
   const [open, setOpen] = useState(false);
   const fraction = gapFraction(now.gapMinutes);
   const meterClass =
-    now.current ? "nb__meter--busy" : now.gapMinutes !== null && now.gapMinutes < 10 ? "nb__meter--tight" : "";
+    now.current ? "rnb__meter--busy" : now.gapMinutes !== null && now.gapMinutes < 10 ? "rnb__meter--tight" : "";
 
   return (
     <>
-      <div className="nb" role="region" aria-label="Right now">
-        <div className="nb__where">
-          <span className={cn("nb__phase", `nb__phase--${now.phase}`)}>
-            <span className="nb__phase-dot" aria-hidden />
+      <div className="rnb" role="region" aria-label="Right now">
+        <div className="rnb__where">
+          <span className={cn("rnb__phase", `rnb__phase--${now.phase}`)}>
+            <span className="rnb__phase-dot" aria-hidden />
             {PHASE_LABEL[now.phase]}
           </span>
           {closedRings > 0 && (
-            <span className="nb__rings" aria-label={`${closedRings} of 3 shift rings closed`}>
+            <span className="rnb__rings" aria-label={`${closedRings} of 3 shift rings closed`}>
               {[0, 1, 2].map((i) => (
-                <span key={i} className={cn("nb__ring-dot", i < closedRings && "nb__ring-dot--closed")} />
+                <span key={i} className={cn("rnb__ring-dot", i < closedRings && "rnb__ring-dot--closed")} />
               ))}
             </span>
           )}
-          <div className="nb__next">
-            <span className="nb__next-label">{now.current ? "Now" : "Next"}</span>
-            <span className="nb__next-who">
+          <div className="rnb__next">
+            <span className="rnb__next-label">{now.current ? "Now" : "Next"}</span>
+            <span className="rnb__next-who">
               {now.current
                 ? `${now.current.clientName} · until ${minutesToClock(now.current.endMin)}`
                 : now.next
@@ -104,23 +104,23 @@ export function NowBar({ now, studioId, closedRings = 0 }: NowBarProps) {
 
         <button
           type="button"
-          className="nb__gap"
+          className="rnb__gap"
           aria-expanded={open}
           aria-controls="relay-daystrip"
           onClick={() => setOpen((v) => !v)}
         >
-          <span className="nb__gap-line">
+          <span className="rnb__gap-line">
             <span>{gapSentence(now)}</span>
-            <span className="nb__gap-sub">
+            <span className="rnb__gap-sub">
               {open ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
             </span>
           </span>
-          <span className={cn("nb__meter", meterClass)} aria-hidden>
-            <span className="nb__meter-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
+          <span className={cn("rnb__meter", meterClass)} aria-hidden>
+            <span className="rnb__meter-fill" style={{ width: `${Math.round(fraction * 100)}%` }} />
           </span>
         </button>
 
-        <div className="nb__pulse">
+        <div className="rnb__pulse">
           <PulseTicker studioId={studioId} />
         </div>
       </div>

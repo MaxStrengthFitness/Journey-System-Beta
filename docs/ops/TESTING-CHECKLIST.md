@@ -157,7 +157,7 @@ The round is `docs/rounds/2026-09-16-planner-rework.md`. Two iPads, one signed i
 - [ ] **Both iPads tick a different part at the same moment.** *Expected:* both ticks stay. *If one vanishes:* something rewrote `parts` whole.
 - [ ] **The trainer taps I'll take it, then closes the job with a note.** *Expected:* the head trainer's bell rings "taken", then "finished"; the job moves to **Finished lately**.
 - [ ] **The head trainer switches to a studio they only visit.** *Expected:* no **Team** tab and no **Post a job** there.
-- [ ] **Team tab after an assigned task is left undone yesterday.** *Expected:* that person is at the top, with "Missed *task* on *day*". A task someone else finished is not held against them. Today's open tasks are never "missed".
+- [ ] **Team tab after an assigned task is left undone yesterday.** *Expected:* that person's card (people are in name order, never moved to the top) says "Missed *task* on *day*", with no "Behind" label. A task someone else finished is not held against them. Today's open tasks are never "missed".
 - [ ] **New reminder for 5 minutes from now, "5 min before".** Leave the app open on any screen. *Expected:* the bell rings once, even with the same trainer signed in on both iPads; the Calendar shows it in the strip above the month.
 - [ ] **Write a note over two sittings.** Add two working notes, close the app, reopen, add a third on the other iPad, then save the note on the first. *Expected:* all three jots are still there. Fold one in with **Add to the note**.
 - [ ] **Formatting:** a heading, a checklist and a link. *Expected:* read mode draws them; ticking a box saves; the link opens in a new tab.
@@ -179,10 +179,10 @@ The round is `docs/rounds/2026-09-16-relay.md`. Two iPads at the same studio, on
 - [ ] **A note in two panes.** Open a note in landscape. *Expected:* working notes on the left, the note on the right; Lift into the note carries a jot across; the kind under File it reads as suggested once you link a client and write "shoulder pain" (Injury plan), and stays put once you tap a kind yourself. In portrait, the Log / Note switch under the bar swaps panes.
 - [ ] **Publish audiences.** Share with one colleague and tick Hand it off. *Expected:* their copy has a **Take it over** button. A franchise owner also sees **All MSF studios**: sharing there shows the note under From colleagues on an iPad at ANOTHER studio.
 - [ ] **The client's record.** Open a client → Notes & Profile. *Expected:* "Your working notes" under Plans from the team shows your last jots about them; adding one there appears in the Planner note's log; the other iPad (a different trainer) does not see it.
-- [ ] **Team tab as the head trainer.** *Expected:* Who's in today lists each person with a load bar from the schedule; This month shows counts for the five cohorts; Route to team on Renewals due posts a team job with one part per client that the trainer's iPad sees; The studio's day saves shift hours and the Now Bar's phase follows them on both iPads; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section).
+- [ ] **Team tab as the head trainer (people and standards since Sep 27 2026).** *Expected:* no Who's in today and no client groups (the Hub and Operations answer those); people by name, each with the sentences of their week; under The studio's standards, Open loops lists an ask nobody picked up for a day, a machine flagged on the Floor Map or reported on the shift list (once), and an overdue job; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section). A pending sign-in request shows "waiting to be let in" at the top, and Let them in scrolls to the staff list.
 - [ ] **Kudos.** On the other iPad's Pulse line about your work, tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
 - [ ] **The Calendar.** *Expected:* the strip above the month says Relay and shows a timed studio task on every day it falls, a team job on its due day with initials, a hand-off in blue; Mine narrows it to yours; a tap lands in Relay on the right tab.
-- [ ] **Network as a franchise owner.** *Expected:* the Network tab; setting a focus shows a banner on the Floor of every studio; Launch an initiative shows under Initiatives on each studio's board; Studios lists a number per studio (a dash on loops means the index is still building).
+- [ ] **The network as a franchise owner (Operations → Overview → Looking at: All my studios, since Sep 27 2026).** *Expected:* no Network tab in Relay; under All my studios, Focus this quarter (one per network you own) — Set the focus shows a banner on the Floor of every studio in it; Launch an initiative asks first and names every studio, then shows under Initiatives on each studio's board; no ranking of studios anywhere. An owner with one studio finds both at the foot of that studio's Overview.
 - [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens and Relay draws (color-mix and the swipe rows degrade gracefully; no blank app).
 
 ### Hub sync fixes · *branch `hub-sync-fixes` (Sep 16)*
@@ -456,8 +456,9 @@ studio's record for anything that saves — the Studio section writes the real
 
 **The shell**
 
-- [ ] **The bottom bar says My Studio**, and opens on **Relay** with four tabs
-  (Floor · Mine · Notes · Network) under the studio's name — no Team tab.
+- [ ] **The bottom bar says My Studio**, and opens on **Relay** with three tabs
+  (Floor · Mine · Notes) under the studio's name — no Team tab, and no Network
+  tab since Sep 27 2026 (it is on Operations → All my studios).
   Everything from the Relay walkthrough (Round 3) still works from here:
   Capture, the Now Bar, Next up, swipe, the Floor Map.
 - [ ] **The trainer's iPad shows Relay and Machines only.** The head trainer's
@@ -516,8 +517,9 @@ studio's record for anything that saves — the Studio section writes the real
 
 **Team**
 
-- [ ] **The cockpit** is what Relay → Team was (Round 3's Team checks: who's
-  in today, cohorts, open loops, the vault).
+- [ ] **People and standards** (Sep 27 2026): Round 3's Team checks, without
+  who's in today or the client groups; open loops and the vault stay. The
+  standing weeks come first on Team — Round 20.
 - [ ] **Letting someone in.** From a fresh browser, request access naming
   this studio. On the head trainer's iPad: the request shows under the
   studio's staff with a waiting badge; the role list stops at Studio Leader
@@ -705,9 +707,10 @@ there is no point testing the Monday page.
 - [ ] **Write a mid-session note, leave the machine, come back.** The draft
   survives. *Why:* `features/notes` became `features/client-notes` and the
   session-draft module moved with it.
-- [ ] **Relay's four tabs** — Floor, Mine, Notes, Network — from My Studio ->
-  Relay. *Why:* the folder is `features/relay/` now and its inner pieces are
-  in `board/`.
+- [ ] **Relay's three tabs** — Floor, Mine, Notes — from My Studio ->
+  Relay (Network moved to Operations -> All my studios on Sep 27 2026).
+  *Why:* the folder is `features/relay/` now and its inner pieces are in
+  `board/`.
 - [ ] **The red-flag sheet, in BOTH themes.** Start a session on a client
   with a condition or a critical note, tap the flag marker. *Why:* its scrim
   and alert icon were changed to satisfy the palette ratchet
@@ -1228,6 +1231,111 @@ client booked today and one booked tomorrow. Nothing to deploy first.
 - [ ] **A visiting client** (if one is booked here from another studio): a
   Critical note written on her profile at her home studio marks her card on
   this studio's Hub.
+
+## Round 20 — The voice review and the standing week · *Sep 27 2026, branch `claude/wizardly-davinci-x3onwn`*
+
+AJ's notes from the voice review of the Screen Atlas, and the standing week
+he asked for after it. The round documents are
+`docs/rounds/2026-09-27-voice-review.md` and
+`docs/rounds/2026-09-27-standing-week.md`. **Deploy the rules first**
+(`npm run test:rules`, then `firebase deploy --only firestore:rules`): the
+standing week's collection is new, and without its rules My Profile and Team
+say "the new database rules may not be deployed yet". Walk it with a Life
+Transformer's iPad and a head trainer's, portrait and landscape.
+
+**The Wrap-up and its two notes**
+
+- [ ] **End Session's box is for the next trainer.** End a session: the box
+  reads "Note for the next trainer (optional)". Write a sentence and end it.
+  Open that client's briefing from another session start: the note is there
+  as a Heads up.
+- [ ] **The Wrap-up's own note stays on the profile.** On the Wrap-up (the
+  kicker says "Wrap-up · session saved"), write a Profile note at Note
+  loudness: under it, "Stays on {her name}'s profile. The next trainer's
+  briefing won't show it." Leave, open her Notes: it is there; start her next
+  session: the briefing does not show it. Set a second one to Heads up: the
+  briefing shows that one.
+- [ ] **Nothing says "briefing" after a session.** The Wrap-up, the journal
+  card's origin ("Wrap-up") and the progress report archive ("· wrap-up").
+  "Briefing" appears only before a session.
+
+**What moved**
+
+- [ ] **The packages sheet looks right after Relay has been open.** Open My
+  Studio -> Relay, then a Wrap-up for a client with no package -> "Packages at
+  {studio}": the sheet's rows and buttons are its own, not Relay's cards.
+- [ ] **Launch an initiative with the defaults.** As a franchise owner, under
+  Operations -> Overview -> All my studios, launch one leaving "No date" and
+  "No number": it posts at every studio (it used to fail at 0 of N).
+- [ ] **No Network tab in Relay, no ranking of studios anywhere** (Round 3,
+  the network check).
+- [ ] **The profile's four tabs** run Journey · Programming · Notes & Profile ·
+  Activity Archive, in that order.
+
+**Settings and Learning**
+
+- [ ] **Settings reads plainly.** Tap the gear (its label is "Trainer
+  Settings"): My account shows the role's name ("Life Transformer", "Studio
+  Leader"), never "HeadTrainer"; Mindbody says Linked, or "Not linked — a
+  studio leader links you on My Studio → Team", readable in both themes. My
+  studio says how many people are on the team and no machine count.
+- [ ] **Open Operations opens Operations mode.** As a head trainer, Settings ->
+  Open Operations: the Operations bar is underneath and the menu's App Mode
+  says Operations. As a Life Transformer: no Operations card at all.
+- [ ] **Learning's warnings are the app's caution colour.** Learning -> Catalog
+  -> a machine with clinical warnings: the box is plum, not amber, in light
+  and dark. In dark mode, the orange buttons (a wiki page's Save, the studio
+  setting sheet's Save) have dark text you can read.
+
+**The standing week — the trainer (My Profile)**
+
+- [ ] **The card is on your own profile, at your studio.** Open your own
+  profile: **My standing week** with the studio's name, "Not proposed yet."
+  Open a colleague's profile: no card. *If it says the rules may not be
+  deployed:* deploy them.
+- [ ] **Build a week.** Tap **Hours** on Monday (7:00 AM – 1:00 PM), then on
+  Tuesday: Tuesday copies Monday. Change Monday's start to 1:30 PM: the end
+  moves after it. The end list only offers times after the start. Tap
+  **Regular** on Monday, pick a time, type the first three letters of a
+  client's name, tap her: she is under Monday. Set her to 2:30 PM: "Outside
+  the day's hours" shows. Everything is 40px or bigger.
+- [ ] **Leaving mid-edit asks first.** With the week edited and not
+  proposed, tap Hub: the app asks about "your standing week".
+- [ ] **Propose it.** Tap **Propose this week**: "Proposed." and the status
+  reads "Proposed on {today}. Waiting for a studio leader to agree it."
+  Reload: it is still there.
+- [ ] **Take it back.** Tap **Take back my proposal**: "Not proposed yet."
+  Propose it again for the next checks.
+
+**The standing week — the leader (My Studio -> Team)**
+
+- [ ] **Standing weeks is the first panel on Team.** "{Name} has a week
+  waiting to be agreed." People are listed by name, not by who is waiting.
+  The trainer's iPad has no Team section.
+- [ ] **Agree it as it stands.** Tap **Review** on that person: their week in
+  the editor. Tap **Agree this week**. On the trainer's iPad, without
+  reloading: "Agreed by {you} on {today}."
+- [ ] **Agree it changed.** On the trainer's iPad, move one regular to
+  another day and propose the change: the status says a change is waiting,
+  with "Moves {her} from … to …". On Team, **Review** shows the same line.
+  Remove a regular in the editor: the button reads **Agree it as changed**.
+  Agree it: the trainer's card says "Agreed", and the removed regular is gone
+  from their editor too.
+- [ ] **The next seven days.** Give an agreed week a regular who IS booked
+  this week at that time with that trainer: nothing is listed for her ("All N
+  agreed slots are booked as usual"). Give it a regular who is NOT booked
+  that day: "{Trainer}'s {day} at {time} is open: {her} isn't booked for it."
+  with a **Free slot** badge. In Mindbody, MOVE her booking to another day
+  that week and wait for the sync: the line says she is booked then instead.
+  A booking she already had another day that week is never called her move
+  (the slot just reads open). Book someone else in her slot: it says who.
+- [ ] **Can't tell is never open.** On a studio whose Mindbody is not linked
+  (or turn Wi-Fi off before opening Team): it says the week can't be checked,
+  or couldn't be read — no slot is called open.
+- [ ] **Remove a week.** **Change** on a person -> **Remove this week** asks
+  first; **Remove it** takes the week away on both iPads.
+- [ ] **Nothing reached Mindbody.** In Mindbody, the trainer's schedule and
+  the client's appointments are exactly as the front desk left them.
 
 ---
 

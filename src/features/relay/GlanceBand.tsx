@@ -100,7 +100,7 @@ function Tile({
       </span>
       <span className="gb__value">{value}</span>
       {progress !== null && (
-        <span className={`pk-bar${progress >= 1 ? " pk-bar--done" : ""}`} aria-hidden>
+        <span className={`rk-bar${progress >= 1 ? " rk-bar--done" : ""}`} aria-hidden>
           <span style={{ width: `${Math.round(progress * 100)}%` }} />
         </span>
       )}

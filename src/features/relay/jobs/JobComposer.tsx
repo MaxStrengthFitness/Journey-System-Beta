@@ -151,29 +151,29 @@ export function JobComposer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="pk-sheet sm:max-w-2xl">
+      <DialogContent className="rk-sheet sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="pk-title">
+          <DialogTitle className="rk-title">
             <ClipboardList size={18} aria-hidden />
             Post a team job
           </DialogTitle>
-          <p className="pk-lede">
+          <p className="rk-lede">
             One piece of work the team shares — a deep clean, next month's birthday cards, calls to clients who have gone
             quiet. Name people, or leave it up for grabs.
           </p>
         </DialogHeader>
 
-        <div className="pk-body">
+        <div className="rk-body">
           {error && (
-            <p className="pk-problem" role="alert">
+            <p className="rk-problem" role="alert">
               {error}
             </p>
           )}
 
-          <label className="pk-field">
-            <span className="pk-label">The job</span>
+          <label className="rk-field">
+            <span className="rk-label">The job</span>
             <input
-              className="pk-input"
+              className="rk-input"
               value={draft.title}
               autoFocus
               maxLength={160}
@@ -181,13 +181,13 @@ export function JobComposer({
               onChange={(e) => edit({ title: e.target.value })}
               aria-invalid={Boolean(problemFor("title"))}
             />
-            {problemFor("title") && <p className="pk-problem">{problemFor("title")}</p>}
+            {problemFor("title") && <p className="rk-problem">{problemFor("title")}</p>}
           </label>
 
-          <label className="pk-field">
-            <span className="pk-label">Instructions (optional)</span>
+          <label className="rk-field">
+            <span className="rk-label">Instructions (optional)</span>
             <textarea
-              className="pk-textarea"
+              className="rk-textarea"
               value={draft.detail}
               maxLength={2000}
               placeholder="What good looks like, where the supplies are, who to ask."
@@ -195,16 +195,16 @@ export function JobComposer({
             />
           </label>
 
-          <div className="pk-field">
-            <span className="pk-label">What is it about</span>
+          <div className="rk-field">
+            <span className="rk-label">What is it about</span>
             <Seg label="What is it about" value={draft.about.kind} options={ABOUT} onChange={setAboutKind} />
           </div>
 
           {draft.about.kind === "facility" && (
-            <label className="pk-field">
-              <span className="pk-label">Parts to tick off (optional, one per line)</span>
+            <label className="rk-field">
+              <span className="rk-label">Parts to tick off (optional, one per line)</span>
               <textarea
-                className="pk-textarea"
+                className="rk-textarea"
                 value={partsText}
                 placeholder={"Mirrors\nBathrooms\nFront desk\nWater station"}
                 onChange={(e) => {
@@ -212,21 +212,21 @@ export function JobComposer({
                   setProblems([]);
                 }}
               />
-              <p className="pk-hint">
+              <p className="rk-hint">
                 Parts let several people chip away at it — each ticks what they did. Leave it empty for one piece of
                 work.
               </p>
-              {problemFor("parts") && <p className="pk-problem">{problemFor("parts")}</p>}
+              {problemFor("parts") && <p className="rk-problem">{problemFor("parts")}</p>}
             </label>
           )}
 
           {draft.about.kind === "machine" && (
-            <div className="pk-field">
-              <span className="pk-label">Which machines — one part each</span>
-              <div className="pk-chips">
+            <div className="rk-field">
+              <span className="rk-label">Which machines — one part each</span>
+              <div className="rk-chips">
                 <button
                   type="button"
-                  className="pk-chip"
+                  className="rk-chip"
                   onClick={() =>
                     edit({
                       about: {
@@ -239,14 +239,14 @@ export function JobComposer({
                   {machineIds.length === machines.length && machines.length > 0 ? "Clear all" : "Every machine"}
                 </button>
               </div>
-              <div className="pk-chips pk-chips--scroll" role="group" aria-label="Machines">
+              <div className="rk-chips rk-chips--scroll" role="group" aria-label="Machines">
                 {machines.map((m) => {
                   const on = machineIds.includes(m.machineId);
                   return (
                     <button
                       key={m.machineId}
                       type="button"
-                      className="pk-chip"
+                      className="rk-chip"
                       aria-pressed={on}
                       onClick={() =>
                         edit({
@@ -261,15 +261,15 @@ export function JobComposer({
                     </button>
                   );
                 })}
-                {machines.length === 0 && <p className="pk-hint">No equipment is set up for this studio yet.</p>}
+                {machines.length === 0 && <p className="rk-hint">No equipment is set up for this studio yet.</p>}
               </div>
-              {problemFor("about") && <p className="pk-problem">{problemFor("about")}</p>}
+              {problemFor("about") && <p className="rk-problem">{problemFor("about")}</p>}
             </div>
           )}
 
           {draft.about.kind === "client" && (
-            <div className="pk-field">
-              <span className="pk-label">Which clients — one part each</span>
+            <div className="rk-field">
+              <span className="rk-label">Which clients — one part each</span>
               <ClientPicker
                 roster={clients}
                 picked={pickedClients}
@@ -286,15 +286,15 @@ export function JobComposer({
                   });
                 }}
               />
-              <p className="pk-hint">
+              <p className="rk-hint">
                 The app never contacts clients — this is the team's list of who to reach, and who reached them.
               </p>
-              {problemFor("about") && <p className="pk-problem">{problemFor("about")}</p>}
+              {problemFor("about") && <p className="rk-problem">{problemFor("about")}</p>}
             </div>
           )}
 
-          <div className="pk-field">
-            <span className="pk-label">Who's on it</span>
+          <div className="rk-field">
+            <span className="rk-label">Who's on it</span>
             <PeoplePicker
               label="Who's on it"
               people={people}
@@ -310,16 +310,16 @@ export function JobComposer({
                 body="Shows as up for grabs too, so a trainer with a gap can help."
               />
             ) : (
-              <p className="pk-hint">Nobody named: it shows as up for grabs until someone takes it.</p>
+              <p className="rk-hint">Nobody named: it shows as up for grabs until someone takes it.</p>
             )}
           </div>
 
-          <div className="pk-field">
-            <span className="pk-label">By when</span>
-            <div className="pk-chips" role="group" aria-label="By when">
+          <div className="rk-field">
+            <span className="rk-label">By when</span>
+            <div className="rk-chips" role="group" aria-label="By when">
               <button
                 type="button"
-                className="pk-chip"
+                className="rk-chip"
                 aria-pressed={!draft.dueOn && !customDate}
                 onClick={() => {
                   setCustomDate(false);
@@ -332,7 +332,7 @@ export function JobComposer({
                 <button
                   key={c.label}
                   type="button"
-                  className="pk-chip"
+                  className="rk-chip"
                   aria-pressed={!customDate && draft.dueOn === c.dateKey}
                   onClick={() => {
                     setCustomDate(false);
@@ -342,27 +342,27 @@ export function JobComposer({
                   {c.label}
                 </button>
               ))}
-              <button type="button" className="pk-chip" aria-pressed={customDate} onClick={() => setCustomDate(true)}>
+              <button type="button" className="rk-chip" aria-pressed={customDate} onClick={() => setCustomDate(true)}>
                 Pick a date
               </button>
             </div>
             {customDate && (
               <input
                 type="date"
-                className="pk-input"
+                className="rk-input"
                 min={todayKey}
                 value={draft.dueOn ?? ""}
                 onChange={(e) => edit({ dueOn: e.target.value || null })}
                 aria-label="Due date"
               />
             )}
-            {draft.dueOn && !customDate && <p className="pk-hint">Due {dayWords(draft.dueOn, todayKey)}.</p>}
-            {problemFor("dueOn") && <p className="pk-problem">{problemFor("dueOn")}</p>}
+            {draft.dueOn && !customDate && <p className="rk-hint">Due {dayWords(draft.dueOn, todayKey)}.</p>}
+            {problemFor("dueOn") && <p className="rk-problem">{problemFor("dueOn")}</p>}
           </div>
 
-          <label className="pk-field">
-            <span className="pk-label">Category</span>
-            <select className="pk-select" value={draft.category} onChange={(e) => edit({ category: e.target.value })}>
+          <label className="rk-field">
+            <span className="rk-label">Category</span>
+            <select className="rk-select" value={draft.category} onChange={(e) => edit({ category: e.target.value })}>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {categoryLabel(c.id, categories)}
@@ -384,12 +384,12 @@ export function JobComposer({
             body="In your bell only. Nothing is emailed or texted."
           />
 
-          <p className="pk-summary" aria-live="polite">
+          <p className="rk-summary" aria-live="polite">
             {summary}
           </p>
         </div>
 
-        <div className="pk-foot">
+        <div className="rk-foot">
           <button type="button" className="pl__btn" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </button>

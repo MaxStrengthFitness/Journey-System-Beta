@@ -50,7 +50,7 @@ import {
 import { db } from "../../firebase";
 import { endOfStudioDay, studioDateKey } from "../../lib/studio-time";
 import type { TaskAuthor } from "./mutations";
-import type { InitiativeTarget } from "./initiatives";
+import { targetForWrite, type InitiativeTarget } from "./initiatives";
 
 /**
  * What kind of ask this is.
@@ -355,8 +355,10 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     ...(input.machineId ? { machineId: input.machineId } : {}),
     ...(input.sessionDate ? { sessionDate: input.sessionDate } : {}),
     // Only on an initiative. Writing an empty target on a question would make
-    // every request look like one to topicOf().
-    ...(kind === "initiative" && input.target ? { target: input.target } : {}),
+    // every request look like one to topicOf(). Written through
+    // targetForWrite so a blank choice is left out rather than sent as
+    // undefined, which the browser library refuses outright.
+    ...(kind === "initiative" && input.target ? { target: targetForWrite(input.target) } : {}),
     ...(input.forId && input.forName ? { forId: input.forId, forName: input.forName } : {}),
     ...(input.dueOn ? { dueOn: input.dueOn } : {}),
     ...(typeof input.estMinutes === "number" ? { estMinutes: input.estMinutes } : {}),

@@ -78,7 +78,7 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
       {machinesLoading && tiles.length === 0 ? (
         <p className="sh__loading">Loading the floor…</p>
       ) : tiles.length === 0 ? (
-        <p className="pk-hint">No equipment is set up for this studio yet.</p>
+        <p className="rk-hint">No equipment is set up for this studio yet.</p>
       ) : (
         tiles.map((g) => (
           <div key={g.key} className="fm__group">
@@ -149,7 +149,7 @@ function CareSheet({ machineId, machineName, rows, actions, deepDays }: { machin
       await flagMachine({ studioId: relay.studioId, machineId, machineName, note, author, leaderId: activeStudio?.headTrainerId ?? null });
       setFlagging(false);
       setNote("");
-      toastSuccess("Flagged — it's on the Team tab's open loops.");
+      toastSuccess("Flagged — leaders see it on My Studio → Team, under Open loops.");
     } catch (err) {
       console.warn("[relay] flag failed:", err);
       toastError("Could not flag that. Check your connection.");
@@ -209,7 +209,7 @@ function CareSheet({ machineId, machineName, rows, actions, deepDays }: { machin
 
       {flagging && (
         <div className="fm__flagform">
-          <textarea className="pk-textarea" rows={2} value={note} maxLength={500} placeholder="What's wrong? A torn pad, a squeak, a loose cable…" onChange={(e) => setNote(e.target.value)} />
+          <textarea className="rk-textarea" rows={2} value={note} maxLength={500} placeholder="What's wrong? A torn pad, a squeak, a loose cable…" onChange={(e) => setNote(e.target.value)} />
           <button type="button" className="pl__btn pl__btn--danger" disabled={busy || !note.trim()} onClick={() => void doFlag()}>
             <Flag size={14} aria-hidden /> Flag the {machineName}
           </button>

@@ -14,13 +14,19 @@
  * design, and becomes about the two things they do have: a voice (what is
  * broken) and an identity (who am I, where do I work). The account block is
  * deliberately READ-ONLY — home studio, cross-training access and the Mindbody
- * link are Admin writes now — but showing them still answers the questions
+ * link are leaders' writes — but showing them still answers the questions
  * trainers actually raise ("am I linked to Mindbody?", "why can't I see Solon's
- * clients?") without a support message, and read-only rows make the page feel
- * substantial without granting an inch of permission back.
+ * clients?") without a support message.
+ *
+ * Voice-review round, Sep 27 2026 (AJ: Settings "needs a visual rework to
+ * match the upgraded app", handled lightly until the whole design is
+ * settled): the calm card of My Profile instead of italic capitals; the role
+ * by its name ("Studio Leader"), never its key ("HeadTrainer"); status words
+ * in inks readable on white; no machine count (it was the whole catalog's,
+ * not the studio's floor); and the Operations door asks the app's one rule
+ * (`mayOpenOperations`) and switches the app mode, as the menu does.
  */
 
-import React from "react";
 import {
   Bug,
   ChevronRight,
@@ -33,20 +39,22 @@ import {
   UserCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Button } from "@/components/ui/button";
-import { Trainer, Studio, Machine } from "../../types";
-import { isStudioLeader } from "../../lib/permissions";
+import type { ReactNode } from "react";
+import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
+import { mayOpenOperations } from "../admin/operations-access";
 import { useFeedback, useMyFeedback, FEEDBACK_KIND_SHORT } from "../feedback";
 import type { FeedbackKind } from "../feedback";
+import "./settings.css";
 
 export interface TrainerSettingsViewProps {
   authTrainer: Trainer | null;
   studios: Studio[];
   trainers: Trainer[];
-  machines: Machine[];
   activeStudioId: string | null;
   onLogout?: () => void;
   setView?: (view: string) => void;
+  /** Operations, in Operations mode — what the menu's App Mode switch does. */
+  onOpenOperations?: () => void;
 }
 
 const KIND_BUTTONS: { kind: FeedbackKind; icon: typeof Bug }[] = [
@@ -55,11 +63,11 @@ const KIND_BUTTONS: { kind: FeedbackKind; icon: typeof Bug }[] = [
   { kind: "idea", icon: Lightbulb },
 ];
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  investigating: "Looking at it",
-  fixed: "Fixed",
-  "wont-fix": "Closed",
+const STATUS: Record<string, { label: string; tone: "ok" | "open" | "closed" }> = {
+  open: { label: "Open", tone: "open" },
+  investigating: { label: "Looking at it", tone: "open" },
+  fixed: { label: "Fixed", tone: "ok" },
+  "wont-fix": { label: "Closed", tone: "closed" },
 };
 
 function Card({
@@ -72,87 +80,42 @@ function Card({
   icon: typeof Bug;
   title: string;
   subtitle?: string;
-  children: React.ReactNode;
+  children: ReactNode;
   accent?: boolean;
 }) {
   return (
-    <section
-      className={[
-        "rounded-[28px] border bg-card overflow-hidden",
-        accent
-          ? "border-cta/40 shadow-lg shadow-cta/5"
-          : "border-border shadow-sm dark:shadow-none",
-      ].join(" ")}
-    >
-      <header className="flex items-center gap-3.5 px-5 sm:px-7 pt-5 sm:pt-6 pb-4">
-        <div
-          className={[
-            "w-11 h-11 rounded-2xl flex items-center justify-center border shrink-0",
-            accent
-              ? "bg-cta/10 border-cta/30"
-              : "bg-muted border-border shadow-inner",
-          ].join(" ")}
-        >
-          <Icon className={accent ? "w-5 h-5 text-cta" : "w-5 h-5 text-muted-foreground"} />
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-lg sm:text-xl font-black italic tracking-tight uppercase text-foreground truncate">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="text-muted-foreground font-bold uppercase text-[9px] sm:text-[10px] tracking-widest leading-relaxed">
-              {subtitle}
-            </p>
-          )}
+    <section className={accent ? "stg-card stg-card--accent" : "stg-card"} aria-label={title}>
+      <header className="stg-card__head">
+        <Icon className="stg-card__icon" size={18} aria-hidden />
+        <div>
+          <h3 className="stg-card__title">{title}</h3>
+          {subtitle && <p className="stg-card__sub">{subtitle}</p>}
         </div>
       </header>
-      <div className="px-5 sm:px-7 pb-5 sm:pb-6">{children}</div>
+      <div className="stg-card__body">{children}</div>
     </section>
   );
 }
 
 /** A read-only fact. Not an input — that is the point. */
-function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
-      <dt className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0">
-        {label}
-      </dt>
-      <dd className="text-sm font-bold text-foreground text-right min-w-0">{value}</dd>
+    <div className="stg-fact">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
 
-function LinkRow({
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-}: {
-  icon: typeof Bug;
-  label: string;
-  hint?: string;
-  onClick?: () => void;
-}) {
+function LinkRow({ icon: Icon, label, hint, onClick }: { icon: typeof Bug; label: string; hint?: string; onClick?: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-border bg-background hover:bg-muted transition-colors text-left disabled:opacity-50 min-h-[52px]"
-    >
-      <Icon className="w-4 h-4 text-cta shrink-0" />
-      <span className="flex-1 min-w-0">
-        <span className="block text-[11px] font-black uppercase tracking-widest text-foreground">
-          {label}
-        </span>
-        {hint && (
-          <span className="block text-[10px] font-medium text-muted-foreground truncate">
-            {hint}
-          </span>
-        )}
+    <button type="button" className="stg-link" onClick={onClick} disabled={!onClick}>
+      <Icon className="stg-link__icon" size={18} aria-hidden />
+      <span className="stg-link__text">
+        <span className="stg-link__label">{label}</span>
+        {hint && <span className="stg-link__hint">{hint}</span>}
       </span>
-      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      <ChevronRight className="stg-link__go" size={18} aria-hidden />
     </button>
   );
 }
@@ -161,17 +124,15 @@ export function TrainerSettingsView({
   authTrainer,
   studios,
   trainers,
-  machines,
   activeStudioId,
   onLogout,
   setView,
+  onOpenOperations,
 }: TrainerSettingsViewProps) {
   const { open } = useFeedback();
   const { reports, counts } = useMyFeedback(authTrainer?.id);
 
-  const studioName = (id?: string | null) =>
-    studios.find((s) => s.id === id)?.name || "—";
-
+  const studioName = (id?: string | null) => studios.find((s) => s.id === id)?.name || "—";
   const activeStudio = studios.find((s) => s.id === activeStudioId);
 
   // Cross-training locations, minus the home studio it already shows above.
@@ -179,51 +140,32 @@ export function TrainerSettingsView({
     .filter((id) => id && id !== authTrainer?.primaryHomeStudioId)
     .map(studioName);
 
-  const studioTrainerCount = trainers.filter(
-    (t) =>
-      t.primaryHomeStudioId === activeStudioId ||
-      t.accessibleStudioIds?.includes(activeStudioId || ""),
+  const teamCount = trainers.filter(
+    (t) => !t.supersededByUid && (t.primaryHomeStudioId === activeStudioId || t.accessibleStudioIds?.includes(activeStudioId || "")),
   ).length;
 
-  const leader = isStudioLeader(authTrainer);
+  const role = authTrainer?.role ? (ROLE_LABELS[authTrainer.role] ?? authTrainer.role) : "Life Transformer";
+  // The menu, the route and the Operations shell ask the same question.
+  const operations = mayOpenOperations(authTrainer, activeStudioId);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-3xl mx-auto w-full px-2.5 sm:px-6 py-4 sm:py-8 space-y-5"
-    >
-      <div className="px-1 mb-1">
-        <h2 className="text-2xl sm:text-3xl font-black tracking-tight uppercase italic text-foreground">
-          Trainer Settings
-        </h2>
-        <p className="text-muted-foreground uppercase text-[9px] sm:text-[11px] font-black tracking-widest">
-          Your account and your feedback.
-        </p>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="stg">
+      <header className="stg-head">
+        <h2 className="stg-head__title">Trainer Settings</h2>
+        <p className="stg-head__lede">Your account, your feedback, and where things are.</p>
+      </header>
 
       {/* ── HERO: feedback ───────────────────────────────────────────── */}
-      <Card
-        icon={Bug}
-        title="Help us build this"
-        subtitle="You are in beta — nothing is too small"
-        accent
-      >
-        <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-          Tell us what is broken, what feels wrong, and what is missing. We
-          attach the screen you were on automatically, so you only have to
-          describe it in your own words.
+      <Card icon={Bug} title="Help us build this" subtitle="You are in beta — nothing is too small" accent>
+        <p className="stg-text">
+          Tell us what is broken, what feels wrong, and what is missing. We attach the screen you were on automatically,
+          so you only have to describe it in your own words.
         </p>
 
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="stg-kinds">
           {KIND_BUTTONS.map(({ kind, icon: Icon }) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => open(kind)}
-              className="flex flex-col items-center justify-center gap-1.5 h-[72px] sm:h-20 rounded-2xl border border-border bg-background hover:bg-cta/10 hover:border-cta/40 transition-all font-black uppercase text-[9px] sm:text-[10px] tracking-widest text-muted-foreground hover:text-foreground"
-            >
-              <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-cta" />
+            <button key={kind} type="button" className="stg-kind" onClick={() => open(kind)}>
+              <Icon size={22} aria-hidden />
               {FEEDBACK_KIND_SHORT[kind]}
             </button>
           ))}
@@ -232,73 +174,49 @@ export function TrainerSettingsView({
         {/* A trainer who never sees what happened to a report stops filing
             them. This is the loop, and it is why the hero is not just a form. */}
         {counts.total > 0 && (
-          <div className="pt-4 border-t border-border">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2.5">
+          <>
+            <p className="stg-label">
               Your reports · {counts.open} open · {counts.resolved} closed
             </p>
-            <ul className="space-y-1.5">
-              {reports.slice(0, 3).map((r) => (
-                <li
-                  key={r.id}
-                  className="flex items-center gap-3 text-xs bg-background rounded-xl border border-border/60 px-3 py-2.5"
-                >
-                  <span className="flex-1 min-w-0 truncate text-foreground font-medium">
-                    {r.description}
-                  </span>
-                  <span
-                    className={[
-                      "text-[9px] font-black uppercase tracking-widest shrink-0",
-                      r.status === "fixed"
-                        ? "text-green"
-                        : r.status === "wont-fix"
-                          ? "text-muted-foreground"
-                          : "text-cta",
-                    ].join(" ")}
-                  >
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                </li>
-              ))}
+            <ul className="stg-reports">
+              {reports.slice(0, 3).map((r) => {
+                const status = STATUS[r.status] ?? { label: r.status, tone: "open" as const };
+                return (
+                  <li key={r.id} className="stg-report">
+                    <span className="stg-report__text">{r.description}</span>
+                    <span className={`stg-status stg-status--${status.tone}`}>{status.label}</span>
+                  </li>
+                );
+              })}
             </ul>
-          </div>
+          </>
         )}
       </Card>
 
       {/* ── My account (read-only by design) ─────────────────────────── */}
-      <Card icon={UserCircle} title="My account" subtitle="Managed by your studio admin">
-        <dl>
+      <Card icon={UserCircle} title="My account" subtitle="Set by your studio's leaders">
+        <dl className="stg-facts">
           <Fact label="Name" value={authTrainer?.fullName || "—"} />
-          <Fact label="Role" value={authTrainer?.role || "Trainer"} />
-          <Fact
-            label="Home studio"
-            value={studioName(authTrainer?.primaryHomeStudioId)}
-          />
-          {otherStudios.length > 0 && (
-            <Fact label="Also works at" value={otherStudios.join(" · ")} />
-          )}
+          <Fact label="Role" value={role} />
+          <Fact label="Home studio" value={studioName(authTrainer?.primaryHomeStudioId)} />
+          {otherStudios.length > 0 && <Fact label="Also works at" value={otherStudios.join(" · ")} />}
           <Fact
             label="Mindbody"
             value={
               authTrainer?.mindbodyStaffId ? (
-                <span className="text-green">
-                  Linked · {authTrainer.mindbodyStaffId}
-                </span>
+                <span className="stg-ok">Linked · {authTrainer.mindbodyStaffId}</span>
               ) : (
-                <span className="text-amber">Not linked</span>
+                <span className="stg-warn">Not linked — a studio leader links you on My Studio → Team</span>
               )
             }
           />
         </dl>
 
         {onLogout && (
-          <Button
-            variant="outline"
-            onClick={onLogout}
-            className="mt-4 w-full h-11 rounded-2xl border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted font-black uppercase text-[10px] tracking-widest gap-2"
-          >
-            <LogOut className="w-4 h-4" />
+          <button type="button" className="stg-signout" onClick={onLogout}>
+            <LogOut size={16} aria-hidden />
             Sign out
-          </Button>
+          </button>
         )}
       </Card>
 
@@ -306,13 +224,13 @@ export function TrainerSettingsView({
       <Card
         icon={Dumbbell}
         title={activeStudio?.name ? `My studio — ${activeStudio.name}` : "My studio"}
-        subtitle={`${machines.length} machines · ${studioTrainerCount} on the roster`}
+        subtitle={`${teamCount} ${teamCount === 1 ? "person" : "people"} on the team`}
       >
-        <div className="space-y-2">
+        <div className="stg-links">
           <LinkRow
             icon={Dumbbell}
-            label="Machine catalog"
-            hint="Setup, settings, cleaning and maintenance"
+            label="Learning → Catalog"
+            hint="Every machine: set-up, settings, cleaning and upkeep"
             onClick={setView ? () => setView("machine-anatomy") : undefined}
           />
           <LinkRow
@@ -324,22 +242,14 @@ export function TrainerSettingsView({
         </div>
       </Card>
 
-      {/* ── Leaders only: the door to the tier above ─────────────────── */}
-      {leader && (
-        <Card
-          icon={ShieldCheck}
-          title="Studio & operations tools"
-          subtitle="Staff, reports, integrations and equipment"
-        >
-          <p className="text-sm text-muted-foreground font-medium leading-relaxed mb-3">
-            Team management, data exports, Mindbody integration and the global
-            machine editor now live in the Operations dashboard.
+      {/* ── Leaders: the door to Operations ──────────────────────────── */}
+      {operations && (
+        <Card icon={ShieldCheck} title="Operations" subtitle="Where are we going wrong, and where are we going right?">
+          <p className="stg-text">
+            The Overview, renewals, the floor, staff and roles, insights, announcements, Mindbody and the studio's data.
+            Running the studio day to day stays on My Studio.
           </p>
-          <LinkRow
-            icon={ShieldCheck}
-            label="Open Operations"
-            onClick={setView ? () => setView("admin-dashboard") : undefined}
-          />
+          <LinkRow icon={ShieldCheck} label="Open Operations" onClick={onOpenOperations} />
         </Card>
       )}
     </motion.div>

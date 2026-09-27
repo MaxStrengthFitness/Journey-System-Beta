@@ -8,14 +8,26 @@ import { STATE_BADGE, STUDIO_TIER_ROLES, StaffEditor } from "../admin/staff/Staf
 import { useStaffRoster } from "../admin/staff/useStaffRoster";
 import { ProvisionalPanel } from "../admin/provisional/ProvisionalPanel";
 import { TeamPanel } from "../relay/team/TeamPanel";
+import { StandingWeeksPanel } from "../standing-week/StandingWeeksPanel";
 import "../admin/admin.css";
 
 /**
- * MY STUDIO → TEAM — the Team cockpit, and this studio's own staff.
+ * MY STUDIO → TEAM — people and standards.
  *
- * Round: My Studio, Sep 2026. Relay's Team tab (who's in today, cohorts,
- * open loops, the standards, the vault — planner/team/TeamPanel) is the top
- * half. The bottom half is what the studio's leaders could not do from
+ * Voice-review round, Sep 27 2026: Team's purpose was unclear because it
+ * also answered the Hub's and Operations' questions. AJ: "Execute the people
+ * and standards pivot." Team is the people who work here (each person's
+ * week, this studio's staff and who is waiting to be let in) and what the
+ * studio holds them to (the standing duties, the loops left open, the
+ * vault). relay/team/TeamPanel.tsx says what went and where.
+ *
+ * Standing weeks come first (the same round): each trainer's usual week,
+ * proposed on My Profile and agreed here, and the next seven days' bookings
+ * checked against the agreed weeks — the free slots a leader can fill
+ * (standing-week/StandingWeeksPanel.tsx).
+ *
+ * Round: My Studio, Sep 2026. Relay's Team tab (its panels, the standards,
+ * the vault — relay/team/TeamPanel) is the top half. The bottom half is what the studio's leaders could not do from
  * anywhere before: Staff & Roles was owners-and-administrators only, so a
  * head trainer could not let their own new hire in. AJ (Sep 18):
  *
@@ -42,10 +54,37 @@ export interface TeamSectionProps {
 const NONE: never[] = [];
 
 export function TeamSection({ authTrainer, clients, trainers, onOpenClient }: TeamSectionProps) {
+  const { activeStudio, activeStudioId } = useActiveStudio();
+  /*
+   * The staff roster is read ONCE, here, so the top of Team can say who is
+   * waiting to be let in (voice-review round, Sep 27 2026). A new hire used
+   * to depend on a leader scrolling past every other panel to the staff list.
+   */
+  const roster = useStaffRoster({ trainers: trainers ?? NONE, studio: activeStudio ?? null, studioId: activeStudioId ?? null });
+  const waiting = roster.rows.filter((r) => r.state === "awaiting-approval").length;
   return (
     <div className="ms__team">
+      {waiting > 0 && (
+        <div className="adm ms__waiting">
+          <AdminNotice tone="warn">
+            {waiting === 1 ? "One person is" : `${waiting} people are`} waiting to be let in.{" "}
+            <button
+              type="button"
+              className="ms__waiting-go"
+              onClick={() => document.getElementById("team-staff")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              Let them in
+            </button>
+          </AdminNotice>
+        </div>
+      )}
+      {activeStudio && (
+        <div className="adm ms__weeks">
+          <StandingWeeksPanel studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} clients={clients ?? NONE} />
+        </div>
+      )}
       <TeamPanel authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={onOpenClient} />
-      <StaffPanel authTrainer={authTrainer ?? null} clients={clients ?? NONE} trainers={trainers ?? NONE} />
+      <StaffPanel authTrainer={authTrainer ?? null} clients={clients ?? NONE} trainers={trainers ?? NONE} roster={roster} />
     </div>
   );
 }
@@ -54,10 +93,12 @@ function StaffPanel({
   authTrainer,
   clients,
   trainers,
+  roster,
 }: {
   authTrainer: Trainer | null;
   clients: Client[];
   trainers: Trainer[];
+  roster: ReturnType<typeof useStaffRoster>;
 }) {
   const { activeStudio, activeStudioId, studios } = useActiveStudio();
   const studioId = activeStudioId ?? null;
@@ -65,11 +106,7 @@ function StaffPanel({
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const { rows, summary, staffStatus } = useStaffRoster({
-    trainers,
-    studio: activeStudio ?? null,
-    studioId,
-  });
+  const { rows, summary, staffStatus } = roster;
 
   /*
    * A request that named another studio is that studio's to answer; one
@@ -81,13 +118,15 @@ function StaffPanel({
     return rows.filter((r) => !q || `${r.name} ${r.email ?? ""}`.toLowerCase().includes(q));
   }, [rows, search]);
 
-  const waiting = visible.filter((r) => r.state === "awaiting-approval").length;
+  // Everyone waiting, whatever the search box holds: the badge used to count
+  // only the rows that matched the search.
+  const waiting = rows.filter((r) => r.state === "awaiting-approval").length;
   const selected = visible.find((r) => r.key === selectedKey) ?? null;
 
   if (!studioId || !activeStudio) return null;
 
   return (
-    <div className="adm ms__staff">
+    <div className="adm ms__staff" id="team-staff">
       <AdminPanel
         title={`${studioName}'s staff`}
         icon={<CircleUserRound className="w-3.5 h-3.5" />}

@@ -75,10 +75,10 @@ export function SharedNoteView({
         )}
         <div className="sv__tags">
           <span className={`pn__kind pn__kind--${share.kind}`}>{NOTE_KIND_LABEL[share.kind]}</span>
-          <span className="pk-tag pk-tag--live">
+          <span className="rk-tag rk-tag--live">
             {share.audience === "team" ? "Shared with the whole team" : "Shared with you"}
           </span>
-          {share.expiresOn && <span className="pk-tag">Until the end of {dayWords(share.expiresOn, todayKey)}</span>}
+          {share.expiresOn && <span className="rk-tag">Until the end of {dayWords(share.expiresOn, todayKey)}</span>}
         </div>
         <h2 className="sv__title">{share.title}</h2>
         {share.message && <blockquote className="sv__message">“{share.message}” — {share.authorName}</blockquote>}

@@ -37,7 +37,7 @@ So the renewal conversation should lead with health (InBody, sleep, energy, pain
 
 Every client gets a **renewal snapshot** each night: both clocks (billing and sessions) and one situation — on track, will bank, will run out, away, ended, lapsed, or not enough Mindbody data. It shows as a sentence, never a score. Details: `src/features/renewals/README.md`.
 
-- **Trainers** see it on the client's profile, in the pre-session briefing, on the Hub and under "My renewals". The post-session screen asks "Renewal: 9 left. Talk about it today?" when it's time, and a 15-second form logs how the client is leaning and what they're unsure about.
+- **Trainers** see it on the client's profile, in the pre-session briefing, on the Hub and under "My renewals". The Wrap-up (the post-session screen) asks "Renewal: 9 left. Talk about it today?" when it's time, and a 15-second form logs how the client is leaning and what they're unsure about.
 - **Leaders** work from Operations → Renewals:
   - **Pipeline:** before the charge, talk now, coming up by month, lapsed, and away.
   - **Renewal Brief:** one screen per client, health first.
