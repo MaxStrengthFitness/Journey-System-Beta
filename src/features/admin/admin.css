@@ -353,13 +353,15 @@
   min-width: 0;
   flex: 1 1 auto;
 }
+/* A row's name wraps; it is never cut short (CLAUDE.md: names are never
+   truncated). Until Sep 27 2026 it was one line with an ellipsis, so a long
+   machine, person or package name lost its end on every Operations list. */
 .adm-row__name {
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.3;
   color: var(--adm-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .adm-row__meta {
   font-size: 12px;

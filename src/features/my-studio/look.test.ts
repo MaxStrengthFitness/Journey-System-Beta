@@ -158,6 +158,31 @@ describe("names in My Studio", () => {
   });
 });
 
+/**
+ * Machines' floor list (admin/machines/StudioInventoryManager, drawn on My
+ * Studio → Machines, Operations → Floor and the Admins dashboard) and every
+ * Operations list row (.adm-row__name in the admin kit). Until Sep 27 2026
+ * the floor list cut a machine's name and its movement line with
+ * `truncate`, and every Operations row cut its name with an ellipsis.
+ */
+describe("names on Machines and the Operations lists", () => {
+  it("are never cut short on the floor list", () => {
+    const src = read("features/admin/machines/StudioInventoryManager.tsx");
+    expect(src).not.toMatch(/\btruncate\b/);
+    expect(src).not.toMatch(/line-clamp/);
+  });
+
+  it("wrap in an Operations row", () => {
+    const css = read("features/admin/admin.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => m[1].trim() === ".adm-row__name");
+    expect(rule).toBeDefined();
+    const body = rule![2];
+    expect(body).not.toMatch(/ellipsis/);
+    expect(body).not.toMatch(/nowrap/);
+    expect(body).toMatch(/overflow-wrap:\s*anywhere/);
+  });
+});
+
 /* ------------------------------------------------------------------ */
 
 /** Controls held at the 40px floor. The first sixteen were 26 to 36px until Sep 27 2026. */
@@ -202,6 +227,14 @@ const TAP_CLASSES = [
 const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
 
 describe("controls in My Studio", () => {
+  it("on Machines' floor list are the Operations kit's 40px buttons, not the 28-32px stock ones", () => {
+    const src = read("features/admin/machines/StudioInventoryManager.tsx");
+    expect(src).not.toMatch(/from "@\/components\/ui\/button"/);
+    expect(src).toMatch(/<AdminButton/);
+    // The search box is 40px too (the stock input is 32px).
+    expect(src).toMatch(/<Input\s+className="h-10/);
+  });
+
   it("are at least 40px tall, everywhere their size is set", () => {
     for (const cls of TAP_CLASSES) {
       const heights = rulesFor(cls).flatMap((r) => [...declared(r.body, "min-height"), ...declared(r.body, "height")]);

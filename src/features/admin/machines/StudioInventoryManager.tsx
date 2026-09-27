@@ -26,7 +26,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { db, auth } from "../../../firebase";
 import { seedStandardSet } from "../equipment/seed";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -41,6 +40,8 @@ import { useToast } from "../../../contexts/ToastContext";
 import { RosterStatus } from "../../../types/machines";
 import { StudioMachineEditor } from "./StudioMachineEditor";
 import type { EditScope } from "../../../lib/machine-template";
+import { AdminButton } from "../primitives";
+import "../admin.css";
 
 /**
  * STUDIO INVENTORY MANAGER — what THIS location actually has.
@@ -92,7 +93,7 @@ function SortableFloorRow({
       <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-muted-foreground">
         {position}
       </span>
-      <span className="min-w-0 flex-1 truncate font-bold uppercase">{name}</span>
+      <span className="min-w-0 flex-1 break-words font-bold uppercase">{name}</span>
       <button
         type="button"
         className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing"
@@ -413,48 +414,42 @@ export function StudioInventoryManager({
         <div className="flex flex-wrap gap-2">
           {reorderIds ? (
             <>
-              <Button variant="ghost" onClick={resetOrder} disabled={savingOrder}>
-                <RotateCcw className="mr-1.5 h-4 w-4" /> MSF standard
-              </Button>
-              <Button
-                variant="outline"
+              <AdminButton variant="ghost" onClick={resetOrder} disabled={savingOrder}>
+                <RotateCcw className="h-4 w-4" aria-hidden /> MSF standard
+              </AdminButton>
+              <AdminButton
+                variant="quiet"
                 onClick={() => setReorderIds(null)}
                 disabled={savingOrder}
               >
-                <X className="mr-1.5 h-4 w-4" /> Cancel
-              </Button>
-              <Button onClick={saveOrder} disabled={savingOrder}>
-                {savingOrder ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="mr-1.5 h-4 w-4" />
-                )}
+                <X className="h-4 w-4" aria-hidden /> Cancel
+              </AdminButton>
+              <AdminButton variant="primary" onClick={saveOrder} busy={savingOrder}>
+                {!savingOrder && <Check className="h-4 w-4" aria-hidden />}
                 Save order
-              </Button>
+              </AdminButton>
             </>
           ) : (
             <>
           {floorInOrder.length > 1 && (
-            <Button
-              variant="outline"
+            <AdminButton
+              variant="quiet"
               onClick={() => setReorderIds(floorInOrder.map((m) => m.machineId))}
             >
-              <ArrowUpDown className="mr-1.5 h-4 w-4" /> Reorder
-            </Button>
+              <ArrowUpDown className="h-4 w-4" aria-hidden /> Reorder
+            </AdminButton>
           )}
-          <Button
-            variant="outline"
+          <AdminButton
+            variant="quiet"
             onClick={adoptStandardSet}
-            disabled={busy === "__standard__"}
+            busy={busy === "__standard__"}
           >
-            {busy === "__standard__"
-              ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              : <Sparkles className="mr-1.5 h-4 w-4" />}
+            {busy !== "__standard__" && <Sparkles className="h-4 w-4" aria-hidden />}
             Add standard set
-          </Button>
-          <Button onClick={() => setEditing({ kind: "new" })}>
-            <Plus className="mr-1.5 h-4 w-4" /> Custom machine
-          </Button>
+          </AdminButton>
+          <AdminButton variant="primary" onClick={() => setEditing({ kind: "new" })}>
+            <Plus className="h-4 w-4" aria-hidden /> Custom machine
+          </AdminButton>
             </>
           )}
         </div>
@@ -465,7 +460,7 @@ export function StudioInventoryManager({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="h-10 pl-9"
             placeholder="Search equipment"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -545,7 +540,7 @@ export function StudioInventoryManager({
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                    <p className="mt-1 break-words text-xs text-muted-foreground">
                       {m.movementPattern} · gap {m.universalBaseline?.startingWeightStackGap || "—"}
                     </p>
                     {flags?.[m.machineId] && (
@@ -555,25 +550,25 @@ export function StudioInventoryManager({
 
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {onOpenMachine && rostered && (
-                      <Button variant="outline" size="sm" onClick={() => onOpenMachine(m.machineId)}>
+                      <AdminButton size="sm" variant="quiet" onClick={() => onOpenMachine(m.machineId)}>
                         Open
-                      </Button>
+                      </AdminButton>
                     )}
                     {/* The door that did not exist. A custom machine could
                         not be edited at all once saved, and a catalog
                         machine's local copy could only override its name. */}
                     {rostered && !readOnly && (
-                      <Button
-                        variant="outline"
+                      <AdminButton
+                        variant="quiet"
                         size="sm"
                         onClick={() => setEditing({ kind: "entry", machineId: m.machineId })}
                       >
-                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" aria-hidden />
                         {m.source === "custom" ? "Edit" : "Set up for us"}
-                      </Button>
+                      </AdminButton>
                     )}
                     {owned && !readOnly && (
-                      <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <label className="flex min-h-10 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
                         <Switch
                           checked={m.rosterStatus === "maintenance"}
                           onCheckedChange={(c) =>
@@ -585,29 +580,25 @@ export function StudioInventoryManager({
                     )}
 
                     {readOnly ? null : owned ? (
-                      <Button
+                      <AdminButton
                         variant="ghost" size="sm"
-                        disabled={busy === m.machineId}
+                        busy={busy === m.machineId}
                         onClick={() =>
                           m.source === "custom"
                             ? removeFromRoster(m.machineId)
                             : setRosterStatus(m.machineId, "inactive")
                         }
                       >
-                        {busy === m.machineId
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : "We don't have this"}
-                      </Button>
+                        {busy !== m.machineId && "We don't have this"}
+                      </AdminButton>
                     ) : (
-                      <Button
-                        variant="outline" size="sm"
-                        disabled={busy === m.machineId}
+                      <AdminButton
+                        variant="quiet" size="sm"
+                        busy={busy === m.machineId}
                         onClick={() => setRosterStatus(m.machineId, "active")}
                       >
-                        {busy === m.machineId
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> We have this</>}
-                      </Button>
+                        {busy !== m.machineId && <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> We have this</>}
+                      </AdminButton>
                     )}
                   </div>
                 </CardContent>
