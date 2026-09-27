@@ -4,8 +4,8 @@
 (`features/my-studio/MyStudioView`), which owns the masthead, the Relay
 context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
-the studio's staff), and the Network tab moved to Operations → All my studios
-(voice-review round, Sep 27 2026; its ranking of studios was dropped), so the
+the studio's staff), and the Network tab moved to Operations → Overview → All
+my studios (voice-review round, Sep 27 2026; its ranking of studios was dropped), so the
 board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
@@ -21,8 +21,8 @@ kudos. Everything Relay added lives in `board/` (its own README there; it was
 
 The tabs were **Floor · Mine · Notes · Team · Network** until the My Studio
 round moved Team out and the voice-review round (Sep 27 2026) moved Network
-to Operations; the table below describes what each one was before
-Relay and still holds.
+to Operations → Overview → All my studios (`features/admin/network/`). The
+table under **Tabs** is what each one holds today.
 
 Round: Learning + Planner, Sep 2026. AJ's brief:
 
@@ -38,17 +38,30 @@ this.
 
 ## Tabs
 
+Relay's tabs are **Floor · Mine · Notes**, and every one is everyone's. In
+the Planner they were Studio · My tasks · Notes · Team.
+
 | Tab | What | Where the data lives |
 | --- | --- | --- |
-| Studio | The studio hub (`features/studio-tasks/StudioHubView`, `embedded`): the at-a-glance band (`GlanceBand`), the shift strip, the team jobs lane (`jobs/`), the board, the playbook | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook` |
-| My tasks | A trainer's own list (`MyTasksPanel`), reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
+| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`): Next up, the shift rings, the Floor Map, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus as a quiet line (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
+| Mine | A trainer's own list (`MyTasksPanel`): today, handed to you, follow-ups, growth, reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
 | Notes | A trainer's own notes, in folders, linked to clients, built over time; shared onto a client's record or with colleagues (`notes/`, with its own README) | `trainers/{uid}/notes`, `noteFolders`; copies at `clients/{id}/sharedNotes` and `studios/{s}/noteShares` |
-| Team | **Leaders of this studio only** (`leads.ts`): who has work with their name on it, who finished it, who is behind (`team/`); Manage (compliance) and the task manager moved here | reads the Studio tab's paths |
+
+**Team is not a tab.** It is My Studio → Team (`team/TeamPanel`, mounted by
+`features/my-studio/TeamSection`), for the leaders of this studio
+(`leads.ts`): people and standards since the voice-review round, Sep 27 2026.
+People are listed by name, never ranked, with no "Behind" verdict. It reads
+the Floor's paths.
+
+**Network is not a tab.** The network's focus and a launch at every studio
+are on Operations → Overview → All my studios, and at the foot of the
+Overview for a franchise owner who sees one studio
+(`features/admin/network/`). The ranking of studios was dropped.
 
 ## Decisions
 
 - **The view id stays `studio-tasks`.** Notifications already sitting in trainers' bells link to it. Only the labels changed:
-  - the bottom bar ("Planner", notebook icon);
+  - the bottom bar ("Planner", notebook icon; it is **My Studio** since Sep 18);
   - the settings link;
   - the Operations overview ("Studio tasks");
   - the Hub's day strip ("Tasks").
@@ -62,7 +75,7 @@ this.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
   - If any of its reads fails, it says it couldn't load all of today's tasks — never "Nothing on your list today" (`useStudioTasks` now reports an `error`, and waits for the personal task list before it stops loading).
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
-- **The tab is remembered for the session** (module state, not storage). A fresh load starts on Studio, where the shift strip is.
+- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are.
 - **A client's profile can open the Planner** at a note: **Write a plan**, **Jot a note**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
 - **A bell notification can open the Planner too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
 
@@ -80,7 +93,7 @@ this.
 
 | File | What |
 | --- | --- |
-| `PlannerView.tsx` | The masthead and tabs |
+| `PlannerView.tsx` | Relay's tab bar, the Now Bar and the board under My Studio's masthead (`features/my-studio/MyStudioView` owns the masthead, Capture and the Context Panel) |
 | `GlanceBand.tsx` | The Studio tab's three at-a-glance tiles |
 | `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
@@ -88,7 +101,7 @@ this.
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
 | `notes/` | The Notes tab — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
-| `leads.ts` | Who leads the studio the iPad is in |
+| `leads.ts` | Who leads the studio the iPad is in (`leadsHere`): My Studio asks it for Team and Studio, and the rules give the same answer |
 | `intent.ts` (+ test) | Opening the Planner at a note, a job, a share or My tasks |
-| `planner.render.test.tsx` | Mounts all four tabs and opens a note, the reminder wizard and the job composer |
+| `planner.render.test.tsx` | Mounts My Studio: Relay's three tabs and every section, and opens a note, the task wizard and the job composer |
 | `planner.css` | On the Studio Hub's `--st-*` tokens |

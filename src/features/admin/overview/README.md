@@ -30,9 +30,22 @@
 - Nothing about performance until the Sunday job has written a document; "the weekly read has not run yet" is a different sentence from "nobody dropped".
 - A failed read says so ("could not be read just now") and never counts as zero — the tiles, the changes list and the panels each say when they are missing rather than empty.
 
+## Under All my studios
+
+When the Operations scope is **All my studios** (the reader can look at more than one studio), the Overview is the network view instead of one studio's page. It lives in `../network/`:
+
+- **The setup view** (`NetworkOverview`): people, not volume. The tiles count what only this reader can clear this morning (who is waiting to be let in, among others), and the locations list is ordered by Mindbody problems, never by performance. Tapping a location switches the app to that studio.
+- **The network's two actions** (`NetworkActions`; the pure half is `network-actions.ts`), for franchise owners and the company (`mayActForNetwork`, the same roles `firestore.rules` lets update a network). A studio-tier leader who can span sees the setup view only.
+  - **Focus this quarter**: one editor per network that holds a studio in scope, for an owner exactly as for the company (AJ, Sep 27 2026). It is the house form: only the lines that changed are written, and at rest it says who set the focus and on which day. Every Floor in the network shows it as a quiet line (`relay/board/FocusBanner`).
+  - **Launch an initiative**: one ask, posted at every studio in scope after a confirmation that names each one. A studio the launch missed is named, and Launch again posts there only.
+- **Why Operations may write these.** Operations looks, and My Studio edits a studio's own settings. Neither action is a studio's setting: like an announcement, they belong to the network, so there is no My Studio editor for them to duplicate. They came from Relay's Network tab in the voice-review round (Sep 27 2026), and its ranking of studios was dropped: nothing on this page ranks a studio.
+- **The one-studio footer.** A franchise owner or administrator who can look at only one studio has no All my studios to choose, so the two actions sit at the foot of that studio's Overview. Inside Demo Mode that one studio is the practice studio: no real network's focus is offered there, and a launch posts at the practice studio only (the realm rule).
+
+`../network/NetworkOverview.render.test.tsx` mounts both scopes, the one-studio footer and the footer inside Demo Mode.
+
 ## Files
 
-- `OverviewPage.tsx` — the screen, its reads and its actions; `OverviewPage.render.test.tsx` mounts it over a studio's worth of answers and presses the buttons.
+- `OverviewPage.tsx` — the screen, its reads and its actions (under All my studios it mounts `../network/`); `OverviewPage.render.test.tsx` mounts it over a studio's worth of answers and presses the buttons.
 - `pieces.tsx` — the row shapes, the foldable panel, the snooze chooser, the Needs-you strip.
 - `today.ts`, `questions.ts`, `moments.ts`, `next-days.ts`, `team.ts`, `floor.ts`, `performance.ts` — pure, each with its test beside it.
 - `useOverviewReads.ts` — incidents, critical and dated notes, the watch document.

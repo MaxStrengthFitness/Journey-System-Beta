@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 /**
- * THE MONDAY PAGE UNDER "ALL MY STUDIOS" — the scope bar switches the page
- * from one studio's Monday to the network view (the folded Franchise
- * dashboard) without a throw. Firestore answers every read with nothing.
+ * THE OVERVIEW UNDER "ALL MY STUDIOS" — the scope bar switches the page
+ * from one studio's Overview to the network view (the folded Franchise
+ * dashboard, with the network's focus and launch since Sep 27 2026) without a
+ * throw. Also the one-studio footer, for a franchise owner who has no "All my
+ * studios" to choose, and that footer inside Demo Mode, where no real
+ * network's focus is offered. Firestore answers every read with nothing.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";

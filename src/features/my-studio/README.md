@@ -31,22 +31,22 @@ redesign it into something that assumes people are simultaneously present.
 
 | Section | Who | What |
 | --- | --- | --- |
-| **Relay** | everyone at the studio | the board: Floor · Mine · Notes (Network moved to Operations → All my studios, Sep 27 2026), the Now Bar, Capture (`features/planner/PlannerView`) |
+| **Relay** | everyone at the studio | the board for the trainer between clients: Floor · Mine · Notes, the Now Bar, Capture (`features/relay/PlannerView`). The Network tab moved to Operations → Overview → All my studios on Sep 27 2026, and its ranking of studios was dropped |
 | **Machines** | everyone reads and leaves machine notes; leaders edit | the floor, what is new in the MSF standard (adopted, never pushed), the machine's door (the studio's standard settings, the floor's notes, local set-up, upkeep), "Offer to the MSF catalog" on the studio's own machines, machines shared by other MSF studios |
 | **Team** | the studio tier | **people and standards** (voice-review round, Sep 27 2026): who is waiting to be let in (at the top), then **Standing weeks** — each trainer's usual week, proposed on My Profile and agreed here, and the next seven days' bookings checked against the agreed weeks (the free slots to fill; `src/features/standing-week/`) — each person's week by name, the standing duties and their seven days, initiatives, the loops left open, the vault; then this studio's staff: roles up to studio leader, the grant, the Mindbody link, temporary profiles. Who's in today is the Hub's and the month's client groups are Operations' |
 | **Studio** | the studio tier | the studio's own record: details, the Mindbody link, the Journey cutover date, shift hours and the deep-clean interval, the InBody variation (how big a change the scanner must see before any screen calls it one — `InBodyVariationPanel`, client codex Sep 2026; `features/inbody/README.md`), renewal settings and packages, the studio's announcements, sync status |
 
-**The studio tier** is a head trainer, studio leader or studio owner *at this studio* (home or owned), or a trainer the studio's leadership has granted `managedStudioIds` for it — `leadsHere()` in `features/planner/leads.ts`, which is the answer `firestore.rules` gives (`trainerLeads`). Hiding a section is a convenience; the rules are the boundary. The grant opens My Studio's leader sections, not the Operations dashboard.
+**The studio tier** is a head trainer, studio leader or studio owner *at this studio* (home or owned), or a trainer the studio's leadership has granted `managedStudioIds` for it — `leadsHere()` in `features/relay/leads.ts`, which `MyStudioView` asks directly and which is the answer `firestore.rules` gives (`trainerLeads`). Hiding a section is a convenience; the rules are the boundary. The grant opens My Studio's leader sections, not the Operations dashboard.
 
 ## Who owns what
 
 - `MyStudioView` owns the masthead, the section, the clock (`useNowContext`), and the two doors — the Capture sheet and the Context Panel — through `RelayContext`. PlannerView used to own these; it is a consumer now, so a card on any section can `openCapture()` or `openPanel()`.
 - Each section draws its own frame (`SectionFrame` = `.pl__frame` + the Context Panel beside it); Relay's frame is PlannerView's own, under its tabs and the Now Bar.
-- The section is module memory (`rememberedSection`), like Relay's tab: the iPad reopens where it was. An arriving Planner intent (a client's profile, a notification) always lands on Relay.
-- The view id is still `studio-tasks` and the folder for the board is still `features/planner`: notifications in trainers' bells link to the id, and thirty imports point at the folder.
+- The section is module memory (`section-memory.ts`), like Relay's tab, and a sign-out forgets it: the iPad reopens where it was. An arriving Planner intent (a client's profile, a notification) always lands on Relay.
+- The view id is still `studio-tasks`: notifications in trainers' bells link to it. The board's folder is `features/relay` (it was `features/planner` until the beta-prep trim renamed it, Sep 17 2026); file names inside still say Planner (`PlannerView`, `planner.css`).
 
 ## Rules of the round
 
-- **My Studio is where you run the studio; Operations is where you look at it** (AJ, Sep 18). A studio's own settings live here, once, with one save bar; the Monday tools stay on Operations.
+- **My Studio is where you run the studio; Operations is where you look at it** (AJ, Sep 18). A studio's own settings live here, once, with one save bar; the looking (the Overview, Insights, the watchlists) stays on Operations.
 - **Nothing here is a second editor.** When a panel moves in (the Studio setup card, Relay's Standards, the renewal settings), it moves — the old place links here or is deleted in the same round.
 - **Adopted, not pushed** (machines) and **inherited unless overridden** (fields, settings, routines) — the two update rules for the MSF standard. See `docs/rounds/2026-09-19-my-studio.md`.

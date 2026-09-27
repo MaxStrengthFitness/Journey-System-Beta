@@ -36,21 +36,26 @@ import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSectio
  * control over its own studio", so the Relay tab becomes **My Studio**, with
  * Relay as a section inside it, and the studio's own world beside it:
  *
- *   Relay      the board, exactly as it was: Floor · Mine · Notes · Network,
- *              the Now Bar, Capture (features/planner/PlannerView)
+ *   Relay      the board for the trainer between clients: Floor · Mine ·
+ *              Notes, the Now Bar, Capture (features/relay/PlannerView).
+ *              Its Network tab moved to Operations → Overview → All my
+ *              studios on Sep 27 2026, and its ranking of studios was dropped
  *   Machines   the floor and what the studio has done to it — everyone reads
  *              it and leaves machine notes; leaders edit it (phase 3)
- *   Team       the Team cockpit (was Relay's Team tab) and this studio's
- *              staff: who is waiting to be let in, roles up to studio
- *              leader, the grant, the Mindbody link, temporary profiles
+ *   Team       people and standards (AJ, Sep 27 2026): who is waiting to be
+ *              let in, the standing weeks, each person's week by name, the
+ *              standing duties, initiatives, the loops left open, the vault,
+ *              and this studio's staff: roles up to studio leader, the grant,
+ *              the Mindbody link, temporary profiles
  *   Studio     the studio's own record: details, the cutover date, hours,
  *              renewal settings, announcements (phase 2)
  *
  * Who sees what: everyone at the studio gets Relay and Machines; Team and
  * Studio are the studio tier — head trainer, studio leader, studio owner AT
  * THIS STUDIO, or a trainer its leadership granted `managedStudioIds`
- * (planner/leads.ts → leadsHere, the same answer the rules give). Hiding a
- * section is a convenience; the rules are the boundary.
+ * (relay/leads.ts → leadsHere, the same answer the rules give, asked
+ * directly below). Hiding a section is a convenience; the rules are the
+ * boundary.
  *
  * The Relay context (RelayContext) is owned HERE now rather than by
  * PlannerView, so a card on any section — a machine flag on Team, a note

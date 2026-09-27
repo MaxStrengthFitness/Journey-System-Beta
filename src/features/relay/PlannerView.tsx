@@ -40,13 +40,15 @@ import "./board/relay.css";
  *   Capture          one composer for all of it, under the right thumb
  *   Context Panel    detail beside the board, never a modal over it
  *
- * Team — who's in, cohorts, open loops, the vault — was Relay's fourth tab
- * and is My Studio's Team section now, beside this studio's staff (My Studio
- * round, Sep 2026). Network — the network's focus, initiatives across
- * studios and a ranking of studios — was the other fourth tab, for franchise
- * owners and the company. It moved to Operations → All my studios in the
- * voice-review round (Sep 27 2026: "Relay must prioritize the trainers
- * transitioning between clients"), and the ranking was dropped.
+ * Team was Relay's fourth tab and is My Studio → Team now (My Studio round,
+ * Sep 2026): people and standards since the voice-review round (Sep 27
+ * 2026), for the leaders of this studio. Network — the network's focus,
+ * initiatives across studios and a ranking of studios — was the other fourth
+ * tab, for franchise owners and the company. It moved to Operations →
+ * Overview → All my studios in the voice-review round ("Relay must
+ * prioritize the trainers transitioning between clients"), and the ranking
+ * was dropped. So Relay is Floor · Mine · Notes, and every tab is
+ * everyone's.
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
