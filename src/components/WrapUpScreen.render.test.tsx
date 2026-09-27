@@ -668,7 +668,7 @@ describe("the packages card (consultation round, Sep 2026)", () => {
     const host = await mount(<PackagesScreen who={{}} />);
     const c = card(host)!;
     expect(c.textContent).toContain("Journey hasn't checked Mindbody for Judy's package yet.");
-    expect(c.textContent).not.toMatch(/no package|new|first/i);
+    expect(c.textContent).not.toMatch(/no package|\bnew\b|first/i);
   });
 
   it("is not drawn for a client with a live package: the Renewal conversation is the tool there", async () => {

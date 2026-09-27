@@ -541,26 +541,47 @@ After the final review (K): typecheck 4; the whole suite 6,404 passing in 420 fi
 the rules tests 180 passing in the emulator on AJ's PC (the rules themselves
 unchanged; AJ's run is still the one that counts); case check clean.
 
+Last, the Wrap-up render test's check that the renewal card never says "new"
+held two raw backspace characters where `` was meant, so it matched
+nothing (it came in before this round). It is written as `` now and still
+passes, and no source file holds a raw control character.
+
 ## Open, for AJ
+
+**Answered after the round (AJ, Sep 27 2026, in the chat that built it):**
+
+- **The Hub outline** folds into the next round. AJ: "if we add more
+  information like this on the hub, it's not really telling us a lot for that
+  day ... a separate spot for that." A regular's usual time with no booking is
+  "not that a slot is agreed to, it's just that trainer is usually very used
+  to a client coming on that day", and it should help leadership "recognize
+  like oh hey Austin's eight o'clock isn't going to be here this week", quietly.
+- **Rotation days** need no rule in the app: rotations vary by studio and by
+  week ("It's just something I want to give you context on"). The glossary
+  says so; the check already reads a rotation booking at a regular's time as
+  usual. Whatever a trainer and a leader agree for a rotation day stands.
+- **"Suggest my regulars"** is not wanted: trainers mark their regulars
+  themselves. What AJ wants instead is "My clients" on My Profile (the clients
+  you've trained most, beside the Kaizen Roster, which is tracked clients, not
+  regulars), in the next round.
+- **The next round is approved** ("love it, lets go"): **Openings**, a My
+  Studio section open to everyone at the studio that shows the studio's usual
+  busy and quiet times, what opened up this week in a usually-busy time (a
+  regular is out, and when they're booked again), and good times to offer a
+  client who wants a regular time, for trainers at the desk right after a
+  session. With it: a door from the Wrap-up when the next session isn't
+  booked, "When I usually take clients" in place of the standing week's
+  "hours" (trainers are paid per client, hourly or salary), "Your week" on My
+  Profile (clients trained, training hours, time at the studio from the first
+  session to the last) and "My clients". It never books (Mindbody charges
+  $2.50 a booking made through the app) and nothing pings anyone. Its
+  proposal is `docs/rounds/2026-09-27-openings.md`.
 
 **Waiting on your word:**
 
-- **The Hub outline — what "agreed slot" means.** An agreed slot is one of a
-  regular's usual times on a trainer's agreed standing week, for example
-  "Judy, Monday 8:00, with Sam". The question is whether the Hub should draw
-  that time faintly in Sam's column on a Monday when nothing is booked there,
-  so the floor sees the gap without opening Team. It isn't built: the Hub's
-  own "open slots" were taken off on Sep 6 as "a sales question".
-- **Regulars on rotation days.** On a Wednesday or Saturday, once that day's
-  trainer has moved a regular's rotation booking to themselves in Mindbody,
-  the booking carries that trainer. If the regular's agreed week names
-  someone else, the check reads it as moved, with a Free slot for the agreed
-  trainer. That is right only if the agreed trainer was working that day.
-  Should an agreed week hold rotation-day regulars at all?
 - **A trainer Mindbody marks inactive**, but who still has Journey access, is
   still checked on Team, so each of their slots reads open. Should Team stop
   checking their week and say "Mindbody lists them as inactive"?
-- **"Suggest my regulars"** (above): build it?
 - **Who may change a role.** On Operations → Staff & Roles only administrators
   may change an existing person's role (the Sep 2026 audit's decision), while
   on My Studio → Team a studio's leaders may, within the studio tier. The
