@@ -1,5 +1,5 @@
 <#
- SCRIPT-VERSION: v1  (Sep 26 2026: the cost plan)
+ SCRIPT-VERSION: v2  (Sep 27 2026: the functions tests run from functions\src only)
 
  Ships branch claude/sleepy-franklin-w35ea6: the cost plan built on AJ's
  ranking - the pull every 30 minutes and the month once each morning, packages
@@ -200,7 +200,11 @@ if ($Stage -eq 'prepare') {
   $vt = Run 'vitest (TZ=America/New_York)' 'npm test'
   Must $vt 'the test suite'
 
-  $ft = Run 'every functions test' 'cd functions && npx vitest run'
+  # --dir src: functions\lib holds what `firebase deploy` compiled, and an older
+  # build left COMPILED copies of the tests there (CommonJS, which cannot load
+  # vitest). Unscoped, vitest collects them and fails the run although every
+  # real test passes (AJ's first prepare, Sep 27 2026).
+  $ft = Run 'every functions test' 'cd functions && npx vitest run --dir src'
   Must $ft 'the functions tests'
   $fb = Run 'the functions typecheck' 'cd functions && npx tsc --noEmit -p .'
   Must $fb 'the functions typecheck'
