@@ -499,46 +499,70 @@ describe("studioRoster", () => {
   const trainers = [
     { id: "t1", fullName: "Dana Reyes", primaryHomeStudioId: "s1" },
     { id: "t2", fullName: "Marcus Hall", primaryHomeStudioId: "s1" },
-    // Covers shifts here but belongs to s2.
+    // A floater: home at s2, works here too.
     {
       id: "t3",
-      fullName: "Guest Trainer",
+      fullName: "Flo Ater",
       primaryHomeStudioId: "s2",
       accessibleStudioIds: ["s1", "s2"],
     },
+    // A guest here this week.
+    {
+      id: "t4",
+      fullName: "Gus Guest",
+      primaryHomeStudioId: "s2",
+      accessibleStudioIds: ["s2"],
+      activeGuestStudioIds: ["s1"],
+    },
+    // Works at s2 only.
+    { id: "t5", fullName: "Elsewhere", primaryHomeStudioId: "s2", accessibleStudioIds: ["s2"] },
   ];
 
-  it("counts only the studio's own team, not everyone with access", () => {
-    // The whole point: a guest in the denominator makes a finished studio
-    // read as failing.
+  it("is everyone who works there: home, also works here, or a guest (AJ, Sep 27 2026)", () => {
     const roster = studioRoster(trainers, "s1");
-    expect(roster.map((t) => t.id)).toEqual(["t1", "t2"]);
+    expect(roster.map((t) => t.id)).toEqual(["t1", "t3", "t4", "t2"]);
   });
 
   it("sorts by name so the roll-up does not reshuffle between renders", () => {
     expect(studioRoster(trainers, "s1").map((t) => t.name)).toEqual([
       "Dana Reyes",
+      "Flo Ater",
+      "Gus Guest",
       "Marcus Hall",
     ]);
   });
 
-  it("drops deactivated and superseded profiles", () => {
+  it("drops deactivated, superseded and unclaimed placeholder profiles", () => {
     // A placeholder nobody has claimed can never submit, so counting it
     // guarantees the initiative never reads as complete.
     const roster = studioRoster(
       [
-        ...trainers,
-        { id: "t4", fullName: "Left In June", primaryHomeStudioId: "s1", isActive: false },
+        trainers[0],
+        { id: "t6", fullName: "Left In June", primaryHomeStudioId: "s1", isActive: false },
         {
-          id: "t5",
+          id: "t7",
           fullName: "Old Doc",
           primaryHomeStudioId: "s1",
           supersededByUid: "t1",
         },
+        { id: "t8", fullName: "Temp Orary", primaryHomeStudioId: "s1", accessibleStudioIds: ["s1"], pendingClaim: true },
       ],
       "s1",
     );
-    expect(roster.map((t) => t.id)).toEqual(["t1", "t2"]);
+    expect(roster.map((t) => t.id)).toEqual(["t1"]);
+  });
+
+  it("keeps Demo Mode's own trainers in Demo Mode and nobody from the company (the realm rule)", () => {
+    const demo = {
+      id: "demo-gimli",
+      fullName: "Gimli",
+      primaryHomeStudioId: "demo-studio",
+      accessibleStudioIds: ["demo-studio"],
+      pendingClaim: true,
+      isDemo: true,
+    };
+    expect(studioRoster([...trainers, demo], "demo-studio").map((t) => t.id)).toEqual(["demo-gimli"]);
+    expect(studioRoster([...trainers, demo], "s1").map((t) => t.id)).not.toContain("demo-gimli");
   });
 
   it("is empty with no active studio rather than counting everybody", () => {

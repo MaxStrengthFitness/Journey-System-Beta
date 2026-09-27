@@ -189,8 +189,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           </p>
           {roster.length === 0 ? (
             <p className="rk-empty">
-              Nobody has {studioName} as their home studio yet, so there is no team to show. Trainers appear here once
-              their profile names this studio.
+              Nobody works at {studioName} yet, so there is no team to show. Trainers appear here once their profile
+              names this studio — as their home, a studio they also work at, or a guest studio.
             </p>
           ) : loading && !readError ? (
             <p className="rk-empty">Loading the week…</p>

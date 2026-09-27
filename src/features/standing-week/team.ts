@@ -10,7 +10,7 @@
  */
 import type { Studio, Trainer } from "../../types";
 import { isDemoStudioId } from "../demo-mode/is-demo";
-import { worksAt } from "./present";
+import { worksHere } from "../../lib/who-works-here";
 import { weekStatus, type StandingWeekDoc, type WeekStatus } from "./week";
 
 export interface TeamWeekRow {
@@ -45,7 +45,10 @@ export function teamWeeks(trainers: readonly TrainerLike[], docs: readonly Stand
   const used = new Set<string>();
 
   const staff = trainers
-    .filter((t) => t.id && worksAt(t, studioId) && t.isActive !== false && !t.supersededByUid && !t.pendingClaim)
+    // Everyone who works there (AJ): the one rule, lib/who-works-here.ts. Not
+    // present.ts's worksAt, which answers "may this person act here" and says
+    // yes to everyone at the Demo studio — as a list, that was the whole company.
+    .filter((t) => worksHere(t, studioId))
     .map((t): TeamWeekRow => {
       const doc = byUid.get(uidOf(t)) ?? byTrainerId.get(t.id) ?? null;
       if (doc) used.add(doc.id);

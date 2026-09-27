@@ -54,6 +54,31 @@ describe("who Team lists", () => {
     expect(rows).toEqual([]);
   });
 
+  it("lists a floater and a guest who work here too (AJ: everyone who works there)", () => {
+    const rows = teamWeeks(
+      [
+        trainer("t-float", "Flo Ater", { primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake", "solon"] }),
+        trainer("t-guest", "Gus Guest", { primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake"], activeGuestStudioIds: ["solon"] }),
+      ],
+      [],
+      "solon",
+    );
+    expect(rows.map((r) => r.name)).toEqual(["Flo Ater", "Gus Guest"]);
+  });
+
+  it("lists Demo Mode's own trainers in Demo Mode, never the whole company (the realm rule)", () => {
+    const aragorn = trainer("demo-aragorn", "Aragorn Elessar", {
+      primaryHomeStudioId: "demo-studio",
+      accessibleStudioIds: ["demo-studio"],
+      pendingClaim: true,
+      isDemo: true,
+    });
+    const rows = teamWeeks([trainer("t-sam", "Sam Lee"), trainer("t-ann", "Ann Park"), aragorn], [], "demo-studio");
+    expect(rows.map((r) => r.name)).toEqual(["Aragorn Elessar"]);
+    // And Demo Mode's trainer is not on a real studio's list.
+    expect(teamWeeks([aragorn], [], "solon")).toEqual([]);
+  });
+
   it("lists a week left behind by someone who no longer works here, after the staff", () => {
     const rows = teamWeeks([trainer("t-sam", "Sam Lee")], [doc("uid-left", { trainerId: "t-left", trainerName: "Lee Left", final: week })], "solon");
     expect(rows.map((r) => [r.name, r.onStaff])).toEqual([

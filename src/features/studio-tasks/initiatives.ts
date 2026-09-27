@@ -35,6 +35,7 @@
  *
  * PURE MODULE. The writes live in mutations.ts.
  */
+import { whoWorksHere, type TeamMemberLike } from "../../lib/who-works-here";
 import type { ClientTaskAction } from "./types";
 
 /** What the initiative is asking each trainer to do, and how many times. */
@@ -239,43 +240,30 @@ export function withoutEntry(
  * ------------------------------------------------------------------ */
 
 /**
- * The trainers a studio initiative counts against.
+ * The studio's team: Team's People, an initiative's denominator, and the
+ * people pickers on the Floor, Mine, Capture and the job composer.
  *
- * PRIMARY HOME STUDIO ONLY, and that is the interesting decision.
- * `accessibleStudioIds` and `activeGuestStudioIds` are wider, and using either
- * would sweep in every trainer who has ever covered a shift here. They would
- * each show as nought of five in the roll-up, the denominator would be wrong,
- * and a manager reading "3 of 14 done" for a studio with six trainers would
- * conclude the floor is failing when it is finished.
+ * EVERYONE WHO WORKS THERE (AJ, voice review follow-up, Sep 27 2026: asked
+ * who the team is, "everyone who works there"). Home studio, a studio they
+ * also work at, or a guest studio — the one rule in lib/who-works-here.ts,
+ * which Team's Standing weeks asks too. It used to be the home studio only,
+ * so a floater who works here three days a week had no card on Team and was
+ * never asked for an initiative; one screen listed three different teams.
  *
- * A guest who does the work anyway is not lost: initiativeProgress appends a
- * row for any submission from someone off the roster, so their entries count
- * toward the studio's total. They just are not chased for it.
+ * Left out, by the same rule: an inactive or replaced account, and a
+ * placeholder or temporary profile nobody has claimed yet — it cannot
+ * submit, take a job or propose a week, so counting it would mean an
+ * initiative never reads as complete. Demo Mode's own seeded trainers are
+ * placeholders and are its team, so they stay (the realm rule).
  *
- * Placeholder profiles (created for someone who has not signed in yet) are
- * excluded — they cannot submit, so counting them guarantees the initiative
- * never reads as complete.
+ * A submission from someone off the roster is not lost: initiativeProgress
+ * appends a row for it, so the work counts toward the studio's total.
  */
 export function studioRoster(
-  trainers: {
-    id?: string;
-    fullName?: string;
-    primaryHomeStudioId?: string;
-    authUid?: string;
-    isActive?: boolean;
-    supersededByUid?: string | null;
-  }[],
+  trainers: readonly (TeamMemberLike & { fullName?: string })[],
   studioId: string | null,
 ): { id: string; name: string }[] {
-  if (!studioId) return [];
-  return trainers
-    .filter(
-      (t) =>
-        Boolean(t.id) &&
-        t.primaryHomeStudioId === studioId &&
-        t.isActive !== false &&
-        !t.supersededByUid,
-    )
+  return whoWorksHere(trainers, studioId)
     .map((t) => ({ id: t.id!, name: t.fullName?.trim() || "A trainer" }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
