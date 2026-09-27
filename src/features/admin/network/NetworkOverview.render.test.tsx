@@ -83,16 +83,16 @@ const trainers = [
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 
-async function mount() {
+async function mount(reader: Trainer = owner, inScope: Studio[] = studios) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <OperationsScopeProvider authTrainer={owner} studios={studios} networks={[]} isAdmin={false} activeStudioId="solon">
+        <OperationsScopeProvider authTrainer={reader} studios={inScope} networks={[]} isAdmin={false} activeStudioId="solon">
           <ScopeBar />
-          <OverviewPage authTrainer={owner} studios={studios} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
+          <OverviewPage authTrainer={reader} studios={inScope} trainers={trainers} machines={[]} clients={[]} schedules={[]} activeStudioId="solon" />
         </OperationsScopeProvider>
       </StrictMode>,
     );
@@ -125,6 +125,9 @@ describe("the Overview under the Operations scope", () => {
   it("shows one studio's Overview, then every studio's tiles under All my studios, and a location switches the app", async () => {
     const el = await mount();
     expect(el.textContent).toContain("Solon — Overview");
+    // One studio's Overview is not where an owner who can choose "All my
+    // studios" launches across them.
+    expect(el.textContent).not.toContain("Launch an initiative");
 
     await choose(el, "all");
     const text = el.textContent ?? "";
@@ -134,10 +137,26 @@ describe("the Overview under the Operations scope", () => {
     // The new hire with no role is the one person waiting.
     expect(el.querySelector(".adm-tile__value")?.textContent).toBe("1");
 
+    // The network's two actions moved here from Relay → Network (voice-review
+    // round, Sep 27 2026), and the studio ranking did not come with them.
+    expect(text).toContain("Focus this quarter");
+    expect(text).toContain("Launch at 2 studios");
+    expect(text).not.toMatch(/New this month|Loops closed/);
+
     const westlake = [...el.querySelectorAll<HTMLButtonElement>(".adm-fr-row__btn")].find((b) => b.textContent?.includes("Westlake"))!;
     await act(async () => {
       westlake.click();
     });
     expect(picks).toContain("westlake");
+  });
+});
+
+describe("a franchise owner who sees one studio", () => {
+  it("finds the network's actions at the foot of that studio's Overview, with no All my studios to choose", async () => {
+    const soloOwner = { ...owner, ownedStudioIds: ["solon"] } as unknown as Trainer;
+    const el = await mount(soloOwner, [studios[0]]);
+    expect(el.querySelector("#ops-scope")).toBeNull();
+    expect(el.textContent).toContain("Solon — Overview");
+    expect(el.textContent).toContain("Launch at 1 studio");
   });
 });

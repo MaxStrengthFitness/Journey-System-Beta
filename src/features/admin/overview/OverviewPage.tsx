@@ -38,7 +38,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, CalendarClock, CalendarDays, CalendarRange, ChevronRight, Clock3, Gift, HeartPulse, NotebookPen, Ruler, TrendingDown, TrendingUp, UserRoundX, Users } from "lucide-react";
 import { auth } from "../../../firebase";
-import type { Client, Machine, ScheduleEntry, Studio, Trainer } from "../../../types";
+import type { Client, FranchiseNetwork, Machine, ScheduleEntry, Studio, Trainer } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import { formatStudioDate, studioDateKey } from "../../../lib/studio-time";
 import { useDelightQueue } from "../../ford/useClientFord";
@@ -49,6 +49,8 @@ import { observations, returnRate, studioSummary, trainerMetrics } from "../insi
 import { formatHours, sessionMinutesOf, trainerNames } from "../hours/hours";
 import { useWorthALook } from "../machine-fit/useFitFloor";
 import { NetworkOverview } from "../network/NetworkOverview";
+import { NetworkActions } from "../network/NetworkActions";
+import { mayActForNetwork } from "../network/network-actions";
 import { AdminButton, AdminEmpty, AdminHeader, AdminNotice, AdminScreen, AdminStatTile, AdminTiles } from "../primitives";
 import { useOperationsScope } from "../scope-context";
 import { useSessionsInRange } from "../sessions-range";
@@ -86,11 +88,13 @@ export interface OverviewPageProps {
   activeStudioId: string | null;
   onNavigateProfile?: (clientId: string) => void;
   onOpen?: (tab: OverviewLink) => void;
+  /** The franchise networks, for the network's focus (voice-review round, Sep 27 2026). */
+  networks?: FranchiseNetwork[];
 }
 
 const DAYS_READ = 14;
 
-export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen }: OverviewPageProps) {
+export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [] }: OverviewPageProps) {
   const ops = useOperationsScope();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -107,6 +111,7 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
       <AdminScreen>
         <AdminHeader icon={<Activity className="w-5 h-5" />} title="All my studios" subtitle={`${ops.studios.length} studios. Is anything wrong at any of them this morning?`} />
         <NetworkOverview studios={ops.studios} trainers={trainers} now={now.getTime()} />
+        <NetworkActions trainer={authTrainer} uid={auth.currentUser?.uid ?? null} studios={ops.studios} networks={networks} todayKey={today || studioDateKey(now) || ""} />
       </AdminScreen>
     );
   }
@@ -120,9 +125,19 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
     );
   }
 
+  /* The network's focus and launch moved here from Relay → Network (voice-
+     review round, Sep 27 2026) under "All my studios". A franchise owner who
+     sees only one studio has no "All my studios" to choose, so they find
+     them at the foot of that studio's Overview instead. */
+  const networkFooter =
+    !ops.canSpan && mayActForNetwork(authTrainer) ? (
+      <NetworkActions trainer={authTrainer} uid={auth.currentUser?.uid ?? null} studios={[studio]} networks={networks} todayKey={today} />
+    ) : null;
+
   return (
     <StudioOverview
       key={studio.id}
+      footer={networkFooter}
       homeSignal={homeSignal}
       studio={studio}
       today={today}
@@ -144,6 +159,7 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
 type View = "home" | "changes" | "attendance";
 
 function StudioOverview({
+  footer,
   homeSignal,
   studio,
   today,
@@ -155,6 +171,8 @@ function StudioOverview({
   onNavigateProfile,
   onOpen,
 }: {
+  /** Drawn at the foot of the home view: the network's actions, for a franchise owner with one studio. */
+  footer?: React.ReactNode;
   homeSignal: number;
   studio: Studio;
   today: string;
@@ -776,6 +794,8 @@ function StudioOverview({
           ). What is shown is what could be read — not the whole picture.
         </AdminNotice>
       )}
+
+      {footer}
 
       {reviewOpen && <ReviewNotesDialog open onOpenChange={setReviewOpen} rows={review} onOpenClient={onNavigateProfile} />}
     </AdminScreen>

@@ -9,6 +9,7 @@ import { createRequest } from "../../studio-tasks/requests";
 import { CLIENT_ACTION_LABEL, type ClientTaskAction } from "../../studio-tasks/types";
 import { dueChoices } from "../jobs/jobs";
 import { useRelay } from "./RelayContext";
+import { focusOf } from "./focus";
 
 /**
  * NETWORK — franchise owners, founders and administrators.
@@ -76,20 +77,6 @@ function useStudioStats(studios: { id: string; name: string }[], todayKey: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, todayKey]);
   return { stats, loading };
-}
-
-export interface RelayFocus {
-  mastery: string;
-  machine: string;
-  note: string;
-  setBy?: { id: string; name: string };
-  setAt?: unknown;
-}
-
-export function focusOf(network: { relayFocus?: unknown } | null | undefined): RelayFocus | null {
-  const raw = network?.relayFocus as Partial<RelayFocus> | undefined;
-  if (!raw || (!raw.mastery && !raw.machine && !raw.note)) return null;
-  return { mastery: raw.mastery ?? "", machine: raw.machine ?? "", note: raw.note ?? "", setBy: raw.setBy, setAt: raw.setAt };
 }
 
 export function NetworkView() {

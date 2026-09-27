@@ -309,6 +309,7 @@ function AdminDashboardShell({
             activeStudioId={activeStudioId}
             onNavigateProfile={onNavigateProfile}
             onOpen={openFromOverview}
+            networks={networks}
           />
         )}
 
