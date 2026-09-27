@@ -6,6 +6,12 @@
    equipment.tokens.css — its status inks are readable as TEXT in both
    themes, which the app's --green and --amber fills are not on white.
    No hex below this line; nothing tappable under 40px.
+
+   The title is the display face, upright, as My Profile writes a person's
+   name (.tp-identity__name): Settings is about you, not a page of the
+   codex, so it does not take the codex's italic capitals (voice review
+   follow-up, Sep 27 2026). Text on the codex's scale, 11 / 12 / 14 / 17 /
+   30; buttons 14px bold.
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 
@@ -20,7 +26,16 @@
 }
 
 .stg-head { padding: 4px 2px 0; }
-.stg-head__title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; color: var(--eq-ink); }
+.stg-head__title {
+  margin: 0;
+  font-family: var(--font-display, "Saira Condensed", system-ui, sans-serif);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
 .stg-head__lede { margin: 4px 0 0; font-size: 14px; color: var(--eq-ink-muted); }
 
 .stg-card {
@@ -67,7 +82,7 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
   color: var(--eq-ink);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -91,7 +106,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--eq-border);
-  font-size: 13px;
+  font-size: 14px;
 }
 /* The whole report, wrapped: the row opens nothing, so a two-line cut-off
    left the rest unreadable (voice review follow-up, Sep 27 2026). */
@@ -158,7 +173,7 @@
   background: var(--eq-surface);
   color: var(--eq-ink-2);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 .stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }

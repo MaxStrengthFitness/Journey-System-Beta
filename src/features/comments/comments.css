@@ -2,7 +2,9 @@
    COMMENTS — at the foot of a Learning page
    --------------------------------------------------------------------------
    Round: Learning + Planner, Sep 2026. On the wiki's --wk-* tokens; no hex.
-   Tap targets 40px or more.
+   Tap targets 40px or more. Text on the codex's scale (11 / 12 / 14 / 17 /
+   30), buttons 14px bold, and the comment box at 16px so iOS does not zoom
+   the page on focus (voice review follow-up, Sep 27 2026).
    ========================================================================== */
 
 .cm {
@@ -25,7 +27,7 @@
 
 .cm__state {
   margin: 0.5rem 0 0.75rem;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--wk-ink-muted);
 }
 
@@ -61,7 +63,7 @@
   border-radius: 999px;
   background: var(--wk-live-fill);
   color: var(--wk-live-text);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -96,7 +98,7 @@
   background: transparent;
   color: var(--wk-ink-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -108,7 +110,7 @@
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--wk-ink-2);
 }
 
@@ -128,7 +130,8 @@
   background: var(--wk-surface);
   color: var(--wk-ink);
   font: inherit;
-  font-size: 14px;
+  /* 16px, or iOS Safari zooms the page when the box is focused. */
+  font-size: 16px;
   line-height: 1.5;
   resize: vertical;
 }
@@ -200,11 +203,12 @@
   background: var(--wk-surface);
   color: var(--wk-ink-2);
   font: inherit;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
-.cm__btn--primary { border-color: var(--wk-live); background: var(--wk-live); color: var(--wk-surface); }
+/* Post and Save: solid brand blue with its on-colour, like every Save. */
+.cm__btn--primary { border-color: var(--wk-live); background: var(--wk-live); color: var(--wk-live-on); }
 .cm__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
 .cm__btn:disabled { opacity: 0.55; cursor: default; }
 .cm__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }

@@ -139,6 +139,80 @@ describe("Learning's controls are 40px or more", () => {
   });
 });
 
+/* ------------------------------------------------------------------ *
+ * The app's type voice (voice review follow-up, Sep 27 2026)
+ * ------------------------------------------------------------------ */
+
+const TYPE_SHEETS: Record<string, string> = {
+  ...SHEETS,
+  "machine-trends/machine-trends.css": read("machine-trends", "machine-trends.css"),
+  "settings/settings.css": read("settings", "settings.css"),
+};
+const TYPE_RULES = Object.entries(TYPE_SHEETS).flatMap(([sheet, css]) => rules(sheet, css));
+const typeRule = (selector: string) => {
+  const found = TYPE_RULES.find((r) => r.selectors.includes(selector) && /font-size/.test(r.body));
+  if (!found) throw new Error(`no type rule for ${selector}`);
+  return found;
+};
+
+/** A field: 16px, the one size off the scale, or iOS zooms the page on focus. */
+const FIELD = /(input|textarea|__value|__draft)/;
+
+describe("Learning's text is on the codex's scale", () => {
+  it("sets every size to 11, 12, 14, 17 or 30, and a field to 16", () => {
+    const off: string[] = [];
+    for (const rule of TYPE_RULES) {
+      const size = declared(rule.body, "font-size");
+      if (size === null) continue;
+      const field = rule.selectors.every((s) => FIELD.test(s));
+      if (![11, 12, 14, 17, 30].includes(size) && !(field && size === 16)) {
+        off.push(`${rule.sheet} ${rule.selectors.join(", ")}: ${size}px`);
+      }
+    }
+    expect(off).toEqual([]);
+  });
+
+  it.each([".wk__search-input", ".wk__input", ".wk__textarea", ".cat__textarea", ".ssc__value", ".ssc__draft", ".cm__input"])(
+    "keeps the field %s at 16px, so iOS does not zoom on focus",
+    (selector) => {
+      const rule = TYPE_RULES.find((r) => r.selectors.includes(selector) && declared(r.body, "font-size") !== null);
+      expect(declared(rule!.body, "font-size"), selector).toBe(16);
+    },
+  );
+
+  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2"])(
+    "gives the title %s the display face at 800, in italic capitals",
+    (selector) => {
+      const body = typeRule(selector).body;
+      expect(body).toMatch(/font-family:\s*var\(--wk-font-display\)/);
+      expect(body).toMatch(/font-weight:\s*800/);
+      expect(body).toMatch(/font-style:\s*italic/);
+      expect(body).toMatch(/text-transform:\s*uppercase/);
+    },
+  );
+
+  it("gives Settings' title the display face, upright, as My Profile writes a name", () => {
+    const body = typeRule(".stg-head__title").body;
+    expect(body).toMatch(/font-family:\s*var\(--font-display/);
+    expect(body).toMatch(/font-weight:\s*800/);
+    expect(body).not.toMatch(/italic|uppercase/);
+  });
+
+  it.each([".wk__searchbtn", ".wk__warnings-more", ".wk__studio-edit", ".wk__btn", ".lh__more", ".cat__btn", ".ssc__save", ".cm__btn", ".cm__link"])(
+    "writes the button %s in 14px bold sentence case",
+    (selector) => {
+      const body = typeRule(selector).body;
+      expect(declared(body, "font-size")).toBe(14);
+      expect(body).toMatch(/font-weight:\s*700/);
+      expect(body).not.toMatch(/text-transform:\s*uppercase/);
+    },
+  );
+
+  it("points the display face at the app's, with a fallback of its own", () => {
+    expect(read("wiki", "wiki.tokens.css")).toMatch(/--wk-font-display:\s*var\(--font-display,\s*"Saira Condensed"/);
+  });
+});
+
 describe("nothing in Learning is cut off", () => {
   it("has no ellipsis, no line clamp and no one-line cut-off", () => {
     const clipped: string[] = [];

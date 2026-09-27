@@ -58,6 +58,12 @@
   --wk-nav-w:      17.5rem; /* 280 */
   --wk-tap:        44px;    /* Apple HIG minimum. Everything is thumbed. */
 
+  /* ── type: the app's display face, for titles (voice review follow-up,
+        Sep 27 2026). With its own fallback, as the codex's: this file is
+        not run through Tailwind, so it must not depend on Tailwind having
+        emitted --font-display. ────────────────────────────────────────── */
+  --wk-font-display: var(--font-display, "Saira Condensed", system-ui, sans-serif);
+
   /* ── surfaces ─────────────────────────────────────────────────────── */
   --wk-bg:            #f1f5f8;
   --wk-surface:       #ffffff;

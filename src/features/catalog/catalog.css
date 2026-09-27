@@ -10,6 +10,12 @@
 
    main.tsx loads this file (and catalog.tokens.css) for the whole app. The
    tokens are on :root, so neither card needs a .cat ancestor.
+
+   Both cards also render on My Studio -> Machines. Since the voice review
+   follow-up (Sep 27 2026) they speak the app's type voice: text on the
+   codex's scale (11 / 12 / 14 / 17 / 30), buttons 14px bold sentence case,
+   every control 40px, and a field at 16px so iOS does not zoom the page
+   when it is focused. learning-scale.test.ts holds it.
    ========================================================================== */
 
 .cat__note {
@@ -25,7 +31,7 @@
 
 /* ── studio notes ────────────────────────────────────────────────────── */
 .cat__notes-scope {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cat-ink-muted);
 }
@@ -34,7 +40,7 @@
    textarea so it is read before the field is touched, not after. */
 .cat__notes-warning {
   margin: 0.25rem 0 0.5rem;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--cat-ink-muted);
 }
@@ -48,7 +54,8 @@
   background: var(--cat-surface);
   color: var(--cat-ink);
   font: inherit;
-  font-size: 13px;
+  /* 16px, or iOS Safari zooms the page when the field is focused. */
+  font-size: 16px;
   line-height: 1.5;
   resize: vertical;
 }
@@ -68,10 +75,8 @@
   background: var(--cat-surface);
   color: var(--cat-ink);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -124,7 +129,7 @@
   gap: 0.4rem;
   margin: 0;
   color: var(--cat-ink-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -173,7 +178,8 @@
   border-radius: 8px;
   background: var(--cat-surface-2);
   color: var(--cat-ink);
-  font-size: 13px;
+  /* 16px, or iOS Safari zooms the page when the field is focused. */
+  font-size: 16px;
   font-weight: 800;
   text-align: center;
 }
@@ -221,7 +227,7 @@
   border-radius: 8px;
   background: var(--cat-surface);
   color: var(--cat-ink);
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .ssc__save {
@@ -236,10 +242,9 @@
   border-radius: 10px;
   background: var(--cat-live);
   color: var(--cat-live-on);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 0 1rem;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .ssc__save:disabled {
