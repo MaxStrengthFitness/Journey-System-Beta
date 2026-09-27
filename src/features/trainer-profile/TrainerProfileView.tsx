@@ -28,6 +28,7 @@ import { MyRenewals } from "../renewals/MyRenewals";
 import { MyStandingWeek } from "../standing-week/MyStandingWeek";
 import { ColleagueStandingWeek } from "../standing-week/ColleagueStandingWeek";
 import { mayReadWeeks, worksAt } from "../standing-week/present";
+import { YourWeek } from "./YourWeek";
 import "./trainer-profile.css";
 
 /**
@@ -173,6 +174,20 @@ export function TrainerProfileView({
           studioId={activeStudioId}
           studioName={active?.activeStudio?.name ?? "this studio"}
           clients={clients}
+        />
+      )}
+
+      {/* Openings round, phase 11 (Sep 27 2026): Your week at the studio
+          the iPad is in -- clients trained, sessions, session time and first
+          session to last. The trainer's own profile only; leaders already
+          see clients and training hours on Operations -> Insights -> Hours. */}
+      {visibility.scope === "self" && activeStudioId && trainer.id && (
+        <YourWeek
+          trainerId={trainer.id}
+          studioId={activeStudioId}
+          studioName={active?.activeStudio?.name ?? "this studio"}
+          studio={active?.activeStudio ?? null}
+          tz={active?.activeStudio?.timezone || undefined}
         />
       )}
 

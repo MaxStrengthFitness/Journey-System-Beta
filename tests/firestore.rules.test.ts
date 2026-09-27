@@ -3334,6 +3334,78 @@ describe("a cross-train visitor's session", () => {
   });
 });
 
+// ── MY PROFILE → YOUR WEEK'S READ (Openings round, phase 11, Sep 27 2026) ─
+//
+// Your week reads the studio's sessions the way Operations → Insights → Hours
+// does (features/admin/sessions-range.ts: hostedAtStudioId ==, a createdAt
+// range, newest first, capped) and keeps the trainer's own in memory. Naming
+// the studio is what lets the rules allow it (trainerWorksAt): a query on
+// trainerId alone is allowed only when the sessions carry the reader's
+// sign-in uid, and an older account's sessions carry its trainer document id
+// instead. No rules change; these hold the read to the rules as they stand.
+describe("Your week's read", () => {
+  const since = new Date("2026-09-20T04:00:00Z");
+  const yourWeekQuery = (db: ReturnType<ReturnType<typeof testEnv.authenticatedContext>["firestore"]>, studioId: string) =>
+    query(
+      collection(db, "sessions"),
+      where("hostedAtStudioId", "==", studioId),
+      where("createdAt", ">=", since),
+      orderBy("createdAt", "desc"),
+      limit(1500),
+    );
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      // Signed in as authA2; the sessions this person ran carry the trainer
+      // document id they had before, trainerDocA2 — the two differ.
+      await setDoc(doc(db, "trainers", "authA2"), {
+        fullName: "Trainer A Two",
+        initials: "T2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+        claimedFromId: "trainerDocA2",
+      });
+      for (const [id, day] of [["yw1", "2026-09-22"], ["yw2", "2026-09-29"]]) {
+        await setDoc(doc(db, "sessions", id), {
+          hostedAtStudioId: "studioA",
+          clientId: "clientYW",
+          trainerId: "trainerDocA2",
+          trainerInitials: "T2",
+          status: "Completed",
+          date: day,
+          createdAt: new Date(`${day}T12:00:00Z`),
+        });
+      }
+    });
+  });
+
+  it("lets a trainer whose sign-in id and trainer document id differ read their studio's sessions", async () => {
+    const db = testEnv.authenticatedContext("authA2").firestore();
+    const snap = await assertSucceeds(getDocs(yourWeekQuery(db, "studioA")));
+    const ids = snap.docs.filter((d) => d.data().trainerId === "trainerDocA2").map((d) => d.id).sort();
+    expect(ids).toEqual(["yw1", "yw2"]);
+  });
+
+  it("refuses that same trainer a read by trainerId alone, which is why Your week names the studio", async () => {
+    const db = testEnv.authenticatedContext("authA2").firestore();
+    await assertFails(
+      getDocs(query(collection(db, "sessions"), where("trainerId", "==", "trainerDocA2"), orderBy("createdAt", "desc"), limit(50))),
+    );
+  });
+
+  it("lets the studio's leader make the same read", async () => {
+    const db = testEnv.authenticatedContext("ownerA").firestore();
+    await assertSucceeds(getDocs(yourWeekQuery(db, "studioA")));
+  });
+
+  it("refuses someone from another studio", async () => {
+    const db = testEnv.authenticatedContext("trainerB").firestore();
+    await assertFails(getDocs(yourWeekQuery(db, "studioA")));
+  });
+});
+
 // ── THE STANDING WEEK (voice-review round, Sep 27 2026) ─────────────────
 //
 // studios/{s}/standingWeeks/{uid}: a trainer's usual week at a studio. The

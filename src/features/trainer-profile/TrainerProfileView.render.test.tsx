@@ -48,6 +48,15 @@ vi.mock("../standing-week/MyStandingWeek", () => ({
     </section>
   ),
 }));
+// Your week (Openings round, phase 11) has its own render test too; here it
+// is a marker carrying what the page handed it.
+vi.mock("./YourWeek", () => ({
+  YourWeek: ({ studioName, trainerId, studioId }: { studioName: string; trainerId: string; studioId: string }) => (
+    <section data-testid="your-week" data-trainer={trainerId} data-studio={studioId}>
+      {studioName}
+    </section>
+  ),
+}));
 
 import { TrainerProfileView } from "./TrainerProfileView";
 import type { Client, ScheduleEntry, Studio, Trainer, WorkoutSession } from "../../types";
@@ -154,5 +163,20 @@ describe("My standing week on the trainer page", () => {
     act(() => root?.unmount());
     host?.remove();
     expect((await render(trainer, "westlake")).querySelector("[data-testid='standing-week']")).toBeNull();
+  });
+
+  it("puts Your week after My standing week on your own page, for the studio the iPad is in", async () => {
+    const el = await render(trainer, "solon");
+    const week = el.querySelector("[data-testid='your-week']");
+    expect(week?.textContent).toBe("Solon");
+    expect(week?.getAttribute("data-trainer")).toBe("t1");
+    expect(week?.getAttribute("data-studio")).toBe("solon");
+    const standing = el.querySelector("[data-testid='standing-week']")!;
+    expect(standing.compareDocumentPosition(week!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps Your week off a colleague's page: it is the trainer's own", async () => {
+    const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
+    expect((await render(colleague, "solon")).querySelector("[data-testid='your-week']")).toBeNull();
   });
 });

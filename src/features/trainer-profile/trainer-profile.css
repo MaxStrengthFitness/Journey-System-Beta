@@ -386,3 +386,77 @@
 }
 
 .tp-row__today { color: var(--tp-hero-text); }
+
+/* --- Your week (Openings round, phase 11, Sep 27 2026) -------------- */
+
+/* Two weeks side by side in landscape, stacked in portrait. */
+.tp-yw {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 900px) {
+  .tp-yw { grid-template-columns: 1fr 1fr; }
+}
+
+.tp-yw__week { min-width: 0; }
+
+.tp-yw__heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tp-ink-2);
+}
+
+.tp-yw__range {
+  margin-left: 6px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tp-ink-muted);
+}
+
+.tp-yw__facts { margin-top: 8px; }
+.tp-yw__facts .tp-fact__v { text-align: right; }
+
+.tp-yw__days {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--tp-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-yw__line,
+.tp-yw__state {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tp-ink-2);
+}
+
+.tp-yw__state { margin-top: 0; }
+
+.tp-yw__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-border);
+}
+
+.tp-yw__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tp-ink-muted);
+}
