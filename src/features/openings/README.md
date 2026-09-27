@@ -116,14 +116,42 @@ call it.
   week had anyone in** (a trainer booked outside their usual week): room and
   full are words about the trainers in, so it takes the booked form
   (`why: "nobody-in"`) rather than a "Mixed" that would read as a claim. N may
-  be 0: "Usually none booked".
-- **Blank needs no minimum**: a time with nothing booked and nobody in, in
-  every counted week, is blank even before four weeks.
-- **"A cancellation nobody rebooked"** is a stamped cancellation with nothing
-  booked into that time since: a booking at that time, with the same trainer,
-  that `isRealRebook` says came with or after the cancellation. Her own
+  be 0: "Usually none booked", which is also what an empty time says on days
+  that couldn't be judged.
+- **Blank is only where "nobody in" is known**: every counted week was
+  judged, with nothing booked and nobody in. On a day that couldn't be
+  judged the summary stores nobody in, because who was in isn't known (the
+  proposal's Kim: probably in and free at 8:00 between her 7:00 and 9:00, but
+  "Journey can't know it"), so an empty time there is "Usually none booked
+  ... Room can't be judged yet", never "nobody in". Blank needs no minimum
+  beyond that, and its sentence names its sample ("in all of the 2 Mondays
+  counted").
+- **"More booked than the agreed weeks have in"** never counts a week whose
+  bookings there were all on the rotation with nobody in, and never shows on
+  a rotation time: nobody's usual week is missing on a rotation Saturday.
+- **"A cancellation nobody booked into"** is a stamped cancellation with
+  nothing booked into that TIME since: a booking at that time, with the same
+  trainer, that first appeared no more than 12 hours before the cancellation
+  or after it (`isRealRebook`, borrowed for its timing test only). Her own
   rebook on another day doesn't take the time back (the time is still open);
-  "booked again from" says when she is next in.
+  "booked again from" says when she is next in. So the line says "and nobody
+  has booked into it since", never "not rebooked": on Operations → Changes a
+  rebook is her own other booking that week (a reschedule), and the two
+  screens must not use one word for two things.
+- **A regular's line is about the slot, never her week**: "A regular isn't
+  booked for it", as the check's own `findingSentence` says. A twice-a-week
+  regular booked Monday can still have an open Thursday (check.ts: nothing
+  there claims she "isn't booked that week").
+- **"Booked again from" reads only the days after the slot**, so its "none"
+  answers name the day they reach, counted from the slot ("not booked again
+  through Fri, Nov 13"), never "the next 7 / 30 days" from today: a booking
+  between today and the slot was never looked at. With the slot on the
+  window's last day and the month unread, no day after it was read: "can't
+  tell".
+- **Team's line counts what Openings lists** (`teamLine` takes the `nextDays`
+  result): the regulars still ahead, Monday to Saturday, one per regular (two
+  trainers' regulars at one half-hour are one line, two free slots). The raw
+  check also holds slots earlier today and on Sundays.
 - **The summary's window** is the eight Monday-to-Saturday weeks that have
   ended by the studio's today: on the Sunday the job runs, that includes the
   week just ended. `since` is carried from last Sunday's summary when older.
@@ -162,5 +190,63 @@ log line, keep last week's), and its own batch after the job's main write.
 the next 7 days with `nextDays` (bookings from
 `useWeekSchedule(..., { confirmed: true })`, `serverRead` for `read`), a new
 regular time with `offers`, and the marks with `marksByTime`. Team's line is
-`teamLine`, the Overview's `overviewLines`, the Wrap-up's times
-`timesWithRoom` and `timesWithRoomByDay`.
+`teamLine(nextDays(...))`, built with the same `worksHere` and `staffIds`
+Openings uses, its door opening Openings on "Anyone"; the Overview's is
+`overviewLines`, the Wrap-up's times `timesWithRoom` and `timesWithRoomByDay`.
+
+### What the shared docs must say (the docs phase, phase 13)
+
+The pure core wrote nothing outside this folder but these notes; the docs
+phase carries them into the shared documents.
+
+- **CLAUDE.md, "Where things are"**: a row for Openings pointing here
+  (`rows` → `whose` → `days` → `agreed` → `room` → `fold` → `summary-doc` →
+  `usual` → `next-days` → `back-from` → `offer` → `marks` → `present`), with
+  `isStaffBlock` in `src/lib/booking-state.ts`. **Decisions**: a past day
+  counts only when read in full (the whole-read record) and open; an agreed
+  week counts from the day it was agreed, never backwards; room is said only
+  on a day that can be judged (everyone booked there is known), and "nobody
+  in" only on judged days; client names only after a tap; every offer ends
+  "Check it in Mindbody before you promise it. Journey doesn't book."; a
+  Mindbody "Unavailable" block is never a booking (Openings, Team's check,
+  Operations → Changes).
+- **ARCHITECTURE, the data dictionary**: `studios/{s}/watch/openings` (the
+  Sunday job's summary: `v`, `builtAt`, `tz`, `row`, `since`, `weeks`
+  {`m`, `d` {`n`, `x` "r"/"c", `j`, `q` "a"/"p"}}, `who`, `agreed`, `cells`
+  {`s` f/r/n/o/b, `b`, `r`, `c`, `l`, `i`}; no client names or ids;
+  written only by the Sunday job, read by Openings, the Wrap-up's sheet,
+  Team's and the Overview's lines) and `studios/{s}/openingsMarks/{weekday-HHMM}`
+  (`weekday`, `time`, `mark` "full"/"room", `note` ≤ 200, `by` {Auth uid,
+  name}, `at` server time; anyone who works at the studio, as themselves;
+  review after 60 days). The decision log: Team's "next seven days" becomes
+  a line and a door; Openings shows cancellations and regulars not booked to
+  everyone at the studio (updates "the changes list is Operations-only for
+  now"; the Changes list itself stays on Operations).
+- **`docs/business/data-and-metrics.md`**: a row per stored field above, each
+  with its reader (the table in the proposal's "Every field has a reader").
+- **`docs/START-HERE.md`, the vocabulary**: **counted** (a past day Journey
+  read in full, on the day before, the day or after, and the studio was open:
+  at least a quarter of that weekday's usual bookings); **judged** (a counted
+  day where everyone with a booking is known: every trainer booked had an
+  agreed week in force, and no booking was unplaceable; only a judged day
+  says room, full or nobody in); **Openings**; **Times with room**.
+- **`docs/KNOWN-TRAPS.md`**: (1) a Mindbody "Unavailable" row is a trainer's
+  blocked time, not a booking: ask `isStaffBlock` before counting a booking,
+  anywhere (Team's check could say "Unavailable is booked in Judy's slot";
+  Changes could list a cancelled or moved block, or read one as a client's
+  rebook); (2) the summary stores no `i` on
+  a day that couldn't be judged, so a missing or empty `i` there means "not
+  known", never "nobody in"; (3) "booked again from" reads only the days
+  after the slot, so it may never speak of "the next 7 days"; (4) the check's
+  findings include slots earlier today and Sundays: count Openings' lines,
+  not the check, for anything that points to Openings; (5) "rebook" means
+  the client's own other booking on Changes: Openings' cancellation line
+  says "nobody has booked into it since".
+- **The round document** (`docs/rounds/2026-09-27-openings.md`): its
+  examples at "Next 7 days" and "Booked again from" change to the words
+  above ("A regular isn't booked for it", "A cancellation on Oct 2, and
+  nobody has booked into it since", "Not booked again through Fri, Nov 13;
+  can't tell after that yet", "Next booking on file after it"), and its line
+  saying `isRealRebook` is "the one rule that Changes ... read" says it is
+  borrowed for its timing only. These change wording AJ was shown: flag them
+  for his screen audit.

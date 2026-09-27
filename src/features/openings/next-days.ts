@@ -10,15 +10,19 @@
  *
  *   1. A REGULAR WHO ISN'T BOOKED: the check's "open" and "moved" findings
  *      (standing-week/check.ts), the free slots Team showed until now.
- *   2. A CANCELLATION NOBODY REBOOKED: a stamped cancellation for that time,
- *      and nothing booked into it since. "Rebooked" is judged with
- *      `isRealRebook`, the one rule Changes, the client calendar and the
- *      check read: a booking at that time, with the same trainer (or, for a
- *      booking Journey couldn't place, anyone), that first appeared around
- *      or after the cancellation. Her own booking elsewhere that week doesn't
- *      take the time back: the time is still open, and "booked again from"
- *      says when she is next in. Needs no agreed week, so it works from the
- *      first day.
+ *   2. A CANCELLATION NOBODY BOOKED INTO: a stamped cancellation for that
+ *      time, and nothing booked into the TIME since: a booking at that time,
+ *      with the same trainer (or, for a booking Journey couldn't place,
+ *      anyone), that first appeared around or after the cancellation.
+ *      `isRealRebook` is borrowed only for that timing test (the booking
+ *      first appeared no more than REBOOK_WINDOW_MS before the cancellation,
+ *      or after it, and starts after it); here it is applied to a booking
+ *      into the same time and place, never to the client's other bookings,
+ *      so it is deliberately NOT Changes' "reschedule". Her own booking elsewhere that
+ *      week doesn't take the time back: the time is still open, and "booked
+ *      again from" says when she is next in. So the line never says "not
+ *      rebooked", which on Changes means she didn't reschedule. Needs no
+ *      agreed week, so it works from the first day.
  *   3. A USUALLY-FULL TIME WITH ROOM: the time reads Always or Usually full
  *      (or is marked Always full), and a trainer who usually takes clients
  *      then has nothing booked.
@@ -219,7 +223,7 @@ export function nextDays(input: NextDaysInput): NextDays {
     line.clients.push({ clientId: f.clientId || null, clientName: f.clientName, trainerId: f.trainerId, reason: kind });
   }
 
-  // 2. A cancellation nobody rebooked.
+  // 2. A cancellation nobody booked into.
   for (const c of cancelled) {
     const cancelledAt = toDate(c.entry.cancelledAt as DateLike);
     if (!cancelledAt || cancellationOf(c.entry) === "after-start" || !ahead(c.time.startAt)) continue;

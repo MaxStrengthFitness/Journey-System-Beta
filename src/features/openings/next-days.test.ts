@@ -87,7 +87,7 @@ describe("1. a regular who isn't booked", () => {
   });
 });
 
-describe("2. a cancellation nobody rebooked", () => {
+describe("2. a cancellation nobody booked into", () => {
   const patCancelled = (over: Partial<ScheduleEntry> = {}) => pat(TODAY, "08:00", { status: "Cancelled", cancelledAt: at("2026-11-06", "10:00"), ...over });
 
   it("works with no agreed week at all: cancellations only", () => {
@@ -124,7 +124,7 @@ describe("2. a cancellation nobody rebooked", () => {
     expect(withRefill(refill(12)).lines).toEqual([]);
     // A booking Journey saw more than 12 hours before is someone's standing one: the cancelled place is still open.
     expect(kinds(withRefill(refill(12 + 1 / 60)))).toEqual([[TODAY, "1-0800", ["cancellation"]]]);
-    // Her own rebook on another day doesn't take this time back.
+    // Her own rebook on another day (Changes reads it as a reschedule) doesn't take this time back: nobody booked into it.
     const herRebook = pat("2026-11-11", "10:00", { ...bob, createdAt: new Date(cancelledAt.getTime() + 60_000) });
     expect(withRefill(herRebook).lines).toHaveLength(1);
   });

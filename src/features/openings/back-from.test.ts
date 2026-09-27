@@ -50,9 +50,21 @@ describe("backFrom", () => {
     expect(backFrom(input({ bookings: [hers("2026-11-23")] }))).toEqual({ kind: "next-on-file", day: "2026-11-23" });
   });
 
-  it("not booked: in the next 30 days once the month was read, otherwise only the next 7", () => {
-    expect(backFrom(input({ monthRead: true }))).toEqual({ kind: "none-30" });
-    expect(backFrom(input())).toEqual({ kind: "none-7" });
+  it("not booked again: through today + 30 once the month was read, otherwise through the last of the next 7 days", () => {
+    expect(backFrom(input({ monthRead: true }))).toEqual({ kind: "none-30", through: "2026-12-09" });
+    expect(backFrom(input())).toEqual({ kind: "none-7", through: "2026-11-15" });
+  });
+
+  it("a booking between today and the slot is never read, so a 'none' is about the days after the slot", () => {
+    // Today Sat Nov 7; her Thursday Nov 12 slot is open; she is booked Monday Nov 9.
+    const sat = input({ today: "2026-11-07", slotDay: "2026-11-12", bookings: [hers("2026-11-09")] });
+    expect(backFrom(sat)).toEqual({ kind: "none-7", through: "2026-11-13" });
+    expect(backFrom({ ...sat, monthRead: true })).toEqual({ kind: "none-30", through: "2026-12-07" });
+  });
+
+  it("the slot on the window's last day, with the month unread: no day after it was read, so it can't tell", () => {
+    expect(backFrom(input({ slotDay: "2026-11-15" }))).toEqual({ kind: "cant-tell" });
+    expect(backFrom(input({ slotDay: "2026-11-15", monthRead: true }))).toEqual({ kind: "none-30", through: "2026-12-09" });
   });
 
   it("keeps only her live bookings at this studio, after the slot, inside the horizon; the earliest wins", () => {

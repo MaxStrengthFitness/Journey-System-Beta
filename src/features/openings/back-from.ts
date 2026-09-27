@@ -13,9 +13,20 @@
  *                  by the server), or the month was read in full today
  *   next-on-file   her next booking is found, but the days before it weren't
  *                  all read, so an earlier one could be missing
- *   none-30        nothing found, and the month was read in full today
- *   none-7         nothing found, otherwise
- *   cant-tell      the read hasn't come back from the server
+ *   none-30        nothing found after the slot, and the month was read in
+ *                  full today: "not booked again through" today + 30
+ *   none-7         nothing found after the slot, otherwise: "not booked
+ *                  again through" the last day of the next 7
+ *   cant-tell      the read hasn't come back from the server, or the slot
+ *                  is the window's last day and the month wasn't read, so no
+ *                  day after it was read at all
+ *
+ * EVERY ANSWER IS ABOUT THE DAYS AFTER THE SLOT. The read starts the day
+ * after it, so a booking between today and the slot is never seen: a
+ * twice-a-week regular booked Monday whose Thursday is open is not "not
+ * booked in the next 7 days". So a "none" names the day it reaches ("not
+ * booked again through Fri, Nov 13"), never "the next 7 / 30 days", which
+ * would be counted from today.
  *
  * "The month was read in full today" is the sync lease's
  * `lastDeepScheduleSyncAt` falling in today's pull block: the auto-sync's
@@ -43,8 +54,8 @@ export const CLIENTS_PER_READ = 30;
 export type BackFrom =
   | { kind: "booked-again"; day: string }
   | { kind: "next-on-file"; day: string }
-  | { kind: "none-30" }
-  | { kind: "none-7" }
+  | { kind: "none-30"; through: string }
+  | { kind: "none-7"; through: string }
   | { kind: "cant-tell" };
 
 /** The days to read for a slot: from the day after it to today + BACK_FROM_DAYS. */
@@ -91,5 +102,8 @@ export function backFrom(input: BackFromInput): BackFrom {
   }
   const weekEnd = addDays(input.today, (input.days ?? CHECK_DAYS) - 1);
   if (next) return next <= weekEnd || input.monthRead ? { kind: "booked-again", day: next } : { kind: "next-on-file", day: next };
-  return input.monthRead ? { kind: "none-30" } : { kind: "none-7" };
+  if (input.monthRead) return { kind: "none-30", through: to };
+  // The slot is the window's last day: no day after it was read.
+  if (from > weekEnd) return { kind: "cant-tell" };
+  return { kind: "none-7", through: weekEnd };
 }

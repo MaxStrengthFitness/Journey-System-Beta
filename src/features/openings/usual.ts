@@ -21,7 +21,13 @@
  *   Rotation          bookings on the rotation and nobody in, in at least
  *                     USUAL_SHARE of the counted weeks
  *   not enough        fewer than MIN_WEEKS counted ("–")
- *   blank             nothing booked and nobody in, in every counted week
+ *   blank             every counted week was JUDGED, with nothing booked and
+ *                     nobody in. On a day that couldn't be judged the summary
+ *                     stores nobody in (who was in isn't known: Kim, whose
+ *                     week isn't agreed, was probably in and free between her
+ *                     bookings), so an empty time on such a day is "none
+ *                     booked", never "nobody in": it takes the "N booked"
+ *                     form (N may be 0) or "not enough"
  *
  * ONE CASE THE PROPOSAL'S TABLE LEAVES OPEN: enough judged weeks, but in most
  * of them nobody's agreed week had anyone in at that time (a trainer booked
@@ -119,7 +125,11 @@ export interface UsualTime {
   /** Counted weeks with a stamped cancellation, and with a late one. */
   cancelledWeeks: number;
   lateWeeks: number;
-  /** Judged weeks with more booked than the agreed weeks had in. */
+  /**
+   * Judged weeks with more booked than the agreed weeks had in. A week whose
+   * every booking there was on the rotation, with nobody in, isn't counted:
+   * a rotation Saturday is the rotation, not someone's usual week missing.
+   */
   outnumbered: number;
   /** Who was in in at least USUAL_SHARE of the judged weeks (trainers/{id}), and how many are usually in. */
   usuallyIn: string[];
@@ -152,7 +162,8 @@ export function usualTime(summary: OpeningsSummary, key: TimeKey): UsualTime {
     .filter((id): id is string => !!id)
     .sort();
 
-  const empty = counted.every((w) => w.cell.booked === 0 && w.cell.inKeys.length === 0);
+  // Blank only where "nobody in" is known: every counted week judged.
+  const empty = counted.every((w) => w.judged && w.cell.booked === 0 && w.cell.inKeys.length === 0);
   let word: UsualWord;
   let why: UsualTime["why"] = null;
   if (counted.length === 0) word = "not-enough";
@@ -186,7 +197,7 @@ export function usualTime(summary: OpeningsSummary, key: TimeKey): UsualTime {
     usuallyRotation: largestReached(counted.filter((w) => w.cell.rotation > 0 && w.cell.word === "out").map((w) => w.cell.booked)),
     cancelledWeeks: counted.filter((w) => w.cell.cancelled > 0).length,
     lateWeeks: counted.filter((w) => w.cell.late > 0).length,
-    outnumbered: judged.filter((w) => w.cell.booked > w.cell.inKeys.length).length,
+    outnumbered: judged.filter((w) => w.cell.booked > w.cell.inKeys.length && !(w.cell.inKeys.length === 0 && w.cell.booked === w.cell.rotation)).length,
     usuallyIn,
     usuallyInCount: largestReached(inCounts),
     weeks,

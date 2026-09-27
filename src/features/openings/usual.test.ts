@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { foldSummary } from "./fold";
 import type { CellWeek, OpeningsSummary, SummaryDay } from "./summary-doc";
+import { usualSentence } from "./present";
 import { ALWAYS_MIN_WEEKS, MIN_WEEKS, USUAL_SHARE, atLeastShare, firstWordsOn, largestReached, readsFull, usualTime, usualWeek, weeksAt } from "./usual";
-import { MONDAYS, PAT_WEEK, SAM_WEEK, SUNDAY_RUN, TRAINERS, TZ, WHOLE_WINDOW, monday } from "./fixtures";
+import { MONDAYS, PAT_WEEK, SAM_WEEK, SUNDAY_RUN, TRAINERS, TZ, WHOLE_WINDOW, monday, sam } from "./fixtures";
 
 type Spec = { day?: SummaryDay; cell?: CellWeek };
 const F: Spec = { cell: { s: "f", b: 2, i: ["0", "1"] } };
@@ -73,17 +74,33 @@ describe("the usual word", () => {
     expect(word([out, out, out, out, out, out, F, F])).toMatchObject({ word: "booked", why: "nobody-in", usuallyBooked: 1 });
   });
 
-  it("Rotation: on the rotation with nobody in", () => {
+  it("Rotation: on the rotation with nobody in, and never 'more booked than in'", () => {
     const rota: Spec = { cell: { s: "o", b: 5, r: 5 } };
-    expect(word([rota, rota, rota, rota, rota, rota, rota, U])).toMatchObject({ word: "rotation", rotationWeeks: 7, usuallyRotation: 5 });
+    // Nobody's usual week is missing on a rotation Saturday: those weeks aren't outnumbered.
+    expect(word([rota, rota, rota, rota, rota, rota, rota, U])).toMatchObject({ word: "rotation", rotationWeeks: 7, usuallyRotation: 5, outnumbered: 0 });
+    // A trainer booked outside their agreed week still is.
+    const outside: Spec = { cell: { s: "o", b: 1 } };
+    expect(word([outside, outside, outside, outside, F, F, F, F]).outnumbered).toBe(4);
+    // Rotation beside a booking of a trainer with no week in then: someone's week may be missing.
+    const mixed: Spec = { cell: { s: "o", b: 3, r: 2 } };
+    expect(word([mixed, mixed, mixed, mixed, F, F, F, F]).outnumbered).toBe(4);
   });
 
-  it("not enough weeks yet; blank when nothing was booked and nobody in", () => {
+  it("not enough weeks yet; blank when nothing was booked and nobody in, every week judged", () => {
     expect(word([F, F, F, U, U, U, U, U])).toMatchObject({ word: "not-enough", counted: 3 });
     expect(word([U, U, U, U, U, U, U, U])).toMatchObject({ word: "not-enough", counted: 0 });
     expect(word([{}, {}, {}, {}, {}, U, U, C])).toMatchObject({ word: "blank", counted: 5 });
     // Blank even below four weeks: there is nothing to wait for.
     expect(word([{}, {}, U, U, U, U, U, U]).word).toBe("blank");
+  });
+
+  it("an empty time on days that couldn't be judged is none booked, never blank: who was in isn't known", () => {
+    const unjudgedEmpty: Spec = { day: { n: 4, q: "a" } };
+    expect(word(Array(8).fill(unjudgedEmpty))).toMatchObject({ word: "booked", why: "unjudged", counted: 8, judged: 0, usuallyBooked: 0 });
+    // Below four counted, it is "not enough", not blank.
+    expect(word([unjudgedEmpty, unjudgedEmpty, U, U, U, U, U, U]).word).toBe("not-enough");
+    // One unjudged week among judged empty ones is enough to withhold "nobody in".
+    expect(word([{}, {}, {}, {}, {}, {}, {}, unjudgedEmpty]).word).not.toBe("blank");
   });
 
   it("the sheet: cancellations, late ones, more booked than in, and who is usually in", () => {
@@ -128,6 +145,29 @@ describe("usualWeek", () => {
     expect(w.times.get("1-0730")).toMatchObject({ word: "usually-room", nobodyBooked: 8 });
     expect(w.times.get("2-0800")?.word).toBe("blank");
     expect(w.times.get("1-0800")?.usuallyIn).toEqual(["t-pat", "t-sam"]);
+  });
+
+  it("before any week is agreed, an empty half-hour between bookings is 'none booked', never 'nobody in' (the proposal's Kim)", () => {
+    const unagreed = foldSummary({
+      studioId: "westlake",
+      tz: TZ,
+      now: SUNDAY_RUN,
+      bookings: MONDAYS.flatMap((d) => [sam(d, "07:00"), sam(d, "08:00"), sam(d, "09:00")]),
+      coverage: WHOLE_WINDOW,
+      trainers: TRAINERS,
+      weeks: [],
+      previous: null,
+    });
+    const w = usualWeek(unagreed);
+    for (const key of ["1-0730", "1-0830"]) {
+      const t = w.times.get(key)!;
+      expect(t).toMatchObject({ word: "booked", why: "unjudged", counted: 8, judged: 0, usuallyBooked: 0 });
+      expect(usualSentence(t)).not.toContain("nobody in");
+      expect(usualSentence(t)).toBe(`Monday ${key === "1-0730" ? "7:30" : "8:30"} AM · Usually none booked (booked in 0 of the last 8 Mondays). Room can't be judged yet: not every trainer's week is agreed.`);
+    }
+    expect(w.times.get("1-0800")).toMatchObject({ word: "booked", usuallyBooked: 1 });
+    // With the weeks agreed, a time nobody is in is blank again.
+    expect(usualWeek(s).times.get("2-0800")?.word).toBe("blank");
   });
 
   it("before any week is read in full, there is no grid", () => {

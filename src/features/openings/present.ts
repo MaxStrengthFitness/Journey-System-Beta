@@ -22,7 +22,7 @@
  * PURE MODULE.
  */
 import { formatStudioDate, studioDateKey, toDate } from "../../lib/studio-time";
-import { dayLabel, isFreeSlot, type WeekCheck } from "../standing-week/check";
+import { dayLabel } from "../standing-week/check";
 import { minutesOf, WEEKDAY_NAME, type StandingWeekDoc } from "../standing-week/week";
 import type { BackFrom } from "./back-from";
 import { addDays } from "./coverage";
@@ -167,7 +167,8 @@ export function usualDetail(u: UsualTime): string {
     case "not-enough":
       return u.counted === 0 ? `no ${weekdayPlural(u.weekday)} counted yet` : `${plural(u.counted, WEEKDAY_NAME[u.weekday], weekdayPlural(u.weekday))} counted so far`;
     case "blank":
-      return "nothing booked, and nobody in";
+      // Every counted week was judged (usual.ts), so "nobody in" is known; the sample is named.
+      return `nothing booked and nobody in, in all of ${counted}`;
   }
 }
 
@@ -247,9 +248,13 @@ export function cancellationsLine(u: UsualTime): string | null {
   return `Cancelled in ${u.cancelledWeeks} of ${span(u.weekday, u.counted, "counted")}${late}.`;
 }
 
-/** When the bookings regularly outnumber the trainers in: the nearest the grid comes to "too many at once". */
+/**
+ * When the bookings regularly outnumber the trainers in: the nearest the grid
+ * comes to "too many at once". Never on a rotation time: nobody's usual week
+ * is missing there (AJ: the rotation is "just ... context").
+ */
 export function outnumberedLine(u: UsualTime): string | null {
-  if (u.judged < MIN_WEEKS || !atLeastShare(u.outnumbered, u.judged)) return null;
+  if (u.word === "rotation" || u.judged < MIN_WEEKS || !atLeastShare(u.outnumbered, u.judged)) return null;
   return `More booked than the agreed weeks have in, in ${u.outnumbered} of ${span(u.weekday, u.judged, "judged")}. Someone's usual week may be missing this time.`;
 }
 
@@ -379,35 +384,50 @@ function roomPart(line: Pick<NextDaysLine, "room">, names: (id: string) => strin
   return `room with ${plural(room.count, "trainer", "trainers")}`;
 }
 
-/** The reason, without its full stop: "A regular isn't booked this week". */
+/**
+ * The reason, without its full stop: "A regular isn't booked for it".
+ *
+ * About THE SLOT, never her week: the check finds a regular "open" when she
+ * isn't booked for that slot, and a twice-a-week regular booked Monday can
+ * still have an open Thursday (check.ts: nothing there claims she "isn't
+ * booked that week"). Its own `findingSentence` says "isn't booked for it".
+ *
+ * A cancellation's reason says nobody has booked INTO THE TIME since: it is
+ * never "not rebooked", because on Changes a rebook is the client's own other
+ * booking that week (a reschedule), and she may well have one.
+ */
 function reasonText(line: NextDaysLine, tz: string): string {
   const r = line.reasons[0];
   if (!r) return "";
   switch (r.kind) {
     case "regular-open":
-      return "A regular isn't booked this week";
+      return "A regular isn't booked for it";
     case "regular-moved": {
       const to = r.finding.movedTo;
       return to ? `A regular is booked ${dayLabel(to.dateKey, tz)} at ${clockLabel(minutesOf(to.start) ?? 0)} instead` : "A regular is booked another time instead";
     }
     case "cancellation":
-      return `A cancellation on ${shortDay(r.cancelledOn, tz)}, not rebooked${line.room ? "" : ` (${line.bookedNow} booked now)`}`;
+      return `A cancellation on ${shortDay(r.cancelledOn, tz)}, and nobody has booked into it since${line.room ? "" : ` (${line.bookedNow} booked now)`}`;
     case "usually-full":
       return "Nothing is booked with them yet";
   }
 }
 
-/** "; booked again from Mon, Oct 19" (joined onto a reason). */
+/**
+ * "; booked again from Mon, Oct 19" (joined onto a reason). Every answer is
+ * about the days AFTER the slot (back-from.ts), so none says "the next 7
+ * days": a booking between today and the slot was never looked at.
+ */
 function backFromTail(b: BackFrom, tz: string): string {
   switch (b.kind) {
     case "booked-again":
       return `booked again from ${dayLabel(b.day, tz)}`;
     case "next-on-file":
-      return `next booking on file: ${dayLabel(b.day, tz)}`;
+      return `next booking on file after it: ${dayLabel(b.day, tz)}`;
     case "none-30":
-      return "not booked in the next 30 days";
+      return `not booked again through ${dayLabel(b.through, tz)}`;
     case "none-7":
-      return "not booked in the next 7 days; can't tell after that yet";
+      return `not booked again through ${dayLabel(b.through, tz)}; can't tell after that yet`;
     case "cant-tell":
       return "can't tell yet when they're next booked";
   }
@@ -422,7 +442,7 @@ export function backFromSentence(b: BackFrom, tz: string): string {
 
 /**
  * The line, naming no client: "Mon, Oct 5 · 8:00 AM · usually full · room
- * with 1 trainer. A regular isn't booked this week; booked again from Mon,
+ * with 1 trainer. A regular isn't booked for it; booked again from Mon,
  * Oct 19." `backFrom` is joined on only for a line about one client.
  */
 export function lineSentence(line: NextDaysLine, names: (id: string) => string, viewer: Viewer, tz: string, backFrom?: BackFrom | null): string {
@@ -447,7 +467,8 @@ export function lineDetail(line: NextDaysLine, names: (id: string) => string, vi
     if (r && r.kind === "regular-moved" && r.finding.movedTo) {
       return `${name}, ${whose} regular, is booked ${dayLabel(r.finding.movedTo.dateKey, tz)} at ${clockLabel(minutesOf(r.finding.movedTo.start) ?? 0)} instead.`;
     }
-    return `${name}, ${whose} regular, isn't booked this week.`;
+    // The slot, not her week (reasonText).
+    return `${name}, ${whose} regular, isn't booked for it.`;
   });
 }
 
@@ -527,10 +548,19 @@ export function timesWithRoomByDay(times: readonly RoomTime[], tz: string): { da
  * Team's line and the Overview's line (phase 7)
  * ------------------------------------------------------------------ */
 
-/** Team keeps one line with a door: "3 free slots in the next 7 days · See them on Openings." */
-export function teamLine(check: Pick<WeekCheck, "state" | "findings">): string | null {
-  if (check.state !== "ready") return null;
-  const free = check.findings.filter(isFreeSlot).length;
+/**
+ * Team keeps one line with a door: "3 free slots in the next 7 days · See
+ * them on Openings." It counts exactly the regulars Openings' Next 7 days
+ * lists, so it takes the `nextDays` result, never the raw check: the check
+ * also holds slots earlier today and on Sundays, which Openings leaves out.
+ * It counts the regulars, not the lines: two trainers' regulars out at the
+ * same half-hour are one line and two free slots. Team must build the
+ * `nextDays` input as Openings does (the same `worksHere` and `staffIds`),
+ * and the door opens Openings on "Anyone", since the count is the studio's.
+ */
+export function teamLine(next: Pick<NextDays, "state" | "lines">): string | null {
+  if (next.state !== "ready") return null;
+  const free = next.lines.reduce((n, l) => n + l.reasons.filter((r) => r.kind === "regular-open" || r.kind === "regular-moved").length, 0);
   if (free === 0) return null;
   return `${plural(free, "free slot", "free slots")} in the next 7 days · See ${free === 1 ? "it" : "them"} on Openings.`;
 }
