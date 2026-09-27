@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../firebase", () => ({ db: { __fake: true }, auth: {} }));
 
-import { adaptEventsToJournal, adaptProfileFields } from "./useClientJournal";
+import { adaptEventsToJournal, adaptProfileFields, sessionsWithoutJournalCopy } from "./useClientJournal";
 import { noteCategoryOf } from "../features/client-notes/note-catalog";
-import { sectionForEntry } from "../types/journal";
-import type { Client, ClientEvent } from "../types";
+import { sectionForEntry, type JournalEntry } from "../types/journal";
+import type { Client, ClientEvent, WorkoutSession } from "../types";
 
 const event = (over: Partial<ClientEvent>): ClientEvent => ({
   id: "ev",
@@ -121,5 +121,53 @@ describe("profile fields in the journal", () => {
     }
     // The pinned note is still critical, so it heads the catalog.
     expect(byId.priorityNote.importance).toBe("critical");
+  });
+});
+
+/*
+ * One copy of the Note for the next trainer on Notes (voice-review follow-up,
+ * Sep 27 2026). Finish writes it to the session AND to the journal; the
+ * read-only "Session summary" is left out when the journal holds the same
+ * words for the same session.
+ */
+describe("sessionsWithoutJournalCopy", () => {
+  const words = "Knee sore after the move. Go light on leg press.";
+  const session = (over: Partial<WorkoutSession> = {}) =>
+    ({ id: "s-new", clientId: "c1", date: "2026-09-26", notes: words, ...over }) as WorkoutSession;
+  const native = (over: Partial<JournalEntry> = {}) =>
+    ({ sessionId: "s-new", origin: "post_session", body: words, isArchived: false, ...over }) as JournalEntry;
+
+  it("leaves out a session whose note the journal already holds", () => {
+    expect(sessionsWithoutJournalCopy([session()], [native()])).toEqual([]);
+  });
+
+  it("keeps a session from before Sep 18, which has no journal copy", () => {
+    const old = session({ id: "s-old", date: "2026-09-10", notes: "Great session, loads up." });
+    expect(sessionsWithoutJournalCopy([old, session()], [native()]).map((s) => s.id)).toEqual(["s-old"]);
+    expect(sessionsWithoutJournalCopy([old], []).map((s) => s.id)).toEqual(["s-old"]);
+  });
+
+  it("compares the words as the journal keeps them: trimmed, and cut at 5,000", () => {
+    expect(sessionsWithoutJournalCopy([session({ notes: `  ${words}\n` })], [native()])).toEqual([]);
+    const long = `${"a".repeat(4990)} ${"b".repeat(200)}`;
+    // The journal copy was cut at 5,000; the session kept the whole text.
+    expect(
+      sessionsWithoutJournalCopy([session({ notes: long })], [native({ body: long.slice(0, 5000) })]),
+    ).toEqual([]);
+  });
+
+  it("keeps the session's copy when the words differ (edited later in History)", () => {
+    const edited = session({ notes: `${words} Better by Friday.` });
+    expect(sessionsWithoutJournalCopy([edited], [native()]).map((s) => s.id)).toEqual(["s-new"]);
+  });
+
+  it("only a post-session journal entry for the SAME session counts", () => {
+    expect(sessionsWithoutJournalCopy([session()], [native({ sessionId: "s-other" })])).toHaveLength(1);
+    expect(sessionsWithoutJournalCopy([session()], [native({ origin: "in_session" })])).toHaveLength(1);
+    expect(sessionsWithoutJournalCopy([session()], [native({ sessionId: null })])).toHaveLength(1);
+  });
+
+  it("still leaves it out once the journal copy is archived: a discarded note does not come back read-only", () => {
+    expect(sessionsWithoutJournalCopy([session()], [native({ isArchived: true })])).toEqual([]);
   });
 });

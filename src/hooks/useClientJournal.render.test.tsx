@@ -265,6 +265,31 @@ describe("useClientJournal.headsUpEntries and the Note for the next trainer", ()
     await answer("journalEntries", [note({ isArchived: true })]);
     expect(last!.headsUpEntries).toEqual([]);
   });
+
+  /* Finish writes it onto the session too. The read-only "Session summary"
+     of that copy used to put the same words on Notes a second time. */
+  const sessionWithNote = { id: "s-a", clientId: "c1", date: "2026-09-26", notes: "Knee sore after the move." };
+  const oldSession = { id: "s-old", clientId: "c1", date: "2026-09-10", notes: "Loads up across the board." };
+  const bodies = () => last!.entries.map((e) => e.body);
+
+  it("lists it once on Notes: the session's read-only copy is left out", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note()]);
+    await answer("sessions", [sessionWithNote, oldSession]);
+    expect(bodies().filter((b) => b === "Knee sore after the move.")).toHaveLength(1);
+    expect(last!.entries.find((e) => e.body === "Knee sore after the move.")!.id).toBe("j-next");
+    // A session from before the journal copy existed keeps its card.
+    const old = last!.entries.find((e) => e.body === "Loads up across the board.")!;
+    expect(old.id).toBe("legacy:sessions:s-old");
+    expect(old.legacySource).toBe("Session summary");
+  });
+
+  it("does not bring the read-only copy back when the journal copy is archived", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note({ isArchived: true })]);
+    await answer("sessions", [sessionWithNote]);
+    expect(bodies()).not.toContain("Knee sore after the move.");
+  });
 });
 
 describe("useClientJournal.recentSessions", () => {
