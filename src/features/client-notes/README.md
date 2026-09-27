@@ -43,7 +43,7 @@ The profile's Notes & Profile tab (the codex) has seven pages, and five of them 
 | `whoOf`, `shortDay`, `threadRowMeta`, `threadCardMeta`, `closeWordsOf` | every row and card | "Jess · Nov 3 · closed Nov 7"; a card names its window only when it has one worth naming ("matters until Oct 3"), and an import says "Read-only · Mindbody account notes … Edit it where it lives." "All healed up" / "It's back" for an injury or incident only; everything else closes and reopens. |
 | `briefingStatusOf` | Notes' cards | On your next briefing · hushed by you · from a date · gone quiet after three weeks. From the hook's own `criticalEntries` / `headsUpEntries`, so the record and the briefing agree. |
 | `criticalLineOf`, `hiddenCriticalThreads` | the critical line | See below. |
-| `howToCoachThreads` | Goals & Focus | Live Preference and Coaching-tip notes by **kind** — never by category, which files every legacy session wrap-up under Preference. Focus check-ins stay on their focus. |
+| `howToCoachThreads` | Goals & Focus | Live Preference and Coaching-tip notes by **kind** — never by category, which files every session summary (the journal's read-only copy of `sessions.notes`) under Preference. Focus check-ins stay on their focus. |
 | `injuryThreads` | Body & Pulse | Injury notes by category (a surgery written as a life note included), optionally with incidents; the medical-history fields are left to Body. |
 | `threadsByMachine` | Body & Pulse → On our floor | Every open or standing note on each machine, loudest first. No focus check-ins; an unfiled note counts. |
 | `olderLifeNotesByPillar`, `LIFE_CATEGORY_PILLAR` | FORD | Birthday and Anniversary → Family, Vacation → Recreation, the rest unplaced. The `client.events` rows FORD already draws are left out. |

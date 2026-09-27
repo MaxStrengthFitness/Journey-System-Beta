@@ -1166,7 +1166,14 @@ export interface WorkoutSession {
   startedByTrainerId?: string;
   /** Activity checkpoint updated during logs to detect abandonment (Lazy Cleanup) */
   lastHeartbeatAt?: any;
-  notes?: string; // Original notes field (deprecated in favor of sub-collection)
+  /**
+   * The Note for the next trainer (the End Session box), copied here whole at
+   * Finish; its journal copy is a Heads up cut at 5,000 characters. History,
+   * the session pop-up (which can edit it), the studio export and the
+   * journal's read-only "Session summary" read it. Older sessions hold
+   * whatever their notes field held.
+   */
+  notes?: string;
   /** @deprecated Read through `dialFromClientFeel`; the reporting round writes `dose`. */
   clientFeel?: ClientFeel | string;
   /**

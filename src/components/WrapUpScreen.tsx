@@ -134,8 +134,8 @@ export interface WrapUpScreenProps {
    * never says "Saved".
    */
   onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
-  /** Leaves the screen; the closing note (if any) is filed on the way out with its Loudness and "until" day. */
-  onLeave: (closing: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
+  /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
+  onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
    * A note the trainer started mid-session and never saved (fluidity round,
    * Sep 2026). The screen says so and offers to finish it or drop it; a
@@ -323,21 +323,21 @@ export function WrapUpScreen({
   );
 
   /*
-   * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+   * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
    * leaves by "Back to Hub" — but the bottom bar and the header stay live on
    * this screen, and leaving through THEM unmounted it with the note unfiled.
-   * So a typed closing note, or an unfinished mid-session note still waiting
+   * So a typed Profile note, or an unfinished mid-session note still waiting
    * here, is unsaved work, and those exits ask first. "Back to Hub" is not
    * asked about: it files both, and `leave` releases the screen before it
    * navigates.
    */
-  const closingTyped = notes.trim() !== "";
+  const profileNoteTyped = notes.trim() !== "";
   const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
   const unsaved = useUnsavedChanges(
-    !leaving && (closingTyped || draftWaiting),
-    closingTyped && draftWaiting
+    !leaving && (profileNoteTyped || draftWaiting),
+    profileNoteTyped && draftWaiting
       ? "the profile note and the unfinished note"
-      : closingTyped
+      : profileNoteTyped
         ? "the profile note"
         : "the unfinished note",
   );
@@ -354,7 +354,7 @@ export function WrapUpScreen({
     })),
   );
 
-  /* The closing note is filed when the trainer leaves — by the button, or by
+  /* The Profile note is filed when the trainer leaves — by the button, or by
      closing the tab. Keep the latest text in a ref so an unload can read it. */
   const notesRef = useRef({ notes, importance, effectiveUntil });
   notesRef.current = { notes, importance, effectiveUntil };

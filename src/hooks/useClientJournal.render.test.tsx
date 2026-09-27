@@ -6,7 +6,7 @@
  *   - `loadState` - notes / focuses / sessions, each loading | ready | failed,
  *     so a screen can say "couldn't load" instead of "No notes yet";
  *   - `recentSessions` - the session documents the hook ALREADY streams for the
- *     wrap-up notes, handed out so no screen opens a second sessions query.
+ *     session summaries, handed out so no screen opens a second sessions query.
  *
  * A fake Firestore records every listener and lets each test answer or fail
  * one by hand.
@@ -186,10 +186,10 @@ describe("useClientJournal.loadState", () => {
   it("never hands out the last client's sessions when another of this client's listeners answers first", async () => {
     const root = await mount(<Probe client={clientA} />);
     for (const p of [...NOTES, ...FOCUSES, "sessions"]) {
-      await answer(p, p === "sessions" ? [{ id: "s-a", clientId: "c1", date: "2026-09-01", notes: "Judy's wrap-up" }] : []);
+      await answer(p, p === "sessions" ? [{ id: "s-a", clientId: "c1", date: "2026-09-01", notes: "Judy's session note" }] : []);
     }
     expect(last!.recentSessions!.map((s) => s.id)).toEqual(["s-a"]);
-    expect(last!.entries.some((e) => e.body.includes("Judy's wrap-up"))).toBe(true);
+    expect(last!.entries.some((e) => e.body.includes("Judy's session note"))).toBe(true);
 
     await act(async () => {
       root.render(
@@ -203,8 +203,8 @@ describe("useClientJournal.loadState", () => {
     expect(last!.loadState!.notes).toBe("ready");
     expect(last!.loadState!.sessions).toBe("loading");
     expect(last!.recentSessions).toEqual([]);
-    // Nor does Judy's wrap-up note sit in Ruth's journal meanwhile.
-    expect(last!.entries.some((e) => e.body.includes("Judy's wrap-up"))).toBe(false);
+    // Nor does Judy's session summary sit in Ruth's journal meanwhile.
+    expect(last!.entries.some((e) => e.body.includes("Judy's session note"))).toBe(false);
 
     await answer("sessions", [{ id: "s-b", clientId: "c2", date: "2026-09-02" }]);
     expect(last!.loadState!.sessions).toBe("ready");

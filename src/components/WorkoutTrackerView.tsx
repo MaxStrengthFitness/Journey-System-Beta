@@ -1502,7 +1502,7 @@ export function WorkoutTrackerView({
           );
         } catch (err) {
           console.error("[start] adjustment note did not reach the Journal", err);
-          toastError("The session started, but the routine note could not be saved. Add it from the Journal.");
+          toastError("The session started, but the routine note could not be saved. Add it from Notes & Profile → Notes.");
         }
       }
 
@@ -1882,9 +1882,10 @@ export function WorkoutTrackerView({
 
      So: commitEndSession() writes the session (the one and only call to
      completeWorkoutSession — its counters are increments, so it must never
-     run twice), then the post-session screen reads from a snapshot. The
-     Feel toggle writes on its own the moment it is tapped; the closing
-     note is written when the trainer leaves the screen. */
+     run twice), then the Wrap-up (the post-session screen) reads from a
+     snapshot. Its dose Dial writes on its own the moment it is tapped
+     (savePostSessionDose); its Profile note is written when the trainer
+     leaves the screen (leavePostSession). */
   /* The session a Finish is running for, if one is (session record, Sep 26
      2026). A second tap must not run it twice: its totals are increments. */
   const finishingRef = useRef<string | null>(null);
@@ -2174,19 +2175,19 @@ export function WorkoutTrackerView({
           origin: "in_session",
         },
       ),
-      "That note could not be saved — add it from the Journal.",
+      "That note could not be saved — add it from Notes & Profile → Notes.",
     );
     setPostSession((s) => (s ? { ...s, draft: null } : s));
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
 
-  /** Leaving the post-session screen files the closing note, if any, and goes home. */
-  const leavePostSession = async (closing?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+  /** Leaving the Wrap-up files its Profile note, if any, and goes home. */
+  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
     // A draft the trainer neither saved nor dropped is filed, unfiled, on the
     // way out. The To-file tray exists for exactly this; losing it does not.
     if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
-    const body = closing?.noteContent.trim() ?? "";
+    const body = profileNote?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
       await noteOrSay(
         createJournalEntry(
@@ -2197,8 +2198,9 @@ export function WorkoutTrackerView({
             kind: "general",
             category: null,
             body: body.slice(0, 5000),
-            importance: closing?.importance ?? "standard",
-            effectiveUntil: closing?.importance && closing.importance !== "standard" ? (closing.effectiveUntil ?? null) : null,
+            importance: profileNote?.importance ?? "standard",
+            effectiveUntil:
+              profileNote?.importance && profileNote.importance !== "standard" ? (profileNote.effectiveUntil ?? null) : null,
             machineId: null,
             focusId: null,
             sessionId: snap.session.id ?? null,

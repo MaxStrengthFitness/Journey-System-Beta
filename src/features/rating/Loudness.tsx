@@ -18,7 +18,8 @@
  * Same bar as the Dial (three equal segments, 48px, words inside because
  * three words fit), same urgency colours as the Dial's left side, so "how
  * urgent" reads the same on every screen. Nothing is pre-selected by the
- * component; the parent decides the default (a closing note starts at Note).
+ * component; the parent decides the default (the Wrap-up's Profile note
+ * starts at Note).
  */
 import { IMPORTANCE_META, type JournalImportance } from "../../types/journal";
 import "./rating.css";

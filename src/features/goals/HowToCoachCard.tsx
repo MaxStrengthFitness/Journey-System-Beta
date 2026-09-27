@@ -10,8 +10,8 @@
  *                  ONE record form; the Save bar saves it.
  *   From her notes the threads Notes lists as Preference and Coaching tip
  *                  that are still true (`howToCoachRows`, over Notes'
- *                  `howToCoachThreads` — by KIND, so a legacy session wrap-up
- *                  is never a "Preference"), loudest first, labelled in
+ *                  `howToCoachThreads` — by KIND, so a session summary is
+ *                  never a "Preference"), loudest first, labelled in
  *                  Notes' one vocabulary. Heads up and Critical show their
  *                  Loudness; a machine is named first, in full. A row folds a
  *                  long note to two lines — the whole thread is one tap away,

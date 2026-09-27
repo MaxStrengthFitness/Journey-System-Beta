@@ -837,7 +837,12 @@ export function sessionsWithoutJournalCopy(
   return sessions.filter((s) => !(s.id && journalled.get(s.id)?.has(journalBodyOf(s.notes))));
 }
 
-/** Session wrap-up text stored on the session document itself. */
+/**
+ * The session summary: each session's own note (`sessions.notes`), shown
+ * read-only as "Session summary". Since the reporting round that is the Note
+ * for the next trainer, copied onto the session at Finish; older sessions
+ * hold whatever their notes field held.
+ */
 function adaptSessionSummaries(
   sessions: WorkoutSession[],
   trainers: Trainer[],
@@ -986,7 +991,7 @@ export interface UseClientJournalResult {
   loadState?: JournalLoadState;
   /**
    * The client's newest sessions (up to SESSION_SUMMARY_LIMIT, date desc),
-   * from the listener this hook already runs for the session wrap-ups - no
+   * from the listener this hook already runs for the session summaries - no
    * second sessions query on a screen that holds the journal. Session
    * documents only, no exercise logs. Empty until `loadState.sessions` is
    * `ready` for THIS client - never the last client's rows while this one's
@@ -1132,7 +1137,7 @@ export function useClientJournal({
   useEffect(() => {
     // Emptied on every (re)subscribe, not only when there is no client: the
     // listeners below are re-created per client but the state is not, so
-    // without this the last client's legacy notes and session wrap-ups sat
+    // without this the last client's legacy notes and session summaries sat
     // in this client's `entries` until each listener answered - and one
     // group (say the notes) could read `ready` while another still held the
     // last client's rows (client codex, phase 1).
@@ -1219,7 +1224,8 @@ export function useClientJournal({
           handleFirestoreError(e, OperationType.GET, "trainerFocuses");
         },
       ),
-      // Session wrap-up text lives on the session document itself. The journal
+      // The session summary (each session's own note, `sessions.notes`) lives
+      // on the session document itself. The journal
       // owns this subscription rather than taking `sessions` as a prop: the
       // profile view only loads sessions on some tabs, which would make the
       // timeline's contents depend on which tab you happened to open first.

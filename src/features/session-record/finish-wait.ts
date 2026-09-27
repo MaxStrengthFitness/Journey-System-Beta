@@ -6,7 +6,8 @@
  * when the connection allows. What a write's promise waits for is the
  * DATABASE's answer, and offline that answer never comes. End Session awaited
  * it, so with no signal "Saving…" never ended and the post-session screen
- * never came. Leaving that screen with a closing note did the same.
+ * never came. Leaving that screen with a note (the closing note then, the
+ * Wrap-up's Profile note since Sep 27) did the same.
  *
  * `settleOrQueue` waits for the answer for a moment, and not at all while the
  * iPad knows it is offline. A refusal inside that moment is reported, as

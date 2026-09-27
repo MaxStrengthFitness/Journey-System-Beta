@@ -295,9 +295,9 @@ describe("the post-session screen mounts", () => {
 
     await click(buttonByText(host, "Back to Hub"));
     expect(onLeave).toHaveBeenCalledTimes(1);
-    const closing = onLeave.mock.calls[0][0];
-    expect(closing).toMatchObject({ noteContent: "Shoulder tender on chest press", importance: "elevated" });
-    const stored = closing.effectiveUntil as Date;
+    const profileNote = onLeave.mock.calls[0][0];
+    expect(profileNote).toMatchObject({ noteContent: "Shoulder tender on chest press", importance: "elevated" });
+    const stored = profileNote.effectiveUntil as Date;
     expect([stored.getFullYear(), stored.getMonth(), stored.getDate(), stored.getHours()]).toEqual([2099, 8, 20, 23]);
     // Leaving twice does nothing.
     await click(buttonByText(host, "Leaving"));
@@ -499,7 +499,7 @@ describe("the post-session screen and a client's history", () => {
 });
 
 /*
- * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+ * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
  * leaves by Back to Hub, but the bottom bar stays live on this screen and
  * used to unmount it with the note unfiled. Mounted with the provider and the
  * real bottom bar, wired the way AppContent wires them: onLeave files, then
@@ -514,13 +514,13 @@ describe("the profile note is unsaved work until Back to Hub files it", () => {
       <div data-testid="app" data-view={view}>
         {view === "workouts" && (
           <Screen
-            onLeave={(closing: unknown) => {
+            onLeave={(profileNote: unknown) => {
               // In the SAME tap, the strictest case: the screen has not
               // re-rendered since Back to Hub was pressed, so only its own
               // release() keeps this from asking about the note it files.
               // (leavePostSession awaits the journal write first, which
               // usually gives React time to re-render — usually.)
-              filed.push(closing);
+              filed.push(profileNote);
               setView("clients");
             }}
           />
