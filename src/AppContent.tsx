@@ -653,7 +653,7 @@ export default function AppContent({
 
     if (!activeStudio?.mindbodySiteId) {
       toastError(
-        `${activeStudio?.name || "This studio"} has no MindBody Site ID. Set it in Admin → Studios before syncing.`,
+        `${activeStudio?.name || "This studio"} has no Mindbody Site ID. A studio leader sets it on My Studio → Studio before syncing.`,
       );
       return;
     }
@@ -667,7 +667,7 @@ export default function AppContent({
     );
     if (sharesSite && !activeStudio.mindbodyLocationId) {
       toastError(
-        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. Set it in Admin → Studios to keep schedules separate.`,
+        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. A studio leader sets it on My Studio → Studio to keep schedules separate.`,
       );
       return;
     }
@@ -1518,8 +1518,8 @@ export default function AppContent({
         size="icon"
         onClick={() => setCurrentView("trainer-hub")}
         className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : "active:text-orange-500"}`}
-        title="Trainer Control Hub"
-        aria-label="Trainer Control Hub"
+        title="Trainer Settings"
+        aria-label="Trainer Settings"
       >
         <Settings className="w-5 h-5 sm:w-6 sm:h-6 transition-colors hover:stroke-orange-500" />
       </Button>
@@ -1971,10 +1971,10 @@ export default function AppContent({
                     authTrainer={authTrainer}
                     studios={studios}
                     trainers={trainers}
-                    machines={machines}
                     activeStudioId={activeStudioId}
                     onLogout={logOut}
                     setView={(view) => setCurrentView(view as any)}
+                    onOpenOperations={() => switchAppMode("admin", "admin-dashboard")}
                   />
                 )}
 

@@ -1,0 +1,114 @@
+// @vitest-environment jsdom
+/**
+ * TRAINER SETTINGS, mounted (voice-review round, Sep 27 2026): the role by
+ * its name, the Operations door for exactly the people the app lets in, in
+ * Operations mode, and no machine count that was never the studio's.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import type { Studio, Trainer } from "../../types";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const feedback = vi.hoisted(() => ({
+  open: vi.fn(),
+  reports: [] as { id: string; description: string; status: string }[],
+}));
+vi.mock("../feedback", () => ({
+  useFeedback: () => ({ open: feedback.open }),
+  useMyFeedback: () => ({
+    reports: feedback.reports,
+    counts: {
+      total: feedback.reports.length,
+      open: feedback.reports.filter((r) => r.status !== "fixed" && r.status !== "wont-fix").length,
+      resolved: feedback.reports.filter((r) => r.status === "fixed" || r.status === "wont-fix").length,
+    },
+  }),
+  FEEDBACK_KIND_SHORT: { bug: "Bug", ui: "Looks wrong", idea: "Idea" },
+}));
+
+import { TrainerSettingsView } from "./TrainerSettingsView";
+
+const studios = [
+  { id: "solon", name: "Solon" },
+  { id: "westlake", name: "Westlake" },
+] as unknown as Studio[];
+const person = (over: Partial<Trainer>): Trainer =>
+  ({ id: "t1", fullName: "Sara Kim", initials: "SK", role: "LifeTransformer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"], activeGuestStudioIds: [], ...over }) as Trainer;
+
+let root: Root;
+let host: HTMLDivElement;
+
+beforeEach(() => {
+  feedback.open.mockReset();
+  feedback.reports = [];
+  host = document.createElement("div");
+  document.body.appendChild(host);
+  root = createRoot(host);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  host.remove();
+});
+
+async function mount(me: Trainer, extra: { onOpenOperations?: () => void } = {}) {
+  const trainers = [me, person({ id: "t2", fullName: "Pat Doe" }), person({ id: "t3", fullName: "Far Away", primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake"] })];
+  await act(async () => {
+    root.render(<TrainerSettingsView authTrainer={me} studios={studios} trainers={trainers} activeStudioId="solon" onLogout={() => {}} setView={() => {}} {...extra} />);
+  });
+}
+
+const fact = (label: string) =>
+  [...host.querySelectorAll(".stg-fact")].find((f) => f.querySelector("dt")?.textContent === label)?.querySelector("dd")?.textContent;
+
+describe("Trainer Settings", () => {
+  it("names the role, never its key", async () => {
+    await mount(person({ role: "HeadTrainer" }));
+    expect(fact("Role")).toBe("Studio Leader");
+    await mount(person({ role: "LifeTransformer" }));
+    expect(fact("Role")).toBe("Life Transformer");
+  });
+
+  it("counts the people on the team, not the catalog's machines", async () => {
+    await mount(person({}));
+    const studio = host.querySelector("[aria-label='My studio — Solon']");
+    expect(studio?.textContent).toContain("2 people on the team");
+    expect(studio?.textContent).not.toMatch(/machines ·/);
+  });
+
+  it("offers Operations to a leader, in Operations mode, and not to a trainer", async () => {
+    const onOpenOperations = vi.fn();
+    await mount(person({ role: "StudioLeader" }), { onOpenOperations });
+    const door = [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("Open Operations"));
+    expect(door).toBeTruthy();
+    await act(async () => door!.click());
+    expect(onOpenOperations).toHaveBeenCalledTimes(1);
+
+    await mount(person({ role: "LifeTransformer" }), { onOpenOperations });
+    expect([...host.querySelectorAll("button")].some((b) => b.textContent?.includes("Open Operations"))).toBe(false);
+  });
+
+  it("says whether Mindbody is linked, and who links it", async () => {
+    await mount(person({ mindbodyStaffId: "100000123" }));
+    expect(fact("Mindbody")).toBe("Linked · 100000123");
+    await mount(person({}));
+    expect(fact("Mindbody")).toBe("Not linked — a studio leader links you on My Studio → Team");
+  });
+
+  it("shows what happened to the trainer's reports, in words", async () => {
+    feedback.reports = [
+      { id: "f1", description: "The grid froze", status: "fixed" },
+      { id: "f2", description: "Button too small", status: "investigating" },
+    ];
+    await mount(person({}));
+    expect(host.textContent).toContain("Your reports · 1 open · 1 closed");
+    const statuses = [...host.querySelectorAll(".stg-status")].map((s) => [s.textContent, s.className]);
+    expect(statuses).toEqual([
+      ["Fixed", "stg-status stg-status--ok"],
+      ["Looking at it", "stg-status stg-status--open"],
+    ]);
+    await act(async () => (host.querySelector(".stg-kind") as HTMLButtonElement).click());
+    expect(feedback.open).toHaveBeenCalledWith("bug");
+  });
+});

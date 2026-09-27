@@ -21,6 +21,13 @@
 
    NOTHING IN features/wiki WRITES A HEX VALUE. Same discipline as
    features/catalog and features/studio-tasks.
+
+   ONE PALETTE (voice-review round, Sep 27 2026). Every colour here with an
+   original in equipment.tokens.css now carries that original's value, light
+   and dark — the admin kit's rule, and learning-tokens.test.ts holds it, as
+   admin-tokens.test.ts does for --adm-*. The visible change was the warnings:
+   amber became the app's caution plum, and the flag red the app's crimson.
+   The category accents and the figure's colours are Learning's own.
    ========================================================================== */
 
 :root {
@@ -67,16 +74,19 @@
   --wk-ok:      #1c7a52;     /* 4.9:1 */
   --wk-ok-fill: #e3f1ea;
 
-  /* ── amber: clinical warnings and upkeep. Never collapsed, so it has to
-        read at a glance without being shouty enough to be tuned out. ─── */
-  --wk-warn:        #8a5300;   /* 5.1:1 */
-  --wk-warn-strong: #b26a00;
-  --wk-warn-fill:   #fdf3e3;
-  --wk-warn-border: #e5c48f;   /* 3.0:1 */
+  /* ── the caution colour: clinical warnings and upkeep. Never collapsed,
+        so it has to read at a glance without being shouty enough to be
+        tuned out. Plum, as everywhere else in the app (a Heads up, a machine
+        needing attention); it was amber here until Sep 27 2026, so the same
+        machine's warnings were two colours on two screens. ─────────────── */
+  --wk-warn:        #a2457e;   /* 5.1:1 */
+  --wk-warn-strong: #a2457e;
+  --wk-warn-fill:   #f4e9f0;
+  --wk-warn-border: #a2457e;   /* 3.0:1 */
 
-  /* ── red: flagged by a trainer ────────────────────────────────────── */
-  --wk-alert:      #a32014;    /* 6.6:1 */
-  --wk-alert-fill: #fdeceb;
+  /* ── the critical colour: flagged by a trainer. The app's crimson. ── */
+  --wk-alert:      #c0203f;    /* 6.6:1 */
+  --wk-alert-fill: #fce3e8;
 
   --wk-focus-ring: var(--wk-live);
   --wk-shadow:     rgba(18, 28, 35, 0.10);
@@ -132,24 +142,24 @@
 
   /* Dark is not a flip. Saturated pigment vibrates on near-black, so fills
      become low-alpha washes and text tones lift instead of darken. */
-  --wk-hero:      #ff6a1f;
-  --wk-hero-text: #ff8c4d;   /* 7.2:1 on surface */
-  --wk-hero-fill: rgba(255, 106, 31, 0.14);
+  --wk-hero:      #f36d21;
+  --wk-hero-text: #ff9455;   /* 7.2:1 on surface */
+  --wk-hero-fill: rgba(243, 109, 33, 0.14);
 
-  --wk-live:      #38bdf8;
-  --wk-live-text: #7dd3fc;   /* 9.4:1 */
-  --wk-live-fill: rgba(56, 189, 248, 0.12);
+  --wk-live:      #4a9fd8;
+  --wk-live-text: #7cc0ee;   /* 9.4:1 */
+  --wk-live-fill: rgba(74, 159, 216, 0.14);
 
-  --wk-ok:      #34d399;
-  --wk-ok-fill: rgba(52, 211, 153, 0.12);
+  --wk-ok:      #4ec08c;
+  --wk-ok-fill: rgba(78, 192, 140, 0.13);
 
-  --wk-warn:        #fbbf24;   /* 10.4:1 on surface */
-  --wk-warn-strong: #fcd34d;
-  --wk-warn-fill:   rgba(251, 191, 36, 0.10);
-  --wk-warn-border: rgba(251, 191, 36, 0.32);
+  --wk-warn:        #d98cbd;   /* 10.4:1 on surface */
+  --wk-warn-strong: #d98cbd;
+  --wk-warn-fill:   rgba(217, 140, 189, 0.14);
+  --wk-warn-border: rgba(217, 140, 189, 0.32);
 
-  --wk-alert:      #fca5a5;   /* 8.1:1 */
-  --wk-alert-fill: rgba(248, 113, 113, 0.12);
+  --wk-alert:      #f2718c;   /* 8.1:1 */
+  --wk-alert-fill: rgba(242, 113, 140, 0.13);
 
   --wk-shadow: rgba(0, 0, 0, 0.5);
   /* On a near-black ground a drop shadow is wasted paint — elevation comes
@@ -176,4 +186,6 @@
   --wk-muscle-primary:   #0a548b;
   --wk-muscle-secondary: #6fb4e4;
   --wk-muscle-base:      #4b555c;
+  --wk-hero-on: #1a0c04;
+
 }

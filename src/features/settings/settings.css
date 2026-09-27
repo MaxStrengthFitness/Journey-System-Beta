@@ -1,0 +1,171 @@
+/* ==========================================================================
+   Trainer settings (voice-review round, Sep 27 2026)
+   --------------------------------------------------------------------------
+   The calm card of the trainer profile and the standing week, in place of
+   the italic capitals and 28px pills of the first version. Colour comes from
+   equipment.tokens.css — its status inks are readable as TEXT in both
+   themes, which the app's --green and --amber fills are not on white.
+   No hex below this line; nothing tappable under 40px.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.stg {
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 16px 16px 96px;
+  display: grid;
+  gap: 16px;
+  color: var(--eq-ink);
+}
+
+.stg-head { padding: 4px 2px 0; }
+.stg-head__title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; color: var(--eq-ink); }
+.stg-head__lede { margin: 4px 0 0; font-size: 14px; color: var(--eq-ink-muted); }
+
+.stg-card {
+  background: var(--eq-surface);
+  border: 1px solid var(--eq-border);
+  border-radius: var(--eq-radius);
+  box-shadow: 0 1px 2px var(--eq-shadow);
+  overflow: hidden;
+}
+.stg-card--accent { border-color: var(--eq-hero); }
+
+.stg-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--eq-surface-2);
+  border-bottom: 1px solid var(--eq-border);
+}
+.stg-card__icon { color: var(--eq-ink-muted); flex: none; }
+.stg-card--accent .stg-card__icon { color: var(--eq-hero-text); }
+.stg-card__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-2);
+}
+.stg-card__sub { margin: 2px 0 0; font-size: 12px; color: var(--eq-ink-muted); }
+.stg-card__body { padding: 16px; display: grid; gap: 12px; }
+
+.stg-text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--eq-ink-2); }
+
+.stg-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stg-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 72px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.stg-kind svg { color: var(--eq-hero-text); }
+.stg-kind:hover { background: var(--eq-hero-fill); }
+
+.stg-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stg-report {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border);
+  font-size: 13px;
+}
+.stg-report__text {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stg-status { flex: none; font-size: 12px; font-weight: 800; }
+.stg-status--ok { color: var(--eq-ok); }
+.stg-status--open { color: var(--eq-hero-text); }
+.stg-status--closed { color: var(--eq-ink-muted); }
+
+.stg-facts { margin: 0; display: grid; }
+.stg-fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--eq-border);
+  font-size: 14px;
+}
+.stg-fact:last-child { border-bottom: 0; }
+.stg-fact dt { color: var(--eq-ink-muted); font-weight: 700; flex: none; }
+.stg-fact dd { margin: 0; text-align: right; font-weight: 700; min-width: 0; }
+.stg-ok { color: var(--eq-ok); }
+.stg-warn { color: var(--eq-warn); }
+
+.stg-links { display: grid; gap: 8px; }
+.stg-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.stg-link:hover { background: var(--eq-surface-2); }
+.stg-link:disabled { opacity: 0.5; cursor: default; }
+.stg-link__icon { color: var(--eq-live-text); flex: none; }
+.stg-link__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.stg-link__label { font-size: 14px; font-weight: 800; }
+.stg-link__hint { font-size: 12px; color: var(--eq-ink-muted); }
+.stg-link__go { color: var(--eq-ink-faint); flex: none; }
+
+.stg-signout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.stg-signout:hover { background: var(--eq-surface-2); color: var(--eq-ink); }
+
+.stg-kind:focus-visible,
+.stg-link:focus-visible,
+.stg-signout:focus-visible {
+  outline: 2px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
