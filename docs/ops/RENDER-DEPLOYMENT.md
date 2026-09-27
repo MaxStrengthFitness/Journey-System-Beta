@@ -276,8 +276,8 @@ Everything below is dashboard-only. None of it is required.
 
 | npm script | Used by | Notes |
 |---|---|---|
-| `npm run build` | Web only | Vite front end **plus** `dist/server.cjs`. |
-| `npm start` | Web only | `node dist/server.cjs`. |
+| `npm run build` | Web only | Vite front end in `dist/` **plus** the server in `build/server.cjs`. Never put the server in `dist/`: the site serves that folder to anyone (until Sep 26 2026 `/server.cjs` and its source map were public). |
+| `npm start` | Web only | `node build/server.cjs`. |
 | `npm run build:backend` | The cron (and the parked services) | Backend entry points only - **no Vite**. |
 | `npm run cron:leaderboards` | Nightly cron | Wraps the existing `calculateLeaderboards()`. |
 | `npm run start:worker` | *parked* | Long-running; restarts if it exits. |

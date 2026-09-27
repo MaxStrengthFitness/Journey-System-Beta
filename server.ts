@@ -26,6 +26,7 @@ import {
 import { requireStaff } from "./server/auth.ts";
 import { idsToLookUp, parseSkipIds, skipForOwnBookings } from "./src/lib/mindbody-lookup-skip.ts";
 import { isGeminiPath, registerGeminiRoutes } from "./server/gemini-routes.ts";
+import { devFileAccess, serveBuiltApp } from "./server/served-files.ts";
 
 // Error Handling: Prevent process crash on unhandled rejections
 process.on("unhandledRejection", (reason, promise) => {
@@ -1144,44 +1145,20 @@ async function startServer() {
     // Imported here rather than at the top of the file so production never
     // pulls Vite (and its Rollup/esbuild dependency graph) into memory at boot.
     const { createServer: createViteServer } = await import("vite");
+    // This server listens on the whole network (below), so what Vite may
+    // hand out is narrowed to what the app uses: see server/served-files.ts.
+    // Without it, /service-account.json served the production admin key.
+    const root = process.cwd();
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      root,
+      server: { middlewareMode: true, fs: devFileAccess(root) },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-
-    // Vite stamps a content hash into every asset filename
-    // (index-BycyQ8Hk.js), so the bytes behind a given URL can never change.
-    // That makes them safe to cache for a year, which removes ~20 revalidation
-    // round-trips from every page load.
-    app.use(
-      "/assets",
-      express.static(path.join(distPath, "assets"), {
-        maxAge: "1y",
-        immutable: true,
-      }),
-    );
-
-    // Anything else in dist has no hash in its name, so keep it short-lived.
-    // index: false leaves "/" to the catch-all below.
-    app.use(express.static(distPath, { index: false, maxAge: "1h" }));
-
-    // A missing chunk must 404. Falling through to index.html returns
-    // "200 OK" with HTML in it, and the browser then tries to parse that HTML
-    // as JavaScript: "Uncaught SyntaxError: Unexpected token '<'".
-    app.use("/assets", (req, res) => {
-      res.status(404).type("text/plain").send("Not found");
-    });
-
-    // index.html is the file that names the hashed assets above. A cached copy
-    // pins the browser to a previous deploy's filenames, so it must always be
-    // revalidated.
-    app.get("*", (req, res) => {
-      res.set("Cache-Control", "no-cache");
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    // dist/ is the browser's half only; the server's bundle is built to
+    // build/. The caching rules and the SPA fallback are in served-files.ts.
+    serveBuiltApp(app, path.join(process.cwd(), "dist"));
   }
 
   app.listen(PORT, "0.0.0.0", () => {

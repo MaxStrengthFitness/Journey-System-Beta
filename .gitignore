@@ -4,6 +4,9 @@ functions/node_modules/
 
 # Build output
 dist/
+# The server's own bundle (npm run build). Not in dist/: the live site serves
+# dist/ to anyone, and this is the server's source (Sep 26 2026).
+/build/
 functions/lib/
 
 # Environment & secrets

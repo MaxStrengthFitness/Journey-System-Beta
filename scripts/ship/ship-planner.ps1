@@ -352,8 +352,8 @@ function Invoke-Check {
     Say $b.Text "Red"
     Die "the production build failed. Nothing has been deployed or pushed."
   }
-  if (-not (Test-Path -LiteralPath (Join-Path $RepoDir "dist\server.cjs"))) {
-    Die "dist\server.cjs was not produced. Nothing has been deployed or pushed."
+  if (-not (Test-Path -LiteralPath (Join-Path $RepoDir "build\server.cjs"))) {
+    Die "build\server.cjs was not produced. Nothing has been deployed or pushed."
   }
   Say "Build clean." "Green"
 
