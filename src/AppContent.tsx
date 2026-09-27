@@ -1968,6 +1968,9 @@ export default function AppContent({
                       schedules={schedules}
                       sessions={sessions}
                       clients={clients}
+                      // My clients says "can't read" while the roster loads or
+                      // after its read fails, never "No clients" (Openings round).
+                      rosterStatus={rosterStatus}
                       studios={studios}
                       onSelectClient={setSelectedClientId}
                       setView={setCurrentView}
