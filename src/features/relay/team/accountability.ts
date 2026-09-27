@@ -54,13 +54,13 @@ import { studioDateKey, type DateLike } from "../../../lib/studio-time";
 export const HOLDING_DAYS = 2;
 
 /** Team's window: the last seven studio days, today included. */
-export const TEAM_DAYS = 7;
+const TEAM_DAYS = 7;
 
 /** The first studio day of a window of `days` days that ends today. */
 export const firstDayOf = (todayKey: string, days = TEAM_DAYS): string => addDays(todayKey, -(days - 1));
 
 /** The studio day a stored moment fell on, or null when there is none. */
-export const studioDayOf = (v: unknown): string | null => (v ? studioDateKey(v as DateLike) : null);
+const studioDayOf = (v: unknown): string | null => (v ? studioDateKey(v as DateLike) : null);
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const shortDay = (dateKey: string) => DAY[weekdayOf(dateKey)];

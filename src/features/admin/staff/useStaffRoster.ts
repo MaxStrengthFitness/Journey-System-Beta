@@ -19,7 +19,7 @@
  */
 
 /** What the page says about Mindbody under "All my studios". */
-export const MINDBODY_PER_STUDIO =
+const MINDBODY_PER_STUDIO =
   "The Mindbody match is per studio: choose one studio above to see who is on its Mindbody staff list and who has no match.";
 
 import { useEffect, useMemo, useState } from "react";
