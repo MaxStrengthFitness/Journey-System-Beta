@@ -625,9 +625,12 @@ export function ClientProfileView({
   const [machineWindowId, setMachineWindowId] = useState<string | null>(null);
 
   /*
-   * SESSIONS BEFORE JOURNEY (Sep 24 2026). The header's Completed sessions
-   * tile is the door; anyone the clients/{id} update rule lets write this
-   * client edits, anyone else reads. features/client-profile/prior-history-door.ts.
+   * SESSIONS BEFORE JOURNEY (Sep 24 2026). The door is on Notes & Profile →
+   * Account, and only there since Sep 26 (AJ: "take this off the header of
+   * the profile, leave it in the profile section"); the header keeps the
+   * count as plain words. Anyone the clients/{id} update rule lets write
+   * this client edits, anyone else reads.
+   * features/client-profile/prior-history-door.ts.
    */
   const canEditPrior = canEditPriorHistory(liveAuthTrainer, client);
   const priorDoorText = priorHistoryDoorText(priorHistory, canEditPrior);
@@ -654,9 +657,9 @@ export function ClientProfileView({
   };
 
   /*
-   * The door, worked out once and handed to both places that draw it: the
-   * header's Completed sessions tile and the client codex's Account page
-   * (landing, Sep 24 2026). Opening reads the record at the moment of the
+   * The door, worked out once and handed to the one place that draws it: the
+   * client codex's Account page (landing, Sep 24 2026; off the header's
+   * Completed sessions tile since Sep 26). Opening reads the record at the moment of the
    * tap (through the ref), so a door handed down in a memo never seeds the
    * editor from an older snapshot.
    */
@@ -1116,8 +1119,8 @@ export function ClientProfileView({
    * once it answers no page can disagree with the header. Until it answers
    * for this client the header shows the stored total and the codex says it
    * does not know yet - never a second count. The door to Sessions before
-   * Journey is the header's own too:
-   * Account draws the header's own (its words, its rule, this view's editor).
+   * Journey is handed over too, and Account is the one place that draws it
+   * (its words, its rule, this view's editor; off the header since Sep 26).
    */
   const codexHosts = useMemo<CodexHosts>(
     () => ({
@@ -1445,7 +1448,6 @@ export function ClientProfileView({
         sessionsQuotable={canQuoteNumber}
         coverage={clientCoverage}
         priorLabel={priorLabel}
-        priorHistoryDoor={priorHistoryDoor ?? undefined}
         sessionsSplit={splitOfSessions}
         topTrainer={topTrainer}
         trainers={trainers}

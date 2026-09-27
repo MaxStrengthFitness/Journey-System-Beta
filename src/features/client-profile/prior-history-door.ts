@@ -8,9 +8,11 @@
  * nothing on screen opened it. AJ: "Trainers absolutely need the ability to
  * view and edit this."
  *
- * The door is the line under the count on the header's Completed sessions
- * tile — the number it explains. Anyone who can edit the client edits it;
- * anyone else who can open the profile reads it.
+ * The door is on Notes & Profile → Account, the first thing that page
+ * offers. It was also the line under the count on the header's Completed
+ * sessions tile until Sep 26 (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section"); the header keeps the count as
+ * plain words. Anyone who can edit the client edits it; anyone else who
+ * can open the profile reads it.
  *
  * PURE — no React, no Firestore.
  */
@@ -92,10 +94,9 @@ export function priorHistoryDoorText(
 /**
  * The door as a screen draws it: the words, whether it opens to edit or to
  * read, and what opens the editor. The profile works it out once and hands
- * the same object to both doors — the header's Completed sessions tile and
- * the client codex's Account page (landing, Sep 24 2026) — so the two can
- * never say different things or apply different rules. The editor itself
- * lives in ClientProfileView.
+ * it to the client codex's Account page, the one place that draws it (the
+ * header's copy came off on Sep 26). The editor itself lives in
+ * ClientProfileView.
  */
 export interface PriorHistoryDoorState {
   /** "412 before Journey · FileMaker", or "Add sessions before Journey". */

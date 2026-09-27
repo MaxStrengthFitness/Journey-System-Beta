@@ -347,10 +347,10 @@ export interface CodexHosts {
   onOpenMachine?: (machineId: string) => void;
   onOpenSetup?: () => void;
   /**
-   * The door to Sessions before Journey — the SAME door as the header's
-   * Completed sessions tile (its words, its rule, the profile's one editor),
-   * drawn again on Account's contract history (landing, Sep 24 2026). Null
-   * or left out: no door (nothing recorded, and this reader may not add it).
+   * The door to Sessions before Journey (its words, its rule, the profile's
+   * one editor), which Account draws in its page head — the only place it
+   * is drawn since the header's copy came off (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section"). Null or left
+   * out: no door (nothing recorded, and this reader may not add it).
    */
   priorHistoryDoor?: PriorHistoryDoorState | null;
   /**

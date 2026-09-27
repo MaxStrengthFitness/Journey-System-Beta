@@ -499,12 +499,12 @@ describe("AccountPage — the intake matcher (AJ's decision 4)", () => {
 });
 
 /*
- * Sessions before Journey (landing, Sep 24 2026; moved Sep 26): AJ asked for
- * the door from the header's session count AND from Account. The profile
- * hands both the SAME door (priorHistoryDoorText's words,
+ * Sessions before Journey (landing, Sep 24 2026; moved Sep 26). The profile
+ * hands Account the one door (priorHistoryDoorText's words,
  * canEditPriorHistory's rule, its one editor). It was drawn under the
  * contract history, 1,700px down an upright iPad, where AJ did not find it;
- * it is now in the page's head, the first thing Account offers.
+ * it is now in the page's head, the first thing Account offers — and the
+ * only place, since it came off the header (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section").
  */
 describe("AccountPage — the door to Sessions before Journey", () => {
   const doors = (host: HTMLElement) => host.querySelectorAll<HTMLButtonElement>('[data-action="prior-history"]');

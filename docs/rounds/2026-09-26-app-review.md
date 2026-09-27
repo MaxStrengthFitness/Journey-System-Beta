@@ -91,6 +91,12 @@ under the whole contract history: about 1,700px down an iPad held upright.
 head beside the lede, once: the header's own door, the same words, the same
 rule, the same editor. Tests moved with it to `AccountPage.render.test.tsx`.
 
+**Later the same evening, AJ:** "take this off the header of the profile,
+leave it in the profile section." The button came off the header's
+Completed sessions tile, which keeps "412 before Journey · FileMaker" as
+plain words; Account is now the one place Sessions before Journey is added
+or edited.
+
 ## 4. Found on the way: a cancelled booking as the next session
 
 The profile read her upcoming bookings without skipping cancelled rows (which
