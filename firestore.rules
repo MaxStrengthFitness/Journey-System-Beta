@@ -1089,6 +1089,49 @@ service cloud.firestore {
           || trainerLeads(r, callerTrainer(), studioId);
     }
 
+    /* THE STANDING WEEK (voice-review round, Sep 27 2026) -- a trainer's
+       usual week at a studio: the hours they work and their regulars. The
+       trainer PROPOSES it on My Profile, a leader AGREES it on My Studio ->
+       Team, and the app checks the coming week's bookings against the agreed
+       week. Nothing about it is ever written to Mindbody.
+       Shape only; limits match src/features/standing-week/week.ts, and who
+       may write what is in the match block. The rows of the two lists are
+       not checked one by one (a rule cannot loop): the app normalizes every
+       week it reads, leaving a malformed row out rather than guessing. */
+    function standingWeekShapeValid(w) {
+      return w == null || (w is map
+          && w.keys().hasOnly(['hours', 'regulars', 'note'])
+          && w.hours is list && w.hours.size() <= 14
+          && w.regulars is list && w.regulars.size() <= 80
+          && (!('note' in w) || (w.note is string && w.note.size() <= 500)));
+    }
+
+    function standingWeekValid(d, studioId, trainerUid) {
+      return d.keys().hasOnly(['studioId', 'trainerUid', 'trainerId', 'trainerName',
+                               'proposed', 'proposedAt', 'proposedBy',
+                               'final', 'finalAt', 'finalBy'])
+          && d.studioId == studioId && d.trainerUid == trainerUid
+          && d.trainerId is string && d.trainerId.size() > 0 && d.trainerId.size() <= 128
+          && d.trainerName is string && d.trainerName.size() <= 120
+          && standingWeekShapeValid(d.get('proposed', null))
+          && standingWeekShapeValid(d.get('final', null));
+    }
+
+    /* A stamp names whoever wrote it (the Auth uid), and its time is the
+       server's. Checked only for the stamps this write changes, so a trainer
+       proposing again never has to re-sign the leader's agreement. */
+    function standingWeekStampValid(by) {
+      return by == null || (by is map && by.id == request.auth.uid
+          && by.name is string && by.name.size() <= 120);
+    }
+
+    function standingWeekStampsValid(d, changed) {
+      return (!changed.hasAny(['proposedBy']) || standingWeekStampValid(d.get('proposedBy', null)))
+          && (!changed.hasAny(['finalBy']) || standingWeekStampValid(d.get('finalBy', null)))
+          && (!changed.hasAny(['proposedAt']) || d.get('proposedAt', null) == null || d.proposedAt == request.time)
+          && (!changed.hasAny(['finalAt']) || d.get('finalAt', null) == null || d.finalAt == request.time);
+    }
+
     /* MACHINE CARE (Relay, Sep 2026). Shape only; limits match
        src/features/planner/relay/machine-care.ts. Times are millisecond
        numbers (they sit inside merged writes, where serverTimestamp would
@@ -2115,6 +2158,49 @@ service cloud.firestore {
       match /vault/{entryId} {
         allow read, create, update, delete:
           if isSuperAdmin() || isFranchiseOwnerOnly() || isStudioOwnerOrHeadTrainer(studioId);
+      }
+
+      /*
+       * THE STANDING WEEK (voice-review round, Sep 27 2026) -- one document
+       * per trainer at this studio, keyed by their Auth uid: the hours they
+       * work and their regulars. Read by the studio's people, because the
+       * point is that a team knows when each of them works. The trainer
+       * PROPOSES their own week -- the proposal fields only, never the agreed
+       * week. The studio's leaders (the grant counts), franchise owners and
+       * administrators AGREE it, change it, or remove it. Journey checks the
+       * coming week's bookings against it and writes nothing to Mindbody.
+       */
+      match /standingWeeks/{trainerUid} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+
+        allow create: if isAuthenticated()
+                      && standingWeekValid(request.resource.data, studioId, trainerUid)
+                      && standingWeekStampsValid(request.resource.data, request.resource.data.keys())
+                      && (
+                           (
+                             request.auth.uid == trainerUid
+                             && request.resource.data.keys().hasOnly(['studioId', 'trainerUid', 'trainerId',
+                                  'trainerName', 'proposed', 'proposedAt', 'proposedBy'])
+                             && trainerWorksAt(callerTrainer(), studioId)
+                           )
+                        || teamJobLeaderAllowed(studioId)
+                      );
+
+        allow update: if isAuthenticated()
+                      && standingWeekValid(request.resource.data, studioId, trainerUid)
+                      && standingWeekStampsValid(request.resource.data,
+                           request.resource.data.diff(resource.data).affectedKeys())
+                      && (
+                           (
+                             request.auth.uid == trainerUid
+                             && request.resource.data.diff(resource.data).affectedKeys()
+                                  .hasOnly(['trainerId', 'trainerName', 'proposed', 'proposedAt', 'proposedBy'])
+                             && trainerWorksAt(callerTrainer(), studioId)
+                           )
+                        || teamJobLeaderAllowed(studioId)
+                      );
+
+        allow delete: if isAuthenticated() && teamJobLeaderAllowed(studioId);
       }
 
       /*

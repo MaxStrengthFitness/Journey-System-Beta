@@ -120,6 +120,26 @@ describe("checkWeek — what differs", () => {
     expect(findingSentence(c.findings[0], TZ)).toBe("Bob Jones is booked in Judy Smith's Mon, Sep 28 at 8:00 AM slot with Sam. Judy Smith isn't booked for it.");
   });
 
+  it("reads a booking the sync matched by name only as the named trainer's", () => {
+    // The sync keeps the Mindbody staff name when it matched no Journey trainer.
+    const byName = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { trainerId: undefined, trainerName: "sam lee" }), booking("2026-10-01", "08:00")] }));
+    expect(byName.findings).toEqual([]);
+    const other = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { trainerId: undefined, trainerName: "Pat Doe" }), booking("2026-10-01", "08:00")] }));
+    expect(findingSentence(other.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith is booked with Pat on Mon, Sep 28 at 8:00 AM instead.");
+  });
+
+  it("never says a booking naming no staff member takes a slot", () => {
+    const rotation = { trainerId: undefined, trainerName: "Solon Rotation" };
+    expect(checkWeek(input({ bookings: [booking("2026-09-28", "08:00", rotation), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+    const c = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { ...rotation, clientId: "c-bob", clientName: "Bob Jones" }), booking("2026-10-01", "08:00")] }));
+    expect(c.findings.map((f) => f.kind)).toEqual(["open"]);
+  });
+
+  it("matches a booking the sync didn't link to a client by the client's name", () => {
+    const unlinked = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { clientId: undefined, clientName: "Judy  Smith " }), booking("2026-10-01", "08:00")] }));
+    expect(unlinked.findings).toEqual([]);
+  });
+
   it("uses one booking for one slot only", () => {
     // Thursday's booking cannot also keep Monday's slot as "moved" when it keeps Thursday's own.
     const c = checkWeek(input({ bookings: [booking("2026-10-01", "08:00")] }));

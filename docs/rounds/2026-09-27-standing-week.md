@@ -90,6 +90,15 @@ regulars[]  { id, weekday 0–6, start "HH:MM", clientId, clientName }
 | Propose (write `proposed…`, and create the document) | The trainer themselves, at a studio they work at. They cannot write `final…` |
 | Agree, change, remove | The studio's leaders (the grant counts), franchise owners, administrators |
 
+Each stamp (`proposedBy`, `finalBy`) must name whoever is writing it (the
+Auth uid), and each time (`proposedAt`, `finalAt`) must be the server's, so a
+week can be neither agreed in someone else's name nor backdated. A stamp is
+checked only when the write changes it, so a trainer proposing again never
+has to re-sign the leader's agreement. Agreeing also brings `proposed` into
+line with `final`, so the trainer's next edit starts from the agreed week and
+the card says "agreed" rather than "changed since it was agreed" when the
+leader changed something before agreeing.
+
 **Every number has a reader:** `proposed` is read by My Profile (the
 trainer's own) and Team (the leader's review); `final` by Team's week check
 and review, and by My Profile ("agreed by …").
@@ -126,6 +135,14 @@ For each agreed regular slot in the next seven studio days:
 A cancelled booking is no booking. "Monday–Sunday week" is the Operations
 Overview's reschedule rule (`admin/changes/changes.ts`), so the two screens
 never disagree about what a move is.
+
+**Whose booking it is.** The schedule sync writes the trainer's id when it
+matched the Mindbody staff member to a Journey trainer, and only the staff
+member's name when it didn't. So an id decides when there is one and the
+name when there isn't. A booking that names no staff member at all (the
+sync's "{studio} Rotation") may keep a slot but never takes one. The client
+is matched by id when the sync linked one, else by name, as the Overview
+does.
 
 ## Phases
 

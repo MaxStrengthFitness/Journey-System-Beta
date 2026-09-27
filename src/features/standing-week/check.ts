@@ -23,6 +23,14 @@
  * booking. Only the days read are judged: nothing here claims she "isn't
  * booked that week", only that she isn't booked FOR THE SLOT.
  *
+ * WHOSE BOOKING. The schedule sync writes a trainer's id when it matched the
+ * Mindbody staff member to a Journey trainer, and only the staff member's
+ * name when it didn't (lib/mindbody-api-sync.ts). So an id decides when
+ * there is one and the name when there isn't, and a booking that names no
+ * staff member (the sync's "{studio} Rotation") is nobody's in particular:
+ * it may keep a slot, but it never takes one. The client is matched by id
+ * when the sync linked one, else by name — the Overview's rule again.
+ *
  * WHEN IT SAYS NOTHING. A failed or unfinished read, or a studio whose
  * Mindbody isn't connected, gives a state and no findings: an unread day is
  * "can't tell", never "open".
@@ -127,6 +135,19 @@ interface Slot {
 }
 
 const near = (a: number, b: number) => Math.abs(a - b) <= SLOT_TOLERANCE_MINUTES;
+const norm = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+
+/** The booking's trainer against the slot's: see WHOSE BOOKING above. */
+function trainerOf(b: BookingView, s: Slot): "same" | "other" | "unknown" {
+  if (b.trainerId) return b.trainerId === s.trainerId ? "same" : "other";
+  const name = norm(b.trainerName);
+  if (!name || name.endsWith(" rotation")) return "unknown";
+  return name === norm(s.trainerName) ? "same" : "other";
+}
+
+function isFor(b: BookingView, s: Slot): boolean {
+  return b.clientId ? b.clientId === s.clientId : b.clientName !== "" && norm(b.clientName) === norm(s.clientName);
+}
 
 export function checkWeek(input: WeekCheckInput): WeekCheck {
   const days = input.days ?? CHECK_DAYS;
@@ -156,7 +177,7 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   const unusual: Slot[] = [];
   for (const s of slots) {
     const kept = bookings.find(
-      (b) => !usedAsUsual.has(b.id) && b.clientId === s.clientId && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && (!b.trainerId || b.trainerId === s.trainerId),
+      (b) => !usedAsUsual.has(b.id) && isFor(b, s) && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && trainerOf(b, s) !== "other",
     );
     if (kept) usedAsUsual.add(kept.id);
     else unusual.push(s);
@@ -168,14 +189,12 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
     const monday = mondayOf(s.dateKey);
     const sunday = addDays(monday, 6);
     const elsewhere = bookings
-      .filter((b) => !usedAsUsual.has(b.id) && b.clientId === s.clientId && b.dateKey >= monday && b.dateKey <= sunday)
+      .filter((b) => !usedAsUsual.has(b.id) && isFor(b, s) && b.dateKey >= monday && b.dateKey <= sunday)
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.minutes - b.minutes)[0];
-    const other = bookings.find(
-      (b) => b.trainerId === s.trainerId && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && b.clientId !== s.clientId,
-    );
+    const other = bookings.find((b) => trainerOf(b, s) === "same" && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && !isFor(b, s));
     const base = { dateKey: s.dateKey, start: s.start, trainerId: s.trainerId, trainerName: s.trainerName, clientId: s.clientId, clientName: s.clientName };
     const movedTo = elsewhere
-      ? { dateKey: elsewhere.dateKey, start: elsewhere.start, trainerName: elsewhere.trainerName, sameTrainer: !elsewhere.trainerId || elsewhere.trainerId === s.trainerId }
+      ? { dateKey: elsewhere.dateKey, start: elsewhere.start, trainerName: elsewhere.trainerName, sameTrainer: trainerOf(elsewhere, s) !== "other" }
       : undefined;
     if (other) findings.push({ kind: "taken", ...base, takenBy: { clientName: other.clientName || "Another client" }, ...(movedTo ? { movedTo } : {}) });
     else if (movedTo) findings.push({ kind: "moved", ...base, movedTo });
