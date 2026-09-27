@@ -66,6 +66,11 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz, { confirmed: true });
   const wait = useServerWait(needsBookings && (schedule.loading || schedule.fromCache));
   const read = serverRead({ loading: schedule.loading, failed: schedule.failed, fromCache: schedule.fromCache, ...wait });
+  // Where a booking carries a Mindbody staff id, it is matched on the trainer's.
+  const staffIds = useMemo(
+    () => Object.fromEntries(trainers.filter((t) => t.id && t.mindbodyStaffId).map((t) => [t.id, String(t.mindbodyStaffId)])),
+    [trainers],
+  );
   const check = useMemo(
     () =>
       checkWeek({
@@ -75,8 +80,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
         tz,
         read,
         connected: bookingsKnown(studio),
+        staffIds,
       }),
-    [checked, schedule.entries, read, today, tz, studio],
+    [checked, schedule.entries, read, today, tz, studio, staffIds],
   );
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;

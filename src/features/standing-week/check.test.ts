@@ -151,8 +151,6 @@ describe("checkWeek — what differs", () => {
     // The sync keeps the Mindbody staff name when it matched no Journey trainer.
     const byName = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { trainerId: undefined, trainerName: "sam lee" }), booking("2026-10-01", "08:00")] }));
     expect(byName.findings).toEqual([]);
-    const other = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", { trainerId: undefined, trainerName: "Pat Doe" }), booking("2026-10-01", "08:00")] }));
-    expect(findingSentence(other.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith is booked with Pat on Mon, Sep 28 at 8:00 AM instead.");
   });
 
   it("never says a booking naming no staff member takes a slot", () => {
@@ -174,10 +172,103 @@ describe("checkWeek — what differs", () => {
   });
 });
 
+describe("checkWeek — only what it knows (voice review follow-up)", () => {
+  it("names one rebook for one slot only", () => {
+    // Monday's and Thursday's 8:00 are both cancelled on Sunday afternoon, and
+    // the desk books ONE session for Wednesday with them: it is Monday's move;
+    // Thursday is simply open.
+    const stamp = new Date("2026-09-27T18:00:00Z");
+    const c = checkWeek(
+      input({
+        bookings: [
+          booking("2026-09-28", "08:00", { status: "Cancelled", cancelledAt: stamp }),
+          booking("2026-10-01", "08:00", { status: "Cancelled", cancelledAt: stamp }),
+          booking("2026-09-30", "10:00", { createdAt: new Date("2026-09-27T17:45:00Z") }),
+        ],
+      }),
+    );
+    expect(c.findings.map((f) => [f.dateKey, f.kind, f.movedTo?.dateKey ?? null])).toEqual([
+      ["2026-09-28", "moved", "2026-09-30"],
+      ["2026-10-01", "open", null],
+    ]);
+    expect(findingSentence(c.findings[1], TZ)).toBe("Sam's Thu, Oct 1 at 8:00 AM is open: Judy Smith isn't booked for it.");
+  });
+
+  it("keeps the slot for a staff member Journey couldn't link, whose name differs", () => {
+    // Journey says Sam Lee; Mindbody says Samuel Lee, so the sync kept the
+    // Mindbody name and no trainer id. That proves nothing: the slot is kept.
+    const samuel = { trainerId: undefined, trainerName: "Samuel Lee" };
+    const c = checkWeek(input({ bookings: [booking("2026-09-28", "08:00", samuel), booking("2026-10-01", "08:00", samuel)] }));
+    expect(c.findings).toEqual([]);
+    // Elsewhere, named as a proven move, the name is said as Mindbody has it.
+    const moved = booking("2026-09-29", "09:30", { ...samuel, movedFromDay: "2026-09-28", movedFromStart: new Date("2026-09-28T08:00:00-04:00") });
+    const m = checkWeek(input({ bookings: [moved, booking("2026-10-01", "08:00")] }));
+    expect(findingSentence(m.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith is booked with Samuel on Tue, Sep 29 at 9:30 AM instead.");
+  });
+
+  it("matches on the Mindbody staff id where both sides carry one", () => {
+    const staffIds = { "t-sam": "100000042" };
+    // A guest's booking the sync couldn't link, under another name: the staff id says it is Sam's.
+    const same = { trainerId: undefined, trainerName: "Samuel Lee", mindbodyStaffId: "100000042" } as Partial<ScheduleEntry>;
+    expect(checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", same), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+    // Another staff id is someone else's, whatever the name says.
+    const other = { trainerId: undefined, trainerName: "Sam Lee", mindbodyStaffId: "100000077" } as Partial<ScheduleEntry>;
+    const c = checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", other), booking("2026-10-01", "08:00")] }));
+    expect(c.findings.map((f) => f.kind)).toEqual(["moved"]);
+    // Without the trainer's staff id, the booking's own trainer id decides, as before.
+    expect(checkWeek(input({ bookings: [booking("2026-09-28", "08:00", other), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+  });
+
+  it("reads the studio rotation as usual: never moved, never taken, never a Free slot", () => {
+    // AJ: on rotation days a client books "{studio} Rotation", and whoever
+    // works that day moves the session to themselves in Mindbody later.
+    const judyWed = { id: "r3", weekday: 3, start: "08:00", clientId: "c-judy", clientName: "Judy Smith" };
+    const wednesdays = sam({ final: { hours: [{ weekday: 3, from: "07:00", to: "13:00" }], regulars: [judyWed] } });
+    const rotation = { trainerId: undefined, trainerName: "Solon Rotation" };
+    const c = checkWeek(
+      input({
+        docs: [wednesdays],
+        bookings: [
+          booking("2026-09-30", "08:00", rotation),
+          // Another client on the rotation at the same time takes nothing either.
+          booking("2026-09-30", "08:00", { ...rotation, clientId: "c-bob", clientName: "Bob Jones" }),
+        ],
+      }),
+    );
+    expect(c).toEqual({ state: "ready", findings: [], slots: 1 });
+    expect(stateSentence(c)).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+  });
+
+  it("never says another regular in their own slot at a shared time takes it", () => {
+    // Judy and Bob both train with Sam on Mondays at 8:00. Bob is booked; Judy isn't.
+    const bobMon = { id: "r9", weekday: 1, start: "08:00", clientId: "c-bob", clientName: "Bob Jones" };
+    const shared = sam({ final: { hours: agreed.hours, regulars: [judyMon, bobMon] } });
+    const c = checkWeek(input({ docs: [shared], bookings: [booking("2026-09-28", "08:00", { clientId: "c-bob", clientName: "Bob Jones" })] }));
+    expect(c.findings).toHaveLength(1);
+    expect(c.findings[0]).toMatchObject({ kind: "open", clientId: "c-judy" });
+    expect(c.findings[0]).not.toHaveProperty("takenBy");
+  });
+
+  it("leaves a slot earlier today simply open", () => {
+    // AJ: "Unbooked slots are just open." Nothing special for a slot already past.
+    const c = checkWeek(input({ bookings: [booking("2026-10-01", "08:00")] }));
+    expect(c.findings[0]).toMatchObject({ kind: "open", dateKey: TODAY });
+    expect(isFreeSlot(c.findings[0])).toBe(true);
+  });
+});
+
 describe("checkWeek — when it says nothing", () => {
   it("never calls a slot open on a read that failed or hasn't finished", () => {
     expect(checkWeek(input({ read: "failed", bookings: [] }))).toMatchObject({ state: "failed", findings: [] });
     expect(checkWeek(input({ read: "loading", bookings: [] }))).toMatchObject({ state: "loading", findings: [] });
+  });
+
+  it("says it can't tell when the iPad is offline", () => {
+    const c = checkWeek(input({ read: "offline", bookings: [] }));
+    expect(c).toMatchObject({ state: "offline", findings: [] });
+    expect(stateSentence(c)).toBe(
+      "Can't tell: this iPad can't reach the week's bookings just now, so nothing here says a slot is open. It checks again once it's back online.",
+    );
   });
 
   it("says the week can't be checked where Mindbody isn't connected", () => {

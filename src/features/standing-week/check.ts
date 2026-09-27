@@ -33,11 +33,34 @@
  *
  * WHOSE BOOKING. The schedule sync writes a trainer's id when it matched the
  * Mindbody staff member to a Journey trainer, and only the staff member's
- * name when it didn't (lib/mindbody-api-sync.ts). So an id decides when
- * there is one and the name when there isn't, and a booking that names no
- * staff member (the sync's "{studio} Rotation") is nobody's in particular:
- * it may keep a slot, but it never takes one. The client is matched by id
- * when the sync linked one, else by name — the Overview's rule again.
+ * name when it didn't (lib/mindbody-api-sync.ts); the webhook also keeps the
+ * Mindbody staff id (`mindbodyStaffId`). So, in order: where the booking and
+ * the trainer both carry a Mindbody staff id, that decides; else the
+ * booking's trainer id; else the name. A booking that names no staff member
+ * (the sync's "{studio} Rotation") is nobody's in particular: it may keep a
+ * slot, but it never takes one. The client is matched by id when the sync
+ * linked one, else by name — the Overview's rule again.
+ *
+ * A NAME THAT DOESN'T MATCH PROVES NOTHING. The sync already tried the
+ * trainer's exact full name before it fell back to the staff member's own
+ * (Journey "Sam Lee", Mindbody "Samuel Lee"), so a booking with no trainer id
+ * whose name differs is as likely the trainer's as anyone's. At the
+ * regular's own slot and time it keeps the slot, like a Rotation booking,
+ * rather than calling the trainer's whole week moved: a confident wrong
+ * claim is worse than silence (CLAUDE.md).
+ *
+ * THE STUDIO ROTATION (AJ, Sep 27 2026). "Some studios use a 'studio
+ * rotation' to book Wednesdays and Saturdays and rotate a trainer each week
+ * ... any client can schedule that day on mind body and then whatever
+ * trainer works that day can just move those sessions to them." A regular
+ * booked "{studio} Rotation" at her time is as usual: never moved, never
+ * taken, never a Free slot.
+ *
+ * ONE BOOKING, ONE CLAIM. A booking that kept one agreed slot as usual never
+ * explains another; a rebook named as one slot's move is never named for a
+ * second; and another regular's own booking at a shared time never "takes"
+ * the slot. Past slots earlier today are simply open, like any other (AJ:
+ * "Unbooked slots are just open").
  *
  * WHEN IT SAYS NOTHING. A failed or unfinished read, or a studio whose
  * Mindbody isn't connected, gives a state and no findings: an unread day is
@@ -97,6 +120,8 @@ export interface WeekCheckInput {
   read: ServerRead;
   /** The studio's Mindbody is linked (or it is the Demo studio, whose week is seeded). */
   connected: boolean;
+  /** Each trainer's Mindbody staff id, by trainers/{id}: where a booking carries one too, it decides whose booking it is. */
+  staffIds?: Readonly<Record<string, string>>;
 }
 
 interface BookingView {
@@ -111,6 +136,8 @@ interface BookingView {
   clientName: string;
   trainerId: string | null;
   trainerName: string;
+  /** The Mindbody staff id, where the webhook kept one. */
+  staffId: string | null;
   /** When Journey first wrote the row: what tells a real rebook from a standing booking. */
   createdAt: unknown;
   /** Stamped by the pull or the webhook when Journey saw the cancellation. */
@@ -118,6 +145,11 @@ interface BookingView {
   /** Where Mindbody moved this booking FROM (the sync's change stamps). */
   movedFrom: { dateKey: string; minutes: number } | null;
 }
+
+const staffIdOf = (v: unknown): string | null => {
+  const id = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim() : "";
+  return id === "" ? null : id;
+};
 
 const clockOfHM = (hm: { hour: number; minute: number }) => `${String(hm.hour).padStart(2, "0")}:${String(hm.minute).padStart(2, "0")}`;
 
@@ -141,6 +173,7 @@ function viewOf(entry: ScheduleEntry, index: number, tz?: string): BookingView |
     clientName: entry.clientName || "",
     trainerId: entry.trainerId || null,
     trainerName: entry.trainerName || "",
+    staffId: staffIdOf((entry as { mindbodyStaffId?: unknown }).mindbodyStaffId),
     createdAt: entry.createdAt ?? null,
     cancelledAt: toDate(entry.cancelledAt ?? null),
     movedFrom: wasDay && wasHM ? { dateKey: wasDay, minutes: wasHM.hour * 60 + wasHM.minute } : null,
@@ -159,6 +192,8 @@ interface Slot {
   minutes: number;
   trainerId: string;
   trainerName: string;
+  /** The trainer's Mindbody staff id, when the roster has one. */
+  staffId: string | null;
   clientId: string;
   clientName: string;
 }
@@ -166,12 +201,23 @@ interface Slot {
 const near = (a: number, b: number) => Math.abs(a - b) <= SLOT_TOLERANCE_MINUTES;
 const norm = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 
-/** The booking's trainer against the slot's: see WHOSE BOOKING above. */
-function trainerOf(b: BookingView, s: Slot): "same" | "other" | "unknown" {
+/**
+ * The booking's trainer against the slot's (WHOSE BOOKING above):
+ *
+ *   same      the trainer's, by staff id, trainer id or name
+ *   other     provably someone else's: another staff id or trainer id
+ *   unknown   nobody's in particular: no staff named (a Rotation booking)
+ *   unlinked  a staff member Journey couldn't link, under another name —
+ *             proves nothing either way
+ */
+type Whose = "same" | "other" | "unknown" | "unlinked";
+
+function trainerOf(b: BookingView, s: Slot): Whose {
+  if (b.staffId && s.staffId) return b.staffId === s.staffId ? "same" : "other";
   if (b.trainerId) return b.trainerId === s.trainerId ? "same" : "other";
   const name = norm(b.trainerName);
   if (!name || name.endsWith(" rotation")) return "unknown";
-  return name === norm(s.trainerName) ? "same" : "other";
+  return name === norm(s.trainerName) ? "same" : "unlinked";
 }
 
 function isFor(b: BookingView, s: Slot): boolean {
@@ -190,7 +236,16 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
         if (r.weekday !== weekday) continue;
         const minutes = minutesOf(r.start);
         if (minutes === null) continue;
-        slots.push({ dateKey, start: r.start, minutes, trainerId: doc.trainerId, trainerName: doc.trainerName, clientId: r.clientId, clientName: r.clientName });
+        slots.push({
+          dateKey,
+          start: r.start,
+          minutes,
+          trainerId: doc.trainerId,
+          trainerName: doc.trainerName,
+          staffId: staffIdOf(input.staffIds?.[doc.trainerId]),
+          clientId: r.clientId,
+          clientName: r.clientName,
+        });
       }
     }
   }
@@ -215,13 +270,20 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   }
 
   // Pass 2: what happened to each of the others — only what Journey can prove.
+  // A booking named as one slot's move is never named for a second.
+  const claimed = new Set(usedAsUsual);
   const findings: SlotFinding[] = [];
   for (const s of unusual) {
-    const elsewhere = whereItWent(s, bookings, cancellations, usedAsUsual);
-    const other = bookings.find((b) => trainerOf(b, s) === "same" && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && !isFor(b, s));
+    const elsewhere = whereItWent(s, bookings, cancellations, claimed);
+    if (elsewhere) claimed.add(elsewhere.id);
+    // Someone else in the slot — but never another regular in their own slot at a shared time.
+    const other = bookings.find(
+      (b) => !usedAsUsual.has(b.id) && trainerOf(b, s) === "same" && b.dateKey === s.dateKey && near(b.minutes, s.minutes) && !isFor(b, s),
+    );
     const base = { dateKey: s.dateKey, start: s.start, trainerId: s.trainerId, trainerName: s.trainerName, clientId: s.clientId, clientName: s.clientName };
+    const whose = elsewhere ? trainerOf(elsewhere, s) : null;
     const movedTo = elsewhere
-      ? { dateKey: elsewhere.dateKey, start: elsewhere.start, trainerName: elsewhere.trainerName, sameTrainer: trainerOf(elsewhere, s) !== "other" }
+      ? { dateKey: elsewhere.dateKey, start: elsewhere.start, trainerName: elsewhere.trainerName, sameTrainer: whose === "same" || whose === "unknown" }
       : undefined;
     if (other) findings.push({ kind: "taken", ...base, takenBy: { clientName: other.clientName || "Another client" }, ...(movedTo ? { movedTo } : {}) });
     else if (movedTo) findings.push({ kind: "moved", ...base, movedTo });
@@ -241,8 +303,8 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
  *      another booking that Monday–Sunday week first appeared around or
  *      after it and starts after it (`isRealRebook`).
  *
- * A booking already keeping one of her other agreed slots is never her
- * move: one booking keeps one slot.
+ * A booking already keeping one of her other agreed slots, or already named
+ * as another slot's move, is never this one's: one booking, one claim.
  */
 function whereItWent(s: Slot, bookings: BookingView[], cancellations: BookingView[], used: Set<string>): BookingView | null {
   const free = bookings.filter((b) => !used.has(b.id) && isFor(b, s));
