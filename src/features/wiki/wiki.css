@@ -14,10 +14,12 @@
      - ONE scroller, padded 1rem, with no bottom padding for a nav bar that
        is a sibling and therefore not overlapping anything
 
-   Prefix is `.wk__`, so nothing here can collide with `.cat__` while the old
-   Catalog is still on disk as a rollback.
+   Prefix is `.wk__`. The old Catalog it was kept apart from went in the
+   beta-prep trim (Sep 17 2026); what is left of `.cat__` styles the two
+   studio cards on a machine page (catalog.css).
 
-   Tokens only — no hex values in this file. See wiki.tokens.css.
+   Tokens only — no hex values in this file. See wiki.tokens.css, whose
+   colours are the app's (equipment.tokens.css) since Sep 27 2026.
    ========================================================================== */
 
 @import "./wiki.tokens.css";

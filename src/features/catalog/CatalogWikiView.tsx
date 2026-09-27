@@ -504,7 +504,7 @@ export function CatalogWikiView({
           <p className="wk__placeholder-title">No machines yet</p>
           <p className="wk__placeholder-body">
             {activeStudioId
-              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. Add equipment from Hub → Machine Settings.`
+              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. A studio leader adds them on My Studio → Machines.`
               : "Select a studio to see its equipment."}
           </p>
         </div>

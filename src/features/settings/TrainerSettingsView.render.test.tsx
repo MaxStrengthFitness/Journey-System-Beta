@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Studio, Trainer } from "../../types";
+import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -64,7 +64,11 @@ const fact = (label: string) =>
 
 describe("Trainer Settings", () => {
   it("names the role, never its key", async () => {
+    // Whatever ROLE_LABELS calls it this week; never the key itself.
     await mount(person({ role: "HeadTrainer" }));
+    expect(fact("Role")).toBe(ROLE_LABELS.HeadTrainer);
+    expect(fact("Role")).not.toBe("HeadTrainer");
+    await mount(person({ role: "StudioLeader" }));
     expect(fact("Role")).toBe("Studio Leader");
     await mount(person({ role: "LifeTransformer" }));
     expect(fact("Role")).toBe("Life Transformer");
@@ -82,6 +86,10 @@ describe("Trainer Settings", () => {
     await mount(person({ role: "StudioLeader" }), { onOpenOperations });
     const door = [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("Open Operations"));
     expect(door).toBeTruthy();
+    // All nine tabs, the Delight queue included.
+    expect(host.querySelector("[aria-label='Operations']")?.textContent).toContain(
+      "The Overview, renewals and the Delight queue, the floor, staff and roles, insights, announcements, Mindbody and the studio's data.",
+    );
     await act(async () => door!.click());
     expect(onOpenOperations).toHaveBeenCalledTimes(1);
 

@@ -28,7 +28,7 @@
   --cat-surface-2:     #e8eef2;
   --cat-surface-3:     #dae1e6;
   --cat-border:        #d3dadf;   /* 1.4:1 hairline                       */
-  --cat-border-strong: #a9b2b9;   /* 2.2:1 pane divider                   */
+  --cat-border-strong: #a9b2b9;   /* 2.2:1 control boundary               */
 
   /* ── ink ──────────────────────────────────────────────────────────── */
   --cat-ink:       #121c23;   /* 17.3:1 */
@@ -36,7 +36,7 @@
   --cat-ink-muted: #5b6770;   /*  5.8:1 */
   --cat-ink-faint: #848e95;   /*  3.3:1 — decorative only */
 
-  /* ── hero orange: the selected machine ────────────────────────────── */
+  /* ── hero orange: the brand's one loud colour ─────────────────────── */
   --cat-hero:      #ef5302;
   --cat-hero-text: #bc2c00;   /* 6.0:1 on white — small text uses this */
   --cat-hero-fill: #fde7dc;
@@ -47,18 +47,18 @@
   --cat-live-text: #034a84;   /* 9.1:1 */
   --cat-live-fill: #e6eef3;
 
-  /* ── green: execution ─────────────────────────────────────────────── */
-  --cat-ok:      #1c7a52;     /* 4.9:1 */
+  /* ── green: done ──────────────────────────────────────────────────── */
+  --cat-ok:      #1c7a52;     /* 5.3:1 */
   --cat-ok-fill: #e3f1ea;
 
   /* ── the caution colour: clinical warnings. Never collapsed, so it must
         read at a glance without being shouty enough to be tuned out. The
         app's plum since Sep 27 2026 (it was amber); learning-tokens.test.ts
         holds every colour here to its equipment.tokens.css original. ──── */
-  --cat-warn:        #a2457e;   /* 5.1:1 on white */
+  --cat-warn:        #a2457e;   /* 5.7:1 on white, 4.8:1 on its fill */
   --cat-warn-strong: #a2457e;
   --cat-warn-fill:   #f4e9f0;
-  --cat-warn-border: #a2457e;   /* 3.0:1 */
+  --cat-warn-border: #a2457e;   /* 5.7:1 */
 
   /* ── the figure ───────────────────────────────────────────────────── */
   --cat-muscle-primary:   #0a548b;
@@ -83,28 +83,28 @@
   --cat-surface:       #0e151c;
   --cat-surface-2:     #151e27;
   --cat-surface-3:     #1d2833;
-  --cat-border:        #1f2a35;   /* 1.5:1 on surface */
-  --cat-border-strong: #3a4855;   /* 2.9:1 */
+  --cat-border:        #1f2a35;   /* 1.3:1 on surface */
+  --cat-border-strong: #3a4855;   /* 2.0:1 */
 
-  --cat-ink:       #eef3f7;   /* 15.8:1 on surface */
-  --cat-ink-2:     #b3c0cb;   /*  8.6:1 */
-  --cat-ink-muted: #8b98a4;   /*  5.4:1 */
-  --cat-ink-faint: #63707c;   /*  3.1:1 */
+  --cat-ink:       #eef3f7;   /* 16.5:1 on surface */
+  --cat-ink-2:     #b3c0cb;   /*  9.9:1 */
+  --cat-ink-muted: #8b98a4;   /*  6.2:1 */
+  --cat-ink-faint: #63707c;   /*  3.6:1 — decorative only */
 
   /* Dark is not a flip. Saturated orange vibrates on near-black, so fills
      become low-alpha washes and text tones lift instead of darken. */
   --cat-hero:      #f36d21;
-  --cat-hero-text: #ff9455;   /* 7.2:1 on surface */
+  --cat-hero-text: #ff9455;   /* 8.4:1 on surface */
   --cat-hero-fill: rgba(243, 109, 33, 0.14);
 
-  --cat-live:      #4a9fd8;
-  --cat-live-text: #7cc0ee;   /* 9.4:1 */
+  --cat-live:      #4a9fd8;   /* 6.3:1 */
+  --cat-live-text: #7cc0ee;   /* 9.3:1 */
   --cat-live-fill: rgba(74, 159, 216, 0.14);
 
-  --cat-ok:      #4ec08c;
+  --cat-ok:      #4ec08c;     /* 8.1:1 */
   --cat-ok-fill: rgba(78, 192, 140, 0.13);
 
-  --cat-warn:        #d98cbd;   /* 10.4:1 on surface */
+  --cat-warn:        #d98cbd;   /* 7.4:1 on surface */
   --cat-warn-strong: #d98cbd;
   --cat-warn-fill:   rgba(217, 140, 189, 0.14);
   --cat-warn-border: rgba(217, 140, 189, 0.32);

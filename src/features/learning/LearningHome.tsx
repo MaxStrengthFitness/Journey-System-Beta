@@ -186,8 +186,8 @@ export function LearningHome({
 
         {tiles.length === 0 ? (
           <p className="wk__empty">
-            No machines at {studioName} yet. A studio leader adds them from Hub →
-            Machine Settings.
+            No machines at {studioName} yet. A studio leader adds them on My
+            Studio → Machines.
           </p>
         ) : (
           <div className="lh__tiles">

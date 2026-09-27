@@ -21,7 +21,7 @@
  * Voice-review round, Sep 27 2026 (AJ: Settings "needs a visual rework to
  * match the upgraded app", handled lightly until the whole design is
  * settled): the calm card of My Profile instead of italic capitals; the role
- * by its name ("Studio Leader"), never its key ("HeadTrainer"); status words
+ * by its name (ROLE_LABELS), never its key ("HeadTrainer"); status words
  * in inks readable on white; no machine count (it was the whole catalog's,
  * not the studio's floor); and the Operations door asks the app's one rule
  * (`mayOpenOperations`) and switches the app mode, as the menu does.
@@ -246,7 +246,8 @@ export function TrainerSettingsView({
       {operations && (
         <Card icon={ShieldCheck} title="Operations" subtitle="Where are we going wrong, and where are we going right?">
           <p className="stg-text">
-            The Overview, renewals, the floor, staff and roles, insights, announcements, Mindbody and the studio's data.
+            The Overview, renewals and the Delight queue, the floor, staff and roles, insights, announcements, Mindbody
+            and the studio's data.
             Running the studio day to day stays on My Studio.
           </p>
           <LinkRow icon={ShieldCheck} label="Open Operations" onClick={onOpenOperations} />
