@@ -155,7 +155,7 @@ export function PostInitiativeDialog({
                   aria-pressed={perTrainer === n}
                   onClick={() => setPerTrainer(n)}
                   className={cn(
-                    "min-h-10 min-w-10 rounded-xl border px-3 text-[13px] font-black tabular",
+                    "min-h-10 min-w-10 rounded-xl border px-3 text-[14px] font-black tabular",
                     perTrainer === n
                       ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                       : "border-div-d bg-card text-ink-d2",

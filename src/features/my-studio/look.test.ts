@@ -1,0 +1,269 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+/**
+ * MY STUDIO'S LOOK, HELD (voice review follow-up, Sep 27 2026) — a scan of
+ * the stylesheets My Studio draws with, as client-codex/kit/scale.test.ts is
+ * for the codex. The rules are CLAUDE.md's and the app's look:
+ *
+ *   1. No raw hex colour outside a token definition. Colours are the --st-*
+ *      tokens (studio-tokens.test.ts holds them to the app's).
+ *   2. A name is never cut short: no ellipsis, no line clamp, no one-line
+ *      cut-off (nowrap with hidden overflow) on the classes that carry a
+ *      person's, a client's, a machine's or a task's name.
+ *   3. The listed controls are at least 40px tall.
+ *   4. Slanted capitals are the display face's alone (a page, a masthead or
+ *      a dialog title); a card or section head is small upright capitals.
+ *   5. Text sizes are counted against the 11 / 12 / 14 / 17 / 30 scale, and
+ *      the count only goes down.
+ *
+ * If one of these fails, the fix is the stylesheet, not the test.
+ */
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
+
+/**
+ * My Studio's stylesheets: the six the shell loads (MyStudioView), then the
+ * ones its sections and Relay's tabs bring. Three are also drawn elsewhere,
+ * on purpose, with the same tokens: relay-strip.css and reminders.css on the
+ * Calendar, note-body.css on the client profile's Goals & Focus.
+ */
+const FILES = [
+  "features/studio-tasks/studio-tasks.css",
+  "features/studio-tasks/studio-hub.css",
+  "features/relay/kit.css",
+  "features/relay/planner.css",
+  "features/relay/board/relay.css",
+  "features/my-studio/my-studio.css",
+  "features/relay/team/team.css",
+  "features/relay/jobs/jobs.css",
+  "features/relay/notes/notes.css",
+  "features/relay/notes/note-body.css",
+  "features/relay/board/relay-strip.css",
+  "features/relay/reminders/reminders.css",
+] as const;
+
+/**
+ * notes.css is on the codex's list too (HOSTED_FILES in
+ * client-codex/kit/scale.test.ts, because the codex mounts its jot rules),
+ * so its sizes are counted there and not a second time here.
+ */
+const SIZES_COUNTED_ELSEWHERE = new Set<string>(["features/relay/notes/notes.css"]);
+
+/**
+ * Rules in these files that are not My Studio's: the machine upkeep card
+ * (.stu) is drawn on a machine's Catalog page and has its own owner. Its
+ * one #fff (the ticked box's mark) is theirs to move to --st-done-on.
+ */
+const NOT_MY_STUDIOS = /^\.stu(?:__|\b)/;
+
+type Rule = { file: string; selectors: string[]; body: string };
+
+function rulesOf(file: string): Rule[] {
+  const css = read(file).replace(/\/\*[\s\S]*?\*\//g, "");
+  const out: Rule[] = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const prelude = m[1].trim();
+    if (!prelude || prelude.startsWith("@") || /^(?:from|to|\d+%)/.test(prelude)) continue;
+    out.push({ file, selectors: prelude.split(",").map((s) => s.trim()), body: m[2] });
+  }
+  return out;
+}
+
+const RULES = FILES.flatMap(rulesOf);
+
+/** The last compound of a selector: the element the rule styles. */
+const subject = (selector: string) => selector.split(/[\s>+~]+/).filter(Boolean).pop() ?? "";
+const names = (compound: string, cls: string) => new RegExp(`\\.${cls}(?![\\w-])`).test(compound);
+/** Rules whose subject is `cls` itself (not a pseudo-element drawn inside it). */
+const rulesFor = (cls: string) =>
+  RULES.filter((r) => r.selectors.some((s) => names(subject(s), cls) && !subject(s).includes("::")));
+
+const declared = (body: string, prop: string): string[] =>
+  [...body.matchAll(new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;]+)`, "g"))].map((m) => m[1].trim());
+
+/* ------------------------------------------------------------------ */
+
+describe("My Studio's colours", () => {
+  it("write no hex value outside a token definition", () => {
+    const found: string[] = [];
+    for (const rule of RULES) {
+      if (rule.selectors.every((s) => NOT_MY_STUDIOS.test(s))) continue;
+      for (const decl of rule.body.split(";")) {
+        const [prop, ...rest] = decl.split(":");
+        if (!prop || rest.length === 0 || prop.trim().startsWith("--")) continue;
+        const value = rest.join(":");
+        if (/#[0-9a-f]{3,8}\b/i.test(value) || /(?:^|\s)(?:white|black)(?:\s|$)/i.test(value)) {
+          found.push(`${rule.file}: ${rule.selectors.join(", ")} { ${decl.trim()} }`);
+        }
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("define colour tokens in one place (studio-tasks.css), never a second --st-* set", () => {
+    for (const file of FILES) {
+      if (file === "features/studio-tasks/studio-tasks.css") continue;
+      expect(read(file).replace(/\/\*[\s\S]*?\*\//g, ""), file).not.toMatch(/--st-[\w-]+\s*:/);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+
+/** Classes that carry a name. Each must exist, and none may be cut short. */
+const NAME_CLASSES = [
+  "sh__client-name", // a client, on Relay → Floor's client tasks
+  "sh__client-what", // what the client needs, beside the name
+  "ini__name", // a trainer, in the initiative roll-up
+  "pt__line", // the Now Bar's teammate line: a teammate's name and what they did
+  "pt__who",
+  "tm-card__name", // a person's card on Team
+  "tj-card__title", // a team job
+  "tj-person__name",
+  "tj-part__label",
+  "nu__title", // a Next up card
+  "sh__group-title", // a machine group or a duty
+  "sh__row-name", // a machine in the group
+  "sh__entry-title", // a playbook entry
+  "stq__item-title", // an ask
+  "stm__grid-title", // a standing duty on Team's seven-day grid
+  "stm__item-title",
+  "tw-item__title", // a standing task in the wizard's list
+  "pl__task-title", // a task on Mine
+  "fm__name", // a machine on the Floor Map
+  "pn__card-title", // a note
+  "tc__loop-title", // an open loop
+  "vault__title",
+  "rk-title", // a dialog's title (a job's own name, in the job sheet)
+] as const;
+
+describe("names in My Studio", () => {
+  it("are all real classes", () => {
+    for (const cls of NAME_CLASSES) expect(rulesFor(cls).length, cls).toBeGreaterThan(0);
+  });
+
+  it("are never cut short", () => {
+    for (const cls of NAME_CLASSES) {
+      const bodies = rulesFor(cls).map((r) => r.body).join(";");
+      expect(declared(bodies, "text-overflow").filter((v) => /ellipsis/.test(v)), `${cls}: ellipsis`).toEqual([]);
+      expect(declared(bodies, "-webkit-line-clamp"), `${cls}: line clamp`).toEqual([]);
+      const nowrap = declared(bodies, "white-space").some((v) => /nowrap/.test(v));
+      const hidden = declared(bodies, "overflow(?:-x)?").some((v) => /hidden|clip/.test(v));
+      expect(nowrap && hidden, `${cls}: one line, clipped`).toBe(false);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+
+/** Controls held at the 40px floor. The first sixteen were 26 to 36px until Sep 27 2026. */
+const TAP_CLASSES = [
+  "sh__claim",
+  "sh__assign",
+  "sh__markall",
+  "sh__confirm",
+  "sh__mine",
+  "sh__row-flag",
+  "sh__search-clear",
+  "stq__new",
+  "stq__kind",
+  "stq__act",
+  "stq__react",
+  "stm__preset",
+  "nu__more",
+  "pt__kudos",
+  "ne__suggest-use",
+  "rls__chip",
+  "sh__chip",
+  "stq__post",
+  "st__btn",
+  "st__row-action",
+  "pl__btn",
+  "pl__tab",
+  "pl__check",
+  "rk-chip",
+  "rk-toggle",
+  "tj-open",
+  "tj-done__toggle",
+  "nu__do",
+  "cp__close",
+  "cf",
+  "rs__item",
+  "nb-tool",
+  "nb__check",
+  "pn__text-btn",
+  "ms__waiting-go",
+] as const;
+
+const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
+
+describe("controls in My Studio", () => {
+  it("are at least 40px tall, everywhere their size is set", () => {
+    for (const cls of TAP_CLASSES) {
+      const heights = rulesFor(cls).flatMap((r) => [...declared(r.body, "min-height"), ...declared(r.body, "height")]);
+      const sizes = heights.map(px).filter((n): n is number => n !== null);
+      expect(sizes.length, `${cls} sets no height`).toBeGreaterThan(0);
+      for (const n of sizes) expect(n, `${cls} is ${n}px somewhere`).toBeGreaterThanOrEqual(40);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------ */
+
+describe("My Studio's type", () => {
+  it("slants capitals only in the display face", () => {
+    for (const rule of RULES) {
+      const italic = declared(rule.body, "font-style").some((v) => v === "italic");
+      const capitals = declared(rule.body, "text-transform").some((v) => v === "uppercase");
+      if (!italic || !capitals) continue;
+      expect(declared(rule.body, "font-family"), `${rule.file}: ${rule.selectors.join(", ")}`).toContain("var(--font-display)");
+    }
+  });
+
+  it("titles the masthead in the page-title voice", () => {
+    const [title] = rulesFor("pl__title").filter((r) => r.selectors.includes(".pl__title"));
+    expect(declared(title.body, "font-family")).toEqual(["var(--font-display)"]);
+    expect(declared(title.body, "font-weight")).toEqual(["800"]);
+    expect(declared(title.body, "font-style")).toEqual(["italic"]);
+    expect(declared(title.body, "text-transform")).toEqual(["uppercase"]);
+  });
+
+  it("heads a panel in small upright capitals", () => {
+    const [head] = rulesFor("pl__h2");
+    expect(declared(head.body, "font-style")).toEqual([]);
+    expect(declared(head.body, "text-transform")).toEqual(["uppercase"]);
+    expect(px(declared(head.body, "font-size")[0])).toBeLessThanOrEqual(12);
+  });
+
+  it("draws Relay's own tabs as a second, lighter level under My Studio's", () => {
+    const row = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tabs"));
+    const tab = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tab"));
+    expect(row && declared(row.body, "background")).toEqual(["transparent"]);
+    expect(row && declared(row.body, "border")).toEqual(["0"]);
+    expect(tab && declared(tab.body, "text-transform")).toEqual(["none"]);
+  });
+
+  it("keeps text on the 11 / 12 / 14 / 17 / 30 scale, within a budget that only goes down", () => {
+    const SCALE = new Set([11, 12, 14, 17, 30]);
+    const off: string[] = [];
+    for (const file of FILES) {
+      if (SIZES_COUNTED_ELSEWHERE.has(file)) continue;
+      const css = read(file).replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/(?:^|[;{\s])font-size\s*:\s*([^;}]+)/g)) {
+        const v = m[1].trim();
+        if (v === "inherit" || /^var\(/.test(v)) continue;
+        const n = px(v);
+        if (n === null || !SCALE.has(n)) off.push(`${file}: font-size ${v}`);
+      }
+    }
+    // Measured Sep 27 2026 when My Studio's type moved onto the scale: 3,
+    // all in the Catalog's upkeep card (.stu, not My Studio's). Lower it;
+    // never raise it.
+    const BUDGET = 3;
+    expect(off.length, off.join("\n")).toBeLessThanOrEqual(BUDGET);
+  });
+});

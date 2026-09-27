@@ -143,7 +143,7 @@ export function ResolveDialog({
               placeholder="What you actually did, so the next person does not have to work it out again."
               className="w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-ink-d1 placeholder:text-ink-d3 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <p className="mt-1 text-right text-[10px] text-ink-d3 tabular">
+            <p className="mt-1 text-right text-[11px] text-ink-d3 tabular">
               {resolution.length}/{RESOLUTION_MAX}
             </p>
           </div>
@@ -189,7 +189,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-title"
-                      className="block text-[10px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
                     >
                       Title — what someone would search for
                     </label>
@@ -204,7 +204,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-tags"
-                      className="block text-[10px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
                     >
                       Tags — comma separated
                     </label>

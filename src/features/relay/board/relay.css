@@ -10,7 +10,8 @@
    its own (--rl-heat-*) so it never borrows the caution colour.
 
    Held-iPad rules the whole file follows:
-     - nothing tappable under 44px, primary actions at the foot / right thumb;
+     - nothing tappable under 40px (44 where a row allows), primary actions
+       at the foot / right thumb;
      - the Now Bar is pinned; the tab content scrolls under it;
      - the Context Panel is a right column in landscape (>= 900px wide) and a
        bottom sheet in portrait — the board never disappears behind a modal.
@@ -72,7 +73,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 999px;
   background: var(--st-surface-2);
   color: var(--st-ink-2);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -91,20 +92,20 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   line-height: 1.25;
 }
 .rnb__next-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
-.rnb__next-who { font-size: 13px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+.rnb__next-who { font-size: 14px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
 
 .rnb__gap-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--st-ink);
   white-space: nowrap;
@@ -162,17 +163,18 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .pt__label {
   flex: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
+/* The line carries a teammate's name, so it wraps (to two lines in the bar)
+   rather than being cut with an ellipsis, as it was until Sep 27 2026. */
 .pt__line {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
   animation: pt-in 500ms ease-out;
 }
 .pt__who { font-weight: 800; color: var(--st-ink); }
@@ -200,7 +202,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 7px;
   background: var(--rl-mine);
   color: var(--st-live-on);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 32px;
   padding: 0 6px;
@@ -220,7 +222,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--st-ink-muted);
 }
@@ -283,7 +285,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .cp__kicker {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -397,7 +399,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -463,7 +465,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border: 1px dashed var(--st-border-strong);
   border-radius: var(--st-radius);
   background: var(--st-surface);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--st-ink-2);
 }
 .rl-prompt__text { flex: 1 1 14rem; min-width: 0; }
@@ -506,7 +508,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   text-align: left;
 }
 .cs__more-hint { font-weight: 600; color: var(--st-ink-muted); }
-.cs__sentence { font-size: 13px; }
+.cs__sentence { font-size: 14px; }
 .cs__go--ready { animation: cs-pulse 700ms ease-out 1; }
 @keyframes cs-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cs__go--ready { animation: none; } }
@@ -556,7 +558,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .nu__card--mine { border-left-color: var(--rl-mine); }
 .nu__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .nu__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.nu__title { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+.nu__title { margin: 0; font-size: 14px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
 .nu__meta { margin: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 12px; color: var(--st-ink-muted); }
 .nu__entity { display: inline-flex; align-items: center; gap: 4px; color: var(--st-ink-2); font-weight: 700; }
 .nu__why { color: var(--st-ink-muted); }
@@ -582,7 +584,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .nu__do:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 .nu__more {
   align-self: center;
-  width: 44px; height: 32px;
+  width: 44px; height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 8px;
   background: transparent; color: var(--st-ink-muted);
@@ -613,13 +615,13 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   background: transparent;
   color: var(--st-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-align: left;
   cursor: pointer;
 }
 .nu__menu button:hover, .nu__menu button:focus-visible { background: var(--st-surface-2); outline: none; }
-.nu__by { margin: 0; font-size: 13px; color: var(--st-ink-2); }
+.nu__by { margin: 0; font-size: 14px; color: var(--st-ink-2); }
 .nu__detail { margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 .nu__foot { display: flex; gap: 0.5rem; width: 100%; }
 .nu__foot .rk-input { flex: 1; min-width: 0; }
@@ -687,7 +689,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .shr__ring--closed .shr__svg { animation: shr-close 600ms ease-out 1; }
 @keyframes shr-close { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .shr__ring--closed .shr__svg { animation: none; } .shr__fill { transition: none; } }
-.shr__label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.shr__label { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .shr__count { font-size: 12px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ *
@@ -698,7 +700,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .fm__group { margin-bottom: 0.75rem; }
 .fm__group-title {
   margin: 0 0 0.375rem;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -755,7 +757,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .fm__sheet { display: flex; flex-direction: column; gap: 0.75rem; }
 .fm__heat { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 800; }
 .fm__heat--2, .fm__heat--3 { color: var(--st-hero-text); }
-.fm__line { margin: 0; font-size: 13px; color: var(--st-ink-2); }
+.fm__line { margin: 0; font-size: 14px; color: var(--st-ink-2); }
 .fm__line--due { color: var(--st-flag); font-weight: 700; }
 .fm__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .fm__actions .pl__btn { min-height: 48px; }
@@ -768,7 +770,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 12px;
   background: var(--st-flag-fill);
   color: var(--st-flag);
-  font-size: 13px;
+  font-size: 14px;
 }
 .fm__flagbox > div { flex: 1; min-width: 0; }
 .fm__flagbox p { margin: 2px 0 0; color: var(--st-ink-2); white-space: pre-wrap; }
@@ -802,8 +804,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 12px;
   background: var(--st-flag-fill);
 }
-.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-flag); white-space: nowrap; }
-.tc__loop-title { grid-area: title; font-size: 13px; font-weight: 800; }
+.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-flag); white-space: nowrap; }
+.tc__loop-title { grid-area: title; font-size: 14px; font-weight: 800; }
 .tc__loop-sub { grid-area: sub; font-size: 12px; color: var(--st-ink-2); }
 .tc__loop .pl__btn { grid-area: action; }
 
@@ -825,9 +827,9 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .vault__item--closed { opacity: 0.65; }
 .vault__kind { flex: none; margin-top: 3px; color: var(--st-ink-muted); }
 .vault__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.vault__title { font-size: 13px; font-weight: 800; }
+.vault__title { font-size: 14px; font-weight: 800; }
 .vault__meta { font-size: 12px; color: var(--st-ink-muted); }
-.vault__body { margin: 4px 0 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.vault__body { margin: 4px 0 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 
 /* ------------------------------------------------------------------ *
  * Kudos, and the small motions
@@ -838,7 +840,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  min-width: 36px; height: 32px;
+  min-width: 40px; min-height: 40px;
   padding: 0 8px;
   border: 1px solid var(--st-border);
   border-radius: 999px;

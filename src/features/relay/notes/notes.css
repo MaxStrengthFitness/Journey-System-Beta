@@ -148,7 +148,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -177,7 +177,7 @@
   gap: 8px;
   padding: 0.5rem 0 0.25rem;
 }
-.pn__confirm p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--st-ink-2); }
+.pn__confirm p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-2); }
 .pn__confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .pn__filters {
@@ -234,7 +234,7 @@
   background: var(--st-surface);
   color: var(--st-ink-2);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -249,7 +249,7 @@
   border-radius: 10px;
   background: var(--st-flag-fill);
   color: var(--st-flag);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -281,7 +281,7 @@
   align-items: flex-start;
   gap: 10px;
   margin: 0.75rem 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--st-ink-muted);
 }
 .pn__state p { margin: 0; }
@@ -339,7 +339,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -359,7 +359,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -372,14 +372,14 @@
   white-space: nowrap;
 }
 .pn__card-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
 /* The body is clamped; names never are. */
 .pn__card-excerpt {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--st-ink-muted);
   display: -webkit-box;
@@ -408,7 +408,7 @@
   border-radius: 999px;
   background: var(--st-flag-fill);
   color: var(--st-flag);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -431,8 +431,8 @@
   color: var(--st-ink-muted);
 }
 .pn__placeholder svg { color: var(--st-ink-faint); }
-.pn__placeholder-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--st-ink); }
-.pn__placeholder-body { margin: 0 0 0.5rem; max-width: 46ch; font-size: 13px; line-height: 1.6; }
+.pn__placeholder-title { margin: 0; font-size: 14px; font-weight: 800; color: var(--st-ink); }
+.pn__placeholder-body { margin: 0 0 0.5rem; max-width: 46ch; font-size: 14px; line-height: 1.6; }
 
 /* ------------------------------------------------------------------ *
  * The open note
@@ -519,7 +519,7 @@
   border-radius: 10px;
   background: var(--st-flag-fill);
   color: var(--st-flag);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -537,7 +537,7 @@
   background: transparent;
   color: var(--st-ink);
   font: inherit;
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: -0.01em;
 }
@@ -590,7 +590,7 @@
 .ne__field { display: flex; flex-direction: column; gap: 4px; min-width: 12rem; }
 .ne__label {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -655,7 +655,7 @@
   background: transparent;
   color: var(--st-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-align: left;
   overflow-wrap: anywhere;
@@ -728,7 +728,7 @@
   background: transparent;
   color: var(--st-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
 }
 .ne__linker-close {
   display: grid;
@@ -787,7 +787,7 @@
   background: var(--st-bg);
   color: var(--st-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
   resize: none;
   overflow: hidden;
@@ -825,7 +825,7 @@
 }
 .ne__share-body {
   margin: 0.375rem 0 0;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--st-ink-2);
 }
@@ -885,7 +885,7 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -894,7 +894,7 @@
   flex-direction: column;
   gap: 8px;
 }
-.ne__confirm p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--st-ink-2); }
+.ne__confirm p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-2); }
 .ne__confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (min-width: 1024px) {
@@ -939,7 +939,7 @@
   display: grid;
   place-items: center;
   color: var(--st-ink-muted);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -988,7 +988,7 @@
   background: var(--st-surface);
   color: var(--st-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
 }
 .wl__add { min-width: 6rem; }
 .wl__list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
@@ -999,14 +999,14 @@
   border: 1px solid var(--st-border);
 }
 .wl__when {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
 .wl__who { color: var(--st-live); }
-.wl__text { margin: 0.25rem 0; font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.wl__text { margin: 0.25rem 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .wl__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
 .wl__btn {
   display: inline-flex;
@@ -1052,7 +1052,7 @@
 }
 .ns__link:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 .ns__link svg { color: var(--st-live); margin-left: auto; }
-.ns__link-title { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.ns__link-title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .ns__link-host { font-size: 11px; color: var(--st-ink-muted); }
 .ns__x {
   flex: none;
@@ -1092,13 +1092,14 @@
   border-top: 1px solid var(--st-border);
 }
 .ne__publish-head > svg { flex: none; margin-top: 2px; color: var(--st-live); }
+/* A section head: small upright capitals (slanted ones are a page title's). */
 .ne__publish-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.01em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--st-ink-2);
 }
 .ne__publish-lede { margin: 0.125rem 0 0; font-size: 12px; line-height: 1.5; color: var(--st-ink-muted); }
 .ne__publish-head + .ne__share { margin-top: 0.75rem; }
@@ -1108,7 +1109,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1127,7 +1128,7 @@
 .sv__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin-top: 0.25rem; }
 .sv__title {
   margin: 0.625rem 0 0;
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: -0.01em;
   line-height: 1.25;
@@ -1139,7 +1140,7 @@
   border-left: 3px solid var(--st-live);
   border-radius: 0 8px 8px 0;
   background: var(--st-live-fill);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--st-ink);
 }
@@ -1199,7 +1200,7 @@
 }
 .ne__suggest svg { color: var(--st-live); }
 .ne__suggest-use {
-  min-height: 32px;
+  min-height: 40px;
   padding: 0 10px;
   border: 1px solid var(--st-live);
   border-radius: 999px;
@@ -1221,7 +1222,7 @@
   border: 1px solid var(--st-border);
   border-radius: 10px;
   background: var(--st-surface);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 .ne__handoff input { width: 20px; height: 20px; margin-top: 2px; flex: none; }

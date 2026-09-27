@@ -164,7 +164,7 @@ export function SubmitInitiativeDialog({
 
           <ul className="max-h-64 overflow-y-auto rounded-xl border border-div-d">
             {matches.length === 0 && (
-              <li className="p-3 text-[13px] text-ink-d3">
+              <li className="p-3 text-[14px] text-ink-d3">
                 No clients match “{term.trim()}”.
               </li>
             )}

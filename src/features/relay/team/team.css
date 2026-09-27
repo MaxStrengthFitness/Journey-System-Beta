@@ -46,9 +46,9 @@
 .tm-card__head { display: flex; align-items: center; gap: 0.625rem; }
 .tm-card__head .rk-avatar { width: 34px; height: 34px; font-size: 12px; }
 .tm-card__who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.tm-card__name { font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.tm-card__name { font-size: 14px; font-weight: 800; overflow-wrap: anywhere; }
 .tm-card__role {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
 .tm-line {
   position: relative;
   padding-left: 14px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--st-ink-2);
   overflow-wrap: anywhere;

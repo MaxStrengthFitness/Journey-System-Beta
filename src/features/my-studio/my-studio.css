@@ -7,7 +7,8 @@
    plain scrolling body for a section that has no scroller of its own. Tokens
    are the Studio Hub's --st-*, except the waiting notice's link, which sits
    among Team's admin-kit panels and takes their blue (--adm-live-text);
-   nothing here writes a hex value.
+   nothing here writes a hex value, and look.test.ts holds that for every
+   stylesheet My Studio draws with.
    ========================================================================== */
 
 /* A section body that scrolls as one page (the Team panel brings .st__scroll

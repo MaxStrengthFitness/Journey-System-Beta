@@ -144,9 +144,10 @@
   border-bottom: 1px solid var(--st-border);
 }
 
-.st__title { margin: 0; font-size: 15px; font-weight: 900; font-style: italic;
-  text-transform: uppercase; letter-spacing: -0.01em; }
-.st__date { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.16em;
+/* A page title: the display face's slanted capitals, as the masthead's. */
+.st__title { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800;
+  font-style: italic; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.1; }
+.st__date { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--st-ink-muted); }
 /* ── rows (the Hub's task rows; the original screen's group cards, selection
    bar, banners and view toggle went with it in the cost round, Sep 2026) ── */
@@ -168,7 +169,7 @@
 /* ── buttons ────────────────────────────────────────────────────────────── */
 .st__btn { min-height: 40px; padding: 0 0.875rem; border: 1px solid var(--st-border-strong);
   border-radius: 10px; background: var(--st-surface); color: var(--st-ink); font: inherit;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
   cursor: pointer; white-space: nowrap; }
 .st__btn:hover { background: var(--st-surface-2); }
 .st__btn:disabled { opacity: 0.55; cursor: default; }
@@ -259,11 +260,11 @@
 .stq__count { display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
   background: var(--st-live-fill); color: var(--st-live);
-  font-size: 10px; font-weight: 800; }
+  font-size: 11px; font-weight: 800; }
 .stq__new { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 34px; padding: 0 0.7rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.7rem; border: 1px solid var(--st-border);
   border-radius: 10px; background: var(--st-surface); color: var(--st-ink-2);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; cursor: pointer; white-space: nowrap; }
 .stq__new:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
@@ -271,9 +272,9 @@
   background: var(--st-surface-2); display: flex; flex-direction: column; gap: 0.5rem; }
 .stq__kinds { display: flex; flex-wrap: wrap; gap: 4px; }
 .stq__kind { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 34px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-muted);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; cursor: pointer; }
 /* Selected in the brand blue, as every other pick on the board is. */
 .stq__kind[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live);
@@ -282,12 +283,12 @@
 .stq__row { display: flex; gap: 0.4rem; }
 .stq__input { flex: 1; min-width: 0; min-height: 40px; padding: 0 0.7rem;
   border: 1px solid var(--st-border); border-radius: 10px;
-  background: var(--st-surface); color: var(--st-ink); font: inherit; font-size: 13px; }
+  background: var(--st-surface); color: var(--st-ink); font: inherit; font-size: 14px; }
 /* Posting is a save: solid brand blue. Orange is Capture's alone. */
 .stq__post { display: inline-flex; align-items: center; gap: 0.3rem;
   min-height: 40px; padding: 0 0.8rem; border: 1px solid var(--st-live);
   border-radius: 10px; background: var(--st-live); color: var(--st-live-on);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.1em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; cursor: pointer; }
 .stq__post:disabled { border-color: var(--st-border); background: var(--st-surface-3);
   color: var(--st-ink-muted); cursor: default; }
@@ -306,15 +307,15 @@
   width: 28px; height: 28px; flex: none; border-radius: 9px;
   background: var(--st-surface-2); color: var(--st-ink-muted); }
 .stq__item-text { flex: 1; min-width: 12rem; }
-.stq__item-title { display: block; font-size: 13px; font-weight: 700;
+.stq__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stq__item-sub { display: block; margin-top: 1px; font-size: 10px; font-weight: 700;
+.stq__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
   letter-spacing: 0.06em; color: var(--st-ink-muted); }
 
 .stq__act { display: inline-flex; align-items: center; gap: 0.25rem;
-  min-height: 34px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 10px; background: var(--st-surface-2); color: var(--st-ink-2);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; cursor: pointer; white-space: nowrap; }
 .stq__act[aria-pressed="true"] { border-color: var(--st-live); color: var(--st-live); }
 .stq__act:disabled { opacity: 0.5; cursor: default; }
@@ -327,11 +328,11 @@
   flex-direction: column; gap: 0.35rem; }
 .stq__reply { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem;
   padding: 0.4rem 0.6rem; border-radius: 10px; background: var(--st-surface-2); }
-.stq__reply-who { font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+.stq__reply-who { font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--st-live); }
 .stq__reply-body { flex: 1; min-width: 8rem; font-size: 12px; color: var(--st-ink);
   overflow-wrap: anywhere; }
-.stq__reply-when { font-size: 9px; font-weight: 700; color: var(--st-ink-muted); }
+.stq__reply-when { font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
 
 /* ── shelf life and one-tap replies (Sep 6) ─────────────────────────────── */
 
@@ -339,7 +340,7 @@
    a heading above it, because a second heading inside a composer that is
    already inside a lane inside a board is one nesting level too many. */
 .stq__expiry-label { display: inline-flex; align-items: center; gap: 0.3rem;
-  align-self: center; margin-right: 0.15rem; font-size: 10px; font-weight: 800;
+  align-self: center; margin-right: 0.15rem; font-size: 11px; font-weight: 800;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
 
 /* Time remaining, inline in the sub-line. The caution plum, not the alert
@@ -348,17 +349,17 @@
 .stq__ttl { display: inline-flex; align-items: center; gap: 0.2rem;
   margin-left: 0.4rem; padding: 1px 5px; border-radius: 999px;
   background: var(--st-flag-fill); color: var(--st-flag);
-  font-size: 9px; font-weight: 800; letter-spacing: 0.06em; }
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
 
 .stq__reacts { display: flex; flex-wrap: wrap; gap: 4px;
   padding: 0 0.875rem 0.6rem 3.25rem; }
 
-/* 34px, matching every other chip on this screen. A reaction that is smaller
+/* 40px, matching every other chip on this screen. A reaction that is smaller
    than the thing next to it invites the mis-tap it is meant to save. */
 .stq__react { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 34px; padding: 0 0.6rem; border: 1px solid var(--st-border);
+  min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);
   border-radius: 999px; background: var(--st-surface-2); color: var(--st-ink-muted);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
   cursor: pointer; white-space: nowrap; }
 .stq__react:hover { background: var(--st-surface-3); color: var(--st-ink-2); }
 .stq__react[aria-pressed="true"] { border-color: var(--st-live);
@@ -369,7 +370,7 @@
 .stq__react-n { display: inline-flex; align-items: center; justify-content: center;
   min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px;
   background: var(--st-surface); color: var(--st-ink-2);
-  font-size: 9px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stq__react[aria-pressed="true"] .stq__react-n { background: var(--st-live);
   color: var(--st-live-on); }
 
@@ -399,7 +400,7 @@
   background: var(--st-surface-2); color: var(--st-ink-2); }
 .stm__title { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase; }
-.stm__hint { margin-left: auto; font-size: 9px; font-weight: 700;
+.stm__hint { margin-left: auto; font-size: 11px; font-weight: 700;
   letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-ink-muted); }
 
 .stm__empty { margin: 0; padding: 0.875rem; color: var(--st-ink-muted);
@@ -410,7 +411,7 @@
 .stm__scroll { overflow-x: auto; }
 .stm__grid { width: 100%; border-collapse: collapse; }
 .stm__grid th, .stm__grid td { padding: 0.4rem 0.35rem; text-align: center; }
-.stm__grid thead th { font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+.stm__grid thead th { font-size: 11px; font-weight: 800; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--st-ink-muted);
   border-bottom: 1px solid var(--st-border); }
 .stm__grid tbody tr { border-bottom: 1px solid var(--st-border); }
@@ -419,7 +420,7 @@
 .stm__grid-name { text-align: left !important; min-width: 9rem; }
 .stm__grid-title { display: block; font-size: 12px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__grid-sub { display: block; font-size: 9px; font-weight: 700;
+.stm__grid-sub { display: block; font-size: 11px; font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--st-ink-muted); }
 
 .stm__cell { display: inline-block; width: 14px; height: 14px; border-radius: 4px;
@@ -439,9 +440,9 @@
 .stm__list { list-style: none; margin: 0; padding: 0; }
 .stm__item { padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--st-border); }
 .stm__item:last-child { border-bottom: 0; }
-.stm__item-title { display: block; font-size: 13px; font-weight: 700;
+.stm__item-title { display: block; font-size: 14px; font-weight: 700;
   color: var(--st-ink); overflow-wrap: anywhere; }
-.stm__item-sub { display: block; margin-top: 1px; font-size: 10px; font-weight: 700;
+.stm__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
   letter-spacing: 0.06em; color: var(--st-ink-muted); }
 
 /* ── studio task authoring, inside Manage (Sep 6) ───────────────────────── */
@@ -453,9 +454,9 @@
 .stm__actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
 
 .stm__preset { display: inline-flex; align-items: center; gap: 0.3rem;
-  min-height: 36px; padding: 0 0.7rem; border: 1px dashed var(--st-border-strong);
+  min-height: 40px; padding: 0 0.7rem; border: 1px dashed var(--st-border-strong);
   border-radius: 999px; background: var(--st-surface); color: var(--st-ink-2);
-  font: inherit; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+  font: inherit; font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; cursor: pointer; white-space: nowrap; }
 .stm__preset:hover { background: var(--st-surface-2); }
 .stm__preset:disabled { opacity: 0.5; cursor: default; }

@@ -236,7 +236,7 @@ const LINE_CLAMP_LINES = 2;
  * The cleanup (19) deleted what nothing mounted any more — ClientJournalTab,
  * DossierPrimitives and JournalRail: 57, the final value.
  *
- * WHAT IS LEFT, AND WHY IT STAYS. The two stylesheets that still count are
+ * WHAT IS LEFT, AND WHY IT STAYS. The stylesheets listed here are
  * SHARED: the codex mounts a piece of each, but other screens draw the rest
  * at their own sizes, so moving them onto the codex's scale would change
  * screens that are not the codex's.
@@ -245,8 +245,10 @@ const LINE_CLAMP_LINES = 2;
  *     `.ford-btn`), and the rest of the file is that capture sheet, the
  *     post-session sweep, the briefing's row and the Delight queue — all off
  *     the codex.
- *   - relay/notes/notes.css (31): Relay's notes, whose jot rules came onto
- *     the scale in phase 14; the rest is Relay's own screen.
+ *   - relay/notes/notes.css (0): Relay's notes, whose jot rules came onto
+ *     the scale in phase 14 and the rest with My Studio's type (Sep 27
+ *     2026, the voice review follow-up); src/features/my-studio/look.test.ts
+ *     holds the rest of My Studio's stylesheets.
  *   - the clinical flag picker (0): only the codex mounts it (Body & Pulse →
  *     Watch-outs) and it is on the scale already. It stays here rather than
  *     on CODEX_FILES only because its screen-reader-only text is one line
@@ -262,8 +264,8 @@ const HOSTED_FILES: readonly string[] = [
   "features/clinical-flags/ClinicalFlagPicker.tsx",
   "features/clinical-flags/clinical-flags.css",
 ];
-/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93; after Account (phase 16): 80; after the cleanup (phase 19): 57, the final value. Lower it; never raise it. */
-const HOSTED_OFF_SCALE_BUDGET = 57;
+/** Measured when the shell landed (phase 8): 168; after the FORD page (phase 10): 148; after Body & Pulse (phase 12): 125; after Goals & Focus (phase 14): 93; after Account (phase 16): 80; after the cleanup (phase 19): 57; after My Studio's type moved Relay's notes onto the scale (Sep 27 2026): 26. Lower it; never raise it. */
+const HOSTED_OFF_SCALE_BUDGET = 26;
 
 /**
  * Components only the codex mounts that live OUTSIDE its folder and draw
