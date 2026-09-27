@@ -95,7 +95,6 @@ function tabFor(intent: PlannerIntent): PlannerTab {
 export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }: PlannerViewProps) {
   const { activeStudioId } = useActiveStudio();
   const { now, panel, openCapture, closePanel } = useRelay();
-  const tabs = TABS;
 
   // A request from a client's profile or a notification, read on arrival —
   // see ./intent.ts. Held until the trainer changes tab, so it acts once.
@@ -103,16 +102,16 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
   useEffect(() => {
     clearPlannerIntent(intent);
   }, [intent]);
-  const [tab, setTab] = useState<PlannerTab>(() => {
+  // The tab on screen. Every tab is everyone's since Network left Relay.
+  const [shown, setShown] = useState<PlannerTab>(() => {
     if (intent) rememberedTab = tabFor(intent);
     return rememberedTab;
   });
-  const shown: PlannerTab = tab;
 
   const clearIntent = useCallback(() => setIntent(null), []);
   const choose = (next: PlannerTab) => {
     rememberedTab = next;
-    setTab(next);
+    setShown(next);
     setIntent(null);
     closePanel();
   };
@@ -124,7 +123,7 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
     <>
       <div className="pl__subbar">
         <div className="pl__tabs" role="tablist" aria-label="Relay">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"

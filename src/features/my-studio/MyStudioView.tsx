@@ -11,7 +11,7 @@ import { StudioSection } from "./StudioSection";
 import { MachinesSection } from "./MachinesSection";
 import { peekPlannerIntent } from "../relay/intent";
 import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../relay/board/RelayContext";
-import { reachesTier } from "../relay/board/RoleGate";
+import { leadsHere } from "../relay/leads";
 import { useNowContext } from "../relay/board/NowBar";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { CaptureSheet } from "../relay/board/CaptureSheet";
@@ -97,7 +97,7 @@ export function MyStudioView({
   onOpenClientTask,
 }: MyStudioViewProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
-  const canLead = reachesTier(authTrainer, activeStudioId, "leads");
+  const canLead = leadsHere(authTrainer, activeStudioId);
   const sections = SECTIONS.filter((s) => !s.tier || canLead);
 
   // A request from a client's profile or a notification always lands on the
