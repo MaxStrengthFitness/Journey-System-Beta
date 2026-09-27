@@ -208,7 +208,7 @@ colleague card below shows it), and a line under the field says so.
 
 **D4 — Colleagues can see each other's weeks.** AJ: "schedules are open to
 all." A colleague's profile has a read-only Standing week card at the active
-studio: the AGREED week (hours and regulars) and the days away that haven't
+studio: the AGREED week (when they take clients, and their regulars) and the days away that haven't
 ended, else "No agreed week yet". The proposal waiting on a leader and the
 note for the leader are not shown. It appears where the colleague works,
 where the viewer may read the studio's weeks (`mayReadWeeks`: works there,
@@ -273,6 +273,22 @@ limits for the blocks or the regulars ever differ from `week.ts`'s, so the
 two can't drift on a machine that can't run the emulator. **The rules must
 be deployed before the app**: until they are, a proposal with a 15th block
 is refused (the proposal says so and keeps the week; nothing is lost).
+
+**An iPad still on an older build cuts a week to 14 blocks.** A build from
+before this round normalizes every week it reads with the old `MAX_HOURS`
+(14), Monday first, so it shows a three-a-day week without its last blocks
+(Friday's third, all of Saturday and Sunday) and nothing on screen says so.
+If a leader AGREES such a week on that build, `agreementWrite` writes the
+shortened week to both the proposal and the agreed week: Team then reads
+"agreed" and the loss is **silent** — the trainer's own proposal is gone
+too. If the trainer re-proposes on that build, the proposal is shortened,
+and Team reads "changed" only when a week was already agreed. The new rules
+accept both writes (21 is a ceiling, not a floor), and nothing in the new
+code can tell which build wrote. So after the push, each iPad loads the new
+version (go to the Hub, or tap the new-version line under the header)
+before anyone proposes, agrees or re-saves a week with three blocks on a
+day. To repair a week that was cut, the trainer enters the missing blocks
+again on the new build and a leader agrees it again.
 
 **The words.** A block is when a trainer takes clients, not the hours they
 work, so no screen says "hours" any more:
