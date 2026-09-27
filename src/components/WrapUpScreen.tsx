@@ -51,6 +51,7 @@ import { usePackagesDoor } from "../features/packages/usePackagesDoor";
 import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
+import { useTheme } from "./ThemeProvider";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
  *
@@ -122,6 +123,8 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  */
 
 export interface WrapUpScreenProps {
+  /** The studio the session is at, for the header (the active studio's name). */
+  studioName?: string;
   /**
    * How much of this client's story Journey holds (lib/client-coverage.ts).
    *
@@ -265,6 +268,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
 }
 
 export function WrapUpScreen({
+  studioName,
   client,
   session,
   logs,
@@ -286,6 +290,7 @@ export function WrapUpScreen({
   onStudioClick,
   coverage = "unknown",
 }: WrapUpScreenProps) {
+  const { theme } = useTheme();
   const [dose, setDose] = useState<DialValue | null>(null);
   const [doseSaved, setDoseSaved] = useState(false);
   const [notes, setNotes] = useState("");
@@ -478,8 +483,12 @@ export function WrapUpScreen({
 
       <div className="max-w-205 mx-auto w-full h-full relative flex flex-col border-x border-div-d shadow-2xl">
         <AppHeader
-          variant="dark"
-          trainerInitials={authTrainer?.initials || "AJ"}
+          // The header follows the theme, as the page below it does: a fixed
+          // "dark" header drew the studio's name white on white in the light
+          // theme (its bg-dark-2 is #FFFFFF there).
+          variant={theme === "light" ? "light" : "dark"}
+          studioName={studioName}
+          trainerInitials={authTrainer?.initials}
           rightControls={rightControls}
           trainerDropdown={trainerDropdown}
           onStudioClick={onStudioClick}

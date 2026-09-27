@@ -5,6 +5,12 @@ import { cn } from "@/lib/utils";
 interface AppHeaderProps {
   variant: "light" | "dark";
   trainerInitials?: string;
+  /**
+   * The studio the app is in. No default: a header that isn't told its studio
+   * says "Choose a studio" (or nothing) rather than naming one. It defaulted
+   * to "SOLON" until Sep 27 2026, and the session's screens never passed a
+   * name, so the briefing and the Wrap-up said SOLON at every studio.
+   */
   studioName?: string;
   onStudioClick?: () => void;
   /**
@@ -27,13 +33,14 @@ interface AppHeaderProps {
 export function AppHeader({
   variant,
   trainerInitials,
-  studioName = "SOLON",
+  studioName,
   onStudioClick,
   rightControls,
   trainerDropdown,
   searchSlot,
 }: AppHeaderProps) {
   const isLight = variant === "light";
+  const name = studioName?.trim() ?? "";
 
   return (
     <header
@@ -57,11 +64,11 @@ export function AppHeader({
           // This control SWITCHES STUDIOS. A half-rendered name is genuinely
           // ambiguous across a franchise with similar location names, so the
           // full one has to stay recoverable.
-          title={studioName}
+          title={name || undefined}
           aria-label={
             onStudioClick
-              ? `Studio: ${studioName}. Change studio.`
-              : `Studio: ${studioName}`
+              ? name ? `Studio: ${name}. Change studio.` : "Choose a studio"
+              : name ? `Studio: ${name}` : "Studio"
           }
           className={cn(
             // ch, not px: the cap scales with the font so it holds across the
@@ -83,7 +90,7 @@ export function AppHeader({
               : "cursor-default",
           )}
         >
-          {studioName}
+          {name || (onStudioClick ? "Choose a studio" : "")}
         </button>
       </div>
 

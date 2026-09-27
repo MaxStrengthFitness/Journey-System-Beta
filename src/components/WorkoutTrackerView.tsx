@@ -2924,6 +2924,7 @@ export function WorkoutTrackerView({
   if (screen === "post-session" && postSession) {
     return (
       <WrapUpScreen
+        studioName={activeStudio?.name}
         client={postSession.client}
         coverage={clientCoverage}
         session={postSession.session}
@@ -3022,6 +3023,7 @@ export function WorkoutTrackerView({
     return (
       <NothingOnScreen
         kind={nothingKind(clientId, clientLookup)}
+        studioName={activeStudio?.name}
         trainerInitials={authTrainer?.initials}
         onRetry={onRetryClient}
         onFindClient={() => setView("client-directory")}
@@ -3100,6 +3102,7 @@ export function WorkoutTrackerView({
     return (
       <>
         <BriefingScreen
+          studioName={activeStudio?.name}
           authTrainer={authTrainer}
           client={selectedClient}
           coverage={clientCoverage}

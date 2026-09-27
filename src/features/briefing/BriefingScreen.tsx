@@ -115,6 +115,8 @@ import "./briefing.css";
 import { clientDisplayName } from "../../lib/client-name";
 
 export interface BriefingScreenProps {
+  /** The studio the session is at, for the header (the active studio's name). */
+  studioName?: string;
   /**
    * How much of this client's story Journey holds (lib/client-coverage.ts).
    * The briefing is where a trainer meets a client they may not know - AJ's
@@ -150,6 +152,7 @@ export interface BriefingScreenProps {
 }
 
 export function BriefingScreen({
+  studioName,
   authTrainer,
   client,
   targetRoutine,
@@ -501,7 +504,8 @@ export function BriefingScreen({
     <div className="br">
         <AppHeader
           variant={theme === "light" ? "light" : "dark"}
-          trainerInitials={authTrainer?.initials || "AJ"}
+          studioName={studioName}
+          trainerInitials={authTrainer?.initials}
           rightControls={rightControls}
           trainerDropdown={trainerDropdown}
           onStudioClick={onStudioClick}
