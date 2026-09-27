@@ -133,7 +133,8 @@ describe("reading a session", () => {
     for (const r of BODY_REGIONS) {
       const region = SESSION_REGION_TO_FIGURE[r];
       expect(region, r).toBeTruthy();
-      expect(SPOTS[region], r).toBeTruthy();
+      expect(SPOTS.male[region], r).toBeTruthy();
+      expect(SPOTS.female[region], r).toBeTruthy();
     }
   });
 });

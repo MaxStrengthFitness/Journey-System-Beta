@@ -2,7 +2,18 @@ import { describe, expect, it } from "vitest";
 import { CLINICAL_FLAGS_MATRIX } from "../../../data/clinical-matrix";
 import type { PainPoint } from "../../subjective-report/types";
 import { pronounsOf } from "../kit/pronouns";
-import { FLAG_REGIONS, SPOTS, figureLabel, figureMarks, regionRows, type FigureRegion } from "./figure-map";
+import { isBodyArea } from "../../../types/machines";
+import {
+  FIGURE_VIEWBOX,
+  FLAG_REGIONS,
+  REGION_ORDER,
+  SPOTS,
+  figureLabel,
+  figureMarks,
+  regionRows,
+  type FigureGender,
+  type FigureRegion,
+} from "./figure-map";
 import type { PainReading } from "./pulse-read";
 
 const NOW = new Date(2027, 2, 24, 12);
@@ -33,50 +44,123 @@ const reading = (
 const rows = (flagIds: string[], pain: PainReading | null = null, machines = new Map<string, { name: string }>()) =>
   regionRows({ flagIds, pain, machinesById: machines, pronouns: her, now: NOW });
 
+const GENDERS: FigureGender[] = ["male", "female"];
+
+/** A viewBox string as numbers: x, y, width, height. */
+const box = (g: FigureGender, v: "front" | "back") => FIGURE_VIEWBOX[g][v].split(" ").map(Number);
+
 describe("where each flag sits", () => {
-  it("places EVERY clinical flag, and every place it names has a spot", () => {
+  it("places EVERY clinical flag, and every place it names has a spot on both figures", () => {
     for (const f of CLINICAL_FLAGS_MATRIX) {
       expect(FLAG_REGIONS, f.id).toHaveProperty(f.id);
       for (const region of FLAG_REGIONS[f.id])
-        expect(SPOTS[region as FigureRegion], `${f.id} → ${region}`).toBeDefined();
+        for (const g of GENDERS) expect(SPOTS[g][region as FigureRegion], `${g}: ${f.id} → ${region}`).toBeDefined();
     }
   });
 
-  it("puts a flag's diamond on the midline and her ring on the side she named", () => {
-    const marks = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({ side: "right" })] });
-    expect(marks).toContainEqual(expect.objectContaining({ kind: "onfile", view: "front", x: 60, y: 203, r: 0 }));
-    expect(marks).toContainEqual(expect.objectContaining({ kind: "told", view: "front", x: 49, y: 203, r: 8 }));
+  it("puts a flag's diamond on the midline and her ring on the side she named, on her own figure", () => {
+    const him = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({ side: "right" })], gender: "male" });
+    expect(him).toContainEqual(expect.objectContaining({ kind: "onfile", view: "front", x: 364, y: 1006, r: 0 }));
+    expect(him).toContainEqual(expect.objectContaining({ kind: "told", view: "front", x: 296, y: 1006, r: 48 }));
+    const her = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({ side: "right" })], gender: "female" });
+    expect(her).toContainEqual(expect.objectContaining({ kind: "onfile", view: "front", x: 320, y: 1023, r: 0 }));
+    expect(her).toContainEqual(expect.objectContaining({ kind: "told", view: "front", x: 265, y: 1023, r: 48 }));
   });
 
   it("draws nothing for an arm flag and says why", () => {
-    expect(figureMarks({ flagIds: ["gen-elbow-wrist"], painSpots: [] })).toEqual([]);
+    expect(figureMarks({ flagIds: ["gen-elbow-wrist"], painSpots: [], gender: "female" })).toEqual([]);
     const elbow = rows(["gen-elbow-wrist"]).find((r) => r.region === "elbow")!;
     expect(elbow.sentences).toContain("No side on file, so it isn't drawn.");
     expect(elbow.drawn).toBe(false);
   });
 
   it("puts a centre-line spot on the midline, and both sides as two rings", () => {
-    expect(figureMarks({ flagIds: [], painSpots: [point({ region: "neck", side: "center" })] })).toEqual([
-      expect.objectContaining({ x: 60, y: 41, r: 7 }),
+    expect(figureMarks({ flagIds: [], painSpots: [point({ region: "neck", side: "center" })], gender: "male" })).toEqual([
+      expect.objectContaining({ x: 364, y: 282, r: 42 }),
     ]);
-    expect(figureMarks({ flagIds: [], painSpots: [point({ region: "shoulder", side: "both" })] })).toHaveLength(2);
+    expect(
+      figureMarks({ flagIds: [], painSpots: [point({ region: "shoulder", side: "both" })], gender: "male" }),
+    ).toHaveLength(2);
   });
 
   it("gives a resolved spot no ring", () => {
-    expect(figureMarks({ flagIds: [], painSpots: [point({ status: "resolved" })] })).toEqual([]);
+    expect(figureMarks({ flagIds: [], painSpots: [point({ status: "resolved" })], gender: "male" })).toEqual([]);
   });
 
   it("draws the glutes and hamstrings on the back, client's right on the viewer's right", () => {
-    const [mark] = figureMarks({ flagIds: [], painSpots: [point({ region: "glute", side: "right" })] });
-    expect(mark).toMatchObject({ view: "back", x: 71 });
+    const [him] = figureMarks({ flagIds: [], painSpots: [point({ region: "glute", side: "right" })], gender: "male" });
+    expect(him).toMatchObject({ view: "back", x: 1140 });
+    const [her] = figureMarks({ flagIds: [], painSpots: [point({ region: "glute", side: "right" })], gender: "female" });
+    expect(her).toMatchObject({ view: "back", x: 1216 });
   });
 
   it("names what is marked on each view for a screen reader", () => {
-    const marks = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({})] });
+    const marks = figureMarks({ flagIds: ["joint-tka"], painSpots: [point({})], gender: "female" });
     expect(figureLabel("front", marks, her)).toBe(
       "Front of the body: a watch-out on file at the knee; she told us about the knee",
     );
     expect(figureLabel("back", marks, her)).toBe("Back of the body, nothing marked");
+  });
+});
+
+/*
+ * The spots on the Catalog's figures (Sep 26 2026). They were measured from
+ * the model's own paths; these hold them honest as a set, so a new region or
+ * a nudged number cannot put a ring off the body or on the wrong side.
+ */
+describe("the spots on the Catalog's figures", () => {
+  it("gives every region a spot on both figures, on the same view, with a midline on both or neither", () => {
+    for (const region of REGION_ORDER) {
+      const m = SPOTS.male[region];
+      const f = SPOTS.female[region];
+      expect(m, `male ${region}`).toBeDefined();
+      expect(f, `female ${region}`).toBeDefined();
+      expect(f.view, region).toBe(m.view);
+      expect(!!f.mid, region).toBe(!!m.mid);
+    }
+  });
+
+  it("puts every spot inside its figure", () => {
+    for (const g of GENDERS)
+      for (const region of REGION_ORDER) {
+        const spot = SPOTS[g][region];
+        const [x, y, w, h] = box(g, spot.view);
+        for (const at of [spot.left, spot.right, spot.mid].filter(Boolean)) {
+          expect(at!.x, `${g} ${region}`).toBeGreaterThan(x);
+          expect(at!.x, `${g} ${region}`).toBeLessThan(x + w);
+          expect(at!.y, `${g} ${region}`).toBeGreaterThan(y);
+          expect(at!.y, `${g} ${region}`).toBeLessThan(y + h);
+        }
+      }
+  });
+
+  it("draws her right on the viewer's left from the front and on the viewer's right from the back", () => {
+    for (const g of GENDERS)
+      for (const region of REGION_ORDER) {
+        const { view, left, right, mid } = SPOTS[g][region];
+        if (!left || !right) continue;
+        if (view === "front") expect(right.x, `${g} ${region}`).toBeLessThan(left.x);
+        else expect(right.x, `${g} ${region}`).toBeGreaterThan(left.x);
+        if (mid) {
+          expect(mid.x, `${g} ${region}`).toBeGreaterThan(Math.min(left.x, right.x));
+          expect(mid.x, `${g} ${region}`).toBeLessThan(Math.max(left.x, right.x));
+        }
+      }
+  });
+
+  it("runs head to foot down each view, as the body does", () => {
+    const down: FigureRegion[] = ["neck", "chest", "abdomen", "hip", "groin", "thigh", "knee", "calf_shin", "ankle", "foot"];
+    const back: FigureRegion[] = ["upper_back", "mid_back", "lower_back", "glute", "hamstring"];
+    for (const g of GENDERS)
+      for (const order of [down, back])
+        for (let i = 1; i < order.length; i++) {
+          const y = (r: FigureRegion) => SPOTS[g][r].mid!.y;
+          expect(y(order[i]), `${g}: ${order[i - 1]} above ${order[i]}`).toBeGreaterThan(y(order[i - 1]));
+        }
+  });
+
+  it("knows every region as a body area the Catalog's figure can light (or knowingly cannot)", () => {
+    for (const region of REGION_ORDER) expect(isBodyArea(region), region).toBe(true);
   });
 });
 

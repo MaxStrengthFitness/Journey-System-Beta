@@ -72,6 +72,15 @@
   --cx-focus:           var(--eq-focus-ring);
   --cx-shadow:          var(--eq-shadow);
 
+  /* ---- the body figure (Where it matters, Sep 26 2026) ------------------
+     The Catalog's muscle figure in the codex's own grey and blue: the
+     muscles in the faint ink (a shade off the Catalog's slate, and opaque,
+     because the model's paths overlap at the neck and the head), and a
+     tapped region in the brand blue, the Catalog's primary exactly in
+     light. */
+  --cx-muscle:          var(--eq-ink-faint);
+  --cx-muscle-lit:      var(--eq-live);
+
   /* ---- FORD: dates by urgency, pillars by identity only ---------------- */
   --cx-now:             var(--ford-now);
   --cx-soon:            var(--ford-soon);

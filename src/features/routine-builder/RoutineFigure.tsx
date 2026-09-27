@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BodyModel } from "../../components/anatomy/BodyModel";
+import { BodyModel, figureGenderOf as toFigureGender } from "../../components/anatomy/BodyModel";
 import { isMuscleVisibleOn } from "../../types/machines";
 import { resolveRoutineAnatomy } from "./engine";
 import type { MuscleId } from "../../data/machine-anatomy-map";
@@ -42,11 +42,6 @@ export interface RoutineFigureProps {
    */
   previewMachineId?: string | null;
   scale?: number;
-}
-
-function toFigureGender(value: string | null | undefined): "male" | "female" {
-  const g = (value ?? "").trim().toLowerCase();
-  return g === "female" || g === "f" ? "female" : "male";
 }
 
 function sideShowingMost(primary: MuscleId[]): "front" | "back" {

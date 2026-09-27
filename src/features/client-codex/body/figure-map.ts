@@ -22,9 +22,17 @@
  *
  * Every clinical flag is in `FLAG_REGIONS` (figure-map.test.ts fails when a
  * new flag is added to the matrix without a place), and every region has a
- * spot in `SPOTS`, in the figure's own coordinates (viewBox 0 0 120 262).
- * Front view: the client's right is the viewer's left. Back view: the
- * client's right is the viewer's right.
+ * spot in `SPOTS`, for each figure.
+ *
+ * THE FIGURE IS THE CATALOG'S (Sep 26 2026: AJ, "update the pulse body
+ * visualizer to be matching to the body chart that we use in the catalog").
+ * It was a blocky silhouette of its own (viewBox 0 0 120 262); it is now the
+ * Catalog's muscle figure (components/anatomy BodyModel), male or female by
+ * her record, and the marks are drawn over it in the figure's own
+ * coordinates (`FIGURE_VIEWBOX`). The spots were measured from the model's
+ * own paths — each region's box on each figure — so a ring on her right knee
+ * sits on the knee the figure draws. Front view: the client's right is the
+ * viewer's left. Back view: the client's right is the viewer's right.
  *
  * Pure: no React. figure-map.test.ts.
  */
@@ -39,6 +47,8 @@ import { dayWords, spotWords, type PainReading } from "./pulse-read";
 /** A spot on the figure: the Pulse's regions, and the abdomen (for a hernia). */
 export type FigureRegion = BodyRegion | "abdomen";
 export type FigureView = "front" | "back";
+/** The Catalog's two figures (components/anatomy `figureGenderOf` picks one). */
+export type FigureGender = "male" | "female";
 
 /**
  * Where each clinical flag sits. `[]` is the whole body — not drawn, listed.
@@ -94,29 +104,86 @@ export interface Spot {
 
 const p = (x: number, y: number): Point => ({ x, y });
 
-/** Every region's spots, in the figure's coordinates (viewBox 0 0 120 262). */
-export const SPOTS: Readonly<Record<FigureRegion, Spot>> = {
-  // Front: the client's right is the viewer's left.
-  neck: { view: "front", mid: p(60, 41) },
-  chest: { view: "front", mid: p(60, 66) },
-  abdomen: { view: "front", mid: p(60, 100) },
-  groin: { view: "front", mid: p(60, 136) },
-  shoulder: { view: "front", right: p(27, 52), left: p(93, 52), mid: p(60, 50) },
-  elbow: { view: "front", right: p(23, 104), left: p(97, 104) },
-  wrist_hand: { view: "front", right: p(21, 157), left: p(99, 157) },
-  hip: { view: "front", right: p(45, 122), left: p(75, 122), mid: p(60, 122) },
-  thigh: { view: "front", right: p(49, 170), left: p(71, 170), mid: p(60, 170) },
-  knee: { view: "front", right: p(49, 203), left: p(71, 203), mid: p(60, 203) },
-  calf_shin: { view: "front", right: p(49, 227), left: p(71, 227), mid: p(60, 227) },
-  ankle: { view: "front", right: p(49, 246), left: p(71, 246), mid: p(60, 246) },
-  foot: { view: "front", right: p(47, 253), left: p(73, 253), mid: p(60, 253) },
-  // Back: the client's right is the viewer's right.
-  upper_back: { view: "back", mid: p(60, 62) },
-  mid_back: { view: "back", mid: p(60, 85) },
-  lower_back: { view: "back", mid: p(60, 108) },
-  glute: { view: "back", right: p(71, 128), left: p(49, 128), mid: p(60, 128) },
-  hamstring: { view: "back", right: p(71, 172), left: p(49, 172), mid: p(60, 172) },
+/**
+ * Each figure's own coordinate space: the viewBox the model draws it in
+ * (react-muscle-highlighter's SvgMaleWrapper / SvgFemaleWrapper). The marks
+ * are drawn in a second svg with the same viewBox laid over it, so the two
+ * line up at any size; BodyPulsePage.render.test.tsx holds them equal.
+ */
+export const FIGURE_VIEWBOX: Readonly<Record<FigureGender, Readonly<Record<FigureView, string>>>> = {
+  male: { front: "0 0 724 1448", back: "724 0 724 1448" },
+  female: { front: "-50 -40 734 1538", back: "756 0 774 1448" },
 };
+
+/**
+ * Every region's spots on each figure, in that figure's coordinates.
+ *
+ * Measured from the model's paths (Sep 26 2026): a muscle region's spot is
+ * the middle of its box on that side (the knee is the knees' box, the thigh
+ * the quadriceps'); a joint the model has no region for sits where its
+ * neighbours meet (the elbow where the biceps ends and the forearm starts,
+ * the hip at the top outer corner of the quadriceps, the middle of the back
+ * between the upper and the lower back). Each region belongs to ONE view, as
+ * before: the back view carries the back, the glutes and the hamstrings.
+ */
+export const SPOTS: Readonly<Record<FigureGender, Readonly<Record<FigureRegion, Spot>>>> = {
+  male: {
+    // Front (midline x 364): the client's right is the viewer's left.
+    neck: { view: "front", mid: p(364, 282) },
+    chest: { view: "front", mid: p(364, 376) },
+    abdomen: { view: "front", mid: p(364, 560) },
+    groin: { view: "front", mid: p(364, 740) },
+    shoulder: { view: "front", right: p(236, 348), left: p(496, 348), mid: p(364, 348) },
+    elbow: { view: "front", right: p(193, 497), left: p(533, 497) },
+    wrist_hand: { view: "front", right: p(102, 750), left: p(627, 750) },
+    hip: { view: "front", right: p(262, 680), left: p(466, 680), mid: p(364, 680) },
+    thigh: { view: "front", right: p(284, 815), left: p(444, 815), mid: p(364, 815) },
+    knee: { view: "front", right: p(296, 1006), left: p(432, 1006), mid: p(364, 1006) },
+    calf_shin: { view: "front", right: p(282, 1105), left: p(446, 1105), mid: p(364, 1105) },
+    ankle: { view: "front", right: p(290, 1250), left: p(439, 1250), mid: p(364, 1250) },
+    foot: { view: "front", right: p(278, 1312), left: p(450, 1312), mid: p(364, 1312) },
+    // Back (midline x 1084): the client's right is the viewer's right.
+    upper_back: { view: "back", mid: p(1084, 420) },
+    mid_back: { view: "back", mid: p(1084, 505) },
+    lower_back: { view: "back", mid: p(1084, 590) },
+    glute: { view: "back", right: p(1140, 698), left: p(1028, 698), mid: p(1084, 698) },
+    hamstring: { view: "back", right: p(1158, 875), left: p(1008, 875), mid: p(1084, 875) },
+  },
+  female: {
+    // Front (midline x 320): the client's right is the viewer's left.
+    neck: { view: "front", mid: p(320, 290) },
+    chest: { view: "front", mid: p(320, 376) },
+    abdomen: { view: "front", mid: p(320, 555) },
+    groin: { view: "front", mid: p(320, 710) },
+    shoulder: { view: "front", right: p(202, 327), left: p(439, 327), mid: p(320, 327) },
+    elbow: { view: "front", right: p(165, 480), left: p(476, 480) },
+    wrist_hand: { view: "front", right: p(44, 708), left: p(597, 708) },
+    hip: { view: "front", right: p(214, 650), left: p(426, 650), mid: p(320, 650) },
+    thigh: { view: "front", right: p(248, 800), left: p(393, 800), mid: p(320, 800) },
+    knee: { view: "front", right: p(265, 1023), left: p(376, 1023), mid: p(320, 1023) },
+    calf_shin: { view: "front", right: p(262, 1170), left: p(380, 1170), mid: p(320, 1170) },
+    ankle: { view: "front", right: p(275, 1345), left: p(365, 1345), mid: p(320, 1345) },
+    foot: { view: "front", right: p(260, 1406), left: p(381, 1406), mid: p(320, 1406) },
+    // Back (midline x 1143): the client's right is the viewer's right.
+    upper_back: { view: "back", mid: p(1143, 400) },
+    mid_back: { view: "back", mid: p(1143, 485) },
+    lower_back: { view: "back", mid: p(1143, 570) },
+    glute: { view: "back", right: p(1216, 696), left: p(1073, 696), mid: p(1143, 696) },
+    hamstring: { view: "back", right: p(1228, 880), left: p(1057, 880), mid: p(1143, 880) },
+  },
+};
+
+/** Which view a region is drawn on, and whether it has a midline (the same on both figures). */
+export const regionSpot = (region: FigureRegion): Spot | undefined => SPOTS.male[region];
+
+/**
+ * The marks' size, in the figures' units (about 724 across): the same share
+ * of the figure the silhouette's 9px diamond and 7px rings were of its 120.
+ */
+export const DIAMOND_SIZE = 54;
+const RING_R = 42;
+/** The knee and the hip are the big joints: a slightly larger ring. */
+const RING_R_BIG = 48;
 
 /** The order regions are listed in: head to foot, the abdomen after the chest. */
 export const REGION_ORDER: readonly FigureRegion[] = [
@@ -163,22 +230,26 @@ function toldPoints(spot: Spot, region: FigureRegion, side: PainPoint["side"]): 
 /**
  * What the figure draws: a diamond at the midline of every region a flag
  * names (once per region), and a ring on every active or improving spot she
- * told us about. Arms have no midline, so an arm flag draws nothing.
+ * told us about. Arms have no midline, so an arm flag draws nothing. The
+ * points are on her figure (`gender`), in its coordinates.
  */
 export function figureMarks({
   flagIds,
   painSpots,
+  gender,
 }: {
   flagIds: readonly string[] | null | undefined;
   painSpots: ReadonlyArray<Pick<PainPoint, "id" | "region" | "side" | "status">>;
+  gender: FigureGender;
 }): FigureMark[] {
+  const spots = SPOTS[gender];
   const out: FigureMark[] = [];
   const diamonds = new Set<FigureRegion>();
   for (const id of flagIds ?? []) {
     for (const region of flagRegions(id)) {
       if (diamonds.has(region)) continue;
       diamonds.add(region);
-      const spot = SPOTS[region];
+      const spot = spots[region];
       if (!spot?.mid) continue;
       out.push({ key: `flag:${region}`, view: spot.view, region, kind: "onfile", x: spot.mid.x, y: spot.mid.y, r: 0 });
     }
@@ -186,9 +257,9 @@ export function figureMarks({
   for (const point of painSpots) {
     if (!point || point.status === "resolved") continue;
     const region = point.region as FigureRegion;
-    const spot = SPOTS[region];
+    const spot = spots[region];
     if (!spot) continue;
-    const r = region === "knee" || region === "hip" ? 8 : 7;
+    const r = region === "knee" || region === "hip" ? RING_R_BIG : RING_R;
     toldPoints(spot, region, point.side).forEach((at, i) => {
       out.push({ key: `told:${point.id}:${i}`, view: spot.view, region, kind: "told", x: at.x, y: at.y, r });
     });
@@ -307,7 +378,8 @@ export function regionRows({
     const onFile = byRegion.get(region) ?? [];
     const spots = told.get(region) ?? [];
     const taps = door?.get(region) ?? null;
-    const spot = SPOTS[region];
+    // Whether it has a midline: the same on either figure.
+    const spot = regionSpot(region);
     const sentences: string[] = [];
 
     if (onFile.length) {

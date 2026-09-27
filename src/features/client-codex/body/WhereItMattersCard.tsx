@@ -26,13 +26,15 @@ import { threadCardMeta, type InjuryThreads } from "../../client-notes/record-se
 import type { NoteThread } from "../../client-notes/threads";
 import { Btn, Card, EmptyLine, Eyebrow, LoudChip, Meta, Source, agree, cap, type Pronouns } from "../kit";
 import { BodyFigure } from "./BodyFigure";
-import { figureMarks, regionRows, type DoorTaps, type FigureRegion } from "./figure-map";
+import { figureMarks, regionRows, type DoorTaps, type FigureGender, type FigureRegion } from "./figure-map";
 import type { PainReading } from "./pulse-read";
 
 /** How many of her injury notes show before "N more on Notes". */
 export const INJURY_NOTES_SHOWN = 3;
 
 export interface WhereItMattersCardProps {
+  /** Which of the Catalog's figures she is drawn on (`figureGenderOf` her record). */
+  gender: FigureGender;
   flagIds: readonly string[] | null | undefined;
   /** The pain map as she last told it; null when she has never been asked (or it is unknown). */
   pain: PainReading | null;
@@ -56,6 +58,7 @@ export interface WhereItMattersCardProps {
 }
 
 export function WhereItMattersCard({
+  gender,
   flagIds,
   pain,
   pulseStatus,
@@ -73,8 +76,8 @@ export function WhereItMattersCard({
   const [open, setOpen] = useState<string | null>(null);
   const idBase = useId();
   const marks = useMemo(
-    () => figureMarks({ flagIds, painSpots: (pain?.spots ?? []).map((s) => s.point) }),
-    [flagIds, pain],
+    () => figureMarks({ flagIds, painSpots: (pain?.spots ?? []).map((s) => s.point), gender }),
+    [flagIds, pain, gender],
   );
   const rows = useMemo(
     () => regionRows({ flagIds, pain, machinesById, door, pronouns, now }),
@@ -99,11 +102,11 @@ export function WhereItMattersCard({
     <Card eyebrow="Where it matters" id="body-figure">
       <div className="bp-figs">
         <figure>
-          <BodyFigure view="front" marks={marks} highlight={highlight} pronouns={pronouns} />
+          <BodyFigure view="front" gender={gender} marks={marks} highlight={highlight} pronouns={pronouns} />
           <figcaption>Front</figcaption>
         </figure>
         <figure>
-          <BodyFigure view="back" marks={marks} highlight={highlight} pronouns={pronouns} />
+          <BodyFigure view="back" gender={gender} marks={marks} highlight={highlight} pronouns={pronouns} />
           <figcaption>Back</figcaption>
         </figure>
       </div>
