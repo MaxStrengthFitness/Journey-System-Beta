@@ -12,6 +12,12 @@
  *
  * The rename of the teammates line ("Just now", was "Pulse") is asserted in
  * relay/planner.render.test.tsx, which mounts the whole shell.
+ *
+ * And one sentence on My Studio → Studio, which needs the same shell: when
+ * the Mindbody sync needs attention, a studio leader is sent to Operations →
+ * Mindbody (it used to say that was an administrator's screen), and a
+ * trainer with the grant, who runs My Studio but not Operations, is told to
+ * ask their studio leader.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
@@ -220,5 +226,37 @@ describe("Capture's kinds of ask", () => {
     expect(headsUp?.getAttribute("aria-describedby")).toBe("cs-kind-hint");
     // No kind chip carries its meaning only in a tooltip.
     expect([...sheet.querySelectorAll(".rk-chip[title]")]).toHaveLength(0);
+  });
+});
+
+describe("My Studio → Studio, when the Mindbody sync needs attention", () => {
+  const lead = { id: "t-lead", fullName: "Lee Leader", role: "HeadTrainer", primaryHomeStudioId: "s1" } as never;
+  const granted = { id: "t-lead", fullName: "Gia Granted", role: "LifeTransformer", primaryHomeStudioId: "s1", managedStudioIds: ["s1"] } as never;
+
+  async function openStudio(person: unknown) {
+    const h = await render(<MyStudioView authTrainer={person as never} clients={[]} trainers={[person as never]} />);
+    const studioTab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes("Studio") && !b.textContent?.includes("My Studio"));
+    await click(studioTab);
+    return h;
+  }
+
+  it("sends a studio leader to Operations → Mindbody, which they can open", async () => {
+    // The test studio has no Mindbody Site ID, so the panel names a problem.
+    const h = await openStudio(lead);
+    expect(h.textContent).toContain("No Mindbody Site ID.");
+    expect(h.textContent).toContain("To pull the schedule by hand, or read the event log, open Operations → Mindbody.");
+    expect(h.textContent).not.toContain("an administrator's screen");
+  });
+
+  it("tells a trainer with the grant, who cannot open Operations, to ask their studio leader", async () => {
+    const h = await openStudio(granted);
+    expect(h.textContent).toContain("which your studio leader can open. Ask them.");
+    expect(h.textContent).not.toContain("open Operations → Mindbody.");
+  });
+
+  it("names Operations → Insights → Hours for the session length", async () => {
+    const h = await openStudio(lead);
+    expect(h.textContent).toContain("the slot Operations → Insights → Hours counts");
+    expect(h.textContent).not.toMatch(/Operations → Hours/);
   });
 });
