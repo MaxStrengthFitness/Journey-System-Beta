@@ -235,7 +235,7 @@ ago).
 | Typecheck | 4 (the baseline) |
 | Suite | **5,761** passing in 364 files with AJ's two answers built; 5,744 with the client calendar (`TZ=America/New_York npx vitest run --dir src`, AJ's PC); 5,699 in 362 after the grid's second fix; 5,697 after the body figure; 5,690 after the first four |
 | Build | `npx vite build` before every push from the second on, and the server bundle |
-| Live | Checked on the live app after the 22:16 deploy: the Hub's button pulled the week (163 bookings at Solon, 0 added, 0 updated, no errors); the grid still short, which led to the second fix |
+| Live | Checked on the live app after the 22:16 deploy: the Hub's button pulled the week (163 bookings at Solon, 0 added, 0 updated, no errors); the grid still short, which led to the second fix. After the 23:12 deploy (everything above), in a visible tab at iPad size: Judy Daus's grid opened on the newest session (476 of 476, columns widened to 63px); the header read "36 LEFT IN CONTRACT" and "+12 EXTRA"; Account "36 left +12 extra" and "36 left · sessions left in the contract · +12 extra sessions, on top of the contract"; her calendar "Mon Sep 28 · 3:00 PM · booked with Marina" and October "1 booked"; the calendar's Refresh pulled the days on screen (253 bookings at Solon, 0 added, 2 updated, no errors) |
 
 ## Shipped
 
