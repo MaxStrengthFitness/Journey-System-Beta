@@ -33,8 +33,11 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
   const undefinedAt: string[] = [];
   /** Every `where` asked, so a test can hold a query to the index it needs (the fake itself ignores them). */
   const queries: { path: string; field: string; op: string; value: unknown }[] = [];
+  /** Every read: a collection or query by its path, a document by its own. */
+  const reads: string[] = [];
 
   const snapshot = (path: string) => {
+    reads.push(path);
     if (opts.failOn && path.endsWith(opts.failOn)) throw new Error(`cannot read ${path}`);
     const docs = Object.entries(store[path] ?? {}).map(([id, data]) => ({
       id,
@@ -50,6 +53,7 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
     id,
     collection: (sub: string) => collection(`${path}/${id}/${sub}`),
     get: async () => {
+      reads.push(`${path}/${id}`);
       if (opts.failOn && `${path}/${id}`.includes(opts.failOn)) throw new Error(`cannot read ${path}/${id}`);
       const data = store[path]?.[id];
       return { id, exists: data !== undefined, data: () => data };
@@ -113,7 +117,7 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
       };
     },
   };
-  return { db: db as never, store, written, deleted, undefinedAt, queries };
+  return { db: db as never, store, written, deleted, undefinedAt, queries, reads };
 }
 
 const NOW = new Date("2026-09-20T07:00:00.000Z");
@@ -416,6 +420,31 @@ describe("the weekly job — step 8, Openings", () => {
     expect(written).toEqual([]);
     expect(deleted).toEqual([]);
     expect(summary.openings).toEqual({ studios: 3, written: 3, skipped: 0 });
+  });
+
+  it("makes six reads a studio and two a run, however many bookings there are (the cost check in openings-step.ts)", async () => {
+    const data = withOpenings();
+    // Two hundred more bookings at Westlake change what the query returns, never how many reads it takes.
+    for (let i = 0; i < 200; i += 1) {
+      const day = WINDOW_MONDAYS[i % 8];
+      data.schedules[`more${i}`] = { studioId: "westlake", clientId: `m${i}`, clientName: `More ${i}`, trainerName: "Somebody Else", startTime: eastern(day, 10 + (i % 8)), status: "Scheduled" };
+    }
+    const { db, reads } = fakeDb(data);
+    await runMachineTrends({ db, now: NOW, log: quiet });
+    const openingsReads = reads.filter((p) => p === "trainers" || p === "schedules" || /^studios\/[^/]+\/(standingWeeks$|scheduleCoverage\/|watch\/openings$)/.test(p));
+    expect(openingsReads.filter((p) => p === "trainers")).toHaveLength(1);
+    expect(openingsReads.filter((p) => p === "schedules")).toHaveLength(3);
+    for (const studio of ["demo-studio", "solon", "westlake"]) {
+      expect(openingsReads.filter((p) => p.startsWith(`studios/${studio}/`)).sort()).toEqual([
+        `studios/${studio}/scheduleCoverage/2026-07`,
+        `studios/${studio}/scheduleCoverage/2026-08`,
+        `studios/${studio}/scheduleCoverage/2026-09`,
+        `studios/${studio}/standingWeeks`,
+        `studios/${studio}/watch/openings`,
+      ]);
+    }
+    // Nothing of the unlinked studios is read beyond the studios list itself.
+    expect(reads.some((p) => /^studios\/(sandbox|willoughby)\/(standingWeeks|scheduleCoverage|watch)/.test(p))).toBe(false);
   });
 
   it("asks Mindbody nothing: the step imports nothing of Mindbody's and fetches nothing", () => {

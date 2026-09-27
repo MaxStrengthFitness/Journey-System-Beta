@@ -71,33 +71,57 @@
  * synced; there is no Mindbody call, no timer and no new index
  * (weekly-job.test.ts holds this file to it).
  *
- * THE COST, per Sunday (AJ, Sep 27 2026: "i just dont want a big mindbody
- * bill or firestore bill popping up"). The studios' real sizes are 110, 110,
- * 240 and 250 clients, at about 1.87 sessions a client a week (the
- * proposal's "AJ's answers"). Document reads:
+ * THE COST CHECK (AJ, Sep 27 2026: "i just dont want a big mindbody bill or
+ * firestore bill popping up"). Worked from the studios' real sizes, 110,
+ * 110, 240 and 250 clients, at about 1.87 sessions a client a week (the
+ * proposal's "AJ's answers to the OK list"): about 1,330 bookings a week
+ * across the four.
  *
- *   studio          bookings in 8 weeks   record + weeks + last summary   total
- *   110 clients     ~1,650                at most ~19                     ~1,670
- *   110 clients     ~1,650                at most ~19                     ~1,670
- *   240 clients     ~3,590                at most ~19                     ~3,610
- *   250 clients     ~3,740                at most ~19                     ~3,760
- *   Demo studio     at most 88 (11 a week) at most ~19                    ~107
- *   once a run      the studios (~5) and every trainer (~100 today)       ~105
- *                                                          about 10,900 a week
+ * READS, per Sunday run. Six reads a studio, whatever its size (its
+ * bookings' one query, its standing weeks, last Sunday's summary and at most
+ * three months of the record, each by id), and two a run (the studios and
+ * the trainers); weekly-job.test.ts holds that count, so a read per client
+ * or per booking can't creep in. What they return, in documents:
+ *
+ *   studio          bookings in 8 weeks     record + weeks + last summary   total
+ *   110 clients     ~1,650 (206 a week)     at most ~19                     ~1,670
+ *   110 clients     ~1,650 (206 a week)     at most ~19                     ~1,670
+ *   240 clients     ~3,590 (449 a week)     at most ~19                     ~3,610
+ *   250 clients     ~3,740 (468 a week)     at most ~19                     ~3,760
+ *   Demo studio     at most 88 (11 a week)  at most ~19                     ~107
+ *   once a run      the studios (~5) and every trainer (~100 today)         ~105
+ *                                                            about 10,900 a week
  *
  * (bookings = clients x 1.87 x 8; "record + weeks + last summary" = at most
  * 3 months of the record, one standing week per trainer who proposed one,
- * about 15, and 1.) The bookings read also returns the window's cancelled
- * rows; scripts/openings-report.ts counts them. At a one-in-five allowance
- * that is about 2,100 more: about 13,000 document reads a week in all.
- * Priced as if every document were one read at Standard edition's list price
- * ($0.06 per 100,000, docs/business/running-costs.md), that is under a cent a
- * week, about 3.4 cents a month. Production is Enterprise edition, billed in
- * 4 KiB read units; a booking row is about 0.6 KiB, so it is at most that,
- * and less if the units add up across documents. The writes: 5 documents a
- * week (4 studios and the Demo studio), 60 to 120 KiB each. Mindbody calls:
- * zero. It grows with the studios' bookings, never with history: the window
- * is always eight weeks.
+ * about 15, and 1.) The bookings query also returns the window's cancelled
+ * rows, and Sundays' (read, never folded); scripts/openings-report.ts prints
+ * both per studio, so the estimate can be replaced by the real count. At a
+ * one-in-five allowance for them, about 2,100 more: ABOUT 13,000 DOCUMENT
+ * READS A WEEK for the four studios.
+ *
+ * MONEY. Priced the most expensive way, every document one read at Standard
+ * edition's list price ($0.06 per 100,000, docs/business/running-costs.md),
+ * that is $0.008 a week, about 3.4 cents a month, and no free allowance is
+ * assumed (the data is in a named database). Production is Enterprise
+ * edition, billed in 4 KiB read units; a booking row is about 0.6 KiB, so
+ * it is at most one unit a document, fewer if the units add up across
+ * documents, and at the proposal's $0.05 per million read units about
+ * $0.0007 a week. At the scale target of 100 studios of 300 clients, the
+ * same worst case is about 540,000 reads a week, about $1.40 a month.
+ *
+ * WRITES: one document a studio a week (4 studios and the Demo studio), 60
+ * to 120 KiB each. Enterprise edition builds no automatic index, so a write
+ * is the document alone.
+ *
+ * MINDBODY CALLS: ZERO. Nothing here imports the Mindbody client or fetches
+ * anything (weekly-job.test.ts holds it); it reads only what the pulls and
+ * the webhook already wrote. No new timer: it rides the Sunday job's own.
+ *
+ * INDEXES: none new. The bookings query is (studioId ==, startTime range),
+ * the existing (studioId, startTime) index; everything else is read by id or
+ * as a whole small collection. It grows with the studios' bookings, never
+ * with history: the window is always eight weeks.
  */
 
 import { Timestamp, type DocumentReference, type Firestore } from "firebase-admin/firestore";
