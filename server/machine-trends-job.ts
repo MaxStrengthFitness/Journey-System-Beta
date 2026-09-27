@@ -37,10 +37,23 @@
  * per-open read. A studio with nothing to report gets an empty document, so
  * "the job ran and found nothing" reads differently from "never ran".
  *
+ * OPENINGS (Openings round, Sep 27 2026; step 8). The same run folds each
+ * linked studio's last eight weeks of bookings into studios/{s}/watch/openings
+ * (server/openings-step.ts, whose header has its reads and their cost; the
+ * rules are src/features/openings/). It runs AFTER the main commit, writes
+ * in its own batch and is caught on its own, so a failure there never
+ * touches the trends, the Kaizen reports or the performance watch, and a
+ * studio it can't build keeps last week's document. It asks Mindbody nothing.
+ * scripts/run-machine-trends.ts --only openings runs it alone.
+ *
  * READS PER RUN: every client (the trends use the active ones; a past
  * client's settings are still evidence of how a body fits a machine) + logs
  * in the window + the small machineFit indexes + 0 sessions. Machines are not
- * read at all: the machine ids come from the logs and the indexes.
+ * read at all: the machine ids come from the logs and the indexes. Openings
+ * adds the studios, the trainers and, per linked studio, its eight weeks of
+ * bookings, at most three months of its whole-read record, its standing weeks
+ * and last Sunday's summary (about 13,000 small reads a week across the four
+ * studios; openings-step.ts has the table).
  *
  * NOTHING HERE CONTACTS ANYONE.
  */
@@ -57,6 +70,7 @@ import { buildCompany, type CompanyBuild, type CompanyClientRecord } from "../sr
 import type { CompanyFitBlock } from "../src/features/machine-fit/fit-index.ts";
 import { readStudioFitDocs } from "./machine-fit-company.ts";
 import { performanceDrops, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/overview/performance.ts";
+import { runOpeningsStep } from "./openings-step.ts";
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;
@@ -85,6 +99,12 @@ export interface MachineTrendsRunSummary {
   fit: { machines: number; clients: number; reports: number; rowsSkipped: number } | null;
   /** The performance watch: studios written and rows across them. null when that step failed. */
   watch: { studios: number; rows: number } | null;
+  /**
+   * Openings (step 8): the linked studios, the documents written (on a dry
+   * run, the ones that would be) and the studios skipped, each keeping last
+   * week's. null when the step failed as a whole (nothing written).
+   */
+  openings: { studios: number; written: number; skipped: number } | null;
 }
 
 /** What machineTrends/{machineId} holds. */
@@ -326,6 +346,22 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
 
   if (!dryRun) await commitInBatches(db, writes);
 
+  // 8. Openings, one document per linked studio (Openings round, Sep 27
+  //    2026). AFTER the main commit, in its own batch, caught on its own:
+  //    whatever happens here, everything above has already gone out, and a
+  //    studio it can't build keeps last week's document.
+  let openings: MachineTrendsRunSummary["openings"] = null;
+  try {
+    const step = await runOpeningsStep({ db, now, dryRun, log });
+    openings = {
+      studios: step.studios.length,
+      written: dryRun ? step.studios.filter((s) => s.outcome === "dry-run").length : step.written,
+      skipped: step.skipped,
+    };
+  } catch (err) {
+    log(`Openings step FAILED — last week's documents are kept. ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   for (const id of machineIds.slice(0, 12)) {
     const m = machines[id];
     const settingKeys = Object.keys(m.settings);
@@ -361,5 +397,6 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
         }
       : null,
     watch,
+    openings,
   };
 }

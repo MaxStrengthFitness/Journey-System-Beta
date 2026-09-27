@@ -2,20 +2,36 @@
  * The weekly job, end to end, against a Firestore made of plain maps.
  *
  * The thinking is tested where it lives (trends.test.ts, company.test.ts,
- * kaizen.test.ts). This is the plumbing: which documents the job writes and
- * deletes, that last week's fit blocks survive a failed fit step, and that
- * nothing `undefined` — which the Admin SDK refuses — reaches a write.
+ * kaizen.test.ts, and Openings' fold.test.ts). This is the plumbing: which
+ * documents the job writes and deletes, that last week's fit blocks survive a
+ * failed fit step, that the Openings step (step 8) writes one document per
+ * linked studio in its own batch after everything else and can fail without
+ * harming anything, and that nothing `undefined` — which the Admin SDK
+ * refuses — reaches a write.
+ *
+ * The fake ignores `where` and date ranges, so which weeks the Openings step
+ * folds is tested in the pure module (openings/fold.test.ts: a Wednesday
+ * "now", a Sunday "now" and the Nov 1 clock change, with the studio's time
+ * zone passed explicitly). The step itself keeps only the studio's own rows.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runMachineTrends } from "../../../server/machine-trends-job";
+import { readSummary } from "../openings/summary-doc";
+import { usualWeek } from "../openings/usual";
 
 type Docs = Record<string, Record<string, unknown>>;
 
-function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string } = {}) {
+function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; failCommitOn?: string } = {}) {
   const store: Record<string, Docs> = JSON.parse(JSON.stringify(collections));
   const written: string[] = [];
   const deleted: string[] = [];
+  /** Every place a write carried `undefined`: the Admin SDK would refuse it. */
+  const undefinedAt: string[] = [];
+  /** Every `where` asked, so a test can hold a query to the index it needs (the fake itself ignores them). */
+  const queries: { path: string; field: string; op: string; value: unknown }[] = [];
 
   const snapshot = (path: string) => {
     if (opts.failOn && path.endsWith(opts.failOn)) throw new Error(`cannot read ${path}`);
@@ -28,23 +44,37 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string } = {
     return { docs, size: docs.length, empty: docs.length === 0 };
   };
 
+  const docRef = (path: string, id: string) => ({
+    path: `${path}/${id}`,
+    id,
+    collection: (sub: string) => collection(`${path}/${id}/${sub}`),
+    get: async () => {
+      if (opts.failOn && `${path}/${id}`.includes(opts.failOn)) throw new Error(`cannot read ${path}/${id}`);
+      const data = store[path]?.[id];
+      return { id, exists: data !== undefined, data: () => data };
+    },
+  });
+
   const collection = (path: string) => {
     const query = {
-      where: () => query,
+      where: (field: string, op: string, value: unknown) => {
+        queries.push({ path, field, op, value });
+        return query;
+      },
       orderBy: () => query,
       select: () => query,
       limit: () => query,
       get: async () => snapshot(path),
-      doc: (id: string) => ({
-        path: `${path}/${id}`,
-        collection: (sub: string) => collection(`${path}/${id}/${sub}`),
-      }),
+      doc: (id: string) => docRef(path, id),
     };
     return query;
   };
 
   const assertNoUndefined = (value: unknown, at: string) => {
-    if (value === undefined) throw new Error(`undefined at ${at}`);
+    if (value === undefined) {
+      undefinedAt.push(at);
+      throw new Error(`undefined at ${at}`);
+    }
     if (value && typeof value === "object") {
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) assertNoUndefined(v, `${at}.${k}`);
     }
@@ -54,28 +84,35 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string } = {
     collection,
     batch: () => {
       const ops: Array<() => void> = [];
+      const paths: string[] = [];
       return {
         set: (ref: { path: string }, data: Record<string, unknown>) => {
           assertNoUndefined(data, ref.path);
+          paths.push(ref.path);
           ops.push(() => {
             const at = ref.path.lastIndexOf("/");
             const col = ref.path.slice(0, at);
-            (store[col] ??= {})[ref.path.slice(at + 1)] = data;
+            (store[col] ??= {})[ref.path.slice(at + 1)] = JSON.parse(JSON.stringify(data));
             written.push(ref.path);
           });
         },
         delete: (ref: { path: string }) => {
+          paths.push(ref.path);
           ops.push(() => {
             const at = ref.path.lastIndexOf("/");
             delete store[ref.path.slice(0, at)]?.[ref.path.slice(at + 1)];
             deleted.push(ref.path);
           });
         },
-        commit: async () => ops.forEach((op) => op()),
+        commit: async () => {
+          const failCommitOn = opts.failCommitOn;
+          if (failCommitOn && paths.some((p) => p.includes(failCommitOn))) throw new Error("the commit was refused");
+          ops.forEach((op) => op());
+        },
       };
     },
   };
-  return { db: db as never, store, written, deleted };
+  return { db: db as never, store, written, deleted, undefinedAt, queries };
 }
 
 const NOW = new Date("2026-09-20T07:00:00.000Z");
@@ -184,5 +221,205 @@ describe("the weekly job — machine trends plus machine fit", () => {
     expect(deleted).not.toContain("kaizenReports/m-retired");
     // The trends themselves still went out.
     expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Step 8: Openings (docs/rounds/2026-09-27-openings.md, the Sunday job's
+ * step). NOW is Sunday Sep 20 2026, 3:00 AM Eastern: the window is the eight
+ * Monday-to-Saturday weeks Jul 27 - Sep 19, all on summer time.
+ * ------------------------------------------------------------------ */
+
+const WINDOW_MONDAYS = ["2026-09-14", "2026-09-07", "2026-08-31", "2026-08-24", "2026-08-17", "2026-08-10", "2026-08-03", "2026-07-27"];
+/** The studio's wall clock on a summer day, as an ISO instant (Eastern daylight time is UTC-4). */
+const eastern = (day: string, hour: number, minute = 0) => new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), hour + 4, minute)).toISOString();
+const daysOf = (month: string, last: number) => Array.from({ length: last }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+
+/** Last Sunday's Westlake summary, marked so a test can tell it was kept. */
+const LAST_WEEK = { v: 1, builtAt: "2026-09-13T07:00:00.000Z", tz: "America/New_York", row: 30, since: null, weeks: [], who: {}, agreed: {}, cells: {}, kept: "last week's" };
+
+function withOpenings(): Record<string, Docs> {
+  const data = base();
+  data.studios = {
+    westlake: { name: "Westlake", timezone: "America/New_York", mindbodySiteId: "29068", mindbodyLocationId: 3 },
+    solon: { name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957", mindbodyLocationId: 1 },
+    // Deliberately without Mindbody, and one whose Site ID is blank: neither gets a document.
+    sandbox: { name: "Sandbox", timezone: "America/New_York", mindbodySiteId: "29068", mindbodyMode: "offline" },
+    willoughby: { name: "Willoughby", timezone: "America/New_York" },
+    "demo-studio": { name: "Demo Studio", timezone: "America/New_York", isDemo: true },
+  };
+  data.trainers = {
+    "t-sam": { fullName: "Sam Lee", primaryHomeStudioId: "westlake", accessibleStudioIds: [], activeGuestStudioIds: [], mindbodyStaffId: "42", mindbody: { staffId: "42", siteId: "29068" } },
+    "t-dana": { fullName: "Dana Demo", primaryHomeStudioId: "demo-studio", accessibleStudioIds: ["demo-studio"], activeGuestStudioIds: [], isDemo: true },
+  };
+  // Sam takes clients Mondays 8:00 - 9:00, agreed on Jul 1.
+  data["studios/westlake/standingWeeks"] = {
+    "uid-sam": {
+      studioId: "westlake",
+      trainerUid: "uid-sam",
+      trainerId: "t-sam",
+      trainerName: "Sam Lee",
+      proposed: null,
+      final: { hours: [{ weekday: 1, from: "08:00", to: "09:00" }], regulars: [] },
+      finalAt: "2026-07-01T14:00:00.000Z",
+      away: [],
+    },
+  };
+  // Every day of the window read in full at Westlake; nothing recorded at Solon.
+  data["studios/westlake/scheduleCoverage"] = {
+    "2026-07": { days: daysOf("2026-07", 31) },
+    "2026-08": { days: daysOf("2026-08", 31) },
+    "2026-09": { days: daysOf("2026-09", 20) },
+  };
+  data["studios/westlake/watch"] = { openings: { ...LAST_WEEK } };
+  // Someone at home at Westlake, so the performance watch writes Westlake's document too.
+  data.clients = { ...clients, w1: { isActive: true, height: "5'10\"", gender: "Male", homeStudioId: "westlake" } };
+  data.schedules = {};
+  WINDOW_MONDAYS.forEach((day, i) => {
+    const slot = { startTime: eastern(day, 8), endTime: eastern(day, 8, 30), status: "Scheduled", serviceName: "Strength 30", source: "MindBody" };
+    data.schedules[`w${i}`] = { ...slot, studioId: "westlake", clientId: `wc${i}`, clientName: `Westlake Client ${i}`, trainerId: "t-sam", trainerName: "Sam Lee" };
+    data.schedules[`s${i}`] = { ...slot, studioId: "solon", clientId: `sc${i}`, clientName: `Solon Client ${i}`, trainerName: "Somebody" };
+    data.schedules[`d${i}`] = { ...slot, studioId: "demo-studio", clientId: `dc${i}`, clientName: `Demo Client ${i}`, trainerId: "t-dana", trainerName: "Dana Demo", isDemo: true };
+  });
+  // A Mindbody "Unavailable" block in Sam's 8:30 on the newest Monday: never a booking.
+  data.schedules.block = { studioId: "westlake", clientName: "Unavailable", trainerId: "t-sam", trainerName: "Sam Lee", startTime: eastern(WINDOW_MONDAYS[0], 8, 30), endTime: eastern(WINDOW_MONDAYS[0], 9), status: "Scheduled", serviceName: "Unavailable", source: "MindBody" };
+  return data;
+}
+
+const openingsOf = (store: Record<string, Docs>, studioId: string) => store[`studios/${studioId}/watch`]?.openings as Record<string, unknown> | undefined;
+
+describe("the weekly job — step 8, Openings", () => {
+  it("writes one document per linked studio (the Demo studio included), none where Mindbody isn't linked, and only after everything else", async () => {
+    const { db, store, written } = fakeDb(withOpenings());
+    const summary = await runMachineTrends({ db, now: NOW, log: quiet });
+    expect(summary.openings).toEqual({ studios: 3, written: 3, skipped: 0 });
+
+    const westlake = readSummary(openingsOf(store, "westlake"));
+    expect(westlake.state).toBe("ok");
+    if (westlake.state !== "ok") return;
+    expect(westlake.summary.builtAt).toBe(NOW.toISOString());
+    expect(westlake.summary.weeks.map((w) => w.m)).toEqual(WINDOW_MONDAYS);
+    expect(usualWeek(westlake.summary).weeksCounted).toBe(8);
+    // Sam's 8:00 was booked every Monday; at 8:30 nobody was booked, the Unavailable block notwithstanding.
+    expect(westlake.summary.cells["1-0800"]["0"].s).toBe("f");
+    expect(westlake.summary.cells["1-0830"]["0"]).toEqual({ s: "n", i: ["0"] });
+    expect(Object.values(westlake.summary.who).map((w) => w.n)).toEqual(["Sam Lee"]);
+
+    // Solon: nothing recorded as read in full, so nothing counts, but the document is there.
+    const solon = readSummary(openingsOf(store, "solon"));
+    expect(solon.state).toBe("ok");
+    if (solon.state === "ok") expect(usualWeek(solon.summary).weeksCounted).toBe(0);
+
+    // The Demo studio: every day counts (the seeder wrote them), and the realm rule holds both ways.
+    const demo = readSummary(openingsOf(store, "demo-studio"));
+    expect(demo.state).toBe("ok");
+    if (demo.state === "ok") expect(usualWeek(demo.summary).weeksCounted).toBe(8);
+    expect(JSON.stringify(openingsOf(store, "demo-studio"))).not.toContain("Sam Lee");
+    expect(JSON.stringify(openingsOf(store, "westlake"))).not.toContain("Dana");
+
+    expect(openingsOf(store, "sandbox")).toBeUndefined();
+    expect(openingsOf(store, "willoughby")).toBeUndefined();
+
+    // No client names or ids.
+    const text = JSON.stringify([openingsOf(store, "westlake"), openingsOf(store, "solon"), openingsOf(store, "demo-studio")]);
+    for (const word of ["Client", "wc0", "sc0", "dc0"]) expect(text).not.toContain(word);
+
+    // Its own writes, after the job's main commit.
+    const firstOpenings = written.findIndex((p) => p.endsWith("/watch/openings"));
+    expect(firstOpenings).toBeGreaterThan(written.indexOf("machineTrends/_summary"));
+    expect(firstOpenings).toBeGreaterThan(written.indexOf("studios/westlake/watch/performance"));
+  });
+
+  it("reads each studio's bookings by studio and a start-time range over the window, on the studio's own clock", async () => {
+    const { db, queries } = fakeDb(withOpenings());
+    await runMachineTrends({ db, now: NOW, log: quiet });
+    const schedules = queries.filter((q) => q.path === "schedules");
+    // Three studios, each exactly (studioId ==, startTime >=, startTime <=): the existing (studioId, startTime) index.
+    expect(schedules.map((q) => `${q.field} ${q.op}`)).toEqual(Array.from({ length: 3 }, () => ["studioId ==", "startTime >=", "startTime <="]).flat());
+    expect(schedules.filter((q) => q.field === "studioId").map((q) => q.value)).toEqual(["demo-studio", "solon", "westlake"]);
+    const range = schedules.filter((q) => q.field === "startTime").map((q) => (q.value as { toDate: () => Date }).toDate().toISOString());
+    // From Monday Jul 27's midnight to the last moment of Saturday Sep 19, Eastern.
+    expect(range.slice(0, 2)).toEqual(["2026-07-27T04:00:00.000Z", "2026-09-20T03:59:59.999Z"]);
+    // Nothing else the step asks is a query: the rest are reads by id or of a small collection.
+    expect(queries.every((q) => q.path === "schedules" || q.path === "exerciseLogs")).toBe(true);
+  });
+
+  it("lets nothing undefined reach a write, whatever the rows leave out", async () => {
+    const data = withOpenings();
+    // A booking with no end, no trainer and no service; a week with no name, no agreement day and no days away; a trainer with no name.
+    data.schedules.bare = { studioId: "westlake", clientName: "Someone", startTime: eastern(WINDOW_MONDAYS[1], 10), status: "Cancelled" };
+    data["studios/westlake/standingWeeks"]["uid-pat"] = { studioId: "westlake", trainerId: "t-pat", final: { hours: [{ weekday: 2, from: "07:00", to: "12:00" }], regulars: [] } };
+    data.trainers["t-pat"] = { primaryHomeStudioId: "westlake" };
+    const { db, store, undefinedAt } = fakeDb(data);
+    const summary = await runMachineTrends({ db, now: NOW, log: quiet });
+    expect(undefinedAt).toEqual([]);
+    expect(summary.openings).toEqual({ studios: 3, written: 3, skipped: 0 });
+    expect(readSummary(openingsOf(store, "westlake")).state).toBe("ok");
+  });
+
+  it("skips a studio whose document would be too big, keeps its last week's, and still writes the performance watch and the other studios", async () => {
+    const data = withOpenings();
+    // A name no document can carry: Sam is named on Westlake's summary, so it would pass the ceiling.
+    (data.trainers["t-sam"] as { fullName: string }).fullName = "S".repeat(600 * 1024);
+    const lines: string[] = [];
+    const { db, store } = fakeDb(data);
+    const summary = await runMachineTrends({ db, now: NOW, log: (l) => lines.push(l) });
+    expect(openingsOf(store, "westlake")).toEqual(LAST_WEEK);
+    expect(store["studios/westlake/watch"].performance).toBeDefined();
+    expect(readSummary(openingsOf(store, "solon")).state).toBe("ok");
+    expect(summary.openings).toEqual({ studios: 3, written: 2, skipped: 1 });
+    expect(lines.some((l) => l.includes("Westlake") && l.includes("SKIPPED") && l.includes("ceiling"))).toBe(true);
+    expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
+  });
+
+  it("keeps last week's documents, and the trends, when a studio's reads fail", async () => {
+    const lines: string[] = [];
+    const { db, store } = fakeDb(withOpenings(), { failOn: "standingWeeks" });
+    const summary = await runMachineTrends({ db, now: NOW, log: (l) => lines.push(l) });
+    // Without the standing weeks every agreed week would be closed: the studio is left as it was.
+    expect(openingsOf(store, "westlake")).toEqual(LAST_WEEK);
+    expect(summary.openings).toEqual({ studios: 3, written: 0, skipped: 3 });
+    expect(lines.some((l) => l.includes("Westlake: SKIPPED, a read failed"))).toBe(true);
+    expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
+    expect(store["studios/westlake/watch"].performance).toBeDefined();
+  });
+
+  it("keeps last week's documents, and the trends, when the step fails as a whole", async () => {
+    const lines: string[] = [];
+    const { db, store } = fakeDb(withOpenings(), { failOn: "trainers" });
+    const summary = await runMachineTrends({ db, now: NOW, log: (l) => lines.push(l) });
+    expect(summary.openings).toBeNull();
+    expect(lines.some((l) => l.includes("Openings step FAILED"))).toBe(true);
+    expect(openingsOf(store, "westlake")).toEqual(LAST_WEEK);
+    expect(openingsOf(store, "solon")).toBeUndefined();
+    expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
+    expect(store["studios/westlake/watch"].performance).toBeDefined();
+    expect(summary.watch).not.toBeNull();
+  });
+
+  it("keeps last week's documents, and the trends, when its own write is refused", async () => {
+    const lines: string[] = [];
+    const { db, store } = fakeDb(withOpenings(), { failCommitOn: "watch/openings" });
+    const summary = await runMachineTrends({ db, now: NOW, log: (l) => lines.push(l) });
+    expect(openingsOf(store, "westlake")).toEqual(LAST_WEEK);
+    expect(openingsOf(store, "solon")).toBeUndefined();
+    expect(summary.openings).toEqual({ studios: 3, written: 0, skipped: 3 });
+    expect(lines.some((l) => l.includes("FAILED; last week's is kept"))).toBe(true);
+    expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
+    expect(store["studios/westlake/watch"].performance).toBeDefined();
+  });
+
+  it("writes nothing on a dry run, and says what it would have written", async () => {
+    const { db, written, deleted } = fakeDb(withOpenings());
+    const summary = await runMachineTrends({ db, now: NOW, dryRun: true, log: quiet });
+    expect(written).toEqual([]);
+    expect(deleted).toEqual([]);
+    expect(summary.openings).toEqual({ studios: 3, written: 3, skipped: 0 });
+  });
+
+  it("asks Mindbody nothing: the step imports nothing of Mindbody's and fetches nothing", () => {
+    const source = readFileSync(join(__dirname, "../../../server/openings-step.ts"), "utf8");
+    expect(source).not.toMatch(/from\s+["'][^"']*mindbody/i);
+    expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 });
