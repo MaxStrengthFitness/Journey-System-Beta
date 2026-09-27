@@ -20,6 +20,17 @@
  *   moved to; if not, it is a cancellation. "This works because clients
  *   always do one or two sessions per week."
  *
+ *   Only a REAL rebook (AJ, Sep 26 2026: "100% run it"). For a client who
+ *   trains twice a week the other booking that week is nearly always her
+ *   standing one, booked all along, and the list read nearly every
+ *   cancellation as a reschedule. Now the other booking counts only when it
+ *   appeared with the cancellation — its `createdAt` at most
+ *   `REBOOK_WINDOW_MS` before the cancellation was stamped (the front desk
+ *   often books the new slot first) — and had not already happened
+ *   (`isRealRebook`). Otherwise it is a cancellation, and the proof names the
+ *   booking she already held (`alsoBooked`). A cancellation with no stamp
+ *   cannot be matched to a rebook, so it reads as a cancellation.
+ *
  *   The calendar shows none of this. A cancelled row is removed from the
  *   calendar entirely (greying it out clutters the calendar); the list is
  *   where it is recorded.
@@ -58,6 +69,12 @@ export interface ChangeRow {
   originalStart: Date;
   reading: ChangeReading;
   movedTo: ChangeDestination | null;
+  /**
+   * A cancellation that is NOT a reschedule, while she still holds another
+   * booking that week: that booking (her standing one), for the proof. Null
+   * otherwise.
+   */
+  alsoBooked: ChangeDestination | null;
   /** When the change was noticed; null when the row carries no stamp. */
   detectedAt: Date | null;
   source: "mindbody" | "sweep" | "unknown";
@@ -75,6 +92,38 @@ export function weekEndOf(day: string): string {
 }
 
 const isLive = (e: ScheduleEntry) => e.status === "Scheduled" || e.status === "Completed";
+
+/**
+ * How long before the cancellation another booking may have first appeared
+ * and still be its rebook. The front desk often books the new slot first and
+ * cancels the old one after, and the thirty-minute pull can see the two on
+ * different runs; a booking Journey saw days before is her standing one.
+ */
+export const REBOOK_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * A REAL rebook of a cancellation stamped at `cancelledAt` (AJ, Sep 26 2026):
+ * the other booking first appeared around or after it (`createdAt`, when
+ * Journey first wrote the row, at most REBOOK_WINDOW_MS before) and had not
+ * already started by then — nobody rebooks into the past. With no stamp, or
+ * no `createdAt`, nothing is claimed.
+ */
+export function isRealRebook(
+  other: Pick<ScheduleEntry, "createdAt" | "startTime"> | undefined,
+  cancelledAt: Date | null,
+): boolean {
+  if (!other || !cancelledAt) return false;
+  const created = toDate(other.createdAt ?? null);
+  const start = toDate(other.startTime);
+  if (!created || !start) return false;
+  return created.getTime() >= cancelledAt.getTime() - REBOOK_WINDOW_MS && start.getTime() > cancelledAt.getTime();
+}
+
+const destinationOf = (e: ScheduleEntry): ChangeDestination => ({
+  start: toDate(e.startTime) as Date,
+  trainerName: e.trainerName || "",
+  sameBooking: false,
+});
 
 /** The client a row is about — by id when the sync linked one, else by name. */
 const clientKey = (e: ScheduleEntry) => (e.clientId ? `id:${e.clientId}` : `name:${(e.clientName ?? "").trim().toLowerCase()}`);
@@ -111,7 +160,13 @@ export function changesForDay(entries: ScheduleEntry[], day: string, tz?: string
       const start = toDate(e.startTime);
       if (!start || dayOf(start) !== day) continue;
       const others = (liveByClient.get(clientKey(e)) ?? []).filter((o) => (o.id ?? o.mindbodyAppointmentId) !== id);
-      const next = nearestAfter(others, start);
+      const detectedAt = toDate(e.cancelledAt);
+      // A reschedule only when she rebooked: see isRealRebook.
+      const next = nearestAfter(
+        others.filter((o) => isRealRebook(o, detectedAt)),
+        start,
+      );
+      const held = next ? null : nearestAfter(others, start);
       rows.push({
         id,
         kind: "cancelled",
@@ -122,8 +177,9 @@ export function changesForDay(entries: ScheduleEntry[], day: string, tz?: string
         forDay: day,
         originalStart: start,
         reading: next ? "reschedule" : "cancellation",
-        movedTo: next ? { start: toDate(next.startTime) as Date, trainerName: next.trainerName || "", sameBooking: false } : null,
-        detectedAt: toDate(e.cancelledAt),
+        movedTo: next ? destinationOf(next) : null,
+        alsoBooked: held ? destinationOf(held) : null,
+        detectedAt,
         source: e.cancelSource === "mindbody" || e.cancelSource === "sweep" ? e.cancelSource : "unknown",
       });
       continue;
@@ -144,6 +200,7 @@ export function changesForDay(entries: ScheduleEntry[], day: string, tz?: string
         originalStart: from,
         reading: "reschedule",
         movedTo: { start: to, trainerName: e.trainerName || "", sameBooking: true },
+        alsoBooked: null,
         detectedAt: toDate(e.movedAt),
         source: "mindbody",
       });
@@ -186,7 +243,7 @@ export function changeCounts(entries: ScheduleEntry[], days: string[], tz?: stri
 export interface ChangeText {
   /** "Cancelled — 9:00 AM with Tom." / "Moved — was 9:00 AM with Tom, now Thu 2:00 PM with Sara." */
   sentence: string;
-  /** "Nothing else booked this week." / "Gone from Mindbody at 7:12 AM." */
+  /** "Nothing else booked this week." / "Already booked Thu 3:00 PM this week, so not a rebook." / "Gone from Mindbody at 7:12 AM." */
   proof: string;
 }
 
@@ -212,9 +269,14 @@ export function describeChange(row: ChangeRow, tz?: string): ChangeText {
       proof: noticed,
     };
   }
+  // Her standing booking is named, so "cancelled" is not read as "gone for
+  // the week" when she is still coming on Thursday.
+  const week = row.alsoBooked
+    ? `Already booked ${whenLabel(row.alsoBooked.start, row.originalStart, tz)} this week, so not a rebook.`
+    : "Nothing else booked this week.";
   return {
     sentence: `Cancelled — ${at}${withTrainer(row.trainerName)}.`,
-    proof: `Nothing else booked this week. ${noticed}`,
+    proof: `${week} ${noticed}`,
   };
 }
 

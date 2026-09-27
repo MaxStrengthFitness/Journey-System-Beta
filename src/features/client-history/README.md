@@ -218,7 +218,7 @@ three things a session cannot say. `bookings.ts` is the pure half.
 | Mark | When | Rule |
 |---|---|---|
 | **Booked** (blue outline) | a booking whose start is later than now — today's later bookings too | Read through `lib/booking-state.ts`, never from `status` alone: a booking on a day Journey logged a session for her is done, not still to come |
-| **Cancelled** (×) | status "Cancelled" **and** a `cancelledAt` stamp | With another live booking the same Monday-to-Sunday week it is read as a reschedule — the Operations Changes list's own rule (`admin/changes/changes.ts`, `changesForDay`), not a second one |
+| **Cancelled** (×) | status "Cancelled" **and** a `cancelledAt` stamp | Read as a reschedule only for a REAL rebook, by the Operations Changes list's own rule (`admin/changes/changes.ts`, `changesForDay` and `isRealRebook`), not a second one |
 | **Moved** (→) | `movedFromDay` names the day | Marks the day the booking LEFT and says where it lives now. A new time on the same day is not a move |
 
 **A cancellation from before the stamps is never drawn.** Until about Sep 16
@@ -229,24 +229,18 @@ client's summer in cancellations that never happened. So the calendar shows
 only the cancellations Journey saw happen, and a trainer should read an
 empty August as "none recorded", not "none".
 
-**Only a real rebook says "rebooked"** (AJ, Sep 26 2026). The Changes list
-reads a cancellation with any other live booking that week as a reschedule,
-and for a twice-a-week client that other booking is nearly always her
-standing Thursday, booked all along. Here the other booking is named only when
-it first appeared around or after the cancellation — its `createdAt`, when
-Journey first wrote the row, at most 12 hours before the cancellation was
-stamped (`isRealRebook`, `REBOOK_WINDOW_MS`: the front desk often books the
-new slot first). A standing booking, or one with no `createdAt`, leaves the
-line at "cancelled". Nothing new is stored.
-
-**Nobody rebooks into the past.** The Changes list falls back to a booking
-EARLIER in the week when there is no later one; for a Tue/Thu client who
-cancels Thursday, that is Tuesday's session, already over when she cancelled.
-Here a same-week booking that had started by the time the cancellation was
-stamped is never named as where it went, and the line says "cancelled".
-
-These two are the places the calendar reads a row differently from
-Operations → Changes, which still applies AJ's same-week rule as it stands.
+**Only a real rebook says "rebooked"** (AJ, Sep 26 2026). A cancellation with
+another live booking that week was read as a reschedule, and for a
+twice-a-week client that other booking is nearly always her standing
+Thursday, booked all along. The other booking is named only when it first
+appeared with the cancellation — its `createdAt`, when Journey first wrote the
+row, at most 12 hours before the cancellation was stamped (the front desk
+often books the new slot first) — and had not already happened (nobody
+rebooks into the past). A standing booking, or one with no `createdAt`,
+leaves the line at "cancelled". The rule is the Changes list's own
+(`isRealRebook`, `REBOOK_WINDOW_MS` in `admin/changes/changes.ts`), so
+Operations → Changes and this calendar can never read one booking two ways.
+Nothing new is stored.
 
 **Past still-booked rows add nothing.** The visit layer speaks for the past,
 and no booking can prove a no-show: bookings never come back Completed

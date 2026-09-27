@@ -225,29 +225,28 @@ describe("the bookings the seeder writes", () => {
   it("gives Operations one change to find", () => {
     /*
      * The cancellation is the whole reason Overview → Changes has anything in
-     * it inside Demo Mode. It should read as a RESCHEDULE, because the client
-     * it lands on holds another booking the same week — which is the more
-     * useful of the two readings and the one that needs a second booking to
-     * demonstrate at all.
+     * it inside Demo Mode. The client it lands on holds another booking the
+     * same week, booked a fortnight ago like every demo appointment — her
+     * standing one. Since AJ's Sep 26 call (only a real rebook reads as a
+     * reschedule) that is a CANCELLATION that names the booking she still
+     * holds, which is the case a twice-a-week studio sees most.
      */
+    const at = (value: unknown) => (value ? new Date(String((value as { __ts: string }).__ts)) : null);
     const entries = rows.map((row) => ({
       ...(row.data as unknown as ScheduleEntry),
       id: row.path.slice("schedules/".length),
-      startTime: new Date(String((row.data.startTime as { __ts: string }).__ts)),
-      cancelledAt: row.data.cancelledAt
-        ? new Date(String((row.data.cancelledAt as { __ts: string }).__ts))
-        : null,
+      startTime: at(row.data.startTime),
+      createdAt: at(row.data.createdAt),
+      cancelledAt: at(row.data.cancelledAt),
     })) as ScheduleEntry[];
 
     const cancelled = rows.find((r) => r.data.status === "Cancelled")!;
-    const day = studioDateKey(
-      new Date(String((cancelled.data.startTime as { __ts: string }).__ts)),
-      TZ,
-    )!;
+    const day = studioDateKey(at(cancelled.data.startTime)!, TZ)!;
     const changes = changesForDay(entries, day, TZ);
     expect(changes).toHaveLength(1);
     expect(changes[0].kind).toBe("cancelled");
-    expect(changes[0].reading).toBe("reschedule");
-    expect(changes[0].movedTo).not.toBeNull();
+    expect(changes[0].reading).toBe("cancellation");
+    expect(changes[0].movedTo).toBeNull();
+    expect(changes[0].alsoBooked).not.toBeNull();
   });
 });

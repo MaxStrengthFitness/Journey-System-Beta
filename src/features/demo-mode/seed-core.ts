@@ -894,8 +894,9 @@ function bookingDoc(booking: DemoBooking, ctx: SeedContext): SeedDoc {
       ...(booking.cancelled
         ? {
             /* Noticed yesterday. Operations → Overview → Changes holds a
-               cancellation against the day the session was FOR, and reads it
-               as a reschedule when the client has another booking that week. */
+               cancellation against the day the session was FOR. Her other
+               booking that week is a standing one (booked a fortnight ago), so
+               it reads as a cancellation that names it, not a reschedule. */
             cancelledAt: ts(`${addDays(ctx.today, -1)}T18:00:00.000Z`),
             movedFromDay: null,
             movedFromStart: null,
