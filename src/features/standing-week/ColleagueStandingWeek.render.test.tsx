@@ -135,6 +135,29 @@ describe("a colleague's standing week", () => {
     expect(host.querySelectorAll("button, input, select, textarea")).toHaveLength(0);
   });
 
+  it("says a day of three blocks in one line, and a day with only regulars 'Doesn't take clients' (Openings round)", async () => {
+    await mountCard();
+    await deliver({
+      trainerId: "t-sam",
+      trainerName: "Sam Lee",
+      final: {
+        hours: [
+          { weekday: 1, from: "06:00", to: "08:00" },
+          { weekday: 1, from: "09:00", to: "11:00" },
+          { weekday: 1, from: "15:00", to: "18:00" },
+        ],
+        regulars: [{ id: "r2", weekday: 4, start: "08:00", clientId: "c-judy", clientName: "Judy Smith" }],
+      },
+      finalAt: new Date("2026-09-20T14:00:00Z"),
+      finalBy: { id: "uid-ann", name: "Ann Park" },
+    });
+    const days = [...host.querySelectorAll(".stw-read__day")];
+    expect(days.map((d) => d.querySelector(".stw-read__name")?.textContent)).toEqual(["Monday", "Thursday"]);
+    expect(days[0].querySelector(".stw-read__hours")?.textContent).toBe("6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM");
+    expect(days[1].querySelector(".stw-read__hours")?.textContent).toBe("Doesn't take clients");
+    expect(host.textContent).not.toContain("Not in");
+  });
+
   it("says there is no agreed week yet, and still shows the days away", async () => {
     await mountCard();
     await deliver({ trainerId: "t-sam", trainerName: "Sam Lee", proposed: agreed, final: null, away: [{ id: "a1", from: "2026-09-28", to: "2026-09-28" }] });

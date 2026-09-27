@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   MAX_AWAY,
+  MAX_HOURS,
+  MAX_RANGES_A_DAY,
+  MAX_REGULARS,
   awayForWrite,
   awayOn,
   clockOf,
@@ -92,7 +98,36 @@ describe("where a week stands", () => {
     expect(weekSummary(null)).toBe("No week yet");
     expect(weekSummary({ hours: [], regulars: [] })).toBe("An empty week");
     expect(weekSummary(week())).toBe("2 days · 2 regulars");
-    expect(weekSummary(week({ hours: [], regulars: [judyMon] }))).toBe("no hours set · 1 regular");
+    expect(weekSummary(week({ hours: [], regulars: [judyMon] }))).toBe("no times set · 1 regular");
+  });
+});
+
+describe("three blocks a day (Openings round)", () => {
+  it("allows three blocks a day, and a week of them: 21, the number the rules hold", () => {
+    expect(MAX_RANGES_A_DAY).toBe(3);
+    expect(MAX_HOURS).toBe(21);
+    expect(MAX_HOURS).toBe(MAX_RANGES_A_DAY * 7);
+  });
+
+  it("keeps a full week of three blocks a day, and cuts a 22nd", () => {
+    const blocks = [0, 1, 2, 3, 4, 5, 6].flatMap((weekday) => [
+      { weekday, from: "06:00", to: "09:00" },
+      { weekday, from: "10:00", to: "13:00" },
+      { weekday, from: "15:00", to: "19:00" },
+    ]);
+    expect(normalizeWeek({ hours: blocks, regulars: [] }).hours).toHaveLength(21);
+    const monday = normalizeWeek({ hours: blocks, regulars: [] }).hours.filter((h) => h.weekday === 1);
+    expect(monday.map((h) => h.from)).toEqual(["06:00", "10:00", "15:00"]);
+    expect(normalizeWeek({ hours: [...blocks, { weekday: 1, from: "20:00", to: "21:00" }], regulars: [] }).hours).toHaveLength(21);
+  });
+
+  it("is the number firestore.rules holds a week's blocks to, and the regulars' too", () => {
+    // The rules tests run only where the emulator does; this keeps the two
+    // numbers from drifting apart on any machine that runs the suite.
+    const rules = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "firestore.rules"), "utf8");
+    const shape = rules.slice(rules.indexOf("function standingWeekShapeValid"), rules.indexOf("function standingWeekAwayRangeValid"));
+    expect(shape).toContain(`w.hours.size() <= ${MAX_HOURS}`);
+    expect(shape).toContain(`w.regulars.size() <= ${MAX_REGULARS}`);
   });
 });
 

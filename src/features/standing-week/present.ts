@@ -55,6 +55,48 @@ export function rangeLabel(h: Pick<WorkHours, "from" | "to">): string {
   return `${timeLabel(h.from)} – ${timeLabel(h.to)}`;
 }
 
+/* ------------------------------------------------------------------ *
+ * The editor's words (Openings round, Sep 27 2026)
+ * ------------------------------------------------------------------ */
+
+/** A day with no blocks, in the editor and on a colleague's card. */
+export const NO_BLOCKS = "Doesn't take clients";
+
+/** The chip on a regular whose time falls outside every block that day (`outsideHours`). */
+export const OUTSIDE_BLOCKS = "Outside when they take clients";
+
+/**
+ * The line under the days. Openings reads a half-hour inside a block with
+ * nothing booked as room it can offer a client, so a habitual break typed
+ * inside one long block would be offered; two or three blocks with the
+ * breaks between them are not. (The round document drafted it "A break
+ * between blocks"; a break BETWEEN blocks is the one that never shows.)
+ */
+export const BREAKS_LINE = "A break inside a block shows as room on Openings, so leave the breaks out.";
+
+/**
+ * A day's blocks in one phrase: "7:00 AM – 9:00 AM", "… and …", or with
+ * three, "…, … and …".
+ */
+export function blocksLabel(blocks: readonly Pick<WorkHours, "from" | "to">[]): string {
+  const parts = blocks.map(rangeLabel);
+  return parts.length <= 2 ? parts.join(" and ") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/** The add button on a day, and what it says to VoiceOver: "Add a block on Monday". */
+export function addBlockLabel(blocksThatDay: number, dayName: string): { text: string; label: string } {
+  const text = blocksThatDay === 0 ? "Add a block" : "Add another block";
+  return { text, label: `${text} on ${dayName}` };
+}
+
+/**
+ * A block's own name for VoiceOver, so three blocks on a day don't read as
+ * three "Monday: starts": the first is the day's, the next "Monday, block 2".
+ */
+export function blockName(dayName: string, index: number): string {
+  return index === 0 ? dayName : `${dayName}, block ${index + 1}`;
+}
+
 export interface DayOfWeek {
   weekday: number;
   name: string;
@@ -62,7 +104,7 @@ export interface DayOfWeek {
   regulars: Regular[];
 }
 
-/** The week's seven days, Monday first, each with its hours and its regulars. */
+/** The week's seven days, Monday first, each with its blocks (`hours`) and its regulars. */
 export function daysOf(week: StandingWeek): DayOfWeek[] {
   return WEEKDAYS_IN_ORDER.map((weekday) => ({
     weekday,
@@ -72,7 +114,10 @@ export function daysOf(week: StandingWeek): DayOfWeek[] {
   }));
 }
 
-/** A regular whose time falls outside every range of hours set for that day. */
+/**
+ * A regular whose time falls outside every block set for that day: the chip
+ * "Outside when they take clients". A day with no blocks says nothing.
+ */
 export function outsideHours(week: StandingWeek, r: Regular): boolean {
   const hours = week.hours.filter((h) => h.weekday === r.weekday);
   if (hours.length === 0) return false;
@@ -146,10 +191,10 @@ export function tidyForm(form: WeekForm): WeekForm {
 }
 
 /**
- * The hours a new range starts with. A second range on a day starts an hour
- * after the first ends (a split shift). A day's first range copies the
- * nearest earlier day's, so a Monday-to-Friday week is typed once; failing
- * that, 7:00 AM to 1:00 PM.
+ * The times a new block starts with. Another block on a day (the second or
+ * the third) starts an hour after the day's latest block ends: the break
+ * left out. A day's first block copies the nearest earlier day's, so a
+ * Monday-to-Friday week is typed once; failing that, 7:00 AM to 1:00 PM.
  */
 export function defaultHours(week: Pick<StandingWeek, "hours">, weekday: number): WorkHours {
   const sameDay = week.hours.filter((h) => h.weekday === weekday);
@@ -229,15 +274,18 @@ export function reviewSentence(doc: StandingWeekDoc | null, name: string, tz?: s
  * What a proposal changes
  * ------------------------------------------------------------------ */
 
-const hoursOn = (week: StandingWeek, weekday: number) =>
-  week.hours.filter((h) => h.weekday === weekday).map(rangeLabel).join(" and ");
+const hoursOn = (week: StandingWeek, weekday: number) => blocksLabel(week.hours.filter((h) => h.weekday === weekday));
 const slotLabel = (r: Pick<Regular, "weekday" | "start">) => `${WEEKDAY_NAME[r.weekday]} at ${timeLabel(r.start)}`;
 
 /**
- * One sentence per change from `from` to `to`, Monday first: the hours, then
- * the regulars, then the note. A regular who leaves one slot and takes
- * another is a move, said once. Nothing when there is no `from` — a first
- * proposal is read whole, not as a list of changes.
+ * One sentence per change from `from` to `to`, Monday first: when they take
+ * clients (the blocks), then the regulars, then the note. A regular who
+ * leaves one slot and takes another is a move, said once. Nothing when there
+ * is no `from` — a first proposal is read whole, not as a list of changes.
+ *
+ * The words (Openings round, Sep 27 2026): "Takes clients on Friday, …",
+ * "No longer takes clients on Friday (was …)", "Monday: …, was …". A block
+ * is when a trainer takes clients, not the hours they work.
  */
 export function weekChanges(from: StandingWeek | null, to: StandingWeek | null): string[] {
   if (!from || !to) return [];
@@ -248,9 +296,9 @@ export function weekChanges(from: StandingWeek | null, to: StandingWeek | null):
     const now = hoursOn(to, weekday);
     if (was === now) continue;
     const day = WEEKDAY_NAME[weekday];
-    if (!was) out.push(`Works ${day}, ${now}.`);
-    else if (!now) out.push(`No longer works ${day} (was ${was}).`);
-    else out.push(`${day}'s hours: ${now}, was ${was}.`);
+    if (!was) out.push(`Takes clients on ${day}, ${now}.`);
+    else if (!now) out.push(`No longer takes clients on ${day} (was ${was}).`);
+    else out.push(`${day}: ${now}, was ${was}.`);
   }
 
   const key = (r: Regular) => `${r.weekday} ${r.start}`;

@@ -119,8 +119,8 @@ describe("My standing week", () => {
     expect(host.querySelector("[data-testid='my-week-status']")?.textContent).toBe("Not proposed yet.");
     expect(button("Propose this week").disabled).toBe(true);
 
-    await click("Add hours on Monday");
-    await click("Add hours on Tuesday"); // copies Monday's
+    await click("Add a block on Monday");
+    await click("Add a block on Tuesday"); // copies Monday's
     await click("Add a regular on Monday");
     const search = host.querySelector("input[aria-label='Find the client for Monday']") as HTMLInputElement;
     await type(search, "jud");
@@ -154,10 +154,46 @@ describe("My standing week", () => {
     expect(w.data).not.toHaveProperty("final");
   });
 
+  it("speaks of when the trainer takes clients, never of hours (Openings round)", async () => {
+    await mount();
+    await deliver(null);
+    const head = host.querySelector("#my-standing-week-blocks");
+    expect(head?.textContent?.trim()).toBe("When I usually take clients");
+    // The heading names the editor for VoiceOver; the card keeps its name.
+    expect(host.querySelector(".stw")?.getAttribute("aria-labelledby")).toBe("my-standing-week-blocks");
+    expect(host.querySelector("#my-standing-week")?.textContent?.trim()).toBe("My standing week");
+    expect(host.querySelector(".stw-lede")?.textContent).toContain("When you usually take clients at Solon, and your regulars");
+    expect(host.querySelector("[aria-label='Monday']")?.textContent).toContain("Doesn't take clients");
+    expect(host.querySelector("[data-testid='stw-breaks']")?.textContent).toBe(
+      "A break inside a block shows as room on Openings, so leave the breaks out.",
+    );
+    expect(host.textContent).not.toMatch(/\bhours\b/i);
+  });
+
+  it("proposes three blocks on a day, the breaks left out (Openings round)", async () => {
+    await mount();
+    await deliver(null);
+    await click("Add a block on Monday");
+    await click("Add another block on Monday");
+    await click("Add another block on Monday");
+    // Three is the most a day holds: the button goes.
+    expect(host.querySelector("[aria-label='Add another block on Monday']")).toBeNull();
+    expect(host.querySelector("[aria-label='Monday: starts']")).not.toBeNull();
+    expect(host.querySelector("[aria-label='Monday, block 2: starts']")).not.toBeNull();
+    expect(host.querySelector("[aria-label='Monday, block 3: ends']")).not.toBeNull();
+    await click("Propose this week");
+    expect(fake.writes).toHaveLength(1);
+    expect((fake.writes[0].data.proposed as { hours: unknown[] }).hours).toEqual([
+      { weekday: 1, from: "07:00", to: "13:00" },
+      { weekday: 1, from: "14:00", to: "18:00" },
+      { weekday: 1, from: "19:00", to: "21:45" },
+    ]);
+  });
+
   it("keeps the week and says so when proposing fails", async () => {
     await mount();
     await deliver(null);
-    await click("Add hours on Monday");
+    await click("Add a block on Monday");
     fake.failWrite = true;
     await click("Propose this week");
     expect(host.querySelector("[role='alert']")?.textContent).toContain("Couldn't propose it just now");

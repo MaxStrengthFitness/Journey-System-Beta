@@ -293,6 +293,33 @@ describe("Standing weeks on Team", () => {
     ]);
   });
 
+  it("speaks of when trainers take clients, and a leader agrees three blocks on a day (Openings round)", async () => {
+    // Ann proposed a change: two blocks on Monday where there was one.
+    const twoBlocks = { ...annWeek, hours: [{ weekday: 1, from: "07:00", to: "10:00" }, { weekday: 1, from: "11:00", to: "13:00" }] };
+    fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], proposed: twoBlocks, proposedAt: new Date("2026-09-27T14:00:00Z") }] };
+    await mount();
+    expect(host.querySelector(".adm-panel__sub")?.textContent).toContain("Each trainer proposes their usual week — when they take clients, and their regulars — on My Profile");
+    expect(host.textContent).not.toMatch(/\bhours\b/i);
+    await click("Review: Ann Park");
+    expect(host.querySelector("[aria-label='What the change does']")?.textContent).toBe(
+      "Monday: 7:00 AM – 10:00 AM and 11:00 AM – 1:00 PM, was 7:00 AM – 1:00 PM.",
+    );
+    // The leader adds a third before agreeing; three is the most a day holds.
+    await click("Add another block on Monday");
+    expect(host.querySelector("[aria-label='Add another block on Monday']")).toBeNull();
+    expect(host.querySelector("[aria-label='Monday, block 3: starts']")).not.toBeNull();
+    await click("Agree it as changed");
+    expect(fake.writes[0].data).toMatchObject({
+      final: {
+        hours: [
+          { weekday: 1, from: "07:00", to: "10:00" },
+          { weekday: 1, from: "11:00", to: "13:00" },
+          { weekday: 1, from: "14:00", to: "18:00" },
+        ],
+      },
+    });
+  });
+
   it("follows the trainer's newer proposal while the review is untouched", async () => {
     await mount();
     await click("Review: Sam Lee");

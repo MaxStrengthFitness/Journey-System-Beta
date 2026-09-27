@@ -16,8 +16,14 @@ import "./standing-week.css";
  * AJ: "Trainers should propose and set their own ideal week via my profile
  * while leaders review and finalize those standings with newly focused team
  * section." The trainer's own profile only, at the studio the iPad is in:
- * the hours they usually work here and their regulars. Saving PROPOSES it;
- * a studio leader agrees it on My Studio → Team. Nothing goes to Mindbody.
+ * when they usually take clients here and their regulars. Saving PROPOSES
+ * it; a studio leader agrees it on My Studio → Team. Nothing goes to
+ * Mindbody.
+ *
+ * The card keeps its name, My standing week; the editor inside it is headed
+ * "When I usually take clients" (Openings round, Sep 27 2026), because a
+ * trainer paid per client doesn't work "hours" and the blocks are what
+ * Openings reads as who is in.
  *
  * Styled as one of the profile's own cards (trainer-profile.css); the editor
  * inside is the one Team uses too.
@@ -107,17 +113,21 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
               </ul>
             )}
             <p className="stw-lede">
-              The hours you usually work at {studioName}, and your regulars — who you train, and when. Proposing it
+              When you usually take clients at {studioName}, and your regulars — who you train, and when. Proposing it
               sends it to a studio leader to agree. Once agreed, each coming week's bookings are checked against it, so
               the studio sees an open slot in time to fill it. Nothing is sent to Mindbody: the front desk books your
               regulars there, as always.
             </p>
+            <h3 className="stw-week__head" id="my-standing-week-blocks">
+              When I usually take clients
+            </h3>
             <WeekEditor
               value={form.value}
               onChange={(next) => form.setFields(next)}
               clients={clients}
               noteLabel="Note for your studio leader (optional)"
               disabled={form.status === "saving"}
+              labelledBy="my-standing-week-blocks"
             />
             <div className="stw-actions">
               {form.status === "saved" && <p className="stw-actions__msg stw-actions__msg--ok">Proposed.</p>}

@@ -1,7 +1,7 @@
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Trainer } from "../../types";
 import { timeLabel } from "./check";
-import { awayLabel, daysOf, rangeLabel, teamWeekSentence } from "./present";
+import { NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "./present";
 import { uidOf } from "./team";
 import { useStandingWeek } from "./useStandingWeeks";
 import { upcomingAway } from "./week";
@@ -11,7 +11,7 @@ import "./standing-week.css";
  * A COLLEAGUE'S STANDING WEEK, READ ONLY (voice review follow-up, Sep 27
  * 2026). AJ: "Trainers can see the whole studios schedule ... schedules are
  * open to all." On a colleague's profile, at the studio the iPad is in: their
- * AGREED week (the hours they work and their regulars) and any days away
+ * AGREED week (when they take clients, and their regulars) and any days away
  * that haven't ended. A proposal nobody has agreed yet is theirs and their
  * leader's, so it reads "No agreed week yet"; the week's note is for the
  * leader, so it isn't shown. Nothing here is editable, and nothing ranks
@@ -66,7 +66,7 @@ export function ColleagueStandingWeek({ trainer, studioId, studioName, tz }: Col
                       <div key={d.weekday} className="stw-read__day">
                         <dt className="stw-read__name">{d.name}</dt>
                         <dd className="stw-read__body">
-                          <span className="stw-read__hours">{d.hours.length > 0 ? d.hours.map(rangeLabel).join(" and ") : "Not in"}</span>
+                          <span className="stw-read__hours">{d.hours.length > 0 ? blocksLabel(d.hours) : NO_BLOCKS}</span>
                           {d.regulars.length > 0 && (
                             <ul className="stw-read__regulars" aria-label={`Regulars on ${d.name}`}>
                               {d.regulars.map((r) => (

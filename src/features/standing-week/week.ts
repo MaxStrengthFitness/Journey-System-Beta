@@ -2,11 +2,20 @@
  * THE STANDING WEEK — a trainer's usual week at a studio (voice-review round,
  * Sep 27 2026; docs/rounds/2026-09-27-standing-week.md is the round).
  *
- * The hours they work and their regulars ("Judy, Monday 8:00"). The trainer
- * PROPOSES it on My Profile; a studio leader AGREES it on My Studio → Team.
- * Journey checks the coming week's Mindbody bookings against the agreed week
- * (check.ts) and never writes to Mindbody: the front desk books the regulars,
- * as recurring appointments, exactly as before.
+ * When they usually take clients and their regulars ("Judy, Monday 8:00").
+ * The trainer PROPOSES it on My Profile; a studio leader AGREES it on My
+ * Studio → Team. Journey checks the coming week's Mindbody bookings against
+ * the agreed week (check.ts) and never writes to Mindbody: the front desk
+ * books the regulars, as recurring appointments, exactly as before.
+ *
+ * THE WORDS (Openings round, Sep 27 2026). The stored field is still `hours`
+ * and a row is still a `WorkHours`, but a screen never calls them hours: a
+ * day's rows are its BLOCKS, the times the trainer usually takes clients
+ * ("When I usually take clients"), and a day with none "Doesn't take
+ * clients". A block is not a shift: many trainers are paid per client, and
+ * AJ's "take three clients, have a little break" is two or three blocks with
+ * the breaks left out, because Openings reads a half-hour inside a block
+ * with nothing booked as room. Hence three blocks a day (MAX_RANGES_A_DAY).
  *
  * Every time is the studio's own wall clock, "HH:MM", and every day a weekday
  * 0–6 (0 = Sunday, as `weekdayOf` reports it). Nothing here knows an instant:
@@ -23,6 +32,7 @@
  * PURE MODULE.
  */
 
+/** One block: a stretch of a weekday when the trainer usually takes clients. */
 export interface WorkHours {
   /** 0 = Sunday … 6 = Saturday. */
   weekday: number;
@@ -43,6 +53,7 @@ export interface Regular {
 }
 
 export interface StandingWeek {
+  /** The blocks, stored as `hours` (the field kept its first name). */
   hours: WorkHours[];
   regulars: Regular[];
   note?: string;
@@ -75,8 +86,23 @@ export interface StandingWeekDoc {
   away?: AwayRange[];
 }
 
-/** The rules hold the same limits (firestore.rules, standingWeekValid). */
-export const MAX_HOURS = 14;
+/**
+ * Blocks a day, as the editor offers them (Openings round, Sep 27 2026: was
+ * two). AJ's per-client trainers "take three clients, have a little break"
+ * and go again; with two blocks such a day was typed as one long block, and
+ * every habitual break inside it would read as room on Openings and be
+ * offered to a client.
+ */
+export const MAX_RANGES_A_DAY = 3;
+
+/**
+ * Blocks in a week: three a day, every day (was 14). The rules hold the same
+ * limits (firestore.rules, standingWeekShapeValid); for the blocks they check
+ * only the list's length, never each block, so the 1,000-expression budget
+ * the days away were measured against doesn't move
+ * (tests/firestore.rules.test.ts, "the standing week", holds it at 21).
+ */
+export const MAX_HOURS = MAX_RANGES_A_DAY * 7;
 export const MAX_REGULARS = 80;
 export const MAX_NOTE = 500;
 /**
@@ -244,7 +270,7 @@ export function weekSummary(week: StandingWeek | null): string {
   const regulars = week.regulars.length;
   if (days === 0 && regulars === 0) return "An empty week";
   const parts = [
-    days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "no hours set",
+    days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "no times set",
     `${regulars} ${regulars === 1 ? "regular" : "regulars"}`,
   ];
   return parts.join(" · ");

@@ -4,7 +4,12 @@ import type { Client } from "../../types";
 import { NAME_SEARCH_PROPS } from "../../lib/name-search-input";
 import { timeLabel } from "./check";
 import {
+  BREAKS_LINE,
   LAST_CLOCK_MINUTES,
+  NO_BLOCKS,
+  OUTSIDE_BLOCKS,
+  addBlockLabel,
+  blockName,
   clockChoices,
   daysOf,
   defaultHours,
@@ -13,7 +18,7 @@ import {
   tidyForm,
   type WeekForm,
 } from "./present";
-import { MAX_NOTE, MAX_REGULARS, clockOf, minutesOf, newRegularId, type Regular, type WorkHours } from "./week";
+import { MAX_NOTE, MAX_RANGES_A_DAY, MAX_REGULARS, clockOf, minutesOf, newRegularId, type Regular, type WorkHours } from "./week";
 import "./standing-week.css";
 
 /**
@@ -26,6 +31,12 @@ import "./standing-week.css";
  * picked, never typed — a quarter-hour clock, and an end that can only come
  * after its start — so the editor cannot build a week the save would have to
  * drop. A regular's client comes from the studio's own roster.
+ *
+ * BLOCKS (Openings round, Sep 27 2026). A day holds up to three blocks of
+ * when the trainer usually takes clients ("Add a block", "Add another
+ * block"); a day with none "Doesn't take clients". The line under the days
+ * says why the breaks stay out: Openings reads a half-hour inside a block
+ * with nothing booked as room it can offer a client.
  */
 
 export interface WeekEditorProps {
@@ -36,14 +47,15 @@ export interface WeekEditorProps {
   /** The note's label: "Note for your studio leader" on My Profile. */
   noteLabel: string;
   disabled?: boolean;
+  /** The id of the heading that names the editor, when the screen gives it one. */
+  labelledBy?: string;
 }
 
-const MAX_RANGES_A_DAY = 2;
 const MATCHES_SHOWN = 8;
 
 const clientName = (c: Pick<Client, "firstName" | "lastName">) => `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim();
 
-export function WeekEditor({ value, onChange, clients, noteLabel, disabled = false }: WeekEditorProps) {
+export function WeekEditor({ value, onChange, clients, noteLabel, disabled = false, labelledBy }: WeekEditorProps) {
   const [adding, setAdding] = useState<number | null>(null);
   // The rows below are value's own objects (daysOf filters, never copies),
   // so an edit finds its row by identity.
@@ -61,20 +73,26 @@ export function WeekEditor({ value, onChange, clients, noteLabel, disabled = fal
   };
 
   return (
-    <div className="stw" aria-disabled={disabled || undefined}>
+    <div
+      className="stw"
+      role={labelledBy ? "group" : undefined}
+      aria-labelledby={labelledBy}
+      aria-disabled={disabled || undefined}
+    >
       {days.map((day) => {
         const outOfRegulars = value.regulars.length >= MAX_REGULARS;
+        const add = addBlockLabel(day.hours.length, day.name);
         return (
           <section key={day.weekday} className="stw-day" aria-label={day.name}>
             <h3 className="stw-day__name">{day.name}</h3>
             <div className="stw-day__body">
               <div className="stw-hours">
-                {day.hours.length === 0 && <span className="stw-quiet">Not in</span>}
+                {day.hours.length === 0 && <span className="stw-quiet">{NO_BLOCKS}</span>}
                 {day.hours.map((h, i) => (
                   <div key={i} className="stw-range">
                     <select
                       className="stw-select"
-                      aria-label={`${day.name}: starts`}
+                      aria-label={`${blockName(day.name, i)}: starts`}
                       value={h.from}
                       disabled={disabled}
                       onChange={(e) => setFrom(h, e.target.value)}
@@ -90,7 +108,7 @@ export function WeekEditor({ value, onChange, clients, noteLabel, disabled = fal
                     </span>
                     <select
                       className="stw-select"
-                      aria-label={`${day.name}: ends`}
+                      aria-label={`${blockName(day.name, i)}: ends`}
                       value={h.to}
                       disabled={disabled}
                       onChange={(e) => setRange(h, { ...h, to: e.target.value })}
@@ -117,11 +135,11 @@ export function WeekEditor({ value, onChange, clients, noteLabel, disabled = fal
                     type="button"
                     className="stw-add"
                     disabled={disabled}
-                    aria-label={day.hours.length === 0 ? `Add hours on ${day.name}` : `Add more hours on ${day.name}`}
+                    aria-label={add.label}
                     onClick={() => update({ hours: [...value.hours, defaultHours(value, day.weekday)] })}
                   >
                     <Plus size={15} aria-hidden />
-                    {day.hours.length === 0 ? "Hours" : "More hours"}
+                    {add.text}
                   </button>
                 )}
               </div>
@@ -144,7 +162,7 @@ export function WeekEditor({ value, onChange, clients, noteLabel, disabled = fal
                         ))}
                       </select>
                       <span className="stw-regular__name">{r.clientName || "A client"}</span>
-                      {outsideHours(value, r) && <span className="stw-note-chip">Outside the day's hours</span>}
+                      {outsideHours(value, r) && <span className="stw-note-chip">{OUTSIDE_BLOCKS}</span>}
                       <button
                         type="button"
                         className="stw-x"
@@ -194,6 +212,10 @@ export function WeekEditor({ value, onChange, clients, noteLabel, disabled = fal
           </section>
         );
       })}
+
+      <p className="stw-hint stw-breaks" data-testid="stw-breaks">
+        {BREAKS_LINE}
+      </p>
 
       {value.regulars.length >= MAX_REGULARS && (
         <p className="stw-hint">A week holds up to {MAX_REGULARS} regulars.</p>

@@ -101,7 +101,7 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
     <AdminPanel
       title="Standing weeks"
       icon={<CalendarClock className="w-3.5 h-3.5" />}
-      subtitle="Each trainer proposes their usual week — their hours and their regulars — on My Profile, and you agree it here. The coming week's Mindbody bookings are checked against the agreed weeks. Nothing is written to Mindbody: the front desk books as always."
+      subtitle="Each trainer proposes their usual week — when they take clients, and their regulars — on My Profile, and you agree it here. The coming week's Mindbody bookings are checked against the agreed weeks. Nothing is written to Mindbody: the front desk books as always."
     >
       <div className="stw-team">
         <section aria-labelledby="stw-next-seven">

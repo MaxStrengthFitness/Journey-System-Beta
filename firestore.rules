@@ -1097,11 +1097,16 @@ service cloud.firestore {
        Shape only; limits match src/features/standing-week/week.ts, and who
        may write what is in the match block. The rows of the two lists are
        not checked one by one (a rule cannot loop): the app normalizes every
-       week it reads, leaving a malformed row out rather than guessing. */
+       week it reads, leaving a malformed row out rather than guessing.
+       `hours` holds the BLOCKS of when the trainer takes clients: three a
+       day, 21 a week (Openings round, Sep 27 2026; was 14, two a day). Only
+       the list's length is checked, so raising it costs no expressions from
+       the 1,000 a request may evaluate (the budget test in "the standing
+       week" writes 21 for every leader it measures). */
     function standingWeekShapeValid(w) {
       return w == null || (w is map
           && w.keys().hasOnly(['hours', 'regulars', 'note'])
-          && w.hours is list && w.hours.size() <= 14
+          && w.hours is list && w.hours.size() <= 21
           && w.regulars is list && w.regulars.size() <= 80
           && (!('note' in w) || (w.note is string && w.note.size() <= 500)));
     }
@@ -2262,10 +2267,11 @@ service cloud.firestore {
 
       /*
        * THE STANDING WEEK (voice-review round, Sep 27 2026) -- one document
-       * per trainer at this studio, keyed by their Auth uid: the hours they
-       * work and their regulars. Read by the studio's people, because the
-       * point is that a team knows when each of them works. The trainer
-       * PROPOSES their own week -- the proposal fields only, never the agreed
+       * per trainer at this studio, keyed by their Auth uid: when they take
+       * clients (`hours`, the blocks) and their regulars. Read by the
+       * studio's people, because the point is that a team knows when each of
+       * them works. The trainer PROPOSES their own week -- the proposal
+       * fields only, never the agreed
        * week -- and sets the days they are away (`away`, no agreement
        * needed). The studio's leaders (the grant counts), franchise owners
        * and administrators AGREE it, change it, set the days away, or remove

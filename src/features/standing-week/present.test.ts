@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { awayLabel, mayReadWeeks, reviewSentence, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
+import {
+  BREAKS_LINE,
+  NO_BLOCKS,
+  OUTSIDE_BLOCKS,
+  addBlockLabel,
+  awayLabel,
+  blockName,
+  blocksLabel,
+  mayReadWeeks,
+  reviewSentence,
+  clockChoices,
+  daysOf,
+  defaultHours,
+  formOf,
+  myWeekSentence,
+  outsideHours,
+  rangeLabel,
+  teamWeekSentence,
+  tidyForm,
+  weekChanges,
+  weekOfForm,
+  worksAt,
+} from "./present";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /** What a standing week says on screen (voice-review round, Sep 27 2026). */
@@ -138,15 +160,62 @@ describe("what a proposal changes", () => {
       note: "Back from vacation Nov 3",
     };
     expect(weekChanges(from, to)).toEqual([
-      "Monday's hours: 6:00 AM – 12:00 PM, was 7:00 AM – 1:00 PM.",
-      "Works Friday, 7:00 AM – 11:00 AM.",
+      "Monday: 6:00 AM – 12:00 PM, was 7:00 AM – 1:00 PM.",
+      "Takes clients on Friday, 7:00 AM – 11:00 AM.",
       "Drops Bob Jones, Monday at 9:00 AM.",
       "Moves Judy Smith from Monday at 8:00 AM to Tuesday at 9:30 AM.",
       "Adds Ann Park, Friday at 8:00 AM.",
       'Note: "Back from vacation Nov 3"',
     ]);
-    expect(weekChanges(to, { ...from, note: undefined })).toContain("No longer works Friday (was 7:00 AM – 11:00 AM).");
+    expect(weekChanges(to, { ...from, note: undefined })).toContain("No longer takes clients on Friday (was 7:00 AM – 11:00 AM).");
     expect(weekChanges(to, { ...to, note: "" })).toEqual(["Takes the note off."]);
+  });
+
+  it("says a day of three blocks as one phrase (Openings round)", () => {
+    const from = week({ regulars: [] });
+    const to = week({
+      regulars: [],
+      hours: [
+        { weekday: 1, from: "06:00", to: "08:00" },
+        { weekday: 1, from: "09:00", to: "11:00" },
+        { weekday: 1, from: "15:00", to: "18:00" },
+      ],
+    });
+    expect(weekChanges(from, to)).toEqual([
+      "Monday: 6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM, was 7:00 AM – 1:00 PM.",
+    ]);
+  });
+});
+
+describe("the editor's words (Openings round)", () => {
+  it("names the blocks by when a trainer takes clients, never hours", () => {
+    expect(NO_BLOCKS).toBe("Doesn't take clients");
+    expect(OUTSIDE_BLOCKS).toBe("Outside when they take clients");
+    expect(BREAKS_LINE).toBe("A break inside a block shows as room on Openings, so leave the breaks out.");
+    expect(addBlockLabel(0, "Monday")).toEqual({ text: "Add a block", label: "Add a block on Monday" });
+    expect(addBlockLabel(1, "Monday")).toEqual({ text: "Add another block", label: "Add another block on Monday" });
+    expect(addBlockLabel(2, "Monday")).toEqual({ text: "Add another block", label: "Add another block on Monday" });
+  });
+
+  it("gives each block of a day its own name for VoiceOver", () => {
+    expect(blockName("Monday", 0)).toBe("Monday");
+    expect(blockName("Monday", 1)).toBe("Monday, block 2");
+    expect(blockName("Monday", 2)).toBe("Monday, block 3");
+  });
+
+  it("says one, two or three blocks as a phrase", () => {
+    const a = { from: "06:00", to: "08:00" };
+    const b = { from: "09:00", to: "11:00" };
+    const c = { from: "15:00", to: "18:00" };
+    expect(blocksLabel([])).toBe("");
+    expect(blocksLabel([a])).toBe("6:00 AM – 8:00 AM");
+    expect(blocksLabel([a, b])).toBe("6:00 AM – 8:00 AM and 9:00 AM – 11:00 AM");
+    expect(blocksLabel([a, b, c])).toBe("6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM");
+  });
+
+  it("starts a third block an hour after the day's latest ends", () => {
+    const two = { hours: [{ weekday: 1, from: "06:00", to: "09:00" }, { weekday: 1, from: "10:00", to: "13:00" }] };
+    expect(defaultHours(two, 1)).toEqual({ weekday: 1, from: "14:00", to: "18:00" });
   });
 });
 

@@ -3455,7 +3455,9 @@ describe("the standing week", () => {
       { trainerId: "" },
       { colour: "blue" },
       { proposed: week({ note: "x".repeat(501) }) },
-      { proposed: week({ hours: Array.from({ length: 15 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
+      // Three blocks a day, 21 a week (Openings round): a 22nd is refused.
+      { proposed: week({ hours: Array.from({ length: 22 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
+      { final: week({ hours: Array.from({ length: 22 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
       { proposed: week({ regulars: Array.from({ length: 81 }, (_, i) => ({ id: `r${i}`, weekday: 1, start: "08:00", clientId: "c", clientName: "C" })) }) },
       { proposed: { hours: [], regulars: [], extra: true } },
       { proposed: "Mondays" },
@@ -3465,6 +3467,20 @@ describe("the standing week", () => {
     }
     // A trainer's proposal, backdated.
     await assertFails(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposedAt: new Date("2026-01-01T12:00:00Z") })));
+  });
+
+  // Three blocks a day (Openings round, Sep 27 2026): 21 a week are accepted,
+  // proposed by the trainer and agreed by a leader.
+  it("takes three blocks a day, 21 a week", async () => {
+    const blocks = Array.from({ length: 21 }, (_, i) => ({
+      weekday: i % 7,
+      from: ["06:00", "10:00", "15:00"][Math.floor(i / 7)],
+      to: ["09:00", "13:00", "19:00"][Math.floor(i / 7)],
+    }));
+    await assertSucceeds(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposed: week({ hours: blocks }) })));
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { ...agreement("ownerA", { final: week({ hours: blocks }) }), proposed: week({ hours: blocks }) }, { merge: true }),
+    );
   });
 
   // Who agrees (voice review follow-up): every leader the docs name, and
@@ -3584,9 +3600,15 @@ describe("the standing week", () => {
   // leader agreeing, and the trainer proposing, on a week that already holds
   // six ranges and both a proposed and an agreed week. If either fails, lower
   // MAX_AWAY in week.ts and the six in standingWeekAwayValid together.
+  // The week is the fullest the app writes: 21 blocks, three a day every day
+  // (Openings round, Sep 27 2026; it was 14), and 80 regulars.
   it("fits a leader's agreement and a trainer's proposal on a week holding six days away", async () => {
     const full = week({
-      hours: Array.from({ length: 14 }, (_, i) => ({ weekday: (i % 7) + 1, from: i < 7 ? "06:00" : "15:00", to: i < 7 ? "12:00" : "20:00" })),
+      hours: Array.from({ length: 21 }, (_, i) => ({
+        weekday: i % 7,
+        from: ["06:00", "10:00", "15:00"][Math.floor(i / 7)],
+        to: ["09:00", "13:00", "20:00"][Math.floor(i / 7)],
+      })),
       regulars: Array.from({ length: 80 }, (_, i) => ({ id: `r${i}`, weekday: (i % 6) + 1, start: "08:00", clientId: `c${i}`, clientName: `Client ${i}` })),
       note: "Mornings, and two evenings",
     });
