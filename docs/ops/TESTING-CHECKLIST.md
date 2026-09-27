@@ -289,7 +289,11 @@ The whole app has been verified against mock data on a good network. This round 
 - [ ] **Cold load on a studio tablet, on studio Wi-Fi. Time it.** `dist/` is 4.2 MB and Firestore initialises at module scope, so its 394 KB chunk downloads and runs **before the first pixel** regardless of the code splitting.
 - [ ] **Open a client profile with heavy history.** `ClientProfileView` is a 413 KB chunk on its own.
 - [ ] **The 12-month clinical report timing** from Round 3 — write the number down; it is your worst realistic case.
-- [ ] **Add the app to the iPad home screen.** *Expected:* a screenshot thumbnail, the title "Max Strength App", and it opens in Safari **with browser chrome**. There is no icon, no manifest and no standalone mode — and that chrome eats roughly the vertical space the entire Now-bar round was spent reclaiming.
+- [ ] **Add the app to the iPad home screen** (the Home Screen round, Sep 26 2026: `src/features/home-screen/README.md`). Safari → Share → Add to Home Screen, leave "Open as Web App" on. *Expected:* the Journey icon and the name "Journey"; it opens full screen with no address bar; the sign-in screen (the icon has its own storage, separate from Safari).
+  - The clock and battery are readable on every screen in both themes. In dark they sit on the header's navy; in light, on a dark strip.
+  - Nothing tappable sits under the clock or on the home indicator: the header, the bottom bar, the Notifications and Feedback sheets, the Active Session's Pulse, Notes and Watch-outs panels, the Packages sheet, Pulse "Hand to client" and the studio picker.
+  - Rotate the iPad: it turns both ways.
+  - Then run the sign-in test in `docs/rounds/2026-09-26-home-screen.md` **before telling trainers to use the icon**.
 
 ---
 
