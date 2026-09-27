@@ -253,6 +253,25 @@ export function isNextTrainerNote(
   );
 }
 
+/**
+ * Is `entry` the Note for the next trainer of one of `sessions`? For a To-file
+ * tray that has no mark of its own, such as the client's Notes page: Finish
+ * copies the note onto its session (`sessions.notes`), so that copy is the
+ * mark, compared as the journal keeps it (`journalBodyOf`). Only an unedited
+ * copy matches: words changed later in History differ, and that card offers
+ * Discard like any other. A session this list does not hold (not loaded yet,
+ * or older than the load) finds nothing.
+ */
+export function isNextTrainerNoteOfSessions(
+  entry: Pick<JournalEntry, "id" | "sessionId" | "origin" | "importance" | "body">,
+  sessions: readonly { id?: string | null; notes?: string | null }[],
+): boolean {
+  if (!entry.sessionId || entry.origin !== "post_session" || entry.importance !== "elevated") return false;
+  const session = sessions.find((s) => s.id === entry.sessionId);
+  if (!session) return false;
+  return isNextTrainerNote(entry, { sessionId: entry.sessionId, id: null, body: journalBodyOf(session.notes) });
+}
+
 /** Where an adapter-produced entry came from when it is an import, not a coach's note. */
 const IMPORT_ORIGINS: ReadonlySet<JournalOrigin> = new Set<JournalOrigin>([
   "profile",

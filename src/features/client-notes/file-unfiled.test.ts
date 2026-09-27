@@ -113,12 +113,15 @@ describe("the Note for the next trainer, filed from the Wrap-up", () => {
     }
   });
 
-  it("a discard archives it, and the journal drops archived notes: the briefing would lose it", async () => {
+  it("a discard is an archive: it writes isArchived and nothing else", async () => {
     await discardUnfiledEntry("j-next");
+    expect(writes).toHaveLength(1);
+    expect(writes[0].path).toBe("journalEntries/j-next");
+    expect(Object.keys(writes[0].data).sort()).toEqual(["isArchived", "updatedAt"]);
     expect(writes[0].data).toMatchObject({ isArchived: true });
-    // The journal's merge keeps only notes that are not archived, so the
-    // briefing is never handed this one again. Hence no Discard on its card.
-    const archived = applied(nextTrainerNote(), writes[0].data);
-    expect(archived.isArchived).toBe(true);
+    // What an archive does to the briefing is the hook's to prove: its merge
+    // keeps only notes that are not archived, so headsUpEntries loses this
+    // one (useClientJournal.render.test.tsx, "drops it once it is archived").
+    // Hence no Discard on its card.
   });
 });

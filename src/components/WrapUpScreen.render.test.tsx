@@ -13,6 +13,9 @@
  * vanishing as if nothing had been caught.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -796,6 +799,84 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     expect(save.className).toContain("bg-(--eq-live)");
     expect(save.className).toContain("text-(--eq-live-on)");
     expect(save.className).not.toContain("uppercase");
+  });
+
+  it("draws its own buttons in bold sentence case at 14px, with the brand focus ring", async () => {
+    const host = await mount(<FullScreen />);
+    const own = ["Save note", "Drop it", "Update Pulse", "Renewal conversation", "Back to Hub"].map(
+      (label) => buttonByText(host, label)!,
+    );
+    for (const b of own) {
+      expect(b).toBeTruthy();
+      const cls = b.className.split(/\s+/);
+      expect(cls).toContain("font-bold");
+      expect(cls).toContain("text-[14px]");
+      expect(cls).not.toContain("uppercase");
+      expect(cls).not.toContain("italic");
+      expect(cls).not.toContain("font-display");
+      expect(cls).toContain("focus-visible:ring-(--eq-focus-ring)");
+      // At least 40px tall (min-h-10 = 40px, min-h-11 = 44px, 52px for leaving).
+      expect(cls.some((c) => c === "min-h-10" || c === "min-h-11" || c === "min-h-[52px]")).toBe(true);
+    }
+  });
+
+  it("heads its cards in small upright capitals, and titles the page in the codex voice", async () => {
+    const host = await mount(<FullScreen />);
+    const title = host.querySelector("h1")!;
+    expect(title.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["font-display", "font-extrabold", "italic", "uppercase", "text-[30px]", "break-words"]),
+    );
+    const head = Array.from(host.querySelectorAll("div")).find((d) => d.textContent === "The journey")!;
+    const cls = head.className.split(/\s+/);
+    expect(cls).toEqual(expect.arrayContaining(["uppercase", "font-extrabold", "text-[12px]", "text-ink-d2"]));
+    expect(cls).not.toContain("italic");
+    expect(cls).not.toContain("font-display");
+  });
+
+  it("keeps every text size in its source on the scale, and no cyan focus left", () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "WrapUpScreen.tsx"), "utf8");
+    const sizes = new Set([...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1])));
+    expect([...sizes].filter((n) => ![11, 12, 14, 17, 30].includes(n))).toEqual([]);
+    expect(src).not.toMatch(/ring-cyan|border-cyan/);
+  });
+
+  /* Where the work went: hero orange (chart-2, the same colour as --cta) is
+     the one loud action of a screen and chart-1 is the brand blue in the
+     light theme, so neither colours a muscle group. */
+  it("colours where the work went with neither of the brand's two colours, one colour per region", async () => {
+    const machines = [
+      { id: "m1", name: "Leg Press", anatomicalRegion: "Lower Body" },
+      { id: "m2", name: "Chest Press", anatomicalRegion: "Chest" },
+      { id: "m3", name: "Lower Back", anatomicalRegion: "Lumbar" },
+      { id: "m4", name: "Mystery Machine", anatomicalRegion: "" },
+    ];
+    const logs = machines.map((m, i) => ({ id: `l${i}`, machineId: m.id, sessionId: "sess1", weight: "100", reps: String(5 + i), outcome: "performed" }));
+    const host = await mount(
+      <WrapUpScreen
+        client={client}
+        session={session}
+        logs={logs as any}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        machines={machines as any}
+      />,
+    );
+    const label = Array.from(host.querySelectorAll("span")).find((s) => s.textContent === "Where the work went")!;
+    const block = label.parentElement!.parentElement!;
+    for (const region of ["Lower Body", "Upper Body", "Core & Spine", "Other"]) expect(block.textContent).toContain(region);
+    const classes = Array.from(block.querySelectorAll("[class]")).flatMap((el) => el.className.split(/\s+/));
+    expect(classes).not.toContain("bg-chart-1");
+    expect(classes).not.toContain("bg-chart-2");
+    expect(classes).not.toContain("bg-cta");
+    const dotTones = Array.from(block.querySelectorAll("span.rounded-full.shrink-0")).map((d) =>
+      d.className.split(/\s+/).find((c) => c.startsWith("bg-")),
+    );
+    expect(dotTones).toHaveLength(4);
+    expect(new Set(dotTones).size).toBe(4);
   });
 
   it("bursts its confetti once as it opens, out of the way of every tap", async () => {

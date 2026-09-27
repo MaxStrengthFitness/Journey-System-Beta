@@ -104,15 +104,21 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  * The screen follows the app theme, all of it. Its surfaces are the
  * `bg-dark` / `ink-d` tokens, which go light in the light theme, and every
  * colour on it is a token that reads in both: brand blue (`--eq-live*`) for
- * the kicker and a gain, green (`--eq-ok`) for booked and saved, plum
- * (`--eq-warn`) for a caution (nothing booked, a note left unsaved), the
- * journey grid's gold star for a max-strength set, and the chart palette for
- * where the work went. Until Sep 27 2026 the Dial, Loudness and the two trays
- * were pinned dark (a `.dark` + `data-theme="dark"` wrapper left over from
- * when the whole screen was), which on the light theme drew dark slabs and
- * white words on a white card; they now resolve against the document like
- * everywhere else they are drawn. `src/neutral-ramp.test.ts` counts this
- * file's colours with every other theme-aware screen's.
+ * a gain, a save and the focus ring, green (`--eq-ok`) for booked and saved,
+ * plum (`--eq-warn`) for a caution (nothing booked, a note left unsaved), the
+ * journey grid's gold star for a max-strength set, and sky, amber and neutral
+ * for where the work went (GROUP_TONE says why not the brand's two). Until
+ * Sep 27 2026 the Dial, Loudness and the two trays were pinned dark (a
+ * `.dark` + `data-theme="dark"` wrapper left over from when the whole screen
+ * was), which on the light theme drew dark slabs and white words on a white
+ * card; they now resolve against the document like everywhere else they are
+ * drawn. `src/neutral-ramp.test.ts` counts this file's colours with every
+ * other theme-aware screen's.
+ *
+ * The type is the app's (voice-review follow-up, Sep 27 2026): the masthead
+ * title in the codex page-title voice (display, 800, italic capitals, 30px),
+ * the card heads in small upright capitals like My Profile's, buttons bold
+ * sentence case at 14px, and every size on the 11 / 12 / 14 / 17 / 30 scale.
  */
 
 export interface WrapUpScreenProps {
@@ -170,22 +176,26 @@ export interface WrapUpScreenProps {
   onStudioClick?: () => void;
 }
 
-/* Where the work went: one colour per body region, from the app's chart
-   palette (`--chart-*`, index.css), which is a data palette and reads in both
-   themes. Not the brand's meaning colours: green is "done" and plum is a
-   caution, and a muscle group is neither. The region's name and share are
-   written beside every bar, so the colour is never the only way to tell. */
+/* Where the work went: one colour per body region, each reading in both
+   themes. Two of the chart palette's five (`--chart-*`, index.css) are brand
+   colours, so neither is used: chart-2 is the hero orange, kept for the one
+   loud action of a screen, and chart-1 is the brand blue of action and
+   selection in the light theme. Nor the meaning colours: green is "done" and
+   plum a caution, and a muscle group is neither. So sky (chart-4), amber
+   (chart-5) and the strong neutral ink, with the chart palette's own grey
+   (chart-3) for "Other". The region's name and share are written beside
+   every bar, so the colour is never the only way to tell. */
 const GROUP_TONE: Record<string, string> = {
-  "Lower Body": "bg-chart-1",
+  "Lower Body": "bg-chart-4",
   "Upper Body": "bg-chart-5",
-  "Core & Spine": "bg-chart-2",
+  "Core & Spine": "bg-ink-d2",
   Other: "bg-chart-3",
 };
 const OTHER_TONE = GROUP_TONE.Other;
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-display italic text-(--eq-live-text) text-[11px] uppercase tracking-[0.16em]">{children}</div>
+    <div className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{children}</div>
   );
 }
 
@@ -236,7 +246,7 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
       <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 break-words">{line.name}</span>
       {performed ? (
         <>
-          <span className="font-mono tabular-nums text-[15px] font-bold text-ink-d1 whitespace-nowrap">
+          <span className="font-mono tabular-nums text-[14px] font-bold text-ink-d1 whitespace-nowrap">
             {line.weight !== null ? fmtLb(line.weight) : "–"}
             <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">lb</span>
             <span className="text-ink-d3 mx-1">×</span>
@@ -479,15 +489,15 @@ export function WrapUpScreen({
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
-            <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
+            <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
               {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
             {savedOnThisIpad && (
-              <p className="text-ink-d2 text-[13px] mb-1" role="status">
+              <p className="text-ink-d2 text-[14px] mb-1" role="status">
                 It sends to the studio's records when the connection is back. Nothing more to do.
               </p>
             )}
-            <div className="text-ink-d2 text-[13px]">
+            <div className="text-ink-d2 text-[14px]">
               {todayHeadline(lines, coverage)}
               {minutes !== null ? ` · ${minutes} min` : ""}
               {sessionTag ? ` · session ${sessionTag}` : ""}
@@ -530,11 +540,11 @@ export function WrapUpScreen({
           {/* 2 · the journey */}
           <Card delay={0.12}>
             <Kicker>The journey</Kicker>
-            <p className={`text-[15px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
+            <p className={`text-[14px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
               {journeySentence(journey, clientFirstName(client))}
             </p>
             {journey.standout && (
-              <p className="text-[12.5px] text-ink-d2">
+              <p className="text-[12px] text-ink-d2">
                 Biggest gain: <b className="text-ink-d1">{journey.standout.name}</b>, {fmtLb(journey.standout.startWeight)} → {fmtLb(journey.standout.nowWeight)} lb (+{journey.standout.pct}%).
               </p>
             )}
@@ -555,7 +565,7 @@ export function WrapUpScreen({
             {/* Booked is done (green); nothing booked is a caution (plum). */}
             <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)" : "border-(--eq-warn)/40 bg-(--eq-warn-fill)"}`}>
               {next ? <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" /> : <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" />}
-              <span className="text-[13.5px] font-semibold text-ink-d1">
+              <span className="text-[14px] font-semibold text-ink-d1">
                 {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
               </span>
             </div>
@@ -573,10 +583,10 @@ export function WrapUpScreen({
               >
                 <div className="flex items-center gap-2">
                   <MessageSquareText size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
-                  <span className="text-[13px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
+                  <span className="text-[14px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
                 </div>
                 <textarea
-                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 resize-none outline-none focus:border-cyan transition-colors"
+                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   aria-label="Unsaved note"
@@ -585,7 +595,7 @@ export function WrapUpScreen({
                   {/* A save: solid brand blue, its own on-colour. */}
                   <button
                     type="button"
-                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[13px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[14px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy || !draftText.trim()}
                     onClick={async () => {
                       setDraftBusy(true);
@@ -600,7 +610,7 @@ export function WrapUpScreen({
                   </button>
                   <button
                     type="button"
-                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[13px] font-bold"
+                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy}
                     onClick={onDropDraft}
                   >
@@ -618,7 +628,7 @@ export function WrapUpScreen({
                 as it does everywhere else the Dial is drawn. */}
             <div className="flex flex-col gap-2" data-testid="dose-card">
               <div className="flex items-baseline justify-between">
-                <span className="font-display italic text-ink-d1 text-[15px] uppercase">How did it land?</span>
+                <span className="text-[14px] font-bold text-ink-d1">How did it land?</span>
                 {doseSaved && dose !== null && (
                   <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1">
                     <Check size={12} strokeWidth={3} /> Saved
@@ -627,14 +637,14 @@ export function WrapUpScreen({
               </div>
               <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
               {doseSentence(dose, clientFirstName(client)) && (
-                <p className="text-[12.5px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
+                <p className="text-[12px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
                   {doseSentence(dose, clientFirstName(client))}
                 </p>
               )}
             </div>
 
             <textarea
-              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-cyan transition-colors"
+              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -659,7 +669,7 @@ export function WrapUpScreen({
                   <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>
                   <input
                     type="date"
-                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[13px] text-ink-d1 outline-none focus:border-cyan transition-colors"
+                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
                     value={effectiveUntil}
                     min={todayKey}
                     aria-label="Matters until"
@@ -674,7 +684,7 @@ export function WrapUpScreen({
               <button
                 type="button"
                 onClick={() => setShowPulse(true)}
-                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
               >
                 <HeartPulse className="w-4 h-4 text-(--eq-live)" />
                 Update Pulse
@@ -685,7 +695,7 @@ export function WrapUpScreen({
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
-                  className={`min-h-11 rounded-xl border px-4 py-2 font-display italic text-[12px] uppercase tracking-wider hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
                     renewalDue && !renewalLogged
                       ? "border-cta/50 bg-cta/10 text-ink-d1"
                       : "border-div-d bg-bg-dark-3 text-ink-d1"
@@ -769,7 +779,7 @@ export function WrapUpScreen({
             ].map((t) => (
               <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
-                <div className="font-mono text-[15px] font-bold text-ink-d2">{t.value}</div>
+                <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}
           </motion.div>
@@ -781,7 +791,7 @@ export function WrapUpScreen({
               type="button"
               onClick={leave}
               disabled={leaving}
-              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 font-display italic text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
             >
               <ArrowLeft size={16} />
               {leaving ? "Leaving…" : "Back to Hub"}
@@ -841,26 +851,26 @@ function PackagesCard({
     <Card delay={0.26}>
       <div data-testid="packages-card" className="flex flex-col gap-3">
         <Kicker>{sheetTitle(door.studioName)}</Kicker>
-        {door.standing.sentence && <p className="text-[13.5px] text-ink-d2">{door.standing.sentence}</p>}
+        {door.standing.sentence && <p className="text-[14px] text-ink-d2">{door.standing.sentence}</p>}
         {door.rows && (
           <ul className="flex flex-col">
             {door.rows.map((r) => (
               <li key={r.key} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5 border-b border-div-d last:border-b-0">
-                <span className="text-[13.5px] font-semibold text-ink-d1 break-words">{r.name}</span>
-                <span className="text-[12.5px] text-ink-d2 break-words">{r.price}</span>
+                <span className="text-[14px] font-semibold text-ink-d1 break-words">{r.name}</span>
+                <span className="text-[12px] text-ink-d2 break-words">{r.price}</span>
               </li>
             ))}
           </ul>
         )}
         {door.standing.pricesOnScreen && failed && (
-          <p className="text-[12.5px] text-ink-d3">
+          <p className="text-[12px] text-ink-d3">
             {door.studioName ? `Couldn’t load ${door.studioName}’s prices.` : "Couldn’t load this studio’s prices."}
           </p>
         )}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
         >
           {DOOR_BUTTON}
         </button>

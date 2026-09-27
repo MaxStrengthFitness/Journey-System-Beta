@@ -9,6 +9,7 @@ import {
   JOURNAL_BODY_LIMIT,
   buildCatalog,
   isNextTrainerNote,
+  isNextTrainerNoteOfSessions,
   isUnfiled,
   journalBodyOf,
   matchesSearch,
@@ -382,5 +383,50 @@ describe("isNextTrainerNote", () => {
     // Cut at 5000, then trimmed: the space the cut lands after goes too.
     expect(journalBodyOf(`${"a".repeat(4999)} ${"b".repeat(100)}`)).toBe("a".repeat(4999));
     expect(journalBodyOf("x".repeat(6000))).toHaveLength(5000);
+  });
+});
+
+/*
+ * The same question for a tray with no mark of its own (the client's Notes
+ * page): the session's own copy of the note is the mark.
+ */
+describe("isNextTrainerNoteOfSessions", () => {
+  const words = "Right knee sore after the move. Go light on leg press.";
+  const written = () =>
+    entry({
+      id: "j-next",
+      kind: "general",
+      body: words,
+      importance: "elevated",
+      sessionId: "sess1",
+      origin: "post_session",
+    });
+  const sessions = [
+    { id: "sess0", notes: "Something from last week." },
+    // The session keeps the whole text, untrimmed.
+    { id: "sess1", notes: `  ${words}\n` },
+  ];
+
+  it("finds it by its session's own copy of the words", () => {
+    expect(isNextTrainerNoteOfSessions(written(), sessions)).toBe(true);
+  });
+
+  it("compares a long note as the journal keeps it: cut at 5000", () => {
+    const long = `${"a".repeat(4999)} ${"b".repeat(100)}`;
+    const note = { ...written(), body: journalBodyOf(long) };
+    expect(isNextTrainerNoteOfSessions(note, [{ id: "sess1", notes: long }])).toBe(true);
+  });
+
+  it("does not take another note of the same session for it", () => {
+    expect(isNextTrainerNoteOfSessions({ ...written(), origin: "in_session" }, sessions)).toBe(false);
+    expect(isNextTrainerNoteOfSessions({ ...written(), importance: "standard" }, sessions)).toBe(false);
+    expect(isNextTrainerNoteOfSessions({ ...written(), body: "Something else" }, sessions)).toBe(false);
+  });
+
+  it("finds nothing when the session is not in the list, has no note, or was edited since", () => {
+    expect(isNextTrainerNoteOfSessions(written(), [])).toBe(false);
+    expect(isNextTrainerNoteOfSessions(written(), [{ id: "sess1" }])).toBe(false);
+    expect(isNextTrainerNoteOfSessions(written(), [{ id: "sess1", notes: `${words} Edited in History.` }])).toBe(false);
+    expect(isNextTrainerNoteOfSessions({ ...written(), sessionId: null }, sessions)).toBe(false);
   });
 });

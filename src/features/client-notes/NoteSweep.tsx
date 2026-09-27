@@ -55,7 +55,9 @@ export interface NoteSweepProps {
    * Which card is the Note for the next trainer (the Wrap-up passes it; see
    * `isNextTrainerNote` in note-catalog.ts). That card says so and offers no
    * Discard: it is on the next trainer's briefing, and a discard would take
-   * it off. It can still be filed, which leaves it there.
+   * it off. It can still be filed, which leaves it there. A tray with no mark
+   * of its own answers with `isNextTrainerNoteOfSessions`; the Notes page does
+   * not pass it yet (the client-notes README's known gap).
    */
   isNextTrainerNote?: (entry: JournalEntry) => boolean;
 }

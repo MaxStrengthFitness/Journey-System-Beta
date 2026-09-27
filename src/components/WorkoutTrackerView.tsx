@@ -2054,7 +2054,7 @@ export function WorkoutTrackerView({
                 : ps,
             );
           },
-          () => toastError("Session saved. The note for the next trainer could not reach the journal — add it from Notes."),
+          () => toastError("Session saved. The note for the next trainer could not reach their briefing — add it from Notes & Profile → Notes."),
         );
       }
 
@@ -2207,7 +2207,7 @@ export function WorkoutTrackerView({
             origin: "post_session",
           },
         ),
-        "Session saved. The profile note could not be saved — add it from Notes.",
+        "Session saved. The profile note could not be saved — add it from Notes & Profile → Notes.",
       );
     }
     setPostSession(null);
