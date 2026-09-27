@@ -243,7 +243,7 @@ export function WikiEditor({
         {onRetire && (
           <button
             type="button"
-            className="wk__btn wk__btn--quiet"
+            className="wk__btn wk__btn--danger"
             onClick={onRetire}
             disabled={busy}
           >

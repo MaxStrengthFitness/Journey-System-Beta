@@ -173,7 +173,7 @@ export function LearningHome({
           >
             <span className="lh__status-label">On the floor today</span>
             {status.flagged > 0 && (
-              <WikiBadge tone="alert">{plural(status.flagged, "flagged", "flagged")}</WikiBadge>
+              <WikiBadge tone="warn">{plural(status.flagged, "flagged", "flagged")}</WikiBadge>
             )}
             {status.outOfService > 0 && (
               <WikiBadge tone="warn">{status.outOfService} out of service</WikiBadge>

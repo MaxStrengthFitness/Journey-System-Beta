@@ -77,10 +77,12 @@
 
 .cat__btn:disabled { opacity: 0.6; cursor: default; }
 
+/* Every Save in the app is solid brand blue with its on-colour (voice review
+   follow-up, Sep 27 2026). White on the dark theme's lighter blue was 2.9:1. */
 .cat__btn--primary {
-  border-color: transparent;
+  border-color: var(--cat-live);
   background: var(--cat-live);
-  color: #fff;
+  color: var(--cat-live-on);
 }
 
 .cat__btn--ok {
@@ -228,12 +230,12 @@
   justify-content: center;
   gap: 0.35rem;
   height: 2.25rem;
-  /* --cat-hero-text, not --cat-hero: white on the bright orange is 3.5:1,
-     below AA for 11px text (the wiki's primary button made the same call). */
-  border: 1px solid var(--cat-hero-text);
+  /* A Save, so solid brand blue like every other (voice review follow-up,
+     Sep 27 2026). Orange is Start Session's; it was this button's for a day. */
+  border: 1px solid var(--cat-live);
   border-radius: 10px;
-  background: var(--cat-hero-text);
-  color: var(--cat-hero-on);
+  background: var(--cat-live);
+  color: var(--cat-live-on);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;

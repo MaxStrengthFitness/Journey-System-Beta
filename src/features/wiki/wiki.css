@@ -1437,15 +1437,20 @@
 }
 .wk__btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wk__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
-/* --wk-hero-text, not --wk-hero: white on the bright orange is 3.5:1, below
-   AA. The same call index.css makes for --cta vs --cta-strong. */
+/* Save, Publish, Add note: solid brand blue, like every Save in the app
+   (voice review follow-up, Sep 27 2026). It was orange for a day; orange is
+   Start Session's, and a Save beside a blue "Save notes" read as two kinds. */
 .wk__btn--primary {
-  border-color: var(--wk-hero-text);
-  background: var(--wk-hero-text);
-  color: var(--wk-hero-on);
+  border-color: var(--wk-live);
+  background: var(--wk-live);
+  color: var(--wk-live-on);
 }
+/* Quiet is quiet: no crimson on hover (an iPad applies :hover on the tap, so
+   a harmless Close flashed red as it closed). */
 .wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); }
-.wk__btn--quiet:hover { color: var(--wk-alert); }
+.wk__btn--quiet:hover { color: var(--wk-ink); }
+/* Retire: destructive, and it says so before anyone touches it. */
+.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
 
 /* ------------------------------------------------------------------ *
  * Split layout — 1024px, matching features/equipment's SPLIT_AT and the old

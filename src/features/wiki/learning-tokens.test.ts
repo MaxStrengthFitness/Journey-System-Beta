@@ -13,6 +13,11 @@ import { describe, expect, it } from "vitest";
  * were two colours on two screens — and dark mode, which had drifted.
  * admin-tokens.test.ts holds --adm-* to --eq-*; this does the same here.
  *
+ * The voice review follow-up (Sep 27 2026) added one meaning per colour: no
+ * raw hex in Learning's stylesheets, a flagged machine in the caution plum
+ * (it was crimson for a day), every Save solid blue with the app's on-colour,
+ * and the Upkeep card on Learning's palette rather than the Hub's.
+ *
  * If one of these fails, the fix is the token file, not the test.
  */
 
@@ -82,10 +87,13 @@ describe.each(Object.entries(palettes))("--%s-* is the app's palette", (prefix, 
     expect(ratio(p.dark[`--${prefix}-warn`], p.dark[`--${prefix}-surface`])).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("puts readable text on the orange button, in both themes", () => {
-    // Both Learning buttons fill with --*-hero-text and write in --*-hero-on.
-    expect(ratio(p.light[`--${prefix}-hero-on`], p.light[`--${prefix}-hero-text`])).toBeGreaterThanOrEqual(4.5);
-    expect(ratio(p.dark[`--${prefix}-hero-on`], p.dark[`--${prefix}-hero-text`])).toBeGreaterThanOrEqual(4.5);
+  it("puts readable words on a blue Save, in both themes", () => {
+    // Every Save fills with --*-live and writes in --*-live-on, the app's
+    // --eq-live-on (voice review follow-up: white was 2.9:1 in dark mode).
+    expect(p.light[`--${prefix}-live-on`]).toBe(eq.light["--eq-live-on"]);
+    expect(p.dark[`--${prefix}-live-on`]).toBe(eq.dark["--eq-live-on"]);
+    expect(ratio(p.light[`--${prefix}-live-on`], p.light[`--${prefix}-live`])).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(p.dark[`--${prefix}-live-on`], p.dark[`--${prefix}-live`])).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -93,5 +101,82 @@ describe("the critical colour", () => {
   it("is the app's crimson in the Catalog and the Academy", () => {
     expect(palettes.wk.light["--wk-alert"]).toBe(eq.light["--eq-alert"]);
     expect(palettes.wk.dark["--wk-alert"]).toBe(eq.dark["--eq-alert"]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * One meaning per colour (voice review follow-up, Sep 27 2026)
+ * ------------------------------------------------------------------ */
+
+const src = (...p: string[]) => read("..", ...p);
+/** The source with its comments taken out, so a comment can name a colour. */
+const code = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+/** Learning's own stylesheets: the Catalog, the Academy, the front page and what they mount. */
+const STYLESHEETS: Record<string, string> = {
+  "wiki/wiki.css": src("wiki", "wiki.css"),
+  "learning/learning.css": src("learning", "learning.css"),
+  "catalog/catalog.css": src("catalog", "catalog.css"),
+  "comments/comments.css": src("comments", "comments.css"),
+  "machine-trends/machine-trends.css": src("machine-trends", "machine-trends.css"),
+  "machine-db/machine-db.css": src("machine-db", "machine-db.css"),
+};
+
+/** The Upkeep card's block of studio-tasks.css: its only host is a Catalog machine page. */
+function upkeepBlock(): string {
+  const css = src("studio-tasks", "studio-tasks.css");
+  const start = css.indexOf(".stu {");
+  const end = css.indexOf("REQUESTS LANE", start);
+  if (start < 0 || end < 0) throw new Error("the .stu block moved");
+  return css.slice(start, end);
+}
+
+describe("one meaning per colour in Learning", () => {
+  it("writes no raw hex in a stylesheet: every colour is a token", () => {
+    for (const [name, css] of Object.entries({ ...STYLESHEETS, "studio-tasks.css .stu": upkeepBlock() })) {
+      expect(code(css).match(/#[0-9a-fA-F]{3,8}\b/g) ?? [], name).toEqual([]);
+    }
+  });
+
+  it("shows a flagged machine in the caution plum, never the critical crimson", () => {
+    for (const file of [
+      src("catalog", "MachineArticle.tsx"),
+      src("catalog", "CatalogWikiView.tsx"),
+      src("learning", "LearningHome.tsx"),
+    ]) {
+      expect(code(file)).not.toMatch(/tone[=:]\s*\{?\s*["']alert["']/);
+      expect(code(file)).not.toMatch(/\?\s*["']alert["']/);
+    }
+  });
+
+  it("draws the Upkeep card on Learning's palette, its flag in the same plum as the page's badge", () => {
+    const block = code(upkeepBlock());
+    expect(block).not.toMatch(/var\(--st-/);
+    expect(block).toMatch(/\.stu__flag\s*\{[^}]*color:\s*var\(--wk-warn\)/);
+  });
+
+  it("makes every Save solid blue with its on-colour, never orange", () => {
+    const rule = (css: string, selector: string) => {
+      const at = code(css).indexOf(`${selector} {`);
+      if (at < 0) throw new Error(`${selector} not found`);
+      return code(css).slice(at, code(css).indexOf("}", at));
+    };
+    const saves = [
+      rule(STYLESHEETS["wiki/wiki.css"], ".wk__btn--primary"),
+      rule(STYLESHEETS["catalog/catalog.css"], ".cat__btn--primary"),
+      rule(STYLESHEETS["catalog/catalog.css"], ".ssc__save"),
+    ];
+    for (const r of saves) {
+      expect(r).toMatch(/background:\s*var\(--(wk|cat)-live\)/);
+      expect(r).toMatch(/color:\s*var\(--(wk|cat)-live-on\)/);
+      expect(r).not.toMatch(/hero/);
+    }
+  });
+
+  it("keeps crimson off a quiet button's hover, and gives Retire its own danger style", () => {
+    const wiki = code(STYLESHEETS["wiki/wiki.css"]);
+    expect(wiki).not.toMatch(/\.wk__btn--quiet:hover\s*\{[^}]*--wk-alert/);
+    expect(wiki).toMatch(/\.wk__btn--danger\s*\{[^}]*--wk-alert/);
+    expect(src("wiki", "WikiEditor.tsx")).toMatch(/wk__btn--danger[\s\S]{0,80}onClick=\{onRetire\}/);
   });
 });

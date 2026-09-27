@@ -9,9 +9,11 @@
    Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text UI
    >= 3:1. Ratios noted beside each value so a future edit can be re-checked.
 
-   No component in this feature writes a hex value. The view it replaces had
-   #F06C22 and #38BDF8 hardcoded in the portrait tree while the landscape tree
-   used bg-cta / bg-cyan for the same thing, so the two drifted apart.
+   No component in this feature writes a hex value, and learning-tokens.test.ts
+   holds that (the last one, a white "Save notes", became --cat-live-on on
+   Sep 27 2026). The view it replaces had #F06C22 and #38BDF8 hardcoded in
+   the portrait tree while the landscape tree used bg-cta / bg-cyan for the
+   same thing, so the two drifted apart.
    ========================================================================== */
 
 :root {
@@ -40,12 +42,12 @@
   --cat-hero:      #ef5302;
   --cat-hero-text: #bc2c00;   /* 6.0:1 on white — small text uses this */
   --cat-hero-fill: #fde7dc;
-  --cat-hero-on:   #ffffff;
 
-  /* ── blue: anything you can act on ────────────────────────────────── */
+  /* ── blue: anything you can act on, and every Save ────────────────── */
   --cat-live:      #0a548b;   /* 7.9:1 */
   --cat-live-text: #034a84;   /* 9.1:1 */
   --cat-live-fill: #e6eef3;
+  --cat-live-on:   #ffffff;   /* the words on a solid blue button, 7.9:1 */
 
   /* ── green: done ──────────────────────────────────────────────────── */
   --cat-ok:      #1c7a52;     /* 5.3:1 */
@@ -100,6 +102,7 @@
   --cat-live:      #4a9fd8;   /* 6.3:1 */
   --cat-live-text: #7cc0ee;   /* 9.3:1 */
   --cat-live-fill: rgba(74, 159, 216, 0.14);
+  --cat-live-on:   #04121c;   /* on --cat-live, 6.5:1 */
 
   --cat-ok:      #4ec08c;     /* 8.1:1 */
   --cat-ok-fill: rgba(78, 192, 140, 0.13);
@@ -121,6 +124,4 @@
   --cat-accent-posterior: #fbbf24;
   --cat-accent-core:      #c084fc;
   --cat-accent-other:     #8b98a4;
-  --cat-hero-on: #1a0c04;
-
 }

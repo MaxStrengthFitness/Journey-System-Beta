@@ -32,6 +32,15 @@
    admin-tokens.test.ts does for --adm-*. The visible change was the warnings:
    amber became the app's caution plum, and the flag red the app's crimson.
    The category accents and the figure's colours are Learning's own.
+
+   ONE MEANING PER COLOUR (voice review follow-up, Sep 27 2026, under the
+   creative control AJ gave the round). Blue acts and selects, and every Save
+   is solid blue with --wk-live-on text. Orange is the Learning brand mark and
+   nothing else here. Plum is caution: a clinical warning, cleaning due, out
+   of service, AND a machine a trainer flagged (the flag was crimson for one
+   day, which put the rep-quality red on a machine page beside a plum "Out
+   of service"; that is reversed on purpose). Crimson is critical: an error
+   line, a destructive button. Green is done.
    ========================================================================== */
 
 :root {
@@ -64,24 +73,26 @@
   --wk-ink-faint: #848e95;   /*  3.3:1 — decorative only: chevrons,
                                  separators, icons. Never words. */
 
-  /* ── hero orange: the thing you are looking at ────────────────────── */
+  /* ── hero orange: the Learning brand mark, and nothing else ─────── */
   --wk-hero:      #ef5302;
   --wk-hero-text: #bc2c00;   /* 6.0:1 on white — anything with a label */
   --wk-hero-fill: #fde7dc;
-  --wk-hero-on:   #ffffff;
 
-  /* ── blue: anything you can act on ────────────────────────────────── */
+  /* ── blue: anything you can act on, and every Save ────────────────── */
   --wk-live:      #0a548b;   /* 7.9:1 */
   --wk-live-text: #034a84;   /* 9.1:1 */
   --wk-live-fill: #e6eef3;
+  --wk-live-on:   #ffffff;   /* the words on a solid blue button, 7.9:1 */
 
   /* ── green: done / healthy ────────────────────────────────────────── */
   --wk-ok:      #1c7a52;     /* 5.3:1 */
   --wk-ok-fill: #e3f1ea;
 
-  /* ── the caution colour: clinical warnings and upkeep. Never collapsed,
-        so it has to read at a glance without being shouty enough to be
-        tuned out. Plum, as everywhere else in the app (a Heads up, a machine
+  /* ── the caution colour: clinical warnings, upkeep and a machine a
+        trainer flagged (the flag since the voice review follow-up, Sep 27
+        2026). Warnings are never collapsed, so it has to read at a glance
+        without being shouty enough to be tuned out. Plum, as everywhere
+        else in the app (a Heads up, a machine
         needing attention); it was amber here until Sep 27 2026, so the same
         machine's warnings were two colours on two screens. ─────────────── */
   --wk-warn:        #a2457e;   /* 5.7:1, 4.8:1 on its fill */
@@ -89,7 +100,8 @@
   --wk-warn-fill:   #f4e9f0;
   --wk-warn-border: #a2457e;   /* 5.7:1 */
 
-  /* ── the critical colour: flagged by a trainer. The app's crimson. ── */
+  /* ── the critical colour: an error line, a destructive button. The
+        app's crimson — never a flagged machine, which is plum above. ─── */
   --wk-alert:      #c0203f;    /* 6.0:1, 4.9:1 on its fill */
   --wk-alert-fill: #fce3e8;
 
@@ -154,6 +166,7 @@
   --wk-live:      #4a9fd8;   /* 6.3:1 */
   --wk-live-text: #7cc0ee;   /* 9.3:1 */
   --wk-live-fill: rgba(74, 159, 216, 0.14);
+  --wk-live-on:   #04121c;   /* on --wk-live, 6.5:1 */
 
   --wk-ok:      #4ec08c;     /* 8.1:1 */
   --wk-ok-fill: rgba(78, 192, 140, 0.13);
@@ -191,6 +204,4 @@
   --wk-muscle-primary:   #0a548b;
   --wk-muscle-secondary: #6fb4e4;
   --wk-muscle-base:      #4b555c;
-  --wk-hero-on: #1a0c04;
-
 }

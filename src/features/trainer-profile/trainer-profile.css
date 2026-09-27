@@ -183,12 +183,16 @@
 .tp-btn:hover  { background: var(--tp-surface-3); }
 .tp-btn:focus-visible { outline: 2px solid var(--tp-focus-ring); outline-offset: 2px; }
 
+/* Save on the standing week and the profile: solid brand blue with its
+   on-colour, like every Save in the app (voice review follow-up, Sep 27
+   2026). White on the bright orange it was is 3.6:1, under AA at 13px, and
+   orange is Start Session's. */
 .tp-btn--primary {
-  background: var(--tp-hero);
-  border-color: transparent;
-  color: var(--tp-hero-on);
+  background: var(--tp-live);
+  border-color: var(--tp-live);
+  color: var(--tp-live-on);
 }
-.tp-btn--primary:hover { filter: brightness(1.06); background: var(--tp-hero); }
+.tp-btn--primary:hover { filter: brightness(1.06); background: var(--tp-live); }
 
 .tp-btn--ghost { background: transparent; border-color: var(--tp-border); color: var(--tp-ink-2); }
 
