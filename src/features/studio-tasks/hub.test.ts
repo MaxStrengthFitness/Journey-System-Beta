@@ -293,13 +293,19 @@ describe("initiativeProgress", () => {
     expect(p.perTrainer).toHaveLength(4);
   });
 
-  it("sorts the people who are behind to the top", () => {
+  it("lists everyone by name, never the people behind first (recognition, never ranking)", () => {
+    // AJ (Sep 27 2026): everyone stays on the Floor, in name order.
     const p = initiativeProgress(
-      [{ trainerId: "t1", trainerName: "One", count: 5, entries: [] }],
+      [
+        { trainerId: "t1", trainerName: "One", count: 5, entries: [] },
+        { trainerId: "gone", trainerName: "Departed", count: 2, entries: [] },
+      ],
       roster,
       { perTrainer: 5 },
     );
-    expect(p.perTrainer[0].met).toBe(false);
+    expect(p.perTrainer.map((t) => t.trainerName)).toEqual(["Departed", "One", "Three", "Two"]);
+    // The one who met it is where their name puts them, not last.
+    expect(p.perTrainer[1]).toMatchObject({ trainerId: "t1", met: true });
   });
 
   it("reports what I still owe", () => {

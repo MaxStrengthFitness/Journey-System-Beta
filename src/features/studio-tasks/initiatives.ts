@@ -188,11 +188,15 @@ export function initiativeProgress(
     expected,
     totalEntries,
     ratio: expected > 0 ? met / expected : 0,
-    // Behind first: this list exists so a manager can chase, and the people
-    // who have done it need nothing from them.
+    // BY NAME (voice review follow-up, Sep 27 2026). It was behind first,
+    // fewest first — and the roll-up is on Relay's Floor for every trainer
+    // as well as on Team, so each trainer saw their colleagues ranked by how
+    // little they had logged. Recognition, never ranking (AJ: "no list
+    // sorted worst first"). AJ kept everyone's names on the Floor ("the hub
+    // should have everyone"); the headline and the bar already say how many
+    // are done, and each row says its own count.
     perTrainer: perTrainer.sort(
-      (a, b) => Number(a.met) - Number(b.met) || a.count - b.count ||
-        a.trainerName.localeCompare(b.trainerName),
+      (a, b) => a.trainerName.localeCompare(b.trainerName) || a.trainerId.localeCompare(b.trainerId),
     ),
   };
 }
