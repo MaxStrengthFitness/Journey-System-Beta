@@ -7,7 +7,8 @@ Words the studios use, and what they mean in the app. The full training-method g
 | Term | Meaning |
 | --- | --- |
 | Life Transformer | A trainer |
-| Studio Leader / Head Trainer | Runs a studio; may or may not train clients |
+| Head Trainer | Runs a studio's floor and team, the same tier as a studio leader. Its own label in the app since Sep 27 2026 (it read "Studio Leader" before) |
+| Studio Leader | Runs a studio; may or may not train clients |
 | Franchise Owner | Owns one or more studios |
 | Home studio | Where a client is billed and mainly trains |
 | Cross-train | A client approved to train at another studio |
@@ -54,12 +55,16 @@ Words the studios use, and what they mean in the app. The full training-method g
 | Now bar | The fixed bar in a live session showing the current machine and what's next |
 | Briefing | The pre-session screen, and only that: check-in, critical notes, plan |
 | Wrap-up | The post-session screen, walking the client out: today's sets, the journey, what's next, the Profile note and the Pulse. "Briefing is strictly pre-session while wrap up is post-session" (AJ, Sep 27 2026). Called "the post session briefing" in conversation before it had a name |
-| Note for the next trainer | The note box in the End Session dialog. It files as a Heads up, so it shows on the next trainer's briefing for three weeks. Was "Wrap-up note" until Sep 27 2026 |
+| Note for the next trainer | The note box in the End Session dialog. It files as a Heads up, so it shows on the next trainer's briefing for three weeks. It comes back in the Wrap-up's To-file tray so it can be filed to the profile too, and it is never discarded there (filing keeps it on the briefing). Was "Wrap-up note" until Sep 27 2026 |
 | Profile note | The Wrap-up's own note. At Note loudness it stays on the client's profile and never reaches the briefing; Heads up or Critical sends it there too. Was "the closing note" until Sep 27 2026 |
 | Kaizen Roster | A trainer's running list of clients they are keeping an eye on, each with a reason |
+| Past sessions | The button on a client's Hub card that opens their Activity Archive → Sessions. Was "History" until Sep 27 2026 |
+| Just now | The line on Relay's Now Bar saying what teammates just did, with the kudos heart. Was labelled "Pulse" until Sep 27 2026; Pulse is only the living assessment |
 | Standing week | A trainer's usual week at a studio: the hours they work and their **regulars**. The trainer proposes it on My Profile; a studio leader agrees it on My Studio → Team (Sep 27 2026) |
 | Regular | A client a trainer sees at the same time each week ("Judy, Monday 8:00"). Booked by the front desk in Mindbody as a recurring appointment; Journey only checks the bookings against the agreed week |
-| Free slot | An agreed regular's time this week that the regular isn't booked for — she's away, or booked another day — so the trainer has the time free and the studio can fill it |
+| Free slot | An agreed regular's time this week that the regular isn't booked for — she's away, or booked another day — so the trainer has the time free and the studio can fill it. Never shown on a day the trainer is away |
+| Away | The days a trainer is away from a studio: a range of studio days, both ends included, with an optional note. The trainer sets it on My Profile under My standing week (even with nothing proposed), or a leader in Team's Review; it needs no agreement. The week check leaves those days unchecked (no open slot, no move, no Free slot), and Team says once "Sam is away Mon, Sep 28 – Wed, Sep 30." Journey's own record, never sent to Mindbody; up to six ranges still to come (Sep 27 2026) |
+| The studio rotation | Some studios book Wednesdays and Saturdays to "{studio} Rotation" in Mindbody, and that day's trainer moves the sessions to themselves. A regular's rotation booking at her usual time counts as usual: never moved, taken or a Free slot (AJ, Sep 27 2026) |
 | 90-day check-in | The subjective progress report: 8 categories scored Green / Yellow / Red |
 | Learning | The Catalog (machines) and the Academy (method), in one tab |
 | Limbo | Mindbody events the app couldn't match to a studio, waiting for an admin |

@@ -101,7 +101,7 @@ The app has three modes, and they are not the same as job titles.
 | Tier | Who | What they get |
 | --- | --- | --- |
 | **Floor** | Life Transformer (a trainer) | The Hub, a client's profile, the Active Session, Learning, the Calendar |
-| **Studio** | Studio Leader, Head Trainer, Studio Owner — or a trainer given *the grant* | The above, plus **My Studio** and **Operations** for their studio |
+| **Studio** | Head Trainer, Studio Leader, Studio Owner (each its own label since Sep 27 2026) — or a trainer given *the grant* | The above, plus **My Studio** and **Operations** for their studio |
 | **Company** | Administrator, Founder | The above, plus the **Admins dashboard** — the master catalog, every location, system tools |
 
 The distinction that matters most, and that AJ set:
@@ -157,12 +157,12 @@ AJ's own tour, Sep 21 2026.
 | **Hub** | Where a trainer lands. Today's sessions by trainer; cycle forward through the coming days |
 | **Calendar** | The schedule properly broken down — month, week, day; past days; sessions or events; the whole team or one person. All pulled from Mindbody. Where you go to actually look ahead |
 | **Client directory** | Search the clients at the studio you're in, and reach your Kaizen roster |
-| **Kaizen roster** | A trainer's own bookmarked clients — the regulars they're watching, so they aren't searching "Jeff… Jeff what?" every time. Per trainer, on `trainers/{uid}.kaizenRoster` |
+| **Kaizen roster** | A trainer's own bookmarked clients — the ones they're watching, so they aren't searching "Jeff… Jeff what?" every time. Per trainer, on `trainers/{uid}.kaizenRoster` |
 | **Client profile** | Opened from the directory or the roster: the whole record of a person. "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking." |
-| **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Rank 1 and 2 |
+| **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Ranks 1 to 3 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
 | **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |
-| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: the hours they usually work and their regulars, proposed to a studio leader |
+| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: the hours they usually work and their regulars, proposed to a studio leader, and the days they're away. On a colleague's profile, their agreed week, read only |
 | **Operations** | "Where are we going wrong, and where are we going right?" Take what the app has gathered, put it together, see what it says |
 | **Admins dashboard** | Corporate setting the standard, the machines, and getting everyone set up for success |
 | **Switch studio** | In the header. Decides which floor loads, whose roster you search, which schedule you see — more than a preference |
@@ -175,6 +175,7 @@ AJ's own tour, Sep 21 2026.
 | The Calendar | `src/components/CalendarView.tsx` + `src/features/calendar/` |
 | The client directory and the Kaizen roster | `src/components/ClientDirectoryView.tsx`, `src/features/trainer-profile/` |
 | What the trainer reads before a session | `src/features/briefing/` |
+| What the trainer sees after a session (the Wrap-up) | `src/components/WrapUpScreen.tsx` |
 | The client's profile and its tabs | `src/components/ClientProfileView.tsx` + `src/features/client-profile/` |
 | A client's Notes & Profile — the Overview and six pages (the client codex) | `src/features/client-codex/` — its README says which folder each page lives in |
 | Notes — writing them, when they matter, threads | `src/features/client-notes/` |
@@ -183,7 +184,8 @@ AJ's own tour, Sep 21 2026.
 | The studio-leader dashboards | `src/features/admin/` |
 | The company-only screens | `src/features/admins/` |
 | The board, tasks, kudos, private notes | `src/features/relay/` |
-| A trainer's standing week, and the week's free slots | `src/features/standing-week/` |
+| A trainer's standing week, the days away, and the week's free slots | `src/features/standing-week/` |
+| Who counts as working at a studio (every list of "the team") | `src/lib/who-works-here.ts` |
 | Renewals and packages | `src/features/renewals/` |
 | Colours, spacing, the look | `src/index.css`, `equipment.tokens.css`, `admin.tokens.css` |
 | Who can see or do something | `firestore.rules` **and** `src/lib/permissions.ts` |
@@ -223,7 +225,13 @@ them is most of what makes a request land correctly.
 - **Loudness** — Note · Heads up · Critical. Anything a trainer *writes*
   carries one.
 - **Pulse** — the living assessment of how a client is doing. (The code still
-  says "check-in" in places; same thing.)
+  says "check-in" in places; same thing.) Only that: the line on Relay's Now
+  Bar about what teammates just did is **Just now** since Sep 27 2026.
+- **Briefing and Wrap-up** — the briefing is before a session and only
+  before; the Wrap-up is the screen after Finish. The End Session box is the
+  **Note for the next trainer** (it reaches their briefing, and can be filed
+  to the profile too); the Wrap-up's own box is the **Profile note**, which at
+  Note loudness stays on the profile.
 - **A thread** — a note is not a fact, it is a story. Updates hang off the
   original rather than becoming new notes. Contradicting a note *adds* to it.
 - **Mattering** — when a note applies: Always · From–until · Only on a day.
@@ -231,6 +239,8 @@ them is most of what makes a request land correctly.
   their **regulars** ("Judy, Monday 8:00"). The trainer proposes it, a studio
   leader agrees it, and Journey checks the coming week's bookings against it
   to find the **free slots**. It never books or holds anything in Mindbody.
+  A trainer's days **away** block out their slots, and a regular booked on
+  the **studio rotation** ("{studio} Rotation") at her time counts as usual.
 
 **About machines** — this is the part that matters most for franchising
 
@@ -263,9 +273,9 @@ Roughly, every time:
    any single phase can be undone without losing the rest.
 4. **Three checks run:**
    - **Typecheck** — does the code contradict itself? We compare the error
-     *count* to a baseline (currently 10). It is not zero and that is fine.
-   - **Tests** — about 3,750 small checks that pure logic still does what it
-     should. These run in seconds.
+     *count* to a baseline (currently 4). It is not zero and that is fine.
+   - **Tests** — more than 6,000 small checks that pure logic still does what
+     it should. These run in seconds.
    - **Build** — does it actually assemble into a website?
 5. **You look at it on the iPad**, for anything a trainer touches. This step
    cannot be skipped or automated. A green typecheck and green tests have all
@@ -305,8 +315,8 @@ able to finish a session without a reason for a skipped machine" is a better
 brief than "add a validation to the finish handler". You know the gym; Claude
 knows the file.
 
-**Name the screen and the moment.** "On the client's profile, on the History
-tab, when I tap a past session" beats "in the history thing". Screenshots are
+**Name the screen and the moment.** "On the client's profile, in Activity
+Archive → Sessions, when I tap a past session" beats "in the history thing". Screenshots are
 even better — and marking them up helps a lot.
 
 **Say who it is for.** A change for a trainer mid-set, a studio leader on

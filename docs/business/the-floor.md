@@ -164,6 +164,29 @@ draft that survives**. Start writing, close it to spot a set or read the chart,
 reopen and continue. At the end, if something is written and not saved, the
 Wrap-up says so and lets the trainer finish it or drop it.
 
+## The Wrap-up
+
+The screen after Finish walks the client out: today against last time, the
+dose Dial, the Profile note, Pulse and, when it's time, the renewal line. The
+End Session box is the Note for the next trainer, for the next briefing; it
+comes back in the Wrap-up's To-file tray so it can also be filed to the
+profile, and it is never discarded there (AJ, Sep 27 2026: "Ideally the end
+session note is made for the next sessions pre session briefing but also can
+be filed to the profile").
+
+**The confetti stays** (AJ, Sep 27 2026: "I like it keep it", answering
+question 8 of the Sep 21 audit). It is the one deliberate exception to "no
+hype, no celebration" above: a short burst as the screen opens, a little
+over a second, that never blocks a tap and never repeats, in the app's own
+colours.
+
+Since Sep 27 2026 the whole Wrap-up **follows the app's theme**. It is no
+longer drawn dark in both themes, its Dial, Loudness and trays included, and
+it speaks the app's look: the codex's page title, small upright capitals on
+its card heads, bold sentence-case buttons, the brand-blue focus ring, and
+"Where the work went" in sky, amber, the strong neutral and grey, never the
+hero orange or the brand blue.
+
 ## Cold starts
 
 A trainer is often on their *second* session with a fifty-session client —

@@ -82,7 +82,10 @@ InBody already follows.
 
 **4. Never rank people inside a studio.** Recognition, never ranking. A cohort
 comparison is about the cohort; it does not become a leaderboard of trainers or
-clients. Studios may be compared.
+clients. Studios may be compared, but not on numbers that are wrong: the Network
+tab's ranking was dropped on Sep 27 2026, because its numbers were wrong during
+the migration, and a comparison comes back only on measures with a named minimum
+sample.
 
 **5. A migration-era cohort is partial by definition.** During the FileMaker
 migration most clients' early sessions are not in Journey, so a "first session
@@ -110,13 +113,22 @@ The client codex (`docs/rounds/2026-09-24-client-codex.md`) kept this rule for e
 
 | Field | Written by | Read by |
 | --- | --- | --- |
-| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review) |
+| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review). `proposedBy` is read by the Review's line "Proposed by Sam Lee on Sep 27." (since Sep 27 2026) |
 | `…final` (+ `finalAt`, `finalBy`) | A studio leader, on My Studio → Team → Review → Agree | Team's week check (the next seven days' bookings against it) and its rows; My Profile ("Agreed by … on …", and what a change would change) |
-| `…trainerId`, `trainerName` | Both writes | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+| `…trainerId`, `trainerName` | Both writes (a trainer's own write never changes `trainerId` once the week exists, since Sep 27 2026) | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+| `…away` — `[{id, from, to, note}]` (voice review follow-up, Sep 27 2026) | `setAway`: the trainer on My Profile → My standing week, a leader in Team's Review; no agreement needed, at most six ranges still to come | The week check (skips those days and counts them as `awaySlots`), Team's "{name} is away …" lines, both Away editors, and a colleague's Standing week card |
+| New readers of existing fields (Sep 27 2026) | — | A schedule row's `mindbodyStaffId` is read by the week check, only ever to confirm that a booking IS the trainer's; `trainers/{id}.mindbody.siteId` is read by `staffIdsAt` to decide whether that staff id counts at a studio |
 
 The week check counts nothing and ranks nobody: it says, one sentence per slot, where the bookings differ from the agreed weeks.
 
 Every number the codex shows about her history keeps the migration rules: the Story's since line and the header's session counts are one computation, a FileMaker client is never called new, and a count of her Journey sessions says "in Journey".
+
+## What the voice review follow-up changed (Sep 27 2026)
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `bug_reports/{id}.userId` | The feedback drawer — the filer's Firebase **Auth uid** since Sep 27 2026 (it was the trainer document id, which differs on older accounts) | Trainer Settings' "Your reports" (`useMyFeedback`), under the read rule that compares it to the signed-in uid. Older reports an older account filed under its trainer document id stay unreadable to their author, as they always were |
+| `networks/{id}.relayFocus.setAt` | Operations → Overview → All my studios, on each focus save | Its first reader: the Focus editor's "Set by {name} on {date}." line (it was a write with no reader) |
 
 ---
 

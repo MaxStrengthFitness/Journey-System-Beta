@@ -12,7 +12,8 @@ and what is deliberately parked. It is re-cut at every gate.
 - **New here?** Read `docs/START-HERE.md` first. It explains the whole project
   in about fifteen minutes.
 
-*Last re-cut: Sep 21 2026, after the catalog gate round.*
+*Last re-cut: Sep 21 2026, after the catalog gate round. §5 and the follow-up
+pile brought up to Sep 27 2026 after the voice review follow-up.*
 
 ---
 
@@ -137,6 +138,22 @@ transitions between screens, loading states, how buttons read pressed /
 disabled / focused, speed, the token and colour drift (322 raw hex values in
 `.tsx` files), and the sign-in screen in light mode.
 
+**Done in the voice review follow-up (Sep 27 2026,
+`docs/rounds/2026-09-27-voice-review-followup.md`):** the Wrap-up follows the
+theme and the app's type; Learning, Settings and My Studio draw in the app's
+colours (one meaning per colour, every Save blue, caution plum), speak its
+type (display-face titles, 14px bold sentence-case buttons, the 11 / 12 / 14 /
+17 / 30 scale), and have 40px taps, whole names and nothing hover-only.
+Tests hold each of them (`wiki/learning-tokens.test.ts`,
+`wiki/learning-scale.test.ts`, `my-studio/look.test.ts`,
+`studio-tasks/studio-tokens.test.ts`). **Still open:** the Operations kit's
+own look (`.adm-btn` 12px spaced capitals, `.adm-panel__title` 13px,
+`.adm-badge` 10px — off the scale, and still drawing My Studio → Machines'
+and Studio's buttons and panel heads); header strips on Relay's own Floor and
+Mine cards; the Floor's landscape two-column layout (`.sh__split`, AJ's call);
+the clinical strip's small title; the chosen profile tab's colour; and AJ's
+screen audit, which confirms the names and looks this round chose.
+
 ### 5. Reconcile the architecture document with what is built
 `docs/ARCHITECTURE.md` §2–§4 are marked "review pending" and several of their
 numbers have drifted (it says Operations has fourteen tabs; it has nine plus a
@@ -259,6 +276,19 @@ directory's Last Session column reads `sessions` with `limit(100)` across 30
 clients and no order, so a client with many sessions can hide another's
 latest; `calculateFacilityAnalyticsV2` still reads every exercise log nightly
 and nothing reads its output.
+
+**The voice review follow-up (Sep 27 2026)** — to do by hand: delete the
+`taskInstances` (status, localDate) index in the Firebase console (it left the
+index file; answer N if the CLI offers to delete indexes), and walk Round 22 of
+the testing checklist. Decisions for AJ, all in the round document's "Open,
+for AJ": the Hub outline for an agreed slot with no booking; regulars on
+rotation days; a trainer Mindbody marks inactive; "Suggest my regulars" from
+the bookings Journey already holds (Mindbody sends no recurring-series id);
+who may change a role on Operations; a grant-holder's reach; franchise owners
+and Assign; whether "This quarter" lapses; a stored mark for the Note for the
+next trainer; one maintenance log for machine reports. Technical leftovers:
+`useNetworks` has no loaded / failed state; Operations → Machine fit writes its
+profile hand-off before the leave question.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll

@@ -45,6 +45,17 @@ redesign it into something that assumes people are simultaneously present.
 - The section is module memory (`section-memory.ts`), like Relay's tab, and a sign-out forgets it: the iPad reopens where it was. An arriving Planner intent (a client's profile, a notification) always lands on Relay.
 - The view id is still `studio-tasks`: notifications in trainers' bells link to it. The board's folder is `features/relay` (it was `features/planner` until the beta-prep trim renamed it, Sep 17 2026); file names inside still say Planner (`PlannerView`, `planner.css`).
 
+## How My Studio looks
+
+Since the voice review follow-up (Sep 27 2026, under AJ's "I trust your color choices and font choices"; `docs/rounds/2026-09-27-voice-review-followup.md`) My Studio speaks the app's look, as Learning does (`../learning/README.md`, "How Learning looks"):
+
+- **Colours are the app's.** The `--st-*` tokens carry `equipment.tokens.css`'s values, light and dark (`studio-tasks/studio-tokens.test.ts`). Caution (flags, late jobs, tight gaps) is plum; delete is crimson; anything selected is blue; every Save is solid blue; Capture keeps its orange, on the deep orange so its words read; the Floor Map's heat is one orange ramp.
+- **Type is the app's.** Titles are the display face; every heading is the same 12px small upright capitals (`.pl__h2`, `.pl__list-head`, `.rl-h__title`, `.stm__title`, `.ms__door-h`); buttons are 14px bold sentence case and chips 12px bold; sizes sit on 11 / 12 / 14 / 17 / 30. The masthead title is 17px, not the codex's 30px, because it sits in a 58px bar. The section tabs and Relay's segmented control stay 11px small capitals: they are tabs, not buttons (for AJ's screen audit).
+- **Taps and names.** The listed controls are 40px or more, and no name class is cut short. Team's cards are the header-strip card (`.tm-card`, `.tc`, `.stm__panel`), and Machines' floor list is the Operations kit's rows, buttons and badges.
+- **Nothing only on hover, and portrait works.** The Now Bar's teammates line ("Just now", with the kudos heart) is never hidden.
+
+`look.test.ts` holds My Studio's stylesheets to these rules (no raw hex outside a token definition, no name cut short, 40px controls, slanted capitals only in the display face, and an off-scale size budget of 3 that only goes down). `css-imports.test.ts` holds `MachinesSection`, `StudioSection`, `TeamSection`, `InBodyVariationPanel` and the Context Panel to the stylesheets they draw with, because Operations → Floor mounts Machines without this shell (and marks its frame `.ms__frame--hosted` so the machine's door stays on screen). If one fails, the fix is the stylesheet, not the test.
+
 ## Rules of the round
 
 - **My Studio is where you run the studio; Operations is where you look at it** (AJ, Sep 18). A studio's own settings live here, once, with one save bar; the looking (the Overview, Insights, the watchlists) stays on Operations.
