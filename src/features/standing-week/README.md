@@ -3,9 +3,12 @@
 Round: voice review, Sep 27 2026. The round document is
 `docs/rounds/2026-09-27-standing-week.md`. The follow-up the same day (AJ's
 answers to the audit: offline, the check's claims, Away, colleagues, the
-leave question, the rules) is under **Voice review follow-up** below.
+leave question, the rules) is under **Voice review follow-up** below. The
+Openings round (`docs/rounds/2026-09-27-openings.md`, phase 9) gave a day
+three blocks and changed the words: **Openings round** at the end.
 
-Each trainer's **usual week at a studio**: the hours they work, and their
+Each trainer's **usual week at a studio**: when they usually take clients
+(up to three **blocks** a day), and their
 **regulars** — a client, a weekday and a time ("Judy, Monday 8:00"). The
 trainer **proposes** it on My Profile. A studio leader **agrees** it on My
 Studio → Team. Journey then reads the coming week's Mindbody bookings
@@ -25,17 +28,17 @@ email a client, and would clash with the front desk.
 
 | File | What it is |
 | --- | --- |
-| `week.ts` | The week: `WorkHours`, `Regular`, `StandingWeek`, the stored document, reading one safely (`normalizeWeek`), where a week stands (`weekStatus`: none · proposed · agreed · changed) and a week ready to write (`weekForWrite`). The days away: `AwayRange`, `normalizeAway`, `upcomingAway`, `awayOn`, `awayForWrite` |
+| `week.ts` | The week: `WorkHours` (one block), `Regular`, `StandingWeek`, the stored document, reading one safely (`normalizeWeek`), where a week stands (`weekStatus`: none · proposed · agreed · changed) and a week ready to write (`weekForWrite`). The limits the rules hold too: `MAX_RANGES_A_DAY` (3 blocks a day), `MAX_HOURS` (21 a week), `MAX_REGULARS`, `MAX_NOTE`, `MAX_AWAY`. The days away: `AwayRange`, `normalizeAway`, `upcomingAway`, `awayOn`, `awayForWrite` |
 | `check.ts` | **The week check**: the next seven studio days' bookings against every AGREED week — as usual, moved, open, taken — and who is away (`awayThisWeek`, `awaySentence`). Pure |
-| `present.ts` | What the screens say: the clock choices, a week laid out Monday first, the status sentences, the Review's line (`reviewSentence`, where `proposedBy` is read), what a proposal changes ("Moves Judy Smith from Monday at 8:00 AM to Tuesday at 9:30 AM."), a range away (`awayLabel`), and who may read a studio's weeks (`mayReadWeeks`) |
+| `present.ts` | What the screens say: the clock choices, a week laid out Monday first, the status sentences, the Review's line (`reviewSentence`, where `proposedBy` is read), what a proposal changes ("Moves Judy Smith from Monday at 8:00 AM to Tuesday at 9:30 AM."), the editor's words (`NO_BLOCKS`, `OUTSIDE_BLOCKS`, `BREAKS_LINE`, `addBlockLabel`, `blockName`, `blocksLabel`), a range away (`awayLabel`), and who may read a studio's weeks (`mayReadWeeks`) |
 | `server-read.ts` | **An answer from the server, or "can't tell"**: `serverRead` turns a read's loading / failed / cache-only state and the browser's connection into ready · loading · failed · offline. Pure; `useServerWait.ts` is its clock and the online flag |
 | `team.ts` | Who Team lists, whose week is waiting, and whether the studio's bookings can be checked at all |
 | `store.ts` | The four writes: `proposeWeek`, `agreeWeek`, `setAway`, `removeWeek` |
 | `useStandingWeeks.ts` | The live reads: a studio's weeks (Team), one trainer's (My Profile, a colleague's profile). The first answer must be the server's |
-| `WeekEditor.tsx` | **The one editor**, day by day. The trainer proposes with it; a leader changes a proposal with it before agreeing |
+| `WeekEditor.tsx` | **The one editor**, day by day, up to three blocks a day. The trainer proposes with it; a leader changes a proposal with it before agreeing |
 | `AwayEditor.tsx` | **Away**: the days a trainer is away, added and removed one range at a time. The trainer's on My Profile, a leader's in Team's Review |
-| `MyStandingWeek.tsx` | My Profile → My standing week, with Away below it |
-| `ColleagueStandingWeek.tsx` | A colleague's profile → Standing week: their agreed week and days away, read only |
+| `MyStandingWeek.tsx` | My Profile → My standing week ("When I usually take clients" over the editor), with Away below it |
+| `ColleagueStandingWeek.tsx` | A colleague's profile → Standing week: their agreed week and days away, read only. **Unreachable today**: another trainer's profile can't be opened in the app (the other profiles were trimmed to My Profile on Sep 26, and ClientsView's `onSelectTrainer` is never called). The Openings round shows colleagues' usual weeks inside Openings instead of reopening profiles; until then this card and its render test stand, unused |
 | `StandingWeeksPanel.tsx` | My Studio → Team → Standing weeks: the next seven days (who is away, then what differs), then each person's standing week |
 
 ---
@@ -120,8 +123,9 @@ check never counts or compares trainers' gaps (recognition, never ranking).
 **Every time is picked, never typed.** A quarter-hour clock from 5:00 AM to
 9:45 PM, and an end that can only come after its start, so the editor can't
 build a week the save would have to drop. A time already in a week that is
-off the grid stays in the list. A day's first hours copy the day before, so
-a Monday-to-Friday week is typed once.
+off the grid stays in the list. A day's first block copies the day before,
+so a Monday-to-Friday week is typed once; the second and third start an
+hour after the day's latest block ends (the break left out).
 
 ---
 
@@ -182,7 +186,8 @@ and a request may evaluate only 1,000 expressions — at ten ranges a
 leader's write already ran out in the emulator. The rules tests hold the
 fullest real writes to it: a leader's agreement and a trainer's proposal on
 a week that already holds six ranges and a full proposed and agreed week
-(14 hours, 80 regulars), for the cheapest leader (a studio owner at home) and
+(21 blocks since the Openings round — it was 14 — and 80 regulars), for the
+cheapest leader (a studio owner at home) and
 the costlier ones measured in the final review: a trainer with the grant, a
 head trainer who runs the studio through `ownedStudioIds`, a studio leader
 based elsewhere with the grant, and a leader agreeing their own week. If that
@@ -234,11 +239,82 @@ with a practice week are added, so the list never becomes the whole company.
 
 **D7 — Small things.** The Review says "Proposed by {name} on {date}", which
 is where `proposedBy` is read. The heading is "Each person's standing week".
-"Not in" reads in the muted ink. Demo Mode's seeded appointments are "the
+"Not in" (since the Openings round, "Doesn't take clients") reads in the
+muted ink. Demo Mode's seeded appointments are "the
 demo week", not the standing week. The trainer's "Propose this week" is a
 blue save like Away's (the round's look: every save is brand blue). While
 the weeks are read, or when they can't be, Team says why once, under the
 next seven days; the list below says only that it waits.
+
+## Openings round (Sep 27 2026): three blocks, and the words
+
+The Openings round (`docs/rounds/2026-09-27-openings.md`, phase 9; AJ
+approved it with the rest of the OK list) reads the agreed weeks as **who
+is in** at each half-hour of the studio's usual week. That changed what a
+week has to say, and how it says it.
+
+**Three blocks a day.** AJ: some trainers "take three clients, have a little
+break" and go again; not every trainer works hourly, "some trainers get paid
+per client". With two ranges a day such a trainer typed one long block, and
+Openings would read every habitual break inside it as room and offer it to a
+client. So a day now holds up to three blocks (`MAX_RANGES_A_DAY = 3`,
+exported from `week.ts`; the editor used to keep its own 2), and a week up
+to 21 (`MAX_HOURS = MAX_RANGES_A_DAY * 7`, was 14). The stored field is
+still `hours`, and a block is still a `WorkHours`: nothing about the data
+changes but the one number.
+
+**The rules.** `standingWeekShapeValid` holds `hours` to 21 (was 14). It
+checks only the list's length, never each block, so the 1,000-expression
+budget the days away were measured against doesn't move. The rules tests
+refuse a 22nd block (proposed or agreed), accept 21 from the trainer and
+from a leader, and the budget test's full week is now 21 blocks for every
+writer it measures. `week.test.ts` reads `firestore.rules` and fails if its
+limits for the blocks or the regulars ever differ from `week.ts`'s, so the
+two can't drift on a machine that can't run the emulator. **The rules must
+be deployed before the app**: until they are, a proposal with a 15th block
+is refused (the proposal says so and keeps the week; nothing is lost).
+
+**The words.** A block is when a trainer takes clients, not the hours they
+work, so no screen says "hours" any more:
+
+| Where | Was | Now |
+| --- | --- | --- |
+| My Profile → My standing week: over the editor (new) | | **When I usually take clients** (the card keeps its name) |
+| My Profile: the intro | "The hours you usually work at {studio}, and your regulars" | "When you usually take clients at {studio}, and your regulars" |
+| The editor: a day with no blocks | "Not in" | "Doesn't take clients" (`NO_BLOCKS`) |
+| The editor: the add button | "Hours" / "More hours" ("Add hours on {day}") | "Add a block" / "Add another block" ("Add a block on {day}"), until the day has three (`addBlockLabel`) |
+| The editor: a regular outside every block | "Outside the day's hours" | "Outside when they take clients" (`OUTSIDE_BLOCKS`) |
+| The editor: under the days (new) | | "A break inside a block shows as room on Openings, so leave the breaks out." (`BREAKS_LINE`) |
+| A colleague's card: a day with only regulars | "Not in" | "Doesn't take clients" |
+| Team's subtitle | "their hours and their regulars" | "when they take clients, and their regulars" |
+| What a proposal changes | "Works {day}, …" / "No longer works {day} (was …)" / "{day}'s hours: …, was …" | "Takes clients on {day}, …" / "No longer takes clients on {day} (was …)" / "{day}: …, was …" |
+| The week's summary on Team | "no hours set" | "no times set" |
+
+The line about breaks departs from the round document on purpose: it
+drafted "A break **between** blocks shows as room", but a break between two
+blocks is the one Openings never offers; a break left **inside** a block is
+the one it does. The final wording of all of these is AJ's, in his screen
+audit.
+
+**Three blocks, read and heard.** A day's blocks read as one phrase —
+"6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM" (`blocksLabel`,
+on a colleague's card and in what a proposal changes). Each block has its
+own name for VoiceOver, so three blocks don't read as three "Monday:
+starts": the first is "Monday: starts", the next "Monday, block 2: starts"
+(`blockName`). On My Profile the heading names the editor (`labelledBy`, a
+`role="group"`). A block's two clocks share one width (`.stw-range
+.stw-select`), so a day's blocks wrap evenly: one to a line on a 744 px
+portrait iPad, side by side at 1133 px landscape (checked in headless
+Chrome), never the first alone above the other two because one end was a
+few pixels wider.
+
+**Tests.** `WeekEditor.render.test.tsx` mounts the editor on its own: a day
+with none, three blocks and no fourth, removing one of three and adding
+again, the third block's times, the chip against three blocks, and a saving
+editor offering nothing. `MyStandingWeek`, `ColleagueStandingWeek` and
+`StandingWeeksPanel` render tests cover the words, a proposal of three
+blocks, a colleague's day of three, and a leader adding a third block
+before agreeing.
 
 ## Not built (see the round document)
 
