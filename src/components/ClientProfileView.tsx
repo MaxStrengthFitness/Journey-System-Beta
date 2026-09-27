@@ -135,6 +135,10 @@ import {
   chipText,
   renewalPromptDue,
 } from "../features/renewals";
+import { useRenewalSettings } from "../features/renewals/useRenewalSettings";
+import { buildPackageNameIndex } from "../features/renewals/settings";
+import { sessionsSplit } from "../features/client-admin/account";
+import { recordStudioIdOf } from "../features/client-codex/access";
 
 /** Sessions per Firestore page for the profile's history (see the Journey tab). */
 /* Fifty at a time (audit, Sep 13): "Older really needs to show us their
@@ -599,6 +603,22 @@ export function ClientProfileView({
     () => resolvePackage(client, scheduledSessions),
     [client, scheduledSessions],
   );
+
+  /*
+   * LEFT IN THE CONTRACT, AND EXTRA (AJ, Sep 26 2026: "a left in contract and
+   * then extra sessions works"). Worked out ONCE, from her Mindbody pricing
+   * options and her home studio's package table (My Studio → Studio →
+   * Renewals), and handed to the header and to Account — which used to say
+   * "36 LEFT · PIF" and "48 on hand" about the same client. Null until the
+   * table has answered, and after a read that failed: the header keeps its
+   * Mindbody pill and Account its on-hand total rather than guess.
+   */
+  const renewalSettings = useRenewalSettings(recordStudioIdOf(client));
+  const splitOfSessions = useMemo(() => {
+    if (!client || renewalSettings.loading || renewalSettings.error) return null;
+    if (renewalSettings.forStudioId !== recordStudioIdOf(client)) return null;
+    return sessionsSplit(client, buildPackageNameIndex(renewalSettings.settings));
+  }, [client, renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings]);
 
   const [isDeleting, setIsDeleting] = useState(false);
   /** The machine open in the one machine window (Journey grid, Routine A / B rows). */
@@ -1110,10 +1130,11 @@ export function ClientProfileView({
       onOpenMachine: openMachineWindow,
       onOpenSetup: () => nav.go({ tab: "programming", view: "setup" }),
       priorHistoryDoor,
+      sessionsSplit: splitOfSessions,
     }),
     // nav's callbacks are stable (useCallback with no deps in useProfileNav).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor],
+    [setView, openMachineWindow, nav.go, nav.setTab, priorHistoryDoor, splitOfSessions],
   );
   // What Programming already holds, for Body & Pulse's floor (her notes per
   // machine, and machine fit's "clients built like her") — no read of its own.
@@ -1425,6 +1446,7 @@ export function ClientProfileView({
         coverage={clientCoverage}
         priorLabel={priorLabel}
         priorHistoryDoor={priorHistoryDoor ?? undefined}
+        sessionsSplit={splitOfSessions}
         topTrainer={topTrainer}
         trainers={trainers}
         pkg={clientPackage}

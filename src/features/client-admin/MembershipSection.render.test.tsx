@@ -111,6 +111,7 @@ function Harness({
   author = { id: "uid-aj", name: "AJ" },
   coverage = "complete",
   onOpenMigrationHub,
+  split,
 }: {
   c: Client;
   probe?: Probe;
@@ -119,6 +120,7 @@ function Harness({
   author?: MembershipSectionProps["author"];
   coverage?: MembershipSectionProps["coverage"];
   onOpenMigrationHub?: () => void;
+  split?: MembershipSectionProps["split"];
 }) {
   const form = useRecordForm({ client: c, trainerId: "t-aj", canEdit, homeStudioName: "Solon" });
   probe.form = form;
@@ -135,6 +137,7 @@ function Harness({
           pronouns={pronounsOf(c)}
           today={TODAY}
           onOpenMigrationHub={onOpenMigrationHub}
+          split={split}
           now={NOW}
         />
       </div>
@@ -209,6 +212,17 @@ describe("MembershipSection — the package", () => {
     expect(text).toContain("#k · signed Jan 4, 2026 · sold by Pat Front · autopay active");
     // Visiting Westlake without approval.
     expect(text).toContain("NOT yet cleared to train at Westlake");
+  });
+
+  it("prints what is left in the contract and the extras when the profile hands the split over (AJ, Sep 26)", async () => {
+    const host = await mount(
+      <Harness c={client()} split={{ contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 }} />,
+    );
+    const card = pkg(host).textContent || "";
+    expect(card).toContain("36 left");
+    expect(card).toContain("sessions left in the contract");
+    expect(card).toContain("+12 extra sessions, on top of the contract");
+    expect(card).not.toContain("on hand");
   });
 
   it("reads the renewal as it is: sessions left, when it renews, the pace", async () => {

@@ -23,9 +23,13 @@ import {
   onFileFacts,
   onHandTotal,
   packageView,
+  contractWords,
+  extraWords,
+  sessionsSplit,
   tabTone,
   tierSourceLine,
 } from "./account";
+import { DEFAULT_RENEWAL_SETTINGS, buildPackageNameIndex } from "../renewals/settings";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ts = (iso: string) => ({ toDate: () => new Date(iso) });
@@ -633,3 +637,97 @@ describe("the module", () => {
     expect(readFileSync(join(HERE, "account.ts"), "utf8")).not.toContain("(?<");
   });
 });
+
+
+/*
+ * Left in the contract, and extra (AJ, Sep 26 2026): "How many left in their
+ * contract is the correct number, but ... clients can be given sessions that
+ * also plays a part, so a left in contract and then extra sessions works."
+ * Judy Daus's real options, from her fine print: "96 Sessions - PIF: 36 of 96"
+ * and "Session Comp: 12 of 12" — read as "36 LEFT · PIF" on the header and
+ * "48 on hand" on Account.
+ */
+describe("sessionsSplit — left in the contract, and extra", () => {
+  const index = buildPackageNameIndex(DEFAULT_RENEWAL_SETTINGS);
+  const services = (rows: Array<[string, number, number]>): Pick<Client, "mindbodyServices"> =>
+    ({
+      mindbodyServices: Object.fromEntries(
+        rows.map(([name, remaining, count], i) => [`s${i}`, { serviceId: `s${i}`, name, remaining, count }]),
+      ),
+    }) as unknown as Pick<Client, "mindbodyServices">;
+  const judy = services([
+    ["96 Sessions - PIF", 36, 96],
+    ["Session Comp", 12, 12],
+  ]);
+
+  it("splits Judy's 48 into the 36 left in her contract and the 12 she was given", () => {
+    const split = sessionsSplit(judy, index);
+    expect(split).toEqual({ contract: 36, hasContract: true, perPayment: false, extra: 12, other: 0 });
+    expect(contractWords(split)).toBe("36 left in contract");
+    expect(extraWords(split)).toBe("+12 extra");
+    // The total the fine print adds up is still the same 48.
+    expect(onHandTotal(judy)).toBe(48);
+  });
+
+  it("reads a location's own spelling of a package by its name, and the studio's table by its own", () => {
+    // "96 Sessions - PIF" is not in the default table; its name says what it is.
+    expect(sessionsSplit(services([["96 Sessions - PIF", 36, 96]]), index).hasContract).toBe(true);
+    // "144 PIF" is in the default table.
+    expect(sessionsSplit(services([["144 PIF", 100, 144]]), index)).toMatchObject({ contract: 100, perPayment: false });
+  });
+
+  it("says ON HAND, never left in the contract, when the contract comes a payment at a time", () => {
+    const monthly = sessionsSplit(services([["48 Sessions - 2X Week", 5, 8], ["Session Comp", 2, 2]]), index);
+    expect(monthly).toMatchObject({ contract: 5, perPayment: true, extra: 2 });
+    expect(contractWords(monthly)).toBe("5 on hand in contract");
+  });
+
+  it("never guesses an option it cannot place into either", () => {
+    const split = sessionsSplit(services([["10 Pack", 3, 10], ["Intro Offer", 1, 3], ["96 Sessions - PIF", 36, 96]]), index);
+    expect(split).toMatchObject({ contract: 36, extra: 0, other: 4 });
+  });
+
+  it("gives a lone comp no contract: extra, never left", () => {
+    const split = sessionsSplit(services([["Session Comp", 2, 2]]), index);
+    expect(split).toMatchObject({ hasContract: false, contract: 0, extra: 2 });
+    expect(contractWords(split)).toBeNull();
+    expect(extraWords(split)).toBe("+2 extra");
+  });
+
+  it("keeps a used-up contract as 0 left in contract beside what she was given", () => {
+    const split = sessionsSplit(services([["96 Sessions - PIF", 0, 96], ["Session Comp", 4, 4]]), index);
+    expect(contractWords(split)).toBe("0 left in contract");
+    expect(extraWords(split)).toBe("+4 extra");
+  });
+
+  it("puts the pair on Account's sub-toggle, short enough for the portrait bar", () => {
+    const client = { ...judy } as Client;
+    expect(accountTabHint(client, sessionsSplit(judy, index))).toBe("36 left +12 extra");
+    expect(accountTabHint(client, sessionsSplit(services([["144 PIF", 120, 144], ["Session Comp", 12, 12]]), index))).toBe(
+      "120 left +12 extra",
+    );
+    expect((accountTabHint(client, sessionsSplit(services([["144 PIF", 120, 144], ["Session Comp", 12, 12]]), index)) ?? "").length).toBeLessThanOrEqual(18);
+    const monthly = services([["48 Sessions - 2X Week", 5, 8]]);
+    expect(accountTabHint(monthly as Client, sessionsSplit(monthly, index))).toBe("5 on hand");
+    const comp = services([["Session Comp", 2, 2]]);
+    expect(accountTabHint(comp as Client, sessionsSplit(comp, index))).toBe("+2 extra");
+    // Without the split, what she holds, as before.
+    expect(accountTabHint(client)).toBe("48 on hand");
+  });
+
+  it("puts the pair on the package card, and leaves a worked-out renewal to speak for itself", () => {
+    const view = packageView(judy as PackageClientLike, null, TODAY, sessionsSplit(judy, index));
+    expect(view.left).toBe("36 left");
+    expect(view.leftWords).toBe("sessions left in the contract");
+    expect(view.held).toBe("+12 extra sessions, on top of the contract");
+    const monthly = services([["48 Sessions - 2X Week", 5, 8], ["10 Pack", 3, 10]]);
+    const m = packageView(monthly as PackageClientLike, null, TODAY, sessionsSplit(monthly, index));
+    expect(m.left).toBe("5 on hand");
+    expect(m.held).toBe("3 more sessions on options not matched to a package");
+    // A renewal the nightly job worked out still says what is left.
+    const withRenewal = packageView({ ...judy, renewal: renewal() } as PackageClientLike, null, TODAY, sessionsSplit(judy, index));
+    expect(withRenewal.left).toBe(`${renewal().sessionsLeft} left`);
+  });
+});
+
+type PackageClientLike = Parameters<typeof packageView>[0];

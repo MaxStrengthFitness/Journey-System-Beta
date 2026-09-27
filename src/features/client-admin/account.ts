@@ -72,11 +72,13 @@ import {
   PACKAGE_NAME,
   PAYMENT_LABEL,
   currentContract,
+  parseTierFromName,
   resolveContractTier,
   sessionsOnHand,
   type ContractTier,
   type ContractTermRow,
 } from "./contract";
+import type { PackageNameIndex } from "../renewals/settings";
 
 /* ------------------------------------------------------------------ */
 /* Linked or not                                                       */
@@ -445,6 +447,94 @@ export function onHandTotal(client: Pick<Client, "mindbodyServices">): number {
 }
 
 /**
+ * LEFT IN THE CONTRACT, AND EXTRA (AJ, Sep 26 2026): "How many left in their
+ * contract is the correct number, but ... clients can be given sessions that
+ * also plays a part, so a left in contract and then extra sessions works."
+ *
+ * Judy Daus read "36 LEFT · PIF" on the header and "48 on hand" on Account —
+ * her paid-in-full option's 36 and a Session Comp's 12, added up in one place
+ * and not the other. Each pricing option with sessions left is now one of:
+ *
+ *   extra     the studio's extra-sessions names (My Studio → Studio →
+ *             Renewals; "Session Comp" by default): sessions she was given
+ *   contract  the studio's package names, or a name that says what package
+ *             it is (`parseTierFromName`: "96 Sessions - PIF", "48 Sessions -
+ *             2X Week"), which reads a location's own spelling the default
+ *             table does not have
+ *   other     neither: never guessed into either (a "10 Pack", an intro
+ *             offer), and named as such where there is room
+ *
+ * The profile works this out ONCE, with the home studio's table, and hands it
+ * to the header and to Account, so the two never say different numbers again.
+ */
+export interface SessionsSplit {
+  /** Sessions on her contract's pricing options. */
+  contract: number;
+  /** She holds a contract option at all, even one with none left. */
+  hasContract: boolean;
+  /**
+   * Her contract arrives a payment at a time (a monthly option: 8 sessions
+   * per 4-weekly payment). Then `contract` is what she holds NOW — on hand,
+   * never "left in the contract", which counts the payments still to come
+   * (the nightly renewal works that out). False when every contract option
+   * holds its whole package up front: paid in full, or banked.
+   */
+  perPayment: boolean;
+  /** Sessions she was given, on top of the contract. */
+  extra: number;
+  /** Sessions on options that are neither: not claimed as either. */
+  other: number;
+}
+
+export function sessionsSplit(
+  client: Pick<Client, "mindbodyServices">,
+  index: Pick<PackageNameIndex, "tierFor" | "isExtraSessions">,
+): SessionsSplit {
+  const split: SessionsSplit = { contract: 0, hasContract: false, perPayment: false, extra: 0, other: 0 };
+  for (const s of Object.values(client.mindbodyServices ?? {})) {
+    if (!s) continue;
+    const remaining = typeof s.remaining === "number" && s.remaining > 0 ? s.remaining : 0;
+    if (index.isExtraSessions(s.name)) {
+      split.extra += remaining;
+      continue;
+    }
+    const tier = index.tierFor(s.name);
+    const named = parseTierFromName(s.name);
+    if (!tier && !named) {
+      split.other += remaining;
+      continue;
+    }
+    split.hasContract = true;
+    split.contract += remaining;
+    // The whole package up front, the renewal engine's own test: the option
+    // holds at least the package's sessions (or its name says paid in full).
+    const whole = named?.payment === "pif" || (!!tier && typeof s.count === "number" && s.count >= tier.sessions);
+    if (!whole && remaining > 0) split.perPayment = true;
+  }
+  return split;
+}
+
+/**
+ * The contract's words: "36 left in contract" when she holds the whole
+ * package, "5 on hand in contract" when it comes a payment at a time. Null
+ * with no contract option.
+ */
+export function contractWords(split: SessionsSplit): string | null {
+  if (!split.hasContract) return null;
+  return split.perPayment ? `${split.contract} on hand in contract` : `${split.contract} left in contract`;
+}
+
+/** Whether the split has anything to say: a contract option, or extras. */
+export function splitSpeaks(split: SessionsSplit | null | undefined): split is SessionsSplit {
+  return !!split && (split.hasContract || split.extra > 0);
+}
+
+/** "+12 extra" — the extras on their own, for a line or a pill. Null with none. */
+export function extraWords(split: Pick<SessionsSplit, "extra">): string | null {
+  return split.extra > 0 ? `+${split.extra} extra` : null;
+}
+
+/**
  * The package card's words. `pendingOverride` is the lock as the form holds
  * it (a staged lock shows before it is saved); the record's is Mindbody's
  * reading only when there is no lock.
@@ -453,6 +543,8 @@ export function packageView(
   client: PackageClient,
   pendingOverride: ContractTierOverride | null,
   today: string,
+  /** Left in the contract and extra (`sessionsSplit`); left out, the on-hand total speaks. */
+  split?: SessionsSplit | null,
 ): PackageView {
   const tier = resolveContractTier({ ...client, contractTierOverride: pendingOverride });
   const detected = resolveContractTier({ ...client, contractTierOverride: null });
@@ -474,6 +566,27 @@ export function packageView(
     left = `${r.sessionsLeft} left`;
     leftWords = r.sessionsLeftSource === "estimate" ? "sessions left (estimated)" : "sessions left";
     if (r.sessionsLeftSource === "estimate" && onHand > 0) held = `${onHand} on hand in Mindbody now`;
+  } else if (!r && splitSpeaks(split)) {
+    // No renewal worked out: left in the contract, and what she was given on
+    // top (AJ, Sep 26) — the header's own pair.
+    const beside = [
+      split.extra > 0 ? `+${plural(split.extra, "extra session")}, on top of the contract` : null,
+      split.other > 0 ? `${plural(split.other, "more session")} on options not matched to a package` : null,
+    ];
+    if (split.hasContract && !split.perPayment) {
+      left = `${split.contract} left`;
+      leftWords = "sessions left in the contract";
+    } else if (split.hasContract) {
+      // Monthly: what she holds now; the payments to come add more.
+      left = `${split.contract} on hand`;
+      leftWords = "sessions on hand in the contract; each payment adds more";
+    } else {
+      // Given sessions and no package: never "left" (a lone comp is not a package).
+      left = `${split.extra} extra`;
+      leftWords = "extra sessions, no package on file";
+      beside[0] = null;
+    }
+    held = beside.filter(Boolean).join(" · ") || null;
   } else if (onHand > 0) {
     left = `${onHand} on hand`;
     leftWords = "sessions on hand in Mindbody";
@@ -660,11 +773,23 @@ export function membershipTimeline(
  * says "(estimated)" beside it; a line this short cannot. Null when nothing
  * is known: no line rather than a guess.
  */
-export function accountTabHint(client: Pick<Client, "mindbodyServices"> & Partial<Pick<Client, "renewal">>): string | null {
+export function accountTabHint(
+  client: Pick<Client, "mindbodyServices"> & Partial<Pick<Client, "renewal">>,
+  /** Left in the contract and extra, when the profile worked it out (`sessionsSplit`). */
+  split?: SessionsSplit | null,
+): string | null {
   const r = client.renewal ?? null;
   if (r && (r.situation === "ended" || r.situation === "lapsed")) return "package ended";
   if (r && typeof r.sessionsLeft === "number" && r.sessionsLeftSource === "mindbody") {
     return `${plural(r.sessionsLeft, "session")} left`;
+  }
+  // No renewal to say what is left: the contract and the extras, the header's
+  // own pair (AJ, Sep 26). Short for the portrait bar: "36 left +12 extra".
+  if (!r && splitSpeaks(split)) {
+    const extra = extraWords(split);
+    if (!split.hasContract) return extra;
+    const head = split.perPayment ? `${split.contract} on hand` : `${split.contract} left`;
+    return extra ? `${head} ${extra}` : head;
   }
   const held = onHandTotal(client);
   return held > 0 ? `${held} on hand` : null;

@@ -243,6 +243,8 @@ export function ClientCodex({
       pulse: { day: newestPulseDay(data.pulse.history) },
       // Story's line: the year of the Story's own "since" (the record only).
       story: { hint: storyTabHint({ client, coverage: data.coverage, today: data.today }) },
+      // Account's line: the header's own pair, left in the contract and extra.
+      split: hosts.sessionsSplit ?? null,
     });
   }, [
     client,
@@ -255,6 +257,7 @@ export function ClientCodex({
     data.pulse,
     data.coverage,
     access.fordReadable,
+    hosts.sessionsSplit,
   ]);
 
   const rootRef = useRef<HTMLDivElement>(null);

@@ -29,6 +29,7 @@ import { fordDoorCount, notesOnRecord, notesSummary, type NotesOnRecord, type No
 import { historyFromDocs, type AssessmentHistory } from "../subjective-report/assessment-history";
 import type { ProgressReportsStatus } from "../client-profile/client-answer";
 import type { PriorHistoryDoorState } from "../client-profile/prior-history-door";
+import type { SessionsSplit } from "../client-admin/account";
 import { priorHistoryOf, priorUncounted, totalSessions, type HistoryCoverage } from "../../lib/prior-history";
 import type { CodexGo } from "./kit/primitives";
 import type { Pronouns } from "./kit/pronouns";
@@ -352,6 +353,13 @@ export interface CodexHosts {
    * or left out: no door (nothing recorded, and this reader may not add it).
    */
   priorHistoryDoor?: PriorHistoryDoorState | null;
+  /**
+   * Left in the contract and extra — the SAME pair the header prints,
+   * worked out once by the profile with the home studio's package table
+   * (`sessionsSplit`, AJ Sep 26 2026). Account's card and its sub-toggle
+   * line read it. Null or left out: the on-hand total speaks.
+   */
+  sessionsSplit?: SessionsSplit | null;
 }
 
 /** What every page gets. */
