@@ -12,7 +12,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
-  batchWrites: [] as Array<{ op: string; path: string }>,
+  batchWrites: [] as Array<{ op: string; path: string; data: Record<string, unknown> }>,
   commits: 0,
   updateDocs: [] as Array<{ path: string; data: Record<string, unknown> }>,
   refuseTotals: false,
@@ -28,8 +28,10 @@ vi.mock("firebase/firestore", () => ({
   serverTimestamp: () => ({ __server: true }),
   increment: (n: number) => ({ __increment: n }),
   writeBatch: () => ({
-    update: (ref: { path: string }) => calls.batchWrites.push({ op: "update", path: ref.path }),
-    set: (ref: { path: string }) => calls.batchWrites.push({ op: "set", path: ref.path }),
+    update: (ref: { path: string }, data: Record<string, unknown>) =>
+      calls.batchWrites.push({ op: "update", path: ref.path, data }),
+    set: (ref: { path: string }, data: Record<string, unknown>) =>
+      calls.batchWrites.push({ op: "set", path: ref.path, data }),
     commit: async () => {
       calls.commits += 1;
       if (calls.commitGate) await calls.commitGate;
@@ -45,7 +47,15 @@ vi.mock("firebase/firestore", () => ({
     }
   },
 }));
-vi.mock("../hooks/useClientJournal", () => ({ createJournalEntry: async () => "note-1" }));
+// Finish writes no journal note (the tracker files the Note for the next
+// trainer's journal copy itself). If it ever did again, this would say so.
+const journal = vi.hoisted(() => ({ created: 0 }));
+vi.mock("../hooks/useClientJournal", () => ({
+  createJournalEntry: async () => {
+    journal.created += 1;
+    return "note-1";
+  },
+}));
 vi.mock("./session-count-cache", () => ({ invalidateSessionCount: () => {} }));
 
 import { completeWorkoutSession } from "./sync-utils";
@@ -58,14 +68,13 @@ const logs = [
 ];
 const trainer = { id: "t1", fullName: "Trainer A", initials: "TA" };
 
-function finish() {
+function finish(nextTrainerNote = "") {
   return completeWorkoutSession(
     {} as never,
     session,
     client,
     logs,
-    undefined,
-    "",
+    nextTrainerNote,
     trainer,
     {},
     "uid-t1",
@@ -73,6 +82,7 @@ function finish() {
 }
 
 beforeEach(() => {
+  journal.created = 0;
   calls.batchWrites = [];
   calls.commits = 0;
   calls.updateDocs = [];
@@ -129,7 +139,7 @@ describe("completeWorkoutSession", () => {
     calls.refuseBatch = true;
     const session2 = { ...session, id: "sess-retry" };
     const run = () =>
-      completeWorkoutSession({} as never, session2, client, logs, undefined, "", trainer, {}, "uid-t1");
+      completeWorkoutSession({} as never, session2, client, logs, "", trainer, {}, "uid-t1");
     await expect(run()).rejects.toThrow(/permissions/);
     expect(calls.updateDocs).toHaveLength(1);
     calls.refuseBatch = false;
@@ -140,8 +150,24 @@ describe("completeWorkoutSession", () => {
   });
 
   it("has no totals to write without a client", async () => {
-    const r = await completeWorkoutSession({} as never, session, null, logs, undefined, "", trainer, {}, "uid-t1");
+    const r = await completeWorkoutSession({} as never, session, null, logs, "", trainer, {}, "uid-t1");
     expect(calls.updateDocs).toHaveLength(0);
     expect(r.totalsSaved).toBeNull();
+  });
+
+  it("puts the Note for the next trainer on the session, whole, and writes no journal note itself", async () => {
+    const r = await finish("  Knee sore after the move.  ");
+    const sessionWrite = calls.batchWrites.find((w) => w.path === "sessions/sess1")!;
+    expect(sessionWrite.data.notes).toBe("Knee sore after the move.");
+    // The Wrap-up writes the dose itself, the moment it is tapped.
+    expect(sessionWrite.data).not.toHaveProperty("dose");
+    expect(journal.created).toBe(0);
+    expect(r).toEqual({ totalsSaved: true });
+  });
+
+  it("leaves the session's note alone when the End Session box was empty", async () => {
+    await finish("   ");
+    const sessionWrite = calls.batchWrites.find((w) => w.path === "sessions/sess1")!;
+    expect(sessionWrite.data).not.toHaveProperty("notes");
   });
 });

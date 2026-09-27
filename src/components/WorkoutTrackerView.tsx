@@ -1988,7 +1988,6 @@ export function WorkoutTrackerView({
           currentSession,
           selectedClient,
           finalLogs,
-          undefined,
           currentSessionNotes,
           authTrainer,
           clientMachineSettings,
