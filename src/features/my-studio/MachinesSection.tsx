@@ -28,6 +28,7 @@ import { writesForStudioPerRules } from "../learning/permissions";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { useRelayMaybe } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import {
   buildSubmission,
   canOffer,
@@ -146,6 +147,11 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   }, [rosterEntries, noLongerStandard]);
 
   const [door, setDoor] = useState<Door | null>(null);
+  // The door holds typing (the floor's notes, the studio's settings), and its
+  // own ways out would unmount it or swap its machine: the X, Escape, and a
+  // tap on another machine in the list beside it. Each asks first (a leave
+  // scope, unsaved-changes), as My Studio's sections and the bottom bar do.
+  const doorScope = useLeaveScope();
   const [seeding, setSeeding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -315,7 +321,11 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
               studioName={studioName}
               readOnly={!canLead}
               flags={flags}
-              onOpenMachine={(machineId) => setDoor({ machineId })}
+              onOpenMachine={(machineId) => {
+                // The machine already open changes nothing, so it never asks.
+                if (machineId === door?.machineId) return;
+                doorScope.guard(() => setDoor({ machineId }));
+              }}
               hideHeading
             />
           )}
@@ -374,29 +384,34 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
                 title: doorName,
                 tall: true,
                 body: (
-                  <MachineDoor
-                    studioId={studioId}
-                    studioName={studioName}
-                    entry={doorEntry}
-                    machineName={doorName}
-                    catalogName={
-                      doorEntry.source === "catalog" ? (byId[doorEntry.machineId]?.name ?? doorName) : doorName
-                    }
-                    catalogEntry={doorEntry.source === "catalog" ? (catalog as MachineCatalogEntry[]).find((c) => c.id === (doorEntry as { basedOn?: string }).basedOn) ?? null : null}
-                    setting={settingsByMachineId[doorEntry.machineId]}
-                    noteValue={notesByMachineId[doorEntry.machineId]?.notes ?? ""}
-                    upkeepEvents={upkeepEvents}
-                    upkeepStatus={worstStatus(tallyUpkeep(upkeepEvents, doorEntry.machineId, todayKey), DEFAULT_UPKEEP_POLICY)}
-                    canLead={canLead}
-                    canLogUpkeep={canLogUpkeep}
-                    authTrainer={authTrainer ?? null}
-                    openOffer={door.intent === "submit"}
-                  />
+                  <UnsavedChangesScope scope={doorScope}>
+                    {/* Keyed by machine: each machine gets a fresh door, so a
+                        Leave's discard never re-seeds onto the next one. */}
+                    <MachineDoor
+                      key={doorEntry.machineId}
+                      studioId={studioId}
+                      studioName={studioName}
+                      entry={doorEntry}
+                      machineName={doorName}
+                      catalogName={
+                        doorEntry.source === "catalog" ? (byId[doorEntry.machineId]?.name ?? doorName) : doorName
+                      }
+                      catalogEntry={doorEntry.source === "catalog" ? (catalog as MachineCatalogEntry[]).find((c) => c.id === (doorEntry as { basedOn?: string }).basedOn) ?? null : null}
+                      setting={settingsByMachineId[doorEntry.machineId]}
+                      noteValue={notesByMachineId[doorEntry.machineId]?.notes ?? ""}
+                      upkeepEvents={upkeepEvents}
+                      upkeepStatus={worstStatus(tallyUpkeep(upkeepEvents, doorEntry.machineId, todayKey), DEFAULT_UPKEEP_POLICY)}
+                      canLead={canLead}
+                      canLogUpkeep={canLogUpkeep}
+                      authTrainer={authTrainer ?? null}
+                      openOffer={door.intent === "submit"}
+                    />
+                  </UnsavedChangesScope>
                 ),
               }
             : null
         }
-        onClose={() => setDoor(null)}
+        onClose={() => doorScope.guard(() => setDoor(null))}
       />
     </div>
   );

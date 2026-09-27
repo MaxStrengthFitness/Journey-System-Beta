@@ -10,8 +10,10 @@ import type { TeamJob } from "./types";
  * A studio's team jobs: every open one, plus the ones closed recently.
  *
  * TWO LISTENERS, each on a single field (`status == open`, and a range on
- * `closedOn`), both covered by Firestore's automatic indexes, so nothing to
- * deploy. Closed jobs are capped: a studio's history of finished jobs grows
+ * `closedOn`). Production is Firestore Enterprise edition, which builds no
+ * index by itself, and firestore.indexes.json has none for teamJobs, so each
+ * read scans this studio's own teamJobs (a small subcollection). Closed
+ * jobs are capped: a studio's history of finished jobs grows
  * forever, and the lanes only need the last few ("Priya finished the
  * birthday cards").
  *
@@ -69,7 +71,7 @@ export function useTeamJobs(studioId: string | null | undefined): TeamJobsState 
       },
     );
     // Recently closed: a range on `closedOn` alone (the studio day it was
-    // finished), which the automatic single-field index covers. A reopened
+    // finished), unindexed, so it scans this studio's teamJobs. A reopened
     // job has closedOn null and drops out of this read; the one above has it.
     const since = addDays(studioDateKey(new Date()) ?? "1970-01-01", -CLOSED_DAYS);
     const offClosed = onSnapshot(

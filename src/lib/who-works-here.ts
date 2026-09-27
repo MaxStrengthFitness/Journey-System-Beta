@@ -6,7 +6,14 @@
  * Team screen built three lists by three rules — People and the initiative
  * counts were the home studio only, Standing weeks was home, "also works at"
  * or a guest, and in Demo Mode Standing weeks listed every real trainer in
- * the company. Every list of "the team" now asks this file.
+ * the company. Every list of the team on My Studio → Team, the initiative
+ * counts and the people pickers built on studioRoster, and the standing
+ * weeks now ask this file. Two pickers ask a wider question on purpose and
+ * keep their own rule: Relay → Notes' "Share with colleagues"
+ * (peopleAtStudio, relay/notes/TeamShareCard.tsx) and the @tag list
+ * (mentionablePeople, comments/comments.ts). Both also offer the studio's
+ * owners, because an owner may read a team share (firestore.rules,
+ * writesForStudio) and may be tagged.
  *
  * Someone works at a studio when:
  *
@@ -31,6 +38,9 @@
  * never the whole company, which is what "everyone works at the demo
  * studio" (an AUTHORISATION answer, standing-week/present.ts worksAt) put
  * on the standing weeks — and at a real studio a demo trainer never is.
+ * The standing weeks add one group at the demo studio: a real trainer who
+ * has written a practice week there (standing-week/team.ts), so the week
+ * they proposed while practising can be agreed.
  *
  * This is membership, not authorisation. Whether the signed-in person may
  * ACT at a studio (Demo Mode lets everyone) is a different question, asked

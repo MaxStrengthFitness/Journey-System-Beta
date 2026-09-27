@@ -37,28 +37,58 @@ export const uidOf = (t: Pick<Trainer, "id"> & Partial<Pick<Trainer, "authUid">>
  * any week left behind by someone who no longer works here, so a leader can
  * clear it. A placeholder nobody has claimed yet has no one to propose, and
  * a superseded account has been replaced, so neither is listed.
+ *
+ * The practice studio adds one group: anyone who has written a week there.
+ * Demo Mode lets everyone act (present.ts worksAt, the rules' trainerWorksAt),
+ * so a real trainer practising there may propose a week on My Profile, and
+ * it is theirs to have agreed — listed on the team, never as someone who "no
+ * longer works at Demo Studio". Only people WITH a practice week are added,
+ * so the list never becomes the whole company (the realm rule).
  */
 export function teamWeeks(trainers: readonly TrainerLike[], docs: readonly StandingWeekDoc[], studioId: string | null): TeamWeekRow[] {
   if (!studioId) return [];
+  const demo = isDemoStudioId(studioId);
   const byUid = new Map(docs.map((d) => [d.id, d]));
   const byTrainerId = new Map(docs.filter((d) => d.trainerId).map((d) => [d.trainerId, d]));
   const used = new Set<string>();
 
-  const staff = trainers
+  const practisesHere = (t: TrainerLike): boolean =>
+    demo &&
+    Boolean(t.id) &&
+    t.isActive !== false &&
+    !t.supersededByUid &&
+    !t.pendingClaim &&
+    (byUid.has(uidOf(t)) || byTrainerId.has(t.id));
+
+  const listed = trainers
     // Everyone who works there (AJ): the one rule, lib/who-works-here.ts. Not
     // present.ts's worksAt, which answers "may this person act here" and says
     // yes to everyone at the Demo studio — as a list, that was the whole company.
-    .filter((t) => worksHere(t, studioId))
+    .filter((t) => worksHere(t, studioId) || practisesHere(t));
+  // A week found by its trainer id (an older account's) is never one that is
+  // another listed person's own week: two rows would claim one document, and
+  // agreeing it from the wrong row would point it at the wrong bookings.
+  const listedUids = new Set(listed.map(uidOf));
+  const weekOf = (t: TrainerLike): StandingWeekDoc | null => {
+    const own = byUid.get(uidOf(t));
+    if (own) return own;
+    const byId = byTrainerId.get(t.id);
+    return byId && !listedUids.has(byId.id) ? byId : null;
+  };
+
+  const staff = listed
     .map((t): TeamWeekRow => {
-      const doc = byUid.get(uidOf(t)) ?? byTrainerId.get(t.id) ?? null;
+      const doc = weekOf(t);
       if (doc) used.add(doc.id);
       return { uid: doc?.id ?? uidOf(t), trainerId: t.id, name: t.fullName?.trim() || doc?.trainerName || "A trainer", doc, status: weekStatus(doc), onStaff: true };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // At the practice studio nobody is told they no longer work there: a week
+  // whose trainer document isn't loaded is still someone practising.
   const leftBehind = docs
     .filter((d) => !used.has(d.id))
-    .map((d): TeamWeekRow => ({ uid: d.id, trainerId: d.trainerId, name: d.trainerName || "A trainer", doc: d, status: weekStatus(d), onStaff: false }))
+    .map((d): TeamWeekRow => ({ uid: d.id, trainerId: d.trainerId, name: d.trainerName || "A trainer", doc: d, status: weekStatus(d), onStaff: demo }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return [...staff, ...leftBehind];

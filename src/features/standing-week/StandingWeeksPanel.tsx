@@ -38,7 +38,10 @@ import "./standing-week.css";
  *   standing week
  *                         to agree a proposal as it is or changed first.
  *                         Opening another person's week while one holds a
- *                         leader's changes asks first (a leave scope).
+ *                         leader's changes asks first (a leave scope), and
+ *                         so does every way the Review closes: Cancel, and
+ *                         Agree or Remove with dates away still being typed
+ *                         below them.
  *
  * Team is the studio tier's section; the rules are the boundary
  * (firestore.rules, standingWeeks: a leader agrees, a trainer proposes).
@@ -176,7 +179,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
                 clients={clients}
                 tz={tz}
                 today={today}
-                onDone={() => setReviewing(null)}
+                // Every close asks the scope: Cancel with a changed week, or
+                // Agree / Remove with dates away still typed below them.
+                onDone={() => reviewScope.guard(() => setReviewing(null))}
               />
             </UnsavedChangesScope>
           )}
@@ -248,6 +253,9 @@ function WeekReview({
     setError(null);
     try {
       await agreeWeek({ studioId: studio.id, trainerUid: row.uid, trainerId: row.trainerId, trainerName: row.name }, weekOfForm(form), signer);
+      // Not busy before the close asks: if dates away are still being typed
+      // and the leader keeps editing, the Review must be usable again.
+      setBusy(null);
       onDone();
     } catch (err) {
       console.warn("[standing-week] agree failed:", err);
@@ -262,6 +270,7 @@ function WeekReview({
     try {
       await removeWeek(studio.id, row.uid);
       setConfirmRemove(false);
+      setBusy(null);
       onDone();
     } catch (err) {
       console.warn("[standing-week] remove failed:", err);

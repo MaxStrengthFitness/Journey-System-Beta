@@ -28,6 +28,15 @@
  * includeMetadataChanges a listener is never told when the server merely
  * CONFIRMS the rows the cache already held, so waiting for that would wait
  * forever: the option is what makes the wait end.
+ *
+ * NEVER A STALE FRAME. Each stream's state is stamped with the read it
+ * belongs to (the studio, the day, the zone, the option). The render in which
+ * any of them changes still holds the old state, since the effect that starts
+ * the new read runs after it; the stamp no longer matches, so that render
+ * reports "loading" with no rows. Before this, the first render after the week
+ * check started reading (the studio arriving, or the studio's midnight) held
+ * the idle state, "read, nothing booked", and painted every agreed slot as
+ * open for a frame.
  */
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -68,20 +77,32 @@ export interface WeekScheduleOptions {
 }
 
 interface Stream {
+  /** The read this state belongs to (readKey); "" for no read at all. */
+  key: string;
   rows: Map<string, ScheduleEntry>;
   loading: boolean;
   failed: boolean;
   fromCache: boolean;
 }
 
+const NO_ENTRIES: ScheduleEntry[] = [];
+
+/** Which read a stream's state belongs to; "" when there is nothing to read. */
+function readKey(studioId: string | null, today: string, tz: string | undefined, confirmed: boolean): string {
+  return studioId && today ? `${studioId}|${today}|${tz ?? ""}|${confirmed ? 1 : 0}` : "";
+}
+
+const fresh = (key: string): Stream => ({ key, rows: new Map(), loading: Boolean(key), failed: false, fromCache: false });
+
 export function useWeekSchedule(studioId: string | null, today: string, tz?: string, options?: WeekScheduleOptions): WeekSchedule {
   const confirmed = options?.confirmed === true;
-  const [byStart, setByStart] = useState<Stream>({ rows: new Map(), loading: true, failed: false, fromCache: false });
-  const [byMove, setByMove] = useState<Stream>({ rows: new Map(), loading: true, failed: false, fromCache: false });
+  const key = readKey(studioId, today, tz, confirmed);
+  const [byStart, setByStart] = useState<Stream>(() => fresh(key));
+  const [byMove, setByMove] = useState<Stream>(() => fresh(key));
 
   useEffect(() => {
-    setByStart({ rows: new Map(), loading: Boolean(studioId && today), failed: false, fromCache: false });
-    setByMove({ rows: new Map(), loading: Boolean(studioId && today), failed: false, fromCache: false });
+    setByStart(fresh(key));
+    setByMove(fresh(key));
     if (!studioId || !today) return;
     const lastDay = addDays(today, WEEK_DAYS - 1);
     const from = studioDayBoundsForKey(today, tz).start;
@@ -96,10 +117,10 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
     // Only the opt-in reads the cache flag: the Overview's read is as it was.
     const cacheOnly = (snap: Snap) => confirmed && snap.metadata?.fromCache === true;
     const listen = (q: Query<DocumentData>, set: (s: Stream) => void) => {
-      const next = (snap: Snap) => set({ rows: toMap(snap.docs), loading: false, failed: false, fromCache: cacheOnly(snap) });
+      const next = (snap: Snap) => set({ key, rows: toMap(snap.docs), loading: false, failed: false, fromCache: cacheOnly(snap) });
       const fail = (err: FirestoreError) => {
         handleFirestoreError(err, OperationType.GET, "schedules");
-        set({ rows: new Map(), loading: false, failed: true, fromCache: false });
+        set({ key, rows: new Map(), loading: false, failed: true, fromCache: false });
       };
       return confirmed ? onSnapshot(q, { includeMetadataChanges: true }, next, fail) : onSnapshot(q, next, fail);
     };
@@ -122,7 +143,7 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
       unsubStart();
       unsubMove();
     };
-  }, [studioId, today, tz, confirmed]);
+  }, [key, studioId, today, tz, confirmed]);
 
   const entries = useMemo(() => {
     const merged = new Map(byStart.rows);
@@ -130,10 +151,13 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
     return [...merged.values()];
   }, [byStart.rows, byMove.rows]);
 
+  // State from an earlier read (the effect for this one hasn't run yet) is
+  // reported as this read loading, never as its answer.
+  const stale = byStart.key !== key || byMove.key !== key;
   return {
-    entries,
-    loading: byStart.loading || byMove.loading,
-    failed: byStart.failed || byMove.failed,
-    fromCache: byStart.fromCache || byMove.fromCache,
+    entries: stale ? NO_ENTRIES : entries,
+    loading: stale ? Boolean(key) : byStart.loading || byMove.loading,
+    failed: !stale && (byStart.failed || byMove.failed),
+    fromCache: !stale && (byStart.fromCache || byMove.fromCache),
   };
 }

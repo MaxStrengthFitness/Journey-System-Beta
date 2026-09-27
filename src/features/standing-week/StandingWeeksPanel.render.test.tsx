@@ -350,6 +350,69 @@ describe("a leader's changes never vanish (voice review follow-up)", () => {
     expect(fake.writes).toHaveLength(0);
   });
 
+  it("asks before the Review's Cancel throws a changed week away", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Remove Judy Smith from Monday");
+    await click("Cancel");
+    expect(question()).toContain("Ann's standing week");
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+    expect(button("Agree it as changed")).toBeTruthy();
+    await click("Cancel");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).toBeNull();
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("asks before Agree closes the Review over dates away still being typed", async () => {
+    await mountGuarded();
+    await click("Review: Sam Lee");
+    await click("Dates away");
+    const from = [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith("From"))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(from, "2026-10-05");
+      from.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click("Agree this week");
+    // The week is agreed; the dates typed below it are what the question is about.
+    expect(fake.writes).toHaveLength(1);
+    expect(fake.writes[0].data).toMatchObject({ final: samProposal });
+    expect(question()).toContain("You have unsaved changes to Sam's dates away.");
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    // Still open, and usable: the dates can be saved.
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
+    expect(button("Save dates away").disabled).toBe(false);
+    await click("Save dates away");
+    expect(fake.writes[1].data).toMatchObject({ away: [{ from: "2026-10-05", to: "2026-10-05" }] });
+  });
+
+  it("asks before the dates-away adder's own Cancel throws typed dates away", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Dates away");
+    const to = [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith("To"))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(to, "2026-10-02");
+      to.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const adderCancel = host.querySelector("[aria-label='Add dates away'] .stw-btn--quiet") as HTMLButtonElement;
+    await act(async () => adderCancel.click());
+    expect(question()).toContain("Ann's dates away");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label='Add dates away']")).toBeNull();
+    // The Review itself stays open: only the adder closed.
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+  });
+
   it("moves between reviews without asking when nothing was changed", async () => {
     await mountGuarded();
     await click("Change: Ann Park");

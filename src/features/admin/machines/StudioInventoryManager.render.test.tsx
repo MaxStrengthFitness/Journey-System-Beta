@@ -207,6 +207,18 @@ describe("the floor list, with machines on it", () => {
     expect(byText(rowOf(el, "Chest Press")!, "We have this")).toBeDefined();
   });
 
+  it("stacks a row by the list's width, not the screen's, so the door beside it never squeezes a name to nothing", async () => {
+    // Tests load no stylesheets: held as the classes. The list is a size
+    // container, and a row goes side by side only when the LIST is 42rem
+    // wide (@2xl), never on the viewport's sm: breakpoint.
+    const el = await mount({ onOpenMachine: () => {} });
+    expect(el.querySelector(".adm-rows")!.className).toMatch(/(^|\s)@container(\s|$)/);
+    for (const row of el.querySelectorAll(".adm-rows > div")) {
+      expect(row.className).toMatch(/@2xl:flex-row/);
+      expect(row.className.split(/ +/)).not.toContain("sm:flex-row");
+    }
+  });
+
   it("holds a row's button busy while its write is on the way, then lets it go", async () => {
     let release!: () => void;
     gate.hold = new Promise<void>((r) => (release = r));

@@ -3,7 +3,11 @@
    --------------------------------------------------------------------------
    The week editor, the status line and the week check, on My Profile and on
    My Studio -> Team. Colour comes from equipment.tokens.css; no hex below
-   this line. Nothing tappable under 40px.
+   this line. Nothing tappable under 40px. Type is on My Studio's scale
+   (11 / 12 / 14 / 17 / 30; my-studio/look.test.ts holds this file too):
+   14px to read, 12px for a hint, and every head the one 12px style of
+   small upright capitals in --eq-ink-2 (voice review follow-up, final
+   review).
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 
@@ -25,7 +29,7 @@
 .stw-day__name {
   margin: 0;
   padding-top: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--eq-ink);
 }
@@ -46,7 +50,7 @@
 
 .stw-quiet {
   color: var(--eq-ink-muted);
-  font-size: 13px;
+  font-size: 14px;
   font-style: italic;
   min-height: 40px;
   display: inline-flex;
@@ -97,7 +101,7 @@
   gap: 6px;
   min-height: 40px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -152,7 +156,7 @@
 /* --- the card around it: status, what changed, actions --------------- */
 
 .stw-status { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--eq-ink); }
-.stw-lede { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--eq-ink-2); }
+.stw-lede { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--eq-ink-2); }
 
 .stw-changes {
   margin: 0 0 14px;
@@ -160,7 +164,7 @@
   border-radius: 10px;
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -172,7 +176,7 @@
   gap: 8px;
   padding-top: 14px;
 }
-.stw-actions__msg { margin: 0 auto 0 0; font-size: 13px; font-weight: 700; }
+.stw-actions__msg { margin: 0 auto 0 0; font-size: 14px; font-weight: 700; }
 .stw-actions__msg--ok { color: var(--eq-ok); }
 .stw-actions__msg--error { color: var(--eq-alert); }
 
@@ -181,11 +185,11 @@
 .stw-team { display: grid; gap: 18px; }
 .stw-team__head {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--eq-ink-muted);
+  color: var(--eq-ink-2);
 }
 
 .stw-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -199,7 +203,7 @@
   border-radius: 10px;
   border: 1px solid var(--eq-border);
   background: var(--eq-surface);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--eq-ink);
 }
@@ -211,7 +215,7 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
 }
-.stw-review__title { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--eq-ink); }
+.stw-review__title { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: var(--eq-ink); }
 
 /* --- away: the days a trainer is away (voice review follow-up) ---------- */
 

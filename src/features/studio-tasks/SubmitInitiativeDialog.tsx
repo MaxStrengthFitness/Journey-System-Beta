@@ -203,7 +203,7 @@ export function SubmitInitiativeDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-10 rounded-xl border border-div-d px-4 text-[11px] font-black uppercase tracking-widest text-ink-d2 hover:border-ink-d3"
+            className="st__btn st__btn--ghost"
           >
             Cancel
           </button>
@@ -211,7 +211,7 @@ export function SubmitInitiativeDialog({
             type="button"
             disabled={saving}
             onClick={() => void onSave(draft)}
-            className="h-10 rounded-xl bg-[var(--st-live)] px-5 text-[11px] font-black uppercase tracking-widest text-[var(--st-live-on)] disabled:opacity-50"
+            className="st__btn st__btn--primary"
           >
             {saving ? "Saving…" : `Log ${draft.length}`}
           </button>

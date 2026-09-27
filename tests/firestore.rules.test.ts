@@ -3591,10 +3591,10 @@ describe("the standing week", () => {
       note: "Mornings, and two evenings",
     });
     const six = Array.from({ length: 6 }, (_, i) => range({ id: `a${i}`, from: `2026-1${i % 3}-0${i + 1}`, to: `2026-1${i % 3}-2${i}` }));
-    const seedFull = () =>
+    const seedFull = (uid = "trainerA") =>
       testEnv.withSecurityRulesDisabled(async (ctx) => {
-        await setDoc(doc(ctx.firestore(), "studios", "studioA", "standingWeeks", "trainerA"), {
-          ...proposal("trainerA", { proposed: full, proposedAt: new Date("2026-09-20T12:00:00Z") }),
+        await setDoc(doc(ctx.firestore(), "studios", "studioA", "standingWeeks", uid), {
+          ...proposal(uid, { proposed: full, proposedAt: new Date("2026-09-20T12:00:00Z") }),
           final: full,
           finalAt: new Date("2026-09-21T12:00:00Z"),
           finalBy: { id: "ownerA", name: "Owner A" },
@@ -3630,6 +3630,57 @@ describe("the standing week", () => {
     await seedFull();
     await assertSucceeds(
       setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), { ...proposal("trainerA", { proposed: changed }), away: [...six].reverse() }, { merge: true }),
+    );
+
+    // ownerA is the cheapest leader: trainerLeads answers on its first two
+    // tests. The costlier ones go further through it before it says yes
+    // (measured Sep 27 2026, voice review follow-up's final review): a
+    // trainer with the grant, a head trainer who runs the studio through
+    // ownedStudioIds, a studio leader based elsewhere with the grant here,
+    // and a leader agreeing their OWN week, where the trainer's branch runs
+    // its diff first and then falls through to the leader's. Each agrees
+    // the full week, with and without rewriting the days away.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, "trainers", "grantA"), {
+        fullName: "Grant A", initials: "GA", role: "LifeTransformer",
+        primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"], managedStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "trainers", "headA"), {
+        fullName: "Head A", initials: "HA", role: "HeadTrainer",
+        primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB", "studioA"], ownedStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "trainers", "leadB"), {
+        fullName: "Lead B", initials: "LB", role: "StudioLeader",
+        primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB", "studioA"], managedStudioIds: ["studioA"],
+      });
+    });
+    for (const leader of ["grantA", "headA", "leadB"]) {
+      await seedFull();
+      await assertSucceeds(
+        setDoc(weekRef(as(leader), "studioA", "trainerA"), { ...owner, proposed: changed, ...agreement(leader, { final: changed }) }, { merge: true }),
+      );
+      await seedFull();
+      await assertSucceeds(
+        setDoc(
+          weekRef(as(leader), "studioA", "trainerA"),
+          { ...owner, proposed: changed, ...agreement(leader, { final: changed }), away: [...six].reverse() },
+          { merge: true },
+        ),
+      );
+    }
+    const own = { studioId: "studioA", trainerUid: "ownerA", trainerId: "ownerA", trainerName: "Owner A" };
+    await seedFull("ownerA");
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "ownerA"), { ...own, proposed: changed, ...agreement("ownerA", { final: changed }) }, { merge: true }),
+    );
+    await seedFull("ownerA");
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("ownerA"), "studioA", "ownerA"),
+        { ...own, proposed: changed, ...agreement("ownerA", { final: changed }), away: [...six].reverse() },
+        { merge: true },
+      ),
     );
   });
 });

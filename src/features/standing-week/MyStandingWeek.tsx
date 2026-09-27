@@ -46,7 +46,11 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
-  const owner: WeekOwner = { studioId, trainerUid: authUid, trainerId: trainer.id, trainerName: trainer.fullName ?? "" };
+  // Once the week exists its trainerId is the leaders' to set (the rules
+  // freeze it for the trainer), so the trainer's own saves keep the stored
+  // one: a save that tried to change it would be refused, and they would be
+  // locked out of their own week.
+  const owner: WeekOwner = { studioId, trainerUid: authUid, trainerId: doc?.trainerId || trainer.id, trainerName: trainer.fullName ?? "" };
   const signer: WeekSigner = { uid: authUid, name: trainer.fullName ?? "" };
 
   // The editor starts from the proposal when there is one, else the agreed week.

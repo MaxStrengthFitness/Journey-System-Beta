@@ -15,6 +15,8 @@ const fake = vi.hoisted(() => ({
   listeners: [] as { path: string; next: (snap: unknown) => void; fail: (err: unknown) => void }[],
   writes: [] as { path: string; data: Record<string, unknown>; options?: unknown }[],
   failWrite: false,
+  /** A write the database never answers (offline): on the iPad, never confirmed. */
+  hang: false,
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-sam" } }, functions: {} }));
@@ -35,6 +37,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
         throw new Error("Unsupported field value: undefined");
       }
       fake.writes.push({ path: r.path, data, options });
+      if (fake.hang) await new Promise(() => {});
     },
     serverTimestamp: () => ({ __server: true }),
   };
@@ -55,6 +58,7 @@ beforeEach(() => {
   fake.listeners.length = 0;
   fake.writes.length = 0;
   fake.failWrite = false;
+  fake.hang = false;
   vi.spyOn(console, "warn").mockImplementation(() => {});
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -213,6 +217,9 @@ describe("Away on My standing week (voice review follow-up)", () => {
     expect(input("To").value).toBe("2026-10-05");
     await type(input("To"), "2026-10-09");
     await type(input("Note (optional)"), "Vacation");
+    // Everyone at the studio reads the note (a colleague's card shows it), and the field says so.
+    const hint = document.getElementById(input("Note (optional)").getAttribute("aria-describedby") ?? "");
+    expect(hint?.textContent).toBe("Everyone at the studio can read this note.");
     await click("Save dates away");
     expect(fake.writes).toHaveLength(1);
     const w = fake.writes[0];
@@ -259,6 +266,35 @@ describe("Away on My standing week (voice review follow-up)", () => {
     expect(button("Save dates away").disabled).toBe(true);
     expect(host.textContent).toContain("Pick a first and last day: the last on or after the first, and today or later.");
     expect(fake.writes).toHaveLength(0);
+  });
+
+  it("offline, takes the dates as saved on this iPad instead of saying Saving… until the Wi-Fi returns", async () => {
+    await mount();
+    await deliver(null);
+    await click("Dates away");
+    await type(input("To"), "2026-10-02");
+    fake.hang = true;
+    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    await click("Save dates away");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5);
+    });
+    expect(fake.writes).toHaveLength(1);
+    expect(fake.writes[0].data.away).toEqual([{ id: expect.any(String), from: "2026-09-28", to: "2026-10-02" }]);
+    // The adder closed, nothing reads "Saving…", and the iPad says where the dates are.
+    expect(host.querySelector("[aria-label='Add dates away']")).toBeNull();
+    expect(host.textContent).not.toContain("Saving…");
+    expect(host.querySelector("[aria-label='Away'] [role='status']")?.textContent).toBe("Saved on this iPad. It sends when the connection is back.");
+    expect(button("Dates away").disabled).toBe(false);
+  });
+
+  it("keeps the week's stored trainer id on the trainer's own saves (the rules freeze it)", async () => {
+    await mount();
+    await deliver({ trainerId: "t-legacy", trainerName: "Sam Lee", away: [] });
+    await click("Dates away");
+    await type(input("To"), "2026-10-02");
+    await click("Save dates away");
+    expect(fake.writes[0].data).toMatchObject({ trainerUid: "uid-sam", trainerId: "t-legacy" });
   });
 
   it("saves a vacation already under way: a first day past, the last still to come", async () => {

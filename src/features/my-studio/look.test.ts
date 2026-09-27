@@ -27,9 +27,10 @@ const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
 /**
  * My Studio's stylesheets: the six the shell loads (MyStudioView), then the
- * ones its sections and Relay's tabs bring. Three are also drawn elsewhere,
+ * ones its sections and Relay's tabs bring. Four are also drawn elsewhere,
  * on purpose, with the same tokens: relay-strip.css and reminders.css on the
- * Calendar, note-body.css on the client profile's Goals & Focus.
+ * Calendar, note-body.css on the client profile's Goals & Focus, and
+ * standing-week.css on My Profile.
  */
 const FILES = [
   "features/studio-tasks/studio-tasks.css",
@@ -44,6 +45,10 @@ const FILES = [
   "features/relay/notes/note-body.css",
   "features/relay/board/relay-strip.css",
   "features/relay/reminders/reminders.css",
+  // The standing weeks on Team (and the same card on My Profile): drawn in
+  // equipment.tokens.css's --eq-* colours, so the --st-* rule below has
+  // nothing to say about it; the scale and the heading style do.
+  "features/standing-week/standing-week.css",
 ] as const;
 
 /**
@@ -407,7 +412,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);

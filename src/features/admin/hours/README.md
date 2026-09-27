@@ -1,6 +1,6 @@
-# Operations → Hours — training hours by trainer
+# Operations → Insights → Hours — training hours by trainer
 
-*Operations round (Round B of the Operations audit), Sep 2026. AJ, Sep 19: "No payroll on the app for now, but do track training hours per week and month per trainer, and the total, for operations."*
+*Operations round (Round B of the Operations audit), Sep 2026. AJ, Sep 19: "No payroll on the app for now, but do track training hours per week and month per trainer, and the total, for operations."* Hours has been a view inside Operations → Insights since the Operations overhaul.
 
 ## What an hour is
 

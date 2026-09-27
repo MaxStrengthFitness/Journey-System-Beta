@@ -20,6 +20,7 @@ import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperatio
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
 import { mayOpenOperations } from "./operations-access";
+import { leadsHere } from "../relay/leads";
 import { isEveryStudioRole } from "../renewals/permissions";
 import { AdminNotice } from "./primitives";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
@@ -125,6 +126,9 @@ function AdminDashboardShell({
   onRestoreMachines,
   onReorderTrainers,
   onOpenStudioTasks,
+  // The studio the APP is in: where My Studio opens (ops.studioId is null
+  // under "All my studios").
+  activeStudioId: appStudioId,
 }: Props) {
   void newClientsCount;
   void onShowNewClients;
@@ -368,8 +372,11 @@ function AdminDashboardShell({
             activeStudioId={activeStudioId}
             isAdmin={isAdmin}
             canEdit={isOwnerTier || isEveryStudioRole(authTrainer)}
+            // Only for someone who runs the studio My Studio opens: a head
+            // trainer visiting another studio would land on Relay, since
+            // Team is its leaders'.
             onOpenTeam={
-              onOpenStudioTasks
+              onOpenStudioTasks && leadsHere(authTrainer, appStudioId ?? null)
                 ? () => {
                     rememberMyStudioSection("team");
                     onOpenStudioTasks();

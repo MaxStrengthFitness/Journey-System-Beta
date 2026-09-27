@@ -97,14 +97,20 @@ afterEach(() => {
   host = null;
 });
 
-async function mount(who: Trainer, isAdmin: boolean, activeStudioId = "solon", studioList: Studio[] = studios) {
+async function mount(
+  who: Trainer,
+  isAdmin: boolean,
+  activeStudioId = "solon",
+  studioList: Studio[] = studios,
+  extra: { onOpenStudioTasks?: () => void } = {},
+) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminDashboardView authTrainer={who} studios={studioList} networks={[]} trainers={[who]} isAdmin={isAdmin} clients={[]} machines={[]} schedules={[]} activeStudioId={activeStudioId} />
+        <AdminDashboardView authTrainer={who} studios={studioList} networks={[]} trainers={[who]} isAdmin={isAdmin} clients={[]} machines={[]} schedules={[]} activeStudioId={activeStudioId} {...extra} />
       </StrictMode>,
     );
   });
@@ -159,6 +165,34 @@ describe("the Operations shell", () => {
     await clickNav(el, "Renewals");
     await clickNav(el, "Delight queue");
     expect(el.textContent).toContain("Delight queue");
+  });
+});
+
+/*
+ * STAFF & ROLES' DOOR TO MY STUDIO → TEAM (voice review follow-up, final
+ * review). The studio tier reads Staff & Roles and is sent to Team to run
+ * the team, but only someone who runs the studio the app is in sees Team
+ * there: a head trainer visiting another studio would land on Relay under a
+ * button that promised Team, so it isn't offered to them.
+ */
+describe("Staff & Roles' door to My Studio → Team", () => {
+  const door = (el: HTMLElement) => [...el.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Open My Studio → Team");
+
+  it("is offered to a leader of the studio the app is in, and opens My Studio", async () => {
+    const opened: string[] = [];
+    const el = await mount(lead, false, "solon", studios, { onOpenStudioTasks: () => opened.push("my-studio") });
+    await clickNav(el, "Staff & Roles");
+    expect(door(el)).toBeTruthy();
+    await act(async () => door(el)!.click());
+    expect(opened).toEqual(["my-studio"]);
+  });
+
+  it("is not offered to a head trainer visiting a studio they don't run", async () => {
+    const visitor = { ...lead, id: "visit", primaryHomeStudioId: "westlake", accessibleStudioIds: ["westlake", "solon"] } as unknown as Trainer;
+    const el = await mount(visitor, false, "solon", studios, { onOpenStudioTasks: () => {} });
+    await clickNav(el, "Staff & Roles");
+    expect(el.textContent).toContain("Letting people in");
+    expect(door(el)).toBeUndefined();
   });
 });
 

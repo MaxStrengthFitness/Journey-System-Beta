@@ -148,8 +148,9 @@ Tests hold each of them (`wiki/learning-tokens.test.ts`,
 `wiki/learning-scale.test.ts`, `my-studio/look.test.ts`,
 `studio-tasks/studio-tokens.test.ts`). **Still open:** the Operations kit's
 own look (`.adm-btn` 12px spaced capitals, `.adm-panel__title` 13px,
-`.adm-badge` 10px — off the scale, and still drawing My Studio → Machines'
-and Studio's buttons and panel heads); header strips on Relay's own Floor and
+`.adm-badge` 10px — off the scale, and still drawing My Studio → Machines',
+Studio's and Team's (Standing weeks, the staff list, temporary profiles)
+buttons and panel heads); header strips on Relay's own Floor and
 Mine cards; the Floor's landscape two-column layout (`.sh__split`, AJ's call);
 the clinical strip's small title; the chosen profile tab's colour; and AJ's
 screen audit, which confirms the names and looks this round chose.

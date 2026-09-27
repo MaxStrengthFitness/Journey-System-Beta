@@ -252,7 +252,7 @@ export function PostInitiativeDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-10 rounded-xl border border-div-d px-4 text-[11px] font-black uppercase tracking-widest text-ink-d2 hover:border-ink-d3"
+            className="st__btn st__btn--ghost"
           >
             Cancel
           </button>
@@ -260,7 +260,7 @@ export function PostInitiativeDialog({
             type="button"
             disabled={!canPost}
             onClick={() => void submit()}
-            className="h-10 rounded-xl bg-[var(--st-live)] px-5 text-[11px] font-black uppercase tracking-widest text-[var(--st-live-on)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="st__btn st__btn--primary"
           >
             {saving ? "Posting…" : "Post to the board"}
           </button>

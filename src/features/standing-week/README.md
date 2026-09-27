@@ -46,7 +46,12 @@ email a client, and would clash with the front desk.
 `studios/{studioId}/standingWeeks/{uid}`, because the rules pin a trainer's
 own writes to the signed-in person (CLAUDE.md: use the Auth uid). A booking
 carries the `trainers/{id}`, which differs on older accounts, so that is kept
-as `trainerId` and the check matches on it. `team.ts` finds a week by either.
+as `trainerId` and the check matches on it. `team.ts` finds a week by either,
+but never gives one listed person's own week to another person's row by its
+trainer id (two rows would claim one document, and agreeing it from the wrong
+row would point it at the wrong bookings). Once the week exists, a trainer's
+own saves keep its stored `trainerId` (`MyStandingWeek`), because the rules
+freeze it for them (D6); the leaders set it.
 
 **A trainer proposes; only a leader agrees.** The rules let a trainer write
 the proposal fields on their own document and nothing else, so a proposal
@@ -177,8 +182,24 @@ and a request may evaluate only 1,000 expressions — at ten ranges a
 leader's write already ran out in the emulator. The rules tests hold the
 fullest real writes to it: a leader's agreement and a trainer's proposal on
 a week that already holds six ranges and a full proposed and agreed week
-(14 hours, 80 regulars). If that test ever fails, lower `MAX_AWAY` in
+(14 hours, 80 regulars), for the cheapest leader (a studio owner at home) and
+the costlier ones measured in the final review: a trainer with the grant, a
+head trainer who runs the studio through `ownedStudioIds`, a studio leader
+based elsewhere with the grant, and a leader agreeing their own week. If that
+test ever fails, lower `MAX_AWAY` in
 `week.ts` and the six in `standingWeekAwayValid` together.
+
+Offline, a save is on the iPad at once and reaches the database when the
+connection is back, but its promise waits for the database. So the editor
+waits only a moment (the session record's `settleOrQueue`) and then closes
+the adder and says "Saved on this iPad. It sends when the connection is
+back." instead of "Saving…" until the Wi-Fi returns. Each save writes the
+whole list, so **the last save wins**: a leader and the trainer changing the
+same person's dates at the same moment, or an offline iPad's list sent later,
+can undo the other's change. That is rare, and `arrayUnion` would bypass
+`awayForWrite`'s pruning of past ranges and could run into the six-range
+cap, so it stays. A range's note is read by everyone at the studio (the
+colleague card below shows it), and a line under the field says so.
 
 **D4 — Colleagues can see each other's weeks.** AJ: "schedules are open to
 all." A colleague's profile has a read-only Standing week card at the active
@@ -191,7 +212,11 @@ question) and where the profile already shows their clients.
 
 **D5 — A leader's edits never vanish.** Opening another person's Review or
 Change, or tapping the same button again, asks first when the open review
-holds changes (a leave scope around the review; unsaved-changes).
+holds changes (a leave scope around the review; unsaved-changes). So does
+every way the Review closes itself (final review): its Cancel, and Agree or
+Remove with dates away still being typed below them (the week itself is
+saved; the question is about the dates). The dates-away adder's own Cancel
+asks too, as an editor's Cancel does in Learning.
 
 **D6 — The rules.** A trainer's own update may not change `trainerId` once
 the document exists (the check matches bookings on it); a leader still sets
@@ -199,6 +224,13 @@ it from the roster as they agree. The rules tests cover a franchise owner,
 an administrator, a head trainer and a studio leader agreeing, and refuse a
 head trainer from another studio, a same-studio colleague changing someone
 else's week, and the trainer id change.
+
+**Demo Mode (final review).** Team lists Demo Mode's own seeded trainers
+there (`lib/who-works-here.ts`, the realm rule), and also anyone who has
+written a practice week at the demo studio: Demo Mode lets everyone act, so a
+real trainer practising there may propose a week on My Profile, and it is
+theirs to have agreed, never "no longer works at Demo Studio". Only people
+with a practice week are added, so the list never becomes the whole company.
 
 **D7 — Small things.** The Review says "Proposed by {name} on {date}", which
 is where `proposedBy` is read. The heading is "Each person's standing week".

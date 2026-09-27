@@ -504,8 +504,13 @@ export function StudioInventoryManager({
         /* One list in the Operations kit's rows (a hairline between rows,
            one border round the list), the same as the other lists on
            Machines, instead of a stock card per machine inside the panel.
-           Voice review follow-up, Sep 27 2026. */
-        <div className="adm-rows overflow-hidden rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)]">
+           Voice review follow-up, Sep 27 2026.
+           A row stacks by the LIST's width, not the screen's (a container
+           query): with the machine's door open beside it on a landscape
+           iPad the list is about 420px wide, and the row's buttons (about
+           480px) left the name no width at all, a letter per line, with the
+           last button cut off. 42rem is the buttons plus a readable name. */
+        <div className="adm-rows @container overflow-hidden rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)]">
           {visible.map((m) => {
             const rostered = rosteredIds.has(m.machineId);
             const owned = rostered && m.rosterStatus !== "inactive";
@@ -513,7 +518,7 @@ export function StudioInventoryManager({
               <div
                 key={m.machineId}
                 className={cn(
-                  "flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between",
+                  "flex flex-col gap-3 px-3.5 py-3 @2xl:flex-row @2xl:items-center @2xl:justify-between",
                   !owned && "opacity-60",
                 )}
               >

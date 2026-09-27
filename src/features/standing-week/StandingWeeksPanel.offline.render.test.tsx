@@ -138,6 +138,57 @@ describe("the week check on a cache-only snapshot", () => {
   });
 });
 
+describe("the first frame of a read", () => {
+  it("never paints a Free slot before the bookings are read, when the weeks arrive", async () => {
+    // The weeks are still being read, so nothing needs the bookings yet.
+    fake.weeks = { docs: [], loading: true, error: null };
+    const panel = () => <StandingWeeksPanel studio={studio} authTrainer={person("t-pat", "Pat Doe")} trainers={[person("t-ann", "Ann Park")]} clients={[]} />;
+    await act(async () => root.render(panel()));
+    expect(fake.listeners).toHaveLength(0);
+
+    // Every node the panel ever adds, however briefly it stays.
+    const added: string[] = [];
+    const watch = new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) added.push(n.textContent ?? "");
+    });
+    watch.observe(host, { childList: true, subtree: true, characterData: true });
+    // The weeks arrive: the render that starts needing the bookings still
+    // held the idle read, "nothing booked", and listed Ann's 8:00 as open.
+    fake.weeks = { docs: [annDoc], loading: false, error: null };
+    await act(async () => root.render(panel()));
+    await act(async () => {});
+    watch.disconnect();
+    for (const r of watch.takeRecords()) for (const n of r.addedNodes) added.push(n.textContent ?? "");
+    expect(fake.listeners).toHaveLength(2);
+    expect(added.join(" ")).not.toContain("Free slot");
+    expect(added.join(" ")).not.toContain("is open");
+    expect(stateLine()).toBe("Reading the week's bookings…");
+  });
+
+  it("reports the new read as loading in the very render its studio or day changes", async () => {
+    const seen: { studioId: string | null; today: string; value: WeekSchedule }[] = [];
+    function Probe({ studioId, today }: { studioId: string | null; today: string }) {
+      // Recorded in the render body, not an effect, so act() can't hide a frame.
+      seen.push({ studioId, today, value: useWeekSchedule(studioId, today, "America/New_York", { confirmed: true }) });
+      return null;
+    }
+    await act(async () => root.render(<Probe studioId={null} today="2026-09-28" />));
+    expect(seen.at(-1)!.value).toMatchObject({ loading: false, failed: false, entries: [] });
+
+    await act(async () => root.render(<Probe studioId="solon" today="2026-09-28" />));
+    const first = seen.find((r) => r.studioId === "solon")!;
+    expect(first.value).toMatchObject({ loading: true, failed: false, fromCache: false, entries: [] });
+
+    // Answered, then the studio's midnight: yesterday's answer is not today's.
+    await answer(false, [{ id: "b1", data: () => ({ clientName: "Judy Smith", status: "Scheduled" }) }]);
+    expect(seen.at(-1)!.value).toMatchObject({ loading: false });
+    expect(seen.at(-1)!.value.entries).toHaveLength(1);
+    await act(async () => root.render(<Probe studioId="solon" today="2026-09-29" />));
+    const nextDay = seen.find((r) => r.today === "2026-09-29")!;
+    expect(nextDay.value).toMatchObject({ loading: true, failed: false, fromCache: false, entries: [] });
+  });
+});
+
 describe("the Overview's read of the same week", () => {
   it("listens as it always has, and never reports the cache flag", async () => {
     let seen: WeekSchedule | null = null;

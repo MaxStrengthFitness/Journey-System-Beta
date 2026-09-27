@@ -7,9 +7,10 @@
  * difference between a form and a feedback loop. Beta testers stop reporting
  * when reports feel like they go nowhere.
  *
- * Ordered client-side rather than with orderBy so this needs no composite
- * index: `userId ==` alone is covered by Firestore's automatic single-field
- * index, and a report list is a handful of documents.
+ * Ordered client-side rather than with orderBy. `userId ==` has no index
+ * (the Enterprise-edition database builds none automatically and
+ * firestore.indexes.json has no bug_reports entry), so it scans
+ * bug_reports, which holds a handful of documents.
  *
  * A read that fails is "unknown", never "no reports" (voice review
  * follow-up, Sep 27 2026): the error comes back as `error`, and Settings

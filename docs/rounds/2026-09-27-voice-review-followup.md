@@ -209,7 +209,8 @@ index), `616d07f` (B5, the feature notes), `ef6cb55` (what the review found).
   composer), Team's standing weeks and Settings' "N people on the team" all
   ask it. So a trainer who floats between studios now has a card and is asked
   to do initiatives, and in Demo Mode the standing weeks list Demo Mode's own
-  trainers.
+  trainers, and anyone who has written a practice week there (the final
+  review, K below).
 - **The initiative roll-up is in name order everywhere**, the Floor included
   (AJ's answer 4).
 - **Team's sentences count what they name.** Open loops keeps a machine
@@ -220,7 +221,8 @@ index), `616d07f` (B5, the feature notes), `ef6cb55` (what the review found).
   on track" verdict is gone from the code.
 - **Staff & Roles has one editor** (AJ's answer 5). Studio leaders, head
   trainers and studio owners see the list read-only, with a button, "Open My
-  Studio → Team", where they let people in. Franchise owners and
+  Studio → Team", where they let people in. The button is offered only to
+  someone who runs the studio the app is in (K below). Franchise owners and
   administrators keep the editor. Under "All my studios" the list is the
   reader's own studios, not the whole company. The page says the Mindbody
   match is per studio, and "No Mindbody match" is said only once a studio's
@@ -269,16 +271,22 @@ Head Trainer), `8547a92` (C6, small fixes), `8b46f33` (C7, one listener),
   past ranges drop off, and up to six upcoming ranges are allowed. Team says
   once "Sam is away Mon, Sep 28 – Wed, Sep 30.", and those days are not
   checked (no open, moved, taken or Free slot). Nothing goes to Mindbody.
+  Offline, a range is "Saved on this iPad" and sends when the connection is
+  back, and a line under the note says everyone at the studio can read it
+  (K below).
 - **Colleagues see each other's weeks** (AJ's answer 7). A colleague's
   profile has a read-only Standing week card at the active studio: their
   agreed hours and regulars, and days away that haven't ended, or "No agreed
   week yet". The proposal waiting on a leader and its note are not shown.
 - **A leader's changes never vanish.** Opening another person's Review or
   Change asks first: "You have unsaved changes to Ann's standing week. Leave
-  without saving?"
+  without saving?" Since the final review, so do the Review's Cancel, Agree
+  or Remove with dates away still being typed below them, and the dates-away
+  adder's own Cancel.
 - **The rules.** A trainer's own write can no longer change which trainer a
   week's bookings are matched to (`trainerId`) once the week exists; the app
-  never did, so nothing anyone does today is refused. Trainers and leaders may
+  keeps the stored id on a trainer's own saves (K below), so nothing it does
+  is refused. Trainers and leaders may
   write the away list, shape-checked: at most six ranges, each with real dates
   and the last day on or after the first.
 - **Small things.** The Review says "Proposed by {name} on {date}". The
@@ -300,7 +308,9 @@ review found).
   join the unsaved-changes guard. The bottom bar, Learning's sections, the
   breadcrumb, a search pick, the Overview's tiles and the links inside a page
   all ask first. "Leave" puts the card back to what was saved, so a draft can
-  never be saved onto another machine.
+  never be saved onto another machine. On My Studio → Machines and
+  Operations → Floor, the machine's door asks too before its X, Escape or
+  another machine in the list takes the typing (K below).
 - **One colour per meaning.** A flagged machine is plum, the caution colour,
   on its badge, the Flagged count, the contents cards and the Overview; it was
   crimson on the badge and amber below it. Every Save is solid brand blue,
@@ -341,9 +351,12 @@ AJ's answer 8 gave the round the colours and the fonts.
   Flags, late jobs and tight gaps are plum, delete buttons crimson, anything
   selected blue, and every solid button's words are readable in dark mode.
   Capture keeps its orange, on the deeper orange so its words read.
-- **Type.** Titles use the display face, and every heading is the same 12px
-  small upright capitals. My Studio's buttons are 14px bold sentence case and
-  its chips 12px bold. Relay's Floor / Mine / Notes is a lighter second row of
+- **Type.** Titles use the display face, and every heading of My Studio's own
+  (Relay, and Team's people, duties, loops and vault) is the same 12px small
+  upright capitals, and those buttons are 14px bold sentence case and the
+  chips 12px bold. The Operations-kit panels on Machines, Studio and Team
+  (Standing weeks, the staff list, temporary profiles) keep the kit's heads
+  and buttons for now (see Left for a later round). Relay's Floor / Mine / Notes is a lighter second row of
   tabs. Every text size is on the app's scale.
 - **Taps and whole names.** Machines' floor buttons are the Operations kit's
   40px buttons, and the search box is 40px. A machine's name is never cut
@@ -394,6 +407,57 @@ changes. They land together here:
 
 `df4933e` (from another session, test only) made the served-files test right
 on GitHub's Linux runner, where a file name's case matters.
+
+### K — What the final review found
+
+A last review read the whole branch. What it confirmed was fixed in one
+commit:
+
+- **Demo Mode: your own practice week.** A real trainer practising in Demo
+  Mode could propose a week on My Profile, and Team then listed it as someone
+  who "no longer works at Demo Studio", with no Agree, and never checked it.
+  Team now lists anyone who has written a practice week at the demo studio
+  as on the team (still never the whole company). And one person's own week
+  is never offered to another person's row by its trainer id.
+- **The machine's door asks before it drops typing.** On My Studio →
+  Machines and Operations → Floor, the door's X, Escape, or a tap on another
+  machine in the list beside it took a half-typed floor note or setting away
+  without a word. Each now asks (a leave scope), and the door is keyed by
+  machine.
+- **Team's Review asks before it closes over typing.** Its Cancel, and Agree
+  or Remove with dates away still being typed below them. The dates-away
+  adder's own Cancel asks too.
+- **No flash of "open".** When the week check started reading (the weeks
+  arriving, or the studio's midnight) the first frame held the idle read,
+  "nothing booked", and painted every agreed slot as a Free slot for a
+  moment. The read is now stamped with the studio and day it belongs to, and
+  until it matches it says "loading".
+- **Staff & Roles' door** to My Studio → Team is offered only to someone who
+  runs the studio the app is in. A head trainer visiting another studio
+  would have landed on Relay under a button that promised Team.
+- **Dates away offline** say "Saved on this iPad. It sends when the
+  connection is back." instead of "Saving…" until the Wi-Fi returns. A line
+  under the note says everyone at the studio can read it (a colleague's card
+  shows it). The last save still wins between two people editing the same
+  dates at once; that is noted in the standing-week README.
+- **A trainer's own saves keep the week's stored trainer id**, so a week a
+  leader agreed under another id never locks its trainer out (the rules
+  freeze it for the trainer).
+- **Machines' floor list** stacks each row's buttons under the name by the
+  list's width, not the screen's, so the door open beside it on a landscape
+  iPad no longer squeezes a machine's name to a letter per line and cuts the
+  last button off (measured in headless Chrome by the reviewer: Operations →
+  Floor at 1180 and 1194 wide, My Studio at 1024).
+- **Small things.** The initiative dialogs' buttons (Post to the board,
+  Resolve, Log) use My Studio's button voice. The standing weeks' text is on
+  My Studio's scale, their section heads the one heading style, and
+  `look.test.ts` now holds that stylesheet. Operations → Data points at
+  Operations → Insights → Hours (a test holds it app-wide). Two comments no
+  longer promise automatic indexes the production database doesn't build.
+  `who-works-here.ts` names the two pickers that keep a wider rule on
+  purpose. The rules tests' budget test now holds the costlier leaders too.
+
+Commit: "Voice review follow-up K: what the final review found".
 
 ---
 
@@ -472,7 +536,10 @@ index. It stops at the first failure.
 | Case check | no two tracked files differ only by case |
 | Budgets held by tests | the neutral ramp's bare palette 231 (was 235); the codex's hosted off-scale sizes 26 (was 57); My Studio's off-scale sizes 3 |
 
-Measured: see the final section
+After the final review (K): typecheck 4; the whole suite 6,404 passing in 420 files
+(`TZ=America/New_York npx vitest run --dir src`, in the worktree on AJ's PC);
+the rules tests 180 passing in the emulator on AJ's PC (the rules themselves
+unchanged; AJ's run is still the one that counts); case check clean.
 
 ## Open, for AJ
 
@@ -520,6 +587,24 @@ Measured: see the final section
   facility only?
 - **Two names for signing out** (from the voice-review round): "Switch
   Trainer" and "Log Out Facility" both sign out.
+- **A standing week's first save** (from the final review, a rules change):
+  a trainer's own week may still be CREATED naming another trainer's id,
+  by a hand-made write (the app never does). One line in the rules pins it
+  (`request.resource.data.trainerId == request.auth.uid` in the trainer's
+  create branch), with a test beside D6's. It would ride this round's rules
+  deploy. The app's side is already safe: Team never offers that week to the
+  other person's row.
+- **The note for the studio leader on a proposal** is hidden on a
+  colleague's card, but it sits in the same document every colleague may
+  read, so it is only hidden on screen. Keeping it private means a separate
+  leader-only document, a Firestore structure change. (The days-away note is
+  meant for everyone and now says so.)
+- **Indexes for two small reads.** Your reports (Settings) and a studio's
+  team jobs are read without an index, so production scans `bug_reports` and
+  each studio's `teamJobs`. Both are small, so it costs pennies; adding
+  `bug_reports(userId)` and `teamJobs(status)` / `teamJobs(closedOn)` to the
+  index file is your call. Five other comments in the code make the same
+  "automatic index" claim and should be corrected with it.
 
 **For your screen audit (the names and looks chosen under answer 8):** Just
 now (the Now Bar's teammates line), Past sessions (the Hub card), Back to
@@ -549,8 +634,9 @@ zooms) where the codex's are 14px, and one size should win.
 
 - **The Operations kit's own look.** `.adm-btn` (12px spaced capitals),
   `.adm-panel__title` (13px) and `.adm-badge` (10px) are off the app's scale
-  and still draw the buttons and panel heads on My Studio → Machines and
-  Studio, and across Operations. Suggested: 12px upright capitals for panel
+  and still draw the buttons and panel heads on My Studio → Machines, Studio
+  and Team (Standing weeks, the staff list, temporary profiles), and across
+  Operations. Suggested: 12px upright capitals for panel
   titles, 14px bold sentence case for buttons.
 - **Relay's own Floor and Mine cards** have no header strip yet; the Floor's
   landscape two-column layout (`.sh__split`) is still unwired (your call).

@@ -1509,7 +1509,17 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
   note are not shown.
 - [ ] **A leader's changes never vanish.** Change something in one person's
   Review, then tap another person's Review: "You have unsaved changes to
-  {name}'s standing week. Leave without saving?" Keep editing keeps it.
+  {name}'s standing week. Leave without saving?" Keep editing keeps it. The
+  Review's Cancel asks the same. In a Review, open "Dates away", change From,
+  then tap "Agree this week": the week is agreed and the question names
+  "{name}'s dates away"; Keep editing leaves "Save dates away" usable.
+- [ ] **Dates away offline.** Wi-Fi off, add a range on My Profile: the adder
+  closes and says "Saved on this iPad. It sends when the connection is
+  back." (never "Saving…" for good). Wi-Fi on: the line goes. The note field
+  says "Everyone at the studio can read this note."
+- [ ] **Demo Mode.** Inside Demo Mode, a real trainer proposes a week on My
+  Profile; on My Studio → Team it is listed under their name with Review and
+  Agree, never "No longer on Demo Studio's staff".
 - [ ] **Proposed by.** The Review reads "Proposed by {name} on {date}."
 - [ ] **The studio rotation.** A regular booked "{studio} Rotation" at her
   usual time reads as usual (no Free slot), before and after the webhook
@@ -1557,7 +1567,18 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
 - [ ] **Machines' floor list.** Names as stored (not forced into capitals),
   whole, wrapping if long; "Maintenance" a plum badge and "Never to failure" a
   crimson one; every button 40px. Reorder mode lists the floor in order and
-  saves it in one go. A search that matches nothing says so.
+  saves it in one go. A search that matches nothing says so. With a machine's
+  door open on Operations → Floor in landscape (and on My Studio on a
+  12.9-inch iPad in portrait), each row's buttons sit under the machine's
+  name, whole, and none is cut off.
+- [ ] **The machine's door asks.** Open a machine's door, type in the floor's
+  notes, then tap another machine's Open: "You have unsaved changes to
+  {studio}'s notes on {machine}". Keep editing keeps the note; Leave opens the
+  other machine with its own saved note. The door's X (and Escape on a
+  keyboard) asks the same.
+- [ ] **Staff & Roles' door.** A head trainer at their own studio sees "Open
+  My Studio → Team" on Operations → Staff & Roles; switched to a studio they
+  don't run, the button isn't there.
 - [ ] **Operations → Floor on a fresh iPad.** On an iPad that has not opened
   My Studio since loading, Operations → Floor draws the machine list and a
   machine's door styled; the door stays on screen while the list scrolls (a
@@ -1569,8 +1590,10 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
   Hours.
 - [ ] **One icon, one card, one heading.** The bottom bar's My Studio icon is
   the building, as on the masthead. Every card on Team has the header strip,
-  every heading is the same small upright capitals, and a playbook answer on a
-  machine's Catalog page shows in full.
+  every heading on Relay and on Team's own cards is the same small upright
+  capitals (the Operations-kit panels, Standing weeks and the staff list,
+  still use the kit's 13px titles and capital buttons; that is known), and a
+  playbook answer on a machine's Catalog page shows in full.
 - [ ] **Dark mode, all of My Studio.** Solid buttons' words read, anything
   selected is blue, flags and late jobs are plum, Delete is crimson.
 
