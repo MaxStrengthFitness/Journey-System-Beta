@@ -150,6 +150,13 @@ export interface DirectoryInput {
    * failed — then "left" is unknown rather than a guess.
    */
   packageIndex: Pick<PackageNameIndex, "tierFor" | "isExtraSessions"> | null;
+  /**
+   * The studio `packageIndex` was read for. A client whose HOME is another
+   * studio is judged by her home studio's table (the profile's rule), which
+   * this screen has not read — so her "left" is unknown, never a guess made
+   * with the wrong table. Absent: the table is taken to be every client's.
+   */
+  packageStudioId?: string | null;
   /** The signed-in trainer's Kaizen Roster. */
   kaizen?: ReadonlyArray<KaizenRosterEntry> | null;
   /** Every id the signed-in trainer's bookings and sessions may carry (`myTrainerIds`). */
@@ -345,6 +352,11 @@ export interface DirectoryRow {
   bookedWithMe: boolean;
 }
 
+/** The client's home studio, read the way the rules read it (`homeStudioId`, else the older `studioId`). */
+function homeOf(client: Client): string | null {
+  return client.homeStudioId || (client as { studioId?: string }).studioId || null;
+}
+
 /* ---- name ---- */
 
 function nameOf(client: Client): DirectoryRow["name"] {
@@ -514,6 +526,21 @@ function nextOf(client: Client, ctx: DirectoryContext): DirectoryRow["next"] {
       source: "nightly",
     };
   }
+  // The held bookings are THIS studio's. A client whose home is elsewhere
+  // books there, and those bookings are not read here: no booking in this
+  // studio's list says nothing about hers.
+  const home = homeOf(client);
+  if (ctx.activeStudioId && home && home !== ctx.activeStudioId) {
+    return {
+      state: "unknown",
+      at: null,
+      day: null,
+      text: "Unknown",
+      sub: null,
+      reason: "Her bookings at her home studio aren't read on this studio's iPad.",
+      source: null,
+    };
+  }
   if (ctx.bookingsByClient && ctx.bookingsFresh) {
     return {
       state: "none",
@@ -544,6 +571,10 @@ function leftOf(client: Client, ctx: DirectoryContext): DirectoryRow["left"] {
   const pulled = !!client.mindbodyServicesSyncedAt || Object.keys(services).length > 0;
   if (!pulled) return unknown("Her packages haven't been pulled from Mindbody yet.");
   if (!ctx.packageIndex) return unknown("The studio's package table hasn't loaded.");
+  const home = homeOf(client);
+  if (ctx.packageStudioId && home && home !== ctx.packageStudioId) {
+    return unknown("Her home studio's package table isn't read on this studio's iPad.");
+  }
 
   // Left means left in the contract; given sessions are extra, beside it
   // (AJ, Sep 26 2026) — the profile header's own pair.
@@ -627,7 +658,7 @@ export function buildDirectoryRow(client: Client, ctx: DirectoryContext): Direct
   const id = client.id ?? "";
   const cutover = homeCutoverOf(ctx.studios ?? null, client);
   const coverage = coverageOfClient(client, cutover);
-  const home = client.homeStudioId || (client as { studioId?: string }).studioId || null;
+  const home = homeOf(client);
   const visitingFrom =
     ctx.activeStudioId && home && home !== ctx.activeStudioId
       ? clean((ctx.studios ?? []).find((s) => s.id === home)?.name) || "another studio"

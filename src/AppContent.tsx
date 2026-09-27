@@ -104,9 +104,10 @@ const LegacyChartImporter = lazy(() =>
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
-const ClientDirectoryView = lazy(() =>
-  import("./components/ClientDirectoryView").then((m) => ({
-    default: m.ClientDirectoryView,
+// The directory round (Sep 27 2026): one smart table, features/client-directory.
+const ClientDirectory = lazy(() =>
+  import("./features/client-directory/ClientDirectory").then((m) => ({
+    default: m.ClientDirectory,
   })),
 );
 // Lazy-loaded: downloaded on first visit to this view, not at app start.
@@ -1825,19 +1826,30 @@ export default function AppContent({
             <Suspense fallback={<ViewLoader />}>
               <AnimatePresence mode="wait">
                 {currentView === "client-directory" && (
-                  <ClientDirectoryView
+                  <ClientDirectory
                     clients={clients}
                     onSelectClient={(id) => {
                       setSelectedClientId(id);
                       setCurrentView("profile");
                     }}
                     onStartOpenSession={startUnassignedSession}
+                    // In today's Start: the Hub search card's own path.
+                    onStartSession={(id) => {
+                      setSelectedClientId(id);
+                      setView("workouts");
+                    }}
+                    onStartNewClientOnboarding={startNewClientOnboarding}
                     authTrainer={authTrainer}
                     kaizenClientIds={kaizenClientIds}
                     liveAuthTrainer={liveAuthTrainer}
-                    onUpdateSessions={updateClientSessions}
-                    onStartNewClientOnboarding={startNewClientOnboarding}
-                    studioRosterReady={rosterStatus === "ready"}
+                    uid={user?.uid ?? null}
+                    rosterStatus={rosterStatus}
+                    schedules={schedules}
+                    schedulesFetchedAt={schedulesFetchedAt}
+                    sessions={sessions}
+                    sessionsKnown={sessionsKnown}
+                    trainers={trainers}
+                    studios={studios}
                   />
                 )}
                 {currentView === "clients" && (

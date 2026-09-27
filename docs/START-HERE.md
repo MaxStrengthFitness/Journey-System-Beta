@@ -173,7 +173,7 @@ AJ's own tour, Sep 21 2026.
 | --- | --- |
 | The screen a trainer uses during a set | `src/components/WorkoutTrackerView.tsx` |
 | The Calendar | `src/components/CalendarView.tsx` + `src/features/calendar/` |
-| The client directory and the Kaizen roster | `src/components/ClientDirectoryView.tsx`, `src/features/trainer-profile/` |
+| The client directory and the Kaizen roster | `src/features/client-directory/` (read its `README.md`), `src/features/trainer-profile/` |
 | What the trainer reads before a session | `src/features/briefing/` |
 | The client's profile and its tabs | `src/components/ClientProfileView.tsx` + `src/features/client-profile/` |
 | A client's Notes & Profile — the Overview and six pages (the client codex) | `src/features/client-codex/` — its README says which folder each page lives in |

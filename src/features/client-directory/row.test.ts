@@ -178,6 +178,21 @@ describe("next booking", () => {
   });
 });
 
+describe("a client whose home is another studio", () => {
+  it("her next booking is unknown here unless she is booked here", () => {
+    const visitor = makeClient({ id: "v", homeStudioId: "solon" });
+    expect(buildDirectoryRow(visitor, makeContext()).next).toMatchObject({ state: "unknown", text: "Unknown" });
+    const bookedHere = makeContext({ schedules: [makeBooking({ clientId: "v", start: eastern("2026-09-28", "10:00") })] });
+    expect(buildDirectoryRow(visitor, bookedHere).next.state).toBe("booked");
+  });
+
+  it("her sessions left are unknown when only this studio's table is read", () => {
+    const visitor = makeClient({ id: "v", homeStudioId: "solon", mindbodyServices: { ...PIF } as never });
+    expect(buildDirectoryRow(visitor, makeContext({ packageStudioId: "westlake" })).left).toMatchObject({ state: "unknown", value: null });
+    expect(buildDirectoryRow(visitor, makeContext({ packageStudioId: "solon" })).left.value).toBe(36);
+  });
+});
+
 describe("sessions left", () => {
   it("left in the contract, with the extras beside it", () => {
     const row = buildDirectoryRow(makeClient({ id: "a", mindbodyServices: { ...PIF, ...COMP } as never }), makeContext());
