@@ -36,18 +36,22 @@
  * Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it switches
  * to Journey, where imported sessions land, and is offered only to a reader
  * who may change the record. So is the door to Sessions before Journey
- * (`priorHistoryDoor`, landing Sep 24 2026): the header's own, drawn again
- * under the contract history, where the years before Journey are the first
- * tile.
+ * (`priorHistoryDoor`, landing Sep 24 2026): the header's own, handed over
+ * whole. It sits in the page's head, beside the lede, where it is the first
+ * thing Account offers. It was drawn under the contract history, 1,700px
+ * down an iPad held upright, and AJ went looking for it and did not find it
+ * (Sep 26 2026: "they can do it from the account section ... Not just from
+ * the main page").
  */
+import { ChevronRight, Pencil } from "lucide-react";
 import type { Client, Studio } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import type { FordEntry } from "../ford/types";
 import type { FordAuthor } from "../ford/ford-write";
 import type { CodexFordStatus } from "../client-codex/codex-data";
-import { Page, type CodexGo, type Pronouns } from "../client-codex/kit";
+import { Btn, Page, type CodexGo, type Pronouns } from "../client-codex/kit";
 import type { RecordForm } from "../client-codex/useRecordForm";
-import type { PriorHistoryDoorState } from "../client-profile/prior-history-door";
+import { priorHistoryDoorLabel, type PriorHistoryDoorState } from "../client-profile/prior-history-door";
 import { ContactCard } from "./ContactCard";
 import { IntakeNotesCard } from "./IntakeNotesCard";
 import { MembershipSection } from "./MembershipSection";
@@ -83,7 +87,7 @@ export interface AccountPageProps {
   today: string;
   go: CodexGo;
   onOpenMigrationHub?: () => void;
-  /** The header's door to Sessions before Journey, drawn on the contract history. */
+  /** The header's door to Sessions before Journey, drawn in the page's head. Null: no door. */
   priorHistoryDoor?: PriorHistoryDoorState | null;
   /** For ages and "synced 2 days ago"; the real clock when left out. */
   now?: Date;
@@ -110,8 +114,21 @@ export function AccountPage({
   // none, unless an earlier link left some behind (then they still show).
   const showNotes = isMindbodyLinked(client) || !!client.mindbodyNotes?.trim();
 
+  // The header's door, again: the same words, the same rule, the profile's
+  // one editor.
+  const door = priorHistoryDoor ? (
+    <Btn
+      iconEnd={priorHistoryDoor.canEdit ? Pencil : ChevronRight}
+      aria-label={priorHistoryDoorLabel(priorHistoryDoor)}
+      data-action="prior-history"
+      onClick={priorHistoryDoor.onOpen}
+    >
+      {priorHistoryDoor.text}
+    </Btn>
+  ) : null;
+
   return (
-    <Page id="account" title="Account" lede={lede} go={go}>
+    <Page id="account" title="Account" lede={lede} actions={door} go={go}>
       <div className="cadm-page">
         <div className={showNotes ? "cadm-row cadm-row--contact" : "cadm-row"}>
           <ContactCard client={client} form={form} canEdit={canEdit} pronouns={p} now={now} />
@@ -138,7 +155,6 @@ export function AccountPage({
           pronouns={p}
           today={today}
           onOpenMigrationHub={onOpenMigrationHub}
-          priorHistoryDoor={priorHistoryDoor}
           now={now}
         />
       </div>

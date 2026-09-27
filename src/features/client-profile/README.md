@@ -92,8 +92,9 @@ medium-weight outline button competing with four equal-weight stat tiles.
   works the door out once (`PriorHistoryDoorState`, in
   `prior-history-door.ts`) and hands the same object to the header and to
   the client codex (`CodexHosts.priorHistoryDoor`), whose Account page draws
-  it under the contract history with the kit's button
-  (landing, Sep 24 2026). `priorHistoryDoorLabel` is what both say to a
+  it in its head, beside the lede, with the kit's button (landing, Sep 24
+  2026; moved up from under the contract history Sep 26, where AJ did not
+  find it). `priorHistoryDoorLabel` is what both say to a
   screen reader.
 - **Start Session is the hero.** Hero-orange gradient, the only orange
   button in the header. When a session is already in progress the same slot
