@@ -86,24 +86,22 @@ medium-weight outline button competing with four equal-weight stat tiles.
   `features/client-codex/`; what its form opens with is `seedForm()` in
   `record-form.ts`, which seeds wingspan — the old form never did, so a
   stored wingspan showed as an empty box.)
-- **Sessions before Journey has a door (Sep 24 2026).** The line under the
-  Completed sessions count ("412 before Journey · FileMaker") is a 40px
-  button that opens the prior-history editor; with nothing recorded it
-  reads "Add sessions before Journey", and only for someone who could save
-  it. Who may edit mirrors the `clients/{id}` update rule; everyone else who
-  can open the profile gets the editor read-only. That tile is already a
-  button when a renewal is showing, and a button cannot hold another, so
-  `Stat` stretches the tile's own tap underneath and the door sits over it.
-  The pure half is `prior-history-door.ts`; the write is `statePriorHistory`
-  in `lib/prior-history.ts`. See `docs/business/migration-and-prior-history.md`.
-  AJ asked for the door from the session count AND from Account: the profile
-  works the door out once (`PriorHistoryDoorState`, in
-  `prior-history-door.ts`) and hands the same object to the header and to
-  the client codex (`CodexHosts.priorHistoryDoor`), whose Account page draws
-  it in its head, beside the lede, with the kit's button (landing, Sep 24
-  2026; moved up from under the contract history Sep 26, where AJ did not
-  find it). `priorHistoryDoorLabel` is what both say to a
-  screen reader.
+- **Sessions before Journey is edited on Account, not here (Sep 26 2026).**
+  The line under the Completed sessions count ("412 before Journey ·
+  FileMaker") is plain words. From Sep 24 it was also a 40px button that
+  opened the prior-history editor ("Add sessions before Journey" with
+  nothing recorded); AJ took it off the header on Sep 26: "take this off
+  the header of the profile, leave it in the profile section". The profile
+  still works the door out once (`PriorHistoryDoorState`, in
+  `prior-history-door.ts`) and hands it to the client codex
+  (`CodexHosts.priorHistoryDoor`), whose Account page draws it in its head,
+  beside the lede, with the kit's button — the one place it is drawn. Who
+  may edit mirrors the `clients/{id}` update rule; everyone else who can open
+  the profile gets the editor read-only. The pure half is
+  `prior-history-door.ts`; the write is `statePriorHistory` in
+  `lib/prior-history.ts`. See `docs/business/migration-and-prior-history.md`.
+  With the door gone, `Stat` is one button again when a renewal is showing
+  (it used to stretch its tap underneath so the door could sit over it).
 - **Start Session is the hero.** Hero-orange gradient, the only orange
   button in the header. When a session is already in progress the same slot
   becomes an amber dropdown (take over / view / discard) — same place, same

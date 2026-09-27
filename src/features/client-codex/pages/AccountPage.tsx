@@ -17,9 +17,9 @@
  * only to a reader who may change the record.
  *
  * Sessions before Journey is the profile's too (`hosts.priorHistoryDoor`,
- * landing Sep 24 2026): the header's door, handed over whole — its words,
- * its rule (the clients update rule, `canEditPriorHistory`) and the one
- * editor — so the page cannot word it or gate it differently.
+ * landing Sep 24 2026), handed over whole — its words, its rule (the
+ * clients update rule, `canEditPriorHistory`) and the one editor. Account is
+ * the one place that draws it (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section").
  */
 import { AccountPage as AccountArea } from "../../client-admin/AccountPage";
 import type { CodexPageProps } from "../codex-data";

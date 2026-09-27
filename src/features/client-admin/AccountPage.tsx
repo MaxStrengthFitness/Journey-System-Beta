@@ -36,12 +36,11 @@
  * Migration Hub is the profile's (`hosts.onOpenMigrationHub`): it switches
  * to Journey, where imported sessions land, and is offered only to a reader
  * who may change the record. So is the door to Sessions before Journey
- * (`priorHistoryDoor`, landing Sep 24 2026): the header's own, handed over
- * whole. It sits in the page's head, beside the lede, where it is the first
- * thing Account offers. It was drawn under the contract history, 1,700px
- * down an iPad held upright, and AJ went looking for it and did not find it
- * (Sep 26 2026: "they can do it from the account section ... Not just from
- * the main page").
+ * (`priorHistoryDoor`, landing Sep 24 2026), handed over whole. It sits in
+ * the page's head, beside the lede: the first thing Account offers, and since
+ * Sep 26 the only place it is drawn (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section"). It was drawn under the
+ * contract history, 1,700px down an iPad held upright, and AJ went looking
+ * for it on Account and did not find it.
  */
 import { ChevronRight, Pencil } from "lucide-react";
 import type { Client, Studio } from "../../types";
@@ -88,7 +87,7 @@ export interface AccountPageProps {
   today: string;
   go: CodexGo;
   onOpenMigrationHub?: () => void;
-  /** The header's door to Sessions before Journey, drawn in the page's head. Null: no door. */
+  /** The door to Sessions before Journey, drawn in the page's head — its one place. Null: no door. */
   priorHistoryDoor?: PriorHistoryDoorState | null;
   /** Left in the contract and extra — the header's own pair (`sessionsSplit`). */
   split?: SessionsSplit | null;
@@ -118,8 +117,7 @@ export function AccountPage({
   // none, unless an earlier link left some behind (then they still show).
   const showNotes = isMindbodyLinked(client) || !!client.mindbodyNotes?.trim();
 
-  // The header's door, again: the same words, the same rule, the profile's
-  // one editor.
+  // The one door: the profile's words, rule and editor, drawn here only.
   const door = priorHistoryDoor ? (
     <Btn
       iconEnd={priorHistoryDoor.canEdit ? Pencil : ChevronRight}
