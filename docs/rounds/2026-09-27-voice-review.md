@@ -133,7 +133,7 @@ month's client groups), each by a rule of its own. Now:
   them.
 - `relay/team/TeamPanel.tsx`'s header says what went and where.
 
-### Standing week 1 to 6
+### Standing week 1 to 7
 
 See `2026-09-27-standing-week.md`. In short:
 
