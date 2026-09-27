@@ -208,13 +208,20 @@ describe("the post-session screen mounts", () => {
     expect(host.querySelector('[data-testid="dose-sentence"]')).toBeNull();
   });
 
-  it("offers the closing note's Loudness with Note checked, and Matters until behind Heads up", async () => {
+  it("offers the profile note's Loudness with Note checked, and Matters until behind Heads up", async () => {
     const host = await mount(<Screen />);
     const loud = host.querySelector('[role="radiogroup"][aria-label="How loud?"]')!;
     expect(loud).toBeTruthy();
     expect(Array.from(loud.querySelectorAll("button")).map((b) => b.textContent)).toEqual(["Note", "Heads up", "Critical"]);
     expect(loud.querySelector('[aria-checked="true"]')!.textContent).toBe("Note");
     expect(host.querySelector('input[aria-label="Matters until"]')).toBeNull();
+    // At Note the Profile note goes to her profile only (voice-review round,
+    // Sep 27 2026), and the screen says so in plain words rather than the
+    // generic "found by its category" (it is filed unfiled).
+    expect(host.querySelector('[data-testid="profile-note-hint"]')!.textContent).toBe(
+      "Stays on Judy's profile. The next trainer's briefing won't show it.",
+    );
+    expect(host.textContent).not.toContain("found by its category");
 
     await click(buttonByText(loud, "Heads up"));
     const until = host.querySelector('input[aria-label="Matters until"]') as HTMLInputElement;
@@ -222,9 +229,22 @@ describe("the post-session screen mounts", () => {
     expect(until.getAttribute("min")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(host.textContent).toContain("Matters until (optional)");
     expect(host.textContent).toContain("After this it stops showing on the briefing.");
+    // Louder, it does reach the briefing, and Loudness's own hint says so.
+    expect(host.querySelector('[data-testid="profile-note-hint"]')).toBeNull();
+    expect(host.textContent).toContain("on the briefing while it still matters");
 
     await click(buttonByText(loud, "Note"));
     expect(host.querySelector('input[aria-label="Matters until"]')).toBeNull();
+    expect(host.querySelector('[data-testid="profile-note-hint"]')).toBeTruthy();
+  });
+
+  it("is headed Wrap-up: briefing is pre-session, wrap-up is post-session (voice-review round)", async () => {
+    const host = await mount(<Screen />);
+    expect(host.textContent).toContain("Wrap-up · session saved");
+    expect(host.textContent).not.toContain("Session complete");
+    expect(host.querySelector('textarea[aria-label="Profile note"]')!.getAttribute("placeholder")).toBe(
+      "Profile note — anything for Judy's record. It files when you leave this screen.",
+    );
   });
 
   it("shows this session's unfiled note in the To-file tray and files it with one tap", async () => {
@@ -247,16 +267,16 @@ describe("the post-session screen mounts", () => {
     const host = await mount(<Screen />);
     expect(host.textContent).not.toMatch(/assessment/i);
     expect(host.textContent).not.toMatch(/priority/i);
-    expect(host.textContent).toContain("How did it land · closing note · Pulse");
+    expect(host.textContent).toContain("How did it land · profile note · Pulse");
     expect(host.querySelector('[data-testid="pulse-stub"]')).toBeNull();
     await click(buttonByText(host, "Update Pulse"));
     expect(host.querySelector('[data-testid="pulse-stub"]')).toBeTruthy();
   });
 
-  it("leaves with the closing note, its loudness and its until day", async () => {
+  it("leaves with the profile note, its loudness and its until day", async () => {
     const onLeave = vi.fn();
     const host = await mount(<Screen onLeave={onLeave} />);
-    const textarea = host.querySelector('textarea[aria-label="Closing note"]') as HTMLTextAreaElement;
+    const textarea = host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, "Shoulder tender on chest press");
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
@@ -384,7 +404,7 @@ describe("the post-session screen and a client's history", () => {
  * real bottom bar, wired the way AppContent wires them: onLeave files, then
  * sets the view through the same guarded setter the bar uses.
  */
-describe("the closing note is unsaved work until Back to Hub files it", () => {
+describe("the profile note is unsaved work until Back to Hub files it", () => {
   const filed: unknown[] = [];
 
   function Host() {
@@ -423,7 +443,7 @@ describe("the closing note is unsaved work until Back to Hub files it", () => {
   const hub = (host: HTMLElement) =>
     Array.from(host.querySelectorAll("nav button")).find((b) => b.textContent?.trim() === "Hub");
   const typeNote = async (host: HTMLElement, text: string) => {
-    const textarea = host.querySelector('textarea[aria-label="Closing note"]') as HTMLTextAreaElement;
+    const textarea = host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(textarea, text);
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
@@ -442,16 +462,16 @@ describe("the closing note is unsaved work until Back to Hub files it", () => {
     expect(viewOf(host)).toBe("clients");
   });
 
-  it("asks before the bottom bar leaves with a typed closing note, and keeps it on Keep editing", async () => {
+  it("asks before the bottom bar leaves with a typed profile note, and keeps it on Keep editing", async () => {
     const host = await mount(withProvider(<Host />));
     await typeNote(host, "Shoulder tender on chest press");
     await click(hub(host));
     expect(question()!.textContent).toContain(
-      "You have unsaved changes to the closing note. Leave without saving?",
+      "You have unsaved changes to the profile note. Leave without saving?",
     );
     await click(document.querySelector('[data-action="keep-editing"]'));
     expect(viewOf(host)).toBe("workouts");
-    expect((host.querySelector('textarea[aria-label="Closing note"]') as HTMLTextAreaElement).value).toBe(
+    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe(
       "Shoulder tender on chest press",
     );
     expect(filed).toHaveLength(0);
@@ -640,14 +660,14 @@ describe("the post-session screen says where the session is saved (session recor
 
   it("says 'saved' once the studio's records have the session", async () => {
     const host = await mount(screen());
-    expect(host.textContent).toContain("Session complete · saved");
+    expect(host.textContent).toContain("Wrap-up · session saved");
     expect(host.textContent).not.toContain("saved on this iPad");
     expect(host.textContent).not.toContain("when the connection is back");
   });
 
   it("says 'saved on this iPad' while the database has not answered, and that it will send", async () => {
     const host = await mount(screen(true));
-    expect(host.textContent).toContain("Session complete · saved on this iPad");
+    expect(host.textContent).toContain("Wrap-up · session saved on this iPad");
     expect(host.textContent).toContain("It sends to the studio's records when the connection is back. Nothing more to do.");
   });
 });

@@ -62,9 +62,9 @@ const ICONS: Record<string, React.ElementType> = {
 const ORIGIN_LABELS: Record<string, string> = {
   manual: "Logged",
   consultation: "Consultation",
-  pre_session: "Pre-session",
+  pre_session: "Briefing",
   in_session: "In session",
-  post_session: "Post-session",
+  post_session: "Wrap-up",
   mindbody: "Mindbody",
   profile: "Profile",
   legacy: "Archive",

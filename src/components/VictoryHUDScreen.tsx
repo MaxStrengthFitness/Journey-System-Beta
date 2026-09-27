@@ -51,7 +51,15 @@ import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
 /**
- * THE POST-SESSION SCREEN (rebuilt in the tracker round, Sep 2026).
+ * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
+ *
+ * Named in the voice-review round (Sep 27 2026, AJ): "briefing is strictly
+ * pre-session while wrap up is post-session". The screen had no name of its
+ * own before (its only heading read "Session complete"), and "the post
+ * session briefing" in conversation collided with the pre-session Briefing.
+ * Stored values keep their old words: notes filed here still carry
+ * `origin: "post_session"`, and the tracker still calls this face
+ * "post-session" in code.
  *
  * Thirty seconds, walking the client out. AJ's order of business:
  *   1. TODAY — "here's how they did": one line per machine, today against
@@ -64,11 +72,13 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
  *      more · Barely worked, the trainer's own judgement, saved the moment it
  *      is tapped as `sessions.dose`; untouched is "not judged", never a
- *      default) — a closing note with its Loudness (Note · Heads up ·
- *      Critical, default Note; Heads up and Critical may carry a "matters
- *      until" day so the note leaves the briefing on its own), filed to the
- *      journal when the trainer leaves; then Update Pulse and the renewal
- *      conversation when one is due.
+ *      default) — the Profile note (the closing note until Sep 27) with its
+ *      Loudness (Note · Heads up · Critical, default Note: at Note it stays
+ *      on the profile and never reaches the next briefing; Heads up and
+ *      Critical may carry a "matters until" day so the note leaves the
+ *      briefing on its own), filed to the journal when the trainer leaves;
+ *      then Update Pulse and the renewal conversation when one is due. The
+ *      note FOR the next trainer is the End Session box, one step earlier.
  *   3b. WHAT THEY TOLD YOU — two trays, both silent when empty, which is
  *      most sessions. Notes first: anything saved during the session with no
  *      category yet ("capture now, tag at teardown") comes back as a card
@@ -307,9 +317,9 @@ export function VictoryHUDScreen({
   const unsaved = useUnsavedChanges(
     !leaving && (closingTyped || draftWaiting),
     closingTyped && draftWaiting
-      ? "the closing note and the unfinished note"
+      ? "the profile note and the unfinished note"
       : closingTyped
-        ? "the closing note"
+        ? "the profile note"
         : "the unfinished note",
   );
 
@@ -431,7 +441,7 @@ export function VictoryHUDScreen({
         <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 flex flex-col gap-3 pb-6">
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
-            <Kicker>{savedOnThisIpad ? "Session complete · saved on this iPad" : "Session complete · saved"}</Kicker>
+            <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
             <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
               {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
@@ -562,7 +572,7 @@ export function VictoryHUDScreen({
               </div>
             )}
 
-            <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · closing note · Pulse</div>
+            <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · profile note · Pulse</div>
 
             {/* The dose Dial — the trainer's own judgement, saved as it is
                 tapped. Wrapped dark so the rating tokens resolve for this
@@ -586,13 +596,25 @@ export function VictoryHUDScreen({
 
             <textarea
               className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-cyan transition-colors"
-              placeholder="Closing note — files to the journal when you leave this screen."
+              placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              aria-label="Closing note"
+              aria-label="Profile note"
             />
+            {/* The Profile note is the one that goes only to the client's
+                profile (voice-review round, Sep 27 2026): at Note it stays on the
+                record and the next trainer's briefing never shows it. The
+                note FOR the next trainer is the End Session box. Louder,
+                Loudness's own hint says where it goes; at Note the generic
+                hint ("found by its category") would be wrong for a note
+                that is filed unfiled, so it says the plain fact instead. */}
             <div className="dark flex flex-col gap-2" data-theme="dark">
-              <Loudness value={importance} onChange={setImportance} />
+              <Loudness value={importance} onChange={setImportance} hint={importance !== "standard"} />
+              {importance === "standard" && (
+                <span className="text-[11px] text-ink-d3" data-testid="profile-note-hint">
+                  Stays on {clientFirstName(client)}'s profile. The next trainer's briefing won't show it.
+                </span>
+              )}
               {importance !== "standard" && (
                 <label className="flex flex-col gap-1.5">
                   <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>

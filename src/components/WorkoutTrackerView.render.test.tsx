@@ -570,7 +570,22 @@ describe("Finish never hangs and never counts a session twice (session record, S
     return host;
   }
 
-  it("offline, goes straight to the post-session screen and says the session is saved on this iPad", async () => {
+  it("asks for a note for the next trainer, and says where a note just for the profile goes (voice-review round)", async () => {
+    await openEndSession();
+    const label = Array.from(document.querySelectorAll("label")).find((l) =>
+      l.textContent?.includes("Note for the next trainer"),
+    );
+    expect(label).toBeDefined();
+    const box = document.getElementById(label!.getAttribute("for")!);
+    expect(box?.tagName).toBe("TEXTAREA");
+    expect(document.getElementById(box!.getAttribute("aria-describedby")!)?.textContent).toBe(
+      "Shows on their briefing for the next three weeks. A note just for the profile goes on the Wrap-up, next.",
+    );
+    // "Wrap-up" is the post-session screen's name now, not this box's.
+    expect(document.body.textContent).not.toContain("Wrap-up note");
+  });
+
+  it("offline, goes straight to the Wrap-up and says the session is saved on this iPad", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
     finishCtl.commit = "hang"; // offline, the database never answers
     await openEndSession();
@@ -578,7 +593,7 @@ describe("Finish never hangs and never counts a session twice (session record, S
     await settle();
     await settle();
 
-    expect(document.body.textContent).toContain("Session complete · saved on this iPad");
+    expect(document.body.textContent).toContain("Wrap-up · session saved on this iPad");
     // The writes were made, on the iPad, before anything waited.
     expect(completedWrites()).toHaveLength(1);
     expect(totalsWrites()).toHaveLength(1);
@@ -594,7 +609,7 @@ describe("Finish never hangs and never counts a session twice (session record, S
     expect(totalsWrites()).toHaveLength(0);
     expect(completedWrites()).toHaveLength(0);
     expect(document.body.textContent).toContain("already finished on another iPad");
-    expect(document.body.textContent).toContain("Session complete");
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
   });
 
   it("finishes once when Finish session is tapped twice at once", async () => {
@@ -609,7 +624,7 @@ describe("Finish never hangs and never counts a session twice (session record, S
 
     expect(totalsWrites()).toHaveLength(1);
     expect(completedWrites()).toHaveLength(1);
-    expect(document.body.textContent).toContain("Session complete · saved");
+    expect(document.body.textContent).toContain("Wrap-up · session saved");
     expect(document.body.textContent).not.toContain("saved on this iPad");
   });
 });
