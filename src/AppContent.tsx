@@ -195,10 +195,35 @@ const LearningView = lazy(() =>
 import { LoginScreen } from "./components/LoginScreen";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { isOwner } from "./lib/permissions";
-import { mayOpenOperations } from "./features/admin/operations-access";
+import { HUB_PLACE, mayOpenOperations } from "./features/admin/operations-access";
 import { useGuardedPlace } from "./features/admin/useGuardedPlace";
 import { isDemoStudioId } from "./features/demo-mode/is-demo";
 import { DemoBanner } from "./features/demo-mode/DemoBanner";
+import { useNewVersion } from "./features/new-version/useNewVersion";
+import { NewVersionLine } from "./features/new-version/NewVersionLine";
+
+/*
+ * Screens a reload for a new version may put a trainer back on (new-version
+ * round, Sep 26 2026: features/new-version, "where you were"). Only screens
+ * that stand on their own: the progress report, another trainer's profile, the
+ * chart importer and Mindbody each need a choice made on the way in, so a
+ * reload from one of them lands on the Hub, as a reload always did.
+ */
+const RETURNABLE_VIEWS: ReadonlySet<string> = new Set<View>([
+  "clients",
+  "workouts",
+  "calendar",
+  "trainer-hub",
+  "profile",
+  "client-directory",
+  "studio-tasks",
+  "learning",
+  "machine-anatomy",
+  "academy",
+  "admin-dashboard",
+  "admins-dashboard",
+]);
+const isReturnableView = (view: string) => RETURNABLE_VIEWS.has(view);
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -871,6 +896,32 @@ export default function AppContent({
     if (selectedClientId) setCurrentView("workouts");
     else setCurrentView("client-directory");
   }, [currentSession, myLiveSession, selectedClientId]);
+
+  /*
+   * A NEW VERSION (new-version round, Sep 26 2026). Every push to master
+   * deploys, and a deploy deletes the screen files an open app has not
+   * fetched yet. This notices a new version when Journey comes back on
+   * screen, loads it by itself only on the Hub, and never over the Active
+   * Session, this trainer's open session, saves still sending, typing or a
+   * session note draft. Everywhere else the line under the header says so.
+   * See features/new-version/README.md.
+   */
+  const newVersion = useNewVersion({
+    view: currentView,
+    hubView: HUB_PLACE.view,
+    sessionView: "workouts",
+    shellReady:
+      !!user && !!authTrainer && !!activeStudioId && !isChangingStudio && newClientOnboardingName === null,
+    uid: user?.uid ?? null,
+    clientId: selectedClientId,
+    ownSessionClientName: myLiveSession ? (myLiveSession.clientName ?? "") : null,
+    waitForPendingWrites: () => waitForPendingWrites(db),
+    isKnownView: isReturnableView,
+    restorePlace: (place) => {
+      if (place.clientId) setSelectedClientId(place.clientId);
+      setCurrentView(place.view as View);
+    },
+  });
   // Derived state for the active studio name
   const activeStudioName = useMemo(() => {
     if (!activeStudioId) return null;
@@ -1721,6 +1772,10 @@ export default function AppContent({
               searchSlot={headerSearchSlot}
             />
           )}
+
+          {/* A new version is waiting: one quiet line, never on the Active
+              Session (features/new-version). */}
+          <NewVersionLine line={newVersion.line} busy={newVersion.busy} onLoad={newVersion.loadNow} />
 
           {/* Main Content */}
           <main

@@ -66,7 +66,7 @@ export type BrokenCause = "new-version" | "not-loaded";
 
 export type BrokenScreenState =
   | { phase: "checking" }
-  | { phase: "loading" }
+  | { phase: "loading"; cause: BrokenCause }
   | { phase: "wait"; cause: BrokenCause; reason: WaitReason };
 
 export interface ScreenWords {
@@ -77,7 +77,11 @@ export interface ScreenWords {
 
 export function brokenScreenWords(state: BrokenScreenState, ownSessionClientName: string | null): ScreenWords {
   if (state.phase === "checking") return { text: "Checking for a new version of Journey…", action: null };
-  if (state.phase === "loading") return { text: "Loading the new version of Journey…", action: null };
+  if (state.phase === "loading") {
+    return state.cause === "new-version"
+      ? { text: "Loading the new version of Journey…", action: null }
+      : { text: "Loading this screen again…", action: null };
+  }
 
   const newer = state.cause === "new-version";
   const opening = newer ? "This screen is part of a newer version of Journey" : "This screen couldn't be loaded";

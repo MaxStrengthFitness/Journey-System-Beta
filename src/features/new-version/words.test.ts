@@ -38,8 +38,12 @@ describe("brokenScreenWords", () => {
       text: "Checking for a new version of Journey…",
       action: null,
     });
-    expect(brokenScreenWords({ phase: "loading" }, null)).toEqual({
+    expect(brokenScreenWords({ phase: "loading", cause: "new-version" }, null)).toEqual({
       text: "Loading the new version of Journey…",
+      action: null,
+    });
+    expect(brokenScreenWords({ phase: "loading", cause: "not-loaded" }, null)).toEqual({
+      text: "Loading this screen again…",
       action: null,
     });
   });

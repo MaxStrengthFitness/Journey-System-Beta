@@ -198,6 +198,29 @@ export function useUnsavedChanges(
   return useMemo(() => ({ guard, release }), [guard, release]);
 }
 
+export interface UnsavedStatus {
+  /** True when any screen anywhere holds typing that is not saved. */
+  anyDirty: () => boolean;
+}
+
+const NOTHING_DIRTY: UnsavedStatus = { anyDirty: () => false };
+
+/**
+ * Read-only: does anything anywhere hold unsaved typing right now? For a
+ * feature that must not act over typing (a new version waits for it before it
+ * loads by itself: new-version round, Sep 26 2026). It ASKS the registry at
+ * the moment it is called rather than guessing from a screen, and it is a
+ * getter rather than a value, so asking re-renders nothing. Without a
+ * provider nothing is dirty, as with every other hook here.
+ */
+export function useUnsavedStatus(): UnsavedStatus {
+  const store = useContext(StoreContext);
+  return useMemo(
+    () => (store ? { anyDirty: () => store.registry.anyDirty() } : NOTHING_DIRTY),
+    [store],
+  );
+}
+
 /** Ask about everything that is dirty anywhere, then run `proceed`. */
 export function useLeaveGuard(): (proceed: () => void) => void {
   const store = useContext(StoreContext);
