@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { AlertTriangle, Flag, Hand } from "lucide-react";
 import type { TaskRequest } from "../../studio-tasks/requests";
-import type { TaskRow } from "../../studio-tasks/types";
-import { jobTiming } from "../jobs/jobs";
+import type { TaskInstance } from "../../studio-tasks/types";
+import { dayWords, jobTiming } from "../jobs/jobs";
 import type { TeamJob } from "../jobs/types";
+import { shiftListReports } from "../team/accountability";
 import { useRelay } from "./RelayContext";
 import { useMachineCare } from "./machine-care-store";
 
@@ -22,9 +24,13 @@ import { useMachineCare } from "./machine-care-store";
  * the standard the studio holds itself to.
  *
  * One list for machine flags. The Floor Map's flag (machineCare) and a
- * problem reported on the shift list (a flagged task row, today) are two
- * systems until the one maintenance log is built (overlap 5, decided Sep 26);
- * Team used to show them under two headings, so they share this one.
+ * problem reported on the shift list (a flagged task row) are two systems
+ * until the one maintenance log is built (overlap 5, decided Sep 26); Team
+ * used to show them under two headings, so they share this one. A shift-list
+ * report is listed from Team's seven days, one row per machine, and not at
+ * all for a machine the Floor Map flags (team/accountability.ts,
+ * shiftListReports — voice review follow-up, Sep 27 2026: reports used to
+ * drop off at midnight).
  */
 
 /* ------------------------------------------------------------------ *
@@ -39,27 +45,39 @@ function millisOf(v: unknown): number | null {
   return typeof (t as { toMillis?: () => number })?.toMillis === "function" ? (t as { toMillis: () => number }).toMillis() : null;
 }
 
+const NO_ROWS: TaskInstance[] = [];
+
 export function OpenLoops({
   requests,
   jobs,
   machineNames,
-  reported = [],
+  taskRows = NO_ROWS,
+  taskTitle = () => "",
 }: {
   requests: TaskRequest[];
   jobs: TeamJob[];
   machineNames: (id: string) => string;
-  /** Today's problems reported on the shift list (flagged task rows). */
-  reported?: TaskRow[];
+  /**
+   * The studio's task rows for Team's seven days, today's live rows last.
+   * The flagged ones are the shift list's reports.
+   */
+  taskRows?: readonly (TaskInstance | null | undefined)[];
+  /** A standing task's title, for a report with no machine. */
+  taskTitle?: (templateId: string) => string;
 }) {
   const relay = useRelay();
   const care = useMachineCare(relay.studioId);
   const now = Date.now();
+  const todayKey = relay.now.todayKey;
   const unanswered = requests.filter((r) => r.status === "open" && !r.claimedBy && r.kind !== "initiative" && (millisOf(r.createdAt) ?? now) < now - STALE_ASK_MS);
   const flagged = Object.values(care.byMachineId).filter((c) => c.flag);
-  const overdue = jobs.filter((j) => j.status === "open" && jobTiming(j, relay.now.todayKey) === "overdue");
-  // A machine the Floor Map already flags is not listed twice for a shift-list report on it too.
-  const flaggedIds = new Set(flagged.map((c) => c.machineId));
-  const shiftReports = reported.filter((r) => !(r.machineId && flaggedIds.has(r.machineId)));
+  const overdue = jobs.filter((j) => j.status === "open" && jobTiming(j, todayKey) === "overdue");
+  // One row per machine, and none for a machine the Floor Map already flags.
+  const flaggedKey = flagged.map((c) => c.machineId).sort().join(",");
+  const shiftReports = useMemo(
+    () => shiftListReports(taskRows, new Set(flaggedKey ? flaggedKey.split(",") : [])),
+    [taskRows, flaggedKey],
+  );
   const total = unanswered.length + flagged.length + shiftReports.length + overdue.length;
 
   return (
@@ -99,14 +117,16 @@ export function OpenLoops({
             </li>
           ))}
           {shiftReports.map((r) => (
-            <li key={r.id} className="tc__loop">
+            <li key={r.key} className="tc__loop">
               <span className="tc__loop-kind">
                 <Flag size={11} aria-hidden /> Reported on the shift list
               </span>
-              <span className="tc__loop-title">{r.machineName ?? r.title}</span>
+              <span className="tc__loop-title">
+                {(r.machineId && machineNames(r.machineId)) || taskTitle(r.templateId) || r.machineId || "A studio task"}
+              </span>
               <span className="tc__loop-sub">
-                {r.instance?.note || "A trainer reported a problem."}
-                {r.instance?.completedBy?.name ? ` — ${r.instance.completedBy.name.split(" ")[0]}` : ""}
+                {r.note || "A trainer reported a problem."} — {r.by?.name ? `${r.by.name.split(" ")[0]}, ` : ""}
+                {dayWords(r.dateKey, todayKey)}
               </span>
             </li>
           ))}

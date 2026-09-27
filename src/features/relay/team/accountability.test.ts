@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { missedList, teamRecord, teamWindow, type TeamRecordInput } from "./accountability";
+import { firstDayOf, missedList, shiftListReports, teamRecord, type TeamRecordInput } from "./accountability";
 import type { TaskInstance, TaskTemplate } from "../../studio-tasks/types";
 import type { TeamJob } from "../jobs/types";
 import type { InitiativeProgress } from "../../studio-tasks/initiatives";
@@ -71,9 +71,11 @@ function input(over: Partial<TeamRecordInput> = {}): TeamRecordInput {
 }
 
 const texts = (r: { lines: { text: string }[] }) => r.lines.map((l) => l.text);
+const flags = (r: { lines: { text: string; tone: string }[] }) => r.lines.filter((l) => l.tone === "flag").map((l) => l.text);
 const byId = (records: ReturnType<typeof teamRecord>, id: string) => records.find((r) => r.person.id === id)!;
+const NOTHING = "Nothing with their name on it in the last seven days.";
 
-describe("teamRecord — what counts against a person", () => {
+describe("teamRecord — what is said on a person's card", () => {
   it("counts an assigned task left open on a past day as missed", () => {
     const r = teamRecord(
       input({
@@ -84,7 +86,6 @@ describe("teamRecord — what counts against a person", () => {
       }),
     );
     const marcus = byId(r, "t-marcus");
-    expect(marcus.standing).toBe("behind");
     expect(marcus.week.missed.map((m) => m.dateKey)).toEqual(["2026-09-14", "2026-09-12"]);
     expect(marcus.lines[0]).toEqual({
       text: "Missed 2 assigned tasks: Closing checklist (Mon), Closing checklist (Sat).",
@@ -92,14 +93,19 @@ describe("teamRecord — what counts against a person", () => {
     });
     // Missing something does not move Marcus to the top: people are listed by
     // name (voice-review round, Sep 27 2026).
-    expect(r.map((p) => p.person.id)).toEqual(["t-aj", "t-dana", "t-marcus", "t-priya"].filter((id) => r.some((p) => p.person.id === id)));
+    expect(r.map((p) => p.person.id)).toEqual(["t-aj", "t-dana", "t-marcus", "t-priya"]);
+  });
+
+  it("carries no verdict: a card is its person's sentences, never 'behind' or 'on track'", () => {
+    const r = teamRecord(input({ instances: [inst({ assignedTo: MARCUS })] }));
+    expect(Object.keys(byId(r, "t-marcus"))).not.toContain("standing");
   });
 
   it("does not hold a task against the person named on it when someone else finished it", () => {
     const r = teamRecord(
       input({ instances: [inst({ assignedTo: MARCUS, status: "done", completedBy: PRIYA })] }),
     );
-    expect(byId(r, "t-marcus").standing).toBe("on-track");
+    expect(flags(byId(r, "t-marcus"))).toEqual([]);
     expect(byId(r, "t-marcus").week.missed).toEqual([]);
     expect(byId(r, "t-priya").week.finished).toBe(1);
   });
@@ -112,22 +118,22 @@ describe("teamRecord — what counts against a person", () => {
   it("does not judge today", () => {
     const r = teamRecord(input({ instances: [inst({ assignedTo: MARCUS, localDate: TODAY })] }));
     const marcus = byId(r, "t-marcus");
-    expect(marcus.standing).toBe("on-track");
+    expect(flags(marcus)).toEqual([]);
     expect(marcus.today).toEqual({ assigned: 1, done: 0 });
     expect(texts(marcus)).toContain("Today: 0 of 1 assigned task done so far.");
   });
 
   it("never charges unassigned shift work to anyone", () => {
     const r = teamRecord(input({ instances: [inst({}), inst({ templateId: "wipe", machineId: "m1" })] }));
-    expect(r.every((p) => p.standing === "quiet")).toBe(true);
+    expect(r.every((p) => texts(p).join() === NOTHING)).toBe(true);
   });
 
   it("counts a claimed-and-abandoned task separately from an assigned one", () => {
     const r = teamRecord(input({ instances: [inst({ claimedBy: DANA })] }));
     const dana = byId(r, "t-dana");
-    expect(dana.standing).toBe("behind");
     expect(dana.week.missed).toEqual([]);
     expect(dana.week.leftOpen).toHaveLength(1);
+    expect(dana.lines[0]).toMatchObject({ tone: "flag" });
     expect(dana.lines[0].text).toMatch(/^Took 1 task and left it open: Closing checklist/);
   });
 
@@ -146,7 +152,7 @@ describe("teamRecord — what counts against a person", () => {
 
   it("ignores a trainer's private tasks", () => {
     const r = teamRecord(input({ instances: [inst({ assignedTo: MARCUS, scope: "personal" })] }));
-    expect(byId(r, "t-marcus").standing).toBe("quiet");
+    expect(texts(byId(r, "t-marcus"))).toEqual([NOTHING]);
   });
 });
 
@@ -159,16 +165,15 @@ describe("teamRecord — jobs, requests and initiatives", () => {
       assigneeIds: ["t-priya"],
       assignees: [PRIYA],
       parts: {
-        p01: { id: "p01", label: "a", order: 0, doneBy: PRIYA },
+        p01: { id: "p01", label: "a", order: 0, doneBy: PRIYA, doneAt: new Date("2026-09-13T15:00:00-04:00") },
         p02: { id: "p02", label: "b", order: 1, doneBy: null },
       },
     });
     const r = teamRecord(input({ jobs: [overdue] }));
     const priya = byId(r, "t-priya");
-    expect(priya.standing).toBe("behind");
     expect(priya.jobs.overdue).toEqual([{ jobId: "j1", title: "Birthday cards", dueOn: "2026-09-14", left: 1 }]);
     expect(priya.jobs.partsDone).toBe(1);
-    expect(priya.lines[0].text).toBe("On “Birthday cards” — overdue since Sep 14, 1 part left.");
+    expect(priya.lines[0]).toEqual({ text: "On “Birthday cards” — overdue since Sep 14, 1 part left.", tone: "flag" });
   });
 
   it("does not flag an overdue job whose parts are all ticked", () => {
@@ -186,10 +191,37 @@ describe("teamRecord — jobs, requests and initiatives", () => {
     expect(byId(r, "t-priya").jobs.overdue).toEqual([]);
   });
 
-  it("credits closed jobs to whoever closed them", () => {
-    const r = teamRecord(input({ jobs: [job({ status: "done", completedBy: DANA })] }));
+  it("credits closed jobs to whoever closed them, in the last seven days", () => {
+    const r = teamRecord(input({ jobs: [job({ status: "done", completedBy: DANA, closedOn: "2026-09-15" })] }));
     expect(byId(r, "t-dana").jobs.closed).toBe(1);
-    expect(texts(byId(r, "t-dana"))).toContain("Finished 1 job this week.");
+    expect(texts(byId(r, "t-dana"))).toContain("Finished 1 job in the last seven days.");
+  });
+
+  it("counts only what happened inside the seven days: a job closed 13 days ago and an old part are not this week's", () => {
+    // The jobs read looks back fourteen days (useTeamJobs); the card says seven.
+    const r = teamRecord(
+      input({
+        jobs: [
+          job({ id: "old", status: "done", completedBy: DANA, closedOn: "2026-09-03" }),
+          job({ id: "edge", status: "done", completedBy: DANA, closedOn: firstDayOf(TODAY) }),
+          job({
+            id: "long",
+            status: "open",
+            parts: {
+              p01: { id: "p01", label: "a", order: 0, doneBy: DANA, doneAt: new Date("2026-08-20T12:00:00-04:00") },
+              p02: { id: "p02", label: "b", order: 1, doneBy: DANA, doneAt: new Date("2026-09-15T12:00:00-04:00") },
+              // No day to go by: not guessed into the window.
+              p03: { id: "p03", label: "c", order: 2, doneBy: DANA },
+            },
+          }),
+        ],
+      }),
+    );
+    const dana = byId(r, "t-dana");
+    expect(firstDayOf(TODAY)).toBe("2026-09-10");
+    expect(dana.jobs.closed).toBe(1);
+    expect(dana.jobs.partsDone).toBe(1);
+    expect(texts(dana)).toContain("Finished 1 job part, 1 job in the last seven days.");
   });
 
   it("flags a request held for two days or more, not one claimed this morning", () => {
@@ -207,7 +239,7 @@ describe("teamRecord — jobs, requests and initiatives", () => {
     expect(byId(r, "t-priya").holding).toEqual([]);
   });
 
-  it("names an initiative a person has not met, and only calls it behind once its date has passed", () => {
+  it("names an initiative a person has not met, and flags it only once its date has passed", () => {
     const progress = (count: number): InitiativeProgress => ({
       started: 1,
       met: 0,
@@ -217,10 +249,9 @@ describe("teamRecord — jobs, requests and initiatives", () => {
       perTrainer: [{ trainerId: "t-priya", trainerName: "Priya", count, target: 5, met: count >= 5, entries: [] }],
     });
     const open = teamRecord(input({ initiatives: [{ id: "i1", title: "Five reports", dueOn: "2026-09-30", progress: progress(3) }] }));
-    expect(byId(open, "t-priya").standing).toBe("on-track");
-    expect(texts(byId(open, "t-priya"))).toContain("3 of 5 for “Five reports”.");
+    expect(byId(open, "t-priya").lines).toContainEqual({ text: "3 of 5 for “Five reports”.", tone: "plain" });
     const late = teamRecord(input({ initiatives: [{ id: "i1", title: "Five reports", dueOn: "2026-09-10", progress: progress(3) }] }));
-    expect(byId(late, "t-priya").standing).toBe("behind");
+    expect(byId(late, "t-priya").lines).toContainEqual({ text: "3 of 5 for “Five reports” — past its date.", tone: "flag" });
     const met = teamRecord(input({ initiatives: [{ id: "i1", title: "Five reports", dueOn: "2026-09-10", progress: progress(5) }] }));
     expect(byId(met, "t-priya").initiatives).toEqual([]);
   });
@@ -229,13 +260,13 @@ describe("teamRecord — jobs, requests and initiatives", () => {
 describe("teamRecord — people and order", () => {
   it("says so plainly when nothing has anyone's name on it", () => {
     const r = teamRecord(input());
-    expect(r.every((p) => p.lines[0].text === "Nothing with their name on it this week.")).toBe(true);
+    expect(r.every((p) => p.lines[0].text === NOTHING)).toBe(true);
   });
 
   it("adds a guest who was assigned work here, so it can be seen", () => {
     const guest = { id: "t-guest", name: "Guest Trainer" };
     const r = teamRecord(input({ instances: [inst({ assignedTo: guest })] }));
-    expect(byId(r, "t-guest").standing).toBe("behind");
+    expect(flags(byId(r, "t-guest"))).toHaveLength(1);
   });
 
   it("lists people by name, never behind first (recognition, never ranking — voice-review round)", () => {
@@ -250,13 +281,53 @@ describe("teamRecord — people and order", () => {
     const names = r.map((p) => p.person.name);
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     // The one who missed something is where their name puts them, not first.
-    expect(r.findIndex((p) => p.standing === "behind")).toBe(names.indexOf(MARCUS.name));
+    expect(r.findIndex((p) => flags(p).length > 0)).toBe(names.indexOf(MARCUS.name));
   });
 });
 
-describe("teamWindow", () => {
+describe("shiftListReports — the shift list's machine reports on Open loops", () => {
+  const flagged = (over: Partial<TaskInstance>) => inst({ templateId: "check", status: "done", flagged: true, ...over });
 
-  it("reads the last seven studio days, today included", () => {
-    expect(teamWindow(TODAY)).toEqual({ from: "2026-09-10", to: TODAY });
+  it("keeps a report from earlier in the week, not only today's (they used to drop off at midnight)", () => {
+    const reports = shiftListReports([flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-14", note: "Cable frayed", completedBy: DANA })]);
+    expect(reports).toEqual([
+      { key: "leg-press", machineId: "leg-press", templateId: "check", dateKey: "2026-09-14", note: "Cable frayed", by: DANA },
+    ]);
+  });
+
+  it("lists a machine once, with its latest report, whichever duties flagged it", () => {
+    const reports = shiftListReports([
+      flagged({ id: "a", machineId: "leg-press", localDate: "2026-09-13", note: "Squeak" }),
+      flagged({ id: "b", machineId: "leg-press", localDate: "2026-09-15", templateId: "wipe", note: "Pad torn" }),
+      flagged({ id: "c", machineId: "chest", localDate: "2026-09-14" }),
+    ]);
+    expect(reports.map((r) => [r.key, r.note ?? null, r.dateKey])).toEqual([
+      ["leg-press", "Pad torn", "2026-09-15"],
+      ["chest", null, "2026-09-14"],
+    ]);
+  });
+
+  it("leaves out a machine the Floor Map already flags, an unflagged row and a private task", () => {
+    const reports = shiftListReports(
+      [
+        flagged({ id: "a", machineId: "leg-press" }),
+        inst({ id: "b", machineId: "chest", status: "done" }),
+        flagged({ id: "c", machineId: "row", scope: "personal" }),
+      ],
+      new Set(["leg-press"]),
+    );
+    expect(reports).toEqual([]);
+  });
+
+  it("takes the later copy of the same row, so today's live row wins over the week's read", () => {
+    const week = flagged({ id: "today-row", machineId: "leg-press", localDate: TODAY });
+    const live = { ...week, flagged: false };
+    expect(shiftListReports([week, live])).toEqual([]);
+    expect(shiftListReports([live, week])).toHaveLength(1);
+  });
+
+  it("lists a flagged row with no machine by itself", () => {
+    const reports = shiftListReports([flagged({ id: "fac", localDate: "2026-09-15", templateId: "close" }), null, undefined]);
+    expect(reports).toEqual([{ key: "fac", templateId: "close", dateKey: "2026-09-15", by: null }]);
   });
 });

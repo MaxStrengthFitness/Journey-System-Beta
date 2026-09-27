@@ -9,16 +9,21 @@ import type { TeamJob } from "./types";
 /**
  * A studio's team jobs: every open one, plus the ones closed recently.
  *
- * ONE LISTENER, on `status in [...]` — a single-field filter, covered by
- * Firestore's automatic index, so nothing to deploy. Closed jobs are capped:
- * a studio's history of finished jobs grows forever, and the lane only needs
- * the last few ("Priya finished the birthday cards") and the Team tab only
- * the last fortnight.
+ * TWO LISTENERS, each on a single field (`status == open`, and a range on
+ * `closedOn`), both covered by Firestore's automatic indexes, so nothing to
+ * deploy. Closed jobs are capped: a studio's history of finished jobs grows
+ * forever, and the lanes only need the last few ("Priya finished the
+ * birthday cards").
+ *
+ * My Studio → Team counts only its own seven days from this (a job by the
+ * day it was closed, a part by the day it was ticked — relay/team/
+ * accountability.ts): the read reaching back further does not stretch what
+ * Team's sentences say (voice review follow-up, Sep 27 2026).
  *
  * A failed read is "unknown", never "no jobs": `error` is set and the lanes
  * say so.
  */
-/** How far back finished jobs are read — the Team tab looks back two weeks. */
+/** How far back finished jobs are read, for the lanes' "recently finished". */
 export const CLOSED_DAYS = 14;
 
 export interface TeamJobsState {
