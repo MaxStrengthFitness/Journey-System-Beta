@@ -290,7 +290,8 @@ The whole app has been verified against mock data on a good network. This round 
 - [ ] **Open a client profile with heavy history.** `ClientProfileView` is a 413 KB chunk on its own.
 - [ ] **The 12-month clinical report timing** from Round 3 — write the number down; it is your worst realistic case.
 - [ ] **Add the app to the iPad home screen** (the Home Screen round, Sep 26 2026: `src/features/home-screen/README.md`). Safari → Share → Add to Home Screen, leave "Open as Web App" on. *Expected:* the Journey icon and the name "Journey"; it opens full screen with no address bar; the sign-in screen (the icon has its own storage, separate from Safari).
-  - The clock and battery are readable on every screen in both themes. In dark they sit on the header's navy; in light, on a dark strip.
+  - The clock and battery are readable on every screen in both themes. iPadOS draws the status bar above the app in the header's colour: navy in dark, white in light (the `default` style since Sep 27 2026).
+  - The bottom bar is whole, in portrait and in landscape: every label (Hub, Client, Start Session, Learning, My Studio, Calendar) reads in full, and no black strip sits under the bar. An icon added before Sep 27 keeps the old style: delete it and add it again first.
   - Nothing tappable sits under the clock or on the home indicator: the header, the bottom bar, the Notifications and Feedback sheets, the Active Session's Pulse, Notes and Watch-outs panels, the Packages sheet, Pulse "Hand to client" and the studio picker.
   - Rotate the iPad: it turns both ways.
   - Then run the sign-in test in `docs/rounds/2026-09-26-home-screen.md` **before telling trainers to use the icon**.

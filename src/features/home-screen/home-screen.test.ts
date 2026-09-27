@@ -61,10 +61,16 @@ describe("index.html", () => {
     expect(INDEX_HTML).toContain('<link rel="apple-touch-icon" href="/apple-touch-icon.png" />');
   });
 
-  it("uses the translucent status bar, which is why the status band exists", () => {
-    expect(meta("apple-mobile-web-app-status-bar-style")).toBe("black-translucent");
-    // The band is the first thing in <body>, outside React, so it is there on
-    // every screen: the sign-in, the crash page, every sheet.
+  it("lets iPadOS draw the status bar, because black-translucent cuts off the bottom bar", () => {
+    // AJ's iPad, Sep 27 2026: under black-translucent, iPadOS 26 lays the
+    // Home Screen app out a status bar taller than it shows it, so the bottom
+    // bar's labels ran into a black strip at the foot of the screen. With
+    // `default` iPadOS draws the status bar above the page, coloured from
+    // theme-color, and the page is exactly the screen below it.
+    expect(meta("apple-mobile-web-app-status-bar-style")).toBe("default");
+    // The band stays (0px while the top inset is 0) so black-translucent is
+    // one line away. It is the first thing in <body>, outside React, so it is
+    // there on every screen: the sign-in, the crash page, every sheet.
     expect(INDEX_HTML).toMatch(/<body>\s*(<!--[\s\S]*?-->\s*)?<div class="status-band" aria-hidden="true"><\/div>\s*<div id="root">/);
     expect(INDEX_CSS).toMatch(/\.status-band\s*\{[^}]*height:\s*env\(safe-area-inset-top, 0px\)/);
     expect(INDEX_CSS).toMatch(/\.dark \.status-band\s*\{\s*background:\s*transparent;/);

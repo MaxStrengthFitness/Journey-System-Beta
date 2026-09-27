@@ -19,13 +19,18 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Journey" />
-    <!-- The page draws under the status bar, whose clock and battery are
-         always WHITE in this style. Dark theme: the header's own colour runs
-         up behind them. Light theme: the .status-band below paints a dark
-         strip, or the clock would be white on white. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- The dark header (--bg-dark-2). ThemeProvider keeps it in step with
-         the theme; the script below sets it before the first paint. -->
+    <!-- iPadOS draws its own status bar ABOVE the page and colours it with
+         theme-color (below): the header's navy in the dark theme, white in
+         the light. It was black-translucent (the page running up under the
+         clock) until Sep 27 2026, when AJ's iPad showed the iPadOS 26 bug in
+         that style: the app is laid out a status bar taller than it is shown,
+         so the bottom bar's labels ran into a black strip at the foot of the
+         screen. iOS reads this tag when the icon is added: after changing it,
+         delete the Home Screen icon and add it again. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- The dark header (--bg-dark-2), which is also the Home Screen app's
+         status bar. ThemeProvider keeps it in step with the theme; the
+         script below sets it before the first paint. -->
     <meta name="theme-color" content="#16263D" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -34,8 +39,8 @@
       // The theme before the first paint. ThemeProvider (src/components/
       // ThemeProvider.tsx) owns the theme once React runs; until then <html>
       // has no .dark class, so a Home Screen launch painted the LIGHT ground
-      // for a moment even though the app defaults to dark, and under the
-      // translucent status bar that is a white clock on a near-white screen.
+      // for a moment even though the app defaults to dark, and iPadOS
+      // coloured the status bar from a theme-color that did not match.
       // Same key, same default ("dark", from main.tsx) and same "system" rule
       // as ThemeProvider; the colours are the header's (--bg-dark-2).
       (function () {
@@ -83,7 +88,10 @@
   <body>
     <!-- The strip under the iPad status bar, on every screen including the
          sign-in, the crash page and every sheet. Its height is the status
-         bar's inset, so it is 0px in a Safari tab. index.css, "Safe areas". -->
+         bar's inset, so it is 0px in a Safari tab, and in the Home Screen app
+         too while the status bar style above is "default". It is kept so the
+         style can go back to black-translucent in one line. index.css, "Safe
+         areas". -->
     <div class="status-band" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
