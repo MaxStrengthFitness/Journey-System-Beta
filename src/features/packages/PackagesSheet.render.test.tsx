@@ -161,7 +161,7 @@ describe("the sheet opens", () => {
   it("as a dialog named for the studio, reading that studio's table", async () => {
     const m = await mount();
     expect(dialog()).not.toBeNull();
-    expect(dialog()!.querySelector(".pk-title")?.textContent).toBe("Packages at Westlake");
+    expect(dialog()!.querySelector(".pk-heading")?.textContent).toBe("Packages at Westlake");
     expect(hook.calls).toContain("westlake");
     expect(text()).toContain("Westlake’s prices");
     await unmount(m);
@@ -169,7 +169,7 @@ describe("the sheet opens", () => {
 
   it("with no studio name, as just Packages", async () => {
     const m = await mount({ studioName: null });
-    expect(dialog()!.querySelector(".pk-title")?.textContent).toBe("Packages");
+    expect(dialog()!.querySelector(".pk-heading")?.textContent).toBe("Packages");
     await unmount(m);
   });
 
@@ -417,7 +417,7 @@ describe("the review's cases (Sep 24)", () => {
     await click(lengths()[3]);
     expect(dialog()!.querySelector(".pk-selected .cx-eyebrow")?.textContent).toMatch(/^Once a week/);
     // With once a week on screen, nothing claims every package is twice a week.
-    expect(dialog()!.querySelector(".pk-lede")?.textContent).not.toMatch(/twice a week/);
+    expect(dialog()!.querySelector(".pk-intro")?.textContent).not.toMatch(/twice a week/);
     expect(dialog()!.querySelector(".pk-week")).toBeNull();
     await click(button("Trainer notes"));
     await click(button("On their screen"));
@@ -478,7 +478,7 @@ describe("the method's words", () => {
     const m = await mount();
     // The guarantee's own condition ("show up twice a week") is Max
     // Strength's words and stays; the screen's own claims go.
-    expect(dialog()!.querySelector(".pk-lede")?.textContent).not.toMatch(/twice a week/);
+    expect(dialog()!.querySelector(".pk-intro")?.textContent).not.toMatch(/twice a week/);
     expect(text()).not.toContain("twenty minutes twice a week");
     expect(dialog()!.querySelector(".pk-week")).toBeNull();
     expect(dialog()!.querySelector('[data-testid="pk-life-sentence"]')?.textContent).toMatch(/^At once a week/);

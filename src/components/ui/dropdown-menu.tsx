@@ -2,6 +2,7 @@ import * as React from "react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 
 import { cn } from "@/lib/utils"
+import { popupCollisionPadding } from "@/features/home-screen/safe-area"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
@@ -28,9 +29,13 @@ function DropdownMenuContent({
     MenuPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   >) {
+  // A long menu stops short of the iPad status bar and home indicator, not
+  // 5px from the glass (features/home-screen/safe-area.ts). Read once a mount.
+  const [collisionPadding] = React.useState(() => popupCollisionPadding())
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
+        collisionPadding={collisionPadding}
         className="isolate z-50 outline-none"
         align={align}
         alignOffset={alignOffset}

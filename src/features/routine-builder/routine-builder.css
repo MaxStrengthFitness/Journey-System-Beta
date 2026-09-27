@@ -40,6 +40,18 @@
   font-family: var(--rb-font);
 }
 
+/* The builder's own sheets (Add a machine, Suggestions, Swap, Muscles worked,
+   Programming notes) put .rb on the Sheet popup itself, so the height above
+   makes that "bottom" sheet the full height of the screen, which is the room
+   the picker uses. In the Home Screen app the top of the screen is the iPad
+   status bar, so the sheet starts below it instead: top at the inset, bottom
+   at the edge, and the height between the two (features/home-screen). In a
+   Safari tab the inset is 0 and nothing changes. */
+.rb[data-slot="sheet-content"] {
+  top: env(safe-area-inset-top, 0px);
+  height: auto;
+}
+
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 .rb-head {

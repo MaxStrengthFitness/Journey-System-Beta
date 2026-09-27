@@ -2,6 +2,7 @@ import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 
 import { cn } from "@/lib/utils";
+import { popupCollisionPadding } from "@/features/home-screen/safe-area";
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
 
 const Select = SelectPrimitive.Root;
@@ -68,9 +69,13 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
+  // A long list stops short of the iPad status bar and home indicator, not
+  // 5px from the glass (features/home-screen/safe-area.ts). Read once a mount.
+  const [collisionPadding] = React.useState(() => popupCollisionPadding());
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
+        collisionPadding={collisionPadding}
         side={side}
         sideOffset={sideOffset}
         align={align}

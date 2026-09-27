@@ -195,10 +195,10 @@ function Frame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="cx-kit pk-sheet">
+    <div className="cx-kit pk-frame">
       <header className="pk-head">
         <div className="pk-head__id">
-          <DialogTitle className="pk-title">{title}</DialogTitle>
+          <DialogTitle className="pk-heading">{title}</DialogTitle>
           {source ? <Source>{source}</Source> : null}
         </div>
         {controls ? <div className="pk-head__controls">{controls}</div> : null}
@@ -207,10 +207,10 @@ function Frame({
           <Btn icon={X} className="pk-close" aria-label="Close the packages" onClick={onClose} />
         </div>
       </header>
-      <div className="pk-body" key={bodyKey}>
+      <div className="pk-scroll" key={bodyKey}>
         {children}
       </div>
-      <footer className="pk-foot">
+      <footer className="pk-actions">
         <Btn variant="solid" onClick={onClose}>
           Done
         </Btn>

@@ -15,7 +15,14 @@
 
 /* ---- the sheet: head, scrolling body, foot ---------------------------- */
 
-.pk-sheet {
+/* Frame, heading, scroll, actions and intro: NOT .pk-sheet / .pk-title /
+   .pk-body / .pk-foot / .pk-lede. Relay's kit (relay/kit.css) owns those
+   names, both files are global, and once both chunks had loaded each file's
+   rules landed on the other's screens: five Relay dialogs grew to the full
+   screen height (their titles under the iPad status bar), and this sheet's
+   body was capped at 64% of the screen (Home Screen round, Sep 26 2026). */
+
+.pk-frame {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -23,7 +30,7 @@
   min-height: 0;
   background: var(--cx-bg);
   color: var(--cx-ink);
-  container: pk-sheet / inline-size;
+  container: pk-frame / inline-size;
 }
 
 .pk-head {
@@ -65,7 +72,7 @@
   gap: 10px 18px;
 }
 
-.pk-title {
+.pk-heading {
   margin: 0;
   color: var(--cx-ink);
   font-family: var(--cx-font-body);
@@ -80,7 +87,7 @@
   min-height: 44px;
 }
 
-.pk-body {
+.pk-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -89,11 +96,11 @@
   container: pk / inline-size;
 }
 
-.pk-body > * {
+.pk-scroll > * {
   flex: none;
 }
 
-.pk-foot {
+.pk-actions {
   flex: none;
   display: flex;
   justify-content: flex-end;
@@ -103,7 +110,7 @@
   background: var(--cx-surface);
 }
 
-.pk-foot .cx-btn {
+.pk-actions .cx-btn {
   min-height: 48px;
   min-width: 120px;
 }
@@ -137,7 +144,7 @@
   min-width: 0;
 }
 
-.pk-lede {
+.pk-intro {
   display: grid;
   gap: 4px;
 }
@@ -533,7 +540,7 @@
   }
 }
 
-@container pk-sheet (min-width: 1000px) {
+@container pk-frame (min-width: 1000px) {
   .pk-head {
     padding-inline: 24px;
   }

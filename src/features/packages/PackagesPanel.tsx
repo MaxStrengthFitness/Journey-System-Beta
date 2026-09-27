@@ -163,7 +163,7 @@ export function PackagesPanel({
     <div className="cx-kit pk-panel">
       <div className="pk-inner">
         <div className="pk-col">
-          <div className="pk-lede">
+          <div className="pk-intro">
             <p className="cx-lede">{intro.title}</p>
             <p className="pk-text pk-text--quiet">{intro.sub}</p>
           </div>
