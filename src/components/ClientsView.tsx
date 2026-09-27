@@ -1537,17 +1537,21 @@ export function ClientsView({
                           <div className="flex items-center gap-2 shrink-0">
                             <Button
                               variant="outline"
-                              className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
+                              className="h-20 w-20 px-1.5 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
                               onClick={() => {
                                 // The client's history lives on their profile:
-                                // Activity Archive -> Sessions.
+                                // Activity Archive -> Sessions. The label says
+                                // what it opens ("History" until the voice
+                                // review follow-up); it wraps to two lines
+                                // inside the 80px square rather than truncate,
+                                // which is what the narrower padding is for.
                                 onSelectClient(client.id!);
                                 openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
                                 setView("profile");
                               }}
                             >
                               <History className="w-6 h-6" />
-                              <span className="text-[11px]">History</span>
+                              <span className="text-[11px] leading-tight text-center whitespace-normal">Past sessions</span>
                             </Button>
                             <Button
                               className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 shadow-lg shadow-primary/20 uppercase"

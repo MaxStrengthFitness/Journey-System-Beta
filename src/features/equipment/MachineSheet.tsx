@@ -53,11 +53,12 @@ import { noMachineHistoryBody, noMachineHistoryLine } from "../../lib/history-cl
  * screen. The name stuck.
  *
  * Every write goes through `features/equipment/mutations.ts` — the same
- * functions the Equipment tab calls. That is what makes the promise in the
- * spec true rather than aspirational: a setting changed here lands in
- * `clientMachineSettings`, in `machines/{id}/settingHistory` with its
- * reason, and in the client's Journal, so it is already on the client's
- * Equipment tab by the time the trainer walks back to the desk. The old
+ * functions the profile's machine window calls. That is what makes the
+ * promise in the spec true rather than aspirational: a setting changed here
+ * lands in `clientMachineSettings`, in `machines/{id}/settingHistory` with
+ * its reason, and in the client's journal, so it is already on the client's
+ * Programming → All Machines (the machine's history) by the time the trainer
+ * walks back to the desk. (It was the Equipment tab until Sep 15.) The old
  * in-session dialog wrote its own third copy to a `machineSettingChanges`
  * collection that nothing in the app has ever read.
  */
@@ -256,7 +257,7 @@ export function MachineSheet({
               journal={journal}
               onSaved={(result) =>
                 announce(
-                  `Saved to ${client?.firstName || "the client"}'s profile — ${result.summary}. Logged to their Equipment tab.`,
+                  `Saved to ${client?.firstName || "the client"}'s profile — ${result.summary}. Logged to the machine's history (Programming → All Machines).`,
                 )
               }
               onError={onError}

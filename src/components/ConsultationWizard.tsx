@@ -229,7 +229,7 @@ export function ConsultationWizard({
           );
         } catch (err) {
           console.error("[consultation] the setup note did not reach the Journal", err);
-          toastError("The consultation is saved, but the setup note did not. Add it from the Journal.");
+          toastError("The consultation is saved, but the setup note did not. Add it from Notes & Profile → Notes.");
         }
       }
 

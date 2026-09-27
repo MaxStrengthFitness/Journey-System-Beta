@@ -2467,7 +2467,7 @@ export function ClientProgressReportView({
             </h2>
             <div className="space-y-4">
               <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
-                Lead Practitioner Wrap-Up
+                Your closing note, printed at the end of the report
               </Label>
               <Textarea
                 value={report.trainerNotes}

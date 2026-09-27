@@ -310,7 +310,7 @@ export const PROFILE_TABS: { id: ProfileTab; label: string; blurb: string }[] = 
   { id: "journey", label: "Journey", blurb: "Every machine she has performed, in order" },
   { id: "programming", label: "Programming", blurb: "What she is prescribed and how it is set up" },
   { id: "record", label: "Notes & Profile", blurb: "Everything written down, and who she is" },
-  { id: "clinical", label: "Activity Archive", blurb: "Every visit, the trends, and the filed reports" },
+  { id: "clinical", label: "Activity Archive", blurb: "Every visit, the Deep Dive, and the filed reports" },
 ];
 
 /* ------------------------------------------------------------------ *

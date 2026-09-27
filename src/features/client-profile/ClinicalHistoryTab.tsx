@@ -169,7 +169,7 @@ export function ClinicalHistoryTab({
       )}
       {onEditMedical && (
         <button type="button" className="ptab-strip__edit" onClick={onEditMedical}>
-          Edit in Body
+          Edit in Body & Pulse
         </button>
       )}
     </div>

@@ -366,13 +366,14 @@
 }
 .ptab-strip__edit {
   margin-left: auto;
-  height: 30px;
-  padding: 0 11px;
+  /* A tap target: the 40px floor. It was 30px with 10px type. */
+  min-height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--psub-border);
   border-radius: 9px;
   background: transparent;
   color: var(--psub-live-soft);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
