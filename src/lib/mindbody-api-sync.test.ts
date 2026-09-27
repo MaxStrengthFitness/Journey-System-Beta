@@ -118,7 +118,16 @@ vi.mock("firebase/firestore", () => {
 });
 
 import { getDocs } from "firebase/firestore";
-import { resolveStudioId, syncMindbodySchedules, syncWindow, REFRESH_WINDOW_DAYS, DEEP_WINDOW_DAYS, NEAR_WINDOW_DAYS } from "./mindbody-api-sync";
+import {
+  resolveStudioId,
+  syncMindbodySchedules,
+  syncWindow,
+  screenSyncWindow,
+  settleWindowFor,
+  REFRESH_WINDOW_DAYS,
+  DEEP_WINDOW_DAYS,
+  NEAR_WINDOW_DAYS,
+} from "./mindbody-api-sync";
 
 const SITE = "29068";
 
@@ -1087,6 +1096,68 @@ describe("syncWindow — how far ahead a sync reaches", () => {
     const w = syncWindow("America/New_York", Number.NaN, NOON);
     expect(w.start).toBe("2026-09-22");
     expect(w.end).toBe("2026-09-30");
+  });
+});
+
+describe("screenSyncWindow — the calendar's Refresh asks for the days on screen", () => {
+  const NY = "America/New_York";
+  const NOON = new Date("2026-09-22T16:00:00Z"); // Tuesday Sep 22, midday in New York
+  // The calendar hands over local-noon dates (features/calendar visibleRange).
+  const day = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12);
+
+  it("this month's grid is pulled from today to its last square, never the days already past", () => {
+    // September's six-week grid runs Aug 30 - Oct 10.
+    expect(screenSyncWindow(day(2026, 8, 30), day(2026, 10, 10), NY, NOON)).toEqual({
+      start: "2026-09-22",
+      end: "2026-10-10",
+    });
+  });
+
+  it("next month's grid is pulled whole, past the thirty days the morning pull reaches", () => {
+    expect(screenSyncWindow(day(2026, 9, 27), day(2026, 11, 7), NY, NOON)).toEqual({
+      start: "2026-09-27",
+      end: "2026-11-07",
+    });
+  });
+
+  it("a week or a single day on screen is exactly that", () => {
+    expect(screenSyncWindow(day(2026, 10, 4), day(2026, 10, 10), NY, NOON)).toEqual({
+      start: "2026-10-04",
+      end: "2026-10-10",
+    });
+    expect(screenSyncWindow(day(2026, 9, 22), day(2026, 9, 22), NY, NOON)).toEqual({
+      start: "2026-09-22",
+      end: "2026-09-22",
+    });
+  });
+
+  it("a screen that is wholly past asks Mindbody for nothing", () => {
+    expect(screenSyncWindow(day(2026, 7, 26), day(2026, 9, 5), NY, NOON)).toBeNull();
+    expect(screenSyncWindow(day(2026, 9, 21), day(2026, 9, 21), NY, NOON)).toBeNull();
+  });
+
+  it("today is the STUDIO's today, not the browser's", () => {
+    // 01:00 UTC on the 23rd is still the evening of the 22nd in New York.
+    const lateUtc = new Date("2026-09-23T01:00:00Z");
+    expect(screenSyncWindow(day(2026, 9, 22), day(2026, 9, 22), NY, lateUtc)).toEqual({
+      start: "2026-09-22",
+      end: "2026-09-22",
+    });
+  });
+});
+
+describe("settleWindowFor — where a manual pull settles a booking that left it", () => {
+  const NY = "America/New_York";
+  const NOON = new Date("2026-09-22T16:00:00Z");
+
+  it("the header's week settles against the month ahead, as it always did", () => {
+    const week = syncWindow(NY, REFRESH_WINDOW_DAYS, NOON);
+    expect(settleWindowFor(week, NY, NOON)).toEqual(syncWindow(NY, DEEP_WINDOW_DAYS, NOON));
+  });
+
+  it("a calendar pull that reaches past the month is covered to its last day", () => {
+    const november = { start: "2026-09-27", end: "2026-11-07" };
+    expect(settleWindowFor(november, NY, NOON)).toEqual({ start: "2026-09-22", end: "2026-11-07" });
   });
 });
 

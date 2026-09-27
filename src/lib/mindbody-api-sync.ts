@@ -436,7 +436,8 @@ function studioDayKeyOfInstant(ms: number, tz: string): string {
  * DEEP_WINDOW_DAYS — what the background auto-sync pulls, unchanged at 30.
  *   The calendar can ask Firestore for any month it likes, but Firestore only
  *   holds what a sync put there, so something has to keep reaching past the
- *   week. Nobody watches the auto-sync, so it can afford to.
+ *   week. Nobody watches the auto-sync, so it can afford to. The calendar's
+ *   own Refresh reaches whatever is on screen (`screenSyncWindow` below).
  *
  * If you want the button to cover only today, this is the line: make it 1.
  * The cost is that a booking made for next Tuesday will not appear until the
@@ -467,6 +468,49 @@ export function syncWindow(
     start: studioTodayKey(now, timeZone),
     end: studioTodayKey(new Date(now.getTime() + safeDays * 24 * 60 * 60 * 1000), timeZone),
   };
+}
+
+/**
+ * The days the CALENDAR's Refresh asks Mindbody for: the ones on screen
+ * (AJ, Sep 26 2026: "if we refresh from there it should refresh the month
+ * that we're looking at"). The header's button stays the week ahead.
+ *
+ * Never before today, like every other pull: the header's button, the
+ * thirty-minute pull and the morning month all start at today, and a day
+ * already past is what Journey saved about it. A screen that is wholly past
+ * gets null, and Refresh there only re-reads what Journey holds.
+ */
+export function screenSyncWindow(
+  from: Date,
+  to: Date,
+  timeZone?: string,
+  now: Date = new Date(),
+): { start: string; end: string } | null {
+  // No zone means the active studio's, as in syncWindow; a bad one, Eastern.
+  const zone =
+    timeZone === undefined ? undefined : isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIME_ZONE;
+  const today = studioTodayKey(now, zone);
+  const first = studioDateKey(from, zone);
+  const last = studioDateKey(to, zone);
+  if (!first || !last) return null;
+  const start = first > today ? first : today;
+  return last < start ? null : { start, end: last };
+}
+
+/**
+ * Where a manual pull settles a booking that left its window (`settleSweepWith`):
+ * the month ahead, as it always was for the header's week, stretched to the
+ * pull's own last day when the calendar reached further out. The wider pull
+ * must cover every day the first one did, or a booking that left a far day
+ * would be neither cancelled nor found.
+ */
+export function settleWindowFor(
+  win: { start: string; end: string },
+  timeZone?: string,
+  now: Date = new Date(),
+): { start: string; end: string } {
+  const month = syncWindow(timeZone, DEEP_WINDOW_DAYS, now);
+  return { start: month.start, end: win.end > month.end ? win.end : month.end };
 }
 
 export async function syncMindbodySchedules(
