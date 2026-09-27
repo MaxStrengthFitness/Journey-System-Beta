@@ -12,7 +12,8 @@
  *     choices (the Relay form's defaults were refused at every studio), and
  *     names a studio it missed, posting there only on Launch again;
  *   - a studio leader is offered neither; an owner with no network is told
- *     there is nowhere to keep a focus;
+ *     there is nowhere to keep a focus, but only once the networks have been
+ *     read: an empty list is "can't see the networks yet";
  *   - an owner is offered the focus of every network that holds a studio in
  *     scope, listed on it or not (AJ, Sep 27 2026), and none from the
  *     practice studio (the Demo Mode realm rule).
@@ -156,10 +157,20 @@ describe("Focus this quarter", () => {
     expect(el.textContent).toContain("No focus yet: the Floors show nothing.");
   });
 
-  it("tells an owner with no network there is nowhere to keep one", async () => {
-    const el = await render({ networks: [] });
+  it("tells an owner with no network there is nowhere to keep one, once the networks have been read", async () => {
+    const elsewhere: FranchiseNetwork = { id: "n-west", name: "West", studioIds: ["denver"] };
+    const el = await render({ networks: [elsewhere] });
     expect(el.textContent).toContain("No network yet");
     expect(el.textContent).toContain("None of these studios is in a network");
+  });
+
+  it("never says a studio is not in a network while the networks have not come through (a failed read is unknown, never empty)", async () => {
+    const el = await render({ networks: [] });
+    expect(el.textContent).toContain("Can't see the networks yet");
+    expect(el.textContent).toContain("it can't tell yet whether these studios are in one");
+    expect(el.textContent).not.toContain("not in a network");
+    const one = await render({ networks: [], studios: [studios[0]] });
+    expect(one.textContent).toContain("whether Solon is in one");
   });
 
   it("offers an owner the focus of a network that holds their studio, even one that does not list them", async () => {

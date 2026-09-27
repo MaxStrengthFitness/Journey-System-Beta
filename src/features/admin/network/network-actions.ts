@@ -71,6 +71,32 @@ export function focusableNetworks(
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
 }
 
+/**
+ * Why no focus editor is offered, when none is: the studios in scope are not
+ * in a network, or the screen cannot tell yet.
+ *
+ * `networks` is the live list (hooks/useNetworks). It is empty while it
+ * loads and after a failed read, and the hook says neither, so an empty list
+ * cannot tell "not in a network" from "not read yet": a failed read means
+ * unknown, never empty. A studio whose own record names a network the list
+ * does not hold is the same. Only a list that came back, with no studio
+ * pointing past it, lets the screen say a studio is not in a network. The
+ * practice studio is never offered a network (the realm rule above), so
+ * standing there the answer is known whatever the list holds.
+ */
+export type NoFocusReason = "not-in-network" | "cannot-tell";
+
+export function noFocusReason(
+  studios: readonly { id?: string | null; networkId?: string | null }[],
+  networks: readonly Pick<FranchiseNetwork, "id">[],
+): NoFocusReason {
+  const real = studios.filter((s) => Boolean(s.id) && !isDemoStudioId(s.id));
+  if (real.length === 0) return "not-in-network";
+  if (networks.length === 0) return "cannot-tell";
+  const read = new Set(networks.map((n) => n.id));
+  return real.some((s) => Boolean(s.networkId) && !read.has(s.networkId as string)) ? "cannot-tell" : "not-in-network";
+}
+
 /* ------------------------------------------------------------------ *
  * The focus
  * ------------------------------------------------------------------ */

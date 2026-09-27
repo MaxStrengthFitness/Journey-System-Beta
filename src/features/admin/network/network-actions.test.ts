@@ -8,6 +8,7 @@ import {
   launchOutcome,
   launchRequest,
   mayActForNetwork,
+  noFocusReason,
   studioList,
 } from "./network-actions";
 
@@ -69,6 +70,30 @@ describe("focusableNetworks", () => {
 
   it("gives a studio leader none", () => {
     expect(focusableNetworks({ id: "t-own", role: "StudioLeader" }, NETWORKS, all)).toEqual([]);
+  });
+});
+
+describe("noFocusReason", () => {
+  const solon = { id: "solon" };
+  const westlake = { id: "westlake", networkId: "n-ohio" };
+
+  it("cannot tell while the networks have not come through: an empty list is loading, failed or none, and the hook says which of those never", () => {
+    expect(noFocusReason([solon], [])).toBe("cannot-tell");
+    expect(noFocusReason([solon, westlake], [])).toBe("cannot-tell");
+  });
+
+  it("cannot tell when a studio's own record names a network the list does not hold", () => {
+    expect(noFocusReason([westlake], [{ id: "n-east" }])).toBe("cannot-tell");
+  });
+
+  it("says not in a network only once the list came back and no studio points past it", () => {
+    expect(noFocusReason([solon], [{ id: "n-east" }])).toBe("not-in-network");
+    expect(noFocusReason([{ id: "solon", networkId: null }], [{ id: "n-east" }])).toBe("not-in-network");
+  });
+
+  it("knows the practice studio is not in one, whatever the list holds (the realm rule)", () => {
+    expect(noFocusReason([{ id: "demo-studio" }], [])).toBe("not-in-network");
+    expect(noFocusReason([{ id: "demo-studio", networkId: "n-ohio" }], [{ id: "n-east" }])).toBe("not-in-network");
   });
 });
 

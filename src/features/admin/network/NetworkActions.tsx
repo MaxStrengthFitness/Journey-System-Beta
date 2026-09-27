@@ -14,11 +14,12 @@
  *                        rest it says who set it and on which day ("Set by
  *                        Ann Owner on Sep 27, 2026."). Every Floor in the
  *                        network shows it (relay/board/FocusBanner).
- *   Launch an initiative one ask at every studio in the reader's "All my
- *                        studios" (never Demo Mode's, by the realm rule in
- *                        scope.ts), after a confirmation that names each
- *                        studio. A studio the launch missed is named, and
- *                        Launch again posts there only.
+ *   Launch an initiative one ask at every studio in scope, after a
+ *                        confirmation that names each studio: under "All my
+ *                        studios" never the practice studio (the realm rule
+ *                        in scope.ts), and from the practice studio's own
+ *                        footer only there. A studio the launch missed is
+ *                        named, and Launch again posts there only.
  *
  * Shown to the people who saw Relay → Network: franchise owners and the
  * company (mayActForNetwork). Each of them is offered the focus of every
@@ -29,6 +30,11 @@
  * studios" to choose) at the foot of that studio's Overview. Inside Demo Mode
  * that one studio is the practice studio, so no real network's focus is
  * offered there and a launch posts at the practice studio only.
+ *
+ * When no focus is offered, the panel says why only when it knows
+ * (noFocusReason): the networks list is empty while it loads and after a
+ * failed read, so an empty list reads "can't see the networks yet", never
+ * "not in a network".
  */
 import { useCallback, useMemo, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -63,6 +69,7 @@ import {
   launchOutcome,
   launchRequest,
   mayActForNetwork,
+  noFocusReason,
   studioList,
   type FocusFields,
   type LaunchDraft,
@@ -88,9 +95,15 @@ export function NetworkActions({ trainer, uid, studios, networks, todayKey }: Ne
     <>
       {focusable.length === 0 ? (
         <AdminPanel title="Focus this quarter" subtitle="Shown on every Floor in the network, as a quiet line." icon={<Sparkles className="w-4 h-4" />}>
-          <AdminEmpty title="No network yet">
-            {studios.length === 1 ? `${studios[0].name} is not in a network` : "None of these studios is in a network"}, so there is nowhere to keep a shared focus.
-          </AdminEmpty>
+          {noFocusReason(studios, networks) === "cannot-tell" ? (
+            <AdminEmpty title="Can't see the networks yet">
+              {`Journey hasn't read the networks, so it can't tell yet whether ${studios.length === 1 ? `${studios[0].name} is` : "these studios are"} in one.`}
+            </AdminEmpty>
+          ) : (
+            <AdminEmpty title="No network yet">
+              {studios.length === 1 ? `${studios[0].name} is not in a network` : "None of these studios is in a network"}, so there is nowhere to keep a shared focus.
+            </AdminEmpty>
+          )}
         </AdminPanel>
       ) : (
         focusable.map((n) => <FocusEditor key={n.id} network={n} by={by} title={focusable.length > 1 ? `Focus this quarter · ${n.name}` : "Focus this quarter"} />)

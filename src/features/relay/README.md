@@ -5,16 +5,16 @@
 context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
 the studio's staff), and the Network tab moved to Operations → Overview → All
-my studios (voice-review round, Sep 27 2026; its ranking of studios was dropped), so the
-board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
+my studios (voice-review round, Sep 27 2026; its ranking of studios was
+dropped), so the board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
 
 **Relay (Sep 16 2026)** rebuilt the Planner as the studio's asynchronous
 board and each trainer's second brain: the Now Bar, one Capture composer,
 Next up and the Floor Map on the Floor, Mine's four lanes, the two-pane note
-editor, the Team cockpit and the vault (Team is people and standards since Sep 27), the Network tab (now on Operations), the Calendar layer,
-kudos. Everything Relay added lives in `board/` (its own README there; it was
+editor, the Team cockpit and the vault (Team is people and standards since
+Sep 27), the Network tab (now on Operations), the Calendar layer, kudos. Everything Relay added lives in `board/` (its own README there; it was
 `planner/relay/` until the beta-prep trim renamed this folder from
 `features/planner/` to `features/relay/` on Sep 17 2026); the round is
 `docs/rounds/2026-09-16-relay.md`. The view id stays `studio-tasks`.
@@ -83,7 +83,7 @@ Overview for a franchise owner who sees one studio
 
 - **Name kept: Planner**, not "Command" (the brief's suggestion). **Sharing is a copy**, not an `isShared` flag.
 - **Team jobs** (`jobs/`) are neither task templates (those reset daily) nor board requests (those belong to whoever picks them up). One document at `studios/{s}/teamJobs/{id}`; parts are a MAP written one key at a time so two iPads never erase each other's ticks. **Nothing locks**: anyone at the studio can tick or close.
-- **The Team tab counts only work with someone's name on it** (`team/accountability.ts` — its header is the rulebook). Today isn't judged; skipped isn't missed; a task someone else finished is done; notes are never counted. Counts with the thing named, no percentages. People are listed **by name, never ranked**, with no "Behind" verdict (voice-review round, Sep 27 2026: they were behind first, by a weight nobody saw).
+- **My Studio → Team counts only work with someone's name on it** (it was Relay's Team tab) (`team/accountability.ts` — its header is the rulebook). Today isn't judged; skipped isn't missed; a task someone else finished is done; notes are never counted. Counts with the thing named, no percentages. People are listed **by name, never ranked**, with no "Behind" verdict (voice-review round, Sep 27 2026: they were behind first, by a weight nobody saw).
 - **Leader-only parts follow the studio the iPad is in** (`leads.ts`, the same answer as the `teamJobs` rules). `isStudioLeader` alone would offer a visiting head trainer buttons the rules refuse.
 - **A reminder is a personal task with a set time** and `remindMinutesBefore` (`reminders/`). The trainer's own iPad writes the bell notification while the app is open (`PlannerReminders`, mounted in `AppContent`), at a fixed id so two iPads ring once; up to `LATE_GRACE_MINUTES` late. Nothing is pushed, texted or emailed.
 - **The task form is a wizard** (`studio-tasks/TaskWizard.tsx`, pure steps in `task-wizard.ts`) ending with a sentence. `saveTaskTemplate` strips `undefined` — Firestore refuses it.
@@ -94,14 +94,14 @@ Overview for a franchise owner who sees one studio
 | File | What |
 | --- | --- |
 | `PlannerView.tsx` | Relay's tab bar, the Now Bar and the board under My Studio's masthead (`features/my-studio/MyStudioView` owns the masthead, Capture and the Context Panel) |
-| `GlanceBand.tsx` | The Studio tab's three at-a-glance tiles |
-| `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
+| `GlanceBand.tsx` | The Floor's three at-a-glance tiles, drawn by `studio-tasks/StudioHubView` (it was the Planner's Studio tab) |
+| `MyTasksPanel.tsx` + `my-tasks.ts` | Mine (it was My tasks), and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | My Studio → Team, people and standards: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
 | `notes/` | The Notes tab — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
 | `leads.ts` | Who leads the studio the iPad is in (`leadsHere`): My Studio asks it for Team and Studio, and the rules give the same answer |
-| `intent.ts` (+ test) | Opening the Planner at a note, a job, a share or My tasks |
+| `intent.ts` (+ test) | Opening Relay at a note, a job, a share, Mine or the Floor |
 | `planner.render.test.tsx` | Mounts My Studio: Relay's three tabs and every section, and opens a note, the task wizard and the job composer |
 | `planner.css` | On the Studio Hub's `--st-*` tokens |
