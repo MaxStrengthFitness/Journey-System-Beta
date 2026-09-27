@@ -17,8 +17,10 @@ import type { StandingWeekDoc } from "./week";
 
 const fake = vi.hoisted(() => ({
   writes: [] as { op: "set" | "delete"; path: string; data?: Record<string, unknown>; options?: unknown }[],
-  weeks: { docs: [] as unknown[], loading: false, error: null as string | null },
+  weeks: { docs: [] as StandingWeekDoc[], loading: false, error: null as string | null },
   schedule: { entries: [] as unknown[], loading: false, failed: false },
+  /** The studio each render asked useWeekSchedule for (null: no read). */
+  scheduleAsked: [] as (string | null)[],
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-pat" } }, functions: {} }));
@@ -40,7 +42,12 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   };
 });
 vi.mock("./useStandingWeeks", () => ({ useStandingWeeks: () => fake.weeks }));
-vi.mock("../admin/changes/useWeekSchedule", () => ({ useWeekSchedule: () => fake.schedule }));
+vi.mock("../admin/changes/useWeekSchedule", () => ({
+  useWeekSchedule: (studioId: string | null) => {
+    fake.scheduleAsked.push(studioId);
+    return fake.schedule;
+  },
+}));
 
 import { StandingWeeksPanel } from "./StandingWeeksPanel";
 
@@ -85,6 +92,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T12:00:00-04:00") });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   fake.writes.length = 0;
+  fake.scheduleAsked.length = 0;
   fake.weeks = {
     docs: [
       weekDoc("t-sam", { trainerName: "Sam Lee", proposed: samProposal, proposedAt: new Date("2026-09-27T14:00:00Z") }),
@@ -186,5 +194,45 @@ describe("Standing weeks on Team", () => {
     expect(fake.writes).toHaveLength(0);
     await click("Remove it");
     expect(fake.writes).toEqual([{ op: "delete", path: "studios/solon/standingWeeks/t-ann" }]);
+  });
+
+  it("checks only the weeks of people who still work here", async () => {
+    const leftBehind = weekDoc("t-gone", {
+      trainerName: "Gone Away",
+      final: { hours: [], regulars: [{ id: "g1", weekday: 1, start: "10:00", clientId: "c-judy", clientName: "Judy Smith" }] },
+    });
+    fake.weeks = { ...fake.weeks, docs: [...fake.weeks.docs, leftBehind] };
+    await mount();
+    const findings = host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']");
+    expect(findings?.textContent).not.toContain("Gone");
+    expect(findings?.querySelectorAll("li")).toHaveLength(1);
+    // Listed after the staff, so a leader can remove it.
+    expect([...host.querySelectorAll(".adm-row__name")].map((n) => n.textContent)).toEqual(["Ann Park", "Sam Lee", "Gone Away"]);
+  });
+
+  it("reads the week's bookings only when there is an agreed week to check them against", async () => {
+    fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0]] }; // Sam's proposal only
+    await mount();
+    expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
+    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toContain("No standing week is agreed yet");
+    act(() => root.unmount());
+    root = createRoot(host);
+    fake.scheduleAsked.length = 0;
+    await mount({ ...studio, mindbodyMode: "offline" } as Studio);
+    expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
+  });
+
+  it("follows the trainer's newer proposal while the review is untouched", async () => {
+    await mount();
+    await click("Review: Sam Lee");
+    expect(host.querySelector("[aria-label='Tuesday: starts']")).not.toBeNull();
+    // Sam proposes again while the leader is looking: Wednesday, not Tuesday.
+    const again = { hours: [{ weekday: 3, from: "12:00", to: "18:00" }], regulars: [] };
+    fake.weeks = { ...fake.weeks, docs: [{ ...fake.weeks.docs[0], proposed: again }, fake.weeks.docs[1]] };
+    await mount();
+    expect(host.querySelector("[aria-label='Tuesday: starts']")).toBeNull();
+    expect(host.querySelector("[aria-label='Wednesday: starts']")).not.toBeNull();
+    await click("Agree this week");
+    expect(fake.writes[0].data).toMatchObject({ final: again });
   });
 });

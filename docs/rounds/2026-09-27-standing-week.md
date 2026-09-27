@@ -153,7 +153,12 @@ does.
 ## Phases
 
 All five were built on Sep 27 2026, one commit each ("Standing week 1" to
-"Standing week 5"), each typechecked on its own.
+"Standing week 5"), each typechecked on its own. Two more followed the merge
+of master: "Standing week 6" (a move claimed only with proof, the app
+review's real-rebook rule) and "Standing week 7" (Team checks only the weeks
+of people who still work there, reads the bookings only when something is
+agreed at a linked studio, and a review follows a proposal that changes
+while it is open).
 
 1. This proposal and the pure core (`standing-week/`: the week, the check),
    with tests.

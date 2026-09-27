@@ -189,7 +189,7 @@ deployed yet" rather than failing quietly.
 | | |
 | --- | --- |
 | Typecheck | 4 (the baseline) |
-| Suite | **5,863** passing in 377 files (`TZ=America/New_York npx vitest run --dir src`, the cloud container, after merging master) |
+| Suite | **5,866** passing in 377 files (`TZ=America/New_York npx vitest run --dir src`, the cloud container, after merging master) |
 | Rules tests | 173, in the cloud container; AJ's run is the one that counts |
 | Build | `npm run build` and `npm run build:backend` |
 | Case check | no two tracked files differ only by case |

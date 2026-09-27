@@ -50,21 +50,27 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   const tz = studio.timezone || undefined;
   const today = studioTodayKey(new Date(), tz);
   const weeks = useStandingWeeks(studioId);
-  const schedule = useWeekSchedule(studioId, today, tz);
   const [reviewing, setReviewing] = useState<string | null>(null);
 
   const rows = useMemo(() => teamWeeks(trainers, weeks.docs, studioId), [trainers, weeks.docs, studioId]);
+  // Only the weeks of people who still work here are checked: a week left
+  // behind by someone who left would list their old regulars as open slots.
+  const checked = useMemo(() => rows.filter((r) => r.onStaff && r.doc).map((r) => r.doc!), [rows]);
+  // The week's bookings are read only when there is something to check them
+  // against: an agreed week, at a studio whose Mindbody is linked.
+  const needsBookings = bookingsKnown(studio) && checked.some((d) => d.final);
+  const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz);
   const check = useMemo(
     () =>
       checkWeek({
-        docs: weeks.docs,
+        docs: checked,
         bookings: schedule.entries,
         today,
         tz,
         read: schedule.loading ? "loading" : schedule.failed ? "failed" : "ready",
         connected: bookingsKnown(studio),
       }),
-    [weeks.docs, schedule.entries, schedule.loading, schedule.failed, today, tz, studio],
+    [checked, schedule.entries, schedule.loading, schedule.failed, today, tz, studio],
   );
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;
@@ -178,6 +184,14 @@ function WeekReview({
   // A leader reviews the proposal when there is one; otherwise the agreed week.
   const initial = useMemo(() => formOf(doc?.proposed ?? doc?.final ?? null), [doc]);
   const [form, setForm] = useState<WeekForm>(initial);
+  // The trainer may propose again while this is open. Untouched, the editor
+  // follows them, so a leader never agrees a proposal that has since changed;
+  // once the leader has changed something, their changes stay.
+  const [base, setBase] = useState<WeekForm>(initial);
+  if (base !== initial) {
+    if (sameWeek(weekOfForm(form), weekOfForm(base))) setForm(initial);
+    setBase(initial);
+  }
   const [busy, setBusy] = useState<"agree" | "remove" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);

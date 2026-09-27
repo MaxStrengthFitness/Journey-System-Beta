@@ -54,8 +54,17 @@ both `final` and `proposed`. So the trainer's next edit starts from the
 agreed week, and a leader who changed something before agreeing isn't
 reported as "a change since it was agreed".
 
-**Only an AGREED week is checked.** A proposal says what a trainer would
-like; the agreed week is what the studio runs on.
+**Only an AGREED week is checked, and only for someone who still works
+here.** A proposal says what a trainer would like; the agreed week is what
+the studio runs on. A week left behind by someone who left is listed so a
+leader can remove it, but never checked — their old regulars would all read
+as open slots. The week's bookings are read only when there is something to
+check them against: an agreed week, at a studio whose Mindbody is linked.
+
+**A review follows the trainer until the leader changes something.** If the
+trainer proposes again while a leader has Review open, the untouched editor
+shows the newer proposal, so a leader never agrees one that has since
+changed; once the leader has edited it, their edits stay.
 
 **"Can't tell" is never "open".** A failed or unfinished read, or a studio
 whose Mindbody isn't linked (`bookingsKnown`), gives a sentence and no
