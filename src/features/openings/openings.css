@@ -1,0 +1,271 @@
+/* ==========================================================================
+   OPENINGS — My Studio → Openings (Openings round, Sep 27 2026)
+   --------------------------------------------------------------------------
+   The section sits in My Studio's shell: the masthead, Relay's light second
+   level (.pl__subbar, planner.css) and the frame with the Context Panel
+   beside it (relay.css). What is here is only Openings' own: the page, the
+   grid of the usual week, the lines of the next 7 days, the offers and the
+   people.
+
+   On the Studio Hub's --st-* tokens (studio-tasks.css), which carry the
+   app's colours; no hex below. What each colour MEANS is the app's: a hot
+   spot is the heat's orange (--st-hero), a time with room the action blue
+   (--st-live), caution the plum (--st-flag). Colour only ever echoes a word
+   that is also written: never the only signal, and never the kaizen red.
+   Nothing tappable under 40px; no name is cut short; type on the 11 / 12 /
+   14 / 17 / 30 scale. my-studio/look.test.ts holds this file to all of it.
+   ========================================================================== */
+
+/* The section fills the shell under the masthead: the parts, then the frame. */
+.op {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* My Studio's masthead with five sections (Relay · Openings · Machines ·
+   Team · Studio). Measured in headless Chrome when Openings joined: at
+   744px (an iPad mini in portrait) the studio-and-date line was squeezed
+   to 60px and wrapped onto four lines, making the bar 73px tall. So in
+   portrait it moves under the tabs, as the round planned. It lives here, in
+   the round's own stylesheet, because the fifth section is Openings. */
+@media (max-width: 899px) {
+  .ms > .pl__mast {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+  .ms > .pl__mast > .pl__where {
+    order: 3;
+    flex: 1 0 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
+
+/* The parts wrap onto a second line rather than scroll sideways, and their
+   words are never hidden (Relay's own labels hide below 640px). */
+.op__subbar .pl__tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.op__tab-label { overflow-wrap: anywhere; }
+
+/* A part scrolls as one page. It is the grid's container, so the grid
+   follows the part's own width, not the screen's: with the Context Panel
+   open beside it on a landscape iPad the part is ~660-830px wide. */
+.op__page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.875rem 1rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  container-type: inline-size;
+  container-name: op-page;
+}
+.op__page > * { flex: none; }
+
+/* A part's heading: the one heading style (planner.css, .pl__h2). */
+.op__h {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-2);
+}
+
+/* A part's one sentence when it has nothing else to say (loading, never
+   built, not enough weeks, not linked). */
+.op__lead {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-ink-2);
+}
+
+.op__meta { display: grid; gap: 4px; }
+.op__line {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-ink-2);
+}
+.op__line--quiet { font-size: 12px; color: var(--st-ink-muted); }
+/* A summary more than a week old: its date, plainly, in the caution plum. */
+.op__line--old { font-size: 12px; font-weight: 700; color: var(--st-flag); }
+/* "Safe to show a client", over A new regular time. */
+.op__safe {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-done);
+}
+/* The foot every offer ends with. */
+.op__foot {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--st-ink-muted);
+}
+
+/* ------------------------------------------------------------------ *
+ * Chips: whose times, and the day picker
+ * ------------------------------------------------------------------ */
+
+.op-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* The chip voice (look.test.ts): 12px, bold, sentence case, 40px. */
+.op-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.op-chip[aria-pressed="true"] {
+  background: var(--st-live-fill);
+  border-color: var(--st-live);
+  color: var(--st-live);
+}
+.op-chip:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* The day picker shows only when the part is too narrow for six days. */
+.op-days { display: none; }
+
+/* ------------------------------------------------------------------ *
+ * The usual week: Monday to Saturday across, half-hours down
+ * ------------------------------------------------------------------ */
+
+.op-grid {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  align-items: stretch;
+}
+.op-grid__corner { position: sticky; top: -0.875rem; z-index: 1; background: var(--st-bg); }
+.op-grid__day {
+  position: sticky;
+  top: -0.875rem;
+  z-index: 1;
+  padding: 6px 2px;
+  background: var(--st-bg);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--st-ink-2);
+  overflow-wrap: anywhere;
+}
+.op-grid__time {
+  align-self: center;
+  padding-right: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-ink-muted);
+  text-align: right;
+}
+
+/* A time: a 40px button showing its word. */
+.op-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 4px 6px;
+  border: 1px solid var(--st-border);
+  border-radius: 8px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.op-cell:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.op-cell[aria-current="true"] { box-shadow: 0 0 0 2px var(--st-live); }
+.op-cell__word { display: block; }
+.op-cell__mark {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--st-ink-2);
+}
+
+/* A hot spot: the heat's orange. "Always" is the same, with a firmer edge. */
+.op-cell--full,
+.op-cell--always {
+  background: var(--st-hero-fill);
+  border-color: var(--st-hero);
+  color: var(--st-hero-text);
+}
+.op-cell--always { border-width: 2px; }
+/* A cold spot, room to offer: the action blue. */
+.op-cell--room {
+  background: var(--st-live-fill);
+  border-color: var(--st-live);
+  color: var(--st-live);
+}
+.op-cell--mixed,
+.op-cell--booked { background: var(--st-surface-2); }
+.op-cell--rotation { background: var(--st-surface-3); }
+.op-cell--none { color: var(--st-ink-muted); }
+/* Nothing booked and nobody in: a quiet outline, still a button. */
+.op-cell--blank {
+  background: transparent;
+  border-style: dashed;
+}
+
+.op-grid__gap { min-height: 40px; }
+
+/* One day at a time when the part is narrower than 640px (a phone, or a
+   split screen): the time and the chosen day, and the picker above. */
+@container op-page (max-width: 639px) {
+  .op-days { display: flex; flex-wrap: wrap; gap: 6px; }
+  .op-grid { grid-template-columns: minmax(64px, max-content) minmax(0, 1fr); }
+  .op-grid[data-day="1"] [data-wd]:not([data-wd="1"]),
+  .op-grid[data-day="2"] [data-wd]:not([data-wd="2"]),
+  .op-grid[data-day="3"] [data-wd]:not([data-wd="3"]),
+  .op-grid[data-day="4"] [data-wd]:not([data-wd="4"]),
+  .op-grid[data-day="5"] [data-wd]:not([data-wd="5"]),
+  .op-grid[data-day="6"] [data-wd]:not([data-wd="6"]) { display: none; }
+}
+
+/* ------------------------------------------------------------------ *
+ * A time's sheet, in the Context Panel
+ * ------------------------------------------------------------------ */
+
+.op-sheet { display: grid; gap: 12px; }
+.op-sheet__lead { display: grid; gap: 6px; }
+.op-sheet__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.op-sheet__line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-ink-2);
+  overflow-wrap: anywhere;
+}
+.op-sheet__line--lead { font-weight: 700; color: var(--st-ink); }
+.op-sheet__line--quiet { font-size: 12px; color: var(--st-ink-muted); }

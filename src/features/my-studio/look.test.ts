@@ -49,6 +49,9 @@ const FILES = [
   // equipment.tokens.css's --eq-* colours, so the --st-* rule below has
   // nothing to say about it; the scale and the heading style do.
   "features/standing-week/standing-week.css",
+  // Openings (Openings round, Sep 27 2026): the usual week's grid, the next
+  // 7 days, the offers and who's usually in.
+  "features/openings/openings.css",
 ] as const;
 
 /**
@@ -146,6 +149,8 @@ const NAME_CLASSES = [
   "tc__loop-title", // an open loop
   "vault__title",
   "rk-title", // a dialog's title (a job's own name, in the job sheet)
+  "op__line", // Openings: whose week isn't agreed yet, by name
+  "op-sheet__line", // a time's sheet: who is usually in, by name
 ] as const;
 
 describe("names in My Studio", () => {
@@ -229,9 +234,11 @@ const TAP_CLASSES = [
   "nb__check",
   "pn__text-btn",
   "ms__waiting-go",
+  "op-cell", // a time of Openings' usual week
+  "op-chip", // Openings' day picker and whose times
 ] as const;
 
-const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
+const px =(v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
 
 describe("the Now Bar", () => {
   it("never hides the teammates line, which holds the only kudos button (it was hidden in portrait until Sep 27 2026)", () => {
@@ -289,7 +296,7 @@ const BUTTON_CLASSES = [
   "tj-done__toggle",
   "wl__btn",
 ] as const;
-const CHIP_CLASSES = ["stq__kind", "sh__chip", "rls__chip", "ne__kind"] as const;
+const CHIP_CLASSES = ["stq__kind", "sh__chip", "rls__chip", "ne__kind", "op-chip"] as const;
 
 /** Every plain `.cls { ... }` rule, media queries included, as one body. */
 const definition = (cls: string) => {
@@ -346,6 +353,7 @@ describe("what is selected in My Studio", () => {
       '.stq__kind[aria-pressed="true"]',
       ".sh__chip--on",
       '.sh__mine[aria-pressed="true"]',
+      '.op-chip[aria-pressed="true"]',
     ];
     for (const sel of selected) {
       const rule = RULES.find((r) => r.selectors.includes(sel));
@@ -412,7 +420,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "op__h"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);

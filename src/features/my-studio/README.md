@@ -27,11 +27,12 @@ anybody. A task is picked up, assigned, handed to someone and finished by
 whoever is actually there. That constraint is the shape of the feature; don't
 redesign it into something that assumes people are simultaneously present.
 
-## The four sections
+## The five sections
 
 | Section | Who | What |
 | --- | --- | --- |
 | **Relay** | everyone at the studio | the board for the trainer between clients: Floor · Mine · Notes, the Now Bar, Capture (`features/relay/PlannerView`). The Network tab moved to Operations → Overview → All my studios on Sep 27 2026, and its ranking of studios was dropped |
+| **Openings** | everyone who may read the studio's standing weeks (`mayReadWeeks`: the people who work there, franchise owners, administrators) | when the studio is usually busy, what opened up, and what to offer a client, in sentences, read only (the Openings round, Sep 27 2026; `features/openings/ui/README.md`). It books nothing and pings nobody |
 | **Machines** | everyone reads and leaves machine notes; leaders edit | the floor, what is new in the MSF standard (adopted, never pushed), the machine's door (the studio's standard settings, the floor's notes, local set-up, upkeep), "Offer to the MSF catalog" on the studio's own machines, machines shared by other MSF studios |
 | **Team** | the studio tier | **people and standards** (voice-review round, Sep 27 2026): who is waiting to be let in (at the top), then **Standing weeks** — each trainer's usual week, proposed on My Profile and agreed here, and the next seven days' bookings checked against the agreed weeks (the free slots to fill; `src/features/standing-week/`) — each person's week by name, the standing duties and their seven days, initiatives, the loops left open, the vault; then this studio's staff: roles up to studio leader, the grant, the Mindbody link, temporary profiles. Who's in today is the Hub's and the month's client groups are Operations' |
 | **Studio** | the studio tier | the studio's own record: details, the Mindbody link, the Journey cutover date, shift hours and the deep-clean interval, the InBody variation (how big a change the scanner must see before any screen calls it one — `InBodyVariationPanel`, client codex Sep 2026; `features/inbody/README.md`), renewal settings and packages, the studio's announcements, sync status |
@@ -43,6 +44,8 @@ redesign it into something that assumes people are simultaneously present.
 - `MyStudioView` owns the masthead, the section, the clock (`useNowContext`), and the two doors — the Capture sheet and the Context Panel — through `RelayContext`. PlannerView used to own these; it is a consumer now, so a card on any section can `openCapture()` or `openPanel()`.
 - Each section draws its own frame (`SectionFrame` = `.pl__frame` + the Context Panel beside it); Relay's frame is PlannerView's own, under its tabs and the Now Bar.
 - The section is module memory (`section-memory.ts`), like Relay's tab, and a sign-out forgets it: the iPad reopens where it was. An arriving Planner intent (a client's profile, a notification) always lands on Relay.
+- A door on one section to another (Team's line about the free slots opens Openings) calls `openMyStudioSection(next)`: the mounted shell moves there through the same choice as a tap on the tab, so typing in the section being left is asked about first. From outside My Studio, a door sets `rememberMyStudioSection(next)` and switches the app's view, as Operations → Renewals does for Studio.
+- The masthead has five sections since Openings joined. Measured in headless Chrome at 744 and 834px in portrait and 1080 and 1180px in landscape with the Context Panel open: in portrait (below 900px) the studio-and-date line moves under the tabs (it was squeezed to four lines at 744px); the rule is in `features/openings/openings.css`, the round's own stylesheet.
 - The view id is still `studio-tasks`: notifications in trainers' bells link to it. The board's folder is `features/relay` (it was `features/planner` until the beta-prep trim renamed it, Sep 17 2026); file names inside still say Planner (`PlannerView`, `planner.css`).
 
 ## How My Studio looks
@@ -55,7 +58,7 @@ Since the voice review follow-up (Sep 27 2026, under AJ's "I trust your color ch
 - **The machine's door asks before it drops typing.** Its X, Escape and a tap on another machine in the list go through the door's leave scope, and the door is keyed by machine (`MachinesSection.render.test.tsx`).
 - **Nothing only on hover, and portrait works.** The Now Bar's teammates line ("Just now", with the kudos heart) is never hidden.
 
-`look.test.ts` holds My Studio's stylesheets (the standing weeks' `standing-week.css` included, since the final review) to these rules (no raw hex outside a token definition, no name cut short, 40px controls, slanted capitals only in the display face, and an off-scale size budget of 3 that only goes down). `css-imports.test.ts` holds `MachinesSection`, `StudioSection`, `TeamSection`, `InBodyVariationPanel` and the Context Panel to the stylesheets they draw with, because Operations → Floor mounts Machines without this shell (and marks its frame `.ms__frame--hosted` so the machine's door stays on screen). If one fails, the fix is the stylesheet, not the test.
+`look.test.ts` holds My Studio's stylesheets (the standing weeks' `standing-week.css` included, since the final review, and Openings' `openings.css` since the Openings round) to these rules (no raw hex outside a token definition, no name cut short, 40px controls, slanted capitals only in the display face, and an off-scale size budget of 3 that only goes down). `css-imports.test.ts` holds `MachinesSection`, `StudioSection`, `TeamSection`, `InBodyVariationPanel`, the Context Panel, and Openings' section and parts to the stylesheets they draw with, because Operations → Floor mounts Machines without this shell (and marks its frame `.ms__frame--hosted` so the machine's door stays on screen). If one fails, the fix is the stylesheet, not the test.
 
 ## Rules of the round
 

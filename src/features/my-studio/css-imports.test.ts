@@ -29,6 +29,7 @@ const SHEETS = {
   "planner.css": "features/relay/planner.css",
   "relay.css": "features/relay/board/relay.css",
   "admin.css": "features/admin/admin.css",
+  "openings.css": "features/openings/openings.css",
 } as const;
 type Sheet = keyof typeof SHEETS;
 
@@ -39,6 +40,12 @@ const HOSTS = [
   "features/my-studio/InBodyVariationPanel.tsx",
   "features/my-studio/TeamSection.tsx",
   "features/relay/board/ContextPanel.tsx",
+  // Openings (Openings round, Sep 27 2026): the section and each of its
+  // parts, since the Wrap-up's "Times with room" reuses pieces of it outside
+  // My Studio's shell.
+  "features/openings/ui/OpeningsSection.tsx",
+  "features/openings/ui/UsualWeekPart.tsx",
+  "features/openings/ui/TimeSheet.tsx",
 ] as const;
 
 /**
@@ -97,6 +104,14 @@ describe("My Studio's Machines and Studio sections, and the Context Panel", () =
       }
     });
   }
+
+  it("draws Openings with Relay's second level and frame, and its own stylesheet", () => {
+    expect(DEFINED["openings.css"].has("op-cell")).toBe(true);
+    const words = classWords(read("features/openings/ui/OpeningsSection.tsx"));
+    expect(words.has("pl__subbar")).toBe(true);
+    expect(words.has("pl__frame")).toBe(true);
+    expect(words.has("op__page")).toBe(true);
+  });
 
   it("draws Machines with My Studio's page, Relay's frame and the Operations kit", () => {
     const words = classWords(read("features/my-studio/MachinesSection.tsx"));

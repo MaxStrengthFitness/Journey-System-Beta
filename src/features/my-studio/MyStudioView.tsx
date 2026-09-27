@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { Building2, Dumbbell, Plus, Settings2, Users, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Building2, CalendarRange, Dumbbell, Plus, Settings2, Users, Zap } from "lucide-react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
@@ -9,6 +9,8 @@ import { PlannerView } from "../relay/PlannerView";
 import { TeamSection } from "./TeamSection";
 import { StudioSection } from "./StudioSection";
 import { MachinesSection } from "./MachinesSection";
+import { OpeningsSection } from "../openings/ui/OpeningsSection";
+import { mayReadWeeks } from "../standing-week/present";
 import { peekPlannerIntent } from "../relay/intent";
 import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
@@ -23,7 +25,7 @@ import "../relay/planner.css";
 import "../relay/board/relay.css";
 import "./my-studio.css";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
-import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
+import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
 
 /**
  * MY STUDIO — the studio's home on the bottom bar.
@@ -40,7 +42,10 @@ import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSectio
  *              Notes, the Now Bar, Capture (features/relay/PlannerView).
  *              Its Network tab moved to Operations → Overview → All my
  *              studios on Sep 27 2026, and its ranking of studios was dropped
- *   Machines   the floor and what the studio has done to it — everyone reads
+ *   Openings   when the studio is usually busy, what opened up, and what to
+ *              offer a client (features/openings/ui, the Openings round,
+ *              Sep 27 2026): read only, it books nothing and pings nobody
+ *   Machines  the floor and what the studio has done to it — everyone reads
  *              it and leaves machine notes; leaders edit it (phase 3)
  *   Team       people and standards (AJ, Sep 27 2026): who is waiting to be
  *              let in, the standing weeks, each person's week by name, the
@@ -50,8 +55,10 @@ import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSectio
  *   Studio     the studio's own record: details, the cutover date, hours,
  *              renewal settings, announcements (phase 2)
  *
- * Who sees what: everyone at the studio gets Relay and Machines; Team and
- * Studio are the studio tier — head trainer, studio leader, studio owner AT
+ * Who sees what: everyone at the studio gets Relay and Machines; Openings is
+ * everyone who may read the studio's standing weeks (`mayReadWeeks`: the
+ * people who work there, franchise owners and administrators), because it
+ * reads them; Team and Studio are the studio tier — head trainer, studio leader, studio owner AT
  * THIS STUDIO, or a trainer its leadership granted `managedStudioIds`
  * (relay/leads.ts → leadsHere, the same answer the rules give, asked
  * directly below). Hiding a section is a convenience; the rules are the
@@ -69,8 +76,15 @@ import { rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSectio
 
 export type { MyStudioSection };
 
-const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" }[] = [
+/**
+ * `leads`: the studio tier (leadsHere). `weeks`: whoever may read the
+ * studio's standing weeks (mayReadWeeks). Openings reads them, and a section
+ * with no gate would open for anyone whose active studio it is, who would
+ * then be refused by the rules.
+ */
+const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" | "weeks" }[] = [
   { id: "relay", label: "Relay", icon: Zap },
+  { id: "openings", label: "Openings", icon: CalendarRange, tier: "weeks" },
   { id: "machines", label: "Machines", icon: Dumbbell },
   { id: "team", label: "Team", icon: Users, tier: "leads" },
   { id: "studio", label: "Studio", icon: Settings2, tier: "leads" },
@@ -103,7 +117,8 @@ export function MyStudioView({
 }: MyStudioViewProps) {
   const { activeStudio, activeStudioId } = useActiveStudio();
   const canLead = leadsHere(authTrainer, activeStudioId);
-  const sections = SECTIONS.filter((s) => !s.tier || canLead);
+  const readsWeeks = mayReadWeeks(authTrainer, activeStudioId);
+  const sections = SECTIONS.filter((s) => !s.tier || (s.tier === "leads" ? canLead : readsWeeks));
 
   // A request from a client's profile or a notification always lands on the
   // board (PlannerView reads and clears it); a plain open returns to where
@@ -130,6 +145,16 @@ export function MyStudioView({
     if (next === shown) go();
     else sectionScope.guard(go);
   };
+
+  /*
+   * A door on one section to another (Team's line about the free slots
+   * opens Openings, the Openings round): section-memory.ts's request, taken
+   * through the same choice as a tap on the tab, so typing is asked about
+   * first.
+   */
+  const chooseRef = useRef(choose);
+  chooseRef.current = choose;
+  useEffect(() => onMyStudioSectionRequest((next) => chooseRef.current(next)), []);
 
   const todayKey = studioDateKey(new Date()) ?? "";
   const today = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), {
@@ -229,6 +254,11 @@ export function MyStudioView({
             trainers={trainers}
             onOpenClientTask={onOpenClientTask}
           />
+        )}
+
+        {/* Openings draws its own frame too: its parts, and a time's sheet beside them. */}
+        {shown === "openings" && activeStudio && (
+          <OpeningsSection studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} />
         )}
 
         {/* Machines draws its own frame: the machine's door is its own panel. */}
