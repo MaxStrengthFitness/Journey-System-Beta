@@ -10,6 +10,6 @@
     "tests/**/*.ts"
   ],
   "project": ["src/**/*.{ts,tsx}", "server/**/*.ts", "functions/src/**/*.ts", "scripts/**/*.ts"],
-  "ignore": ["harness/**", "dist/**", "functions/lib/**"],
+  "ignore": ["harness/**", "dist/**", "build/**", "functions/lib/**"],
   "ignoreDependencies": []
 }

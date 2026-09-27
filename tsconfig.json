@@ -34,5 +34,5 @@
   // scratch that exists on AJ's PC only. A stray file in `Claude outputs`
   // had been adding one phantom error there for a week (11 in the cloud, 12
   // on the PC), which is exactly the trap described above.
-  "exclude": ["functions", "node_modules", "dist", "harness", "Claude outputs", "backups"]
+  "exclude": ["functions", "node_modules", "dist", "build", "harness", "Claude outputs", "backups"]
 }
