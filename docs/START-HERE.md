@@ -162,7 +162,7 @@ AJ's own tour, Sep 21 2026.
 | **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Rank 1 and 2 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
 | **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |
-| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going |
+| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: the hours they usually work and their regulars, proposed to a studio leader |
 | **Operations** | "Where are we going wrong, and where are we going right?" Take what the app has gathered, put it together, see what it says |
 | **Admins dashboard** | Corporate setting the standard, the machines, and getting everyone set up for success |
 | **Switch studio** | In the header. Decides which floor loads, whose roster you search, which schedule you see — more than a preference |
@@ -183,6 +183,7 @@ AJ's own tour, Sep 21 2026.
 | The studio-leader dashboards | `src/features/admin/` |
 | The company-only screens | `src/features/admins/` |
 | The board, tasks, kudos, private notes | `src/features/relay/` |
+| A trainer's standing week, and the week's free slots | `src/features/standing-week/` |
 | Renewals and packages | `src/features/renewals/` |
 | Colours, spacing, the look | `src/index.css`, `equipment.tokens.css`, `admin.tokens.css` |
 | Who can see or do something | `firestore.rules` **and** `src/lib/permissions.ts` |
@@ -226,6 +227,10 @@ them is most of what makes a request land correctly.
 - **A thread** — a note is not a fact, it is a story. Updates hang off the
   original rather than becoming new notes. Contradicting a note *adds* to it.
 - **Mattering** — when a note applies: Always · From–until · Only on a day.
+- **A standing week** — a trainer's usual week at a studio: their hours and
+  their **regulars** ("Judy, Monday 8:00"). The trainer proposes it, a studio
+  leader agrees it, and Journey checks the coming week's bookings against it
+  to find the **free slots**. It never books or holds anything in Mindbody.
 
 **About machines** — this is the part that matters most for franchising
 

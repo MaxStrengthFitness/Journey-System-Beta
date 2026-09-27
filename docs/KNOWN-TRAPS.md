@@ -398,6 +398,8 @@ beta-prep trim moved the traps out of `CLAUDE.md`. It is kept word for word.
 
 - **The Render cron service is still named `journey-cron-leaderboards`** although it runs the machine-trends job — a renamed blueprint service is a new service to Render.
 
+- **The standing week never writes to Mindbody, and never calls an unread day open** (voice-review round, Sep 27 2026 — `src/features/standing-week/README.md`). Journey checks the week's bookings against each trainer's AGREED week; the front desk books the regulars in Mindbody as recurring appointments. Don't add a hold, a booking or an availability write "to lock the slot": AJ ruled it out (holds cost money, can email a client, and clash with the front desk), and it would reopen ARCHITECTURE §1.7's fence. The check gives a state and no findings for a failed or unfinished read, and for a studio whose Mindbody isn't linked (`bookingsKnown`) — an empty list there means "can't tell", never "every slot is free". **A booking's trainer is an id OR a name:** the sync writes `trainerId` only when it matched the Mindbody staff member to a Journey trainer, and otherwise only the staff name (or "{studio} Rotation" when Mindbody named nobody), so match by id, then by name, and treat a nameless booking as nobody's (`check.ts`, WHOSE BOOKING). **The week is keyed by the Auth uid, the booking by the trainer document id:** `standingWeeks/{uid}` carries `trainerId` for the match; on older accounts the two differ (`team.ts` `uidOf` is `authUid || id`).
+
 <a id="rules"></a>
 
 ## Machines and the template boundary

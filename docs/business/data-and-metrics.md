@@ -106,6 +106,16 @@ The client codex (`docs/rounds/2026-09-24-client-codex.md`) kept this rule for e
 | `fordSummary.pinned` on the client | The FORD rollup, after every FORD save (now for trainers too, since the FORD read was fixed) | **Nothing.** A write with no reader — and FORD text on a document cross-train studios can read. Whether to stop writing it is waiting on AJ; `counts` and `nextDate` beside it do have readers (Relay → Mine's follow-ups read `nextDate`; the record's FORD door reads `counts`. Team's "Dates they mentioned" group read them too until it went on Sep 27 2026) |
 | `lastUpdatedBy` on the client | The Save bar (as the old form did) | Nothing yet — carried over unchanged, on the work list |
 
+## What the standing week added, and who reads it (Sep 27 2026)
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review) |
+| `…final` (+ `finalAt`, `finalBy`) | A studio leader, on My Studio → Team → Review → Agree | Team's week check (the next seven days' bookings against it) and its rows; My Profile ("Agreed by … on …", and what a change would change) |
+| `…trainerId`, `trainerName` | Both writes | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+
+The week check counts nothing and ranks nobody: it says, one sentence per slot, where the bookings differ from the agreed weeks.
+
 Every number the codex shows about her history keeps the migration rules: the Story's since line and the header's session counts are one computation, a FileMaker client is never called new, and a count of her Journey sessions says "in Journey".
 
 ---

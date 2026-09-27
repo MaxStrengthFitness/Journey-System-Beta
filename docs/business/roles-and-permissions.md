@@ -100,6 +100,16 @@ How big an InBody change must be before any screen calls it a change — each st
 | See it, and have it applied | Everyone: every InBody sentence, the Renewal Brief, the pipeline and the progress report read it |
 | Set it, or go back to Max Strength's defaults (My Studio → Studio) | The studio's leaders (head trainer, studio leader, studio owner there, or the grant), franchise owners, administrators |
 
+## The standing week (Sep 27 2026)
+
+Each trainer's usual week at a studio — their hours and their regulars — and the coming week's bookings checked against it. Nothing is written to Mindbody.
+
+| | Who |
+| --- | --- |
+| See the studio's standing weeks | Everyone who works at the studio, the studio's leaders, franchise owners, administrators |
+| Propose your own week (My Profile) | Any trainer, for themselves, at a studio they work at. A proposal never agrees itself |
+| Agree, change or remove a week, and see the week's free slots (My Studio → Team) | The studio's leaders (head trainer, studio leader, studio owner there, or the grant), franchise owners, administrators |
+
 ## Studio boundaries
 
 - Every client has a **home studio** (where they are billed and mainly train).

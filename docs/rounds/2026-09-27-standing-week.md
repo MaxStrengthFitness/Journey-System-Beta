@@ -146,13 +146,39 @@ does.
 
 ## Phases
 
+All five were built on Sep 27 2026, one commit each ("Standing week 1" to
+"Standing week 5"), each typechecked on its own.
+
 1. This proposal and the pure core (`standing-week/`: the week, the check),
    with tests.
 2. The rules block and its rules tests, the data layer (read and write).
+   The rules tests were also run against deliberately loosened rules; they
+   catch a trainer agreeing their own week, a reader from another studio,
+   and an agreement signed in someone else's name.
 3. My Profile → My standing week: the editor and the proposal.
-4. My Studio → Team: each person's week, Review and Agree, and this week
-   against the standing weeks.
-5. Docs: CLAUDE.md, the READMEs, data and metrics.
+4. My Studio → Team: Standing weeks first — the next seven days, then each
+   person's week with Review and Agree (as it is, or changed first) and
+   Remove.
+5. Docs: CLAUDE.md, the feature's README, ARCHITECTURE (the fence, the
+   screen map, the data dictionary), the glossary, roles and permissions,
+   data and metrics, KNOWN-TRAPS, and Round 20 of the testing checklist.
+
+## As built — what differs from the proposal above
+
+- **Team lists people by name**, and says whose proposal is waiting in a line
+  above the list, rather than sorting the waiting ones first (recognition,
+  never ranking).
+- **Agreeing writes the week as both `final` and `proposed`**, so a leader
+  who changes a proposal before agreeing it isn't reported as "a change
+  since it was agreed".
+- **A booking's trainer is matched by id, then by name** (the sync writes
+  only the staff name when it couldn't match a Journey trainer), and a
+  booking naming no staff member never "takes" a slot.
+- **The sentences** are "Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith
+  isn't booked for it." (and "... is booked on Tue, Sep 29 at 9:30 AM
+  instead.", "Bob Jones is booked in Judy Smith's Mon, Sep 28 at 8:00 AM slot
+  with Sam."), with a **Free slot** badge where the trainer has the time
+  free.
 
 ## Deploy order
 

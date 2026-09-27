@@ -249,6 +249,13 @@ staff have no Mindbody photo, and that is not a degraded state.
 | `useRecentlyCoached.ts` | the 30-day fetch |
 | `trainer-profile.tokens.css` | light + dark, AA, incl. the kaizen pair |
 
+**My standing week** (voice-review round, Sep 27 2026) is a card on your OWN
+profile, at the studio the iPad is in and only where you work: the hours you
+usually work there and your regulars, proposed to a studio leader. It lives
+in `src/features/standing-week/` (`MyStandingWeek.tsx`), is keyed by the Auth
+uid rather than `trainer.id`, and writes nothing to Mindbody. The rules must
+be deployed before the app (`standingWeeks`), or the card says so.
+
 ---
 
 ## 8. Before this ships
