@@ -32,6 +32,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
 import { studioDateKey, formatStudioDate } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
+import { isStudioLeader } from "../../lib/permissions";
 import type { Client, Trainer } from "../../types";
 import type { ClientTaskAction, TaskRow } from "./types";
 import {

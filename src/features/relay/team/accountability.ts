@@ -349,6 +349,11 @@ export interface ShiftReport {
   key: string;
   machineId?: string;
   templateId: string;
+  /**
+   * The duty's title as the row itself recorded it (instancePayload writes
+   * it), so a report still reads after its template is renamed or deleted.
+   */
+  title?: string;
   /** The studio day it was reported. */
   dateKey: string;
   note?: string;
@@ -363,10 +368,21 @@ export interface ShiftReport {
  *
  * ONE ROW PER MACHINE, the latest report on it; and none for a machine the
  * Floor Map already flags, which Open loops lists on a row of its own.
- * Team's seven days are the whole reach on purpose: Learning and the Catalog
- * keep a report until someone clears it (useMachineUpkeep), but nothing on
- * Team can clear one, so here a report ends with the window. Whether a
- * report should outlive it belongs with the one maintenance log, AJ's call.
+ *
+ * A REPORT IS A ROW CLOSED WITH A PROBLEM: status "done" and flagged. A
+ * skipped row is not one (useMachineUpkeep leaves those out too), and nor
+ * is a reopened one — reopening keeps the old `flagged` on the document
+ * (instancePayload only writes it when told), but the check is no longer
+ * closed, and it has nobody's name on it.
+ *
+ * A LATER CLEAN CHECK CLOSES IT. When the same duty on the same machine was
+ * done without a flag on a later day, the problem was looked at again and
+ * not found, so the report is over: Team has no button to clear a report,
+ * and without this one would sit on Open loops until it aged out of the
+ * week. Team's seven days are otherwise the whole reach on purpose:
+ * Learning and the Catalog keep a report until someone clears it
+ * (useMachineUpkeep). Whether a report should outlive the week belongs with
+ * the one maintenance log, AJ's call.
  *
  * `instances` may hold the same row twice (the seven-day read and today's
  * live one): the LATER one in the list wins, so pass the live rows last.
@@ -377,10 +393,21 @@ export function shiftListReports(
 ): ShiftReport[] {
   const latestById = new Map<string, TaskInstance>();
   for (const i of instances) if (i?.id) latestById.set(i.id, i);
+  const rows = [...latestById.values()].filter((i) => i.scope !== "personal");
+  // The last day each duty (on each machine) was closed clean.
+  const dutyKey = (i: TaskInstance) => `${i.templateId}|${i.machineId ?? ""}`;
+  const lastClean = new Map<string, string>();
+  for (const i of rows) {
+    if (i.status !== "done" || i.flagged) continue;
+    const had = lastClean.get(dutyKey(i));
+    if (!had || had < i.localDate) lastClean.set(dutyKey(i), i.localDate);
+  }
   const byKey = new Map<string, ShiftReport>();
-  for (const i of latestById.values()) {
-    if (!i.flagged || i.scope === "personal") continue;
+  for (const i of rows) {
+    if (!i.flagged || i.status !== "done") continue;
     if (i.machineId && floorMapFlagged.has(i.machineId)) continue;
+    const clean = lastClean.get(dutyKey(i));
+    if (clean && clean > i.localDate) continue;
     const key = i.machineId || i.id;
     const had = byKey.get(key);
     if (had && had.dateKey >= i.localDate) continue;
@@ -388,6 +415,7 @@ export function shiftListReports(
       key,
       ...(i.machineId ? { machineId: i.machineId } : {}),
       templateId: i.templateId,
+      ...(i.title ? { title: i.title } : {}),
       dateKey: i.localDate,
       ...(i.note ? { note: i.note } : {}),
       by: i.completedBy ?? null,

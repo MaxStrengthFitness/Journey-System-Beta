@@ -31,7 +31,8 @@ import { useMachineCare } from "./machine-care-store";
  * report is listed from Team's seven days, one row per machine, and not at
  * all for a machine the Floor Map flags (team/accountability.ts,
  * shiftListReports — voice review follow-up, Sep 27 2026: reports used to
- * drop off at midnight).
+ * drop off at midnight). A report is over once the same check on the same
+ * machine is done clean on a later day, since nothing here can clear one.
  */
 
 /* ------------------------------------------------------------------ *
@@ -124,7 +125,10 @@ export function OpenLoops({
                 <Flag size={11} aria-hidden /> Reported on the shift list
               </span>
               <span className="tc__loop-title">
-                {(r.machineId && machineNames(r.machineId)) || taskTitle(r.templateId) || r.machineId || "A studio task"}
+                {/* The machine; else the duty as the row recorded it, which
+                    outlives a renamed or deleted template; else today's
+                    template title. */}
+                {(r.machineId && machineNames(r.machineId)) || r.title || taskTitle(r.templateId) || r.machineId || "A studio task"}
               </span>
               <span className="tc__loop-sub">
                 {r.note || "A trainer reported a problem."} — {r.by?.name ? `${r.by.name.split(" ")[0]}, ` : ""}

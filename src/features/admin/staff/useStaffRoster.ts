@@ -18,10 +18,6 @@
  * than claim a match nobody looked for.
  */
 
-/** What the page says about Mindbody under "All my studios". */
-const MINDBODY_PER_STUDIO =
-  "The Mindbody match is per studio: choose one studio above to see who is on its Mindbody staff list and who has no match.";
-
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../../firebase";
@@ -29,6 +25,10 @@ import { authedFetch } from "../../../lib/authed-fetch";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import type { Studio, Trainer } from "../../../types";
 import { buildStaffRoster, summariseRoster, type AccessRequest, type MindbodyStaff, type StaffRow } from "./roster";
+
+/** What the page says about Mindbody under "All my studios". */
+const MINDBODY_PER_STUDIO =
+  "The Mindbody match is per studio: choose one studio above to see who is on its Mindbody staff list and who has no match.";
 
 export interface StaffRosterState {
   rows: StaffRow[];
@@ -108,11 +108,15 @@ export function useStaffRoster({
         if (cancelled) return;
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
+          if (cancelled) return;
           setMindbodyStaff([]);
           setStaffStatus(err?.error || "Mindbody did not return a staff list.");
           return;
         }
         const data = await res.json();
+        // Reading the body is a second wait: the studio may have changed
+        // during it, and the old studio's list must not land as checked.
+        if (cancelled) return;
         setMindbodyStaff(data.staff || []);
         setStaffStatus("");
         setMindbodyChecked(true);

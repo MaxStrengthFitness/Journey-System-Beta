@@ -148,8 +148,13 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
     const m = new Map(templates.map((t) => [t.id, t.title] as const));
     return (id: string) => m.get(id) ?? "";
   }, [templates]);
-  // Open loops names machines from the studio's floor.
-  const { machines: floorMachines } = useStudioMachines(relay ? studioId : null, { bridgeWhenRosterEmpty: true });
+  // Open loops names machines from the studio's roster in every state and
+  // the catalog, so a report on a machine switched off or taken off the floor
+  // this week still names it (the duty lists read only the active floor).
+  const { machines: floorMachines } = useStudioMachines(relay ? studioId : null, {
+    includeInactive: true,
+    includeUnrostered: true,
+  });
   const machineNames = useMemo(() => {
     const m = new Map(floorMachines.map((x) => [x.machineId, x.name] as const));
     return (id: string) => m.get(id) ?? "";

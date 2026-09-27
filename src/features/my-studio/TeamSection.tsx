@@ -50,8 +50,11 @@ import "../admin/admin.css";
  * Who is on Team: everyone who works here (AJ, Sep 27 2026) — home, a
  * studio they also work at, or a guest — one rule for People, the
  * initiatives and the standing weeks (lib/who-works-here.ts). The staff
- * list below is wider on purpose: it is also everyone Mindbody lists and
- * everyone waiting, and it shows the placeholders the others leave out.
+ * list below is a different list, not a wider one: it ADDS the studio's
+ * owners, everyone Mindbody lists, everyone waiting to be let in and the
+ * placeholders the others leave out, and it LEAVES OUT guests — a guest's
+ * account and role are their home studio's to edit (admin/staff/roster.ts,
+ * listedAt).
  */
 
 export interface TeamSectionProps {
