@@ -19,6 +19,18 @@
  *                      audit, Sep 2026: it is a ledger of visits and reports,
  *                      not a medical tool. The tab id stays "clinical".)
  *
+ * The ORDER is deliberate (AJ, Sep 27 2026, the voice review of the Screen
+ * Atlas), recorded exactly as he approved it:
+ *
+ *   "The four tabs run by depth: Journey (what she has done, the glance on
+ *    the floor), Programming (what she's meant to do), Notes & Profile (who
+ *    she is), Activity Archive (the whole record). Don't reorder, merge or
+ *    add a tab without asking."
+ *
+ * From immediate floor needs down to the deepest historical ledger.
+ * `PROFILE_TABS` below is that order, and profile-nav.test.ts fails if it
+ * moves.
+ *
  * Two of those carry more than one view, so a tab is no longer a single
  * string: it is a tab AND a position inside it. That pair is a
  * `ProfileLocation`, and it is the only thing the profile stores about where
@@ -293,6 +305,7 @@ export function sectionLocation(section: DossierSection): ProfileLocation {
   return to ? recordLocation(to.page, to.anchor) : recordLocation("overview");
 }
 
+/** The four tabs, by depth: AJ's order (Sep 27 2026), see the header. Don't reorder, merge or add one without asking. */
 export const PROFILE_TABS: { id: ProfileTab; label: string; blurb: string }[] = [
   { id: "journey", label: "Journey", blurb: "Every machine she has performed, in order" },
   { id: "programming", label: "Programming", blurb: "What she is prescribed and how it is set up" },

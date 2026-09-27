@@ -158,7 +158,7 @@ AJ's own tour, Sep 21 2026.
 | **Calendar** | The schedule properly broken down — month, week, day; past days; sessions or events; the whole team or one person. All pulled from Mindbody. Where you go to actually look ahead |
 | **Client directory** | Search the clients at the studio you're in, and reach your Kaizen roster |
 | **Kaizen roster** | A trainer's own bookmarked clients — the regulars they're watching, so they aren't searching "Jeff… Jeff what?" every time. Per trainer, on `trainers/{uid}.kaizenRoster` |
-| **Client profile** | Opened from the directory or the roster: the whole record of a person |
+| **Client profile** | Opened from the directory or the roster: the whole record of a person. "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking." |
 | **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Rank 1 and 2 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
 | **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |

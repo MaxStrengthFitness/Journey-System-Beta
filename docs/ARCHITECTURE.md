@@ -215,6 +215,8 @@ Seventeen `View` values are routed. Rank is the floor-loop rank from §1.4 the s
 
 `ClientProfileView.tsx` (the largest source file in the app) renders the header and delegates every tab to a feature. The tabs are named after the question a trainer asks (the four-tab round, Sep 15 2026 — `docs/rounds/2026-09-15-four-tab-profile.md`); where the trainer is — a tab AND a segment inside it — is one reducer, `features/client-profile/profile-nav.ts`, and every tab id the profile has ever used still lands (`legacyLocation`).
 
+**The tabs are ordered by depth** (AJ, Sep 27 2026, recorded exactly as approved): "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking."
+
 | Tab | Component | Shows |
 | --- | --- | --- |
 | **Journey** (default) | `RecentJourneyView` (`features/journey-grid`) | Sessions × machines grid, pinned to the newest session, with the cycling analytics column and the machine window |

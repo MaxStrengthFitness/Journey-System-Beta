@@ -306,6 +306,15 @@ trainer asks:
 Nothing was removed. `legacyLocation()` maps every tab id the profile has ever
 answered to onto its new home.
 
+**The order is deliberate** (AJ, Sep 27 2026, the voice review of the Screen
+Atlas), recorded exactly as he approved it:
+
+> "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking."
+
+From immediate floor needs (Journey) down to the deepest historical ledger
+(Activity Archive). `PROFILE_TABS` is that order and a client always opens on
+the first of them; `profile-nav.test.ts` fails if either moves.
+
 ### 9.1 The files
 
 | File | What it owns |
