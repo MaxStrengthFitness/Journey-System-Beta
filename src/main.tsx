@@ -11,6 +11,7 @@ import './features/catalog/catalog.css';
 import './features/studio-tasks/studio-tasks.css';
 import { ThemeProvider } from './components/ThemeProvider.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { APP_BUILD } from './features/new-version/build';
 
 declare global {
   interface Window {
@@ -25,6 +26,11 @@ declare global {
 // Tell the buffering handlers in index.html to stand down. From here on this
 // module is the only thing that reports client errors.
 window.__appLoaded = true;
+
+// Which build this is (new-version round, Sep 26 2026): a bug report carries
+// it (features/feedback/capture.ts), so "it broke" arrives with the version it
+// broke in. Declared long ago and never set until now.
+window.__appVersion = APP_BUILD;
 
 // index.html used to register its own window.onerror and unhandledrejection
 // handlers posting to the same endpoint, so every client error was reported

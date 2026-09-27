@@ -1164,6 +1164,18 @@ async function startServer() {
       }),
     );
 
+    // The build's name (new-version round, Sep 26 2026; vite.config.ts writes
+    // it). An open app asks for this file to learn that a deploy has happened,
+    // so it must never come from a cache: the static handler below would send
+    // it with an hour's max-age, and an iPad would keep being told the old
+    // name for up to an hour after the new version went live.
+    app.get("/version.json", (req, res) => {
+      res.set("Cache-Control", "no-store");
+      res.sendFile(path.join(distPath, "version.json"), (err) => {
+        if (err && !res.headersSent) res.status(404).type("text/plain").send("Not found");
+      });
+    });
+
     // Anything else in dist has no hash in its name, so keep it short-lived.
     // index: false leaves "/" to the catch-all below.
     app.use(express.static(distPath, { index: false, maxAge: "1h" }));
