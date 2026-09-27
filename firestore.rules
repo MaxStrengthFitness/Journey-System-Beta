@@ -2228,8 +2228,12 @@ service cloud.firestore {
                       && (
                            (
                              request.auth.uid == trainerUid
+                             // Not trainerId: once the week exists it stays
+                             // tied to the trainer the bookings are matched
+                             // on (voice review follow-up). Leaders may still
+                             // set it from the roster as they agree.
                              && request.resource.data.diff(resource.data).affectedKeys()
-                                  .hasOnly(['trainerId', 'trainerName', 'proposed', 'proposedAt', 'proposedBy', 'away'])
+                                  .hasOnly(['trainerName', 'proposed', 'proposedAt', 'proposedBy', 'away'])
                              && trainerWorksAt(callerTrainer(), studioId)
                            )
                         || teamJobLeaderAllowed(studioId)

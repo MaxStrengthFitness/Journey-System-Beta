@@ -3467,6 +3467,60 @@ describe("the standing week", () => {
     await assertFails(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposedAt: new Date("2026-01-01T12:00:00Z") })));
   });
 
+  // Who agrees (voice review follow-up): every leader the docs name, and
+  // nobody else. Seeded only where a test needs them.
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home] });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("headA", "HeadTrainer", "studioA");
+      await person("leaderA", "StudioLeader", "studioA");
+      await person("headB", "HeadTrainer", "studioB");
+      await person("colleagueA", "LifeTransformer", "studioA");
+    });
+  }
+  const agreeAs = (uid: string) =>
+    setDoc(weekRef(as(uid), "studioA", "trainerA"), { ...agreement(uid, { finalBy: { id: uid, name: uid } }), proposed: week() }, { merge: true });
+
+  it("lets a franchise owner, an administrator, a head trainer and a studio leader agree", async () => {
+    await seedPeople();
+    for (const uid of ["franchiseX", "adminX", "headA", "leaderA"]) {
+      await seedAgreed();
+      await assertSucceeds(agreeAs(uid));
+    }
+  });
+
+  it("refuses a head trainer from another studio, and a colleague at this one", async () => {
+    await seedPeople();
+    await seedAgreed();
+    await assertFails(agreeAs("headB"));
+    await assertFails(agreeAs("colleagueA"));
+    // A colleague may read the week, but never change it: not the proposal, not the days away.
+    const colleague = as("colleagueA");
+    await assertSucceeds(getDoc(weekRef(colleague, "studioA", "trainerA")));
+    await assertFails(
+      updateDoc(weekRef(colleague, "studioA", "trainerA"), { proposed: week({ regulars: [] }), proposedAt: serverTimestamp(), proposedBy: { id: "colleagueA", name: "colleagueA" } }),
+    );
+    await assertFails(updateDoc(weekRef(colleague, "studioA", "trainerA"), { away: [{ id: "a1", from: "2026-10-05", to: "2026-10-09" }] }));
+    await assertFails(deleteDoc(weekRef(colleague, "studioA", "trainerA")));
+  });
+
+  it("never lets a trainer point their week at another trainer's bookings", async () => {
+    await seedAgreed();
+    const db = as("trainerA");
+    await assertFails(updateDoc(weekRef(db, "studioA", "trainerA"), { trainerId: "trainerB" }));
+    await assertFails(
+      setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA", { trainerId: "trainerB", proposed: week({ regulars: [] }) }), { merge: true }),
+    );
+    // The same write with their own trainer id is theirs to make.
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA", { proposed: week({ regulars: [] }) }), { merge: true }));
+    // A leader may still set it from the roster as they agree.
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { trainerId: "trainerA2" }));
+  });
+
   // Away (voice review follow-up): the days a trainer is away. No agreement,
   // so the trainer writes it too, with or without a proposal.
   const owned = (uid: string, over: Record<string, unknown> = {}) => ({
