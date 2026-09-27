@@ -29,6 +29,9 @@ import { MyStandingWeek } from "../standing-week/MyStandingWeek";
 import { ColleagueStandingWeek } from "../standing-week/ColleagueStandingWeek";
 import { mayReadWeeks, worksAt } from "../standing-week/present";
 import { YourWeek } from "./YourWeek";
+import { MyClients } from "./MyClients";
+import { cutoverOf } from "../../lib/client-coverage";
+import type { RosterStatus } from "../../hooks/useStudioRoster";
 import "./trainer-profile.css";
 
 /**
@@ -57,6 +60,12 @@ export interface TrainerProfileViewProps {
   studios: Studio[];
   onSelectClient: (clientId: string) => void;
   setView: (view: any) => void;
+  /**
+   * The studio client list's state (`useStudioRoster`), so My clients can say
+   * "can't read" while it loads or after its read failed rather than listing
+   * nobody. Absent: an empty list reads as still loading.
+   */
+  rosterStatus?: RosterStatus;
 }
 
 export function TrainerProfileView({
@@ -68,6 +77,7 @@ export function TrainerProfileView({
   studios,
   onSelectClient,
   setView,
+  rosterStatus,
 }: TrainerProfileViewProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const active = useOptionalActiveStudio();
@@ -154,6 +164,24 @@ export function TrainerProfileView({
           clients={clients}
           schedules={schedules}
           canEdit={visibility.scope === "self"}
+          onSelectClient={openClient}
+        />
+      )}
+
+      {/* Openings round, phase 12 (Sep 27 2026): the clients you have trained
+          most in Journey at the studio the iPad is in, coached lately first.
+          Right after the Kaizen Roster, and yours alone: the roster is who
+          you chose to track, this is who you have trained. No new read. */}
+      {visibility.scope === "self" && activeStudioId && (
+        <MyClients
+          trainer={trainer}
+          uid={auth.currentUser?.uid ?? null}
+          clients={clients}
+          studioId={activeStudioId}
+          studioName={active?.activeStudio?.name ?? "this studio"}
+          cutover={active?.activeStudio?.journeyCutoverDate ?? cutoverOf(studios, activeStudioId)}
+          rosterStatus={rosterStatus}
+          tz={active?.activeStudio?.timezone || undefined}
           onSelectClient={openClient}
         />
       )}

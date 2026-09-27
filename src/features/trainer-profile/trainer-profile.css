@@ -460,3 +460,58 @@
   line-height: 1.5;
   color: var(--tp-ink-muted);
 }
+
+/* --- My clients (Openings round, phase 12, Sep 27 2026) ------------- */
+
+/* Names are never cut short: the row wraps instead. */
+.tp-mc .tp-mc__name,
+.tp-mc .tp-mc__sub {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+/* The Kaizen mark's column keeps every name lined up, marked or not. */
+.tp-mc__mark {
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tp-mc__group {
+  margin: 0;
+  padding: 10px 16px 6px;
+  border-top: 1px solid var(--tp-border);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tp-ink-muted);
+}
+
+.tp-mc__group:first-child { border-top: 0; }
+.tp-mc__group + .tp-row { border-top: 0; }
+
+.tp-mc__state {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--tp-ink-2);
+}
+
+.tp-mc__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 1px solid var(--tp-border);
+}
+
+.tp-mc__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tp-ink-muted);
+}

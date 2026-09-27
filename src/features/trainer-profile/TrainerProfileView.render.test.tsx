@@ -34,7 +34,7 @@ vi.mock("firebase/firestore", () => {
     updateDoc: async () => {},
   };
 });
-vi.mock("./KaizenRoster", () => ({ KaizenRoster: () => null }));
+vi.mock("./KaizenRoster", () => ({ KaizenRoster: () => <section data-testid="kaizen-roster" /> }));
 vi.mock("./EditTrainerModal", () => ({ EditTrainerModal: () => null }));
 vi.mock("../renewals/MyRenewals", () => ({ MyRenewals: () => null }));
 // The standing week (voice-review round, Sep 27 2026) has its own render
@@ -134,14 +134,28 @@ describe("the trainer page's Upcoming", () => {
 });
 
 describe("My standing week on the trainer page", () => {
-  const render = async (viewer: Trainer, studioId: string) => {
+  const render = async (
+    viewer: Trainer,
+    studioId: string,
+    extra: { clients?: Client[]; rosterStatus?: "loading" | "ready" | "error" } = {},
+  ) => {
     activeHolder.value = { activeStudioId: studioId, activeStudio: { name: studioId === "solon" ? "Solon" : "Westlake" } };
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
     await act(async () => {
       root!.render(
-        <TrainerProfileView trainer={trainer} authTrainer={viewer} schedules={[]} sessions={[]} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />,
+        <TrainerProfileView
+          trainer={trainer}
+          authTrainer={viewer}
+          schedules={[]}
+          sessions={[]}
+          clients={extra.clients ?? ([] as Client[])}
+          studios={studios}
+          onSelectClient={() => {}}
+          setView={() => {}}
+          rosterStatus={extra.rosterStatus}
+        />,
       );
     });
     return host;
@@ -178,5 +192,26 @@ describe("My standing week on the trainer page", () => {
   it("keeps Your week off a colleague's page: it is the trainer's own", async () => {
     const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
     expect((await render(colleague, "solon")).querySelector("[data-testid='your-week']")).toBeNull();
+  });
+
+  it("puts My clients right after the Kaizen Roster on your own page, from the client list the page holds", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "ready" });
+    const roster = el.querySelector("[data-testid='kaizen-roster']")!;
+    const mine = el.querySelector("[data-testid='my-clients']")!;
+    expect(roster.nextElementSibling).toBe(mine);
+    expect(mine.textContent).toContain("Judy Daus");
+    expect(mine.textContent).toContain("42 sessions with you in Journey");
+  });
+
+  it("passes the client list's state through: loading says it can't read, not that you trained nobody", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "loading" });
+    expect(el.querySelector("[data-testid='my-clients']")?.textContent).toContain("Can't read the client list just now.");
+  });
+
+  it("keeps My clients off a colleague's page: it is the trainer's own", async () => {
+    const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
+    expect((await render(colleague, "solon")).querySelector("[data-testid='my-clients']")).toBeNull();
   });
 });
