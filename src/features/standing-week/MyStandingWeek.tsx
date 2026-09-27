@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import { useDirtyForm } from "../admin/useDirtyForm";
+import { AwayEditor } from "./AwayEditor";
 import { formOf, myWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
-import { proposeWeek, type WeekOwner, type WeekSigner } from "./store";
+import { proposeWeek, setAway, type WeekOwner, type WeekSigner } from "./store";
 import { useStandingWeek } from "./useStandingWeeks";
 import { weekStatus } from "./week";
 import { WeekEditor } from "./WeekEditor";
@@ -19,6 +21,10 @@ import "./standing-week.css";
  *
  * Styled as one of the profile's own cards (trainer-profile.css); the editor
  * inside is the one Team uses too.
+ *
+ * Below it, Away (voice review follow-up): the days the trainer is away,
+ * saved as each range is added or removed. It needs no agreement and no
+ * proposal, and the week check leaves those days alone.
  */
 
 export interface MyStandingWeekProps {
@@ -36,6 +42,7 @@ export interface MyStandingWeekProps {
 export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients, tz }: MyStandingWeekProps) {
   const { doc, loading, error } = useStandingWeek(studioId, authUid);
   const status = weekStatus(doc);
+  const today = studioTodayKey(new Date(), tz);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
@@ -139,6 +146,7 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
                 {form.status === "saving" ? "Proposing…" : saveLabel}
               </button>
             </div>
+            <AwayEditor away={doc?.away} today={today} tz={tz} whose="your" onSave={(next) => setAway(owner, next, today)} />
           </>
         )}
       </div>

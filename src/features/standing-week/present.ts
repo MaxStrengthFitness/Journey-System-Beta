@@ -10,7 +10,7 @@
 import type { Trainer } from "../../types";
 import { formatStudioDate, toDate, type DateLike } from "../../lib/studio-time";
 import { isDemoStudioId } from "../demo-mode/is-demo";
-import { timeLabel } from "./check";
+import { dayLabel, timeLabel } from "./check";
 import {
   EMPTY_WEEK,
   WEEKDAY_NAME,
@@ -19,6 +19,7 @@ import {
   minutesOf,
   normalizeWeek,
   weekStatus,
+  type AwayRange,
   type Regular,
   type StandingWeek,
   type StandingWeekDoc,
@@ -248,4 +249,13 @@ export function weekChanges(from: StandingWeek | null, to: StandingWeek | null):
   const nowNote = (to.note ?? "").trim();
   if (wasNote !== nowNote) out.push(nowNote ? `Note: "${nowNote}"` : "Takes the note off.");
   return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Days away
+ * ------------------------------------------------------------------ */
+
+/** "Mon, Oct 5 – Fri, Oct 9", or one day: "Mon, Oct 5". */
+export function awayLabel(r: Pick<AwayRange, "from" | "to">, tz?: string): string {
+  return r.from === r.to ? dayLabel(r.from, tz) : `${dayLabel(r.from, tz)} – ${dayLabel(r.to, tz)}`;
 }

@@ -12,6 +12,14 @@
  * 0–6 (0 = Sunday, as `weekdayOf` reports it). Nothing here knows an instant:
  * the week is the same week on the day the clocks change.
  *
+ * AWAY (voice review follow-up, Sep 27 2026). AJ: "if someone has a vacation
+ * then it should block it out." A list of studio days the trainer is away,
+ * `away: [{ id, from, to, note }]`, beside the week rather than inside it: it
+ * needs no agreement, so the trainer sets it on My Profile and a leader on
+ * Team, and a trainer with no proposal can still set it. The week check
+ * skips the trainer's slots on those days. Journey's own: nothing about it
+ * goes to Mindbody.
+ *
  * PURE MODULE.
  */
 
@@ -40,6 +48,15 @@ export interface StandingWeek {
   note?: string;
 }
 
+/** Days away, both ends included: studio days, "YYYY-MM-DD". */
+export interface AwayRange {
+  /** Stable within the list, so a remove finds its row. */
+  id: string;
+  from: string;
+  to: string;
+  note?: string;
+}
+
 export interface StandingWeekDoc {
   /** The document id: the trainer's Auth uid. */
   id: string;
@@ -54,12 +71,21 @@ export interface StandingWeekDoc {
   final: StandingWeek | null;
   finalAt?: unknown;
   finalBy?: { id: string; name: string } | null;
+  /** Days away, earliest first. Always set by normalizeDoc; optional so a hand-built doc may leave it out. */
+  away?: AwayRange[];
 }
 
 /** The rules hold the same limits (firestore.rules, standingWeekValid). */
 export const MAX_HOURS = 14;
 export const MAX_REGULARS = 80;
 export const MAX_NOTE = 500;
+/**
+ * Six ranges still to come at a time: the rules check each one, and a
+ * request may evaluate only so many expressions (firestore.rules,
+ * standingWeekAwayValid). Past ranges drop off as it saves.
+ */
+export const MAX_AWAY = 6;
+export const MAX_AWAY_NOTE = 200;
 
 export const EMPTY_WEEK: StandingWeek = { hours: [], regulars: [] };
 
@@ -113,6 +139,59 @@ export function normalizeWeek(raw: unknown): StandingWeek {
   return { hours, regulars, ...(note ? { note } : {}) };
 }
 
+export function isDateKey(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v);
+}
+
+/**
+ * Days away as stored, made safe to read: a range with a bad date, or one
+ * that ends before it starts, is left out rather than guessed; earliest
+ * first, held to the rules' limits.
+ */
+export function normalizeAway(raw: unknown): AwayRange[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((r): r is AwayRange => {
+      const x = r as Partial<AwayRange> | null;
+      return !!x && typeof x.id === "string" && x.id !== "" && isDateKey(x.from) && isDateKey(x.to) && x.from <= x.to;
+    })
+    .map((r) => {
+      const note = typeof r.note === "string" ? r.note.trim().slice(0, MAX_AWAY_NOTE) : "";
+      return { id: r.id.slice(0, 40), from: r.from, to: r.to, ...(note ? { note } : {}) };
+    })
+    .sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to))
+    .slice(0, MAX_AWAY);
+}
+
+/** The ranges that haven't ended by `today`: the only ones a screen shows. */
+export function upcomingAway(away: readonly AwayRange[] | null | undefined, today: string): AwayRange[] {
+  return normalizeAway(away ?? []).filter((r) => r.to >= today);
+}
+
+/** The range that covers `dateKey`, if the trainer is away that day. */
+export function awayOn(away: readonly AwayRange[] | null | undefined, dateKey: string): AwayRange | null {
+  return (away ?? []).find((r) => r.from <= dateKey && dateKey <= r.to) ?? null;
+}
+
+/**
+ * Days away ready to write: past ranges dropped (only today and after are
+ * shown, so nobody could remove them), no undefined anywhere.
+ */
+export function awayForWrite(away: readonly AwayRange[], today: string): AwayRange[] {
+  return upcomingAway(away, today).map((r) => ({ id: r.id, from: r.from, to: r.to, ...(r.note ? { note: r.note } : {}) }));
+}
+
+/** A new range's id: unique within the list. */
+export function newAwayId(existing: readonly AwayRange[], seed = Date.now()): string {
+  const taken = new Set(existing.map((r) => r.id));
+  let n = seed % 1_000_000;
+  let id = `a${n.toString(36)}`;
+  while (taken.has(id)) {
+    n += 1;
+    id = `a${n.toString(36)}`;
+  }
+  return id;
+}
+
 /** A stored document, made safe to read. */
 export function normalizeDoc(id: string, raw: unknown): StandingWeekDoc {
   const d = (raw ?? {}) as Partial<StandingWeekDoc>;
@@ -128,6 +207,7 @@ export function normalizeDoc(id: string, raw: unknown): StandingWeekDoc {
     final: d.final ? normalizeWeek(d.final) : null,
     finalAt: d.finalAt ?? null,
     finalBy: d.finalBy ?? null,
+    away: normalizeAway(d.away),
   };
 }
 

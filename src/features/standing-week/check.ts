@@ -56,6 +56,11 @@
  * booked "{studio} Rotation" at her time is as usual: never moved, never
  * taken, never a Free slot.
  *
+ * AWAY. A trainer's days away (week.ts) are not checked at all: no open,
+ * moved or taken, no Free slot, and not counted among the slots. The panel
+ * says once that they are away (`awayThisWeek`), which is the whole story:
+ * there is nothing to fill while they are gone.
+ *
  * ONE BOOKING, ONE CLAIM. A booking that kept one agreed slot as usual never
  * explains another; a rebook named as one slot's move is never named for a
  * second; and another regular's own booking at a shared time never "takes"
@@ -76,7 +81,7 @@ import { isRealRebook } from "../admin/changes/changes";
 import { addDays, weekdayOf } from "../studio-tasks/recurrence";
 import { minutesToClock } from "../relay/board/now-context";
 import type { ServerRead } from "./server-read";
-import { minutesOf, type StandingWeekDoc } from "./week";
+import { awayOn, minutesOf, type StandingWeekDoc } from "./week";
 
 /** How far a booking may start from the slot and still be the slot. */
 export const SLOT_TOLERANCE_MINUTES = 15;
@@ -232,6 +237,8 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
     const dateKey = addDays(input.today, i);
     const weekday = weekdayOf(dateKey);
     for (const doc of agreed) {
+      // Away that day: nothing of theirs is checked (AJ: "it should block it out").
+      if (awayOn(doc.away, dateKey)) continue;
       for (const r of doc.final!.regulars) {
         if (r.weekday !== weekday) continue;
         const minutes = minutesOf(r.start);
@@ -321,6 +328,38 @@ function whereItWent(s: Slot, bookings: BookingView[], cancellations: BookingVie
       .filter((b) => b.dateKey >= monday && b.dateKey <= sunday && isRealRebook({ createdAt: b.createdAt, startTime: b.startAt }, cancelled.cancelledAt))
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.minutes - b.minutes)[0] ?? null
   );
+}
+
+export interface AwayNotice {
+  trainerId: string;
+  trainerName: string;
+  from: string;
+  to: string;
+}
+
+/**
+ * Who is away in the window, once each, by name: every range of days away
+ * that overlaps today and the days after it. From every week given, agreed
+ * or not — being away needs no agreement.
+ */
+export function awayThisWeek(docs: readonly StandingWeekDoc[], today: string, days = CHECK_DAYS): AwayNotice[] {
+  const last = addDays(today, days - 1);
+  const out: AwayNotice[] = [];
+  for (const d of docs) {
+    for (const r of d.away ?? []) {
+      if (r.to < today || r.from > last) continue;
+      out.push({ trainerId: d.trainerId, trainerName: d.trainerName, from: r.from, to: r.to });
+    }
+  }
+  return out.sort((a, b) => a.trainerName.localeCompare(b.trainerName) || a.from.localeCompare(b.from));
+}
+
+/** "Sam is away Mon, Sep 28 – Fri, Oct 2." — or "until", when it began before today; "on", for one day. */
+export function awaySentence(n: AwayNotice, today: string, tz?: string): string {
+  const who = firstName(n.trainerName) || "A trainer";
+  if (n.from === n.to) return `${who} is away on ${dayLabel(n.from, tz)}.`;
+  if (n.from < today) return `${who} is away until ${dayLabel(n.to, tz)}.`;
+  return `${who} is away ${dayLabel(n.from, tz)} – ${dayLabel(n.to, tz)}.`;
 }
 
 /** A finding whose trainer has the time free: the slot to fill. */

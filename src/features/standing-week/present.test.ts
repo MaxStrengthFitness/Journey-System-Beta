@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
+import { awayLabel, clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /** What a standing week says on screen (voice-review round, Sep 27 2026). */
@@ -147,5 +147,12 @@ describe("what a proposal changes", () => {
     ]);
     expect(weekChanges(to, { ...from, note: undefined })).toContain("No longer works Friday (was 7:00 AM – 11:00 AM).");
     expect(weekChanges(to, { ...to, note: "" })).toEqual(["Takes the note off."]);
+  });
+});
+
+describe("days away, labelled", () => {
+  it("names the first and last day, or the one day", () => {
+    expect(awayLabel({ from: "2026-10-05", to: "2026-10-09" }, "America/New_York")).toBe("Mon, Oct 5 – Fri, Oct 9");
+    expect(awayLabel({ from: "2026-10-05", to: "2026-10-05" }, "America/New_York")).toBe("Mon, Oct 5");
   });
 });

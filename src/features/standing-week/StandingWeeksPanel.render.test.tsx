@@ -222,6 +222,35 @@ describe("Standing weeks on Team", () => {
     expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
   });
 
+  it("says once who is away, and leaves their days unchecked (voice review follow-up)", async () => {
+    fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], away: [{ id: "a1", from: "2026-09-28", to: "2026-09-28", note: "Dentist" }] }] };
+    await mount();
+    expect(host.querySelector("[aria-label='Away this week']")?.textContent).toBe("Ann is away on Mon, Sep 28.");
+    expect(host.textContent).not.toContain("Free slot");
+    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe("No agreed regular falls in the next seven days.");
+  });
+
+  it("lets a leader set a trainer's dates away from the review", async () => {
+    await mount();
+    await click("Change: Ann Park");
+    await click("Dates away");
+    const field = (label: string) => [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith(label))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(field("To"), "2026-10-02");
+      field("To").dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click("Save dates away");
+    expect(fake.writes).toEqual([
+      {
+        op: "set",
+        path: "studios/solon/standingWeeks/t-ann",
+        options: { merge: true },
+        data: { studioId: "solon", trainerUid: "t-ann", trainerId: "t-ann", trainerName: "Ann Park", away: [{ id: expect.any(String), from: "2026-09-28", to: "2026-10-02" }] },
+      },
+    ]);
+  });
+
   it("follows the trainer's newer proposal while the review is untouched", async () => {
     await mount();
     await click("Review: Sam Lee");

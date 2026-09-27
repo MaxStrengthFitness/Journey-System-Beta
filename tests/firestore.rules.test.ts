@@ -3466,4 +3466,62 @@ describe("the standing week", () => {
     // A trainer's proposal, backdated.
     await assertFails(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposedAt: new Date("2026-01-01T12:00:00Z") })));
   });
+
+  // Away (voice review follow-up): the days a trainer is away. No agreement,
+  // so the trainer writes it too, with or without a proposal.
+  const owned = (uid: string, over: Record<string, unknown> = {}) => ({
+    studioId: "studioA",
+    trainerUid: uid,
+    trainerId: uid,
+    trainerName: "Trainer A",
+    ...over,
+  });
+  const range = (over: Record<string, unknown> = {}) => ({ id: "a1", from: "2026-10-05", to: "2026-10-09", note: "Vacation", ...over });
+
+  it("lets a trainer set the days they are away, with no proposal, and change them", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: [range()] }), { merge: true }));
+    await assertSucceeds(
+      setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: [range(), range({ id: "a2", from: "2026-11-02", to: "2026-11-02" })] }), { merge: true }),
+    );
+    // Proposing after, and clearing the days away.
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA"), { merge: true }));
+    await assertSucceeds(updateDoc(weekRef(db, "studioA", "trainerA"), { away: [] }));
+    // On an agreed week too: the agreement stays the leader's.
+    await seedAgreed();
+    await assertSucceeds(updateDoc(weekRef(db, "studioA", "trainerA"), { away: [range()] }));
+    // Never someone else's, nor at a studio they don't work at.
+    await assertFails(setDoc(weekRef(db, "studioA", "ownerA"), owned("ownerA", { away: [range()] })));
+    await assertFails(setDoc(weekRef(as("trainerB"), "studioA", "trainerB"), owned("trainerB", { away: [range()] })));
+  });
+
+  it("lets the studio's leader set a trainer's days away", async () => {
+    await assertSucceeds(setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), owned("trainerA", { away: [range()] }), { merge: true }));
+    await seedAgreed();
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { away: [] }));
+  });
+
+  it("holds the shape of the days away", async () => {
+    const db = as("trainerA");
+    const bad = [
+      "October",
+      [range({ from: "2026-10-09", to: "2026-10-05" })],
+      [range({ from: "Oct 5" })],
+      [range({ to: 20261009 })],
+      [range({ note: "x".repeat(201) })],
+      [range({ id: "" })],
+      [range({ colour: "blue" })],
+      ["2026-10-05"],
+      Array.from({ length: 7 }, (_, i) => range({ id: `a${i}` })),
+      // The sixth place is checked as well as the first.
+      [...Array.from({ length: 5 }, (_, i) => range({ id: `a${i}` })), range({ id: "a5", from: "2026-12-31", to: "2026-12-01" })],
+    ];
+    for (const away of bad) {
+      await assertFails(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away })));
+    }
+    // Six, each checked, fit the rules' budget of expressions for a trainer and a leader alike.
+    const six = Array.from({ length: 6 }, (_, i) => range({ id: `a${i}` }));
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: six })));
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { away: [...six].reverse() }));
+  });
 });

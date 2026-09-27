@@ -212,3 +212,54 @@
   background: var(--eq-surface);
 }
 .stw-review__title { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--eq-ink); }
+
+/* --- away: the days a trainer is away (voice review follow-up) ---------- */
+
+.stw-away { display: grid; gap: 8px; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--eq-border); }
+.stw-away__head {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-2);
+}
+.stw-away__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stw-away__range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stw-away__when { font-size: 14px; font-weight: 700; color: var(--eq-ink); }
+.stw-away__note { font-size: 12px; color: var(--eq-ink-muted); }
+
+.stw-field { display: grid; gap: 4px; flex: 1 1 160px; min-width: 0; }
+.stw-field__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+.stw-input--date { font-family: inherit; }
+.stw-field .stw-input { width: 100%; }
+
+.stw-actions--tight { padding-top: 4px; }
+
+/* Buttons: 14px bold, sentence case, 40px tall. Every Save is solid brand blue. */
+.stw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.stw-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.stw-btn:disabled { opacity: 0.45; cursor: default; }
+.stw-btn--save { border: 1px solid var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); }
+.stw-btn--quiet { border: 1px solid var(--eq-border-strong); background: transparent; color: var(--eq-ink-2); }
+.stw-btn--quiet:hover { background: var(--eq-surface-2); }
+
+/* Team: who is away in the next seven days, said once each. */
+.stw-away-lines { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.stw-away-line { font-size: 14px; color: var(--eq-ink-2); }

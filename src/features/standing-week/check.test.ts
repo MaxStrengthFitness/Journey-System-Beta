@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../types";
-import { checkWeek, findingSentence, isFreeSlot, mondayOf, stateSentence, type WeekCheckInput } from "./check";
+import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, mondayOf, stateSentence, type WeekCheckInput } from "./check";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /**
@@ -254,6 +254,41 @@ describe("checkWeek — only what it knows (voice review follow-up)", () => {
     const c = checkWeek(input({ bookings: [booking("2026-10-01", "08:00")] }));
     expect(c.findings[0]).toMatchObject({ kind: "open", dateKey: TODAY });
     expect(isFreeSlot(c.findings[0])).toBe(true);
+  });
+});
+
+describe("checkWeek — away (voice review follow-up)", () => {
+  // AJ: "if someone has a vacation then it should block it out."
+  const vacation = { id: "a1", from: "2026-09-28", to: "2026-09-30" };
+
+  it("never checks a trainer's slots on the days they are away", () => {
+    // Monday is inside the vacation: Judy's missing Monday is not an open slot,
+    // and Pat covering her is not a move. Thursday is checked as usual.
+    const c = checkWeek(
+      input({
+        docs: [sam({ away: [vacation] })],
+        bookings: [booking("2026-09-28", "08:00", { trainerId: "t-pat", trainerName: "Pat Doe" }), booking("2026-10-01", "08:00")],
+      }),
+    );
+    expect(c).toEqual({ state: "ready", findings: [], slots: 1 });
+    expect(stateSentence(c)).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+    // Nor is anyone "taking" a slot of theirs while they are away.
+    const taken = checkWeek(input({ docs: [sam({ away: [vacation] })], bookings: [booking("2026-09-28", "08:00", { clientId: "c-bob", clientName: "Bob Jones" })] }));
+    expect(taken.findings.map((f) => f.dateKey)).toEqual(["2026-10-01"]);
+  });
+
+  it("says once who is away in the window, agreed or not", () => {
+    const ann = { ...sam(), id: "uid-ann", trainerId: "t-ann", trainerName: "Ann Park", final: null, away: [{ id: "a9", from: "2026-10-03", to: "2026-10-03" }] };
+    const later = { id: "a2", from: "2026-10-12", to: "2026-10-16" };
+    const earlier = { id: "a0", from: "2026-09-21", to: "2026-09-25" };
+    const notes = awayThisWeek([sam({ away: [earlier, vacation, later] }), ann], TODAY);
+    expect(notes).toEqual([
+      { trainerId: "t-ann", trainerName: "Ann Park", from: "2026-10-03", to: "2026-10-03" },
+      { trainerId: "t-sam", trainerName: "Sam Lee", from: "2026-09-28", to: "2026-09-30" },
+    ]);
+    expect(notes.map((n) => awaySentence(n, TODAY, TZ))).toEqual(["Ann is away on Sat, Oct 3.", "Sam is away Mon, Sep 28 – Wed, Sep 30."]);
+    // A vacation that began last week reads "until".
+    expect(awaySentence({ trainerId: "t-sam", trainerName: "Sam Lee", from: "2026-09-21", to: "2026-10-02" }, TODAY, TZ)).toBe("Sam is away until Fri, Oct 2.");
   });
 });
 

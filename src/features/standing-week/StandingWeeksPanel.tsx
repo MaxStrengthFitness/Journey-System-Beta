@@ -6,11 +6,12 @@ import type { Client, Studio, Trainer } from "../../types";
 import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
 import { useUnsavedChanges } from "../unsaved-changes";
-import { checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
+import { AwayEditor } from "./AwayEditor";
+import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
 import { serverRead } from "./server-read";
 import { useServerWait } from "./useServerWait";
 import { formOf, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
-import { agreeWeek, removeWeek } from "./store";
+import { agreeWeek, removeWeek, setAway } from "./store";
 import { bookingsKnown, teamWeeks, waitingSentence, type TeamWeekRow } from "./team";
 import { useStandingWeeks } from "./useStandingWeeks";
 import { sameWeek, weekSummary } from "./week";
@@ -84,6 +85,8 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
       }),
     [checked, schedule.entries, read, today, tz, studio, staffIds],
   );
+  // Who is away this week, said once each; their slots aren't checked.
+  const away = useMemo(() => awayThisWeek(checked, today), [checked, today]);
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;
 
@@ -102,7 +105,17 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
             <p className="stw-hint">{weeks.error}</p>
           ) : weeks.loading ? (
             <p className="stw-hint">Reading the standing weeks…</p>
-          ) : check.findings.length === 0 ? (
+          ) : null}
+          {!weeks.error && !weeks.loading && away.length > 0 && (
+            <ul className="stw-away-lines" aria-label="Away this week">
+              {away.map((n) => (
+                <li key={`${n.trainerId}-${n.from}-${n.to}`} className="stw-away-line">
+                  {awaySentence(n, today, tz)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {weeks.error || weeks.loading ? null : check.findings.length === 0 ? (
             <p className="stw-hint" data-testid="week-check-state">
               {stateSentence(check)}
             </p>
@@ -157,6 +170,7 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
               authTrainer={authTrainer}
               clients={clients}
               tz={tz}
+              today={today}
               onDone={() => setReviewing(null)}
             />
           )}
@@ -187,6 +201,7 @@ function WeekReview({
   authTrainer,
   clients,
   tz,
+  today,
   onDone,
 }: {
   row: TeamWeekRow;
@@ -194,6 +209,7 @@ function WeekReview({
   authTrainer: Trainer | null;
   clients: Client[];
   tz?: string;
+  today: string;
   onDone: () => void;
 }) {
   const doc = row.doc;
@@ -293,13 +309,23 @@ function WeekReview({
       <ConfirmDialog
         open={confirmRemove}
         title={`Remove ${first}'s standing week?`}
-        body={`Their proposal and the agreed week both go, and the week check stops looking for their regulars. ${row.onStaff ? `${first} can propose a week again from My Profile.` : ""}`}
+        body={`Their proposal and the agreed week both go${(doc?.away ?? []).length > 0 ? ", with their dates away," : ""} and the week check stops looking for their regulars. ${row.onStaff ? `${first} can propose a week again from My Profile.` : ""}`}
         confirmLabel="Remove it"
         destructive
         busy={busy === "remove"}
         onConfirm={() => void remove()}
         onCancel={() => setConfirmRemove(false)}
       />
+      {row.onStaff && (
+        <AwayEditor
+          away={doc?.away}
+          today={today}
+          tz={tz}
+          whose={`${first}'s`}
+          disabled={busy !== null}
+          onSave={(next) => setAway({ studioId: studio.id, trainerUid: row.uid, trainerId: row.trainerId, trainerName: row.name }, next, today)}
+        />
+      )}
     </div>
   );
 }

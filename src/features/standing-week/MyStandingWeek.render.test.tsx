@@ -63,6 +63,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -185,5 +186,75 @@ describe("My standing week", () => {
     });
     expect(host.textContent).toContain("the new database rules may not be deployed yet");
     expect(host.querySelector(".stw")).toBeNull();
+  });
+});
+
+describe("Away on My standing week (voice review follow-up)", () => {
+  // Monday Sep 28 2026, noon Eastern.
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T12:00:00-04:00") });
+  });
+  const input = (label: string) => {
+    const el = [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith(label))?.querySelector("input");
+    if (!el) throw new Error(`No field "${label}"`);
+    return el as HTMLInputElement;
+  };
+
+  it("sets dates away with no proposal at all", async () => {
+    await mount();
+    await deliver(null);
+    expect(host.querySelector("[aria-label='Away']")?.textContent).toContain("No dates away.");
+    await click("Dates away");
+    expect(input("From").value).toBe("2026-09-28");
+    await type(input("From"), "2026-10-05");
+    // The last day follows a first day that passed it.
+    expect(input("To").value).toBe("2026-10-05");
+    await type(input("To"), "2026-10-09");
+    await type(input("Note (optional)"), "Vacation");
+    await click("Save dates away");
+    expect(fake.writes).toHaveLength(1);
+    const w = fake.writes[0];
+    expect(w.path).toBe("studios/solon/standingWeeks/uid-sam");
+    expect(w.options).toEqual({ merge: true });
+    expect(w.data).toEqual({
+      studioId: "solon",
+      trainerUid: "uid-sam",
+      trainerId: "t-sam",
+      trainerName: "Sam Lee",
+      away: [{ id: expect.any(String), from: "2026-10-05", to: "2026-10-09", note: "Vacation" }],
+    });
+    // Never a proposal: being away needs no agreement.
+    expect(w.data).not.toHaveProperty("proposed");
+  });
+
+  it("shows only what hasn't ended, and removes a range", async () => {
+    await mount();
+    await deliver({
+      trainerId: "t-sam",
+      trainerName: "Sam Lee",
+      away: [
+        { id: "a0", from: "2026-09-14", to: "2026-09-18" },
+        { id: "a1", from: "2026-10-05", to: "2026-10-09", note: "Vacation" },
+        { id: "a2", from: "2026-11-02", to: "2026-11-02" },
+      ],
+    });
+    const list = host.querySelector("[aria-label='Dates away']");
+    expect([...list!.querySelectorAll(".stw-away__when")].map((n) => n.textContent)).toEqual(["Mon, Oct 5 – Fri, Oct 9", "Mon, Nov 2"]);
+    expect(list!.textContent).toContain("Vacation");
+    await click("Remove away Mon, Oct 5 – Fri, Oct 9");
+    expect(fake.writes[0].data.away).toEqual([{ id: "a2", from: "2026-11-02", to: "2026-11-02" }]);
+  });
+
+  it("won't save a range that ends before it starts, or is over", async () => {
+    await mount();
+    await deliver(null);
+    await click("Dates away");
+    await type(input("From"), "2026-10-09");
+    await type(input("To"), "2026-10-05");
+    expect(button("Save dates away").disabled).toBe(true);
+    await type(input("From"), "2026-09-01");
+    await type(input("To"), "2026-09-04");
+    expect(button("Save dates away").disabled).toBe(true);
+    expect(fake.writes).toHaveLength(0);
   });
 });
