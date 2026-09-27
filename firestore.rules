@@ -1165,6 +1165,51 @@ service cloud.firestore {
           && (!changed.hasAny(['finalAt']) || d.get('finalAt', null) == null || d.finalAt == request.time);
     }
 
+    /* THE WHOLE-READ RECORD (Sep 27 2026) -- which studio days a pull that
+       Mindbody answered in full read, one document per month:
+       { days: ["2026-10-01", ...] }. Limits match
+       src/features/openings/coverage.ts. A rule cannot loop, so each day is
+       held to the month by naming the month's 31 possible days and asking
+       the list to hold only those (a "2026-10-31" in September, or anything
+       that isn't a day, refuses the write), with no day twice. */
+    /* Who may add to it: the same people as writesForStudio (administrators,
+       franchise owners, the studio's leaders with the grant, and everyone
+       who works there), with the role and the trainer document resolved
+       ONCE and passed down, as teamJobLeaderAllowed does. writesForStudio
+       itself asks getRole() up to eight times: with it, a guest trainer's
+       write ran out of the 1,000-expression budget in the emulator, and
+       came back PERMISSION_DENIED (Sep 27 2026). Measured with the
+       emulator's rule-coverage report, the guest's write stopped at 2,107
+       evaluations and a home trainer's full month took 2,069, just under;
+       resolved once, the costliest write (a trainer with the grant adding a
+       month's 31st day) takes 907, and a full month by a guest 831. The
+       tests hold a full month, and two in one batch, for every writer. */
+    function coverageWriterAllowed(studioId) {
+      let r = getRole();
+      let t = callerTrainer();
+      return roleIsSuper(r) || roleIsFranchise(r)
+          || trainerWorksAt(t, studioId) || trainerLeads(r, t, studioId);
+    }
+
+    function coverageMonthDays(month) {
+      return [month + '-01', month + '-02', month + '-03', month + '-04', month + '-05',
+              month + '-06', month + '-07', month + '-08', month + '-09', month + '-10',
+              month + '-11', month + '-12', month + '-13', month + '-14', month + '-15',
+              month + '-16', month + '-17', month + '-18', month + '-19', month + '-20',
+              month + '-21', month + '-22', month + '-23', month + '-24', month + '-25',
+              month + '-26', month + '-27', month + '-28', month + '-29', month + '-30',
+              month + '-31'];
+    }
+
+    function coverageValid(month, d) {
+      return month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+          && d.keys().hasOnly(['days'])
+          && d.days is list
+          && d.days.size() > 0 && d.days.size() <= 31
+          && d.days.toSet().size() == d.days.size()
+          && d.days.hasOnly(coverageMonthDays(month));
+    }
+
     /* MACHINE CARE (Relay, Sep 2026). Shape only; limits match
        src/features/planner/relay/machine-care.ts. Times are millisecond
        numbers (they sit inside merged writes, where serverTimestamp would
@@ -2059,6 +2104,28 @@ service cloud.firestore {
                     && (!('scheduleSyncFailures' in request.resource.data) || request.resource.data.scheduleSyncFailures is number)
                     && (!('lastDeepScheduleSyncAt' in request.resource.data) || request.resource.data.lastDeepScheduleSyncAt is number);
         allow delete: if isSuperAdmin();
+      }
+
+      // WHICH DAYS JOURNEY READ IN FULL (the whole-read record, Sep 27 2026;
+      // docs/rounds/2026-09-27-coverage-record.md). One document per month,
+      // scheduleCoverage/{yyyy-mm}: the studio days a pull that Mindbody
+      // answered in full read on the day before, the day, or after. The iPad
+      // that pulled adds them (features/openings/coverage-record.ts) with an
+      // add-to-list merge, so two iPads never overwrite each other; anyone
+      // who works at the studio may, administrators and franchise owners
+      // too (a back-read from Operations -> Mindbody). ADD-ONLY: an update
+      // keeps every day already there, and the app never deletes a month
+      // (a wrong record is mended by hand, never from an iPad). Read by the
+      // studio's people, as the standing weeks are; its readers to come are
+      // the Sunday job (Admin SDK) and Openings.
+      match /scheduleCoverage/{month} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create: if isAuthenticated() && coverageWriterAllowed(studioId)
+                      && coverageValid(month, request.resource.data);
+        allow update: if isAuthenticated() && coverageWriterAllowed(studioId)
+                      && coverageValid(month, request.resource.data)
+                      && request.resource.data.days.hasAll(resource.data.days);
+        allow delete: if false;
       }
 
       // RENEWAL SETTINGS (Renewals round, Sep 2026).

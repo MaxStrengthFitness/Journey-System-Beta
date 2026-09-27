@@ -3684,3 +3684,160 @@ describe("the standing week", () => {
     );
   });
 });
+
+// ── THE WHOLE-READ RECORD (Sep 27 2026) ─────────────────────────────────
+//
+// studios/{s}/scheduleCoverage/{yyyy-mm}: the studio days a pull that
+// Mindbody answered in full read, as { days: [...] }. The iPad that pulled
+// adds them with an add-to-list merge (src/features/openings/coverage-record.ts);
+// anyone who works at the studio may, and nobody may take a day away or
+// delete a month from the app. docs/rounds/2026-09-27-coverage-record.md.
+describe("the whole-read record", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const monthRef = (db: ReturnType<typeof as>, studioId: string, month: string) => doc(db, "studios", studioId, "scheduleCoverage", month);
+  /** The first n days of a month, as the app writes them. */
+  const daysOf = (month: string, n: number) => Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+  const add = (db: ReturnType<typeof as>, studioId: string, month: string, days: string[]) =>
+    setDoc(monthRef(db, studioId, month), { days: arrayUnion(...days) }, { merge: true });
+  const seed = (studioId: string, month: string, days: string[]) =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", studioId, "scheduleCoverage", month), { days });
+    });
+
+  // Seeded only where a test needs them: every kind of writer the docs name,
+  // and the costliest path through writesForStudio (a guest, whose studio is
+  // found last, with no role claim on the token, so the role is read from
+  // the trainer document).
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+      await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+    });
+  }
+
+  it("lets a trainer at the studio add the days a pull read, again and again, and read them", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-27", "2026-09-28"]));
+    // The next day's pull: only tomorrow is new; a day already there is no change.
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-29"]));
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-28", "2026-09-29"]));
+    const snap = await assertSucceeds(getDoc(monthRef(db, "studioA", "2026-09")));
+    expect(snap.data()).toEqual({ days: ["2026-09-27", "2026-09-28", "2026-09-29"] });
+  });
+
+  it("writes a month's end as two documents in one batch", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.set(monthRef(db, "studioA", "2026-09"), { days: arrayUnion("2026-09-30") }, { merge: true });
+    b.set(monthRef(db, "studioA", "2026-10"), { days: arrayUnion("2026-10-01") }, { merge: true });
+    await assertSucceeds(b.commit());
+  });
+
+  it("lets a leader, a trainer with the grant, a guest, a franchise owner and an administrator add days", async () => {
+    await seedPeople();
+    for (const uid of ["ownerA", "grantA", "guestA", "franchiseX", "adminX"]) {
+      await assertSucceeds(add(as(uid), "studioA", "2026-08", daysOf("2026-08", 3)));
+      await assertSucceeds(getDoc(monthRef(as(uid), "studioA", "2026-08")));
+    }
+  });
+
+  it("refuses a trainer from another studio, reading or writing, and anyone signed out", async () => {
+    await seed("studioA", "2026-09", ["2026-09-27"]);
+    const elsewhere = as("trainerB");
+    await assertFails(add(elsewhere, "studioA", "2026-09", ["2026-09-28"]));
+    await assertFails(add(elsewhere, "studioA", "2026-10", ["2026-10-01"]));
+    await assertFails(getDoc(monthRef(elsewhere, "studioA", "2026-09")));
+    await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "scheduleCoverage")));
+    const out = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(monthRef(out, "studioA", "2026-09")));
+    await assertFails(setDoc(monthRef(out, "studioA", "2026-10"), { days: ["2026-10-01"] }));
+    // Their own studio is theirs.
+    await assertSucceeds(add(elsewhere, "studioB", "2026-09", ["2026-09-27"]));
+  });
+
+  it("never lets a day be taken away, or a month deleted, by anyone in the app", async () => {
+    await seedPeople();
+    await seed("studioA", "2026-09", ["2026-09-26", "2026-09-27", "2026-09-28"]);
+    for (const uid of ["trainerA", "ownerA", "adminX"]) {
+      const db = as(uid);
+      await assertFails(updateDoc(monthRef(db, "studioA", "2026-09"), { days: arrayRemove("2026-09-27") }));
+      await assertFails(setDoc(monthRef(db, "studioA", "2026-09"), { days: ["2026-09-28", "2026-09-29"] }));
+      await assertFails(updateDoc(monthRef(db, "studioA", "2026-09"), { days: [] }));
+      await assertFails(deleteDoc(monthRef(db, "studioA", "2026-09")));
+    }
+    // Writing the whole list back with a day more is still only an add.
+    await assertSucceeds(setDoc(monthRef(as("trainerA"), "studioA", "2026-09"), { days: ["2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29"] }));
+  });
+
+  it("holds the record's shape", async () => {
+    const db = as("trainerA");
+    const refused: [string, Record<string, unknown>][] = [
+      // Not a month.
+      ["2026-13", { days: ["2026-13-01"] }],
+      ["2026-9", { days: ["2026-9-01"] }],
+      ["september", { days: ["september-01"] }],
+      // Another month's day, or not a day.
+      ["2026-09", { days: ["2026-10-01"] }],
+      ["2026-09", { days: ["2026-09-27", "2026-09-32"] }],
+      ["2026-09", { days: ["someday"] }],
+      ["2026-09", { days: [20260927] }],
+      // A day twice, no day, or not a list.
+      ["2026-09", { days: ["2026-09-27", "2026-09-27"] }],
+      ["2026-09", { days: [] }],
+      ["2026-09", { days: "2026-09-27" }],
+      ["2026-09", { days: { "2026-09-27": true } }],
+      // Anything beside the days.
+      ["2026-09", { days: ["2026-09-27"], by: "trainerA" }],
+      ["2026-09", { days: ["2026-09-27"], at: serverTimestamp() }],
+      ["2026-09", {}],
+    ];
+    for (const [month, data] of refused) {
+      await assertFails(setDoc(monthRef(db, "studioA", month), data));
+    }
+    // Thirty-two can't be written: a month has 31 days, and none may come twice.
+    await assertFails(setDoc(monthRef(db, "studioA", "2026-10"), { days: [...daysOf("2026-10", 31), "2026-10-01"] }));
+  });
+
+  // The 1,000-expression budget (a request that runs out comes back
+  // PERMISSION_DENIED, like a refusal). The costliest writes the app can
+  // make: a whole month in one write (a back-read), the 31st day added to
+  // 30, and two full months in one batch, each by every kind of writer,
+  // none with a role on the token, so each reads its role from its trainer
+  // document. Written with writesForStudio itself, the guest's writes ran
+  // out here (Sep 27 2026); the rule resolves the caller once instead
+  // (coverageWriterAllowed), and the measured numbers are beside it.
+  it("fits a full month, and two in one batch, inside the rules' budget for every writer", async () => {
+    for (const uid of ["guestA", "grantA", "trainerA", "ownerA", "franchiseX", "adminX"]) {
+      await testEnv.clearFirestore();
+      await seedPeople();
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, "trainers", "trainerA"), { fullName: "Trainer A", initials: "TA", role: "LifeTransformer", primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"] });
+        await setDoc(doc(db, "trainers", "ownerA"), { fullName: "Owner A", initials: "OA", role: "StudioOwner", primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"] });
+      });
+      const db = as(uid);
+      // A whole month, created in one write.
+      await assertSucceeds(add(db, "studioA", "2026-10", daysOf("2026-10", 31)));
+      // The 31st day added to 30: the update checks the new list and keeps the old.
+      await seed("studioA", "2026-12", daysOf("2026-12", 30));
+      await assertSucceeds(add(db, "studioA", "2026-12", ["2026-12-31"]));
+      // Two full months in one batch, each adding its 31st day.
+      await seed("studioA", "2027-01", daysOf("2027-01", 30));
+      await seed("studioA", "2027-03", daysOf("2027-03", 30));
+      const b = writeBatch(db);
+      b.set(monthRef(db, "studioA", "2027-01"), { days: arrayUnion("2027-01-31") }, { merge: true });
+      b.set(monthRef(db, "studioA", "2027-03"), { days: arrayUnion("2027-03-31") }, { merge: true });
+      await assertSucceeds(b.commit());
+      // And a back-read's first write: two whole months at once.
+      const c = writeBatch(db);
+      c.set(monthRef(db, "studioA", "2027-05"), { days: arrayUnion(...daysOf("2027-05", 31)) }, { merge: true });
+      c.set(monthRef(db, "studioA", "2027-07"), { days: arrayUnion(...daysOf("2027-07", 31)) }, { merge: true });
+      await assertSucceeds(c.commit());
+    }
+  });
+});
