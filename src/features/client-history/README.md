@@ -229,14 +229,24 @@ client's summer in cancellations that never happened. So the calendar shows
 only the cancellations Journey saw happen, and a trainer should read an
 empty August as "none recorded", not "none".
 
+**Only a real rebook says "rebooked"** (AJ, Sep 26 2026). The Changes list
+reads a cancellation with any other live booking that week as a reschedule,
+and for a twice-a-week client that other booking is nearly always her
+standing Thursday, booked all along. Here the other booking is named only when
+it first appeared around or after the cancellation — its `createdAt`, when
+Journey first wrote the row, at most 12 hours before the cancellation was
+stamped (`isRealRebook`, `REBOOK_WINDOW_MS`: the front desk often books the
+new slot first). A standing booking, or one with no `createdAt`, leaves the
+line at "cancelled". Nothing new is stored.
+
 **Nobody rebooks into the past.** The Changes list falls back to a booking
 EARLIER in the week when there is no later one; for a Tue/Thu client who
 cancels Thursday, that is Tuesday's session, already over when she cancelled.
 Here a same-week booking that had started by the time the cancellation was
-stamped is never named as where it went, and the line says "cancelled". This
-is the one place the calendar reads a row differently from the Changes list.
-The rule itself stays AJ's: a cancellation with a LATER booking that week
-still reads "rebooked", even when that booking was her standing one.
+stamped is never named as where it went, and the line says "cancelled".
+
+These two are the places the calendar reads a row differently from
+Operations → Changes, which still applies AJ's same-week rule as it stands.
 
 **Past still-booked rows add nothing.** The visit layer speaks for the past,
 and no booking can prove a no-show: bookings never come back Completed

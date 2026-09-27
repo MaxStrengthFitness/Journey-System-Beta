@@ -105,16 +105,53 @@ describe("bookingLayer — cancellations Journey saw happen", () => {
     expect(bookingLine(marks[0], 2026, { tz: NY })).toBe("Sep 16 · cancelled");
   });
 
-  it("reads it as a reschedule when she holds another booking that Monday-to-Sunday week (the Changes list's rule)", () => {
+  it("reads it as a reschedule when the other booking that week appeared with the cancellation", () => {
     const { marks } = layer([
       row({ id: "gone", day: "2026-09-23", status: "Cancelled", cancelledAt: at("2026-09-22", "18:00"), cancelSource: "sweep" }),
-      row({ id: "kept", day: "2026-09-25", hm: "09:00" }),
+      row({ id: "rebook", day: "2026-09-25", hm: "09:00", createdAt: at("2026-09-22", "18:00") }),
     ]);
     const cancelled = marks.find((m) => m.kind === "cancelled")!;
     expect(cancelled.to?.day).toBe("2026-09-25");
     expect(bookingLine(cancelled, 2026, { tz: NY })).toBe("Sep 23 · cancelled, rebooked Fri Sep 25");
     // The rebooked day is itself still to come.
     expect(kinds(marks)).toEqual(["cancelled@2026-09-23", "booked@2026-09-25"]);
+  });
+
+  it("never calls her standing booking a rebook (AJ, Sep 26: only a real rebook)", () => {
+    // A Tue/Thu client cancels Tuesday. Her Thursday was booked weeks ago.
+    const { marks } = layer([
+      row({ id: "tue", day: "2026-09-29", status: "Cancelled", cancelledAt: at("2026-09-28", "12:00") }),
+      row({ id: "thu", day: "2026-10-01", createdAt: at("2026-09-01", "07:30") }),
+    ]);
+    const cancelled = marks.find((m) => m.kind === "cancelled")!;
+    expect(cancelled.to).toBeNull();
+    expect(bookingLine(cancelled, 2026, { tz: NY })).toBe("Sep 29 · cancelled");
+    // Thursday is still drawn: booked, as it always was.
+    expect(kinds(marks)).toEqual(["cancelled@2026-09-29", "booked@2026-10-01"]);
+  });
+
+  it("counts the new slot booked a few hours before the old one was cancelled (the desk books first)", () => {
+    const { marks } = layer([
+      row({ id: "tue", day: "2026-09-29", status: "Cancelled", cancelledAt: at("2026-09-28", "12:00") }),
+      row({ id: "wed", day: "2026-09-30", createdAt: at("2026-09-28", "09:30") }),
+    ]);
+    expect(bookingLine(marks.find((m) => m.kind === "cancelled")!, 2026, { tz: NY })).toBe(
+      "Sep 29 · cancelled, rebooked Wed Sep 30",
+    );
+    // A day before is her standing booking, not this one's rebook.
+    const earlier = layer([
+      row({ id: "tue", day: "2026-09-29", status: "Cancelled", cancelledAt: at("2026-09-28", "12:00") }),
+      row({ id: "wed", day: "2026-09-30", createdAt: at("2026-09-27", "09:30") }),
+    ]).marks;
+    expect(earlier.find((m) => m.kind === "cancelled")!.to).toBeNull();
+  });
+
+  it("claims no rebook when it cannot tell when the other booking appeared", () => {
+    const { marks } = layer([
+      row({ id: "tue", day: "2026-09-29", status: "Cancelled", cancelledAt: at("2026-09-28", "12:00") }),
+      row({ id: "thu", day: "2026-10-01", createdAt: null }),
+    ]);
+    expect(marks.find((m) => m.kind === "cancelled")!.to).toBeNull();
   });
 
   it("never names a booking that was already over when she cancelled: nobody rebooks into the past", () => {
@@ -134,7 +171,7 @@ describe("bookingLayer — cancellations Journey saw happen", () => {
     const { marks } = layer(
       [
         row({ id: "fri", day: "2026-09-25", status: "Cancelled", cancelledAt: at("2026-09-21", "09:00") }),
-        row({ id: "tue", day: "2026-09-22" }),
+        row({ id: "tue", day: "2026-09-22", createdAt: at("2026-09-21", "09:00") }),
       ],
       { now: at("2026-09-21", "10:00") },
     );
@@ -153,7 +190,7 @@ describe("bookingLayer — cancellations Journey saw happen", () => {
   it("a cancelled morning rebooked for the afternoon says the new time", () => {
     const { marks } = layer([
       row({ id: "am", day: "2026-09-29", hm: "09:00", status: "Cancelled", cancelledAt: at("2026-09-24", "08:00") }),
-      row({ id: "pm", day: "2026-09-29", hm: "15:00" }),
+      row({ id: "pm", day: "2026-09-29", hm: "15:00", createdAt: at("2026-09-24", "08:00") }),
     ]);
     const cancelled = marks.find((m) => m.kind === "cancelled")!;
     expect(bookingLine(cancelled, 2026, { tz: NY })).toBe("Sep 29 · cancelled, rebooked 3:00 PM");
