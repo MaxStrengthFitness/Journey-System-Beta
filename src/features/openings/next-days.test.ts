@@ -67,6 +67,11 @@ describe("1. a regular who isn't booked", () => {
     expect(n.lines[0].clients).toHaveLength(1);
   });
 
+  it("a regular of someone who no longer works here is not listed", () => {
+    const n = nextDays(input({ bookings: [sam(TODAY, "07:00"), pat(TODAY, "08:00"), sam(TODAY, "09:00")], worksHere: (id) => id !== "t-sam" }));
+    expect(n.lines).toEqual([]);
+  });
+
   it("a slot earlier today is past: no line", () => {
     const n = nextDays(input({ now: at(TODAY, "08:05"), bookings: [sam(TODAY, "07:00"), pat(TODAY, "08:00"), sam(TODAY, "09:00")] }));
     expect(n.lines).toEqual([]);

@@ -184,8 +184,10 @@ export function nextDays(input: NextDaysInput): NextDays {
   if (!input.connected) return { state: "unconnected", agreedAny, check: null, lines: [] };
   if (input.read !== "ready") return { state: input.read, agreedAny, check: null, lines: [] };
 
+  // Only the weeks of people who still work here are checked, as on Team: a
+  // week left behind by someone who left would list their old regulars.
   const check = checkWeek({
-    docs: [...input.docs],
+    docs: input.worksHere ? input.docs.filter((d) => input.worksHere!(d.trainerId)) : [...input.docs],
     bookings: [...input.bookings],
     today: input.today,
     days,
