@@ -47,6 +47,8 @@ export function AwayEditor({ away, today, tz, whose, onSave, disabled = false }:
   const typed = adding && (from !== today || to !== today || note.trim() !== "");
   useUnsavedChanges(typed && !busy, `${whose} dates away`, { onDiscard: reset });
 
+  // The first day may be past (a vacation already under way reads "away
+  // until ..."); the last day may not, or there is nothing left to block out.
   const valid = isDateKey(from) && isDateKey(to) && from <= to && to >= today;
   const full = shown.length >= MAX_AWAY;
 
@@ -105,7 +107,6 @@ export function AwayEditor({ away, today, tz, whose, onSave, disabled = false }:
                 className="stw-input stw-input--date"
                 type="date"
                 value={from}
-                min={today}
                 disabled={busy}
                 onChange={(e) => {
                   const next = e.target.value;
@@ -138,7 +139,7 @@ export function AwayEditor({ away, today, tz, whose, onSave, disabled = false }:
               onChange={(e) => setNote(e.target.value)}
             />
           </label>
-          {!valid && <p className="stw-hint">Pick a first and last day, today or later, with the last on or after the first.</p>}
+          {!valid && <p className="stw-hint">Pick a first and last day: the last on or after the first, and today or later.</p>}
           <div className="stw-actions stw-actions--tight">
             <button type="button" className="stw-btn stw-btn--quiet" disabled={busy} onClick={reset}>
               Cancel

@@ -232,7 +232,44 @@ describe("Standing weeks on Team", () => {
     await mount();
     expect(host.querySelector("[aria-label='Away this week']")?.textContent).toBe("Ann is away on Mon, Sep 28.");
     expect(host.textContent).not.toContain("Free slot");
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe("No agreed regular falls in the next seven days.");
+    // Ann's Monday regular falls in the window, on her day away: unchecked, not absent.
+    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe(
+      "Nothing else to check: the agreed slots in the next seven days fall on days away.",
+    );
+  });
+
+  it("says once, not twice, that the weeks are still being read or couldn't be", async () => {
+    fake.weeks = { docs: [], loading: true, error: null };
+    await mount();
+    expect(host.textContent?.split("Reading the standing weeks").length).toBe(2);
+    expect(host.querySelector("#stw-each-week")?.parentElement?.textContent).toContain("Listed here once the standing weeks are read.");
+    expect(host.querySelectorAll(".adm-row__name")).toHaveLength(0);
+    act(() => root.unmount());
+    root = createRoot(host);
+    fake.weeks = { docs: [], loading: false, error: "Couldn't load the standing weeks. Check the connection." };
+    await mount();
+    expect(host.textContent?.split("Couldn't load the standing weeks").length).toBe(2);
+    expect(host.querySelectorAll(".adm-row__name")).toHaveLength(0);
+  });
+
+  it("matches an unlinked booking on a staff id only from this studio's Mindbody site", async () => {
+    // Ann's Monday 8:00 regular, booked by the webhook with no trainer id (a guest), under Ann's
+    // staff id, and Bob booked with her in Judy's slot: taken, because the id is Solon's site's.
+    const guest = { trainerId: undefined, trainerName: "Annie Park", mindbodyStaffId: "42" } as unknown as Partial<ScheduleEntry>;
+    fake.schedule = { entries: [booking("2026-09-28", "08:00", { ...guest, clientId: "c-bob", clientName: "Bob Jones" })], loading: false, failed: false };
+    const ann = (siteId: string) => ({ ...trainers[1], mindbodyStaffId: "42", mindbody: { staffId: "42", siteId } }) as unknown as Trainer;
+    await act(async () => {
+      root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("5746957")]} clients={clients} />);
+    });
+    const findings = () => host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']")?.textContent ?? "";
+    expect(findings()).toContain("Bob Jones is booked in Judy Smith's Mon, Sep 28 at 8:00 AM slot with Ann.");
+    expect(findings()).not.toContain("Free slot");
+    // Ann's id from the other site proves nothing here: Judy's slot is simply open.
+    await act(async () => {
+      root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("29068")]} clients={clients} />);
+    });
+    expect(findings()).toContain("Ann's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
+    expect(findings()).toContain("Free slot");
   });
 
   it("lets a leader set a trainer's dates away from the review", async () => {

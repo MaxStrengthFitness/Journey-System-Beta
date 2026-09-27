@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ScheduleEntry } from "../../types";
-import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, mondayOf, stateSentence, type WeekCheckInput } from "./check";
+import type { ScheduleEntry, Trainer } from "../../types";
+import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, mondayOf, staffIdsAt, stateSentence, type WeekCheckInput } from "./check";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /**
@@ -59,7 +59,7 @@ const input = (over: Partial<WeekCheckInput> = {}): WeekCheckInput => ({
 describe("checkWeek — as usual", () => {
   it("says nothing when every agreed slot is booked as usual", () => {
     const c = checkWeek(input());
-    expect(c).toEqual({ state: "ready", findings: [], slots: 2 });
+    expect(c).toEqual({ state: "ready", findings: [], slots: 2, awaySlots: 0 });
     expect(stateSentence(c)).toBe("All 2 agreed slots are booked as usual for the next seven days.");
   });
 
@@ -206,17 +206,65 @@ describe("checkWeek — only what it knows (voice review follow-up)", () => {
     expect(findingSentence(m.findings[0], TZ)).toBe("Sam's Mon, Sep 28 at 8:00 AM is open: Judy Smith is booked with Samuel on Tue, Sep 29 at 9:30 AM instead.");
   });
 
-  it("matches on the Mindbody staff id where both sides carry one", () => {
+  it("takes a Mindbody staff id as proof it IS the trainer's, never that it isn't", () => {
     const staffIds = { "t-sam": "100000042" };
-    // A guest's booking the sync couldn't link, under another name: the staff id says it is Sam's.
+    // A guest's booking the sync couldn't link, under another name: the staff id says it is Sam's,
+    // so another client booked with him in Judy's slot takes it.
     const same = { trainerId: undefined, trainerName: "Samuel Lee", mindbodyStaffId: "100000042" } as Partial<ScheduleEntry>;
     expect(checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", same), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
-    // Another staff id is someone else's, whatever the name says.
-    const other = { trainerId: undefined, trainerName: "Sam Lee", mindbodyStaffId: "100000077" } as Partial<ScheduleEntry>;
-    const c = checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", other), booking("2026-10-01", "08:00")] }));
-    expect(c.findings.map((f) => f.kind)).toEqual(["moved"]);
-    // Without the trainer's staff id, the booking's own trainer id decides, as before.
-    expect(checkWeek(input({ bookings: [booking("2026-09-28", "08:00", other), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+    const bob = checkWeek(
+      input({ staffIds, bookings: [booking("2026-09-28", "08:00", { ...same, clientId: "c-bob", clientName: "Bob Jones" }), booking("2026-10-01", "08:00")] }),
+    );
+    expect(bob.findings.map((f) => f.kind)).toEqual(["taken"]);
+    // Another staff id proves nothing: staff ids are numbered per site, and Sam's one id may be
+    // the other site's. With no trainer id on the booking, it keeps the slot at her time.
+    const other = { trainerId: undefined, trainerName: "Samuel Lee", mindbodyStaffId: "100000077" } as Partial<ScheduleEntry>;
+    expect(checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", other), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+    const named = { ...other, trainerName: "Sam Lee" } as Partial<ScheduleEntry>;
+    expect(checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", named), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+  });
+
+  it("lets the booking's trainer id decide over any staff id (a trainer on both Mindbody sites)", () => {
+    // Sam works at a studio on the other Mindbody site too. The sync matched him there (trainer
+    // id), and the webhook kept that site's staff id, which isn't the one on his profile.
+    const staffIds = { "t-sam": "100000042" };
+    const otherSite = { trainerId: "t-sam", trainerName: "Sam Lee", mindbodyStaffId: "7" } as Partial<ScheduleEntry>;
+    expect(checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", otherSite), booking("2026-10-01", "08:00")] })).findings).toEqual([]);
+    // Bob booked with him in Judy's slot there takes it, as it would anywhere.
+    const bob = checkWeek(
+      input({ staffIds, bookings: [booking("2026-09-28", "08:00", { ...otherSite, clientId: "c-bob", clientName: "Bob Jones" }), booking("2026-10-01", "08:00")] }),
+    );
+    expect(bob.findings.map((f) => f.kind)).toEqual(["taken"]);
+    // And another trainer id is someone else's, whatever staff id the row carries.
+    const pat = { trainerId: "t-pat", trainerName: "Pat Doe", mindbodyStaffId: "100000042" } as Partial<ScheduleEntry>;
+    const moved = checkWeek(input({ staffIds, bookings: [booking("2026-09-28", "08:00", pat), booking("2026-10-01", "08:00")] }));
+    expect(moved.findings.map((f) => f.kind)).toEqual(["moved"]);
+  });
+
+  it("reads the rotation as usual when the webhook wrote it, with the rotation's own staff id", () => {
+    // The webhook keeps the rotation's Mindbody staff id beside its name; Sam has an id of his own.
+    const judyWed = { id: "r3", weekday: 3, start: "08:00", clientId: "c-judy", clientName: "Judy Smith" };
+    const wednesdays = sam({ final: { hours: [{ weekday: 3, from: "07:00", to: "13:00" }], regulars: [judyWed] } });
+    const staffIds = { "t-sam": "100000042" };
+    for (const trainerName of ["Solon Rotation", "Rotation", "Studio  rotation"]) {
+      const rotation = { trainerId: null, trainerName, mindbodyStaffId: "100000099" } as unknown as Partial<ScheduleEntry>;
+      const c = checkWeek(
+        input({
+          docs: [wednesdays],
+          staffIds,
+          bookings: [booking("2026-09-30", "08:00", rotation), booking("2026-09-30", "08:00", { ...rotation, clientId: "c-bob", clientName: "Bob Jones" })],
+        }),
+      );
+      expect(c).toEqual({ state: "ready", findings: [], slots: 1, awaySlots: 0 });
+    }
+    // A rotation under a name Journey doesn't recognise still keeps her slot: an unlinked staff
+    // member at her time proves nothing, and takes nothing.
+    const unnamed = { trainerId: null, trainerName: "Wednesday Team", mindbodyStaffId: "100000099" } as unknown as Partial<ScheduleEntry>;
+    expect(checkWeek(input({ docs: [wednesdays], staffIds, bookings: [booking("2026-09-30", "08:00", unnamed)] })).findings).toEqual([]);
+    const bobOnly = checkWeek(
+      input({ docs: [wednesdays], staffIds, bookings: [booking("2026-09-30", "08:00", { ...unnamed, clientId: "c-bob", clientName: "Bob Jones" })] }),
+    );
+    expect(bobOnly.findings.map((f) => f.kind)).toEqual(["open"]);
   });
 
   it("reads the studio rotation as usual: never moved, never taken, never a Free slot", () => {
@@ -235,7 +283,7 @@ describe("checkWeek — only what it knows (voice review follow-up)", () => {
         ],
       }),
     );
-    expect(c).toEqual({ state: "ready", findings: [], slots: 1 });
+    expect(c).toEqual({ state: "ready", findings: [], slots: 1, awaySlots: 0 });
     expect(stateSentence(c)).toBe("All 1 agreed slot is booked as usual for the next seven days.");
   });
 
@@ -270,11 +318,21 @@ describe("checkWeek — away (voice review follow-up)", () => {
         bookings: [booking("2026-09-28", "08:00", { trainerId: "t-pat", trainerName: "Pat Doe" }), booking("2026-10-01", "08:00")],
       }),
     );
-    expect(c).toEqual({ state: "ready", findings: [], slots: 1 });
+    expect(c).toEqual({ state: "ready", findings: [], slots: 1, awaySlots: 1 });
     expect(stateSentence(c)).toBe("All 1 agreed slot is booked as usual for the next seven days.");
     // Nor is anyone "taking" a slot of theirs while they are away.
     const taken = checkWeek(input({ docs: [sam({ away: [vacation] })], bookings: [booking("2026-09-28", "08:00", { clientId: "c-bob", clientName: "Bob Jones" })] }));
     expect(taken.findings.map((f) => f.dateKey)).toEqual(["2026-10-01"]);
+  });
+
+  it("says there is nothing else to check when every agreed slot falls on days away", () => {
+    // Monday and Thursday both inside the vacation: the regulars fall in the window, unchecked.
+    const c = checkWeek(input({ docs: [sam({ away: [{ id: "a1", from: "2026-09-28", to: "2026-10-02" }] })], bookings: [] }));
+    expect(c).toEqual({ state: "ready", findings: [], slots: 0, awaySlots: 2 });
+    expect(stateSentence(c)).toBe("Nothing else to check: the agreed slots in the next seven days fall on days away.");
+    // With no regular in the window at all, it says so.
+    const none = checkWeek(input({ docs: [sam({ final: { hours: agreed.hours, regulars: [] } })], bookings: [] }));
+    expect(stateSentence(none)).toBe("No agreed regular falls in the next seven days.");
   });
 
   it("says once who is away in the window, agreed or not", () => {
@@ -314,6 +372,24 @@ describe("checkWeek — when it says nothing", () => {
 
   it("checks only an AGREED week: a proposal alone is not checked", () => {
     expect(checkWeek(input({ docs: [sam({ final: null })], bookings: [] })).state).toBe("nothing-agreed");
+  });
+});
+
+describe("staffIdsAt", () => {
+  const t = (id: string, staffId: string | undefined, siteId: string | undefined) =>
+    ({ id, mindbodyStaffId: staffId, mindbody: siteId === undefined ? undefined : { staffId: staffId ?? "", siteId } }) as Pick<
+      Trainer,
+      "id" | "mindbodyStaffId" | "mindbody"
+    >;
+
+  it("keeps a trainer's staff id only where their Mindbody record names this studio's site", () => {
+    const trainers = [t("t-sam", " 100000042 ", "29068"), t("t-ann", "5", "5746957"), t("t-pat", "9", undefined), t("t-kim", undefined, "29068")];
+    // Westlake, Strongsville and Willoughby share site 29068; Solon is 5746957.
+    expect(staffIdsAt(trainers, "29068")).toEqual({ "t-sam": "100000042" });
+    expect(staffIdsAt(trainers, 5746957)).toEqual({ "t-ann": "5" });
+    // A studio with no site (the Demo studio, an unlinked one) matches on nobody's staff id.
+    expect(staffIdsAt(trainers, undefined)).toEqual({});
+    expect(staffIdsAt(trainers, "")).toEqual({});
   });
 });
 

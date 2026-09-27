@@ -32,14 +32,26 @@
  * week", only that she isn't booked FOR THE SLOT.
  *
  * WHOSE BOOKING. The schedule sync writes a trainer's id when it matched the
- * Mindbody staff member to a Journey trainer, and only the staff member's
- * name when it didn't (lib/mindbody-api-sync.ts); the webhook also keeps the
- * Mindbody staff id (`mindbodyStaffId`). So, in order: where the booking and
- * the trainer both carry a Mindbody staff id, that decides; else the
- * booking's trainer id; else the name. A booking that names no staff member
- * (the sync's "{studio} Rotation") is nobody's in particular: it may keep a
- * slot, but it never takes one. The client is matched by id when the sync
- * linked one, else by name — the Overview's rule again.
+ * Mindbody staff member to a Journey trainer AT THIS STUDIO, and only the
+ * staff member's name when it didn't (lib/mindbody-api-sync.ts); the webhook
+ * does the same and also keeps the Mindbody staff id (`mindbodyStaffId`) on
+ * most rows it touches. So, in order:
+ *
+ *   1. A "{studio} Rotation" booking is nobody's in particular (below).
+ *   2. The booking's trainer id decides: it was matched at this studio.
+ *   3. A booking naming no staff member is nobody's in particular too.
+ *   4. The Mindbody staff id, only as a positive match, and only for a
+ *      trainer whose id is this studio's site's (`staffIdsAt`). Staff ids are
+ *      numbered per site, like client ids, and a trainer holds just one: a
+ *      booking at a studio on the other site carries another number for the
+ *      same person, and the same number can be someone else there. So a
+ *      different staff id proves nothing.
+ *   5. The name; a name that differs proves nothing either (below).
+ *
+ * Nothing but another trainer id is proof that a booking is someone else's.
+ * A booking that is nobody's in particular may keep a slot, but it never
+ * takes one. The client is matched by id when the sync linked one, else by
+ * name — the Overview's rule again.
  *
  * A NAME THAT DOESN'T MATCH PROVES NOTHING. The sync already tried the
  * trainer's exact full name before it fell back to the staff member's own
@@ -54,12 +66,15 @@
  * ... any client can schedule that day on mind body and then whatever
  * trainer works that day can just move those sessions to them." A regular
  * booked "{studio} Rotation" at her time is as usual: never moved, never
- * taken, never a Free slot.
+ * taken, never a Free slot. That holds whether the pull wrote the row (the
+ * name only) or the webhook did (the rotation's own Mindbody staff id beside
+ * the name), because the rotation is recognised before any id is compared.
  *
  * AWAY. A trainer's days away (week.ts) are not checked at all: no open,
- * moved or taken, no Free slot, and not counted among the slots. The panel
- * says once that they are away (`awayThisWeek`), which is the whole story:
- * there is nothing to fill while they are gone.
+ * moved or taken, no Free slot, and not counted among the slots checked
+ * (`awaySlots` counts them, so "nothing to check" is never "no regulars").
+ * The panel says once that they are away (`awayThisWeek`), which is the
+ * whole story: there is nothing to fill while they are gone.
  *
  * ONE BOOKING, ONE CLAIM. A booking that kept one agreed slot as usual never
  * explains another; a rebook named as one slot's move is never named for a
@@ -74,7 +89,7 @@
  *
  * PURE MODULE.
  */
-import type { ScheduleEntry } from "../../types";
+import type { ScheduleEntry, Trainer } from "../../types";
 import { formatStudioDate, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { scheduleStart } from "../../lib/schedule-window";
 import { isRealRebook } from "../admin/changes/changes";
@@ -111,6 +126,8 @@ export interface WeekCheck {
   findings: SlotFinding[];
   /** Agreed regular slots in the window — the denominator a sentence may name. */
   slots: number;
+  /** Agreed regular slots in the window left unchecked because their trainer is away. */
+  awaySlots: number;
 }
 
 export interface WeekCheckInput {
@@ -125,7 +142,11 @@ export interface WeekCheckInput {
   read: ServerRead;
   /** The studio's Mindbody is linked (or it is the Demo studio, whose week is seeded). */
   connected: boolean;
-  /** Each trainer's Mindbody staff id, by trainers/{id}: where a booking carries one too, it decides whose booking it is. */
+  /**
+   * Each trainer's Mindbody staff id at this studio's site, by trainers/{id}
+   * (`staffIdsAt`): a booking with no trainer id that carries the same one is
+   * that trainer's. Only ever a positive match.
+   */
   staffIds?: Readonly<Record<string, string>>;
 }
 
@@ -206,23 +227,51 @@ interface Slot {
 const near = (a: number, b: number) => Math.abs(a - b) <= SLOT_TOLERANCE_MINUTES;
 const norm = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 
+/** "Solon Rotation", "Studio Rotation", "Rotation": the studio's rotation, nobody in particular. */
+const isRotation = (name: string) => /(^|\s)rotation$/.test(name);
+
 /**
  * The booking's trainer against the slot's (WHOSE BOOKING above):
  *
- *   same      the trainer's, by staff id, trainer id or name
- *   other     provably someone else's: another staff id or trainer id
- *   unknown   nobody's in particular: no staff named (a Rotation booking)
- *   unlinked  a staff member Journey couldn't link, under another name —
- *             proves nothing either way
+ *   same      the trainer's: by trainer id, by staff id at this site, or by name
+ *   other     provably someone else's: another trainer id, and nothing else
+ *   unknown   nobody's in particular: the rotation, or no staff named
+ *   unlinked  a staff member Journey couldn't link, under another name or
+ *             another staff id: proves nothing either way
  */
 type Whose = "same" | "other" | "unknown" | "unlinked";
 
 function trainerOf(b: BookingView, s: Slot): Whose {
-  if (b.staffId && s.staffId) return b.staffId === s.staffId ? "same" : "other";
-  if (b.trainerId) return b.trainerId === s.trainerId ? "same" : "other";
   const name = norm(b.trainerName);
-  if (!name || name.endsWith(" rotation")) return "unknown";
+  if (isRotation(name)) return "unknown";
+  if (b.trainerId) return b.trainerId === s.trainerId ? "same" : "other";
+  if (!name) return "unknown";
+  if (b.staffId && s.staffId && b.staffId === s.staffId) return "same";
   return name === norm(s.trainerName) ? "same" : "unlinked";
+}
+
+/**
+ * Each trainer's Mindbody staff id that can name them at this studio, by
+ * trainers/{id}: only where their Mindbody record says the id is this
+ * studio's site's. A trainer holds one staff id, from one site, and the other
+ * site numbers its own staff: there the same number may be somebody else.
+ * Where either site isn't known the id is left out, and the trainer id and
+ * the name decide, as they always did.
+ */
+export function staffIdsAt(
+  trainers: readonly Pick<Trainer, "id" | "mindbodyStaffId" | "mindbody">[],
+  siteId: string | number | null | undefined,
+): Record<string, string> {
+  const site = siteId === null || siteId === undefined ? "" : String(siteId).trim();
+  const out: Record<string, string> = {};
+  if (!site) return out;
+  for (const t of trainers) {
+    const id = staffIdOf(t.mindbodyStaffId);
+    if (!t.id || !id) continue;
+    if (String(t.mindbody?.siteId ?? "").trim() !== site) continue;
+    out[t.id] = id;
+  }
+  return out;
 }
 
 function isFor(b: BookingView, s: Slot): boolean {
@@ -233,16 +282,21 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
   const days = input.days ?? CHECK_DAYS;
   const agreed = input.docs.filter((d) => d.final && d.trainerId);
   const slots: Slot[] = [];
+  let awaySlots = 0;
   for (let i = 0; i < days; i += 1) {
     const dateKey = addDays(input.today, i);
     const weekday = weekdayOf(dateKey);
     for (const doc of agreed) {
       // Away that day: nothing of theirs is checked (AJ: "it should block it out").
-      if (awayOn(doc.away, dateKey)) continue;
+      const away = awayOn(doc.away, dateKey);
       for (const r of doc.final!.regulars) {
         if (r.weekday !== weekday) continue;
         const minutes = minutesOf(r.start);
         if (minutes === null) continue;
+        if (away) {
+          awaySlots += 1;
+          continue;
+        }
         slots.push({
           dateKey,
           start: r.start,
@@ -256,7 +310,7 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
       }
     }
   }
-  const empty = (state: WeekCheckState): WeekCheck => ({ state, findings: [], slots: slots.length });
+  const empty = (state: WeekCheckState): WeekCheck => ({ state, findings: [], slots: slots.length, awaySlots });
   if (agreed.length === 0) return empty("nothing-agreed");
   if (!input.connected) return empty("unconnected");
   if (input.read !== "ready") return empty(input.read);
@@ -297,7 +351,7 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
     else findings.push({ kind: "open", ...base });
   }
   findings.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || minutesOf(a.start)! - minutesOf(b.start)! || a.trainerName.localeCompare(b.trainerName));
-  return { state: "ready", findings, slots: slots.length };
+  return { state: "ready", findings, slots: slots.length, awaySlots };
 }
 
 /**
@@ -403,8 +457,12 @@ export function stateSentence(check: WeekCheck): string {
     case "offline":
       return "Can't tell: this iPad can't reach the week's bookings just now, so nothing here says a slot is open. It checks again once it's back online.";
     case "ready":
-      return check.slots === 0
-        ? "No agreed regular falls in the next seven days."
-        : `All ${check.slots} agreed ${check.slots === 1 ? "slot is" : "slots are"} booked as usual for the next seven days.`;
+      if (check.slots === 0) {
+        // The regulars do fall in the window, on a trainer's days away: unchecked, not absent.
+        return check.awaySlots > 0
+          ? "Nothing else to check: the agreed slots in the next seven days fall on days away."
+          : "No agreed regular falls in the next seven days.";
+      }
+      return `All ${check.slots} agreed ${check.slots === 1 ? "slot is" : "slots are"} booked as usual for the next seven days.`;
   }
 }

@@ -126,6 +126,8 @@ describe("My standing week", () => {
     expect(host.querySelector("[aria-label='Regulars on Monday']")?.textContent).toContain("Judy Smith");
 
     expect(button("Propose this week").disabled).toBe(false);
+    // Every save is solid brand blue, like Away's below it; never the hero orange.
+    expect(button("Propose this week").className).toBe("stw-btn stw-btn--save");
     await click("Propose this week");
     expect(fake.writes).toHaveLength(1);
     const w = fake.writes[0];
@@ -255,6 +257,18 @@ describe("Away on My standing week (voice review follow-up)", () => {
     await type(input("From"), "2026-09-01");
     await type(input("To"), "2026-09-04");
     expect(button("Save dates away").disabled).toBe(true);
+    expect(host.textContent).toContain("Pick a first and last day: the last on or after the first, and today or later.");
     expect(fake.writes).toHaveLength(0);
+  });
+
+  it("saves a vacation already under way: a first day past, the last still to come", async () => {
+    await mount();
+    await deliver(null);
+    await click("Dates away");
+    await type(input("From"), "2026-09-24");
+    await type(input("To"), "2026-10-02");
+    expect(button("Save dates away").disabled).toBe(false);
+    await click("Save dates away");
+    expect(fake.writes[0].data.away).toEqual([{ id: expect.any(String), from: "2026-09-24", to: "2026-10-02" }]);
   });
 });

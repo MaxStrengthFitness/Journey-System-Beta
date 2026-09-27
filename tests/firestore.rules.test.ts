@@ -3578,4 +3578,58 @@ describe("the standing week", () => {
     await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: six })));
     await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { away: [...six].reverse() }));
   });
+
+  // The expensive writes (review of the follow-up): every write re-checks the
+  // stored days away, so the fullest real writes must fit the budget too -- a
+  // leader agreeing, and the trainer proposing, on a week that already holds
+  // six ranges and both a proposed and an agreed week. If either fails, lower
+  // MAX_AWAY in week.ts and the six in standingWeekAwayValid together.
+  it("fits a leader's agreement and a trainer's proposal on a week holding six days away", async () => {
+    const full = week({
+      hours: Array.from({ length: 14 }, (_, i) => ({ weekday: (i % 7) + 1, from: i < 7 ? "06:00" : "15:00", to: i < 7 ? "12:00" : "20:00" })),
+      regulars: Array.from({ length: 80 }, (_, i) => ({ id: `r${i}`, weekday: (i % 6) + 1, start: "08:00", clientId: `c${i}`, clientName: `Client ${i}` })),
+      note: "Mornings, and two evenings",
+    });
+    const six = Array.from({ length: 6 }, (_, i) => range({ id: `a${i}`, from: `2026-1${i % 3}-0${i + 1}`, to: `2026-1${i % 3}-2${i}` }));
+    const seedFull = () =>
+      testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "studios", "studioA", "standingWeeks", "trainerA"), {
+          ...proposal("trainerA", { proposed: full, proposedAt: new Date("2026-09-20T12:00:00Z") }),
+          final: full,
+          finalAt: new Date("2026-09-21T12:00:00Z"),
+          finalBy: { id: "ownerA", name: "Owner A" },
+          away: six,
+        });
+      });
+    // What the app writes (store.ts): whose week it is, then the agreement or the proposal.
+    const owner = { studioId: "studioA", trainerUid: "trainerA", trainerId: "trainerA", trainerName: "Trainer A" };
+    const changed = week({ ...full, note: "Agreed: mornings" });
+    await seedFull();
+    // A leader agrees a changed week: final, proposed and both stamps at once.
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { ...owner, proposed: changed, ...agreement("ownerA", { final: changed }) }, { merge: true }),
+    );
+    // The trainer proposes a change: the proposal and its stamps, where they work.
+    await seedFull();
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("trainerA"), "studioA", "trainerA"),
+        proposal("trainerA", { proposed: week({ ...full, note: "Evenings only" }) }),
+        { merge: true },
+      ),
+    );
+    // And both again, each changing the days away in the same write.
+    await seedFull();
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("ownerA"), "studioA", "trainerA"),
+        { ...owner, proposed: changed, ...agreement("ownerA", { final: changed }), away: [...six].reverse() },
+        { merge: true },
+      ),
+    );
+    await seedFull();
+    await assertSucceeds(
+      setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), { ...proposal("trainerA", { proposed: changed }), away: [...six].reverse() }, { merge: true }),
+    );
+  });
 });

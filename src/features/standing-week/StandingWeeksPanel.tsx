@@ -7,7 +7,7 @@ import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, 
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
 import { UnsavedChangesScope, useLeaveScope, useUnsavedChanges } from "../unsaved-changes";
 import { AwayEditor } from "./AwayEditor";
-import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
+import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, staffIdsAt, stateSentence } from "./check";
 import { serverRead } from "./server-read";
 import { useServerWait } from "./useServerWait";
 import { formOf, reviewSentence, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
@@ -73,11 +73,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz, { confirmed: true });
   const wait = useServerWait(needsBookings && (schedule.loading || schedule.fromCache));
   const read = serverRead({ loading: schedule.loading, failed: schedule.failed, fromCache: schedule.fromCache, ...wait });
-  // Where a booking carries a Mindbody staff id, it is matched on the trainer's.
-  const staffIds = useMemo(
-    () => Object.fromEntries(trainers.filter((t) => t.id && t.mindbodyStaffId).map((t) => [t.id, String(t.mindbodyStaffId)])),
-    [trainers],
-  );
+  // A booking the sync couldn't link to a trainer, carrying their Mindbody
+  // staff id, is theirs: only ids from this studio's site (staff ids are per site).
+  const staffIds = useMemo(() => staffIdsAt(trainers, studio.mindbodySiteId), [trainers, studio.mindbodySiteId]);
   const check = useMemo(
     () =>
       checkWeek({
@@ -143,9 +141,9 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
           </h3>
           {waiting && <AdminNotice tone="info">{waiting}</AdminNotice>}
           {/* Unread, the list would call everyone "hasn't proposed" and offer
-              "Set a week" over a proposal nobody has seen: it waits. */}
-          {weeks.error && <p className="stw-hint">{weeks.error}</p>}
-          {weeks.loading && <p className="stw-hint">Reading the standing weeks…</p>}
+              "Set a week" over a proposal nobody has seen: it waits. Why is
+              said once, under the next seven days. */}
+          {(weeks.error || weeks.loading) && <p className="stw-hint">Listed here once the standing weeks are read.</p>}
           {!weeks.loading && !weeks.error && rows.length === 0 && <p className="stw-hint">Nobody works at {studio.name} yet.</p>}
           {!weeks.loading && !weeks.error && (
             <AdminRows>

@@ -137,9 +137,10 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
                   Discard
                 </button>
               )}
+              {/* A save is solid brand blue, like Away's below it (the round's look). */}
               <button
                 type="button"
-                className="tp-btn tp-btn--primary"
+                className="stw-btn stw-btn--save"
                 disabled={!form.dirty || form.status === "saving"}
                 onClick={() => void form.save()}
               >

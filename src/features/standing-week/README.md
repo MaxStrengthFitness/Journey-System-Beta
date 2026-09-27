@@ -88,14 +88,21 @@ Thursday was booked all along.
 Without proof the slot is simply open; either way the trainer's slot is
 free.
 
-**Whose booking it is.** The sync writes the trainer's id when it matched the
-Mindbody staff member to a Journey trainer, and only the staff member's name
-when it didn't; the webhook also keeps the Mindbody staff id. So: the staff
-id where the booking and the trainer both carry one, else the trainer id,
-else the name. A booking naming no staff member (the sync's "{studio}
-Rotation") may keep a slot but never takes one. A name that doesn't match
-proves nothing (D2). The client is matched by id when the sync linked one,
-else by name.
+**Whose booking it is.** The sync and the webhook write the trainer's id
+when they matched the Mindbody staff member to a Journey trainer AT THIS
+STUDIO, and only the staff member's name when they didn't; the webhook also
+keeps the Mindbody staff id on most rows it touches. In order: a "{studio}
+Rotation" booking is nobody's in particular; else the booking's trainer id
+decides; else a booking naming no staff member is nobody's either; else the
+staff id, **only as a positive match** and only for a trainer whose staff id
+is this studio's site's (`staffIdsAt`: their Mindbody record names the
+site); else the name. Staff ids are numbered per site and a trainer holds
+one, so a different staff id proves nothing: the booking may be theirs at a
+studio on the other site, and the same number can be someone else there.
+Only another trainer id proves a booking is someone else's. A booking that
+is nobody's in particular may keep a slot but never takes one, and a name
+that doesn't match proves nothing (D2). The client is matched by id when the
+sync linked one, else by name.
 
 **One booking, one claim.** The first pass keeps every slot booked as usual.
 Only the bookings left over can make another slot "moved", and a rebook
@@ -139,12 +146,17 @@ cache-only answer), because Mindbody changes them where this iPad can't see.
 slot only. A booking with no trainer id whose staff name differs from the
 trainer's (Journey "Sam Lee", Mindbody "Samuel Lee": the sync had already
 tried the exact name) keeps the regular's slot at her time instead of
-calling the whole week moved; where both sides carry a Mindbody staff id,
-that decides. Another regular in their own slot at a shared time never
-"takes" the slot. **The studio rotation** (AJ): on rotation days a client
-books "{studio} Rotation" and that day's trainer later moves it to
-themselves in Mindbody; a regular's Rotation booking at her time is as
-usual, never moved, taken or a Free slot. A slot earlier today is simply
+calling the whole week moved. A Mindbody staff id counts only as proof that
+a booking IS the trainer's, never that it isn't (see "Whose booking it is";
+the review of the follow-up found that letting a different staff id decide
+turned a webhook-written Rotation booking, and every booking of a trainer
+who works on both Mindbody sites, into a move with a Free slot). Another
+regular in their own slot at a shared time never "takes" the slot. **The
+studio rotation** (AJ): on rotation days a client books "{studio} Rotation"
+and that day's trainer later moves it to themselves in Mindbody; a
+regular's Rotation booking at her time is as usual, never moved, taken or a
+Free slot, whether the pull wrote it (the name only) or the webhook did (the
+rotation's own staff id beside the name). A slot earlier today is simply
 open (AJ: "Unbooked slots are just open").
 
 **D3 — Away.** AJ: "if someone has a vacation then it should block it out."
@@ -154,11 +166,19 @@ leader in Team's Review, and a trainer with no proposal can still set it.
 Each range saves as it is added or removed; only today's and later ones are
 shown, and past ones drop off at the next save. The check skips that
 trainer's slots on those days (no open, moved or taken, no Free slot, not
-counted) and Team says once "Sam is away Mon, Sep 28 – Wed, Sep 30."
-Journey's own: no Mindbody call. **Six ranges at most**: the rules check
-each range (a rule can't loop, so each place is written out), and a request
-may evaluate only 1,000 expressions — at ten ranges a leader's write
-already ran out in the emulator.
+counted among the slots checked; `awaySlots` counts them, so when every
+agreed slot falls on days away Team says "Nothing else to check", never "No
+agreed regular falls in the next seven days") and Team says once "Sam is
+away Mon, Sep 28 – Wed, Sep 30." Journey's own: no Mindbody call. A first
+day in the past is allowed (a vacation already under way reads "away until
+..."); the last day must be today or later. **Six ranges at most**: the
+rules check each range (a rule can't loop, so each place is written out),
+and a request may evaluate only 1,000 expressions — at ten ranges a
+leader's write already ran out in the emulator. The rules tests hold the
+fullest real writes to it: a leader's agreement and a trainer's proposal on
+a week that already holds six ranges and a full proposed and agreed week
+(14 hours, 80 regulars). If that test ever fails, lower `MAX_AWAY` in
+`week.ts` and the six in `standingWeekAwayValid` together.
 
 **D4 — Colleagues can see each other's weeks.** AJ: "schedules are open to
 all." A colleague's profile has a read-only Standing week card at the active
@@ -183,7 +203,10 @@ else's week, and the trainer id change.
 **D7 — Small things.** The Review says "Proposed by {name} on {date}", which
 is where `proposedBy` is read. The heading is "Each person's standing week".
 "Not in" reads in the muted ink. Demo Mode's seeded appointments are "the
-demo week", not the standing week.
+demo week", not the standing week. The trainer's "Propose this week" is a
+blue save like Away's (the round's look: every save is brand blue). While
+the weeks are read, or when they can't be, Team says why once, under the
+next seven days; the list below says only that it waits.
 
 ## Not built (see the round document)
 
