@@ -15,6 +15,10 @@
  *   - A trainer who isn't on (the agreed standing week, or a day away) is
  *     hatched; with no agreed week nothing is hatched (off-hours).
  *   - The Now line lands a third of the way down, once per day shown.
+ *   - Your column can be the FOCUS column (hub cherry round, Hub direction
+ *     B, `focusId`): it takes more of the room there is — only room there
+ *     is, so it never pushes a column off an iPad the others would have fit
+ *     — and its head says your day in words (`detail`).
  *
  * Presentational: ClientsView decides the columns, which booking goes in
  * which, and draws each card (`renderCard`). No reads here.
@@ -23,6 +27,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { bandWords, clockWords, layoutDay, placeColumn, yOf, type Placed, type Span } from "./grid-model";
 import type { TrainerDayFrame } from "./off-hours";
+import type { YourDay } from "./your-day";
 import "./hub-grid.css";
 
 export interface GridColumn {
@@ -34,6 +39,12 @@ export interface GridColumn {
   isMe: boolean;
   /** Sessions booked with them on the day (never Mindbody's "Unavailable"). */
   count: number;
+  /**
+   * The day in words under the name, in place of the count: your column's
+   * head when it is the focus column ("12 sessions · 6:00 AM – 12:00 PM ·
+   * 8 to go", your-day.ts). Absent: the count.
+   */
+  detail?: YourDay | null;
 }
 
 export interface GridBlock {
@@ -56,9 +67,15 @@ export interface HubGridProps {
   frameOf?: (columnId: string, range: Span) => TrainerDayFrame;
   /** Hidden under the Opportunities layer: it stays mounted, and lands on now once it is back. */
   hidden?: boolean;
+  /**
+   * The focus column (hub cherry round, Hub direction B): your column, which
+   * takes more of the room there is and reads in words. Null: every column
+   * alike (Focus: Everyone, or you have no column that day).
+   */
+  focusId?: string | null;
 }
 
-export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false }: HubGridProps) {
+export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, hidden = false, focusId = null }: HubGridProps) {
   const [opened, setOpened] = useState<{ day: string; from: ReadonlySet<number> }>({ day: dayKey, from: new Set() });
   const openedFrom = opened.day === dayKey ? opened.from : EMPTY_SET;
 
@@ -115,8 +132,9 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
           <div className="hs-corner" aria-hidden />
           {columns.map((c) => {
             const frame = frameOf?.(c.id, range) ?? UNKNOWN_FRAME;
+            const focus = focusId !== null && c.id === focusId;
             return (
-              <div key={c.id} className="hs-colhead" data-me={c.isMe ? "true" : "false"}>
+              <div key={c.id} className="hs-colhead" data-me={c.isMe ? "true" : "false"} data-focus={focus ? "true" : undefined}>
                 <span className="hs-avatar" aria-hidden>
                   {c.initials}
                 </span>
@@ -126,7 +144,18 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
                     {c.isMe && <span className="hs-you">You</span>}
                   </strong>
                   <span className="hs-colcount">
-                    {frame.kind === "away" ? "Away" : `${c.count} ${c.count === 1 ? "session" : "sessions"}`}
+                    {frame.kind === "away" ? (
+                      "Away"
+                    ) : focus && c.detail ? (
+                      <>
+                        {c.detail.count}
+                        {/* The middle part gives way first in a narrow head. */}
+                        <span className="hs-colcount-span">{` · ${c.detail.span}`}</span>
+                        {c.detail.toGo ? ` · ${c.detail.toGo}` : null}
+                      </>
+                    ) : (
+                      `${c.count} ${c.count === 1 ? "session" : "sessions"}`
+                    )}
                   </span>
                 </span>
               </div>
@@ -148,8 +177,9 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
           {columns.map((c) => {
             const frame = frameOf?.(c.id, range) ?? UNKNOWN_FRAME;
             const off: Span[] = frame.kind === "away" ? [range] : frame.kind === "week" ? frame.off : [];
+            const focus = focusId !== null && c.id === focusId;
             return (
-              <div key={c.id} className="hs-col" data-me={c.isMe ? "true" : "false"}>
+              <div key={c.id} className="hs-col" data-me={c.isMe ? "true" : "false"} data-focus={focus ? "true" : undefined}>
                 {layout.ticks.map((tk) => (
                   <span key={tk.min} className="hs-line" data-hour={tk.hour ? "true" : "false"} style={{ top: tk.y }} />
                 ))}

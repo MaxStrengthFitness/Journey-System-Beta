@@ -228,12 +228,20 @@ export function clockWords(minute: number, { short = false }: { short?: boolean 
   return `${h12}${mm ? `:${String(mm).padStart(2, "0")}` : ""} ${suffix}`;
 }
 
-/** "No sessions 1:00 – 3:00 PM" (the band's words). */
-export function bandWords(gap: Span): string {
-  const from = clockWords(gap.from);
-  const to = clockWords(gap.to);
+/**
+ * A stretch of the day in words: "1:00 – 3:00 PM", "11:30 AM – 12:00 PM".
+ * The start keeps its AM/PM only when the stretch crosses noon.
+ */
+export function rangeWords(span: Span): string {
+  const from = clockWords(span.from);
+  const to = clockWords(span.to);
   const sameHalf = from.slice(-2) === to.slice(-2);
   const fromClock = sameHalf ? from.replace(/ [AP]M$/, "") : from;
   const pad = (s: string) => (/:/.test(s.replace(/ [AP]M$/, "")) ? s : s.replace(/^(\d+)/, "$1:00"));
-  return `No sessions ${pad(fromClock)} – ${pad(to)}`;
+  return `${pad(fromClock)} – ${pad(to)}`;
+}
+
+/** "No sessions 1:00 – 3:00 PM" (the band's words). */
+export function bandWords(gap: Span): string {
+  return `No sessions ${rangeWords(gap)}`;
 }

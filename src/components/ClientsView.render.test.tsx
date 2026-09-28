@@ -237,6 +237,16 @@ describe("the Hub", () => {
     expect(cardOf(el, "Belladonna Took")?.dataset.dim).toBe("true");
   });
 
+  it("reads your own column in words: the focus column, its head, and its cards", () => {
+    const { el } = mount();
+    const head = el.querySelector<HTMLElement>('.hs-colhead[data-focus="true"]');
+    expect(head?.querySelector("strong")?.textContent).toBe("IorethYou");
+    expect(head?.querySelector(".hs-colcount")?.textContent).toBe("2 sessions · 9:00 – 10:00 AM");
+    expect(cardOf(el, "Belladonna Took")?.dataset.words).toBe("all");
+    // Everyone else's cards keep to the calm Hub's words.
+    expect(cardOf(el, "Estella Bolger")?.dataset.words).toBeUndefined();
+  });
+
   it("opens Opportunities on the same day's entries", async () => {
     const { el } = mount();
     await act(async () => {

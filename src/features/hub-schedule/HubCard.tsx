@@ -23,6 +23,10 @@
  * The clinical-history dot is gone from the card (Hub question 3's default):
  * standing context, on most clients, and still said in the peek and the
  * briefing. The Pulse flag is plum, not rose, so red stays the triangle's.
+ *
+ * In YOUR column, read in words (`wordy`, the hub cherry round's focus
+ * column), every glyph says its sayable word where the card has room, not
+ * only the first. The words are still only ones fine to say out loud.
  */
 import type { ComponentType } from "react";
 import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, RefreshCw, Sparkles, Undo2 } from "lucide-react";
@@ -94,6 +98,12 @@ export interface HubCardProps {
   rosterLoading?: boolean;
   /** The day summary's spotlight is on and this card doesn't match it. */
   dimmed?: boolean;
+  /**
+   * In YOUR column, read in words (the focus column, hub cherry round): every
+   * glyph says its word where the card has room, not only the first, and the
+   * few words that are fine in your own column ("first with you") join them.
+   */
+  wordy?: boolean;
   /** Its peek is open. */
   open?: boolean;
   onOpen: (clientId: string, anchor: HTMLElement) => void;
@@ -111,6 +121,7 @@ export function HubCard({
   now = new Date(),
   rosterLoading = false,
   dimmed = false,
+  wordy = false,
   open = false,
   onOpen,
 }: HubCardProps) {
@@ -153,7 +164,7 @@ export function HubCard({
   const isDone = cardState === "done";
 
   const name = client ? clientDisplayName(client, booking?.clientName || "Client") : (booking?.clientName || "Reservation").trim();
-  const marks = recedes || isUnlinked ? cardMarks(null) : cardMarks(entry?.moments);
+  const marks = recedes || isUnlinked ? cardMarks(null) : cardMarks(entry?.moments, undefined, { yours: wordy });
   const serviceName: string = booking?.serviceName || booking?.sessionType || "";
   const consult = entry?.moments.some((m) => m.kind === "consult") ?? false;
   const service = serviceName && serviceName.trim() !== usualService && !isDefaultService(serviceName) && !consult ? serviceName : null;
@@ -163,10 +174,14 @@ export function HubCard({
   const kind = isPending ? "pending" : isUnlinked ? "unlinked" : "client";
   const interactive = kind === "client";
 
-  const whenParts: string[] = [];
-  if (sessionNumber !== null && sessionNumber > 3 && !numberSaid) whenParts.push(`#${sessionNumber}`);
-  else if (newToJourney && !recedes) whenParts.push("New to Journey");
-  if (service) whenParts.push(service);
+  /* The time and her number are never cut: a clipped "#212" reads as "#2",
+     a confident wrong number (hub cherry round — found when your column
+     started saying more). The words after them ("Not logged", "New to
+     Journey", the service) give way first, with an ellipsis. */
+  const numberText = sessionNumber !== null && sessionNumber > 3 && !numberSaid ? `#${sessionNumber}` : null;
+  const restParts: string[] = [];
+  if (!numberText && newToJourney && !recedes) restParts.push("New to Journey");
+  if (service) restParts.push(service);
 
   return (
     <div
@@ -175,6 +190,7 @@ export function HubCard({
       data-state={cardState}
       data-recede={recedes ? "true" : "false"}
       data-dim={dimmed ? "true" : undefined}
+      data-words={wordy ? "all" : undefined}
       data-open={open ? "true" : undefined}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : -1}
@@ -227,14 +243,19 @@ export function HubCard({
               {time}
             </>
           )}
-          {isNotLogged && (
-            <>
-              {" · "}
-              <strong title="No Journey session was completed for this client today">Not logged</strong>
-            </>
-          )}
-          {!isUnlinked && whenParts.length > 0 && ` · ${whenParts.join(" · ")}`}
+          {!isUnlinked && numberText && ` · ${numberText}`}
         </span>
+        {!isUnlinked && (isNotLogged || restParts.length > 0) && (
+          <span className="hs-card-rest">
+            {isNotLogged && (
+              <>
+                {" · "}
+                <strong title="No Journey session was completed for this client today">Not logged</strong>
+              </>
+            )}
+            {restParts.length > 0 && ` · ${restParts.join(" · ")}`}
+          </span>
+        )}
 
         {(marks.glyphs.length > 0 || marks.more > 0) && (
           <span className="hs-glyphs">

@@ -54,12 +54,22 @@ export interface CardMarks {
 
 const EMPTY: CardMarks = { critical: null, glyphs: [], more: 0, moreLabel: null };
 
+export interface SayableOptions {
+  /**
+   * The card is in YOUR column, read in words (the focus column, hub cherry
+   * round): "first with you" is fine to say out loud there. Still never a
+   * Pulse flag, a waiver or a renewal talk: those stay a glyph, their words
+   * in the peek.
+   */
+  yours?: boolean;
+}
+
 /**
  * The word a card may say out loud for a moment, or null for a glyph alone.
  * Built from the moment's own chip, so the card and the list use one set of
  * words.
  */
-export function sayableWord(m: Moment): string | null {
+export function sayableWord(m: Moment, { yours = false }: SayableOptions = {}): string | null {
   switch (m.kind) {
     case "milestone":
       // "100th today" on the list; the card sits on its own day already.
@@ -75,6 +85,9 @@ export function sayableWord(m: Moment): string | null {
       const turns = /^Turns (\d+)/.exec(m.chip);
       return turns ? `turns ${turns[1]}` : null;
     }
+    case "first-with-trainer":
+      // In your column the trainer is you.
+      return yours ? "first with you" : null;
     default:
       return null;
   }
@@ -84,13 +97,17 @@ function labelOf(m: Moment): string {
   return m.words ?? m.chip;
 }
 
-export function cardMarks(moments: ReadonlyArray<Moment> | null | undefined, max: number = CARD_MAX_GLYPHS): CardMarks {
+export function cardMarks(
+  moments: ReadonlyArray<Moment> | null | undefined,
+  max: number = CARD_MAX_GLYPHS,
+  opts: SayableOptions = {},
+): CardMarks {
   if (!moments || moments.length === 0) return EMPTY;
   const critical = moments.find((m) => m.family === "read-first");
   const rest = moments.filter((m) => m.family !== "read-first");
   // WHICH marks make the card is the Key's order (importance); among them,
   // one that can say a word goes first, where a roomy card has space for it.
-  const chosen = rest.slice(0, Math.max(0, max)).map((m) => ({ kind: m.kind, family: m.family, word: sayableWord(m), label: labelOf(m) }));
+  const chosen = rest.slice(0, Math.max(0, max)).map((m) => ({ kind: m.kind, family: m.family, word: sayableWord(m, opts), label: labelOf(m) }));
   const worded = chosen.findIndex((g) => g.word !== null);
   if (worded > 0) chosen.unshift(...chosen.splice(worded, 1));
   const folded = rest.slice(chosen.length);

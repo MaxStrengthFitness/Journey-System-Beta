@@ -71,6 +71,7 @@ import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub
 import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
 import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
+import { yourDay } from "../features/hub-schedule/your-day";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -561,18 +562,29 @@ export function ClientsView({
       booking: s,
     });
   });
+  const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
+  /*
+   * YOUR OWN COLUMN, IN WORDS (hub cherry round, Sep 28 2026; Hub direction
+   * B's focus column): your column takes more of the spare room, its head
+   * says your day in words, and its cards say every mark they may say out
+   * loud. Only when you have a column on the day on screen.
+   */
+  const myColumn = visibleTrainersList.find((t) => isSelfTrainer(t));
+  const focusId = myColumn ? String(myColumn.id) : null;
   const gridColumns: GridColumn[] = visibleTrainersList.map((t) => {
     const nickname = ((t as any).nickname || "").trim();
+    const id = String(t.id);
+    const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
     return {
-      id: String(t.id),
+      id,
       // The name they go by, whole (research-hub §6.0), never cut.
       name: nickname || (t.fullName || "").trim().split(" ")[0] || "Trainer",
       initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
       isMe: isSelfTrainer(t),
-      count: gridBlocks.filter((b) => b.columnId === String(t.id) && !isStaffBlock(b.booking as any)).length,
+      count: own.length,
+      detail: id === focusId ? yourDay({ spans: own.map((b) => b.span), nowMin: gridNowMin }) : null,
     };
   });
-  const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
 
   /*
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
@@ -608,6 +620,7 @@ export function ClientsView({
         newToJourney={isNewToJourney(entry, clientObj)}
         usualService={usualService}
         dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
+        wordy={focusId !== null && block.columnId === focusId}
         rosterLoading={rosterLoading}
         workoutSession={workoutSession}
         logged={logged}
@@ -1146,6 +1159,7 @@ export function ClientsView({
               renderCard={renderCard}
               frameOf={frameOf}
               hidden={layer !== "schedule"}
+              focusId={focusId}
             />
 
             {/* Opportunities: every client booked on the day on screen, sorted

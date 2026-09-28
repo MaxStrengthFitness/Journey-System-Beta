@@ -127,6 +127,31 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- the focus column (hub cherry round, Hub direction B) ----
+   Your column takes more of the SPARE room than the others — four shares to
+   their one, up to 420px — and never more than there is: its least is every
+   column's least, so it pushes nobody off an iPad the others would have fit.
+   On an iPad on its side with five trainers that is about 330px, room for
+   its cards to say their words (hub-card.css). The header and the body use
+   the same rule, so they stay lined up. */
+.hs-colhead[data-focus="true"],
+.hs-col[data-focus="true"] {
+  flex-grow: 4;
+  max-width: 420px;
+}
+
+.hs-colhead[data-focus="true"] {
+  container-type: inline-size;
+}
+
+/* Your day in words under your name: the time span gives way first when
+   the column is narrow, so the head stays two lines. */
+@container (max-width: 239px) {
+  .hs-colcount-span {
+    display: none;
+  }
+}
+
 /* ---- the day ---- */
 
 .hs-body {
