@@ -33,6 +33,7 @@ export type AdminsPage =
   | "template"
   | "review"
   | "limbo"
+  | "sync"
   | "bugs"
   | "data"
   | "system";
@@ -77,6 +78,7 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
     label: "The machinery",
     items: [
       { page: "limbo", label: "Limbo" },
+      { page: "sync", label: "Mindbody sync" },
       { page: "bugs", label: "Bug reports" },
       { page: "data", label: "Data" },
       { page: "system", label: "System tools" },

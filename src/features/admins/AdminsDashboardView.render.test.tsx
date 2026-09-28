@@ -152,6 +152,7 @@ describe("the Admins dashboard", () => {
       "Standard template",
       "Waiting for review",
       "Limbo",
+      "Mindbody sync",
       "Bug reports",
       "Data",
       "System tools",
@@ -168,6 +169,10 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("This queue isn't in this version of Journey yet.");
     await click(byText(el, ".hq-side .hq-nav__item", "Limbo"));
     expect(el.textContent).toContain("Limbo");
+    await click(byText(el, ".hq-side .hq-nav__item", "Mindbody sync"));
+    expect(el.textContent).toContain("Every studio's pull from Mindbody, worst first.");
+    // No lease written yet, and no old fields: linked, and hasn't pulled.
+    expect(texts(el, ".hq-page .hq-status")).toEqual(["Hasn't pulled yet", "Hasn't pulled yet"]);
     await click(byText(el, ".hq-side .hq-nav__item", "Bug reports"));
     expect(el.textContent).toContain("What people told us");
     await click(byText(el, ".hq-side .hq-nav__item", "Data"));
@@ -184,7 +189,7 @@ describe("the Admins dashboard", () => {
     expect(texts(el, ".hq-bar .hq-place")).toEqual(["Studios", "Standard", "Machinery"]);
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Bug reports", "Data", "System tools"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools"]);
     expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");
     await click(byText(el, ".hq-bar .hq-chip", "Bug reports"));
     expect(el.querySelector(".hq-bar .hq-chip--on")?.textContent).toBe("Bug reports");
@@ -229,10 +234,17 @@ describe("the Admins dashboard", () => {
     expect(texts(el, ".hq-row__name")).toContain("ImrahilHead Trainer");
   });
 
-  it("opens a studio from All studios, and comes back", async () => {
+  it("opens a studio from All studios, says its sync on its Mindbody tab, and comes back", async () => {
     const el = await mount(admin, true);
+    expect(el.querySelector('.hq-row__open[aria-label="Open Solon"]')?.textContent).toContain("Hasn't pulled yet");
     await click(el.querySelector('.hq-row__open[aria-label="Open Solon"]'));
     expect(el.querySelector<HTMLInputElement>("#studio-name")?.value).toBe("Solon");
+    await click(byText(el, ".hq-tab", "Mindbody"));
+    expect(el.textContent).toContain("A pull starts when an iPad at the studio has Journey open during its hours.");
+    await click(byText(el.querySelector<HTMLElement>(".hq-page")!, "button", "Every studio's sync"));
+    expect(el.querySelector(".hq-side .hq-nav__item--on")?.textContent).toBe("Mindbody sync");
+    await click(el.querySelector('.hq-row__open[aria-label="Open Solon\'s Mindbody"]'));
+    expect(el.querySelector(".hq-tab--on")?.textContent).toBe("Mindbody");
     await click(byText(el.querySelector<HTMLElement>(".hq-page")!, "button", "All studios"));
     expect(el.textContent).toContain("grouped by what Journey knows today");
   });

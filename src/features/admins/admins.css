@@ -311,6 +311,10 @@
   background: var(--adm-live-fill);
   color: var(--adm-live-text);
 }
+.hq-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .hq-chip__count {
   min-width: 22px;
   padding: 0 6px;

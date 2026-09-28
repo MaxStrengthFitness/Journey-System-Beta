@@ -44,6 +44,7 @@ import {
   GitPullRequest,
   Inbox,
   Network,
+  RefreshCw,
   Search,
   ShieldCheck,
   BookOpenCheck,
@@ -67,6 +68,11 @@ import { buildSearchIndex, type SearchEntry } from "./search";
 import { StudiosRoom } from "./studios/StudiosRoom";
 import { StudioPage, type StudioTab } from "./studios/StudioPage";
 import { FranchisesPage } from "./studios/FranchisesPage";
+import { SyncCheck } from "./machinery/SyncCheck";
+import { useStudioLeases } from "./machinery/useStudioLeases";
+import { syncRowOf } from "./machinery/sync-check";
+import { HqStatus } from "./kit";
+import { isDemoStudio } from "../demo-mode/is-demo";
 import {
   ADMINS_NAV,
   ADMINS_PLACES,
@@ -102,6 +108,7 @@ const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   template: <ClipboardList aria-hidden="true" />,
   review: <GitPullRequest aria-hidden="true" />,
   limbo: <Inbox aria-hidden="true" />,
+  sync: <RefreshCw aria-hidden="true" />,
   bugs: <Bug aria-hidden="true" />,
   data: <Download aria-hidden="true" />,
   system: <Database aria-hidden="true" />,
@@ -169,6 +176,21 @@ function AdminsShell({
   const index = useMemo(
     () => buildSearchIndex({ studios, networks, machines: catalog.catalog, trainers }),
     [studios, networks, catalog.catalog, trainers],
+  );
+
+  // Every real studio's sync lease, read once when the dashboard opens and
+  // again on "Check again" (machinery/useStudioLeases.ts): the sync check,
+  // a studio's Mindbody tab and All studios' rows all say what it says.
+  const [checkSeq, setCheckSeq] = useState(0);
+  const realStudioIds = useMemo(
+    () => studios.filter((s) => s.id && !isDemoStudio(s) && s.mindbodyMode !== "offline").map((s) => s.id!),
+    [studios],
+  );
+  const { leases, checkedAt } = useStudioLeases(realStudioIds, checkSeq);
+  const checkAgain = useCallback(() => setCheckSeq((n) => n + 1), []);
+  const syncOf = useCallback(
+    (studio: Studio) => syncRowOf(studio, studios, leases[studio.id ?? ""], checkedAt ?? Date.now()),
+    [studios, leases, checkedAt],
   );
 
   /** Every move between pages asks first: the page it leaves may hold typing. */
@@ -320,6 +342,14 @@ function AdminsShell({
                 isAdmin={isAdmin}
                 onRefresh={onRefresh}
                 onOpenStudio={(studioId) => go({ page: "studio", studioId })}
+                extraSay={(studioId) => {
+                  const studio = studios.find((s) => s.id === studioId);
+                  if (!studio || isDemoStudio(studio)) return null;
+                  const row = syncOf(studio);
+                  // The link's own words already say offline or what is missing.
+                  if (row.kind === "offline" || row.kind === "no-site" || row.kind === "no-location") return null;
+                  return <HqStatus tone={row.tone}>{row.word}</HqStatus>;
+                }}
               />
             )}
             {page === "studio" &&
@@ -337,6 +367,17 @@ function AdminsShell({
                   onBack={() => go({ page: "studios" })}
                   onDeleted={backToStudios}
                   onRefresh={onRefresh}
+                  sync={(() => {
+                    const row = syncOf(openStudio);
+                    if (row.kind === "offline" || row.kind === "no-site" || row.kind === "no-location") return undefined;
+                    return (
+                      <>
+                        <HqStatus tone={row.tone}>{row.word}</HqStatus>
+                        <p className="hq-standing">{row.detail}</p>
+                      </>
+                    );
+                  })()}
+                  onOpenSync={() => go({ page: "sync" })}
                 />
               ) : (
                 <AdminScreen>
@@ -369,6 +410,15 @@ function AdminsShell({
                 the queue from features/machine-db/ when it lands. */}
             {page === "review" && <ReviewQueuePlaceholder onOpenMachines={() => go({ page: "machines" })} />}
             {page === "limbo" && <AdminLimboQueue studios={studios} clients={clients} />}
+            {page === "sync" && (
+              <SyncCheck
+                studios={studios}
+                leases={leases}
+                checkedAt={checkedAt}
+                onCheckAgain={checkAgain}
+                onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "mindbody" })}
+              />
+            )}
             {page === "bugs" && <AdminBugReportsTab studios={studios} />}
             {page === "data" && (
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />

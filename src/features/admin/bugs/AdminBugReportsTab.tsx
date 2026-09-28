@@ -23,6 +23,21 @@
  *   a stack trace; retyping those into an issue is the friction that stops
  *   anyone filing it properly.
  *
+ * THE ADMINS ROOM (Sep 28 2026)
+ * -----------------------------
+ * · The statuses have plain names — New · Looking into it · Fixed · Won't
+ *   fix — as the design named them (reportView.ts). The stored values are
+ *   unchanged. A new report is blue, not crimson: crimson is for what is
+ *   critical or destructive, and a report nobody has read yet is neither.
+ * · The count tiles became a sentence and a row of status chips with their
+ *   counts, which are also the status filter; each report's status is set
+ *   with four buttons instead of a select.
+ * · A read that failed says so and offers Try again. It used to leave every
+ *   tile at zero and say "No reports yet", which is the unknown that must
+ *   never look like none.
+ * · A reply the reporter reads in the app would be a new field on the
+ *   report, which waits for AJ's OK; it is not built.
+ *
  * WHY THE LIST IS NOT SORTED BY DATE
  * ----------------------------------
  * It is sorted by status first. A list where this morning's fixed report
@@ -45,10 +60,6 @@ import type { Studio } from "../../../types";
 import type { FeedbackKind } from "../../feedback/types";
 import { useToast } from "../../../contexts/ToastContext";
 import {
-  OperationType,
-  handleFirestoreError,
-} from "../../../lib/firestore-errors";
-import {
   AdminBadge,
   AdminButton,
   AdminEmpty,
@@ -60,8 +71,6 @@ import {
   AdminPanel,
   AdminScreen,
   AdminSelect,
-  AdminStatTile,
-  AdminTiles,
 } from "../primitives";
 import {
   EMPTY_FILTER,
@@ -78,6 +87,7 @@ import {
   type ReportStatus,
   type ReportView,
 } from "./reportView";
+import "../../admins/admins.css";
 
 /**
  * Enough to triage from without reading the whole collection. A beta feedback
@@ -86,8 +96,8 @@ import {
  */
 const PAGE = 100;
 
-const STATUS_TONE: Record<ReportStatus, "alert" | "warn" | "ok" | "neutral"> = {
-  open: "alert",
+const STATUS_TONE: Record<ReportStatus, "live" | "warn" | "ok" | "neutral"> = {
+  open: "live",
   investigating: "warn",
   fixed: "ok",
   "wont-fix": "neutral",
@@ -95,18 +105,22 @@ const STATUS_TONE: Record<ReportStatus, "alert" | "warn" | "ok" | "neutral"> = {
 
 interface Props {
   studios: Studio[];
+  /** A status changed — the dashboard recounts what is new. */
+  onChanged?: () => void;
 }
 
-export function AdminBugReportsTab({ studios }: Props) {
+export function AdminBugReportsTab({ studios, onChanged }: Props) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [raw, setRaw] = useState<ReportView[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<ReportFilter>(EMPTY_FILTER);
   const [openId, setOpenId] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
+    setFailed(false);
     try {
       const snap = await getDocs(
         query(
@@ -121,7 +135,10 @@ export function AdminBugReportsTab({ studios }: Props) {
         ),
       );
     } catch (err) {
-      handleFirestoreError(err, OperationType.GET, "bug_reports");
+      // Said on the screen, in words, with Try again — not in a technical
+      // toast over it.
+      console.error("Couldn't load bug reports", err);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -141,14 +158,17 @@ export function AdminBugReportsTab({ studios }: Props) {
     [raw, filter],
   );
   const open = shown.find((r) => r.id === openId) ?? null;
+  const byStatus = (s: ReportStatus) => raw.filter((r) => r.status === s).length;
 
   const setStatus = async (report: ReportView, status: ReportStatus) => {
+    if (report.status === status) return;
     setSaving(report.id);
     try {
       await updateDoc(doc(db, "bug_reports", report.id), { status });
       setRaw((prev) =>
         prev.map((r) => (r.id === report.id ? { ...r, status } : r)),
       );
+      onChanged?.();
     } catch (e: unknown) {
       toastError(
         `Could not update: ${e instanceof Error ? e.message : String(e)}`,
@@ -166,12 +186,20 @@ export function AdminBugReportsTab({ studios }: Props) {
     );
   };
 
+  const sentence = loading
+    ? "Reading the reports…"
+    : failed
+      ? null
+      : counts.total === 0
+        ? "No reports yet. Anything sent from the feedback button lands here."
+        : `${counts.open === 0 ? "No new reports" : `${counts.open} new ${counts.open === 1 ? "report" : "reports"}`}, ${counts.investigating} being looked into. ${counts.withErrors} of ${counts.total} carry a stack trace, usually the actual answer. ${counts.total >= PAGE ? `The newest ${PAGE} are loaded.` : "All of them are loaded."}`;
+
   return (
     <AdminScreen>
       <AdminHeader
         icon={<Bug className="w-5 h-5" />}
         title="Bug reports"
-        subtitle="What people told us, and what the app knew at the time."
+        subtitle="What people told us, and what the app knew at the time. Nothing is emailed to anyone; a status is for the people here."
         actions={
           <AdminButton onClick={() => void load()} busy={loading}>
             <RefreshCw className="w-3.5 h-3.5" />
@@ -180,53 +208,40 @@ export function AdminBugReportsTab({ studios }: Props) {
         }
       />
 
-      <AdminTiles>
-        <AdminStatTile
-          label="Open"
-          value={counts.open}
-          tone={counts.open > 0 ? "attention" : undefined}
-          loading={loading}
-        />
-        <AdminStatTile
-          label="Being looked at"
-          value={counts.investigating}
-          loading={loading}
-        />
-        <AdminStatTile
-          label="With a stack trace"
-          value={counts.withErrors}
-          foot="Usually the actual answer"
-          loading={loading}
-        />
-        <AdminStatTile
-          label="Loaded"
-          value={counts.total}
-          foot={counts.total >= PAGE ? `Newest ${PAGE}` : "All of them"}
-          loading={loading}
-        />
-      </AdminTiles>
+      {failed ? (
+        <AdminNotice tone="warn">
+          <span className="flex flex-wrap items-center gap-3">
+            <span>Couldn&apos;t load the bug reports just now, so there may be new ones.</span>
+            <AdminButton size="sm" onClick={() => void load()}>
+              Try again
+            </AdminButton>
+          </span>
+        </AdminNotice>
+      ) : (
+        <p className="hq-standing" role="status">
+          {sentence}
+        </p>
+      )}
 
-      <AdminPanel title="Filter">
-        <AdminGrid>
-          <AdminField label="Status" htmlFor="bug-status">
-            <AdminSelect
-              id="bug-status"
-              value={filter.status}
-              onChange={(e) =>
-                setFilter((f) => ({
-                  ...f,
-                  status: e.target.value as ReportFilter["status"],
-                }))
-              }
+      {!failed && !loading && counts.total > 0 && (
+        <div className="hq-chips" role="group" aria-label="Show reports by status">
+          {(["all", ...STATUS_ORDER] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`hq-chip${filter.status === s ? " hq-chip--on" : ""}`}
+              aria-pressed={filter.status === s}
+              onClick={() => setFilter((f) => ({ ...f, status: s }))}
             >
-              <option value="all">Any</option>
-              {STATUS_ORDER.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABEL[s]}
-                </option>
-              ))}
-            </AdminSelect>
-          </AdminField>
+              {s === "all" ? "All" : STATUS_LABEL[s]}
+              <span className="hq-chip__count">{s === "all" ? raw.length : byStatus(s)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <AdminPanel title="Narrow the list">
+        <AdminGrid>
           <AdminField label="Kind" htmlFor="bug-kind">
             <AdminSelect
               id="bug-kind"
@@ -281,11 +296,13 @@ export function AdminBugReportsTab({ studios }: Props) {
             ? "Reports"
             : `${shown.length} of ${raw.length} reports`
         }
-        subtitle="Open work first, newest within each."
+        subtitle="New work first, newest within each."
         flush
       >
         {loading ? (
           <AdminEmpty title="Loading…" />
+        ) : failed ? (
+          <AdminEmpty title="Couldn't load the reports">Try again above.</AdminEmpty>
         ) : shown.length === 0 ? (
           <AdminEmpty title={raw.length === 0 ? "No reports yet" : "Nothing matches"}>
             {raw.length === 0
@@ -328,6 +345,8 @@ export function AdminBugReportsTab({ studios }: Props) {
 
                 {r.id === openId && open && (
                   <div className="adm-bug-detail">
+                    <p className="hq-standing">{open.description}</p>
+
                     {!open.hasDiagnostics && (
                       <AdminNotice tone="info">
                         This report carries no diagnostics. It was sent before
@@ -370,22 +389,20 @@ export function AdminBugReportsTab({ studios }: Props) {
                     )}
 
                     <div className="adm-bug-detail__actions">
-                      <AdminField label="Status" htmlFor={`st-${open.id}`}>
-                        <AdminSelect
-                          id={`st-${open.id}`}
-                          value={open.status}
-                          disabled={saving === open.id}
-                          onChange={(e) =>
-                            void setStatus(open, e.target.value as ReportStatus)
-                          }
-                        >
-                          {STATUS_ORDER.map((s) => (
-                            <option key={s} value={s}>
-                              {STATUS_LABEL[s]}
-                            </option>
-                          ))}
-                        </AdminSelect>
-                      </AdminField>
+                      <div className="hq-chips" role="group" aria-label="Status">
+                        {STATUS_ORDER.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`hq-chip${open.status === s ? " hq-chip--on" : ""}`}
+                            aria-pressed={open.status === s}
+                            disabled={saving === open.id}
+                            onClick={() => void setStatus(open, s)}
+                          >
+                            {STATUS_LABEL[s]}
+                          </button>
+                        ))}
+                      </div>
                       <AdminButton onClick={() => copy(open)}>
                         <Copy className="w-3.5 h-3.5" />
                         Copy as text
