@@ -41,13 +41,19 @@
  * Under "All my studios" the page is the network view.
  *
  * OPENINGS' LINE (Openings round, Sep 27 2026, phase 7). The next three days
- * panel says, only when there is one, each usually-full time in those days
- * that has room: "Mon, Oct 5 · 8:00 AM, usually full, has room · See it on
- * Openings." It is `overviewLines` over `nextDays`, given exactly what
- * Openings' Next 7 days is given, with this page's own week read, so the
- * line needs a read the server answered; the door switches the app to My
- * Studio → Openings, on Next 7 days and "Anyone" (a cue a person opens, never
- * a bell).
+ * panel says, only when there is one, each usually-full time on the panel's
+ * own days (from tomorrow, the next three with bookings) that has room:
+ * "Mon, Oct 5 · 8:00 AM, usually full, has room · See it on Openings." It is
+ * `overviewLines` over `nextDays`, given exactly what Openings' Next 7 days
+ * is given, with this page's own week read, so the line needs a read the
+ * server answered; the door switches the app to My Studio → Openings, on
+ * Next 7 days and "Anyone" (a cue a person opens, never a bell).
+ *
+ * AN UNREAD WEEK IS NEVER A ZERO. While the week is being read, or could not
+ * be, nothing counted from its bookings is said: the tiles say "—", the
+ * Needs-you strip leaves out never-logged and today's changes and says so
+ * (never "Nothing needs you right now"), Moments says its booked milestones
+ * could not be read, and Team this week drops its "Unlogged today" column.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Activity, CalendarClock, CalendarDays, CalendarRange, ChevronRight, Clock3, Gift, HeartPulse, NotebookPen, Ruler, TrendingDown, TrendingUp, UserRoundX, Users } from "lucide-react";
@@ -127,6 +133,10 @@ const OPENINGS_SHOWN = 3;
 const NO_ENTRIES: ScheduleEntry[] = [];
 /** A read that failed, or one the server never answered: said, never counted as zero. */
 const NOT_READ = "Could not be read just now.";
+/** The Needs-you chips counted from the week's bookings: never shown off a week the server hasn't answered. */
+const WEEK_CHIPS: ReadonlySet<string> = new Set(["chase", "changes"]);
+/** Moments' booked milestones come from the week's bookings: said missing, never "no milestones". */
+const MILESTONES_NOT_READ = "Booked milestones (a 50th or 100th session) could not be read just now.";
 
 export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [], onOpenMyStudio }: OverviewPageProps) {
   const ops = useOperationsScope();
@@ -257,6 +267,13 @@ function StudioOverview({
     }),
     [weekRead, weekLive.entries],
   );
+  /*
+   * Unread, the week's entries are none, and everything counted from them
+   * would be a confident zero: the strip's never-logged and changes chips
+   * ("Nothing needs you right now"), Moments' booked milestones and Team's
+   * "Unlogged today". Each of those says the week is unread instead.
+   */
+  const weekUnread = week.loading || week.failed;
   const logged = useTodaySessions(studioId, today, tz);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
@@ -282,30 +299,11 @@ function StudioOverview({
   const missing = week.failed || numbers.unknown > 0;
   const tileFoot = (text: string) => (week.failed ? undefined : text);
 
-  /* ---- Openings: a usually-full time with room in the next three days ---- */
+  /* ---- Openings: read here, said in the next three days (below) ---- */
   // Only for someone who may read the studio's standing weeks: the rules
   // would refuse anyone else, and a refused read says nothing here.
   const readsWeeks = mayReadWeeks(authTrainer, studioId);
   const openings = useOpeningsData({ studio: readsWeeks ? studio : null, trainers, authTrainer });
-  const openingsLines = useMemo(() => {
-    if (!readsWeeks) return [];
-    // What Openings' Next 7 days is given (openings/ui/useNextSevenDays.ts), with this page's own week read.
-    const next = openingsNextDays({
-      today: openings.today,
-      now: openings.now,
-      tz: openings.tz,
-      read: weekRead,
-      connected: openings.connected,
-      bookings: week.entries,
-      docs: openings.weeks.docs,
-      trainers: openings.refs,
-      staffIds: openings.staffIds,
-      worksHere: openings.worksHere,
-      usual: openings.usual?.times ?? null,
-      marks: openings.marks.byTime,
-    });
-    return overviewLines(next.lines, openings.today, openings.tz);
-  }, [readsWeeks, openings.today, openings.now, openings.tz, weekRead, openings.connected, week.entries, openings.weeks.docs, openings.refs, openings.staffIds, openings.worksHere, openings.usual, openings.marks.byTime]);
   // The door: My Studio → Openings, on Next 7 days and "Anyone", in trainer mode.
   const openOpenings =
     onOpenMyStudio && readsWeeks
@@ -339,11 +337,47 @@ function StudioOverview({
     () => moments({ delight: delight.rows, datedNotes: own.dated ?? [], clients, weekEntries: week.entries, today, cutover: studio.journeyCutoverDate ?? null, tz }),
     [delight.rows, own.dated, clients, week.entries, today, studio.journeyCutoverDate, tz],
   );
+  const momentsCounted = `${moment.gestures} gesture${moment.gestures === 1 ? "" : "s"} due${moment.gesturesUnowned > 0 ? ` (${moment.gesturesUnowned} without an owner)` : ""}, ${moment.dates} date${moment.dates === 1 ? "" : "s"} to remember`;
   const days = useMemo(
     () => nextDays({ weekEntries: week.entries, changesByDay, momentsByDay: momentsByDay(moment.rows), hotClientIds: hotIds, clients, today, tz }),
     [week.entries, changesByDay, moment.rows, hotIds, clients, today, tz],
   );
   const unbooked = useMemo(() => notBookedAhead(clients), [clients]);
+  /*
+   * Openings' line: a usually-full time with room, on the panel's OWN days.
+   * The panel's days start tomorrow and are the next three with bookings
+   * (next-days.ts: a Saturday's are Mon, Tue, Wed when Sunday is closed), so
+   * the core's default window (today and the two days after it) would say a
+   * time later today under "the next three days" and leave the panel's last
+   * day out. The lines are kept to the panel's days first, then worded over
+   * the whole week the page reads, so that filter alone decides. Today's
+   * room is Openings' own to show (review of the Openings round, Sep 27 2026).
+   */
+  const openingsLines = useMemo(() => {
+    if (!readsWeeks) return [];
+    // What Openings' Next 7 days is given (openings/ui/useNextSevenDays.ts), with this page's own week read.
+    const next = openingsNextDays({
+      today: openings.today,
+      now: openings.now,
+      tz: openings.tz,
+      read: weekRead,
+      connected: openings.connected,
+      bookings: week.entries,
+      docs: openings.weeks.docs,
+      trainers: openings.refs,
+      staffIds: openings.staffIds,
+      worksHere: openings.worksHere,
+      usual: openings.usual?.times ?? null,
+      marks: openings.marks.byTime,
+    });
+    const panelDays = new Set(days.map((d) => d.day));
+    return overviewLines(
+      next.lines.filter((l) => panelDays.has(l.dateKey)),
+      openings.today,
+      openings.tz,
+      WEEK_DAYS,
+    );
+  }, [readsWeeks, days, openings.today, openings.now, openings.tz, weekRead, openings.connected, week.entries, openings.weeks.docs, openings.refs, openings.staffIds, openings.worksHere, openings.usual, openings.marks.byTime]);
 
   /* ---- the team and the week ---- */
   const names = useMemo(() => trainerNames(trainers), [trainers]);
@@ -352,6 +386,8 @@ function StudioOverview({
     () => teamThisWeek(recent.sessions, todayEntries, logged.logged, now, today, sessionMinutesOf(studio), names, idsByName, tz),
     [recent.sessions, todayEntries, logged.logged, now, today, studio, names, idsByName, tz],
   );
+  // Today's unlogged sessions are counted from the week's bookings and today's logging: both must be read, or the column goes.
+  const unloggedKnown = !weekUnread && team.unknownToday === 0;
   const hours = useMemo(() => hoursThisWeek(recent.sessions, today, sessionMinutesOf(studio)), [recent.sessions, today, studio]);
   const insight = useMemo(() => {
     if (recent.loading || recent.failed) return null;
@@ -386,7 +422,7 @@ function StudioOverview({
   const gotIt = (clientId: string) => run(`watch:${clientId}`, () => clearWatch(studioId, clientId));
 
   /* ---- the strip ---- */
-  const chips: NeedChip[] = [
+  const allChips: NeedChip[] = [
     { id: "chase", count: numbers.neverLogged, label: numbers.neverLogged === 1 ? "session never logged" : "sessions never logged", tone: "alert" },
     { id: "pain", count: painPending.pending.length, label: painPending.pending.length === 1 ? "pain or critical note to acknowledge" : "pain and critical notes to acknowledge", tone: "alert" },
     { id: "changes", count: changesToday.length, label: changesToday.length === 1 ? "change today" : "changes today", tone: "warn" },
@@ -395,6 +431,8 @@ function StudioOverview({
     { id: "moments", count: moment.gesturesUnowned, label: moment.gesturesUnowned === 1 ? "gesture with no owner" : "gestures with no owner", tone: "neutral" },
     { id: "review", count: review.length, label: review.length === 1 ? "note to review" : "notes to review", tone: "neutral" },
   ];
+  // Never logged and today's changes are counted from the week's bookings: unread, they are left out and the strip says why.
+  const chips = weekUnread ? allChips.filter((c) => !WEEK_CHIPS.has(c.id)) : allChips;
   const jumpTo = (id: string) => {
     if (id === "chase") {
       setShowChase(true);
@@ -499,7 +537,7 @@ function StudioOverview({
       </div>
 
       {/* 2 · Needs you */}
-      <NeedsYou chips={chips} onPick={jumpTo} />
+      {weekUnread ? <NeedsYouWeekUnread chips={chips} onPick={jumpTo} reading={week.loading} /> : <NeedsYou chips={chips} onPick={jumpTo} />}
 
       {/* 3 · The panels: act today on the left, look ahead on the right */}
       <div className="adm-ov__grid">
@@ -746,13 +784,16 @@ function StudioOverview({
           count={moment.rows.length}
           tone={moment.gesturesUnowned > 0 ? "warn" : "neutral"}
           sentence={
-            delight.isLoading || own.loading
+            delight.isLoading || own.loading || week.loading
               ? "Reading the list…"
               : delight.needsIndex
                 ? "The Delight queue needs its index — an administrator deploys it."
-                : moment.rows.length === 0
-                  ? "No gestures due, no dates and no milestones in the next seven days."
-                  : `${moment.gestures} gesture${moment.gestures === 1 ? "" : "s"} due${moment.gesturesUnowned > 0 ? ` (${moment.gesturesUnowned} without an owner)` : ""}, ${moment.dates} date${moment.dates === 1 ? "" : "s"} to remember, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}.`
+                : week.failed
+                  ? // Gestures, dates and years with the studio don't need the week; a booked 50th or 100th does: never "no milestones".
+                    `${moment.rows.length === 0 ? "No gestures due and no dates in the next seven days" : `${momentsCounted}${moment.milestones > 0 ? `, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}` : ""}`}. ${MILESTONES_NOT_READ}`
+                  : moment.rows.length === 0
+                    ? "No gestures due, no dates and no milestones in the next seven days."
+                    : `${momentsCounted}, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}.`
           }
           actions={door("delight", "Delight queue")}
           folded={fold.folded.has("moments")}
@@ -769,7 +810,7 @@ function StudioOverview({
             }))}
             total={moment.rows.length}
             onOpenClient={onNavigateProfile}
-            empty="Nothing to mark this week."
+            empty={weekUnread ? "" : "Nothing to mark this week."}
             moreLabel="on the Delight queue and the clients' notes"
           />
         </OverviewPanel>
@@ -823,9 +864,9 @@ function StudioOverview({
           title="Team this week"
           icon={<Users className="w-4 h-4" />}
           sentence={
-            recent.loading || logged.loading
+            recent.loading || logged.loading || week.loading
               ? "Adding up the week…"
-              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
+              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${week.failed ? " — today's bookings could not be read" : team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
           }
           actions={door("insights", "Insights and hours")}
           folded={fold.folded.has("team")}
@@ -843,7 +884,7 @@ function StudioOverview({
                   <th scope="col">Sessions</th>
                   <th scope="col">Clients</th>
                   <th scope="col">Hours</th>
-                  {team.unknownToday === 0 && <th scope="col">Unlogged today</th>}
+                  {unloggedKnown && <th scope="col">Unlogged today</th>}
                 </tr>
               </thead>
               <tbody>
@@ -853,7 +894,7 @@ function StudioOverview({
                     <td>{r.sessions}</td>
                     <td>{r.clients}</td>
                     <td>{formatHours(r.minutes)}</td>
-                    {team.unknownToday === 0 && <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>}
+                    {unloggedKnown && <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -915,6 +956,44 @@ function StudioOverview({
 
       {reviewOpen && <ReviewNotesDialog open onOpenChange={setReviewOpen} rows={review} onOpenClient={onNavigateProfile} />}
     </AdminScreen>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The Needs-you strip while the week is unread
+ * ------------------------------------------------------------------ */
+
+/**
+ * The strip while the week's bookings are being read, or could not be:
+ * pieces' `NeedsYou`, with the week's two chips left out (the caller's
+ * `chips`) and never "Nothing needs you right now", because sessions never
+ * logged and today's changes are unknown, not none. The count it gives is
+ * said to be partial, inside the strip. Openings round review, Sep 27 2026:
+ * `NeedsYou` (pieces.tsx, another unit's file) could take this as a `note`
+ * prop and this would fold back into it.
+ */
+function NeedsYouWeekUnread({ chips, onPick, reading }: { chips: NeedChip[]; onPick: (id: string) => void; reading: boolean }) {
+  const live = chips.filter((c) => c.count > 0);
+  const total = live.reduce((n, c) => n + c.count, 0);
+  return (
+    <div className="adm-ov__needs" role="region" aria-label="Needs you">
+      <span className="adm-ov__needs-title">{total === 0 ? "Needs you" : `Needs you · ${total}`}</span>
+      {live.length > 0 && (
+        <div className="adm-ov__needs-chips">
+          {live.map((c) => (
+            <button key={c.id} type="button" className={`adm-ov__chip adm-ov__chip--${c.tone}`} onClick={() => onPick(c.id)}>
+              <span className="adm-ov__chip-count">{c.count}</span>
+              <span>{c.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <span className="adm-hint" style={{ flexBasis: "100%", margin: 0 }} data-testid="needs-week-note">
+        {reading
+          ? "Reading today's bookings: sessions never logged and today's changes are counted once they are read."
+          : "Today's bookings could not be read just now, so sessions never logged and today's changes are missing — not zero."}
+      </span>
+    </div>
   );
 }
 

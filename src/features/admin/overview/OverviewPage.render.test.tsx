@@ -13,7 +13,9 @@
  * Openings (Sep 27 2026, phase 7): the week read waits for the server, so a
  * snapshot only this iPad's cache answered says nothing, and the next three
  * days carry Openings' line (a usually-full time with room) with a door to
- * My Studio -> Openings.
+ * My Studio -> Openings. The round's review: the line keeps to the panel's
+ * own days (a Saturday's are not Sat, Sun, Mon), and an unread week is never
+ * an all-clear on the Needs-you strip, "no milestones" or an empty column.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -33,7 +35,10 @@ vi.mock("../../../contexts/ActiveStudioContext", () => ({
 
 vi.mock("../../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 
-const NOW = new Date("2026-09-21T13:00:00Z"); // Monday 9 AM Eastern
+const MONDAY = new Date("2026-09-21T13:00:00Z"); // Monday 9 AM Eastern
+const SATURDAY = new Date("2026-09-26T13:00:00Z"); // Saturday 9 AM Eastern
+/** The test's clock: Monday unless a test moves it. The fixture's days count from it. */
+let NOW = MONDAY;
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000);
 const dayKey = (n: number) => daysAgo(n).toISOString().slice(0, 10);
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -42,9 +47,10 @@ const writes: Array<{ op: string; path: string; data?: unknown }> = [];
 /**
  * Flip to make the live read of today's sessions fail (the listener's error callback), or to have
  * the week's bookings answered by this iPad's cache alone: `serverLater` then holds each live
- * listener's server answer, delivered when a test says so.
+ * listener's server answer, delivered when a test says so. `quiet` empties the sessions, incidents
+ * and notes, so nothing but the week's bookings could need anyone.
  */
-const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, serverLater: [] as Array<() => void> }));
+const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, serverLater: [] as Array<() => void> }));
 
 vi.mock("firebase/firestore", () => {
   // doc(db, "a", "b") and doc(collection(db, "a"), "b") both become "a/b".
@@ -87,6 +93,7 @@ vi.mock("firebase/firestore", () => {
     const today = dayKey(0);
     const tomorrow = dayKey(-1);
     const wednesday = dayKey(-2);
+    if (failures.quiet && (path === "sessions" || path === "clinicalIncidents" || path === "journalEntries")) return snap([]);
     if (path === "sessions")
       return snap([
         { trainerId: "t1", trainerInitials: "AJ", status: "Completed", date: dayKey(1), hostedAtStudioId: "solon", clientId: "c1", preSessionCheckIn: { bodyStates: [{ region: "Lower back", state: "stiff", dial: -2 }] } },
@@ -106,11 +113,26 @@ vi.mock("firebase/firestore", () => {
       return snap([{ id: "i1", clientId: "c2", studioId: "solon", region: "Shoulder", severity: "moderate", description: "pinch on the press", reportedByTrainerId: "t1", createdAt: daysAgo(2).toISOString() }]);
     if (path === "journalEntries")
       return snap([{ id: "j1", clientId: "c1", studioId: "solon", importance: "critical", body: "Post-op: no overhead work until cleared.", occurredAt: daysAgo(10).toISOString(), effectiveUntil: eastern(dayKey(-20), "23:59"), resolvedAt: null, isArchived: false }]);
-    // Openings: AJ usually takes clients on Tuesdays 10:00 to 11:00 (agreed), and 10:30 on a
-    // Tuesday is marked Always full. Ann is booked at 10:00 tomorrow; nobody at 10:30.
+    // Openings: AJ usually takes clients on Tuesdays 10:00 to 11:00 and Saturdays 3:00 to 4:00 PM
+    // (agreed), and 10:30 on a Tuesday and 3:00 PM on a Saturday are marked Always full. On the
+    // Monday clock Ann is booked at 10:00 tomorrow; nobody at 10:30, and nobody on Saturday at 3.
     if (path === "studios/solon/standingWeeks")
-      return snap([{ id: "t1", studioId: "solon", trainerUid: "t1", trainerId: "t1", trainerName: "AJ Jurgens", final: { hours: [{ weekday: 2, from: "10:00", to: "11:00" }], regulars: [] }, finalAt: daysAgo(30) }]);
-    if (path === "studios/solon/openingsMarks") return snap([{ id: "2-1030", weekday: 2, time: "10:30", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) }]);
+      return snap([
+        {
+          id: "t1",
+          studioId: "solon",
+          trainerUid: "t1",
+          trainerId: "t1",
+          trainerName: "AJ Jurgens",
+          final: { hours: [{ weekday: 2, from: "10:00", to: "11:00" }, { weekday: 6, from: "15:00", to: "16:00" }], regulars: [] },
+          finalAt: daysAgo(30),
+        },
+      ]);
+    if (path === "studios/solon/openingsMarks")
+      return snap([
+        { id: "2-1030", weekday: 2, time: "10:30", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) },
+        { id: "6-1500", weekday: 6, time: "15:00", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) },
+      ]);
     return snap([]);
   };
   return {
@@ -219,12 +241,14 @@ afterEach(() => {
   writes.length = 0;
   failures.liveSessions = false;
   failures.weekCacheOnly = false;
+  failures.quiet = false;
   failures.serverLater.length = 0;
+  NOW = MONDAY;
   localStorage.clear();
   vi.useRealTimers();
 });
 
-async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: Studio; onOpenMyStudio?: () => void } = {}) {
+async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: Studio; onOpenMyStudio?: () => void; clients?: Client[] } = {}) {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -237,7 +261,7 @@ async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: S
           studios={[extra.studio ?? studio]}
           trainers={trainers}
           machines={machines}
-          clients={clients}
+          clients={extra.clients ?? clients}
           schedules={[]}
           activeStudioId="solon"
           onOpen={(t) => onOpen(t)}
@@ -405,6 +429,19 @@ describe("the Overview", () => {
     expect(el.textContent).not.toContain("See it on Openings");
   });
 
+  it("keeps Openings' line to the panel's own days: on a Saturday, never later today, and the panel's third day too", async () => {
+    NOW = SATURDAY;
+    const el = await mount(undefined, { studio: linked, onOpenMyStudio: () => {} });
+    // The panel starts tomorrow: Sunday (Ann is booked), Monday (Bea), then Tuesday from the calendar.
+    expect([...el.querySelectorAll(".adm-ov__day-date")].map((d) => d.textContent)).toEqual(["Sep 27", "Sep 28", "Sep 29"]);
+    const group = el.querySelector("[aria-label='Openings in the next three days']");
+    // Tuesday is the panel's third day, past the core's own three (Sat, Sun, Mon): its line is said.
+    expect(group?.textContent).toContain("Tue, Sep 29 · 10:30 AM, marked always full, has room · See it on Openings.");
+    // 3:00 PM today is Openings' to show, not a day this panel draws.
+    expect(el.textContent).not.toContain("Sat, Sep 26 · 3:00 PM");
+    expect(group?.querySelectorAll(".adm-ov__line")).toHaveLength(1);
+  });
+
   it("says nothing from the week until the server answers: reading, then could not be read, never zero", async () => {
     failures.weekCacheOnly = true;
     const el = await mount(undefined, { studio: linked, onOpenMyStudio: () => {} });
@@ -415,6 +452,13 @@ describe("the Overview", () => {
     expect(text).not.toContain("Cy Cole");
     expect(text).not.toContain("See it on Openings");
     expect(el.querySelector(".adm-ov__days")).toBeNull();
+    const needs = () => el.querySelector("[aria-label='Needs you']")?.textContent ?? "";
+    // The strip counts what it can (the pain and critical notes) and says the rest is still being read.
+    expect(needs()).toContain("pain and critical notes to acknowledge");
+    expect(needs()).toContain("Reading today's bookings");
+    expect(needs()).not.toMatch(/\dsessions? never logged/);
+    expect(needs()).not.toMatch(/\dchanges? today/);
+    expect(text).not.toContain("Unlogged today");
 
     // The server keeps it waiting: the week could not be read. Missing, never zero.
     await act(async () => {
@@ -429,6 +473,17 @@ describe("the Overview", () => {
     expect(text).not.toMatch(/\d booked over/);
     expect(text).not.toContain("See it on Openings");
     expect(el.querySelector(".adm-ov__days")).toBeNull();
+    // Dee is never logged and Cy cancelled today, and neither is counted as none: the strip is partial and says so.
+    expect(text).not.toMatch(/\dsessions? never logged/);
+    expect(text).not.toMatch(/\dchanges? today/);
+    expect(text).not.toContain("Nothing needs you right now");
+    expect(needs()).toContain("Today's bookings could not be read just now, so sessions never logged and today's changes are missing — not zero.");
+    // Moments: no booked milestone is claimed or denied.
+    expect(text).not.toContain("no milestones");
+    expect(text).toContain("Booked milestones (a 50th or 100th session) could not be read just now.");
+    // Team this week: no "Unlogged today" column of dashes, and the sentence says why.
+    expect(text).not.toContain("Unlogged today");
+    expect(text).toContain("today's bookings could not be read");
 
     // The server answers: now the week is said, Openings' line with it.
     await act(async () => {
@@ -438,7 +493,29 @@ describe("the Overview", () => {
     expect(text).toContain("Booked today4");
     expect(text).toContain("Cy Cole");
     expect(text).not.toContain("could not be read just now");
+    expect(text).toContain("1session never logged");
+    expect(text).toContain("1change today");
+    expect(text).toContain("Unlogged today");
+    expect(el.querySelector("[data-testid='needs-week-note']")).toBeNull();
     expect(el.querySelector("[aria-label='Openings in the next three days']")?.textContent).toContain("Tue, Sep 22 · 10:30 AM, marked always full, has room");
+  });
+
+  it("with nothing else waiting, an unread week is not an all-clear", async () => {
+    failures.weekCacheOnly = true;
+    failures.quiet = true;
+    const el = await mount(undefined, { clients: [] });
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    const needs = el.querySelector("[aria-label='Needs you']")?.textContent ?? "";
+    expect(needs).not.toContain("Nothing needs you right now");
+    expect(needs).toContain("could not be read just now");
+    expect(el.querySelectorAll("[aria-label='Needs you'] button")).toHaveLength(0);
+    // The server answers: Dee's and Bea's sessions (nothing logged today here) and Cy's cancellation are what needs you.
+    await act(async () => {
+      for (const deliver of failures.serverLater) deliver();
+    });
+    expect(el.querySelector("[aria-label='Needs you']")?.textContent).toBe("Needs you · 32sessions never logged1change today");
   });
 
   it("a folded panel keeps its sentence and remembers the fold on this device", async () => {

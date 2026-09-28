@@ -141,6 +141,7 @@ const click = async (label: string) => {
 };
 const door = () => host.querySelector<HTMLButtonElement>("[data-testid='week-openings-door']");
 const stateLine = () => host.querySelector("[data-testid='week-check-state']")?.textContent ?? null;
+const nextSeven = () => host.querySelector("#stw-next-seven");
 
 describe("Standing weeks on Team", () => {
   it("says whose week is waiting, and points to Openings for the free slot, naming no client", async () => {
@@ -148,6 +149,7 @@ describe("Standing weeks on Team", () => {
     expect(host.textContent).toContain("Sam has a week waiting to be agreed.");
     // One line, the count Openings' Next 7 days lists, and it is the door.
     expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(nextSeven()?.textContent).toBe("The next seven days");
     // The slots themselves are Openings': Team lists none and names no client.
     expect(host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']")).toBeNull();
     expect(host.textContent).not.toContain("Judy Smith");
@@ -190,9 +192,11 @@ describe("Standing weeks on Team", () => {
     vi.setSystemTime(new Date("2026-09-28T12:00:00-04:00"));
     await mount();
     expect(door()).toBeNull();
-    // The check still holds Ann's 8:00 this morning, so it isn't "booked as usual": nothing is said.
+    // The check still holds Ann's 8:00 this morning, so it isn't "booked as usual": nothing is said,
+    // and with nobody away the next seven days aren't drawn as a heading over nothing.
     expect(stateLine()).toBeNull();
     expect(host.textContent).not.toContain("free slot");
+    expect(nextSeven()).toBeNull();
   });
 
   it("says nothing is out of place when the regular is booked as usual", async () => {
@@ -294,6 +298,7 @@ describe("Standing weeks on Team", () => {
     fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], away: [{ id: "a1", from: "2026-09-28", to: "2026-09-28", note: "Dentist" }] }] };
     await mount();
     expect(host.querySelector("[aria-label='Away this week']")?.textContent).toBe("Ann is away on Mon, Sep 28.");
+    expect(nextSeven()).not.toBeNull();
     expect(door()).toBeNull();
     // Ann's Monday regular falls in the window, on her day away: unchecked, not absent.
     expect(stateLine()).toBe("Nothing else to check: the agreed slots in the next seven days fall on days away.");
@@ -322,9 +327,10 @@ describe("Standing weeks on Team", () => {
     await act(async () => {
       root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("5746957")]} clients={clients} />);
     });
-    // Taken is no free slot: nothing points to Openings, and nothing claims "booked as usual".
+    // Taken is no free slot: nothing points to Openings, nothing claims "booked as usual", and no heading stands over nothing.
     expect(door()).toBeNull();
     expect(stateLine()).toBeNull();
+    expect(nextSeven()).toBeNull();
     // Ann's id from the other site proves nothing here: Judy's slot is simply open.
     await act(async () => {
       root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("29068")]} clients={clients} />);
