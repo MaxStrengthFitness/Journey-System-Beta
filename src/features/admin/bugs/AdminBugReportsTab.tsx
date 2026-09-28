@@ -35,8 +35,13 @@
  * · A read that failed says so and offers Try again. It used to leave every
  *   tile at zero and say "No reports yet", which is the unknown that must
  *   never look like none.
- * · A reply the reporter reads in the app would be a new field on the
- *   report, which waits for AJ's OK; it is not built.
+ *
+ * THE SECOND WAVE (Sep 28 2026, AJ "all yes")
+ * -------------------------------------------
+ * · A reply the reporter reads in the app: an opened report has Reply
+ *   (BugReplyBox.tsx, bug-reply.ts), one field on the report, signed and
+ *   dated; the reporter reads it on Settings → Your reports. Nothing is
+ *   emailed.
  *
  * WHY THE LIST IS NOT SORTED BY DATE
  * ----------------------------------
@@ -78,6 +83,7 @@ import {
   type ReportView,
 } from "./reportView";
 import { REPORTS_PAGE as PAGE, fetchRecentReports } from "./fetch-reports";
+import { BugReplyBox } from "./BugReplyBox";
 import "../../admins/admins.css";
 
 const STATUS_TONE: Record<ReportStatus, "live" | "warn" | "ok" | "neutral"> = {
@@ -91,9 +97,11 @@ interface Props {
   studios: Studio[];
   /** A status changed — the dashboard recounts what is new. */
   onChanged?: () => void;
+  /** The signed-in administrator's name, signed on a reply. */
+  replierName?: string;
 }
 
-export function AdminBugReportsTab({ studios, onChanged }: Props) {
+export function AdminBugReportsTab({ studios, onChanged, replierName = "An administrator" }: Props) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [raw, setRaw] = useState<ReportView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,6 +321,7 @@ export function AdminBugReportsTab({ studios, onChanged }: Props) {
                   <span className="adm-bug-row__who">
                     {r.reporter}
                     {r.studioName ? ` · ${r.studioName}` : ""}
+                    {r.reply ? " · replied" : ""}
                   </span>
                 </button>
 
@@ -381,6 +390,13 @@ export function AdminBugReportsTab({ studios, onChanged }: Props) {
                         Copy as text
                       </AdminButton>
                     </div>
+
+                    <BugReplyBox
+                      key={open.id}
+                      report={open}
+                      replierName={replierName}
+                      onSaved={(reply) => setRaw((prev) => prev.map((r) => (r.id === open.id ? { ...r, reply } : r)))}
+                    />
                   </div>
                 )}
               </li>

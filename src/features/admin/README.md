@@ -41,7 +41,7 @@ screen mounted as it was. `shell/places.ts` is the list.
 | Setup → Rules | `journey/RulesPage.tsx` — the numbers behind every sentence; the rhythm and state engine is `journey/rhythm.ts` and `journey/states.ts` (read `journey/README.md`) |
 | — on the Admins dashboard (`src/features/admins/`, its README) — | |
 | Home | `src/features/admins/home/` (what needs you, the network, the standard) |
-| Studios → All studios, a studio's page, Franchises | `src/features/admins/studios/` (the screens); the registry's editors here in `studios/` (`registry.ts`, `registry-writes.ts`, `StudioDetailsForm`, `NewStudioPanel`, `NetworksPanel`, `RegistryHealthPanel`), `equipment/`, `upkeep/`, `provisional/` |
+| Studios → All studios, a studio's page, Franchises | `src/features/admins/studios/` (the screens); the registry's editors here in `studios/` (`registry.ts`, `registry-writes.ts`, `StudioDetailsForm`, `NetworksPanel`, `RegistryHealthPanel`), `equipment/`, `upkeep/`, `provisional/` |
 | Standard → Machines | `machines/` (every machine, the submissions queue in `catalog/`), with `src/features/admins/standard/` (where studios set their own) above it |
 | Standard → Standard template | `src/features/admins/StandardTemplateTab.tsx` (`catalog/StandardSetPanel` + `routines/`) |
 | Standard → Waiting for review | `src/features/admins/ReviewQueuePage.tsx`, hosting `features/machine-db/ShareReviewPanel` (sharing with every studio waits for an administrator, AJ Sep 28 2026) |

@@ -35,8 +35,17 @@
  * What it reads of its own, once when it opens and again on Check again:
  * each real studio's sync lease, Limbo, the newest hundred bug reports and
  * the machines studios offered the catalog — the reads its pages already
- * make. No listener of its own but the machine catalog, no timer, and no
- * Mindbody call.
+ * make — and, since the second wave, Home's marks (adminHome, a handful of
+ * documents). No listener of its own but the machine catalog, no timer, and
+ * no Mindbody call.
+ *
+ * THE SECOND WAVE (Sep 28 2026, AJ "all yes" to the room's new data): Home's
+ * Take it / Snooze / Dismiss (home/home-marks.ts), Studios → Launches and a
+ * studio's opening and setup checklist (launches/), Standard → Studio
+ * defaults (standard/SettingDefaultsPage.tsx), Machinery → Activity and a
+ * studio's Activity tab (activity/, with logActivity for any admin action),
+ * Change role on a studio's Team, and a reply on a bug report. Each page
+ * reads its own data when it opens, never on the dashboard's opening.
  *
  * Moving between pages asks the leave question first (features/
  * unsaved-changes): a catalog machine mid-edit or a studio's half-typed
@@ -54,11 +63,14 @@ import {
   Download,
   Dumbbell,
   GitPullRequest,
+  History,
   House,
   Inbox,
   Network,
   RefreshCw,
+  Rocket,
   Search,
+  SlidersHorizontal,
   BookOpenCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -86,8 +98,15 @@ import { syncRowOf, syncRows } from "./machinery/sync-check";
 import { AdminsHome } from "./home/AdminsHome";
 import { useHomeSignals } from "./home/useHomeSignals";
 import { needItems, type NeedDoor } from "./home/needs";
+import { useHomeMarks } from "./home/useHomeMarks";
+import { clearHomeMark, setHomeMark } from "./home/home-marks-store";
+import { staleMarkKeys, type HomeMarkState } from "./home/home-marks";
+import { studioTodayKey } from "../../lib/studio-time";
 import { networkSentence, standardSentence } from "./home/sentences";
 import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
+import { SettingDefaultsPage } from "./standard/SettingDefaultsPage";
+import { ActivityPage } from "./activity/ActivityPage";
+import { LaunchesPage } from "./launches/LaunchesPage";
 import { HqStatus } from "./kit";
 import { isDemoStudio } from "../demo-mode/is-demo";
 import {
@@ -121,15 +140,18 @@ export interface AdminsDashboardViewProps {
 const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   home: <House aria-hidden="true" />,
   studios: <Building2 aria-hidden="true" />,
+  launches: <Rocket aria-hidden="true" />,
   franchises: <Network aria-hidden="true" />,
   machines: <Dumbbell aria-hidden="true" />,
   template: <ClipboardList aria-hidden="true" />,
+  defaults: <SlidersHorizontal aria-hidden="true" />,
   review: <GitPullRequest aria-hidden="true" />,
   limbo: <Inbox aria-hidden="true" />,
   sync: <RefreshCw aria-hidden="true" />,
   bugs: <Bug aria-hidden="true" />,
   data: <Download aria-hidden="true" />,
   system: <Database aria-hidden="true" />,
+  activity: <History aria-hidden="true" />,
 };
 
 const PLACE_ICON: Record<AdminsPlace, ReactNode> = {
@@ -299,6 +321,42 @@ function AdminsShell({
     else go({ page: door.page, studioId: door.studioId ?? null, tab: door.tab ?? null });
   };
 
+  // Home's Take it, Snooze and Dismiss (the second wave, Sep 28 2026;
+  // home/home-marks.ts): read with Home's other reads, kept in step with what
+  // this iPad writes. A mark whose condition has ended is removed once every
+  // read behind that kind of item has answered, never while one is missing.
+  const homeMarks = useHomeMarks(signalsSeq);
+  const { put: putMark, drop: dropMarks } = homeMarks;
+  const today = studioTodayKey(new Date(now));
+  const settledKinds = useMemo(() => {
+    const kinds = new Set<string>(["mindbody-setup", "registry"]);
+    if (allSync.every((r) => r.kind !== "checking" && r.kind !== "unknown")) kinds.add("sync-failing");
+    if (signals.limbo.state === "ok") kinds.add("limbo");
+    if (signals.offers.state === "ok") kinds.add("offers");
+    if (signals.bugs.state === "ok") kinds.add("bugs");
+    return kinds;
+  }, [allSync, signals]);
+  useEffect(() => {
+    if (homeMarks.state !== "ok") return;
+    const stale = staleMarkKeys(homeMarks.marks, [...needs.items, ...needs.more], settledKinds, today);
+    if (stale.length === 0) return;
+    dropMarks(stale);
+    for (const key of stale) void clearHomeMark(key).catch((err) => console.warn("Couldn't remove an ended mark", err));
+  }, [homeMarks.state, homeMarks.marks, needs, settledKinds, today, dropMarks]);
+  const markNeed = useCallback(
+    async (key: string, input: { state: HomeMarkState; until?: string | null; reason?: string | null }) => {
+      putMark(await setHomeMark(key, input, authTrainer.fullName));
+    },
+    [putMark, authTrainer.fullName],
+  );
+  const clearNeed = useCallback(
+    async (key: string) => {
+      await clearHomeMark(key);
+      dropMarks([key]);
+    },
+    [dropMarks],
+  );
+
   const current = navKeyOf(page);
   const place = placeOf(page);
   const placePages = pagesOf(place);
@@ -402,6 +460,11 @@ function AdminsShell({
                 onCheckAgain={checkAgain}
                 onOpenStudios={() => go({ page: "studios" })}
                 onOpenMachines={() => go({ page: "machines" })}
+                marks={homeMarks.marks}
+                marksState={homeMarks.state}
+                today={today}
+                onMark={markNeed}
+                onClearMark={clearNeed}
               />
             )}
             {page === "studios" && (
@@ -412,6 +475,8 @@ function AdminsShell({
                 isAdmin={isAdmin}
                 onRefresh={onRefresh}
                 onOpenStudio={(studioId) => go({ page: "studio", studioId })}
+                catalog={catalog.catalog}
+                catalogLoading={catalog.loading}
                 extraSay={(studioId) => {
                   const studio = studios.find((s) => s.id === studioId);
                   if (!studio || isDemoStudio(studio)) return null;
@@ -457,6 +522,18 @@ function AdminsShell({
                   </div>
                 </AdminScreen>
               ))}
+            {page === "launches" && (
+              <LaunchesPage
+                studios={studios}
+                networks={networks}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                catalog={catalog.catalog}
+                catalogLoading={catalog.loading}
+                onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "setup" })}
+                onRefresh={onRefresh}
+              />
+            )}
             {page === "franchises" && (
               <FranchisesPage studios={studios} networks={networks} trainers={trainers} isAdmin={isAdmin} onRefresh={onRefresh} />
             )}
@@ -479,6 +556,7 @@ function AdminsShell({
             {page === "template" && (
               <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />
             )}
+            {page === "defaults" && <SettingDefaultsPage studios={studios} authTrainer={authTrainer} />}
             {/* The review queue (features/machine-db/ShareReviewPanel): what
                 studios offer to every MSF studio, read by an administrator
                 first (AJ, Sep 28 2026). */}
@@ -495,11 +573,21 @@ function AdminsShell({
                 onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "mindbody" })}
               />
             )}
-            {page === "bugs" && <AdminBugReportsTab studios={studios} onChanged={recount} />}
+            {page === "bugs" && <AdminBugReportsTab studios={studios} onChanged={recount} replierName={authTrainer.fullName} />}
             {page === "data" && (
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />
             )}
             {page === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} />}
+            {page === "activity" && (
+              <ActivityPage
+                studios={studios}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                onRolesChanged={async () => {
+                  await onRefresh?.("trainers");
+                }}
+              />
+            )}
           </UnsavedChangesScope>
         </div>
       </div>

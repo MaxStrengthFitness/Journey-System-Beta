@@ -103,13 +103,36 @@
 
 .stg-reports { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .stg-report {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
+  display: grid;
+  gap: 8px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--eq-border);
   font-size: 14px;
+}
+.stg-report__row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+/* An administrator's reply (the Admins room's second wave, Sep 28 2026):
+   who and when, then the whole reply, wrapped. Nothing is emailed; this is
+   where it is read. */
+.stg-reply {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--eq-surface-2);
+}
+.stg-reply__who { font-size: 12px; font-weight: 800; color: var(--eq-ink-muted); }
+.stg-reply__text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 /* The whole report, wrapped: the row opens nothing, so a two-line cut-off
    left the rest unreadable (voice review follow-up, Sep 27 2026). */

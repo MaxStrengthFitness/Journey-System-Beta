@@ -24,6 +24,12 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 
+// Home's marks (the second wave): what adminHome holds, and what was deleted.
+const homeState = vi.hoisted(() => ({
+  marks: [] as Array<{ id: string } & Record<string, unknown>>,
+  deleted: [] as string[],
+}));
+
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
     const first = parts[0] as { path?: string } | undefined;
@@ -62,13 +68,13 @@ vi.mock("firebase/firestore", () => {
       const t = setTimeout(() => next(answer), 0);
       return () => clearTimeout(t);
     },
-    getDocs: async () => snapOf([]),
+    getDocs: async (target: { path?: string }) => snapOf(target?.path === "adminHome" ? homeState.marks : []),
     getDoc: async () => emptyDoc,
     getCountFromServer: async () => ({ data: () => ({ count: 0 }) }),
     updateDoc: async () => {},
     setDoc: async () => {},
     addDoc: async () => ({ id: "new" }),
-    deleteDoc: async () => {},
+    deleteDoc: async (target: { path: string }) => void homeState.deleted.push(target.path),
     deleteField: () => ({ __delete: true }),
     writeBatch: () => ({ set: () => {}, update: () => {}, delete: () => {}, commit: async () => {} }),
     serverTimestamp: () => new Date(),
@@ -95,6 +101,8 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  homeState.marks = [];
+  homeState.deleted = [];
 });
 
 const settle = async () => {
@@ -148,15 +156,18 @@ describe("the Admins dashboard", () => {
     expect(texts(el, ".hq-side .hq-nav__item")).toEqual([
       "Home",
       "All studios",
+      "Launches",
       "Franchises",
       "Machines",
       "Standard template",
+      "Studio defaults",
       "Waiting for review",
       "Limbo",
       "Mindbody sync",
       "Bug reports",
       "Data",
       "System tools",
+      "Activity",
     ]);
     // It opens on Home: nothing waits in this empty Firestore.
     expect(el.textContent).toContain("Nothing needs you right now.");
@@ -164,12 +175,20 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("2 machines in the standard set, of 2 in the MSF catalog.");
     await click(byText(el, ".hq-side .hq-nav__item", "All studios"));
     expect(el.textContent).toContain("grouped by what Journey knows today");
+    await click(byText(el, ".hq-side .hq-nav__item", "Launches"));
+    // No studio has a stage recorded here: nothing is opening.
+    expect(el.textContent).toContain("No studio is opening right now");
     await click(byText(el, ".hq-side .hq-nav__item", "Franchises"));
     expect(el.textContent).toContain("A franchise groups studios under one owner");
     await click(byText(el, ".hq-side .hq-nav__item", "Machines"));
     expect(el.textContent).toContain("Machine catalog");
     await click(byText(el, ".hq-side .hq-nav__item", "Standard template"));
     expect(el.textContent).toContain("The standard template");
+    await click(byText(el, ".hq-side .hq-nav__item", "Studio defaults"));
+    // Nothing set yet in this empty Firestore: every box empty, and it says what that means.
+    expect(el.textContent).toContain("Max Strength's default for every number a studio may set for itself.");
+    expect(el.querySelector<HTMLInputElement>("#hq-default-quietFloorSessions")?.value).toBe("");
+    expect(el.textContent).toContain("The app's default is 2. With this box empty, studios use it.");
     await click(byText(el, ".hq-side .hq-nav__item", "Waiting for review"));
     // The queue AJ asked for (Sep 28 2026), over a database with nothing offered.
     expect(el.textContent).toContain("Offered to every studio");
@@ -186,8 +205,13 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("An administrator exports any studio's data");
     await click(byText(el, ".hq-side .hq-nav__item", "System tools"));
     expect(el.textContent).toContain("Restore standard machines");
+    await click(byText(el, ".hq-side .hq-nav__item", "Activity"));
+    expect(el.textContent).toContain("Who changed what from the Admins dashboard");
+    // The administrators, from the people the dashboard holds: only Ada here.
+    expect(el.querySelector('[aria-label="Administrators"]')?.textContent).toContain("Ada Admin");
+    expect(el.textContent).toContain("Nothing recorded yet");
     const on = el.querySelector(".hq-side .hq-nav__item--on");
-    expect(on?.textContent).toBe("System tools");
+    expect(on?.textContent).toBe("Activity");
     expect(on?.getAttribute("aria-current")).toBe("page");
   });
 
@@ -197,15 +221,15 @@ describe("the Admins dashboard", () => {
     // Home is one page: no chips.
     expect(el.querySelector(".hq-bar .hq-chips")).toBeNull();
     await click(byText(el, ".hq-bar .hq-place", "Studios"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Launches", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools", "Activity"]);
     expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");
     await click(byText(el, ".hq-bar .hq-chip", "Bug reports"));
     expect(el.querySelector(".hq-bar .hq-chip--on")?.textContent).toBe("Bug reports");
     expect(el.textContent).toContain("What people told us");
     await click(byText(el, ".hq-bar .hq-place", "Standard"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Machines", "Standard template", "Waiting for review"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Machines", "Standard template", "Studio defaults", "Waiting for review"]);
     expect(el.textContent).toContain("Machine catalog");
   });
 
@@ -294,6 +318,14 @@ describe("the Admins dashboard", () => {
     await settle();
     expect(el.querySelector(".hq-search")).toBeNull();
     expect(el.textContent).toContain("The standard template");
+  });
+
+  it("removes a Home mark whose condition has ended, once its read has answered", async () => {
+    // A dismissal of new bug reports that are all dealt with now: nothing new in this empty Firestore.
+    homeState.marks = [{ id: "bugs--oldhash", state: "dismissed", by: { uid: "adm", name: "Ada Admin" }, reason: "Already handled", at: new Date() }];
+    const el = await mount(admin, true);
+    expect(el.textContent).toContain("Nothing needs you right now.");
+    expect(homeState.deleted).toContain("adminHome/bugs--oldhash");
   });
 
   it("refuses anyone who is not an administrator", async () => {

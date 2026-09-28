@@ -6,19 +6,25 @@
  * page with the list, the add form, the franchises, and the selected
  * studio's details, team, equipment and delete panel stacked under each
  * other. Now the list is only the list: a row is the studio's whole name,
- * one sentence (its Mindbody link, its Journey cutover, its active clients),
- * and a tap opens the studio's page. The add form opens here on request;
+ * one sentence (its stage when one is recorded, its Mindbody link, its
+ * Journey cutover, its active clients), and a tap opens the studio's page.
  * Franchises has a page of its own.
  *
- * The groups are stages.ts's, built from the Mindbody link and the cutover
- * date, because a studio's stage is not recorded (see its header).
+ * The second wave (Sep 28 2026): Add a studio opens the three-screen sheet
+ * (launches/AddStudioSheet.tsx), and a studio's recorded stage — setting up,
+ * handed over, running — is said on its row; the studios opening have their
+ * board on Launches. The groups stay stages.ts's, built from the Mindbody
+ * link and the cutover date, which every studio carries whether or not a
+ * stage was ever recorded.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import { Building2, Plus } from "lucide-react";
 import type { FranchiseNetwork, Studio, Trainer } from "../../../types";
+import type { MachineCatalogEntry } from "../../../types/machines";
 import { AdminButton, AdminEmpty, AdminHeader, AdminScreen } from "../../admin/primitives";
-import { NewStudioPanel } from "../../admin/studios/NewStudioPanel";
 import { HqGroupHead, HqRow, HqRows, HqStatus } from "../kit";
+import { AddStudioSheet } from "../launches/AddStudioSheet";
+import { stageLine } from "../launches/checklist";
 import { groupStudios, studiosCount } from "./stages";
 import { clientsLine, useStudioClientCounts } from "./useStudioClientCounts";
 
@@ -31,9 +37,22 @@ export interface StudiosRoomProps {
   onRefresh?: (collectionName: "studios" | "networks" | "trainers") => Promise<void>;
   /** A line under a row's sentence, from outside the list (the sync check adds its word). */
   extraSay?: (studioId: string) => ReactNode;
+  /** The machine catalog, for Add a studio's standard set. */
+  catalog?: MachineCatalogEntry[];
+  catalogLoading?: boolean;
 }
 
-export function StudiosRoom({ authTrainer, studios, networks, isAdmin, onOpenStudio, onRefresh, extraSay }: StudiosRoomProps) {
+export function StudiosRoom({
+  authTrainer,
+  studios,
+  networks,
+  isAdmin,
+  onOpenStudio,
+  onRefresh,
+  extraSay,
+  catalog = [],
+  catalogLoading = false,
+}: StudiosRoomProps) {
   const [adding, setAdding] = useState(false);
   const groups = useMemo(() => groupStudios(studios, networks), [studios, networks]);
   const counts = useStudioClientCounts(studios);
@@ -44,28 +63,16 @@ export function StudiosRoom({ authTrainer, studios, networks, isAdmin, onOpenStu
       <AdminHeader
         icon={<Building2 className="w-5 h-5" />}
         title="All studios"
-        subtitle={`${studiosCount(real)}, grouped by what Journey knows today: the Mindbody link and the Journey cutover date. A studio's stage (setting up, handed over, running) isn't recorded yet. A studio's own record is run from My Studio → Studio by its leaders, and from its page here.`}
+        subtitle={`${studiosCount(real)}, grouped by what Journey knows today: the Mindbody link and the Journey cutover date. A studio's stage, where head office has recorded one, is on its row; the studios opening are on Launches. A studio's own record is run from My Studio → Studio by its leaders, and from its page here.`}
         actions={
           isAdmin ? (
-            <AdminButton variant="primary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
+            <AdminButton variant="primary" onClick={() => setAdding(true)}>
               <Plus className="w-4 h-4" aria-hidden="true" />
-              {adding ? "Close the form" : "Add a studio"}
+              Add a studio
             </AdminButton>
           ) : undefined
         }
       />
-
-      {adding && isAdmin ? (
-        <NewStudioPanel
-          authTrainer={authTrainer}
-          studios={studios}
-          onCreated={async (id) => {
-            setAdding(false);
-            await onRefresh?.("studios");
-            onOpenStudio(id);
-          }}
-        />
-      ) : null}
 
       {groups.length === 0 ? (
         <AdminEmpty title="No studios yet">Add the first one with Add a studio. You will need its Mindbody Site ID, or mark it offline.</AdminEmpty>
@@ -74,27 +81,50 @@ export function StudiosRoom({ authTrainer, studios, networks, isAdmin, onOpenStu
           <section key={g.stage} className="flex flex-col gap-3" aria-label={g.title}>
             <HqGroupHead title={g.title} note={g.note} />
             <HqRows label={g.title}>
-              {g.studios.map((s) => (
-                <HqRow
-                  key={s.studioId}
-                  name={s.name}
-                  context={s.context}
-                  openLabel={`Open ${s.name}`}
-                  onOpen={() => onOpenStudio(s.studioId)}
-                  say={
-                    <>
-                      <HqStatus tone={s.linkTone}>{s.link}</HqStatus>
-                      <span>{s.cutover}</span>
-                      {g.stage !== "demo" ? <span>{clientsLine(counts[s.studioId])}</span> : null}
-                      {extraSay ? extraSay(s.studioId) : null}
-                    </>
-                  }
-                />
-              ))}
+              {g.studios.map((s) => {
+                const studio = studios.find((x) => x.id === s.studioId);
+                const stage = studio ? stageLine(studio) : null;
+                return (
+                  <HqRow
+                    key={s.studioId}
+                    name={s.name}
+                    context={s.context}
+                    openLabel={`Open ${s.name}`}
+                    onOpen={() => onOpenStudio(s.studioId)}
+                    say={
+                      <>
+                        {stage ? <span>{stage}</span> : null}
+                        <HqStatus tone={s.linkTone}>{s.link}</HqStatus>
+                        <span>{s.cutover}</span>
+                        {g.stage !== "demo" ? <span>{clientsLine(counts[s.studioId])}</span> : null}
+                        {extraSay ? extraSay(s.studioId) : null}
+                      </>
+                    }
+                  />
+                );
+              })}
             </HqRows>
           </section>
         ))
       )}
+
+      {isAdmin ? (
+        <AddStudioSheet
+          open={adding}
+          authTrainer={authTrainer}
+          studios={studios}
+          networks={networks}
+          catalog={catalog}
+          catalogLoading={catalogLoading}
+          onClose={() => setAdding(false)}
+          onCreated={async (id) => {
+            setAdding(false);
+            await onRefresh?.("networks");
+            await onRefresh?.("studios");
+            onOpenStudio(id);
+          }}
+        />
+      ) : null}
     </AdminScreen>
   );
 }

@@ -1,27 +1,31 @@
 /**
- * ONE STUDIO'S PAGE IN ADMINS — Setup · Mindbody · Floor · Team.
+ * ONE STUDIO'S PAGE IN ADMINS — Setup · Mindbody · Floor · Team · Activity.
  *
  * Round: the Admins room (Sep 28 2026). Everything the All locations screen
- * held about the selected studio, on the studio's own page, with the edits
- * that exist today and no new ones:
+ * held about the selected studio, on the studio's own page:
  *
- *   Setup      where it stands, in two sentences; its details (the SAME form
+ *   Setup      where it stands (its stage, its Mindbody link, its cutover);
+ *              its opening — stage and opening day — and, while it is
+ *              setting up or handed over, its setup checklist (the second
+ *              wave: features/admins/launches/); its details (the SAME form
  *              My Studio → Studio uses, so the two can never disagree about a
  *              field); its franchise; and at the foot, the danger zone
  *   Mindbody   its link, in words, and where the controls for it are
  *   Floor      its machines (the one floor editor, the equipment panel)
- *   Team       who works there, its owners, its temporary profiles
+ *   Team       who works there, its owners, its temporary profiles, and
+ *              Change role (the second wave)
+ *   Activity   what was changed here from the Admins dashboard, by whom and
+ *              when (the second wave: the Activity record, AJ "all yes")
  *
- * Not built, and why: an Activity tab (a signed record of who changed what
- * is a new collection, which waits for AJ's OK — and AJ, Sep 28: "we dont
- * need to track who set up a studio"), the setup checklist with owners and
- * due dates (new records), and See as (a front-end refactor of the studio
+ * Every change made on this page is recorded in the Activity record once it
+ * has landed (studio-records.ts, role-change.ts): its details, its franchise,
+ * a role. Not built, and why: See as (a front-end refactor of the studio
  * screens, flagged in the design).
  *
  * Switching tabs asks the leave question first: Setup holds a form.
  */
 import { useState, type ReactNode } from "react";
-import { ArrowLeft, Dumbbell, Link2, ListChecks, RefreshCw, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Dumbbell, History, Link2, ListChecks, RefreshCw, Trash2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Client, FranchiseNetwork, Studio, Trainer } from "../../../types";
 import { useToast } from "../../../contexts/ToastContext";
@@ -32,18 +36,25 @@ import { StudioDetailsForm } from "../../admin/studios/StudioDetailsForm";
 import { deleteStudio, moveStudioToNetwork, saveStudioDetails } from "../../admin/studios/registry-writes";
 import { StudioEquipmentPanel } from "../../admin/equipment/StudioEquipmentPanel";
 import { HqStatus } from "../kit";
+import { logActivity } from "../activity/log-activity";
 import { standingOf } from "./stages";
 import { StudioTeam } from "./StudioTeam";
+import { StudioActivity } from "./StudioActivity";
 import { DeleteStudioDialog } from "./DeleteStudioDialog";
+import { detailsRecord, franchiseRecord } from "./studio-records";
 import { clientsLine, useStudioClientCounts } from "./useStudioClientCounts";
+import { OpeningPanel } from "../launches/OpeningPanel";
+import { SetupChecklist } from "../launches/SetupChecklist";
+import { stageLine, stageOf } from "../launches/checklist";
 
-export type StudioTab = "setup" | "mindbody" | "floor" | "team";
+export type StudioTab = "setup" | "mindbody" | "floor" | "team" | "activity";
 
 const TABS: { id: StudioTab; label: string; icon: ReactNode }[] = [
   { id: "setup", label: "Setup", icon: <ListChecks aria-hidden="true" /> },
   { id: "mindbody", label: "Mindbody", icon: <RefreshCw aria-hidden="true" /> },
   { id: "floor", label: "Floor", icon: <Dumbbell aria-hidden="true" /> },
   { id: "team", label: "Team", icon: <Users aria-hidden="true" /> },
+  { id: "activity", label: "Activity", icon: <History aria-hidden="true" /> },
 ];
 
 type Refresh = (c: "studios" | "networks" | "trainers") => Promise<void>;
@@ -87,6 +98,7 @@ export function StudioPage({
   const [asking, setAsking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const standing = standingOf(studio, studios, networks);
+  const launchStage = stageOf(studio);
   const counts = useStudioClientCounts([studio]);
   const network = networks.find((n) => n.id === studio.networkId) ?? null;
   const studioId = studio.id ?? "";
@@ -108,8 +120,10 @@ export function StudioPage({
   };
 
   const changeNetwork = async (networkId: string | null) => {
+    const record = franchiseRecord(studio, networks, networkId);
     try {
       await moveStudioToNetwork(studio, networks, networkId);
+      if (record) void logActivity({ kind: "assisted-change", studioId, ...record, byName: authTrainer.fullName });
       await onRefresh?.("networks");
       await onRefresh?.("studios");
       toastSuccess(networkId ? "Studio moved." : "Studio is now independent.");
@@ -151,6 +165,9 @@ export function StudioPage({
           <div className="flex flex-col gap-4">
             <AdminPanel title="Where it stands">
               <div className="flex flex-col gap-2">
+                <HqStatus tone={launchStage === "running" ? "ok" : launchStage ? "live" : "idle"}>
+                  {stageLine(studio) ?? "Stage not recorded"}
+                </HqStatus>
                 <HqStatus tone={standing.linkTone}>{standing.link}</HqStatus>
                 <p className="hq-standing">
                   {standing.cutover}.{" "}
@@ -163,12 +180,35 @@ export function StudioPage({
               </div>
             </AdminPanel>
 
+            <OpeningPanel
+              key={`opening-${studioId}`}
+              studio={studio}
+              byName={authTrainer.fullName}
+              onSaved={async () => {
+                await onRefresh?.("studios");
+              }}
+            />
+
+            {launchStage === "setting-up" || launchStage === "handed-over" ? (
+              <SetupChecklist
+                studio={studio}
+                studios={studios}
+                trainers={trainers}
+                byName={authTrainer.fullName}
+                onStageChanged={async () => {
+                  await onRefresh?.("studios");
+                }}
+              />
+            ) : null}
+
             <StudioDetailsForm
               key={studioId}
               studio={studio}
               studios={studios}
               onSave={async (patch) => {
+                const record = detailsRecord(studio, patch);
                 await saveStudioDetails(studioId, patch);
+                if (record) void logActivity({ kind: "assisted-change", studioId, ...record, byName: authTrainer.fullName });
                 await onRefresh?.("studios");
               }}
             />
@@ -251,8 +291,13 @@ export function StudioPage({
             onCreated={async () => {
               await onRefresh?.("trainers");
             }}
+            onRolesChanged={async () => {
+              await onRefresh?.("trainers");
+            }}
           />
         )}
+
+        {tab === "activity" && <StudioActivity studio={studio} studios={studios} />}
       </UnsavedChangesScope>
 
       <DeleteStudioDialog

@@ -4489,4 +4489,256 @@ describe("marks on a time", () => {
       await assertFails(setDoc(marks("adminHub"), { allStars: [], computedAt: new Date() }));
     });
   });
+
+  // -- WAVE 2 ADMINS (the Admins room's second wave, Sep 28 2026; AJ "all
+  // yes" to its new data): the Activity record, a studio's setup checklist,
+  // a reply on a bug report, and Home's Take it / Snooze / Dismiss.
+  // docs/rounds/2026-09-28-admins-2.md.
+  describe("wave 2 admins", () => {
+    const ctx = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // Nobody here has a role claim on the token, so every role is read from
+    // the trainer document: the costliest path through the rules.
+    async function seedWave2People() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+          setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+        await person("adminW", "Admin", "studioA");
+        await person("founderW", "Founder", "studioB");
+        await person("franchiseW", "FranchiseOwner", "studioB");
+        await person("leaderW", "StudioLeader", "studioA");
+        await person("grantW", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+      });
+    }
+
+    // ---- The Activity record: activity/{id} ------------------------------
+    const entry = (uid: string, over: Record<string, unknown> = {}) => ({
+      at: serverTimestamp(),
+      by: { uid, name: `Person ${uid}` },
+      studioId: "studioA",
+      kind: "assisted-change",
+      what: "Changed Studio A's phone.",
+      before: { Phone: null },
+      after: { Phone: "440-555-0101" },
+      ...over,
+    });
+
+    it("lets an administrator add a signed entry to the Activity record, and nobody else", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertSucceeds(addDoc(collection(admin, "activity"), entry("adminW")));
+      await assertSucceeds(addDoc(collection(ctx("founderW"), "activity"), entry("founderW", { studioId: null, kind: "admin-grant", what: "Made Owner A a System Administrator (was Studio Owner)." })));
+      // A company entry with no before or after.
+      await assertSucceeds(addDoc(collection(admin, "activity"), { at: serverTimestamp(), by: { uid: "adminW", name: "Admin W" }, studioId: null, kind: "setting-default", what: "Set Max Strength's default for A quiet floor to 3." }));
+      // Everyone below an administrator is refused, a studio's leader included.
+      for (const uid of ["trainerA", "ownerA", "leaderW", "grantW", "franchiseW"]) {
+        await assertFails(addDoc(collection(ctx(uid), "activity"), entry(uid)));
+      }
+    });
+
+    it("refuses an entry signed as someone else, backdated, of an unknown kind, or with fields of its own", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { by: { uid: "founderW", name: "Founder W" } })));
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { at: new Date("2026-09-01T12:00:00Z") })));
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { kind: "gossip" })));
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { what: "" })));
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { note: "extra" })));
+      await assertFails(addDoc(collection(admin, "activity"), entry("adminW", { studioId: 42 })));
+      // studioId is always said: a studio's id, or null for the company.
+      const noStudio: Record<string, unknown> = { ...entry("adminW") };
+      delete noStudio.studioId;
+      await assertFails(addDoc(collection(admin, "activity"), noStudio));
+    });
+
+    it("keeps the Activity record append-only: no edit and no delete, for anyone", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "activity", "a1"), { ...entry("adminW"), at: new Date() });
+      });
+      const admin = ctx("adminW");
+      await assertFails(updateDoc(doc(admin, "activity", "a1"), { what: "Changed nothing." }));
+      await assertFails(deleteDoc(doc(admin, "activity", "a1")));
+      await assertFails(deleteDoc(doc(ctx("founderW"), "activity", "a1")));
+    });
+
+    it("lets administrators read the whole record, and a studio's leaders only their own studio's entries", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "activity", "atA"), { ...entry("adminW"), at: new Date() });
+        await setDoc(doc(db, "activity", "atB"), { ...entry("adminW", { studioId: "studioB", what: "Changed Studio B's phone." }), at: new Date() });
+        await setDoc(doc(db, "activity", "grant"), { ...entry("adminW", { studioId: null, kind: "admin-grant", what: "Made Leader W a System Administrator (was Studio Leader)." }), at: new Date() });
+      });
+      const admin = ctx("adminW");
+      await assertSucceeds(getDoc(doc(admin, "activity", "grant")));
+      await assertSucceeds(getDocs(query(collection(admin, "activity"), where("kind", "in", ["admin-grant", "assisted-change"]), orderBy("at", "desc"), limit(100))));
+      await assertSucceeds(getDocs(query(collection(admin, "activity"), where("studioId", "==", "studioB"), orderBy("at", "desc"), limit(50))));
+      // Studio A's leaders: a leader role at home, a studio owner, the grant.
+      for (const uid of ["leaderW", "ownerA", "grantW"]) {
+        const db = ctx(uid);
+        await assertSucceeds(getDoc(doc(db, "activity", "atA")));
+        await assertSucceeds(getDocs(query(collection(db, "activity"), where("studioId", "==", "studioA"), orderBy("at", "desc"), limit(50))));
+        await assertFails(getDoc(doc(db, "activity", "atB")));
+        await assertFails(getDoc(doc(db, "activity", "grant")));
+        await assertFails(getDocs(query(collection(db, "activity"), where("studioId", "==", "studioB"), orderBy("at", "desc"), limit(50))));
+        await assertFails(getDocs(query(collection(db, "activity"), where("kind", "in", ["admin-grant"]), orderBy("at", "desc"), limit(100))));
+      }
+      // A trainer who works there, and a franchise owner, read none of it.
+      await assertFails(getDoc(doc(ctx("trainerA"), "activity", "atA")));
+      await assertFails(getDocs(query(collection(ctx("trainerA"), "activity"), where("studioId", "==", "studioA"), orderBy("at", "desc"), limit(50))));
+      await assertFails(getDoc(doc(ctx("franchiseW"), "activity", "atB")));
+    });
+
+    // ---- Opening a studio: its stage, its opening day, studios/{s}/setupItems
+    const item = (uid: string | null, over: Record<string, unknown> = {}) => ({
+      block: "floor",
+      title: "Each unit's name and starting settings checked",
+      dueOn: "2026-11-03",
+      doneAt: uid ? serverTimestamp() : null,
+      doneBy: uid ? { uid, name: `Person ${uid}` } : null,
+      ...over,
+    });
+    const itemRef = (db: ReturnType<typeof ctx>, studioId: string, id: string) => doc(db, "studios", studioId, "setupItems", id);
+
+    it("lets an administrator set a studio's stage and opening day, the studio rule unchanged", async () => {
+      await seedWave2People();
+      await assertSucceeds(updateDoc(doc(ctx("adminW"), "studios", "studioA"), { stage: "setting-up", openingDay: "2027-01-12" }));
+      await assertSucceeds(updateDoc(doc(ctx("adminW"), "studios", "studioA"), { stage: deleteField(), openingDay: deleteField() }));
+      await assertFails(updateDoc(doc(ctx("trainerA"), "studios", "studioA"), { stage: "running" }));
+    });
+
+    it("lets an administrator tick, skip, add and remove setup items, signed as themselves", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      // Ticked, then skipped with a reason, then put back (a template item's document removed).
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW")));
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "staff-linked"), item("adminW", { block: "people", title: "Everyone on the team linked to Mindbody staff", doneAt: null, skipReason: "Two trainers aren't on Mindbody yet." })));
+      await assertSucceeds(deleteDoc(itemRef(admin, "studioA", "staff-linked")));
+      // An item an administrator adds, with no due date.
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "custom-k2x9ab"), item(null, { block: "first-week", title: "Order the chalk", dueOn: null })));
+      // Another administrator edits a ticked item and keeps who ticked it.
+      await assertSucceeds(setDoc(itemRef(ctx("founderW"), "studioA", "floor-names"), { ...item("adminW"), doneAt: new Date(), dueOn: "2026-11-10" }));
+      await assertSucceeds(deleteDoc(itemRef(admin, "studioA", "custom-k2x9ab")));
+    });
+
+    it("refuses a setup item signed as someone else, in a block that isn't one, or with fields of its own", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("founderW")));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { block: "the-bar" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { owner: "adminW" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { dueOn: "next week" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { title: "" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { skipReason: "" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { skipReason: "s".repeat(201) })));
+    });
+
+    it("lets a studio's leaders read its checklist, and nobody else below an administrator write or read it", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "setupItems", "floor-names"), { ...item("adminW"), doneAt: new Date() });
+        await setDoc(doc(context.firestore(), "studios", "studioB", "setupItems", "floor-names"), { ...item("adminW"), doneAt: new Date() });
+      });
+      for (const uid of ["leaderW", "ownerA", "grantW"]) {
+        const db = ctx(uid);
+        await assertSucceeds(getDoc(itemRef(db, "studioA", "floor-names")));
+        await assertSucceeds(getDocs(collection(db, "studios", "studioA", "setupItems")));
+        await assertFails(getDocs(collection(db, "studios", "studioB", "setupItems")));
+        await assertFails(setDoc(itemRef(db, "studioA", "floor-names"), item(uid)));
+        await assertFails(deleteDoc(itemRef(db, "studioA", "floor-names")));
+      }
+      await assertFails(getDocs(collection(ctx("trainerA"), "studios", "studioA", "setupItems")));
+      await assertFails(setDoc(itemRef(ctx("franchiseW"), "studioB", "floor-names"), item("franchiseW")));
+      await assertSucceeds(getDocs(collection(ctx("adminW"), "studios", "studioB", "setupItems")));
+    });
+
+    // ---- A reply on a bug report -----------------------------------------
+    async function seedReport(over: Record<string, unknown> = {}) {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "bug_reports", "rep1"), {
+          userId: "trainerA",
+          userName: "Trainer A",
+          description: "The timer froze after the Wrap-up.",
+          status: "open",
+          ...over,
+        });
+      });
+    }
+    const reply = (uid: string, over: Record<string, unknown> = {}) => ({ text: "Fixed in today's version.", by: { uid, name: `Person ${uid}` }, at: serverTimestamp(), ...over });
+
+    it("lets an administrator reply to a report, signed and dated, and the reporter read it", async () => {
+      await seedWave2People();
+      await seedReport();
+      const admin = ctx("adminW");
+      await assertSucceeds(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW"), status: "fixed" }));
+      // A status set later, with the reply untouched.
+      await assertSucceeds(updateDoc(doc(ctx("founderW"), "bug_reports", "rep1"), { status: "investigating" }));
+      // Replaced by another administrator's reply, signed as them.
+      await assertSucceeds(updateDoc(doc(ctx("founderW"), "bug_reports", "rep1"), { reply: reply("founderW", { text: "Looking again." }) }));
+      const mine = await assertSucceeds(getDoc(doc(ctx("trainerA"), "bug_reports", "rep1")));
+      expect(mine.data()?.reply?.text).toBe("Looking again.");
+      await assertFails(getDoc(doc(ctx("trainerB"), "bug_reports", "rep1")));
+      await assertSucceeds(deleteDoc(doc(admin, "bug_reports", "rep1")));
+    });
+
+    it("refuses a reply signed as someone else, backdated, empty or too long, and any reply but an administrator's", async () => {
+      await seedWave2People();
+      await seedReport();
+      const admin = ctx("adminW");
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("founderW") }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { at: new Date("2026-09-01T12:00:00Z") }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { text: "" }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { text: "x".repeat(1001) }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { cc: "everyone" }) }));
+      // The reporter, and a studio's leader, never write one.
+      await assertFails(updateDoc(doc(ctx("trainerA"), "bug_reports", "rep1"), { reply: reply("trainerA") }));
+      await assertFails(updateDoc(doc(ctx("leaderW"), "bug_reports", "rep1"), { reply: reply("leaderW") }));
+      // And a report is never filed with a reply already on it.
+      await assertFails(setDoc(doc(ctx("trainerB"), "bug_reports", "rep2"), { userId: "trainerB", description: "x", status: "open", reply: reply("trainerB") }));
+      await assertSucceeds(setDoc(doc(ctx("trainerB"), "bug_reports", "rep3"), { userId: "trainerB", description: "x", status: "open" }));
+    });
+
+    // ---- Home's Take it / Snooze / Dismiss: adminHome/{itemKey} -------------
+    const mark = (uid: string, over: Record<string, unknown> = {}) => ({ state: "taken", by: { uid, name: `Person ${uid}` }, at: serverTimestamp(), ...over });
+    const markRef = (db: ReturnType<typeof ctx>, key: string) => doc(db, "adminHome", key);
+
+    it("lets an administrator take, snooze and dismiss a Home item, signed as themselves, and clear it", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertSucceeds(setDoc(markRef(admin, "bugs--1x2y3z"), mark("adminW")));
+      await assertSucceeds(setDoc(markRef(ctx("founderW"), "bugs--1x2y3z"), mark("founderW", { state: "snoozed", until: "2026-09-29" })));
+      await assertSucceeds(setDoc(markRef(admin, "limbo--9q8w7e"), mark("adminW", { state: "dismissed", reason: "Someone else has it" })));
+      await assertSucceeds(getDocs(collection(admin, "adminHome")));
+      await assertSucceeds(deleteDoc(markRef(admin, "bugs--1x2y3z")));
+    });
+
+    it("refuses a snooze with no day, a dismiss with no reason, a mark in someone else's name or backdated", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "snoozed" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "snoozed", until: "tomorrow" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "dismissed" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "dismissed", reason: "" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("founderW")));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { at: new Date("2026-09-01T12:00:00Z") })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "ignored" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { note: "extra" })));
+    });
+
+    it("keeps Home's marks to administrators: nobody else reads or writes them", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "adminHome", "bugs--1x2y3z"), { state: "taken", by: { uid: "adminW", name: "Admin W" }, at: new Date() });
+      });
+      for (const uid of ["trainerA", "ownerA", "leaderW", "franchiseW"]) {
+        const db = ctx(uid);
+        await assertFails(getDoc(markRef(db, "bugs--1x2y3z")));
+        await assertFails(getDocs(collection(db, "adminHome")));
+        await assertFails(setDoc(markRef(db, "bugs--other"), mark(uid)));
+        await assertFails(deleteDoc(markRef(db, "bugs--1x2y3z")));
+      }
+    });
+  });
 });

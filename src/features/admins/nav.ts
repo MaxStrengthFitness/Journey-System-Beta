@@ -29,15 +29,18 @@ export type AdminsPage =
   | "home"
   | "studios"
   | "studio"
+  | "launches"
   | "franchises"
   | "machines"
   | "template"
+  | "defaults"
   | "review"
   | "limbo"
   | "sync"
   | "bugs"
   | "data"
-  | "system";
+  | "system"
+  | "activity";
 
 /** A page a person can pick from the sidebar or a place's chips. A studio's
  *  own page is reached from All studios (or the search), so it is not one. */
@@ -63,6 +66,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
     label: "Studios",
     items: [
       { page: "studios", label: "All studios" },
+      // The studios opening (the second wave, Sep 28 2026): "Launches", so it never clashes with My Studio → Openings.
+      { page: "launches", label: "Launches" },
       { page: "franchises", label: "Franchises" },
     ],
   },
@@ -72,6 +77,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
     items: [
       { page: "machines", label: "Machines" },
       { page: "template", label: "Standard template" },
+      // Max Strength's default for every studio setting (the second wave, Sep 28 2026).
+      { page: "defaults", label: "Studio defaults" },
       { page: "review", label: "Waiting for review" },
     ],
   },
@@ -84,6 +91,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
       { page: "bugs", label: "Bug reports" },
       { page: "data", label: "Data" },
       { page: "system", label: "System tools" },
+      // The Activity record (the second wave, Sep 28 2026): who changed what from here.
+      { page: "activity", label: "Activity" },
     ],
   },
 ];

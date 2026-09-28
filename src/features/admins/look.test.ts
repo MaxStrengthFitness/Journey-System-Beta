@@ -39,7 +39,22 @@ describe("admins.css", () => {
   });
 
   it("keeps every control at 40px or taller", () => {
-    for (const control of [".hq-nav__item", ".hq-place", ".hq-chip", ".hq-find", ".hq-result", ".hq-row__open", ".hq-search__input", ".hq-tab"]) {
+    for (const control of [
+      ".hq-nav__item",
+      ".hq-place",
+      ".hq-chip",
+      ".hq-find",
+      ".hq-result",
+      ".hq-row__open",
+      ".hq-search__input",
+      ".hq-tab",
+      // The second wave (Sep 28 2026): Launches' rows, a studio default's box,
+      // the Add a studio sheet's check, Home's Set aside.
+      ".hq-launch",
+      ".hq-setting__input",
+      ".hq-sheet__check",
+      ".hq-home__asidebtn",
+    ]) {
       const body = bodyOf(control);
       const px = Number(body.match(/min-height:\s*(\d+)px/)?.[1] ?? 0);
       expect(px, control).toBeGreaterThanOrEqual(40);

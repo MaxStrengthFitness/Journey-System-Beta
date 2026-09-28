@@ -6,10 +6,14 @@
  * answers the question an admin has when the screen opens, what needs me?
  * Every item here has ONE condition, computed from data the dashboard
  * already holds, and it CLEARS ITSELF when the condition ends — nobody ticks
- * it off, and there is nothing stored about it. That is also why there is no
- * Take it, Snooze or Dismiss: each needs a small stored record per item,
- * which waits for AJ's OK. Seven items at most, so it can't cry wolf; each
- * says what it is, one sentence of proof, and where to go.
+ * it off. Seven items at most, so it can't cry wolf; each says what it is,
+ * one sentence of proof, and where to go.
+ *
+ * The second wave (Sep 28 2026, AJ "all yes"): an administrator may Take it,
+ * Snooze it or Dismiss it with a reason (home-marks.ts). Each item carries
+ * its `condition` — the identity of the thing that needs doing (which
+ * studios, which reports) — so a mark holds for that condition only, and the
+ * item comes back as soon as the condition changes.
  *
  * An item is one KIND of thing, however many studios it covers ("2 studios
  * are failing to pull"), so a bad morning at ten studios is still one line.
@@ -43,6 +47,12 @@ export interface NeedItem {
   door: NeedDoor;
   /** When it goes away on its own. */
   clears: string;
+  /**
+   * What exactly needs doing, as a stable string (the studios failing, the
+   * reports still new): a Take it, Snooze or Dismiss holds while it is the
+   * same, and the item comes back when it changes.
+   */
+  condition: string;
 }
 
 export interface NeedInputs {
@@ -97,6 +107,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
       proof: "Bookings made in Mindbody since then may not be in Journey yet. Operations → Mindbody, in the studio, says why.",
       door: { label: "Open Mindbody sync", page: "sync" },
       clears: "Clears itself after a pull that works.",
+      condition: failing.map((r) => r.studioId).sort().join(","),
     });
   }
 
@@ -115,6 +126,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
       proof: "Marked as linked to Mindbody with something missing. Mark a studio offline if that is on purpose.",
       door: setup.length === 1 ? { label: `Open ${one.name}'s setup`, page: "studio", studioId: one.studioId, tab: "setup" } : { label: "Open All studios", page: "studios" },
       clears: "Clears itself when the details are saved, or the studio is marked offline.",
+      condition: setup.map((r) => `${r.studioId}:${r.kind}`).sort().join(","),
     });
   }
 
@@ -130,6 +142,13 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
       proof: "Left alone, this quietly breaks which studios a franchise owner sees. The repair puts both sides back in agreement.",
       door: { label: "Open Franchises", page: "franchises" },
       clears: "Clears itself once both sides agree.",
+      condition: [
+        ...orphans.danglingStudioIds.flatMap((d) => d.studioIds.map((s) => `dangling:${d.networkId}:${s}`)),
+        ...orphans.strandedStudios.map((s) => `stranded:${s.studioId}:${s.networkId}`),
+        ...orphans.oneSidedLinks.map((l) => `one-sided:${l.studioId}:${l.networkId}:${l.side}`),
+      ]
+        .sort()
+        .join(","),
     });
   }
 
@@ -148,6 +167,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
       proof: `${proofParts.join("; ")}. They're held in Limbo, never dropped.`,
       door: { label: "Open Limbo", page: "limbo" },
       clears: "Clears itself when Limbo is empty.",
+      condition: input.limbo.entries.map((e) => e.id ?? "").sort().join(","),
     });
   }
 
@@ -170,6 +190,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
           : `The oldest is ${first.machineName}, from ${first.studioName}${waiting ? `, ${waiting}` : ""}.`,
       door: { label: "Open Machines", page: "machines" },
       clears: "Clears itself when each is published or passed.",
+      condition: pending.map((p) => p.id).sort().join(","),
     });
   }
 
@@ -187,6 +208,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
         proof: `The newest, from ${newest.reporter}${newest.studioName ? ` at ${newest.studioName}` : ""}: “${text}”`,
         door: { label: "Open Bug reports", page: "bugs" },
         clears: "Clears itself when each has a status.",
+        condition: fresh.map((r) => r.id).sort().join(","),
       });
     }
   }
@@ -208,6 +230,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
       proof: "That is unknown, not fine and not broken: the records couldn't be read just now.",
       door: { label: "Check again", action: "check-again" },
       clears: "Clears itself when they can be read.",
+      condition: unknownReads.join(","),
     });
   }
 
