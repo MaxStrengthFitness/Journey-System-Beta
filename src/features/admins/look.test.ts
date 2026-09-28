@@ -39,7 +39,7 @@ describe("admins.css", () => {
   });
 
   it("keeps every control at 40px or taller", () => {
-    for (const control of [".hq-nav__item", ".hq-place", ".hq-chip", ".hq-find", ".hq-result", ".hq-row__open", ".hq-search__input"]) {
+    for (const control of [".hq-nav__item", ".hq-place", ".hq-chip", ".hq-find", ".hq-result", ".hq-row__open", ".hq-search__input", ".hq-tab"]) {
       const body = bodyOf(control);
       const px = Number(body.match(/min-height:\s*(\d+)px/)?.[1] ?? 0);
       expect(px, control).toBeGreaterThanOrEqual(40);

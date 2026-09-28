@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "adm" } }, functions: {} }));
 vi.mock("../../contexts/ToastContext", () => ({ useToast: () => ({ success: () => {}, error: () => {}, info: () => {} }) }));
 vi.mock("../../contexts/ActiveStudioContext", () => ({
@@ -145,6 +147,7 @@ describe("the Admins dashboard", () => {
     expect(texts(el, ".hq-side .hq-nav__group")).toEqual(["Studios", "The MSF standard", "The machinery"]);
     expect(texts(el, ".hq-side .hq-nav__item")).toEqual([
       "All studios",
+      "Franchises",
       "Machines",
       "Standard template",
       "Waiting for review",
@@ -153,8 +156,10 @@ describe("the Admins dashboard", () => {
       "Data",
       "System tools",
     ]);
-    // It opens on All studios.
-    expect(el.textContent).toContain("All locations");
+    // It opens on All studios, grouped by what Journey knows.
+    expect(el.textContent).toContain("grouped by what Journey knows today");
+    await click(byText(el, ".hq-side .hq-nav__item", "Franchises"));
+    expect(el.textContent).toContain("A franchise groups studios under one owner");
     await click(byText(el, ".hq-side .hq-nav__item", "Machines"));
     expect(el.textContent).toContain("Machine catalog");
     await click(byText(el, ".hq-side .hq-nav__item", "Standard template"));
@@ -177,8 +182,7 @@ describe("the Admins dashboard", () => {
   it("gives portrait a bar of places, with the place's pages as chips", async () => {
     const el = await mount(admin, true);
     expect(texts(el, ".hq-bar .hq-place")).toEqual(["Studios", "Standard", "Machinery"]);
-    // One page in Studios: no chips.
-    expect(el.querySelector(".hq-bar .hq-chips")).toBeNull();
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Bug reports", "Data", "System tools"]);
     expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");
@@ -190,7 +194,7 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("Machine catalog");
   });
 
-  it("searches studios, machines and people, and a pick opens the studio", async () => {
+  it("searches studios, machines and people, and a pick opens the studio's page", async () => {
     const el = await mount(admin, true);
     await click(el.querySelector(".hq-side .hq-find"));
     expect(el.querySelector(".hq-search")).toBeTruthy();
@@ -210,6 +214,27 @@ describe("the Admins dashboard", () => {
     expect(el.querySelector<HTMLElement>(".hq-page")!.hidden).toBe(false);
     const input = el.querySelector<HTMLInputElement>("#studio-name");
     expect(input?.value).toBe("Westlake");
+    expect(el.querySelector(".hq-tab--on")?.textContent).toBe("Setup");
+    // The studio's page lights All studios.
+    expect(el.querySelector(".hq-side .hq-nav__item--on")?.textContent).toBe("All studios");
+  });
+
+  it("opens a person the search found on their studio's Team", async () => {
+    const el = await mount(admin, true);
+    await click(el.querySelector(".hq-side .hq-find"));
+    await type(el, "imrahil");
+    await click(el.querySelector(".hq-result"));
+    expect(el.querySelector(".hq-tab--on")?.textContent).toBe("Team");
+    expect(el.textContent).toContain("Who works here");
+    expect(texts(el, ".hq-row__name")).toContain("ImrahilHead Trainer");
+  });
+
+  it("opens a studio from All studios, and comes back", async () => {
+    const el = await mount(admin, true);
+    await click(el.querySelector('.hq-row__open[aria-label="Open Solon"]'));
+    expect(el.querySelector<HTMLInputElement>("#studio-name")?.value).toBe("Solon");
+    await click(byText(el.querySelector<HTMLElement>(".hq-page")!, "button", "All studios"));
+    expect(el.textContent).toContain("grouped by what Journey knows today");
   });
 
   it("opens a machine the search found in the catalog's own editor", async () => {

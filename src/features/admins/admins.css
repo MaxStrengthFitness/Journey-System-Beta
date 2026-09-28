@@ -619,6 +619,66 @@
   color: var(--adm-ink-muted);
 }
 
+/* ---------- A studio's page: its tabs, and its sentences ------------------ */
+
+.hq-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.hq-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2.5px solid transparent;
+  background: transparent;
+  color: var(--adm-ink-muted);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hq-tab svg {
+  width: 16px;
+  height: 16px;
+}
+.hq-tab:hover {
+  color: var(--adm-ink);
+}
+.hq-tab:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+.hq-tab--on,
+.hq-tab--on:hover {
+  color: var(--adm-ink);
+  border-bottom-color: var(--adm-live);
+}
+
+.hq-standing {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  max-width: 74ch;
+}
+
+/* ---------- The danger zone's list of what will happen -------------------- */
+
+.hq-consequences {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+}
+
 /* ---------- A page held open for what is coming -------------------------- */
 
 .hq-held {

@@ -27,6 +27,8 @@ export type AdminsPlace = "studios" | "standard" | "machinery";
 
 export type AdminsPage =
   | "studios"
+  | "studio"
+  | "franchises"
   | "machines"
   | "template"
   | "review"
@@ -35,8 +37,9 @@ export type AdminsPage =
   | "data"
   | "system";
 
-/** A page a person can pick from the sidebar or a place's chips. */
-export type AdminsNavPage = AdminsPage;
+/** A page a person can pick from the sidebar or a place's chips. A studio's
+ *  own page is reached from All studios (or the search), so it is not one. */
+export type AdminsNavPage = Exclude<AdminsPage, "studio">;
 
 export interface AdminsNavItem {
   page: AdminsNavPage;
@@ -55,7 +58,10 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
   {
     place: "studios",
     label: "Studios",
-    items: [{ page: "studios", label: "All studios" }],
+    items: [
+      { page: "studios", label: "All studios" },
+      { page: "franchises", label: "Franchises" },
+    ],
   },
   {
     place: "standard",
@@ -88,9 +94,9 @@ export const ADMINS_PLACES: readonly { place: AdminsPlace; label: string; opens:
 /** Where the Admins dashboard opens. */
 export const ADMINS_START: AdminsNavPage = "studios";
 
-/** The sidebar item a page lights. */
+/** The sidebar item a page lights: a studio's own page lights All studios. */
 export function navKeyOf(page: AdminsPage): AdminsNavPage {
-  return page;
+  return page === "studio" ? "studios" : page;
 }
 
 /** Which place a page belongs to. */
@@ -104,6 +110,7 @@ export function placeOf(page: AdminsPage): AdminsPlace {
 
 /** A page's name, as the sidebar says it. */
 export function labelOf(page: AdminsPage): string {
+  if (page === "studio") return "Studio";
   for (const group of ADMINS_NAV) {
     const item = group.items.find((i) => i.page === page);
     if (item) return item.label;

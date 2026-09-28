@@ -3,8 +3,9 @@
  *
  * Extracted from StudioDetailPanel in the My Studio round (Sep 2026) so the
  * same controlled, dirty-tracked form serves both places it is edited from:
- * Admins → All locations (an administrator, for any location; it was
- * Operations → Studios until the Operations overhaul, Sep 19) and My Studio →
+ * Admins → Studios → a studio's page → Setup (an administrator, for any
+ * location; it was All locations until the Admins room, Sep 28 2026, and
+ * Operations → Studios before the Operations overhaul, Sep 19) and My Studio →
  * Studio (the studio's own leaders — head trainer, studio leader, studio
  * owner, AJ Sep 18). One implementation, so the two can never disagree about
  * what a field means or which fields are written.

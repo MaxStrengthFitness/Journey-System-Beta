@@ -43,6 +43,7 @@ import {
   Dumbbell,
   GitPullRequest,
   Inbox,
+  Network,
   Search,
   ShieldCheck,
   BookOpenCheck,
@@ -51,19 +52,21 @@ import { cn } from "@/lib/utils";
 import type { Client, FranchiseNetwork, Machine, Studio, Trainer } from "../../types";
 import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { useScrollerPad } from "../client-profile/use-scroller-pad";
-import { AdminStudiosTab } from "../admin/studios/AdminStudiosTab";
 import { AdminMachinesTab } from "../admin/machines/AdminMachinesTab";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import { AdminLimboQueue } from "../admin/limbo/AdminLimboQueue";
 import { AdminSystemToolsTab } from "../admin/system/AdminSystemToolsTab";
 import { AdminBugReportsTab } from "../admin/bugs/AdminBugReportsTab";
-import { AdminNotice } from "../admin/primitives";
+import { AdminButton, AdminNotice, AdminScreen } from "../admin/primitives";
 import { StandardTemplateTab } from "./StandardTemplateTab";
 import { ReviewQueuePlaceholder } from "./ReviewQueuePlaceholder";
 import { AdminsDataPage } from "./AdminsDataPage";
 import { CatalogMachineHost } from "./CatalogMachineHost";
 import { SearchPanel } from "./SearchPanel";
 import { buildSearchIndex, type SearchEntry } from "./search";
+import { StudiosRoom } from "./studios/StudiosRoom";
+import { StudioPage, type StudioTab } from "./studios/StudioPage";
+import { FranchisesPage } from "./studios/FranchisesPage";
 import {
   ADMINS_NAV,
   ADMINS_PLACES,
@@ -94,6 +97,7 @@ export interface AdminsDashboardViewProps {
 
 const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   studios: <Building2 aria-hidden="true" />,
+  franchises: <Network aria-hidden="true" />,
   machines: <Dumbbell aria-hidden="true" />,
   template: <ClipboardList aria-hidden="true" />,
   review: <GitPullRequest aria-hidden="true" />,
@@ -127,6 +131,15 @@ interface Destination {
   page: AdminsPage;
   studioId?: string | null;
   machineId?: string | null;
+  /** A studio's page opens on this tab (a person found by the search opens on Team). */
+  tab?: StudioTab | null;
+}
+
+interface Focus {
+  studioId: string | null;
+  machineId: string | null;
+  tab: StudioTab | null;
+  seq: number;
 }
 
 function AdminsShell({
@@ -142,14 +155,10 @@ function AdminsShell({
   onReorderTrainers,
 }: AdminsDashboardViewProps) {
   const [page, setPage] = useState<AdminsPage>(ADMINS_START);
-  // A search pick opens a studio or a machine ON its page. The number keys
-  // the page so a second pick of another studio starts it fresh (the leave
-  // question has already been asked by then).
-  const [focus, setFocus] = useState<{ studioId: string | null; machineId: string | null; seq: number }>({
-    studioId: null,
-    machineId: null,
-    seq: 0,
-  });
+  // Which studio's page is open, or which machine a search pick opened. The
+  // number keys the page so opening another studio starts it fresh (the
+  // leave question has already been asked by then).
+  const [focus, setFocus] = useState<Focus>({ studioId: null, machineId: null, tab: null, seq: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const pagesScope = useLeaveScope();
@@ -166,15 +175,24 @@ function AdminsShell({
   const go = useCallback(
     (to: Destination) => {
       const sameThing =
-        to.page === page && (to.studioId ?? null) === focus.studioId && (to.machineId ?? null) === focus.machineId;
+        to.page === page &&
+        (to.studioId ?? null) === focus.studioId &&
+        (to.machineId ?? null) === focus.machineId &&
+        (to.tab ?? null) === focus.tab;
       if (sameThing) return;
       pagesScope.guard(() => {
         setPage(to.page);
-        setFocus((f) => ({ studioId: to.studioId ?? null, machineId: to.machineId ?? null, seq: f.seq + 1 }));
+        setFocus((f) => ({ studioId: to.studioId ?? null, machineId: to.machineId ?? null, tab: to.tab ?? null, seq: f.seq + 1 }));
       });
     },
-    [page, focus.studioId, focus.machineId, pagesScope],
+    [page, focus.studioId, focus.machineId, focus.tab, pagesScope],
   );
+
+  /** After a delete there is nothing left to ask about: straight back to the list. */
+  const backToStudios = useCallback(() => {
+    setPage("studios");
+    setFocus((f) => ({ studioId: null, machineId: null, tab: null, seq: f.seq + 1 }));
+  }, []);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => {
@@ -198,9 +216,12 @@ function AdminsShell({
     closeSearch();
     const t = entry.target;
     if (t.kind === "machine") go({ page: "machines", machineId: t.machineId });
-    else if (t.kind === "studio") go({ page: "studios", studioId: t.studioId });
-    else go({ page: "studios", studioId: t.studioId });
+    else if (t.kind === "studio") go({ page: "studio", studioId: t.studioId });
+    else if (t.studioId) go({ page: "studio", studioId: t.studioId, tab: "team" });
+    else go({ page: "studios" });
   };
+
+  const openStudio = studios.find((s) => s.id === focus.studioId) ?? null;
 
   const current = navKeyOf(page);
   const place = placeOf(page);
@@ -292,17 +313,41 @@ function AdminsShell({
         <div className="hq-page" hidden={searchOpen}>
           <UnsavedChangesScope scope={pagesScope}>
             {page === "studios" && (
-              <AdminStudiosTab
-                key={`studios-${focus.seq}`}
+              <StudiosRoom
                 authTrainer={authTrainer}
                 studios={studios}
                 networks={networks}
-                trainers={trainers}
-                clients={clients}
                 isAdmin={isAdmin}
                 onRefresh={onRefresh}
-                initialStudioId={focus.studioId}
+                onOpenStudio={(studioId) => go({ page: "studio", studioId })}
               />
+            )}
+            {page === "studio" &&
+              (openStudio ? (
+                <StudioPage
+                  key={`${openStudio.id}-${focus.seq}`}
+                  studio={openStudio}
+                  studios={studios}
+                  networks={networks}
+                  trainers={trainers}
+                  clients={clients}
+                  authTrainer={authTrainer}
+                  isAdmin={isAdmin}
+                  initialTab={focus.tab ?? "setup"}
+                  onBack={() => go({ page: "studios" })}
+                  onDeleted={backToStudios}
+                  onRefresh={onRefresh}
+                />
+              ) : (
+                <AdminScreen>
+                  <AdminNotice tone="info">That studio isn&apos;t in the list any more.</AdminNotice>
+                  <div>
+                    <AdminButton onClick={backToStudios}>All studios</AdminButton>
+                  </div>
+                </AdminScreen>
+              ))}
+            {page === "franchises" && (
+              <FranchisesPage studios={studios} networks={networks} trainers={trainers} isAdmin={isAdmin} onRefresh={onRefresh} />
             )}
             {page === "machines" &&
               (focus.machineId ? (

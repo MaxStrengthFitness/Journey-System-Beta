@@ -22,6 +22,8 @@ describe("the Admins dashboard's map", () => {
 
   it("names the pages the way the sidebar does", () => {
     expect(labelOf("studios")).toBe("All studios");
+    expect(labelOf("studio")).toBe("Studio");
+    expect(labelOf("franchises")).toBe("Franchises");
     expect(labelOf("review")).toBe("Waiting for review");
     expect(labelOf("bugs")).toBe("Bug reports");
   });
@@ -35,6 +37,11 @@ describe("the Admins dashboard's map", () => {
 
   it("gives a place's pages to its chips, and lights the item a page came from", () => {
     expect(pagesOf("machinery").map((i) => i.page)).toEqual(["limbo", "bugs", "data", "system"]);
+    expect(pagesOf("studios").map((i) => i.page)).toEqual(["studios", "franchises"]);
     expect(navKeyOf("machines")).toBe("machines");
+    // A studio's own page is reached from All studios, and lights it.
+    expect(navKeyOf("studio")).toBe("studios");
+    expect(placeOf("studio")).toBe("studios");
+    expect(allNavPages()).not.toContain("studio");
   });
 });
