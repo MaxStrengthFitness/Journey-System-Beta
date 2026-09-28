@@ -12,7 +12,7 @@
    Held-iPad rules the whole file follows:
      - nothing tappable under 40px (44 where a row allows), primary actions
        at the foot / right thumb;
-     - the Now Bar is pinned; the tab content scrolls under it;
+     - the header is pinned; the tab content scrolls under it;
      - the Context Panel is a right column in landscape (>= 900px wide) and a
        bottom sheet in portrait — the board never disappears behind a modal.
    ========================================================================== */
@@ -29,146 +29,17 @@
   --rl-heat-3: color-mix(in srgb, var(--st-hero) 32%, var(--st-surface));
   --rl-mine: var(--st-live);
   --rl-mine-fill: var(--st-live-fill);
-  --rl-bar-h: 56px;
   --rl-panel-w: 360px;
   position: relative;
 }
 
 /* ------------------------------------------------------------------ *
- * The Now Bar — pinned under the masthead on every tab
- * ------------------------------------------------------------------ */
-
-.rnb {
-  flex: none;
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
-  align-items: center;
-  gap: 0.75rem;
-  min-height: var(--rl-bar-h);
-  padding: 0.375rem 1rem;
-  background: var(--st-surface);
-  border-bottom: 1px solid var(--st-border);
-}
-
-.rnb__where,
-.rnb__gap,
-.rnb__pulse {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.rnb__gap { flex-direction: column; align-items: stretch; gap: 4px; }
-button.rnb__gap { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
-button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 6px; }
-.rnb__pulse { justify-content: flex-end; }
-
-.rnb__phase {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--st-surface-2);
-  color: var(--st-ink-2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.rnb__phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ink-faint); }
-.rnb__phase--opening .rnb__phase-dot { background: var(--rl-floor); }
-.rnb__phase--mid .rnb__phase-dot { background: var(--st-done); }
-.rnb__phase--closing .rnb__phase-dot { background: var(--st-flag); }
-
-.rnb__next {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  line-height: 1.25;
-}
-.rnb__next-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
-}
-.rnb__next-who { font-size: 14px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
-
-.rnb__gap-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--st-ink);
-  white-space: nowrap;
-}
-.rnb__gap-sub { font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
-
-/* The gap meter: how much of an hour is free. Fills from the left. */
-.rnb__meter {
-  position: relative;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--st-surface-3);
-  overflow: hidden;
-}
-.rnb__meter-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: inherit;
-  background: var(--st-done);
-  transition: width 400ms ease-out;
-}
-.rnb__meter--tight .rnb__meter-fill { background: var(--st-flag); }
-.rnb__meter--busy .rnb__meter-fill { background: var(--rl-floor); }
-
-/* Rings that closed today stay on the bar as dots (the shift, ShiftRings). */
-.rnb__rings { display: inline-flex; gap: 4px; }
-.rnb__ring-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  border: 2px solid var(--st-border-strong);
-}
-.rnb__ring-dot--closed { border-color: var(--st-done); background: var(--st-done); }
-
-/* "Just now" (PulseTicker): a slow ticker of what teammates did, fading
-   between. Labelled "Pulse" until Sep 27 2026; Pulse is the living
-   assessment. */
-.pt {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--st-ink-2);
-}
-.pt__label {
-  flex: none;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
-}
-/* The line carries a teammate's name, so it wraps (to two lines in the bar)
-   rather than being cut with an ellipsis, as it was until Sep 27 2026. */
-.pt__line {
-  min-width: 0;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-  animation: pt-in 500ms ease-out;
-}
-.pt__who { font-weight: 800; color: var(--st-ink); }
-.pt__quiet { color: var(--st-ink-muted); font-style: italic; }
-@keyframes pt-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .pt__line { animation: none; } }
+ * The day strip — unfolded under My Studio's header
+ * ------------------------------------------------------------------ *
+ * The Now Bar that sat here (the shift, the gap meter, the "Just now"
+ * ticker) became the one header's time facts (my-studio.css, .msh__now) and
+ * the Board's "Just now" list (board.css, .rjn) in the Relay room, Sep 28
+ * 2026. A tap on the header's time still unfolds this strip. */
 
 /* The day strip: the trainer's sessions as a ribbon, gaps drawn as slots. */
 .ds {
@@ -253,28 +124,6 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--st-live);
-}
-
-/* Portrait: where + gap on one row, and "Just now" (the teammates line)
-   on a row of its own under them. It carries the only kudos button in the
-   app, so it is never hidden: until Sep 27 2026 it was display: none here,
-   on every portrait iPad but the 12.9-inch. */
-@media (max-width: 899px) {
-  .rnb { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.25rem; }
-  .rnb__pulse {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-    padding-top: 0.25rem;
-    border-top: 1px solid var(--st-border);
-  }
-  .rnb__pulse .pt { flex: 1 1 auto; }
-  .rnb__pulse .pt__line { flex: 1 1 auto; }
-  .rnb__gap { min-width: 9rem; }
-  .rnb__next-label { display: none; }
-}
-@media (max-width: 640px) {
-  .rnb { padding: 0.375rem 0.75rem; }
-  .rnb__gap { min-width: 7.5rem; }
 }
 
 /* ------------------------------------------------------------------ *
@@ -392,47 +241,14 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 @media (prefers-reduced-motion: reduce) { .cp { animation: none; } }
 
 /* ------------------------------------------------------------------ *
- * Capture — the one floating button, under the right thumb
- * ------------------------------------------------------------------ */
+ * Capture — the composer, opened from the header's + and Ask
+ * ------------------------------------------------------------------ *
+ * The floating Capture button went in the Relay room (Sep 28 2026): the one
+ * header carries "Ask" (the team) and "+" (just for you), so nothing floats
+ * over the board's last card or the Context Panel's foot any more. */
 
-.cf {
-  position: absolute;
-  /* Inside the app shell, above AppBottomBar, which pays the home-indicator
-     inset (features/home-screen); an iPad has no side insets. */
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 56px;
-  padding: 0 1.25rem 0 1rem;
-  border: 0;
-  border-radius: 999px;
-  /* The one loud action, so orange, but the deep orange: white on the
-     bright one is 3.55:1, too faint for a 14px label (--st-hero-on is 6.0:1
-     here, and near-black on the lifted orange in dark). The label is in the
-     button voice every button in My Studio uses since Sep 27 2026: 14px,
-     bold, sentence case (look.test.ts). */
-  background: var(--st-hero-text);
-  color: var(--st-hero-on);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  box-shadow: 0 8px 24px var(--st-shadow);
-  cursor: pointer;
-}
-.cf:focus-visible { outline: 3px solid var(--st-live); outline-offset: 2px; }
-.cf:active { transform: scale(0.97); }
-@media (max-width: 640px) { .cf__label { display: none; } .cf { padding: 0; width: 56px; justify-content: center; } }
-/* Capture steps aside while a Context Panel is open: the panel's foot (an
-   ask's Done, Next up's Mark all) is in the same bottom-right corner. The
-   shell already leaves Capture out while ITS panel is open; this catches a
-   section's own panel too (Machines' door). */
-.pl:has(.cp) .cf { display: none; }
-
-/* Room for the button at the foot of every scroller in Relay. */
-.pl .st__scroll { padding-bottom: 6rem; }
+/* A little room at the foot of every scroller in Relay. */
+.pl .st__scroll { padding-bottom: 2rem; }
 
 /* ------------------------------------------------------------------ *
  * Shared card anatomy: origin colour, duration, loop state
@@ -883,34 +699,15 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
  * Kudos, and the small motions
  * ------------------------------------------------------------------ */
 
-.pt__kudos {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  min-width: 40px; min-height: 40px;
-  padding: 0 8px;
-  border: 1px solid var(--st-border);
-  border-radius: 999px;
-  background: var(--st-surface);
-  color: var(--st-ink-muted);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.pt__kudos--on { border-color: var(--st-hero); color: var(--st-hero-text); background: var(--rl-floor-fill); }
-.pt__kudos--on svg { fill: currentColor; animation: kudos-pop 300ms ease-out 1; }
-.pt__kudos--mine { cursor: default; color: var(--st-hero-text); border-color: transparent; background: var(--rl-floor-fill); }
-.pt__kudos--mine svg { fill: currentColor; }
-@keyframes kudos-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+/* The hearts on "Just now" are the Board's (board.css, .rjn__kudos) since
+   the Relay room (Sep 28 2026); the ticker they sat on went with the Now Bar. */
 .tm-card__kudos { display: inline-flex; align-items: center; gap: 3px; color: var(--st-hero-text); }
 .tm-card__kudos svg { fill: currentColor; }
 
 /* A card handed to you slides in from the left — the baton. */
 .nu__card--mine { animation: nu-handed 320ms ease-out 1; }
 @keyframes nu-handed { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .nu__card--mine, .pt__kudos--on svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .nu__card--mine { animation: none; } }
 
 /* ------------------------------------------------------------------ *
  * The focus banner (the network's focus, set on Operations since the

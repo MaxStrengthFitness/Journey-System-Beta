@@ -68,14 +68,14 @@ Overview for a franchise owner who sees one studio
 
   The old list and its `?classic-todo` escape hatch were deleted in the cost
   round (Sep 2026).
-- **A masthead like Learning's.** A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
+- **A masthead like Learning's** (Learning + Planner round). A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
   - Embedded in the Planner, the hub's own title and date give way to one line: "Shared with everyone at {studio}".
-  - Everything below the header is untouched.
+- **One header** (Relay room, Sep 28 2026; the redesign's phase 1, AJ's pick). My Studio's masthead, Relay's tabs and the Now Bar were three bars, about a quarter of an upright iPad before any work. They are one bar (`my-studio/StudioHeader`): the section (its menu holds the five sections), Relay's tabs, the time (the shift, minutes free, the next session; a tap unfolds the day strip), Tracking (the job you took, `board/tracked.ts`), Ask and +. The floating Capture button went with it: Ask asks the team, + holds your own to-do, reminder or note (and a leader's studio task or team job). "Just now" is a still list on the Floor (`board/JustNow.tsx`).
 - **My tasks shows what already existed.** Personal tasks were mixed into the studio's shift strip with a "Just you" badge. "New personal task" could only be reached through Manage → task form → back.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
   - If any of its reads fails, it says it couldn't load all of today's tasks — never "Nothing on your list today" (`useStudioTasks` now reports an `error`, and waits for the personal task list before it stops loading).
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
-- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are.
+- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are. Since the one header, a tab change asks about typing first (a leave scope in `MyStudioView`), as a section change does.
 - **A client's profile can open the Planner** at a note: **Write a plan**, **Jot a note**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
 - **A bell notification can open the Planner too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
 
@@ -93,7 +93,7 @@ Overview for a franchise owner who sees one studio
 
 | File | What |
 | --- | --- |
-| `PlannerView.tsx` | Relay's tab bar, the Now Bar and the board under My Studio's masthead (`features/my-studio/MyStudioView` owns the masthead, Capture and the Context Panel) |
+| `PlannerView.tsx` | Relay's tabs' content and the Context Panel beside it. Since the Relay room (Sep 28 2026) the tabs, the time and Tracking are in My Studio's one header (`features/my-studio/StudioHeader`), so the shell chooses the tab (`PLANNER_TABS`, `initialPlannerTab`, `rememberPlannerTab`) and a tab change is a leave scope |
 | `GlanceBand.tsx` | The Floor's three at-a-glance tiles, drawn by `studio-tasks/StudioHubView` (it was the Planner's Studio tab) |
 | `MyTasksPanel.tsx` + `my-tasks.ts` | Mine (it was My tasks), and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |

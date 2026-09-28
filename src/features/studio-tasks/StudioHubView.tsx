@@ -69,6 +69,9 @@ import { ShiftRings } from "../relay/board/ShiftRings";
 import { FloorMap } from "../relay/board/FloorMap";
 import { FocusBanner } from "../relay/board/FocusBanner";
 import { publishPulse, pulseEvents } from "../relay/board/pulse";
+import { JustNow } from "../relay/board/JustNow";
+import { publishTrackedProgress, useTracked } from "../relay/board/tracked";
+import { trackedLive } from "../relay/board/track-live";
 import { leadsHere } from "../relay/leads";
 import { useRelayMaybe } from "../relay/board/RelayContext";
 import type { TeamJob } from "../relay/jobs/types";
@@ -165,12 +168,17 @@ export function StudioHubView({
    */
   const ownerId = auth.currentUser?.uid ?? null;
 
-  const { rows, loading } = useStudioTasks(activeStudioId, {
+  const { rows, loading, error: tasksError } = useStudioTasks(activeStudioId, {
     ownerId,
     clientNames,
   });
   const { categories } = useStudioTaskCategories(activeStudioId);
-  const { open: openRequests, recentlyResolved } = useStudioRequests(activeStudioId ?? null);
+  const {
+    open: openRequests,
+    recentlyResolved,
+    loading: requestsLoading,
+    failed: requestsFailed,
+  } = useStudioRequests(activeStudioId ?? null);
   const { search, stale } = usePlaybook(activeStudioId ?? null);
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
@@ -313,6 +321,26 @@ export function StudioHubView({
     );
   }, [activeStudioId, relay, rows, teamJobs.jobs, openRequests, recentlyResolved]);
 
+  /*
+   * TRACKING (Relay room, Sep 28 2026). The header's chip shows the job this
+   * trainer took; this screen holds the live documents, so it says how the
+   * job stands now ("1 of 3") and lets go once it is done. Only once every
+   * read has answered: a list still loading, or one that failed, would read
+   * as "the job is gone" and drop work the trainer is still on.
+   */
+  const trackedNow = useTracked(activeStudioId ?? null, relay?.now.todayKey ?? todayKey);
+  const everyReadAnswered =
+    !loading && !tasksError && !requestsLoading && !requestsFailed && !teamJobs.loading && !teamJobs.error;
+  useEffect(() => {
+    if (!relay || !trackedNow || !everyReadAnswered) return;
+    publishTrackedProgress(
+      activeStudioId ?? null,
+      relay.now.todayKey,
+      trackedNow.id,
+      trackedLive(trackedNow.id, { rows, jobs: teamJobs.jobs, requests: openRequests }),
+    );
+  }, [relay, trackedNow, everyReadAnswered, activeStudioId, rows, teamJobs.jobs, openRequests]);
+
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
@@ -377,6 +405,9 @@ export function StudioHubView({
             loading={loading && rows.length === 0}
           />
         )}
+        {/* Just now: the teammates' lines, still, with their hearts (it was the
+            Now Bar's ticker until the Relay room, Sep 28 2026). */}
+        {relay && <JustNow studioId={activeStudioId ?? null} />}
         <div id="planner-shift" />
         {relay && !(loading && rows.length === 0) && (
           <ShiftRings

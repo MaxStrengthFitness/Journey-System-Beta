@@ -6,8 +6,9 @@
  *   - The opened day strip lists the day's sessions with each client's whole
  *     name and time; the ribbon's blocks have room for a first name, and the
  *     rest was a hover tooltip.
- *   - Capture steps aside while the Context Panel is open, so it never covers
- *     the panel's foot (an ask's Done, Next up's Mark all).
+ *   - The Context Panel opens beside the Floor with its foot in view, and
+ *     nothing floats over it: since the Relay room (Sep 28 2026) the
+ *     floating Capture button is gone, and Ask and + are in the one header.
  *   - Capture says what the chosen kind of ask means, in view.
  *
  * The rename of the teammates line ("Just now", was "Pulse") is asserted in
@@ -164,7 +165,7 @@ describe("the opened day strip", () => {
   });
 });
 
-describe("Capture and the Context Panel", () => {
+describe("the Context Panel, and nothing floating over it", () => {
   const relay = (panel: PanelContent | null): RelayContextValue => ({
     studioId: "s1",
     studioName: "Solon",
@@ -183,39 +184,44 @@ describe("Capture and the Context Panel", () => {
     closePanel: () => {},
   });
 
-  it("shows Capture on the Floor while no panel is open", async () => {
-    const h = await render(
-      <RelayProvider value={relay(null)}>
-        <div className="pl">
-          <PlannerView authTrainer={relay(null).authTrainer} clients={[]} trainers={[]} />
-        </div>
-      </RelayProvider>,
-    );
-    expect(h.querySelector(".cf")).not.toBeNull();
-  });
-
-  it("steps Capture aside while the panel is open, so the panel's Done is never under it", async () => {
+  it("opens the panel beside the Floor with its Done in view", async () => {
     const panel: PanelContent = { title: "An ask", body: <p>Body</p>, foot: <button type="button">Done</button> };
     const h = await render(
       <RelayProvider value={relay(panel)}>
         <div className="pl">
-          <PlannerView authTrainer={relay(panel).authTrainer} clients={[]} trainers={[]} />
+          <PlannerView authTrainer={relay(panel).authTrainer} clients={[]} trainers={[]} tab="floor" />
         </div>
       </RelayProvider>,
     );
     expect(h.querySelector(".cp")).not.toBeNull();
     expect(h.querySelector(".cp__foot")?.textContent).toContain("Done");
+  });
+
+  it("has no floating Capture button any more: Ask and + are in the header (Relay room, Sep 28 2026)", async () => {
+    // The button floated over the board's last card and the panel's foot; the
+    // one header carries Ask (the team) and + (just for you) instead.
+    const lead = { id: "t-lead", fullName: "Lee Leader", role: "HeadTrainer", primaryHomeStudioId: "s1" } as never;
+    const h = await render(<MyStudioView authTrainer={lead} clients={[]} trainers={[lead]} />);
     expect(h.querySelector(".cf")).toBeNull();
+    expect(h.querySelector(".msh__ask")).not.toBeNull();
+    expect(h.querySelector(".msh__plus")).not.toBeNull();
   });
 });
+
+/** My Studio's section menu (the one header): open it and choose `name`. */
+async function openSection(name: string) {
+  await click(document.querySelector(".msh__sect"));
+  await click([...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find((b) => b.textContent?.trim().startsWith(name)));
+}
 
 describe("Capture's kinds of ask", () => {
   it("says what the chosen kind means, in view, and follows the choice", async () => {
     const lead = { id: "t-lead", fullName: "Lee Leader", role: "HeadTrainer", primaryHomeStudioId: "s1" } as never;
     const h = await render(<MyStudioView authTrainer={lead} clients={[]} trainers={[lead]} />);
-    const relayTab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes("Relay"));
-    if (relayTab && relayTab.getAttribute("aria-selected") !== "true") await click(relayTab);
-    await click(h.querySelector(".cf"));
+    if (h.querySelector(".msh__sect-name")?.textContent !== "Relay") await openSection("Relay");
+    // The header's + → "A to-do for me" opens the composer; the Floor is one tap in it.
+    await click(h.querySelector(".msh__plus"));
+    await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.includes("A to-do for me")));
     const sheet = document.body;
     await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
     // The default kind is a to-do.
@@ -235,8 +241,7 @@ describe("My Studio → Studio, when the Mindbody sync needs attention", () => {
 
   async function openStudio(person: unknown) {
     const h = await render(<MyStudioView authTrainer={person as never} clients={[]} trainers={[person as never]} />);
-    const studioTab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes("Studio") && !b.textContent?.includes("My Studio"));
-    await click(studioTab);
+    await openSection("Studio");
     return h;
   }
 

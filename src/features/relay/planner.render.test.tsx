@@ -117,8 +117,7 @@ async function mount(authTrainer: unknown) {
   // The shell remembers the last section on this iPad (module memory), so a
   // test that ended on Team would hand the next one a board with no tabs.
   // Start each test on Relay, the way a person would tap back to it.
-  const relay = tab("Relay");
-  if (relay && relay.getAttribute("aria-selected") !== "true") await click(relay);
+  if (currentSection() !== "Relay") await openSection("Relay");
   return host;
 }
 
@@ -126,8 +125,35 @@ const settle = () => act(async () => {
   await new Promise((r) => setTimeout(r, 5));
 });
 
+/** Relay's own tabs (and any other tab list on screen). */
 function tab(name: string): HTMLButtonElement | undefined {
   return [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes(name));
+}
+
+/*
+ * My Studio's sections live in the one header's menu (Relay room, Sep 28
+ * 2026): the section button opens it, and each section is a menu item.
+ */
+function currentSection(): string | null | undefined {
+  return document.querySelector(".msh__sect-name")?.textContent;
+}
+
+async function sectionNames(): Promise<string[]> {
+  await click(document.querySelector(".msh__sect"));
+  const names = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map(
+    (b) => b.querySelector(".msh__pop-text")?.firstChild?.textContent ?? "",
+  );
+  await click(document.querySelector(".msh__sect"));
+  return names;
+}
+
+async function openSection(name: string) {
+  await click(document.querySelector(".msh__sect"));
+  await click(
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find(
+      (b) => b.querySelector(".msh__pop-text")?.firstChild?.textContent === name,
+    ),
+  );
 }
 
 async function click(el: Element | undefined | null) {
@@ -168,6 +194,37 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("The whole day is a gap");
   });
 
+  it("has one header: the section and its menu, Relay's tabs, the time, Tracking, Ask and + (Relay room, Sep 28 2026)", async () => {
+    const h = await mount(lead);
+    // One bar, not three: no masthead, no second row of Relay tabs, no Now Bar.
+    expect(h.querySelectorAll("header.msh")).toHaveLength(1);
+    expect(h.querySelector(".pl__mast")).toBeNull();
+    expect(h.querySelector(".pl__subbar")).toBeNull();
+    expect(h.querySelector(".rnb")).toBeNull();
+    expect(currentSection()).toBe("Relay");
+    expect(await sectionNames()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
+    expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Floor", "Mine", "Notes"]);
+    expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
+    // "Just now" is a still list on the Floor, with nothing ticking.
+    expect(h.querySelector(".rjn")?.textContent).toContain("Quiet so far today.");
+    // A leader's + holds the studio task and the team job beside their own things.
+    await click(h.querySelector(".msh__plus"));
+    const plus = [...document.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent ?? "");
+    expect(plus.some((t) => t.startsWith("A to-do for me"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A studio task"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A team job"))).toBe(true);
+  });
+
+  it("keeps a trainer's + to their own things", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__plus"));
+    const plus = [...document.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent ?? "");
+    expect(plus.some((t) => t.startsWith("A to-do for me"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A reminder"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A studio task"))).toBe(false);
+    expect(plus.some((t) => t.startsWith("A team job"))).toBe(false);
+  });
+
   it("shows the Team section to a leader and walks every tab and section without throwing", async () => {
     const h = await mount(lead);
     await click(tab("Mine"));
@@ -175,7 +232,7 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("New reminder");
     await click(tab("Notes"));
     expect(h.textContent).toContain("New note");
-    await click(tab("Team"));
+    await openSection("Team");
     expect(h.textContent).toContain("Your team");
     // People and standards (voice-review round, Sep 27 2026): the panels that
     // repeated the Hub (who's in today) and Operations (the month's client
@@ -194,14 +251,14 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Temporary");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
     expect(tab("Floor")).toBeUndefined();
-    await click(tab("Relay"));
+    await openSection("Relay");
     await click(tab("Floor"));
     expect(h.textContent).toContain("Next up");
   });
 
   it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {
     const h = await mount(lead);
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Studio details");
     expect(h.textContent).toContain("Journey cutover date");
     expect(h.textContent).toContain("Mindbody Site ID");
@@ -219,7 +276,7 @@ describe("My Studio", () => {
 
   it("mounts the Machines section for a trainer: the floor and what other studios shared, nothing that writes", async () => {
     const h = await mount(trainer);
-    await click(tab("Machines"));
+    await openSection("Machines");
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Shared by other MSF studios");
     expect(h.textContent).not.toContain("Custom machine");
@@ -228,7 +285,7 @@ describe("My Studio", () => {
 
   it("mounts the Machines section for a leader without pushing anything onto an empty floor", async () => {
     const h = await mount(lead);
-    await click(tab("Machines"));
+    await openSection("Machines");
     expect(h.textContent).toContain("The floor");
     // An empty floor and an empty catalog: nothing to adopt yet, nothing pushed.
     expect(h.textContent).not.toContain("New in the MSF standard");
@@ -236,7 +293,7 @@ describe("My Studio", () => {
 
   it("shows a trainer the Studio section read only: every field locked, nothing to save or publish (AJ's voice review, Sep 2026)", async () => {
     const h = await mount(trainer);
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Studio details");
     expect(h.textContent).toContain("The studio's day");
     expect(h.textContent).toContain("InBody: the scanner's normal variation");
@@ -260,15 +317,15 @@ describe("My Studio", () => {
 
   it("keeps Studio open to change for a trainer the studio's leadership granted the studio", async () => {
     const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Use Max Strength's defaults");
     expect(h.textContent).not.toContain("Only this studio's leaders can change the studio's day.");
   });
 
   it("shows the Team section to a trainer the studio's leadership granted the studio (My Studio, Sep 2026)", async () => {
     const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
-    expect(tab("Team")).toBeTruthy();
-    await click(tab("Team"));
+    expect(await sectionNames()).toContain("Team");
+    await openSection("Team");
     expect(h.textContent).toContain("Your team");
   });
 
@@ -276,7 +333,7 @@ describe("My Studio", () => {
     fakeData.accessRequests = [{ id: "r1", data: { status: "Pending", fullName: "Nia New", email: "nia@example.com", userId: "u-nia" } }];
     try {
       const h = await mount(lead);
-      await click(tab("Team"));
+      await openSection("Team");
       await settle();
       expect(h.textContent).toContain("One person is waiting to be let in.");
       const go = [...h.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Let them in");
@@ -298,20 +355,21 @@ describe("My Studio", () => {
     expect(tab("Floor")).toBeTruthy();
     expect(tab("Mine")).toBeTruthy();
     expect(tab("Notes")).toBeTruthy();
-    expect(tab("Team")).toBeTruthy();
+    expect(await sectionNames()).toContain("Team");
+    expect(await sectionNames()).not.toContain("Network");
     expect(h.textContent).not.toContain("Launch an initiative");
     expect(h.textContent).not.toContain("Studios are ranked here");
   });
 
   it("never offers the Team section to a trainer", async () => {
     await mount(trainer);
-    expect(tab("Team")).toBeUndefined();
+    expect(await sectionNames()).not.toContain("Team");
     expect(document.body.textContent).not.toContain("Post a job");
   });
 
   it("treats a head trainer visiting another studio as a trainer there", async () => {
     await mount({ ...(lead as object), primaryHomeStudioId: "s9" });
-    expect(tab("Team")).toBeUndefined();
+    expect(await sectionNames()).not.toContain("Team");
     expect(document.body.textContent).not.toContain("Post a job");
   });
 
@@ -333,7 +391,9 @@ describe("My Studio", () => {
 
   it("captures: the sentence follows the destination and the chips", async () => {
     const h = await mount(lead);
-    await click(h.querySelector(".cf"));
+    // The header's + → "A to-do for me" (the floating Capture button went in the Relay room).
+    await click(h.querySelector(".msh__plus"));
+    await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.startsWith("A to-do for me")));
     const sheet = document.body;
     expect(sheet.textContent).toContain("Say what it is, then who it's for.");
     const text = sheet.querySelector<HTMLTextAreaElement>(".cs__text");

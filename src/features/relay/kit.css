@@ -18,7 +18,7 @@
 .rk-sheet *, .rk-sheet *::before, .rk-sheet *::after { box-sizing: border-box; }
 
 /* A dialog's title is its page title: the display face's slanted capitals,
-   as the masthead's (planner.css .pl__title). It was a faked italic of the
+   as the header's section name (my-studio.css .msh__sect-name). It was a faked italic of the
    body face until Sep 27 2026. */
 .rk-title {
   display: flex;

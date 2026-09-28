@@ -27,21 +27,37 @@ export interface UseStudioRequestsResult {
   expired: TaskRequest[];
   /** Recently resolved, for the "what happened to my ask" question. */
   recentlyResolved: TaskRequest[];
+  /**
+   * Still waiting for the first answer. True from the first render while
+   * there is a studio (Relay room, Sep 28 2026): it used to start false, so
+   * the first frame read as "no asks at all" before the listener had said
+   * anything.
+   */
   loading: boolean;
+  /**
+   * The read failed. The lists are then empty because nothing is KNOWN, not
+   * because there is nothing: a screen says it couldn't load the asks, and
+   * never acts as if an ask it was following had closed.
+   */
+  failed: boolean;
 }
 
 export function useStudioRequests(
   studioId: string | null,
 ): UseStudioRequestsResult {
   const [requests, setRequests] = useState<TaskRequest[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(studioId));
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!studioId) {
       setRequests([]);
+      setLoading(false);
+      setFailed(false);
       return;
     }
     setLoading(true);
+    setFailed(false);
     // Two equality reads would need two listeners; one unfiltered read of a
     // studio's requests is a small collection and lets the board show resolved
     // items without a second subscription.
@@ -54,11 +70,13 @@ export function useStudioRequests(
           ),
         );
         setLoading(false);
+        setFailed(false);
       },
       (err) => {
         console.error("Error loading studio requests:", err);
         setRequests([]);
         setLoading(false);
+        setFailed(true);
       },
     );
     return () => unsub();
@@ -122,7 +140,7 @@ export function useStudioRequests(
     [requests, tick],
   );
 
-  return { open, expired, recentlyResolved, loading };
+  return { open, expired, recentlyResolved, loading, failed };
 }
 
 /**

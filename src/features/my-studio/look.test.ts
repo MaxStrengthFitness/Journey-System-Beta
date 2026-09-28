@@ -39,6 +39,8 @@ const FILES = [
   "features/relay/planner.css",
   "features/relay/board/relay.css",
   "features/my-studio/my-studio.css",
+  // The Board (Relay room, Sep 28 2026): Just now, the doors, the dealt card.
+  "features/relay/board/board.css",
   "features/relay/team/team.css",
   "features/relay/jobs/jobs.css",
   "features/relay/notes/notes.css",
@@ -127,8 +129,11 @@ const NAME_CLASSES = [
   "sh__client-name", // a client, on Relay → Floor's client tasks
   "sh__client-what", // what the client needs, beside the name
   "ini__name", // a trainer, in the initiative roll-up
-  "pt__line", // the Now Bar's teammate line: a teammate's name and what they did
-  "pt__who",
+  "rjn__line", // Just now: a teammate's name and what they did (the Now Bar's ticker until Sep 28 2026)
+  "rjn__who",
+  "msh__now-b", // the header's next session: a client's whole name
+  "msh__track-text", // the header's Tracking chip: the job's name
+  "msh__pop-text", // a section or an item in the header's menus
   "ds__name", // a client on the opened day strip's list
   "stq__reacted", // who replied to an ask
   "tm-card__name", // a person's card on Team
@@ -215,7 +220,7 @@ const TAP_CLASSES = [
   "stq__react",
   "stm__preset",
   "nu__more",
-  "pt__kudos",
+  "rjn__kudos",
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -231,7 +236,14 @@ const TAP_CLASSES = [
   "tj-done__toggle",
   "nu__do",
   "cp__close",
-  "cf",
+  // The one header (Relay room, Sep 28 2026): 44px, as a bar's controls are.
+  "msh__sect",
+  "msh__tab",
+  "msh__now",
+  "msh__track",
+  "msh__ask",
+  "msh__plus",
+  "msh__pop-item",
   "rs__item",
   "nb-tool",
   "nb__check",
@@ -245,13 +257,17 @@ const TAP_CLASSES = [
 
 const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
 
-describe("the Now Bar", () => {
-  it("never hides the teammates line, which holds the only kudos button (it was hidden in portrait until Sep 27 2026)", () => {
-    for (const r of rulesFor("rnb__pulse")) {
-      expect(declared(r.body, "display"), r.selectors.join(", ")).not.toContain("none");
-      expect(declared(r.body, "visibility"), r.selectors.join(", ")).not.toContain("hidden");
+describe("Just now", () => {
+  it("never hides the teammates' lines, which hold the only kudos button (hidden in portrait until Sep 27 2026; a still list on the Board since Sep 28)", () => {
+    expect(rulesFor("rjn").length).toBeGreaterThan(0);
+    expect(rulesFor("rjn__kudos").length).toBeGreaterThan(0);
+    for (const cls of ["rjn", "rjn__list", "rjn__item", "rjn__line"]) {
+      for (const r of rulesFor(cls)) {
+        expect(declared(r.body, "display"), r.selectors.join(", ")).not.toContain("none");
+        expect(declared(r.body, "visibility"), r.selectors.join(", ")).not.toContain("hidden");
+      }
     }
-    for (const r of rulesFor("pt__kudos")) {
+    for (const r of rulesFor("rjn__kudos")) {
       expect(declared(r.body, "display"), r.selectors.join(", ")).not.toContain("none");
     }
   });
@@ -295,7 +311,10 @@ const BUTTON_CLASSES = [
   "sh__confirm",
   "sh__mine",
   "pl__btn",
-  "cf",
+  "msh__ask",
+  "msh__tab",
+  "msh__track",
+  "msh__pop-item",
   "nu__do",
   "tj-open",
   "tj-done__toggle",
@@ -409,8 +428,8 @@ describe("My Studio's type", () => {
     }
   });
 
-  it("titles the masthead in the page-title voice", () => {
-    const [title] = rulesFor("pl__title").filter((r) => r.selectors.includes(".pl__title"));
+  it("titles the header's section in the page-title voice (it was the masthead's title until Sep 28 2026)", () => {
+    const [title] = rulesFor("msh__sect-name").filter((r) => r.selectors.includes(".msh__sect-name"));
     expect(declared(title.body, "font-family")).toEqual(["var(--font-display)"]);
     expect(declared(title.body, "font-weight")).toEqual(["800"]);
     expect(declared(title.body, "font-style")).toEqual(["italic"]);
@@ -426,7 +445,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);
@@ -463,7 +482,7 @@ describe("My Studio's type", () => {
     expect(src).toMatch(/<AdminBadge/);
   });
 
-  it("draws Relay's own tabs as a second, lighter level under My Studio's", () => {
+  it("draws a section's parts as a second, lighter level under the header (Openings' parts; Relay's tabs until Sep 28 2026)", () => {
     const row = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tabs"));
     const tab = RULES.find((r) => r.selectors.includes(".pl__subbar .pl__tab"));
     expect(row && declared(row.body, "background")).toEqual(["transparent"]);

@@ -8,8 +8,12 @@ otherwise. Relay's tabs are **Floor · Mine · Notes**.
 | File | What |
 | --- | --- |
 | `RelayContext.tsx` | What every tab and every My Studio section can reach (who, where, the clock, `openCapture`, `openPanel`). Who leads the studio the iPad is in is `../leads.ts` (`leadsHere`), which My Studio asks directly: `RoleGate.tsx` went in the voice review follow-up (Sep 27 2026), with one tier left and no caller |
-| `now-context.ts`, `NowBar.tsx` | The clock: shift phase, the trainer's next session, minutes free, the day strip. `shiftHoursOf` reads `studios/{s}.shiftHours` |
-| `pulse.ts`, `rings.ts` | Module stores the Floor publishes into and the Now Bar reads: what teammates did; how many rings closed |
+| `now-context.ts`, `NowBar.tsx` | The clock: shift phase, the trainer's next session, minutes free (`useNowContext`), and the day strip (`DayStrip`). `shiftHoursOf` reads `studios/{s}.shiftHours`. The Now Bar itself went in the Relay room (Sep 28 2026): its time facts are in My Studio's one header (`my-studio/StudioHeader`), a tap there unfolds the day strip |
+| `pulse.ts`, `rings.ts` | Module stores the Floor publishes into: what teammates did (read by `JustNow`); how many rings closed |
+| `JustNow.tsx` | "Just now": the teammates' lines as a still list with a heart on each, on the Floor (the Now Bar's six-second ticker until Sep 28 2026). The app's only kudos button, never hidden (`my-studio/look.test.ts`) |
+| `tracked.ts`, `track-live.ts` | Tracking: the one job this trainer took, which rides in the header's chip on every tab until it is done. This iPad's memory per studio and day, forgotten at sign-out; nothing stored. The Floor publishes the job's live count (`trackedLive`) once every read has answered, and lets go when the job is done |
+| `board.css` | The Board's own rules (`rjn` so far), held to My Studio's look by `my-studio/look.test.ts` |
+| `fixtures.ts` | Test fixtures (rows, asks, jobs, bookings), Lord of the Rings names and never the Fellowship |
 | `capture.ts`, `CaptureSheet.tsx` | The one composer — what each destination writes, the sentence, validation |
 | `next-up.ts`, `NextUpQueue.tsx`, `SwipeRow.tsx`, `ShiftRings.tsx` | The Floor's top: three ranked cards, the gestures, the rings |
 | `machine-care.ts`, `machine-care-store.ts`, `FloorMap.tsx` | Wear signals, `studios/{s}/machineCare`, the map and the care sheet |

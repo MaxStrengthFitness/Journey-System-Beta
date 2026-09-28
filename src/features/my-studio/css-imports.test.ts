@@ -39,6 +39,8 @@ const HOSTS = [
   "features/my-studio/StudioSection.tsx",
   "features/my-studio/InBodyVariationPanel.tsx",
   "features/my-studio/TeamSection.tsx",
+  // The one header (Relay room, Sep 28 2026): its rules are My Studio's own.
+  "features/my-studio/StudioHeader.tsx",
   "features/relay/board/ContextPanel.tsx",
   // Openings (Openings round, Sep 27 2026): the section and each of its
   // parts, since the Wrap-up's "Times with room" reuses pieces of it outside
@@ -110,9 +112,10 @@ describe("My Studio's Machines and Studio sections, and the Context Panel", () =
     });
   }
 
-  it("MyStudioView imports the stylesheet that holds its masthead's portrait rule itself", () => {
-    // `.ms > .pl__mast` (Openings made the masthead five sections long) is
-    // My Studio's own, in my-studio.css. It must not reach My Studio only
+  it("MyStudioView imports the stylesheet that holds its header's portrait rule itself", () => {
+    // `.ms > .msh--relay` (the one header's two rows on an upright iPad; it
+    // was `.ms > .pl__mast` until the Relay room, Sep 28 2026) is My
+    // Studio's own, in my-studio.css. It must not reach My Studio only
     // because a section happens to share its chunk: a lazily loaded section
     // would take it away.
     expect(DEFINED["my-studio.css"].has("ms")).toBe(true);

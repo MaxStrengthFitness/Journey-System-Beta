@@ -12,6 +12,7 @@ import type { TeamJob } from "../jobs/types";
 import { useRelay } from "./RelayContext";
 import { SwipeRow } from "./SwipeRow";
 import { emptyPrompt, nextUp, snooze, snoozedIds, type NextUpItem, type NextUpScored } from "./next-up";
+import { trackItem } from "./tracked";
 
 /**
  * NEXT UP — the three cards at the top of the Floor.
@@ -150,6 +151,9 @@ export function NextUpQueue({ rows, jobs, requests, actions, author, onOpenJob, 
 
   const doIt = (s: NextUpScored) => {
     const { item } = s;
+    // Taking it puts it in the header's Tracking chip until it is done
+    // (tracked.ts); the Floor keeps the count current.
+    trackItem(relay.studioId, relay.now.todayKey, { id: item.id, title: item.title, done: null, total: null });
     switch (item.kind) {
       case "group":
         return openGroup(item.group);

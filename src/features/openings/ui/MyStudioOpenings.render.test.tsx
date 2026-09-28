@@ -2,7 +2,8 @@
 /**
  * OPENINGS IN MY STUDIO'S SHELL (Openings round, phase 4), mounted with the
  * real MyStudioView over a Firestore that answers every read with nothing:
- * the masthead's sections are Relay · Openings · Machines (· Team · Studio
+ * the sections (in the one header's menu since the Relay room, Sep 28 2026)
+ * are Relay · Openings · Machines (· Team · Studio
  * for a leader), a trainer who works at the studio opens Openings, someone
  * who doesn't never sees it, a door on another section can send someone
  * there, and the part this iPad was on is remembered until sign-out.
@@ -122,7 +123,23 @@ async function mount(authTrainer: unknown) {
   return host;
 }
 
-const sections = () => [...document.querySelectorAll<HTMLButtonElement>('[aria-label="My Studio"] [role="tab"]')].map((b) => b.textContent);
+/*
+ * My Studio's sections are in the one header's menu since the Relay room
+ * (Sep 28 2026): the section button opens it, each section is a menu item,
+ * and the button says which section is showing.
+ */
+const itemName = (b: Element) => b.querySelector(".msh__pop-text")?.firstChild?.textContent ?? "";
+async function sections(): Promise<string[]> {
+  await click(document.querySelector(".msh__sect"));
+  const names = [...document.querySelectorAll('[role="menuitemradio"]')].map(itemName);
+  await click(document.querySelector(".msh__sect"));
+  return names;
+}
+async function openSection(name: string) {
+  await click(document.querySelector(".msh__sect"));
+  await click([...document.querySelectorAll('[role="menuitemradio"]')].find((b) => itemName(b) === name));
+}
+const currentSection = () => document.querySelector(".msh__sect-name")?.textContent;
 const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes(name));
 async function click(el: Element | undefined | null) {
   expect(el).toBeTruthy();
@@ -134,9 +151,9 @@ describe("Openings in My Studio", () => {
   it("sits second, for a trainer who works at the studio, and opens on The usual week", async () => {
     const h = await mount(trainer);
     // Studio too, read only, since the voice review notes (Sep 28 2026).
-    expect(sections()).toEqual(["Relay", "Openings", "Machines", "Studio"]);
-    await click(tab("Openings"));
-    expect(tab("Openings")?.getAttribute("aria-selected")).toBe("true");
+    expect(await sections()).toEqual(["Relay", "Openings", "Machines", "Studio"]);
+    await openSection("Openings");
+    expect(currentSection()).toBe("Openings");
     expect(tab("The usual week")?.getAttribute("aria-selected")).toBe("true");
     const parts = [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Openings"] [role="tab"]')].map((b) => b.textContent);
     expect(parts).toEqual(["The usual week", "Next 7 days", "A new regular time", "Who's usually in"]);
@@ -155,20 +172,20 @@ describe("Openings in My Studio", () => {
 
   it("sits between Relay and Machines for a leader, beside Team and Studio", async () => {
     await mount(lead);
-    expect(sections()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
+    expect(await sections()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
   });
 
   it("isn't there for someone who doesn't work at the studio", async () => {
     await mount(elsewhere);
-    expect(sections()).toEqual(["Relay", "Machines"]);
+    expect(await sections()).toEqual(["Relay", "Machines"]);
   });
 
   it("opens from a door on another section, and a sign-out forgets it", async () => {
     const h = await mount(lead);
-    await click(tab("Team"));
+    await openSection("Team");
     await act(async () => openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" })));
     await settle();
-    expect(tab("Openings")?.getAttribute("aria-selected")).toBe("true");
+    expect(currentSection()).toBe("Openings");
     // The door's part, set as the move happened and read as the section mounted.
     expect(h.querySelector("#op-tab-next")?.getAttribute("aria-selected")).toBe("true");
     await click(h.querySelector("#op-tab-usual"));
@@ -181,13 +198,13 @@ describe("Openings in My Studio", () => {
   it("a door asks about typing first, and 'Keep editing' keeps the section and the memory where they were", async () => {
     team.dirty = true;
     await mount(lead);
-    await click(tab("Team"));
+    await openSection("Team");
     expect(rememberedMyStudioSection()).toBe("team");
     await act(async () => openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" })));
     await settle();
     const keep = document.querySelector('[data-action="keep-editing"]');
     await click(keep);
-    expect(tab("Team")?.getAttribute("aria-selected")).toBe("true");
+    expect(currentSection()).toBe("Team");
     // The next plain open of My Studio lands where they stayed, not where they chose not to go,
     // and the next plain open of Openings where it was, not on the part the door would have set.
     expect(rememberedMyStudioSection()).toBe("team");
