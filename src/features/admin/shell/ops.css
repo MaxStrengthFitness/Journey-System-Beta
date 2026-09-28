@@ -1190,6 +1190,42 @@
   gap: 8px;
 }
 
+/* ---------- Clients → Trends ------------------------------------------- */
+
+.ops-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--adm-border);
+}
+
+.ops-trend:first-child {
+  border-top: 0;
+}
+
+.ops-trend__t {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.ops-trend__min {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.ops-trend__min svg {
+  flex: none;
+  margin-top: 2px;
+}
+
 /* ---------- Setup → Rules ---------------------------------------------- */
 
 .ops-rules {

@@ -10,7 +10,7 @@
  * leaders only (AJ, Sep 10 2026).
  */
 
-import type { PayAsYouGoCountsAs, RenewalOutcome, RenewalSettings } from "./types";
+import type { PayAsYouGoCountsAs, RenewalConcern, RenewalOutcome, RenewalSettings } from "./types";
 
 export const MIN_TRAINER_OUTCOMES = 5;
 
@@ -21,6 +21,10 @@ export interface OutcomeRow {
   primaryTrainerId?: string | null;
   closedOn?: string | null;
   studioId?: string;
+  /** The client, as the cycle names her (Operations → Week's renewals, Sep 28 2026). */
+  clientName?: string | null;
+  /** What she was on the fence about at the last conversation (Operations → Trends' lost reasons). */
+  latestConcerns?: RenewalConcern[];
 }
 
 export interface OutcomeTally {

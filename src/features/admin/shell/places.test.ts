@@ -25,7 +25,7 @@ describe("the five destinations", () => {
     const subs = Object.fromEntries(OPS_PAGES.map((p) => [p.id, p.subs.map((s) => s.label)]));
     expect(subs.clients).toEqual(["Journey", "Renewals", "Moments", "Trends"]);
     expect(subs.team).toEqual(["Hours"]);
-    expect(subs.week).toEqual(["This week"]);
+    expect(subs.week).toEqual(["Last week", "This week", "Week ahead"]);
     expect(subs.setup).toEqual(["Floor", "People & access", "Announcements", "Mindbody", "Data", "Rules"]);
     expect(subs.today).toEqual([]);
   });

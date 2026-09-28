@@ -10,7 +10,7 @@ import { OverviewPage, type OverviewLink } from "./overview/OverviewPage";
 import { AdminStaffTab } from "./staff/AdminStaffTab";
 import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
-import { AdminInsightsTab } from "./insights/AdminInsightsTab";
+import { TrendsPage } from "./trends/TrendsPage";
 import { AdminHoursTab } from "./hours/AdminHoursTab";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
@@ -348,7 +348,21 @@ function OperationsShell({
         );
       case "week":
         if (ops.scope.kind === "all") return <PickOneStudio what="The week" />;
-        return studio ? <WeekPage key={tabKey} studio={studio} onOpenClient={openClient} /> : noStudio;
+        return studio ? (
+          <WeekPage
+            key={`${tabKey}:${place.sub}`}
+            sub={place.sub === "last" || place.sub === "ahead" ? place.sub : "now"}
+            studio={studio}
+            studios={studios}
+            clients={clients}
+            trainers={trainers}
+            authTrainer={authTrainer}
+            onOpenClient={openClient}
+            onOpen={(to) => go(DOOR_PLACE[to])}
+          />
+        ) : (
+          noStudio
+        );
       case "clients":
         if (place.sub === "moments") {
           return (
@@ -369,7 +383,10 @@ function OperationsShell({
             </div>
           );
         }
-        if (place.sub === "trends") return <AdminInsightsTab key={tabKey} studios={studios} trainers={trainers} activeStudioId={activeStudioId ?? null} />;
+        if (place.sub === "trends") {
+          if (ops.scope.kind === "all") return <PickOneStudio what="Trends" />;
+          return studio ? <TrendsPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} /> : noStudio;
+        }
         if (place.sub === "journey") {
           if (ops.scope.kind === "all") return <PickOneStudio what="The Journey" />;
           return studio ? <JourneyPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} onOpenClient={openClient} /> : noStudio;

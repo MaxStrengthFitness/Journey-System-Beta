@@ -7,17 +7,18 @@
  * became five destinations sorted by a leader's job:
  *
  *   Today     the brief: what needs you, who to catch, what changed
- *   Week      the week: this week's cancellations and moves
+ *   Week      last week's review, this week so far (with its
+ *             cancellations and moves), the week ahead (phase 5)
  *   Clients   the Journey (where each client is, against her own rhythm;
  *             phase 4), Renewals, Moments (the Delight queue) and Trends
- *             (the Insights screen)
+ *             (the quarter's lines over the Insights screen; phase 5)
  *   Team      Hours
  *   Setup     how the studio is set up: Floor, People & access (Staff &
  *             Roles), Announcements, Mindbody, Data, and the Rules behind
  *             every sentence (phase 3)
  *
- * Later phases of the round add their pages here: last week and the week
- * ahead (phase 5), the team this week (phase 6).
+ * A later phase of the round adds its page here: the team this week
+ * (phase 6).
  *
  * AJ's question 1 took the default: the fifth place is "Setup", because
  * "Studio" would clash with My Studio. Question 2's default moved Renewals
@@ -54,7 +55,11 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
   {
     id: "week",
     label: "Week",
-    subs: [{ id: "now", label: "This week" }],
+    subs: [
+      { id: "last", label: "Last week" },
+      { id: "now", label: "This week" },
+      { id: "ahead", label: "Week ahead" },
+    ],
   },
   {
     id: "clients",

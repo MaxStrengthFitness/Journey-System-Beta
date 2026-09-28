@@ -198,7 +198,7 @@ describe("the Operations shell", () => {
   it("offers five destinations for a studio's leader, with the pages inside them, and opens on Today", async () => {
     const el = await mount(lead, false);
     expect(tabLabels(el)).toEqual(FIVE);
-    expect(sideLabels(el)).toEqual(["Today", "Week", "Clients", "Journey", "Renewals", "Moments", "Trends", "Team", "Setup"]);
+    expect(sideLabels(el)).toEqual(["Today", "Week", "Last week", "This week", "Week ahead", "Clients", "Journey", "Renewals", "Moments", "Trends", "Team", "Setup"]);
     expect(el.querySelector(".ops-side [aria-current='page']")?.textContent).toBe("Today");
     expect(el.textContent).toContain("Today · Solon");
     // "Looking at" says where, even with nothing to choose.
@@ -217,13 +217,19 @@ describe("the Operations shell", () => {
   it("every page opens for a leader", async () => {
     const el = await mount(lead, false);
     await clickSide(el, "Week");
+    expect(el.textContent).toContain("The Monday review");
+    await clickSide(el, "This week");
+    expect(el.textContent).toContain("This week so far");
     expect(el.textContent).toContain("Solon — Changes");
+    await clickSide(el, "Week ahead");
+    expect(el.textContent).toContain("The week ahead");
     await clickSide(el, "Journey");
     expect(el.querySelector("[aria-label='Client states']")).toBeTruthy();
     await clickSide(el, "Renewals");
     await clickSide(el, "Moments");
     expect(el.textContent).toContain("The Delight queue");
     await clickSide(el, "Trends");
+    expect(el.textContent).toContain("Each line names the least it needs");
     expect(el.textContent).toContain("What stands out");
     await clickSide(el, "Team");
     expect(el.textContent).toContain("Training hours by trainer");

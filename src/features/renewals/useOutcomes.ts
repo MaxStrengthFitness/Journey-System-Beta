@@ -59,6 +59,8 @@ export function useOutcomes(studioIds: string[], from: string, to: string): Outc
                 packageKey: c.packageKey ?? null,
                 primaryTrainerId: c.primaryTrainerId ?? null,
                 closedOn: c.closedOn ?? null,
+                clientName: typeof c.clientName === "string" ? c.clientName : null,
+                latestConcerns: Array.isArray(c.latestConcerns) ? c.latestConcerns : [],
               };
             }),
           })),

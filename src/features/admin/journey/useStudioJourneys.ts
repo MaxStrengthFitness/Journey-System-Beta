@@ -19,6 +19,7 @@ import { auth } from "../../../firebase";
 import { myTrainerIds } from "../../../lib/live-session";
 import { studioDateKey } from "../../../lib/studio-time";
 import { buildPackageNameIndex } from "../../renewals/settings";
+import type { RenewalSettings } from "../../renewals/types";
 import { useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { useStudioWeek, type StudioWeek } from "../changes/useStudioWeek";
 import { useWatchlist, type StreamState } from "../attention/useAttention";
@@ -35,6 +36,8 @@ export interface StudioJourneys {
   nightly: NightlyRead;
   watchlist: StreamState<Map<string, WatchlistEntry>>;
   breakDays: number;
+  /** The studio's renewal settings (the defaults until read). */
+  settings: RenewalSettings;
   /** The settings couldn't be read: the defaults stand, and the page says so. */
   settingsFailed: boolean;
 }
@@ -93,5 +96,5 @@ export function useStudioJourneys({
     // `now` is read once per render on purpose: the page re-renders every minute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, watchlist.value]);
-  return { ready, entries, today, tz, week, nightly, watchlist, breakDays: settingsState.settings.breakDays, settingsFailed: Boolean(settingsState.error) };
+  return { ready, entries, today, tz, week, nightly, watchlist, breakDays: settingsState.settings.breakDays, settings: settingsState.settings, settingsFailed: Boolean(settingsState.error) };
 }
