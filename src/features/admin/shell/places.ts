@@ -155,6 +155,17 @@ export const LEGACY_TAB_PLACE: Record<LegacyTab, OpsPlace> = {
 };
 
 /**
+ * A DOOR on one page to another: every old tab id, and the week's changes
+ * (Today's "All changes").
+ */
+export type OpsDoor = LegacyTab | "week";
+
+export const DOOR_PLACE: Record<OpsDoor, OpsPlace> = {
+  ...LEGACY_TAB_PLACE,
+  week: { page: "week", sub: "now" },
+};
+
+/**
  * The places a switch between pages would unmount. Opening the page already
  * on screen changes nothing and never asks the leave question.
  */

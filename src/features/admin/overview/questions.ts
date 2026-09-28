@@ -68,8 +68,12 @@ const nameOf = (c: Pick<Client, "firstName" | "lastName" | "nickname">) => clien
 
 export interface RenewalsQuestion {
   counts: Record<PipelineLane, number>;
-  /** In a live lane with nobody having logged a conversation. */
-  notTalked: number;
+  /**
+   * In a live lane with nobody having logged a conversation. Null when the
+   * conversations couldn't be read: unknown, never "nobody has talked to
+   * them" (the redesign's Operations room, Sep 28 2026).
+   */
+  notTalked: number | null;
   /** The clients to talk to first: Talk now, then Before the charge, soonest first. */
   rows: OverviewRow[];
   /** How many rows there were before the cap. */
@@ -83,6 +87,8 @@ export function renewalsQuestion(
   cycles: Record<string, RenewalCycle>,
   settings: RenewalSettings,
   today: string,
+  /** The conversations were read (useCyclesRead's `failed` is false). A missing cycle then means nobody talked. */
+  cyclesKnown = true,
 ): RenewalsQuestion {
   const counts: Record<PipelineLane, number> = { "before-charge": 0, "talk-now": 0, "coming-up": 0, lapsed: 0, away: 0 };
   let notTalked = 0;
@@ -102,7 +108,9 @@ export function renewalsQuestion(
         sentence: nextStep(s, cycle, settings, today),
         proof: cycle?.lastTouchAt
           ? `Last talked to by ${cycle.lastTouchByName ?? "someone"}${cycle.latestLeaning ? ` — ${leaningLabel(cycle.latestLeaning).toLowerCase()}` : ""}.`
-          : "Nobody has talked to them yet.",
+          : cyclesKnown
+            ? "Nobody has talked to them yet."
+            : "Whether anyone has talked to them couldn't be read just now.",
         tone: lane === "talk-now" ? "alert" : "warn",
         lane,
         focus: s.focusDate ?? "9999-99-99",
@@ -113,7 +121,7 @@ export function renewalsQuestion(
   candidates.sort((a, b) => order[a.lane] - order[b.lane] || a.focus.localeCompare(b.focus) || a.name.localeCompare(b.name));
   return {
     counts,
-    notTalked,
+    notTalked: cyclesKnown ? notTalked : null,
     rows: candidates.slice(0, RENEWALS_ROWS_SHOWN).map(({ lane: _l, focus: _f, ...row }) => row),
     total: candidates.length,
   };

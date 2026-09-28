@@ -23,7 +23,7 @@ import { leadsHere } from "../relay/leads";
 import { isEveryStudioRole } from "../renewals/permissions";
 import { AdminEmpty, AdminNotice } from "./primitives";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
-import { LEGACY_TAB_PLACE, defaultSub, placeKey, placeLabel, resolvePlace, samePlace, type OpsPage, type OpsPlace } from "./shell/places";
+import { DOOR_PLACE, defaultSub, placeKey, placeLabel, resolvePlace, samePlace, type OpsPage, type OpsPlace } from "./shell/places";
 import {
   rememberClient,
   rememberPlace,
@@ -35,7 +35,7 @@ import {
   rememberedSetupOpen,
   rememberedSub,
 } from "./shell/place-memory";
-import { LookingAt, OpsSidebar, OpsSubs, OpsTabs, SetupHome } from "./shell/OperationsNav";
+import { LookingAt, OpsSidebar, OpsSubs, OpsTabs, SetupHome, type NavBadges } from "./shell/OperationsNav";
 import { ClientPage } from "./shell/ClientPage";
 
 interface Props {
@@ -196,6 +196,10 @@ function OperationsShell({
   const [floorView, setFloorView] = useState<"machines" | "fit" | "routines">("machines");
   // Pressing Today while on it brings the page home from one of its views.
   const [homeSignal, setHomeSignal] = useState(0);
+  // What Today's "Needs you" counts, while Today is mounted; null otherwise
+  // (a count from an earlier visit could be wrong, so none is shown).
+  const [needsCount, setNeedsCount] = useState<number | null>(null);
+  const badges: NavBadges = needsCount ? { today: { count: needsCount, hot: true } } : {};
   /*
    * A page unmounts when another is opened, and a Save bar's edits (a studio
    * machine on Floor) went with it. Every move now asks first about the
@@ -295,13 +299,13 @@ function OperationsShell({
     });
   }, [tabsScope, saveScroll]);
 
-  /** The Overview's doors, written against the nine tabs: each opens the page its screen moved to. */
+  /** Today's doors: each opens the page its screen moved to (the old tab ids still answer). */
   const openFromOverview = (link: OverviewLink) => {
     if (link === "floor") {
-      go(LEGACY_TAB_PLACE.floor, () => setFloorView("fit"));
+      go(DOOR_PLACE.floor, () => setFloorView("fit"));
       return;
     }
-    go(LEGACY_TAB_PLACE[link]);
+    go(DOOR_PLACE[link]);
   };
 
   const openMyStudio = onOpenStudioTasks
@@ -335,6 +339,7 @@ function OperationsShell({
             // Openings' line opens My Studio → Openings in trainer mode; the
             // page remembers the section first, as Staff & Roles does for Team.
             onOpenMyStudio={onOpenStudioTasks}
+            onNeedsCount={setNeedsCount}
           />
         );
       case "week":
@@ -449,13 +454,13 @@ function OperationsShell({
      * shows the sidebar when wide and the tabs when upright (shell/ops.css).
      */
     <div className="adm ops-shell" ref={shellRef}>
-      <OpsSidebar place={place} subOf={subOf} onGo={go} setupOpen={setupOpen} onToggleSetup={toggleSetup} />
+      <OpsSidebar place={place} subOf={subOf} onGo={go} badges={badges} setupOpen={setupOpen} onToggleSetup={toggleSetup} />
 
       <div className="ops-body">
         <div className="ops-top">
           <LookingAt variant="top" />
         </div>
-        <OpsTabs place={place} subOf={subOf} onGo={go} />
+        <OpsTabs place={place} subOf={subOf} onGo={go} badges={badges} />
         {!clientId && <OpsSubs place={place} onGo={go} />}
 
         <UnsavedChangesScope scope={tabsScope}>

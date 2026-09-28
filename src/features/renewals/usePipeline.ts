@@ -67,22 +67,56 @@ export function usePipelineClients(
 }
 
 export function useCyclesFor(studioId: string | null, cycleKeys: string[]): Record<string, RenewalCycle> {
+  return useCyclesRead(studioId, cycleKeys).cycles;
+}
+
+export interface CyclesRead {
+  cycles: Record<string, RenewalCycle>;
+  /** Some chunk has not answered yet. */
+  loading: boolean;
+  /**
+   * Some chunk's read failed. A cycle missing then is UNKNOWN: "nobody has
+   * talked to them" may not be said off it (the redesign's Operations room,
+   * Sep 28 2026 — the pin "a failed lookup reads 'Nobody has talked to them
+   * yet'").
+   */
+  failed: boolean;
+}
+
+/** The cycles for the clients on screen, with whether every chunk answered. */
+export function useCyclesRead(studioId: string | null, cycleKeys: string[]): CyclesRead {
   const [cycles, setCycles] = useState<Record<string, RenewalCycle>>({});
+  const [waiting, setWaiting] = useState<ReadonlySet<number>>(new Set());
+  const [failedChunks, setFailedChunks] = useState<ReadonlySet<number>>(new Set());
   const keyString = useMemo(
     () => Array.from(new Set(cycleKeys.filter((k) => /^[A-Za-z0-9_-]{1,120}$/.test(k)))).sort().join(","),
     [cycleKeys],
   );
   useEffect(() => {
     setCycles({});
-    if (!studioId || !keyString) return;
+    setFailedChunks(new Set());
+    if (!studioId || !keyString) {
+      setWaiting(new Set());
+      return;
+    }
     const keys = keyString.split(",");
     const unsubs: Array<() => void> = [];
-    for (let i = 0; i < keys.length; i += IN_CHUNK) {
+    const chunks: number[] = [];
+    for (let i = 0; i < keys.length; i += IN_CHUNK) chunks.push(i);
+    setWaiting(new Set(chunks));
+    const settle = (i: number) =>
+      setWaiting((prev) => {
+        if (!prev.has(i)) return prev;
+        const next = new Set(prev);
+        next.delete(i);
+        return next;
+      });
+    for (const i of chunks) {
       const chunk = keys.slice(i, i + IN_CHUNK);
       unsubs.push(
         onSnapshot(
           query(collection(db, "studios", studioId, "renewals"), where(documentId(), "in", chunk)),
-          (snap) =>
+          (snap) => {
             setCycles((prev) => {
               const next = { ...prev };
               for (const k of chunk) delete next[k];
@@ -90,14 +124,20 @@ export function useCyclesFor(studioId: string | null, cycleKeys: string[]): Reco
                 next[d.id] = d.data() as RenewalCycle;
               });
               return next;
-            }),
-          (err) => console.warn("[renewals] cycles read failed:", err),
+            });
+            settle(i);
+          },
+          (err) => {
+            console.warn("[renewals] cycles read failed:", err);
+            setFailedChunks((prev) => new Set(prev).add(i));
+            settle(i);
+          },
         ),
       );
     }
     return () => unsubs.forEach((u) => u());
   }, [studioId, keyString]);
-  return cycles;
+  return { cycles, loading: waiting.size > 0, failed: failedChunks.size > 0 };
 }
 
 /** How many of the studio's clients the engine couldn't place for lack of Mindbody data. */

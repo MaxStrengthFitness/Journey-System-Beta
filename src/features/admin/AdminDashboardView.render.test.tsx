@@ -199,7 +199,7 @@ describe("the Operations shell", () => {
     expect(tabLabels(el)).toEqual(FIVE);
     expect(sideLabels(el)).toEqual(["Today", "Week", "Clients", "Renewals", "Moments", "Trends", "Team", "Setup"]);
     expect(el.querySelector(".ops-side [aria-current='page']")?.textContent).toBe("Today");
-    expect(el.textContent).toContain("Solon — Overview");
+    expect(el.textContent).toContain("Today · Solon");
     // "Looking at" says where, even with nothing to choose.
     expect(el.querySelector(".ops-side .ops-look")?.textContent).toContain("Looking atSolon");
   });
@@ -281,7 +281,7 @@ describe("a client, opened inside Operations", () => {
     expect(page?.textContent).toContain("Renewal:");
     // The page she was opened from is kept, hidden, not unmounted.
     expect(el.querySelector(".ops-page")?.hasAttribute("hidden")).toBe(true);
-    expect(el.textContent).toContain("Solon — Overview");
+    expect(el.textContent).toContain("Today · Solon");
     // Her full profile is one tap further, in the app.
     await clickText(page!, "Open full profile");
     expect(profiles).toEqual(["c-gold"]);
@@ -300,7 +300,7 @@ describe("a client, opened inside Operations", () => {
     const again = await unmountAndRemount(() => mount(lead, false, "solon", studios, { clients: [goldberry], onNavigateProfile: () => {} }));
     expect(again.querySelector("section.ops-client")?.textContent).toContain("Goldberry River");
     await clickText(again.querySelector("section.ops-client")!, "Today");
-    expect(again.textContent).toContain("Solon — Overview");
+    expect(again.textContent).toContain("Today · Solon");
   });
 
   it("remembers the page for the session, and forgets it at sign-out", async () => {
@@ -363,7 +363,7 @@ describe("the Operations shell's own gate", () => {
     expect(tabLabels(el)).toEqual([]);
     expect(el.querySelector('[data-testid="operations-closed"]')).toBeTruthy();
     expect(el.textContent).toContain("Operations is for a studio's leaders");
-    expect(el.textContent).not.toContain("Solon — Overview");
+    expect(el.textContent).not.toContain("Today · Solon");
   });
 
   it("refuses a trainer with the grant: it opens My Studio's leader sections, not Operations", async () => {

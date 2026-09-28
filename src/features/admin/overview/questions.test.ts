@@ -84,6 +84,12 @@ describe("renewalsQuestion — counted, not listed", () => {
     expect(q.rows[0].proof).toBe("Last talked to by Lee — leaning no.");
     expect(q.notTalked).toBe(0);
   });
+
+  it("never says nobody has talked to them when the conversations couldn't be read", () => {
+    const q = renewalsQuestion([client("a", "Ann", { conversationDue: true, sessionsLeft: 8 })], {}, settings, TODAY, false);
+    expect(q.notTalked).toBeNull();
+    expect(q.rows[0].proof).toBe("Whether anyone has talked to them couldn't be read just now.");
+  });
 });
 
 describe("attendanceQuestion — long breaks and missed bookings", () => {

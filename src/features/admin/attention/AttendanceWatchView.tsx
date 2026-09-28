@@ -64,7 +64,7 @@ export function AttendanceWatchView({ studio, today, rows, watched, back, watchl
         subtitle={`Clients who have gone quiet or off their rhythm. ${studio.name}'s line is ${breakDays} days without a visit; a client with a measured pace is also flagged at twice their usual gap. Change the number on My Studio → Studio.`}
         actions={
           <AdminButton variant="quiet" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4" /> Overview
+            <ArrowLeft className="w-4 h-4" /> Today
           </AdminButton>
         }
       />

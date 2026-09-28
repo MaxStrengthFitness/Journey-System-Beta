@@ -191,6 +191,12 @@ export interface UseDelightQueueResult {
   isLoading: boolean;
   /** True when the collection group index has not been deployed yet. */
   needsIndex: boolean;
+  /**
+   * True when the read failed for any reason (the index included): the empty
+   * rows are then unknown, never "nothing due" (the redesign's Operations
+   * room, Sep 28 2026 — "0 due" on a failed gestures read).
+   */
+  failed: boolean;
 }
 
 /**
@@ -215,15 +221,18 @@ export function useDelightQueue(args: {
   const [rows, setRows] = useState<FordEntry[]>([]);
   const [isLoading, setIsLoading] = useState(Boolean(studioId && enabled));
   const [needsIndex, setNeedsIndex] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!studioId || !enabled) {
       setRows([]);
       setIsLoading(false);
+      setFailed(false);
       return;
     }
     setIsLoading(true);
     setNeedsIndex(false);
+    setFailed(false);
 
     const wanted = includeDone
       ? ["idea", "planned", "done"]
@@ -249,6 +258,7 @@ export function useDelightQueue(args: {
         // Say so plainly rather than rendering an empty queue, which would
         // read as "nobody has anything coming up".
         setNeedsIndex((err as { code?: string })?.code === "failed-precondition");
+        setFailed(true);
         setRows([]);
         setIsLoading(false);
       },
@@ -286,6 +296,7 @@ export function useDelightQueue(args: {
       ],
       isLoading,
       needsIndex,
+      failed,
     };
-  }, [rows, isLoading, needsIndex]);
+  }, [rows, isLoading, needsIndex, failed]);
 }

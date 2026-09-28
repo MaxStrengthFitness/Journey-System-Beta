@@ -1,117 +1,24 @@
 /**
- * THE OVERVIEW'S PIECES — the row shapes and the collapsible panel every
- * panel on the page is built from, so eight panels read as one screen.
+ * THE ROW SHAPES Operations' lists are built from, so every list reads as
+ * one screen (Today's brief, Changes, the attendance watch, the 60-day
+ * review).
  *
- *   OverviewPanel   an AdminPanel that can fold to its headline sentence,
- *                   remembered per device (localStorage); the subtitle IS
- *                   the one-line summary, so a folded panel still answers.
  *   Rows            claim + proof, the whole row opens the client.
  *   ActionRows      the same, with buttons on the right (Acknowledge,
  *                   Snooze, Dismiss, Got it) — the name opens the client,
  *                   the buttons act, nothing is nested inside a button.
  *   SnoozeChooser   "3 days · 1 week · 2 weeks · pick a day".
- *   Line            one tappable line that opens a tab.
- *   NeedsYou        the count chips at the top — the ten-second read. With
- *                   a `note` (the week's bookings still being read, or not
- *                   readable) it never says "Nothing needs you right now":
- *                   the count is partial, and the note inside the strip
- *                   says why (Openings round, Sep 27 2026).
+ *   Line            one tappable line that opens a page.
+ *
+ * The foldable panels and the Needs-you chip strip went with the Overview's
+ * eight panels in the redesign's Operations room (Sep 28 2026): Today is one
+ * column of sections now (brief-pieces.tsx).
  */
-import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { AdminBadge, AdminButton, AdminEmpty, AdminPanel } from "../primitives";
+import { useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import { AdminBadge, AdminButton, AdminEmpty } from "../primitives";
 import { addDays } from "../../client-history/model";
 import type { OverviewRow, OverviewTone } from "./questions";
-
-/* ------------------------------------------------------------------ *
- * Folding
- * ------------------------------------------------------------------ */
-
-const FOLD_KEY = "journey.operations.overview.folded";
-
-function readFolded(): Set<string> {
-  try {
-    const raw = localStorage.getItem(FOLD_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeFolded(set: Set<string>) {
-  try {
-    localStorage.setItem(FOLD_KEY, JSON.stringify([...set]));
-  } catch {
-    /* a private window forgets; the page still works */
-  }
-}
-
-/** Which panels this device has folded. One hook for the page; panels read it. */
-export function useFolded(): { folded: Set<string>; toggle: (id: string) => void; unfold: (id: string) => void } {
-  const [folded, setFolded] = useState<Set<string>>(() => readFolded());
-  useEffect(() => {
-    writeFolded(folded);
-  }, [folded]);
-  return {
-    folded,
-    toggle: (id) =>
-      setFolded((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      }),
-    unfold: (id) =>
-      setFolded((prev) => {
-        if (!prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      }),
-  };
-}
-
-export interface OverviewPanelProps {
-  id: string;
-  title: string;
-  icon?: ReactNode;
-  /** The headline sentence — what the panel says when folded. */
-  sentence: string;
-  count?: number;
-  tone?: "alert" | "warn" | "neutral";
-  actions?: ReactNode;
-  folded: boolean;
-  onToggle: () => void;
-  /** Left or right column on a wide screen; stacked in DOM order below it. */
-  column: "left" | "right";
-  children: ReactNode;
-}
-
-export function OverviewPanel({ id, title, icon, sentence, count, tone = "neutral", actions, folded, onToggle, column, children }: OverviewPanelProps) {
-  return (
-    <div id={`ov-${id}`} className={cn("adm-ov__cell", column === "left" ? "adm-ov__cell--left" : "adm-ov__cell--right")}>
-      <AdminPanel
-        title={title}
-        icon={icon}
-        subtitle={sentence}
-        actions={
-          <div className="adm-ov__panel-actions">
-            {typeof count === "number" && count > 0 && <AdminBadge tone={tone === "neutral" ? "neutral" : tone}>{count}</AdminBadge>}
-            {!folded && actions}
-            <AdminButton size="sm" variant="ghost" iconOnly aria-label={folded ? `Open ${title}` : `Fold ${title}`} aria-expanded={!folded} onClick={onToggle}>
-              {folded ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </AdminButton>
-          </div>
-        }
-        flush
-        className={cn("adm-ov__panel", folded && "adm-ov__panel--folded")}
-      >
-        {folded ? null : children}
-      </AdminPanel>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ *
  * Rows
@@ -226,7 +133,7 @@ export function SnoozeChooser({ today, onPick, onCancel }: { today: string; onPi
 }
 
 /* ------------------------------------------------------------------ *
- * Lines and the Needs-you strip
+ * Lines
  * ------------------------------------------------------------------ */
 
 export function Line({ icon, label, text, tone, onOpen }: { icon: ReactNode; label: string; text: string; tone: "alert" | "warn" | "neutral"; onOpen?: () => void }) {
@@ -246,44 +153,5 @@ export function Line({ icon, label, text, tone, onOpen }: { icon: ReactNode; lab
     </button>
   ) : (
     <div className="adm-ov__line">{inner}</div>
-  );
-}
-
-export interface NeedChip {
-  id: string;
-  count: number;
-  label: string;
-  tone: "alert" | "warn" | "neutral";
-}
-
-/**
- * `note`: the chips are partial (the caller left out the ones it couldn't
- * count), so the strip never says "Nothing needs you right now", and the
- * note says why, inside the strip.
- */
-export function NeedsYou({ chips, onPick, note }: { chips: NeedChip[]; onPick: (id: string) => void; note?: string }) {
-  const live = chips.filter((c) => c.count > 0);
-  const total = live.reduce((n, c) => n + c.count, 0);
-  return (
-    <div className="adm-ov__needs" role="region" aria-label="Needs you">
-      <span className="adm-ov__needs-title">
-        {total > 0 ? `Needs you · ${total}` : note ? "Needs you" : "Nothing needs you right now"}
-      </span>
-      {live.length > 0 && (
-        <div className="adm-ov__needs-chips">
-          {live.map((c) => (
-            <button key={c.id} type="button" className={cn("adm-ov__chip", `adm-ov__chip--${c.tone}`)} onClick={() => onPick(c.id)}>
-              <span className="adm-ov__chip-count">{c.count}</span>
-              <span>{c.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {note && (
-        <span className="adm-hint adm-ov__needs-note" data-testid="needs-week-note">
-          {note}
-        </span>
-      )}
-    </div>
   );
 }

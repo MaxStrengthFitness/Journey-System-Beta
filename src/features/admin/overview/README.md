@@ -1,55 +1,55 @@
-# Operations → Overview — today, what needs you, the next three days, the week
+# Operations → Today — the brief
 
-*Operations overhaul, Sep 19 2026. Was the Monday page (Operations round, the same week) and before that the floor snapshot. AJ: "not the Monday page — studio management opens this every day, it is the Overview. A summary layer, not a destination."*
+*The redesign's Operations room, Sep 28 2026 (`docs/rounds/2026-09-28-operations.md`, phase 2). Was the Overview (Operations overhaul, Sep 19), the Monday page before that (Operations round, the same week), and the floor snapshot before that. AJ, Sep 19: "studio management opens this every day. A summary layer, not a destination." AJ took the redesign's pick, "Brief + Journey", with every default.*
 
-## Three depths
+The folder keeps its old name, as `admin/` keeps "admin" for Operations.
 
-1. **The ten-second read.** Today's tiles — booked, done, not completed, **never logged** (the loud one: past its slot, nothing logged in Journey; tap it for the list to chase), on the floor now — and the **Needs you** strip, which counts every action waiting on the page and jumps to it.
-2. **The panels.** Each is a headline sentence with its proof, the top rows, an inline action and a door to the deep dive. On a desk they sit in two columns — *act today* on the left (Changes today · Pain and critical notes · Attendance watch · Strength dropped), *look ahead* on the right (The next three days · Renewals · Moments this week · Team this week); on a portrait iPad they stack in reading order. Panels fold to their sentence, remembered per device.
-3. **The deep dives.** The tabs, plus two views of the Overview's own: **Changes** (`../changes/ChangesView`) and the **Attendance watch** (`../attention/AttendanceWatchView`). Then the week in one line each: Insights, Machine fit, Hours, this week's changes.
+## The shape
 
-## Where each panel's answer comes from
+One column, the same sections in the same order every day (research-operations §6.3; BLUF and the President's Daily Brief):
 
-| Panel | Source | Rule |
-| --- | --- | --- |
-| Today | the week's schedule (`../changes/useWeekSchedule`, live, cancellations included, and since the Openings round (Sep 27 2026) `{ confirmed: true }`: only the server's answer counts, with `useServerWait` and `serverRead`); today's Journey sessions (`useTodaySessions`, live, `hostedAtStudioId` + `createdAt` from the start of the studio day) | `today.ts`: live bookings = the day's less the cancelled; **done = a Journey session was completed for that client that studio day** (AJ, Sep 24 2026 — Mindbody bookings never come back "Completed"; `lib/booking-state.ts` is the one rule); never logged = a slot finished five minutes ago with no such session (`floor.ts`); a failed read of the sessions leaves those slots **unknown** — the tiles say "—" and "missing, not zero", never never logged |
-| Changes today | the same read; the sync's stamps | `../changes/changes.ts`: held against the day the session was for; a cancellation reads as a reschedule only when another booking that Monday-to-Sunday week is a real rebook (`isRealRebook`: it appeared at most 12 hours before the cancellation was stamped, or after, and had not already happened — AJ, Sep 26 2026) |
-| The next three days | the same read; the nightly snapshot's `no-future-booking` flag; Openings' data (`features/openings/ui`: the summary by id, the standing weeks, the marks), only for someone `mayReadWeeks` allows | `next-days.ts`: the next three days WITH bookings (a closed Sunday is skipped); who is booked with a live note; who has nothing booked ahead. Since the Openings round, Openings' usually-full times with room on the panel's own days (`overviewLines` over `nextDays`: at most three, then `overviewMoreLine`, "and N more on Openings"), each a door to My Studio → Openings → Next 7 days on "Anyone" (`onOpenMyStudio`, the shell's `onOpenStudioTasks`) |
-| Pain and critical notes | `clinicalIncidents`, the studio's critical notes, the last 7 days of the Dial (`useOverviewReads`, `../sessions-range`) | `questions.ts` `painQuestion`: a critical note counts while it **matters** (`features/client-notes/mattering`); one acknowledgement key per thing (`../attention`) |
-| Renewals | the roster's nightly snapshots, cycles, settings | `questions.ts` `renewalsQuestion`, the same lanes as Operations → Renewals |
-| Attendance watch | the nightly snapshots; the watchlist | `questions.ts` `attendanceQuestion` (twice the client's usual gap, never under the studio's `breakDays`); `../attention` snooze, dismiss, back again |
-| Moments this week | the Delight queue, notes pinned to a day, the week's bookings, the clients' first dates | `moments.ts`: gestures due, dates on their next occurrence, session milestones only when the total may be quoted (never off a low Journey count during migration), whole years with the studio |
-| Strength dropped | `studios/{s}/watch/performance`, the Sunday job | `performance.ts` (shared with the job) |
-| Team this week | the last 14 days of sessions; today's schedule and today's Journey sessions | `team.ts`: completed since Monday, clients, hours, unlogged today (the same rule as the tiles; the column is hidden when today's sessions could not be read) — alphabetical, never ranked |
-| Notes to review | the studio's critical notes | `questions.ts` `notesToReview`: an always-note that has mattered 60 days (`ReviewNotesDialog`: still matters / no longer) |
+1. **The freshness line** — when the schedule was read, when the nightly record last changed, and how many clients can't be judged. The count is a button that says who and why.
+2. **The bottom line** — one sentence written by rules (`brief.ts`, `bottomLine`), the rules a tap away ("How this line is written"), the day's facts under it (booked, done, on the floor, to come, trainers on, and a door to the live floor on My Studio → Relay), and the sessions nobody logged as a door ("See who to ask"), never a count.
+3. **Needs you** — only what a leader can clear right here (AJ's question 3, default): acknowledge pain, an incident or a Critical note (`attention/`), take a gesture nobody owns (FORD's `setGestureStatus`, the Delight queue's own writer), review a note that has mattered 60 days (`ReviewNotesDialog`). Its count is Today's badge in the menu, shown only while Today is mounted.
+4. **Catch today** — clients in today with a reason to see them in person, from the Hub's ONE engine (`hub-opportunities/moments-today`, the families renew, welcome and celebrate), in the order they're in; and who trained today with nothing booked in the week (`leftWithNothingBooked`).
+5. **Slipping away** — the attendance watch's top rows with Snooze and Dismiss, and a door to the whole list (`attention/AttendanceWatchView`).
+6. **Since yesterday** — the cancellations and moves noticed since yesterday began, each held against its own day (`sinceYesterday` over `changes/changes.ts`); "All changes" opens Week.
+7. **Coming up** — the next three days with bookings (`next-days.ts`), Openings' line with its door to My Studio → Openings, who has nothing booked ahead, and the renewal talks due, with a door to Clients → Renewals.
+8. **Going right** — who came back (a dismissed client who booked or visited since: Got it), the week's milestones, dates and owned gestures (`moments.ts`).
+9. **Worth a look** — Sunday's strength list (`performance.ts`), machine fit, Trends (the Insights line), Hours.
 
-## What the page refuses to say
+## What the page refuses to say (the pins "Some lines give false comfort")
 
-- Nothing about a client's rhythm until the nightly job has measured one (eight weeks); a client with no pace gets the studio's plain break rule, and the proof says so.
-- Nothing about a milestone off an unknown history; "N so far, earlier sessions counted from the record" when the count is partial.
-- Nothing about performance until the Sunday job has written a document; "the weekly read has not run yet" is a different sentence from "nobody dropped".
-- A failed read says so ("could not be read just now") and never counts as zero — the tiles, the changes list and the panels each say when they are missing rather than empty.
-- A week only this iPad's cache answered is not a week (the Openings round, Sep 27 2026): the page says "Reading the week…", and offline, or with no answer in 15 seconds, the tiles show "—", Changes today, the next three days and This week's changes say "Could not be read just now.", Needs you says why inside the strip (`NeedsYou`'s `note`) and never "Nothing needs you right now", and Moments and Team this week never count the unread week as zero.
+- **"Nothing needs you" off a partial read.** A failed or unfinished read behind Needs you (incidents, critical notes, the Dial, acknowledgements, the Delight queue) makes it "nothing that could be read needs you", with a line saying the list may be short.
+- **"Everyone active is booked ahead" before any nightly record exists.** Coming up counts only clients with a nightly record, and with none says who is booked ahead is unknown.
+- **"Nobody has talked to them yet" off a failed lookup.** `useCyclesRead` (renewals/usePipeline) says when the conversations couldn't be read; `renewalsQuestion(…, cyclesKnown)` then says so and gives no "not talked" count.
+- **"0 due" off a failed gestures read.** `useDelightQueue` now carries `failed`; Going right says the gestures couldn't be read.
+- **A no-show chased as never logged.** Nothing in Journey can mark a booking "didn't come" (it needs AJ's OK), so an unlogged session is a door with the honest proof ("Trained and not logged, a no-show, or never happened? Someone on the floor knows"), never a count on Needs you.
+- **"The rest of the day looks steady"** unless every read answered: an unread schedule, an unread day's logging, a client whose renewal timing is unknown, and a nightly record that stopped changing (`NIGHTLY_STALE_DAYS`, 3 quiet days) are each named in the bottom line.
+- **An unread week is never a zero** (the Openings round): while the week is being read, or could not be, nothing counted from its bookings is said (`changes/useStudioWeek`).
+- Nothing about a milestone off an unknown history, and nothing about performance until the Sunday job has written a document (as before).
 
 ## Under All my studios
 
-When the Operations scope is **All my studios** (the reader can look at more than one studio), the Overview is the network view instead of one studio's page. It lives in `../network/`:
+When the Operations scope is **All my studios**, Today is the network view instead of one studio's brief. It lives in `../network/`:
 
 - **The setup view** (`NetworkOverview`): people, not volume. The tiles count what only this reader can clear this morning (who is waiting to be let in, among others), and the locations list is ordered by Mindbody problems, never by performance. Tapping a location switches the app to that studio.
 - **The network's two actions** (`NetworkActions`; the pure half is `network-actions.ts`), for franchise owners and the company (`mayActForNetwork`, the same roles `firestore.rules` lets update a network). A studio-tier leader who can span sees the setup view only.
-  - **Focus this quarter**: one editor per network that holds a studio in scope, for an owner exactly as for the company (AJ, Sep 27 2026). It is the house form: only the lines that changed are written, and at rest it says who set the focus and on which day. Every Floor in the network shows it as a quiet line (`relay/board/FocusBanner`). With no network to offer, the panel says "not in a network" only once the networks have been read; the live list is empty while it loads and after a failed read, so then it says it can't see the networks yet (`noFocusReason`).
-  - **Launch an initiative**: one ask, posted at every studio in scope after a confirmation that names each one. A studio the launch missed is named, and Launch again posts there only.
-- **Why Operations may write these.** Operations looks, and My Studio edits a studio's own settings. Neither action is a studio's setting: like an announcement, they belong to the network, so there is no My Studio editor for them to duplicate. They came from Relay's Network tab in the voice-review round (Sep 27 2026), and its ranking of studios was dropped: nothing on this page ranks a studio.
-- **The one-studio footer.** A franchise owner or administrator who can look at only one studio has no All my studios to choose, so the two actions sit at the foot of that studio's Overview. Inside Demo Mode that one studio is the practice studio: no real network's focus is offered there, and a launch posts at the practice studio only (the realm rule).
+  - **Focus this quarter**: one editor per network that holds a studio in scope, for an owner exactly as for the company (AJ, Sep 27 2026). Only the lines that changed are written, and at rest it says who set the focus and on which day.
+  - **Launch an initiative**: one ask, posted at every studio in scope after a confirmation that names each one.
+- **The one-studio footer.** A franchise owner or administrator who can look at only one studio has no All my studios to choose, so the two actions sit at the foot of that studio's brief. Inside Demo Mode that one studio is the practice studio (the realm rule).
 
 `../network/NetworkOverview.render.test.tsx` mounts both scopes, the one-studio footer and the footer inside Demo Mode.
 
 ## Files
 
-- `OverviewPage.tsx` — the screen, its reads and its actions (under All my studios it mounts `../network/`); `OverviewPage.render.test.tsx` mounts it over a studio's worth of answers and presses the buttons.
-- `pieces.tsx` — the row shapes, the foldable panel, the snooze chooser, the Needs-you strip.
-- `today.ts`, `questions.ts`, `moments.ts`, `next-days.ts`, `team.ts`, `floor.ts`, `performance.ts` — pure, each with its test beside it.
+- `OverviewPage.tsx` — the page: the brief for one studio, the network view under All my studios, the one-studio footer.
+- `TodayBrief.tsx` — the brief, its reads and its actions; `OverviewPage.render.test.tsx` mounts it over a studio's worth of answers and presses the buttons.
+- `brief.ts` — the bottom line, the nightly record, Catch today, leaving with nothing booked, since yesterday; `brief.test.ts`.
+- `brief-pieces.tsx` — a section, the freshness line, the bottom line box (styles in `../shell/ops.css`, prefix `ops-`).
+- `pieces.tsx` — the row shapes (Rows, ActionRows), the snooze chooser, the tappable line.
+- `today.ts`, `questions.ts`, `moments.ts`, `next-days.ts`, `team.ts`, `floor.ts`, `performance.ts` — pure, each with its test beside it (`performance.ts` is shared with the Sunday job).
 - `useOverviewReads.ts` — incidents, critical and dated notes, the watch document.
 - `useTodaySessions.ts` — today's Journey sessions, live, for what counts as done (`lib/booking-state.ts`).
 - `ReviewNotesDialog.tsx` — the 60-day review.
-- `overview.css` — the page, and the Changes day strip.
+- `overview.css` — the row shapes, the Changes day strip and the attendance watch.
