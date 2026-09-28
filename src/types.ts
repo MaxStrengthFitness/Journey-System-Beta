@@ -1779,7 +1779,7 @@ export interface Studio {
   deepCleanIntervalDays?: number;
   /**
    * Operations round (Sep 2026): the booked length of one session, in
-   * minutes — "Strength 30" is a 30-minute slot. Operations → Insights → Hours counts a
+   * minutes — "Strength 30" is a 30-minute slot. Operations → Team → Hours counts a
    * completed session as this many minutes, whatever the stopwatch said.
    * Set on My Studio → Studio → The studio's day. Default 30.
    */

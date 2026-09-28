@@ -281,7 +281,7 @@ trainer's alone: another trainer's profile cannot be opened in the app today
 (`ClientsView`'s `onSelectTrainer` is never called; other profiles were
 trimmed to My Profile on Sep 26), so no leader's or colleague's view of
 either card is built. Leaders already see each trainer's clients and
-training hours on **Operations → Insights → Hours**. If colleagues' profiles
+training hours on **Operations → Team → Hours**. If colleagues' profiles
 come back, `docs/rounds/2026-09-27-openings.md` ("My Profile → Your week")
 has the leader variant: clients, sessions and session time, never the
 first-session-to-last span.

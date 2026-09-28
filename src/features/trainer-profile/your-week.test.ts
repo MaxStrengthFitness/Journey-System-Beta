@@ -94,7 +94,7 @@ describe("which sessions count", () => {
     expect(sessionTimeSentence(week)).toBe("1.5 h (3 sessions × 30 min)");
   });
 
-  it("gives the same count Operations → Insights → Hours gives for you", () => {
+  it("gives the same count Operations → Team → Hours gives for you", () => {
     const sessions = [
       session("2026-09-01", "07:00", "07:25"),
       session("2026-09-02", "07:00", "07:25"),
