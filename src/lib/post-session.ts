@@ -17,6 +17,7 @@ import type { HistoryCoverage } from "./prior-history";
 import { BACK_FROM_DAYS } from "../features/openings/back-from";
 import { CHECK_DAYS } from "../features/standing-week/check";
 import type { ServerRead } from "../features/standing-week/server-read";
+import { formatStudioDate, formatStudioTime, getActiveTimeZone, studioDateKey } from "./studio-time";
 
 export interface TodayLog {
   machineId: string;
@@ -268,15 +269,29 @@ export function nextBookingFor<T extends BookingLike>(
   return best;
 }
 
-export function formatNextBooking(at: Date, now = new Date()): string {
-  const day = new Date(at.getFullYear(), at.getMonth(), at.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const days = Math.round((day.getTime() - today.getTime()) / 86_400_000);
-  const time = at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/**
+ * "Today · 9:00 AM", "Tomorrow · 9:00 AM" or "Thu, Nov 12 · 9:00 AM", on the
+ * STUDIO's clock (lib/studio-time.ts), never the device's: an iPad set to
+ * another zone, or GitHub's UTC runner, must read the booking as the studio
+ * does. It read the device's clock until Sep 28 2026, which on Eastern iPads
+ * happened to agree; CI's first run of the Openings round's Next tests in UTC
+ * showed "1:00 PM" for an 8:00 AM booking.
+ */
+export function formatNextBooking(at: Date, now = new Date(), tz: string = getActiveTimeZone()): string {
+  const dayKey = studioDateKey(at, tz);
+  const todayKey = studioDateKey(now, tz);
+  const days = dayKey && todayKey ? Math.round((keyUtc(dayKey) - keyUtc(todayKey)) / 86_400_000) : null;
+  const time = formatStudioTime(at, tz);
   if (days === 0) return `Today · ${time}`;
   if (days === 1) return `Tomorrow · ${time}`;
-  const when = at.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  const when = formatStudioDate(at, { weekday: "short", month: "short", day: "numeric" }, tz);
   return `${when} · ${time}`;
+}
+
+/** Midnight UTC of a `YYYY-MM-DD` key: only for counting whole days between two keys. */
+function keyUtc(key: string): number {
+  const [y, m, d] = key.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
 }
 
 /* ------------------------------------------------------------------ *

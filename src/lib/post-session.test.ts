@@ -242,8 +242,11 @@ describe("nextBookingSentence", () => {
 
   it("says every state in its own words, and never a plain 'Nothing booked yet'", () => {
     const said = [
-      nextBookingSentence({ state: "booked", at: new Date(2026, 10, 12, 8, 0), elsewhere: null }, today),
-      nextBookingSentence({ state: "booked", at: new Date(2026, 10, 12, 8, 0), elsewhere: "Strongsville" }, today),
+      // A real moment: 8:00 AM Eastern on Nov 12 (EST, -05:00). The line is read
+      // on the studio's clock, so a local-clock Date would be wrong on any
+      // machine not in Eastern time, GitHub's UTC runner included.
+      nextBookingSentence({ state: "booked", at: new Date("2026-11-12T08:00:00-05:00"), elsewhere: null }, today),
+      nextBookingSentence({ state: "booked", at: new Date("2026-11-12T08:00:00-05:00"), elsewhere: "Strongsville" }, today),
       nextBookingSentence({ state: "checking" }, today),
       nextBookingSentence({ state: "none", days: 30 }, today),
       nextBookingSentence({ state: "none", days: 7 }, today),
