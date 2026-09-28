@@ -1,0 +1,320 @@
+/* ==========================================================================
+   The Hub's top (calm Hub round, Sep 28 2026). Prefix hd-.
+   AJ on the Blueprints page: the top bar "is very jumbled". So: one row
+   (the layers, the week, two small doors), and on Schedule one quiet line
+   under it (the day in words and the family chips). The week wraps to its
+   own line when the Hub is narrow (an iPad upright). Colour from
+   equipment.tokens.css; nothing tappable under 40px.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.hd {
+  container-type: inline-size;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+}
+
+.hd-week {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(48px, 1fr));
+  gap: 4px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.hd-day {
+  min-height: 44px;
+  padding: 3px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hd-day-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.hd-day-name strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--eq-ink);
+}
+
+.hd-day-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--eq-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--eq-hero);
+}
+
+.hd-day[data-today="true"] {
+  border-color: var(--eq-live);
+}
+
+.hd-day[aria-selected="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.hd-day[aria-selected="true"] .hd-day-name strong,
+.hd-day[aria-selected="true"] .hd-day-count {
+  color: var(--eq-live-on);
+}
+
+.hd-day[aria-selected="true"] .hd-dot {
+  background: var(--eq-live-on);
+}
+
+.hd-day:focus-visible,
+.hd-btn:focus-visible,
+.hd-chip:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.hd-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.hd-btn {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hd-btn strong {
+  font-weight: 800;
+  color: var(--eq-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hd-btn[data-primary="true"] {
+  border-color: var(--eq-live);
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+/* Upright, the week takes its own line under the layers and the doors. */
+@container (max-width: 900px) {
+  .hd-week {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: none;
+  }
+}
+
+/* ---- the day in words, and the chips (Schedule only) ---- */
+
+.hd-sum {
+  container-type: inline-size;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+}
+
+.hd-sum-words {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+}
+
+.hd-sum-words strong {
+  font-weight: 800;
+  color: var(--eq-ink);
+}
+
+.hd-chips {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hd-chip {
+  flex: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 999px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hd-fam {
+  display: inline-flex;
+  color: var(--eq-ink-muted);
+}
+
+.hd-fam[data-family="read-first"] {
+  color: var(--eq-alert);
+}
+
+.hd-fam[data-family="watch"] {
+  color: var(--eq-warn);
+}
+
+.hd-fam[data-family="welcome"] {
+  color: var(--eq-live-text);
+}
+
+.hd-fam[data-family="celebrate"] {
+  color: var(--eq-hero-text);
+}
+
+.hd-fam[data-family="renew"] {
+  color: var(--eq-ok);
+}
+
+.hd-sum[data-spot="true"] {
+  background: var(--eq-live-fill);
+}
+
+.hd-spot-words {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--eq-ink);
+}
+
+.hd-spot-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Upright, the week strip already says the day and its count: the chips
+   keep the line to themselves. */
+@container (max-width: 900px) {
+  .hd-sum-words {
+    display: none;
+  }
+}
+
+/* ---- the Key ---- */
+
+.hd-key-list {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hd-key-list li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+}
+
+.hd-key-list strong {
+  color: var(--eq-ink);
+}
+
+.hd-key-h {
+  margin: 18px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.hd-swatch {
+  width: 24px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface);
+}
+
+.hd-swatch[data-state="in-session"] {
+  border-left: 4px solid var(--eq-live);
+  background: var(--eq-live-fill);
+}
+
+.hd-swatch[data-state="done"] {
+  background: var(--eq-surface-2);
+  opacity: 0.62;
+}
+
+.hd-swatch[data-state="unlinked"] {
+  border-style: dashed;
+  background: var(--eq-surface-2);
+}
+
+.hd-swatch[data-state="staff"] {
+  background: repeating-linear-gradient(135deg, var(--eq-surface-2) 0 4px, var(--eq-surface-3) 4px 8px);
+}
+
+.hd-swatch[data-state="off"] {
+  background: repeating-linear-gradient(135deg, transparent 0 4px, var(--eq-border-strong) 4px 5px);
+}

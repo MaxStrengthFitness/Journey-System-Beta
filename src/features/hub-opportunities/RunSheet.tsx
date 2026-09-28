@@ -47,6 +47,11 @@ export interface RunSheetProps {
   entries: ReadonlyArray<RunSheetEntry>;
   onOpenProfile: (clientId: string) => void;
   onStartSession: (clientId: string) => void;
+  /**
+   * Open on this family, for the whole studio: the Schedule's spotlight
+   * "See them as a list" (calm Hub round). A new nonce applies it again.
+   */
+  request?: { filter: FilterId; nonce: number } | null;
 }
 
 type Scope = "studio" | "mine";
@@ -170,7 +175,7 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   );
 }
 
-export function RunSheet({ day, entries, onOpenProfile, onStartSession }: RunSheetProps) {
+export function RunSheet({ day, entries, onOpenProfile, onStartSession, request = null }: RunSheetProps) {
   const [memory, setMemory] = useState<Remembered>(readMemory);
   const [reversed, setReversed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -178,6 +183,10 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession }: RunShe
   useEffect(() => writeMemory(memory), [memory]);
   // A new day starts with every row closed.
   useEffect(() => setOpenKey(null), [day]);
+  // The spotlight's "See them as a list": its family, for the whole studio.
+  useEffect(() => {
+    if (request) setMemory((m) => ({ ...m, filter: request.filter, scope: "studio" }));
+  }, [request?.filter, request?.nonce]);
 
   const scoped = useMemo(() => (memory.scope === "mine" ? entries.filter((e) => e.mine) : entries), [entries, memory.scope]);
   const counts = useMemo(() => filterCounts(scoped), [scoped]);

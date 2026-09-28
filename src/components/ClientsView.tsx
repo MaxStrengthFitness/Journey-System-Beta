@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Users,
   History,
   Play,
   Loader2,
-  CalendarCheck,
-  ListChecks,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -58,7 +56,7 @@ import { openProfileAt } from "../features/client-profile/profile-nav";
 import { useLeaveGuard } from "../features/unsaved-changes";
 import { LoadBoundary } from "../features/new-version/LoadBoundary";
 import { LoadingArea } from "./LoadingMark";
-import { LayerSwitch, type HubLayer } from "../features/hub-opportunities/LayerSwitch";
+import type { HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
 import { HubCard } from "../features/hub-schedule/HubCard";
 import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
@@ -66,6 +64,10 @@ import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-ho
 import type { Span } from "../features/hub-schedule/grid-model";
 import { useStandingWeeks } from "../features/standing-week/useStandingWeeks";
 import { weekdayOf } from "../features/client-history/model";
+import { DayHeader, DaySummary, KeySheet } from "../features/hub-schedule/DayHeader";
+import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
+import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
+import { rememberMyStudioSection } from "../features/my-studio/section-memory";
 import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 
 /*
@@ -78,56 +80,6 @@ const RunSheet = React.lazy(() => import("../features/hub-opportunities/RunSheet
 
 /** One empty list, so a missing schedule doesn't look new on every render. */
 const NO_SCHEDULES: any[] = [];
-
-/**
- * One number in the Hub's day strip.
- *
- * Value over label, tabular figures so the pair does not shift width as the
- * day fills up. The accent lives on the number
- * alone; the label stays grey. A trainer scanning this row is reading
- * digits, not chrome.
- */
-function DayStat({
-  value,
-  label,
-  sub,
-  icon,
-  tone,
-  title,
-}: {
-  value: number | string;
-  label: string;
-  sub?: string;
-  icon: React.ReactNode;
-  tone: string;
-  title: string;
-}) {
-  return (
-    <div
-      className="flex items-center justify-center gap-2 px-2.5 md:px-3 bg-card"
-      title={title}
-    >
-      <span className={cn("shrink-0 hidden md:block opacity-70", tone)}>
-        {icon}
-      </span>
-      <span className="flex flex-col justify-center leading-none gap-0.5">
-        <span className="flex items-baseline gap-1">
-          <span className={cn("text-base font-black tabular-nums", tone)}>
-            {value}
-          </span>
-          {sub && (
-            <span className="text-[10px] font-bold tabular-nums text-slate-400 dark:text-slate-500">
-              {sub}
-            </span>
-          )}
-        </span>
-        <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap">
-          {label}
-        </span>
-      </span>
-    </div>
-  );
-}
 
 export function ClientsView({
   clients,
@@ -197,8 +149,12 @@ export function ClientsView({
   const [currentTime, setCurrentTime] = useState(new Date());
   /** Schedule (the grid, unchanged) or Opportunities (the run-sheet). Always opens on Schedule. */
   const [layer, setLayer] = useState<HubLayer>("schedule");
-  const carouselRef = useRef<HTMLDivElement | null>(null);
-  const selectedDayRef = useRef<HTMLButtonElement | null>(null);
+  /** The Key sheet (both layers). */
+  const [keyOpen, setKeyOpen] = useState(false);
+  /** The family lit on the grid, for the day it was lit on. */
+  const [spot, setSpot] = useState<{ day: string; family: MomentFamily; next: number } | null>(null);
+  /** "See them as a list": the family the Opportunities list opens on. */
+  const [listRequest, setListRequest] = useState<{ filter: FilterId; nonce: number } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -409,16 +365,6 @@ export function ClientsView({
     }
     return days;
   }, []);
-
-  // Keep the selected day in view when the strip has to scroll (iPad portrait).
-  useEffect(() => {
-    const container = carouselRef.current;
-    const target = selectedDayRef.current;
-    if (!container || !target) return;
-    const left =
-      target.offsetLeft - container.clientWidth / 2 + target.offsetWidth / 2;
-    container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [selectedDate]);
 
   /**
    * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
@@ -656,6 +602,7 @@ export function ClientsView({
         sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
         newToJourney={isNewToJourney(entry, clientObj)}
         usualService={usualService}
+        dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
         rosterLoading={rosterLoading}
         workoutSession={workoutSession}
         logged={logged}
@@ -679,11 +626,48 @@ export function ClientsView({
    * ------------------------------------------------------------------ */
 
   /** Open task rows for the SELECTED day, studio list + this trainer's own. */
-  const { counts: taskCounts } = useStudioTasks(activeStudioId || null, {
+  const { counts: taskCounts, loading: tasksLoading } = useStudioTasks(activeStudioId || null, {
     ownerId: auth.currentUser?.uid ?? null,
     dateKey: calendarLabelKey(selectedDate),
   });
-  const openTaskCount = Math.max(0, taskCounts.total - taskCounts.done);
+  const openTaskCount = tasksLoading ? null : Math.max(0, taskCounts.total - taskCounts.done);
+
+  /*
+   * THE TOP (calm Hub round, Sep 28 2026; AJ: the top bar "is very jumbled").
+   * The week with each day's count and a dot for a day to celebrate, then on
+   * Schedule the day in words and the list's own five chips. features/hub-schedule.
+   */
+  const stripKeys = carouselDays.map((d) => calendarLabelKey(d));
+  const stripKeysKey = stripKeys.join("|");
+  const todayKey = calendarLabelKey(new Date());
+  const bookingCounts = React.useMemo(() => countsByDay(schedules || NO_SCHEDULES), [schedules]);
+  const celebrateDays = React.useMemo(() => {
+    const out = new Set<string>();
+    for (const key of stripKeysKey.split("|")) {
+      if (momentsToday({ ...dayMoments.input, day: key }).some((e) => hasFamily(e, "celebrate"))) out.add(key);
+    }
+    return out;
+  }, [dayMoments.input, stripKeysKey]);
+  const strip = stripDays(stripKeys, todayKey, bookingCounts, (key) => celebrateDays.has(key));
+  const chips = summaryChips(dayMoments.entries);
+  const activeSpot = layer === "schedule" && spot && spot.day === gridDayKey ? spot.family : null;
+  const spotKeys = activeSpot
+    ? gridBlocks
+        .filter((b) => {
+          const c = isStaffBlock(b.booking as any) ? null : findClientForSession(b.booking);
+          const e = c?.id ? dayMoments.byClientId.get(c.id) : undefined;
+          return !!e && hasFamily(e, activeSpot);
+        })
+        .sort((x, y) => x.span.from - y.span.from)
+        .map((b) => b.key)
+    : [];
+  const showNextSpot = () => {
+    if (!spot || spotKeys.length === 0) return;
+    const key = spotKeys[spot.next % spotKeys.length];
+    setSpot({ ...spot, next: spot.next + 1 });
+    const el = Array.from(document.querySelectorAll<HTMLElement>(".hs-slot")).find((s) => s.dataset.blockKey === key);
+    el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+  };
 
   return (
     <motion.div
@@ -1065,104 +1049,46 @@ export function ClientsView({
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
         {!searchTerm ? (
           <div className="flex-1 flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950">
-            {/* Slim strip directly under the header: the day's two numbers +
-                the seven-day carousel. Both share one row so the timeline
-                keeps every vertical pixel it had.
-
-                Two, not four, as of Sep 6. "Complete" restated a fraction of
-                the Sessions count and read as a second booking figure at a
-                glance, and "Open slots" answered a sales question ("can you
-                fit me in?") on a screen a trainer opens to run their day -
-                the number nobody acted on from here. What is left is the two
-                a trainer is actually accountable for on the floor: how many
-                sessions, how much still to do. */}
-            <div className="shrink-0 flex items-center gap-3 md:gap-4 px-3 md:px-4 h-12 border-b border-slate-200 dark:border-slate-800">
-              {/* The Hub's two layers (Sep 27 2026). The strip stays put; only
-                  the body below it changes, and the day is shared. */}
-              <LayerSwitch value={layer} onChange={setLayer} />
-              <div
-                // Two tiles, not four (Sep 6). `grid-cols-2` rather than a
-                // flex row: with equal columns the pair keeps a stable,
-                // balanced width whether the numbers are 0 and 0 or 12 and
-                // 137, where auto-sized flex items would jog sideways every
-                // time a session completed.
-                className="shrink-0 grid grid-cols-2 gap-px rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800 h-9 min-w-[13rem] md:min-w-[15rem]"
-                role="group"
-                aria-label={`Day summary for ${selectedDate.toLocaleDateString([], {
-                  weekday: "long",
-                  month: "short",
-                  day: "numeric",
-                })}`}
-              >
-                <DayStat
-                  value={preBookedCount}
-                  label="Sessions"
-                  icon={<CalendarCheck className="w-3.5 h-3.5" />}
-                  tone="text-cyan-700 dark:text-cyan"
-                  title="Sessions booked on this day"
-                />
-                <DayStat
-                  value={openTaskCount}
-                  label="Tasks"
-                  icon={<ListChecks className="w-3.5 h-3.5" />}
-                  tone={
-                    openTaskCount > 0
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-slate-400 dark:text-slate-500"
-                  }
-                  title="Studio and personal tasks still open for this day"
-                />
-              </div>
-
-              <span className="hidden lg:block text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 whitespace-nowrap shrink-0">
-                {selectedDate.toLocaleDateString([], {
-                  weekday: "long",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-
-              <div
-                ref={carouselRef}
-                role="tablist"
-                aria-label="Select day"
-                className="ml-auto flex items-center gap-1 overflow-x-auto no-scrollbar snap-x snap-mandatory min-w-0 touch-pan-x overscroll-x-contain"
-              >
-                {carouselDays.map((date) => {
-                  const key = calendarLabelKey(date);
-                  const isSelected = key === calendarLabelKey(selectedDate);
-                  const isToday = key === calendarLabelKey(new Date());
-                  const isSunday = date.getDay() === 0;
-                  return (
-                    <button
-                      key={key}
-                      ref={isSelected ? selectedDayRef : undefined}
-                      type="button"
-                      role="tab"
-                      aria-selected={isSelected}
-                      onClick={() => setSelectedDate(date)}
-                      className={cn(
-                        "snap-start shrink-0 w-11 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-colors select-none cursor-pointer",
-                        isSelected
-                          ? "bg-cyan text-slate-900 shadow-[0_0_12px_rgba(56,189,248,0.35)]"
-                          : isToday
-                            ? "bg-slate-200/70 dark:bg-slate-800/70 text-foreground dark:text-white ring-1 ring-cyan/50"
-                            : isSunday
-                              ? "text-slate-400 dark:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800/60",
-                      )}
-                    >
-                      <span className="text-[10px] font-bold uppercase leading-none opacity-80">
-                        {date.toLocaleDateString([], { weekday: "narrow" })}
-                      </span>
-                      <span className="text-sm font-black leading-none tabular-nums">
-                        {date.getDate()}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* The top (calm Hub round): the layers, the week and two doors;
+                on Schedule, the day in words and the chips. */}
+            <DayHeader
+              layer={layer}
+              onLayer={(next) => {
+                setSpot(null);
+                setLayer(next);
+              }}
+              days={strip}
+              selected={gridDayKey}
+              onSelectDay={(key) => {
+                const date = carouselDays.find((d) => calendarLabelKey(d) === key);
+                if (date) setSelectedDate(date);
+              }}
+              openTasks={openTaskCount}
+              onOpenTasks={() => {
+                rememberMyStudioSection("relay");
+                setView("studio-tasks");
+              }}
+              onOpenKey={() => setKeyOpen(true)}
+            />
+            {layer === "schedule" && (
+              <DaySummary
+                title={selectedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
+                sessions={preBookedCount}
+                trainers={gridColumns.filter((c) => c.count > 0).length}
+                chips={chips}
+                spot={activeSpot}
+                spotText={activeSpot ? spotWords(dayMoments.entries, activeSpot) : ""}
+                onSpot={(family) => setSpot(family ? { day: gridDayKey, family, next: 0 } : null)}
+                onNext={showNextSpot}
+                onAsList={() => {
+                  if (!activeSpot) return;
+                  setListRequest({ filter: activeSpot, nonce: Date.now() });
+                  setSpot(null);
+                  setLayer("opportunities");
+                }}
+              />
+            )}
+            <KeySheet open={keyOpen} onClose={() => setKeyOpen(false)} />
 
             {/* A failed read is unknown, never empty: with some clients'
                 Critical notes unread, a card without the triangle proves
@@ -1198,6 +1124,7 @@ export function ClientsView({
                   <RunSheet
                     day={calendarLabelKey(selectedDate)}
                     entries={dayMoments.entries}
+                    request={listRequest}
                     onOpenProfile={(id) => onSelectClient(id)}
                     onStartSession={(id) => {
                       // The Hub search card's own path to a session.

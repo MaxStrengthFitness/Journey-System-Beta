@@ -165,6 +165,7 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
                   <div
                     key={p.item.key}
                     className="hs-slot"
+                    data-block-key={p.item.key}
                     style={{
                       top: p.top,
                       height: p.height,
