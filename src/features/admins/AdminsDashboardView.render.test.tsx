@@ -151,6 +151,7 @@ describe("the Admins dashboard", () => {
       "Franchises",
       "Machines",
       "Standard template",
+      "Studio defaults",
       "Waiting for review",
       "Limbo",
       "Mindbody sync",
@@ -171,6 +172,11 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("Machine catalog");
     await click(byText(el, ".hq-side .hq-nav__item", "Standard template"));
     expect(el.textContent).toContain("The standard template");
+    await click(byText(el, ".hq-side .hq-nav__item", "Studio defaults"));
+    // Nothing set yet in this empty Firestore: every box empty, and it says what that means.
+    expect(el.textContent).toContain("Max Strength's default for every number a studio may set for itself.");
+    expect(el.querySelector<HTMLInputElement>("#hq-default-quietFloorSessions")?.value).toBe("");
+    expect(el.textContent).toContain("The app's default is 2. With this box empty, studios use it.");
     await click(byText(el, ".hq-side .hq-nav__item", "Waiting for review"));
     // The queue AJ asked for (Sep 28 2026), over a database with nothing offered.
     expect(el.textContent).toContain("Offered to every studio");
@@ -211,7 +217,7 @@ describe("the Admins dashboard", () => {
     expect(el.querySelector(".hq-bar .hq-chip--on")?.textContent).toBe("Bug reports");
     expect(el.textContent).toContain("What people told us");
     await click(byText(el, ".hq-bar .hq-place", "Standard"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Machines", "Standard template", "Waiting for review"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Machines", "Standard template", "Studio defaults", "Waiting for review"]);
     expect(el.textContent).toContain("Machine catalog");
   });
 

@@ -60,6 +60,7 @@ import {
   Network,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   BookOpenCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,7 @@ import { useHomeSignals } from "./home/useHomeSignals";
 import { needItems, type NeedDoor } from "./home/needs";
 import { networkSentence, standardSentence } from "./home/sentences";
 import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
+import { SettingDefaultsPage } from "./standard/SettingDefaultsPage";
 import { ActivityPage } from "./activity/ActivityPage";
 import { HqStatus } from "./kit";
 import { isDemoStudio } from "../demo-mode/is-demo";
@@ -126,6 +128,7 @@ const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   franchises: <Network aria-hidden="true" />,
   machines: <Dumbbell aria-hidden="true" />,
   template: <ClipboardList aria-hidden="true" />,
+  defaults: <SlidersHorizontal aria-hidden="true" />,
   review: <GitPullRequest aria-hidden="true" />,
   limbo: <Inbox aria-hidden="true" />,
   sync: <RefreshCw aria-hidden="true" />,
@@ -482,6 +485,7 @@ function AdminsShell({
             {page === "template" && (
               <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />
             )}
+            {page === "defaults" && <SettingDefaultsPage studios={studios} authTrainer={authTrainer} />}
             {/* The review queue (features/machine-db/ShareReviewPanel): what
                 studios offer to every MSF studio, read by an administrator
                 first (AJ, Sep 28 2026). */}

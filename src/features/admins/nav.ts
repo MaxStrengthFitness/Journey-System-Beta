@@ -32,6 +32,7 @@ export type AdminsPage =
   | "franchises"
   | "machines"
   | "template"
+  | "defaults"
   | "review"
   | "limbo"
   | "sync"
@@ -73,6 +74,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
     items: [
       { page: "machines", label: "Machines" },
       { page: "template", label: "Standard template" },
+      // Max Strength's default for every studio setting (the second wave, Sep 28 2026).
+      { page: "defaults", label: "Studio defaults" },
       { page: "review", label: "Waiting for review" },
     ],
   },

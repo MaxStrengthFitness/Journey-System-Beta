@@ -942,3 +942,107 @@
   font-size: 12.5px;
   color: var(--adm-ink-muted);
 }
+
+/* ---------- Studio defaults (the second wave, Sep 28 2026) -----------------
+   A row per setting: the label and its box on one line where there is room,
+   the app's default, one sentence of what it changes, and quietly, who sets
+   their own. The box is wide enough for a number, never cut short. */
+
+.hq-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.hq-settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hq-settings__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--adm-ink-2);
+}
+
+.hq-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--adm-border);
+}
+.hq-setting:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.hq-setting__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.hq-setting__label {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.35;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.hq-setting__control {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.hq-setting__input {
+  width: 7rem;
+  min-height: 44px;
+  font-size: 16px; /* 16px or iOS zooms the page on focus */
+}
+
+.hq-setting__unit {
+  font-size: 13.5px;
+  color: var(--adm-ink-2);
+}
+
+.hq-setting__now {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+
+.hq-setting__help {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--adm-ink-muted);
+  max-width: 74ch;
+}
+
+.hq-setting__warn {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--adm-warn);
+}
+
+.hq-setting__own {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--adm-ink-muted);
+}
