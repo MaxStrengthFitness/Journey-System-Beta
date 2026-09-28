@@ -1,0 +1,115 @@
+/*
+ * THE CODEX FORMAT IN THE EDITOR (v2, Sep 28 2026), and the catalog's
+ * Codex modes (Compare, History, Models).
+ *
+ * This file owns the `adm-mx__` classes; the editor's own `adm-me__`
+ * classes stay editor.css's. Colour comes from admin.tokens.css and nowhere
+ * else, nothing interactive is under 40px, and names are never cut short.
+ */
+
+/* ── The section rail: the optional group ────────────────────────── */
+
+.adm-mx__railgroup {
+  display: block;
+  margin: 10px 10px 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+/* Optional and not written yet: a hollow, faint mark — not the amber of
+   "part done" and not the empty ring of "still missing". */
+.adm-mx__dot-optional {
+  background: transparent;
+  border: 2px dotted var(--adm-ink-faint);
+}
+
+/* ── Sources ─────────────────────────────────────────────────────── */
+
+.adm-mx__srcline .adm-grid {
+  gap: 10px;
+}
+
+/* ── The mode switch on a catalog machine ────────────────────────── */
+
+.adm-mx__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Compare, History and Models share one row shape ─────────────── */
+
+.adm-mx__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-mx__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+}
+
+.adm-mx__itemhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.adm-mx__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.adm-mx__meta {
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.adm-mx__line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.adm-mx__line strong {
+  color: var(--adm-ink);
+}
+
+.adm-mx__removed {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--adm-warn-fill);
+  border: 1px solid var(--adm-warn);
+}
+
+.adm-mx__was {
+  color: var(--adm-ink-muted);
+}
+
+.adm-mx__sentence {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+}
+
+.adm-mx__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

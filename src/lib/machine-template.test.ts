@@ -2,9 +2,12 @@ import { describe, it, expect } from "vitest";
 import type { MachineDefinition, MachineDefinitionField } from "../types/machines";
 import { ADDITIVE_DEFINITION_FIELDS } from "./resolve-machine";
 import {
+  CODEX_METHOD_FIELDS,
+  DEFINITION_KEYS,
   METHOD_DEFINITION_FIELDS,
   STUDIO_DEFINITION_FIELDS,
   canEdit,
+  definitionFieldsOnly,
   describeFields,
   scopeOverrides,
   tierOf,
@@ -46,6 +49,23 @@ const ALL_FIELDS: MachineDefinitionField[] = [
   "baselineLoad",
   "imageUrl",
   "formVideoUrl",
+  // The Codex format, v2 (Sep 28 2026).
+  "stopRules",
+  "watchOuts",
+  "setUp",
+  "dialRules",
+  "getSet",
+  "begin",
+  "rep",
+  "finish",
+  "ifWrong",
+  "adapt",
+  "program",
+  "faults",
+  "understand",
+  "switches",
+  "sources",
+  "modelId",
 ];
 
 describe("the template boundary", () => {
@@ -61,11 +81,40 @@ describe("the template boundary", () => {
 
     expect(sorted.studio.sort()).toEqual([...STUDIO_DEFINITION_FIELDS].sort());
     expect(sorted.additive.sort()).toEqual([...ADDITIVE_DEFINITION_FIELDS].sort());
-    expect(sorted.method.sort()).toEqual([...METHOD_DEFINITION_FIELDS].sort());
+    expect(sorted.method.sort()).toEqual(
+      [...METHOD_DEFINITION_FIELDS, ...CODEX_METHOD_FIELDS].sort(),
+    );
 
     const total =
       sorted.studio.length + sorted.method.length + sorted.additive.length;
     expect(total).toBe(ALL_FIELDS.length);
+  });
+
+  it("knows every field as a definition key, and nothing else", () => {
+    // DEFINITION_KEYS is what a write keeps; a field missing from it would
+    // be silently dropped from every override.
+    expect([...DEFINITION_KEYS].sort()).toEqual([...ALL_FIELDS].sort());
+  });
+
+  it("files the Codex format's safety lists as additive and its model as hardware", () => {
+    expect(tierOf("stopRules")).toBe("additive");
+    expect(tierOf("watchOuts")).toBe("additive");
+    expect(tierOf("modelId")).toBe("studio");
+    for (const f of ["setUp", "dialRules", "rep", "ifWrong", "switches", "sources"] as MachineDefinitionField[]) {
+      expect(tierOf(f)).toBe("method");
+    }
+  });
+
+  it("keeps a resolved machine's bookkeeping out of a definition write", () => {
+    const out = definitionFieldsOnly({
+      name: "Ours",
+      machineId: "m-leg-press",
+      comparisonKey: "m-leg-press",
+      rosterStatus: "active",
+      overriddenFields: [],
+      modelId: "mm-hoist-roc-it-leg-press",
+    });
+    expect(out).toEqual({ name: "Ours", modelId: "mm-hoist-roc-it-leg-press" });
   });
 
   it("puts the hardware on the studio's side", () => {

@@ -20,7 +20,9 @@ import {
 } from "../../../../lib/machine-template";
 import { SECTIONS, completeness, describeGaps, sectionStates } from "../completeness";
 import { SECTION_BODIES, type SectionProps } from "./sections";
+import { CODEX_SECTIONS, codexLinesIn, tidyCodexLists, type CodexSectionProps } from "./codex-sections";
 import "./editor.css";
+import "./codex-editor.css";
 
 /**
  * THE MACHINE EDITOR — one screen, three doors.
@@ -124,7 +126,11 @@ export function MachineEditor({
     async (patch) => {
       // The last gate. The editor already hides what a studio may not touch, so
       // in normal use this removes nothing — which is the point of having it.
-      await onSave(scopeOverrides(scope, patch), draftRef.current);
+      // The Codex format's lists lose any row added and never filled first.
+      await onSave(
+        scopeOverrides(scope, tidyCodexLists(patch)),
+        tidyCodexLists(draftRef.current) as MachineDefinition,
+      );
     },
     // The SAVED name: "You have unsaved changes to Leg Press", even while the
     // name itself is what is being retyped.
@@ -133,7 +139,7 @@ export function MachineEditor({
   draftRef.current = form.value;
 
   const [reading, setReading] = React.useState(false);
-  const [active, setActive] = React.useState(SECTIONS[0].id);
+  const [active, setActive] = React.useState<string>(SECTIONS[0].id);
   const bodyRef = React.useRef<HTMLDivElement | null>(null);
 
   const draft = form.value;
@@ -157,10 +163,17 @@ export function MachineEditor({
   );
 
   const goto = (id: string) => {
-    setActive(id as typeof active);
+    setActive(id);
     const el = bodyRef.current?.querySelector(`#machine-section-${id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // The Codex format's sections ask the boundary field by field: one section
+  // holds a dial's letter (the unit's) beside its rule (the method).
+  const canWrite = React.useCallback(
+    (key: keyof MachineDefinition) => canEdit(scope, key),
+    [scope],
+  );
 
   const warnings = draft.clinicalWarnings ?? [];
   const neverToFailure = draft.execution?.neverToFailure;
@@ -273,6 +286,27 @@ export function MachineEditor({
               </span>
             </button>
           ))}
+          {/* The Codex format (v2): optional, so no count of what is
+              missing — only how much is written. */}
+          <span className="adm-mx__railgroup">The Codex · optional</span>
+          {CODEX_SECTIONS.map((c) => {
+            const n = codexLinesIn(draft, c.fields);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={`adm-me__railbtn${active === c.id ? " adm-me__railbtn--on" : ""}`}
+                onClick={() => goto(c.id)}
+              >
+                <span
+                  className={`adm-me__dot${n > 0 ? " adm-me__dot--done" : " adm-mx__dot-optional"}`}
+                  aria-hidden
+                />
+                <span className="adm-me__railname">{c.title}</span>
+                <span className="adm-me__railcount">{n > 0 ? n : "–"}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="adm-me__main" ref={bodyRef}>
@@ -304,6 +338,36 @@ export function MachineEditor({
                 }
               >
                 <div id={`machine-section-${s.id}`} className="adm-me__section">
+                  <Body {...props} />
+                </div>
+              </AdminPanel>
+            );
+          })}
+
+          {CODEX_SECTIONS.map((c) => {
+            const n = codexLinesIn(draft, c.fields);
+            const props: CodexSectionProps = {
+              value: draft,
+              standard,
+              set: (key, v) => form.setField(key, v),
+              readOnly: reading,
+              changed,
+              revert,
+              canWrite,
+            };
+            const Body = c.Body;
+            return (
+              <AdminPanel
+                key={c.id}
+                title={c.title}
+                subtitle={c.blurb}
+                actions={
+                  <AdminBadge tone="neutral">
+                    {n > 0 ? `${n} ${n === 1 ? "line" : "lines"} written` : "Optional"}
+                  </AdminBadge>
+                }
+              >
+                <div id={`machine-section-${c.id}`} className="adm-me__section">
                   <Body {...props} />
                 </div>
               </AdminPanel>

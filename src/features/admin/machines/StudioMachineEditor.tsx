@@ -9,10 +9,10 @@ import type {
 } from "../../../types/machines";
 import { studioMachineId } from "../../../types/machines";
 import type { EditScope } from "../../../lib/machine-template";
-import { describeFields, scopeOverrides } from "../../../lib/machine-template";
+import { definitionFieldsOnly, describeFields, scopeOverrides } from "../../../lib/machine-template";
 import { pruneOverrides } from "../equipment/clone";
 import { MachineEditor } from "./editor/MachineEditor";
-import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
+import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 
 /**
  * EDITING A STUDIO'S OWN MACHINE.
@@ -113,8 +113,10 @@ export function StudioMachineEditor({
         ...(basedOn ? { basedOn } : {}),
         status: entry?.status ?? ("active" as const),
         // A custom machine inherits nothing, so its definition is stored
-        // whole rather than as a diff.
-        definition: draft,
+        // whole rather than as a diff — its own fields only (the draft is a
+        // resolved machine and carries the floor's bookkeeping too), and
+        // with nothing `undefined` in it, which Firestore refuses.
+        definition: stripUndefined(definitionFieldsOnly(draft)),
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       };
@@ -135,7 +137,7 @@ export function StudioMachineEditor({
     // sitting's patch, so overrides made earlier survive.
     if (!catalogEntry) throw new Error("This machine's catalog entry is missing.");
     const scoped = scopeOverrides(scope, draft as Partial<MachineDefinition>);
-    const overrides = pruneOverrides(catalogEntry, scoped);
+    const overrides = stripUndefined(pruneOverrides(catalogEntry, scoped));
 
     const ref = doc(db, "studios", studioId, "roster", catalogEntry.id);
     const body = {

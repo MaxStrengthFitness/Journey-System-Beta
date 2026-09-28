@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { deleteField, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
 import { MachineEditor } from "./editor/MachineEditor";
-import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
+import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 
 /**
  * EDITING THE STANDARD — the Max Strength catalog entry itself.
@@ -69,14 +69,22 @@ export function CatalogMachineEditor({
       throw new Error(`A machine with the id ${id} already exists.`);
     }
 
+    // A field cleared to nothing (a Codex leaf emptied) is deleted rather
+    // than written as `undefined`, which Firestore refuses; an `undefined`
+    // left inside an object is dropped for the same reason.
+    const changes: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(patch)) {
+      changes[k] = v === undefined ? (isNew ? undefined : deleteField()) : stripUndefined(v);
+    }
+    const body = stripUndefined({ ...(isNew ? value : {}), ...changes });
+
     await setDoc(
       doc(db, "machines", id),
       {
         // On create the whole definition goes in; on an edit only the diff,
         // so a field nobody touched is not rewritten with what it already
         // said and its updatedAt does not move.
-        ...(isNew ? value : {}),
-        ...patch,
+        ...body,
         id,
         status: machine?.status ?? "active",
         defaultOrder: machine?.defaultOrder ?? (catalogSize + 1) * 10,

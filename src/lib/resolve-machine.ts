@@ -1,5 +1,4 @@
 import {
-  AlignmentCheckpoint,
   MachineCatalogEntry,
   MachineDefinition,
   MachineDefinitionField,
@@ -45,26 +44,46 @@ const ADDITIVE_STRING_FIELDS = [
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
 /**
- * Alignment checkpoints are additive for the same reason, but they are
- * objects, so they dedupe on `title` rather than on the whole value.
+ * Safety lists whose entries are OBJECTS, so they dedupe on one named part
+ * rather than on the whole value: a checkpoint on its title, and the Codex
+ * format's stop rules (on their words) and watch-outs (on the condition).
+ * The catalog's entry wins a collision, so a studio restating one cannot
+ * weaken it.
  */
-const ADDITIVE_CHECKPOINT_FIELDS = [
-  "alignmentCheckpoints",
-] as const satisfies readonly (keyof MachineDefinition)[];
+const ADDITIVE_KEYED_FIELDS = {
+  alignmentCheckpoints: "title",
+  stopRules: "text",
+  watchOuts: "condition",
+} as const satisfies Partial<Record<keyof MachineDefinition, string>>;
+
+type AdditiveKeyedField = keyof typeof ADDITIVE_KEYED_FIELDS;
 
 /** Everything a studio can extend but not delete. For docs and UI copy. */
 export const ADDITIVE_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] =
-  [...ADDITIVE_STRING_FIELDS, ...ADDITIVE_CHECKPOINT_FIELDS];
+  [...ADDITIVE_STRING_FIELDS, ...(Object.keys(ADDITIVE_KEYED_FIELDS) as AdditiveKeyedField[])];
 
 type AdditiveStringField = (typeof ADDITIVE_STRING_FIELDS)[number];
-type AdditiveCheckpointField = (typeof ADDITIVE_CHECKPOINT_FIELDS)[number];
 
 function isAdditiveStringField(key: string): key is AdditiveStringField {
   return (ADDITIVE_STRING_FIELDS as readonly string[]).includes(key);
 }
 
-function isAdditiveCheckpointField(key: string): key is AdditiveCheckpointField {
-  return (ADDITIVE_CHECKPOINT_FIELDS as readonly string[]).includes(key);
+function isAdditiveKeyedField(key: string): key is AdditiveKeyedField {
+  return Object.prototype.hasOwnProperty.call(ADDITIVE_KEYED_FIELDS, key);
+}
+
+/**
+ * The words a safety list's entry is known by — the whole line for a list of
+ * strings, the named part for a list of objects. Exported so the editor, the
+ * Compare view and the write gate all agree on when two lines are one line.
+ */
+export function safetyLineKey(field: keyof MachineDefinition, entry: unknown): string {
+  if (typeof entry === "string") return entry.trim();
+  if (isAdditiveKeyedField(field) && entry && typeof entry === "object") {
+    const part = (entry as Record<string, unknown>)[ADDITIVE_KEYED_FIELDS[field]];
+    return typeof part === "string" ? part.trim() : "";
+  }
+  return "";
 }
 
 /** Union preserving catalog order first, then studio additions, deduped. */
@@ -72,6 +91,7 @@ function unionStrings(base: string[] = [], extra: string[] = []): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const v of [...base, ...extra]) {
+    if (typeof v !== "string") continue;
     const k = v.trim();
     if (!k || seen.has(k)) continue;
     seen.add(k);
@@ -80,20 +100,53 @@ function unionStrings(base: string[] = [], extra: string[] = []): string[] {
   return out;
 }
 
-/** Same union, keyed on checkpoint title so a studio can reword its own. */
-function unionCheckpoints(
-  base: AlignmentCheckpoint[] = [],
-  extra: AlignmentCheckpoint[] = [],
-): AlignmentCheckpoint[] {
+/** Same union for a list of objects, keyed on one part, case-blind. */
+function unionKeyed<T>(field: AdditiveKeyedField, base: T[] = [], extra: T[] = []): T[] {
   const seen = new Set<string>();
-  const out: AlignmentCheckpoint[] = [];
-  for (const c of [...base, ...extra]) {
-    const k = (c?.title ?? "").trim().toLowerCase();
+  const out: T[] = [];
+  for (const c of [...(Array.isArray(base) ? base : []), ...(Array.isArray(extra) ? extra : [])]) {
+    const k = safetyLineKey(field, c).toLowerCase();
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(c);
   }
   return out;
+}
+
+/**
+ * `sources` (the Codex format, v2): one record per method line, keyed on the
+ * line's path and words. A studio recording where ITS wording came from
+ * replaces the catalog's record for that one line and leaves every other
+ * line's record live-inherited — replacing the whole list would freeze head
+ * office's future source corrections out of that floor.
+ */
+const KEYED_MERGE_FIELDS = ["sources"] as const satisfies readonly (keyof MachineDefinition)[];
+
+function isKeyedMergeField(key: string): boolean {
+  return (KEYED_MERGE_FIELDS as readonly string[]).includes(key);
+}
+
+function sourceKey(entry: unknown): string {
+  if (!entry || typeof entry !== "object") return "";
+  const e = entry as { path?: unknown; line?: unknown };
+  const path = typeof e.path === "string" ? e.path.trim() : "";
+  if (!path) return "";
+  const line = typeof e.line === "string" ? e.line.trim() : "";
+  return `${path}\u0000${line}`;
+}
+
+/** Catalog records first; a studio record replaces the one for the same line. */
+function mergeKeyedRecords(base: unknown, extra: unknown): unknown[] {
+  const out = new Map<string, unknown>();
+  for (const e of Array.isArray(base) ? base : []) {
+    const k = sourceKey(e);
+    if (k) out.set(k, e);
+  }
+  for (const e of Array.isArray(extra) ? extra : []) {
+    const k = sourceKey(e);
+    if (k) out.set(k, e);
+  }
+  return [...out.values()];
 }
 
 /**
@@ -115,10 +168,25 @@ function unionCheckpoints(
  * columns are independent, and the limited-mobility column in particular
  * carries the Academy's static-hold guidance that a studio editing the
  * taller-stature column must not drop.
+ *
+ * The Codex format's object leaves (v2, Sep 28 2026) are bags of the same
+ * kind — set-up's entry, preload and starting-load rule are three separate
+ * judgements — and so are its switches and its per-dial rules (keyed by the
+ * dial's key). They merge per key for the same reason.
  */
 const MERGED_FLAT_FIELDS = [
   "universalBaseline",
   "defaultSettings",
+  "setUp",
+  "dialRules",
+  "getSet",
+  "begin",
+  "rep",
+  "finish",
+  "adapt",
+  "program",
+  "understand",
+  "switches",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
 const MERGED_COLUMN_FIELDS = [
@@ -201,6 +269,22 @@ export function pruneMergedField(
     return Object.keys(out).length ? out : undefined;
   }
 
+  // A line's source record is stored only when it differs from the
+  // catalog's record for the same line (the keyed merge above).
+  if (isKeyedMergeField(field)) {
+    if (!Array.isArray(value)) return undefined;
+    const b = new Map<string, unknown>();
+    for (const e of Array.isArray(base) ? base : []) {
+      const k = sourceKey(e);
+      if (k) b.set(k, e);
+    }
+    const out = value.filter((e) => {
+      const k = sourceKey(e);
+      return !!k && !sameLoose(e, b.get(k));
+    });
+    return out.length ? out : undefined;
+  }
+
   return value;
 }
 
@@ -269,11 +353,17 @@ export function mergeMachineDefinition(
       continue;
     }
 
-    if (isAdditiveCheckpointField(key)) {
-      merged[field] = unionCheckpoints(
-        base[field] as AlignmentCheckpoint[],
-        value as AlignmentCheckpoint[],
+    if (isAdditiveKeyedField(key)) {
+      merged[field] = unionKeyed(
+        key,
+        base[field] as unknown[],
+        value as unknown[],
       ) as never;
+      continue;
+    }
+
+    if (isKeyedMergeField(key)) {
+      merged[field] = mergeKeyedRecords(base[field], value) as never;
       continue;
     }
 

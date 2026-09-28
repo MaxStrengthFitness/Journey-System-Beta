@@ -92,9 +92,11 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | `editor/sections.tsx` | The eight sections, each in prose or inputs from one source. |
 | `editor/controls.tsx` | The inputs. `FieldShell` says inherited-vs-changed per field. |
 | `completeness.ts` | "What is this machine still missing", named in plain English. Every check has a typed `GapId` so code can block on a specific one without matching prose. |
+| `editor/codex-sections.tsx` | The Codex format, v2 (Sep 28 2026): four OPTIONAL sections after the eight — at the machine, the set and after, study, sources. No gaps, so completeness and the catalog gate are untouched. The format itself: `features/machine-codex/README.md`. |
+| `editor/codex-controls.tsx` | Their controls: `RecordList` (a list of small records from a field description), `LeafLine`, `withLine` (a cleared line is deleted, not stored as ""). |
 | `../catalog/review.ts` | What a studio's offer would cost the catalog — the method it wrote, what is still missing, what differs from the machine it is based on. |
 | `../catalog/SubmissionReview.tsx` | That offer opened in this editor, at `scope="catalog"`. Saving records a correction on the offer; it does not publish. |
-| `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. |
+| `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. `codexFieldsOf` reads the v2 fields — well-formed or not at all, so an old definition reads exactly as before — and `stripUndefined` readies a write (Firestore refuses `undefined`; the catalog save turns a field cleared to nothing into a delete). |
 
 ## The editor round that has not happened yet
 

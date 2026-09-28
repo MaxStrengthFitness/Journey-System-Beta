@@ -111,6 +111,8 @@ export const STUDIO_DEFINITION_FIELDS = [
   // A photo of the machine in their room, not the one in the brochure.
   "imageUrl",
   "formVideoUrl",
+  // Which model this machine is (machineModels/{id}) — the Codex format, v2.
+  "modelId",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
 export type StudioDefinitionField = (typeof STUDIO_DEFINITION_FIELDS)[number];
@@ -148,6 +150,38 @@ export function tierOf(field: MachineDefinitionField): TemplateTier {
   if (isStudioField(field)) return "studio";
   return "method";
 }
+
+/**
+ * The Codex format's method fields (v2, Sep 28 2026): the leaves, each
+ * dial's rule, the switches and every method line's source. On the
+ * corporate side by the remainder rule; listed so the boundary's test and
+ * the editor can name them.
+ *
+ * Kept apart from METHOD_DEFINITION_FIELDS on purpose: the catalog gate's
+ * review (features/admin/catalog/review.ts) walks that list against its own
+ * hand-written DEFINITION_FIELDS, and a v2 field in one and not the other
+ * fails review.test.ts. Folding these in is a two-line change there — see
+ * docs/rounds/2026-09-28-codex-2.md, "For the integrator".
+ */
+export const CODEX_METHOD_FIELDS: readonly MachineDefinitionField[] = (
+  [
+    "stopRules",
+    "watchOuts",
+    "setUp",
+    "dialRules",
+    "getSet",
+    "begin",
+    "rep",
+    "finish",
+    "ifWrong",
+    "adapt",
+    "program",
+    "faults",
+    "understand",
+    "switches",
+    "sources",
+  ] as MachineDefinitionField[]
+).filter((f) => tierOf(f) === "method");
 
 /** Every field on the corporate side, derived so it cannot drift. */
 export const METHOD_DEFINITION_FIELDS: readonly MachineDefinitionField[] =
@@ -248,7 +282,86 @@ export const FIELD_LABELS: Partial<Record<MachineDefinitionField, string>> = {
   clinicalNote: "clinical note",
   execution: "execution and cadence",
   biomechanicalNotes: "biomechanics notes",
+  // The Codex format, v2.
+  modelId: "the model",
+  stopRules: "stop rules",
+  watchOuts: "watch-outs",
+  setUp: "the set-up",
+  dialRules: "the dials' rules",
+  getSet: "get set",
+  begin: "the begin",
+  rep: "the rep",
+  finish: "the finish",
+  ifWrong: "if something goes wrong",
+  adapt: "adapt",
+  program: "program it",
+  faults: "faults and fixes",
+  understand: "understand",
+  switches: "the switches",
+  sources: "sources",
 };
+
+/**
+ * Every field a machine definition may carry, v1 and v2 — the keys a write
+ * of a definition or an override may hold. Anything else on a draft is
+ * bookkeeping from somewhere else (a resolved machine's `machineId`,
+ * `comparisonKey`, `rosterStatus`…) and must not be stored as an override.
+ */
+export const DEFINITION_KEYS: readonly MachineDefinitionField[] = [
+  "name",
+  "shortName",
+  "anatomicalRegion",
+  "movementPattern",
+  "kinematicClass",
+  "kinematicClassification",
+  "executionPosture",
+  "primaryMuscles",
+  "secondaryMuscles",
+  "synergistMuscles",
+  "musculature",
+  "preferredView",
+  "clinicalNote",
+  "universalBaseline",
+  "bodyTypeAdjustments",
+  "alignmentCheckpoints",
+  "execution",
+  "clinicalWarnings",
+  "contraindicatedFor",
+  "sequencingContraindications",
+  "biomechanicalNotes",
+  "settingFields",
+  "defaultSettings",
+  "baselineLoad",
+  "imageUrl",
+  "formVideoUrl",
+  "stopRules",
+  "watchOuts",
+  "setUp",
+  "dialRules",
+  "getSet",
+  "begin",
+  "rep",
+  "finish",
+  "ifWrong",
+  "adapt",
+  "program",
+  "faults",
+  "understand",
+  "switches",
+  "sources",
+  "modelId",
+];
+
+/** Only the definition's own fields, for a write that must not carry anything else. */
+export function definitionFieldsOnly<T extends object>(value: T): Partial<MachineDefinition> {
+  const out: Partial<MachineDefinition> = {};
+  const src = value as Record<string, unknown>;
+  for (const key of DEFINITION_KEYS) {
+    const v = src[key];
+    if (v !== undefined) (out as Record<string, unknown>)[key] = v;
+  }
+  return out;
+}
 
 /** "baseline setup, the dials and starting weight" — never "3 overrides". */
 export function describeFields(fields: readonly MachineDefinitionField[]): string {

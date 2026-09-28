@@ -3,6 +3,7 @@ import {
   resolveMachine,
   resolveUnrostered,
   mergeMachineDefinition,
+  pruneMergedField,
 } from "./resolve-machine";
 import {
   MachineCatalogEntry,
@@ -499,6 +500,117 @@ describe("mergeMachineDefinition", () => {
     const snapshot = JSON.stringify(legPress);
     mergeMachineDefinition(legPress, { clinicalWarnings: ["added"] });
     expect(JSON.stringify(legPress)).toBe(snapshot);
+  });
+});
+
+describe("the Codex format, v2 — merging a studio's copy", () => {
+  const codexLegPress: MachineCatalogEntry = {
+    ...legPress,
+    setUp: {
+      entry: "Have a seat, feet on the frame below, butt back, lay back.",
+      preload: "20 lb main + 18 lb accessory = 38 lb.",
+    },
+    dialRules: {
+      seat: { rule: "The footplate meets the end stop just before the knees straighten." },
+      gap: { rule: "A bigger gap means less range." },
+    },
+    switches: { lowerTurn: "stackTouch", tscCapable: true },
+    stopRules: [{ text: "The knees never lock out at the end stop." }],
+    watchOuts: [{ condition: "Sensitive lower back", action: "A bigger gap, P3, away from the Lumbar." }],
+    sources: [
+      { path: "setUp.entry", kind: "academy", ref: "MSF Lower Body - setup and instruction.txt" },
+      { path: "setUp.preload", kind: "guide" },
+    ],
+  };
+
+  it("reads a v1 definition exactly as before: no v2 key appears from nowhere", () => {
+    const r = resolveMachine(fromCatalog(), legPress)!;
+    for (const k of ["setUp", "dialRules", "switches", "stopRules", "watchOuts", "sources", "modelId"]) {
+      expect(k in r).toBe(false);
+    }
+  });
+
+  it("merges an object leaf per key, so one corrected line keeps the rest inherited", () => {
+    const r = resolveMachine(
+      fromCatalog({ setUp: { preload: "Our unit has no accessory stack: 20 lb." } }),
+      codexLegPress,
+    )!;
+    expect(r.setUp).toEqual({
+      entry: codexLegPress.setUp!.entry,
+      preload: "Our unit has no accessory stack: 20 lb.",
+    });
+  });
+
+  it("merges each dial's rule by the dial's key, and the switches per key", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        dialRules: { gap: { rule: "Our gap starts at 3." } },
+        switches: { tscCapable: false },
+      } as Partial<MachineDefinition>),
+      codexLegPress,
+    )!;
+    expect(r.dialRules?.seat.rule).toContain("end stop");
+    expect(r.dialRules?.gap.rule).toBe("Our gap starts at 3.");
+    expect(r.switches).toEqual({ lowerTurn: "stackTouch", tscCapable: false });
+  });
+
+  it("adds a studio's stop rule to the catalog's and cannot drop the catalog's", () => {
+    const r = resolveMachine(
+      fromCatalog({ stopRules: [{ text: "Our footplate latch sticks: check it's released." }] }),
+      codexLegPress,
+    )!;
+    expect(r.stopRules?.map((s) => s.text)).toEqual([
+      "The knees never lock out at the end stop.",
+      "Our footplate latch sticks: check it's released.",
+    ]);
+    const emptied = resolveMachine(fromCatalog({ stopRules: [], watchOuts: [] }), codexLegPress)!;
+    expect(emptied.stopRules).toHaveLength(1);
+    expect(emptied.watchOuts).toHaveLength(1);
+  });
+
+  it("keeps the catalog's watch-out when a studio restates the condition", () => {
+    const r = resolveMachine(
+      fromCatalog({ watchOuts: [{ condition: "sensitive lower back", action: "Ignore it." }] }),
+      codexLegPress,
+    )!;
+    expect(r.watchOuts).toEqual(codexLegPress.watchOuts);
+  });
+
+  it("replaces one line's source record and keeps every other line's live", () => {
+    const r = resolveMachine(
+      fromCatalog({ sources: [{ path: "setUp.preload", kind: "academy", ref: "LP – Quick Reference Guide.txt" }] }),
+      codexLegPress,
+    )!;
+    expect(r.sources).toEqual([
+      codexLegPress.sources![0],
+      { path: "setUp.preload", kind: "academy", ref: "LP – Quick Reference Guide.txt" },
+    ]);
+  });
+});
+
+describe("pruneMergedField — the Codex format's write side", () => {
+  it("stores only the object leaf's keys that differ", () => {
+    expect(
+      pruneMergedField(
+        "setUp",
+        { entry: "Sit.", preload: "38 lb." },
+        { entry: "Sit.", preload: "20 lb." },
+      ),
+    ).toEqual({ preload: "20 lb." });
+  });
+
+  it("stores only the source records that differ from the catalog's", () => {
+    const base = [
+      { path: "setUp.entry", kind: "academy" },
+      { path: "setUp.preload", kind: "guide" },
+    ];
+    expect(
+      pruneMergedField("sources", base, [
+        { path: "setUp.entry", kind: "academy" },
+        { path: "setUp.preload", kind: "academy", ref: "QRG" },
+      ]),
+    ).toEqual([{ path: "setUp.preload", kind: "academy", ref: "QRG" }]);
+    expect(pruneMergedField("sources", base, base)).toBeUndefined();
   });
 });
 
