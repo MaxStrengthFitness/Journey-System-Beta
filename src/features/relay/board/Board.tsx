@@ -159,6 +159,12 @@ export interface BoardProps {
   around?: ReactNode;
   /** Answers kept in the Playbook today, for Team today's "Asks answered" line. */
   keptToday?: number;
+  /**
+   * The studio's quiet-floor number: `quietFloorSessions` from
+   * features/studio-settings, read by the host (Sep 28 2026). Absent, the
+   * app's default.
+   */
+  quietFloorSessions?: number;
 }
 
 export function Board({
@@ -175,6 +181,7 @@ export function Board({
   unknown = false,
   around,
   keptToday = 0,
+  quietFloorSessions,
 }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
@@ -237,6 +244,7 @@ export function Board({
     coverAsk: coverAsk ? { who: coverAsk.createdBy.name, title: coverAsk.title } : null,
     handedFrom,
     newInitiative: initiative ? { who: initiative.createdBy.name, title: initiative.title } : null,
+    quietFloorSessions,
   });
   // Opened on an initiative once: the next visit on this iPad moves on.
   useEffect(() => {

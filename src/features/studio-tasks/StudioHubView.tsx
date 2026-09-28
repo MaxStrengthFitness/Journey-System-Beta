@@ -75,6 +75,7 @@ import { isOnJob, isUpForGrabs, jobTopic } from "../relay/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../relay/GlanceBand";
 import { Board } from "../relay/board/Board";
 import { SinceYouWereIn } from "../relay/board/SinceYouWereIn";
+import { useStudioSettings } from "../studio-settings";
 import { jobsBehind, type DoorId } from "../relay/board/doors";
 import { ShiftRings } from "../relay/board/ShiftRings";
 import { FloorMap } from "../relay/board/FloorMap";
@@ -199,6 +200,14 @@ export function StudioHubView({
   const leadsJobs = leadsHere(authTrainer, activeStudioId);
   const teamJobs = useTeamJobs(activeStudioId ?? null);
   const relay = useRelayMaybe();
+  /*
+   * THE STUDIO'S OWN NUMBERS (Sep 28 2026, AJ: "all yes, let the admins
+   * assign the default within the app"): the quiet floor Right now measures
+   * by — the studio's own, else Max Strength's default, else the app's
+   * (features/studio-settings). Only inside Relay, where the Board reads it.
+   */
+  const settings = useStudioSettings(relay ? (activeStudioId ?? null) : null, activeStudio);
+  const quietFloor = settings.value("quietFloorSessions");
   const [composingJob, setComposingJob] = useState(false);
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
   const openJob: TeamJob | null = useMemo(
@@ -530,6 +539,7 @@ export function StudioHubView({
             resolved={recentlyResolved}
             unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
             keptToday={keptToday}
+            quietFloorSessions={quietFloor ?? undefined}
             around={<SinceYouWereIn rows={rows} jobs={teamJobs.jobs} resolved={recentlyResolved} playbook={playbookEntries} />}
           />
         ) : (

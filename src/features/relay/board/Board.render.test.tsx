@@ -137,7 +137,7 @@ function relayValue(over: Partial<RelayContextValue> = {}): RelayContextValue {
 }
 
 async function render(
-  props: { requests?: ReturnType<typeof ask>[]; relay?: Partial<RelayContextValue>; rows?: TaskRow[]; unknown?: boolean } = {},
+  props: { requests?: ReturnType<typeof ask>[]; relay?: Partial<RelayContextValue>; rows?: TaskRow[]; unknown?: boolean; quietFloorSessions?: number } = {},
 ) {
   const actions = fakeActions();
   const relay = relayValue(props.relay);
@@ -164,6 +164,7 @@ async function render(
             loading={false}
             behind={(door) => <p data-behind={door}>Lanes behind {door}</p>}
             unknown={props.unknown}
+            quietFloorSessions={props.quietFloorSessions}
           />
         </RelayProvider>
       </ToastProvider>,
@@ -185,6 +186,13 @@ describe("the Board", () => {
     expect(open?.textContent).toContain("Floor work");
     expect(open?.querySelector('[aria-label="Relay\'s pick"]')).not.toBeNull();
     expect(h.querySelector("[data-behind]")?.getAttribute("data-behind")).toBe("floor");
+  });
+
+  it("measures a quiet floor by the studio's own number (the setting, Sep 28 2026)", async () => {
+    // Two sessions running: quiet by the app's 2, busy for a studio that set 1.
+    const { h } = await render({ quietFloorSessions: 1 });
+    expect(h.querySelector(".rbd-lens")?.textContent).toContain("a good time for desk work");
+    expect(h.querySelector('.rbd-door[aria-pressed="true"]')?.textContent).toContain("Desk work");
   });
 
   it("deals the best fit as the biggest words, with Take it and Not now the same size", async () => {

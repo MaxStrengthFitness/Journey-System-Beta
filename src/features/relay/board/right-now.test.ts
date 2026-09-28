@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BEREGOND, IORETH, MABLUNG, TODAY, booking } from "./fixtures";
 import { DEFAULT_SHIFT_HOURS, nowContext, type NowSession } from "./now-context";
-import { QUIET_FLOOR_SESSIONS, floorLoad, isQuiet, laterToday, loadWords, rightNow, type RightNowInput } from "./right-now";
+import { floorLoad, isQuiet, laterToday, loadWords, rightNow, type RightNowInput } from "./right-now";
+import { SETTING_BY_KEY } from "../../studio-settings/registry";
 
 const at = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -39,10 +40,16 @@ describe("the floor's load", () => {
     expect(floorLoad([tomorrow] as never, TODAY, at("14:18")).known).toBe(false);
   });
 
-  it("calls the floor quiet at the studio's number or fewer (2 until AJ approves a setting per studio)", () => {
-    expect(QUIET_FLOOR_SESSIONS).toBe(2);
+  it("calls the floor quiet at the studio's number or fewer: the setting, else the app's default of 2", () => {
+    // The number lives in the studio settings' registry, not here (Sep 28 2026).
+    expect(SETTING_BY_KEY.quietFloorSessions.appDefault).toBe(2);
     expect(isQuiet({ known: true, running: 1, startingSoon: 1 })).toBe(true);
     expect(isQuiet({ known: true, running: 2, startingSoon: 1 })).toBe(false);
+    // A studio that set 4: three sessions is still a quiet floor there.
+    expect(isQuiet({ known: true, running: 2, startingSoon: 1 }, 4)).toBe(true);
+    // A studio that set 0: only an empty floor is quiet.
+    expect(isQuiet({ known: true, running: 0, startingSoon: 1 }, 0)).toBe(false);
+    expect(isQuiet({ known: false, running: 0, startingSoon: 0 }, 12)).toBe(false);
   });
 
   it("says the load in words", () => {
@@ -75,6 +82,16 @@ describe("Right now", () => {
       door: "desk",
       sentence: "5 sessions running now, 1 more starting in the next 20 minutes: a good time for desk work.",
     });
+  });
+
+  it("measures quiet by the studio's own number (the setting, Sep 28 2026)", () => {
+    const three = { known: true, running: 2, startingSoon: 1 };
+    expect(rightNow(base({ load: three })).door).toBe("desk");
+    expect(rightNow(base({ load: three, quietFloorSessions: 4 }))).toEqual({
+      door: "floor",
+      sentence: "The floor is quiet: 2 sessions running now, 1 more starting in the next 20 minutes. A good time for floor work.",
+    });
+    expect(rightNow(base({ quietFloorSessions: 1 })).door).toBe("desk");
   });
 
   it("puts a teammate's cover ask first, then work handed to you, then a new initiative", () => {

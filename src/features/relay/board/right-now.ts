@@ -24,8 +24,8 @@
  *                                           not guess
  *   the floor is quiet (sessions running
  *     now and starting in the next 20
- *     minutes are QUIET_FLOOR_SESSIONS
- *     or fewer)                           → Floor work
+ *     minutes are the studio's quiet-
+ *     floor number or fewer)              → Floor work
  *   otherwise                             → Desk work
  *
  * With under five minutes free the sentence says so ("Quick ones only") and
@@ -39,15 +39,18 @@ import { isStaffBlock } from "../../../lib/booking-state";
 import { studioDateKey, toDate, zonedHM } from "../../../lib/studio-time";
 import { minutesToClock, type NowContext } from "./now-context";
 import type { DoorId } from "./doors";
+import { SETTING_BY_KEY } from "../../studio-settings/registry";
 
 /**
- * How many sessions at once still counts as a quiet floor. AJ (q3, Sep 27
- * 2026): "depends on the studio". Storing a number per studio is a new field
- * on the studio document, which he has not approved yet, so every studio
- * reads 2 (the blueprint's default) until it becomes My Studio → Studio's
- * setting, beside the studio's day, once he does.
+ * How many sessions at once still counts as a quiet floor is the STUDIO's
+ * number. AJ (q3, Sep 27 2026): "depends on the studio"; approved as a
+ * setting on Sep 28 2026 ("all yes, let the admins assign the default within
+ * the app"). The Board reads `quietFloorSessions` through
+ * features/studio-settings (the studio's own, else Max Strength's default,
+ * else the app's) and hands it in; this module keeps no number of its own.
+ * With none handed in, the registry's app default answers.
  */
-export const QUIET_FLOOR_SESSIONS = 2;
+const APP_QUIET_FLOOR = SETTING_BY_KEY.quietFloorSessions.appDefault ?? 2;
 
 /** "Starting soon": a session starting within this many minutes counts toward the floor's load. */
 export const STARTING_SOON_MINUTES = 20;
@@ -101,6 +104,8 @@ export interface RightNowInput {
   handedFrom: string[];
   /** An initiative posted today that this iPad has not opened on yet. */
   newInitiative: { who: string; title: string } | null;
+  /** The studio's quiet-floor number (studio-settings `quietFloorSessions`); the app's default when absent. */
+  quietFloorSessions?: number;
 }
 
 export interface RightNow {
@@ -126,8 +131,9 @@ export function loadWords(load: FloorLoad): string {
   return `${running}${soon}`;
 }
 
-export function isQuiet(load: FloorLoad): boolean {
-  return load.known && load.running + load.startingSoon <= QUIET_FLOOR_SESSIONS;
+/** Is the floor quiet: the studio's number of sessions (running and starting soon) or fewer? Never off an unknown load. */
+export function isQuiet(load: FloorLoad, quietFloorSessions: number = APP_QUIET_FLOOR): boolean {
+  return load.known && load.running + load.startingSoon <= quietFloorSessions;
 }
 
 export function rightNow(input: RightNowInput): RightNow {
@@ -164,7 +170,7 @@ export function rightNow(input: RightNowInput): RightNow {
     };
   }
 
-  const quiet = isQuiet(load);
+  const quiet = isQuiet(load, input.quietFloorSessions);
   const door: DoorId = quiet ? "floor" : "desk";
 
   if (now.current) {
