@@ -1,11 +1,8 @@
-import React, { useState } from "react";
-import { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../../types";
-// Deprecated (Sep 2026 UI overhaul): the Retention route is unmounted. The
-// component file stays on disk in case it is revived; nothing imports it here.
-// import { RetentionDashboardView } from "./RetentionDashboardView";
-import { Megaphone, Activity, Users, TrendingUp, Zap, Dumbbell, Download, CalendarClock, Gift } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../../types";
+import { ChevronLeft } from "lucide-react";
 import "./admin.css";
+import "./shell/ops.css";
 import { auth } from "../../firebase";
 
 import { AdminDataReportsTab } from "./data";
@@ -13,17 +10,33 @@ import { OverviewPage, type OverviewLink } from "./overview/OverviewPage";
 import { AdminStaffTab } from "./staff/AdminStaffTab";
 import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
-import { InsightsAndHours } from "./insights/InsightsAndHours";
+import { AdminInsightsTab } from "./insights/AdminInsightsTab";
+import { AdminHoursTab } from "./hours/AdminHoursTab";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
-import { OperationsScopeProvider, PickOneStudio, ScopeBar, scopeKey, useOperationsScope } from "./scope-context";
+import { WeekPage } from "./week/WeekPage";
+import { OperationsScopeProvider, PickOneStudio, scopeKey, useOperationsScope } from "./scope-context";
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
 import { mayOpenOperations } from "./operations-access";
 import { leadsHere } from "../relay/leads";
 import { isEveryStudioRole } from "../renewals/permissions";
-import { AdminNotice } from "./primitives";
+import { AdminEmpty, AdminNotice } from "./primitives";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
+import { LEGACY_TAB_PLACE, defaultSub, placeKey, placeLabel, resolvePlace, samePlace, type OpsPage, type OpsPlace } from "./shell/places";
+import {
+  rememberClient,
+  rememberPlace,
+  rememberScroll,
+  rememberSetupOpen,
+  rememberedClient,
+  rememberedPlace,
+  rememberedScroll,
+  rememberedSetupOpen,
+  rememberedSub,
+} from "./shell/place-memory";
+import { LookingAt, OpsSidebar, OpsSubs, OpsTabs, SetupHome } from "./shell/OperationsNav";
+import { ClientPage } from "./shell/ClientPage";
 
 interface Props {
   authTrainer: Trainer;
@@ -39,14 +52,15 @@ interface Props {
   machines?: Machine[];
   /**
    * Everything the live schedule hook has loaded for the active studio —
-   * today plus roughly a week ahead. The Overview needs it; nothing else on
-   * this screen does, which is why it is optional.
+   * yesterday through about a week ahead. The client page reads it for her
+   * next booking; the Overview reads its own week.
    */
   schedules?: ScheduleEntry[];
   newClientsCount?: number;
   onShowNewClients?: () => void;
   onUpdateStudio?: (id: string, updates: Partial<Studio>) => Promise<void>;
   onUpdateClient?: (id: string, updates: Partial<Client>) => Promise<void>;
+  /** The client's full profile, in the app. Operations opens a client inside itself first. */
   onNavigateProfile?: (clientId: string) => void;
   /**
    * The studio the admin is currently working in. Data & Reports and Alerts
@@ -62,13 +76,13 @@ interface Props {
    */
   onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
-  /** Opens the Planner (was the studio to-do screen) from the Overview's task panel. */
+  /** Opens My Studio, in trainer mode (the doors to Team, Studio and Openings). */
   onOpenStudioTasks?: () => void;
 }
 
 /**
  * The Operations screen. The scope — "this studio" (the studio the app is
- * in) or "all my studios" — is decided once here and read by every tab
+ * in) or "all my studios" — is decided once here and read by every page
  * (Operations round, Sep 2026; features/admin/scope-context.tsx). The
  * provider needs the active-studio context, so the shell is a child of it.
  */
@@ -78,12 +92,12 @@ export function AdminDashboardView(props: Props) {
    * (sign-out round, Sep 24 2026): studio leaders and above, or anyone inside
    * Demo Mode. AppContent already sends everyone else to the Hub; this is so
    * no other door — a link, a future screen — can open it for them, and so
-   * none of the nine tabs starts reading a studio it should not.
+   * none of the pages starts reading a studio it should not.
    */
   if (!mayOpenOperations(props.authTrainer, props.activeStudioId ?? null)) {
     return (
-      <div className="adm adm-shell" data-testid="operations-closed">
-        <div className="adm-shell__main">
+      <div className="adm ops-shell" data-testid="operations-closed">
+        <div className="ops-body">
           <AdminNotice tone="warn">
             Operations is for a studio's leaders. Everything a trainer needs is on the Hub, a client's profile and My Studio — and anyone can try
             Operations in Demo Mode.
@@ -100,12 +114,47 @@ export function AdminDashboardView(props: Props) {
       isAdmin={props.isAdmin}
       activeStudioId={props.activeStudioId ?? null}
     >
-      <AdminDashboardShell {...props} />
+      <OperationsShell {...props} />
     </OperationsScopeProvider>
   );
 }
 
-function AdminDashboardShell({
+/** The element that scrolls the page: AppContent's <main>, else the document. */
+function scrollerOf(el: HTMLElement | null): HTMLElement | null {
+  if (!el) return null;
+  return (el.closest("main") as HTMLElement | null) ?? (typeof document !== "undefined" ? (document.scrollingElement as HTMLElement | null) : null);
+}
+
+/**
+ * FIVE DESTINATIONS (the redesign's Operations room, Sep 28 2026 — the pick
+ * "Brief + Journey"; shell/places.ts has the list and the why). Today ·
+ * Week · Clients · Team · Setup, each tab's screen mounted as it was:
+ *
+ *   Overview        → Today
+ *   (its Changes)   → Week → This week
+ *   Renewals        → Clients → Renewals
+ *   Delight queue   → Clients → Moments
+ *   Insights        → Clients → Trends
+ *   Hours           → Team → Hours
+ *   Floor           → Setup → Floor
+ *   Staff & Roles   → Setup → People & access
+ *   Announcements   → Setup → Announcements
+ *   Mindbody        → Setup → Mindbody
+ *   Data            → Setup → Data
+ *
+ * A client tapped anywhere opens INSIDE Operations (shell/ClientPage), with
+ * the page behind kept mounted and hidden, so Back is instant and exact.
+ * Where a leader was — the place, each destination's page, the client, the
+ * scroll — is remembered for the session and forgotten at sign-out
+ * (shell/place-memory.ts). Every move that would unmount a page asks the
+ * leave question first (`tabsScope`), as the nine tabs did.
+ *
+ * AJ, Sep 18: "anyone head trainer and above has pretty much all access to
+ * everything; restrict more later." So nothing on this side is gated beyond
+ * opening Operations at all; the one-studio pages still say so under "All my
+ * studios" (PickOneStudio).
+ */
+function OperationsShell({
   authTrainer,
   studios,
   networks,
@@ -113,9 +162,7 @@ function AdminDashboardShell({
   isAdmin,
   onRefresh,
   clients = [],
-  // `sessions` (the 24-hour stream) was the old Overview's; the page reads
-  // its own window. Still accepted so AppContent's call site needs no change.
-  sessions: _sessions = [],
+  sessions = [],
   machines = [],
   schedules = [],
   newClientsCount = 0,
@@ -138,123 +185,123 @@ function AdminDashboardShell({
   // callbacks stay on the props so AppContent's call site needs no change.
   void onRestoreMachines;
   void onReorderTrainers;
-  // "This studio" is the studio the app is in; "All my studios" is null here
-  // and the tabs that can span read the list from the scope themselves.
   const ops = useOperationsScope();
   const activeStudioId = ops.studioId;
   const tabKey = scopeKey(ops.scope);
+  const studio = studios.find((s) => s.id === activeStudioId) ?? null;
 
-  /**
-   * THE NINE (Operations overhaul, Sep 19 2026 — "nine, down from
-   * seventeen"): Overview · Renewals · Delight queue · Staff & Roles · Floor
-   * · Insights · Announcements · Mindbody · Data. Clients went (the global
-   * search and the training dashboard already cover it); Catalog, Machine
-   * fit and Routines became Floor; Hours folded into Insights; Exports is
-   * Data. All locations, the Catalog master, the Standard template, Limbo,
-   * Bug reports, System tools and the company's Data are the Admins
-   * dashboard's (features/admins) — the third position on the app-mode
-   * switch, administrators and the founder only.
-   *
-   * AJ, Sep 18: "anyone head trainer and above has pretty much all access to
-   * everything; restrict more later." So nothing on this side is gated
-   * beyond opening Operations at all.
-   */
-  type AdminTab = "overview" | "renewals" | "delight" | "users" | "floor" | "insights" | "announcements" | "mindbody" | "data";
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [place, setPlace] = useState<OpsPlace>(() => rememberedPlace());
+  const [clientId, setClientId] = useState<string | null>(() => rememberedClient());
+  const [setupOpen, setSetupOpen] = useState(() => rememberedSetupOpen() || rememberedPlace().page === "setup");
   const [floorView, setFloorView] = useState<"machines" | "fit" | "routines">("machines");
-  // Pressing Overview while on it brings the page home from one of its views.
+  // Pressing Today while on it brings the page home from one of its views.
   const [homeSignal, setHomeSignal] = useState(0);
   /*
-   * The tabs unmount when another is opened, and a Save bar's edits (the
-   * renewal settings, a studio machine on Floor) went with them. Opening
-   * another tab now asks first about the typing inside `tabsScope`
-   * (unsaved changes, Sep 24 2026).
+   * A page unmounts when another is opened, and a Save bar's edits (a studio
+   * machine on Floor) went with it. Every move now asks first about the
+   * typing inside `tabsScope` (unsaved changes, Sep 24 2026).
    */
   const tabsScope = useLeaveScope();
-  const openTab = (tab: AdminTab, then?: () => void) => {
-    if (tab === activeTab && !then) return;
-    tabsScope.guard(() => {
-      then?.();
-      setActiveTab(tab);
+
+  /* ---- the scroll, per page ---- */
+  const shellRef = useRef<HTMLDivElement>(null);
+  const viewKey = clientId ? `client:${clientId}` : placeKey(place);
+  const viewKeyRef = useRef(viewKey);
+  const saveScroll = useCallback(() => {
+    const s = scrollerOf(shellRef.current);
+    if (s) rememberScroll(viewKeyRef.current, s.scrollTop);
+  }, []);
+  useLayoutEffect(() => {
+    viewKeyRef.current = viewKey;
+    const s = scrollerOf(shellRef.current);
+    if (!s) return;
+    const top = rememberedScroll(viewKey);
+    s.scrollTop = top;
+    if (top <= 0) return;
+    // A page still reading its data is shorter than it was; once it has, try
+    // once more — unless the leader has already scrolled.
+    const first = s.scrollTop;
+    const t = setTimeout(() => {
+      if (s.scrollTop === first && first < top) s.scrollTop = top;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [viewKey]);
+  // Leaving Operations (her full profile, the Hub): remember how far down.
+  useLayoutEffect(() => () => saveScroll(), [saveScroll]);
+
+  /* ---- a change of studio or scope closes the client: she may not be this studio's ---- */
+  const lastTabKey = useRef(tabKey);
+  useEffect(() => {
+    if (lastTabKey.current === tabKey) return;
+    lastTabKey.current = tabKey;
+    setClientId(null);
+    rememberClient(null);
+  }, [tabKey]);
+
+  /* ---- moving ---- */
+  const go = useCallback(
+    (next: OpsPlace, then?: () => void) => {
+      const to = resolvePlace(next);
+      if (!clientId && samePlace(to, place) && !then) {
+        if (to.page === "today") setHomeSignal((n) => n + 1);
+        return;
+      }
+      tabsScope.guard(() => {
+        saveScroll();
+        then?.();
+        setClientId(null);
+        rememberClient(null);
+        setPlace(to);
+        rememberPlace(to);
+        if (to.page === "setup" && to.sub) {
+          setSetupOpen(true);
+          rememberSetupOpen(true);
+        }
+      });
+    },
+    [clientId, place, tabsScope, saveScroll],
+  );
+  const subOf = useCallback((page: OpsPage) => {
+    const remembered = rememberedSub(page);
+    return remembered === undefined ? defaultSub(page) : remembered;
+  }, []);
+  const toggleSetup = () => {
+    setSetupOpen((v) => {
+      rememberSetupOpen(!v);
+      return !v;
     });
   };
 
-  const isOwnerTier = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
+  /** A client tapped anywhere in Operations opens here; the page behind stays mounted. */
+  const openClient = useCallback(
+    (id: string) => {
+      if (!id) return;
+      const show = () => {
+        saveScroll();
+        setClientId(id);
+        rememberClient(id);
+      };
+      // Replacing one open client with another unmounts her page: ask first.
+      if (clientId && clientId !== id) tabsScope.guard(show);
+      else if (clientId !== id) show();
+    },
+    [clientId, tabsScope, saveScroll],
+  );
+  const backFromClient = useCallback(() => {
+    tabsScope.guard(() => {
+      saveScroll();
+      setClientId(null);
+      rememberClient(null);
+    });
+  }, [tabsScope, saveScroll]);
 
-  type NavTab = { id: AdminTab; label: string; icon: React.ReactNode };
-  type NavGroup = { id: string; label: string; tier: "primary" | "secondary"; tabs: NavTab[] };
-  const groups: NavGroup[] = [
-    {
-      id: "daily",
-      label: "Every day",
-      tier: "primary",
-      tabs: [{ id: "overview", label: "Overview", icon: <Activity className="w-4 h-4" /> }],
-    },
-    {
-      id: "clients",
-      label: "Clients",
-      tier: "primary",
-      tabs: [
-        { id: "renewals", label: "Renewals", icon: <CalendarClock className="w-4 h-4" /> },
-        { id: "delight", label: "Delight queue", icon: <Gift className="w-4 h-4" /> },
-      ],
-    },
-    {
-      id: "studio",
-      label: "Studio",
-      tier: "primary",
-      tabs: [
-        { id: "floor", label: "Floor", icon: <Dumbbell className="w-4 h-4" /> },
-        { id: "users", label: "Staff & Roles", icon: <Users className="w-4 h-4" /> },
-        { id: "insights", label: "Insights", icon: <TrendingUp className="w-4 h-4" /> },
-        { id: "announcements", label: "Announcements", icon: <Megaphone className="w-4 h-4" /> },
-      ],
-    },
-    {
-      id: "behind",
-      label: "Behind the scenes",
-      tier: "primary",
-      tabs: [
-        { id: "mindbody", label: "Mindbody", icon: <Zap className="w-4 h-4" /> },
-        { id: "data", label: "Data", icon: <Download className="w-4 h-4" /> },
-      ],
-    },
-  ];
-
-  const renderNavButton = (tab: NavTab, orientation: "sidebar" | "strip") => {
-    const isActive = activeTab === tab.id;
-    return (
-      <button
-        key={tab.id}
-        type="button"
-        onClick={() => {
-          if (tab.id === "overview" && isActive) setHomeSignal((n) => n + 1);
-          openTab(tab.id);
-        }}
-        aria-current={isActive ? "page" : undefined}
-        className={cn(
-          "adm adm-nav__btn flex items-center gap-2.5 text-[11px] font-bold uppercase tracking-widest transition-colors cursor-pointer select-none whitespace-nowrap",
-          isActive && "adm-nav__btn--active",
-          orientation === "sidebar"
-            ? // Minimal left border for the active item — no pill container.
-              "w-full h-10 px-3 border-l-2 text-left"
-            : // Bottom border on the horizontal strip (portrait / narrow).
-              "h-11 px-3 border-b-2 shrink-0",
-        )}
-      >
-        <span className="adm-nav__icon">{tab.icon}</span>
-        {tab.label}
-      </button>
-    );
-  };
-
-  /** The Overview's doors: a line or a panel opens a tab, sometimes a view inside it. */
+  /** The Overview's doors, written against the nine tabs: each opens the page its screen moved to. */
   const openFromOverview = (link: OverviewLink) => {
     if (link === "floor") {
-      openTab("floor", () => setFloorView("fit"));
+      go(LEGACY_TAB_PLACE.floor, () => setFloorView("fit"));
       return;
     }
-    openTab(link);
+    go(LEGACY_TAB_PLACE[link]);
   };
 
   const openMyStudio = onOpenStudioTasks
@@ -264,44 +311,14 @@ function AdminDashboardShell({
       }
     : undefined;
 
-  return (
-    /*
-     * `adm` on the ROOT, not just on the buttons (Sep 2026): the frame around
-     * the tabs was painted in raw Tailwind slate while everything inside it
-     * used kit surfaces. Scoping once here makes the shell and its contents
-     * the same screen rather than two designs stacked.
-     */
-    <div className="adm adm-shell">
-      {/* ───── Sidebar (iPad landscape and up) ───── */}
-      <aside className="adm-shell__side">
-        {groups
-          .filter((g) => g.tier === "primary")
-          .map((group, gIdx) => (
-            <div key={group.id} className={cn("adm-shell__group", gIdx > 0 && "adm-shell__group--spaced")}>
-              <div className="adm-nav__group">{group.label}</div>
-              <div className="flex flex-col">{group.tabs.map((tab) => renderNavButton(tab, "sidebar"))}</div>
-            </div>
-          ))}
-      </aside>
+  const isOwnerTier = isAdmin || authTrainer?.role === "FranchiseOwner" || authTrainer?.role === "Owner";
+  const me = { id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id ?? "", name: authTrainer.fullName };
+  const noStudio = <AdminEmpty title="No studio">Switch the app to a studio to read this page.</AdminEmpty>;
 
-      {/* ───── Two-tier horizontal strip (portrait / narrow) ───── */}
-      <div className="adm-shell__strip">
-        <div className="adm-shell__striprow">
-          {groups.map((group, gIdx) => (
-            <div key={group.id} className={cn("adm-shell__stripgroup", gIdx > 0 && "adm-shell__stripgroup--divided")}>
-              <span className="adm-nav__group adm-shell__striplabel">{group.label}</span>
-              <div className="flex">{group.tabs.map((tab) => renderNavButton(tab, "strip"))}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="adm-shell__main">
-        <ScopeBar />
-
-        <UnsavedChangesScope scope={tabsScope}>
-
-        {activeTab === "overview" && (
+  const renderPage = () => {
+    switch (place.page) {
+      case "today":
+        return (
           <OverviewPage
             key={tabKey}
             homeSignal={homeSignal}
@@ -312,108 +329,161 @@ function AdminDashboardShell({
             clients={clients}
             schedules={schedules}
             activeStudioId={activeStudioId}
-            onNavigateProfile={onNavigateProfile}
+            onNavigateProfile={openClient}
             onOpen={openFromOverview}
             networks={networks}
             // Openings' line opens My Studio → Openings in trainer mode; the
             // page remembers the section first, as Staff & Roles does for Team.
             onOpenMyStudio={onOpenStudioTasks}
           />
-        )}
-
-        {activeTab === "renewals" && (
-          <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} />
-        )}
-
-        {activeTab === "delight" && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Delight queue</h2>
-              <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
-                What the team has promised itself it would do something about, for every client at this studio, soonest first. A detail becomes a gesture on a
-                client's FORD page: Add an idea under Going above and beyond, or open a detail and choose Do something about it.
-              </p>
+        );
+      case "week":
+        if (ops.scope.kind === "all") return <PickOneStudio what="The week" />;
+        return studio ? <WeekPage key={tabKey} studio={studio} onOpenClient={openClient} /> : noStudio;
+      case "clients":
+        if (place.sub === "moments") {
+          return (
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2 className="font-display text-xl font-black uppercase italic tracking-tight text-foreground">Moments</h2>
+                <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-muted-foreground">
+                  The Delight queue: what the team has promised itself it would do something about, for every client at this studio, soonest first. A
+                  detail becomes a gesture on a client's FORD page: Add an idea under Going above and beyond, or open a detail and choose Do something
+                  about it.
+                </p>
+              </div>
+              {ops.scope.kind === "all" ? (
+                <PickOneStudio what="The Delight queue" />
+              ) : (
+                <DelightQueue key={tabKey} studioId={activeStudioId ?? null} clients={clients} trainers={trainers} me={me} onOpenClient={openClient} />
+              )}
             </div>
-            {ops.scope.kind === "all" ? (
-              <PickOneStudio what="The Delight queue" />
-            ) : (
-              <DelightQueue
-                key={tabKey}
-                studioId={activeStudioId ?? null}
-                clients={clients}
+          );
+        }
+        if (place.sub === "trends") return <AdminInsightsTab key={tabKey} studios={studios} trainers={trainers} activeStudioId={activeStudioId ?? null} />;
+        return (
+          <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} />
+        );
+      case "team":
+        return <AdminHoursTab key={tabKey} trainers={trainers} />;
+      case "setup":
+        switch (place.sub) {
+          case "floor":
+            return (
+              <AdminFloorTab
+                key={`${tabKey}:${floorView}`}
+                authTrainer={authTrainer}
+                studios={studios}
                 trainers={trainers}
-                me={{ id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id, name: authTrainer.fullName }}
-                onOpenClient={onNavigateProfile}
+                machines={machines}
+                clients={clients}
+                activeStudioId={activeStudioId ?? null}
+                isAdmin={isAdmin}
+                // Machine fit's Check hands the profile a place to land
+                // (Programming → Setup) before it navigates, so it goes
+                // straight to the profile, never through the client page.
+                onNavigateProfile={onNavigateProfile}
+                initialView={floorView}
               />
+            );
+          case "people":
+            // One editor for a studio's own team (voice review follow-up,
+            // Sep 27 2026): owners and administrators edit here; the studio
+            // tier reads, with a door to My Studio → Team.
+            return (
+              <AdminStaffTab
+                key={tabKey}
+                trainers={trainers}
+                studios={studios}
+                activeStudioId={activeStudioId}
+                isAdmin={isAdmin}
+                canEdit={isOwnerTier || isEveryStudioRole(authTrainer)}
+                // Only for someone who runs the studio My Studio opens: a head
+                // trainer visiting another studio would land on Relay, since
+                // Team is its leaders'.
+                onOpenTeam={
+                  onOpenStudioTasks && leadsHere(authTrainer, appStudioId ?? null)
+                    ? () => {
+                        rememberMyStudioSection("team");
+                        onOpenStudioTasks();
+                      }
+                    : undefined
+                }
+                onRefresh={onRefresh}
+              />
+            );
+          case "announcements":
+            return (
+              <AdminAnnouncementsTab
+                authTrainer={authTrainer}
+                // A studio's leader addresses the studios they run; an owner adds
+                // their network; administrators everyone.
+                studios={isAdmin ? studios : ops.readable}
+                networks={networks}
+                scopes={isAdmin ? ["universal", "network", "studio"] : isOwnerTier ? ["network", "studio"] : ["studio"]}
+              />
+            );
+          case "mindbody":
+            return ops.scope.kind === "all" && !isAdmin ? (
+              <PickOneStudio what="Mindbody" />
+            ) : (
+              <AdminMindbodyTab key={tabKey} studios={studios} trainers={trainers} clients={clients ?? []} activeStudioId={activeStudioId ?? null} company={isAdmin} />
+            );
+          case "data":
+            return ops.scope.kind === "all" ? (
+              <PickOneStudio what="Data" />
+            ) : (
+              <AdminDataReportsTab key={tabKey} trainers={trainers} clients={clients} studios={studios} activeStudioId={activeStudioId} />
+            );
+          default:
+            return <SetupHome onGo={go} />;
+        }
+    }
+    return null;
+  };
+
+  return (
+    /*
+     * `adm` on the ROOT (Sep 2026): the shell and its pages are one screen,
+     * on one palette. The two shapes of the menu are both in the page; CSS
+     * shows the sidebar when wide and the tabs when upright (shell/ops.css).
+     */
+    <div className="adm ops-shell" ref={shellRef}>
+      <OpsSidebar place={place} subOf={subOf} onGo={go} setupOpen={setupOpen} onToggleSetup={toggleSetup} />
+
+      <div className="ops-body">
+        <div className="ops-top">
+          <LookingAt variant="top" />
+        </div>
+        <OpsTabs place={place} subOf={subOf} onGo={go} />
+        {!clientId && <OpsSubs place={place} onGo={go} />}
+
+        <UnsavedChangesScope scope={tabsScope}>
+          <div className="ops-page" hidden={Boolean(clientId)}>
+            {place.page === "setup" && place.sub && (
+              <button type="button" className="ops-back" onClick={() => go({ page: "setup", sub: null })}>
+                <ChevronLeft className="w-4 h-4" aria-hidden /> Setup
+              </button>
             )}
+            {renderPage()}
           </div>
-        )}
-
-        {activeTab === "floor" && (
-          <AdminFloorTab
-            key={`${tabKey}:${floorView}`}
-            authTrainer={authTrainer}
-            studios={studios}
-            trainers={trainers}
-            machines={machines}
-            clients={clients}
-            activeStudioId={activeStudioId ?? null}
-            isAdmin={isAdmin}
-            onNavigateProfile={onNavigateProfile}
-            initialView={floorView}
-          />
-        )}
-
-        {/* One editor for a studio's own team (voice review follow-up, Sep 27
-            2026): owners and administrators edit here; the studio tier reads,
-            with a door to My Studio → Team, where they let people in. */}
-        {activeTab === "users" && (
-          <AdminStaffTab
-            key={tabKey}
-            trainers={trainers}
-            studios={studios}
-            activeStudioId={activeStudioId}
-            isAdmin={isAdmin}
-            canEdit={isOwnerTier || isEveryStudioRole(authTrainer)}
-            // Only for someone who runs the studio My Studio opens: a head
-            // trainer visiting another studio would land on Relay, since
-            // Team is its leaders'.
-            onOpenTeam={
-              onOpenStudioTasks && leadsHere(authTrainer, appStudioId ?? null)
-                ? () => {
-                    rememberMyStudioSection("team");
-                    onOpenStudioTasks();
-                  }
-                : undefined
-            }
-            onRefresh={onRefresh}
-          />
-        )}
-
-        {activeTab === "insights" && <InsightsAndHours key={tabKey} studios={studios} trainers={trainers} activeStudioId={activeStudioId ?? null} />}
-
-        {activeTab === "announcements" && (
-          <AdminAnnouncementsTab
-            authTrainer={authTrainer}
-            // A studio's leader addresses the studios they run; an owner adds
-            // their network; administrators everyone.
-            studios={isAdmin ? studios : ops.readable}
-            networks={networks}
-            scopes={isAdmin ? ["universal", "network", "studio"] : isOwnerTier ? ["network", "studio"] : ["studio"]}
-          />
-        )}
-
-        {activeTab === "mindbody" &&
-          (ops.scope.kind === "all" && !isAdmin ? (
-            <PickOneStudio what="Mindbody" />
-          ) : (
-            <AdminMindbodyTab key={tabKey} studios={studios} trainers={trainers} clients={clients ?? []} activeStudioId={activeStudioId ?? null} company={isAdmin} />
-          ))}
-
-        {activeTab === "data" && ops.scope.kind === "all" && <PickOneStudio what="Data" />}
-        {activeTab === "data" && ops.scope.kind !== "all" && <AdminDataReportsTab key={tabKey} trainers={trainers} clients={clients} studios={studios} activeStudioId={activeStudioId} />}
+          {clientId && (
+            <ClientPage
+              key={clientId}
+              clientId={clientId}
+              clients={clients}
+              studios={studios}
+              schedules={schedules}
+              sessions={sessions}
+              trainers={trainers}
+              authTrainer={authTrainer}
+              activeStudioId={appStudioId ?? null}
+              backLabel={placeLabel(place)}
+              onBack={backFromClient}
+              onOpenProfile={onNavigateProfile}
+            />
+          )}
         </UnsavedChangesScope>
-
       </div>
     </div>
   );

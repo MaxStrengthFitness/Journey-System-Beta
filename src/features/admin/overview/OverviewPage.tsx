@@ -73,8 +73,6 @@ import { nextDays as openingsNextDays } from "../../openings/next-days";
 import { overviewLines, overviewMoreLine } from "../../openings/present";
 import { showOpenings, useOpeningsData } from "../../openings/ui";
 import { mayReadWeeks } from "../../standing-week/present";
-import { serverRead } from "../../standing-week/server-read";
-import { useServerWait } from "../../standing-week/useServerWait";
 import { NetworkOverview } from "../network/NetworkOverview";
 import { NetworkActions } from "../network/NetworkActions";
 import { mayActForNetwork } from "../network/network-actions";
@@ -82,7 +80,8 @@ import { AdminButton, AdminEmpty, AdminHeader, AdminNotice, AdminScreen, AdminSt
 import { useOperationsScope } from "../scope-context";
 import { useSessionsInRange } from "../sessions-range";
 import { changeCounts, changesForDay, describeChange } from "../changes/changes";
-import { useWeekSchedule, WEEK_DAYS } from "../changes/useWeekSchedule";
+import { WEEK_DAYS } from "../changes/useWeekSchedule";
+import { useStudioWeek } from "../changes/useStudioWeek";
 import { ChangesView } from "../changes/ChangesView";
 import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze, splitWatched } from "../attention/attention";
 import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch } from "../attention/useAttention";
@@ -100,7 +99,8 @@ import { useOverviewReads } from "./useOverviewReads";
 import { useTodaySessions } from "./useTodaySessions";
 import "./overview.css";
 
-export type OverviewLink = "renewals" | "delight" | "insights" | "floor";
+/** Where a door on the page goes: the page each old tab moved to (shell/places.ts, LEGACY_TAB_PLACE). */
+export type OverviewLink = "renewals" | "delight" | "insights" | "hours" | "floor";
 
 export interface OverviewPageProps {
   /** Bumped by the shell when the Overview nav button is pressed while already on it: the page comes home from Changes or the Attendance watch. */
@@ -130,7 +130,6 @@ export interface OverviewPageProps {
 const DAYS_READ = 14;
 /** How many of Openings' lines the next three days panel shows before "and N more on Openings". */
 const OPENINGS_SHOWN = 3;
-const NO_ENTRIES: ScheduleEntry[] = [];
 /** A read that failed, or one the server never answered: said, never counted as zero. */
 const NOT_READ = "Could not be read just now.";
 /** The Needs-you chips counted from the week's bookings: never shown off a week the server hasn't answered. */
@@ -256,17 +255,8 @@ function StudioOverview({
    * this iPad is offline, or the server has not answered in SERVER_WAIT_MS,
    * it is a week that could not be read: said, never counted as zero.
    */
-  const weekLive = useWeekSchedule(studioId, today, tz, { confirmed: true });
-  const weekWait = useServerWait(weekLive.loading || weekLive.fromCache);
-  const weekRead = serverRead({ loading: weekLive.loading, failed: weekLive.failed, fromCache: weekLive.fromCache, ...weekWait });
-  const week = useMemo(
-    () => ({
-      entries: weekRead === "ready" ? weekLive.entries : NO_ENTRIES,
-      loading: weekRead === "loading",
-      failed: weekRead === "failed" || weekRead === "offline",
-    }),
-    [weekRead, weekLive.entries],
-  );
+  const week = useStudioWeek(studioId, today, tz);
+  const weekRead = week.read;
   /*
    * Unread, the week's entries are none, and everything counted from them
    * would be a confident zero: the strip's never-logged and changes chips
@@ -879,7 +869,7 @@ function StudioOverview({
               ? "Adding up the week…"
               : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${week.failed ? " — today's bookings could not be read" : team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
           }
-          actions={door("insights", "Insights and hours")}
+          actions={door("hours", "Hours")}
           folded={fold.folded.has("team")}
           onToggle={() => fold.toggle("team")}
         >
@@ -944,7 +934,7 @@ function StudioOverview({
           label="Hours"
           text={recent.loading ? "Adding up the week…" : `${formatHours(hours.minutes)} this week so far, over ${hours.sessions} session${hours.sessions === 1 ? "" : "s"} by ${hours.trainers} trainer${hours.trainers === 1 ? "" : "s"} (since Monday ${hours.since.slice(5)}).`}
           tone="neutral"
-          onOpen={onOpen && (() => onOpen("insights"))}
+          onOpen={onOpen && (() => onOpen("hours"))}
         />
         <Line
           icon={<CalendarDays className="w-4 h-4" />}

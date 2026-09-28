@@ -1,0 +1,607 @@
+/* ==========================================================================
+   OPERATIONS — the redesign's room (Sep 28 2026, the pick "Brief + Journey")
+   --------------------------------------------------------------------------
+   Every class here starts with `ops-` (one stylesheet owns a class:
+   src/css-class-owners.test.ts). Colours are the admin tokens only
+   (admin.tokens.css, copies of equipment.tokens.css); no hex below this line.
+
+   Touch: nothing tappable is under 40px, hover is decoration, focus-visible
+   is always drawn. Names wrap; nothing is cut short.
+
+   The shell's two shapes (research-operations §6.2, Apple's tab bars that
+   become a sidebar): five tabs across the top when the iPad is upright, a
+   two-level sidebar when it is wide. "Wide" is a landscape iPad or a desk,
+   so an upright 13-inch iPad (1032pt) keeps the tabs.
+   ========================================================================== */
+
+@import "../admin.tokens.css";
+
+/* ---------- The frame -------------------------------------------------- */
+
+.ops-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 12px;
+  color: var(--adm-ink);
+}
+
+@media (min-width: 640px) {
+  .ops-shell {
+    padding: 20px;
+  }
+}
+
+.ops-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ops-page[hidden] {
+  display: none;
+}
+
+/* ---------- The sidebar (wide) ----------------------------------------- */
+
+.ops-side {
+  display: none;
+}
+
+@media (min-width: 1024px) and (orientation: landscape), (min-width: 1366px) {
+  .ops-shell {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 28px;
+  }
+
+  .ops-side {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    flex: 0 0 15rem;
+    width: 15rem;
+    padding-right: 14px;
+    border-right: 1px solid var(--adm-border);
+  }
+
+  .ops-top,
+  .ops-tabs,
+  .ops-subs {
+    display: none !important;
+  }
+}
+
+/* ---------- Looking at ------------------------------------------------- */
+
+.ops-look {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ops-look__label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.ops-look__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink);
+  font-weight: 700;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.ops-look__row svg {
+  flex: none;
+  color: var(--adm-ink-muted);
+}
+
+.ops-look__select {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--adm-ink);
+  font: inherit;
+  font-weight: 700;
+}
+
+.ops-look__select:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+/* In the top row when upright: one line, label beside the control. */
+.ops-look--top {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.ops-look--top .ops-look__row {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+/* ---------- The sidebar's list ----------------------------------------- */
+
+.ops-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ops-nav__i,
+.ops-nav__s {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-nav__i {
+  min-height: 44px;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ops-nav__i svg {
+  flex: none;
+  color: var(--adm-ink-muted);
+}
+
+.ops-nav__s {
+  min-height: 40px;
+  padding: 0 12px 0 42px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--adm-ink-2);
+}
+
+.ops-nav__i > span:first-of-type,
+.ops-nav__s > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ops-nav__i:hover,
+.ops-nav__s:hover {
+  background: var(--adm-surface-2);
+}
+
+.ops-nav__i:focus-visible,
+.ops-nav__s:focus-visible,
+.ops-nav__tog:focus-visible,
+.ops-tab:focus-visible,
+.ops-back:focus-visible,
+.ops-setup__row:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+.ops-nav__i--on,
+.ops-nav__s--on,
+.ops-nav__i--on:hover,
+.ops-nav__s--on:hover {
+  background: var(--adm-live-fill);
+  color: var(--adm-live-text);
+}
+
+.ops-nav__i--on svg,
+.ops-nav__i--open svg {
+  color: var(--adm-live-text);
+}
+
+.ops-nav__i--on::before,
+.ops-nav__s--on::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--adm-live);
+}
+
+.ops-nav__rule {
+  height: 1px;
+  margin: 10px 4px;
+  background: var(--adm-border);
+}
+
+.ops-nav__grp {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ops-nav__grp .ops-nav__i {
+  flex: 1;
+}
+
+.ops-nav__tog {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-ink-muted);
+  cursor: pointer;
+}
+
+.ops-nav__tog:hover {
+  background: var(--adm-surface-2);
+}
+
+/* A count on a destination: the things that need you. An orange fill with
+   its own on-colour (the app's attention dot is orange too). */
+.ops-badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--adm-surface-3);
+  color: var(--adm-ink);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.ops-badge--hot {
+  background: var(--adm-hero-text);
+  color: var(--adm-hero-on);
+}
+
+.ops-side__foot {
+  display: flex;
+  gap: 8px;
+  margin: 4px 2px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--adm-border);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--adm-ink-muted);
+}
+
+.ops-side__foot svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- Upright: the top row, the tabs, the pages inside ------------ */
+
+.ops-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ops-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.ops-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--adm-ink-muted);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+}
+
+@media (min-width: 700px) {
+  .ops-tab {
+    flex-direction: row;
+    gap: 8px;
+    font-size: 15px;
+  }
+}
+
+.ops-tab span {
+  overflow-wrap: anywhere;
+}
+
+.ops-tab .ops-badge {
+  position: absolute;
+  top: 4px;
+  right: 8%;
+}
+
+@media (min-width: 700px) {
+  .ops-tab .ops-badge {
+    position: static;
+  }
+}
+
+.ops-tab--on {
+  color: var(--adm-live-text);
+}
+
+.ops-tab--on::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--adm-live);
+}
+
+.ops-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ops-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+}
+
+.ops-seg button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--adm-ink-2);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ops-seg button[aria-pressed="true"] {
+  background: var(--adm-surface);
+  color: var(--adm-live-text);
+  box-shadow: 0 1px 2px var(--adm-shadow);
+}
+
+.ops-seg button:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: -2px;
+}
+
+/* ---------- Back ------------------------------------------------------- */
+
+.ops-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--adm-live-text);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ops-back:hover {
+  background: var(--adm-live-fill);
+}
+
+/* ---------- Setup's list ----------------------------------------------- */
+
+.ops-setup {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  overflow: hidden;
+}
+
+.ops-setup__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+  border: 0;
+  border-top: 1px solid var(--adm-border);
+  background: transparent;
+  color: var(--adm-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-setup__row:first-child {
+  border-top: 0;
+}
+
+.ops-setup__row:hover {
+  background: var(--adm-surface-2);
+}
+
+.ops-setup__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--adm-surface-2);
+  color: var(--adm-ink-2);
+}
+
+.ops-setup__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ops-setup__title {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.ops-setup__say {
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- A client, opened inside Operations ------------------------- */
+
+.ops-client {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ops-client__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ops-client__eyebrow {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.ops-client__name {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.ops-client__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-client__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.ops-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  min-width: 0;
+}
+
+.ops-fact__k {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.ops-fact__v {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.ops-fact__sub {
+  font-size: 13px;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-fact__why {
+  font-size: 12.5px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.ops-line {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-quiet {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
