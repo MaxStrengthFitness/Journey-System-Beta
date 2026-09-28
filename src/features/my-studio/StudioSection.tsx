@@ -17,11 +17,11 @@ import { InBodyVariationPanel } from "./InBodyVariationPanel";
 import { AnnouncementComposer } from "../admin/announcements/AnnouncementComposer";
 import { DEFAULT_SESSION_MINUTES, MAX_SESSION_MINUTES, MIN_SESSION_MINUTES, sessionMinutesOf } from "../admin/hours/hours";
 import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalSettings";
-import { DEFAULT_DEEP_CLEAN_DAYS } from "../relay/board/machine-care";
 import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../relay/board/now-context";
 import { mayOpenOperations } from "../admin/operations-access";
 import { leadsHere } from "../relay/leads";
 import { mayReadWeeks } from "../standing-week/present";
+import { StudioSettingsPanel } from "../studio-settings/StudioSettingsPanel";
 import "../admin/admin.css";
 import "./my-studio.css";
 
@@ -126,6 +126,11 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
 
       <HoursPanel canEdit={canEdit} />
 
+      {/* The studio's own numbers, each with Max Strength's default beneath it
+          (AJ, Sep 28 2026: "let the admins assign the default within the
+          app"). The deep clean moved here from The studio's day. */}
+      <StudioSettingsPanel studioId={studioId} studio={studio} canEdit={canEdit} />
+
       <InBodyVariationPanel studioId={studioId} studio={studio} trainers={trainers ?? NONE} canEdit={canEdit} />
 
       <RenewalsPanel studioId={studioId} studioName={studio.name} canEdit={canEdit} />
@@ -205,7 +210,9 @@ function SyncPanel({ trainers, opensOperations }: { trainers: Trainer[]; opensOp
 }
 
 /* ------------------------------------------------------------------ *
- * The studio's day: shift hours and the deep-clean interval
+ * The studio's day: shift hours and the session's length. The deep-clean
+ * interval moved to This studio's settings (Sep 28 2026), where it has
+ * Max Strength's default beneath it.
  * ------------------------------------------------------------------ */
 
 interface HoursForm {
@@ -213,7 +220,6 @@ interface HoursForm {
   mid: string;
   closing: string;
   close: string;
-  deepCleanDays: string;
   /** The booked length of a session — what Operations → Team → Hours counts (Operations round). */
   sessionMinutes: string;
 }
@@ -231,22 +237,19 @@ function HoursPanel({ canEdit }: { canEdit: boolean }) {
       mid: toClock(current.mid),
       closing: toClock(current.closing),
       close: toClock(current.close),
-      deepCleanDays: String(activeStudio?.deepCleanIntervalDays ?? DEFAULT_DEEP_CLEAN_DAYS),
       sessionMinutes: String(sessionMinutesOf(activeStudio)),
     }),
-    [current.open, current.mid, current.closing, current.close, activeStudio?.deepCleanIntervalDays, activeStudio?.sessionMinutes],
+    [current.open, current.mid, current.closing, current.close, activeStudio?.sessionMinutes],
   );
 
   const form = useDirtyForm(external, async () => {
     if (!activeStudioId) return;
     const v = form.value;
-    const days = Math.max(1, Math.min(365, Math.round(Number(v.deepCleanDays) || DEFAULT_DEEP_CLEAN_DAYS)));
     const slot = sessionMinutesOf({ sessionMinutes: Number(v.sessionMinutes) });
     // The four are written together, whichever changed: the Now Bar reads
     // them as one day, and shiftHoursOf forces them into order on read.
     await updateDoc(doc(db, "studios", activeStudioId), {
       shiftHours: { open: v.open, mid: v.mid, closing: v.closing, close: v.close },
-      deepCleanIntervalDays: days,
       sessionMinutes: slot,
     });
     toastSuccess("Saved — the Now Bar, the rings and Operations → Team → Hours follow it.");
@@ -296,21 +299,6 @@ function HoursPanel({ canEdit }: { canEdit: boolean }) {
               />
             </AdminField>
           ))}
-          <AdminField
-            label="Deep clean every"
-            hint={`Days between required deep cleans on the Floor Map. Default ${DEFAULT_DEEP_CLEAN_DAYS}.`}
-            htmlFor="ms-deep-clean"
-          >
-            <AdminInput
-              id="ms-deep-clean"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={365}
-              value={form.value.deepCleanDays}
-              onChange={(e) => form.setField("deepCleanDays", e.target.value)}
-            />
-          </AdminField>
           <AdminField
             label="A session is"
             hint={`Minutes per booked session — the slot Operations → Team → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
