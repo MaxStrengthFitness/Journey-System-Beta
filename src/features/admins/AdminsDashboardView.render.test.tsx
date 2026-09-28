@@ -148,6 +148,7 @@ describe("the Admins dashboard", () => {
     expect(texts(el, ".hq-side .hq-nav__item")).toEqual([
       "Home",
       "All studios",
+      "Launches",
       "Franchises",
       "Machines",
       "Standard template",
@@ -166,6 +167,9 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("2 machines in the standard set, of 2 in the MSF catalog.");
     await click(byText(el, ".hq-side .hq-nav__item", "All studios"));
     expect(el.textContent).toContain("grouped by what Journey knows today");
+    await click(byText(el, ".hq-side .hq-nav__item", "Launches"));
+    // No studio has a stage recorded here: nothing is opening.
+    expect(el.textContent).toContain("No studio is opening right now");
     await click(byText(el, ".hq-side .hq-nav__item", "Franchises"));
     expect(el.textContent).toContain("A franchise groups studios under one owner");
     await click(byText(el, ".hq-side .hq-nav__item", "Machines"));
@@ -209,7 +213,7 @@ describe("the Admins dashboard", () => {
     // Home is one page: no chips.
     expect(el.querySelector(".hq-bar .hq-chips")).toBeNull();
     await click(byText(el, ".hq-bar .hq-place", "Studios"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Launches", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools", "Activity"]);
     expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");

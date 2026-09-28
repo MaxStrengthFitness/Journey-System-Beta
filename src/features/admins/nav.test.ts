@@ -47,7 +47,8 @@ describe("the Admins dashboard's map", () => {
     expect(labelOf("activity")).toBe("Activity");
     expect(pagesOf("standard").map((i) => i.page)).toEqual(["machines", "template", "defaults", "review"]);
     expect(labelOf("defaults")).toBe("Studio defaults");
-    expect(pagesOf("studios").map((i) => i.page)).toEqual(["studios", "franchises"]);
+    expect(pagesOf("studios").map((i) => i.page)).toEqual(["studios", "launches", "franchises"]);
+    expect(labelOf("launches")).toBe("Launches");
     expect(navKeyOf("machines")).toBe("machines");
     // A studio's own page is reached from All studios, and lights it.
     expect(navKeyOf("studio")).toBe("studios");

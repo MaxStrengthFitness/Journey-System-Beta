@@ -29,6 +29,7 @@ export type AdminsPage =
   | "home"
   | "studios"
   | "studio"
+  | "launches"
   | "franchises"
   | "machines"
   | "template"
@@ -65,6 +66,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
     label: "Studios",
     items: [
       { page: "studios", label: "All studios" },
+      // The studios opening (the second wave, Sep 28 2026): "Launches", so it never clashes with My Studio → Openings.
+      { page: "launches", label: "Launches" },
       { page: "franchises", label: "Franchises" },
     ],
   },

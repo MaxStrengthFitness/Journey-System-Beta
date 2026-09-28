@@ -1046,3 +1046,345 @@
   font-size: 12.5px;
   color: var(--adm-ink-muted);
 }
+
+/* ---------- Opening a studio: the checklist (the second wave, Sep 28 2026) ---
+   Five blocks, a word for each, and an item per line: its mark (a shape as
+   well as a colour), its words, and at most a few quiet actions. */
+
+.hq-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hq-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface-2);
+}
+.hq-ready__say {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--adm-ink);
+}
+.hq-ready__line {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+.hq-ready__over {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--adm-warn);
+}
+
+.hq-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hq-block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.hq-block__n {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--adm-surface-3);
+  color: var(--adm-ink-2);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.hq-block__title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.hq-items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+}
+
+.hq-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  padding: 11px 14px;
+}
+.hq-item + .hq-item {
+  border-top: 1px solid var(--adm-border);
+}
+
+.hq-item__mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  color: var(--adm-ink-muted);
+}
+.hq-item__mark svg {
+  width: 18px;
+  height: 18px;
+}
+.hq-item--done .hq-item__mark {
+  color: var(--adm-ok);
+}
+.hq-item--overdue .hq-item__mark {
+  color: var(--adm-warn);
+}
+
+.hq-item__body {
+  flex: 1 1 16rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hq-item__title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.hq-item--skipped .hq-item__title,
+.hq-item--later .hq-item__title {
+  color: var(--adm-ink-2);
+}
+
+.hq-item__state {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+.hq-item--done .hq-item__state {
+  color: var(--adm-ok);
+}
+.hq-item--overdue .hq-item__state {
+  color: var(--adm-warn);
+}
+
+.hq-item__proof,
+.hq-item__who {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+.hq-item__who {
+  color: var(--adm-ink-muted);
+}
+
+.hq-item__due {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+.hq-item__due--over {
+  color: var(--adm-warn);
+}
+
+.hq-item__acts {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.hq-item__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ---------- Launches: the studios opening ------------------------------- */
+
+.hq-launches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hq-launch {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hq-launch:hover {
+  background: var(--adm-surface-2);
+}
+.hq-launch:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.hq-launch__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+.hq-launch__name {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.hq-launch__when {
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+}
+
+.hq-launch__blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 8px;
+}
+.hq-launch__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+}
+.hq-launch__block {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+.hq-launch__say {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+}
+
+/* ---------- Add a studio: the three-screen sheet -------------------------- */
+
+.hq-sheet {
+  max-width: 560px;
+  max-height: calc(100dvh - 36px);
+  display: flex;
+  flex-direction: column;
+}
+
+.hq-sheet__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 18px 10px;
+  border-bottom: 1px solid var(--adm-border);
+}
+.hq-sheet__step {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-ink-2);
+}
+.hq-sheet__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hq-sheet__stepname {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+.hq-sheet__stepname--on {
+  color: var(--adm-live-text);
+}
+
+.hq-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.hq-sheet__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--adm-ink);
+  cursor: pointer;
+}
+.hq-sheet__check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  accent-color: var(--adm-live);
+}
+
+.hq-sheet__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hq-sheet__foot {
+  flex-wrap: wrap;
+}

@@ -3106,6 +3106,48 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // WAVE 2 ADMINS: A STUDIO'S SETUP CHECKLIST (Opening a studio, the Admins
+    // room's second wave, Sep 28 2026; AJ "all yes" to "a studio's stage and
+    // setup items"). The checklist's template lives in the app
+    // (src/features/admins/launches/checklist.ts); a document here records
+    // what an administrator did to an item — ticked it, skipped it with its
+    // reason — or an item one added:
+    //   { block, title, dueOn, doneAt, doneBy: { uid, name }, skipReason? }
+    // Administrators write (each item whole; a template item's document is
+    // deleted to put it back); the studio's leaders read. `doneBy` names the
+    // caller when it changes, and may stay as it was when another
+    // administrator edits the item. The stage and opening day live on the
+    // studio document, which the studio rule already lets administrators
+    // write. No owner field (AJ, q1: "we dont need to track who set up a
+    // studio"). Cheap shape checks first; isSuperAdmin() runs last.
+    match /studios/{studioId}/setupItems/{itemId} {
+      function setupItemValid(d) {
+        return d.keys().hasOnly(['block', 'title', 'dueOn', 'doneAt', 'doneBy', 'skipReason'])
+            && d.keys().hasAll(['block', 'title'])
+            && d.block in ['studio', 'mindbody', 'floor', 'people', 'first-week']
+            && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+            && (!('dueOn' in d) || d.dueOn == null
+                || (d.dueOn is string && d.dueOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+            && (!('doneAt' in d) || d.doneAt == null || d.doneAt is timestamp)
+            && (!('doneBy' in d) || d.doneBy == null
+                || (d.doneBy is map && d.doneBy.keys().hasOnly(['uid', 'name'])
+                    && d.doneBy.name is string && d.doneBy.name.size() <= 120
+                    && (d.doneBy.uid == request.auth.uid
+                        || (resource != null && resource.data.get('doneBy', null) == d.doneBy))))
+            && (!('skipReason' in d) || d.skipReason == null
+                || (d.skipReason is string && d.skipReason.size() > 0 && d.skipReason.size() <= 200));
+      }
+
+      function setupReadAllowed(studioId) {
+        let r = getRole();
+        return roleIsSuper(r) || trainerLeads(r, callerTrainer(), studioId);
+      }
+
+      allow read: if isAuthenticated() && setupReadAllowed(studioId);
+      allow create, update: if isAuthenticated() && setupItemValid(request.resource.data) && isSuperAdmin();
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+
     // ANNOUNCEMENTS
     //
     // Learning + Planner round, Sep 2026: posting and editing were open to

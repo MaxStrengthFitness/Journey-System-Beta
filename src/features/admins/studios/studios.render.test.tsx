@@ -167,12 +167,23 @@ describe("All studios", () => {
     expect(opened).toEqual(["westlake"]);
   });
 
-  it("opens the add form on request, and says so on its button", async () => {
+  it("opens the three-screen Add a studio sheet on request, and Cancel closes it without a write", async () => {
     const el = await mount(<StudiosRoom authTrainer={admin} studios={studios} networks={networks} isAdmin onOpenStudio={() => {}} />);
-    expect(el.querySelector("#new-studio-name")).toBeNull();
+    expect(document.querySelector("#hq-new-name")).toBeNull();
     await click(button(el, "Add a studio"));
-    expect(el.querySelector("#new-studio-name")).not.toBeNull();
-    expect(button(el, "Close the form")).toBeTruthy();
+    const sheet = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Add a studio"]')!;
+    expect(sheet.textContent).toContain("Step 1 of 3 · Who and where");
+    expect(sheet.querySelector("#hq-new-name")).not.toBeNull();
+    await click(button(sheet, "Cancel"));
+    expect(document.querySelector('[aria-label="Add a studio"]')).toBeNull();
+    expect(writes).toEqual([]);
+  });
+
+  it("says a studio's recorded stage on its row", async () => {
+    const withStage = studios.map((s) => (s.id === "avon" ? ({ ...s, stage: "setting-up", openingDay: "2027-01-12" } as Studio) : s));
+    const el = await mount(<StudiosRoom authTrainer={admin} studios={withStage} networks={networks} isAdmin onOpenStudio={() => {}} />);
+    expect(el.querySelector('.hq-row__open[aria-label="Open Avon"]')!.textContent).toContain("Setting up · opens Tue, Jan 12, 2027");
+    expect(el.querySelector('.hq-row__open[aria-label="Open Westlake"]')!.textContent).not.toContain("Setting up");
   });
 });
 
@@ -197,6 +208,10 @@ describe("a studio's page", () => {
     expect(texts(el, ".hq-tab")).toEqual(["Setup", "Mindbody", "Floor", "Team", "Activity"]);
     expect(el.querySelector(".hq-tab--on")?.getAttribute("aria-selected")).toBe("true");
     expect(el.textContent).toContain("Where it stands");
+    // No stage recorded: said so, the Opening panel offered, no checklist.
+    expect(el.textContent).toContain("Stage not recorded");
+    expect(el.querySelector("#hq-opening-stage")).not.toBeNull();
+    expect(el.textContent).not.toContain("Setup checklist");
     expect(el.querySelector<HTMLInputElement>("#studio-name")?.value).toBe("Westlake");
     expect(el.textContent).toContain("Danger zone");
     await click(button(el, "Mindbody"));
@@ -212,6 +227,15 @@ describe("a studio's page", () => {
     // Nothing has been changed at Westlake yet: said as nothing recorded, having read it.
     expect(el.textContent).toContain("Nothing recorded yet");
     expect(el.textContent).toContain("Admin grants are on Machinery → Activity.");
+  });
+
+  it("shows the setup checklist on Setup while a studio is setting up", async () => {
+    const avon = { ...studios[3], stage: "setting-up", openingDay: "2027-01-12" } as Studio;
+    const el = await mount(page({ studio: avon }));
+    expect(el.textContent).toContain("Setting up · opens Tue, Jan 12, 2027");
+    expect(el.textContent).toContain("Setup checklist");
+    expect(el.textContent).toContain("Not ready to hand over");
+    expect([...el.querySelectorAll(".hq-block__title")].map((t) => t.textContent)).toEqual(["The studio", "Mindbody", "The floor", "People", "First week"]);
   });
 
   it("records a details save in the studio's Activity, after the save has landed", async () => {

@@ -4481,5 +4481,68 @@ describe("marks on a time", () => {
       await assertFails(getDocs(query(collection(ctx("trainerA"), "activity"), where("studioId", "==", "studioA"), orderBy("at", "desc"), limit(50))));
       await assertFails(getDoc(doc(ctx("franchiseW"), "activity", "atB")));
     });
+
+    // ---- Opening a studio: its stage, its opening day, studios/{s}/setupItems
+    const item = (uid: string | null, over: Record<string, unknown> = {}) => ({
+      block: "floor",
+      title: "Each unit's name and starting settings checked",
+      dueOn: "2026-11-03",
+      doneAt: uid ? serverTimestamp() : null,
+      doneBy: uid ? { uid, name: `Person ${uid}` } : null,
+      ...over,
+    });
+    const itemRef = (db: ReturnType<typeof ctx>, studioId: string, id: string) => doc(db, "studios", studioId, "setupItems", id);
+
+    it("lets an administrator set a studio's stage and opening day, the studio rule unchanged", async () => {
+      await seedWave2People();
+      await assertSucceeds(updateDoc(doc(ctx("adminW"), "studios", "studioA"), { stage: "setting-up", openingDay: "2027-01-12" }));
+      await assertSucceeds(updateDoc(doc(ctx("adminW"), "studios", "studioA"), { stage: deleteField(), openingDay: deleteField() }));
+      await assertFails(updateDoc(doc(ctx("trainerA"), "studios", "studioA"), { stage: "running" }));
+    });
+
+    it("lets an administrator tick, skip, add and remove setup items, signed as themselves", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      // Ticked, then skipped with a reason, then put back (a template item's document removed).
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW")));
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "staff-linked"), item("adminW", { block: "people", title: "Everyone on the team linked to Mindbody staff", doneAt: null, skipReason: "Two trainers aren't on Mindbody yet." })));
+      await assertSucceeds(deleteDoc(itemRef(admin, "studioA", "staff-linked")));
+      // An item an administrator adds, with no due date.
+      await assertSucceeds(setDoc(itemRef(admin, "studioA", "custom-k2x9ab"), item(null, { block: "first-week", title: "Order the chalk", dueOn: null })));
+      // Another administrator edits a ticked item and keeps who ticked it.
+      await assertSucceeds(setDoc(itemRef(ctx("founderW"), "studioA", "floor-names"), { ...item("adminW"), doneAt: new Date(), dueOn: "2026-11-10" }));
+      await assertSucceeds(deleteDoc(itemRef(admin, "studioA", "custom-k2x9ab")));
+    });
+
+    it("refuses a setup item signed as someone else, in a block that isn't one, or with fields of its own", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("founderW")));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { block: "the-bar" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { owner: "adminW" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { dueOn: "next week" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { title: "" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { skipReason: "" })));
+      await assertFails(setDoc(itemRef(admin, "studioA", "floor-names"), item("adminW", { skipReason: "s".repeat(201) })));
+    });
+
+    it("lets a studio's leaders read its checklist, and nobody else below an administrator write or read it", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "setupItems", "floor-names"), { ...item("adminW"), doneAt: new Date() });
+        await setDoc(doc(context.firestore(), "studios", "studioB", "setupItems", "floor-names"), { ...item("adminW"), doneAt: new Date() });
+      });
+      for (const uid of ["leaderW", "ownerA", "grantW"]) {
+        const db = ctx(uid);
+        await assertSucceeds(getDoc(itemRef(db, "studioA", "floor-names")));
+        await assertSucceeds(getDocs(collection(db, "studios", "studioA", "setupItems")));
+        await assertFails(getDocs(collection(db, "studios", "studioB", "setupItems")));
+        await assertFails(setDoc(itemRef(db, "studioA", "floor-names"), item(uid)));
+        await assertFails(deleteDoc(itemRef(db, "studioA", "floor-names")));
+      }
+      await assertFails(getDocs(collection(ctx("trainerA"), "studios", "studioA", "setupItems")));
+      await assertFails(setDoc(itemRef(ctx("franchiseW"), "studioB", "floor-names"), item("franchiseW")));
+      await assertSucceeds(getDocs(collection(ctx("adminW"), "studios", "studioB", "setupItems")));
+    });
   });
 });

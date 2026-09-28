@@ -4,7 +4,10 @@
  * Round: the Admins room (Sep 28 2026). Everything the All locations screen
  * held about the selected studio, on the studio's own page:
  *
- *   Setup      where it stands, in two sentences; its details (the SAME form
+ *   Setup      where it stands (its stage, its Mindbody link, its cutover);
+ *              its opening — stage and opening day — and, while it is
+ *              setting up or handed over, its setup checklist (the second
+ *              wave: features/admins/launches/); its details (the SAME form
  *              My Studio → Studio uses, so the two can never disagree about a
  *              field); its franchise; and at the foot, the danger zone
  *   Mindbody   its link, in words, and where the controls for it are
@@ -40,6 +43,9 @@ import { StudioActivity } from "./StudioActivity";
 import { DeleteStudioDialog } from "./DeleteStudioDialog";
 import { detailsRecord, franchiseRecord } from "./studio-records";
 import { clientsLine, useStudioClientCounts } from "./useStudioClientCounts";
+import { OpeningPanel } from "../launches/OpeningPanel";
+import { SetupChecklist } from "../launches/SetupChecklist";
+import { stageLine, stageOf } from "../launches/checklist";
 
 export type StudioTab = "setup" | "mindbody" | "floor" | "team" | "activity";
 
@@ -92,6 +98,7 @@ export function StudioPage({
   const [asking, setAsking] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const standing = standingOf(studio, studios, networks);
+  const launchStage = stageOf(studio);
   const counts = useStudioClientCounts([studio]);
   const network = networks.find((n) => n.id === studio.networkId) ?? null;
   const studioId = studio.id ?? "";
@@ -158,6 +165,9 @@ export function StudioPage({
           <div className="flex flex-col gap-4">
             <AdminPanel title="Where it stands">
               <div className="flex flex-col gap-2">
+                <HqStatus tone={launchStage === "running" ? "ok" : launchStage ? "live" : "idle"}>
+                  {stageLine(studio) ?? "Stage not recorded"}
+                </HqStatus>
                 <HqStatus tone={standing.linkTone}>{standing.link}</HqStatus>
                 <p className="hq-standing">
                   {standing.cutover}.{" "}
@@ -169,6 +179,27 @@ export function StudioPage({
                 </p>
               </div>
             </AdminPanel>
+
+            <OpeningPanel
+              key={`opening-${studioId}`}
+              studio={studio}
+              byName={authTrainer.fullName}
+              onSaved={async () => {
+                await onRefresh?.("studios");
+              }}
+            />
+
+            {launchStage === "setting-up" || launchStage === "handed-over" ? (
+              <SetupChecklist
+                studio={studio}
+                studios={studios}
+                trainers={trainers}
+                byName={authTrainer.fullName}
+                onStageChanged={async () => {
+                  await onRefresh?.("studios");
+                }}
+              />
+            ) : null}
 
             <StudioDetailsForm
               key={studioId}

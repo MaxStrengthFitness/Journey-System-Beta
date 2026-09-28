@@ -59,6 +59,7 @@ import {
   Inbox,
   Network,
   RefreshCw,
+  Rocket,
   Search,
   SlidersHorizontal,
   BookOpenCheck,
@@ -92,6 +93,7 @@ import { networkSentence, standardSentence } from "./home/sentences";
 import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
 import { SettingDefaultsPage } from "./standard/SettingDefaultsPage";
 import { ActivityPage } from "./activity/ActivityPage";
+import { LaunchesPage } from "./launches/LaunchesPage";
 import { HqStatus } from "./kit";
 import { isDemoStudio } from "../demo-mode/is-demo";
 import {
@@ -125,6 +127,7 @@ export interface AdminsDashboardViewProps {
 const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   home: <House aria-hidden="true" />,
   studios: <Building2 aria-hidden="true" />,
+  launches: <Rocket aria-hidden="true" />,
   franchises: <Network aria-hidden="true" />,
   machines: <Dumbbell aria-hidden="true" />,
   template: <ClipboardList aria-hidden="true" />,
@@ -418,6 +421,8 @@ function AdminsShell({
                 isAdmin={isAdmin}
                 onRefresh={onRefresh}
                 onOpenStudio={(studioId) => go({ page: "studio", studioId })}
+                catalog={catalog.catalog}
+                catalogLoading={catalog.loading}
                 extraSay={(studioId) => {
                   const studio = studios.find((s) => s.id === studioId);
                   if (!studio || isDemoStudio(studio)) return null;
@@ -463,6 +468,18 @@ function AdminsShell({
                   </div>
                 </AdminScreen>
               ))}
+            {page === "launches" && (
+              <LaunchesPage
+                studios={studios}
+                networks={networks}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                catalog={catalog.catalog}
+                catalogLoading={catalog.loading}
+                onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "setup" })}
+                onRefresh={onRefresh}
+              />
+            )}
             {page === "franchises" && (
               <FranchisesPage studios={studios} networks={networks} trainers={trainers} isAdmin={isAdmin} onRefresh={onRefresh} />
             )}

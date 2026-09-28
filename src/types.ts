@@ -1762,6 +1762,17 @@ export interface Studio {
    * same cautious wording. docs/business/migration-and-prior-history.md.
    */
   journeyCutoverDate?: string | null;
+  /**
+   * Opening a studio (the Admins room's second wave, Sep 28 2026; AJ "all
+   * yes"): where head office says the studio stands, set by administrators on
+   * its page in Admins. Absent means not recorded, which is every studio set
+   * up before it existed. Setting up and Handed over list it on Admins →
+   * Studios → Launches with its setup checklist (studios/{id}/setupItems).
+   * Read through `stageOf` in features/admins/launches/checklist.ts.
+   */
+  stage?: "setting-up" | "handed-over" | "running";
+  /** The day it opens (yyyy-mm-dd, the studio's own day); the checklist's due dates count back from it. */
+  openingDay?: string | null;
   ownerId: string;
   headTrainerId?: string;
   contactEmail?: string;
