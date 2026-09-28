@@ -2,13 +2,12 @@ import { useState, type ReactNode } from "react";
 import { WEEKDAY_NAME, WEEKDAY_SHORT } from "../../standing-week/week";
 import { weekdayOf } from "../../studio-tasks/recurrence";
 import { useRelay } from "../../relay/board/RelayContext";
-import { builtLine, notEnoughSentence, sinceLine, summaryStateSentence, unagreedLine, usualSentence, wordLabel } from "../present";
+import { READING_USUAL_WEEK, builtLine, notEnoughSentence, sinceLine, summaryStateSentence, unagreedLine, usualSentence, wordLabel } from "../present";
 import { OPENINGS_WEEKDAYS, clockLabel, timeKey, timeName, type TimeKey } from "../rows";
 import { isStale } from "../summary-doc";
 import { firstWordsOn, type UsualTime, type UsualWord } from "../usual";
 import { useOpenings } from "./context";
 import { TimeSheet } from "./TimeSheet";
-import { READING_USUAL_WEEK } from "./words";
 import "../openings.css";
 
 /**

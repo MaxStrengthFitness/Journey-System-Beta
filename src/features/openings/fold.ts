@@ -100,7 +100,12 @@ export interface FoldInput {
   tz: string;
   /** When the job ran. */
   now: Date;
-  /** The Demo studio: its bookings were all written by the seeder, so every day counts as read. */
+  /**
+   * The Demo studio: its bookings were all written by the seeder, so a day
+   * holding a demo booking counts as read, and a day holding none (the weeks
+   * before a seed or a Reset) doesn't. A Reset starts the usual week over, so
+   * last Sunday's `since` isn't carried either.
+   */
   isDemo?: boolean;
   /** The window's bookings, cancellations included. */
   bookings: readonly ScheduleEntry[];
@@ -147,11 +152,13 @@ export function foldSummary(input: FoldInput): OpeningsSummary {
     plan.bookings.push({ rows: at.rows, place, cancellation: cancellationOf(entry) });
   }
 
-  // Which days count: read in full, and open (live bookings only).
+  // Which days count: read in full, and open (live bookings only). In Demo
+  // Mode, "read in full" is "holds a demo booking" (days.ts).
+  const demoDays = input.isDemo === true ? new Set([...plans.values()].filter((p) => p.bookings.length > 0).map((p) => p.day)) : null;
   const counted = countDays(
     [...plans.values()].map((p) => ({ day: p.day, booked: p.bookings.filter((b) => b.cancellation === "none").length })),
     input.coverage,
-    { everyDayRead: input.isDemo === true },
+    demoDays ? { readDay: (day) => demoDays.has(day) } : {},
   );
   const verdictOf = new Map(counted.map((d) => [d.day, d.verdict]));
 
@@ -238,7 +245,8 @@ export function foldSummary(input: FoldInput): OpeningsSummary {
     const d = weekDays[WINDOW_WEEKS - 1 - i];
     return Object.values(d).some((day) => !day.x);
   });
-  const previousSince = input.previous?.since ?? null;
+  // Carried from last Sunday's, except in Demo Mode, where a Reset starts over.
+  const previousSince = input.isDemo === true ? null : (input.previous?.since ?? null);
   const since = [previousSince, firstCounted ?? null].filter((d): d is string => !!d).sort()[0] ?? null;
 
   return {

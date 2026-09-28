@@ -12,7 +12,7 @@ import { UsualWeekPart } from "./UsualWeekPart";
 import { NextDaysPart } from "./NextDaysPart";
 import { NewRegularPart } from "./NewRegularPart";
 import { WhosInPart } from "./WhosInPart";
-import { notForYouSentence } from "./words";
+import { notForYouSentence } from "../present";
 import "../../relay/planner.css";
 import "../../relay/board/relay.css";
 import "../openings.css";

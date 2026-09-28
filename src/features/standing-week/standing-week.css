@@ -211,22 +211,6 @@
   color: var(--eq-ink-2);
 }
 
-.stw-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.stw-finding {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--eq-ink);
-}
-
 .stw-review {
   margin-top: 12px;
   padding: 14px;

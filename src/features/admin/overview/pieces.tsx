@@ -11,7 +11,11 @@
  *                   the buttons act, nothing is nested inside a button.
  *   SnoozeChooser   "3 days · 1 week · 2 weeks · pick a day".
  *   Line            one tappable line that opens a tab.
- *   NeedsYou        the count chips at the top — the ten-second read.
+ *   NeedsYou        the count chips at the top — the ten-second read. With
+ *                   a `note` (the week's bookings still being read, or not
+ *                   readable) it never says "Nothing needs you right now":
+ *                   the count is partial, and the note inside the strip
+ *                   says why (Openings round, Sep 27 2026).
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -252,13 +256,18 @@ export interface NeedChip {
   tone: "alert" | "warn" | "neutral";
 }
 
-export function NeedsYou({ chips, onPick }: { chips: NeedChip[]; onPick: (id: string) => void }) {
+/**
+ * `note`: the chips are partial (the caller left out the ones it couldn't
+ * count), so the strip never says "Nothing needs you right now", and the
+ * note says why, inside the strip.
+ */
+export function NeedsYou({ chips, onPick, note }: { chips: NeedChip[]; onPick: (id: string) => void; note?: string }) {
   const live = chips.filter((c) => c.count > 0);
   const total = live.reduce((n, c) => n + c.count, 0);
   return (
     <div className="adm-ov__needs" role="region" aria-label="Needs you">
       <span className="adm-ov__needs-title">
-        {total === 0 ? "Nothing needs you right now" : `Needs you · ${total}`}
+        {total > 0 ? `Needs you · ${total}` : note ? "Needs you" : "Nothing needs you right now"}
       </span>
       {live.length > 0 && (
         <div className="adm-ov__needs-chips">
@@ -269,6 +278,11 @@ export function NeedsYou({ chips, onPick }: { chips: NeedChip[]; onPick: (id: st
             </button>
           ))}
         </div>
+      )}
+      {note && (
+        <span className="adm-hint adm-ov__needs-note" data-testid="needs-week-note">
+          {note}
+        </span>
       )}
     </div>
   );

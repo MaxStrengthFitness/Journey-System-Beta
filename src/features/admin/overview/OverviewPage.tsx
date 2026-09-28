@@ -70,7 +70,7 @@ import { formatHours, sessionMinutesOf, trainerNames } from "../hours/hours";
 import { useWorthALook } from "../machine-fit/useFitFloor";
 import { rememberMyStudioSection } from "../../my-studio/section-memory";
 import { nextDays as openingsNextDays } from "../../openings/next-days";
-import { overviewLines } from "../../openings/present";
+import { overviewLines, overviewMoreLine } from "../../openings/present";
 import { showOpenings, useOpeningsData } from "../../openings/ui";
 import { mayReadWeeks } from "../../standing-week/present";
 import { serverRead } from "../../standing-week/server-read";
@@ -537,7 +537,18 @@ function StudioOverview({
       </div>
 
       {/* 2 · Needs you */}
-      {weekUnread ? <NeedsYouWeekUnread chips={chips} onPick={jumpTo} reading={week.loading} /> : <NeedsYou chips={chips} onPick={jumpTo} />}
+      {/* Unread, the week's two chips are left out (`chips`) and the strip says why, never "Nothing needs you right now". */}
+      <NeedsYou
+        chips={chips}
+        onPick={jumpTo}
+        note={
+          !weekUnread
+            ? undefined
+            : week.loading
+              ? "Reading today's bookings: sessions never logged and today's changes are counted once they are read."
+              : "Today's bookings could not be read just now, so sessions never logged and today's changes are missing — not zero."
+        }
+      />
 
       {/* 3 · The panels: act today on the left, look ahead on the right */}
       <div className="adm-ov__grid">
@@ -621,7 +632,7 @@ function StudioOverview({
               {openingsLines.slice(0, OPENINGS_SHOWN).map((text) => (
                 <Line key={text} icon={<CalendarRange className="w-4 h-4" />} label="Openings" text={text} tone="neutral" onOpen={openOpenings} />
               ))}
-              {openingsLines.length > OPENINGS_SHOWN && <p className="adm-ov__more">and {openingsLines.length - OPENINGS_SHOWN} more on Openings</p>}
+              {openingsLines.length > OPENINGS_SHOWN && <p className="adm-ov__more">{overviewMoreLine(openingsLines.length - OPENINGS_SHOWN)}</p>}
             </div>
           )}
           {unbooked.count > 0 && (
@@ -956,44 +967,6 @@ function StudioOverview({
 
       {reviewOpen && <ReviewNotesDialog open onOpenChange={setReviewOpen} rows={review} onOpenClient={onNavigateProfile} />}
     </AdminScreen>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * The Needs-you strip while the week is unread
- * ------------------------------------------------------------------ */
-
-/**
- * The strip while the week's bookings are being read, or could not be:
- * pieces' `NeedsYou`, with the week's two chips left out (the caller's
- * `chips`) and never "Nothing needs you right now", because sessions never
- * logged and today's changes are unknown, not none. The count it gives is
- * said to be partial, inside the strip. Openings round review, Sep 27 2026:
- * `NeedsYou` (pieces.tsx, another unit's file) could take this as a `note`
- * prop and this would fold back into it.
- */
-function NeedsYouWeekUnread({ chips, onPick, reading }: { chips: NeedChip[]; onPick: (id: string) => void; reading: boolean }) {
-  const live = chips.filter((c) => c.count > 0);
-  const total = live.reduce((n, c) => n + c.count, 0);
-  return (
-    <div className="adm-ov__needs" role="region" aria-label="Needs you">
-      <span className="adm-ov__needs-title">{total === 0 ? "Needs you" : `Needs you · ${total}`}</span>
-      {live.length > 0 && (
-        <div className="adm-ov__needs-chips">
-          {live.map((c) => (
-            <button key={c.id} type="button" className={`adm-ov__chip adm-ov__chip--${c.tone}`} onClick={() => onPick(c.id)}>
-              <span className="adm-ov__chip-count">{c.count}</span>
-              <span>{c.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <span className="adm-hint" style={{ flexBasis: "100%", margin: 0 }} data-testid="needs-week-note">
-        {reading
-          ? "Reading today's bookings: sessions never logged and today's changes are counted once they are read."
-          : "Today's bookings could not be read just now, so sessions never logged and today's changes are missing — not zero."}
-      </span>
-    </div>
   );
 }
 

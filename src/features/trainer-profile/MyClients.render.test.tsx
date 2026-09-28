@@ -5,8 +5,7 @@
  * The card works out its rows during render from the studio's client list,
  * so these mount it: with NO cutover set (no studio has one today, so this
  * is what every trainer sees first), while the list is loading, after its
- * read failed, with no state passed at all, and with more than twelve
- * clients.
+ * read failed, and with more than twelve clients.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -53,7 +52,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function mount(list: Client[], rosterStatus: RosterStatus | undefined, cutover: string | null = null) {
+async function mount(list: Client[], rosterStatus: RosterStatus, cutover: string | null = null) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -135,27 +134,6 @@ describe("My clients", () => {
     expect(text(el.querySelector("[data-testid='my-clients-state']"))).toBe("Can't read the client list just now.");
     expect(rowsOf(el)).toHaveLength(0);
     expect(el.textContent).not.toContain("No clients at");
-  });
-
-  it("with no state passed, never says nobody has sessions with you", async () => {
-    // An empty list: still loading, as far as the card can tell.
-    let el = await mount([], undefined);
-    expect(text(el.querySelector("[data-testid='my-clients-state']"))).toBe("Can't read the client list just now.");
-    act(() => root?.unmount());
-    host?.remove();
-
-    // The list holds only a client opened earlier — a visitor from another
-    // studio (the studio was switched, or the roster's read failed): no rows,
-    // and that is not "you have trained no one here".
-    el = await mount([client("vis", "Vi", "Sitor", { homeStudioId: "solon", trainerTally: { t1: 8 } })], undefined);
-    expect(text(el.querySelector("[data-testid='my-clients-state']"))).toBe("Can't read the client list just now.");
-    expect(el.textContent).not.toContain("No clients at");
-    act(() => root?.unmount());
-    host?.remove();
-
-    // Rows it can work out, it still lists.
-    el = await mount(clients, undefined);
-    expect(rowsOf(el)).toHaveLength(3);
   });
 
   it("says so in words when the list is read and nobody has sessions with you", async () => {

@@ -30,11 +30,11 @@ promise it. Journey doesn't book."
 | `fold.ts` | Eight weeks folded into the weekly summary (`foldSummary`), the window (`foldWindow`), the months of the record to read (`coverageMonths`), and the size ceiling (`storedBytes`, `SIZE_CEILING_BYTES`, `SKIP_ABOVE_BYTES`) |
 | `summary-doc.ts` | The summary as stored (`studios/{s}/watch/openings`), written with nothing undefined (`summaryForWrite`) and read safely (`readSummary`: ok, never built, unreadable) |
 | `usual.ts` | The usual word for a time and everything its sheet says (`usualTime`), the grid (`usualWeek`), and when the first words can come (`firstWordsOn`) |
-| `marks.ts` | "Always full" and "Usually has room" marks: read and written safely, what they change (`countsAsFull`, `offerable`), when the bookings disagree, the 60-day review |
+| `marks.ts` | "Always full" and "Usually has room" marks: read and written safely, what they change (`countsAsFull`, `offerable`), when the bookings disagree, the 60-day review. The only writer is `ui/marks-store.ts`, from a time's sheet (`ui/MarkThisTime.tsx`) |
 | `next-days.ts` | Next 7 days (`nextDays`): the lines, their reasons, room ahead, and the Wrap-up's `timesWithRoom` |
 | `back-from.ts` | "Booked again from" (`backFrom`), the read's range and batches, and "was the month read in full today" (`monthReadToday`) |
 | `offer.ts` | A new regular time (`offers`): the checks against agreed regulars, the coming weeks and this week |
-| `present.ts` | Every sentence, from the proposal's own words, and names as AJ's relaxed answer has them |
+| `present.ts` | Every sentence, from the proposal's own words, and names as AJ's relaxed answer has them. The screens' own words too (the waiting lines, the gate, "Mark this time", the Wrap-up's sheet, Team's and the Overview's lines): no screen types a sentence of its own |
 | `fixtures.ts` | Test fixtures only: a studio with two agreed trainers and a Sunday run of Sun Nov 8 2026 |
 
 `isStaffBlock` (a Mindbody "Unavailable" block is never a booking) lives in
@@ -76,7 +76,10 @@ call it.
   read in part looks like a quiet week, and a volume test alone would call a
   standing hot spot "usually has room". A record whose month couldn't be read
   is "can't tell", so the day doesn't count either. Demo Mode is the one
-  exception (`isDemo`): the seeder wrote every booking.
+  exception (`isDemo`): the seeder wrote every booking, so every Demo day
+  holding a demo booking counts; the weeks before a seed or a Reset don't
+  (the seeder lays the week down forward, never into the past), and a Reset
+  starts `since` over.
 - **The closure test counts live bookings only.** A snow day's bookings are
   cancelled late that morning; counting them would make the closed day look
   full.

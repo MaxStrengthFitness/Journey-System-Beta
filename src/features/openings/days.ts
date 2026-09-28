@@ -25,7 +25,12 @@
  * usual word does, room.ts) would make the closed day look full.
  *
  * DEMO MODE is the exception to the first test: the seeder wrote every Demo
- * booking, so every Demo day was, in effect, read in full.
+ * booking, so every Demo day HOLDING A DEMO BOOKING was, in effect, read in
+ * full. The weeks before a seed or a Reset hold none (the seeder lays the
+ * week down from its own day forward, never into the past), and they don't
+ * count: counting them would draw the usual week at once from about seven
+ * empty weeks ("Usually none booked"). The caller says which days by
+ * `readDay` (fold.ts).
  *
  * PURE MODULE: the Sunday job imports it.
  */
@@ -71,12 +76,13 @@ export function openAgainst(booked: number, usual: number | null): boolean {
 }
 
 /**
- * Which of the days count. `everyDayRead` is Demo Mode's exception: every day
- * was written by the seeder, so the whole-read test is skipped (the closure
- * test is not).
+ * Which of the days count. `readDay` is Demo Mode's exception: it answers the
+ * whole-read test in place of the record (a Demo day holding a demo booking
+ * was written by the seeder); the closure test still applies.
  */
-export function countDays(days: readonly DayInput[], record: CoverageRecord, options: { everyDayRead?: boolean } = {}): DayCount[] {
-  const read = days.map((d) => ({ ...d, weekday: weekdayOf(d.day), read: options.everyDayRead === true || wasReadInFull(d.day, record) === true }));
+export function countDays(days: readonly DayInput[], record: CoverageRecord, options: { readDay?: (day: string) => boolean } = {}): DayCount[] {
+  const { readDay } = options;
+  const read = days.map((d) => ({ ...d, weekday: weekdayOf(d.day), read: readDay ? readDay(d.day) : wasReadInFull(d.day, record) === true }));
   const usualByWeekday = new Map<number, number | null>();
   for (const weekday of new Set(read.map((d) => d.weekday))) {
     usualByWeekday.set(weekday, median(read.filter((d) => d.read && d.weekday === weekday).map((d) => d.booked)));

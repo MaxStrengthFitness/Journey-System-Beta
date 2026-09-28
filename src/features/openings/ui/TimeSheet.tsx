@@ -1,7 +1,9 @@
 import { Fragment } from "react";
 import {
+  MARKS_UNKNOWN_TIME,
   cancellationsLine,
   markLines,
+  markNoteLine,
   notCountedLines,
   outnumberedLine,
   regularsLine,
@@ -17,9 +19,7 @@ import { usualTime, type UsualTime } from "../usual";
 import { useRelayMaybe } from "../../relay/board/RelayContext";
 import { useOpenings } from "./context";
 import { MarkReview, MarkThisTimePart } from "./MarkThisTime";
-import { markNoteLine } from "./mark-words";
 import { useMarkThisTime } from "./useMarkThisTime";
-import { MARKS_UNKNOWN_TIME } from "./words";
 import "../openings.css";
 
 /**

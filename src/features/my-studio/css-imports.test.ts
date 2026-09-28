@@ -50,6 +50,7 @@ const HOSTS = [
   "features/openings/ui/NewRegularPart.tsx",
   "features/openings/ui/WhoseChips.tsx",
   "features/openings/ui/WhosInPart.tsx",
+  "features/openings/ui/MarkThisTime.tsx",
 ] as const;
 
 /**
@@ -110,13 +111,15 @@ describe("My Studio's Machines and Studio sections, and the Context Panel", () =
   }
 
   it("MyStudioView imports the stylesheet that holds its masthead's portrait rule itself", () => {
-    // `.ms > .pl__mast` is in openings.css (Openings made the masthead five
-    // sections long). It must not reach My Studio only because the section
-    // happens to share its chunk: a lazily loaded section would take it away.
-    expect(DEFINED["openings.css"].has("ms")).toBe(true);
+    // `.ms > .pl__mast` (Openings made the masthead five sections long) is
+    // My Studio's own, in my-studio.css. It must not reach My Studio only
+    // because a section happens to share its chunk: a lazily loaded section
+    // would take it away.
+    expect(DEFINED["my-studio.css"].has("ms")).toBe(true);
+    expect(DEFINED["openings.css"].has("ms")).toBe(false);
     const text = read("features/my-studio/MyStudioView.tsx");
     expect(classWords(text).has("ms")).toBe(true);
-    expect(imports(text, "openings.css")).toBe(true);
+    expect(imports(text, "my-studio.css")).toBe(true);
   });
 
   it("draws Openings with Relay's second level and frame, and its own stylesheet", () => {

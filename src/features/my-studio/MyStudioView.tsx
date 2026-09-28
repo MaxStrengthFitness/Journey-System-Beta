@@ -24,9 +24,6 @@ import "../relay/kit.css";
 import "../relay/planner.css";
 import "../relay/board/relay.css";
 import "./my-studio.css";
-// The masthead's five-section rule for portrait (.ms > .pl__mast) is in
-// Openings' stylesheet: imported here, since the masthead is this view's.
-import "../openings/openings.css";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
 

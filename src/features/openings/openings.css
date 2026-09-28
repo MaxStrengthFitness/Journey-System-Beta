@@ -24,28 +24,6 @@
   flex-direction: column;
 }
 
-/* My Studio's masthead with five sections (Relay · Openings · Machines ·
-   Team · Studio). Measured in headless Chrome when Openings joined: at
-   744px (an iPad mini in portrait) the studio-and-date line was squeezed
-   to 60px and wrapped onto four lines, making the bar 73px tall. So in
-   portrait it moves under the tabs, as the round planned. The masthead is
-   MyStudioView's, so MyStudioView imports this stylesheet itself rather
-   than rely on Openings' section arriving in the same chunk
-   (my-studio/css-imports.test.ts holds it); its better home is
-   my-studio.css, handed to that file's owner. */
-@media (max-width: 899px) {
-  .ms > .pl__mast {
-    flex-wrap: wrap;
-    row-gap: 0.25rem;
-  }
-  .ms > .pl__mast > .pl__where {
-    order: 3;
-    flex: 1 0 100%;
-    margin-left: 0;
-    text-align: left;
-  }
-}
-
 /* The parts wrap onto a second line rather than scroll sideways, and their
    words are never hidden (Relay's own labels hide below 640px). */
 .op__subbar .pl__tabs {

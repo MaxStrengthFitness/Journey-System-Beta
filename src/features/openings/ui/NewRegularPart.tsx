@@ -1,12 +1,23 @@
 import { useMemo } from "react";
 import { offers, type Offer } from "../offer";
-import { NO_OFFERS, OFFER_FOOT, SAFE_TO_SHOW, notEnoughSentence, offerSentence, offerWho, summaryStateSentence, thisWeekSentence } from "../present";
+import {
+  MARKS_UNKNOWN_OFFERS,
+  NO_OFFERS,
+  OFFER_FOOT,
+  READING_USUAL_WEEK,
+  SAFE_TO_SHOW,
+  noOffersWithSentence,
+  notEnoughSentence,
+  offerSentence,
+  offerWho,
+  summaryStateSentence,
+  thisWeekSentence,
+} from "../present";
 import { firstWordsOn } from "../usual";
 import { useOpenings } from "./context";
 import { useComingWeeks, useNextSevenDays } from "./useNextSevenDays";
 import type { OpeningsData } from "./useOpeningsData";
 import { WhoseChips, useWhoseTimes } from "./WhoseChips";
-import { MARKS_UNKNOWN_OFFERS, READING_USUAL_WEEK, noOffersWithSentence } from "./words";
 import "../openings.css";
 
 /**

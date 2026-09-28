@@ -112,7 +112,17 @@ async function mount() {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <TrainerProfileView trainer={trainer} authTrainer={trainer} schedules={schedules} sessions={sessions} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />
+        <TrainerProfileView
+          trainer={trainer}
+          authTrainer={trainer}
+          schedules={schedules}
+          sessions={sessions}
+          clients={[] as Client[]}
+          studios={studios}
+          onSelectClient={() => {}}
+          setView={() => {}}
+          rosterStatus="ready"
+        />
       </StrictMode>,
     );
   });
@@ -154,7 +164,7 @@ describe("My standing week on the trainer page", () => {
           studios={studios}
           onSelectClient={() => {}}
           setView={() => {}}
-          rosterStatus={extra.rosterStatus}
+          rosterStatus={extra.rosterStatus ?? "ready"}
         />,
       );
     });

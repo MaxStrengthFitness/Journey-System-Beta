@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { linesFor, type NextDaysLine } from "../next-days";
-import { CHECK_IN_MINDBODY, lineDetail, lineSentence, nextDaysStateSentence } from "../present";
+import { CHECK_IN_MINDBODY, READING_WEEKS, lineDetail, lineSentence, nextDaysStateSentence, nothingOpenedWithSentence } from "../present";
 import type { BackFrom } from "../back-from";
 import { useOpenings } from "./context";
 import { lineKey, useNextSevenDays } from "./useNextSevenDays";
 import type { OpeningsData } from "./useOpeningsData";
 import { WhoseChips, useWhoseTimes } from "./WhoseChips";
-import { READING_WEEKS, nothingOpenedWithSentence } from "./words";
 import "../openings.css";
 
 /**

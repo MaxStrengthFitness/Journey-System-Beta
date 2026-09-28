@@ -28,7 +28,8 @@
  * themselves (the rules pin `by.id` to the sign-in id and `at` to the
  * server's time). One mark per time.
  *
- * PURE MODULE. The writes are phase 6's (docs/rounds/2026-09-27-openings.md).
+ * PURE MODULE. The only writer is ui/marks-store.ts (`saveMark`, `keepMark`,
+ * `removeMark`), from a time's sheet (ui/MarkThisTime.tsx).
  */
 import { studioDateKey, toDate, type DateLike } from "../../lib/studio-time";
 import { isClock, minutesOf } from "../standing-week/week";

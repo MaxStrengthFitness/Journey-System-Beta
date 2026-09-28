@@ -11,6 +11,8 @@ import {
   type FoldInput,
 } from "./fold";
 import { cellFor, readSummary, summaryForWrite, type OpeningsSummary } from "./summary-doc";
+import { usualWeek } from "./usual";
+import { buildDemoWeek } from "../demo-mode/week";
 import {
   MONDAYS,
   PAT_WEEK,
@@ -166,10 +168,46 @@ describe("foldSummary — which days count", () => {
     expect(cell(s, "1-0800", holiday)).toBeNull();
   });
 
-  it("Demo Mode: every day counts without a record", () => {
+  it("Demo Mode: every day holding a demo booking counts without a record", () => {
     const s = foldSummary(input({ coverage: new Map(), isDemo: true }));
     expect(s.weeks[0].d["1"]).toEqual({ n: 4, j: 1 });
     expect(s.since).toBe("2026-09-14");
+    // The fixture books only Mondays: the other days hold no demo booking, so they don't count.
+    expect(s.weeks[0].d["2"]).toEqual({ n: 0, x: "r" });
+    // Eight weeks of demo bookings: all eight weeks count.
+    expect(usualWeek(s).weeksCounted).toBe(8);
+  });
+
+  it("Demo Mode, the first Sunday after a seed: only the days from the seed count, never the empty weeks before it", () => {
+    // The seeder lays the week down from its own day forward (demo-mode/week.ts): here a Wednesday in the window's newest week.
+    const seed = "2026-11-04";
+    const bookings: ScheduleEntry[] = buildDemoWeek(seed).map((b) => ({
+      id: b.id,
+      clientId: b.clientKey,
+      clientName: b.clientKey,
+      trainerId: `t-${b.trainerKey}`,
+      trainerName: b.trainerKey,
+      studioId: "demo-studio",
+      startTime: new Date(b.startIso),
+      endTime: new Date(b.endIso),
+      status: b.cancelled ? "Cancelled" : "Scheduled",
+    })) as ScheduleEntry[];
+    const s = foldSummary(input({ studioId: "demo-studio", isDemo: true, coverage: new Map(), bookings, weeks: [], trainers: [] }));
+    const u = usualWeek(s);
+    expect(u.weeksCounted).toBe(1);
+    expect(u.enough).toBe(false);
+    expect(s.since).toBe("2026-11-02");
+    // Monday and Tuesday of the seed's week, and every day before it, hold no demo booking.
+    expect(s.weeks[0].d["1"]).toEqual({ n: 0, x: "r" });
+    expect(s.weeks[0].d["2"]).toEqual({ n: 0, x: "r" });
+    expect(s.weeks[0].d["3"]).toMatchObject({ n: 1 });
+    expect(s.weeks[0].d["3"].x).toBeUndefined();
+    for (const w of s.weeks.slice(1)) expect(Object.values(w.d).every((d) => d.x === "r" && d.n === 0)).toBe(true);
+  });
+
+  it("Demo Mode: a Reset starts over, so last Sunday's since isn't carried", () => {
+    const previous = { ...foldSummary(input()), since: "2026-08-03" };
+    expect(foldSummary(input({ isDemo: true, coverage: new Map(), previous })).since).toBe("2026-09-14");
   });
 
   it("since is the first Monday with a counted day, carried from last Sunday's when older", () => {

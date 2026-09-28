@@ -45,7 +45,8 @@ import {
   type TodayLine,
 } from "../lib/post-session";
 import { useMonthRead, useOpeningsData } from "../features/openings/ui";
-import { TIMES_WITH_ROOM, TimesWithRoomSheet, hasTimesToOffer } from "../features/openings/ui/TimesWithRoomSheet";
+import { TIMES_WITH_ROOM } from "../features/openings/present";
+import { TimesWithRoomSheet, hasTimesToOffer } from "../features/openings/ui/TimesWithRoomSheet";
 import { isCacheOnly, serverRead, type ServerRead } from "../features/standing-week/server-read";
 import { useServerWait } from "../features/standing-week/useServerWait";
 

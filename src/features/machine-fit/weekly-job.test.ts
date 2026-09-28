@@ -315,7 +315,7 @@ describe("the weekly job — step 8, Openings", () => {
     expect(solon.state).toBe("ok");
     if (solon.state === "ok") expect(usualWeek(solon.summary).weeksCounted).toBe(0);
 
-    // The Demo studio: its days count without the record (the seeder wrote them), and the realm rule holds both ways.
+    // The Demo studio: its days holding a demo booking count without the record (the seeder wrote them; this fixture books every Monday), and the realm rule holds both ways.
     const demo = readSummary(openingsOf(store, "demo-studio"));
     expect(demo.state).toBe("ok");
     if (demo.state === "ok") expect(usualWeek(demo.summary).weeksCounted).toBe(8);

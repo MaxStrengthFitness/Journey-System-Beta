@@ -38,14 +38,12 @@ export interface MyClientsProps {
   /** This studio's `journeyCutoverDate`. */
   cutover: string | null;
   /**
-   * The studio client list's state, from `useStudioRoster`. Absent (AppContent
-   * doesn't pass it yet — a handoff of the Openings round): the card lists
-   * the rows it can work out, but never says "no clients have sessions with
-   * you" — the list it holds may be a single client opened earlier, or booked
-   * visitors read by id after the roster's read failed — so with no rows it
-   * says it can't read.
+   * The studio client list's state, from `useStudioRoster` (AppContent passes
+   * it). Only "ready" is a list: while it loads, or after its read failed,
+   * the list the page holds may be a single client opened earlier, or booked
+   * visitors read by id, so the card lists nobody and says it can't read.
    */
-  rosterStatus?: RosterStatus;
+  rosterStatus: RosterStatus;
   tz?: string;
   onSelectClient: (clientId: string) => void;
 }
@@ -63,9 +61,8 @@ export function MyClients({
 }: MyClientsProps) {
   const [showAll, setShowAll] = useState(false);
   const today = studioTodayKey(new Date(), tz);
-  // Rows are worked out from a list the caller says was read, or — when it
-  // doesn't say — from whatever list it holds.
-  const readable = rosterStatus === "ready" || (rosterStatus === undefined && clients.length > 0);
+  // Rows are worked out only from a list the roster says was read.
+  const readable = rosterStatus === "ready";
 
   const ids = useMemo(() => myTrainerIds(trainer, uid), [trainer, uid]);
   const rosterIds = useMemo(() => new Set((trainer.kaizenRoster ?? []).map((e) => e.clientId)), [trainer.kaizenRoster]);
@@ -74,8 +71,8 @@ export function MyClients({
     [readable, clients, studioId, ids, rosterIds, cutover, today],
   );
   // "No clients have sessions with you" only off a list known to be read in
-  // full: an unread, failed or unknown list with no rows says it can't read.
-  const cantRead = !readable || (rows.length === 0 && rosterStatus !== "ready");
+  // full: an unread or failed list says it can't read.
+  const cantRead = !readable;
 
   const shown = showAll ? rows : rows.slice(0, MY_CLIENTS_SHOWN);
   const lately = shown.filter((r) => r.coachedLately);

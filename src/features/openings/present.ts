@@ -19,6 +19,15 @@
  * or time off in Mindbody, and it books nothing (Mindbody charges $2.50 an
  * appointment booked through its API).
  *
+ * ONE PLACE. The screens' own few words live here too: the lines while a
+ * read is on its way, the gate's line, what a part says when the marks
+ * couldn't be read, "Mark this time"'s form, the Wrap-up's "Times with
+ * room" sheet, and Team's and the Overview's lines. No screen types a
+ * sentence of its own (the round's integration pass folded ui/words.ts,
+ * ui/mark-words.ts and the sheet's words in here, word for word). The two
+ * words a colleague's week is read with, NO_AGREED_WEEK and EMPTY_WEEK, are
+ * the standing week's (standing-week/present.ts).
+ *
  * PURE MODULE.
  */
 import { formatStudioDate, studioDateKey, toDate } from "../../lib/studio-time";
@@ -28,7 +37,7 @@ import type { BackFrom } from "./back-from";
 import { addDays } from "./coverage";
 import { median } from "./days";
 import { WINDOW_WEEKS } from "./fold";
-import { disagreement, markAgeDays, needsReview, type OpeningsMark } from "./marks";
+import { MAX_MARK_NOTE, disagreement, markAgeDays, needsReview, offerable, type MarkWord, type OpeningsMark } from "./marks";
 import type { NextDays, NextDaysLine, RoomTime } from "./next-days";
 import type { Offer } from "./offer";
 import { clockLabel, timeName, weekdayPlural } from "./rows";
@@ -42,6 +51,17 @@ import { MIN_WEEKS, atLeastShare, type UsualTime } from "./usual";
 export const CHECK_IN_MINDBODY = "Check it in Mindbody before you promise it.";
 export const OFFER_FOOT = "Check it in Mindbody before you promise it. Journey doesn't book.";
 export const SAFE_TO_SHOW = "Safe to show a client";
+
+/** A part waiting on the summary (or the marks it is read with). */
+export const READING_USUAL_WEEK = "Reading the usual week…";
+
+/** A part waiting on the studio's standing weeks (Team's own phrase). */
+export const READING_WEEKS = "Reading the standing weeks…";
+
+/** The gate's line, for someone who may not read the studio's standing weeks. */
+export function notForYouSentence(studioName: string): string {
+  return `Openings is for the people who work at ${studioName}.`;
+}
 
 /* ------------------------------------------------------------------ *
  * Names
@@ -276,6 +296,103 @@ export function markLines(u: UsualTime, mark: OpeningsMark | null, viewer: Viewe
 const dateKeyOf = (d: Date, tz: string) => studioDateKey(d, tz) ?? "";
 
 /* ------------------------------------------------------------------ *
+ * A time's sheet: "Mark this time" (phase 6)
+ *
+ * The sheet's lines about the time are the ones above (`markLines` first).
+ * What is here is the form's own few words: its heading and buttons, the
+ * note's hint, what it says when a write fails or waits on the iPad, and
+ * `markChangeLine`, what the chosen word would change for THIS time.
+ * ------------------------------------------------------------------ */
+
+/** A time's sheet, when the marks couldn't be read: never "no mark". */
+export const MARKS_UNKNOWN_TIME = "Can't tell just now whether anyone has marked this time.";
+
+/** The three writes a time's sheet makes. */
+export type MarkAction = "save" | "keep" | "remove";
+
+/** The foot of a time's sheet: its heading, and the button that opens the form. */
+export const MARK_THIS_TIME = "Mark this time";
+export const CHANGE_THE_MARK = "Change the mark";
+export const REMOVE_THE_MARK = "Remove the mark";
+
+/** Before anyone has marked the time. */
+export const MARK_INTRO = "Say what this time is, in the grid's own words. A mark sits beside the numbers and never replaces them.";
+
+/** A mark's two words: the grid's own. */
+export const MARK_WORD: Record<MarkWord, string> = {
+  full: "Always full",
+  room: "Usually has room",
+};
+
+/** The choice's label. */
+export const MARK_CHOICE_LABEL = "This time is";
+
+/**
+ * What choosing a word would change, for THIS time (the proposal's "What a
+ * mark changes"). The core's `offerable` decides, never a fixed line: a time
+ * that reads Always full is never offered whatever the mark, and a time that
+ * can be offered is listed on A new regular time only when someone's agreed
+ * week has them in then with no regular there, and the coming weeks don't
+ * show it taken (`offers`). When it reads Usually has room already, the offer
+ * is the numbers' own sentence and names no mark (`offerSentence`).
+ */
+export function markChangeLine(u: UsualTime, word: MarkWord): string {
+  if (word === "full") return "Always full counts as usually full on Next 7 days, and is never offered as a new regular time.";
+  const provisional: OpeningsMark = { id: u.key, weekday: u.weekday, time: "", mark: "room", note: "", by: { id: "", name: "" }, at: null };
+  if (!offerable(u.word, provisional)) return "This time reads Always full, so it isn't offered as a new regular time, whatever the mark.";
+  const beside =
+    u.word === "usually-room" ? "" : u.word === "not-enough" || u.word === "blank" ? ", with the mark beside it" : ", with the mark and the numbers beside it";
+  return `Usually has room can be offered as a new regular time when someone's agreed week has them in then with no regular there, and the coming weeks don't show it taken${beside}.`;
+}
+
+export const MARK_NOTE_LABEL = "A note, if it helps";
+
+/** Under the note: who sees it, and how much is left. "Everyone at Westlake sees it, with your name. 12 of 200." */
+export function markNoteHint(studioName: string, length: number): string {
+  return `Everyone at ${studioName} sees it, with your name. ${length} of ${MAX_MARK_NOTE}.`;
+}
+
+export const SAVE_THE_MARK = "Save the mark";
+export const SAVING_THE_MARK = "Saving…";
+export const CANCEL = "Cancel";
+
+/** The review's two answers, under "Marked 64 days ago. Still true?". */
+export const KEEP = "Keep";
+export const REMOVE = "Remove";
+
+/** Before a mark goes, one question: it goes for everyone. */
+export function removeQuestion(studioName: string): string {
+  return `Remove this mark? It goes for everyone at ${studioName}.`;
+}
+export const REMOVE_IT = "Remove it";
+
+export const SAVE_FAILED = "Couldn't save the mark just now. Check the connection and try again.";
+export const KEEP_FAILED = "Couldn't keep the mark just now. Check the connection and try again.";
+export const REMOVE_FAILED = "Couldn't remove the mark just now. Check the connection and try again.";
+
+/**
+ * A write made while the iPad is offline (or with no answer in a moment) is
+ * on the iPad at once and reaches the studio when the connection is back
+ * (session-record's `settleOrQueue`): the form closes and says so, rather
+ * than "Saving…" until the Wi-Fi returns.
+ */
+export const MARK_QUEUED: Record<MarkAction, string> = {
+  save: "Saved on this iPad. It goes to the studio when the connection is back.",
+  keep: "Kept on this iPad. It goes to the studio when the connection is back.",
+  remove: "Removed on this iPad. It goes to the studio when the connection is back.",
+};
+
+/** What the leave question calls a half-written mark: "You have unsaved changes to the mark on Monday 8:00 AM." */
+export function markLabel(key: string): string {
+  return `the mark on ${timeName(key)}`;
+}
+
+/** A mark's note, as the sheet shows it: in quotation marks, as it was written. */
+export function markNoteLine(note: string): string {
+  return `“${note}”`;
+}
+
+/* ------------------------------------------------------------------ *
  * Above the grid
  * ------------------------------------------------------------------ */
 
@@ -481,9 +598,26 @@ export function chips(trainerIds: readonly string[], names: (id: string) => stri
   return [...(viewer.trainerId ? [{ trainerId: viewer.trainerId, label: "With you" }] : []), { trainerId: null, label: "Anyone" }, ...others];
 }
 
+/** Who a chip narrows to, as a sentence says it: "you", or the name `nameBook` gives. */
+function chipWho(trainerId: string, names: (id: string) => string, viewer: Viewer): string {
+  return trainerId === viewer.trainerId ? "you" : names(trainerId);
+}
+
+/**
+ * Next 7 days, when the chip alone empties the list: the studio has lines,
+ * none with this trainer. Never "Nothing has opened up in the next 7 days",
+ * which is a claim about the whole studio.
+ */
+export function nothingOpenedWithSentence(trainerId: string, names: (id: string) => string, viewer: Viewer): string {
+  return `Nothing has opened up with ${chipWho(trainerId, names, viewer)} in the next 7 days. Anyone shows the rest of the studio.`;
+}
+
 /* ------------------------------------------------------------------ *
  * A new regular time
  * ------------------------------------------------------------------ */
+
+/** While the coming weeks are read: in an offer's sentence, and as Most weeks' line on the Wrap-up's sheet. */
+export const CHECKING_COMING = "Checking the coming weeks…";
 
 /** "Tuesday 10:30 AM · usually has room: room in 6 of the last 8 Tuesdays, and free on the next 3 Tuesdays on file." */
 export function offerSentence(o: Offer, tz: string): string {
@@ -493,7 +627,7 @@ export function offerSentence(o: Offer, tz: string): string {
     o.coming.state === "free"
       ? `, and free on the next ${o.coming.days.length} ${days} on file.`
       : o.coming.state === "checking"
-        ? ". Checking the coming weeks…"
+        ? `. ${CHECKING_COMING}`
         : `. Can't check the coming ${days} yet.`;
   if (o.usual?.word === "usually-room") return `${time} · usually has room: ${usualDetail(o.usual)}${coming}`;
   const by = o.mark ? ` by ${firstName(o.mark.by.name) || "a trainer"}${o.mark.at ? `, ${shortDay(dateKeyOf(o.mark.at, tz), tz)}` : ""}` : "";
@@ -515,6 +649,38 @@ export function offerWho(o: Offer, names: (id: string) => string, viewer: Viewer
 
 export const NO_OFFERS = "No usual times with room right now. The front desk can see every opening in Mindbody.";
 
+/**
+ * A new regular time, when the marks couldn't be read (refused, offline, or
+ * only this iPad's cache answered). A time a colleague marked Always full is
+ * never offered, so with the marks unknown nothing is offered for good.
+ */
+export const MARKS_UNKNOWN_OFFERS = "Can't tell just now whether anyone has marked a time Always full, so no time is offered for good yet.";
+
+/**
+ * A new regular time (and the Wrap-up's Most weeks), when the chip alone
+ * empties the list: the studio has times to offer, none of them this
+ * trainer's.
+ */
+export function noOffersWithSentence(trainerId: string, names: (id: string) => string, viewer: Viewer): string {
+  const who = chipWho(trainerId, names, viewer);
+  return who === "you"
+    ? "You have no usual times with room to offer right now. Anyone shows the rest of the studio."
+    : `${who.charAt(0).toUpperCase()}${who.slice(1)} has no usual times with room to offer right now. Anyone shows the rest of the studio.`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Who's usually in
+ * ------------------------------------------------------------------ */
+
+/** With nobody on the studio's staff (as Team says it). */
+export function nobodyHereSentence(studioName: string): string {
+  return `Nobody works at ${studioName} yet.`;
+}
+
+/** The regulars' names, only after a tap. */
+export const SHOW_REGULARS = "Show the regulars' names";
+export const HIDE_REGULARS = "Hide the regulars' names";
+
 /* ------------------------------------------------------------------ *
  * The Wrap-up's "Times with room" (times only, worded for the client to see)
  * ------------------------------------------------------------------ */
@@ -523,13 +689,39 @@ export const WRAP_UP_LOOKING = "Looking for times…";
 export const WRAP_UP_CANT_CHECK = "Can't check the times right now. Ask the front desk.";
 export const WRAP_UP_CANT_TELL = "Can't tell right now.";
 
+/** The door's words and the sheet's title. */
+export const TIMES_WITH_ROOM = "Times with room";
+/** The sheet's two parts. */
+export const NEXT_7_DAYS = "Next 7 days";
+export const MOST_WEEKS = "Most weeks";
+/**
+ * Next 7 days, with no time with room anywhere Journey can see. Never a flat
+ * "nothing open": `timesWithRoom` knows only the hours of an AGREED week, and
+ * leaves out a half-hour with a booking it can't place, so a trainer with no
+ * agreed week, or the front desk, may well have room. Hedged as NO_OFFERS is.
+ */
+export const NO_TIMES_NEXT_7 = "No times with room in the next 7 days. The front desk can see every opening in Mindbody.";
+/** Next 7 days, when "With you" alone empties it while Anyone has times. */
+export const YOU_NO_TIMES_NEXT_7 = "You have no times with room in the next 7 days. Anyone shows the rest of the studio.";
+/** Most weeks, listed without the coming weeks checked (the month wasn't read in full today, or that read failed). */
+export const COMING_CANT_CHECK = "Can't check the coming weeks yet.";
+/** Closes the sheet, back to the Wrap-up. */
+export const DONE = "Done";
+
 /** "Saturdays run on the rotation. Ask the front desk." */
 export function rotationDaySentence(weekday: number): string {
   return `${weekdayPlural(weekday)} run on the rotation. Ask the front desk.`;
 }
 
-/** The next 7 days' times with room, grouped by day: "Mon, Oct 5: 6:00 AM · 8:00 AM (this week only) · 11:30 AM". */
-export function timesWithRoomByDay(times: readonly RoomTime[], tz: string): { dateKey: string; label: string; times: { label: string; thisWeekOnly: boolean }[]; sentence: string }[] {
+/**
+ * The next 7 days' times with room, grouped by day: "Mon, Oct 5: 6:00 AM ·
+ * 8:00 AM (this week only) · 11:30 AM". Each time's `said` is its chip as the
+ * sheet shows it, "(this week only)" included.
+ */
+export function timesWithRoomByDay(
+  times: readonly RoomTime[],
+  tz: string,
+): { dateKey: string; label: string; times: { label: string; thisWeekOnly: boolean; said: string }[]; sentence: string }[] {
   const days = new Map<string, RoomTime[]>();
   for (const t of times) {
     if (!days.has(t.dateKey)) days.set(t.dateKey, []);
@@ -538,9 +730,14 @@ export function timesWithRoomByDay(times: readonly RoomTime[], tz: string): { da
   return [...days.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([dateKey, list]) => {
-      const chipsOf = [...list].sort((a, b) => a.row - b.row).map((t) => ({ label: clockLabel(t.row), thisWeekOnly: t.thisWeekOnly }));
+      const chipsOf = [...list]
+        .sort((a, b) => a.row - b.row)
+        .map((t) => {
+          const at = clockLabel(t.row);
+          return { label: at, thisWeekOnly: t.thisWeekOnly, said: t.thisWeekOnly ? `${at} (this week only)` : at };
+        });
       const label = dayLabel(dateKey, tz);
-      return { dateKey, label, times: chipsOf, sentence: `${label}: ${chipsOf.map((c) => (c.thisWeekOnly ? `${c.label} (this week only)` : c.label)).join(" · ")}` };
+      return { dateKey, label, times: chipsOf, sentence: `${label}: ${chipsOf.map((c) => c.said).join(" · ")}` };
     });
 }
 
@@ -563,6 +760,23 @@ export function teamLine(next: Pick<NextDays, "state" | "lines">): string | null
   const free = next.lines.reduce((n, l) => n + l.reasons.filter((r) => r.kind === "regular-open" || r.kind === "regular-moved").length, 0);
   if (free === 0) return null;
   return `${plural(free, "free slot", "free slots")} in the next 7 days · See ${free === 1 ? "it" : "them"} on Openings.`;
+}
+
+/**
+ * Team, when the week was read and Openings lists no free slot, though the
+ * check found something Openings doesn't list (someone else booked in a
+ * regular's slot, a slot earlier today, a Sunday): never "booked as usual",
+ * and never a heading over nothing. Null until the week is read, or when
+ * `teamLine` has a line.
+ */
+export function teamNoneSentence(next: Pick<NextDays, "state" | "lines">): string | null {
+  if (next.state !== "ready" || teamLine(next) !== null) return null;
+  return "No free slots ahead in the next 7 days.";
+}
+
+/** Under the Overview's first few Openings lines: "and 2 more on Openings" (the Overview's own "and N more" pattern). */
+export function overviewMoreLine(more: number): string {
+  return `and ${more} more on Openings`;
 }
 
 /** The Overview's "next three days" line for a usually-full time with room: "Mon, Oct 5 · 8:00 AM, usually full, has room · See it on Openings." */

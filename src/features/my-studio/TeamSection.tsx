@@ -23,9 +23,11 @@ import "./my-studio.css";
  * vault). relay/team/TeamPanel.tsx says what went and where.
  *
  * Standing weeks come first (the same round): each trainer's usual week,
- * proposed on My Profile and agreed here, and the next seven days' bookings
- * checked against the agreed weeks — the free slots a leader can fill
- * (standing-week/StandingWeeksPanel.tsx).
+ * proposed on My Profile and agreed here. Above them, who is away this week
+ * and ONE line with a door to Openings ("3 free slots in the next 7 days ·
+ * See them on Openings."): the free slots themselves are listed on My
+ * Studio → Openings → Next 7 days since the Openings round (Sep 27 2026),
+ * and Team lists none (standing-week/StandingWeeksPanel.tsx).
  *
  * Round: My Studio, Sep 2026. The people and the standards (relay/team/
  * TeamPanel — what used to be Relay's Team tab) are the top half. The bottom

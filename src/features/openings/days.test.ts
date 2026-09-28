@@ -69,9 +69,15 @@ describe("countDays", () => {
     expect(out[4]).toMatchObject({ verdict: "counted", usual: 38 });
   });
 
-  it("Demo Mode: every day was written by the seeder, so every open day counts", () => {
-    const out = countDays([{ day: "2026-10-05", booked: 3 }, { day: "2026-10-12", booked: 2 }], record([]), { everyDayRead: true });
-    expect(out.map((d) => d.verdict)).toEqual(["counted", "counted"]);
+  it("Demo Mode: the caller answers the whole-read test (a day holding a demo booking), so a day with no record can count", () => {
+    const seeded = new Set(["2026-10-05", "2026-10-12"]);
+    const out = countDays([{ day: "2026-09-28", booked: 0 }, { day: "2026-10-05", booked: 3 }, { day: "2026-10-12", booked: 2 }], record([]), { readDay: (day) => seeded.has(day) });
+    expect(out.map((d) => d.verdict)).toEqual(["unread", "counted", "counted"]);
+  });
+
+  it("Demo Mode: readDay replaces the record, so a day the record holds but readDay refuses doesn't count", () => {
+    const out = countDays([{ day: "2026-10-05", booked: 3 }], record(["2026-10-05"]), { readDay: () => false });
+    expect(out[0].verdict).toBe("unread");
   });
 
   it("a weekday with nothing usually booked is open with nothing", () => {

@@ -79,8 +79,7 @@ vi.mock("../../admin/sync-lease", () => ({ useSyncLease: () => fake.lease }));
 
 import { forgetPersonalMemory } from "../../sign-out/memory";
 import { SERVER_WAIT_MS } from "../../standing-week/server-read";
-import { NO_OFFERS, OFFER_FOOT } from "../present";
-import { MARKS_UNKNOWN_OFFERS, READING_USUAL_WEEK } from "./words";
+import { MARKS_UNKNOWN_OFFERS, NO_OFFERS, OFFER_FOOT, READING_USUAL_WEEK } from "../present";
 import { OpeningsSection } from "./OpeningsSection";
 import { rememberOpeningsPart } from "./part-memory";
 import { LEE, PAT, PAT_WEEK, SAM, SAM_TUESDAYS, Shell, WESTLAKE, foldFixture } from "./test-shell";

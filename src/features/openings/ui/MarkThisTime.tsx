@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { MAX_MARK_NOTE, disagreement, type MarkWord, type OpeningsMark } from "../marks";
-import { markLines, type Viewer } from "../present";
 import type { UsualTime } from "../usual";
 import {
   CANCEL,
@@ -21,9 +20,11 @@ import {
   SAVE_THE_MARK,
   SAVING_THE_MARK,
   markChangeLine,
+  markLines,
   markNoteHint,
   removeQuestion,
-} from "./mark-words";
+  type Viewer,
+} from "../present";
 import type { MarkThisTime } from "./useMarkThisTime";
 import "../../relay/kit.css";
 import "../../relay/planner.css";

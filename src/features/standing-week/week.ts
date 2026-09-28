@@ -113,7 +113,7 @@ export const MAX_NOTE = 500;
 export const MAX_AWAY = 6;
 export const MAX_AWAY_NOTE = 200;
 
-export const EMPTY_WEEK: StandingWeek = { hours: [], regulars: [] };
+export const BLANK_WEEK: StandingWeek = { hours: [], regulars: [] };
 
 /** Monday first, the way a studio's week reads; Sunday last. */
 export const WEEKDAYS_IN_ORDER: readonly number[] = [1, 2, 3, 4, 5, 6, 0];

@@ -1,32 +1,49 @@
 import { describe, expect, it } from "vitest";
+import { leaveQuestion } from "../unsaved-changes";
 import { backFrom } from "./back-from";
-import { normalizeMark } from "./marks";
+import { normalizeMark, offerable } from "./marks";
 import { nextDays, type NextDaysLine } from "./next-days";
 import type { Offer } from "./offer";
 import {
+  CHECKING_COMING,
   CHECK_IN_MINDBODY,
+  MARKS_UNKNOWN_OFFERS,
+  MARK_INTRO,
+  MARK_QUEUED,
+  MARK_WORD,
   NO_OFFERS,
+  NO_TIMES_NEXT_7,
   OFFER_FOOT,
+  YOU_NO_TIMES_NEXT_7,
   backFromSentence,
   builtLine,
   cancellationsLine,
   chips,
   lineDetail,
   lineSentence,
+  markChangeLine,
+  markLabel,
   markLines,
+  markNoteHint,
+  markNoteLine,
   nameBook,
   nextDaysStateSentence,
+  noOffersWithSentence,
+  nothingOpenedWithSentence,
   notCountedLines,
   notEnoughSentence,
   offerSentence,
   offerWho,
   outnumberedLine,
   overviewLines,
+  overviewMoreLine,
   regularsLine,
+  removeQuestion,
   rotationDaySentence,
   sinceLine,
   summaryStateSentence,
   teamLine,
+  teamNoneSentence,
   thisWeekSentence,
   timesWithRoomByDay,
   unagreedLine,
@@ -37,7 +54,7 @@ import {
   wordLabel,
 } from "./present";
 import type { CellWeek, OpeningsSummary, SummaryDay } from "./summary-doc";
-import { usualTime, type UsualTime } from "./usual";
+import { usualTime, type UsualTime, type UsualWord } from "./usual";
 import { MONDAYS, TRAINERS, TZ, at as fixtureAt, sam, standingWeek } from "./fixtures";
 
 type Spec = { day?: SummaryDay; cell?: CellWeek };
@@ -370,6 +387,8 @@ describe("the Wrap-up's times, Team's line, the Overview's line", () => {
       TZ,
     );
     expect(days.map((d) => d.sentence)).toEqual(["Mon, Oct 5: 6:00 AM · 8:00 AM (this week only) · 11:30 AM", "Tue, Oct 6: 9:00 AM"]);
+    // Each chip as the sheet shows it, "(this week only)" included: the sheet never splits the sentence.
+    expect(days[0].times.map((t) => t.said)).toEqual(["6:00 AM", "8:00 AM (this week only)", "11:30 AM"]);
     expect(rotationDaySentence(6)).toBe("Saturdays run on the rotation. Ask the front desk.");
   });
 
@@ -386,6 +405,16 @@ describe("the Wrap-up's times, Team's line, the Overview's line", () => {
     expect(teamLine(ready([line({ reasons: [cancellation] })]))).toBeNull();
     expect(teamLine(ready([]))).toBeNull();
     expect(teamLine({ state: "offline", lines: [line({ reasons: [open] })] })).toBeNull();
+  });
+
+  it("Team says there is no free slot only once the week is read, and never beside a line", () => {
+    const open = { kind: "regular-open" as const, finding: finding() };
+    const ready = (lines: NextDaysLine[]) => ({ state: "ready" as const, lines });
+    expect(teamNoneSentence(ready([]))).toBe("No free slots ahead in the next 7 days.");
+    expect(teamNoneSentence(ready([line({ reasons: [{ kind: "usually-full" }] })]))).toBe("No free slots ahead in the next 7 days.");
+    expect(teamNoneSentence(ready([line({ reasons: [open] })]))).toBeNull();
+    expect(teamNoneSentence({ state: "loading", lines: [] })).toBeNull();
+    expect(teamNoneSentence({ state: "offline", lines: [] })).toBeNull();
   });
 
   it("Team's count leaves out what Openings leaves out: a slot earlier today, and Sundays", () => {
@@ -410,5 +439,120 @@ describe("the Wrap-up's times, Team's line, the Overview's line", () => {
   it("the Overview a line for a usually-full time with room", () => {
     const lines = [line(), line({ dateKey: "2026-10-09" }), line({ usuallyFull: false })];
     expect(overviewLines(lines, "2026-10-05", TZ)).toEqual(["Mon, Oct 5 · 8:00 AM, usually full, has room · See it on Openings."]);
+    expect(overviewMoreLine(2)).toBe("and 2 more on Openings");
+  });
+});
+
+/*
+ * The screens' own words (they were ui/words.ts, ui/mark-words.ts and the
+ * Wrap-up sheet's until the round's integration pass): quoted here, so a
+ * change to one is a change someone chose.
+ */
+
+describe("a chip that narrows a list to nothing", () => {
+  it("names the chip, never the whole studio", () => {
+    expect(nothingOpenedWithSentence("t-sam", names, SAM)).toBe("Nothing has opened up with you in the next 7 days. Anyone shows the rest of the studio.");
+    expect(nothingOpenedWithSentence("t-pat", names, SAM)).toBe("Nothing has opened up with Pat in the next 7 days. Anyone shows the rest of the studio.");
+  });
+
+  it("says whose times have nothing to offer", () => {
+    expect(noOffersWithSentence("t-sam", names, SAM)).toBe("You have no usual times with room to offer right now. Anyone shows the rest of the studio.");
+    expect(noOffersWithSentence("t-pat", names, SAM)).toBe("Pat has no usual times with room to offer right now. Anyone shows the rest of the studio.");
+    // An id nobody can name still starts a sentence.
+    expect(noOffersWithSentence("t-gone", names, SAM)).toBe("A trainer has no usual times with room to offer right now. Anyone shows the rest of the studio.");
+  });
+});
+
+describe("the marks, unread", () => {
+  it("offers nothing for good, and says why", () => {
+    expect(MARKS_UNKNOWN_OFFERS).toBe("Can't tell just now whether anyone has marked a time Always full, so no time is offered for good yet.");
+  });
+});
+
+describe("the Wrap-up's Times with room", () => {
+  it("hedges an empty next 7 days as NO_OFFERS does, and points a narrowed one to Anyone", () => {
+    expect(NO_TIMES_NEXT_7).toBe("No times with room in the next 7 days. The front desk can see every opening in Mindbody.");
+    expect(YOU_NO_TIMES_NEXT_7).toBe("You have no times with room in the next 7 days. Anyone shows the rest of the studio.");
+  });
+
+  it("says 'Checking the coming weeks…' in one place: an offer's sentence and Most weeks' line", () => {
+    expect(CHECKING_COMING).toBe("Checking the coming weeks…");
+  });
+});
+
+/** A time that reads `word`: markChangeLine reads only the word (and the key it names). */
+const timeReading = (word: UsualWord) => ({ key: "1-0800", weekday: 1, row: 480, word }) as unknown as UsualTime;
+const WORDS: UsualWord[] = ["always-full", "usually-full", "usually-room", "mixed", "booked", "rotation", "not-enough", "blank"];
+
+describe("Mark this time's words", () => {
+  it("names a mark's two words as the grid does", () => {
+    expect(MARK_WORD).toEqual({ full: "Always full", room: "Usually has room" });
+  });
+
+  it("says a mark never replaces the numbers", () => {
+    expect(MARK_INTRO).toContain("never replaces them");
+  });
+
+  it("says who sees the note, and how much is left", () => {
+    expect(markNoteHint("Westlake", 12)).toBe("Everyone at Westlake sees it, with your name. 12 of 200.");
+  });
+
+  it("asks once before a mark goes, for everyone", () => {
+    expect(removeQuestion("Westlake")).toBe("Remove this mark? It goes for everyone at Westlake.");
+  });
+
+  it("names a half-written mark in the leave question", () => {
+    expect(leaveQuestion([markLabel("1-0800")])).toBe("You have unsaved changes to the mark on Monday 8:00 AM. Leave without saving?");
+    expect(markLabel("6-1930")).toBe("the mark on Saturday 7:30 PM");
+  });
+
+  it("says a write saved on the iPad is on its way, rather than Saving… until the Wi-Fi returns", () => {
+    expect(MARK_QUEUED).toEqual({
+      save: "Saved on this iPad. It goes to the studio when the connection is back.",
+      keep: "Kept on this iPad. It goes to the studio when the connection is back.",
+      remove: "Removed on this iPad. It goes to the studio when the connection is back.",
+    });
+  });
+
+  it("shows a note in quotation marks, as it was written", () => {
+    expect(markNoteLine("Always taken")).toBe("\u201cAlways taken\u201d");
+  });
+});
+
+describe("what the chosen word changes, for this time", () => {
+  it("Always full: counts as full on Next 7 days and is never offered, whatever the time reads", () => {
+    for (const word of WORDS) {
+      expect(markChangeLine(timeReading(word), "full")).toBe("Always full counts as usually full on Next 7 days, and is never offered as a new regular time.");
+    }
+  });
+
+  it("Usually has room on a time that reads Always full: never offered, whatever the mark", () => {
+    const said = markChangeLine(timeReading("always-full"), "room");
+    expect(said).toBe("This time reads Always full, so it isn't offered as a new regular time, whatever the mark.");
+    expect(said).not.toContain("can be offered");
+  });
+
+  it("Usually has room on a time that reads Usually has room: the offer is the numbers' own, and names no mark", () => {
+    expect(markChangeLine(timeReading("usually-room"), "room")).toBe(
+      "Usually has room can be offered as a new regular time when someone's agreed week has them in then with no regular there, and the coming weeks don't show it taken.",
+    );
+  });
+
+  it("Usually has room elsewhere: offered with the mark, and the numbers when there are any", () => {
+    for (const word of ["usually-full", "mixed", "booked", "rotation"] as const) {
+      expect(markChangeLine(timeReading(word), "room")).toBe(
+        "Usually has room can be offered as a new regular time when someone's agreed week has them in then with no regular there, and the coming weeks don't show it taken, with the mark and the numbers beside it.",
+      );
+    }
+    for (const word of ["not-enough", "blank"] as const) {
+      expect(markChangeLine(timeReading(word), "room")).toMatch(/taken, with the mark beside it\.$/);
+    }
+  });
+
+  it("never says a time can be offered when the core would not offer it", () => {
+    const mark = { id: "1-0800", weekday: 1, time: "08:00", mark: "room" as const, note: "", by: { id: "uid", name: "" }, at: null };
+    for (const word of WORDS) {
+      expect(markChangeLine(timeReading(word), "room").includes("can be offered")).toBe(offerable(word, mark));
+    }
   });
 });

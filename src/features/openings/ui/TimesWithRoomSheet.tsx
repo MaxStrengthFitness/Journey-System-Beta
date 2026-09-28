@@ -4,13 +4,22 @@ import { offerable } from "../marks";
 import { timesWithRoom } from "../next-days";
 import { offers, type Offer } from "../offer";
 import {
+  CHECKING_COMING,
+  COMING_CANT_CHECK,
+  DONE,
+  MOST_WEEKS,
+  NEXT_7_DAYS,
   NO_OFFERS,
+  NO_TIMES_NEXT_7,
   OFFER_FOOT,
+  TIMES_WITH_ROOM,
   WRAP_UP_CANT_CHECK,
   WRAP_UP_CANT_TELL,
   WRAP_UP_LOOKING,
+  YOU_NO_TIMES_NEXT_7,
   builtLine,
   chips,
+  noOffersWithSentence,
   rotationDaySentence,
   timesWithRoomByDay,
 } from "../present";
@@ -18,7 +27,6 @@ import { clockLabel, weekdayPlural } from "../rows";
 import { isStale } from "../summary-doc";
 import { useComingWeeks, useNextSevenDays } from "./useNextSevenDays";
 import type { OpeningsData } from "./useOpeningsData";
-import { noOffersWithSentence } from "./words";
 
 /**
  * TIMES WITH ROOM — the Wrap-up's sheet (Openings round, Sep 27 2026, phase 8).
@@ -71,35 +79,6 @@ import { noOffersWithSentence } from "./words";
  *
  * It books nothing, holds nothing, asks Mindbody nothing and pings nobody.
  */
-
-/* ------------------------------------------------------------------ *
- * The sheet's own few words. Every sentence about the studio's times is
- * present.ts's (WRAP_UP_*, NO_OFFERS, OFFER_FOOT, rotationDaySentence,
- * timesWithRoomByDay); these are the rest, in one place, handed to the core
- * to fold into present.ts beside WRAP_UP_*, after which this file imports
- * them from there.
- * ------------------------------------------------------------------ */
-
-/** The door's words and the sheet's title. */
-export const TIMES_WITH_ROOM = "Times with room";
-/** The sheet's two parts. */
-export const NEXT_7_DAYS = "Next 7 days";
-export const MOST_WEEKS = "Most weeks";
-/**
- * Next 7 days, with no time with room anywhere Journey can see. Never a flat
- * "nothing open": `timesWithRoom` knows only the hours of an AGREED week, and
- * leaves out a half-hour with a booking it can't place, so a trainer with no
- * agreed week, or the front desk, may well have room. Hedged as NO_OFFERS is.
- */
-export const NO_TIMES_NEXT_7 = "No times with room in the next 7 days. The front desk can see every opening in Mindbody.";
-/** Next 7 days, when "With you" alone empties it while Anyone has times. */
-export const YOU_NO_TIMES_NEXT_7 = "You have no times with room in the next 7 days. Anyone shows the rest of the studio.";
-/** Most weeks, while the coming weeks are read (the proposal's words). */
-export const CHECKING_COMING = "Checking the coming weeks…";
-/** Most weeks, listed without the coming weeks checked (the month wasn't read in full today, or that read failed). */
-export const COMING_CANT_CHECK = "Can't check the coming weeks yet.";
-/** Closes the sheet, back to the Wrap-up. */
-export const DONE = "Done";
 
 /**
  * WHETHER THE WRAP-UP SHOWS THE DOOR AT ALL: the studio's summary lists at
@@ -154,17 +133,6 @@ interface TimeGroup {
   times: string[];
   /** The whole group as one sentence, for VoiceOver. */
   sentence: string;
-}
-
-/**
- * A day's chips, in the core's own words: its sentence after the day's label,
- * "6:00 AM · 8:00 AM (this week only) · 11:30 AM", split at the dots. Falls
- * back to the bare times should the sentence ever stop lining up.
- */
-function dayChips(day: ReturnType<typeof timesWithRoomByDay>[number]): string[] {
-  const head = `${day.label}: `;
-  const parts = day.sentence.startsWith(head) ? day.sentence.slice(head.length).split(" · ") : [];
-  return parts.length === day.times.length ? parts : day.times.map((t) => t.label);
 }
 
 /** Most weeks' times, by weekday: "Tuesdays: 10:30 AM · 11:00 AM". */
@@ -326,7 +294,7 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
           </p>
         ) : (
           <>
-            <TimesPart title={NEXT_7_DAYS} testId="times-next" part={next} groups={(days) => days.map((d) => ({ key: d.dateKey, label: d.label, times: dayChips(d), sentence: d.sentence }))} />
+            <TimesPart title={NEXT_7_DAYS} testId="times-next" part={next} groups={(days) => days.map((d) => ({ key: d.dateKey, label: d.label, times: d.times.map((t) => t.said), sentence: d.sentence }))} />
             <TimesPart title={MOST_WEEKS} testId="times-most" part={most} groups={(g) => g} />
           </>
         )}

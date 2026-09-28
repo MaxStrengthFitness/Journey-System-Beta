@@ -12,7 +12,7 @@ import { formatStudioDate, toDate, type DateLike } from "../../lib/studio-time";
 import { isDemoStudioId } from "../demo-mode/is-demo";
 import { dayLabel, timeLabel } from "./check";
 import {
-  EMPTY_WEEK,
+  BLANK_WEEK,
   WEEKDAY_NAME,
   WEEKDAYS_IN_ORDER,
   clockOf,
@@ -61,6 +61,15 @@ export function rangeLabel(h: Pick<WorkHours, "from" | "to">): string {
 
 /** A day with no blocks, in the editor and on a colleague's card. */
 export const NO_BLOCKS = "Doesn't take clients";
+
+/**
+ * A colleague's week, read only (the colleague card, and Openings → Who's
+ * usually in): a proposal nobody has agreed is theirs and their leader's,
+ * so it reads NO_AGREED_WEEK; an agreed week with nothing on any day reads
+ * EMPTY_WEEK.
+ */
+export const NO_AGREED_WEEK = "No agreed week yet.";
+export const EMPTY_WEEK = "An empty week.";
 
 /** The chip on a regular whose time falls outside every block that day (`outsideHours`). */
 export const OUTSIDE_BLOCKS = "Outside when they take clients";
@@ -176,7 +185,7 @@ export interface WeekForm {
 }
 
 export function formOf(week: StandingWeek | null | undefined): WeekForm {
-  const w = normalizeWeek(week ?? EMPTY_WEEK);
+  const w = normalizeWeek(week ?? BLANK_WEEK);
   return { hours: w.hours, regulars: w.regulars, note: w.note ?? "" };
 }
 

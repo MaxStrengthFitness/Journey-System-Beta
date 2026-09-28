@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { TeamWeekRow } from "../../standing-week/team";
 import { timeLabel } from "../../standing-week/check";
-import { NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "../../standing-week/present";
+import { EMPTY_WEEK, NO_AGREED_WEEK, NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "../../standing-week/present";
 import { upcomingAway } from "../../standing-week/week";
 import { useOpenings } from "./context";
-import { EMPTY_WEEK, HIDE_REGULARS, NO_AGREED_WEEK, READING_WEEKS, SHOW_REGULARS, nobodyHereSentence } from "./words";
+import { HIDE_REGULARS, READING_WEEKS, SHOW_REGULARS, nobodyHereSentence } from "../present";
 import type { OpeningsData } from "./useOpeningsData";
 import "../../standing-week/standing-week.css";
 import "../openings.css";

@@ -264,8 +264,9 @@ staff have no Mindbody photo, and that is not a degraded state.
 | `trainer-profile.tokens.css` | light + dark, AA, incl. the kaizen pair |
 
 **My standing week** (voice-review round, Sep 27 2026) is a card on your OWN
-profile, at the studio the iPad is in and only where you work: the hours you
-usually work there and your regulars, proposed to a studio leader. It lives
+profile, at the studio the iPad is in and only where you work: when you
+usually take clients there (up to three blocks a day, since the Openings
+round) and your regulars, proposed to a studio leader. It lives
 in `src/features/standing-week/` (`MyStandingWeek.tsx`), is keyed by the Auth
 uid rather than `trainer.id`, and writes nothing to Mindbody. The rules must
 be deployed before the app (`standingWeeks`), or the card says so.
@@ -352,11 +353,9 @@ with the team); My clients is who you have TRAINED, for "my off time".
   `rosterStatus`. While it is loading, or its read has failed, the card says
   **"Can't read the client list just now"** and lists nobody — even though
   the list the page holds is then not empty: it carries a client opened
-  earlier, and after a failed read the booked clients read by id. A caller
-  that doesn't pass the state never gets "No clients at ... have sessions
-  with you": with no rows the card says it can't read. AppContent passing
-  `rosterStatus` is what makes the failed state show whenever a client has
-  been opened; until it does, a failed read can still show a partial list.
+  earlier, and after a failed read the booked clients read by id.
+  `rosterStatus` is required (AppContent passes `useStudioRoster`'s), so no
+  caller can leave the card guessing, and only "ready" lists anyone.
 
 ---
 

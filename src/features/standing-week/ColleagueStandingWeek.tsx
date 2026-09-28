@@ -1,7 +1,7 @@
 import { studioTodayKey } from "../../lib/studio-time";
 import type { Trainer } from "../../types";
 import { timeLabel } from "./check";
-import { NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "./present";
+import { EMPTY_WEEK, NO_AGREED_WEEK, NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "./present";
 import { uidOf } from "./team";
 import { useStandingWeek } from "./useStandingWeeks";
 import { upcomingAway } from "./week";
@@ -59,7 +59,7 @@ export function ColleagueStandingWeek({ trainer, studioId, studioName, tz }: Col
               <>
                 <p className="stw-status">{teamWeekSentence(doc ? { ...doc, proposed: doc.final } : null, name, tz)}</p>
                 {days.length === 0 ? (
-                  <p className="stw-hint">An empty week.</p>
+                  <p className="stw-hint">{EMPTY_WEEK}</p>
                 ) : (
                   <dl className="stw-read" aria-label={`${first}'s agreed week`}>
                     {days.map((d) => (
@@ -83,7 +83,7 @@ export function ColleagueStandingWeek({ trainer, studioId, studioName, tz }: Col
                 )}
               </>
             ) : (
-              <p className="stw-status">No agreed week yet.</p>
+              <p className="stw-status">{NO_AGREED_WEEK}</p>
             )}
             {away.length > 0 && (
               <div className="stw-away">

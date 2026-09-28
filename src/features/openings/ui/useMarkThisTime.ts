@@ -4,7 +4,7 @@ import { useUnsavedChanges } from "../../unsaved-changes";
 import { MAX_MARK_NOTE, type MarkWord, type OpeningsMark } from "../marks";
 import type { TimeKey } from "../rows";
 import { keepMark, removeMark, saveMark, type MarkSigner } from "./marks-store";
-import { markLabel, type MarkAction } from "./mark-words";
+import { markLabel, type MarkAction } from "../present";
 
 /**
  * "MARK THIS TIME" (Openings round, Sep 27 2026, phase 6): the state of one

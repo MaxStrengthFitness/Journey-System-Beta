@@ -98,11 +98,22 @@ if (typeof window.matchMedia !== "function") {
 import { forgetPersonalMemory } from "../../sign-out/memory";
 import { addDays } from "../coverage";
 import { booking, monday, sam as samAt, pat as patAt } from "../fixtures";
-import { NO_OFFERS, OFFER_FOOT, WRAP_UP_CANT_CHECK, WRAP_UP_CANT_TELL, WRAP_UP_LOOKING } from "../present";
+import {
+  CHECKING_COMING,
+  COMING_CANT_CHECK,
+  DONE,
+  NO_OFFERS,
+  NO_TIMES_NEXT_7,
+  OFFER_FOOT,
+  WRAP_UP_CANT_CHECK,
+  WRAP_UP_CANT_TELL,
+  WRAP_UP_LOOKING,
+  YOU_NO_TIMES_NEXT_7,
+} from "../present";
 import type { OpeningsMark } from "../marks";
 import type { UsualWeek } from "../usual";
 import { LEE, MONDAYS, PAT, PAT_WEEK, SAM, SAM_TUESDAYS, WESTLAKE, foldFixture } from "./test-shell";
-import { CHECKING_COMING, COMING_CANT_CHECK, DONE, NO_TIMES_NEXT_7, TimesWithRoomSheet, YOU_NO_TIMES_NEXT_7, hasTimesToOffer } from "./TimesWithRoomSheet";
+import { TimesWithRoomSheet, hasTimesToOffer } from "./TimesWithRoomSheet";
 import { useOpeningsData } from "./useOpeningsData";
 
 const ANN_TUESDAY = { id: "r1", weekday: 2, start: "10:00", clientId: "c-ann", clientName: "Ann Regular" };

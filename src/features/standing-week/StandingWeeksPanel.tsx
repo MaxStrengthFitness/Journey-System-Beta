@@ -7,7 +7,7 @@ import { AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialo
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
 import { openMyStudioSection } from "../my-studio/section-memory";
 import { nextDays } from "../openings/next-days";
-import { teamLine } from "../openings/present";
+import { READING_WEEKS, teamLine, teamNoneSentence } from "../openings/present";
 import { showOpenings } from "../openings/ui";
 import { trainerRefs } from "../openings/whose";
 import { UnsavedChangesScope, useLeaveScope, useUnsavedChanges } from "../unsaved-changes";
@@ -49,8 +49,11 @@ import "./standing-week.css";
  *                         Mindbody, and an unread day is "can't tell", never
  *                         "open": until the server answers there is no line.
  *                         When the check found only what Openings doesn't
- *                         list and nobody is away, the part isn't drawn,
- *                         rather than a heading over nothing.
+ *                         list (someone else booked in a regular's slot, a
+ *                         slot earlier today, a Sunday), it says "No free
+ *                         slots ahead in the next 7 days." (`teamNoneSentence`),
+ *                         never "booked as usual" and never a heading over
+ *                         nothing.
  *   each person's         by name, never ranked: where it stands, and Review
  *   standing week
  *                         to agree a proposal as it is or changed first.
@@ -159,17 +162,15 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
     [today, now, zone, nextRead, studio, schedule.entries, weeks.docs, refs, staffIds, worksHere],
   );
   const line = teamLine(next);
-  // Who is away this week, said once each; their slots aren't checked.
-  const away = useMemo(() => awayThisWeek(checked, today), [checked, today]);
   /*
    * The check can be ready with findings Openings doesn't list (someone else
    * booked in a regular's slot, a slot earlier today or on a Sunday): no
-   * door, and "booked as usual" would be untrue. With nobody away either, the
-   * heading would stand over nothing, which reads as broken or still
-   * loading, so the part isn't drawn (review of the Openings round, Sep 27
-   * 2026; a sentence for it would be Openings' own, in openings/present.ts).
+   * door, and "booked as usual" would be untrue, so Team says Openings' own
+   * sentence for it, and never draws the heading over nothing.
    */
-  const nothingToSay = !weeks.error && !weeks.loading && away.length === 0 && !line && check.state === "ready" && check.findings.length > 0;
+  const none = teamNoneSentence(next);
+  // Who is away this week, said once each; their slots aren't checked.
+  const away = useMemo(() => awayThisWeek(checked, today), [checked, today]);
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;
 
@@ -180,42 +181,44 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
       subtitle="Each trainer proposes their usual week — when they take clients, and their regulars — on My Profile, and you agree it here. The coming week's Mindbody bookings are checked against the agreed weeks. Nothing is written to Mindbody: the front desk books as always."
     >
       <div className="stw-team">
-        {!nothingToSay && (
-          <section aria-labelledby="stw-next-seven">
-            <h3 className="stw-team__head" id="stw-next-seven">
-              The next seven days
-            </h3>
-            {weeks.error ? (
-              <p className="stw-hint">{weeks.error}</p>
-            ) : weeks.loading ? (
-              <p className="stw-hint">Reading the standing weeks…</p>
-            ) : null}
-            {!weeks.error && !weeks.loading && away.length > 0 && (
-              <ul className="stw-away-lines" aria-label="Away this week">
-                {away.map((n) => (
-                  <li key={`${n.trainerId}-${n.from}-${n.to}`} className="stw-away-line">
-                    {awaySentence(n, today, tz)}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {/* One line and a door when Openings lists a free slot. Otherwise
-                the check's own sentence while it can't tell (reading, offline,
-                failed, not linked, nothing agreed), or when it found nothing
-                at all; a slot someone else is booked in, or one earlier today
-                or on a Sunday, is nothing Openings lists, so it says nothing
-                (and with nobody away, the part isn't drawn: nothingToSay). */}
-            {weeks.error || weeks.loading ? null : line ? (
-              <button type="button" className="stw-btn stw-btn--quiet" data-testid="week-openings-door" onClick={openOpeningsNextDays}>
-                {line}
-              </button>
-            ) : check.state !== "ready" || check.findings.length === 0 ? (
-              <p className="stw-hint" data-testid="week-check-state">
-                {stateSentence(check)}
-              </p>
-            ) : null}
-          </section>
-        )}
+        <section aria-labelledby="stw-next-seven">
+          <h3 className="stw-team__head" id="stw-next-seven">
+            The next seven days
+          </h3>
+          {weeks.error ? (
+            <p className="stw-hint">{weeks.error}</p>
+          ) : weeks.loading ? (
+            <p className="stw-hint">{READING_WEEKS}</p>
+          ) : null}
+          {!weeks.error && !weeks.loading && away.length > 0 && (
+            <ul className="stw-away-lines" aria-label="Away this week">
+              {away.map((n) => (
+                <li key={`${n.trainerId}-${n.from}-${n.to}`} className="stw-away-line">
+                  {awaySentence(n, today, tz)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* One line and a door when Openings lists a free slot. Otherwise
+              the check's own sentence while it can't tell (reading, offline,
+              failed, not linked, nothing agreed), or when it found nothing
+              at all; a slot someone else is booked in, or one earlier today
+              or on a Sunday, is nothing Openings lists, so it says there is
+              no free slot ahead (teamNoneSentence). */}
+          {weeks.error || weeks.loading ? null : line ? (
+            <button type="button" className="stw-btn stw-btn--quiet" data-testid="week-openings-door" onClick={openOpeningsNextDays}>
+              {line}
+            </button>
+          ) : check.state !== "ready" || check.findings.length === 0 ? (
+            <p className="stw-hint" data-testid="week-check-state">
+              {stateSentence(check)}
+            </p>
+          ) : none ? (
+            <p className="stw-hint" data-testid="week-openings-none">
+              {none}
+            </p>
+          ) : null}
+        </section>
 
         <section aria-labelledby="stw-each-week">
           <h3 className="stw-team__head" id="stw-each-week">

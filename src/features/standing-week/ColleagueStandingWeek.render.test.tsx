@@ -183,7 +183,17 @@ describe("where the trainer page puts it", () => {
     fake.active = { activeStudioId: studioId, activeStudio: { name: studioId === "solon" ? "Solon" : "Westlake", timezone: TZ } };
     await act(async () => {
       root.render(
-        <TrainerProfileView trainer={subject} authTrainer={viewer} schedules={[]} sessions={[]} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />,
+        <TrainerProfileView
+          trainer={subject}
+          authTrainer={viewer}
+          schedules={[]}
+          sessions={[]}
+          clients={[] as Client[]}
+          studios={studios}
+          onSelectClient={() => {}}
+          setView={() => {}}
+          rosterStatus="ready"
+        />,
       );
     });
   };
