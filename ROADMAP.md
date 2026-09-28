@@ -14,7 +14,8 @@ and what is deliberately parked. It is re-cut at every gate.
 
 *Last re-cut: Sep 21 2026, after the catalog gate round. §5 and the follow-up
 pile brought up to Sep 27 2026 after the voice review follow-up, and the
-follow-up pile again after Openings the same night.*
+follow-up pile again after Openings the same night and after the directory and
+opportunities round on Sep 28.*
 
 ---
 
@@ -311,6 +312,16 @@ approved. Technical leftovers: the summary's `tz` has no reader; the next 7
 days' people are put together in three places; Team's door remembers the
 part before the leave question; `offers()` could refuse unread marks itself;
 `WorkoutTrackerView.render.test.tsx`'s `onSnapshot` fake.
+
+**The Client Directory and the Hub's Opportunities (Sep 28 2026)** — to do by
+hand: walk Round 24 of the testing checklist (the round shipped before anyone
+saw it on an iPad). Decisions for AJ, in the round document's "What AJ still
+has to decide", several of them also questions in the redesign's Clients and
+Hub rooms: the default sort, how a nickname shows, Mine's window (60 days or
+ever-in-Journey, not exactly 90), the note marks (a summary on the client
+document, a Firestore change that needs his OK), the Hub card's milestones,
+the tenure words and "ending soon". Technical leftover: `src/lib/directory-row.ts`
+and its test have no reader since the old directory went.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll

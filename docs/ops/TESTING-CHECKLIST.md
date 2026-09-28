@@ -1791,6 +1791,74 @@ only in headless Chrome on harness pages.
 
 ---
 
+## Round 24 — The Client Directory and the Hub's Opportunities · *Sep 28 2026, branch `redesign/directory-and-opportunities`*
+
+The redesign's first round (the Redesign Blueprints, Sep 27): the Clients
+screen becomes one sortable table of every client, and the Hub gets a second
+layer, **Opportunities**, listing every client booked on the day on screen.
+The round document is `docs/rounds/2026-09-27-directory-and-opportunities.md`.
+Nothing to deploy first: no rules, no index, no Cloud Function; the round only
+reads. Walk it signed in as a **Life Transformer** and as a **head trainer**,
+**portrait and landscape, light and dark**. It went to master before anyone
+had seen it on an iPad (AJ, Sep 28: no trainers on the app yet).
+
+**The Clients screen**
+
+- [ ] **It opens on Last in.** Bottom bar → Client, with no client open. Every
+  client at the studio is listed (no "40 most recent"), the most recent visit
+  first, in sections with counts ("Last 7 days · 58"…), and Before Journey,
+  Nothing recorded and Unknown at the bottom.
+- [ ] **The Nancy case.** Type `nan`. Every Nancy, and anyone who goes by
+  Nancy, stays, with the matched letters marked; the top row is the Nancy who
+  was in most recently. Tap **Last in** to reverse it.
+- [ ] **Nicknames and typos.** `judy` finds Judith ("matched nickname"),
+  `nancey` says "No exact match. Close matches:", and `obrien` and `mcdonald`
+  find O'Brien and McDonald.
+- [ ] **Describing.** Type `female nurses over 60`, then `5'6`. "Understood
+  as:" shows each part as a chip; remove one with its ×; the count line says
+  how many have nothing on file.
+- [ ] **Honest unknowns.** Tap an Unknown in the Next or Left column: it says
+  why, without opening the profile. After the iPad has been offline for a
+  while, Next reads Unknown, never "Nothing booked".
+- [ ] **Sorting.** Tap Next, then Left: the sections follow the sort, and the
+  sort menu says the order in words. Leave the screen and come back: the sort
+  is remembered on this iPad, and forgotten at sign-out.
+- [ ] **Views.** Mine (its definition sits under the chips), Kaizen (the
+  reason and check-back date replace the identity line) and In today
+  (**Start** on a row opens that client's session).
+- [ ] **Landscape.** Turn the iPad: Total, Age and Height appear, and their
+  buttons beside the search hide or show each one. No name is cut short in
+  either orientation.
+- [ ] **All my studios.** Signed in as someone with more than one studio, the
+  studio menu offers This studio and All my studios, and a name typed under
+  All my studios finds a client at the other studio. With one studio the menu
+  isn't there.
+- [ ] **Still where they were.** Open session and Add Client work as before,
+  and the Kaizen mark on a row adds the client to your Kaizen Roster and takes
+  her off it.
+
+**The Hub's Opportunities layer**
+
+- [ ] **The switch.** The Hub opens on **Schedule**, unchanged. Tap
+  **Opportunities** at the left of the strip: one row per client booked on the
+  day on screen. Tap **Schedule**: the grid is where you left it.
+- [ ] **Sorts.** Time, Last seen, Sessions, Left and Birthday, each read as a
+  sentence ("turns 80 · Thu Oct 1", "Back after 5 weeks — missed about 9",
+  "100th session today", "36 left in contract · +12 extra").
+- [ ] **Filters and a row.** The chips Read first · Celebrate · Welcome ·
+  Renew · Watch carry counts and hide at zero; Studio / Mine narrows the list;
+  a tapped row opens Where she is · Something to say · Watch, with Open
+  profile and Start session.
+- [ ] **Another day.** Pick Thursday on the day strip: Thursday's clients,
+  birthdays and milestones, not today's.
+- [ ] **A staff block is not a client.** A Mindbody "Unavailable" block
+  (lunch, a one-on-one) never shows as a row.
+- [ ] **The strip in portrait.** With the switch added, is the Hub's top strip
+  still easy to read? (AJ's note on the Blueprints page, Sep 27: that strip
+  already felt "very jumbled".)
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -1838,4 +1906,5 @@ Screenshot:
 | 21 — A new version, picked up safely (Sep 26) | 7 | | |
 | 22 — The voice review follow-up (Sep 27) | 43 | | |
 | 23 — Openings (Sep 27) | 36 | | |
-| **Total** | **404** | | |
+| 24 — The Client Directory and the Hub's Opportunities (Sep 28) | 16 | | |
+| **Total** | **420** | | |

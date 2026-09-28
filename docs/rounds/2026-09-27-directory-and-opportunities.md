@@ -1,6 +1,6 @@
 # The Client Directory and the Hub's Opportunities layer
 
-*Sep 27–28 2026. Branch `redesign/directory-and-opportunities`: four phases on master's `9511c6e`, one commit each, then master merged in at `8d0a3aa` (the Openings round) and one follow-up for its staff-block rule. Built in the cloud container; not pushed (a bundle carries it to the PC).*
+*Sep 27–28 2026. Branch `redesign/directory-and-opportunities`: four phases on master's `9511c6e`, one commit each, then master merged in at `8d0a3aa` (the Openings round) and one follow-up for its staff-block rule. Built in the cloud container and carried to the PC as a bundle; checked there, and shipped to master on Sep 28 2026 on AJ's word ("we don't have trainers on the app"), before his iPad walkthrough, which is Round 24 of the testing checklist.*
 
 ## What AJ asked for
 
@@ -71,3 +71,5 @@ Measured in the cloud container, typecheck with `firebase-applet-config.example.
 | Tests | After the merge: **7,034** in **460** files with `TZ=America/New_York npx vitest run --dir src` — master's 6,927 in 452 plus **107 new tests in 8 new files** (86 for the directory — row, buckets, search, tokens, views and the mounted screen — and 21 for Opportunities — moments-today and the mounted Run-sheet), none failing. `npm test` under `TZ=UTC`, as GitHub's check runs it: **7,248** passing, 1 skipped (master's 7,141 plus the 107). Before the merge it was 6,133 in 399, with one Linux-only failure in `served-files.test.ts` that master has since fixed (`df4933e`) |
 | Build (`npx vite build`) | Clean. The directory is its own chunk (about 39 kB, 14 kB gzipped) and so is the Run-sheet (about 18 kB, 7 kB gzipped), each with its own CSS |
 | Guards | `css-class-owners` (new prefixes `cd-`, `ho-`, `hl-`), `lazy-screens` (ClientsView added with its `LoadBoundary kind="screen"`), `home-screen` (no inset paid), no raw invisible characters (`\uf8ff` and the rest written as escapes), no file names that differ only by case |
+
+**On AJ's PC, Sep 28, in the main checkout \u2014 the run that counts.** Typecheck **4**, the same four errors as master (`AppContent.tsx` \u00d72, `clinical-review/charts.tsx`, `EditTrainerModal.tsx`). **7,034** passing in **460** files with `TZ=America/New_York npx vitest run --dir src`. `npm test` under `TZ=UTC`: **7,248** passing and 1 skipped, in 474 files. `npx vite build` clean: the directory 46.6 kB (14.7 kB gzipped), the Run-sheet 20.6 kB (7.1 kB gzipped). GitHub's check on the pushed branch: green. No case-only file names. Nothing to deploy before the push: the only query the round makes is the "All my studios" name search the old directory made, and both of its indexes (`homeStudioId` with `firstName`, and with `lastName`) are in `firestore.indexes.json`.
