@@ -44,7 +44,22 @@ This is the second reason never to re-mint a `machineId` (the first being
 orphaned `exerciseLogs`): re-minting silently splits one machine's population
 in two, and nothing fails loudly when it happens.
 
-## What a studio may change
+## What a studio may change — the Sep 21 rule (built Sep 28 2026)
+
+**A studio may change anything on its own copy, safety included** (AJ: "Yes
+studios need to be able to customize their stuff safety is definitely a worry but
+are trusted"). A change reaches that studio's floor only. Taking one of Max
+Strength's safety lines off needs a **reason** (at least 3 characters): the editor
+asks for it in place (`editor/safety-removal.tsx`), the record carries who and
+when (`overrides.removedSafety`), and a removal without one is refused by
+`scopeOverrides` and by firestore.rules (`removedSafetyValid`, at most 10).
+Head office sees every studio's differences, and every reason, in **Compare**
+(`compare/`, a catalog machine's Compare button; administrators only). A safety
+list on a copy is stored as the studio's additions only; `execution` and
+`musculature` merge per key now that a studio may write them.
+
+The tiers below still say whose words a field is (and how Compare groups a
+difference); they no longer decide what a studio may write.
 
 `src/lib/machine-template.ts` is the one answer, and it is a product rule, not a
 technical one: **Max Strength owns the method, a studio owns its hardware.**
@@ -92,9 +107,13 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | `editor/sections.tsx` | The eight sections, each in prose or inputs from one source. |
 | `editor/controls.tsx` | The inputs. `FieldShell` says inherited-vs-changed per field. |
 | `completeness.ts` | "What is this machine still missing", named in plain English. Every check has a typed `GapId` so code can block on a specific one without matching prose. |
+| `editor/codex-sections.tsx` | The Codex format, v2 (Sep 28 2026): four OPTIONAL sections after the eight — at the machine, the set and after, study, sources. No gaps, so completeness and the catalog gate are untouched. The format itself: `features/machine-codex/README.md`. |
+| `editor/codex-controls.tsx` | Their controls: `RecordList` (a list of small records from a field description), `LeafLine`, `withLine` (a cleared line is deleted, not stored as ""). |
+| `models/ModelsPage.tsx`, `models/ModelEditor.tsx` | The model record (Codex R2): Admins → Catalog → Models, and a catalog machine's Models button. Administrators only; the id is minted once. |
+| `models/ModelPicker.tsx` | "Which model this unit is" (a studio's machine) / "The reference model" (the standard), at the top of *Codex: at the machine*. A studio's pick is written on the roster entry's own `modelId`, never into its overrides. |
 | `../catalog/review.ts` | What a studio's offer would cost the catalog — the method it wrote, what is still missing, what differs from the machine it is based on. |
 | `../catalog/SubmissionReview.tsx` | That offer opened in this editor, at `scope="catalog"`. Saving records a correction on the offer; it does not publish. |
-| `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. |
+| `definition-defaults.ts` | The blank definition and the normaliser for untyped stored docs. `codexFieldsOf` reads the v2 fields — well-formed or not at all, so an old definition reads exactly as before — and `stripUndefined` readies a write (Firestore refuses `undefined`; the catalog save turns a field cleared to nothing into a delete). |
 
 ## The editor round that has not happened yet
 

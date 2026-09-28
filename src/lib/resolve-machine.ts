@@ -1,9 +1,9 @@
 import {
-  AlignmentCheckpoint,
   MachineCatalogEntry,
   MachineDefinition,
   MachineDefinitionField,
   MachineSettingField,
+  RemovedSafetyLine,
   ResolvedMachine,
   StudioMachineRosterEntry,
 } from "../types/machines";
@@ -45,26 +45,93 @@ const ADDITIVE_STRING_FIELDS = [
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
 /**
- * Alignment checkpoints are additive for the same reason, but they are
- * objects, so they dedupe on `title` rather than on the whole value.
+ * Safety lists whose entries are OBJECTS, so they dedupe on one named part
+ * rather than on the whole value: a checkpoint on its title, and the Codex
+ * format's stop rules (on their words) and watch-outs (on the condition).
+ * The catalog's entry wins a collision, so a studio restating one cannot
+ * weaken it.
  */
-const ADDITIVE_CHECKPOINT_FIELDS = [
-  "alignmentCheckpoints",
-] as const satisfies readonly (keyof MachineDefinition)[];
+const ADDITIVE_KEYED_FIELDS = {
+  alignmentCheckpoints: "title",
+  stopRules: "text",
+  watchOuts: "condition",
+} as const satisfies Partial<Record<keyof MachineDefinition, string>>;
+
+type AdditiveKeyedField = keyof typeof ADDITIVE_KEYED_FIELDS;
 
 /** Everything a studio can extend but not delete. For docs and UI copy. */
 export const ADDITIVE_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] =
-  [...ADDITIVE_STRING_FIELDS, ...ADDITIVE_CHECKPOINT_FIELDS];
+  [...ADDITIVE_STRING_FIELDS, ...(Object.keys(ADDITIVE_KEYED_FIELDS) as AdditiveKeyedField[])];
 
 type AdditiveStringField = (typeof ADDITIVE_STRING_FIELDS)[number];
-type AdditiveCheckpointField = (typeof ADDITIVE_CHECKPOINT_FIELDS)[number];
 
 function isAdditiveStringField(key: string): key is AdditiveStringField {
   return (ADDITIVE_STRING_FIELDS as readonly string[]).includes(key);
 }
 
-function isAdditiveCheckpointField(key: string): key is AdditiveCheckpointField {
-  return (ADDITIVE_CHECKPOINT_FIELDS as readonly string[]).includes(key);
+function isAdditiveKeyedField(key: string): key is AdditiveKeyedField {
+  return Object.prototype.hasOwnProperty.call(ADDITIVE_KEYED_FIELDS, key);
+}
+
+/**
+ * The words a safety list's entry is known by — the whole line for a list of
+ * strings, the named part for a list of objects. Exported so the editor, the
+ * Compare view and the write gate all agree on when two lines are one line.
+ */
+export function safetyLineKey(field: keyof MachineDefinition, entry: unknown): string {
+  if (typeof entry === "string") return entry.trim();
+  if (isAdditiveKeyedField(field) && entry && typeof entry === "object") {
+    const part = (entry as Record<string, unknown>)[ADDITIVE_KEYED_FIELDS[field]];
+    return typeof part === "string" ? part.trim() : "";
+  }
+  return "";
+}
+
+/** The safety lists, as a runtime set: the additive fields. */
+const SAFETY_FIELD_SET = new Set<string>([...ADDITIVE_STRING_FIELDS, ...Object.keys(ADDITIVE_KEYED_FIELDS)]);
+
+/** A reason worth the name: at least this many characters, not counting spaces. */
+export const MIN_REMOVAL_REASON = 3;
+
+/**
+ * The removal records that apply to this catalog definition (the Sep 21
+ * rule): each names a safety list, a line that list still holds, and a
+ * reason of at least MIN_REMOVAL_REASON characters. One per line. Pure, and
+ * the one answer the merge, the write gate and Compare share.
+ */
+export function validRemovals(
+  base: Partial<MachineDefinition> | null | undefined,
+  list: unknown,
+): RemovedSafetyLine[] {
+  if (!Array.isArray(list)) return [];
+  const out: RemovedSafetyLine[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Partial<RemovedSafetyLine>;
+    const field = typeof r.field === "string" ? r.field : "";
+    const line = typeof r.line === "string" ? r.line.trim() : "";
+    const reason = typeof r.reason === "string" ? r.reason.trim() : "";
+    if (!SAFETY_FIELD_SET.has(field) || !line || reason.length < MIN_REMOVAL_REASON) continue;
+    const key = `${field}\u0000${line.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    const inBase = ((base?.[field as keyof MachineDefinition] as unknown[]) ?? []).some(
+      (e) => safetyLineKey(field as keyof MachineDefinition, e).toLowerCase() === line.toLowerCase(),
+    );
+    if (!inBase) continue;
+    seen.add(key);
+    out.push({
+      field: field as RemovedSafetyLine["field"],
+      line,
+      reason,
+      by: {
+        uid: typeof r.by?.uid === "string" ? r.by.uid : "",
+        name: typeof r.by?.name === "string" ? r.by.name : "",
+      },
+      at: typeof r.at === "string" ? r.at : "",
+    });
+  }
+  return out;
 }
 
 /** Union preserving catalog order first, then studio additions, deduped. */
@@ -72,6 +139,7 @@ function unionStrings(base: string[] = [], extra: string[] = []): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const v of [...base, ...extra]) {
+    if (typeof v !== "string") continue;
     const k = v.trim();
     if (!k || seen.has(k)) continue;
     seen.add(k);
@@ -80,20 +148,53 @@ function unionStrings(base: string[] = [], extra: string[] = []): string[] {
   return out;
 }
 
-/** Same union, keyed on checkpoint title so a studio can reword its own. */
-function unionCheckpoints(
-  base: AlignmentCheckpoint[] = [],
-  extra: AlignmentCheckpoint[] = [],
-): AlignmentCheckpoint[] {
+/** Same union for a list of objects, keyed on one part, case-blind. */
+function unionKeyed<T>(field: AdditiveKeyedField, base: T[] = [], extra: T[] = []): T[] {
   const seen = new Set<string>();
-  const out: AlignmentCheckpoint[] = [];
-  for (const c of [...base, ...extra]) {
-    const k = (c?.title ?? "").trim().toLowerCase();
+  const out: T[] = [];
+  for (const c of [...(Array.isArray(base) ? base : []), ...(Array.isArray(extra) ? extra : [])]) {
+    const k = safetyLineKey(field, c).toLowerCase();
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(c);
   }
   return out;
+}
+
+/**
+ * `sources` (the Codex format, v2): one record per method line, keyed on the
+ * line's path and words. A studio recording where ITS wording came from
+ * replaces the catalog's record for that one line and leaves every other
+ * line's record live-inherited — replacing the whole list would freeze head
+ * office's future source corrections out of that floor.
+ */
+const KEYED_MERGE_FIELDS = ["sources"] as const satisfies readonly (keyof MachineDefinition)[];
+
+function isKeyedMergeField(key: string): boolean {
+  return (KEYED_MERGE_FIELDS as readonly string[]).includes(key);
+}
+
+function sourceKey(entry: unknown): string {
+  if (!entry || typeof entry !== "object") return "";
+  const e = entry as { path?: unknown; line?: unknown };
+  const path = typeof e.path === "string" ? e.path.trim() : "";
+  if (!path) return "";
+  const line = typeof e.line === "string" ? e.line.trim() : "";
+  return `${path}\u0000${line}`;
+}
+
+/** Catalog records first; a studio record replaces the one for the same line. */
+function mergeKeyedRecords(base: unknown, extra: unknown): unknown[] {
+  const out = new Map<string, unknown>();
+  for (const e of Array.isArray(base) ? base : []) {
+    const k = sourceKey(e);
+    if (k) out.set(k, e);
+  }
+  for (const e of Array.isArray(extra) ? extra : []) {
+    const k = sourceKey(e);
+    if (k) out.set(k, e);
+  }
+  return [...out.values()];
 }
 
 /**
@@ -115,20 +216,53 @@ function unionCheckpoints(
  * columns are independent, and the limited-mobility column in particular
  * carries the Academy's static-hold guidance that a studio editing the
  * taller-stature column must not drop.
+ *
+ * The Codex format's object leaves (v2, Sep 28 2026) are bags of the same
+ * kind — set-up's entry, preload and starting-load rule are three separate
+ * judgements — and so are its switches and its per-dial rules (keyed by the
+ * dial's key). They merge per key for the same reason.
+ *
+ * THE SEP 21 RULE (built Sep 28 2026) lets a studio change anything on its
+ * own copy, the method included — so `musculature` and `execution` became
+ * bags a studio can write to. `musculature`'s three lists merge per key, and
+ * `execution` one level deeper (its two turnarounds are objects of their
+ * own): a studio rewording one cue must not stop inheriting head office's
+ * later correction to never-to-failure.
  */
 const MERGED_FLAT_FIELDS = [
   "universalBaseline",
   "defaultSettings",
+  "musculature",
+  "setUp",
+  "dialRules",
+  "getSet",
+  "begin",
+  "rep",
+  "finish",
+  "adapt",
+  "program",
+  "understand",
+  "switches",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
 const MERGED_COLUMN_FIELDS = [
   "bodyTypeAdjustments",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
+/**
+ * A bag whose values may themselves be bags: `execution` (its turnarounds).
+ * Merged per key, and a key whose catalog and studio values are both plain
+ * objects merges per key again; a list (the key cues) replaces whole.
+ */
+const MERGED_NESTED_FIELDS = [
+  "execution",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
 /** Every field whose override merges per key rather than replacing. */
 export const MERGED_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] = [
   ...MERGED_FLAT_FIELDS,
   ...MERGED_COLUMN_FIELDS,
+  ...MERGED_NESTED_FIELDS,
 ];
 
 function isMergedFlatField(key: string): boolean {
@@ -139,7 +273,13 @@ function isMergedColumnField(key: string): boolean {
   return (MERGED_COLUMN_FIELDS as readonly string[]).includes(key);
 }
 
+function isMergedNestedField(key: string): boolean {
+  return (MERGED_NESTED_FIELDS as readonly string[]).includes(key);
+}
+
 type Bag = Record<string, unknown>;
+
+const isBag = (v: unknown): v is Bag => !!v && typeof v === "object" && !Array.isArray(v);
 
 /** One level: studio keys win, catalog keys survive where the studio was silent. */
 function mergeFlat(base: unknown, extra: unknown): Bag {
@@ -153,6 +293,18 @@ function mergeColumns(base: unknown, extra: unknown): Bag {
   const out: Bag = { ...b };
   for (const key of Object.keys(e)) {
     out[key] = mergeFlat(b[key], e[key]);
+  }
+  return out;
+}
+
+/** Per key, and per key again where both sides hold an object. */
+function mergeNested(base: unknown, extra: unknown): Bag {
+  const b = (base as Bag) ?? {};
+  const e = (extra as Bag) ?? {};
+  const out: Bag = { ...b };
+  for (const key of Object.keys(e)) {
+    if (e[key] === undefined) continue;
+    out[key] = isBag(b[key]) && isBag(e[key]) ? mergeFlat(b[key], e[key]) : e[key];
   }
   return out;
 }
@@ -199,6 +351,38 @@ export function pruneMergedField(
       if (inner) out[key] = inner;
     }
     return Object.keys(out).length ? out : undefined;
+  }
+
+  if (isMergedNestedField(field)) {
+    const b = (base as Bag) ?? {};
+    const v = value as Bag;
+    const out: Bag = {};
+    for (const key of Object.keys(v)) {
+      if (isBag(v[key]) && isBag(b[key])) {
+        const inner = pruneMergedField("universalBaseline", b[key], v[key]) as Bag | undefined;
+        if (inner) out[key] = inner;
+        continue;
+      }
+      if (sameLoose(v[key], b[key])) continue;
+      out[key] = v[key];
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+
+  // A line's source record is stored only when it differs from the
+  // catalog's record for the same line (the keyed merge above).
+  if (isKeyedMergeField(field)) {
+    if (!Array.isArray(value)) return undefined;
+    const b = new Map<string, unknown>();
+    for (const e of Array.isArray(base) ? base : []) {
+      const k = sourceKey(e);
+      if (k) b.set(k, e);
+    }
+    const out = value.filter((e) => {
+      const k = sourceKey(e);
+      return !!k && !sameLoose(e, b.get(k));
+    });
+    return out.length ? out : undefined;
   }
 
   return value;
@@ -254,26 +438,67 @@ export function mergeMachineDefinition(
   const merged: MachineDefinition = { ...base };
   const overriddenFields: MachineDefinitionField[] = [];
 
+  // THE SEP 21 RULE: the catalog's safety lines this copy does without, each
+  // with its reason. Only a removal that names a line the catalog still has
+  // applies; one head office has since taken out itself is moot, and a
+  // record with no reason is ignored rather than trusted (the write refuses
+  // it anyway). The removed line leaves this unit and nothing else.
+  const removals = validRemovals(base, overrides.removedSafety);
+  const removedKeys = new Map<string, Set<string>>();
+  for (const r of removals) {
+    const set = removedKeys.get(r.field) ?? new Set<string>();
+    set.add(r.line.trim().toLowerCase());
+    removedKeys.set(r.field, set);
+  }
+  const keep = (field: string, list: unknown[]): unknown[] => {
+    const gone = removedKeys.get(field);
+    if (!gone) return list;
+    return list.filter((e) => !gone.has(safetyLineKey(field as keyof MachineDefinition, e).toLowerCase()));
+  };
+  for (const field of removedKeys.keys()) {
+    merged[field as MachineDefinitionField] = keep(field, (base[field as keyof MachineDefinition] as unknown[]) ?? []) as never;
+    if (!overriddenFields.includes(field as MachineDefinitionField)) overriddenFields.push(field as MachineDefinitionField);
+  }
+  if (removals.length) merged.removedSafety = removals;
+  else delete merged.removedSafety;
+
   for (const [key, value] of Object.entries(overrides)) {
     // An explicitly-undefined key means "inherit", not "clear".
     if (value === undefined) continue;
+    // Bookkeeping, applied above.
+    if (key === "removedSafety") continue;
 
     const field = key as MachineDefinitionField;
-    overriddenFields.push(field);
+    if (!overriddenFields.includes(field)) overriddenFields.push(field);
 
     if (isAdditiveStringField(key)) {
-      merged[field] = unionStrings(
-        base[field] as string[],
-        value as string[],
+      merged[field] = keep(
+        key,
+        unionStrings(base[field] as string[], value as string[]),
       ) as never;
       continue;
     }
 
-    if (isAdditiveCheckpointField(key)) {
-      merged[field] = unionCheckpoints(
-        base[field] as AlignmentCheckpoint[],
-        value as AlignmentCheckpoint[],
-      ) as never;
+    if (isAdditiveKeyedField(key)) {
+      // A studio rewording one of the catalog's own lines removes it first
+      // (with a reason), so its own line with the same words may stand — but
+      // a verbatim copy of the removed line (an override written before the
+      // Sep 21 rule stored the catalog's lines too) does not bring it back.
+      const baseList = (base[field] as unknown[]) ?? [];
+      const gone = removedKeys.get(key);
+      const studio = (Array.isArray(value) ? value : []).filter((e) => {
+        if (!gone) return true;
+        const k = safetyLineKey(field, e).toLowerCase();
+        if (!gone.has(k)) return true;
+        const was = baseList.find((b) => safetyLineKey(field, b).toLowerCase() === k);
+        return !sameLoose(e, was);
+      });
+      merged[field] = unionKeyed(key, keep(key, baseList), studio) as never;
+      continue;
+    }
+
+    if (isKeyedMergeField(key)) {
+      merged[field] = mergeKeyedRecords(base[field], value) as never;
       continue;
     }
 
@@ -284,6 +509,11 @@ export function mergeMachineDefinition(
 
     if (isMergedColumnField(key)) {
       merged[field] = mergeColumns(base[field], value) as never;
+      continue;
+    }
+
+    if (isMergedNestedField(key)) {
+      merged[field] = mergeNested(base[field], value) as never;
       continue;
     }
 
@@ -316,6 +546,13 @@ export function resolveMachine(
   let overriddenFields: MachineDefinitionField[] = [];
   let comparisonKey: string;
 
+  // THE UNIT'S MODEL (Codex R2, Sep 28 2026). The roster entry names it. A
+  // copy never takes the catalog's own `modelId` — that is the reference
+  // unit the standard was written on, and calling Solon's leg press a Hoist
+  // for being a copy of the page would be a confident wrong answer. A
+  // studio's own machine may carry one in its definition.
+  let modelId: string | undefined = entry.modelId?.trim() || undefined;
+
   if (entry.source === "custom") {
     // Self-contained: nothing is inherited, `basedOn` is lineage only.
     definition = {
@@ -326,6 +563,7 @@ export function resolveMachine(
       ),
     };
     comparisonKey = entry.basedOn ?? entry.machineId;
+    modelId = modelId ?? (entry.definition.modelId?.trim() || undefined);
   } else {
     if (!catalog) return null;
     const merged = mergeMachineDefinition(catalog, entry.overrides);
@@ -333,6 +571,8 @@ export function resolveMachine(
     overriddenFields = merged.overriddenFields;
     comparisonKey = entry.basedOn;
   }
+  const { modelId: _inheritedModel, ...unitDefinition } = definition;
+  definition = unitDefinition as MachineDefinition;
 
   return {
     ...definition,
@@ -349,6 +589,7 @@ export function resolveMachine(
     catalogStatus: catalog?.status,
     comparisonKey,
     overriddenFields,
+    ...(modelId ? { modelId } : {}),
     // The MSF machine database (Learning + Planner round): carried through
     // untouched, so the Catalog can show and toggle them.
     ...(entry.shared === true ? { shared: true } : {}),
@@ -369,8 +610,11 @@ export function resolveUnrostered(
   catalog: MachineCatalogEntry,
   studioId: string,
 ): ResolvedMachine {
+  // No unit, so no unit's model: the catalog's reference model is not this
+  // studio's (see resolveMachine).
+  const { modelId: _referenceModel, ...rest } = catalog;
   return {
-    ...catalog,
+    ...rest,
     machineId: catalog.id,
     studioId,
     source: "catalog",

@@ -283,6 +283,18 @@ export interface MachineSettingField {
   required?: boolean;
   /** Shown under the input in the settings modal. */
   helpText?: string;
+  /**
+   * The dial's letter on the preset strip — "G", "P", "SP", "S" — the way a
+   * trainer says it ("G 4 · S 8"). Codex format v2 (Sep 28 2026). A LABEL,
+   * never a key: renaming it orphans nothing. It belongs to the unit, like
+   * the label, because two models letter the same dial differently.
+   */
+  letter?: string;
+  /**
+   * The dial's number on the drawing of the unit (the Codex page's numbered
+   * callouts in Set up). Codex format v2. Absent: the dial's place in the list.
+   */
+  callout?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -427,6 +439,287 @@ export interface ExecutionProtocol {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// THE CODEX FORMAT, v2 (Sep 28 2026)
+//
+// AJ approved the Machine Codex's new data "all yes" on Sep 28 2026. Every
+// field below is OPTIONAL and nothing above is renamed: a machine id and a
+// dial key never change, so every client's saved settings keep working and
+// a definition written before v2 reads exactly as it did.
+//
+// The Codex page reads a machine as the timeline of a set — twelve LEAVES
+// (docs/rounds/2026-09-28-codex-2.md; the blueprint's research brief §4.3):
+//
+//    1 Stop               stopRules · watchOuts (+ clinicalWarnings,
+//                         contraindicatedFor, execution.neverToFailure)
+//    2 Set up             setUp · dialRules (+ universalBaseline, the dials,
+//                         defaultSettings)
+//    3 Get set            getSet (+ executionPosture, alignmentCheckpoints)
+//    4 Begin              begin (+ execution's load-up and handoff)
+//    5 The rep            rep (+ execution's cadence, turnarounds, keyCues)
+//    6 Finish             finish
+//    7 If something goes wrong   ifWrong
+//    8 Adapt              adapt (+ bodyTypeAdjustments)
+//    9 Program it         program (+ sequencingContraindications)
+//   10 Faults and fixes   faults
+//   11 Understand         understand (+ musculature, biomechanicalNotes)
+//   12 On our floor       COMPUTED from Journey's own data; nothing stored
+//
+// A leaf that is an OBJECT merges per key on a studio's copy
+// (lib/resolve-machine.ts), so a studio correcting one line keeps
+// inheriting head office's corrections to the others. The two safety
+// lists (stopRules, watchOuts) are additive, like clinicalWarnings.
+// `features/machine-codex/format.ts` is the one reader: the switches, the
+// preset, the stop rules and every method line's source.
+// ─────────────────────────────────────────────────────────────────────
+
+/** Leaf 1. A stop rule a trainer must not miss, with the reason it exists. */
+export interface CodexStopRule {
+  /** "The knees never lock out at the end stop." Also the dedupe key. */
+  text: string;
+  /** Why — an unexplained prohibition gets ignored. */
+  why?: string;
+}
+
+/**
+ * Leaf 1. A condition and what to DO about it on this machine, in place of a
+ * blanket "contraindicated" ("Sensitive lower back → a bigger gap, P3, and
+ * keep it well away from the Lumbar").
+ */
+export interface CodexWatchOut {
+  /** "Sensitive lower back". Also the dedupe key. */
+  condition: string;
+  action: string;
+}
+
+/**
+ * Leaf 2. The rule half of a dial — the body landmark it is set against
+ * ("the footplate meets the end stop just before the knees straighten").
+ * The NUMBER half is the unit's `defaultSettings[key]`; the letter is
+ * `MachineSettingField.letter`. Keyed by the dial's key in `dialRules`.
+ */
+export interface DialRule {
+  rule: string;
+  /** "First set-up only: a couple of settings closer, for pad squash under load." */
+  firstSetup?: string;
+}
+
+/** Leaf 2. What the baseline does not already say. */
+export interface CodexSetUp {
+  /** Entry, and the stool: "Have a seat, feet on the frame below…". */
+  entry?: string;
+  /** "20 lb main + 18 lb accessory = 38 lb" — a MODEL fact on most units. */
+  preload?: string;
+  /** How to choose a first load. Never a house number (AJ, Sep 27 2026). */
+  startingLoadRule?: string;
+}
+
+/** Leaf 3. Posture and checkpoints already have fields; these do not. */
+export interface CodexGetSet {
+  /** The joint that lines up with the pivot ("C3–C5 at the axis"). */
+  axisLandmark?: string;
+  breathing?: string;
+}
+
+/** Leaf 4. The load-up and the handoff already live in `execution`. */
+export interface CodexBegin {
+  /** The words, as the spoken script has them. */
+  script?: string;
+  /** When to hold the handoff back ("if she can't stabilise, delay it"). */
+  delayHandoffWhen?: string;
+}
+
+/** The moments of a rep, in order. */
+export type CodexMomentId = "loadUp" | "up" | "upperTurn" | "down" | "lowerTurn";
+
+export const CODEX_MOMENT_ORDER: readonly CodexMomentId[] = [
+  "loadUp",
+  "up",
+  "upperTurn",
+  "down",
+  "lowerTurn",
+];
+
+/** One phrasebook line, tagged to the moment of the rep it belongs to. */
+export interface CodexMomentLine {
+  moment: CodexMomentId;
+  say: string;
+}
+
+/** Leaf 5. Cadence and both turnarounds already live in `execution`. */
+export interface CodexRep {
+  /** The path to keep the same both ways ("the knees follow one path"). */
+  path?: string;
+  /** When the trainer clicks ("at the exact moment the end stop is reached"). */
+  click?: string;
+  /** The first eccentric always gets a cue. */
+  firstEccentricCue?: string;
+  /** Cues by moment — the phrasebook's lines for this machine. */
+  moments?: CodexMomentLine[];
+}
+
+/** Leaf 6. */
+export interface CodexFinish {
+  /** What failure means on this machine, and any rep cap in words. */
+  failure?: string;
+  finalDescent?: string;
+  /** The unloading transfer ("that is… mine"), where the machine has one. */
+  unloadTransfer?: string;
+  exit?: string;
+  /** What to record ("clean full reps only; a changed setting says why"). */
+  record?: string;
+}
+
+/**
+ * Leaf 7. An abnormal procedure, kept apart from the normal set the way a
+ * pilot's quick-reference handbook keeps them apart.
+ */
+export interface CodexAbnormal {
+  /** "Exertion headache (EIH)". Also the dedupe key. */
+  title: string;
+  trigger?: string;
+  steps: string[];
+  /** What happens next time. */
+  next?: string;
+  record?: string;
+  /** True when it ends the set (an exertion headache does). */
+  stop?: boolean;
+}
+
+/** Leaf 8. The three body-type columns already live in `bodyTypeAdjustments`. */
+export interface CodexAdapt {
+  /** Timed static contraction: where the arm sits, and the protocol. */
+  tsc?: string;
+  staticHold?: string;
+  /** What biases it ("P2 and higher feet: more glute"). */
+  bias?: string;
+}
+
+/** Leaf 9. What to avoid pairing already lives in `sequencingContraindications`. */
+export interface CodexProgram {
+  pairings?: string;
+  substitutes?: string;
+  /** Its family and what it counts for ("Big Five · legs"). */
+  category?: string;
+}
+
+/** Leaf 10. One fault and its fix. */
+export interface CodexFault {
+  /** "Firing out of the bottom". Also the dedupe key. */
+  fault: string;
+  see?: string;
+  say?: string;
+  change?: string;
+}
+
+/** Leaf 11. Musculature and the biomechanics notes already have fields. */
+export interface CodexUnderstand {
+  jointActions?: string;
+  /** Why the rules are what they are. */
+  why?: string;
+  /** The machine's character (cam feel, direct resistance) — usually a model fact. */
+  character?: string;
+  /** Academy pages worth reading, as paths under docs/msf-academy. */
+  academy?: string[];
+}
+
+/**
+ * The switches the blueprint names that no field already holds. The rest
+ * are read from what exists — `beginsWith` from `execution.requiresHandoff`,
+ * `upperTurn` from `execution.upperTurnaround.style`, `neverToFailure` from
+ * `execution.neverToFailure` — by `switchesOf` in features/machine-codex, so
+ * there is one source for each and two can never disagree.
+ */
+export interface CodexSwitches {
+  /**
+   * What limits the lower turn (Academy 4.6): the stack touches · the joint
+   * reaches its limit first · flexibility does.
+   */
+  lowerTurn?: "stackTouch" | "jointLimited" | "flexLimited";
+  /** A rep cap in the early sessions (the Cervical: 8 or fewer). */
+  repCap?: number;
+  /** The arm can be pinned for a timed static contraction. */
+  tscCapable?: boolean;
+  /** The trainer takes the weight back at the end ("that is… mine"). */
+  unloadTransfer?: boolean;
+}
+
+/**
+ * Where one method line comes from. A line is a field path
+ * ("execution.loadUpProtocol"), and for a list, one entry's words (`line`).
+ *
+ *   academy     a file under docs/msf-academy — the Quick Reference Guide,
+ *               the overview, the spoken script, an Academy module
+ *   guide       only the standardized setup guides, which summarise the
+ *               Academy rather than belong to it
+ *   book        a book, PARAPHRASED with a reference and never quoted
+ *               (AJ, Sep 27 2026, on The Renaissance of Exercise)
+ *   unsourced   nowhere; the page says so rather than hiding it
+ */
+export interface LineSource {
+  path: string;
+  /** For a list field: the entry's words, or a checkpoint's title. */
+  line?: string;
+  kind: "academy" | "guide" | "book" | "unsourced";
+  /** academy / guide: the file under docs/msf-academy. book: its title and author. */
+  ref?: string;
+  /** Where in it: "Considerations for Setup", "Vol. 1, ch. 4". */
+  at?: string;
+  /**
+   * The sources disagree (the codex source check's "contradicted"): what the
+   * other one says. The page shows both and "Corporate to rule" until an
+   * administrator rules and clears it.
+   */
+  conflict?: string;
+}
+
+/**
+ * A catalog safety line a studio took off ITS copy, and why — the Sep 21
+ * rule, built Sep 28 2026 (AJ: "Yes studios need to be able to customize
+ * their stuff safety is definitely a worry but are trusted").
+ *
+ * Lives only in a roster entry's `overrides` (never on the catalog, never
+ * on a studio's own machine, which inherits nothing to remove). The line
+ * leaves that unit's page and nowhere else; head office reads every one in
+ * Compare with the reason, who and when. A removal without a reason is
+ * refused at the write (lib/machine-template.ts, scopeOverrides) and in
+ * firestore.rules.
+ */
+export interface RemovedSafetyLine {
+  /** Which safety list it was on. */
+  field: SafetyListField;
+  /** The line's words, or a checkpoint's title / a stop rule's words / a watch-out's condition. */
+  line: string;
+  /** "This unit has no seat belt." At least three characters. */
+  reason: string;
+  /** The Auth uid, and the name as it read then. */
+  by: { uid: string; name: string };
+  /** ISO time. Firestore refuses serverTimestamp() inside a list. */
+  at: string;
+}
+
+/**
+ * The safety lists. On a studio's copy they are ADDITIVE: the studio's own
+ * lines are added to the catalog's (lib/resolve-machine.ts), and one of the
+ * catalog's lines leaves the copy only with a reason (`RemovedSafetyLine`).
+ */
+export type SafetyListField =
+  | "clinicalWarnings"
+  | "contraindicatedFor"
+  | "sequencingContraindications"
+  | "alignmentCheckpoints"
+  | "stopRules"
+  | "watchOuts";
+
+export const SAFETY_LIST_FIELDS: readonly SafetyListField[] = [
+  "clinicalWarnings",
+  "contraindicatedFor",
+  "sequencingContraindications",
+  "alignmentCheckpoints",
+  "stopRules",
+  "watchOuts",
+];
+
+// ─────────────────────────────────────────────────────────────────────
 // THE DEFINITION — the shape a machine has, wherever it was defined
 // ─────────────────────────────────────────────────────────────────────
 
@@ -485,10 +778,107 @@ export interface MachineDefinition {
 
   imageUrl?: string;
   formVideoUrl?: string;
+
+  // ── The Codex format, v2 (Sep 28 2026) — every field optional ─────
+  // See "THE CODEX FORMAT, v2" above for which leaf each one fills.
+
+  /** Leaf 1. The true stop rules — additive on a studio's copy. */
+  stopRules?: CodexStopRule[];
+  /** Leaf 1. Condition → what to do — additive on a studio's copy. */
+  watchOuts?: CodexWatchOut[];
+  /** Leaf 2. */
+  setUp?: CodexSetUp;
+  /** Leaf 2. Each dial's rule, keyed by its `MachineSettingField.key`. */
+  dialRules?: Record<string, DialRule>;
+  /** Leaf 3. */
+  getSet?: CodexGetSet;
+  /** Leaf 4. */
+  begin?: CodexBegin;
+  /** Leaf 5. */
+  rep?: CodexRep;
+  /** Leaf 6. */
+  finish?: CodexFinish;
+  /** Leaf 7. */
+  ifWrong?: CodexAbnormal[];
+  /** Leaf 8. */
+  adapt?: CodexAdapt;
+  /** Leaf 9. */
+  program?: CodexProgram;
+  /** Leaf 10. */
+  faults?: CodexFault[];
+  /** Leaf 11. */
+  understand?: CodexUnderstand;
+  /** The switches no other field holds; see CodexSwitches. */
+  switches?: CodexSwitches;
+  /** Where each method line comes from. */
+  sources?: LineSource[];
+  /**
+   * The model (machineModels/{modelId}) this definition describes. On the
+   * catalog, the reference unit the standard's numbers were written on; on a
+   * studio's own machine, its model. A studio's COPY names its unit's model
+   * on the roster entry (`RosterEntryBase.modelId`) — a copy never inherits
+   * the catalog's, because a studio's leg press is not the Academy's just
+   * for being a copy of its page.
+   */
+  modelId?: string;
+
+  /**
+   * On a studio's copy only (a roster entry's `overrides`): the catalog's
+   * safety lines this unit does without, each with its reason, who and when
+   * (the Sep 21 rule). On a resolved machine: the removals that applied.
+   */
+  removedSafety?: RemovedSafetyLine[];
 }
 
 /** Every key on MachineDefinition, for override bookkeeping. */
 export type MachineDefinitionField = keyof MachineDefinition;
+
+// ─────────────────────────────────────────────────────────────────────
+// THE MODEL RECORD (Codex R2, Sep 28 2026)
+//
+// A seat 4 on a Nautilus is not a seat 4 on a Hoist. A MODEL is the tier
+// between the movement (the catalog machine) and the unit (a studio's
+// roster entry): the facts every unit of one maker's model shares — its
+// dials, their ranges, its stacks — written once and pointed at by each
+// unit (`RosterEntryBase.modelId`). Settings pool per model in the weekly
+// machine-trends job; weights keep pooling per movement.
+//
+// Firestore: machineModels/{modelId}. Administrators write it; everyone
+// signed in reads it. The shape is EXACTLY the one below — the Catalog's
+// model tier reads it — and `features/machine-codex/models.ts` is the one
+// place a model is built, checked and named.
+// ─────────────────────────────────────────────────────────────────────
+
+/** One dial as a model has it. The key matches the movement's dial key. */
+export interface ModelDial {
+  /** Same immutable key as the movement's `MachineSettingField.key`. */
+  key: string;
+  label: string;
+  /** The letter on this model's plate ("G", "P", "SP"). */
+  letter?: string;
+  type?: MachineSettingField["type"];
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Where it sits by default on this model, as the maker ships it. */
+  default?: string;
+}
+
+export interface MachineModel {
+  /** "Hoist". */
+  brand: string;
+  /** "ROC-IT Leg Press". */
+  model: string;
+  /** The MSF movement it is: a catalog machine id ("m-leg-press"). */
+  movementId: string;
+  dials?: ModelDial[];
+  /** Anything else every unit of it shares ("an 18 lb accessory stack"). */
+  notes?: string;
+  updatedAt: any;
+  /** The Auth uid of the administrator who saved it. */
+  updatedBy: string;
+}
 
 /** House cadence standard — prefilled for every new machine. */
 export const DEFAULT_CADENCE = { concentricSeconds: 6, eccentricSeconds: 6 };
@@ -560,6 +950,14 @@ interface RosterEntryBase {
     installedAt?: any;
     lastServicedAt?: any;
   };
+
+  /**
+   * Which model this unit is: machineModels/{modelId} (Codex R2, Sep 28
+   * 2026). The unit's, set by the studio's leaders; absent means nobody has
+   * recorded it. A copy of a catalog machine never takes the catalog's own
+   * reference model — only this field names the unit's.
+   */
+  modelId?: string;
 
   updatedAt?: any;
   updatedBy?: string;
@@ -697,6 +1095,13 @@ export interface ResolvedMachine extends MachineDefinition {
   /** Which definition fields this studio deliberately changed. Drives the
    *  "overridden" badge in the roster manager. */
   overriddenFields: MachineDefinitionField[];
+
+  /*
+   * `modelId` (from MachineDefinition) is THIS UNIT's model here: the roster
+   * entry's for a copy (never the catalog's reference model), the roster
+   * entry's or its own definition's for a studio's own machine, and absent
+   * on equipment the studio has not added (lib/resolve-machine.ts).
+   */
 
   /** Listed in the MSF machine database (custom machines only). */
   shared?: boolean;

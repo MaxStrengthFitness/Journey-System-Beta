@@ -13,14 +13,19 @@ import { sameValue } from "../../formState";
 import { useDirtyForm } from "../../useDirtyForm";
 import type { MachineDefinition } from "../../../../types/machines";
 import {
+  RemovedSafetyError,
   canEdit,
   scopeOverrides,
   tierOf,
+  unexplainedRemovals,
   type EditScope,
 } from "../../../../lib/machine-template";
 import { SECTIONS, completeness, describeGaps, sectionStates } from "../completeness";
 import { SECTION_BODIES, type SectionProps } from "./sections";
+import { CODEX_SECTIONS, codexLinesIn, tidyCodexLists, type CodexSectionProps } from "./codex-sections";
+import type { ModelWithId } from "../../../machine-codex/models";
 import "./editor.css";
+import "./codex-editor.css";
 
 /**
  * THE MACHINE EDITOR — one screen, three doors.
@@ -96,6 +101,25 @@ export interface MachineEditorProps {
   notice?: React.ReactNode;
   /** True for a machine being created, so the save bar says so. */
   isNew?: boolean;
+  /**
+   * More buttons for the masthead — the catalog's Codex modes (Compare,
+   * History, Models). Handed `guard`, which asks about unsaved edits before
+   * running what it is given: switching mode unmounts this screen.
+   */
+  extraActions?: (guard: (proceed: () => void) => void) => React.ReactNode;
+  /** The MSF movement this machine is (a catalog id), for its models. */
+  movementId?: string;
+  /**
+   * Every model record (machineModels), for the model picker. Absent: the
+   * picker is not shown (a host that has not read them).
+   */
+  models?: ModelWithId[];
+  /**
+   * Who is editing — the Auth uid and a name — for the record a removed
+   * safety line carries (the Sep 21 rule). Absent: taking one of Max
+   * Strength's safety lines off a copy is not offered.
+   */
+  actor?: { uid: string; name: string };
 }
 
 export function MachineEditor({
@@ -109,6 +133,10 @@ export function MachineEditor({
   unit,
   notice,
   isNew,
+  extraActions,
+  movementId,
+  models,
+  actor,
 }: MachineEditorProps) {
   // Stable identity or the form adopts on every render — useDirtyForm's own
   // warning, and the reason StudioDetailsForm memoises its external too.
@@ -122,9 +150,15 @@ export function MachineEditor({
   const form = useDirtyForm<MachineDefinition>(
     external,
     async (patch) => {
-      // The last gate. The editor already hides what a studio may not touch, so
-      // in normal use this removes nothing — which is the point of having it.
-      await onSave(scopeOverrides(scope, patch), draftRef.current);
+      // The Codex format's lists lose any row added and never filled first.
+      const draft = tidyCodexLists(draftRef.current) as MachineDefinition;
+      // THE SEP 21 RULE: on a copy, one of Max Strength's safety lines comes
+      // off only with a reason. The save bar names the line; the edits stay.
+      if (standard && scope !== "catalog") {
+        const unexplained = unexplainedRemovals(standard, draft);
+        if (unexplained.length) throw new RemovedSafetyError(unexplained);
+      }
+      await onSave(scopeOverrides(scope, tidyCodexLists(patch)), draft);
     },
     // The SAVED name: "You have unsaved changes to Leg Press", even while the
     // name itself is what is being retyped.
@@ -133,7 +167,7 @@ export function MachineEditor({
   draftRef.current = form.value;
 
   const [reading, setReading] = React.useState(false);
-  const [active, setActive] = React.useState(SECTIONS[0].id);
+  const [active, setActive] = React.useState<string>(SECTIONS[0].id);
   const bodyRef = React.useRef<HTMLDivElement | null>(null);
 
   const draft = form.value;
@@ -157,10 +191,17 @@ export function MachineEditor({
   );
 
   const goto = (id: string) => {
-    setActive(id as typeof active);
+    setActive(id);
     const el = bodyRef.current?.querySelector(`#machine-section-${id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // The Codex format's sections ask the boundary field by field: one section
+  // holds a dial's letter (the unit's) beside its rule (the method).
+  const canWrite = React.useCallback(
+    (key: keyof MachineDefinition) => canEdit(scope, key),
+    [scope],
+  );
 
   const warnings = draft.clinicalWarnings ?? [];
   const neverToFailure = draft.execution?.neverToFailure;
@@ -201,20 +242,21 @@ export function MachineEditor({
                 </>
               )}
             </AdminButton>
+            {extraActions?.((proceed) => form.leave.guard(proceed))}
           </>
         }
       />
 
       {notice}
 
-      {scope === "studio" && standard && (
+      {scope !== "catalog" && standard && (
         <AdminNotice tone="info">
-          This is your studio&apos;s copy. The setup, the body-type adjustments and
-          the dials are yours — change them to match the machine in your room.
-          The musculature, the cadence and the cues are Max Strength&apos;s, and
-          every location reads the same ones. Anything you leave alone keeps
-          following the standard, so a correction from head office still reaches
-          you.
+          {scope === "admin" ? "This is the studio's copy." : "This is your studio's copy."} Anything
+          on it can change to fit the machine in the room, and only this floor reads the change.
+          Anything left alone keeps following the Max Strength standard, so a correction from head
+          office still reaches it. One of Max Strength&apos;s safety lines comes off only with a
+          reason — head office sees every difference, and every reason, when it compares the
+          studios&apos; machines.
         </AdminNotice>
       )}
 
@@ -273,6 +315,27 @@ export function MachineEditor({
               </span>
             </button>
           ))}
+          {/* The Codex format (v2): optional, so no count of what is
+              missing — only how much is written. */}
+          <span className="adm-mx__railgroup">The Codex · optional</span>
+          {CODEX_SECTIONS.map((c) => {
+            const n = codexLinesIn(draft, c.fields);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={`adm-me__railbtn${active === c.id ? " adm-me__railbtn--on" : ""}`}
+                onClick={() => goto(c.id)}
+              >
+                <span
+                  className={`adm-me__dot${n > 0 ? " adm-me__dot--done" : " adm-mx__dot-optional"}`}
+                  aria-hidden
+                />
+                <span className="adm-me__railname">{c.title}</span>
+                <span className="adm-me__railcount">{n > 0 ? n : "–"}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="adm-me__main" ref={bodyRef}>
@@ -286,6 +349,7 @@ export function MachineEditor({
               readOnly: sectionReadOnly,
               changed,
               revert,
+              actor,
             };
             return (
               <AdminPanel
@@ -304,6 +368,40 @@ export function MachineEditor({
                 }
               >
                 <div id={`machine-section-${s.id}`} className="adm-me__section">
+                  <Body {...props} />
+                </div>
+              </AdminPanel>
+            );
+          })}
+
+          {CODEX_SECTIONS.map((c) => {
+            const n = codexLinesIn(draft, c.fields);
+            const props: CodexSectionProps = {
+              value: draft,
+              standard,
+              set: (key, v) => form.setField(key, v),
+              readOnly: reading,
+              changed,
+              revert,
+              canWrite,
+              scope,
+              movementId,
+              models,
+              actor,
+            };
+            const Body = c.Body;
+            return (
+              <AdminPanel
+                key={c.id}
+                title={c.title}
+                subtitle={c.blurb}
+                actions={
+                  <AdminBadge tone="neutral">
+                    {n > 0 ? `${n} ${n === 1 ? "line" : "lines"} written` : "Optional"}
+                  </AdminBadge>
+                }
+              >
+                <div id={`machine-section-${c.id}`} className="adm-me__section">
                   <Body {...props} />
                 </div>
               </AdminPanel>

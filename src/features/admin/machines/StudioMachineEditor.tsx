@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type {
@@ -9,10 +9,12 @@ import type {
 } from "../../../types/machines";
 import { studioMachineId } from "../../../types/machines";
 import type { EditScope } from "../../../lib/machine-template";
-import { describeFields, scopeOverrides } from "../../../lib/machine-template";
+import { definitionFieldsOnly, describeFields, scopeOverrides } from "../../../lib/machine-template";
 import { pruneOverrides } from "../equipment/clone";
 import { MachineEditor } from "./editor/MachineEditor";
-import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
+import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
+import { useMachineModels } from "../../machine-codex/models-store";
+import { useSignedInPerson } from "../../machine-codex/who";
 
 /**
  * EDITING A STUDIO'S OWN MACHINE.
@@ -93,12 +95,27 @@ export function StudioMachineEditor({
   // ever logged on the machine and split its leaderboard in two.
   const [existingId] = useState(() => entry?.machineId ?? null);
 
+  // The model records, for "Which model this unit is" (Codex R2).
+  const { models } = useMachineModels();
+  const movementId = catalogEntry?.id ?? (basedOn || undefined);
+  // Who is editing, for a removed safety line's record (the Sep 21 rule).
+  const actor = useSignedInPerson();
+
   const save = async (
     patch: Partial<MachineDefinition>,
-    draft: MachineDefinition,
+    draftIn: MachineDefinition,
   ) => {
-    const name = (draft.name ?? "").trim();
+    const name = (draftIn.name ?? "").trim();
     if (!name) throw new Error("Give the machine a name first.");
+
+    // THE UNIT'S MODEL lives on the roster entry itself (`modelId`), never in
+    // the definition or its overrides: the definition's own `modelId` is the
+    // catalog's reference unit. Deleted when cleared, so "not recorded" is
+    // absent rather than "".
+    const { modelId: pickedModel, ...draft } = draftIn;
+    const unitModel = pickedModel?.trim() || undefined;
+    const modelWrite = (updating: boolean) =>
+      unitModel ? { modelId: unitModel } : updating ? { modelId: deleteField() } : {};
 
     if (isCustom) {
       const machineId = existingId ?? studioMachineId(studioId, name);
@@ -113,8 +130,11 @@ export function StudioMachineEditor({
         ...(basedOn ? { basedOn } : {}),
         status: entry?.status ?? ("active" as const),
         // A custom machine inherits nothing, so its definition is stored
-        // whole rather than as a diff.
-        definition: draft,
+        // whole rather than as a diff — its own fields only (the draft is a
+        // resolved machine and carries the floor's bookkeeping too), and
+        // with nothing `undefined` in it, which Firestore refuses.
+        definition: stripUndefined(definitionFieldsOnly(draft)),
+        ...modelWrite(!!existingId),
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       };
@@ -132,10 +152,13 @@ export function StudioMachineEditor({
 
     // A catalog machine's local copy. The stored value is the DIFFERENCE from
     // the standard, computed from the whole draft rather than from this
-    // sitting's patch, so overrides made earlier survive.
+    // sitting's patch, so overrides made earlier survive. Given the standard,
+    // the gate refuses one of its safety lines gone without a reason (the
+    // Sep 21 rule) and keeps each safety list as the studio's additions.
     if (!catalogEntry) throw new Error("This machine's catalog entry is missing.");
-    const scoped = scopeOverrides(scope, draft as Partial<MachineDefinition>);
-    const overrides = pruneOverrides(catalogEntry, scoped);
+    const standard = definitionOf(catalogEntry);
+    const scoped = scopeOverrides(scope, draft as Partial<MachineDefinition>, standard);
+    const overrides = stripUndefined(pruneOverrides(catalogEntry, scoped));
 
     const ref = doc(db, "studios", studioId, "roster", catalogEntry.id);
     const body = {
@@ -148,19 +171,26 @@ export function StudioMachineEditor({
       // setDoc({overrides}, {merge:true}) would keep a key the studio has
       // just reverted — "use the standard" would appear to work and then not.
       overrides,
+      ...modelWrite(!!entry),
       updatedAt: serverTimestamp(),
       updatedBy: auth.currentUser?.uid ?? null,
     };
     if (entry) await updateDoc(ref, body);
     else await setDoc(ref, body);
 
-    const changedFields = Object.keys(overrides) as (keyof MachineDefinition)[];
+    const changedFields = (Object.keys(overrides) as (keyof MachineDefinition)[]).filter(
+      (f) => f !== "removedSafety",
+    );
+    const removed = overrides.removedSafety?.length ?? 0;
+    const parts: string[] = [];
+    if (changedFields.length) parts.push(`differs from the standard on ${describeFields(changedFields)}`);
+    if (removed) {
+      parts.push(`does without ${removed} of its safety ${removed === 1 ? "line" : "lines"}, each with its reason`);
+    }
     toastSuccess(
-      changedFields.length === 0
+      parts.length === 0
         ? `${name} now follows the Max Strength standard exactly.`
-        : `${name} saved. ${
-            studioName ?? "This studio"
-          } differs from the standard on ${describeFields(changedFields)}; everything else still follows it.`,
+        : `${name} saved. ${studioName ?? "This studio"} ${parts.join(", and ")}; everything else still follows it.`,
     );
   };
 
@@ -178,6 +208,9 @@ export function StudioMachineEditor({
       onBack={onBack}
       onSave={save}
       isNew={isNew}
+      movementId={movementId}
+      models={models}
+      actor={actor}
       unit={
         <>
           {isNew && (

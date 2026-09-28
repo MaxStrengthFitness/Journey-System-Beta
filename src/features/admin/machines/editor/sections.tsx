@@ -8,6 +8,7 @@ import {
 import {
   ANATOMICAL_REGION_ORDER,
   MOVEMENT_PATTERN_ORDER,
+  type AlignmentCheckpoint,
   type AnatomicalRegion,
   type AnatomyView,
   type KinematicClass,
@@ -15,6 +16,8 @@ import {
   type MovementPattern,
 } from "../../../../types/machines";
 import type { SectionId } from "../completeness";
+import { InheritedSafety } from "./safety-removal";
+import { splitSafety } from "./safety-edit";
 import {
   Checkpoints,
   FieldShell,
@@ -50,6 +53,11 @@ export interface SectionProps {
   /** Has this field been changed away from the standard? */
   changed: (key: keyof MachineDefinition) => boolean;
   revert: (key: keyof MachineDefinition) => void;
+  /**
+   * Who is editing (the Auth uid and a name), for the record a removed
+   * safety line carries (the Sep 21 rule). Absent: removal is not offered.
+   */
+  actor?: { uid: string; name: string };
 }
 
 function useFieldProps(p: SectionProps) {
@@ -397,23 +405,36 @@ function BodyTypes(p: SectionProps) {
 // ── 5. Alignment checkpoints ─────────────────────────────────────────
 
 function CheckpointSection(p: SectionProps) {
-  // Additive: the company's checkpoints are shown and kept, and a studio adds
-  // below them. resolve-machine unions on title, so this is what will happen
-  // whether or not the form says so.
-  const inherited = p.standard?.alignmentCheckpoints ?? [];
-  const mine = (p.value.alignmentCheckpoints ?? []).filter(
-    (c) => !inherited.some((i) => i.title.trim().toLowerCase() === c.title.trim().toLowerCase()),
-  );
+  // On a copy the company's checkpoints are kept unless the studio takes one
+  // off WITH A REASON (the Sep 21 rule); the studio adds its own below them.
+  const std = p.standard;
+  const { inherited, own } = splitSafety("alignmentCheckpoints", p.value.alignmentCheckpoints, std?.alignmentCheckpoints);
   return (
     <div className="adm-me__fields">
       <p className="adm-me__blurb">
         One or two. More than that and none of them get checked.
       </p>
+      {std && (
+        <InheritedSafety
+          field="alignmentCheckpoints"
+          value={p.value}
+          standard={std}
+          describe={(c) => {
+            const cp = c as AlignmentCheckpoint;
+            return `${cp.title}: ${cp.verify}`;
+          }}
+          readOnly={p.readOnly}
+          actor={p.actor}
+          onChange={(list, records) => {
+            p.set("alignmentCheckpoints", list as AlignmentCheckpoint[]);
+            p.set("removedSafety", records.length ? records : undefined);
+          }}
+        />
+      )}
       <Checkpoints
-        items={p.standard ? mine : (p.value.alignmentCheckpoints ?? [])}
-        inherited={p.standard ? inherited : []}
+        items={std ? (own as AlignmentCheckpoint[]) : (p.value.alignmentCheckpoints ?? [])}
         onChange={(next) =>
-          p.set("alignmentCheckpoints", p.standard ? [...inherited, ...next] : next)
+          p.set("alignmentCheckpoints", std ? [...(inherited as AlignmentCheckpoint[]), ...next] : next)
         }
         readOnly={p.readOnly}
       />
@@ -582,41 +603,58 @@ function Execution(p: SectionProps) {
 
 // ── 7. Safety ────────────────────────────────────────────────────────
 
+/**
+ * One safety list. On a copy: Max Strength's lines this unit keeps (each can
+ * come off only with a reason — the Sep 21 rule), the lines taken off with
+ * their reasons, and the studio's own lines below. On the standard or a
+ * studio's own machine: the plain list.
+ */
+function SafetyList(
+  p: SectionProps & {
+    field: "clinicalWarnings" | "contraindicatedFor" | "sequencingContraindications";
+    placeholder: string;
+  },
+) {
+  const std = p.standard;
+  const current = (p.value[p.field] as string[] | undefined) ?? [];
+  const { inherited, own } = splitSafety(p.field, current, std?.[p.field]);
+  return (
+    <div className="adm-me__stack">
+      {std && (
+        <InheritedSafety
+          field={p.field}
+          value={p.value}
+          standard={std}
+          describe={(e) => String(e)}
+          readOnly={p.readOnly}
+          actor={p.actor}
+          onChange={(list, records) => {
+            p.set(p.field, list as string[]);
+            p.set("removedSafety", records.length ? records : undefined);
+          }}
+        />
+      )}
+      <StringList
+        items={std ? (own as string[]) : current}
+        onChange={(next) => p.set(p.field, std ? [...(inherited as string[]), ...next] : next)}
+        placeholder={p.placeholder}
+        readOnly={p.readOnly}
+      />
+    </div>
+  );
+}
+
 function Safety(p: SectionProps) {
   const v = p.value;
-  const std = p.standard;
-  // Additive, all three. A studio adds a warning about its own floor; the
-  // company's "use extremely light loads" never goes away.
-  const own = (mine: string[] = [], inherited: string[] = []) =>
-    std ? mine.filter((x) => !inherited.includes(x)) : mine;
 
   return (
     <div className="adm-me__fields">
       <FieldShell label="Clinical warnings" locked={p.readOnly}>
-        <StringList
-          items={own(v.clinicalWarnings, std?.clinicalWarnings)}
-          inherited={std?.clinicalWarnings ?? []}
-          onChange={(next) =>
-            p.set("clinicalWarnings", std ? [...(std.clinicalWarnings ?? []), ...next] : next)
-          }
-          placeholder="Stop immediately if any cervical pain is felt"
-          readOnly={p.readOnly}
-        />
+        <SafetyList {...p} field="clinicalWarnings" placeholder="Stop immediately if any cervical pain is felt" />
       </FieldShell>
 
       <FieldShell label="Who must not use this machine" locked={p.readOnly}>
-        <StringList
-          items={own(v.contraindicatedFor, std?.contraindicatedFor)}
-          inherited={std?.contraindicatedFor ?? []}
-          onChange={(next) =>
-            p.set(
-              "contraindicatedFor",
-              std ? [...(std.contraindicatedFor ?? []), ...next] : next,
-            )
-          }
-          placeholder="Acute knee effusion"
-          readOnly={p.readOnly}
-        />
+        <SafetyList {...p} field="contraindicatedFor" placeholder="Acute knee effusion" />
       </FieldShell>
 
       <FieldShell
@@ -624,18 +662,7 @@ function Safety(p: SectionProps) {
         hint="What must not be paired with it in the same workout."
         locked={p.readOnly}
       >
-        <StringList
-          items={own(v.sequencingContraindications, std?.sequencingContraindications)}
-          inherited={std?.sequencingContraindications ?? []}
-          onChange={(next) =>
-            p.set(
-              "sequencingContraindications",
-              std ? [...(std.sequencingContraindications ?? []), ...next] : next,
-            )
-          }
-          placeholder="Do not follow directly with Lumbar Extension"
-          readOnly={p.readOnly}
-        />
+        <SafetyList {...p} field="sequencingContraindications" placeholder="Do not follow directly with Lumbar Extension" />
       </FieldShell>
 
       <FieldShell label="Biomechanics notes" locked={p.readOnly}>

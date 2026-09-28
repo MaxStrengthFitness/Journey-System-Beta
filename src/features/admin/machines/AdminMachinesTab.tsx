@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Dumbbell, Info, Loader2 } from "lucide-react";
+import { Dumbbell, Info, Layers, Loader2 } from "lucide-react";
 import { CatalogList } from "./CatalogList";
 import { CatalogMachineEditor } from "./CatalogMachineEditor";
+import { ModelsPage } from "./models/ModelsPage";
+import { MachineCompare } from "./compare/MachineCompare";
 import { SubmissionsQueue } from "../catalog/SubmissionsQueue";
 import { SubmissionReview } from "../catalog/SubmissionReview";
 import type { CatalogSubmissionDoc } from "../../my-studio/floor";
-import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import type { MachineCatalogEntry } from "../../../types/machines";
 import "../catalog/catalog.css";
@@ -40,8 +42,37 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
     | { kind: "new" }
     | { kind: "machine"; machine: MachineCatalogEntry }
     | { kind: "submission"; submission: CatalogSubmissionDoc & { id: string } }
+    // The model records (Codex R2): every maker's model of every movement,
+    // or one movement's, opened from that machine's page.
+    | { kind: "models"; movementId?: string; from?: MachineCatalogEntry }
+    // Every studio's differences from one machine (Codex R5, the Sep 21 rule).
+    | { kind: "compare"; machine: MachineCatalogEntry }
     | null
   >(null);
+
+  if (open?.kind === "compare") {
+    const machine = catalog.find((m) => m.id === open.machine.id) ?? open.machine;
+    return (
+      <MachineCompare
+        machine={machine}
+        backLabel={machine.name}
+        onBack={() => setOpen({ kind: "machine", machine })}
+      />
+    );
+  }
+
+  if (open?.kind === "models") {
+    const from = open.from;
+    return (
+      <ModelsPage
+        catalog={catalog}
+        movementId={open.movementId}
+        isAdmin={isAdmin}
+        backLabel={from ? from.name : "Catalog"}
+        onBack={() => setOpen(from ? { kind: "machine", machine: from } : null)}
+      />
+    );
+  }
 
   // A submission opens the same editor a catalog machine does, at the same
   // scope, because corporate is deciding whether its text becomes the
@@ -72,6 +103,10 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
         existingIds={catalog.map((m) => m.id)}
         catalogSize={catalog.length}
         onBack={() => setOpen(null)}
+        onOpenModels={(movementId) =>
+          setOpen({ kind: "models", movementId, from: live ?? undefined })
+        }
+        onOpenCompare={live && isAdmin ? () => setOpen({ kind: "compare", machine: live }) : undefined}
       />
     );
   }
@@ -82,6 +117,11 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
         icon={<Dumbbell className="w-5 h-5" />}
         title="Machine catalog"
         subtitle="Every machine MSF knows. Every studio inherits these, so a correction here reaches every floor that has not overridden that field. Which of them make the standard set is the Standard template."
+        actions={
+          <AdminButton variant="quiet" onClick={() => setOpen({ kind: "models" })}>
+            <Layers className="w-4 h-4" /> Models
+          </AdminButton>
+        }
       />
 
       {!isAdmin && (

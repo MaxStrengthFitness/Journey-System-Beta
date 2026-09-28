@@ -89,9 +89,14 @@ export function normalizeMachineDefinition(
   const base = emptyMachineDefinition();
   if (!raw) return base;
 
+  // The Codex format's fields arrive through codexFieldsOf below, well-formed
+  // or not at all, never through the plain spread.
+  const rest: Record<string, unknown> = { ...raw };
+  for (const key of CODEX_FIELDS) delete rest[key];
+
   return {
     ...base,
-    ...raw,
+    ...(rest as Partial<MachineDefinition>),
 
     primaryMuscles: raw.primaryMuscles ?? base.primaryMuscles,
     secondaryMuscles: raw.secondaryMuscles ?? base.secondaryMuscles,
@@ -145,8 +150,104 @@ export function normalizeMachineDefinition(
       raw.sequencingContraindications ?? base.sequencingContraindications,
     settingFields: raw.settingFields ?? base.settingFields,
     defaultSettings: raw.defaultSettings ?? base.defaultSettings,
+
+    // The Codex format, v2: present only where the document says something.
+    ...codexFieldsOf(raw),
   };
 }
+
+// ── The Codex format, v2 (Sep 28 2026) ───────────────────────────────
+
+const CODEX_OBJECT_FIELDS = [
+  "setUp",
+  "getSet",
+  "begin",
+  "rep",
+  "finish",
+  "adapt",
+  "program",
+  "understand",
+  "switches",
+  "dialRules",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
+const CODEX_LIST_FIELDS = [
+  "stopRules",
+  "watchOuts",
+  "ifWrong",
+  "faults",
+  "sources",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * The v2 fields a stored document actually holds, each in the shape the
+ * app reads — and NOTHING for a field it does not hold.
+ *
+ * "An old definition reads exactly as before" (AJ's approval, Sep 28 2026)
+ * is this function's promise: a document written before v2 gains no key at
+ * all, so a diff against it, a save of it and every screen that spreads it
+ * see what they saw yesterday. A field in the wrong shape (a list where an
+ * object belongs, a stop rule with no words) is dropped rather than bent
+ * into something nobody wrote.
+ */
+export function codexFieldsOf(
+  raw: Partial<MachineDefinition> | Record<string, unknown>,
+): Partial<MachineDefinition> {
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+
+  for (const key of CODEX_OBJECT_FIELDS) {
+    if (isPlainObject(src[key])) out[key] = src[key];
+  }
+
+  const keep = <T>(key: string, ok: (e: Record<string, unknown>) => boolean) => {
+    const v = src[key];
+    if (!Array.isArray(v)) return;
+    const list = v.filter((e) => isPlainObject(e) && ok(e)) as T[];
+    if (list.length) out[key] = list;
+  };
+  const text = (v: unknown) => typeof v === "string" && v.trim().length > 0;
+
+  keep("stopRules", (e) => text(e.text));
+  keep("watchOuts", (e) => text(e.condition));
+  keep("ifWrong", (e) => text(e.title));
+  keep("faults", (e) => text(e.fault));
+  keep("sources", (e) => text(e.path) && ["academy", "guide", "book", "unsourced"].includes(String(e.kind)));
+
+  if (typeof src.modelId === "string" && src.modelId.trim()) out.modelId = src.modelId.trim();
+
+  return out as Partial<MachineDefinition>;
+}
+
+/**
+ * A value with every `undefined` taken out, at any depth, for a write.
+ * Firestore refuses `undefined` anywhere in a document, and a form can leave
+ * one inside an object (a starting weight cleared to nothing). Plain objects
+ * and lists only; anything else (a sentinel, a timestamp) passes untouched.
+ */
+export function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.filter((v) => v !== undefined).map((v) => stripUndefined(v)) as T;
+  }
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
+/** Every v2 key, for a caller that needs to know one when it sees one. */
+export const CODEX_FIELDS: readonly (keyof MachineDefinition)[] = [
+  ...CODEX_OBJECT_FIELDS,
+  ...CODEX_LIST_FIELDS,
+  "modelId",
+];
 
 /**
  * Strip the catalog's bookkeeping, leaving a plain definition for the editor.

@@ -3,6 +3,7 @@ import {
   resolveMachine,
   resolveUnrostered,
   mergeMachineDefinition,
+  pruneMergedField,
 } from "./resolve-machine";
 import {
   MachineCatalogEntry,
@@ -499,6 +500,277 @@ describe("mergeMachineDefinition", () => {
     const snapshot = JSON.stringify(legPress);
     mergeMachineDefinition(legPress, { clinicalWarnings: ["added"] });
     expect(JSON.stringify(legPress)).toBe(snapshot);
+  });
+});
+
+describe("the Codex format, v2 — merging a studio's copy", () => {
+  const codexLegPress: MachineCatalogEntry = {
+    ...legPress,
+    setUp: {
+      entry: "Have a seat, feet on the frame below, butt back, lay back.",
+      preload: "20 lb main + 18 lb accessory = 38 lb.",
+    },
+    dialRules: {
+      seat: { rule: "The footplate meets the end stop just before the knees straighten." },
+      gap: { rule: "A bigger gap means less range." },
+    },
+    switches: { lowerTurn: "stackTouch", tscCapable: true },
+    stopRules: [{ text: "The knees never lock out at the end stop." }],
+    watchOuts: [{ condition: "Sensitive lower back", action: "A bigger gap, P3, away from the Lumbar." }],
+    sources: [
+      { path: "setUp.entry", kind: "academy", ref: "MSF Lower Body - setup and instruction.txt" },
+      { path: "setUp.preload", kind: "guide" },
+    ],
+  };
+
+  it("reads a v1 definition exactly as before: no v2 key appears from nowhere", () => {
+    const r = resolveMachine(fromCatalog(), legPress)!;
+    for (const k of ["setUp", "dialRules", "switches", "stopRules", "watchOuts", "sources", "modelId"]) {
+      expect(k in r).toBe(false);
+    }
+  });
+
+  it("merges an object leaf per key, so one corrected line keeps the rest inherited", () => {
+    const r = resolveMachine(
+      fromCatalog({ setUp: { preload: "Our unit has no accessory stack: 20 lb." } }),
+      codexLegPress,
+    )!;
+    expect(r.setUp).toEqual({
+      entry: codexLegPress.setUp!.entry,
+      preload: "Our unit has no accessory stack: 20 lb.",
+    });
+  });
+
+  it("merges each dial's rule by the dial's key, and the switches per key", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        dialRules: { gap: { rule: "Our gap starts at 3." } },
+        switches: { tscCapable: false },
+      } as Partial<MachineDefinition>),
+      codexLegPress,
+    )!;
+    expect(r.dialRules?.seat.rule).toContain("end stop");
+    expect(r.dialRules?.gap.rule).toBe("Our gap starts at 3.");
+    expect(r.switches).toEqual({ lowerTurn: "stackTouch", tscCapable: false });
+  });
+
+  it("adds a studio's stop rule to the catalog's and cannot drop the catalog's", () => {
+    const r = resolveMachine(
+      fromCatalog({ stopRules: [{ text: "Our footplate latch sticks: check it's released." }] }),
+      codexLegPress,
+    )!;
+    expect(r.stopRules?.map((s) => s.text)).toEqual([
+      "The knees never lock out at the end stop.",
+      "Our footplate latch sticks: check it's released.",
+    ]);
+    const emptied = resolveMachine(fromCatalog({ stopRules: [], watchOuts: [] }), codexLegPress)!;
+    expect(emptied.stopRules).toHaveLength(1);
+    expect(emptied.watchOuts).toHaveLength(1);
+  });
+
+  it("keeps the catalog's watch-out when a studio restates the condition", () => {
+    const r = resolveMachine(
+      fromCatalog({ watchOuts: [{ condition: "sensitive lower back", action: "Ignore it." }] }),
+      codexLegPress,
+    )!;
+    expect(r.watchOuts).toEqual(codexLegPress.watchOuts);
+  });
+
+  it("replaces one line's source record and keeps every other line's live", () => {
+    const r = resolveMachine(
+      fromCatalog({ sources: [{ path: "setUp.preload", kind: "academy", ref: "LP – Quick Reference Guide.txt" }] }),
+      codexLegPress,
+    )!;
+    expect(r.sources).toEqual([
+      codexLegPress.sources![0],
+      { path: "setUp.preload", kind: "academy", ref: "LP – Quick Reference Guide.txt" },
+    ]);
+  });
+});
+
+describe("the Sep 21 rule — a copy without one of the catalog's safety lines", () => {
+  const record = (field: string, line: string, reason = "This unit has no footplate latch.") => ({
+    field,
+    line,
+    reason,
+    by: { uid: "uid-faramir", name: "Faramir" },
+    at: "2026-09-28T15:00:00.000Z",
+  });
+
+  it("leaves the removed line off this unit, and says which fields changed", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        removedSafety: [record("clinicalWarnings", legPress.clinicalWarnings[0])],
+      } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.clinicalWarnings).toEqual([]);
+    expect(r.removedSafety).toHaveLength(1);
+    expect(r.overriddenFields).toContain("clinicalWarnings");
+    expect(r.overriddenFields).not.toContain("removedSafety");
+    // The catalog itself is untouched.
+    expect(legPress.clinicalWarnings).toHaveLength(1);
+  });
+
+  it("ignores a record with no reason, or naming a line the catalog no longer has", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        removedSafety: [
+          record("clinicalWarnings", legPress.clinicalWarnings[0], "  "),
+          record("contraindicatedFor", "A line head office already took out"),
+        ],
+      } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.clinicalWarnings).toEqual(legPress.clinicalWarnings);
+    expect(r.contraindicatedFor).toEqual(legPress.contraindicatedFor);
+    expect(r.removedSafety).toBeUndefined();
+  });
+
+  it("keeps a studio's additions beside a removal, and never brings the removed line back from an old copy", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        // An override written before the rule stored the catalog's lines too.
+        clinicalWarnings: [legPress.clinicalWarnings[0], "Our footplate latch sticks."],
+        removedSafety: [record("clinicalWarnings", legPress.clinicalWarnings[0])],
+      } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.clinicalWarnings).toEqual(["Our footplate latch sticks."]);
+  });
+
+  it("removes a checkpoint by its title and lets the studio's own rewording stand", () => {
+    const r = resolveMachine(
+      fromCatalog({
+        alignmentCheckpoints: [
+          { title: "Pelvic Stability", verify: "Ours: the belt holds the hips down." },
+          // A verbatim copy of a removed line does not come back.
+          { title: "Knee Tracking", verify: "Knees track in line with the feet; ankles, knees, hips stacked." },
+        ],
+        removedSafety: [
+          record("alignmentCheckpoints", "Pelvic Stability"),
+          record("alignmentCheckpoints", "Knee Tracking"),
+        ],
+      } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.alignmentCheckpoints).toEqual([{ title: "Pelvic Stability", verify: "Ours: the belt holds the hips down." }]);
+  });
+
+  it("still reaches a copy with head office's later corrections to the lines it kept", () => {
+    const corrected: MachineCatalogEntry = {
+      ...legPress,
+      contraindicatedFor: [...legPress.contraindicatedFor, "Recent knee surgery, until cleared"],
+    };
+    const r = resolveMachine(
+      fromCatalog({ removedSafety: [record("clinicalWarnings", legPress.clinicalWarnings[0])] } as Partial<MachineDefinition>),
+      corrected,
+    )!;
+    expect(r.contraindicatedFor).toEqual(["Acute knee effusion", "Recent knee surgery, until cleared"]);
+  });
+});
+
+describe("the method on a studio's copy merges per key (the Sep 21 rule)", () => {
+  it("keeps inheriting never-to-failure when a studio rewords one cue", () => {
+    const lumbar: MachineCatalogEntry = {
+      ...legPress,
+      execution: { ...legPress.execution, neverToFailure: true, safetyNotice: "Never to failure." },
+    };
+    const r = resolveMachine(
+      fromCatalog({ execution: { keyCues: ["Chin down", "Ours: slow the last inch"] } } as Partial<MachineDefinition>),
+      lumbar,
+    )!;
+    expect(r.execution.keyCues).toEqual(["Chin down", "Ours: slow the last inch"]);
+    expect(r.execution.neverToFailure).toBe(true);
+    expect(r.execution.loadUpProtocol).toBe(legPress.execution.loadUpProtocol);
+  });
+
+  it("merges a turnaround line by line", () => {
+    const r = resolveMachine(
+      fromCatalog({ execution: { upperTurnaround: { cue: "Touch and go." } } } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.execution.upperTurnaround).toEqual({ ...legPress.execution.upperTurnaround, cue: "Touch and go." });
+  });
+
+  it("merges the musculature's lists per list", () => {
+    const r = resolveMachine(
+      fromCatalog({ musculature: { synergists: ["Adductor Magnus"] } } as Partial<MachineDefinition>),
+      legPress,
+    )!;
+    expect(r.musculature.primary).toEqual(legPress.musculature.primary);
+    expect(r.musculature.synergists).toEqual(["Adductor Magnus"]);
+  });
+
+  it("stores only the execution lines that differ", () => {
+    expect(
+      pruneMergedField("execution", legPress.execution, {
+        ...legPress.execution,
+        keyCues: ["Ours"],
+        upperTurnaround: { ...legPress.execution.upperTurnaround, cue: "Touch and go." },
+      }),
+    ).toEqual({ keyCues: ["Ours"], upperTurnaround: { cue: "Touch and go." } });
+  });
+});
+
+describe("the unit's model (Codex R2)", () => {
+  const withReference: MachineCatalogEntry = { ...legPress, modelId: "mm-hoist-roc-it-leg-press" };
+
+  it("never gives a copy the catalog's reference model", () => {
+    const r = resolveMachine(fromCatalog(), withReference)!;
+    expect("modelId" in r).toBe(false);
+  });
+
+  it("names the model the roster entry names", () => {
+    const r = resolveMachine(fromCatalog(undefined, { modelId: "mm-nautilus-nitro-leg-press" }), withReference)!;
+    expect(r.modelId).toBe("mm-nautilus-nitro-leg-press");
+  });
+
+  it("does not let an override smuggle a model in", () => {
+    const r = resolveMachine(fromCatalog({ modelId: "mm-somewhere-else" }), legPress)!;
+    expect("modelId" in r).toBe(false);
+  });
+
+  it("reads a studio's own machine's model from its entry, then its definition", () => {
+    const own: RosterEntryCustom = {
+      machineId: "sm-studio-solon-sled",
+      studioId: STUDIO,
+      source: "custom",
+      status: "active",
+      definition: { ...legPress, modelId: "mm-hammer-strength-sled" },
+    };
+    expect(resolveMachine(own)!.modelId).toBe("mm-hammer-strength-sled");
+    expect(resolveMachine({ ...own, modelId: "mm-hammer-strength-sled-2" })!.modelId).toBe("mm-hammer-strength-sled-2");
+  });
+
+  it("has no unit, so no model, on equipment the studio has not added", () => {
+    expect("modelId" in resolveUnrostered(withReference, STUDIO)).toBe(false);
+  });
+});
+
+describe("pruneMergedField — the Codex format's write side", () => {
+  it("stores only the object leaf's keys that differ", () => {
+    expect(
+      pruneMergedField(
+        "setUp",
+        { entry: "Sit.", preload: "38 lb." },
+        { entry: "Sit.", preload: "20 lb." },
+      ),
+    ).toEqual({ preload: "20 lb." });
+  });
+
+  it("stores only the source records that differ from the catalog's", () => {
+    const base = [
+      { path: "setUp.entry", kind: "academy" },
+      { path: "setUp.preload", kind: "guide" },
+    ];
+    expect(
+      pruneMergedField("sources", base, [
+        { path: "setUp.entry", kind: "academy" },
+        { path: "setUp.preload", kind: "academy", ref: "QRG" },
+      ]),
+    ).toEqual([{ path: "setUp.preload", kind: "academy", ref: "QRG" }]);
+    expect(pruneMergedField("sources", base, base)).toBeUndefined();
   });
 });
 

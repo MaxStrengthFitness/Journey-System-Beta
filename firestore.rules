@@ -1375,6 +1375,50 @@ service cloud.firestore {
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
     }
 
+    /* WAVE 2 CODEX: one catalog safety line a studio's copy does without
+       (the Sep 21 rule, built Sep 28 2026; AJ: "Yes studios need to be able
+       to customize their stuff safety is definitely a worry but are
+       trusted"). It must say WHY: at least 3 characters of reason, at most
+       300 (lib/machine-template.ts holds the same numbers, and its test
+       reads them from here). Who and when travel with it for Compare; the
+       app stamps them. */
+    function removedLineValid(e) {
+      return e is map
+          && e.get('reason', '') is string
+          && e.get('reason', '').trim().size() >= 3
+          && e.get('reason', '').size() <= 300;
+    }
+
+    /* WAVE 2 CODEX: every removal record on a copy's overrides, checked one
+       place at a time (a rule cannot loop), so the list is capped at 10 —
+       MAX_REMOVED_SAFETY in lib/machine-template.ts; change them together.
+       An empty list costs one check per place and reads nothing. */
+    function removedSafetyValid(l) {
+      return l is list && l.size() <= 10
+          && (l.size() < 1 || removedLineValid(l[0]))
+          && (l.size() < 2 || removedLineValid(l[1]))
+          && (l.size() < 3 || removedLineValid(l[2]))
+          && (l.size() < 4 || removedLineValid(l[3]))
+          && (l.size() < 5 || removedLineValid(l[4]))
+          && (l.size() < 6 || removedLineValid(l[5]))
+          && (l.size() < 7 || removedLineValid(l[6]))
+          && (l.size() < 8 || removedLineValid(l[7]))
+          && (l.size() < 9 || removedLineValid(l[8]))
+          && (l.size() < 10 || removedLineValid(l[9]));
+    }
+
+    /* WAVE 2 CODEX: the Codex fields on a roster entry (Sep 28 2026). The
+       unit's model, when named, is a model id (machineModels/{id}), set by
+       the studio's leaders; and a removed catalog safety line carries a
+       reason (the Sep 21 rule: a removed safety line without one is
+       refused). Pure map lookups: no document is read, so the roster rule
+       asks this before anything that calls get(). */
+    function rosterCodexValid(d) {
+      return (!('modelId' in d)
+              || (d.modelId is string && d.modelId.size() > 0 && d.modelId.size() <= 100))
+          && removedSafetyValid(d.get('overrides', {}).get('removedSafety', []));
+    }
+
     /* ...and a copy stays a copy: an update can't drop `adoptedFrom` and list
        it in the same write (review fix). The studio it names is the one its
        path names, so a shared machine can't claim another studio. */
@@ -1723,6 +1767,38 @@ service cloud.firestore {
         allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
         allow update, delete: if false;
       }
+    }
+
+    // WAVE 2 CODEX: the model record (Codex R2, Sep 28 2026; AJ approved
+    // the Codex's new data "all yes"). A maker's model of an MSF movement —
+    // "Hoist ROC-IT Leg Press" — its dials and stacks, written once and
+    // pointed at by each studio's unit (roster entry `modelId`). The shape is
+    // exactly features/machine-codex/models.ts's `modelDocument` plus the
+    // stamp: the Catalog's model tier reads it. Written whole (setDoc, no
+    // merge), so every write carries the stamp and the rule can pin it.
+    function machineModelValid(d) {
+      return d.keys().hasOnly(['brand', 'model', 'movementId', 'dials', 'notes', 'updatedAt', 'updatedBy'])
+          && d.keys().hasAll(['brand', 'model', 'movementId', 'updatedAt', 'updatedBy'])
+          && d.brand is string && d.brand.size() > 0 && d.brand.size() <= 60
+          && d.model is string && d.model.size() > 0 && d.model.size() <= 80
+          && d.movementId is string && d.movementId.size() > 0 && d.movementId.size() <= 100
+          && (!('dials' in d) || (d.dials is list && d.dials.size() <= 20))
+          && (!('notes' in d) || (d.notes is string && d.notes.size() <= 2000))
+          && d.updatedAt == request.time
+          && d.updatedBy == request.auth.uid;
+    }
+
+    // WAVE 2 CODEX: everyone signed in reads the models (a unit's model is
+    // named on the floor); administrators write them. The shape is checked
+    // first — map lookups, no document read — and isSuperAdmin() last, so a
+    // malformed write is refused before the role is ever looked up. Never
+    // deleted: a unit may name it, and the weekly job pools by its id.
+    match /machineModels/{modelId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+                             && machineModelValid(request.resource.data)
+                             && isSuperAdmin();
+      allow delete: if false;
     }
 
     match /machineSettingChanges/{changeId} {
@@ -2355,8 +2431,13 @@ service cloud.firestore {
       // also covers a direct read of that one document.
       match /roster/{machineId} {
         allow read: if isAuthenticated() && writesForStudio(studioId);
+        // WAVE 2 CODEX: rosterCodexValid (the unit's model) is pure map
+        // lookups on the document being written, so it runs FIRST and a bad
+        // write is refused before isSuperAdmin() or the leader check read
+        // anything (the 1,000-expression budget; docs/KNOWN-TRAPS.md).
         allow create, update:
-          if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
+          if rosterCodexValid(request.resource.data)
+             && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
              && rosterWriteValid(studioId);
         allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
