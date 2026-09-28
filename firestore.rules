@@ -1301,14 +1301,45 @@ service cloud.firestore {
     function sharedFieldsValid(d) {
       return (!('shared' in d) || d.shared is bool)
           && (!('sharedKeys' in d) || (d.sharedKeys is list && d.sharedKeys.size() <= 10))
-          && (!('studioName' in d) || (d.studioName is string && d.studioName.size() <= 80));
+          && (!('studioName' in d) || (d.studioName is string && d.studioName.size() <= 80))
+          && (!('shareStatus' in d) || d.shareStatus in ['pending', 'approved', 'declined'])
+          && (!('shareReviewNote' in d) || (d.shareReviewNote is string && d.shareReviewNote.size() <= 300));
     }
 
-    /* Only a studio's OWN machine can be listed in the database: a catalog
-       entry is already in it, and a copy adopted from another studio is
-       listed by its original. */
+    /* SHARING WAITS FOR AN ADMINISTRATOR (AJ, Sep 28 2026: sharing with all
+       MSF studios "should submit to admins first for review, we can review
+       in admin dashboard"). A studio OFFERS -- shareStatus 'pending' -- and
+       only an administrator publishes (`shared` true) or decides the offer
+       ('approved' / 'declined', with who and when). Anyone who may edit the
+       thing may still take it back: `shared` false, the offer withdrawn.
+       Something already shared may stay shared through a write that doesn't
+       publish it anew; the app sends the studio's own edits of a shared note
+       or tip back for review. */
+    // Cheapest first: the field checks cost nothing and pass for every write
+    // that doesn't publish or decide, so isSuperAdmin() (document reads)
+    // runs only for those. The other way round, a tip or note write ran out
+    // of Firestore's 1000-expression budget (the rules tests, Sep 28 2026).
+    function shareDecisionOk() {
+      return shareLeftUndecided() || isSuperAdmin();
+    }
+
+    function shareLeftUndecided() {
+      return (request.resource.data.get('shared', false) != true
+              || (resource != null && resource.data.get('shared', false) == true))
+          && (request.resource.data.get('shareStatus', 'none') in ['none', 'pending']
+              || (resource != null
+                  && request.resource.data.get('shareStatus', 'none') == resource.data.get('shareStatus', 'none')))
+          && (resource == null
+                ? !request.resource.data.keys().hasAny(['shareReviewedBy', 'shareReviewedAt', 'shareReviewNote'])
+                : !request.resource.data.diff(resource.data).affectedKeys()
+                    .hasAny(['shareReviewedBy', 'shareReviewedAt', 'shareReviewNote']));
+    }
+
+    /* Only a studio's OWN machine can be listed in the database (or offered
+       for it): a catalog entry is already in it, and a copy adopted from
+       another studio is listed by its original. */
     function rosterShareValid(d) {
-      return d.get('shared', false) != true
+      return (d.get('shared', false) != true && d.get('shareStatus', 'none') != 'pending')
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
     }
 
@@ -1320,7 +1351,8 @@ service cloud.firestore {
           && request.resource.data.get('studioId', studioId) == studioId
           && (resource == null
               || !('adoptedFrom' in resource.data)
-              || request.resource.data.get('shared', false) != true);
+              || request.resource.data.get('shared', false) != true)
+          && shareDecisionOk();
     }
 
     /* A comment on a Learning page (features/comments). No client field
@@ -1732,14 +1764,29 @@ service cloud.firestore {
     // Original note: per-studio overrides (which equipment a
     // studio owns, its custom display order, its own setting-card options)
     // layered on top of the shared global machines/{id} catalog doc, which
-    // stays untouched. Doc id convention: {studioId}_{machineId}. Same
-    // deliberately unhardened posture as routinePresets above, pending the
-    // pre-launch security hardening pass already tracked in ROADMAP.md.
+    // stays untouched. Doc id convention: {studioId}_{machineId}.
+    //
+    // Hardened Sep 28 2026 (AJ's voice review: studio-local machine
+    // knowledge stays with the studio). Until then any signed-in account
+    // could read every studio's set-up and any trainer anywhere could
+    // create, change or delete it. Now the studio's own people read it
+    // (the app reads it by `where studioId ==`, which this rule can judge),
+    // and its leaders write it -- the Catalog's set-up card already offered
+    // Save only to them (StudioSetupCard canEdit={canLead}). A document names
+    // its studio and machine, as its id says, and keeps them.
     match /studioMachineSettings/{settingId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
-      allow update: if isAuthenticated() && isAnyAuthenticatedTrainer();
-      allow delete: if isAuthenticated() && isAnyAuthenticatedTrainer();
+      allow read: if isAuthenticated() && writesForStudio(resource.data.studioId);
+      allow create: if isAuthenticated()
+                    && request.resource.data.studioId is string
+                    && request.resource.data.machineId is string
+                    && settingId == request.resource.data.studioId + '_' + request.resource.data.machineId
+                    && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(request.resource.data.studioId));
+      allow update: if isAuthenticated()
+                    && request.resource.data.studioId == resource.data.studioId
+                    && request.resource.data.get('machineId', '') == resource.data.get('machineId', '')
+                    && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(resource.data.studioId));
+      allow delete: if isAuthenticated()
+                    && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(resource.data.studioId));
     }
 
     // TRAINING SESSIONS — scoped three ways (tenancy pass, Sep 2026)
@@ -2084,8 +2131,16 @@ service cloud.firestore {
       // id is a literal, so this creates exactly one studio and no other, and
       // update is already covered -- isStudioOwnerOrHeadTrainer is true there
       // for everyone.
+      // How often a studio asks Mindbody (autoSyncEnabled,
+      // syncIntervalMinutes) is administrators' alone since Sep 28 2026 (AJ:
+      // "yes" to administrators only): it is a cost lever, and it had no
+      // editor on My Studio -> Studio, so Operations -> Mindbody was a second
+      // editor of the studio's own record.
       allow create: if isSuperAdmin() || isFranchiseOwner() || hasRunOfDemo(studioId);
-      allow update: if isSuperAdmin() || isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId) ||
+      allow update: if isSuperAdmin() ||
+                       ((isFranchiseOwner() || isStudioOwnerOrHeadTrainer(studioId)) &&
+                        !request.resource.data.diff(resource.data).affectedKeys()
+                          .hasAny(['autoSyncEnabled', 'syncIntervalMinutes'])) ||
                        (isAnyAuthenticatedTrainer() &&
                         request.resource.data.diff(resource.data).affectedKeys()
                           .hasOnly(['lastScheduleSyncAt', 'scheduleSyncFailures', 'lastDeepScheduleSyncAt']));
@@ -2255,12 +2310,16 @@ service cloud.firestore {
       // and StudioLeader scoped by primaryHomeStudioId or ownedStudioIds.
       // A trainer at studio A cannot touch studio B's roster.
       //
-      // Reads stay open to any authenticated trainer, matching the posture of
-      // the surrounding collections and the multi-studio trainer case; narrow
-      // to isTrainerOfStudio(studioId) in the pre-launch hardening pass
-      // tracked in ROADMAP.md.
+      // Reads: the people who work at or run this studio, franchise owners
+      // and administrators (writesForStudio). Until Sep 28 2026 any signed-in
+      // account could read any studio's roster, custom definitions and
+      // overrides included; AJ's voice review: "Studio-local machine notes
+      // stay with that studio. Only the official standard flows
+      // company-wide." A machine an administrator has shared with every
+      // studio stays readable to all through {path=**}/roster below, which
+      // also covers a direct read of that one document.
       match /roster/{machineId} {
-        allow read: if isAuthenticated();
+        allow read: if isAuthenticated() && writesForStudio(studioId);
         allow create, update:
           if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
              && rosterWriteValid(studioId);
@@ -2280,8 +2339,11 @@ service cloud.firestore {
       //
       // Tenancy is enforced by the path, same as the roster, so no get() is
       // spent on the check. A trainer at studio A cannot write studio B.
+      // Nor read it, since Sep 28 2026: the Studio notes card promises "It
+      // does not follow you to other locations", and until then any
+      // signed-in account could read every studio's notes by path.
       match /machineNotes/{machineId} {
-        allow read: if isAuthenticated();
+        allow read: if isAuthenticated() && writesForStudio(studioId);
         allow create, update: if isAuthenticated() && isAnyAuthenticatedTrainer()
                               && writesForStudio(studioId);
         allow delete: if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);
@@ -2607,17 +2669,22 @@ service cloud.firestore {
                       && request.resource.data.worked is string
                       && !('clientId' in request.resource.data)
                       && sharedFieldsValid(request.resource.data)
+                      && shareDecisionOk()
                       && writesForStudio(studioId);
 
+        // An administrator deciding an offer (Sep 28 2026) edits a tip they
+        // didn't write, hence isSuperAdmin() beside the author and the leader.
         allow update: if isAuthenticated()
                       && isAnyAuthenticatedTrainer()
                       && !('clientId' in request.resource.data)
                       && sharedFieldsValid(request.resource.data)
+                      && shareDecisionOk()
                       && (
                            resource.data.authorId == request.auth.uid
                         || request.resource.data.diff(resource.data)
                              .affectedKeys()
                              .hasOnly(['confirmations', 'lastConfirmedOn'])
+                        || isSuperAdmin()
                         || isStudioOwnerOrHeadTrainer(studioId)
                       )
                       && writesForStudio(studioId);
@@ -2680,6 +2747,7 @@ service cloud.firestore {
                       && request.resource.data.kind in ['page', 'overlay']
                       && !('clientId' in request.resource.data)
                       && sharedFieldsValid(request.resource.data)
+                      && shareDecisionOk()
                       && (
                            request.resource.data.kind == 'overlay'
                         || isSuperAdmin()
@@ -2694,6 +2762,7 @@ service cloud.firestore {
                       && request.resource.data.kind == resource.data.kind
                       && !('clientId' in request.resource.data)
                       && sharedFieldsValid(request.resource.data)
+                      && shareDecisionOk()
                       && (
                            resource.data.kind == 'overlay'
                         || isSuperAdmin()
@@ -2898,23 +2967,27 @@ service cloud.firestore {
     // machines (roster), their machine notes (wiki overlays) and their tips
     // (playbook). A collection-group query is judged by these rules alone,
     // and only one filtered on `shared == true` can pass -- so nothing a
-    // studio did not share is listed to another. (A direct read of any of
-    // these documents is still governed by the studios/{studioId} block,
-    // which already lets any signed-in user read them.)
+    // studio did not share is listed to another. These recursive matches
+    // also answer a direct read of one shared document; everything else is
+    // the studios/{studioId} block's, which lets only the studio's own
+    // people read it (the roster and the machine notes since Sep 28 2026).
     //
     // Administrators may list rosters unfiltered: the catalog editor counts
-    // the studios still running a machine before retiring it.
+    // the studios still running a machine before retiring it. Since Sep 28
+    // 2026 they also list the notes and tips studios have OFFERED
+    // (shareStatus 'pending'), to decide them on the Admins dashboard --
+    // nothing reaches another studio until they do (shareDecisionOk).
     match /{path=**}/roster/{machineId} {
       allow read: if isAuthenticated()
                   && (resource.data.shared == true || isSuperAdmin());
     }
 
     match /{path=**}/playbook/{entryId} {
-      allow read: if isAuthenticated() && resource.data.shared == true;
+      allow read: if isAuthenticated() && (resource.data.shared == true || isSuperAdmin());
     }
 
     match /{path=**}/wiki/{docId} {
-      allow read: if isAuthenticated() && resource.data.shared == true;
+      allow read: if isAuthenticated() && (resource.data.shared == true || isSuperAdmin());
     }
 
     // NETWORKS: Regional Franchise Groupings

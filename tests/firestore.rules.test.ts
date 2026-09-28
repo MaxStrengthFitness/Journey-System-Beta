@@ -1722,26 +1722,41 @@ describe("Firestore Security Rules", () => {
     const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "machineNotes", "m-leg-press"), { notes: "Pad sticks" }));
     await assertSucceeds(setDoc(doc(insider, "studios", "studioA", "upkeepLog", "u1"), { machineId: "m-leg-press", kind: "clean" }));
+    // Sharing waits for an administrator (Sep 28 2026): a trainer OFFERS a
+    // note to every studio, and can't publish it there themselves.
+    const note = {
+      kind: "overlay",
+      title: "Leg Press",
+      authorId: "trainerA",
+      blocks: [{ kind: "para", text: "Two notches lower here." }],
+      sharedKeys: ["m-leg-press"],
+      studioName: "Studio A",
+    };
+    await assertFails(setDoc(doc(insider, "studios", "studioA", "wiki", "machine__m-leg-press"), { ...note, shared: true }));
+    await assertFails(
+      setDoc(doc(insider, "studios", "studioA", "wiki", "machine__m-leg-press"), { ...note, shareStatus: "approved" }),
+    );
     await assertSucceeds(
-      setDoc(doc(insider, "studios", "studioA", "wiki", "machine__m-leg-press"), {
-        kind: "overlay",
-        title: "Leg Press",
-        authorId: "trainerA",
-        blocks: [{ kind: "para", text: "Two notches lower here." }],
-        shared: true,
-        sharedKeys: ["m-leg-press"],
-        studioName: "Studio A",
-      }),
+      setDoc(doc(insider, "studios", "studioA", "wiki", "machine__m-leg-press"), { ...note, shareStatus: "pending" }),
     );
   });
 
-  it("lets a studio's leaders list their own machine in the database, and nothing else", async () => {
+  it("lets a studio's leaders offer their own machine to the database, and nothing else", async () => {
     await seedMachineDb();
     const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    // Offered, for an administrator to decide (Sep 28 2026) ...
     await assertSucceeds(
+      updateDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-sled"), {
+        shareStatus: "pending",
+        sharedStudioName: "Studio A",
+      }),
+    );
+    // ... never listed by the studio itself.
+    await assertFails(
       updateDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true, sharedStudioName: "Studio A" }),
     );
     // An MSF machine is already in the database.
+    await assertFails(updateDoc(doc(owner, "studios", "studioA", "roster", "m-leg-press"), { shareStatus: "pending" }));
     await assertFails(updateDoc(doc(owner, "studios", "studioA", "roster", "m-leg-press"), { shared: true }));
     // A copy of another studio's machine is listed by its original.
     await assertFails(
@@ -1752,12 +1767,127 @@ describe("Firestore Security Rules", () => {
         status: "active",
         definition: { name: "Rope" },
         adoptedFrom: { studioId: "studioB", machineId: "sm-studioB-rope", studioName: "Studio B" },
-        shared: true,
+        shareStatus: "pending",
       }),
     );
     // Trainers do not decide what the studio publishes.
     const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(trainer, "studios", "studioA", "roster", "sm-studioA-sled"), { shareStatus: "pending" }));
     await assertFails(updateDoc(doc(trainer, "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true }));
+  });
+
+  // -- SHARING WAITS FOR AN ADMINISTRATOR (AJ, Sep 28 2026) -----------------
+  //
+  // "it should submit to admins first for review, we can review in admin
+  // dashboard". A studio offers (shareStatus "pending"); only an
+  // administrator publishes (shared true) and decides the offer.
+
+  async function seedAdmin() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "adminX"), {
+        fullName: "Admin X",
+        initials: "AX",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+  }
+
+  it("lets only an administrator publish an offer, decide it and list what waits", async () => {
+    await seedMachineDb();
+    await seedAdmin();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await updateDoc(doc(db, "studios", "studioA", "roster", "sm-studioA-sled"), { shareStatus: "pending" });
+      await updateDoc(doc(db, "studios", "studioA", "playbook", "tipPrivate"), { shareStatus: "pending", sharedKeys: ["m-leg-press"] });
+    });
+    const admin = testEnv.authenticatedContext("adminX", { email: "adminx@test.com" }).firestore();
+    // What waits, across every studio.
+    await assertSucceeds(getDocs(query(collectionGroup(admin, "roster"), where("shareStatus", "==", "pending"))));
+    await assertSucceeds(getDocs(query(collectionGroup(admin, "playbook"), where("shareStatus", "==", "pending"))));
+    await assertSucceeds(getDocs(query(collectionGroup(admin, "wiki"), where("shareStatus", "==", "pending"))));
+    const other = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDocs(query(collectionGroup(other, "playbook"), where("shareStatus", "==", "pending"))));
+    // Deciding: an administrator publishes a machine and a tip they didn't write, or declines with a note.
+    await assertSucceeds(
+      updateDoc(doc(admin, "studios", "studioA", "roster", "sm-studioA-sled"), {
+        shared: true,
+        shareStatus: "approved",
+        shareReviewedBy: "adminX",
+        shareReviewedAt: serverTimestamp(),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(admin, "studios", "studioA", "playbook", "tipPrivate"), {
+        shareStatus: "declined",
+        shareReviewNote: "Say which seat notch, and we will share it.",
+        shareReviewedBy: "adminX",
+        shareReviewedAt: serverTimestamp(),
+      }),
+    );
+    // A studio can't write the decision itself.
+    const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(author, "studios", "studioA", "playbook", "tipPrivate"), { shareReviewNote: "Fine by me" }));
+    await assertFails(updateDoc(doc(author, "studios", "studioA", "playbook", "tipPrivate"), { shareStatus: "approved" }));
+    // It may offer again after a decline, and take a shared tip back.
+    await assertSucceeds(updateDoc(doc(author, "studios", "studioA", "playbook", "tipPrivate"), { shareStatus: "pending" }));
+    await assertSucceeds(updateDoc(doc(author, "studios", "studioA", "playbook", "tipShared"), { shared: false, sharedKeys: [] }));
+    await assertFails(updateDoc(doc(author, "studios", "studioA", "playbook", "tipShared"), { shared: true }));
+  });
+
+  it("keeps a studio's roster and machine notes with the people who work there; a shared machine reads everywhere", async () => {
+    await seedMachineDb();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studios", "studioA", "machineNotes", "m-leg-press"), {
+        studioId: "studioA",
+        machineId: "m-leg-press",
+        notes: "Left pad sticks.",
+      });
+    });
+    const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    await assertFails(getDocs(collection(outsider, "studios", "studioA", "roster")));
+    await assertFails(getDoc(doc(outsider, "studios", "studioA", "roster", "sm-studioA-sled")));
+    await assertFails(getDocs(collection(outsider, "studios", "studioA", "machineNotes")));
+    await assertFails(getDoc(doc(outsider, "studios", "studioA", "machineNotes", "m-leg-press")));
+    const insider = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    await assertSucceeds(getDocs(collection(insider, "studios", "studioA", "roster")));
+    await assertSucceeds(getDocs(collection(insider, "studios", "studioA", "machineNotes")));
+    // Once an administrator shares a studio's own machine, anyone may read that one document.
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), "studios", "studioA", "roster", "sm-studioA-sled"), { shared: true });
+    });
+    await assertSucceeds(getDoc(doc(outsider, "studios", "studioA", "roster", "sm-studioA-sled")));
+    await assertFails(getDoc(doc(outsider, "studios", "studioA", "roster", "m-leg-press")));
+  });
+
+  it("lets a studio's own people read its machine set-up, and only its leaders change it", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "studioMachineSettings", "studioA_m-leg-press"), {
+        studioId: "studioA",
+        machineId: "m-leg-press",
+        settingOptions: { seat: ["1", "2", "3"] },
+      });
+    });
+    const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    const byStudio = (db: typeof trainer, studioId: string) =>
+      getDocs(query(collection(db, "studioMachineSettings"), where("studioId", "==", studioId)));
+    await assertSucceeds(byStudio(trainer, "studioA"));
+    await assertFails(byStudio(outsider, "studioA"));
+    await assertSucceeds(byStudio(outsider, "studioB"));
+    await assertFails(getDoc(doc(outsider, "studioMachineSettings", "studioA_m-leg-press")));
+    // Writes: the studio's leaders, on their own studio, under the id the document names.
+    const edit = { studioId: "studioA", machineId: "m-leg-press", settingOptions: { seat: ["1", "2"] } };
+    await assertFails(setDoc(doc(trainer, "studioMachineSettings", "studioA_m-leg-press"), edit, { merge: true }));
+    await assertFails(setDoc(doc(outsider, "studioMachineSettings", "studioA_m-leg-press"), edit, { merge: true }));
+    await assertSucceeds(setDoc(doc(owner, "studioMachineSettings", "studioA_m-leg-press"), edit, { merge: true }));
+    await assertFails(setDoc(doc(owner, "studioMachineSettings", "studioB_m-leg-press"), { ...edit, studioId: "studioB" }));
+    await assertFails(setDoc(doc(owner, "studioMachineSettings", "studioA_m-row"), edit));
+    await assertFails(updateDoc(doc(owner, "studioMachineSettings", "studioA_m-leg-press"), { studioId: "studioB" }));
+    await assertFails(deleteDoc(doc(trainer, "studioMachineSettings", "studioA_m-leg-press")));
+    await assertSucceeds(deleteDoc(doc(owner, "studioMachineSettings", "studioA_m-leg-press")));
   });
 
   it("lists what studios shared to every trainer, and nothing they did not", async () => {
@@ -1826,13 +1956,16 @@ describe("Firestore Security Rules", () => {
     await assertFails(updateDoc(doc(owner, "studios", "studioA", "roster", "sm-studioA-sled"), { studioId: "studioB" }));
   });
 
-  it("checks the shape of the share fields, and lets a tip's author share it", async () => {
+  it("checks the shape of the share fields, and lets a tip's author offer it", async () => {
     await seedMachineDb();
     const author = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     const ref = doc(author, "studios", "studioA", "playbook", "tipPrivate");
     await assertFails(updateDoc(ref, { shared: "yes" }));
-    await assertFails(updateDoc(ref, { shared: true, sharedKeys: "m-leg-press" }));
-    await assertSucceeds(updateDoc(ref, { shared: true, sharedKeys: ["m-leg-press"], studioName: "Studio A" }));
+    await assertFails(updateDoc(ref, { shareStatus: "pending", sharedKeys: "m-leg-press" }));
+    await assertFails(updateDoc(ref, { shareStatus: "maybe", sharedKeys: ["m-leg-press"] }));
+    // Offered for an administrator's review (Sep 28 2026); publishing it is theirs.
+    await assertFails(updateDoc(ref, { shared: true, sharedKeys: ["m-leg-press"], studioName: "Studio A" }));
+    await assertSucceeds(updateDoc(ref, { shareStatus: "pending", sharedKeys: ["m-leg-press"], studioName: "Studio A" }));
     // A colleague who did not write it cannot publish it.
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(), "trainers", "trainerA2"), {
@@ -2140,6 +2273,25 @@ describe("Firestore Security Rules", () => {
     const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { name: "Renamed by a trainer" }));
     await assertFails(updateDoc(doc(trainer, "studios", "studioA"), { mindbodySiteId: "999" }));
+  });
+
+  it("keeps how often a studio asks Mindbody to administrators (AJ, Sep 28 2026)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "trainers", "adminX"), {
+        fullName: "Admin X",
+        initials: "AX",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+    });
+    const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+    await assertFails(updateDoc(doc(owner, "studios", "studioA"), { autoSyncEnabled: false }));
+    await assertFails(updateDoc(doc(owner, "studios", "studioA"), { syncIntervalMinutes: 15 }));
+    await assertFails(updateDoc(doc(owner, "studios", "studioA"), { name: "Studio A", syncIntervalMinutes: 15 }));
+    await assertSucceeds(updateDoc(doc(owner, "studios", "studioA"), { name: "Studio A (West)" }));
+    const admin = testEnv.authenticatedContext("adminX", { email: "adminx@test.com" }).firestore();
+    await assertSucceeds(updateDoc(doc(admin, "studios", "studioA"), { autoSyncEnabled: false, syncIntervalMinutes: 60 }));
   });
 
   it("still lets any trainer's iPad write the schedule sync lease, and nothing beside it", async () => {
