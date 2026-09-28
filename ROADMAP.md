@@ -14,8 +14,8 @@ and what is deliberately parked. It is re-cut at every gate.
 
 *Last re-cut: Sep 21 2026, after the catalog gate round. §5 and the follow-up
 pile brought up to Sep 27 2026 after the voice review follow-up, and the
-follow-up pile again after Openings the same night and after the directory and
-opportunities round on Sep 28.*
+follow-up pile again after Openings the same night, after the directory and
+opportunities round on Sep 28, and after the calm Hub the same night.*
 
 ---
 
@@ -322,6 +322,19 @@ ever-in-Journey, not exactly 90), the note marks (a summary on the client
 document, a Firestore change that needs his OK), the Hub card's milestones,
 the tenure words and "ending soon". Technical leftover: `src/lib/directory-row.ts`
 and its test have no reader since the old directory went.
+
+**The calm Hub (Sep 28 2026)** — to do by hand: look at branch
+`redesign/calm-hub` on the iPad (the local test build, or after it reaches
+master on AJ's word) and walk Round 25 of the testing checklist. The Hub card's
+milestones moved to Operations' one list (Hub question 5's default), which
+settles that question from the directory round. Decisions for AJ, in the round
+document's "Open, for AJ": the tap opening a peek (two taps to the profile);
+All stars' rule; the hatching waiting on agreed standing weeks; grey staff time
+waiting on Mindbody's "Unavailable" blocks, which the sync doesn't bring; moving
+the briefing's markers (every 25th, 21 days) onto the one engine; the top in
+portrait. Technical leftovers: "Couldn't load, retrying" when the schedule read
+fails; columns by trainer id only; a column header, "+N" and "Show on schedule"
+as doors; FORD "Get to know" (a new read: Needs OK); the cherry on top, last.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll

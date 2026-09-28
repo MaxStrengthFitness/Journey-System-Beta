@@ -2,14 +2,15 @@
 
 *Directory and opportunities round, Sep 27 2026 — `docs/rounds/2026-09-27-directory-and-opportunities.md`. Design: research-hub §6.3 (switching layers), §6.4 (the sort sentences), §6.5 (Direction O1, the Run-sheet) and §7 (the noise rules).*
 
-AJ: "just clean it up and add the second layer" — a layer that "list[s] every client coming in that day", sortable "by appointment time, by last seen, by session count, by sessions left, by birthday (turns 80 on June 4th)", "so trainers can see opportunities for that day quickly". This round builds the second layer; the grid's clean-up (research-hub S1) is a later round.
+AJ: "just clean it up and add the second layer" — a layer that "list[s] every client coming in that day", sortable "by appointment time, by last seen, by session count, by sessions left, by birthday (turns 80 on June 4th)", "so trainers can see opportunities for that day quickly". The directory round built this second layer; the calm Hub round (Sep 28 2026, `features/hub-schedule/`) cleaned up the grid on the SAME engine, so the grid, its peek and this list can never disagree.
 
 ## Files
 
 | File | What it is |
 | --- | --- |
 | `moments-today.ts` | The pure engine: one entry per client booked on the selected day, her moments in five families, the sentence each sort reads, and the sections. `moments-today.test.ts` |
-| `RunSheet.tsx` + `run-sheet.css` | The layer (prefix `ho-`). Lazy: fetched the first time Opportunities is opened, inside a `LoadBoundary kind="screen"` in `ClientsView` |
+| `use-day-moments.ts` | The day's entries, worked out ONCE for the Hub (the directory's rows, the package table, the engine). ClientsView calls it and hands the same entries to the grid's cards, the peek, the day summary and this list |
+| `RunSheet.tsx` + `run-sheet.css` | The layer (prefix `ho-`). Lazy: fetched the first time Opportunities is opened, inside a `LoadBoundary kind="screen"` in `ClientsView`. It takes the day's `entries` as a prop, and a `request` to open on a family (the Schedule's spotlight "See them as a list") |
 | `LayerSwitch.tsx` + `layer-switch.css` | `[ Schedule \| Opportunities ]` at the start of the Hub's strip (prefix `hl-`). Small and eager |
 
 ## Decisions
@@ -18,7 +19,7 @@ AJ: "just clean it up and add the second layer" — a layer that "list[s] every 
 - **Everything is asked about the SELECTED day, never today** — the birthday window, the milestone (her count plus her bookings before it, Operations' `count + i + 1`), the break measured to that booking — so flipping to Thursday shows Thursday's truth. (The Hub card still counts from today; see the open items.)
 - **One vocabulary, reused, never re-derived**:
   - *Read first* — the Hub's own Critical read (`useHubCriticalNotes`, handed in as `criticalFor`), through `getClientAlertState(client, criticalNotesOn(notes, day))`: the card's exact rule. A client whose notes could not be read claims nothing, and the line under the chips says so.
-  - *Watch* — the last Pulse's red flags, from the same alert state.
+  - *Watch* — no liability waiver signed (Mindbody's "nw" corner, AJ Sep 28: `waiverState` "not-signed" only, never "not synced yet"), then the last Pulse's red flags, from the same alert state. Clinical history on file is NOT a moment (it would sit on most clients): the entry carries it as `clinicalOnFile`, said quietly in an opened row and the peek.
   - *Welcome* — a consultation (the card's rule); sessions 1–3 when the number may be quoted; first time with this trainer only where Journey holds her whole story (so the trainer tally is every session she has had); back after a break measured in **missed sessions at her own pace** (`renewal.pacePerWeek`; about 3 or more), claimed only inside the part of her timeline Journey owns (`ownedWindow` / `canClaimGap`).
   - *Celebrate* — a milestone from Operations' ONE list (`SESSION_MILESTONES`: 50, 100, 150, 200, 250, 300, 400, 500, 750, 1000…) only when `canQuoteSessionNumber`; a birthday within a week either side, "turns N" only when the birth year is on file.
   - *Renew* — `renewalPromptDue`, in the Wrap-up's own words (`promptText`).
@@ -34,11 +35,11 @@ None of its own beyond the studio's package table (`useRenewalSettings`, the one
 
 - **FORD "Get to know"** (✎): needs one studio-scoped FORD read (a collection-group query like the Delight queue's) — a new read, so a later round.
 - **Surgery / away within 14 days** from dated notes and FORD: the same new read. The card's Away and Medical chips still read the legacy `client.events`.
-- **"Show on schedule"**, the Key sheet, the card peek, summary chips that spotlight the grid, and the grid clean-up itself (research-hub S1).
+- **"Show on schedule"** (the list has no scroll target on the grid yet). The Key sheet, the card peek, the chips that spotlight the grid and the grid clean-up itself are built: `features/hub-schedule/`.
 - **A private "seen"** per opportunity (§7 rule 12).
 
 ## Seams and open items
 
-- `hub-markers.ts` (the card) still has its own rules — every 25th session, 21 calendar days for "back", counted from today. Moving the card onto `moments-today.ts` retires that drift; it changes the Schedule layer, so it waits for AJ's answer on the milestone list.
+- The Hub card reads this engine since the calm Hub round (Hub question 5's default: Operations' one milestone list), so its old rules are retired there. `lib/hub-markers.ts` still has them — every 25th session, 21 calendar days for "back", counted from today — for the **briefing**, which reads it; moving the briefing onto this engine is the last of that drift.
 - `ENDING_SOON_AT` (12) and the tenure words (New 1–3, Building 4–49, Regulars 50+) are placeholders for AJ's answer.
 - `criticalFor` / `logged` / `rowsById` are the injection points: a test or another screen can hand in its own.

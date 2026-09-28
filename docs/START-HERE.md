@@ -172,6 +172,7 @@ AJ's own tour, Sep 21 2026.
 | If you want to change… | It lives in |
 | --- | --- |
 | The screen a trainer uses during a set | `src/components/WorkoutTrackerView.tsx` |
+| The Hub — the day's grid, its cards, the top, the peek, and the Opportunities list | `src/components/ClientsView.tsx` (the screen) + `src/features/hub-schedule/` (the grid) + `src/features/hub-opportunities/` (the list and the one engine both read) — read their `README.md`s |
 | The Calendar | `src/components/CalendarView.tsx` + `src/features/calendar/` |
 | The client directory and the Kaizen roster | `src/features/client-directory/` (read its `README.md`), `src/features/trainer-profile/` |
 | What the trainer reads before a session | `src/features/briefing/` |

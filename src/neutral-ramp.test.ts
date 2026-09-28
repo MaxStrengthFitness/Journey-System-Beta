@@ -284,8 +284,12 @@ function countBarePaletteUtilities(): number {
  * again. The Wrap-up left ALWAYS_DARK_SCREENS with every colour on it moved
  * to a token, so it adds nothing; the other four had come off in the rounds
  * since phase 19 without the budget following them.
+ *
+ * Sep 28 2026 (the calm Hub): 231 -> 219, the count again. The Hub's card,
+ * grid and top moved to features/hub-schedule, every colour a token; the old
+ * card (components/schedule/ScheduleBlock) and the old strip are gone.
  */
-const BARE_PALETTE_BUDGET = 231;
+const BARE_PALETTE_BUDGET = 219;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

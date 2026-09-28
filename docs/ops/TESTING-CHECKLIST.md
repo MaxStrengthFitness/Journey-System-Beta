@@ -1859,6 +1859,89 @@ had seen it on an iPad (AJ, Sep 28: no trainers on the app yet).
 
 ---
 
+## Round 25 — The calm Hub · *Sep 28 2026, branch `redesign/calm-hub`*
+
+The Hub's Schedule layer, cleaned up on Mindbody's layout (AJ: "the layout is
+the foundation"): whole names, blocks at their real length, the quiet middle
+of the day folded, who's working hatched, a calmer top with chips that light
+their cards, and a peek on a tap. The round document is
+`docs/rounds/2026-09-28-calm-hub.md`. Nothing to deploy first: no rules, no
+index, no Cloud Function. Walk it on a busy day and on a quiet one, signed in
+as a **Life Transformer** and as a **head trainer**, **portrait and
+landscape, light and dark**. Nothing in this round has been seen in the
+signed-in app on an iPad yet: only on a harness page in headless Chrome.
+
+**The grid**
+
+- [ ] **Names whole.** No "Lobelia S…": a long name wraps onto a second line,
+  in portrait and landscape.
+- [ ] **The usual service is gone.** "1:1 Strength Training" (or your studio's
+  usual) is on no card; a different service (an InBody scan) still says so.
+- [ ] **Real lengths.** A 45-minute new client consult is drawn half again as
+  tall as a session and says "10:00 – 10:45 AM"; nothing is drawn as an hour
+  that isn't one.
+- [ ] **The quiet middle folds.** An hour or more with nobody booked anywhere
+  is one band, "No sessions 1:00 – 2:00 PM"; a tap opens it; a booking right
+  after the band starts below it, whole.
+- [ ] **Your column.** It comes first, says You, and stays put while the
+  others scroll sideways (a day with more trainers than fit).
+- [ ] **Who's working.** For a trainer whose standing week a leader has
+  agreed, the hours outside it are hatched; a day away hatches the column and
+  says "Away". A trainer with no agreed week is not hatched at all.
+- [ ] **Now.** The orange line crosses the grid with the time on it, and the
+  Hub opens with it a third of the way down; another day has no line.
+
+**The card**
+
+- [ ] **The marks.** The Critical triangle is the only red. A Pulse flag and
+  "No waiver signed" are plum glyphs; a milestone and a birthday orange; a
+  first session, a consult and "back" blue; a renewal talk green. The amber
+  clinical dot is gone.
+- [ ] **Words beside a glyph** on a roomy card only, and only sayable ones:
+  "100th", "turns 80", "1st session", "Consult", "back". Never a Pulse flag's
+  or a waiver's words on the grid.
+- [ ] **Her number.** "#264" from #4 on, not beside a milestone that already
+  says it; nothing for a client whose number can't be quoted; "New to
+  Journey" for one whose story began before the cutover.
+- [ ] **In session and done.** A running session is blue with "In session";
+  once logged, the card steps back and drops every mark, the triangle
+  included; a finished slot nobody logged says "Not logged".
+- [ ] **Not synced.** A booking with no Max Strength profile is dashed, says
+  "Not synced yet", and opens nothing.
+
+**The top**
+
+- [ ] **One row, one line.** Landscape: the layers, the week, Tasks and Key
+  in one row; under it the day in words and the chips. Portrait: the week
+  takes its own line and the words drop. Is it calm enough? (AJ: the top bar
+  "is very jumbled".)
+- [ ] **The week.** Each day shows its count; a day with nothing booked shows
+  no number; a small orange dot marks a day with a birthday or milestone.
+  Today appears when you are on another day and brings you back.
+- [ ] **Tasks.** Shows the day's open count (never a grey 0 while loading) and
+  opens Relay.
+- [ ] **The chips.** Read first · Celebrate · Welcome · Renew · Watch with
+  counts, zeros hidden, the same as on Opportunities.
+- [ ] **The spotlight.** A chip lights its cards and dims the rest; the bar
+  says what it shows in words; Next steps from card to card; "See them as a
+  list" opens Opportunities on the same family; Done puts the grid back.
+- [ ] **The Key.** Every mark and state in words, on both layers.
+
+**The peek**
+
+- [ ] **A tap opens it.** Beside the card on an iPad on its side, centred
+  upright. Her name, time, trainer and number; Read first whole; every mark
+  in words; Last in and Package, "can't tell" rather than a guess; clinical
+  history said quietly.
+- [ ] **Its buttons.** Open profile opens the profile; Start session goes to
+  the briefing and the session.
+- [ ] **Closing.** A tap anywhere outside it, or the close button, closes it,
+  and nothing behind it was tapped by that tap.
+- [ ] **The tap itself.** Is a peek first (two taps to the profile) right on
+  the floor? (Hub question 1's default.)
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -1907,4 +1990,5 @@ Screenshot:
 | 22 — The voice review follow-up (Sep 27) | 43 | | |
 | 23 — Openings (Sep 27) | 36 | | |
 | 24 — The Client Directory and the Hub's Opportunities (Sep 28) | 16 | | |
-| **Total** | **420** | | |
+| 25 — The calm Hub (Sep 28) | 22 | | |
+| **Total** | **442** | | |
