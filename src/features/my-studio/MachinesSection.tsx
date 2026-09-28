@@ -320,6 +320,7 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
               studioId={studioId}
               studioName={studioName}
               readOnly={!canLead}
+              authorName={authTrainer?.fullName ?? null}
               flags={flags}
               onOpenMachine={(machineId) => {
                 // The machine already open changes nothing, so it never asks.

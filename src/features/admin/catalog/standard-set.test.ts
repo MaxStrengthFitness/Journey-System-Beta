@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { MachineCatalogEntry } from "../../../types/machines";
-import { CATALOG_ID_RE, catalogIdFor, migrationCommand, outsideStandard, publishPlan, reorderPlan, standardSet } from "./standard-set";
+import {
+  CATALOG_ID_RE,
+  catalogIdFor,
+  migrationCommand,
+  outsideStandard,
+  publishPlan,
+  reorderPlan,
+  standardSet,
+  standardSetPatch,
+  standardSetSaid,
+  takeOutQuestion,
+} from "./standard-set";
 
 const m = (id: string, extra: Partial<MachineCatalogEntry> = {}): MachineCatalogEntry =>
   ({ id, name: id.slice(2).replace(/-/g, " "), status: "active", inStandardSet: true, defaultOrder: 10, schemaVersion: 1, ...extra }) as MachineCatalogEntry;
@@ -114,5 +125,19 @@ describe("publishing a studio's machine", () => {
       "npx tsx scripts/migrate-machine-id.ts --from sm-solon-sled --to m-sled --project gen-lang-client-0731527386 --database ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa",
     );
     expect(migrationCommand({ machineId: "sm-solon-sled" }, "m-sled", true)).toContain("--to m-sled --commit ");
+  });
+});
+
+describe("one write for the standard set, from the Standard template and from a machine's page (wave 2)", () => {
+  it("writes membership only, and an explicit false to take a machine out", () => {
+    expect(standardSetPatch(true)).toEqual({ inStandardSet: true });
+    expect(standardSetPatch(false)).toEqual({ inStandardSet: false });
+  });
+
+  it("says the same thing wherever it is done", () => {
+    expect(standardSetSaid("Leg Press", true)).toBe('Leg Press is in the standard set. Floors are offered it under "New in the MSF standard".');
+    expect(standardSetSaid("Leg Press", false)).toBe("Leg Press is out of the standard set. Floors that have it keep it.");
+    expect(takeOutQuestion("Leg Press").title).toBe("Take Leg Press out of the standard set?");
+    expect(takeOutQuestion("Leg Press").body).toContain("no floor loses it");
   });
 });

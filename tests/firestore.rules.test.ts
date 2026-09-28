@@ -5150,4 +5150,161 @@ describe("marks on a time", () => {
       await assertFails(byLineage(as("trainerA")));
     });
   });
+
+  // -- WAVE 2 OF THE MACHINE CATALOG ROOM (Sep 28 2026, AJ: "all yes"):
+  // "Standard machine" on a machine's own page (administrators only, the
+  // catalog's existing rule), a reason on Out of service, head office's
+  // aliases. docs/rounds/2026-09-28-catalog-2.md.
+  describe("wave 2 catalog", () => {
+    async function seedWave2() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "trainers", "adminW2"), {
+          fullName: "Elrond Peredhel",
+          initials: "EP",
+          role: "Admin",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "trainers", "leaderA"), {
+          fullName: "Glorfindel of the Golden Flower",
+          initials: "GG",
+          role: "StudioLeader",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "machines", "m-leg-press"), {
+          id: "m-leg-press",
+          name: "LEG PRESS",
+          status: "active",
+          inStandardSet: true,
+          defaultOrder: 10,
+          schemaVersion: 1,
+        });
+      });
+    }
+
+    const stamp = (uid: string) => ({ updatedAt: serverTimestamp(), updatedBy: uid });
+
+    it("lets only an administrator mark a machine as a standard machine", async () => {
+      await seedWave2();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const machine = (db: typeof admin) => doc(db, "machines", "m-leg-press");
+      // A studio's leaders, its owner and its trainers can't set it, either way.
+      await assertFails(updateDoc(machine(leader), { inStandardSet: false, ...stamp("leaderA") }));
+      await assertFails(updateDoc(machine(owner), { inStandardSet: false, ...stamp("ownerA") }));
+      await assertFails(updateDoc(machine(trainer), { inStandardSet: false, ...stamp("trainerA") }));
+      await assertFails(setDoc(machine(leader), { inStandardSet: true }, { merge: true }));
+      // An administrator takes it out and puts it back.
+      await assertSucceeds(updateDoc(machine(admin), { inStandardSet: false, ...stamp("adminW2") }));
+      await assertSucceeds(updateDoc(machine(admin), { inStandardSet: true, ...stamp("adminW2") }));
+      // Everyone signed in still reads it.
+      await assertSucceeds(getDoc(machine(trainer)));
+    });
+
+    async function seedRosterEntry() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "roster", "m-leg-press"), {
+          machineId: "m-leg-press",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-leg-press",
+          status: "active",
+        });
+      });
+    }
+
+    /** What the floor editor writes to take a machine out of service. */
+    const outOfService = (uid: string, reason = "A new cable is on order") => ({
+      status: "maintenance",
+      outOfService: { reason, by: { uid, name: "Glorfindel of the Golden Flower" }, at: serverTimestamp() },
+      ...stamp(uid),
+    });
+
+    it("takes a machine out of service with a reason signed by the leader writing it, keeps it through other writes, and takes it off", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const entry = doc(leader, "studios", "studioA", "roster", "m-leg-press");
+      await assertSucceeds(updateDoc(entry, outOfService("leaderA")));
+      // The walking order and any other write leave the record as it was.
+      await assertSucceeds(updateDoc(entry, { order: 3, ...stamp("leaderA") }));
+      await assertSucceeds(setDoc(entry, { order: 4, updatedAt: serverTimestamp() }, { merge: true }));
+      // Back in service: the record comes off with it.
+      await assertSucceeds(updateDoc(entry, { status: "active", outOfService: deleteField(), ...stamp("leaderA") }));
+      // And a reason as long as the floor editor allows.
+      await assertSucceeds(updateDoc(entry, outOfService("leaderA", "x".repeat(140))));
+    });
+
+    it("refuses a reason signed as someone else, stamped with another time, empty, too long, or carrying more", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const entry = doc(leader, "studios", "studioA", "roster", "m-leg-press");
+      await assertFails(updateDoc(entry, outOfService("trainerA")));
+      await assertFails(
+        updateDoc(entry, {
+          status: "maintenance",
+          outOfService: { reason: "Cable", by: { uid: "leaderA", name: "Glorfindel" }, at: new Date("2026-09-01T12:00:00Z") },
+        }),
+      );
+      await assertFails(updateDoc(entry, outOfService("leaderA", "")));
+      await assertFails(updateDoc(entry, outOfService("leaderA", "x".repeat(141))));
+      await assertFails(
+        updateDoc(entry, {
+          status: "maintenance",
+          outOfService: { reason: "Cable", by: { uid: "leaderA", name: "Glorfindel" }, at: serverTimestamp(), note: "more" },
+        }),
+      );
+      await assertFails(
+        updateDoc(entry, { status: "maintenance", outOfService: { reason: "Cable", by: { uid: "leaderA" }, at: serverTimestamp() } }),
+      );
+      // A record made while creating the entry is held to the same.
+      await assertFails(
+        setDoc(doc(leader, "studios", "studioA", "roster", "m-lumbar"), {
+          machineId: "m-lumbar",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-lumbar",
+          ...outOfService("trainerA"),
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(leader, "studios", "studioA", "roster", "m-lumbar"), {
+          machineId: "m-lumbar",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-lumbar",
+          ...outOfService("leaderA"),
+        }),
+      );
+    });
+
+    it("still lets only the studio's leaders and administrators take a machine out of service", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const entry = (db: typeof admin) => doc(db, "studios", "studioA", "roster", "m-leg-press");
+      await assertFails(updateDoc(entry(trainer), outOfService("trainerA")));
+      await assertFails(updateDoc(entry(outsider), outOfService("trainerB")));
+      await assertSucceeds(updateDoc(entry(admin), outOfService("adminW2")));
+    });
+
+    it("lets only an administrator add head office's names to a catalog machine, and everyone read them", async () => {
+      await seedWave2();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      await assertFails(updateDoc(doc(leader, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("leaderA") }));
+      await assertFails(updateDoc(doc(trainer, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("trainerA") }));
+      await assertSucceeds(updateDoc(doc(admin, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("adminW2") }));
+      await assertSucceeds(updateDoc(doc(admin, "machines", "m-leg-press"), { aliases: arrayRemove("The Sled"), ...stamp("adminW2") }));
+      await assertSucceeds(getDoc(doc(trainer, "machines", "m-leg-press")));
+    });
+  });
 });

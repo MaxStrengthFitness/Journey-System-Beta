@@ -100,9 +100,13 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | --- | --- |
 | `AdminMachinesTab.tsx` | Admins → Catalog. Holds which machine is open; the editor REPLACES the screen. |
 | `CatalogList.tsx` | The rows: display order, what each machine is still missing, standard-set, retire. |
-| `CatalogMachineEditor.tsx` | Writing the standard itself. No `standard` prop — this IS it. |
+| `CatalogMachineEditor.tsx` | Writing the standard itself. No `standard` prop — this IS it. Above the sections of a machine that exists: its standing (`../catalog/StandardMachineSwitch.tsx`, wave 2, Sep 28 2026) — **Standard machine**, administrators only, written at once and apart from the save bar. An edit's save writes the definition's diff and never the catalog's own fields (`status`, `defaultOrder`, `inStandardSet`), which go in once, on create. |
+| `../catalog/StandardMachineSwitch.tsx` | The switch that marks a machine as a standard machine: the Standard template's own write and words (`standard-set.ts`: `standardSetPatch`, `standardSetSaid`, `takeOutQuestion`), so the two doors can't drift. |
+| `../catalog/MachineAliases.tsx` | "Other names": the names Find already knows for one of the twenty movements, and head office's own (`aliases` on the catalog document), added and taken off at once (`arrayUnion` / `arrayRemove`). A name that says nothing new or already means another movement is refused in words (`features/catalog/names.ts`, `aliasProblem`). `definitionOf` strips `aliases`. |
 | `StudioMachineEditor.tsx` | A studio's copy, or its own machine. Writes a DIFF for the former, the whole definition for the latter. |
-| `StudioInventoryManager.tsx` | The floor list. Mounted by My Studio → Machines, Operations → Floor and Admins → All locations → Equipment — one implementation, three doors. |
+| `StudioInventoryManager.tsx` | The floor list. Mounted by My Studio → Machines, Operations → Floor and Admins → All locations → Equipment — one implementation, three doors. **Out of service asks why** (wave 2, Sep 28 2026): `OutOfServiceDialog.tsx`, then one `updateDoc` of `status: "maintenance"` and a signed `outOfService` (`features/catalog/out-of-service.ts`); Back in service, or We don't have this / We have this, deletes it. The reason shows under the machine's name. |
+| `floor-editor.ts`, `AddFromMsfDialog.tsx` | Wave 2 (Catalog R5): the list is the FLOOR (on the roster, not switched off); **Walking order** moves a machine up or down or by drag; **Add from MSF** offers the standard's machines first, then the catalog, then what the studio switched off (a machine added joins the end of an order the studio keeps; a new entry is created with its identity, a switched-off one only has its status changed); **New machine** is the studio machine editor until the Codex's Guided forge exists. We don't have this is an `updateDoc` of the status alone. |
+| `OutOfServiceDialog.tsx` | "Why is it out of service?" — a few words (1 to 140 characters, the rules' number), typing registered with the unsaved-changes guard. Writes nothing itself. |
 | `editor/MachineEditor.tsx` | The screen: masthead, section rail, pinned warnings, save bar. |
 | `editor/sections.tsx` | The eight sections, each in prose or inputs from one source. |
 | `editor/controls.tsx` | The inputs. `FieldShell` says inherited-vs-changed per field. |
@@ -125,12 +129,17 @@ has a one-tap cause:
 > that has data filled out for it** … I'm not sure if it even interacts with
 > the catalog at all."
 
-**That is the legacy-shape problem, not an editor bug** — see the first trap
-below. Admin → System tools → *Restore standard machines* rewrites the catalog
-documents into the shape the editor reads. Until it is run, every machine
-opens near-empty and the editor looks broken when it is not. **If AJ reports
-the editor as clunky, ask whether that has been run before designing
-anything.**
+**That was the legacy-shape problem, not an editor bug** — see the first
+trap below. Admin → System tools → *Restore standard machines* rewrote the
+catalog documents into the shape the editor reads; it was taken out on Sep 28
+2026 (AJ: "we dont need to restore standard machine button, a machine just
+needs to be able to be marked as a standard machine, a task only by admins"),
+because it wrote the generated file over every catalog document and undid an
+administrator's corrections with it. A machine that still opens near-empty is
+a document in the old shape: fill it in the editor (what is saved is what
+the floor reads), and **check the document's shape before designing
+anything.** Marking a machine as a standard machine is the **Standard
+machine** switch on its own page in this editor (wave 2, Sep 28 2026).
 
 What he wants it to become, and where each piece stands:
 
@@ -166,4 +175,9 @@ read that before changing anything here. The short list:
 `src/data/machine-definitions.ts` holds all twenty and is **generated** — run
 `npx tsx scripts/generate-machine-definitions.ts` from the repo root rather than
 hand-editing it. The prose is the MSF Academy's, lifted verbatim from
-`docs/msf-academy/Set Up Machines/`.
+`docs/msf-academy/Set Up Machines/`. It is the SEED and the fallback (Demo
+Mode, tests), never the live catalog: since Sep 28 2026 nothing in the app
+writes it into `machines/{id}`, and a correction to the live catalog is made
+in this editor. AJ's ruling of Sep 28 2026 on the codex source check's
+nineteen line corrections: administrators make them here, in the catalog
+editor, not in code.

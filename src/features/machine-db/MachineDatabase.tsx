@@ -24,6 +24,9 @@ import { fromLegacyMachine } from "../catalog/adapters";
 import { dedupeMachines } from "../catalog/machine-identity";
 import { MachineArticle } from "../catalog/MachineArticle";
 import { MachineFigure } from "../catalog/MachineFigure";
+import { MovementModels } from "../catalog/MovementModels";
+import { modelsOfMovement } from "../catalog/models";
+import { useMachineModels } from "../catalog/useMachineModels";
 import { useSectionState } from "../catalog/useSectionState";
 import type { CatalogMachine, GroupingMode } from "../catalog/types";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
@@ -183,6 +186,8 @@ export function MachineDatabase({
   const onMachine = route.kind === "machine";
   const academyCards = useAcademyCards(onMachine);
   const academyScripts = useAcademyScripts(onMachine);
+  // A movement's models (wave 2, Catalog R4), read only while a page is open.
+  const modelsRead = useMachineModels(onMachine);
 
   const canAdopt = canWriteStudioPages(authTrainer, studioId);
   const openIndex = () => setRoute({ kind: "index" });
@@ -282,6 +287,9 @@ export function MachineDatabase({
     const card = e.origin === "msf" ? academyCards?.find((c) => c.machineId === e.machine.id) : null;
     const script = e.origin === "msf" ? academyScripts?.find((s) => s.machineId === e.machine.id) : null;
     const plan = planAdoption(e, { studioId, studioName, floorSource, takenIds, roster });
+    // Each maker's machine for this movement, once the records could be read.
+    const movementModels =
+      e.origin === "msf" && modelsRead.state === "ready" ? modelsOfMovement(modelsRead.models, e.machine.id) : [];
 
     const notice = !floorKnown ? (
       <section className="mdb-adopt" aria-label={`${e.machine.name} at ${studioName}`}>
@@ -355,6 +363,7 @@ export function MachineDatabase({
             </>
           }
           notice={notice}
+          models={movementModels.length > 0 ? <MovementModels models={movementModels} /> : undefined}
           academy={{
             onOpenCard: card && onOpenAcademy ? () => onOpenAcademy(e.machine.id, "card", e.machine.name) : undefined,
             onOpenScript:

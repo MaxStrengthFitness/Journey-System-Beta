@@ -23,6 +23,11 @@ const fx = vi.hoisted(() => ({
   careLoading: false,
   careError: null as string | null,
   isAdmin: false,
+  // The model records (wave 2, Catalog R4), and whether the Catalog asked.
+  models: { state: "off" } as unknown,
+  modelsAsked: [] as boolean[],
+  // Head office's own names, off the catalog documents (wave 2).
+  aliases: {} as Record<string, string[]>,
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: null } }));
@@ -46,7 +51,14 @@ vi.mock("./useCatalogMachines", () => ({
     loading: fx.floor === "loading",
     floor: fx.floor,
     makers: fx.makers,
+    aliases: fx.aliases,
   }),
+}));
+vi.mock("./useMachineModels", () => ({
+  useMachineModels: (enabled: boolean) => {
+    fx.modelsAsked.push(enabled);
+    return enabled ? fx.models : { state: "off" };
+  },
 }));
 // Relay's care record, read only: the Catalog's one source of flags.
 vi.mock("../relay/board/machine-care-store", () => ({
@@ -184,6 +196,9 @@ beforeEach(() => {
   fx.careLoading = false;
   fx.careError = null;
   fx.isAdmin = false;
+  fx.models = { state: "off" };
+  fx.modelsAsked = [];
+  fx.aliases = {};
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -287,6 +302,48 @@ describe("the Catalog opens on the floor", () => {
   });
 });
 
+describe("the model tier on the floor (wave 2, Catalog R4)", () => {
+  const HOIST = { id: "hoist-rocit-lp", brand: "Hoist", model: "ROC-IT Leg Press", movementId: "m-leg-press", dials: [], notes: "" };
+  const withModel = () =>
+    FLOOR.map((m) => (m.id === "m-leg-press" ? { ...m, modelId: "hoist-rocit-lp" } : m));
+
+  it("reads nothing about models while no unit names one", async () => {
+    await mount();
+    expect(fx.modelsAsked.every((asked) => asked === false)).toBe(true);
+    expect(host.querySelector(".mcat-row__model")).toBeNull();
+  });
+
+  it("shows a unit's maker and model on its row and its page, and nothing on a unit with none", async () => {
+    fx.machines = withModel();
+    fx.models = { state: "ready", models: [HOIST], byId: { [HOIST.id]: HOIST } };
+    await mount();
+    expect(rowOf("LEG PRESS")?.querySelector(".mcat-row__model")?.textContent).toBe("Hoist ROC-IT Leg Press");
+    expect(rowOf("LUMBAR")?.querySelector(".mcat-row__model")).toBeNull();
+    await click(rowOf("LEG PRESS"));
+    expect(host.querySelector(".wk__aside")?.textContent).toContain("Hoist ROC-IT Leg Press");
+  });
+
+  it("finds a unit by its model's name, and filters the floor by its maker", async () => {
+    fx.machines = withModel();
+    fx.models = { state: "ready", models: [HOIST], byId: { [HOIST.id]: HOIST } };
+    await mount();
+    await type("roc-it");
+    const units = [...host.querySelectorAll(".wk__hit")].filter((h) => h.getAttribute("data-kind") === "unit");
+    expect(units.map((h) => h.textContent)).toEqual([expect.stringContaining("LEG PRESS")]);
+    await type("hoist");
+    await enter();
+    expect(host.querySelector(".mcat-filter")?.textContent).toContain("Showing Hoist · 1 on Solon's floor");
+  });
+
+  it("says nothing about models until the records can be read", async () => {
+    fx.machines = withModel();
+    fx.models = { state: "unreadable" };
+    await mount();
+    expect(host.querySelector(".mcat-row__model")).toBeNull();
+    expect(host.textContent).not.toMatch(/Hoist|model/i);
+  });
+});
+
 describe("Find, on the floor", () => {
   it("finds LUMBAR from 'low back' and opens its page on Enter", async () => {
     await mount();
@@ -318,6 +375,14 @@ describe("Find, on the floor", () => {
     await click(line);
     expect(host.querySelector(".wk__h1")?.textContent).toBe("LEG PRESS");
     expect(host.querySelector(".mcat-found__where")?.textContent).toBe("Found on this page · Clinical warnings");
+  });
+
+  it("knows a name head office added, and opens the unit on Enter (wave 2)", async () => {
+    fx.aliases = { "m-lumbar": ["Bad Back Box"] };
+    await mount();
+    await type("bad back box");
+    await enter();
+    expect(host.querySelector(".wk__h1")?.textContent).toBe("LUMBAR");
   });
 
   it("sends a machine this floor does not have to All MSF machines", async () => {

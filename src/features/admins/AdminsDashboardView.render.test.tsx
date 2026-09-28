@@ -21,6 +21,9 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
     setActiveStudioId: () => {},
     isChangingStudio: false,
   }),
+  // The catalog editor's Standard machine and Other names ask it who may
+  // change them (Machine Catalog wave 2, Sep 28 2026).
+  useOptionalActiveStudio: () => ({ isAdmin: true }),
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 
@@ -204,7 +207,11 @@ describe("the Admins dashboard", () => {
     await click(byText(el, ".hq-side .hq-nav__item", "Data"));
     expect(el.textContent).toContain("An administrator exports any studio's data");
     await click(byText(el, ".hq-side .hq-nav__item", "System tools"));
-    expect(el.textContent).toContain("Restore standard machines");
+    expect(el.textContent).toContain("Rebuild trainer rollups");
+    // Gone on Sep 28 2026 (AJ): a machine is marked as a standard machine on
+    // its own page in the catalog editor, and nothing writes the generated
+    // file into the catalog any more.
+    expect(el.textContent).not.toContain("Restore standard machines");
     await click(byText(el, ".hq-side .hq-nav__item", "Activity"));
     expect(el.textContent).toContain("Who changed what from the Admins dashboard");
     // The administrators, from the people the dashboard holds: only Ada here.

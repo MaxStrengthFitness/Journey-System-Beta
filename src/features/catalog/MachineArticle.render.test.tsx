@@ -121,6 +121,62 @@ describe("a machine page, mounted", () => {
     expect(host.querySelector(".mcat-flag__note")?.textContent).toBe("Seat pin sticks.");
   });
 
+  it("says why a unit is out of service, who said so and when, and where it goes back in (wave 2)", async () => {
+    const out: CatalogMachine = {
+      ...chestPress,
+      rosterStatus: "maintenance",
+      outOfService: {
+        reason: "A new cable is on order",
+        by: { uid: "uid-glorfindel", name: "Glorfindel of the Golden Flower" },
+        at: Date.UTC(2026, 8, 27, 12, 52),
+      },
+    };
+    await mount(<Page machine={out} onOpenMachine={() => {}} />);
+    expect(host.querySelector(".mcat-oos__who")?.textContent).toMatch(/^Out of service · Glorfindel · Sep 27, \d{1,2}:52 [AP]M$/);
+    expect(host.querySelector(".mcat-oos__note")?.textContent).toBe("A new cable is on order");
+    expect(host.querySelector(".mcat-oos__where")?.textContent).toBe("Back in service is on My Studio → Machines.");
+    // The caution plum, as the badge: never the critical crimson.
+    const badge = [...host.querySelectorAll(".wk__badge")].find((b) => b.textContent === "Out of service");
+    expect(badge?.className).toContain("wk__badge--warn");
+  });
+
+  it("says the unit's model in the box, and a movement's models under their own heading (wave 2, R4)", async () => {
+    const model = { id: "h", brand: "Hoist", model: "ROC-IT Leg Press", movementId: "m-leg-press", dials: [], notes: "" };
+    await act(async () => {
+      root.render(
+        <UnsavedChangesProvider>
+          <WikiShell crumbs={[{ label: "Catalog" }]}>
+            <MachineArticle
+              machine={chestPress}
+              model={model}
+              models={<p data-testid="models">Two models</p>}
+              related={[]}
+              onOpenMachine={() => {}}
+              figure={null}
+              isOpen={() => false}
+              setOpen={() => {}}
+            />
+          </WikiShell>
+        </UnsavedChangesProvider>,
+      );
+    });
+    expect(host.querySelector(".wk__aside")?.textContent).toContain("Hoist ROC-IT Leg Press");
+    expect(host.querySelector("#models")?.textContent).toContain("Models");
+    expect(host.querySelector("[data-testid='models']")?.textContent).toBe("Two models");
+  });
+
+  it("has no Model line and no Models heading when nothing is known", async () => {
+    await mount(<Page onOpenMachine={() => {}} />);
+    expect(host.querySelector(".wk__aside")?.textContent).not.toContain("Model");
+    expect(host.querySelector("#models")).toBeNull();
+  });
+
+  it("keeps an old out of service with no reason to its badge, and says nothing it doesn't know", async () => {
+    await mount(<Page machine={{ ...chestPress, rosterStatus: "maintenance" }} onOpenMachine={() => {}} />);
+    expect(host.querySelector(".mcat-oos")).toBeNull();
+    expect([...host.querySelectorAll(".wk__badge")].some((b) => b.textContent === "Out of service")).toBe(true);
+  });
+
   it("counts no cleaning of its own: no Upkeep card, no cleaning badge", async () => {
     await mount(<Page onOpenMachine={() => {}} />);
     expect(host.textContent).not.toContain("Upkeep");

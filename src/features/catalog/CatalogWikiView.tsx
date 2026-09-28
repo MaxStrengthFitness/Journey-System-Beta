@@ -48,7 +48,9 @@ import { FloorRow } from "./FloorRow";
 import { flagLineOf, floorSentence, presetOf } from "./floor-index";
 import { MachineArticle, type FoundOnPage } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
-import { movementOf } from "./names";
+import { modelForUnit, modelName, modelsById } from "./models";
+import { movementOf, movementsWithAliases } from "./names";
+import { useMachineModels } from "./useMachineModels";
 import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
@@ -210,8 +212,11 @@ export function CatalogWikiView({
     machines: catalogMachines,
     source: floorSource,
     makers,
+    aliases,
     floor: floorState,
   } = useCatalogMachines(activeStudioId, machines);
+  // Find's names, with head office's own merged in (wave 2; names.ts).
+  const movements = useMemo(() => movementsWithAliases(aliases ?? NO_ALIASES), [aliases]);
   /*
    * The FLOOR, which is not always the list above: when the studio's machine
    * list is empty the list is the MSF catalog standing in, and when it could
@@ -399,10 +404,28 @@ export function CatalogWikiView({
     return new Set(Object.keys(care.byMachineId).filter((id) => care.byMachineId[id]?.flag));
   }, [care.loading, care.error, care.byMachineId]);
 
+  /*
+   * The model tier (wave 2, Catalog R4): which maker's model each unit is.
+   * Read only when a unit on this floor names a model, and drawn only when the
+   * records could be read: until the collection exists, nothing is said.
+   */
+  const floorNamesAModel = floorMachines.some((m) => Boolean(m.modelId));
+  const modelsRead = useMachineModels(floorNamesAModel);
+  const modelRecords = useMemo(() => modelsById(modelsRead), [modelsRead]);
+  const modelOf = (m: CatalogMachine) => modelForUnit(m.modelId, modelRecords);
+  const unitModels = useMemo(() => {
+    const out: Record<string, { name: string; brand: string }> = {};
+    for (const m of floorMachines) {
+      const model = modelForUnit(m.modelId, modelRecords);
+      if (model) out[m.id] = { name: modelName(model), brand: model.brand };
+    }
+    return out;
+  }, [floorMachines, modelRecords]);
+
   /* Find (Catalog R1): every name a machine goes by, over this floor. */
   const findUnits = useMemo(
-    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds }),
-    [floorMachines, makers, flaggedIds],
+    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds, models: unitModels, movements }),
+    [floorMachines, makers, flaggedIds, unitModels, movements],
   );
   // The body's parts, for Find's "Muscles" (Catalog R3): "lats" opens the body lens.
   const findRegions = useMemo(() => {
@@ -412,9 +435,9 @@ export function CatalogWikiView({
   const findResult = useMemo(
     () =>
       find.trim()
-        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions })
+        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions, movements })
         : null,
-    [find, findUnits, studioName, findRegions],
+    [find, findUnits, studioName, findRegions, movements],
   );
   // Another studio's floor is another list: what was typed or filtered for
   // the last one means nothing here.
@@ -546,6 +569,7 @@ export function CatalogWikiView({
           setOpen={setOpen}
           flag={careFlag ? flagLineOf(careFlag) : null}
           preset={presetOf(selected, settingsByMachineId[selected.id])}
+          model={modelOf(selected)}
           onOpenMachine={openMachine}
           related={related}
           /* The panel reads machineTrends/{id} only once the foldable is open,
@@ -708,6 +732,7 @@ export function CatalogWikiView({
           onRegion={setRegionId}
           presetFor={(m) => presetOf(m, settingsByMachineId[m.id])}
           flaggedIds={flaggedIds}
+          modelFor={modelOf}
           onOpenMachine={openMachine}
           onOpenMovement={openMovement}
         />
@@ -807,6 +832,7 @@ export function CatalogWikiView({
               machine={m}
               preset={presetOf(m, settingsByMachineId[m.id])}
               flagged={Boolean(flaggedIds?.has(m.id))}
+              model={modelOf(m)}
               onOpen={() => openMachine(m.id)}
             />
           ))}
@@ -817,3 +843,4 @@ export function CatalogWikiView({
 }
 
 const NO_MACHINES: CatalogMachine[] = [];
+const NO_ALIASES: Record<string, string[]> = {};

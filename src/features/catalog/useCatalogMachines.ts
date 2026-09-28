@@ -6,6 +6,9 @@ import { useStudioMachineNotes } from "./useStudioMachineNotes";
 import { fromLegacyMachine, fromResolvedMachine } from "./adapters";
 import { floorStateOf, type FloorState } from "./floor-index";
 import { dedupeMachines } from "./machine-identity";
+import { outOfServiceOfEntry, type OutOfService } from "./out-of-service";
+import { modelIdOf } from "./models";
+import { aliasesByMovement } from "./names";
 import type { CatalogMachine } from "./types";
 
 /**
@@ -46,6 +49,12 @@ export interface UseCatalogMachinesResult {
    */
   makers: Record<string, string>;
   /**
+   * Head office's own names for each movement (`aliases` on the catalog
+   * documents, wave 2, Sep 28 2026), by movement id: what names.ts merges
+   * into Find's table. Empty when head office has added none.
+   */
+  aliases?: Record<string, string[]>;
+  /**
    * The studio's roster or the catalog is still loading. While true the list
    * may be the global fallback, or a roster short of its catalog machines —
    * never conclude "not on this floor" from it.
@@ -66,7 +75,9 @@ export function useCatalogMachines(
   studioId: string | null,
   legacyMachines: Machine[],
 ): UseCatalogMachinesResult {
-  const { machines: resolved, loading, rosterEntries, failed } = useStudioMachines(studioId);
+  const { machines: resolved, loading, rosterEntries, failed, catalog } = useStudioMachines(studioId);
+  // Head office's own names, off the catalog documents already in hand.
+  const aliases = useMemo(() => aliasesByMovement(catalog ?? []), [catalog]);
   const floor = floorStateOf({ loading, failed: Boolean(failed), count: resolved.length });
   const { notesByMachineId } = useStudioMachineNotes(studioId);
   const warnedRef = useRef<Set<string>>(new Set());
@@ -80,8 +91,29 @@ export function useCatalogMachines(
     return out;
   }, [rosterEntries]);
 
+  // Why each unit is out of service, where its leader said (wave 2, Sep 28
+  // 2026). Read off the entries already in hand: no read of its own.
+  const outOfService = useMemo(() => {
+    const out: Record<string, OutOfService> = {};
+    for (const e of rosterEntries) {
+      const o = outOfServiceOfEntry(e);
+      if (o) out[e.machineId] = o;
+    }
+    return out;
+  }, [rosterEntries]);
+
+  // Which model each unit is, where the studio said (wave 2, Catalog R4).
+  const modelIds = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const e of rosterEntries) {
+      const id = modelIdOf(e);
+      if (id) out[e.machineId] = id;
+    }
+    return out;
+  }, [rosterEntries]);
+
   const result = useMemo<UseCatalogMachinesResult>(() => {
-    const opts = { studioNotes: notesByMachineId };
+    const opts = { studioNotes: notesByMachineId, outOfService, modelIds };
 
     if (resolved.length > 0) {
       // useStudioMachines has already sorted by the studio's own order.
@@ -93,6 +125,7 @@ export function useCatalogMachines(
         machines: resolved.map((m) => fromResolvedMachine(m, opts)),
         source: "roster",
         makers,
+        aliases,
         loading,
         floor,
       };
@@ -119,9 +152,9 @@ export function useCatalogMachines(
       )
       .map((m) => fromLegacyMachine(m, opts));
 
-    return { machines, source: "global", makers: {}, loading, floor, collisions } as
+    return { machines, source: "global", makers: {}, aliases, loading, floor, collisions } as
       UseCatalogMachinesResult & { collisions: Record<string, string[]> };
-  }, [resolved, legacyMachines, notesByMachineId, loading, makers, floor]);
+  }, [resolved, legacyMachines, notesByMachineId, outOfService, modelIds, loading, makers, aliases, floor]);
 
   // Name the duplicate rather than hiding it — the stray document is still in
   // Firestore and will keep coming back until someone deletes it.

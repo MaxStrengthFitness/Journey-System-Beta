@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BODY_REGIONS, regionNames } from "./body-lens";
 import { findOnFloor, findUnitsFrom, type FindHit, type FindUnit } from "./find";
-import { MOVEMENTS } from "./names";
+import { MOVEMENTS, movementsWithAliases } from "./names";
 import type { CatalogMachine } from "./types";
 
 /** A floor machine with only what Find reads. */
@@ -37,6 +37,32 @@ const find = (query: string, units = FLOOR) => findOnFloor({ query, units, studi
 const label = (h: FindHit | null) => (h ? h.label : null);
 const inGroup = (query: string, key: FindHit["kind"]) =>
   find(query).groups.find((g) => g.key === key)?.hits.map((h) => h.label) ?? [];
+
+describe("Find with head office's own names (wave 2)", () => {
+  const table = movementsWithAliases({ "m-lumbar": ["Bad Back Box"], "m-pulldown": ["The Lat Tower"] });
+  const floorWith = () =>
+    findUnitsFrom(
+      [
+        { id: "m-lumbar", name: "LUMBAR", comparisonKey: "m-lumbar", rosterStatus: "active", requiresHandoff: false, targetMuscles: [], synergists: [], clinicalWarnings: [], setup: "", setupCues: [], execution: "", executionCues: [], contraindicatedFor: [] } as unknown as CatalogMachine,
+      ],
+      { movements: table },
+    );
+
+  it("opens a unit on this floor by a name head office added", () => {
+    const r = findOnFloor({ query: "bad back box", units: floorWith(), studioName: "Solon", movements: table });
+    expect(r.top?.kind).toBe("unit");
+    expect(r.top?.label).toBe("LUMBAR");
+  });
+
+  it("opens a movement the floor lacks in All MSF by head office's name for it", () => {
+    const r = findOnFloor({ query: "the lat tower", units: floorWith(), studioName: "Solon", movements: table });
+    expect(r.top).toMatchObject({ kind: "movement", movementId: "m-pulldown" });
+  });
+
+  it("knows none of them without the merged table", () => {
+    expect(findOnFloor({ query: "bad back box", units: findUnitsFrom([]), studioName: "Solon" }).none).toBe(true);
+  });
+});
 
 describe("Find on the floor", () => {
   it("opens the Lumbar from every name it goes by", () => {
@@ -194,5 +220,15 @@ describe("the floor's machines, as Find reads them", () => {
   it("says a flag is unknown, not absent, when the flags could not be read", () => {
     expect(findUnitsFrom([machine({})], { flagged: null })[0].flagged).toBeNull();
     expect(findUnitsFrom([machine({})], {})[0].flagged).toBe(false);
+  });
+
+  it("finds a unit by why it is out of service, and only while it is (wave 2)", () => {
+    const outOfService = { reason: "A new cable is on order", by: { uid: "u", name: "Glorfindel" }, at: 0 };
+    const [out] = findUnitsFrom([machine({ rosterStatus: "maintenance", outOfService })]);
+    expect(out.lines[0]).toEqual({ section: "Out of service", text: "A new cable is on order" });
+    const hit = findOnFloor({ query: "cable", units: [out], studioName: "Solon" });
+    expect(hit.groups.find((g) => g.key === "line")?.hits[0]).toMatchObject({ kind: "line", section: "Out of service" });
+    const [back] = findUnitsFrom([machine({ rosterStatus: "active", outOfService })]);
+    expect(back.lines.some((l) => l.section === "Out of service")).toBe(false);
   });
 });

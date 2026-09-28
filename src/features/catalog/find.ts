@@ -47,8 +47,10 @@ export interface FindUnit {
   name: string;
   /** Its movement, through its lineage; null for a studio's own machine with none. */
   movement: MovementNames | null;
-  /** Who made it, when the studio recorded one on the unit. */
+  /** Who made it, when the studio recorded one on the unit (or its model says). */
   maker?: string | null;
+  /** Its model's name, when its roster entry names a model that was read (wave 2, R4). */
+  model?: string | null;
   requiresHandoff: boolean;
   neverToFailure: boolean;
   outOfService: boolean;
@@ -188,19 +190,35 @@ function shorthandsOf(u: FindUnit, index: number): string[] {
  */
 export function findUnitsFrom(
   machines: CatalogMachine[],
-  opts: { makers?: Record<string, string | undefined>; flagged?: ReadonlySet<string> | null } = {},
+  opts: {
+    makers?: Record<string, string | undefined>;
+    flagged?: ReadonlySet<string> | null;
+    /**
+     * Each unit's model, where its entry names one that was read (wave 2,
+     * Catalog R4): its name is one more name the unit answers to, and its
+     * maker stands in where the studio recorded none on the unit.
+     */
+    models?: Record<string, { name: string; brand: string } | undefined>;
+    /** The movements with head office's own names merged in (wave 2; names.ts). */
+    movements?: Readonly<Record<string, MovementNames>>;
+  } = {},
 ): FindUnit[] {
   return machines.map((m) => ({
     id: m.id,
     name: m.name,
-    movement: movementOf(m),
-    maker: opts.makers?.[m.id] ?? null,
+    movement: movementOf(m, opts.movements),
+    maker: opts.makers?.[m.id] ?? opts.models?.[m.id]?.brand ?? null,
+    model: opts.models?.[m.id]?.name ?? null,
     requiresHandoff: m.requiresHandoff,
     neverToFailure: m.neverToFailure === true,
     outOfService: m.rosterStatus === "maintenance",
     flagged: opts.flagged === null ? null : Boolean(opts.flagged?.has(m.id)),
     muscles: [...m.targetMuscles, ...m.synergists],
     lines: [
+      // Why it is out of service (wave 2): "cable" finds the unit waiting on one.
+      ...(m.rosterStatus === "maintenance" && m.outOfService
+        ? [{ section: "Out of service", text: m.outOfService.reason }]
+        : []),
       ...(m.safetyNotice ? [{ section: "Never to failure", text: m.safetyNotice }] : []),
       ...m.clinicalWarnings.map((text) => ({ section: "Clinical warnings", text })),
       ...(m.setup ? [{ section: "Setup", text: m.setup }] : []),
@@ -229,9 +247,14 @@ export interface FindInput {
   studioName: string;
   /** The body's regions; omit and Find knows no muscles as places. */
   regions?: FindRegion[];
+  /**
+   * The movements with head office's own names merged in (wave 2; names.ts
+   * `movementsWithAliases`). Omitted: the code's own names.
+   */
+  movements?: Readonly<Record<string, MovementNames>>;
 }
 
-export function findOnFloor({ query, units, studioName, regions = [] }: FindInput): FindResult {
+export function findOnFloor({ query, units, studioName, regions = [], movements = MOVEMENTS }: FindInput): FindResult {
   const q = normaliseName(query);
   if (!q) return { query, top: null, groups: [], none: false };
   const qWords = q.split(" ");
@@ -248,7 +271,12 @@ export function findOnFloor({ query, units, studioName, regions = [] }: FindInpu
 
     let score = exactKeys.has(q) ? EXACT : 0;
     if (!score) {
-      const names = [u.name, ...(u.movement ? [u.movement.name, ...u.movement.aliases] : []), u.maker ?? ""];
+      const names = [
+        u.name,
+        ...(u.movement ? [u.movement.name, ...u.movement.aliases] : []),
+        u.maker ?? "",
+        u.model ?? "",
+      ];
       score = bestOf(names, q, qWords);
       if (!score && u.muscles.some((m) => nameScore(m, q, qWords) >= 40)) score = 30;
     }
@@ -266,7 +294,8 @@ export function findOnFloor({ query, units, studioName, regions = [] }: FindInpu
 
   /* ── movements: not on this floor (All MSF), or more than one here (a filter) ── */
   for (const id of MOVEMENT_IDS) {
-    const m = MOVEMENTS[id];
+    const m = movements[id];
+    if (!m) continue;
     const here = byMovement.get(id) ?? [];
     if (here.length === 1) continue; // its unit already answers, above
     const score = m.exact.includes(q) ? EXACT : bestOf([m.name, ...m.aliases], q, qWords);

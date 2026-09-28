@@ -25,6 +25,7 @@ import {
   ConfirmDialog,
 } from "../primitives";
 import { isStandardSetMachine } from "../studios/registry";
+import { standardSetPatch } from "../catalog/standard-set";
 import { completeness, describeGaps } from "./completeness";
 import { definitionOf } from "./definition-defaults";
 
@@ -142,7 +143,8 @@ export function CatalogList({
         // legacy document with no flag must be written false to come out, not
         // toggled off an undefined. The old switch read `checked={m.inStandardSet}`
         // and showed OFF for all twenty while the seeder treated them as ON.
-        inStandardSet: !isStandardSetMachine(m),
+        // The same write as the Standard template and the machine's own page.
+        ...standardSetPatch(!isStandardSetMachine(m)),
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       });

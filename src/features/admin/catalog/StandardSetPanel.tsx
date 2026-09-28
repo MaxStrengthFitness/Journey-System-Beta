@@ -17,7 +17,14 @@ import { useMachineCatalog } from "../../../hooks/useMachineCatalog";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry } from "../../../types/machines";
 import { AdminBadge, AdminButton, AdminEmpty, AdminNotice, AdminPanel, ConfirmDialog } from "../primitives";
-import { outsideStandard, reorderPlan, standardSet } from "./standard-set";
+import {
+  outsideStandard,
+  reorderPlan,
+  standardSet,
+  standardSetPatch,
+  standardSetSaid,
+  takeOutQuestion,
+} from "./standard-set";
 
 export function StandardSetPanel({ canEdit }: { canEdit: boolean }) {
   const { catalog, loading } = useMachineCatalog();
@@ -45,11 +52,13 @@ export function StandardSetPanel({ canEdit }: { canEdit: boolean }) {
     }
   };
 
+  // The same write and the same words as the machine's own page in the
+  // catalog editor ("Standard machine"): standard-set.ts, wave 2 (Sep 28 2026).
   const setMembership = async (m: MachineCatalogEntry, inStandardSet: boolean) => {
     setBusy(m.id);
     try {
-      await updateDoc(doc(db, "machines", m.id), { inStandardSet, ...stamp() });
-      toastSuccess(inStandardSet ? `${m.name} is in the standard set. Floors are offered it under "New in the MSF standard".` : `${m.name} is out of the standard set. Floors that have it keep it.`);
+      await updateDoc(doc(db, "machines", m.id), { ...standardSetPatch(inStandardSet), ...stamp() });
+      toastSuccess(standardSetSaid(m.name, inStandardSet));
     } catch (err) {
       console.error(err);
       toastError("Could not change the standard set. Catalog writes are administrators'.");
@@ -139,8 +148,8 @@ export function StandardSetPanel({ canEdit }: { canEdit: boolean }) {
 
       <ConfirmDialog
         open={removing !== null}
-        title={removing ? `Take ${removing.name} out of the standard set?` : ""}
-        body={'New floors will not start with it, and existing floors will see it under "No longer in the standard" — but no floor loses it, and every set ever logged on it stays.'}
+        title={removing ? takeOutQuestion(removing.name).title : ""}
+        body={takeOutQuestion(removing?.name ?? "").body}
         confirmLabel="Take it out"
         onCancel={() => setRemoving(null)}
         onConfirm={async () => {

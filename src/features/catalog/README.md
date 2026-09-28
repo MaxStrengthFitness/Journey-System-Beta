@@ -20,7 +20,7 @@
   plus the quick cards' and scripts' own, which the test reads from
   `academy/content`). **Movements take the Academy's names; a unit keeps its
   floor name** (the room's question 1, default). Nothing in the database
-  changes; aliases head office can edit are a later round and need AJ's OK.
+  changes for these; head office's own names came in wave 2 (§0.4).
 - **`exact` is the safe subset.** An exact alias makes a top match, so only a
   name that means one movement is exact: FileMaker's "extension" is the Leg
   Extension on its grid, but three other movements have the word, so it only
@@ -119,6 +119,54 @@
   the body lens there (`FindRegion`, the "Muscles" group); a machine's own
   exact name still wins ("neck" opens the neck machine, the Neck region
   beside it).
+
+### 0.4 Wave 2 (Sep 28 2026): the new data AJ approved
+
+AJ approved the room's Needs OK list ("all yes", Sep 28 2026) and ruled that
+the codex source check's nineteen line corrections are made by
+administrators in the catalog editor, not in code. The round is
+`docs/rounds/2026-09-28-catalog-2.md`.
+
+- **A reason on Out of service** (`out-of-service.ts`). A leader taking a
+  machine out of service on the floor editor is asked why
+  (`admin/machines/OutOfServiceDialog.tsx`, 1 to 140 characters), and the
+  roster entry carries `outOfService: { reason, by: { uid, name }, at }`
+  beside `status: "maintenance"`; back in service (or off the floor) takes it
+  off. The rules hold it signed by the person writing, at the write's own
+  time (`rosterOutOfServiceOk`). The Catalog reads it off the roster entries
+  it already has (`useCatalogMachines`, no read of its own): the floor row
+  says why and who in one line (`.mcat-row__why`), the page says why, who,
+  when and where it goes back in (`.mcat-oos`), and Find finds a unit by its
+  reason. Only a unit that IS out of service says a reason; one set out of
+  service before reasons existed keeps just its badge.
+- **The model tier, read side** (Catalog R4; `models.ts`,
+  `useMachineModels.ts`, `MovementModels.tsx`). The record is the Machine
+  Codex's: `machineModels/{modelId}` `{ brand, model, movementId, dials?,
+  notes?, updatedAt, updatedBy }` (administrators write, everyone signed in
+  reads: the Codex's rules), and `modelId` on a studio's roster entry. Brand
+  and model show on every floor row (`.mcat-row__model`, the body lens's rows
+  too) and in the unit's box ("Model"); a movement's page in All MSF lists its
+  models (`MovementModels`: name, dials, note — never how many floors have
+  one). **Never a guess**: a unit says a model only when its entry names one
+  by id and that record was read. **Nothing until the collection exists**:
+  the floor reads the collection only when one of its units names a model,
+  All MSF only while a page is open, and an unreadable read draws nothing.
+  Find knows a unit by its model's name, and the model's maker filters the
+  floor where the studio recorded none on the unit.
+- **Aliases head office can edit** (`names.ts`: `headOfficeAliasesOf`,
+  `aliasesByMovement`, `movementsWithAliases`, `aliasProblem`). A catalog
+  document may carry `aliases: string[]`, written by an administrator on the
+  machine's page in the catalog editor ("Other names",
+  `admin/catalog/MachineAliases.tsx`, at once, apart from the save bar; only
+  for the twenty movements). `names.ts` merges them into the table as one
+  more source of names, under the same rule as every other alias: a name one
+  movement goes by opens it, a name two claim only ranks, and `aliasProblem`
+  refuses the name that says nothing new or already means another movement.
+  Find (`findUnitsFrom` / `findOnFloor` take the merged `movements`) and
+  Learning's one search (`useLearningEntries`) both know them; the Catalog
+  reads them off the catalog documents it already has (`useCatalogMachines`
+  → `aliases`), no read of its own. `definitionOf` strips `aliases`, so the
+  definition, the template boundary and a studio's overrides never see them.
 
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced

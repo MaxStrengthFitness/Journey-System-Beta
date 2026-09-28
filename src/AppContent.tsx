@@ -42,7 +42,6 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
-  setDoc,
   getDocs,
   getDoc,
   waitForPendingWrites,
@@ -302,7 +301,7 @@ export default function AppContent({
   handleLogout: () => Promise<void>;
   tokenRole: string | null;
 }) {
-  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
+  const { success: toastSuccess, info: toastInfo } = useToast();
   const { theme } = useTheme();
   const {
     activeStudioId,
@@ -1113,54 +1112,16 @@ export default function AppContent({
    * service account with a dry run - scripts/purge-database.ts is the place.
    */
 
-  /**
-   * Write the standard twenty back into the catalog.
-   *
-   * Seeds from data/machine-definitions.ts, NOT data/default-machines.ts.
-   * That was the bug behind "we edit a machine and nothing is filled out":
-   * DEFAULT_MACHINES is the legacy `Machine` shape — `targetMuscles` as one
-   * comma string, `settingOptions` as bare labels, and nothing at all for the
-   * biomechanics template — while the editor reads `MachineDefinition`. Every
-   * catalog document in production was written by this handler, so every one
-   * of them opened blank.
-   *
-   * `merge: true` on purpose: the legacy keys stay on the document rather
-   * than being stripped. They have readers elsewhere (adapters.ts still falls
-   * back to `trainerTips`), and the house rule is that a write with no reader
-   * is a bug to fix, not a field to delete.
+  /*
+   * "Restore standard machines" (handleRestoreMachines) stood here until
+   * Sep 28 2026, wave 2 of the Machine Catalog room. AJ: "we dont need to
+   * restore standard machine button, a machine just needs to be able to be
+   * marked as a standard machine, a task only by admins". It wrote the
+   * generated data/machine-definitions.ts over every catalog document,
+   * merging, which also undid any correction an administrator had made in
+   * the catalog editor since. The catalog is changed in the catalog editor
+   * now; "Standard machine" is on the machine's own page there.
    */
-  const handleRestoreMachines = async () => {
-    try {
-      /*
-       * Loaded on the click. data/machine-definitions.ts is a GENERATED file
-       * holding all twenty machine definitions with their Academy setup
-       * guides -- 115 kB, 27% of the main chunk when it was imported at the
-       * top of this file. It is read by one admin-only button that most
-       * people will never press.
-       */
-      const { MACHINE_DEFINITION_LIST } = await import(
-        "./data/machine-definitions"
-      );
-      const promises = MACHINE_DEFINITION_LIST.map((machine) =>
-        setDoc(
-          doc(db, "machines", machine.id),
-          {
-            ...machine,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        ),
-      );
-
-      await Promise.all(promises);
-      toastSuccess(
-        `${MACHINE_DEFINITION_LIST.length} standard machines written, with their Academy setup guides.`,
-      );
-    } catch (error: any) {
-      console.error("Restore failed:", error);
-      toastError(`Restore failed: ${error.message || "Unknown error"}`);
-    }
-  };
 
   const handleManualRefresh = async (
     collectionName: "studios" | "networks" | "trainers",
@@ -2006,7 +1967,6 @@ export default function AppContent({
                     onUpdateStudio={updateStudio}
                     onUpdateClient={updateClient}
                     activeStudioId={activeStudioId}
-                    onRestoreMachines={handleRestoreMachines}
                     onReorderTrainers={() => setIsReorderingTrainers(true)}
                     onNavigateProfile={(clientId) => {
                       setSelectedClientId(clientId);
@@ -2028,7 +1988,6 @@ export default function AppContent({
                     isAdmin={isAdmin}
                     activeStudioId={activeStudioId}
                     onRefresh={handleManualRefresh}
-                    onRestoreMachines={handleRestoreMachines}
                     onReorderTrainers={() => setIsReorderingTrainers(true)}
                   />
                 )}

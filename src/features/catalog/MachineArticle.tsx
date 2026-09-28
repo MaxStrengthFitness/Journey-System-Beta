@@ -3,6 +3,7 @@ import {
   Activity,
   BookOpen,
   ClipboardList,
+  Factory,
   Layers,
   MessageSquareQuote,
   OctagonAlert,
@@ -34,7 +35,9 @@ import {
 } from "../wiki";
 import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
 import { presetLine, type FlagLine, type Preset } from "./floor-index";
+import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
+import { outOfServiceLineOf } from "./out-of-service";
 import type { CatalogMachine } from "./types";
 
 /** A line Find opened this page on: which part of the page, and the sentence. */
@@ -131,6 +134,16 @@ export interface MachineArticleProps {
   flag?: FlagLine | null;
   /** This unit's preset — where its dials sit — for a floor's page. */
   preset?: Preset;
+  /**
+   * Which maker's model this unit is, for a floor's page (wave 2, Catalog
+   * R4): a "Model" line in the box. Null or absent: nothing (never a guess).
+   */
+  model?: MachineModel | null;
+  /**
+   * A movement's models, for its page in All MSF machines (wave 2, Catalog
+   * R4): a MovementModels, drawn under "Models" only when the host has any.
+   */
+  models?: ReactNode;
 
   /** Slotted cards, owned by features/studio-tasks. See the note above. */
   playbook?: ReactNode;
@@ -180,6 +193,8 @@ export function MachineArticle({
   academy,
   flag,
   preset,
+  model,
+  models,
   playbook,
   studioSetup,
   studioNotes,
@@ -207,6 +222,8 @@ export function MachineArticle({
     ...(preset
       ? [{ label: "Preset", icon: <SlidersHorizontal size={11} aria-hidden />, value: presetLine(preset) }]
       : []),
+    // Which maker's model the unit is (wave 2, Catalog R4), where it is known.
+    ...(model ? [{ label: "Model", icon: <Factory size={11} aria-hidden />, value: modelName(model) }] : []),
     { label: "Class", icon: <Activity size={11} aria-hidden />, value: machine.kinematicClassification },
     { label: "Posture", icon: <Target size={11} aria-hidden />, value: machine.executionPosture },
     { label: "Setup", icon: <Settings2 size={11} aria-hidden />, value: machine.setupGap },
@@ -218,6 +235,24 @@ export function MachineArticle({
     <p className="mcat-found" role="status">
       <span className="mcat-found__where">Found on this page · {found.section}</span>
       <span className="mcat-found__text">{found.text}</span>
+    </p>
+  ) : null;
+
+  /* Out of service, whole: why, who said so and when, and where it goes back
+     in (wave 2, Sep 28 2026). Only on a unit that IS out of service; one set
+     out of service before reasons existed keeps just its badge. */
+  const oos =
+    machine.rosterStatus === "maintenance" && machine.outOfService
+      ? outOfServiceLineOf(machine.outOfService)
+      : null;
+  const oosLine = oos ? (
+    <p className="mcat-oos" role="status">
+      <span className="mcat-oos__who">
+        Out of service · {oos.who}
+        {oos.when ? ` · ${oos.when}` : ""}
+      </span>
+      <span className="mcat-oos__note">{oos.reason}</span>
+      <span className="mcat-oos__where">Back in service is on My Studio → Machines.</span>
     </p>
   ) : null;
 
@@ -262,9 +297,10 @@ export function MachineArticle({
         </>
       }
       notice={
-        foundLine || flagLine || notice ? (
+        foundLine || oosLine || flagLine || notice ? (
           <>
             {foundLine}
+            {oosLine}
             {flagLine}
             {notice}
           </>
@@ -327,6 +363,14 @@ export function MachineArticle({
           icon={<Users size={13} aria-hidden />}
         >
           <WikiCues items={machine.contraindicatedFor} />
+        </WikiSection>
+      )}
+
+      {/* A movement's models (wave 2, Catalog R4): each maker's machine for
+          it, on its All MSF page, once the model records exist. */}
+      {models && (
+        <WikiSection id="models" title="Models" icon={<Factory size={13} aria-hidden />}>
+          {models}
         </WikiSection>
       )}
 

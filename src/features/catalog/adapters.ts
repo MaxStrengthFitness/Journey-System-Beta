@@ -26,6 +26,7 @@ import {
 } from "../../data/machine-database";
 import { resolveMachineAnatomy } from "./anatomy";
 import { CANONICAL_TO_DB_KEY, canonicalMachineId } from "./machine-identity";
+import type { OutOfService } from "./out-of-service";
 import type { CatalogMachine, CatalogRosterStatus } from "./types";
 
 /**
@@ -94,6 +95,16 @@ function neverToFailureOf(
 export interface AdaptOptions {
   /** studios/{id}/machineNotes, keyed by machineId. */
   studioNotes?: Record<string, { notes?: string }>;
+  /**
+   * Why each unit is out of service, from its roster entry, keyed by
+   * machineId (wave 2, Sep 28 2026; features/catalog/out-of-service.ts).
+   */
+  outOfService?: Record<string, OutOfService>;
+  /**
+   * Which model each unit is, from its roster entry, keyed by machineId
+   * (wave 2, Catalog R4; features/catalog/models.ts).
+   */
+  modelIds?: Record<string, string>;
 }
 
 /**
@@ -192,6 +203,12 @@ export function fromResolvedMachine(
 
     isStudioCustom: machine.source === "custom",
     rosterStatus: (machine.rosterStatus ?? "active") as CatalogRosterStatus,
+    // A reason only while the unit IS out of service: one left on an entry
+    // that is back in service is never shown.
+    ...(machine.rosterStatus === "maintenance" && opts.outOfService?.[id]
+      ? { outOfService: opts.outOfService[id] }
+      : {}),
+    ...(opts.modelIds?.[id] ? { modelId: opts.modelIds[id] } : {}),
 
     // The document's own MuscleId fields win; contentId supplies the in-repo
     // default so a studio's copy of a catalog machine still lights up.

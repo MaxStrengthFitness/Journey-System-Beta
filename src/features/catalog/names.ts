@@ -29,8 +29,17 @@
  *   FILEMAKER_MACHINE_NAMES   how FileMaker's grid wrote them ("comp row")
  *   MACHINE_ABBR + ACADEMY_CODES  the Academy's codes ("Lumb", "Cx", "Bi")
  *
- * Nothing in the database changes. Head office editing aliases is a later
- * round and needs AJ's OK (the room's Needs OK list).
+ * Nothing in the database changes for these.
+ *
+ * HEAD OFFICE'S OWN NAMES (wave 2 of the Machine Catalog room, Sep 28 2026;
+ * AJ's "all yes" to "aliases head office can edit"). A catalog document may
+ * carry `aliases: string[]`, which an administrator writes on the machine's
+ * page in the catalog editor (admin/catalog/MachineAliases.tsx). They are
+ * merged here with the tables above (`movementsWithAliases`), as one more
+ * source of names, so they get the same rule as every other alias: one that
+ * means one movement opens it; one that two movements claim, or that is
+ * another movement's own word, only ranks. `aliasProblem` refuses the name
+ * that would say nothing new or mean another movement, before it is saved.
  *
  * WHICH ALIASES MAY OPEN A MACHINE ON THEIR OWN
  * ---------------------------------------------
@@ -155,7 +164,12 @@ function dbKeysOf(id: string): string[] {
     .map(([key]) => key);
 }
 
-function build(): Record<string, MovementNames> {
+/**
+ * The table, from the code's own names and, when given, head office's
+ * (`extra`, by movement id). Head office's come last, so a name the code
+ * already knows keeps the code's spelling.
+ */
+function build(extra: Readonly<Record<string, readonly string[]>> = {}): Record<string, MovementNames> {
   const floorById = new Map(DEFAULT_MACHINES.map((m) => [m.id ?? "", m.name]));
 
   // First pass: every name each movement goes by, in reading form.
@@ -169,6 +183,7 @@ function build(): Record<string, MovementNames> {
       ...(ACADEMY_OTHER_NAMES[id] ?? []),
       ...dbNames,
       ...(FILEMAKER_MACHINE_NAMES[id] ?? []),
+      ...(extra[id] ?? []),
     ]);
   }
 
@@ -214,18 +229,113 @@ function build(): Record<string, MovementNames> {
   return out;
 }
 
-/** The twenty movements, by canonical id. */
+/** The twenty movements, by canonical id, from the code's own names. */
 export const MOVEMENTS: Record<string, MovementNames> = build();
+
+/* ------------------------------------------------------------------ *
+ * Head office's names (wave 2, Sep 28 2026)
+ * ------------------------------------------------------------------ */
+
+/** The longest name head office may add, and how many one machine may carry. */
+export const ALIAS_MAX_LENGTH = 40;
+export const ALIASES_MAX = 30;
+
+/** A name as it is stored: one space between words, none at the ends. */
+export function tidyAlias(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The names head office added to a catalog document (`aliases`), as far as
+ * they can be read: strings, tidied, each once, within the limits. Firestore
+ * documents are untyped at runtime; anything else is left out.
+ */
+export function headOfficeAliasesOf(doc: unknown): string[] {
+  if (!doc || typeof doc !== "object") return [];
+  const raw = (doc as { aliases?: unknown }).aliases;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== "string") continue;
+    const name = tidyAlias(v);
+    const key = normaliseName(name);
+    if (!key || name.length > ALIAS_MAX_LENGTH || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= ALIASES_MAX) break;
+  }
+  return out;
+}
+
+/**
+ * Head office's names, by movement, from the catalog documents: only a
+ * document that IS one of the twenty (its id, through the id table).
+ */
+export function aliasesByMovement(catalog: readonly unknown[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const doc of catalog) {
+    const id = (doc as { id?: unknown } | null)?.id;
+    if (typeof id !== "string" || !id) continue;
+    const movementId = canonicalMachineId(id);
+    if (!ACADEMY_MOVEMENT_NAME[movementId]) continue;
+    const names = headOfficeAliasesOf(doc);
+    if (names.length > 0) out[movementId] = [...(out[movementId] ?? []), ...names];
+  }
+  return out;
+}
+
+/**
+ * The table with head office's names merged in. The code's own table when
+ * there are none, so a screen with no aliases rebuilds nothing.
+ */
+export function movementsWithAliases(extra: Readonly<Record<string, readonly string[]>>): Record<string, MovementNames> {
+  return Object.values(extra).some((names) => names.length > 0) ? build(extra) : MOVEMENTS;
+}
+
+/**
+ * Why a name head office typed for a movement can't be added, or null when
+ * it can. A name that says nothing new (the movement already goes by it) or
+ * that another movement already goes by is refused: the first adds nothing,
+ * and the second would make Find open the wrong machine or none.
+ */
+export function aliasProblem(
+  typed: string,
+  movementId: string,
+  table: Readonly<Record<string, MovementNames>> = MOVEMENTS,
+): string | null {
+  const name = tidyAlias(typed);
+  const key = normaliseName(name);
+  if (!key) return "Type a name.";
+  if (name.length > ALIAS_MAX_LENGTH) return `Keep a name to ${ALIAS_MAX_LENGTH} characters.`;
+  const own = table[movementId];
+  const namesOf = (m: MovementNames) => [m.name, ...m.codes, ...(m.floorName ? [m.floorName] : []), ...m.aliases];
+  if (own && namesOf(own).some((n) => normaliseName(n) === key)) {
+    return `Find already knows “${name}” for ${own.name}.`;
+  }
+  for (const id of MOVEMENT_IDS) {
+    if (id === movementId) continue;
+    const other = table[id];
+    if (other && namesOf(other).some((n) => normaliseName(n) === key)) {
+      return `“${name}” already means ${other.name}.`;
+    }
+  }
+  return null;
+}
 
 /**
  * The movement a machine is, through its lineage: an MSF machine is itself, a
  * studio's copy or its own machine based on one is that one (`comparisonKey`
  * is `basedOn ?? machineId`), and a machine with no lineage is no movement.
+ * `table` is the one with head office's names, where a screen has it.
  */
-export function movementOf(machine: { id: string; comparisonKey?: string; name?: string }): MovementNames | null {
+export function movementOf(
+  machine: { id: string; comparisonKey?: string; name?: string },
+  table: Readonly<Record<string, MovementNames>> = MOVEMENTS,
+): MovementNames | null {
   const lineage = machine.comparisonKey || machine.id;
   if (!lineage) return null;
-  return MOVEMENTS[canonicalMachineId(lineage, lineage === machine.id ? machine.name : undefined)] ?? null;
+  return table[canonicalMachineId(lineage, lineage === machine.id ? machine.name : undefined)] ?? null;
 }
 
 /** Words for comparing two names: normalised, a plural "s" dropped, brackets kept. */
@@ -253,8 +363,11 @@ export function floorNameHidesMovement(floorName: string, movementName: string):
 }
 
 /** Every name a machine is known by, for search: its movement's name, codes and aliases. */
-export function namesForMachine(machine: { id: string; comparisonKey?: string; name?: string }): string[] {
-  const m = movementOf(machine);
+export function namesForMachine(
+  machine: { id: string; comparisonKey?: string; name?: string },
+  table: Readonly<Record<string, MovementNames>> = MOVEMENTS,
+): string[] {
+  const m = movementOf(machine, table);
   if (!m) return [];
   return [m.name, ...m.aliases];
 }
