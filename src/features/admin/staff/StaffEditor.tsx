@@ -335,7 +335,7 @@ export function StaffEditor({
               {grantStudioId && (
                 <AdminField
                   label="Can manage My Studio"
-                  hint={`Opens Team and Studio at ${grantStudioName}, and lets them change its machines, without changing their role — how a studio grows its next leader.`}
+                  hint={`Opens Team at ${grantStudioName}, and lets them change its studio settings and machines, without changing their role — how a studio grows its next leader.`}
                 >
                   <AdminSelect
                     value={managesHere ? "yes" : "no"}

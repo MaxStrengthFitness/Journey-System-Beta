@@ -58,6 +58,22 @@
 /* A quiet line standing in for an empty or loading list in a flush panel. */
 .ms__quiet { margin: 0; padding: 1rem 14px; font-size: 14px; color: var(--adm-ink-muted); }
 
+/* Studio, read only (AJ's voice review, Sep 2026): everyone who works at the
+   studio reads its settings; only its leaders change them. The fields are
+   locked by a disabled fieldset, and a disabled control draws its words in
+   --adm-ink-faint (3.1:1, meant for decoration), which iPad Safari fades to
+   40% on top. Here reading them is the whole point, so they keep the ink of
+   any other sentence. */
+.ms__readonly .adm-input:disabled,
+.ms__readonly .adm-select:disabled,
+.ms__readonly .adm-textarea:disabled {
+  color: var(--adm-ink);
+  -webkit-text-fill-color: var(--adm-ink);
+  opacity: 1;
+  cursor: default;
+}
+.ms__readonly input[type="color"]:disabled { opacity: 1; cursor: default; }
+
 /* The machine's door (Machines section): the settings card and the notes
    box stacked in the Context Panel, with the three actions under them. The
    catalog cards bring their own look (catalog.css, global). */

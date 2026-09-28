@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
-import { CalendarClock, Clock, Zap } from "lucide-react";
+import { CalendarClock, Clock, Megaphone, Zap } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import type { HubAnnouncement, Trainer } from "../../types";
-import { AdminBadge, AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, SaveBar } from "../admin/primitives";
+import { AdminBadge, AdminEmpty, AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, SaveBar } from "../admin/primitives";
 import { useDirtyForm } from "../admin/useDirtyForm";
 import { StudioDetailsForm, type StudioForm } from "../admin/studios/StudioDetailsForm";
 import { studioPatchPayload } from "../admin/studios/studio-writes";
@@ -20,6 +20,8 @@ import { useRenewalNamesSeen, useRenewalSettings } from "../renewals/useRenewalS
 import { DEFAULT_DEEP_CLEAN_DAYS } from "../relay/board/machine-care";
 import { DEFAULT_SHIFT_HOURS, clockToMinutes, minutesToClock, shiftHoursOf } from "../relay/board/now-context";
 import { mayOpenOperations } from "../admin/operations-access";
+import { leadsHere } from "../relay/leads";
+import { mayReadWeeks } from "../standing-week/present";
 import "../admin/admin.css";
 import "./my-studio.css";
 
@@ -57,6 +59,18 @@ import "./my-studio.css";
  * Everything writes only the diff to studios/{id} (or the renewal config /
  * hub_announcements), and firestore.rules scopes each write to the studio
  * tier at this studio.
+ *
+ * READ ONLY FOR EVERYONE ELSE WHO WORKS HERE (AJ's voice review, notes of
+ * Sep 28 2026): "Leaders edit it; trainers can view it read-only. Studio
+ * settings are edited here and nowhere else." Until then the section was
+ * hidden from trainers. Now `canEdit` (leadsHere, the rules' own answer)
+ * decides, panel by panel: the fields are drawn locked, no save bar or
+ * Publish is offered, and each panel says who changes it. The rules already
+ * let everyone who works here read all of it, and refuse their writes, so
+ * nothing changed there. Two things a reader must not cost: the Mindbody
+ * location lookup (a Mindbody call each time the form opens) is skipped
+ * for them (StudioDetailsForm), and the locked fields stay in full ink,
+ * since reading them is the whole point (`ms__readonly`, my-studio.css).
  */
 
 export interface StudioSectionProps {
@@ -87,24 +101,45 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
     );
   }
 
+  // The studio tier changes it; everyone else who works here reads it. The
+  // shell asks the same two questions, but a menu is not a gate.
+  const canEdit = leadsHere(authTrainer, studioId);
+  if (!canEdit && !mayReadWeeks(authTrainer, studioId)) {
+    return (
+      <div className="adm ms__page">
+        <AdminNotice tone="info">{studio.name}'s settings are for the people who work there.</AdminNotice>
+      </div>
+    );
+  }
+
   return (
-    <div className="adm ms__page">
+    <div className={canEdit ? "adm ms__page" : "adm ms__page ms__readonly"}>
       <StudioDetailsForm
         studio={studio}
         studios={studios ?? NONE}
         onSave={saveDetails}
+        canEdit={canEdit}
         subtitle="Your studio's own record. The name, the time zone, the Mindbody link and when you moved onto Journey."
       />
 
       <SyncPanel trainers={trainers ?? NONE} opensOperations={mayOpenOperations(authTrainer, studioId)} />
 
-      <HoursPanel />
+      <HoursPanel canEdit={canEdit} />
 
-      <InBodyVariationPanel studioId={studioId} studio={studio} trainers={trainers ?? NONE} />
+      <InBodyVariationPanel studioId={studioId} studio={studio} trainers={trainers ?? NONE} canEdit={canEdit} />
 
-      <RenewalsPanel studioId={studioId} studioName={studio.name} />
+      <RenewalsPanel studioId={studioId} studioName={studio.name} canEdit={canEdit} />
 
-      <StudioAnnouncements authTrainer={authTrainer ?? null} studioId={studioId} studioName={studio.name} />
+      <StudioAnnouncements authTrainer={authTrainer ?? null} studioId={studioId} studioName={studio.name} canEdit={canEdit} />
+    </div>
+  );
+}
+
+/** Under a locked panel: who changes it, in the words the details form uses. */
+function ReadOnlyFoot({ children }: { children: string }) {
+  return (
+    <div className="px-4 py-3 text-sm" style={{ color: "var(--adm-ink-muted)" }}>
+      {children}
     </div>
   );
 }
@@ -186,7 +221,7 @@ interface HoursForm {
 const toClock = (min: number) =>
   `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
-function HoursPanel() {
+function HoursPanel({ canEdit }: { canEdit: boolean }) {
   const { activeStudio, activeStudioId } = useActiveStudio();
   const { success: toastSuccess } = useToast();
   const current = shiftHoursOf(activeStudio?.shiftHours ?? null);
@@ -227,66 +262,72 @@ function HoursPanel() {
       icon={<Clock className="w-3.5 h-3.5" />}
       subtitle={`Opening until ${minutesToClock(current.mid)}, Mid until ${minutesToClock(current.closing)}, then Closing. The Now Bar names the phase and the shift rings group work by it.`}
       footer={
-        <SaveBar
-          status={bad && form.dirty ? "error" : form.status}
-          error={bad ? "Every time needs to be a clock time, like 05:30." : form.error}
-          onSave={() => {
-            if (bad) return;
-            void form.save();
-          }}
-          onDiscard={form.discard}
-        />
+        canEdit ? (
+          <SaveBar
+            status={bad && form.dirty ? "error" : form.status}
+            error={bad ? "Every time needs to be a clock time, like 05:30." : form.error}
+            onSave={() => {
+              if (bad) return;
+              void form.save();
+            }}
+            onDiscard={form.discard}
+          />
+        ) : (
+          <ReadOnlyFoot>Only this studio's leaders can change the studio's day.</ReadOnlyFoot>
+        )
       }
     >
-      <AdminGrid>
-        {(
-          [
-            ["Opens", "open"],
-            ["Mid shift from", "mid"],
-            ["Closing from", "closing"],
-            ["Closes", "close"],
-          ] as const
-        ).map(([label, key]) => (
-          <AdminField key={key} label={label} htmlFor={`ms-hours-${key}`}>
+      <fieldset disabled={!canEdit} className="contents">
+        <AdminGrid>
+          {(
+            [
+              ["Opens", "open"],
+              ["Mid shift from", "mid"],
+              ["Closing from", "closing"],
+              ["Closes", "close"],
+            ] as const
+          ).map(([label, key]) => (
+            <AdminField key={key} label={label} htmlFor={`ms-hours-${key}`}>
+              <AdminInput
+                id={`ms-hours-${key}`}
+                type="time"
+                value={form.value[key]}
+                onChange={(e) => form.setField(key, e.target.value)}
+              />
+            </AdminField>
+          ))}
+          <AdminField
+            label="Deep clean every"
+            hint={`Days between required deep cleans on the Floor Map. Default ${DEFAULT_DEEP_CLEAN_DAYS}.`}
+            htmlFor="ms-deep-clean"
+          >
             <AdminInput
-              id={`ms-hours-${key}`}
-              type="time"
-              value={form.value[key]}
-              onChange={(e) => form.setField(key, e.target.value)}
+              id="ms-deep-clean"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={365}
+              value={form.value.deepCleanDays}
+              onChange={(e) => form.setField("deepCleanDays", e.target.value)}
             />
           </AdminField>
-        ))}
-        <AdminField
-          label="Deep clean every"
-          hint={`Days between required deep cleans on the Floor Map. Default ${DEFAULT_DEEP_CLEAN_DAYS}.`}
-          htmlFor="ms-deep-clean"
-        >
-          <AdminInput
-            id="ms-deep-clean"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={365}
-            value={form.value.deepCleanDays}
-            onChange={(e) => form.setField("deepCleanDays", e.target.value)}
-          />
-        </AdminField>
-        <AdminField
-          label="A session is"
-          hint={`Minutes per booked session — the slot Operations → Insights → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
-          htmlFor="ms-session-minutes"
-        >
-          <AdminInput
-            id="ms-session-minutes"
-            type="number"
-            inputMode="numeric"
-            min={MIN_SESSION_MINUTES}
-            max={MAX_SESSION_MINUTES}
-            value={form.value.sessionMinutes}
-            onChange={(e) => form.setField("sessionMinutes", e.target.value)}
-          />
-        </AdminField>
-      </AdminGrid>
+          <AdminField
+            label="A session is"
+            hint={`Minutes per booked session — the slot Operations → Insights → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
+            htmlFor="ms-session-minutes"
+          >
+            <AdminInput
+              id="ms-session-minutes"
+              type="number"
+              inputMode="numeric"
+              min={MIN_SESSION_MINUTES}
+              max={MAX_SESSION_MINUTES}
+              value={form.value.sessionMinutes}
+              onChange={(e) => form.setField("sessionMinutes", e.target.value)}
+            />
+          </AdminField>
+        </AdminGrid>
+      </fieldset>
       <p className="ms__note">
         Defaults are {minutesToClock(DEFAULT_SHIFT_HOURS.open)} / {minutesToClock(DEFAULT_SHIFT_HOURS.mid)} /{" "}
         {minutesToClock(DEFAULT_SHIFT_HOURS.closing)} / {minutesToClock(DEFAULT_SHIFT_HOURS.close)}.
@@ -299,7 +340,7 @@ function HoursPanel() {
  * Renewals: the studio's own thresholds and packages
  * ------------------------------------------------------------------ */
 
-function RenewalsPanel({ studioId, studioName }: { studioId: string; studioName: string }) {
+function RenewalsPanel({ studioId, studioName, canEdit }: { studioId: string; studioName: string; canEdit: boolean }) {
   const { settings, saved, loading, error } = useRenewalSettings(studioId);
   const namesSeen = useRenewalNamesSeen(studioId);
   if (loading) {
@@ -323,7 +364,7 @@ function RenewalsPanel({ studioId, studioName }: { studioId: string; studioName:
       settings={settings}
       saved={saved}
       namesSeen={namesSeen}
-      canEdit
+      canEdit={canEdit}
     />
   );
 }
@@ -346,10 +387,13 @@ function StudioAnnouncements({
   authTrainer,
   studioId,
   studioName,
+  canEdit,
 }: {
   authTrainer: Trainer | null;
   studioId: string;
   studioName: string;
+  /** A leader gets the composer; anyone else the live notices, read only. */
+  canEdit: boolean;
 }) {
   const [all, setAll] = useState<HubAnnouncement[]>([]);
   useEffect(() => {
@@ -379,6 +423,41 @@ function StudioAnnouncements({
   // accounts (CLAUDE.md) -- so the uid first.
   const authorId = auth.currentUser?.uid || authTrainer?.id;
   if (!authTrainer || !authorId) return null;
+
+  if (!canEdit) {
+    return (
+      <AdminPanel
+        title="Announcements"
+        icon={<Megaphone className="w-3.5 h-3.5" />}
+        subtitle={`What ${studioName}'s leaders have posted to everyone here. A new one reaches you in the alerts bell.`}
+        flush
+      >
+        {live.length === 0 ? (
+          <AdminEmpty title="Nothing posted right now">
+            When {studioName}'s leaders post a notice, it shows here until it expires.
+          </AdminEmpty>
+        ) : (
+          <ul className="adm-ann-list">
+            {live.map((a) => (
+              <li key={a.id} className="adm-ann">
+                <div className="adm-ann-head">
+                  <span className="adm-ann-title">{a.title}</span>
+                  {a.priority === "high" && <AdminBadge tone="alert">Urgent</AdminBadge>}
+                  <AdminBadge>{a.type ?? "news"}</AdminBadge>
+                </div>
+                {a.shortContent && <p className="adm-ann-short">{a.shortContent}</p>}
+                {a.authorName && (
+                  <div className="adm-ann-foot">
+                    <span>By {a.authorName}</span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminPanel>
+    );
+  }
 
   return (
     <AnnouncementComposer

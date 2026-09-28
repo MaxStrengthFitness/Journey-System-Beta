@@ -234,9 +234,35 @@ describe("My Studio", () => {
     expect(h.textContent).not.toContain("New in the MSF standard");
   });
 
-  it("never offers the Studio section to a trainer", async () => {
-    await mount(trainer);
-    expect(tab("Studio")).toBeUndefined();
+  it("shows a trainer the Studio section read only: every field locked, nothing to save or publish (AJ's voice review, Sep 2026)", async () => {
+    const h = await mount(trainer);
+    await click(tab("Studio"));
+    expect(h.textContent).toContain("Studio details");
+    expect(h.textContent).toContain("The studio's day");
+    expect(h.textContent).toContain("InBody: the scanner's normal variation");
+    expect(h.textContent).toContain("Announcements");
+    // Each panel says who changes it.
+    expect(h.textContent).toContain("Only this studio's leaders and administrators can change these details.");
+    expect(h.textContent).toContain("Only this studio's leaders can change the studio's day.");
+    expect(h.textContent).toContain("Only this studio's leaders can change these numbers.");
+    expect(h.textContent).toContain("Only this studio's leaders can change these settings.");
+    // Nothing that writes is offered.
+    const buttons = [...h.querySelectorAll("button")].map((b) => b.textContent ?? "");
+    expect(buttons.some((t) => /Publish|Use Max Strength's defaults|Take down/.test(t))).toBe(false);
+    expect(h.textContent).not.toContain("Change a number and save");
+    expect(h.textContent).not.toContain("Change anything and save");
+    // Every field in the section is locked: disabled itself, or inside a disabled fieldset.
+    const fields = [...h.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("#ms-panel input, #ms-panel select, #ms-panel textarea")];
+    const locked = (f: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => f.disabled || Boolean(f.closest("fieldset[disabled]"));
+    expect(fields.length).toBeGreaterThan(5);
+    expect(fields.filter((f) => !locked(f)).map((f) => f.id || f.getAttribute("aria-label") || f.name || f.type)).toEqual([]);
+  });
+
+  it("keeps Studio open to change for a trainer the studio's leadership granted the studio", async () => {
+    const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
+    await click(tab("Studio"));
+    expect(h.textContent).toContain("Use Max Strength's defaults");
+    expect(h.textContent).not.toContain("Only this studio's leaders can change the studio's day.");
   });
 
   it("shows the Team section to a trainer the studio's leadership granted the studio (My Studio, Sep 2026)", async () => {

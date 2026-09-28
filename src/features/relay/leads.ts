@@ -1,7 +1,8 @@
 /**
- * WHO LEADS THIS STUDIO — for My Studio's leader sections (Team and Studio,
- * and the leader half of Machines) and Relay's leader acts (posting a team
- * job, assigning a shift task).
+ * WHO LEADS THIS STUDIO — for My Studio's leader section (Team), the leader
+ * half of Machines and of Studio (everyone who works there reads Studio, the
+ * voice review notes of Sep 28 2026; only this answer changes it), and
+ * Relay's leader acts (posting a team job, assigning a shift task).
  *
  * Round: Planner rework, Sep 2026. Those are a leader's acts, and
  * firestore.rules allows them to administrators, franchise owners, and the

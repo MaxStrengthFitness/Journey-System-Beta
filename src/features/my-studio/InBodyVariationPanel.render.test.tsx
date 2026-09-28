@@ -46,14 +46,14 @@ const studio = (over: Partial<Studio> = {}): Studio =>
 let host: HTMLDivElement | null = null;
 let root: Root | null = null;
 
-async function mount(s: Studio) {
+async function mount(s: Studio, canEdit = true) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <InBodyVariationPanel studioId="solon" studio={s} trainers={[lead]} />
+        <InBodyVariationPanel studioId="solon" studio={s} trainers={[lead]} canEdit={canEdit} />
       </StrictMode>,
     );
   });
@@ -146,6 +146,17 @@ describe("the InBody variation panel", () => {
     await click(button(el, /Save changes/));
     expect(writes).toEqual([{ path: "studios/solon", data: { inbodyVariation: "DELETE" } }]);
     expect(toasts[0]).toContain("back on Max Strength's defaults");
+  });
+
+  it("shows the numbers read only to someone who may not change them (AJ's voice review, Sep 2026)", async () => {
+    const el = await mount(studio(), false);
+    expect(el.textContent).toContain("Max Strength's defaults.");
+    expect(el.textContent).not.toContain("Change a number and save");
+    expect(el.textContent).toContain("Only this studio's leaders can change these numbers.");
+    expect(button(el, /Use Max Strength's defaults/)).toBeUndefined();
+    expect(input(el, "skeletalMuscleMassLb").value).toBe("3.5");
+    expect(input(el, "skeletalMuscleMassLb").closest("fieldset")?.disabled).toBe(true);
+    expect(writes).toHaveLength(0);
   });
 
   it("refuses a number out of range with a sentence, and writes nothing", async () => {

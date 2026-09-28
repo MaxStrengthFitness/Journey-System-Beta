@@ -133,7 +133,8 @@ async function click(el: Element | undefined | null) {
 describe("Openings in My Studio", () => {
   it("sits second, for a trainer who works at the studio, and opens on The usual week", async () => {
     const h = await mount(trainer);
-    expect(sections()).toEqual(["Relay", "Openings", "Machines"]);
+    // Studio too, read only, since the voice review notes (Sep 28 2026).
+    expect(sections()).toEqual(["Relay", "Openings", "Machines", "Studio"]);
     await click(tab("Openings"));
     expect(tab("Openings")?.getAttribute("aria-selected")).toBe("true");
     expect(tab("The usual week")?.getAttribute("aria-selected")).toBe("true");

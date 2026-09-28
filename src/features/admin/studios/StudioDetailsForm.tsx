@@ -120,7 +120,12 @@ export function StudioDetailsForm({
     label: studio.name ? `${studio.name}'s details` : "the studio's details",
   });
 
-  const locations = useMindbodyLocations(form.value.mindbodySiteId);
+  // The lookup asks Mindbody (through our server) every time the form opens.
+  // Someone who can only read the form has nothing to verify, and since My
+  // Studio → Studio opened read only to everyone who works at the studio
+  // (AJ's voice review, Sep 2026), asking for them would put a Mindbody call
+  // on every trainer's visit. The saved location id still shows.
+  const locations = useMindbodyLocations(canEdit ? form.value.mindbodySiteId : "");
 
   const offline = form.value.mindbodyMode === "offline";
   const problem = validateStudioIdentity({
@@ -236,11 +241,13 @@ export function StudioDetailsForm({
             required={!offline}
             error={problem?.code === "no-site" ? problem.message : null}
             hint={
-              offline
-                ? "Not needed while this studio runs offline. Fill it in when the account exists."
-                : siteChanged && locations.outcome === "ok"
-                  ? `Mindbody answered: ${locations.status}`
-                  : "Locations load automatically once this is entered, and the id is saved once Mindbody answers for it."
+              !canEdit
+                ? "The Mindbody site this studio's bookings come from."
+                : offline
+                  ? "Not needed while this studio runs offline. Fill it in when the account exists."
+                  : siteChanged && locations.outcome === "ok"
+                    ? `Mindbody answered: ${locations.status}`
+                    : "Locations load automatically once this is entered, and the id is saved once Mindbody answers for it."
             }
           >
             <AdminInput

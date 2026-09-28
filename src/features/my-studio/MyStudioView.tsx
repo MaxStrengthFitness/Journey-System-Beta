@@ -58,11 +58,13 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * Who sees what: everyone at the studio gets Relay and Machines; Openings is
  * everyone who may read the studio's standing weeks (`mayReadWeeks`: the
  * people who work there, franchise owners and administrators), because it
- * reads them; Team and Studio are the studio tier — head trainer, studio leader, studio owner AT
- * THIS STUDIO, or a trainer its leadership granted `managedStudioIds`
- * (relay/leads.ts → leadsHere, the same answer the rules give, asked
- * directly below). Hiding a section is a convenience; the rules are the
- * boundary.
+ * reads them; Team is the studio tier — head trainer, studio leader, studio
+ * owner AT THIS STUDIO, or a trainer its leadership granted
+ * `managedStudioIds` (relay/leads.ts → leadsHere, the same answer the rules
+ * give, asked directly below). Studio is read by everyone who works there
+ * and changed by the studio tier only (AJ's voice review, Sep 2026:
+ * "Leaders edit it; trainers can view it read-only"). Hiding a section is a
+ * convenience; the rules are the boundary.
  *
  * The Relay context (RelayContext) is owned HERE now rather than by
  * PlannerView, so a card on any section — a machine flag on Team, a note
@@ -80,14 +82,16 @@ export type { MyStudioSection };
  * `leads`: the studio tier (leadsHere). `weeks`: whoever may read the
  * studio's standing weeks (mayReadWeeks). Openings reads them, and a section
  * with no gate would open for anyone whose active studio it is, who would
- * then be refused by the rules.
+ * then be refused by the rules. `reads`: either of the two — Studio, which
+ * everyone who works here may read (the rules let them read the studio, its
+ * renewal settings and its notices) and only its leaders change.
  */
-const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" | "weeks" }[] = [
+const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" | "weeks" | "reads" }[] = [
   { id: "relay", label: "Relay", icon: Zap },
   { id: "openings", label: "Openings", icon: CalendarRange, tier: "weeks" },
   { id: "machines", label: "Machines", icon: Dumbbell },
   { id: "team", label: "Team", icon: Users, tier: "leads" },
-  { id: "studio", label: "Studio", icon: Settings2, tier: "leads" },
+  { id: "studio", label: "Studio", icon: Settings2, tier: "reads" },
 ];
 
 
@@ -118,7 +122,9 @@ export function MyStudioView({
   const { activeStudio, activeStudioId } = useActiveStudio();
   const canLead = leadsHere(authTrainer, activeStudioId);
   const readsWeeks = mayReadWeeks(authTrainer, activeStudioId);
-  const sections = SECTIONS.filter((s) => !s.tier || (s.tier === "leads" ? canLead : readsWeeks));
+  const sections = SECTIONS.filter(
+    (s) => !s.tier || (s.tier === "leads" ? canLead : s.tier === "weeks" ? readsWeeks : canLead || readsWeeks),
+  );
 
   // A request from a client's profile or a notification always lands on the
   // board (PlannerView reads and clears it); a plain open returns to where

@@ -42,7 +42,9 @@ import "./my-studio.css";
  * from then on. "Use Max Strength's defaults" only fills the form; the save
  * bar still asks. firestore.rules lets the studio's own leaders (and the
  * grant), franchise owners and administrators write a studio; that is the
- * boundary, and the studio tier is who sees this section.
+ * boundary. Everyone else who works at the studio sees the numbers read
+ * only (`canEdit` false, AJ's voice review, Sep 2026): no defaults button,
+ * no save bar, and a line saying who changes them.
  */
 
 export interface InBodyVariationPanelProps {
@@ -50,9 +52,11 @@ export interface InBodyVariationPanelProps {
   studio: Studio;
   /** To name who set the numbers. */
   trainers: Trainer[];
+  /** False draws the numbers locked, for someone who may read but not change them. */
+  canEdit?: boolean;
 }
 
-export function InBodyVariationPanel({ studioId, studio, trainers }: InBodyVariationPanelProps) {
+export function InBodyVariationPanel({ studioId, studio, trainers, canEdit = true }: InBodyVariationPanelProps) {
   const { success: toastSuccess } = useToast();
   const stored = studio.inbodyVariation;
   const current = useMemo(() => inbodyVariationOf({ inbodyVariation: stored }), [stored]);
@@ -99,54 +103,66 @@ export function InBodyVariationPanel({ studioId, studio, trainers }: InBodyVaria
       icon={<Scale className="w-3.5 h-3.5" />}
       subtitle="An InBody scan of the same body reads a little differently every time. A change smaller than these numbers isn't called a change anywhere: the InBody card, the progress report, the Renewal Brief and Operations → Renewals. Every client is measured against their home studio's numbers."
       actions={
-        <AdminButton
-          size="sm"
-          variant="quiet"
-          disabled={onDefaults}
-          onClick={() => form.setFields(variationToForm(DEFAULT_INBODY_VARIATION))}
-        >
-          Use Max Strength's defaults
-        </AdminButton>
+        canEdit ? (
+          <AdminButton
+            size="sm"
+            variant="quiet"
+            disabled={onDefaults}
+            onClick={() => form.setFields(variationToForm(DEFAULT_INBODY_VARIATION))}
+          >
+            Use Max Strength's defaults
+          </AdminButton>
+        ) : undefined
       }
       footer={
-        <SaveBar
-          status={firstProblem && form.dirty ? "error" : form.status}
-          error={firstProblem ?? form.error}
-          onSave={() => {
-            if (firstProblem) return;
-            void form.save();
-          }}
-          onDiscard={form.discard}
-        />
+        canEdit ? (
+          <SaveBar
+            status={firstProblem && form.dirty ? "error" : form.status}
+            error={firstProblem ?? form.error}
+            onSave={() => {
+              if (firstProblem) return;
+              void form.save();
+            }}
+            onDiscard={form.discard}
+          />
+        ) : (
+          <div className="px-4 py-3 text-sm" style={{ color: "var(--adm-ink-muted)" }}>
+            Only this studio's leaders can change these numbers.
+          </div>
+        )
       }
     >
       <p className="ms__line ms__line--lead">
         {own
           ? `This studio's own numbers${setBy ? `, ${setBy}` : ""}.`
-          : "Max Strength's defaults. Change a number and save to make it this studio's own."}
+          : canEdit
+            ? "Max Strength's defaults. Change a number and save to make it this studio's own."
+            : "Max Strength's defaults."}
       </p>
-      <AdminGrid>
-        {VARIATION_KEYS.map((key) => {
-          const { label, unit } = VARIATION_FIELDS[key];
-          return (
-            <AdminField
-              key={key}
-              label={`${label} (${unit})`}
-              hint={`Max Strength's default: ${DEFAULT_INBODY_VARIATION[key]} ${unit}.`}
-              error={form.dirty ? check.problems[key] ?? null : null}
-              htmlFor={`ms-inbody-${key}`}
-            >
-              <AdminInput
-                id={`ms-inbody-${key}`}
-                inputMode="decimal"
-                value={form.value[key]}
-                invalid={Boolean(check.problems[key])}
-                onChange={(e) => form.setField(key, e.target.value)}
-              />
-            </AdminField>
-          );
-        })}
-      </AdminGrid>
+      <fieldset disabled={!canEdit} className="contents">
+        <AdminGrid>
+          {VARIATION_KEYS.map((key) => {
+            const { label, unit } = VARIATION_FIELDS[key];
+            return (
+              <AdminField
+                key={key}
+                label={`${label} (${unit})`}
+                hint={`Max Strength's default: ${DEFAULT_INBODY_VARIATION[key]} ${unit}.`}
+                error={form.dirty ? check.problems[key] ?? null : null}
+                htmlFor={`ms-inbody-${key}`}
+              >
+                <AdminInput
+                  id={`ms-inbody-${key}`}
+                  inputMode="decimal"
+                  value={form.value[key]}
+                  invalid={Boolean(check.problems[key])}
+                  onChange={(e) => form.setField(key, e.target.value)}
+                />
+              </AdminField>
+            );
+          })}
+        </AdminGrid>
+      </fieldset>
       <p className="ms__note">
         {VARIATION_SOURCE}
       </p>

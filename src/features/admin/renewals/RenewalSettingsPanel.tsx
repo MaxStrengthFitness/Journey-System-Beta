@@ -135,8 +135,9 @@ export function RenewalSettingsPanel({
     <div className="space-y-4">
       {!saved && (
         <AdminNotice tone="info">
-          {studioName} is using the standard settings below. Change anything and save to make them
-          this studio's own.
+          {canEdit
+            ? `${studioName} is using the standard settings below. Change anything and save to make them this studio's own.`
+            : `${studioName} is using the standard settings below.`}
         </AdminNotice>
       )}
       {!canEdit && (

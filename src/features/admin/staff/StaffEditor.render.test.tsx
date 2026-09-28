@@ -96,8 +96,10 @@ describe("StaffEditor", () => {
     const options = [...el.querySelectorAll("option")].map((o) => o.textContent);
     expect(options.slice(0, 3)).toEqual(["Life Transformer", "Head Trainer", "Studio Leader"]);
     expect(new Set(options).size).toBe(options.length);
-    // The grant says what it really opens.
-    expect(el.textContent).toContain("Opens Team and Studio at Westlake, and lets them change its machines");
+    // The grant says what it really opens. Studio is read by everyone who
+    // works there since the voice review notes (Sep 28 2026); the grant is
+    // what lets someone change it.
+    expect(el.textContent).toContain("Opens Team at Westlake, and lets them change its studio settings and machines");
   });
 
   it("still offers approval for a sign-up", async () => {
