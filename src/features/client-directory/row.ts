@@ -50,6 +50,7 @@ import {
 import { resolveClientSince } from "../../lib/client-since";
 import { formatStudioTime, studioDateKey, studioDayKeyOf, toDate } from "../../lib/studio-time";
 import { WEEK_AHEAD_DAYS } from "../../lib/schedule-window";
+import { isStaffBlock } from "../../lib/booking-state";
 import { ageAndBirthday, sessionsSplit } from "../client-admin/account";
 import type { PackageNameIndex } from "../renewals/settings";
 import { addDays, daysBetween, sessionDayKey, weekdayOf } from "../client-history/model";
@@ -195,7 +196,9 @@ export function prepareDirectory(input: DirectoryInput): DirectoryContext {
   if (input.schedules) {
     bookingsByClient = new Map();
     for (const b of input.schedules) {
-      if (!b || b.status === "Cancelled" || !b.clientId) continue;
+      // A Mindbody "Unavailable" block is a trainer's time, never a booking
+      // (lib/booking-state.ts, isStaffBlock; the Openings round, Sep 27 2026).
+      if (!b || b.status === "Cancelled" || !b.clientId || isStaffBlock(b)) continue;
       if (startMs(b) === null) continue;
       const list = bookingsByClient.get(b.clientId) ?? [];
       list.push(b);

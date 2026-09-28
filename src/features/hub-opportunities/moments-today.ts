@@ -40,7 +40,7 @@ import { clientDisplayName } from "../../lib/client-name";
 import { canQuoteSessionNumber, homeCutoverOf } from "../../lib/client-coverage";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
-import { bookingState, type LoggedSessions } from "../../lib/booking-state";
+import { bookingState, isStaffBlock, type LoggedSessions } from "../../lib/booking-state";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { criticalNotesOn } from "../../lib/hub-critical-notes";
 import { formatStudioTime, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
@@ -242,7 +242,6 @@ export interface MomentsTodayInput {
   trainerNameOf?: (trainerId: string) => string | null;
 }
 
-const isUnavailable = (b: ScheduleEntry) => (b.clientName ?? "").toLowerCase().includes("unavailab");
 const startOf = (b: ScheduleEntry) => toDate(b.startTime)?.getTime() ?? 0;
 const endOf = (b: ScheduleEntry) => toDate(b.endTime)?.getTime() ?? startOf(b) + 30 * 60_000;
 
@@ -278,7 +277,7 @@ function sessionNumberFor(
   const nowMs = input.now.getTime();
   const thisStart = startOf(booking);
   const between = input.schedules.filter(
-    (b) => b.clientId === client.id && b.status !== "Cancelled" && !isUnavailable(b) && startOf(b) > nowMs && startOf(b) < thisStart,
+    (b) => b.clientId === client.id && b.status !== "Cancelled" && !isStaffBlock(b) && startOf(b) > nowMs && startOf(b) < thisStart,
   ).length;
   return count + between + 1;
 }
@@ -485,7 +484,7 @@ export function momentsToday(input: MomentsTodayInput): RunSheetEntry[] {
   const myIdSet = new Set(input.myIds.filter(Boolean));
   const byClient = new Map<string, ScheduleEntry[]>();
   for (const b of input.schedules) {
-    if (!b || b.status === "Cancelled" || isUnavailable(b)) continue;
+    if (!b || b.status === "Cancelled" || isStaffBlock(b)) continue;
     if (studioDateKey(b.startTime, input.tz) !== input.day) continue;
     const key = b.clientId ?? `unlinked:${b.id ?? b.clientName}`;
     const list = byClient.get(key) ?? [];

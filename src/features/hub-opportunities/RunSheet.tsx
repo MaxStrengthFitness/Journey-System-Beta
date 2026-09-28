@@ -22,7 +22,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
-import { loggedSessions } from "../../lib/booking-state";
+import { isStaffBlock, loggedSessions } from "../../lib/booking-state";
 import { myTrainerIds } from "../../lib/live-session";
 import { formatStudioTime, studioTodayKey } from "../../lib/studio-time";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
@@ -217,7 +217,7 @@ export function RunSheet({
   const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
 
   const entries = useMemo(() => {
-    const bookedIds = new Set(schedules.map((b) => b.clientId).filter(Boolean) as string[]);
+    const bookedIds = new Set(schedules.filter((b) => !isStaffBlock(b)).map((b) => b.clientId).filter(Boolean) as string[]);
     const booked = clients.filter((c) => c.id && bookedIds.has(c.id));
     const ctx = prepareDirectory({
       today,

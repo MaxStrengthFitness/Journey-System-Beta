@@ -144,6 +144,17 @@ describe("next booking", () => {
     expect(row.today?.over).toBe(true);
   });
 
+  it("never reads a Mindbody Unavailable block as her next booking (isStaffBlock)", () => {
+    const ctx = makeContext({
+      schedules: [
+        makeBooking({ clientId: "a", clientName: "Unavailable", start: eastern("2026-09-28", "09:00") }),
+        makeBooking({ clientId: "a", start: eastern("2026-10-01", "08:30") }),
+      ],
+    });
+    const row = buildDirectoryRow(makeClient({ id: "a" }), ctx);
+    expect(row.next.text).toBe("Thu 8:30 AM");
+  });
+
   it("matches a booking by client id only, never by name", () => {
     const ctx = makeContext({ schedules: [makeBooking({ clientId: "someone-else", clientName: "Nancy Kowalski", start: eastern("2026-09-28", "09:00") })] });
     const row = buildDirectoryRow(makeClient({ id: "a", firstName: "Nancy", lastName: "Kowalski" }), ctx);
