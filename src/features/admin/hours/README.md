@@ -26,4 +26,4 @@ Monday to Sunday (`weekStartOf`). A leader reads this on Monday morning about th
 
 - `hours.ts` — pure: months, weeks, the tally, `formatHours`. `hours.test.ts` beside it.
 - `AdminHoursTab.tsx` — the screen. `hours.render.test.tsx` mounts it for one studio, every studio and a month flip.
-- `../sessions-range.ts` — the read. `../scope.ts` — the scope.
+- `../sessions-range.ts` — the read. It takes an optional `fromServer` since the Openings round (Sep 27 2026): My Profile's Your week passes it, so an answer only the iPad's cache gave is "can't read"; Hours, Insights and the Overview don't, and read as before. `../scope.ts` — the scope.

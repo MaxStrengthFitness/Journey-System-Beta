@@ -3,14 +3,18 @@
 When the studio is usually busy, what opened up, and what to offer: the
 round is proposed in `docs/rounds/2026-09-27-openings.md` and AJ approved it
 on Sep 27 2026 ("love it, lets go"; his answers to the OK list are at the end
-of that document). Built so far:
+of that document). Built:
 
 - **the whole-read record** (`docs/rounds/2026-09-27-coverage-record.md`),
   shipped on its own so the weeks start counting before the rest exists;
-- **the pure core** (phase 1): every rule and every sentence, with nothing on
-  screen yet and nothing that reads or writes the database. The Sunday job's
-  step, the report script and the screens are later phases, and they call
-  this core rather than keep a rule of their own.
+- **the pure core** (phase 1, this folder): every rule and every sentence,
+  with nothing that reads or writes the database;
+- **the rest of the round** (the same night, branch `openings`): the Sunday
+  job's step (`server/openings-step.ts`) and the report script, the screens
+  (`ui/`, with their own `README.md`), marks, Team's and the Overview's
+  lines, the Wrap-up's Times with room, the standing week's three blocks,
+  and My Profile's Your week and My clients. They all call this core rather
+  than keep a rule of their own; the round document says what each built.
 
 It never books, holds, or asks Mindbody anything: it reads the bookings
 Journey already syncs, and every offer ends "Check it in Mindbody before you
@@ -170,7 +174,7 @@ call it.
   as a courtesy to the client at the iPad. The Wrap-up's "Times with room"
   shows times only: no names, no reasons.
 
-## For the phases to come
+## How the Sunday job and the screens use it
 
 **The Sunday job's step** (phase 3) reads, per linked studio, and hands the
 lot to `foldSummary`:
@@ -200,7 +204,9 @@ Openings uses, its door opening Openings on "Anyone"; the Overview's is
 ### What the shared docs must say (the docs phase, phase 13)
 
 The pure core wrote nothing outside this folder but these notes; the docs
-phase carries them into the shared documents.
+phase carried them into the shared documents (Sep 27 2026: CLAUDE.md,
+ARCHITECTURE, data-and-metrics, START-HERE, the glossary, KNOWN-TRAPS and the
+round document). They stay here as the record of what the core asked for.
 
 - **CLAUDE.md, "Where things are"**: a row for Openings pointing here
   (`rows` → `whose` → `days` → `agreed` → `room` → `fold` → `summary-doc` →

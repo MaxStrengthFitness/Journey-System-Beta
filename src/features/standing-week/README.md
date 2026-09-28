@@ -14,7 +14,10 @@ trainer **proposes** it on My Profile. A studio leader **agrees** it on My
 Studio → Team. Journey then reads the coming week's Mindbody bookings
 against every agreed week and says, in sentences, where they differ: the
 free slots a leader can fill, the regulars booked somewhere else, and the
-slots someone else is booked in.
+slots someone else is booked in. Since the Openings round Team shows one
+line with a door, and My Studio → Openings → Next 7 days lists the free and
+moved regulars (a slot someone else is booked in is shown nowhere: open for
+AJ in the round document).
 
 AJ: *"Journey acting on it as a read-only verification that respects that
 existing system."* The front desk books the regulars in Mindbody as
@@ -39,7 +42,7 @@ email a client, and would clash with the front desk.
 | `AwayEditor.tsx` | **Away**: the days a trainer is away, added and removed one range at a time. The trainer's on My Profile, a leader's in Team's Review |
 | `MyStandingWeek.tsx` | My Profile → My standing week ("When I usually take clients" over the editor), with Away below it |
 | `ColleagueStandingWeek.tsx` | A colleague's profile → Standing week: their agreed week and days away, read only. **Unreachable today**: another trainer's profile can't be opened in the app (the other profiles were trimmed to My Profile on Sep 26, and ClientsView's `onSelectTrainer` is never called). The Openings round shows colleagues' usual weeks inside Openings instead of reopening profiles; until then this card and its render test stand, unused |
-| `StandingWeeksPanel.tsx` | My Studio → Team → Standing weeks: the next seven days (who is away, then what differs), then each person's standing week |
+| `StandingWeeksPanel.tsx` | My Studio → Team → Standing weeks: the next seven days (who is away, then, since the Openings round, one line with a door to Openings), then each person's standing week |
 
 ---
 
@@ -331,6 +334,19 @@ editor offering nothing. `MyStandingWeek`, `ColleagueStandingWeek` and
 `StandingWeeksPanel` render tests cover the words, a proposal of three
 blocks, a colleague's day of three, and a leader adding a third block
 before agreeing.
+
+**Team's next seven days (phase 7).** Team no longer lists the check's
+findings or a Free slot badge. Under "The next seven days" it says who is
+away this week, then one line that is its door: "3 free slots in the next 7
+days · See them on Openings." (`teamLine`), or "No free slots ahead in the
+next 7 days." (`teamNoneSentence`) when the check found only what Openings
+doesn't list. Both count Openings' own lines (`nextDays`, built with the same
+people and staff ids as Openings), never `check.findings`, which also hold
+slots earlier today and Sundays. The door calls `showOpenings("next", {
+kind: "anyone" })` and `openMyStudioSection("openings")`, so typing in a
+Review is asked about first. There is no line until the server answers, and
+Team names no client. The check still runs, for its state sentence (reading,
+offline, failed, not linked, nothing agreed) and for Openings.
 
 ## Not built (see the round document)
 

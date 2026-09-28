@@ -161,8 +161,8 @@ AJ's own tour, Sep 21 2026.
 | **Client profile** | Opened from the directory or the roster: the whole record of a person. "The four tabs run by depth: Journey (what she has done, the glance on the floor), Programming (what she's meant to do), Notes & Profile (who she is), Activity Archive (the whole record). Don't reorder, merge or add a tab without asking." |
 | **Start Session** | The door to the Active Session — briefing, live grid, wrap-up. Ranks 1 to 3 |
 | **Learning** | The protocol, every machine, and guides and coaching cues on becoming a better trainer |
-| **My Studio** | "How can I help the team right now?" Relay · Machines · Team · Studio |
-| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: the hours they usually work and their regulars, proposed to a studio leader, and the days they're away. On a colleague's profile, their agreed week, read only |
+| **My Studio** | "How can I help the team right now?" Relay · Openings · Machines · Team · Studio. **Openings** (since Sep 27 2026) is when the studio is usually busy, what opened up this week, what to offer a client for good, and who's usually in |
+| **My Profile** | A trainer's own rundown — who's coming up, how their coaching is going — and, since Sep 27 2026, **My standing week**: when they usually take clients (up to three blocks a day) and their regulars, proposed to a studio leader, and the days they're away; and, since the Openings round, **Your week** (clients trained, session time, first session to last) and **My clients** (the clients they have trained most). Another trainer's profile can't be opened in the app, so colleagues' agreed weeks are seen on My Studio → Openings → Who's usually in |
 | **Operations** | "Where are we going wrong, and where are we going right?" Take what the app has gathered, put it together, see what it says |
 | **Admins dashboard** | Corporate setting the standard, the machines, and getting everyone set up for success |
 | **Switch studio** | In the header. Decides which floor loads, whose roster you search, which schedule you see — more than a preference |
@@ -185,6 +185,8 @@ AJ's own tour, Sep 21 2026.
 | The company-only screens | `src/features/admins/` |
 | The board, tasks, kudos, private notes | `src/features/relay/` |
 | A trainer's standing week, the days away, and the week's free slots | `src/features/standing-week/` |
+| Openings (the usual week, what opened up, what to offer, who's usually in) and the Wrap-up's Times with room | `src/features/openings/` (the rules and every sentence), `src/features/openings/ui/` (the screens) |
+| Your week and My clients on My Profile | `src/features/trainer-profile/` |
 | Who counts as working at a studio (every list of "the team") | `src/lib/who-works-here.ts` |
 | Renewals and packages | `src/features/renewals/` |
 | Colours, spacing, the look | `src/index.css`, `equipment.tokens.css`, `admin.tokens.css` |
@@ -235,12 +237,30 @@ them is most of what makes a request land correctly.
 - **A thread** — a note is not a fact, it is a story. Updates hang off the
   original rather than becoming new notes. Contradicting a note *adds* to it.
 - **Mattering** — when a note applies: Always · From–until · Only on a day.
-- **A standing week** — a trainer's usual week at a studio: their hours and
-  their **regulars** ("Judy, Monday 8:00"). The trainer proposes it, a studio
+- **A standing week** — a trainer's usual week at a studio: when they take
+  clients (up to three **blocks** a day, with the breaks left out) and their
+  **regulars** ("Judy, Monday 8:00"). The trainer proposes it, a studio
   leader agrees it, and Journey checks the coming week's bookings against it
   to find the **free slots**. It never books or holds anything in Mindbody.
   A trainer's days **away** block out their slots, and a regular booked on
   the **studio rotation** ("{studio} Rotation") at her time counts as usual.
+- **Openings** — the My Studio section that shows when the studio is usually
+  busy and quiet (**the usual week**, built each Sunday from eight weeks of
+  bookings), what opened up in the next 7 days, and good times to offer a
+  client for good. It never books and pings nobody. A time's word is Always
+  full, Usually full, Usually has room, Mixed, or Usually N booked.
+- **Counted** — a past day Openings counts: Journey read its bookings in full
+  from Mindbody (the day before, the day, or after) and the studio was open.
+  **Judged** — a counted day where everyone with a booking is known (every
+  trainer booked had an agreed week). Only a judged day says full or room;
+  otherwise Openings says how many were booked.
+- **A mark** — someone's word on a time, **Always full** or **Usually has
+  room**, beside the numbers and never in place of them. Anyone at the studio
+  can set one, as themselves.
+- **Who's usually in** — the part of Openings listing everyone's agreed week,
+  read only: where you see a colleague's usual week.
+- **Times with room** — the door on the Wrap-up, and the sheet it opens: the
+  times with room, with no names, safe to turn to the client.
 
 **About machines** — this is the part that matters most for franchising
 

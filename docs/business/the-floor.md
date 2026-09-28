@@ -174,6 +174,25 @@ profile, and it is never discarded there (AJ, Sep 27 2026: "Ideally the end
 session note is made for the next sessions pre session briefing but also can
 be filed to the profile").
 
+**Her next session, and Times with room** (the Openings round, Sep 27
+2026). The trainer is the one with the client right after a session, and AJ:
+"if a client's next session is not booked, the wrap up could offer a door to
+openings." The Next card asks the server for her own bookings from now on, so
+a booking ten days out, or at Strongsville, counts ("Next session: Tue, Oct 6
+· 8:00 AM at Strongsville."), and it never says a plain "Nothing booked yet":
+it says how far it looked ("Nothing booked in the next 30 days. Book the next
+one before they leave.", or 7 days when the month wasn't read in full today),
+"Checking the next booking…" in the space the answer will take, or "Can't
+check the next booking right now." Inside that line sits the door to **Times
+with room**: quiet on every Wrap-up with something to offer, prominent only
+when nothing is booked, and never there before the studio has times to offer.
+It opens a sheet on top of the Wrap-up (the Profile note is never lost) with
+times only, never a name and never why a time is free, so the iPad can be
+turned to her; it ends "Check it in Mindbody before you promise it. Journey
+doesn't book." The card is a rank 2 screen, so none of this is waited for:
+the reads run in the background, and the door arrives inside the space
+already kept for the line, so nothing moves under the trainer's finger.
+
 **The confetti stays** (AJ, Sep 27 2026: "I like it keep it", answering
 question 8 of the Sep 21 audit). It is the one deliberate exception to "no
 hype, no celebration" above: a short burst as the screen opens, a little

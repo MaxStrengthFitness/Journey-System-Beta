@@ -1300,10 +1300,13 @@ colleague's card, offline, the new names and looks) is walked in Round 22.
 
 - [ ] **The card is on your own profile, at your studio.** Open your own
   profile: **My standing week** with the studio's name, "Not proposed yet."
-  Open a colleague's profile: no editor, only their read-only **Standing
-  week** card (since Sep 27 2026; Round 22). *If it says the rules may not
-  be deployed:* deploy them.
-- [ ] **Build a week.** Tap **Hours** on Monday (7:00 AM – 1:00 PM), then on
+  (A colleague's profile can't be opened in the app since Sep 26 2026: their
+  agreed week is on My Studio → Openings → Who's usually in, Round 23.) *If
+  it says the rules may not be deployed:* deploy them.
+- [ ] **Build a week.** *(Words since the Openings round: "Hours" is **Add
+  a block**, up to three a day, and "Outside the day's hours" is "Outside when
+  they take clients"; Round 23 walks the three blocks.)* Tap **Hours** on
+  Monday (7:00 AM – 1:00 PM), then on
   Tuesday: Tuesday copies Monday. Change Monday's start to 1:30 PM: the end
   moves after it. The end list only offers times after the start. Tap
   **Regular** on Monday, pick a time, type the first three letters of a
@@ -1331,7 +1334,10 @@ colleague's card, offline, the new names and looks) is walked in Round 22.
   Remove a regular in the editor: the button reads **Agree it as changed**.
   Agree it: the trainer's card says "Agreed", and the removed regular is gone
   from their editor too.
-- [ ] **The next seven days.** Give an agreed week a regular who IS booked
+- [ ] **The next seven days.** *(Since the Openings round, Team lists none of
+  this: it shows one line with a door, and My Studio → Openings → Next 7 days
+  lists the free and moved regulars. A slot someone else is booked in is
+  shown nowhere. Walk it there, Round 23.)* Give an agreed week a regular who IS booked
   this week at that time with that trainer: nothing is listed for her ("All N
   agreed slots are booked as usual"). Give it a regular who is NOT booked
   that day: "{Trainer}'s {day} at {time} is open: {her} isn't booked for it."
@@ -1496,6 +1502,10 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
 
 **The standing week**
 
+*Since the Openings round, Team shows no slots: where these steps say "Free
+slot" or "open", look at My Studio → Openings → Next 7 days instead (Round
+23). Team keeps who is away and one line with a door.*
+
 - [ ] **Away on My Profile.** Under My standing week, add a range away (even
   with nothing proposed): it saves at once. On Team: "{name} is away {from} –
   {to}." once, and no open, moved or Free slot on those days. If every agreed
@@ -1503,10 +1513,11 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
   seven days fall on days away." Remove the range: the slots come back.
 - [ ] **A leader sets it too.** In Team's Review, a leader adds a range away
   for that trainer; the trainer's My Profile shows it.
-- [ ] **A colleague's week.** Open a colleague's profile: a read-only
-  **Standing week** card with their agreed hours and regulars and days away
-  that haven't ended, or "No agreed week yet". Their waiting proposal and its
-  note are not shown.
+- [ ] **A colleague's week.** A colleague's profile can't be opened in the
+  app, so their agreed week is on My Studio → Openings → **Who's usually
+  in**: when they take clients and their regulars, read only, and their days
+  away that haven't ended, or "No agreed week yet". Their waiting proposal
+  and its note are not shown.
 - [ ] **A leader's changes never vanish.** Change something in one person's
   Review, then tap another person's Review: "You have unsaved changes to
   {name}'s standing week. Leave without saving?" Keep editing keeps it. The
@@ -1597,6 +1608,187 @@ in headless Chrome, and My Studio's dark mode has never been looked at.
 - [ ] **Dark mode, all of My Studio.** Solid buttons' words read, anything
   selected is blue, flags and late jobs are plum, Delete is crimson.
 
+## Round 23 — Openings · *Sep 27 2026, branch `openings`*
+
+When the studio is usually busy, what opened up, and what to offer a client;
+three blocks a day on the standing week; Your week and My clients on My
+Profile; Team's and the Overview's line; and the Wrap-up's Times with room.
+The round document is `docs/rounds/2026-09-27-openings.md`. **Deploy the
+rules first** (`npm run test:rules`, then `firebase deploy --only
+firestore:rules`): without them the marks can't be read or set, so A new
+regular time offers nothing, and a week with a 15th block is refused. Walk it
+on two iPads, a **Life Transformer's** and a **head trainer's**, both at the
+same studio, and do every screen **portrait and landscape, light and dark**.
+Nothing in this round has been seen in the signed-in app on an iPad yet:
+only in headless Chrome on harness pages.
+
+**At the keyboard**
+
+- [ ] **Every iPad on the new version.** After the push, on each iPad go to
+  the Hub (or tap the new-version line under the header) until it has loaded
+  the new build. Do this before anyone saves a standing week with three
+  blocks on a day: an older build keeps only the first 14 blocks, and a
+  leader agreeing a week on one saves the shortened week without a word.
+- [ ] **The first summary, if you want it before Sunday.** In PowerShell, in
+  the project folder: `npx tsx scripts/openings-report.ts` (read-only: each
+  studio's weeks, which days counted and why not), then `npx tsx
+  scripts/run-machine-trends.ts --only openings` (a dry run), then the same
+  with `--commit`. In the Firebase console → the named database → `studios`
+  → a studio → `watch` → `openings` is there, with `builtAt` today.
+- [ ] **No index change.** Firebase console → Indexes: nothing new is needed
+  or offered. If the CLI ever offers to delete indexes that are not in the
+  file, the answer is N.
+
+**The standing week: three blocks**
+
+- [ ] **The words.** On My Profile → My standing week the heading over the
+  editor reads **When I usually take clients**, the intro "When you usually
+  take clients at {studio}, and your regulars", and a day with nothing set
+  "Doesn't take clients". No screen says "hours".
+- [ ] **Three blocks, no fourth.** On Monday tap **Add a block**, then **Add
+  another block** twice: after the third the button is gone. Remove the
+  middle one and add again. With VoiceOver on, the second block reads
+  "Monday, block 2: starts".
+- [ ] **The breaks line.** Under the days: "A break inside a block shows as
+  room on Openings, so leave the breaks out."
+- [ ] **Portrait and landscape.** In portrait the three blocks sit one to a
+  line; in landscape side by side, never the first alone above the other two.
+- [ ] **Outside when they take clients.** A regular at a time outside every
+  block shows "Outside when they take clients".
+- [ ] **Propose, then agree.** Propose the week (it saves: the rules allow
+  21 blocks). On My Studio → Team the subtitle reads "when they take
+  clients, and their regulars"; Review shows "Monday: …, … and …, was …";
+  Agree it. The row's summary never says "hours".
+
+**My Studio → Openings**
+
+- [ ] **Five sections.** The masthead reads Relay · Openings · Machines ·
+  Team · Studio on both iPads. In portrait the studio-and-date line sits
+  under the tabs, nothing cut off; in landscape it sits beside them.
+- [ ] **The parts.** The usual week (it opens here) · Next 7 days · A new
+  regular time · Who's usually in, as a light second row that wraps rather
+  than scrolls sideways. Leave Openings on Next 7 days, go to the Hub and
+  back: it opens on Next 7 days. Sign out and in: it opens on The usual week.
+- [ ] **The usual week, before four weeks.** With fewer than four weeks
+  counted, there is no grid, only one sentence: "The usual week needs 4 weeks
+  Journey has read in full. It has N so far …" (or, before the first Sunday,
+  "The usual week is built early each Sunday. The first one comes this
+  Sunday."). A studio whose Mindbody isn't linked says so.
+- [ ] **The grid** (once four weeks are counted, or on a studio seeded from
+  the PC). Monday to Saturday across, half-hours down, each cell a 40px
+  button with its word, whole, never cut short; in portrait no sideways
+  scroll. Tap a time: its sheet opens in the Context Panel (a sheet from the
+  foot in portrait, a column in landscape) with the sentence, the days not
+  counted and why, how many are usually booked and in, the regulars, the
+  cancellations. The "Built Sunday, …" line sits above the grid.
+- [ ] **Next 7 days.** Cancel one of this week's bookings in Mindbody and
+  wait for the sync: the time appears, "A cancellation on {day}, and nobody
+  has booked into it since". A regular not booked this week: "A regular
+  isn't booked for it", with "booked again from …" or "not booked again
+  through …". No client's name until you tap the line; then the name, whose
+  regular, and "Check it in Mindbody before you promise it."
+- [ ] **Can't tell is never open.** Wi-Fi off, open Next 7 days: "Can't tell
+  yet. The next 7 days' bookings haven't come back from the server", no
+  lines. Wi-Fi on: the lines come.
+- [ ] **The chips.** The Life Transformer with an agreed week opens on "With
+  you"; the head trainer without one on "Anyone"; a chip per trainer with an
+  agreed week, in name order, no count beside a name. A chip that empties
+  the list says so by the chip ("Nothing has opened up with you in the next
+  7 days. Anyone shows the rest of the studio.").
+- [ ] **A new regular time.** "Safe to show a client" at the top, every
+  list ending "Check it in Mindbody before you promise it. Journey doesn't
+  book." A time marked Always full is never listed. When the month hasn't
+  been read today: "Can't check the coming {weekdays} yet."
+- [ ] **Who's usually in.** Everyone who works at the studio, in name order,
+  each with their agreed week read only (blocks, regulars as "a regular",
+  days away that haven't ended); "No agreed week yet" for a week nobody has
+  agreed. **Show the regulars' names** shows them. This is where a
+  colleague's week is seen now (their profile can't be opened).
+- [ ] **Names.** Both iPads see trainers' names (AJ: relaxed for the beta);
+  client names only after a tap, on every part.
+
+**Marks**
+
+- [ ] **Mark a time.** On the head trainer's iPad open a time, **Mark this
+  time**, choose the word the bookings disagree with: the plum line saying
+  the bookings disagree shows before Save, and the line under the choice
+  says what the word changes for this time. Add a note and Save. The sheet
+  shows the mark first ("Marked Always full by {you}, {date}.", the note in
+  quotation marks), and "Marked" shows on that cell of the grid on the
+  Life Transformer's iPad at once.
+- [ ] **Change and remove.** On the Life Transformer's iPad change the
+  colleague's mark: it is signed by them now. **Remove the mark** asks once
+  ("Remove this mark? It goes for everyone at {studio}.").
+- [ ] **Typing is never lost.** Type a note, then (1) tap another part, (2)
+  tap another time in the grid, (3) tap the panel's X: each asks "You have
+  unsaved changes to the mark on {time}". Keep editing keeps the note; the
+  time already open asks nothing.
+- [ ] **The keyboard.** With the on-screen keyboard up on the note, the note
+  box and Save can be reached, in portrait and landscape (and on an iPad mini
+  in landscape, if there is one: the headless stand-in left the sheet very
+  little room there).
+- [ ] **Offline.** Wi-Fi off on one iPad: a time's sheet says it can't tell
+  whether anyone has marked the time, with nothing to tap. A form already
+  open saves at once and the foot says "Saved on this iPad. It goes to the
+  studio when the connection is back."; the other iPad gets the mark when the
+  Wi-Fi returns.
+
+**Team and the Overview**
+
+- [ ] **Team's line.** On My Studio → Team → Standing weeks: who is away
+  this week, then one line, "N free slots in the next 7 days · See them on
+  Openings." (or "No free slots ahead in the next 7 days."), naming no client.
+  Tap it: My Studio → Openings → Next 7 days, on "Anyone". With a Review
+  half-typed, the line asks first.
+- [ ] **The Overview's line.** On Operations → Overview, the next three
+  days carries "{day} · {time}, usually full, has room · See it on Openings."
+  when there is one (at most three, then "and N more on Openings"). Tap it:
+  trainer mode, My Studio → Openings → Next 7 days, on "Anyone".
+- [ ] **The Overview never counts an unread week as zero.** Wi-Fi off, open
+  the Overview: at most "Reading the week…" for a moment, then the tiles show
+  "—" and Changes today, the next three days and This week's changes say
+  "Could not be read just now."; Needs you says why inside the strip and
+  never "Nothing needs you right now".
+
+**The Wrap-up**
+
+- [ ] **Her next booking.** Finish a session for a client booked ten days
+  out: "Next session: {day} · {time}." A client booked at Strongsville (on
+  the same Mindbody as Westlake and Willoughby) reads "… at Strongsville."
+- [ ] **Nothing booked.** For a client with nothing on file: "Nothing booked
+  in the next 30 days. Book the next one before they leave." (or 7 days, if
+  the month wasn't read today), with the prominent **Times with room**
+  button inside the same line. The dose Dial and the note buttons don't move
+  when it arrives.
+- [ ] **Booked while she's there.** With the card showing nothing booked,
+  book her in Mindbody: within seconds the card turns green and the door
+  steps back to the quiet text button.
+- [ ] **The sheet.** Type a Profile note, then open Times with room: a sheet
+  over the Wrap-up with Next 7 days (chips by day, "(this week only)" where a
+  regular is out) and Most weeks, "With you · Anyone", the rotation line on a
+  rotation day, and the foot. No client's or trainer's name anywhere, and no
+  reason a time is free. Close it: the Profile note is still there.
+- [ ] **Offline.** Wi-Fi off, finish a session: "Can't check the next
+  booking right now.", no prominent door; the sheet (if its door shows)
+  says "Can't tell right now." once.
+
+**My Profile: Your week and My clients**
+
+- [ ] **Your week.** On your own profile, after My standing week: **Your
+  week at {studio}** with clients trained, sessions and session time for
+  this week and last. Check them against Operations → Insights → Hours for
+  the same trainer and weeks: they match. A day with a morning and an
+  evening block of sessions shows two parts under First session to last.
+- [ ] **Your week offline.** Wi-Fi off, open your profile: "Can't read the
+  sessions just now.", never 0.
+- [ ] **My clients.** Right after the Kaizen Roster: coached lately first,
+  "N sessions with you in Journey", "Last in Journey: {date}" (or "Last
+  session" where Journey holds her whole story), the Kaizen mark on roster
+  clients, whole names that wrap in portrait, **Show all N** past 12, and a
+  tap opens the client. While the studio has no cutover date (or it is still
+  ahead) the FileMaker line shows.
+- [ ] **Your own only.** Neither card shows anywhere but your own profile.
+
 ---
 
 ## Findings log
@@ -1645,4 +1837,5 @@ Screenshot:
 | 20 — The voice review and the standing week (Sep 27) | 22 | | |
 | 21 — A new version, picked up safely (Sep 26) | 7 | | |
 | 22 — The voice review follow-up (Sep 27) | 43 | | |
-| **Total** | **368** | | |
+| 23 — Openings (Sep 27) | 36 | | |
+| **Total** | **404** | | |
