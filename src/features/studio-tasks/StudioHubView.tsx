@@ -76,6 +76,7 @@ import { GlanceBand, type GlanceCounts } from "../relay/GlanceBand";
 import { Board } from "../relay/board/Board";
 import { SinceYouWereIn } from "../relay/board/SinceYouWereIn";
 import { useStudioSettings } from "../studio-settings";
+import { saveDayLog, useDayLog, type DayLogPatch } from "../relay/notes/day-log-store";
 import { jobsBehind, type DoorId } from "../relay/board/doors";
 import { ShiftRings } from "../relay/board/ShiftRings";
 import { FloorMap } from "../relay/board/FloorMap";
@@ -208,6 +209,18 @@ export function StudioHubView({
    */
   const settings = useStudioSettings(relay ? (activeStudioId ?? null) : null, activeStudio);
   const quietFloor = settings.value("quietFloorSessions");
+  /*
+   * TODAY'S DAY LOG (the Journal, the second wave): Opening's things to
+   * carry and Close out's line, at studios/{s}/dayLogs/{uid}_{day}, the
+   * trainer's own. The Auth uid, which the rules pin.
+   */
+  const dayLogUid = auth.currentUser?.uid ?? null;
+  const dayLogDay = relay?.now.todayKey ?? studioDateKey(new Date()) ?? "";
+  const dayLog = useDayLog(relay ? (activeStudioId ?? null) : null, dayLogUid, dayLogDay);
+  const saveTodaysLog = async (patch: DayLogPatch, isNew: boolean) => {
+    if (!activeStudioId || !dayLogUid || !dayLogDay) throw new Error("Sign in and pick a studio first.");
+    await saveDayLog({ studioId: activeStudioId, uid: dayLogUid, day: dayLogDay, patch, isNew });
+  };
   const [composingJob, setComposingJob] = useState(false);
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
   const openJob: TeamJob | null = useMemo(
@@ -540,6 +553,8 @@ export function StudioHubView({
             unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
             keptToday={keptToday}
             quietFloorSessions={quietFloor ?? undefined}
+            dayLog={dayLog}
+            onSaveDayLog={saveTodaysLog}
             around={<SinceYouWereIn rows={rows} jobs={teamJobs.jobs} resolved={recentlyResolved} playbook={playbookEntries} />}
           />
         ) : (

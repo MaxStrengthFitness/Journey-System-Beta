@@ -72,6 +72,7 @@ import {
   type CloseoutItem,
 } from "./shift-cards";
 import { CloseOutCard, OpeningCard, ShiftCardsLine, type ShiftLinePart } from "./ShiftCards";
+import type { DayLogPatch, DayLogRead } from "../notes/day-log-store";
 import "./board.css";
 
 /**
@@ -165,6 +166,13 @@ export interface BoardProps {
    * app's default.
    */
   quietFloorSessions?: number;
+  /**
+   * Today's day log (the Journal, the second wave): Opening's things to
+   * carry and Close out's line, read by the host (notes/day-log-store).
+   */
+  dayLog?: DayLogRead;
+  /** Save part of today's day log (private to the trainer). Absent: the cards keep no log. */
+  onSaveDayLog?: (patch: DayLogPatch, isNew: boolean) => Promise<void>;
 }
 
 export function Board({
@@ -182,6 +190,8 @@ export function Board({
   around,
   keptToday = 0,
   quietFloorSessions,
+  dayLog,
+  onSaveDayLog,
 }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
@@ -465,7 +475,11 @@ export function Board({
     () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length, todayKey: now.todayKey }) : []),
     [card, now, rows, requests, me, tracker.handed.length],
   );
-  const showOpening = card === "opening" && folds.opening === null && opening.length > 0;
+  // The day log (the second wave): Opening shows for the things to carry even
+  // with nothing else waiting, when the host keeps a log.
+  // undefined while it loads; null when there is none yet (or it couldn't be read: a save merges, and loses nothing written today on another iPad but what it replaces).
+  const log = dayLog?.state === "ready" ? dayLog.log : dayLog?.state === "failed" ? null : undefined;
+  const showOpening = card === "opening" && folds.opening === null && (opening.length > 0 || Boolean(onSaveDayLog));
   const closeAt = closeoutAt(now);
   const showCloseout = (card === "closeout" && folds.closeout === null) || (preview && card !== "closeout");
   const leftOpen = useMemo(() => closeoutItems(tracker, now.todayKey), [tracker, now.todayKey]);
@@ -582,7 +596,15 @@ export function Board({
         )}
       </div>
 
-      {showOpening && <OpeningCard lines={opening} onGo={goFromOpening} onFold={() => fold("opening")} />}
+      {showOpening && (
+        <OpeningCard
+          lines={opening}
+          onGo={goFromOpening}
+          onFold={() => fold("opening")}
+          carry={log === undefined ? null : log?.carry ?? []}
+          onSaveCarry={onSaveDayLog ? (carry) => onSaveDayLog({ carry }, log === null) : undefined}
+        />
+      )}
       {showCloseout && (
         <CloseOutCard
           items={leftOpen}
@@ -594,6 +616,8 @@ export function Board({
           actions={actions}
           onHandOn={(item) => void handOn(item)}
           onFold={() => (card === "closeout" ? fold("closeout") : setPreview(false))}
+          dayLog={log}
+          onSaveDay={onSaveDayLog ? (line) => onSaveDayLog({ facts: draft, line }, log === null) : undefined}
         />
       )}
 

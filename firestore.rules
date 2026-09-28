@@ -1541,6 +1541,83 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && request.auth.uid == uid;
     }
 
+    // WAVE 2 RELAY: the Journal's notes. trainers/{trainerId}/notes/{noteId}
+    // may carry the Journal's three optional fields: `noteType` (one of six),
+    // `fields` (a typed note's three template answers) and `hunch` (a Trend
+    // note: its claim, how it will show, the sample, the evidence so far,
+    // when it was retired). Everything else is trainerNoteValid's, word for
+    // word: this block only lets those three keys in beside it, so a note
+    // written before reads and saves exactly as it did. Private by path,
+    // as every note is. features/relay/notes/journal.ts.
+    match /trainers/{trainerId}/notes/{noteId} {
+      function journalFieldsValid(d) {
+        return (!('noteType' in d) || d.noteType == null
+                  || d.noteType in ['client', 'machine', 'protocol', 'research', 'trend', 'personal'])
+            && (!('fields' in d) || d.fields == null || (d.fields is map && d.fields.size() <= 3))
+            && (!('hunch' in d) || d.hunch == null
+                || (d.hunch is map
+                    && d.hunch.keys().hasOnly(['claim', 'how', 'need', 'unit', 'evidence', 'retiredAt'])
+                    && d.hunch.get('claim', '') is string && d.hunch.get('claim', '').size() <= 500
+                    && d.hunch.get('how', '') is string && d.hunch.get('how', '').size() <= 1000
+                    && d.hunch.get('need', 1) is int && d.hunch.get('need', 1) >= 1 && d.hunch.get('need', 1) <= 50
+                    && d.hunch.get('unit', 'clients') in ['clients', 'sessions']
+                    && d.hunch.get('evidence', []) is list && d.hunch.get('evidence', []).size() <= 60
+                    && (d.hunch.get('retiredAt', null) == null || d.hunch.get('retiredAt', null) is number)));
+      }
+      function journalNoteValid(d) {
+        return d.keys().hasOnly(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                                 'pinned', 'sharedWith', 'createdAt', 'updatedAt',
+                                 'links', 'log', 'teamShare', 'noteType', 'fields', 'hunch'])
+            && noteExtrasValid(d)
+            && d.keys().hasAll(['title', 'body', 'kind', 'folderId', 'clientIds', 'clientNames',
+                                'pinned', 'sharedWith', 'createdAt', 'updatedAt'])
+            && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+            && d.body is string && d.body.size() <= 10000
+            && noteKindValid(d.kind)
+            && (d.folderId == null || (d.folderId is string && d.folderId.size() <= 200))
+            && d.clientIds is list && d.clientIds.size() <= 10
+            && d.clientNames is map && d.clientNames.size() <= 10
+            && d.pinned is bool
+            && (d.sharedWith == null || (d.sharedWith is string
+                                         && d.clientIds.size() == 1
+                                         && d.clientIds[0] == d.sharedWith))
+            && d.createdAt is timestamp
+            && d.updatedAt is timestamp
+            && journalFieldsValid(d);
+      }
+      allow create, update: if isAuthenticated() && request.auth.uid == trainerId
+                            && journalNoteValid(request.resource.data);
+    }
+
+    // WAVE 2 RELAY: the day log. studios/{studioId}/dayLogs/{uid}_{day} --
+    // a trainer's own record of one day at one studio: Opening's things to
+    // carry today, Close out's facts and one line for yourself. Read and
+    // written only by the person whose uid starts the id (and is in `uid`);
+    // a list must ask for `uid == me` (index: dayLogs uid, day desc). Never
+    // shown to leaders, never counted. features/relay/notes/day-log.ts.
+    match /studios/{studioId}/dayLogs/{logId} {
+      function dayLogValid(d) {
+        return d.keys().hasOnly(['uid', 'studioId', 'day', 'facts', 'carry', 'line', 'createdAt', 'updatedAt'])
+            && d.uid == request.auth.uid
+            && d.studioId == studioId
+            && d.day is string && d.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && logId == request.auth.uid + '_' + d.day
+            && (!('facts' in d) || (d.facts is list && d.facts.size() <= 12))
+            && (!('carry' in d) || (d.carry is list && d.carry.size() <= 3))
+            && (!('line' in d) || d.line == null
+                || (d.line is map
+                    && d.line.keys().hasOnly(['what', 'soWhat', 'nowWhat'])
+                    && d.line.get('what', '') is string && d.line.get('what', '').size() <= 500
+                    && d.line.get('soWhat', '') is string && d.line.get('soWhat', '').size() <= 500
+                    && d.line.get('nowWhat', '') is string && d.line.get('nowWhat', '').size() <= 500))
+            && d.updatedAt == request.time;
+      }
+      allow get: if isAuthenticated() && logId.split('_')[0] == request.auth.uid;
+      allow list: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create, update: if isAuthenticated() && dayLogValid(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
     // CLIENTS — scoped to the reader's studios (tenancy pass, Sep 2026)
     //
     // This rule used to be `allow read: if isAuthenticated()`. Any trainer at

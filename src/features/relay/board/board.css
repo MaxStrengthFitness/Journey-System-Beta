@@ -744,6 +744,28 @@
 .rsc__none { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-muted); }
 .rsc__draft { margin: 0; font-size: 14px; line-height: 1.6; color: var(--st-ink-2); overflow-wrap: anywhere; }
 
+/* The Journal's day log on the two cards (the second wave, Sep 28 2026):
+   Opening's things to carry, Close out's one line for yourself. */
+.rsc__carry { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 0.25rem; }
+.rsc__carry-list { margin: 0; padding-left: 1.25rem; font-size: 14px; line-height: 1.5; color: var(--st-ink); }
+.rsc__carry-line { overflow-wrap: anywhere; }
+.rsc__field { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.rsc__field-l { font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
+.rsc__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.rsc__input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.rsc__private { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); }
+.rsc__private > svg { flex: none; margin-top: 2px; }
+
 .rsc-btn {
   display: inline-flex;
   align-items: center;

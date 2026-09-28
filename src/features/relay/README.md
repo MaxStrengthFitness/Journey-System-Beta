@@ -106,7 +106,7 @@ Overview for a franchise owner who sees one studio
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | My Studio → Team, people and standards: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
-| `notes/` | The Notes tab — see `notes/README.md` |
+| `notes/` | The Journal tab (the Notes tab until Sep 28 2026): notes, and since the second wave the six typed notes, shelves, hunches, the Studio shelf and the day log — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
 | `leads.ts` | Who leads the studio the iPad is in (`leadsHere`): My Studio asks it for Team and Studio, and the rules give the same answer |
 | `intent.ts` (+ test) | Opening Relay at a note, a job, a share, Mine or the Floor |

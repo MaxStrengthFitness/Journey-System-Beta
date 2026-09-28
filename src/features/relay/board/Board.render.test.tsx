@@ -56,6 +56,7 @@ import { resetShiftCards } from "./shift-cards";
 import { BEREGOND, GLORFINDEL, IORETH, MABLUNG, TODAY, ask, booking, row, template } from "./fixtures";
 import type { TaskRow } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
+import type { DayLogPatch, DayLogRead } from "../notes/day-log-store";
 
 let root: Root | null = null;
 let host: HTMLElement | null = null;
@@ -137,7 +138,15 @@ function relayValue(over: Partial<RelayContextValue> = {}): RelayContextValue {
 }
 
 async function render(
-  props: { requests?: ReturnType<typeof ask>[]; relay?: Partial<RelayContextValue>; rows?: TaskRow[]; unknown?: boolean; quietFloorSessions?: number } = {},
+  props: {
+    requests?: ReturnType<typeof ask>[];
+    relay?: Partial<RelayContextValue>;
+    rows?: TaskRow[];
+    unknown?: boolean;
+    quietFloorSessions?: number;
+    dayLog?: DayLogRead;
+    onSaveDayLog?: (patch: DayLogPatch, isNew: boolean) => Promise<void>;
+  } = {},
 ) {
   const actions = fakeActions();
   const relay = relayValue(props.relay);
@@ -165,6 +174,8 @@ async function render(
             behind={(door) => <p data-behind={door}>Lanes behind {door}</p>}
             unknown={props.unknown}
             quietFloorSessions={props.quietFloorSessions}
+            dayLog={props.dayLog}
+            onSaveDayLog={props.onSaveDayLog}
           />
         </RelayProvider>
       </ToastProvider>,
@@ -452,6 +463,51 @@ describe("the Board", () => {
     await click(button(close, "Got it"));
     expect(card("Close out")).toBeNull();
     expect(document.querySelector(".rsc-line")?.textContent).toContain("Close out · done at 4:10 PM");
+  });
+
+  /* The day log (the Journal, the second wave, Sep 28 2026). */
+
+  const typeInto = async (el: Element | null | undefined, value: string) => {
+    expect(el).toBeTruthy();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(el, value);
+      (el as HTMLInputElement).dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  it("keeps Opening's things to carry today in the day log, privately, even with nothing else waiting", async () => {
+    const onSaveDayLog = vi.fn(async () => {});
+    await render({ relay: { now: nowContext([], at("07:00"), TODAY) }, rows: [], dayLog: { state: "ready", log: null }, onSaveDayLog });
+    const opening = card("Opening");
+    expect(opening?.textContent).toContain("Things to carry today");
+    expect(opening?.textContent).toContain("Only you see these.");
+    await typeInto(opening?.querySelector(".rsc__input"), "Slow down at the door");
+    await click(button(opening, "Keep for today"));
+    expect(onSaveDayLog).toHaveBeenCalledWith({ carry: ["Slow down at the door"] }, true);
+  });
+
+  it("saves the day to the journal at Close out: the facts, what was carried, and one line for yourself", async () => {
+    const onSaveDayLog = vi.fn(async () => {});
+    await render({
+      relay: dayDone(),
+      dayLog: { state: "ready", log: { id: `${IORETH.id}_${TODAY}`, uid: IORETH.id, studioId: "s1", day: TODAY, facts: [], carry: ["Ask before I assume"], line: null } },
+      onSaveDayLog,
+    });
+    const close = card("Close out");
+    expect(close?.textContent).toContain("What you chose to carry");
+    expect(close?.textContent).toContain("Ask before I assume");
+    const inputs = close!.querySelectorAll(".rsc__carry .rsc__input");
+    await typeInto(inputs[0], "Covered Rosie Cotton");
+    await typeInto(inputs[2], "Leave the same kind of notes myself");
+    await click(button(close, "Save to my journal"));
+    expect(onSaveDayLog).toHaveBeenCalledWith(
+      {
+        facts: ["Monday, September 28.", "2 sessions on your schedule today, the last ending at 4:00 PM."],
+        line: { what: "Covered Rosie Cotton", soWhat: "", nowWhat: "Leave the same kind of notes myself" },
+      },
+      false,
+    );
+    expect(card("Close out")?.textContent).toContain("Saved to your Journal as today's day log.");
   });
 
   it("never says nothing is left when a read failed", async () => {

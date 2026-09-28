@@ -27,9 +27,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { notify } from "../../notifications";
+import { savePlaybookEntry } from "../../studio-tasks/playbook-mutations";
 import { cleanFolderName, draftFromNote, noteFields, sharePlan, sharedFields } from "./notes";
 import { newlyNamed, noteShareFields, shareStudios, teamSharePlan, type NoteShare } from "./team-share";
-import type { NoteDraft, NoteFolder, NoteLogEntry, TrainerNote } from "./types";
+import { composedBody, studioShelfDraft } from "./journal";
+import type { HunchEvidence, NoteDraft, NoteFolder, NoteLogEntry, TrainerNote } from "./types";
 
 export function notesRef(uid: string) {
   return collection(db, "trainers", uid, "notes");
@@ -90,7 +92,7 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
       createdAt: before?.createdAt ?? now,
       updatedAt: now,
     },
-    { mergeFields: [...NOTE_OWN_FIELDS] },
+    { mergeFields: ownFieldsOf(fields) },
   );
   if (plan.write) {
     // A whole overwrite every time (see SharedNote in ./types.ts).
@@ -107,7 +109,8 @@ export async function saveNote({ uid, noteId, draft, before, author }: SaveNoteA
   if (fields.teamShare) {
     for (const studioId of team.write) {
       batch.set(doc(noteSharesRef(studioId), noteId), {
-        ...noteShareFields({ noteId, ...fields }, fields.teamShare, author, studioId),
+        // A typed note travels as its answers under their labels (./journal.ts).
+        ...noteShareFields({ noteId, ...fields, body: composedBody(fields) }, fields.teamShare, author, studioId),
         updatedAt: now,
       });
     }
@@ -189,6 +192,64 @@ const NOTE_OWN_FIELDS = [
   "createdAt",
   "updatedAt",
 ] as const;
+
+/**
+ * What a save writes (the second wave, Sep 28 2026): every field it owns,
+ * and a typed note's type and answers. A hunch's claim, how it will show and
+ * its sample are written one key at a time, so its evidence (added on its
+ * own, from any iPad) and its retirement are never overwritten by a save. A
+ * note written before the Journal gains nothing it didn't have.
+ */
+function ownFieldsOf(fields: { noteType?: unknown; hunch?: unknown }): string[] {
+  const out: string[] = [...NOTE_OWN_FIELDS];
+  if (fields.noteType) out.push("noteType", "fields");
+  if (fields.hunch) out.push("hunch.claim", "hunch.how", "hunch.need", "hunch.unit");
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Hunches (the Journal, the second wave): evidence one piece at a time
+ * ------------------------------------------------------------------ */
+
+/** Adds a piece of evidence to a hunch: one array element (arrayUnion), so two iPads never erase each other's. */
+export async function appendHunchEvidence(uid: string, noteId: string, entry: HunchEvidence): Promise<void> {
+  await updateDoc(doc(notesRef(uid), noteId), {
+    "hunch.evidence": arrayUnion(entry),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Takes one piece back. arrayRemove matches the whole entry as stored. */
+export async function removeHunchEvidence(uid: string, noteId: string, entry: HunchEvidence): Promise<void> {
+  await updateDoc(doc(notesRef(uid), noteId), {
+    "hunch.evidence": arrayRemove(entry),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Retires a hunch, freeing its slot; with `null`, opens it again. Nothing is deleted. */
+export async function setHunchRetired(uid: string, noteId: string, retiredAt: number | null): Promise<void> {
+  await updateDoc(doc(notesRef(uid), noteId), {
+    "hunch.retiredAt": retiredAt,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Puts a note on the Studio shelf: a COPY, as a Playbook entry at the studio
+ * the trainer stands in, signed with their Auth uid (the Playbook's rule
+ * pins it, and refuses a client). Returns the entry's id, or null when this
+ * note can't go there (./journal.ts canGoOnStudioShelf).
+ */
+export async function putOnStudioShelf(
+  studioId: string,
+  note: Pick<TrainerNote, "noteType" | "fields" | "hunch" | "title" | "body">,
+  author: { id: string; name: string },
+): Promise<string | null> {
+  const draft = studioShelfDraft(note);
+  if (!draft) return null;
+  return savePlaybookEntry(studioId, draft, author);
+}
 
 /**
  * Adds a jot to a saved note's working log. One array element, added with

@@ -32,6 +32,19 @@ import {
 } from "./types";
 import { plainText, safeHref } from "./format";
 import { cleanTeamShare, teamShareFromDoc, teamShareProblem } from "./team-share";
+import {
+  NOTE_TEMPLATES,
+  cleanFields,
+  cleanHunch,
+  composedBody,
+  fieldsFromDoc,
+  hunchFromDoc,
+  isNoteType,
+  shelfOf,
+  typedProblems,
+  typedTitle,
+  type ShelfId,
+} from "./journal";
 
 /** Which notes the list shows. */
 export type NotesView =
@@ -42,10 +55,16 @@ export type NotesView =
   | { kind: "folder"; folderId: string }
   /* Notes colleagues shared with you (Planner rework): the list shows their
      copies, not your notes. */
-  | { kind: "withme" };
+  | { kind: "withme" }
+  /* The Journal (the second wave, Sep 28 2026): a type's shelf, the day
+     logs, the Studio shelf (the Playbook) and On this day. */
+  | { kind: "shelf"; shelf: ShelfId }
+  | { kind: "daylogs" }
+  | { kind: "studio" }
+  | { kind: "onthisday" };
 
 export interface NoteProblem {
-  field: "title" | "body" | "kind" | "clients" | "share" | "links" | "team";
+  field: "title" | "body" | "kind" | "clients" | "share" | "links" | "team" | "type";
   message: string;
 }
 
@@ -64,9 +83,12 @@ export function canShare(clientIds: string[]): boolean {
  * The title a note is saved under: the one typed, or else the body's first
  * line — so a quick jot needs no title, the way a notes app behaves.
  */
-export function effectiveTitle(d: Pick<NoteDraft, "title" | "body">): string {
+export function effectiveTitle(d: Pick<NoteDraft, "title" | "body"> & Partial<Pick<NoteDraft, "noteType" | "fields" | "hunch">>): string {
   const typed = d.title.replace(/\s+/g, " ").trim();
   if (typed) return clipText(typed, NOTE_TITLE_MAX);
+  // A typed note (the Journal) is titled by its first line: who, which machine, when...
+  const answer = d.noteType ? typedTitle(d) : "";
+  if (answer) return clipText(answer, NOTE_TITLE_MAX);
   const first = plainText(d.body).split("\n").map((l) => l.replace(/\s+/g, " ").trim()).find(Boolean) ?? "";
   return first.length > 80 ? `${clipText(first, 79).trimEnd()}…` : first;
 }
@@ -99,6 +121,15 @@ export function validateNoteDraft(d: NoteDraft, todayKey: string = studioDateKey
   }
   const team = teamShareProblem(d.teamShare ?? null, todayKey);
   if (team) out.push({ field: "team", message: team.message });
+  // The Journal's types: a template needs a line, a hunch its claim and sample,
+  // and a personal note or a hunch never leaves the author's hands.
+  for (const message of typedProblems(d)) out.push({ field: "type", message });
+  if (d.noteType && !NOTE_TEMPLATES[d.noteType].shares.record && d.share) {
+    out.push({ field: "share", message: "This kind of note doesn't go on a client's record." });
+  }
+  if ((d.noteType === "personal" || d.noteType === "trend") && d.teamShare) {
+    out.push({ field: "team", message: d.noteType === "personal" ? "A personal note is never shared." : "A hunch stays yours until its sample is met." });
+  }
   return out;
 }
 
@@ -140,6 +171,7 @@ export function normaliseDraft(d: NoteDraft): NoteDraft {
     const name = (d.clientNames[id] ?? "").trim().slice(0, 80);
     if (name) clientNames[id] = name;
   }
+  const noteType = isNoteType(d.noteType) ? d.noteType : null;
   return {
     ...d,
     title: d.title.trim().slice(0, NOTE_TITLE_MAX),
@@ -148,6 +180,9 @@ export function normaliseDraft(d: NoteDraft): NoteDraft {
     clientNames,
     links: cleanLinks(d.links),
     teamShare: cleanTeamShare(d.teamShare),
+    noteType,
+    fields: cleanFields(noteType, d.fields),
+    hunch: noteType === "trend" ? cleanHunch(d.hunch ?? null) : null,
   };
 }
 
@@ -157,10 +192,10 @@ export function noteFields(
   sharedWith: string | null,
 ): Omit<TrainerNote, "id" | "createdAt" | "updatedAt" | "log"> {
   const n = normaliseDraft(d);
-  return {
+  const out: Omit<TrainerNote, "id" | "createdAt" | "updatedAt" | "log"> = {
     title: effectiveTitle(n),
     body: n.body,
-    kind: n.kind,
+    kind: n.noteType ? NOTE_TEMPLATES[n.noteType].kind : n.kind,
     folderId: n.folderId,
     clientIds: n.clientIds,
     clientNames: n.clientNames,
@@ -169,18 +204,27 @@ export function noteFields(
     links: n.links,
     teamShare: n.teamShare,
   };
+  // Only a typed note carries the Journal's fields: a note written before
+  // stays exactly as it was, saved or not.
+  if (n.noteType) {
+    out.noteType = n.noteType;
+    out.fields = n.fields ?? {};
+    if (n.noteType === "trend" && n.hunch) out.hunch = { ...n.hunch, evidence: [], retiredAt: null };
+  }
+  return out;
 }
 
 /** The shared copy's fields, minus id and timestamps. Nothing about other clients. */
 export function sharedFields(
-  d: Pick<NoteDraft, "title" | "body" | "kind"> & { links?: NoteLink[] },
+  d: Pick<NoteDraft, "title" | "body" | "kind"> & Partial<Pick<NoteDraft, "noteType" | "fields" | "hunch">> & { links?: NoteLink[] },
   clientId: string,
   author: { id: string; name: string },
 ): Omit<SharedNote, "id" | "updatedAt"> {
   return {
     clientId,
     title: effectiveTitle(d),
-    body: d.body.slice(0, NOTE_BODY_MAX),
+    // A typed note travels as its answers under their labels, then its body.
+    body: composedBody(d).slice(0, NOTE_BODY_MAX),
     kind: d.kind,
     authorId: author.id,
     authorName: (author.name || "A trainer").slice(0, 80),
@@ -226,6 +270,7 @@ export function noteFromDoc(id: string, d: Record<string, unknown> | undefined):
   const clientNames: Record<string, string> = {};
   for (const c of clientIds) if (typeof rawNames[c] === "string") clientNames[c] = rawNames[c] as string;
   const sharedWith = typeof data.sharedWith === "string" && data.sharedWith ? data.sharedWith : null;
+  const noteType = isNoteType(data.noteType) ? data.noteType : null;
   return {
     id,
     title: str(data.title, NOTE_TITLE_MAX),
@@ -239,9 +284,17 @@ export function noteFromDoc(id: string, d: Record<string, unknown> | undefined):
     links: cleanLinks(Array.isArray(data.links) ? (data.links as NoteLink[]) : []),
     log: logFromDoc(data.log),
     teamShare: teamShareFromDoc(data.teamShare),
+    noteType,
+    fields: fieldsFromDoc(data.fields, noteType),
+    hunch: noteType === "trend" ? hunchFromDoc(data.hunch) : null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+
+/** A note's words for reading back: its template answers, then its body (./journal.ts composedBody). */
+export function noteText(n: Pick<TrainerNote, "body" | "noteType" | "fields" | "hunch">): string {
+  return composedBody(n);
 }
 
 /** A note's working log, oldest first; odd entries are dropped, not thrown. */
@@ -344,7 +397,7 @@ export function noteMatches(
   const hay = norm(
     [
       note.title,
-      plainText(note.body),
+      plainText(composedBody(note)),
       NOTE_KIND_LABEL[note.kind] ?? "",
       ...note.clientIds.map((id) => nameOf(id) || note.clientNames[id] || ""),
       ...(note.log ?? []).map((e) => e.text),
@@ -378,6 +431,12 @@ export function inView(note: TrainerNote, view: NotesView, folderIds?: ReadonlyS
     case "folder":
       return note.folderId === view.folderId;
     case "withme":
+      return false;
+    case "shelf":
+      return shelfOf(note) === view.shelf;
+    case "daylogs":
+    case "studio":
+    case "onthisday":
       return false;
   }
 }
@@ -530,11 +589,12 @@ export function clientLabel(
 }
 
 /** A blank draft, optionally already about one client (from a profile). */
-export function blankDraft(client?: { id: string; name: string } | null): NoteDraft {
+export function blankDraft(client?: { id: string; name: string } | null, noteType: NoteDraft["noteType"] = null): NoteDraft {
+  const type = isNoteType(noteType) ? noteType : null;
   return {
     title: "",
     body: "",
-    kind: "note",
+    kind: type ? NOTE_TEMPLATES[type].kind : "note",
     folderId: null,
     clientIds: client ? [client.id] : [],
     clientNames: client ? { [client.id]: client.name } : {},
@@ -542,6 +602,10 @@ export function blankDraft(client?: { id: string; name: string } | null): NoteDr
     share: false,
     links: [],
     teamShare: null,
+    noteType: type,
+    // A Client note about a client starts with who it is about.
+    fields: type === "client" && client ? { who: client.name } : {},
+    hunch: type === "trend" ? { claim: "", how: "", need: 8, unit: "clients" } : null,
   };
 }
 
@@ -560,6 +624,9 @@ export function draftFromNote(n: TrainerNote): NoteDraft {
     teamShare: n.teamShare
       ? { ...n.teamShare, people: n.teamShare.people.map((p) => ({ ...p })) }
       : null,
+    noteType: n.noteType ?? null,
+    fields: { ...(n.fields ?? {}) },
+    hunch: n.noteType === "trend" && n.hunch ? { claim: n.hunch.claim, how: n.hunch.how, need: n.hunch.need, unit: n.hunch.unit } : null,
   };
 }
 

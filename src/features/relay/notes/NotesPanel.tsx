@@ -25,11 +25,17 @@ import {
   type NoteListItem,
   type NotesView,
 } from "./notes";
-import { NOTE_KIND_LABEL, NOTE_KINDS, type NoteDraft, type NoteKind, type TrainerNote } from "./types";
+import { NOTE_KIND_LABEL, NOTE_KINDS, type NoteDraft, type NoteKind, type NoteType, type TrainerNote } from "./types";
 import { NoteEditor } from "./NoteEditor";
 import { checklistCount } from "./format";
 import "./notes.css";
 import { NAME_SEARCH_PROPS } from "../../../lib/name-search-input";
+import { NOTE_TEMPLATES, SHELVES, composedBody, hunchLine, hunchState, onThisDayKeys, openHunches, shelfOf, slotsFree, type ShelfId } from "./journal";
+import { DayLogList, DayLogView, OnThisDayList, ShelfNav, StudioShelfList, StudioShelfView, WriteRow } from "./JournalPieces";
+import { useDayLogs } from "./day-log-store";
+import { usePlaybook } from "../../studio-tasks/usePlaybook";
+import { confirmPlaybookEntry } from "../../studio-tasks/playbook-mutations";
+import { studioDayKeyOf } from "../../../lib/studio-time";
 
 /**
  * NOTES — the Planner's third tab. A trainer's own notes, in folders, linked
@@ -74,7 +80,12 @@ const BLANK: NoteDraft = blankDraft();
 const swept = new Set<string>();
 
 const sameView = (a: NotesView, b: NotesView) =>
-  a.kind === b.kind && (a.kind !== "folder" || a.folderId === (b as { folderId: string }).folderId);
+  a.kind === b.kind &&
+  (a.kind !== "folder" || a.folderId === (b as { folderId: string }).folderId) &&
+  (a.kind !== "shelf" || a.shelf === (b as { shelf: ShelfId }).shelf);
+
+/** What a note is, on its card: a Journal type, or a kind for a note written before. */
+const labelOf = (n: TrainerNote) => (n.noteType ? NOTE_TEMPLATES[n.noteType].label : NOTE_KIND_LABEL[n.kind]);
 
 export interface NotesPanelProps {
   authTrainer?: Trainer | null;
@@ -135,10 +146,11 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
   /* --------------------------- opening ---------------------------- */
 
   const startNew = useCallback(
-    (client?: { id: string; name: string } | null, noteKind?: NoteKind) => {
+    (client?: { id: string; name: string } | null, noteKind?: NoteKind, noteType?: NoteType) => {
       if (!uid) return;
-      const baseline = blankDraft(client ?? null);
-      if (noteKind) baseline.kind = noteKind;
+      // A Journal type (the second wave, Sep 28 2026) starts its template.
+      const baseline = blankDraft(client ?? null, noteType ?? null);
+      if (noteKind && !noteType) baseline.kind = noteKind;
       const here = recall(uid).view;
       if (here.kind === "folder") baseline.folderId = here.folderId;
       const id = newNoteId(uid);
@@ -289,19 +301,76 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
 
   const filtering = queryText.trim() !== "" || kind !== "all";
 
+  /* ---------------------- the Journal (second wave) -------------------- */
+
+  const todayKey = studioDateKey(new Date()) ?? "";
+  const shelfCounts = useMemo(() => {
+    const out = Object.fromEntries(SHELVES.map((sh) => [sh.id, 0])) as Record<ShelfId, number>;
+    for (const n of notes) {
+      const sh = shelfOf(n);
+      if (sh) out[sh] += 1;
+    }
+    return out;
+  }, [notes]);
+  const hunchesOpen = useMemo(() => openHunches(notes), [notes]);
+  const freeSlots = useMemo(() => slotsFree(notes), [notes]);
+  // Day logs are this studio's (the path is the studio); read only when a shelf needs them.
+  const logs = useDayLogs(activeStudioId, uid, view.kind === "daylogs" || view.kind === "onthisday");
+  const logsList = logs.state === "ready" ? logs.logs : [];
+  const [selectedLog, setSelectedLog] = useState<string | null>(null);
+  const openLog = logsList.find((l) => l.id === selectedLog) ?? null;
+  // The Studio shelf is the studio's Playbook; read only while it is open.
+  const shelf = usePlaybook(view.kind === "studio" ? activeStudioId : null);
+  const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  const openEntry = shelf.entries.find((e) => e.id === selectedEntry && !e.retiredAt) ?? null;
+  const onThisDayNotes = useMemo(() => {
+    if (view.kind !== "onthisday") return [];
+    const { monthAgo, yearAgo } = onThisDayKeys(todayKey);
+    return notes
+      .map((note) => ({ note, day: note.createdAt ? studioDayKeyOf(note.createdAt as never) : null }))
+      .filter((x): x is { note: TrainerNote; day: string } => x.day === monthAgo || x.day === yearAgo);
+  }, [view.kind, notes, todayKey]);
+  const journalOpen = (view.kind === "daylogs" && openLog) || (view.kind === "studio" && openEntry);
+
+  const confirmEntry = async () => {
+    if (!openEntry || !activeStudioId || !uid) return;
+    try {
+      await confirmPlaybookEntry(activeStudioId, openEntry, { id: uid, name: authTrainer?.fullName ?? "A trainer" });
+    } catch (err) {
+      console.warn("[journal] confirm failed:", err);
+      setPanelError("Couldn't save that. Check your connection.");
+    }
+  };
+
   return (
-    <div className="pn" data-open={editorOpen || (view.kind === "withme" && openShare) ? "note" : "list"}>
-      <aside className="pn__side" aria-label="Your notes">
+    <div className="pn" data-open={editorOpen || (view.kind === "withme" && openShare) || journalOpen ? "note" : "list"}>
+      <aside className="pn__side" aria-label="Your journal">
         <div className="pn__head">
           <div className="pn__head-titles">
-            <h2 className="pl__h2">Notes</h2>
-            <p className="pl__sub">Yours alone, at every studio — unless you share one onto a client's record.</p>
+            <h2 className="pl__h2">Journal</h2>
+            <p className="pl__sub">Yours alone, at every studio — unless you share one.</p>
           </div>
           <button type="button" className="pl__btn pl__btn--primary" onClick={() => startNew()} disabled={!uid}>
             <Plus size={15} aria-hidden />
             New note
           </button>
         </div>
+
+        <WriteRow slotsFree={freeSlots} disabled={!uid} onWrite={(type) => startNew(null, undefined, type)} />
+
+        <ShelfNav
+          view={view}
+          counts={shelfCounts}
+          openHunches={hunchesOpen}
+          dayLogs={logs.state === "ready" ? logs.logs.length : null}
+          studioShelf={view.kind === "studio" && !shelf.loading ? shelf.entries.filter((e) => !e.retiredAt).length : null}
+          onView={(v) => {
+            setView(v);
+            setSelected(null);
+            setSelectedLog(null);
+            setSelectedEntry(null);
+          }}
+        />
 
         <nav className="pn__views" aria-label="Folders">
           {smartViews
@@ -393,7 +462,26 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
         )}
 
         <div className="pn__list-wrap touch-pane">
-          {view.kind === "withme" ? (
+          {view.kind === "daylogs" ? (
+            <DayLogList logs={logsList} state={logs.state} selected={selectedLog} onOpen={setSelectedLog} />
+          ) : view.kind === "studio" ? (
+            <StudioShelfList entries={shelf.entries} loading={shelf.loading} selected={selectedEntry} onOpen={setSelectedEntry} todayKey={todayKey} />
+          ) : view.kind === "onthisday" ? (
+            <OnThisDayList
+              notes={onThisDayNotes}
+              logs={logsList}
+              logsState={logs.state}
+              todayKey={todayKey}
+              onOpenNote={(id) => {
+                setView({ kind: "all" });
+                setSelected(id);
+              }}
+              onOpenLog={(id) => {
+                setView({ kind: "daylogs" });
+                setSelectedLog(id);
+              }}
+            />
+          ) : view.kind === "withme" ? (
             withMe.error ? (
               <p className="pn__state">{withMe.error}</p>
             ) : withMe.loading && withMe.shares.length === 0 ? (
@@ -453,7 +541,17 @@ export function NotesPanel({ authTrainer, trainers, clients, onOpenClient, inten
       </aside>
 
       <section className="pn__main" aria-label={editorOpen ? "Open note" : undefined}>
-        {view.kind === "withme" && openShare && uid ? (
+        {view.kind === "daylogs" && openLog ? (
+          <DayLogView key={openLog.id} log={openLog} onBack={() => setSelectedLog(null)} />
+        ) : view.kind === "studio" && openEntry ? (
+          <StudioShelfView
+            key={openEntry.id}
+            entry={openEntry}
+            mine={Boolean(uid && openEntry.confirmations?.[uid])}
+            onConfirm={() => void confirmEntry()}
+            onBack={() => setSelectedEntry(null)}
+          />
+        ) : view.kind === "withme" && openShare && uid ? (
           <SharedNoteView
             key={openShare.id}
             share={openShare}
@@ -542,7 +640,7 @@ const NoteList = memo(function NoteList({
               onClick={() => onOpen(item.id)}
             >
               <span className="pn__card-top">
-                <span className={`pn__kind pn__kind--${n.kind}`}>{NOTE_KIND_LABEL[n.kind]}</span>
+                <span className={`pn__kind pn__kind--${n.kind}`}>{labelOf(n)}</span>
                 {n.pinned && <Pin size={13} className="pn__card-icon" aria-label="Pinned" />}
                 {n.sharedWith && (
                   <span className="pn__shared">
@@ -559,7 +657,10 @@ const NoteList = memo(function NoteList({
                 <span className="pn__when">{item.isNew ? "Not saved yet" : whenLabel(n.updatedAt)}</span>
               </span>
               <span className="pn__card-title">{n.title || "Untitled"}</span>
-              {!item.isNew && n.body && <span className="pn__card-excerpt">{excerpt(n.body)}</span>}
+              {!item.isNew && composedBody(n) && <span className="pn__card-excerpt">{excerpt(composedBody(n))}</span>}
+              {!item.isNew && n.noteType === "trend" && n.hunch && (
+                <span className={`pn__stage${hunchState(n.hunch)?.ready ? "" : " pn__stage--building"}`}>{hunchLine(hunchState(n.hunch))}</span>
+              )}
               {!item.isNew && (n.log.length > 0 || n.links.length > 0 || checks.total > 0) && (
                 <span className={`pn__stage${n.log.length > 0 && !n.sharedWith ? " pn__stage--building" : ""}`}>
                   {[

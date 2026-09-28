@@ -431,6 +431,39 @@ describe("My Studio", () => {
     expect(document.body.textContent).toContain("At the time");
   });
 
+  it("writes in the Journal: six types with their templates, the shelves, the day logs and the Studio shelf (the second wave)", async () => {
+    const h = await mount(trainer);
+    await click(tab("Journal"));
+    expect([...h.querySelectorAll(".jn-type__h")].map((b) => b.textContent)).toEqual(["Client", "Machine", "Protocol", "Research", "Trend", "Personal"]);
+    const shelves = [...h.querySelectorAll(".jn-shelf")].map((b) => b.textContent ?? "");
+    expect(shelves.some((t) => t.startsWith("Trends · hunches"))).toBe(true);
+    expect(shelves.some((t) => t.startsWith("Studio shelf"))).toBe(true);
+
+    // A Machine note: its three lines, its body as "more", and the Studio shelf rather than a client's record.
+    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-type")].find((b) => b.textContent?.startsWith("Machine")));
+    const labels = [...document.querySelectorAll(".jn-field__l")].map((l) => l.textContent);
+    expect(labels).toEqual(["Machine", "What I noticed", "Setting or cue"]);
+    expect(document.body.textContent).toContain("More, if you want");
+    expect(document.body.textContent).toContain("You can put it on the Studio shelf, which never names a client.");
+    expect(document.body.textContent).not.toContain("On the client's record");
+
+    // A Personal note is never shared: no colleagues, no record.
+    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-type")].find((b) => b.textContent?.startsWith("Personal")));
+    expect([...document.querySelectorAll(".jn-field__l")].map((l) => l.textContent)).toEqual(["What?", "So what?", "Now what?"]);
+    expect(document.body.textContent).toContain("Only you. Never shared.");
+    expect(document.body.textContent).not.toContain("Share with colleagues");
+
+    // A hunch asks for its sample, and waits for evidence until it is saved.
+    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-type")].find((b) => b.textContent?.startsWith("Trend")));
+    expect(document.body.textContent).toContain("The sample that would show it");
+    expect(document.body.textContent).toContain("Save the hunch, then add evidence each time you see it.");
+
+    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Day logs")));
+    expect(h.textContent).toContain("No day logs yet");
+    await click([...h.querySelectorAll<HTMLButtonElement>(".jn-shelf")].find((b) => b.textContent?.startsWith("Studio shelf")));
+    expect(h.textContent).toContain("Nothing on the Studio shelf yet");
+  });
+
   it("keeps Someone for a leader: a trainer offers work on the board instead (AJ, q5)", async () => {
     const h = await mount(trainer);
     await click(h.querySelector(".msh__plus"));
