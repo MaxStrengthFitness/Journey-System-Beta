@@ -58,13 +58,14 @@ import { LoadBoundary } from "../features/new-version/LoadBoundary";
 import { LoadingArea } from "./LoadingMark";
 import type { HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
-import { HubCard } from "../features/hub-schedule/HubCard";
+import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
 import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
 import type { Span } from "../features/hub-schedule/grid-model";
 import { useStandingWeeks } from "../features/standing-week/useStandingWeeks";
 import { weekdayOf } from "../features/client-history/model";
 import { DayHeader, DaySummary, KeySheet } from "../features/hub-schedule/DayHeader";
+import { Peek } from "../features/hub-schedule/Peek";
 import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
 import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
@@ -155,6 +156,8 @@ export function ClientsView({
   const [spot, setSpot] = useState<{ day: string; family: MomentFamily; next: number } | null>(null);
   /** "See them as a list": the family the Opportunities list opens on. */
   const [listRequest, setListRequest] = useState<{ filter: FilterId; nonce: number } | null>(null);
+  /** The card whose peek is open (a tap on a card: Hub question 1's default). */
+  const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -607,10 +610,8 @@ export function ClientsView({
         workoutSession={workoutSession}
         logged={logged}
         now={currentTime}
-        onOpen={(clientId) => {
-          onSelectClient(clientId);
-          setView("profile");
-        }}
+        open={activePeek?.blockKey === block.key}
+        onOpen={(clientId, anchor) => setPeek({ clientId, blockKey: block.key, day: gridDayKey, anchor })}
       />
     );
   };
@@ -651,6 +652,8 @@ export function ClientsView({
   const strip = stripDays(stripKeys, todayKey, bookingCounts, (key) => celebrateDays.has(key));
   const chips = summaryChips(dayMoments.entries);
   const activeSpot = layer === "schedule" && spot && spot.day === gridDayKey ? spot.family : null;
+  /* The peek belongs to the day and the layer it was opened on. */
+  const activePeek = layer === "schedule" && peek && peek.day === gridDayKey ? peek : null;
   const spotKeys = activeSpot
     ? gridBlocks
         .filter((b) => {
@@ -1089,6 +1092,35 @@ export function ClientsView({
               />
             )}
             <KeySheet open={keyOpen} onClose={() => setKeyOpen(false)} />
+            {activePeek &&
+              (() => {
+                const entry = dayMoments.byClientId.get(activePeek.clientId);
+                const block = gridBlocks.find((b) => b.key === activePeek.blockKey);
+                if (!entry || !block) return null;
+                const booking: any = block.booking;
+                const start = safeToDate(booking.startTime || booking.StartDateTime || booking.date);
+                const end = safeToDate(booking.endTime || booking.EndDateTime);
+                return (
+                  <Peek
+                    entry={entry}
+                    sessionNumber={bookingSessionNumber(entry, entry.client, booking, dayMoments.input)}
+                    timeText={cardTime(start, end, { span: true })}
+                    anchor={activePeek.anchor}
+                    onClose={() => setPeek(null)}
+                    onOpenProfile={(id) => {
+                      setPeek(null);
+                      onSelectClient(id);
+                      setView("profile");
+                    }}
+                    onStartSession={(id) => {
+                      // The Hub search card's own path to a session.
+                      setPeek(null);
+                      onSelectClient(id);
+                      setView("workouts");
+                    }}
+                  />
+                );
+              })()}
 
             {/* A failed read is unknown, never empty: with some clients'
                 Critical notes unread, a card without the triangle proves

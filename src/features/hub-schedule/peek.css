@@ -1,0 +1,196 @@
+/* ==========================================================================
+   The Hub card's peek (calm Hub round, Sep 28 2026). Prefix hp-.
+   Beside the card when the Hub is wide; centred when it is narrow (an iPad
+   upright), so it never covers the bottom bar and pays no inset.
+   Colour from equipment.tokens.css.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.hp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.hp {
+  position: fixed;
+  z-index: 61;
+  box-sizing: border-box;
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 16px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  box-shadow: 0 16px 40px var(--eq-shadow);
+}
+
+.hp[data-mode="center"] {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hp:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.hp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hp-name {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.hp-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+}
+
+.hp-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  cursor: pointer;
+}
+
+.hp-critical {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--eq-alert-fill);
+  color: var(--eq-ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.hp-critical strong {
+  color: var(--eq-alert);
+}
+
+.hp-critical svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--eq-alert);
+}
+
+.hp-lines,
+.hp-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hp-lines li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+}
+
+.hp-facts {
+  padding-top: 10px;
+  border-top: 1px solid var(--eq-border);
+}
+
+.hp-facts li {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.hp-facts dt,
+.hp-fact-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+  padding-top: 2px;
+}
+
+.hp-fact-text[data-muted="true"] {
+  color: var(--eq-ink-muted);
+}
+
+.hp-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--eq-ink-muted);
+}
+
+.hp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.hp-btn {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 12px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Start Session is the one loud action: hero orange, filled with the DEEP
+   orange so its words read (6.0:1 on white; the bright orange is 3.55:1),
+   as My Studio fills Capture. A filled variant restates its fill on :hover
+   (an iPad keeps :hover after a tap). */
+.hp-btn[data-primary="true"],
+.hp-btn[data-primary="true"]:hover {
+  border-color: var(--eq-hero-text);
+  background: var(--eq-hero-text);
+  color: var(--eq-hero-on);
+}
+
+.hp-btn:focus-visible,
+.hp-close:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
