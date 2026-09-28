@@ -862,3 +862,83 @@
   color: var(--adm-ink-2);
   max-width: 72ch;
 }
+
+/* ---------- The Activity record (the second wave, Sep 28 2026) -------------
+   A quiet list: when, who, the sentence, what changed. No badge and no colour
+   on a row (AJ, q8: "I don't want there to be five markings"), only words. */
+
+.hq-log {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hq-log__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px 16px;
+  padding: 12px 16px;
+}
+.hq-log__row + .hq-log__row {
+  border-top: 1px solid var(--adm-border);
+}
+@media (min-width: 720px) {
+  .hq-log__row {
+    grid-template-columns: 11.5rem minmax(0, 1fr);
+  }
+}
+
+.hq-log__when {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--adm-ink-muted);
+}
+
+.hq-log__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hq-log__what {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.hq-log__what b {
+  font-weight: 750;
+}
+
+.hq-log__change {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.hq-log__ctx {
+  margin: 0;
+  font-size: 12px;
+  color: var(--adm-ink-muted);
+}
+
+.hq-log__status {
+  padding: 16px;
+  font-size: 14px;
+  color: var(--adm-ink-2);
+}
+
+.hq-log__more {
+  margin: 0;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--adm-border);
+  font-size: 12.5px;
+  color: var(--adm-ink-muted);
+}

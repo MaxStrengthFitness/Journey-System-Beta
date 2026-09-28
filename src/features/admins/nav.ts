@@ -37,7 +37,8 @@ export type AdminsPage =
   | "sync"
   | "bugs"
   | "data"
-  | "system";
+  | "system"
+  | "activity";
 
 /** A page a person can pick from the sidebar or a place's chips. A studio's
  *  own page is reached from All studios (or the search), so it is not one. */
@@ -84,6 +85,8 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
       { page: "bugs", label: "Bug reports" },
       { page: "data", label: "Data" },
       { page: "system", label: "System tools" },
+      // The Activity record (the second wave, Sep 28 2026): who changed what from here.
+      { page: "activity", label: "Activity" },
     ],
   },
 ];

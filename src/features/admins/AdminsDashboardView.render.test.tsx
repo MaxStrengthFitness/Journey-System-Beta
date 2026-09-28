@@ -157,6 +157,7 @@ describe("the Admins dashboard", () => {
       "Bug reports",
       "Data",
       "System tools",
+      "Activity",
     ]);
     // It opens on Home: nothing waits in this empty Firestore.
     expect(el.textContent).toContain("Nothing needs you right now.");
@@ -186,8 +187,13 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("An administrator exports any studio's data");
     await click(byText(el, ".hq-side .hq-nav__item", "System tools"));
     expect(el.textContent).toContain("Restore standard machines");
+    await click(byText(el, ".hq-side .hq-nav__item", "Activity"));
+    expect(el.textContent).toContain("Who changed what from the Admins dashboard");
+    // The administrators, from the people the dashboard holds: only Ada here.
+    expect(el.querySelector('[aria-label="Administrators"]')?.textContent).toContain("Ada Admin");
+    expect(el.textContent).toContain("Nothing recorded yet");
     const on = el.querySelector(".hq-side .hq-nav__item--on");
-    expect(on?.textContent).toBe("System tools");
+    expect(on?.textContent).toBe("Activity");
     expect(on?.getAttribute("aria-current")).toBe("page");
   });
 
@@ -199,7 +205,7 @@ describe("the Admins dashboard", () => {
     await click(byText(el, ".hq-bar .hq-place", "Studios"));
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
-    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools"]);
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools", "Activity"]);
     expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");
     await click(byText(el, ".hq-bar .hq-chip", "Bug reports"));
     expect(el.querySelector(".hq-bar .hq-chip--on")?.textContent).toBe("Bug reports");

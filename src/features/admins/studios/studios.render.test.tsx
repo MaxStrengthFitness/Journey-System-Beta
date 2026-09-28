@@ -192,9 +192,9 @@ describe("a studio's page", () => {
     />
   );
 
-  it("has four tabs: Setup with where it stands and the details, then Mindbody, Floor and Team", async () => {
+  it("has five tabs: Setup with where it stands and the details, then Mindbody, Floor, Team and Activity", async () => {
     const el = await mount(page());
-    expect(texts(el, ".hq-tab")).toEqual(["Setup", "Mindbody", "Floor", "Team"]);
+    expect(texts(el, ".hq-tab")).toEqual(["Setup", "Mindbody", "Floor", "Team", "Activity"]);
     expect(el.querySelector(".hq-tab--on")?.getAttribute("aria-selected")).toBe("true");
     expect(el.textContent).toContain("Where it stands");
     expect(el.querySelector<HTMLInputElement>("#studio-name")?.value).toBe("Westlake");
@@ -202,12 +202,60 @@ describe("a studio's page", () => {
     await click(button(el, "Mindbody"));
     expect(el.textContent).toContain("Pulling the schedule now, the sync's settings and the event log are on Operations → Mindbody");
     await click(button(el, "Team"));
-    expect(texts(el, ".hq-row__name")).toEqual(["Ada AdminSystem Administrator", "BeregondLife Transformer", "GlorfindelStudio Leader"]);
+    expect(texts(el, ".hq-row__name")).toEqual(["Ada AdminSystem Administrator · you", "BeregondLife Transformer", "GlorfindelStudio Leader"]);
     expect(el.textContent).toContain("Owned by Círdan (Franchise Owner)");
     expect(el.textContent).toContain("Also works here");
     expect(el.textContent).toContain("Linked to Mindbody staff");
     await click(button(el, "Floor"));
     expect(el.querySelector(".hq-tab--on")?.textContent).toBe("Floor");
+    await click(button(el, "Activity"));
+    // Nothing has been changed at Westlake yet: said as nothing recorded, having read it.
+    expect(el.textContent).toContain("Nothing recorded yet");
+    expect(el.textContent).toContain("Admin grants are on Machinery → Activity.");
+  });
+
+  it("records a details save in the studio's Activity, after the save has landed", async () => {
+    const el = await mount(page());
+    const phone = [...el.querySelectorAll<HTMLInputElement>("input[type='tel']")][0];
+    await typeInto(phone, "440-555-0101");
+    await click(button(el, "Save changes"));
+    expect(writes[0]).toEqual({ op: "update", path: "studios/westlake", data: { phone: "440-555-0101" } });
+    expect(writes[1]).toEqual({
+      op: "add",
+      path: "activity",
+      data: {
+        by: { uid: "adm", name: "Ada Admin" },
+        studioId: "westlake",
+        kind: "assisted-change",
+        what: "Changed Westlake's phone.",
+        before: { Phone: null },
+        after: { Phone: "440-555-0101" },
+        at: "now",
+      },
+    });
+  });
+
+  it("changes a person's role from Team — never your own — and records it at the studio", async () => {
+    const changed = vi.fn();
+    const el = await mount(page({ onRefresh: changed }));
+    await click(button(el, "Team"));
+    expect(el.querySelector('[aria-label="Change Ada Admin\'s role"]')).toBeNull();
+    await click(el.querySelector('[aria-label="Change Beregond\'s role"]'));
+    const dialog = document.querySelector<HTMLElement>('[role="alertdialog"][aria-label="Change Beregond\'s role"]')!;
+    expect(dialog.textContent).toContain("Now: Life Transformer.");
+    const select = dialog.querySelector<HTMLSelectElement>("#hq-role-choice")!;
+    await act(async () => {
+      select.value = "HeadTrainer";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click(button(dialog, "Save the role"));
+    expect(writes[0]).toEqual({ op: "update", path: "trainers/ber", data: { role: "HeadTrainer" } });
+    expect(writes[1]).toMatchObject({
+      op: "add",
+      path: "activity",
+      data: { studioId: "westlake", kind: "assisted-change", what: "Changed Beregond's role at Westlake from Life Transformer to Head Trainer." },
+    });
+    expect(changed).toHaveBeenCalledWith("trainers");
   });
 
   it("asks before a tab change loses a half-typed detail", async () => {

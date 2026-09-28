@@ -3065,6 +3065,47 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    // WAVE 2 ADMINS: THE ACTIVITY RECORD (the Admins room's second wave, Sep
+    // 28 2026; AJ "all yes" to "an Activity record ... every standard edit,
+    // publish, admin grant and assisted change is signed with who, what, when
+    // and before and after"). One document per change made from the Admins
+    // dashboard (src/features/admins/activity/, written only by logActivity):
+    //   { at, by: { uid, name }, studioId, kind, what, before?, after? }
+    // APPEND-ONLY: created by administrators, signed with their Auth uid and
+    // the server's time; never updated, never deleted. Read by administrators,
+    // and by a studio's leaders for their own studio's entries (studioId is
+    // that studio; a company entry has studioId null and is administrators'
+    // alone). A leader's list query names the studio (where studioId == s).
+    // Cheap shape checks first; isSuperAdmin() (document reads) runs last.
+    match /activity/{entryId} {
+      function activityValid(d) {
+        return d.keys().hasOnly(['at', 'by', 'studioId', 'kind', 'what', 'before', 'after'])
+            && d.keys().hasAll(['at', 'by', 'studioId', 'kind', 'what'])
+            && d.at == request.time
+            && d.by is map && d.by.keys().hasOnly(['uid', 'name'])
+            && d.by.uid == request.auth.uid
+            && d.by.name is string && d.by.name.size() > 0 && d.by.name.size() <= 120
+            && (d.studioId == null || (d.studioId is string && d.studioId.size() > 0 && d.studioId.size() <= 120))
+            && d.kind in ['standard-edit', 'standard-set', 'publish', 'admin-grant',
+                          'assisted-change', 'setting-default', 'studio-stage']
+            && d.what is string && d.what.size() > 0 && d.what.size() <= 500
+            && (!('before' in d) || (d.before is map && d.before.size() <= 20))
+            && (!('after' in d) || (d.after is map && d.after.size() <= 20));
+      }
+
+      // The caller resolved once (the expression budget, KNOWN-TRAPS).
+      function activityReadAllowed(d) {
+        let r = getRole();
+        return roleIsSuper(r)
+            || (d.get('studioId', null) is string
+                && trainerLeads(r, callerTrainer(), d.get('studioId', null)));
+      }
+
+      allow read: if isAuthenticated() && activityReadAllowed(resource.data);
+      allow create: if isAuthenticated() && activityValid(request.resource.data) && isSuperAdmin();
+      allow update, delete: if false;
+    }
+
     // ANNOUNCEMENTS
     //
     // Learning + Planner round, Sep 2026: posting and editing were open to

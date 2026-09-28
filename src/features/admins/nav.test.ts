@@ -43,7 +43,8 @@ describe("the Admins dashboard's map", () => {
   });
 
   it("gives a place's pages to its chips, and lights the item a page came from", () => {
-    expect(pagesOf("machinery").map((i) => i.page)).toEqual(["limbo", "sync", "bugs", "data", "system"]);
+    expect(pagesOf("machinery").map((i) => i.page)).toEqual(["limbo", "sync", "bugs", "data", "system", "activity"]);
+    expect(labelOf("activity")).toBe("Activity");
     expect(pagesOf("studios").map((i) => i.page)).toEqual(["studios", "franchises"]);
     expect(navKeyOf("machines")).toBe("machines");
     // A studio's own page is reached from All studios, and lights it.

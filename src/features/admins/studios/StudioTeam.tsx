@@ -8,20 +8,22 @@
  * Temporary profiles (people not in Mindbody yet) are the studio's to make
  * and reconcile, below.
  *
- * Roles are changed on My Studio → Team or Operations → Staff & Roles, not
- * here; this page reads.
+ * Change role (the Admins room's second wave, Sep 28 2026): an administrator
+ * may change anyone's role here, a System Administrator included — "admins
+ * can promote other admins" (AJ, Sep 19) — and every change is recorded in
+ * the Activity record with who made it (role-change.ts, RoleDialog.tsx).
+ * Nobody changes their own role here. A studio's own leaders change their
+ * team's roles on My Studio → Team, within the studio tier.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Users } from "lucide-react";
-import { ROLE_LABELS, type Client, type Studio, type Trainer } from "../../../types";
+import type { Client, Studio, Trainer } from "../../../types";
 import { whoWorksHere } from "../../../lib/who-works-here";
-import { AdminEmpty, AdminPanel } from "../../admin/primitives";
+import { AdminButton, AdminEmpty, AdminPanel } from "../../admin/primitives";
 import { ProvisionalPanel } from "../../admin/provisional/ProvisionalPanel";
 import { HqRow, HqRows, HqStatus } from "../kit";
-
-function roleLabel(role: string): string {
-  return (ROLE_LABELS as Record<string, string>)[role] ?? role;
-}
+import { roleLabel } from "./role-change";
+import { RoleDialog } from "./RoleDialog";
 
 export function StudioTeam({
   studio,
@@ -29,19 +31,24 @@ export function StudioTeam({
   clients,
   authTrainer,
   onCreated,
+  onRolesChanged,
 }: {
   studio: Studio;
   trainers: Trainer[];
   clients: Client[];
   authTrainer: Trainer;
   onCreated?: () => Promise<void> | void;
+  /** A role was changed: the dashboard reads the people again. */
+  onRolesChanged?: () => Promise<void> | void;
 }) {
   const studioId = studio.id ?? "";
+  const [changing, setChanging] = useState<Trainer | null>(null);
   const team = useMemo(
     () => whoWorksHere(trainers, studioId).slice().sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "")),
     [trainers, studioId],
   );
   const owners = useMemo(() => trainers.filter((t) => (t.ownedStudioIds ?? []).includes(studioId)), [trainers, studioId]);
+  const isMe = (t: Trainer) => t.id === authTrainer.id;
 
   return (
     <div className="flex flex-col gap-4">
@@ -50,8 +57,8 @@ export function StudioTeam({
         icon={<Users className="w-3.5 h-3.5" />}
         subtitle={
           owners.length
-            ? `Owned by ${owners.map((o) => `${o.fullName} (${roleLabel(o.role)})`).join(", ")}. Roles are changed on My Studio → Team.`
-            : "Roles are changed on My Studio → Team."
+            ? `Owned by ${owners.map((o) => `${o.fullName} (${roleLabel(o.role)})`).join(", ")}. Change role records who changed it, in the Activity record. The studio's leaders change their team's roles on My Studio → Team.`
+            : "Change role records who changed it, in the Activity record. The studio's leaders change their team's roles on My Studio → Team."
         }
         flush
       >
@@ -65,7 +72,7 @@ export function StudioTeam({
               <HqRow
                 key={t.id}
                 name={t.fullName || "Unnamed person"}
-                context={roleLabel(t.role)}
+                context={isMe(t) ? `${roleLabel(t.role)} · you` : roleLabel(t.role)}
                 say={
                   <>
                     <span>
@@ -82,12 +89,27 @@ export function StudioTeam({
                     )}
                   </>
                 }
+                action={
+                  isMe(t) ? undefined : (
+                    <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change ${t.fullName || "this person"}'s role`}>
+                      Change role
+                    </AdminButton>
+                  )
+                }
               />
             ))}
           </HqRows>
         )}
       </AdminPanel>
       <ProvisionalPanel studio={studio} clients={clients} trainers={trainers} authTrainer={authTrainer} onCreated={onCreated} />
+      <RoleDialog
+        person={changing}
+        studioId={studioId}
+        studioName={studio.name}
+        byName={authTrainer.fullName}
+        onClose={() => setChanging(null)}
+        onSaved={onRolesChanged}
+      />
     </div>
   );
 }

@@ -54,6 +54,7 @@ import {
   Download,
   Dumbbell,
   GitPullRequest,
+  History,
   House,
   Inbox,
   Network,
@@ -88,6 +89,7 @@ import { useHomeSignals } from "./home/useHomeSignals";
 import { needItems, type NeedDoor } from "./home/needs";
 import { networkSentence, standardSentence } from "./home/sentences";
 import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
+import { ActivityPage } from "./activity/ActivityPage";
 import { HqStatus } from "./kit";
 import { isDemoStudio } from "../demo-mode/is-demo";
 import {
@@ -130,6 +132,7 @@ const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
   bugs: <Bug aria-hidden="true" />,
   data: <Download aria-hidden="true" />,
   system: <Database aria-hidden="true" />,
+  activity: <History aria-hidden="true" />,
 };
 
 const PLACE_ICON: Record<AdminsPlace, ReactNode> = {
@@ -500,6 +503,16 @@ function AdminsShell({
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />
             )}
             {page === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} />}
+            {page === "activity" && (
+              <ActivityPage
+                studios={studios}
+                trainers={trainers}
+                authTrainer={authTrainer}
+                onRolesChanged={async () => {
+                  await onRefresh?.("trainers");
+                }}
+              />
+            )}
           </UnsavedChangesScope>
         </div>
       </div>
