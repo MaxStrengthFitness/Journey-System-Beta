@@ -4597,5 +4597,50 @@ describe("marks on a time", () => {
         }
       });
     });
+
+    // -- What the nightly job writes: client states and the Journey summary for
+    // the studio's leaders; All stars (and the older watch documents) for
+    // everyone who works there. Nobody writes any of it from the app.
+    describe("the night's states", () => {
+      async function seedNight() {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+          const db = ctx.firestore();
+          await setDoc(doc(db, "studios", "studioA", "clientStates", "eowyn"), { state: "drifting", since: "2026-09-24", reasons: ["a", "b"] });
+          await setDoc(doc(db, "studios", "studioA", "watch", "journey"), { v: 1, asOf: "2026-09-28", counts: { drifting: 1 } });
+          await setDoc(doc(db, "studios", "studioA", "watch", "hubMarks"), { allStars: [{ clientId: "eomer", weeksWithVisit: 26, perWeek: 2 }] });
+          await setDoc(doc(db, "studios", "studioA", "watch", "openings"), { v: 1 });
+        });
+      }
+
+      it("lets the studio's leaders read the client states and the summary, and nobody write them", async () => {
+        await seedPeople();
+        await seedNight();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "clientStates")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "journey")));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "clientStates", "eowyn"), { state: "steady" }));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "watch", "journey"), { v: 1 }));
+        }
+      });
+
+      it("keeps the states and the summary from a trainer, while All stars and the other watch documents stay theirs to read", async () => {
+        await seedPeople();
+        await seedNight();
+        for (const uid of ["trainerA", "guestA"]) {
+          const db = as(uid);
+          await assertFails(getDoc(doc(db, "studios", "studioA", "clientStates", "eowyn")));
+          await assertFails(getDocs(collection(db, "studios", "studioA", "clientStates")));
+          await assertFails(getDoc(doc(db, "studios", "studioA", "watch", "journey")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "hubMarks")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "openings")));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "watch", "hubMarks"), { allStars: [] }));
+        }
+        for (const uid of ["trainerB", "headB"]) {
+          await assertFails(getDoc(doc(as(uid), "studios", "studioA", "watch", "hubMarks")));
+          await assertFails(getDoc(doc(as(uid), "studios", "studioA", "watch", "journey")));
+        }
+      });
+    });
   });
 });

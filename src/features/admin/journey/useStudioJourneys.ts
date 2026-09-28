@@ -9,7 +9,9 @@
  * lines: Drifting's multiple and least, Lapsed, New and Settling in — the
  * studio's own, else Max Strength's default, else the app's; wave 2, Sep 28
  * 2026), the watchlist (what a leader already answered) and the stored cases
- * (wave 2, case-store.ts: one small collection, the leaders' read). The
+ * (wave 2, case-store.ts: one small collection, the leaders' read), and
+ * last night's states (useStoredJourney: the nightly job's summary and one
+ * small collection; used only while they are today's, journey-list.ts). The
  * roster, the trainers and the studios are the app's. Nothing is read per
  * client.
  *
@@ -32,6 +34,8 @@ import { useWatchlist, type StreamState } from "../attention/useAttention";
 import type { WatchlistEntry } from "../attention/attention";
 import { nightlyRead, type NightlyRead } from "../overview/brief";
 import { useStudioCases, type CasesRead } from "./case-store";
+import { summaryIsFresh } from "./nightly";
+import { useStoredJourney } from "./useStoredJourney";
 import { studioJourneys, type JourneyEntry } from "./journey-list";
 import { linesOf, type JourneyLines } from "./states";
 
@@ -56,6 +60,8 @@ export interface StudioJourneys {
   linesFailed: boolean;
   /** The studio's stored cases (wave 2). A failed read leaves every case worked out, and the page says so. */
   cases: CasesRead;
+  /** Last night's states (wave 2): used when `fresh` (today's, with today's lines); `at` is when the run wrote them. */
+  night: { fresh: boolean; at: Date | null };
 }
 
 export function useStudioJourneys({
@@ -85,13 +91,14 @@ export function useStudioJourneys({
   const lines = useMemo(() => linesOf(studioSettings.all), [studioSettings.all]);
   const watchlist = useWatchlist(studioId);
   const cases = useStudioCases(studioId);
+  const stored = useStoredJourney(studioId);
   const nightly = useMemo(() => nightlyRead(clients, studioId, now), [clients, studioId, now]);
   const packageIndex = useMemo(() => {
     if (settingsState.loading || settingsState.error || settingsState.forStudioId !== studioId) return null;
     return buildPackageNameIndex(settingsState.settings);
   }, [settingsState.loading, settingsState.error, settingsState.forStudioId, settingsState.settings, studioId]);
   const uid = auth.currentUser?.uid ?? null;
-  const ready = !settingsState.loading && !studioSettings.loading;
+  const ready = !settingsState.loading && !studioSettings.loading && !stored.loading;
   const entries = useMemo(() => {
     if (!ready) return [];
     const scope = only ? clients.filter((c) => c.id === only) : clients;
@@ -113,10 +120,11 @@ export function useStudioJourneys({
       lines,
       watchlist: watchlist.value,
       cases: cases.cases,
+      stored: stored.failed ? null : { summary: stored.summary, states: stored.states },
     });
     // `now` is read once per render on purpose: the page re-renders every minute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, lines, watchlist.value, cases.cases]);
+  }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, lines, watchlist.value, cases.cases, stored]);
   return {
     ready,
     entries,
@@ -132,5 +140,9 @@ export function useStudioJourneys({
     studioSettings,
     linesFailed: studioSettings.failed,
     cases,
+    night: {
+      fresh: !stored.failed && summaryIsFresh(stored.summary, today, lines, settingsState.settings.breakDays),
+      at: stored.summary?.computedAt ?? null,
+    },
   };
 }

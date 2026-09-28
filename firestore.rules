@@ -2502,7 +2502,33 @@ service cloud.firestore {
        * the machineFit index is. Nothing in the app writes here.
        */
       match /watch/{watchId} {
-        allow read: if isAuthenticated() && writesForStudio(studioId);
+        // watch/journey is the studio's leaders' alone (its own block below).
+        allow read: if isAuthenticated() && watchId != 'journey' && writesForStudio(studioId);
+        allow write: if false;
+      }
+
+      /*
+       * WAVE 2 OPERATIONS: the night's Journey summary (Sep 28 2026; AJ: "all
+       * yes"). watch/journey holds the counts by client state and the day and
+       * lines they were worked out with; the nightly renewals job writes it
+       * (server/journey-step.ts, Admin SDK). Client states are on leader
+       * screens only, so only the studio's leaders read it. (watch/hubMarks,
+       * the Hub's All stars, keeps the block above: everyone who works here.)
+       */
+      match /watch/journey {
+        allow read: if isAuthenticated() && wave2Leads(studioId);
+        allow write: if false;
+      }
+
+      /*
+       * WAVE 2 OPERATIONS: each client's state, written nightly (Sep 28 2026).
+       * One document per active client: her state, since when, what it was,
+       * why, her usual gap, last visit and next booking. Written only by the
+       * nightly renewals job (Admin SDK); read by the studio's leaders only —
+       * the states are never shown to a trainer.
+       */
+      match /clientStates/{clientId} {
+        allow read: if isAuthenticated() && wave2Leads(studioId);
         allow write: if false;
       }
 

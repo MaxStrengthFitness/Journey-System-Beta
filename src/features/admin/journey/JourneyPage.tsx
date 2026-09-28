@@ -99,7 +99,10 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
     j.nightly.lastChangedAt ? `visits from the nightly record of ${formatStudioDate(j.nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, j.tz)}` : "no nightly record yet",
     j.week.readAt ? `bookings read ${formatStudioTime(new Date(j.week.readAt), j.tz)}` : j.week.loading ? "bookings: reading…" : "bookings couldn't be read",
     "each client judged against their own rhythm",
-  ].join(" · ");
+    j.night.fresh ? `states from last night's run${j.night.at ? ` at ${formatStudioTime(j.night.at, j.tz)}` : ""}, checked against today's bookings` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const stop = (s: JourneyState) => (
     <button
@@ -164,8 +167,10 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
 
       {!reading && (
         <p className="ops-quiet">
-          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.back.length} booked again after a gap. Who moved
-          toward steady needs yesterday's states, which Journey doesn't keep yet.
+          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.back.length} booked again after a gap.{" "}
+          {week.towardSteady === null
+            ? "Who moved toward steady needs last night's states, which haven't reached this page."
+            : `${week.towardSteady.length} moved back toward steady after slipping.`}
         </p>
       )}
 

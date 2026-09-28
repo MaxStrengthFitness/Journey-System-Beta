@@ -86,6 +86,7 @@ import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch 
 import { listFor, studioJourneys, thisWeek, type JourneyEntry } from "../journey/journey-list";
 import { linesOf, multipleWords } from "../journey/states";
 import { useStudioCases } from "../journey/case-store";
+import { useStoredJourney } from "../journey/useStoredJourney";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
 import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
@@ -159,6 +160,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const watchlist = useWatchlist(studioId);
   // The stored cases (wave 2): Slipping away names who owns each one.
   const cases = useStudioCases(studioId);
+  // Last night's states (wave 2): Slipping away reads them while they are today's.
+  const stored = useStoredJourney(studioId);
   const acks = useAcknowledgements(studioId);
   const delight = useDelightQueue({ studioId });
   const renewalSettings = useRenewalSettings(studioId);
@@ -288,7 +291,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- Slipping away: the Journey's one rule (journey/states.ts) ---- */
   const journeys = useMemo(() => {
-    if (renewalSettings.loading || studioSettings.loading) return null;
+    if (renewalSettings.loading || studioSettings.loading || stored.loading) return null;
     return studioJourneys({
       clients,
       studioId,
@@ -307,8 +310,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       lines,
       watchlist: watchlist.value,
       cases: cases.cases,
+      stored: stored.failed ? null : { summary: stored.summary, states: stored.states },
     });
-  }, [renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
+  }, [stored, renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
   const slipping = useMemo(() => {
     if (!journeys) return null;
     const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];
