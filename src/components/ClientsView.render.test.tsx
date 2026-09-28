@@ -247,6 +247,24 @@ describe("the Hub", () => {
     expect(cardOf(el, "Estella Bolger")?.dataset.words).toBeUndefined();
   });
 
+  it("shows who is due in the next 30 minutes, across the floor, and a tap opens the peek", () => {
+    const { el } = mount();
+    const strip = el.querySelector<HTMLElement>('section[aria-label="Next 30 minutes"]');
+    expect([...strip!.querySelectorAll(".hn-name")].map((n) => n.textContent)).toEqual(["Hamfast Gamgee", "Belladonna Took", "Estella Bolger"]);
+    expect([...strip!.querySelectorAll(".hn-when")].map((w) => w.textContent)).toEqual(["In session", "9:30", "9:30"]);
+    expect([...strip!.querySelectorAll(".hn-with")].map((w) => w.textContent)).toEqual(["with you", "with you", "with Damrod"]);
+    // The 10:00 consult is past the half hour; Mindbody's "Unavailable" is never on it.
+    expect(strip!.textContent).not.toContain("Targon");
+    act(() => [...strip!.querySelectorAll<HTMLButtonElement>(".hn-item")].find((b) => b.textContent?.includes("Estella"))!.click());
+    expect(document.querySelector(".hp-name")?.textContent).toBe("Estella Bolger");
+  });
+
+  it("has no Next 30 minutes on another day", () => {
+    const { el } = mount();
+    act(() => el.querySelectorAll<HTMLButtonElement>(".hd-day")[1].click());
+    expect(el.querySelector('section[aria-label="Next 30 minutes"]')).toBeNull();
+  });
+
   it("opens Opportunities on the same day's entries", async () => {
     const { el } = mount();
     await act(async () => {

@@ -41,7 +41,8 @@ import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-tod
 import { cardMarks } from "./card-marks";
 import "./hub-card.css";
 
-const GLYPH: Record<MomentKind, ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>> = {
+/** One shape per kind of mark (the Key's). The Next 30 minutes strip draws with the same. */
+export const GLYPH: Record<MomentKind, ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }>> = {
   critical: AlertTriangle,
   waiver: FileSignature,
   pulse: Activity,
