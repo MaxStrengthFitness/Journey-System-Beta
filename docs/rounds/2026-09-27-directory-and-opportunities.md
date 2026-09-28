@@ -1,6 +1,6 @@
 # The Client Directory and the Hub's Opportunities layer
 
-*Sep 27 2026. Branch `redesign/directory-and-opportunities`, four phases on master's `9511c6e`, one commit each. Built in the cloud container; not pushed (the bundle carries it to the PC).*
+*Sep 27–28 2026. Branch `redesign/directory-and-opportunities`: four phases on master's `9511c6e`, one commit each, then master merged in at `8d0a3aa` (the Openings round) and one follow-up for its staff-block rule. Built in the cloud container; not pushed (a bundle carries it to the PC).*
 
 ## What AJ asked for
 
@@ -53,13 +53,21 @@ No per-client query anywhere. Both screens ride on what the app already streams 
 
 FORD "Get to know" and surgery/away from dated notes on the Hub (each needs one new studio-scoped read); the header quick-find popover; every-studio search and Admin → Clients folded in (need search prefixes on the client document); Save view and "Find clients like…"; the Hub grid's clean-up (research-hub S1). The READMEs list each with its reason.
 
+## After master moved (Sep 28)
+
+Master took 105 commits while the round was built (the voice review follow-up, the whole-read record and the Openings round, to `8d0a3aa`), so it was merged into the branch.
+
+- **The merge.** The code merged on its own (`AppContent.tsx` and `ClientsView.tsx` changed on both sides, in different places). The two conflicts were file maps: `CLAUDE.md` and `docs/rounds/README.md` keep master's newer rows and add this round's after them.
+- **A staff block is never a booking.** Openings made one rule for a Mindbody "Unavailable" block, `isStaffBlock` in `lib/booking-state.ts`. The Run-sheet had its own copy of the test and now asks the shared one, and so do the two readers that had none: the Directory's Next column and the set of booked clients the Run-sheet builds its rows from. One new test.
+- **The studio's clock.** Master's last commit found the Wrap-up formatting a booking on the device's clock, which GitHub's check (run in UTC) caught. This round already formats with `lib/studio-time.ts`; its 110 tests pass under Eastern, UTC, Pacific and Tokyo time.
+
 ## Numbers
 
-Measured in the cloud container with `TZ=America/New_York npx vitest run --dir src`, typecheck with `firebase-applet-config.example.json` copied to `firebase-applet-config.json`.
+Measured in the cloud container, typecheck with `firebase-applet-config.example.json` copied to `firebase-applet-config.json`. Run them again on the PC before anything is merged: that run is the one that counts.
 
 | Check | Result |
 | --- | --- |
-| Typecheck (`npx tsc --noEmit`) | **4** errors — the baseline, none new |
-| Tests | **6,133** in **399** files: master's 6,027 in 391 plus **106 new tests in 8 new files** (85 for the directory — row, buckets, search, tokens, views and the mounted screen — and 21 for Opportunities — moments-today and the mounted Run-sheet). **One failure, and it is master's too:** `src/services/served-files.test.ts` › "refuses the admin key at /SERVICE-ACCOUNT.JSON" fails in the Linux container on master as well — the test plants `service-account.json` and asks for it in capitals, which is the same file on Windows (where the 6,027 was measured) and a missing path on Linux, answered by the app's page with a 200. Run the suite on the PC to confirm it passes there |
+| Typecheck (`npx tsc --noEmit`) | **4** errors — the baseline, none new (before and after the merge) |
+| Tests | After the merge: **7,034** in **460** files with `TZ=America/New_York npx vitest run --dir src` — master's 6,927 in 452 plus **107 new tests in 8 new files** (86 for the directory — row, buckets, search, tokens, views and the mounted screen — and 21 for Opportunities — moments-today and the mounted Run-sheet), none failing. `npm test` under `TZ=UTC`, as GitHub's check runs it: **7,248** passing, 1 skipped (master's 7,141 plus the 107). Before the merge it was 6,133 in 399, with one Linux-only failure in `served-files.test.ts` that master has since fixed (`df4933e`) |
 | Build (`npx vite build`) | Clean. The directory is its own chunk (about 39 kB, 14 kB gzipped) and so is the Run-sheet (about 18 kB, 7 kB gzipped), each with its own CSS |
-| Guards | `css-class-owners` (new prefixes `cd-`, `ho-`, `hl-`), `lazy-screens` (ClientsView added with its `LoadBoundary kind="screen"`), `home-screen` (no inset paid), no raw invisible characters (`` and the rest written as escapes), no file names that differ only by case |
+| Guards | `css-class-owners` (new prefixes `cd-`, `ho-`, `hl-`), `lazy-screens` (ClientsView added with its `LoadBoundary kind="screen"`), `home-screen` (no inset paid), no raw invisible characters (`\uf8ff` and the rest written as escapes), no file names that differ only by case |
