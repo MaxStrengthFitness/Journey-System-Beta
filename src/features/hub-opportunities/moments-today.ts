@@ -18,7 +18,9 @@
  *   Read first   the Hub's own Critical read (`criticalNotesOn` over
  *                useHubCriticalNotes), through `getClientAlertState` — the
  *                card's exact rule; an unread client claims nothing
- *   Watch        the last Pulse's red flags, the same alert state
+ *   Watch        no liability waiver signed (Mindbody's "nw", AJ Sep 28 2026:
+ *                `waiverState` says "not-signed", never for "not synced
+ *                yet"), then the last Pulse's red flags, the same alert state
  *   Welcome      a consultation (the card's rule), sessions 1–3 when the
  *                number may be quoted, first time with this trainer where
  *                Journey holds her whole story, and back after a break
@@ -42,6 +44,7 @@ import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
 import { bookingState, isStaffBlock, type LoggedSessions } from "../../lib/booking-state";
 import { getClientAlertState } from "../../lib/client-alerts";
+import { waiverState } from "../../lib/client-waiver";
 import { criticalNotesOn } from "../../lib/hub-critical-notes";
 import { formatStudioTime, studioDateKey, toDate, zonedHM } from "../../lib/studio-time";
 import { SESSION_MILESTONES } from "../admin/overview/moments";
@@ -57,6 +60,7 @@ export type MomentFamily = "read-first" | "watch" | "welcome" | "celebrate" | "r
 
 export type MomentKind =
   | "critical"
+  | "waiver"
   | "pulse"
   | "consult"
   | "early-session"
@@ -73,6 +77,12 @@ export interface Moment {
   chip: string;
   /** The whole sentence, for the opened row. */
   sentence: string;
+  /**
+   * The mark's own words, whole, where they are more than the chip: the
+   * Critical note's or priority note's words, the Pulse flags. The Hub card
+   * gives them to its triangle and glyphs as their label.
+   */
+  words?: string;
 }
 
 /** The Key's order when space runs out: Read first › Watch › Welcome › Celebrate › Renew. */
@@ -218,6 +228,12 @@ export interface RunSheetEntry {
   criticalUnknown: boolean;
   /** The session number this booking will be, when it may be quoted. */
   sessionNumber: number | null;
+  /**
+   * Clinical history is on her record. Standing context, never a mark or a
+   * filter (it would sit on most clients the studio has): the Hub's peek and
+   * the opened row say it quietly, and the briefing holds the detail.
+   */
+  clinicalOnFile: boolean;
 }
 
 export interface MomentsTodayInput {
@@ -263,8 +279,9 @@ function withWords(b: ScheduleEntry, input: MomentsTodayInput, myIdSet: Set<stri
  * The number this booking will be: her count, plus her bookings between now
  * and this one (Operations' `count + i + 1`), plus this one — unless it is
  * today's and already logged, when the count holds it already (the card's rule).
+ * The Hub card asks it per booking (a client booked twice in a day has two).
  */
-function sessionNumberFor(
+export function sessionNumberFor(
   client: Client,
   booking: ScheduleEntry,
   input: MomentsTodayInput,
@@ -318,6 +335,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   const moments: Moment[] = [];
   let criticalUnknown = false;
   let sessionNumber: number | null = null;
+  let clinicalOnFile = false;
 
   if (client && clientId) {
     const coverage = coverageOf(row);
@@ -327,8 +345,17 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     const notes = input.criticalFor(clientId);
     criticalUnknown = notes === null;
     const alert = getClientAlertState(client, criticalNotesOn(notes ?? [], input.day, input.tz));
-    if (alert.hasPriorityNote) moments.push({ family: "read-first", kind: "critical", chip: "Read first", sentence: `Read first: ${alert.priorityLabel ?? "a priority note"}` });
-    if (alert.hasCheckInRedFlag) moments.push({ family: "watch", kind: "pulse", chip: "Pulse flag", sentence: `Pulse: ${alert.checkInFlagLabel}` });
+    clinicalOnFile = alert.hasClinicalHistory;
+    if (alert.hasPriorityNote) {
+      moments.push({ family: "read-first", kind: "critical", chip: "Read first", sentence: `Read first: ${alert.priorityLabel ?? "a priority note"}`, words: alert.priorityLabel ?? "Priority note" });
+    }
+    // Watch, in the Key's order: the waiver (second only to Read first), then Pulse.
+    if (waiverState(client).state === "not-signed") {
+      moments.push({ family: "watch", kind: "waiver", chip: "No waiver signed", sentence: "No liability waiver signed in Mindbody.", words: "No waiver signed" });
+    }
+    if (alert.hasCheckInRedFlag) {
+      moments.push({ family: "watch", kind: "pulse", chip: "Pulse flag", sentence: `Pulse: ${alert.checkInFlagLabel}`, words: alert.checkInFlagLabel ?? "Pulse flag" });
+    }
 
     /* ---- sessions ---- */
     sessionNumber = sessionNumberFor(client, booking, input, quotable);
@@ -464,6 +491,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     facts,
     criticalUnknown,
     sessionNumber,
+    clinicalOnFile,
   };
 }
 

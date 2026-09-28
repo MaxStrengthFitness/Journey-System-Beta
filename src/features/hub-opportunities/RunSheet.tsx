@@ -19,21 +19,15 @@
  * read), surgery or away from dated notes (the same), "Show on schedule".
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, RefreshCw, Sparkles, Undo2 } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
-import { isStaffBlock, loggedSessions } from "../../lib/booking-state";
-import { myTrainerIds } from "../../lib/live-session";
-import { formatStudioTime, studioTodayKey } from "../../lib/studio-time";
-import { useRenewalSettings } from "../renewals/useRenewalSettings";
-import { buildPackageNameIndex } from "../renewals/settings";
-import { buildDirectoryRows, prepareDirectory } from "../client-directory/row";
+import { formatStudioTime } from "../../lib/studio-time";
 import {
   FILTERS,
   RUN_SORTS,
   filterCounts,
   hasFamily,
-  momentsToday,
   rowChips,
   runSections,
   type FilterId,
@@ -42,6 +36,7 @@ import {
   type RunSheetEntry,
   type RunSortKey,
 } from "./moments-today";
+import { useDayMoments } from "./use-day-moments";
 import "./run-sheet.css";
 
 export interface RunSheetProps {
@@ -100,6 +95,7 @@ function writeMemory(m: Remembered) {
 
 const ICON: Record<MomentKind, React.ComponentType<{ size?: number; "aria-hidden"?: boolean }>> = {
   critical: AlertTriangle,
+  waiver: FileSignature,
   pulse: Activity,
   consult: Sparkles,
   "early-session": Sparkles,
@@ -154,6 +150,10 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   if (entry.criticalUnknown) {
     watch.push({ key: "unread", text: "Couldn\u2019t check her critical notes \u2014 her briefing shows them." });
   }
+  // Standing context, said quietly: the amber dot left the Hub card (calm Hub round).
+  if (entry.clinicalOnFile) {
+    watch.push({ key: "clinical", text: "Clinical history on file \u2014 her briefing has it.", muted: true });
+  }
   return (
     <div className="ho-open">
       <div className="ho-slots">
@@ -203,52 +203,20 @@ export function RunSheet({
   // A new day starts with every row closed.
   useEffect(() => setOpenKey(null), [day]);
 
-  const today = studioTodayKey(now);
-  const myIds = useMemo(() => myTrainerIds(authTrainer, uid ?? null), [authTrainer, uid]);
-  const trainerNames = useMemo(() => new Map(trainers.map((t) => [t.id, t.nickname?.trim() || t.fullName])), [trainers]);
-
-  const renewalSettings = useRenewalSettings(activeStudioId);
-  const packageIndex = useMemo(() => {
-    if (renewalSettings.loading || renewalSettings.error || renewalSettings.forStudioId !== activeStudioId) return null;
-    return buildPackageNameIndex(renewalSettings.settings);
-  }, [renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings, activeStudioId]);
-
-  const logged = useMemo(() => loggedSessions(sessionsKnown ? sessions : null), [sessions, sessionsKnown]);
-  const clientsById = useMemo(() => new Map(clients.filter((c) => c.id).map((c) => [c.id as string, c])), [clients]);
-
-  const entries = useMemo(() => {
-    const bookedIds = new Set(schedules.filter((b) => !isStaffBlock(b)).map((b) => b.clientId).filter(Boolean) as string[]);
-    const booked = clients.filter((c) => c.id && bookedIds.has(c.id));
-    const ctx = prepareDirectory({
-      today,
-      now,
-      studios: studios ?? [],
-      activeStudioId,
-      schedules,
-      bookingsFresh: false,
-      recentSessions: sessionsKnown ? sessions : null,
-      packageIndex,
-      packageStudioId: activeStudioId,
-      myIds,
-      myName: authTrainer?.fullName ?? null,
-      trainerNameOf: (id) => trainerNames.get(id) ?? null,
-    });
-    const rows = buildDirectoryRows(booked, ctx);
-    return momentsToday({
-      day,
-      today,
-      now,
-      schedules,
-      clientsById,
-      rowsById: new Map(rows.map((r) => [r.id, r])),
-      studios: studios ?? [],
-      logged,
-      criticalFor,
-      myIds,
-      myName: authTrainer?.fullName ?? null,
-      trainerNameOf: (id) => trainerNames.get(id) ?? null,
-    });
-  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, criticalFor]);
+  const { entries } = useDayMoments({
+    day,
+    now,
+    schedules,
+    clients,
+    sessions,
+    sessionsKnown,
+    studios,
+    activeStudioId,
+    authTrainer,
+    uid,
+    trainers,
+    criticalFor,
+  });
 
   const scoped = useMemo(() => (memory.scope === "mine" ? entries.filter((e) => e.mine) : entries), [entries, memory.scope]);
   const counts = useMemo(() => filterCounts(scoped), [scoped]);

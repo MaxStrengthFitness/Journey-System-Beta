@@ -256,3 +256,45 @@ describe("noise rules", () => {
     ]);
   });
 });
+
+describe("the waiver: Mindbody's \"nw\" corner (AJ, Sep 28 2026)", () => {
+  const PRIORITY = "Left shoulder: no overhead press";
+  const PULSE = "Sleep & Recovery is Red";
+
+  it("a definite 'not signed' is a Watch moment, second only to Read first, before the Pulse flag", () => {
+    const entries = run(
+      [
+        makeClient({
+          id: "w",
+          isLiabilityReleased: false,
+          priorityNote: PRIORITY,
+          subjectiveSnapshot: { flags: [{ severity: "red", label: PULSE }] },
+        } as Partial<Client> & { id: string }),
+      ],
+      [makeBooking({ clientId: "w", start: today("16:00") })],
+    );
+    expect(kinds(entries[0])).toEqual(["critical", "waiver", "pulse"]);
+    expect(entries[0].moments[1]).toMatchObject({ family: "watch", chip: "No waiver signed", words: "No waiver signed" });
+    // The card labels its triangle and glyphs with the mark's own words, whole.
+    expect(entries[0].moments[0].words).toBe(PRIORITY);
+    expect(entries[0].moments[2].words).toBe(PULSE);
+    expect(filterCounts(entries).watch).toBe(1);
+  });
+
+  it("signed, or never synced, says nothing: absent is 'we haven't asked', not 'no'", () => {
+    for (const isLiabilityReleased of [true, undefined, null]) {
+      const entries = run([makeClient({ id: "s", isLiabilityReleased } as Partial<Client> & { id: string })], [makeBooking({ clientId: "s", start: today("16:00") })]);
+      expect(kinds(entries[0])).not.toContain("waiver");
+    }
+  });
+});
+
+describe("clinical history is standing context, never a mark", () => {
+  it("rides on the entry for the peek and the opened row, and is not among the moments or the filters", () => {
+    const entries = run([makeClient({ id: "h", clinicalNotes: "Hip replacement, 2024" } as Partial<Client> & { id: string })], [makeBooking({ clientId: "h", start: today("16:00") })]);
+    expect(entries[0].clinicalOnFile).toBe(true);
+    expect(entries[0].moments).toEqual([]);
+    const plain = run([makeClient({ id: "p" })], [makeBooking({ clientId: "p", start: today("16:00") })]);
+    expect(plain[0].clinicalOnFile).toBe(false);
+  });
+});
