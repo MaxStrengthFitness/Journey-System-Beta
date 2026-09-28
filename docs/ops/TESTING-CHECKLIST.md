@@ -2110,6 +2110,80 @@ iPad yet: only in render tests.
 
 ---
 
+## Round 29 — The Machine Catalog · *Sep 28 2026, branch `redesign/catalog`*
+
+The Catalog, floor first (AJ: "take the pick but use our anatomy of muscles
+model and i feel like we can clean up how much text we have"). The round
+document is `docs/rounds/2026-09-28-catalog.md`. Nothing to deploy first: no
+rules, no index, no Cloud Function. Open Learning → Catalog signed in as a
+**Life Transformer** and as an **administrator**, **portrait and landscape,
+light and dark**. Nothing in this round has been seen on a screen yet: only
+mounted in tests.
+
+**Find**
+
+- [ ] **On top, never in the way.** Find sits above the floor and never
+  takes the keyboard by itself; typing shows its results in place of the
+  floor, and clearing it brings the floor back.
+- [ ] **Every name.** "lumbar", "low back" and "lumb" open the Lumbar;
+  "cx", "neck" and "cervical extension" the neck machine; Enter opens the top
+  match.
+- [ ] **Two of a kind.** On a floor with two leg presses, "leg press" lists
+  both rather than picking one, and "lp2" opens the second.
+- [ ] **Filters.** "handoff", "never to failure" and a maker's name (where
+  the floor records one) narrow the floor and say how many.
+- [ ] **Not on this floor.** A movement the floor lacks ("torso arm") says
+  "Not on {studio}'s floor" and opens in All MSF machines.
+- [ ] **Inside a page.** A word from a page ("headache") lists the whole
+  sentence and where it is; nonsense says "Nothing goes by …".
+
+**The floor**
+
+- [ ] **Walking order.** The Catalog opens on "{studio}'s floor", numbered in
+  the order the floor is walked (the Journey grid's and the session's order).
+  Names whole, wrapping; the Academy code; the Academy's name only where the
+  floor name doesn't already say it.
+- [ ] **The preset.** Each row shows the studio's numbers ("Gap 4 · 3 not
+  set") or "No numbers set for this unit yet"; the machine's page leads with
+  the same.
+- [ ] **Out of service and Flagged.** A machine set out of service says so;
+  a machine flagged on Relay's Floor Map says "Flagged", and its page says
+  who flagged it, when, the note, and "Cleared on My Studio → Relay." No
+  cleaning counts anywhere in the Catalog.
+- [ ] **Never to failure.** The Lumbar and the neck machine carry the mark on
+  their rows, and their pages open with the Academy's rule in its words.
+- [ ] **No floor.** A studio with no machines says "No machines on
+  {studio}'s floor yet" with Open All MSF machines, never the MSF standard as
+  if it were the floor. (A read that fails says "Can't read {studio}'s floor
+  right now" instead; the tests cover it, as a failed read is hard to cause
+  on purpose.)
+- [ ] **Head office.** As an administrator the Catalog opens on All MSF
+  machines; choose the floor and it stays there until sign-out.
+
+**The body**
+
+- [ ] **Figure and list.** "The body" shows the app's figure beside a list of
+  every part (Upper body · Trunk · Lower body) with the floor's counts; a
+  part picked on the figure or in the list lights on both. Nothing needs a
+  hover.
+- [ ] **What trains it.** A part picked lists what trains it most on this
+  floor, what helps, and the MSF machines the floor lacks (they open in All
+  MSF); Front | Back turns the figure.
+- [ ] **From Find.** "lats" or "quads" in Find opens the body on that part.
+
+**All MSF machines and the front page**
+
+- [ ] **The five families.** All MSF machines is grouped by the Academy's
+  five families, with no grouping switch, and the three ways in are above the
+  title on every lens.
+- [ ] **The front page.** Learning's front page says only what is flagged and
+  what is out of service, and never shows the MSF standard as the studio's
+  floor.
+- [ ] **Less text.** Is it calm enough? (AJ: "clean up how much text we
+  have".)
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -2162,4 +2236,5 @@ Screenshot:
 | 26 — My Studio → Studio read only, and AJ's three answers (Sep 28) | 13 | | |
 | 27 — The Hub's cherry on top (Sep 28) | 12 | | |
 | 28 — The Admins dashboard, the Command Center (Sep 28) | 16 | | |
-| **Total** | **483** | | |
+| 29 — The Machine Catalog (Sep 28) | 18 | | |
+| **Total** | **501** | | |
