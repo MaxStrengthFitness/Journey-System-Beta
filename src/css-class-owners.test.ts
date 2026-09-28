@@ -97,7 +97,9 @@ describe("plainClassRules", () => {
   });
 });
 
-describe("one stylesheet owns each class", () => {
+// Each test reads every stylesheet in the app: a second alone, but over the
+// 5-second default on a busy PC (Sep 28 2026, five builds testing at once).
+describe("one stylesheet owns each class", { timeout: 30_000 }, () => {
   it("no two stylesheets define the same class as a plain rule", () => {
     const clashes = [...owners()]
       .filter(([cls, files]) => files.length > 1 && !(cls in SHARED))
