@@ -6,7 +6,9 @@
  * assignment, a team job), Follow-ups (the CRM lane: birthdays and FORD
  * dates for THEIR clients in the next fortnight, from fields the roster
  * already carries — no reads), and Growth (professional development, kept
- * out of Today so it never competes with floor work).
+ * out of Today so it never competes with floor work). Since the Relay room
+ * (Sep 28 2026) the tab is the Tracker, sorted by when (relay/tracker.ts);
+ * this file keeps the Follow-ups, whose clients are "yours", and Growth.
  *
  * "Their clients" has no single field. Three signals, any of which counts:
  * the nightly renewal snapshot's coachIds (coached in the last 60 days),
@@ -16,7 +18,6 @@ import type { Client } from "../../../types";
 import { daysUntilBirthday } from "../../../lib/hub-markers";
 import { clientDisplayName } from "../../../lib/client-name";
 import { fordSummaryOf } from "../../ford/ford-rollup";
-import type { TaskRequest } from "../../studio-tasks/requests";
 import type { TaskRow } from "../../studio-tasks/types";
 
 export const GROWTH_CATEGORY = "growth";
@@ -101,10 +102,4 @@ export function followUps(clients: Client[], trainerId: string | null, todayKey:
 
 export function isGrowthRow(r: TaskRow): boolean {
   return r.template.category === GROWTH_CATEGORY;
-}
-
-/** Open asks handed to this person by name. */
-export function handedAsks(requests: TaskRequest[], ids: (string | null | undefined)[]): TaskRequest[] {
-  const set = new Set(ids.filter(Boolean) as string[]);
-  return requests.filter((r) => r.status === "open" && r.forId && set.has(r.forId));
 }

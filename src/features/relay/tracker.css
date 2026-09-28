@@ -1,0 +1,103 @@
+/* ==========================================================================
+   THE TRACKER — Relay's second tab, a trainer's own list by when
+   --------------------------------------------------------------------------
+   Relay room, Sep 28 2026 (the redesign's phase 5; the lists are
+   ./tracker.ts). On the Studio Hub's --st-* tokens (studio-tasks.css);
+   nothing here writes a hex value, and my-studio/look.test.ts holds this
+   file to My Studio's look: the 11 / 12 / 14 / 17 / 30 type scale, 44px
+   controls, names that wrap and are never cut, one heading style (the rows
+   themselves are planner.css's .pl__task, as they were on Mine).
+
+   Colour meanings are the app's: blue is the list you are on and anything
+   you can act on; the deep orange fill is what you are tracking, as it is
+   on the header's chip; green is done (the tick).
+
+   Prefix rtk, one owner (src/css-class-owners.test.ts).
+
+   Widths follow the Tracker's own box (a container query on .rtk): the
+   lists sit in a rail on the left when there is room for it, and above the
+   list, as a row of buttons that wraps, when there is not (an upright iPad,
+   or a landscape one with the Context Panel open beside it).
+   ========================================================================== */
+
+.rtk {
+  container: rtk / inline-size;
+  padding: 0.875rem 0 1.5rem;
+}
+.rtk-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@container rtk (min-width: 46rem) {
+  .rtk-in { grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr); gap: 1.25rem; }
+}
+
+.rtk-rail { min-width: 0; display: flex; flex-direction: column; gap: 0.875rem; }
+.rtk-main { min-width: 0; }
+
+/* What you are tracking: the header's chip, with room for its doors. */
+.rtk-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+.rtk-box--on { border-style: solid; border-color: var(--st-hero); background: var(--st-hero-fill); }
+.rtk-box--on .rtk-box__h svg { color: var(--st-hero-text); }
+.rtk-box .rtk-box__h { display: flex; align-items: center; gap: 6px; margin: 0; }
+.rtk-box__t { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--st-ink); overflow-wrap: anywhere; }
+.rtk-box__none { margin: 0; font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); }
+
+/* My lists: a column in the rail, a wrapping row above the list. */
+.rtk-lists { display: flex; flex-wrap: wrap; gap: 6px; }
+@container rtk (min-width: 46rem) {
+  .rtk-lists { flex-direction: column; flex-wrap: nowrap; }
+}
+.rtk-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.rtk-list svg { flex: none; color: var(--st-ink-muted); }
+.rtk-list:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rtk-list[aria-pressed="true"] { border-color: var(--st-live); background: var(--st-live-fill); color: var(--st-live); }
+.rtk-list[aria-pressed="true"] svg { color: var(--st-live); }
+.rtk-list__t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.rtk-list__n {
+  flex: none;
+  min-width: 1.5em;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--st-ink-muted);
+}
+@container rtk (min-width: 46rem) {
+  .rtk-list { width: 100%; }
+}
+
+/* A row's buttons: beside the words when there is room, under them when not. */
+.rtk-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
+.rtk-rail__acts { justify-content: flex-start; margin-left: 0; }
+.rtk-box .rtk-acts { justify-content: flex-start; margin-left: 0; }
+.rtk .pl__task { flex-wrap: wrap; }
+.rtk .pl__task-main { flex: 1 1 14rem; }
+
+/* Who put it there, and by when: plain words, not the capitals of a label. */
+.rtk-meta { font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); overflow-wrap: anywhere; }

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { followUps, handedAsks, isGrowthRow, isMyClient, myClients } from "./mine";
+import { followUps, isGrowthRow, isMyClient, myClients } from "./mine";
 import type { Client } from "../../../types";
-import type { TaskRequest } from "../../studio-tasks/requests";
 import type { TaskRow } from "../../studio-tasks/types";
 
 const TODAY = "2026-09-16";
@@ -47,15 +46,8 @@ describe("followUps", () => {
 });
 
 describe("lanes", () => {
-  it("knows a growth row and a hand-off", () => {
+  it("knows a growth row (a hand-off is the Tracker's Handed to you since Sep 28 2026, relay/tracker.ts)", () => {
     expect(isGrowthRow({ template: { category: "growth" } } as TaskRow)).toBe(true);
     expect(isGrowthRow({ template: { category: "ops" } } as TaskRow)).toBe(false);
-    const asks = [
-      { id: "a", status: "open", forId: "u1" },
-      { id: "b", status: "open", forId: "t1" },
-      { id: "c", status: "resolved", forId: "u1" },
-      { id: "d", status: "open" },
-    ] as TaskRequest[];
-    expect(handedAsks(asks, ["u1", "t1", null]).map((r) => r.id)).toEqual(["a", "b"]);
   });
 });

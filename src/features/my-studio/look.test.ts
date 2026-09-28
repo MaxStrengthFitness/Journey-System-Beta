@@ -41,6 +41,8 @@ const FILES = [
   "features/my-studio/my-studio.css",
   // The Board (Relay room, Sep 28 2026): Just now, the doors, the dealt card.
   "features/relay/board/board.css",
+  // The Tracker (Relay room, Sep 28 2026): your lists by when.
+  "features/relay/tracker.css",
   "features/relay/team/team.css",
   "features/relay/jobs/jobs.css",
   "features/relay/notes/notes.css",
@@ -150,6 +152,9 @@ const NAME_CLASSES = [
   "rbd-later__t", // a row of Later today (a client's name)
   "rbd-undo__t", // what Undo takes back (a job's name)
   "rwho__name", // a trainer on a leader's Who? faces
+  "rtk-box__t", // the Tracker's Tracking box: the job's name
+  "rtk-list__t", // a list's name in the Tracker's rail
+  "rtk-meta", // who put a job on your list, by name
   "sh__group-title", // a machine group or a duty
   "sh__row-name", // a machine in the group
   "sh__entry-title", // a playbook entry
@@ -240,6 +245,7 @@ const TAP_CLASSES = [
   "rwho__more",
   "rwho__span",
   "rwho__pop-item",
+  "rtk-list", // the Tracker's lists
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -337,6 +343,7 @@ const BUTTON_CLASSES = [
   "rbd-part",
   "rbd-undo__btn",
   "rwho__face",
+  "rtk-list",
   "tj-open",
   "tj-done__toggle",
   "wl__btn",

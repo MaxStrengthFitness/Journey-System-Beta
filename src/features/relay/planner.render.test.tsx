@@ -253,7 +253,8 @@ describe("My Studio", () => {
   it("shows the Team section to a leader and walks every tab and section without throwing", async () => {
     const h = await mount(lead);
     await click(tab("Tracker"));
-    expect(h.textContent).toContain("Your list");
+    // The Tracker (Relay room, Sep 28 2026): your lists by when.
+    expect(h.textContent).toContain("Someday · Growth");
     expect(h.textContent).toContain("New reminder");
     await click(tab("Journal"));
     expect(h.textContent).toContain("New note");
