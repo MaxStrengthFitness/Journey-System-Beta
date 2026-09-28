@@ -1942,6 +1942,38 @@ signed-in app on an iPad yet: only on a harness page in headless Chrome.
 
 ---
 
+## Round 26 — My Studio → Studio, read only for trainers · *Sep 28 2026, branch `voice-review-notes`*
+
+AJ's voice review notes: "Leaders edit it; trainers can view it read-only."
+The round document is `docs/rounds/2026-09-28-voice-review-notes.md`.
+Nothing to deploy first: no rules, no index, no Cloud Function. Sign in as a
+**Life Transformer**, then as a **head trainer**, **portrait and landscape,
+light and dark**. Seen so far only on a harness page in headless Chrome.
+
+- [ ] **A trainer gets Studio.** My Studio shows Relay · Openings · Machines
+  · Studio (no Team).
+- [ ] **Everything locked, everything readable.** Every field on Studio is
+  locked, and its words are as dark as any other sentence, not faded (iPad
+  Safari fades a locked field unless told not to).
+- [ ] **Nothing to press.** No Save bar, no "Use Max Strength's defaults", no
+  Publish or Take down; each panel says who changes it ("Only this studio's
+  leaders can change the studio's day.").
+- [ ] **Notices.** The studio's live announcements are a plain list (title,
+  Urgent, the first line, who posted it), or "Nothing posted right now".
+- [ ] **No Mindbody lookup.** The Mindbody location field shows the saved id
+  and the hint says "Only needed when a site holds more than one studio"; no
+  "Looking up locations…" ever appears for the trainer.
+- [ ] **A leader's page is unchanged.** As a head trainer: every field
+  editable, the save bars, Publish, and "Locations load automatically" under
+  the Site ID.
+- [ ] **The grant.** A trainer with the grant (My Studio → Team → Can manage
+  My Studio) gets the editable page; the grant's hint reads "Opens Team at
+  {studio}, and lets them change its studio settings and machines".
+- [ ] **Operations → Announcements** (as a studio leader whose account is an
+  older one, if there is one): Publish works and the notice reaches the bell.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -1991,4 +2023,5 @@ Screenshot:
 | 23 — Openings (Sep 27) | 36 | | |
 | 24 — The Client Directory and the Hub's Opportunities (Sep 28) | 16 | | |
 | 25 — The calm Hub (Sep 28) | 22 | | |
-| **Total** | **442** | | |
+| 26 — My Studio → Studio, read only for trainers (Sep 28) | 8 | | |
+| **Total** | **450** | | |
