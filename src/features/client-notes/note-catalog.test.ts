@@ -125,6 +125,18 @@ describe("noteCategoryOf — every existing note maps in", () => {
     expect(noteCardLabel(entry({ kind: "injury" }))).toBe("Injury");
     expect(noteCardLabel(entry({ kind: "life", category: "Vacation" }))).toBe("FORD / Life");
   });
+
+  it("names an open question from Relay for what it is, filed with the coaching tips, never Preference and never unfiled (Sep 28 2026)", () => {
+    const open = entry({ kind: "question", importance: "elevated", authorName: "Ioreth Healer" });
+    expect(noteCategoryOf(open)).toBe("coaching");
+    expect(noteCardLabel(open)).toBe("Open question from Ioreth");
+    expect(noteCardLabel({ ...open, resolvedAt: new Date() })).toBe("Question, answered");
+    expect(noteCardLabel({ ...open, authorName: "" })).toBe("Open question");
+    expect(isUnfiled(open)).toBe(false);
+    expect(splitUnfiled([open]).unfiled).toEqual([]);
+    expect(matchesSearch(open, "open question")).toBe(true);
+    expect(matchesSearch(open, "coaching")).toBe(true);
+  });
 });
 
 describe("buildCatalog", () => {

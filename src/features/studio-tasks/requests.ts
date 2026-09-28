@@ -245,6 +245,17 @@ export interface TaskRequest {
   /** One tap of thanks per person: { [uid]: true }. */
   kudos?: Record<string, true>;
 
+  /*
+   * THE OPEN-QUESTIONS TRAIL (Relay room, Sep 28 2026; AJ approved the one
+   * field). A question about ONE client opens a thread on her record
+   * (journalEntries, kind "question"), written by the asker; this is that
+   * thread's root id. Every reply, take-over and the answer is written onto
+   * the thread by the person doing it (question-trail.ts, through
+   * client-notes/thread-write.ts), and the answer closes it. Absent on every
+   * other ask.
+   */
+  threadId?: string;
+
   createdBy: TaskAuthor;
   createdAt?: unknown;
 
@@ -337,6 +348,8 @@ export interface CreateRequestInput {
   dueOn?: string;
   estMinutes?: number;
   notifyOnDone?: boolean;
+  /** A question about one client: its thread on her record (see TaskRequest.threadId). */
+  threadId?: string;
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<string> {
@@ -363,6 +376,7 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     ...(input.dueOn ? { dueOn: input.dueOn } : {}),
     ...(typeof input.estMinutes === "number" ? { estMinutes: input.estMinutes } : {}),
     ...(input.notifyOnDone ? { notifyOnDone: true } : {}),
+    ...(input.threadId ? { threadId: input.threadId } : {}),
 
     createdBy: author,
     createdAt: serverTimestamp(),

@@ -423,3 +423,34 @@ fails is worse than no button.
   any authenticated trainer may write any field on a `taskRequests` document
   except `createdBy`. `target` is now one of those fields.
 
+## The open-questions trail (Relay room, Sep 28 2026)
+
+An ask of kind `question` about ONE client keeps its whole exchange on her
+record. AJ approved one stored field for it: `taskRequests.threadId`, the id
+of the thread's root in `journalEntries` (kind `"question"`, Heads up, written
+by the asker; `client-notes/thread-write.ts` `openQuestionThread`).
+`question-trail.ts` (+ test) is the one place the two meet:
+
+- `postQuestion` writes her record's thread first, then the ask carrying its
+  id. A record that refuses the thread posts nothing; a board that refuses
+  the ask keeps the thread's id for the retry, so her record never gets it
+  twice. It never throws: the result says what was written.
+- `claimAskWithTrail`, `replyWithTrail`, `answerAskWithTrail`,
+  `reopenAskWithTrail` do what the board always did (the claim, the reply,
+  the resolution, the reopen), then write the line onto the thread BY THE
+  PERSON DOING IT ("Beregond took it on.", the reply's words, "Answered: …"),
+  and the answer closes the thread. The board write goes first and its
+  failure throws for the caller to say; a record line that fails afterwards
+  returns `"failed"` and the caller says the record didn't take it. An ask
+  with no thread returns `"none"` and writes nothing on any record.
+- `journalAuthorOf` is the writer: the Auth uid (the journal's rule pins
+  `authorId` to it), the name and the initials.
+
+Every place an ask is claimed, replied to, answered or reopened goes through
+it: the Board's card and its Undo (`relay/board/card-actions.tsx`,
+`Board.tsx`), Close out's hand-back, the Tracker, and this lane
+(`RequestsLane.tsx`: its card names the client, "About Nancy Took · on her
+record until it's answered", and "Answered lately" keeps a closed question's
+answer on screen). No rules change: `journalEntries` pins only the author and
+the client, and `taskRequests` restricts no keys.
+

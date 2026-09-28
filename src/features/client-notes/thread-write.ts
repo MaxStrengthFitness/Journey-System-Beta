@@ -72,6 +72,38 @@ export async function addThreadUpdate(
   });
 }
 
+/**
+ * OPEN A QUESTION (Relay room, Sep 28 2026; AJ approved the trail). A
+ * question about one client, asked of the team on Relay, starts a thread on
+ * her record: the root, written by the asker, kind "question", at Heads up
+ * so the next briefing reads it out while it is open. The ask on the board
+ * keeps this id (taskRequests.threadId); every reply, take-over and the
+ * answer hangs off it through `addThreadUpdate`, each by the person doing
+ * it, and the answer closes it (`closeThread`). Returns the root's id, or
+ * null when there is nothing to write.
+ */
+export async function openQuestionThread(
+  client: { id: string },
+  studioId: string,
+  author: JournalAuthor,
+  question: string,
+): Promise<string | null> {
+  const text = (question || "").trim();
+  if (!client?.id || !text) return null;
+  return createJournalEntry(client.id, studioId || "", author, {
+    kind: "question",
+    category: null,
+    body: text,
+    importance: "elevated",
+    machineId: null,
+    focusId: null,
+    threadId: null,
+    origin: "manual",
+    occurredAt: null,
+    sessionId: null,
+  });
+}
+
 /** "All healed up." Closes the whole thread by stamping the root. */
 export function closeThread(rootId: string): Promise<void> {
   return resolveJournalEntry(rootId, true);

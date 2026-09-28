@@ -366,6 +366,8 @@ export interface CloseWords {
  * a preference, which simply close and reopen.
  */
 export function closeWordsOf(root: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">): CloseWords {
+  // An open question from Relay (Sep 28 2026) is answered, not healed.
+  if (root.kind === "question") return { close: "Answered", reopen: "Open again" };
   const cat = noteCategoryOf(root);
   if (cat === "injury" || cat === "incident") return { close: "All healed up", reopen: "It’s back" };
   return { close: "Close", reopen: "Reopen" };

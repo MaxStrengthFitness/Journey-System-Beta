@@ -240,6 +240,22 @@ describe("My Studio", () => {
     expect(plus.some((t) => t.startsWith("A team job"))).toBe(true);
   });
 
+  it("opens Ask the team from the header's Ask: six tiles, and + stays for your own things (phase 7)", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__ask"));
+    expect(document.body.textContent).toContain("Ask the team");
+    expect([...document.querySelectorAll(".rak-tile__t")].map((t) => t.textContent)).toEqual([
+      "Cover me",
+      "A hand on the floor",
+      "Hand this off",
+      "A question",
+      "Something's broken",
+      "Other",
+    ]);
+    // Capture, the composer for your own to-dos, is not what Ask opens.
+    expect(document.body.textContent).not.toContain("Relay it");
+  });
+
   it("keeps a trainer's + to their own things", async () => {
     const h = await mount(trainer);
     await click(h.querySelector(".msh__plus"));

@@ -16,7 +16,7 @@
  * Overdue is shown as a date, not a red badge. A trainer scanning between
  * sessions can act on "due Friday"; they cannot act on urgency.
  */
-import { CalendarClock, Check, ChevronRight } from "lucide-react";
+import { CalendarClock, Check, ChevronRight, MessageCircleQuestion } from "lucide-react";
 import type { ClientTaskAction, TaskRow } from "./types";
 import { CLIENT_ACTION_LABEL } from "./types";
 
@@ -29,6 +29,12 @@ export interface ClientTasksLaneProps {
   onComplete: (row: TaskRow) => void;
   onReopen?: (row: TaskRow) => void;
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /**
+   * Ask the team about this client (Relay room, Sep 28 2026): the Ask sheet
+   * on A question, with her name filled in, which opens the open-questions
+   * trail on her record. Absent outside Relay.
+   */
+  onAskAbout?: (client: { id: string; name: string }) => void;
 }
 
 /** The client half of a template's target, when it has one. */
@@ -50,6 +56,7 @@ export function ClientTasksLane({
   onComplete,
   onReopen,
   onOpenClientTask,
+  onAskAbout,
 }: ClientTasksLaneProps) {
   /*
    * MINE means claimed by you, or a personal task of yours. An unclaimed
@@ -139,6 +146,18 @@ export function ClientTasksLane({
                   <CalendarClock size={12} aria-hidden />
                   {row.template.timeOfDay}
                 </span>
+              )}
+
+              {target && onAskAbout && !isDone && (
+                <button
+                  type="button"
+                  className="sh__client-ask"
+                  aria-label={`Ask the team about ${row.clientName ?? "this client"}`}
+                  onClick={() => onAskAbout({ id: target.clientId, name: row.clientName ?? "Client" })}
+                >
+                  <MessageCircleQuestion size={15} aria-hidden />
+                  Ask
+                </button>
               )}
             </li>
           );

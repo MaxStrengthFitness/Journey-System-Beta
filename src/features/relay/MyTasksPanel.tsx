@@ -34,7 +34,9 @@ import { leadsHere } from "./leads";
 import { useRelayMaybe } from "./board/RelayContext";
 import { followUps as followUpsOf } from "./board/mine";
 import { useStudioRequests } from "../studio-tasks/useStudioRequests";
-import { resolveRequest, setRequestClaim, setRequestFor, type TaskRequest } from "../studio-tasks/requests";
+import { setRequestFor, type TaskRequest } from "../studio-tasks/requests";
+import { answerAskWithTrail, claimAskWithTrail, hasTrail, journalAuthorOf } from "../studio-tasks/question-trail";
+import { AskDetail, AskFoot, clientFirstName } from "./board/card-actions";
 import { notify } from "../notifications";
 import { useToast } from "../../contexts/ToastContext";
 import { studioRoster } from "../studio-tasks/initiatives";
@@ -175,24 +177,46 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
 
   /* ---------------- writes ---------------- */
 
-  const closeAsk = async (r: TaskRequest) => {
+  // Who writes a line on a client's record for a question (the Auth uid).
+  const writer = journalAuthorOf(ownerId, authTrainer?.fullName, authTrainer?.initials);
+
+  /** Close an ask; with an answer, a question's answer (and her record's thread closes). */
+  const closeAsk = async (r: TaskRequest, answer = "") => {
     if (!activeStudioId || !author) return;
     try {
-      await resolveRequest({ studioId: activeStudioId, requestId: r.id, author });
+      const trail = await answerAskWithTrail({ studioId: activeStudioId, request: r, author, answer, who: writer });
       if (actor)
         await notify({
           to: r.createdBy.id,
           actor,
           kind: "request-resolved",
-          title: `${actor.name} closed "${r.title}"`,
+          title: `${actor.name} ${answer.trim() ? "answered" : "closed"} "${r.title}"`,
+          body: answer.trim() || undefined,
           studioId: activeStudioId,
           link: { view: "studio-tasks" },
         });
-      toastSuccess("Done — they'll see it on their card.");
+      const her = clientFirstName(clients ?? [], r);
+      if (trail === "failed") toastError(`Done on the Board, but ${her}'s record didn't take it, so it still shows there as open.`);
+      else toastSuccess(hasTrail(r) ? `Answered. It's on ${her}'s record, and the question there is closed.` : "Done — they'll see it on their card.");
+      relay?.closePanel();
     } catch (err) {
       console.warn("[relay] close failed:", err);
       toastError("Could not close that. Check your connection.");
     }
+  };
+
+  /** A question is answered, not ticked: its answer box opens beside the list. */
+  const openAnswer = (r: TaskRequest) => {
+    if (!relay) {
+      void closeAsk(r);
+      return;
+    }
+    relay.openPanel({
+      kicker: "A question for the team",
+      title: r.title,
+      body: <AskDetail request={r} />,
+      foot: <AskFoot request={r} onClose={(req, note) => closeAsk(req, note)} />,
+    });
   };
 
   const cantDo = async (h: HandedItem) => {
@@ -224,8 +248,10 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
   const handBack = async (r: TaskRequest) => {
     if (!activeStudioId || !author) return;
     try {
-      await setRequestClaim({ studioId: activeStudioId, requestId: r.id, author, claimed: false });
-      offerUndo(`Handed back "${r.title}".`, () => setRequestClaim({ studioId: activeStudioId, requestId: r.id, author, claimed: true }));
+      await claimAskWithTrail({ studioId: activeStudioId, request: r, author, claimed: false, who: writer });
+      offerUndo(`Handed back "${r.title}".`, () =>
+        claimAskWithTrail({ studioId: activeStudioId, request: r, author, claimed: true, who: writer }),
+      );
     } catch (err) {
       console.warn("[relay] hand back failed:", err);
       toastError("Could not hand that back. Check your connection.");
@@ -319,15 +345,22 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
             <span className="pl__task-title">{r.title}</span>
             <span className="rtk-meta">
               {byLeader ? `${h.from.split(" ")[0]} put your name on it` : `From ${h.from.split(" ")[0]}`}
+              {r.clientId ? ` · about ${clientFirstName(clients ?? [], r)}` : ""}
               {r.dueOn ? ` · by ${dayWords(r.dueOn, todayKey)}` : ""}
               {typeof r.estMinutes === "number" ? ` · ~${r.estMinutes} min` : ""}
             </span>
             {r.detail && <span className="pl__task-detail">{r.detail}</span>}
           </div>
           <div className="rtk-acts">
-            <button type="button" className="pl__btn pl__btn--primary" onClick={() => void closeAsk(r)}>
-              <Check size={14} aria-hidden /> Done
-            </button>
+            {r.kind === "question" ? (
+              <button type="button" className="pl__btn pl__btn--primary" onClick={() => openAnswer(r)}>
+                <Check size={14} aria-hidden /> Answer
+              </button>
+            ) : (
+              <button type="button" className="pl__btn pl__btn--primary" onClick={() => void closeAsk(r)}>
+                <Check size={14} aria-hidden /> Done
+              </button>
+            )}
             {r.clientId && onOpenClientTask && (
               <button type="button" className="pl__btn" onClick={() => onOpenClientTask(r.clientId!)}>
                 <ExternalLink size={14} aria-hidden />
@@ -394,9 +427,15 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
       <div className="rtk-acts">
         {t.kind === "ask" ? (
           <>
-            <button type="button" className="pl__btn pl__btn--primary" onClick={() => void closeAsk(t.request)}>
-              <Check size={14} aria-hidden /> Done
-            </button>
+            {t.request.kind === "question" ? (
+              <button type="button" className="pl__btn pl__btn--primary" onClick={() => openAnswer(t.request)}>
+                <Check size={14} aria-hidden /> Answer
+              </button>
+            ) : (
+              <button type="button" className="pl__btn pl__btn--primary" onClick={() => void closeAsk(t.request)}>
+                <Check size={14} aria-hidden /> Done
+              </button>
+            )}
             <button type="button" className="pl__btn" onClick={() => void handBack(t.request)}>
               Hand back
             </button>

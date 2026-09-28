@@ -11,7 +11,11 @@ import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const writes = vi.hoisted(() => ({ updates: [] as { path: string; data: unknown }[], sets: [] as { path: string; data: Record<string, unknown> }[] }));
+const writes = vi.hoisted(() => ({
+  updates: [] as { path: string; data: unknown }[],
+  sets: [] as { path: string; data: Record<string, unknown> }[],
+  adds: [] as { path: string; data: Record<string, unknown> }[],
+}));
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "t-ioreth" } }, functions: {} }));
 vi.mock("firebase/firestore", () => {
   /** Firestore refuses undefined anywhere in a write; so does this one. */
@@ -24,7 +28,11 @@ vi.mock("firebase/firestore", () => {
     if (hasUndefined(data)) throw new Error("Unsupported field value: undefined");
     writes.updates.push({ path: ref.path, data });
   },
-  addDoc: async () => ({ id: "n1" }),
+  addDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
+    if (hasUndefined(data)) throw new Error("Unsupported field value: undefined");
+    writes.adds.push({ path: ref.path, data });
+    return { id: "n1" };
+  },
   setDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
     if (hasUndefined(data)) throw new Error("Unsupported field value: undefined");
     writes.sets.push({ path: ref.path, data });
@@ -58,6 +66,7 @@ beforeEach(() => {
   resetShiftCards();
   writes.updates = [];
   writes.sets = [];
+  writes.adds = [];
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -439,6 +448,43 @@ describe("the Board", () => {
     await render({ relay: dayDone(), unknown: true });
     expect(card("Close out")?.textContent).toContain("Some of today's list couldn't be loaded");
     expect(card("Close out")?.textContent).not.toContain("Nothing is left open");
+  });
+
+  /* The Ask sheet and the open-questions trail (phase 7). */
+
+  it("puts the Ask sheet's six tiles behind Help a teammate, each opening the sheet on its tile", async () => {
+    const openAsk = vi.fn();
+    const { h } = await render({ relay: { openAsk } });
+    await click([...h.querySelectorAll(".rbd-door")].find((d) => d.textContent?.includes("Help a teammate")));
+    const asks = h.querySelector('[aria-label="Ask the team"]');
+    expect([...asks!.querySelectorAll(".rbd-ask")].map((b) => b.textContent)).toEqual([
+      "Cover me",
+      "A hand on the floor",
+      "Hand this off",
+      "A question",
+      "Something's broken",
+      "Other",
+    ]);
+    await click(button(asks, "Cover me"));
+    expect(openAsk).toHaveBeenCalledWith({ tile: "cover" });
+  });
+
+  it("deals a question with Answer, and undoing its close opens her thread again", async () => {
+    const { h } = await render({
+      requests: [ask("q1", { kind: "question", title: "Nancy isn't feeling her seated dip", createdBy: MABLUNG, clientId: "c-nancy", threadId: "root-1" })],
+    });
+    await click([...h.querySelectorAll(".rbd-door")].find((d) => d.textContent?.includes("Help a teammate")));
+    const acts = [...h.querySelectorAll(".rbd-acts .rbd-btn")].map((b) => b.textContent?.trim());
+    expect(acts).toEqual(["Answer", "Not now", "Done"]);
+    await click([...h.querySelectorAll(".rbd-acts .rbd-btn")].find((b) => b.textContent?.trim() === "Done"));
+    expect(writes.updates).toContainEqual(expect.objectContaining({ path: "studios/s1/taskRequests/q1", data: expect.objectContaining({ status: "resolved" }) }));
+    expect(writes.adds.find((a) => a.path === "journalEntries")?.data).toMatchObject({ body: "Ioreth closed it without an answer.", authorId: IORETH.id });
+    await click(button(document, "Undo"));
+    expect(writes.updates).toContainEqual({ path: "journalEntries/root-1", data: { resolvedAt: null, updatedAt: "__now__" } });
+    expect(writes.adds.filter((a) => a.path === "journalEntries").map((a) => a.data.body)).toEqual([
+      "Ioreth closed it without an answer.",
+      "Ioreth opened it again.",
+    ]);
   });
 
   it("says when Close out opens, and previews it early", async () => {

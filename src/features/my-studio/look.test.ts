@@ -43,6 +43,8 @@ const FILES = [
   "features/relay/board/board.css",
   // The Tracker (Relay room, Sep 28 2026): your lists by when.
   "features/relay/tracker.css",
+  // The Ask sheet (Relay room, Sep 28 2026): six typed tiles.
+  "features/relay/board/ask.css",
   "features/relay/team/team.css",
   "features/relay/jobs/jobs.css",
   "features/relay/notes/notes.css",
@@ -155,6 +157,9 @@ const NAME_CLASSES = [
   "rtk-box__t", // the Tracker's Tracking box: the job's name
   "rsc__t", // Opening and Close out: what is waiting, what is left (a job's or a client's name)
   "rsc-line__t", // the line that says when each card is
+  "rak-tile__t", // a tile of the Ask sheet
+  "stq__item-client", // who an ask is about: a client's whole name
+  "stq__answer", // a question's answer, and who gave it
   "rtk-list__t", // a list's name in the Tracker's rail
   "rtk-meta", // who put a job on your list, by name
   "sh__group-title", // a machine group or a duty
@@ -249,6 +254,11 @@ const TAP_CLASSES = [
   "rwho__pop-item",
   "rtk-list", // the Tracker's lists
   "rsc-btn", // Opening and Close out
+  "rak-tile", // the Ask sheet's six tiles
+  "rak-when", // its day and time
+  "rbd-ask", // Ask the team, behind Help a teammate
+  "ds__cover", // I need cover, on the day strip
+  "sh__client-ask", // Ask the team about this client
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -348,6 +358,10 @@ const BUTTON_CLASSES = [
   "rwho__face",
   "rtk-list",
   "rsc-btn",
+  "rak-tile",
+  "rbd-ask",
+  "ds__cover",
+  "sh__client-ask",
   "tj-open",
   "tj-done__toggle",
   "wl__btn",
@@ -477,7 +491,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title", "rbd-h"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title", "rbd-h", "rak-form__h", "stq__answered-h"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);

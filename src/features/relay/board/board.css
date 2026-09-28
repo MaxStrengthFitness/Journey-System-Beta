@@ -778,3 +778,27 @@
 }
 .rsc-line__part + .rsc-line__part { border-top: 1px solid var(--st-border); }
 .rsc-line__t { flex: 1 1 12rem; min-width: 0; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------------ *
+ * Ask the team, behind Help a teammate (phase 7): the Ask sheet's six
+ * tiles as one row of buttons, each opening the sheet on its tile.
+ * ------------------------------------------------------------------ */
+
+.rbd-asks { display: flex; flex-direction: column; gap: 0.25rem; margin: 0 0 0.875rem; }
+.rbd-asks .rbd-asks__h { margin: 0; }
+.rbd-asks__row { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.rbd-ask {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rbd-ask:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }

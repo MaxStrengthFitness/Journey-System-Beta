@@ -750,6 +750,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Ask the team about this client (Relay room, Sep 28 2026): the Ask sheet on
+   A question, her name filled in. 44px, as Relay's card buttons are. */
+.sh__client-ask {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sh__client-ask:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
 .sh__loading {
   margin: 0 0 18px;
   padding: 22px 16px;

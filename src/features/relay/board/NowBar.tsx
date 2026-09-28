@@ -9,6 +9,7 @@ import {
   shiftHoursOf,
   studioMinutesNow,
   type NowContext,
+  type NowSession,
   type ShiftHours,
 } from "./now-context";
 
@@ -64,7 +65,7 @@ export function useNowContext(
  * The day strip
  * ------------------------------------------------------------------ */
 
-export function DayStrip({ now }: { now: NowContext }) {
+export function DayStrip({ now, onNeedCover }: { now: NowContext; onNeedCover?: (session: NowSession) => void }) {
   const hours: ShiftHours = now.hours;
   const span = Math.max(60, hours.close - hours.open);
   const pct = (min: number) => `${Math.max(0, Math.min(100, ((min - hours.open) / span) * 100))}%`;
@@ -117,6 +118,11 @@ export function DayStrip({ now }: { now: NowContext }) {
               </span>
               <span className="ds__name">{s.clientName}</span>
               {s === now.current && <span className="ds__tag">Now</span>}
+              {onNeedCover && s.startMin > now.nowMin && (
+                <button type="button" className="ds__cover" onClick={() => onNeedCover(s)} aria-label={`I need cover for ${s.clientName} at ${minutesToClock(s.startMin)}`}>
+                  I need cover
+                </button>
+              )}
             </li>
           ))}
         </ol>

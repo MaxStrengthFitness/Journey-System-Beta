@@ -21,7 +21,9 @@ import { cn } from "../../../lib/utils";
 import { useToast } from "../../../contexts/ToastContext";
 import { notify } from "../../notifications";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
-import { reopenRequest, setRequestClaim, setRequestFor, type TaskRequest } from "../../studio-tasks/requests";
+import { setRequestFor, type TaskRequest } from "../../studio-tasks/requests";
+import { claimAskWithTrail, journalAuthorOf, reopenAskWithTrail } from "../../studio-tasks/question-trail";
+import { ASK_TILES, type AskTile } from "./ask";
 import type { ClientTaskAction, TaskRow } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
 import { studioRoster } from "../../studio-tasks/initiatives";
@@ -177,6 +179,11 @@ export function Board({
   }, [gapKey]);
 
   const me = useMemo(() => new Set([relay.uid, author?.id].filter(Boolean) as string[]), [relay.uid, author?.id]);
+  // Who writes a line on a client's record when a question is handed back or opened again (the Auth uid).
+  const writer = useMemo(
+    () => journalAuthorOf(relay.uid, relay.authTrainer?.fullName ?? author?.name, relay.authTrainer?.initials),
+    [relay.uid, relay.authTrainer?.fullName, relay.authTrainer?.initials, author?.name],
+  );
 
   const lastSession = useMemo(() => {
     const ended = now.sessions.filter((s) => s.endMin <= now.nowMin && now.nowMin - s.endMin <= 60);
@@ -296,7 +303,10 @@ export function Board({
       if (!item.row.template.requiresNote) offerUndo(`${item.title}: marked done.`, () => actions.reopen(item.row));
     } else if (item.kind === "ask") {
       cardActions.done(item);
-      offerUndo(`Closed "${item.title}".`, () => (relay.studioId ? reopenRequest(relay.studioId, item.request.id) : undefined));
+      // Undo opens it again, and a question's thread on her record with it.
+      offerUndo(`Closed "${item.title}".`, () =>
+        relay.studioId ? reopenAskWithTrail({ studioId: relay.studioId, request: item.request, who: writer }) : undefined,
+      );
     } else {
       cardActions.done(item);
     }
@@ -454,8 +464,10 @@ export function Board({
         await setRequestFor({ studioId, requestId: item.request.id, person: null });
         offerUndo("Back on the board, for anyone to take.", () => setRequestFor({ studioId, requestId: item.request.id, person: was }));
       } else if (item.kind === "taken-ask" && studioId && author) {
-        await setRequestClaim({ studioId, requestId: item.request.id, author, claimed: false });
-        offerUndo(`Handed back "${item.title}".`, () => setRequestClaim({ studioId, requestId: item.request.id, author, claimed: true }));
+        await claimAskWithTrail({ studioId, request: item.request, author, claimed: false, who: writer });
+        offerUndo(`Handed back "${item.title}".`, () =>
+          claimAskWithTrail({ studioId, request: item.request, author, claimed: true, who: writer }),
+        );
       } else if (item.kind === "job" && author) {
         await leaveJob(item.job, author);
         offerUndo(`You stepped off "${item.title}".`, () => joinJob(item.job, author));
@@ -698,6 +710,18 @@ export function Board({
 
       <section className="rbd-behind" aria-label={`Behind ${DOOR_LABEL[door]}`}>
         <h2 className="rbd-h rbd-behind__h">Behind {DOOR_LABEL[door]}</h2>
+        {door === "help" && relay.openAsk && (
+          <div className="rbd-asks" role="group" aria-label="Ask the team">
+            <span className="rbd-h rbd-h--small rbd-asks__h">Ask the team</span>
+            <div className="rbd-asks__row">
+              {ASK_TILES.map((t) => (
+                <button key={t.id} type="button" className="rbd-ask" onClick={() => relay.openAsk?.({ tile: t.id as AskTile })}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {door === "mine" && (
           <div className="rbd-mine">
             {mineDeck.length === 0 ? (

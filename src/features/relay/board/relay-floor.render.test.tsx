@@ -158,6 +158,18 @@ describe("the opened day strip", () => {
     expect(h.querySelector(".ds__list")?.getAttribute("aria-label")).toBe("Your sessions today, 2");
   });
 
+  it("offers I need cover on a session still to come, and only there (Relay room, Sep 28 2026)", async () => {
+    const sessions = [session("a", "Odo Proudfoot", 7 * 60, 7 * 60 + 30), session("b", "Hamfast Gamgee", 16 * 60, 16 * 60 + 30)];
+    const onNeedCover = vi.fn();
+    const h = await render(<DayStrip now={nowContext(sessions, 9 * 60, "2026-09-28")} onNeedCover={onNeedCover} />);
+    const items = [...h.querySelectorAll(".ds__item")];
+    expect(items[0].querySelector(".ds__cover")).toBeNull();
+    const cover = items[1].querySelector<HTMLButtonElement>(".ds__cover");
+    expect(cover?.getAttribute("aria-label")).toBe("I need cover for Hamfast Gamgee at 4:00 PM");
+    await act(async () => cover!.click());
+    expect(onNeedCover).toHaveBeenCalledWith(sessions[1]);
+  });
+
   it("says the day is a gap and lists nothing when there are no sessions", async () => {
     const h = await render(<DayStrip now={nowContext([], 9 * 60, "2026-09-27")} />);
     expect(h.textContent).toContain("The whole day is a gap");

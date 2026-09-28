@@ -19,6 +19,8 @@ import { DayStrip, useNowContext } from "../relay/board/NowBar";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { CaptureSheet } from "../relay/board/CaptureSheet";
 import type { CapturePreset } from "../relay/board/capture";
+import { AskSheet } from "../relay/board/AskSheet";
+import { coverPresetOf, type AskPreset } from "../relay/board/ask";
 import { untrack, useTracked } from "../relay/board/tracked";
 import { StudioHeader, type HeaderMenuItem, type HeaderSection } from "./StudioHeader";
 import "../studio-tasks/studio-tasks.css";
@@ -62,8 +64,10 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * Studio's masthead, Relay's tabs and the Now Bar were three bars; they are
  * one (StudioHeader): the section, whose menu holds the five; on Relay its
  * tabs, the time (tap for the day strip) and Tracking; then Ask and +. The
- * floating Capture button went with it: Ask asks the team, + is something
- * just for you (or, for a leader, a studio task or a team job).
+ * floating Capture button went with it: Ask asks the team (the Ask sheet's
+ * six typed tiles since phase 7, relay/board/AskSheet, held here beside
+ * Capture and opened through RelayContext's openAsk), + is something just
+ * for you (or, for a leader, a studio task or a team job).
  *
  * Who sees what: everyone at the studio gets Relay and Machines; Openings is
  * everyone who may read the studio's standing weeks (`mayReadWeeks`: the
@@ -228,6 +232,9 @@ export function MyStudioView({
   const [panel, setPanel] = useState<PanelContent | null>(null);
   const [capture, setCapture] = useState<{ preset: CapturePreset } | null>(null);
   const openCapture = useCallback((preset: CapturePreset = {}) => setCapture({ preset }), []);
+  // Ask the team (phase 7): its own sheet; + stays for your own to-dos.
+  const [ask, setAsk] = useState<{ preset: AskPreset } | null>(null);
+  const openAsk = useCallback((preset: AskPreset = {}) => setAsk({ preset }), []);
   const openPanel = useCallback((content: PanelContent) => setPanel(content), []);
   const closePanel = useCallback(() => setPanel(null), []);
 
@@ -261,6 +268,7 @@ export function MyStudioView({
       closePanel,
       onOpenClientTask,
       openRelayTab,
+      openAsk,
     }),
     [
       activeStudioId,
@@ -279,6 +287,7 @@ export function MyStudioView({
       closePanel,
       onOpenClientTask,
       openRelayTab,
+      openAsk,
     ],
   );
 
@@ -340,11 +349,11 @@ export function MyStudioView({
           tracked={tracked}
           onShowTracked={() => goToRelayTab("floor")}
           onStopTracking={() => untrack(activeStudioId ?? null, now.todayKey)}
-          onAsk={() => openCapture({ destination: "floor", askKind: "help" })}
+          onAsk={() => openAsk()}
           plusItems={plusItems}
         />
 
-        {shown === "relay" && dayOpen && <DayStrip now={now} />}
+        {shown === "relay" && dayOpen && <DayStrip now={now} onNeedCover={(session) => openAsk(coverPresetOf(session))} />}
 
         <UnsavedChangesScope scope={sectionScope}>
           {shown === "relay" && (
@@ -385,6 +394,7 @@ export function MyStudioView({
           preset={capture?.preset ?? null}
           onOpenChange={(o) => !o && setCapture(null)}
         />
+        <AskSheet open={ask !== null} preset={ask?.preset ?? null} onOpenChange={(o) => !o && setAsk(null)} />
       </div>
     </RelayProvider>
   );

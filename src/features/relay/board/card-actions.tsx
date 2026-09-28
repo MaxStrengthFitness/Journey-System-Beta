@@ -4,7 +4,8 @@ import { useToast } from "../../../contexts/ToastContext";
 import { cn } from "../../../lib/utils";
 import { notify } from "../../notifications";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
-import { resolveRequest, setRequestClaim, type TaskRequest } from "../../studio-tasks/requests";
+import type { TaskRequest } from "../../studio-tasks/requests";
+import { answerAskWithTrail, claimAskWithTrail, hasTrail, journalAuthorOf } from "../../studio-tasks/question-trail";
 import type { ClientTaskAction } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
 import type { ShiftGroup } from "../../studio-tasks/board";
@@ -32,6 +33,12 @@ import type { BoardItem } from "./doors";
  *               iPad. Nothing is written and nobody sees it.
  *
  * No card is ever owned: a claim is a heads-up, never a lock.
+ *
+ * A question about a client (phase 7, the open-questions trail) is answered
+ * rather than closed: its foot asks for the answer, and taking it, handing it
+ * back and answering each write a line on her record, by the person doing it
+ * (studio-tasks/question-trail.ts). A notification's actor is the Auth uid,
+ * which the rules pin it to.
  */
 export interface CardActionsArgs {
   actions: TaskActions;
@@ -51,16 +58,22 @@ export interface CardActions {
 export function useCardActions({ actions, author, onOpenJob, onOpenClientTask, onShowInitiative }: CardActionsArgs): CardActions {
   const relay = useRelay();
   const { success: toastSuccess, error: toastError } = useToast();
+  const uid = relay.uid;
+  const writerName = relay.authTrainer?.fullName ?? author?.name ?? null;
+  const writerInitials = relay.authTrainer?.initials ?? null;
 
   const claimAsk = useCallback(
     async (r: TaskRequest) => {
       if (!relay.studioId || !author) return;
       if (r.claimedBy?.id === author.id) return;
       try {
-        await setRequestClaim({ studioId: relay.studioId, requestId: r.id, author, claimed: true });
+        const who = journalAuthorOf(uid, writerName, writerInitials);
+        const trail = await claimAskWithTrail({ studioId: relay.studioId, request: r, author, claimed: true, who });
+        if (trail === "failed") toastError(`You have it, but ${clientFirstName(relay.clients, r)}'s record didn't take the line saying so.`);
+        // The actor is the Auth uid: the notifications rule pins it.
         await notify({
           to: r.createdBy.id,
-          actor: author,
+          actor: uid ? { id: uid, name: author.name } : null,
           kind: "request-claimed",
           title: `${author.name} picked up "${r.title}"`,
           studioId: relay.studioId,
@@ -71,38 +84,42 @@ export function useCardActions({ actions, author, onOpenJob, onOpenClientTask, o
         toastError("Could not claim that. Check your connection.");
       }
     },
-    [relay.studioId, author, toastError],
+    [relay.studioId, relay.clients, author, uid, writerName, writerInitials, toastError],
   );
 
   const closeAsk = useCallback(
     async (r: TaskRequest, note: string) => {
       if (!relay.studioId || !author) return;
       try {
-        await resolveRequest({ studioId: relay.studioId, requestId: r.id, author, resolution: note.trim() || undefined });
+        const who = journalAuthorOf(uid, writerName, writerInitials);
+        const trail = await answerAskWithTrail({ studioId: relay.studioId, request: r, author, answer: note, who });
         await notify({
           to: r.createdBy.id,
-          actor: author,
+          actor: uid ? { id: uid, name: author.name } : null,
           kind: "request-resolved",
-          title: `${author.name} closed "${r.title}"`,
+          title: `${author.name} ${r.kind === "question" ? "answered" : "closed"} "${r.title}"`,
           body: note.trim() || undefined,
           studioId: relay.studioId,
           link: { view: "studio-tasks" },
         });
-        toastSuccess("Closed — they'll see your note on their card.");
+        const her = clientFirstName(relay.clients, r);
+        if (trail === "failed") toastError(`Answered on the Board, but ${her}'s record didn't take it, so it still shows there as open.`);
+        else if (hasTrail(r)) toastSuccess(`Answered. It's on ${her}'s record, and the question there is closed.`);
+        else toastSuccess("Closed — they'll see your note on their card.");
         relay.closePanel();
       } catch (err) {
         console.warn("[relay] close failed:", err);
         toastError("Could not close that. Check your connection.");
       }
     },
-    [relay, author, toastSuccess, toastError],
+    [relay, author, uid, writerName, writerInitials, toastSuccess, toastError],
   );
 
   const openAsk = useCallback(
     (r: TaskRequest) => {
       void claimAsk(r);
       relay.openPanel({
-        kicker: r.forId ? "Handed to you" : "An ask on the board",
+        kicker: r.kind === "question" ? "A question for the team" : r.forId ? "Handed to you" : "An ask on the board",
         title: r.title,
         body: <AskDetail request={r} />,
         foot: <AskFoot request={r} onClose={closeAsk} />,
@@ -194,7 +211,13 @@ export function useCardActions({ actions, author, onOpenJob, onOpenClientTask, o
  * Panel bodies (the Context Panel beside the board)
  * ------------------------------------------------------------------ */
 
-function AskDetail({ request: r }: { request: TaskRequest }) {
+/** The first name of the client an ask is about, for a sentence; "the client" when it isn't known. */
+export function clientFirstName(clients: readonly { id?: string; firstName?: string }[], r: Pick<TaskRequest, "clientId">): string {
+  const c = r.clientId ? clients.find((x) => x.id === r.clientId) : null;
+  return (c?.firstName ?? "").trim() || "the client";
+}
+
+export function AskDetail({ request: r }: { request: TaskRequest }) {
   const relay = useRelay();
   const client = r.clientId ? relay.clients.find((c) => c.id === r.clientId) : null;
   return (
@@ -210,21 +233,44 @@ function AskDetail({ request: r }: { request: TaskRequest }) {
           <ExternalLink size={13} aria-hidden /> {client.firstName} {client.lastName}
         </button>
       )}
+      {hasTrail(r) && (
+        <p className="rk-hint">
+          The question is on {client?.firstName ?? "the client"}'s record: who took it and the answer go there too, and the answer closes it.
+        </p>
+      )}
       <p className="rk-hint">Replies and the whole thread are under Help a teammate.</p>
     </>
   );
 }
 
-function AskFoot({ request, onClose }: { request: TaskRequest; onClose: (r: TaskRequest, note: string) => Promise<void> }) {
+/**
+ * The panel's foot: Done with an optional closing note, or, on a question,
+ * the answer (a question closed with no words says so on her record, so the
+ * button waits for the answer here; Done elsewhere still closes it).
+ */
+export function AskFoot({ request, onClose }: { request: TaskRequest; onClose: (r: TaskRequest, note: string) => Promise<void> }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const question = request.kind === "question";
   return (
     <div className="nu__foot">
-      <input className="rk-input" placeholder="A closing note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+      {question ? (
+        <textarea
+          className="rk-textarea"
+          rows={2}
+          aria-label="Your answer"
+          placeholder="Your answer: what worked, so the next trainer knows"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+        />
+      ) : (
+        <input className="rk-input" placeholder="A closing note (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+      )}
       <button
         type="button"
         className="pl__btn pl__btn--primary"
-        disabled={busy}
+        disabled={busy || (question && !note.trim())}
         onClick={async () => {
           setBusy(true);
           try {
@@ -234,7 +280,7 @@ function AskFoot({ request, onClose }: { request: TaskRequest; onClose: (r: Task
           }
         }}
       >
-        <Check size={14} aria-hidden /> Done
+        <Check size={14} aria-hidden /> {question ? "Answer" : "Done"}
       </button>
     </div>
   );

@@ -1,0 +1,107 @@
+/* ==========================================================================
+   THE ASK SHEET — "Ask the team", six typed tiles
+   --------------------------------------------------------------------------
+   Relay room, Sep 28 2026 (the redesign's phase 7; the rules are ask.ts).
+   The sheet is the Relay kit's (.rk-sheet, .rk-body, .rk-field, .rk-chip,
+   .rk-seg, kit.css); these are the tiles, the tile's form and the line
+   that says where the ask goes. On the Studio Hub's --st-* tokens; nothing
+   here writes a hex value, and my-studio/look.test.ts holds this file to My
+   Studio's look: the 11 / 12 / 14 / 17 / 30 type scale, 44px controls,
+   names that wrap and are never cut, one heading style.
+
+   Blue is the tile you picked, as it is for anything chosen. No red: an ask
+   is never an alarm.
+
+   Prefix rak, one owner (src/css-class-owners.test.ts).
+   ========================================================================== */
+
+.rak { container: rak / inline-size; }
+
+.rak-q {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--st-ink);
+}
+
+/* Six tiles: three across when there is room, two when there isn't. */
+.rak-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+@container rak (min-width: 34rem) {
+  .rak-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.rak-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.rak-tile:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rak-tile[aria-pressed="true"] {
+  border-color: var(--st-live);
+  background: var(--st-live-fill);
+  box-shadow: inset 0 0 0 1px var(--st-live);
+}
+.rak-tile__ic {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+}
+.rak-tile[aria-pressed="true"] .rak-tile__ic { background: var(--st-live); color: var(--st-live-on); }
+/* A tile's name: whole, wrapped, never cut. */
+.rak-tile__t { font-size: 14px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.rak-tile__s { font-size: 12px; font-weight: 500; line-height: 1.3; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+
+/* The picked tile's own questions. */
+.rak-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.875rem;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface-2);
+}
+/* The one heading style (planner.css .pl__list-head): small upright capitals. */
+.rak-form__h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-2);
+}
+.rak-when { width: auto; min-width: 9rem; min-height: 44px; }
+
+/* Where it goes, and that nobody is messaged. */
+.rak-goes { display: flex; flex-direction: column; gap: 4px; }
+.rak-goes__t { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink); overflow-wrap: anywhere; }
+.rak-goes__private {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--st-ink-muted);
+}

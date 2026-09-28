@@ -44,9 +44,10 @@ import {
   X,
  ClipboardCheck, ArrowRightLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
+import { auth } from "../../firebase";
 import { useRelayMaybe } from "../relay/board/RelayContext";
+import { claimAskWithTrail, hasTrail, journalAuthorOf, replyWithTrail, trailAnswer } from "./question-trail";
 import {
-  addRequestReply,
   createRequest,
   EXPIRY_LABEL,
   expiryMillis,
@@ -54,7 +55,6 @@ import {
   REQUEST_KIND_HINT,
   REQUEST_KIND_LABEL,
   REQUEST_REACTIONS,
-  setRequestClaim,
   toggleRequestReaction,
   type ExpiryChoice,
   type RequestKind,
@@ -163,7 +163,7 @@ export function RequestsLane({
   title: laneTitle = "Requests",
 }: RequestsLaneProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { open: rawRequests } = useStudioRequests(studioId);
+  const { open: rawRequests, recentlyResolved } = useStudioRequests(studioId);
 
   /*
    * The lane used to render whatever order the snapshot arrived in. buildBoard
@@ -193,6 +193,27 @@ export function RequestsLane({
   // Inside Relay, asks are posted through Capture (relay/board); the inline
   // composer below stays for the hub mounted anywhere else.
   const relay = useRelayMaybe();
+  /*
+   * THE OPEN-QUESTIONS TRAIL (Relay room, Sep 28 2026): on a question about a
+   * client, a claim, a reply and the answer each write a line on her record,
+   * by the person doing it: the Auth uid, which the journal's rule pins.
+   */
+  const writer = journalAuthorOf(
+    relay?.uid ?? auth.currentUser?.uid ?? null,
+    relay?.authTrainer?.fullName ?? author?.name,
+    relay?.authTrainer?.initials,
+  );
+  const clientNameOf = (r: Pick<TaskRequest, "clientId">): string | null => {
+    const c = r.clientId ? (clients ?? relay?.clients ?? []).find((x) => x.id === r.clientId) : null;
+    return c ? `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || null : null;
+  };
+  const recordLineFailed = (r: TaskRequest) =>
+    toastError(`The Board has it, but ${clientNameOf(r)?.split(" ")[0] ?? "the client"}'s record didn't take the line. Check your connection.`);
+  // Questions answered lately keep their answer on screen (the ask's resolution).
+  const answered = useMemo(
+    () => (kinds === "initiatives" ? [] : recentlyResolved.filter((r) => r.kind === "question" && r.status === "resolved" && r.resolution).slice(0, 5)),
+    [recentlyResolved, kinds],
+  );
   const [composing, setComposing] = useState(false);
   const [kind, setKind] = useState<RequestKind>("cover");
   const [expiry, setExpiry] = useState<ExpiryChoice>("none");
@@ -231,12 +252,8 @@ export function RequestsLane({
   const claim = async (r: TaskRequest) => {
     const mine = r.claimedBy?.id === author?.id;
     await run(async () => {
-      await setRequestClaim({
-        studioId: studioId!,
-        requestId: r.id,
-        author,
-        claimed: !mine,
-      });
+      const trail = await claimAskWithTrail({ studioId: studioId!, request: r, author, claimed: !mine, who: writer });
+      if (trail === "failed") recordLineFailed(r);
       if (!mine) {
         // Best-effort by design - notify() swallows its own failures, so a
         // claim never fails because the bell did.
@@ -343,6 +360,11 @@ export function RequestsLane({
       const msg = outcomeMessage(outcome);
       if (msg.tone === "success") toastSuccess(msg.text);
       else toastError(msg.text);
+      // A question's answer goes onto her record, by the person answering, and closes it there.
+      if (hasTrail(r)) {
+        const trail = await trailAnswer(r, writer, args.resolution);
+        if (trail === "failed") recordLineFailed(r);
+      }
 
       await notify({
         to: r.createdBy.id,
@@ -401,7 +423,13 @@ export function RequestsLane({
           <button
             type="button"
             className="stq__new"
-            onClick={() => (relay ? relay.openCapture({ destination: "floor", askKind: "help" }) : setComposing((v) => !v))}
+            onClick={() =>
+              relay
+                ? relay.openAsk
+                  ? relay.openAsk()
+                  : relay.openCapture({ destination: "floor", askKind: "help" })
+                : setComposing((v) => !v)
+            }
             aria-expanded={composing}
           >
             {composing ? <X size={13} aria-hidden /> : <Send size={13} aria-hidden />}
@@ -507,6 +535,12 @@ export function RequestsLane({
                   </span>
                   <span className="stq__item-text">
                     <span className="stq__item-title">{r.title}</span>
+                    {clientNameOf(r) && (
+                      <span className="stq__item-client">
+                        About {clientNameOf(r)}
+                        {hasTrail(r) ? " · on her record until it's answered" : ""}
+                      </span>
+                    )}
                     <span className="stq__item-sub">
                       {r.createdBy.name} · {ago(r.createdAt)}
                       {r.replyCount > 0
@@ -623,12 +657,35 @@ export function RequestsLane({
                     studioId={studioId}
                     request={r}
                     author={author}
+                    writer={writer}
+                    onRecordFailed={() => recordLineFailed(r)}
                   />
                 )}
               </li>
             );
           })}
         </ul>
+      )}
+
+      {/* A closed question keeps its answer on screen (the open-questions
+          trail, Sep 28 2026): the last few answered, with who answered. */}
+      {answered.length > 0 && (
+        <section className="stq__answered" aria-label="Answered lately">
+          <h3 className="stq__answered-h">Answered lately</h3>
+          <ul className="stq__list">
+            {answered.map((r) => (
+              <li key={r.id} className="stq__item stq__item--answered">
+                <span className="stq__item-text">
+                  <span className="stq__item-title">{r.title}</span>
+                  {clientNameOf(r) && <span className="stq__item-client">About {clientNameOf(r)}</span>}
+                  <span className="stq__answer">
+                    <b>{r.resolvedBy?.name?.split(" ")[0] ?? "Someone"}:</b> {r.resolution}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {resolving && (
@@ -673,10 +730,15 @@ function RequestThread({
   studioId,
   request,
   author,
+  writer,
+  onRecordFailed,
 }: {
   studioId: string | null;
   request: TaskRequest;
   author: TaskAuthor | null;
+  /** Who writes a question's line on the client's record (the Auth uid). */
+  writer?: ReturnType<typeof journalAuthorOf>;
+  onRecordFailed?: () => void;
 }) {
   const { replies } = useRequestReplies(studioId, request.id);
   const [body, setBody] = useState("");
@@ -686,12 +748,10 @@ function RequestThread({
     if (!body.trim() || !studioId || !author) return;
     setBusy(true);
     try {
-      await addRequestReply({
-        studioId,
-        requestId: request.id,
-        author,
-        body,
-      });
+      // The reply on the ask, and on a question about a client the same
+      // words on her record, by the person replying.
+      const trail = await replyWithTrail({ studioId, request, author, who: writer ?? null, body });
+      if (trail === "failed") onRecordFailed?.();
       await notify({
         to: request.createdBy.id,
         actor: author,

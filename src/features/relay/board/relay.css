@@ -125,6 +125,23 @@
   text-transform: uppercase;
   color: var(--st-live);
 }
+/* "I need cover" on a session still to come (Relay room, Sep 28 2026): the
+   Ask sheet opens on Cover me with the client and the time filled in. */
+.ds__cover {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ds__cover:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 
 /* ------------------------------------------------------------------ *
  * The frame: content + context panel

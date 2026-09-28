@@ -425,6 +425,7 @@ export function StudioHubView({
         onComplete={actions.complete}
         onReopen={actions.reopen}
         onOpenClientTask={onOpenClientTask}
+        onAskAbout={relay?.openAsk ? (client) => relay.openAsk?.({ tile: "question", client }) : undefined}
       />
       {/* Renewals round (Sep 2026): this week's clients with a renewal
           conversation due, from their nightly snapshots. */}

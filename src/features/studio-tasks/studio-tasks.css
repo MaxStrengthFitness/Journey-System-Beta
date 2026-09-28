@@ -320,6 +320,17 @@
   color: var(--st-ink); overflow-wrap: anywhere; }
 .stq__item-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 700;
   letter-spacing: 0.06em; color: var(--st-ink-muted); }
+/* Who an ask is about (Relay room, Sep 28 2026): a client's whole name, wrapped. */
+.stq__item-client { display: block; margin-top: 1px; font-size: 12px; font-weight: 700;
+  color: var(--st-ink-2); overflow-wrap: anywhere; }
+
+/* Answered lately: a closed question keeps its answer on screen. */
+.stq__answered { border-top: 1px solid var(--st-border); }
+.stq__answered-h { margin: 0; padding: 0.75rem 0.875rem 0.25rem; font-size: 12px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-ink-2); }
+.stq__item--answered { padding: 0.6rem 0.875rem; }
+.stq__answer { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5;
+  color: var(--st-ink); overflow-wrap: anywhere; }
 
 .stq__act { display: inline-flex; align-items: center; gap: 0.25rem;
   min-height: 40px; padding: 0 0.6rem; border: 1px solid var(--st-border);

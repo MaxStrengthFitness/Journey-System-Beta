@@ -7,7 +7,7 @@
  * Tracking box, a failed read, and who a notification says sent it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act } from "react";
+import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -332,6 +332,43 @@ describe("the Tracker", () => {
     await render();
     expect(document.body.textContent).toContain("Some of your list couldn't be loaded");
     expect(document.body.textContent).not.toContain("Nothing on your list today");
+  });
+
+  it("answers a question handed to you beside the list: the answer on the ask and on her record, and her thread closes", async () => {
+    state.open = [
+      ask("q1", { kind: "question", title: "Nancy isn't feeling her seated dip", createdBy: MABLUNG, forId: IORETH.id, forName: IORETH.name, clientId: "c-nancy", threadId: "root-1" }),
+    ];
+    const openPanel = vi.fn();
+    await render({ openPanel, clients: [{ id: "c-nancy", firstName: "Nancy", lastName: "Took" }] as never });
+    const handed = inSection("rtk-handed");
+    expect(button(handed, "Done")).toBeUndefined();
+    await click(button(handed, "Answer"));
+    expect(openPanel).toHaveBeenCalledTimes(1);
+    const panel = openPanel.mock.calls[0][0] as { kicker: string; foot: ReactElement };
+    expect(panel.kicker).toBe("A question for the team");
+
+    // The panel's foot, drawn where the Context Panel would draw it.
+    const footHost = document.createElement("div");
+    document.body.appendChild(footHost);
+    const footRoot = createRoot(footHost);
+    await act(async () => footRoot.render(panel.foot));
+    const answerButton = [...footHost.querySelectorAll("button")].find((b) => b.textContent?.includes("Answer"))!;
+    expect(answerButton.disabled).toBe(true);
+    const area = footHost.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your answer"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(area, "Seat 4, elbows back.");
+      area.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(answerButton);
+    expect(state.updates[0]).toMatchObject({ path: "studios/s1/taskRequests/q1", data: { status: "resolved", resolution: "Seat 4, elbows back." } });
+    expect(state.adds.find((a) => a.path === "journalEntries")?.data).toMatchObject({
+      body: "Answered: Seat 4, elbows back.",
+      authorId: IORETH.id,
+      threadId: "root-1",
+      clientId: "c-nancy",
+    });
+    expect(state.updates.find((u) => u.path === "journalEntries/root-1")?.data).toMatchObject({ resolvedAt: expect.anything() });
+    act(() => footRoot.unmount());
   });
 
   it("says so kindly when Today really is empty", async () => {
