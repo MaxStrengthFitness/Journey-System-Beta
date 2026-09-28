@@ -359,7 +359,7 @@ export function WorkoutTrackerView({
    * Whether "#N" may be printed at all. `sessionCount` is only what Journey
    * has seen for a migration client nobody has recorded a total for, so the
    * session bar and the grid's column heads read "#3" for a woman of twelve
-   * years. The Hub card's gate (ScheduleBlock); no number rather than a
+   * years. The Hub card's gate (features/hub-schedule); no number rather than a
    * wrong one. The number is still WRITTEN on the session as before.
    */
   const canQuoteNumber = canQuoteSessionNumber(selectedClient, clientCoverage);

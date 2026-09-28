@@ -29,7 +29,8 @@ vi.mock("../renewals/useRenewalSettings", async () => {
   return { useRenewalSettings: () => state };
 });
 
-import { RunSheet, type RunSheetProps } from "./RunSheet";
+import { RunSheet } from "./RunSheet";
+import { useDayMoments, type DayMomentsProps } from "./use-day-moments";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient } from "../client-directory/fixtures";
 import type { Trainer } from "../../types";
 
@@ -61,12 +62,20 @@ const schedules = [
   makeBooking({ clientId: "ruth", start: eastern("2026-10-01", "09:00"), trainerId: "t-me", trainerName: "Sam Rivera" }),
 ];
 
-async function mount(over: Partial<RunSheetProps> = {}) {
+type MountProps = DayMomentsProps & { onOpenProfile: (id: string) => void; onStartSession: (id: string) => void };
+
+/** The Hub works the day out once (use-day-moments) and hands the Run-sheet its entries. */
+function WithTheDay(props: MountProps) {
+  const { entries } = useDayMoments(props);
+  return <RunSheet day={props.day} entries={entries} onOpenProfile={props.onOpenProfile} onStartSession={props.onStartSession} />;
+}
+
+async function mount(over: Partial<MountProps> = {}) {
   const host = document.createElement("div");
   document.body.appendChild(host);
   const root = createRoot(host);
   const calls = { open: [] as string[], start: [] as string[] };
-  const props: RunSheetProps = {
+  const props: MountProps = {
     day: TODAY,
     now: NOW,
     schedules,
@@ -86,7 +95,7 @@ async function mount(over: Partial<RunSheetProps> = {}) {
   await act(async () => {
     root.render(
       <StrictMode>
-        <RunSheet {...props} />
+        <WithTheDay {...props} />
       </StrictMode>,
     );
   });

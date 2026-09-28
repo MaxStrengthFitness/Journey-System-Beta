@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Moment } from "../hub-opportunities/moments-today";
-import { CARD_MAX_GLYPHS, cardMarks, sayableWord } from "./card-marks";
+import { CARD_MAX_GLYPHS, cardMarks, sayableWord, usualServiceOf } from "./card-marks";
 
 const m = (over: Partial<Moment> & Pick<Moment, "kind" | "family">): Moment => ({ chip: over.kind, sentence: over.kind, ...over });
 
@@ -37,6 +37,15 @@ describe("the card's marks", () => {
     expect(marks.moreLabel).toBe("Back after 5 wk, 100th today, Renewal talk");
   });
 
+  it("chooses by the Key's order, then puts a mark that can say a word first", () => {
+    const early = m({ kind: "early-session", family: "welcome", chip: "First session" });
+    const marks = cardMarks([waiver, early]);
+    expect(marks.glyphs.map((g) => g.kind)).toEqual(["early-session", "waiver"]);
+    expect(marks.glyphs[0].word).toBe("1st session");
+    // The choosing is still the Key's: a third mark folds, whatever its word.
+    expect(cardMarks([waiver, pulse, early]).glyphs.map((g) => g.kind)).toEqual(["waiver", "pulse"]);
+  });
+
   it("labels a glyph with the mark's own words when it has them", () => {
     const marks = cardMarks([pulse]);
     expect(marks.glyphs[0]).toMatchObject({ label: "Sleep & Recovery is Red", word: null });
@@ -55,5 +64,22 @@ describe("only sayable words beside a glyph (a client stands at the iPad)", () =
 
   it("keeps the Pulse flag, the waiver, a renewal talk and a plain birthday to their glyph", () => {
     for (const x of [pulse, waiver, renew, birthday]) expect(sayableWord(x)).toBeNull();
+  });
+});
+
+describe("the day's usual service (AJ's Mindbody screenshots: it repeated on every block)", () => {
+  const b = (serviceName: string, clientName = "Client") => ({ serviceName, clientName });
+
+  it("is the name most of the day's bookings carry", () => {
+    expect(usualServiceOf([b("1:1 Strength Training"), b("1:1 Strength Training"), b("New Client Consultation")])).toBe("1:1 Strength Training");
+  });
+
+  it("leaves Mindbody's Unavailable blocks out of the count", () => {
+    expect(usualServiceOf([b("Staff time", "Unavailable"), b("Staff time", "Unavailable"), b("1:1 Strength Training"), b("1:1 Strength Training")])).toBe("1:1 Strength Training");
+  });
+
+  it("claims nothing from a single booking or an empty day", () => {
+    expect(usualServiceOf([b("1:1 Strength Training")])).toBeNull();
+    expect(usualServiceOf([])).toBeNull();
   });
 });

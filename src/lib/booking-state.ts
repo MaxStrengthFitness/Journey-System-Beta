@@ -112,7 +112,7 @@ export function loggedSessions(
  *
  * Such a row reaches the schedule with "Unavailable" where a client's name
  * would be, and the Calendar, the Hub and Relay already draw it as blocked
- * time by this same test on the client name (ScheduleBlock, CalendarView,
+ * time by this same test on the client name (the Hub card, CalendarView,
  * relay/board/now-context). Nothing in the sync writes one on purpose, so
  * scripts/openings-report.ts counts them before anything relies on them.
  *

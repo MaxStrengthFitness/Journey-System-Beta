@@ -20,8 +20,6 @@
  */
 import React, { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, RefreshCw, Sparkles, Undo2 } from "lucide-react";
-import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
-import type { JournalEntry } from "../../types/journal";
 import { formatStudioTime } from "../../lib/studio-time";
 import {
   FILTERS,
@@ -36,24 +34,17 @@ import {
   type RunSheetEntry,
   type RunSortKey,
 } from "./moments-today";
-import { useDayMoments } from "./use-day-moments";
 import "./run-sheet.css";
 
 export interface RunSheetProps {
   /** The day on screen (the Hub's selected day), `yyyy-mm-dd`. */
   day: string;
-  now: Date;
-  schedules: ReadonlyArray<ScheduleEntry>;
-  clients: ReadonlyArray<Client>;
-  sessions: ReadonlyArray<WorkoutSession>;
-  sessionsKnown: boolean;
-  studios?: ReadonlyArray<{ id?: string; name?: string; journeyCutoverDate?: string | null }>;
-  activeStudioId: string | null;
-  authTrainer: Trainer | null;
-  uid?: string | null;
-  trainers: ReadonlyArray<Trainer>;
-  /** The Hub's one Critical read: her notes, or null when unread. */
-  criticalFor: (clientId: string) => readonly JournalEntry[] | null;
+  /**
+   * Every client booked on that day, from the Hub's one engine
+   * (use-day-moments): the Schedule layer's cards read the same entries, so
+   * the grid and the list can never disagree.
+   */
+  entries: ReadonlyArray<RunSheetEntry>;
   onOpenProfile: (clientId: string) => void;
   onStartSession: (clientId: string) => void;
 }
@@ -179,22 +170,7 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   );
 }
 
-export function RunSheet({
-  day,
-  now,
-  schedules,
-  clients,
-  sessions,
-  sessionsKnown,
-  studios,
-  activeStudioId,
-  authTrainer,
-  uid,
-  trainers,
-  criticalFor,
-  onOpenProfile,
-  onStartSession,
-}: RunSheetProps) {
+export function RunSheet({ day, entries, onOpenProfile, onStartSession }: RunSheetProps) {
   const [memory, setMemory] = useState<Remembered>(readMemory);
   const [reversed, setReversed] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -202,21 +178,6 @@ export function RunSheet({
   useEffect(() => writeMemory(memory), [memory]);
   // A new day starts with every row closed.
   useEffect(() => setOpenKey(null), [day]);
-
-  const { entries } = useDayMoments({
-    day,
-    now,
-    schedules,
-    clients,
-    sessions,
-    sessionsKnown,
-    studios,
-    activeStudioId,
-    authTrainer,
-    uid,
-    trainers,
-    criticalFor,
-  });
 
   const scoped = useMemo(() => (memory.scope === "mine" ? entries.filter((e) => e.mine) : entries), [entries, memory.scope]);
   const counts = useMemo(() => filterCounts(scoped), [scoped]);

@@ -20,7 +20,6 @@ import { auth, db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
-import { ScheduleBlock } from "./schedule/ScheduleBlock";
 import { bookingDay, loggedSessions } from "../lib/booking-state";
 import { sessionsByClientDay } from "../lib/hub-card-state";
 import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
@@ -57,10 +56,12 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { openProfileAt } from "../features/client-profile/profile-nav";
 import { useLeaveGuard } from "../features/unsaved-changes";
-import { homeCutoverOf } from "../lib/client-coverage";
 import { LoadBoundary } from "../features/new-version/LoadBoundary";
 import { LoadingArea } from "./LoadingMark";
 import { LayerSwitch, type HubLayer } from "../features/hub-opportunities/LayerSwitch";
+import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
+import { HubCard } from "../features/hub-schedule/HubCard";
+import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -72,8 +73,12 @@ const RunSheet = React.lazy(() => import("../features/hub-opportunities/RunSheet
 
 /** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
 const SLOT_MINUTES = 30;
-/** Height of one 30-minute row (Tailwind h-14). */
-const ROW_PX = 56;
+/**
+ * Height of one 30-minute row: 2.2px a minute (calm Hub round, Sep 28 2026),
+ * so a 30-minute card is 64px with its gap. At the old 56px a card had room
+ * for a cut name and 8px letters (research-hub §1).
+ */
+const ROW_PX = 66;
 /** Height of the sticky trainer header row (Tailwind h-16). */
 const HEADER_PX = 64;
 /**
@@ -84,11 +89,18 @@ const HEADER_PX = 64;
 const DEFAULT_START_MIN = 5 * 60 + 30;
 /** The LAST row STARTS here, so the grid closes at 8:00 PM. */
 const DEFAULT_END_MIN = 19 * 60 + 30;
-/** Minimum width per trainer column before the grid scrolls sideways. */
-const MIN_COLUMN_PX = 144;
+/**
+ * Minimum width per trainer column before the grid scrolls sideways: at 156px
+ * a line holds about 17 characters, so a first name and a surname on two lines
+ * cover nearly every name, whole (research-hub §6.0).
+ */
+const MIN_COLUMN_PX = 156;
 const TIME_AXIS_PX = 56;
 
 /** "7 AM", "12 PM", "6:30 AM" … for the left time axis. */
+/** One empty list, so a missing schedule doesn't look new on every render. */
+const NO_SCHEDULES: any[] = [];
+
 const hourLabel = (minutes: number): string => {
   const h24 = Math.floor(minutes / 60);
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
@@ -564,6 +576,30 @@ export function ClientsView({
       .filter((s) => !s.clientName?.toLowerCase().includes("unavailab"))
       .map((s) => findClientForSession(s)?.id),
   );
+
+  /*
+   * THE DAY'S MOMENTS (calm Hub round, Sep 28 2026): every client booked on
+   * the day on screen, worked out ONCE by the same engine the Opportunities
+   * list reads (features/hub-opportunities). The cards, their marks and the
+   * list can never disagree. No read per card.
+   */
+  const dayMoments = useDayMoments({
+    day: calendarLabelKey(selectedDate),
+    now: currentTime,
+    schedules: schedules || NO_SCHEDULES,
+    clients,
+    sessions,
+    sessionsKnown,
+    studios: cutoverStudios,
+    activeStudioId,
+    authTrainer,
+    uid: auth.currentUser?.uid ?? null,
+    trainers: sortedTrainers,
+    criticalFor: criticalNotes.notesFor,
+  });
+
+  /** The day's usual service: a card names its own only when it isn't this one. */
+  const usualService = React.useMemo(() => usualServiceOf(todaysSchedules), [todaysSchedules]);
 
   const getClientSessions = (client: Client) => {
     const clientName = `${client.firstName} ${client.lastName}`;
@@ -1265,7 +1301,7 @@ export function ClientsView({
                         // The first row always gets a label, even at :30.
                         const showLabel = isHour || sIdx === 0;
                         return (
-                          <tr key={slot} className="h-14">
+                          <tr key={slot} style={{ height: ROW_PX }}>
                             {/* Time axis: label on the hour, quiet on the half hour. */}
                             <td
                               className={cn(
@@ -1372,7 +1408,7 @@ export function ClientsView({
                                     // tall, so the NOW line and rowSpans line up.
                                     <div
                                       className="flex flex-col gap-0.5 w-full overflow-hidden"
-                                      style={{ height: rowSpan * ROW_PX - 5 }}
+                                      style={{ height: rowSpan * ROW_PX - 4 }}
                                     >
                                       {cellSessions.map((session, i) => {
                                         const clientObj =
@@ -1389,24 +1425,27 @@ export function ClientsView({
                                               }),
                                             )
                                           : null;
+                                        const entry = clientObj?.id
+                                          ? dayMoments.byClientId.get(clientObj.id) ?? null
+                                          : null;
                                         return (
-                                          <ScheduleBlock
-                                            journeyCutoverDate={homeCutoverOf(cutoverStudios, clientObj)}
+                                          <HubCard
                                             key={
                                               session.id ||
                                               session.mindbodyAppointmentId ||
                                               i
                                             }
-                                            session={session}
+                                            booking={session}
                                             client={clientObj}
+                                            entry={entry}
+                                            sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
+                                            newToJourney={isNewToJourney(entry, clientObj)}
+                                            usualService={usualService}
                                             rosterLoading={rosterLoading}
                                             workoutSession={workoutSession}
                                             logged={logged}
-                                            criticalNotes={
-                                              clientObj ? criticalNotes.notesFor(clientObj.id) : null
-                                            }
                                             now={currentTime}
-                                            onOpenClient={(clientId) => {
+                                            onOpen={(clientId) => {
                                               onSelectClient(clientId);
                                               setView("profile");
                                             }}
@@ -1436,17 +1475,7 @@ export function ClientsView({
                 <React.Suspense fallback={<LoadingArea label={"Opening Opportunities\u2026"} />}>
                   <RunSheet
                     day={calendarLabelKey(selectedDate)}
-                    now={currentTime}
-                    schedules={schedules || []}
-                    clients={clients}
-                    sessions={sessions}
-                    sessionsKnown={sessionsKnown}
-                    studios={cutoverStudios}
-                    activeStudioId={activeStudioId}
-                    authTrainer={authTrainer}
-                    uid={auth.currentUser?.uid ?? null}
-                    trainers={sortedTrainers}
-                    criticalFor={criticalNotes.notesFor}
+                    entries={dayMoments.entries}
                     onOpenProfile={(id) => onSelectClient(id)}
                     onStartSession={(id) => {
                       // The Hub search card's own path to a session.

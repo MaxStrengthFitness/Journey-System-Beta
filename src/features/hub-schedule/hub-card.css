@@ -1,0 +1,247 @@
+/* ==========================================================================
+   The Hub card (calm Hub round, Sep 28 2026). Prefix hs-card / hs-g.
+   Colour comes from equipment.tokens.css (light and dark); no hex below.
+
+   One channel, one meaning (research-hub §4, pattern 3):
+     the LEFT EDGE is the booking's state (upcoming, in session, over),
+     the GLYPH colour is its family (Watch plum, Welcome blue, Celebrate
+     orange, Renew green), and crimson is the Critical triangle alone.
+   Names are whole and wrap; nothing tappable under 40px (the card is at
+   least 64px, a 30-minute booking at 2.2px a minute less its gap).
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.hs-card {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  /* Fills its slot: the whole of it alone, a share of it beside another booking. */
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--eq-border);
+  border-left: 4px solid var(--eq-ink-faint);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  container-type: inline-size;
+  box-shadow: 0 1px 2px var(--eq-shadow);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 150ms ease;
+}
+
+.hs-card:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 1px;
+}
+
+/* The one being looked at (its peek is open). */
+.hs-card[data-open="true"] {
+  border-color: var(--eq-live);
+  box-shadow: 0 0 0 2px var(--eq-live);
+}
+
+.hs-card[data-state="in-session"] {
+  border-left-color: var(--eq-live);
+  background: var(--eq-live-fill);
+}
+
+/* Over: done, not logged, or nothing to claim. It recedes and drops its
+   marks, the triangle included (AJ, Sep 28: "once the session is done it
+   should make a lot less noise"). */
+.hs-card[data-recede="true"] {
+  border-left-color: var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  box-shadow: none;
+  opacity: 0.62;
+}
+
+/* No Max Strength profile yet: the next sync links it. Inert. */
+.hs-card[data-kind="unlinked"] {
+  border-style: dashed;
+  border-left-width: 1px;
+  background: var(--eq-surface-2);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* The roster that would hold her hasn't arrived yet. */
+.hs-card[data-kind="pending"] {
+  background: var(--eq-surface-2);
+  box-shadow: none;
+  cursor: progress;
+}
+
+/* Time that isn't a session (Mindbody's "Unavailable": lunch, a one-on-one).
+   Never counted, never tapped. */
+.hs-card[data-kind="staff"] {
+  border-left-color: var(--eq-ink-faint);
+  background: repeating-linear-gradient(135deg, var(--eq-surface-2) 0 8px, var(--eq-surface-3) 8px 16px);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* The day summary's spotlight: the rest stand back. */
+.hs-card[data-dim="true"] {
+  opacity: 0.22;
+}
+
+.hs-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Whole, wrapping onto a second line: never "Lobelia S…" (research-hub §6.0). */
+.hs-card-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+  color: var(--eq-ink);
+}
+
+.hs-card[data-kind="staff"] .hs-card-name,
+.hs-card[data-kind="unlinked"] .hs-card-name {
+  font-weight: 600;
+  color: var(--eq-ink-2);
+}
+
+.hs-card-meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hs-card-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.hs-card-when strong {
+  font-weight: 800;
+  color: var(--eq-ink-2);
+}
+
+.hs-card[data-state="in-session"] .hs-card-when {
+  color: var(--eq-live-text);
+  font-weight: 800;
+}
+
+.hs-live-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--eq-live);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hs-live-dot {
+    animation: hs-live 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes hs-live {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---- the marks ---- */
+
+.hs-tri {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--eq-alert-fill);
+  color: var(--eq-alert);
+}
+
+.hs-glyphs {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hs-g {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hs-g[data-family="watch"] {
+  background: var(--eq-warn-fill);
+  color: var(--eq-warn);
+}
+
+.hs-g[data-family="welcome"] {
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.hs-g[data-family="celebrate"] {
+  background: var(--eq-hero-fill);
+  color: var(--eq-hero-text);
+}
+
+.hs-g[data-family="renew"] {
+  background: var(--eq-ok-fill);
+  color: var(--eq-ok);
+}
+
+.hs-g[data-family="more"] {
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-2);
+  padding: 0 5px;
+}
+
+/* A glyph's word only where there is room for it, and only on the first. */
+.hs-g-word {
+  display: none;
+}
+
+@container (min-width: 196px) {
+  .hs-g:first-child .hs-g-word {
+    display: inline;
+  }
+}
