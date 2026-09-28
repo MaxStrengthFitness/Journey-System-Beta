@@ -323,9 +323,10 @@ document, a Firestore change that needs his OK), the Hub card's milestones,
 the tenure words and "ending soon". Technical leftover: `src/lib/directory-row.ts`
 and its test have no reader since the old directory went.
 
-**The calm Hub (Sep 28 2026)** — to do by hand: look at branch
-`redesign/calm-hub` on the iPad (the local test build, or after it reaches
-master on AJ's word) and walk Round 25 of the testing checklist. The Hub card's
+**The calm Hub (Sep 28 2026)** — to do by hand: walk Round 25 of the testing
+checklist (the round shipped to master on AJ's word before anyone saw it on an
+iPad; the restore tag `restore/2026-09-28-before-calm-hub` is master before
+it). The Hub card's
 milestones moved to Operations' one list (Hub question 5's default), which
 settles that question from the directory round. Decisions for AJ, in the round
 document's "Open, for AJ": the tap opening a peek (two taps to the profile);
@@ -334,7 +335,9 @@ waiting on Mindbody's "Unavailable" blocks, which the sync doesn't bring; moving
 the briefing's markers (every 25th, 21 days) onto the one engine; the top in
 portrait. Technical leftovers: "Couldn't load, retrying" when the schedule read
 fails; columns by trainer id only; a column header, "+N" and "Show on schedule"
-as doors; FORD "Get to know" (a new read: Needs OK); the cherry on top, last.
+as doors; FORD "Get to know" (a new read: Needs OK); `mayReadWeeks` in a
+small file of its own (about 4 kB off the first download); the cherry on top,
+last.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll
