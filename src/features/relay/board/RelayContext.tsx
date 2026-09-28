@@ -35,6 +35,13 @@ export interface RelayContextValue {
   uid: string | null;
   trainers: Trainer[];
   clients: Client[];
+  /**
+   * Whether the studio's client list has answered (AppContent's
+   * useStudioRoster): Since you were in says "Checking…" or "Couldn't check"
+   * rather than "nobody new" until it has (the second wave of the Relay
+   * room, Sep 28 2026). Absent outside the shell.
+   */
+  rosterStatus?: "loading" | "ready" | "error";
   schedules: ScheduleEntry[];
   sessions: WorkoutSession[];
   machines: Machine[];

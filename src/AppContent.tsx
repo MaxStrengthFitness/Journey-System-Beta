@@ -1844,6 +1844,7 @@ export default function AppContent({
                       <MyStudioView
                         authTrainer={authTrainer}
                         clients={clients}
+                        rosterStatus={rosterStatus}
                         trainers={trainers}
                         schedules={schedules}
                         sessions={sessions}

@@ -256,7 +256,9 @@ describe("the Board", () => {
     expect(later?.textContent).toContain("20 min free");
     expect(later?.textContent).toContain("Closing chores open");
     const team = h.querySelector('[aria-label="Team today"]');
-    expect(team?.textContent).toContain("Mid chores · 1 of 4");
+    // One line a chore since the second wave (Sep 28 2026): it was one line a part of the day.
+    expect(team?.textContent).toContain("Wipe-down round · 1 of 3");
+    expect(team?.textContent).toContain("Restock towels · nobody on it yet");
     // Never a person's count.
     expect(team?.textContent).not.toMatch(/Ioreth|Beregond|Mablung/);
   });

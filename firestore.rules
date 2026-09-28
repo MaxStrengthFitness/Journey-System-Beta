@@ -1518,6 +1518,29 @@ service cloud.firestore {
 
     }
 
+    // ===============================================================
+    // WAVE 2 RELAY (Sep 28 2026, AJ: "all yes") -- the Relay room's
+    // second wave. Each block below is its own, so it can be read, tested
+    // and reverted alone; every one keeps its cheap field checks before
+    // anything that reads a document. Tests: "wave 2 relay" in
+    // tests/firestore.rules.test.ts. Round: docs/rounds/2026-09-28-relay-2.md.
+    // ===============================================================
+
+    // WAVE 2 RELAY: the last-seen marker. studios/{studioId}/lastSeen/{uid}
+    // -- when this trainer last opened Relay's Board at this studio, so
+    // "Since you were in" knows what is new. Read and written by that
+    // person only (the uid is the path): nobody else can see when someone
+    // was in. Two server times and nothing else.
+    // features/relay/board/last-seen.ts.
+    match /studios/{studioId}/lastSeen/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow create, update: if isAuthenticated() && request.auth.uid == uid
+                            && request.resource.data.keys().hasOnly(['at', 'updatedAt'])
+                            && request.resource.data.at == request.time
+                            && request.resource.data.updatedAt == request.time;
+      allow delete: if isAuthenticated() && request.auth.uid == uid;
+    }
+
     // CLIENTS — scoped to the reader's studios (tenancy pass, Sep 2026)
     //
     // This rule used to be `allow read: if isAuthenticated()`. Any trainer at

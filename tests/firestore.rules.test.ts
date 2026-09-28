@@ -4380,4 +4380,36 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
     });
   });
+
+  // -- WAVE 2 RELAY (Sep 28 2026, AJ: "all yes"): the Relay room's second
+  // wave. Each block in firestore.rules headed "WAVE 2 RELAY:" is held here.
+  describe("wave 2 relay", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // -- the last-seen marker: studios/{s}/lastSeen/{uid}, the person's own.
+    describe("the last-seen marker", () => {
+      const marker = () => ({ at: serverTimestamp(), updatedAt: serverTimestamp() });
+
+      it("lets a trainer set and read their own marker, at a studio, and nobody else's", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "studios", "studioA", "lastSeen", "trainerA");
+        await assertSucceeds(setDoc(ref, marker()));
+        await assertSucceeds(getDoc(ref));
+        await assertSucceeds(setDoc(ref, marker()));
+        // Someone else's: neither read nor written, even at their own studio.
+        const other = as("trainerB");
+        await assertFails(getDoc(doc(other, "studios", "studioA", "lastSeen", "trainerA")));
+        await assertFails(setDoc(doc(other, "studios", "studioA", "lastSeen", "trainerA"), marker()));
+        await assertFails(getDocs(collection(other, "studios", "studioA", "lastSeen")));
+      });
+
+      it("holds the two server times and nothing else", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "studios", "studioA", "lastSeen", "trainerA");
+        await assertFails(setDoc(ref, { at: new Date("2026-01-01T12:00:00Z"), updatedAt: serverTimestamp() }));
+        await assertFails(setDoc(ref, { ...marker(), studioId: "studioA" }));
+        await assertFails(setDoc(ref, { at: serverTimestamp() }));
+      });
+    });
+  });
 });

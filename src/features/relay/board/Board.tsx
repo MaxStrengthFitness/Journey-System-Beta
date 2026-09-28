@@ -37,7 +37,8 @@ import { useRelay } from "./RelayContext";
 import { emptyPrompt, snoozedIds, unsnooze } from "./next-up";
 import { SwipeRow } from "./SwipeRow";
 import { FACES_SHOWN, NAME_SPANS, namedLine, whoFaces, type NameSpan, type WhoFace } from "./who";
-import { RING_LABEL, RING_PHASES, shiftRings } from "./rings";
+import { shiftRings } from "./rings";
+import { teamTodayLines } from "./team-today";
 import { minutesToClock } from "./now-context";
 import { floorLoad, laterToday, rightNow } from "./right-now";
 import {
@@ -149,6 +150,14 @@ export interface BoardProps {
   resolved?: TaskRequest[];
   /** One of today's reads failed, so an empty list is unknown, never "nothing". */
   unknown?: boolean;
+  /**
+   * The top of the side column: Since you were in (./SinceYouWereIn.tsx),
+   * drawn by the host, which holds the reads it needs (the second wave of
+   * the Relay room, Sep 28 2026).
+   */
+  around?: ReactNode;
+  /** Answers kept in the Playbook today, for Team today's "Asks answered" line. */
+  keptToday?: number;
 }
 
 export function Board({
@@ -163,6 +172,8 @@ export function Board({
   behind,
   resolved = [],
   unknown = false,
+  around,
+  keptToday = 0,
 }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
@@ -679,8 +690,9 @@ export function Board({
         </section>
 
         <aside className="rbd-notices" aria-label="Around the studio">
+          {around}
           <JustNow studioId={relay.studioId} />
-          <TeamToday rows={rows} />
+          <TeamToday rows={rows} answered={resolved} keptToday={keptToday} />
         </aside>
 
         {(later.length > 0 || lineParts.length > 0) && (
@@ -1131,39 +1143,35 @@ function initialsOf(name: string): string {
  * ------------------------------------------------------------------ */
 
 /**
- * "Opening chores · 12 of 12 done". The rings the Floor used to draw, as
- * three lines: the studio's recurring work for each part of the day, never
- * a person's count.
+ * "Wipe-down round · 12 of 19", "Deep clean · nobody on it yet", "Opening
+ * walk-through · all 12 done by 6:48 AM", "Asks answered · 2 today, 1 kept in
+ * the Playbook". The studio's work today, one line a chore (team-today.ts;
+ * by chore since the second wave of the Relay room, Sep 28 2026: it was three
+ * lines by part of the day). A name only ever says who is on an open chore;
+ * nobody is counted.
  */
-export function TeamToday({ rows }: { rows: TaskRow[] }) {
+export function TeamToday({ rows, answered = [], keptToday = 0 }: { rows: TaskRow[]; answered?: TaskRequest[]; keptToday?: number }) {
   const relay = useRelay();
-  const rings = shiftRings(rows);
-  if (rings.every((r) => r.total === 0)) return null;
-  const opensAt = (phase: string) =>
-    phase === "closing" && relay.now.nowMin < relay.now.hours.closing ? ` · opens at ${minutesToClock(relay.now.hours.closing)}` : "";
+  const { lines, more } = teamTodayLines({ rows, answered, keptToday, todayKey: relay.now.todayKey });
+  if (lines.length === 0) return null;
+  const closingLater = relay.now.nowMin < relay.now.hours.closing && shiftRings(rows).some((r) => r.phase === "closing" && r.total > 0);
   return (
     <section className="rbd-team" aria-label="Team today">
       <h3 className="rbd-h rbd-h--small">
         Team today<span className="rbd-h__sub">by chore</span>
       </h3>
       <ul className="rbd-team__list">
-        {RING_PHASES.map((phase) => {
-          const r = rings.find((x) => x.phase === phase)!;
-          if (r.total === 0) return null;
-          return (
-            <li key={phase} className="rbd-team__row">
-              <span className="rbd-team__t">
-                {RING_LABEL[phase]} chores
-                <span className="rbd-mute">
-                  {" "}
-                  · {r.closed ? `all ${r.total} done` : `${r.done} of ${r.total}`}
-                  {!r.closed && opensAt(phase)}
-                </span>
-              </span>
-            </li>
-          );
-        })}
+        {lines.map((l) => (
+          <li key={l.key} className="rbd-team__row">
+            <span className="rbd-team__t">
+              {l.label}
+              <span className="rbd-mute"> · {l.state}</span>
+            </span>
+          </li>
+        ))}
       </ul>
+      {more > 0 && <p className="rbd-team__more">{more === 1 ? "and 1 more chore" : `and ${more} more chores`}, behind Floor work.</p>}
+      {closingLater && <p className="rbd-team__more">Closing chores open at {minutesToClock(relay.now.hours.closing)}.</p>}
     </section>
   );
 }
