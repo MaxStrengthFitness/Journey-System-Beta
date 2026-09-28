@@ -63,6 +63,7 @@ import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedu
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
 import type { Span } from "../features/hub-schedule/grid-model";
 import { useStandingWeeks } from "../features/standing-week/useStandingWeeks";
+import { mayReadWeeks } from "../features/standing-week/present";
 import { weekdayOf } from "../features/client-history/model";
 import { DayHeader, DaySummary, KeySheet } from "../features/hub-schedule/DayHeader";
 import { Peek } from "../features/hub-schedule/Peek";
@@ -577,9 +578,10 @@ export function ClientsView({
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
    * glance"): the AGREED standing weeks, one read of the studio's, hatch the
    * hours a trainer isn't on and a day away. No agreed week, or no answer,
-   * hatches nothing (off-hours.ts).
+   * hatches nothing (off-hours.ts). Read only by someone Openings would let
+   * read them (mayReadWeeks, the one rule), so no refused listener is opened.
    */
-  const standingWeeks = useStandingWeeks(activeStudioId || null);
+  const standingWeeks = useStandingWeeks(mayReadWeeks(authTrainer, activeStudioId) ? activeStudioId : null);
   const weeks = React.useMemo(() => weeksByTrainer(standingWeeks.docs), [standingWeeks.docs]);
   const gridWeekday = weekdayOf(gridDayKey);
   const frameOf = React.useCallback(
