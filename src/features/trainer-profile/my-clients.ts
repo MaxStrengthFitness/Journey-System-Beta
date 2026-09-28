@@ -35,22 +35,20 @@
  * ----------------------------
  * Every count here is Journey's: "42 sessions with you in Journey", never
  * "all time", and there is no "since" date. The last session is worded
- * through lib/history-claims.ts: "Last session: Sep 25" is a claim that no
- * session came after it, so it is made only where Journey owns the days
- * after it (`canClaimGap` over `ownedWindow`, judged by the client's HOME
- * studio's cutover). Anywhere else it reads "Last in Journey: Sep 25".
- * Either way it is HER last session, with any trainer (`lastSessionDate`
- * is the client's, not yours), so it says so: "Last in Journey, with any
- * trainer: Sep 25". Beside "42 sessions with you" a bare date read as your
- * last session with her (the final review; on AJ's screen-audit list).
+ * "Last visit on file: Sep 25". `lastSessionDate` has TWO writers: Journey
+ * stamps it when a session completes (lib/sync-utils.ts), and the Mindbody
+ * webhook copies Mindbody's lastVisited into it (functions/src/mindbody,
+ * around line 660) - a visit Journey may never have logged. So the date is
+ * neither "in Journey" nor proof that nothing came after it; "a visit, on
+ * file" is true whichever wrote it, and it is hers, not yours (beside "42
+ * sessions with you" a bare "Last session" read as your last one with her).
+ * Keeping the two apart is a Cloud Functions change for AJ (the round doc's
+ * Open list). Until then no "Last session" claim is made from this field.
  *
  * PURE MODULE — no React, no Firestore, no clock.
  */
 import type { Client } from "../../types";
 import { clientDisplayName } from "../../lib/client-name";
-import { coverageOfClient } from "../../lib/client-coverage";
-import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
-import { priorHistoryOf } from "../../lib/prior-history";
 import { tallyFieldKey } from "../../lib/client-rollups";
 import { SHORT_MONTHS } from "../admin/hours/hours";
 
@@ -66,7 +64,7 @@ export interface MyClientRow {
   coachedLately: boolean;
   /** On your Kaizen Roster. */
   onRoster: boolean;
-  /** "Last in Journey, with any trainer: Sep 25" / "Last session, with any trainer: Sep 25", or null with no date. */
+  /** "Last visit on file: Sep 25", or null with no date. */
   last: string | null;
 }
 
@@ -105,10 +103,9 @@ export function shortDate(day: string, today: string): string {
 }
 
 /**
- * The client's last session, with any trainer, as a sentence, or null when
- * no usable date is on file. `lastSessionDate` is the day stamped as a
- * session completes; a date after today is a typo, not a visit, and is not
- * quoted.
+ * The client's last visit on file, as a sentence, or null when no usable
+ * date is on file. A date after today is a typo, not a visit, and is not
+ * quoted. See the header for why it never says "Last session".
  */
 export function lastSessionSentence(
   c: Pick<Client, "lastSessionDate" | "priorHistory" | "historyIsComplete" | "firstSessionDate" | "clientsNumberOfVisitsAtSite">,
@@ -119,10 +116,8 @@ export function lastSessionSentence(
   if (!raw) return null;
   const day = `${raw[1]}-${raw[2]}-${raw[3]}`;
   if (day > today) return null;
-  const window = ownedWindow({ coverage: coverageOfClient(c, cutover), prior: priorHistoryOf(c), cutover });
-  const after = dayAfter(day);
-  const claimable = after !== null && canClaimGap(after, window);
-  return `${claimable ? "Last session" : "Last in Journey"}, with any trainer: ${shortDate(day, today)}`;
+  void cutover; // kept in the signature for the day the two writers are kept apart
+  return `Last visit on file: ${shortDate(day, today)}`;
 }
 
 /** "42 sessions with you in Journey". */

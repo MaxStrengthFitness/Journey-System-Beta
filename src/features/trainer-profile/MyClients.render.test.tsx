@@ -88,10 +88,10 @@ describe("My clients", () => {
       "Sam Okafor-Delacroix-Whitfield",
       "Pat Lee",
     ]);
-    expect(text(rows[0].querySelector(".tp-row__sub"))).toBe("42 sessions with you in Journey · Last in Journey, with any trainer: Sep 25");
+    expect(text(rows[0].querySelector(".tp-row__sub"))).toBe("42 sessions with you in Journey · Last visit on file: Sep 25");
     // Sessions logged under the sign-in uid are yours too.
-    expect(text(rows[1].querySelector(".tp-row__sub"))).toBe("3 sessions with you in Journey · Last in Journey, with any trainer: Sep 29");
-    expect(text(rows[2].querySelector(".tp-row__sub"))).toBe("60 sessions with you in Journey · Last in Journey, with any trainer: Jun 2");
+    expect(text(rows[1].querySelector(".tp-row__sub"))).toBe("3 sessions with you in Journey · Last visit on file: Sep 29");
+    expect(text(rows[2].querySelector(".tp-row__sub"))).toBe("60 sessions with you in Journey · Last visit on file: Jun 2");
     // The Kaizen Roster's mark, on Judy only.
     expect(rows[0].querySelector("svg[aria-label='On your Kaizen Roster']")).not.toBeNull();
     expect(rows[1].querySelector("svg[aria-label='On your Kaizen Roster']")).toBeNull();

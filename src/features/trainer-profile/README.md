@@ -71,7 +71,7 @@ plain, dense and calm. This is now too.
 │ MY CLIENTS (your own page)                              31 clients       │
 │   COACHED LATELY · THE LAST 60 DAYS                                      │
 │   ◈ Judy Daus   42 sessions with you in Journey ·                        │
-│                 Last in Journey, with any trainer: Sep 25                │
+│                 Last visit on file: Sep 25                               │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ MY RENEWALS · MY STANDING WEEK (your own page)                           │
 ├──────────────────────────────────────────────────────────────────────────┤
@@ -343,13 +343,13 @@ with the team); My clients is who you have TRAINED, for "my off time".
   before "Show all N".
 - **The past in Journey's words.** "42 sessions with you in Journey", never
   "all time", and no "since" date. The last session (`lastSessionDate`) goes
-  through `lib/history-claims.ts`: "Last session: Sep 25" is a claim that no
-  session came after it, so it is made only where Journey owns the days
-  after it (`canClaimGap` over `ownedWindow`, judged by the client's home
-  studio's cutover); otherwise "Last in Journey: Sep 25". Either way the date
-  is HER last session with any trainer, so the row says "with any trainer"
-  (the final review: beside "42 sessions with you" a bare date read as your
-  last session with her; on AJ's screen-audit list). While the studio
+  reads "Last visit on file: Sep 25". The field has two writers: Journey
+  stamps it at Finish, and the Mindbody webhook copies Mindbody's
+  `lastVisited` into it, a visit Journey may never have logged. So the date
+  is neither "in Journey" nor proof that nothing came after it, and it is
+  hers, not yours (beside "42 sessions with you" a bare "Last session" read
+  as your last one with her). Keeping the writers apart is a Cloud Functions
+  change for AJ; until then no "Last session" claim is made from it. While the studio
   has no cutover date, or it has not come yet (a cutover set ahead of time
   is a studio still on FileMaker), the card says older sessions may be
   missing.

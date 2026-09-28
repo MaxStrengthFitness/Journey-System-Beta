@@ -109,30 +109,29 @@ describe("the order", () => {
   });
 });
 
-describe("the last session, through history-claims", () => {
-  it("says Last in Journey while her home studio has no cutover and her story isn't known whole", () => {
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25" }), null, TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
-  });
-
-  it("says Last session when Journey holds her whole story", () => {
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25", historyIsComplete: true }), null, TODAY)).toBe(
-      "Last session, with any trainer: Sep 25",
-    );
-  });
-
-  it("says Last session for a long-standing client once her studio moved onto Journey before it", () => {
+describe("the last visit on file", () => {
+  // lastSessionDate has two writers (Journey at Finish, and the Mindbody
+  // webhook's lastVisited), so it is never "in Journey" and never proof that
+  // nothing came after it: whatever the coverage, it is "a visit, on file".
+  it("says Last visit on file whatever the studio's cutover or her coverage", () => {
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25" }), null, TODAY)).toBe("Last visit on file: Sep 25");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25", historyIsComplete: true }), null, TODAY)).toBe("Last visit on file: Sep 25");
     const c = client("a", {
       lastSessionDate: "2026-09-25",
       priorHistory: { sessions: 300, through: "2026-08-31", source: "filemaker" },
     });
-    expect(lastSessionSentence(c, "2026-09-01", TODAY)).toBe("Last session, with any trainer: Sep 25");
-    // Before the cutover, Journey doesn't own the days after it.
-    expect(lastSessionSentence(c, "2026-09-28", TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
+    expect(lastSessionSentence(c, "2026-09-01", TODAY)).toBe("Last visit on file: Sep 25");
+    expect(lastSessionSentence(c, "2026-09-28", TODAY)).toBe("Last visit on file: Sep 25");
+  });
+
+  it("never claims a last session, nor that it was in Journey", () => {
+    const said = lastSessionSentence(client("a", { lastSessionDate: "2026-09-25", historyIsComplete: true }), "2026-01-01", TODAY) ?? "";
+    expect(said).not.toMatch(/Last session|in Journey/);
   });
 
   it("names the year when it isn't this one, and quotes nothing it can't read", () => {
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2025-12-02" }), null, TODAY)).toBe("Last in Journey, with any trainer: Dec 2, 2025");
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25T14:00:00" }), null, TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2025-12-02" }), null, TODAY)).toBe("Last visit on file: Dec 2, 2025");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25T14:00:00" }), null, TODAY)).toBe("Last visit on file: Sep 25");
     expect(lastSessionSentence(client("a", { lastSessionDate: "2026-10-09" }), null, TODAY)).toBeNull(); // after today
     expect(lastSessionSentence(client("a", { lastSessionDate: "soon" }), null, TODAY)).toBeNull();
     expect(lastSessionSentence(client("a"), null, TODAY)).toBeNull();
