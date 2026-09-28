@@ -21,6 +21,9 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
     setActiveStudioId: () => {},
     isChangingStudio: false,
   }),
+  // The catalog editor's Standard machine and Other names ask it who may
+  // change them (Machine Catalog wave 2, Sep 28 2026).
+  useOptionalActiveStudio: () => ({ isAdmin: true }),
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 
