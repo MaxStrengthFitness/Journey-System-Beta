@@ -206,7 +206,7 @@ describe("the Ask sheet", () => {
     expect(document.body.textContent).toContain("In the app only. Nobody is messaged.");
   });
 
-  it("posts Cover me from a session on the day strip, the time in the words and nowhere else", async () => {
+  it("posts Cover me from a session on the day strip, the time in the words and kept beside its day", async () => {
     const { onOpenChange } = await render(coverPresetOf({ clientId: "c-hamfast", clientName: "Hamfast Gamgee", startMin: 16 * 60, endMin: 16 * 60 + 30 }));
     expect(document.body.textContent).toContain("Hamfast Gamgee");
     await post();
@@ -221,6 +221,8 @@ describe("the Ask sheet", () => {
       estMinutes: 30,
       priority: "urgent",
       createdBy: { id: "t-ioreth", name: IORETH.name },
+      // The second wave (Sep 28 2026): the session's start is kept, and the ask comes down then.
+      coverAt: Date.parse(`${TODAY}T16:00:00-04:00`),
     });
     expect(state.adds[0].data).not.toHaveProperty("time");
     expect(onOpenChange).toHaveBeenCalledWith(false);

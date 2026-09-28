@@ -22,9 +22,10 @@ describe("the six tiles", () => {
 });
 
 describe("Cover me", () => {
-  it("says the session's time in the title's words and keeps it nowhere else", () => {
+  it("says the session's time in the title's words, and keeps it: the ask comes down when the session starts", () => {
     const d = blankAsk({ tile: "cover", client: hamfast, time: "16:00", estMinutes: 30, text: "Starts on the Leg Press; his knee is sore today." });
     const r = toAskRequest(d, ctx);
+    const at = Date.parse(`${TODAY}T16:00:00-04:00`);
     expect(r).toMatchObject({
       kind: "cover",
       title: "Cover Hamfast Gamgee at 4:00 PM",
@@ -34,15 +35,24 @@ describe("Cover me", () => {
       dueOn: TODAY,
       estMinutes: 30,
       priority: "urgent",
-      expiry: "today",
+      coverAt: at,
+      expiresAtMs: at,
     });
     expect(Object.keys(r)).not.toContain("time");
+    expect(Object.keys(r)).not.toContain("expiry");
   });
 
-  it("names another day, and stands until then", () => {
+  it("names another day, keeps its time, and stands until then", () => {
     const r = toAskRequest(blankAsk({ tile: "cover", client: hamfast, date: "2026-10-01", time: "09:30" }), ctx);
     expect(r.title).toBe("Cover Hamfast Gamgee on Thursday at 9:30 AM");
-    expect(r).toMatchObject({ sessionDate: "2026-10-01", expiry: "none" });
+    expect(r).toMatchObject({ sessionDate: "2026-10-01", coverAt: Date.parse("2026-10-01T09:30:00-04:00") });
+  });
+
+  it("with no time, keeps none, and a cover for today ends with the studio's day as before", () => {
+    const r = toAskRequest(blankAsk({ tile: "cover", client: hamfast }), ctx);
+    expect(r).toMatchObject({ sessionDate: TODAY, expiry: "today" });
+    expect(r).not.toHaveProperty("coverAt");
+    expect(toAskRequest(blankAsk({ tile: "cover", client: hamfast, date: "2026-10-01" }), ctx)).toMatchObject({ expiry: "none" });
   });
 
   it("needs the client or a few words", () => {

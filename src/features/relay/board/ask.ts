@@ -13,9 +13,11 @@
  *   Cover me             a session I can't take: the client, the day, and
  *                        anything to know. Kind "cover", on the board as
  *                        urgent. The session's TIME is said in the title's
- *                        words ("Cover Hamfast Gamgee at 4:00 PM") and kept
- *                        nowhere else: a kept time is a new field AJ has not
- *                        approved.
+ *                        words ("Cover Hamfast Gamgee at 4:00 PM") and, since
+ *                        the second wave (Sep 28 2026, AJ: "all yes"), KEPT:
+ *                        `coverAt`, the start in ms, beside its day
+ *                        (./cover.ts). The Board sorts cover asks by it, and
+ *                        the ask comes down when the session starts.
  *   A hand on the floor  now or at a time, where, and what for. Kind "help",
  *                        gone at the end of the day.
  *   Hand this off        a job to a teammate. A leader names the person (it
@@ -40,6 +42,7 @@ import type { TaskAuthor } from "../../studio-tasks/mutations";
 import type { CreateRequestInput } from "../../studio-tasks/requests";
 import { dayWords } from "../jobs/jobs";
 import { clock12 } from "./capture";
+import { coverInstant } from "./cover";
 
 export type AskTile = "cover" | "hand" | "handoff" | "question" | "broken" | "other";
 
@@ -219,7 +222,7 @@ export function namesSomeone(d: AskDraft, canLead: boolean): boolean {
  */
 export function toAskRequest(
   d: AskDraft,
-  ctx: { studioId: string; author: TaskAuthor; todayKey: string; canLead: boolean },
+  ctx: { studioId: string; author: TaskAuthor; todayKey: string; canLead: boolean; tz?: string },
 ): CreateRequestInput {
   const title = askTitle(d, ctx.todayKey);
   const detail = askDetail(d) || undefined;
@@ -228,6 +231,10 @@ export function toAskRequest(
   switch (d.tile) {
     case "cover": {
       const day = d.date ?? ctx.todayKey;
+      // The session's start, kept (the second wave): the ask sorts by it and
+      // comes down when the session starts. With no time, a cover for today
+      // stops mattering when the studio's day ends, as before.
+      const coverAt = coverInstant(day, d.time, ctx.tz);
       return {
         ...base,
         kind: "cover",
@@ -236,8 +243,7 @@ export function toAskRequest(
         dueOn: day,
         estMinutes: d.estMinutes ?? undefined,
         priority: "urgent",
-        // A cover for today stops mattering when the studio's day ends.
-        expiry: day === ctx.todayKey ? "today" : "none",
+        ...(coverAt !== null ? { coverAt, expiresAtMs: coverAt } : { expiry: day === ctx.todayKey ? "today" : "none" }),
       };
     }
     case "hand":

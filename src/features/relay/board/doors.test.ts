@@ -100,3 +100,38 @@ describe("the dealt card in words", () => {
     expect(pressureOf({ item: deck[1].item, why: [] })).toBeNull();
   });
 });
+
+describe("a cover ask that keeps its time (the second wave, Sep 28 2026)", () => {
+  const at = (iso: string) => Date.parse(iso);
+  const covers = [
+    ask("five", { kind: "cover", title: "Cover Rosie Cotton at 5:00 PM", createdBy: MABLUNG, priority: "urgent", coverAt: at(`${TODAY}T17:00:00-04:00`) }),
+    ask("thu", { kind: "cover", title: "Cover Hamfast Gamgee on Thursday at 9:30 AM", createdBy: BEREGOND, priority: "urgent", coverAt: at("2026-10-01T09:30:00-04:00") }),
+    ask("four", { kind: "cover", title: "Cover Farmer Maggot at 4:20 PM", createdBy: BEREGOND, priority: "urgent", coverAt: at(`${TODAY}T16:20:00-04:00`) }),
+    ask("q", { kind: "question", title: "Pullover elbows?", createdBy: BEREGOND, dueOn: TODAY }),
+  ];
+
+  it("deals the covers needed today first, soonest first, and one for a later day after today's asks", () => {
+    const deck = deckFor("help", input({ requests: covers }));
+    expect(deck.map((s) => s.item.id)).toEqual(["ask:four", "ask:five", "ask:q", "ask:thu"]);
+  });
+
+  it("says when each is needed: in orange today, and in the reasons for a later day", () => {
+    const deck = deckFor("help", input({ requests: covers }));
+    expect(pressureOf(deck[0])).toBe("needed at 4:20 PM");
+    const thu = deck.find((s) => s.item.id === "ask:thu")!;
+    expect(pressureOf(thu)).toBeNull();
+    expect(whyNow(thu.why)).toContain("Needed Thursday at 9:30 AM");
+    expect(thu.why).not.toContain("urgent");
+  });
+
+  it("names the soonest time on the door, and doesn't press for a cover on a later day", () => {
+    expect(doorFaces(input({ requests: covers }), "mid").help).toMatchObject({ sub: "cover needed at 4:20 PM", hot: true });
+    expect(doorFaces(input({ requests: [covers[1]] }), "mid").help).toMatchObject({ sub: "from teammates", hot: false });
+  });
+
+  it("stops pressing once someone has it", () => {
+    const taken = ask("four", { ...covers[2], claimedBy: IORETH });
+    const deck = deckFor("help", input({ requests: [taken] }));
+    expect(pressureOf(deck[0])).toBeNull();
+  });
+});

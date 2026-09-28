@@ -4411,5 +4411,53 @@ describe("marks on a time", () => {
         await assertFails(setDoc(ref, { at: serverTimestamp() }));
       });
     });
+
+    // -- a cover ask keeps its time: `coverAt` on studios/{s}/taskRequests.
+    // No rule changed (the ask restricts no keys); held here so a later
+    // tightening of that rule remembers the field.
+    describe("a cover ask that keeps its time", () => {
+      const coverAsk = (over: Record<string, unknown> = {}) => ({
+        studioId: "studioA",
+        kind: "cover",
+        title: "Cover Hamfast Gamgee at 4:00 PM",
+        sessionDate: "2026-09-28",
+        coverAt: Date.parse("2026-09-28T16:00:00-04:00"),
+        dueOn: "2026-09-28",
+        createdBy: { id: "trainerA", name: "Trainer A" },
+        createdAt: serverTimestamp(),
+        claimedBy: null,
+        claimedAt: null,
+        status: "open",
+        replyCount: 0,
+        priority: "urgent",
+        expiresAt: new Date("2026-09-28T20:00:00Z"),
+        ...over,
+      });
+
+      it("lets a trainer post a cover with its time, and a teammate take it", async () => {
+        const mine = as("trainerA");
+        await assertSucceeds(setDoc(doc(mine, "studios", "studioA", "taskRequests", "cover1"), coverAsk()));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), "trainers", "trainerA2"), {
+            fullName: "Trainer A2",
+            initials: "A2",
+            role: "LifeTransformer",
+            primaryHomeStudioId: "studioA",
+            accessibleStudioIds: ["studioA"],
+          });
+        });
+        const teammate = as("trainerA2");
+        await assertSucceeds(
+          updateDoc(doc(teammate, "studios", "studioA", "taskRequests", "cover1"), {
+            claimedBy: { id: "trainerA2", name: "Trainer A2" },
+            claimedAt: serverTimestamp(),
+          }),
+        );
+        // Still posted as yourself only.
+        await assertFails(
+          setDoc(doc(teammate, "studios", "studioA", "taskRequests", "cover2"), coverAsk({ createdBy: { id: "trainerA", name: "Trainer A" } })),
+        );
+      });
+    });
   });
 });

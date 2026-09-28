@@ -498,6 +498,11 @@ export function buildBoard(
     // thing on this screen that needs a person, and it is what the board is for.
     const c = Number(!!a.request.claimedBy) - Number(!!b.request.claimedBy);
     if (c !== 0) return c;
+    // Two covers that keep their time: the one needed first (the second wave
+    // of the Relay room, Sep 28 2026; TaskRequest.coverAt).
+    const ta = a.request.kind === "cover" && typeof a.request.coverAt === "number" ? a.request.coverAt : null;
+    const tb = b.request.kind === "cover" && typeof b.request.coverAt === "number" ? b.request.coverAt : null;
+    if (ta !== null && tb !== null && ta !== tb) return ta - tb;
     return millis(b.request.createdAt) - millis(a.request.createdAt);
   });
 }

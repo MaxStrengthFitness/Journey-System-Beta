@@ -361,7 +361,7 @@ export function AskSheet({
                         onChange={(e) => edit({ time: e.target.value || null })}
                       />
                     </div>
-                    <p className="rk-hint">The time goes in the ask's words ("at 4:00 PM").</p>
+                    <p className="rk-hint">The Board keeps the time: it lists covers by when they're needed, and the ask comes down when the session starts.</p>
                   </div>
                   {words("Anything to know?", "Starts on the Leg Press; his knee is sore today.", 2)}
                 </>

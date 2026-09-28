@@ -203,15 +203,41 @@ export interface LaterRow {
 /** A gap worth naming: this long or longer. */
 export const LATER_GAP_MINUTES = 10;
 
+/** A teammate's cover ask needed later today, at its kept time (./cover.ts). */
+export interface LaterCover {
+  key: string;
+  /** Minutes since the studio's midnight. */
+  min: number;
+  who: string;
+  title: string;
+}
+
 /**
  * The rest of the trainer's day as a few rows: each free gap of ten minutes
- * or more between their sessions after now, and the moment Closing opens
- * (the closing chores). From the trainer's own sessions only; nothing is
+ * or more between their sessions after now, a teammate's cover needed later
+ * today at the time it is needed (the second wave, Sep 28 2026: a cover ask
+ * keeps its time), and the moment Closing opens (the closing chores). From
+ * the trainer's own sessions and the asks on the board; nothing is
  * scheduled, booked or suggested.
  */
-export function laterToday(now: Pick<NowContext, "nowMin" | "sessions" | "hours" | "phase">, max = 4): LaterRow[] {
+export function laterToday(
+  now: Pick<NowContext, "nowMin" | "sessions" | "hours" | "phase">,
+  max = 4,
+  covers: readonly LaterCover[] = [],
+): LaterRow[] {
   const out: (LaterRow & { at: number })[] = [];
   const upcoming = now.sessions.filter((s) => s.endMin > now.nowMin).sort((a, b) => a.startMin - b.startMin);
+  for (const c of covers) {
+    if (c.min <= now.nowMin) continue;
+    const busy = now.sessions.some((s) => s.startMin <= c.min && c.min < s.endMin);
+    out.push({
+      key: `cover-${c.key}`,
+      at: c.min,
+      time: minutesToClock(c.min),
+      what: `${firstName(c.who)} needs cover`,
+      sub: `${c.title} · ${busy ? "you have a session then" : "you're free then"}`,
+    });
+  }
   for (let i = 0; i < upcoming.length - 1; i++) {
     const from = Math.max(upcoming[i].endMin, now.nowMin);
     const to = upcoming[i + 1].startMin;

@@ -139,4 +139,17 @@ describe("later today", () => {
   it("says nothing about Closing once it has opened, and nothing for a day with no sessions left", () => {
     expect(laterToday(nowContext([], at("17:00"), TODAY))).toEqual([]);
   });
+
+  it("puts a teammate's cover at the time it is needed, and says whether you're free then (the second wave)", () => {
+    const now = nowContext([session("x", "Barliman Butterbur", "14:40"), session("y", "Rosie Cotton", "16:40")], at("14:18"), TODAY);
+    const rows = laterToday(now, 6, [
+      { key: "a", min: at("16:20"), who: MABLUNG.name, title: "Cover Farmer Maggot at 4:20 PM" },
+      { key: "b", min: at("16:45"), who: BEREGOND.name, title: "Cover Hamfast Gamgee at 4:45 PM" },
+      { key: "gone", min: at("13:00"), who: BEREGOND.name, title: "Cover Odo Proudfoot at 1:00 PM" },
+    ]);
+    expect(rows.filter((r) => r.key.startsWith("cover-"))).toEqual([
+      { key: "cover-a", time: "4:20 PM", what: "Mablung needs cover", sub: "Cover Farmer Maggot at 4:20 PM · you're free then" },
+      { key: "cover-b", time: "4:45 PM", what: "Beregond needs cover", sub: "Cover Hamfast Gamgee at 4:45 PM · you have a session then" },
+    ]);
+  });
 });

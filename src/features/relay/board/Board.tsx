@@ -41,6 +41,7 @@ import { shiftRings } from "./rings";
 import { teamTodayLines } from "./team-today";
 import { minutesToClock } from "./now-context";
 import { floorLoad, laterToday, rightNow } from "./right-now";
+import { coverTimeOf, coverToName } from "./cover";
 import {
   DOOR_LABEL,
   DOOR_ORDER,
@@ -224,7 +225,8 @@ export function Board({
   /* Right now. */
   const [seenAtMount] = useState(() => seenInitiatives(relay.studioId));
   const load = useMemo(() => floorLoad(relay.schedules, now.todayKey, now.nowMin), [relay.schedules, now.todayKey, now.nowMin]);
-  const coverAsk = requests.find((r) => r.status === "open" && r.kind === "cover" && !r.claimedBy && !me.has(r.createdBy.id)) ?? null;
+  // The soonest cover needed today (a kept time), or one with no time; never one for a later day.
+  const coverAsk = coverToName(requests, me, now.todayKey, Date.now());
   const handedFrom = requests.filter((r) => r.status === "open" && r.forId && me.has(r.forId) && !r.claimedBy).map((r) => r.createdBy.name);
   const initiative =
     requests.find((r) => r.status === "open" && r.kind === "initiative" && postedToday(r, now.todayKey) && !seenAtMount.has(r.id)) ?? null;
@@ -452,7 +454,7 @@ export function Board({
     setFoldTick((t) => t + 1);
   };
   const opening = useMemo(
-    () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length }) : []),
+    () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length, todayKey: now.todayKey }) : []),
     [card, now, rows, requests, me, tracker.handed.length],
   );
   const showOpening = card === "opening" && folds.opening === null && opening.length > 0;
@@ -537,7 +539,13 @@ export function Board({
     });
   }
 
-  const later = laterToday(now);
+  // Teammates' covers needed later today, at the time they are needed (the second wave).
+  const laterCovers = requests
+    .filter((r) => r.status === "open" && r.kind === "cover" && !r.claimedBy && !me.has(r.createdBy.id))
+    .map((r) => ({ r, t: coverTimeOf(r) }))
+    .filter((x): x is { r: TaskRequest; t: NonNullable<typeof x.t> } => x.t !== null && x.t.day === now.todayKey)
+    .map(({ r, t }) => ({ key: r.id, min: t.min, who: r.createdBy.name, title: r.title }));
+  const later = laterToday(now, 4, laterCovers);
   const emptyFloor = emptyPrompt(now.gapMinutes, now.next?.clientName.split(" ")[0] ?? null);
   // Behind Mine: everything with this trainer's name on it, passed-over ones included.
   const mineDeck = useMemo(() => (door === "mine" ? deckFor("mine", { ...input, snoozed: new Set() }) : []), [door, input]);

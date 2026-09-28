@@ -46,6 +46,7 @@ import {
 import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
 import { useRelayMaybe } from "../relay/board/RelayContext";
+import { coverTimeOf, neededWords } from "../relay/board/cover";
 import { claimAskWithTrail, hasTrail, journalAuthorOf, replyWithTrail, trailAnswer } from "./question-trail";
 import {
   createRequest,
@@ -522,6 +523,8 @@ export function RequestsLane({
             const isAuthor = r.createdBy.id === author?.id;
             const left = timeLeft(r.expiresAt);
             const reacted = reactedLine(reactionSummary(r));
+            // A cover that keeps its time says when it's needed (the second wave, Sep 28 2026).
+            const coverTime = coverTimeOf(r);
             return (
               <li
                 key={r.id}
@@ -542,6 +545,7 @@ export function RequestsLane({
                       </span>
                     )}
                     <span className="stq__item-sub">
+                      {coverTime && <span className="stq__needed">{neededWords(coverTime, todayKey)} · </span>}
                       {r.createdBy.name} · {ago(r.createdAt)}
                       {r.replyCount > 0
                         ? ` · ${r.replyCount} repl${r.replyCount === 1 ? "y" : "ies"}`
