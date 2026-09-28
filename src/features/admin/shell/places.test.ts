@@ -26,7 +26,7 @@ describe("the five destinations", () => {
     expect(subs.clients).toEqual(["Renewals", "Moments", "Trends"]);
     expect(subs.team).toEqual(["Hours"]);
     expect(subs.week).toEqual(["This week"]);
-    expect(subs.setup).toEqual(["Floor", "People & access", "Announcements", "Mindbody", "Data"]);
+    expect(subs.setup).toEqual(["Floor", "People & access", "Announcements", "Mindbody", "Data", "Rules"]);
     expect(subs.today).toEqual([]);
   });
 

@@ -36,6 +36,7 @@ screen mounted as it was. `shell/places.ts` is the list.
 | Setup → Announcements | `announcements/` (the audiences follow the tier) |
 | Setup → Mindbody | `mindbody/` (`company` off = a leader's own studio), `useAutoSync.ts`, `syncPolicy.ts` |
 | Setup → Data | `data/` |
+| Setup → Rules | `journey/RulesPage.tsx` — the numbers behind every sentence; the rhythm and state engine is `journey/rhythm.ts` and `journey/states.ts` (read `journey/README.md`) |
 | — on the Admins dashboard — | |
 | All locations | `studios/`, `equipment/`, `upkeep/` |
 | Catalog | `machines/` (every machine, the submissions queue in `catalog/`) |

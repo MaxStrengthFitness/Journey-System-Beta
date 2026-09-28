@@ -12,11 +12,11 @@
  *             Insights screen)
  *   Team      Hours
  *   Setup     how the studio is set up: Floor, People & access (Staff &
- *             Roles), Announcements, Mindbody and Data
+ *             Roles), Announcements, Mindbody, Data, and the Rules behind
+ *             every sentence (phase 3)
  *
- * Later phases of the round add their pages here: the Journey and the Rules
- * (phases 3 and 4), last week and the week ahead (phase 5), the team this
- * week (phase 6).
+ * Later phases of the round add their pages here: the Journey (phase 4),
+ * last week and the week ahead (phase 5), the team this week (phase 6).
  *
  * AJ's question 1 took the default: the fifth place is "Setup", because
  * "Studio" would clash with My Studio. Question 2's default moved Renewals
@@ -78,6 +78,7 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
       { id: "announcements", label: "Announcements" },
       { id: "mindbody", label: "Mindbody" },
       { id: "data", label: "Data" },
+      { id: "rules", label: "Rules" },
     ],
   },
 ];

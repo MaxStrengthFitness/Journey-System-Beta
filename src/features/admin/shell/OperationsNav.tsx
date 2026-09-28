@@ -21,7 +21,7 @@
  * press either.
  */
 import { Fragment, type ReactNode } from "react";
-import { Building2, CalendarRange, ChevronDown, ChevronRight, ChevronUp, Download, Dumbbell, KeyRound, Megaphone, SlidersHorizontal, Sunrise, Users, UsersRound, Zap } from "lucide-react";
+import { Building2, CalendarRange, ChevronDown, ChevronRight, ChevronUp, Download, Dumbbell, KeyRound, Megaphone, ScrollText, SlidersHorizontal, Sunrise, Users, UsersRound, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOperationsScope } from "../scope-context";
 import { OPS_PAGES, pageDef, type OpsPage, type OpsPlace } from "./places";
@@ -235,6 +235,7 @@ const SETUP_ROWS: Record<string, { icon: ReactNode; say: string }> = {
   announcements: { icon: <Megaphone className="w-5 h-5" aria-hidden />, say: "Post a notice to your studio, or further for owners and administrators." },
   mindbody: { icon: <Zap className="w-5 h-5" aria-hidden />, say: "The link to Mindbody, the last pull, and pulling again." },
   data: { icon: <Download className="w-5 h-5" aria-hidden />, say: "Exports of the studio's sessions and bookings." },
+  rules: { icon: <ScrollText className="w-5 h-5" aria-hidden />, say: "The numbers behind every sentence here: the studio's own, set on My Studio → Studio, and Max Strength's." },
 };
 
 export function SetupHome({ onGo }: { onGo: (place: OpsPlace) => void }) {

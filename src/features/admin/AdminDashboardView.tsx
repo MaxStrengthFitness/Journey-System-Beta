@@ -15,6 +15,7 @@ import { AdminHoursTab } from "./hours/AdminHoursTab";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { WeekPage } from "./week/WeekPage";
+import { RulesPage } from "./journey/RulesPage";
 import { OperationsScopeProvider, PickOneStudio, scopeKey, useOperationsScope } from "./scope-context";
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
@@ -440,6 +441,9 @@ function OperationsShell({
             ) : (
               <AdminDataReportsTab key={tabKey} trainers={trainers} clients={clients} studios={studios} activeStudioId={activeStudioId} />
             );
+          case "rules":
+            if (ops.scope.kind === "all") return <PickOneStudio what="The rules" />;
+            return studio ? <RulesPage key={tabKey} studio={studio} onOpenMyStudio={openMyStudio} /> : noStudio;
           default:
             return <SetupHome onGo={go} />;
         }

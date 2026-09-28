@@ -237,6 +237,8 @@ describe("the Operations shell", () => {
     await clickSide(el, "Announcements");
     expect(el.textContent).toContain("Post an announcement");
     await clickSide(el, "Data");
+    await clickSide(el, "Rules");
+    expect(el.textContent).toContain("The numbers behind every sentence on Operations.");
     await clickSide(el, "People & access");
     // Setup's pages each say where Back goes.
     await clickText(el, "Setup");
