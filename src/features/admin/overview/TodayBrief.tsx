@@ -20,8 +20,9 @@
  *                        person, from the Hub's ONE engine (hub-
  *                        opportunities/moments-today), and who trained today
  *                        with nothing booked
- *   Slipping away        the attendance watch's top rows, Snooze and Dismiss,
- *                        and a door to the whole list
+ *   Slipping away        the Journey's drifting and at-risk clients (one
+ *                        rule, journey/states.ts), catchable first, Snooze
+ *                        and Dismiss, and a door to Clients → Journey
  *   Since yesterday      the cancellations and moves noticed since yesterday
  *                        began, each held against its own day
  *   Coming up            the next three days with bookings, Openings' line,
@@ -73,11 +74,11 @@ import { useSessionsInRange } from "../sessions-range";
 import { changeCounts, describeChange } from "../changes/changes";
 import { WEEK_DAYS } from "../changes/useWeekSchedule";
 import { useStudioWeek } from "../changes/useStudioWeek";
-import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze, splitWatched } from "../attention/attention";
+import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze } from "../attention/attention";
 import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch } from "../attention/useAttention";
-import { AttendanceWatchView } from "../attention/AttendanceWatchView";
+import { listFor, studioJourneys, thisWeek, type JourneyEntry } from "../journey/journey-list";
 import { entriesForDay } from "./floor";
-import { attendanceQuestion, hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
+import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
 import { dropSentence } from "./performance";
 import { chaseList, todayNumbers } from "./today";
 import { moments } from "./moments";
@@ -96,7 +97,7 @@ const DAYS_READ = 14;
 const DAY_MS = 86_400_000;
 /** How many of Openings' lines Coming up shows before "and N more on Openings". */
 const OPENINGS_SHOWN = 3;
-/** Slipping away shows this many; the whole list is a door. */
+/** Slipping away shows this many; the Journey is a door. */
 const SLIPPING_SHOWN = 4;
 const NOT_READ = "Could not be read just now.";
 
@@ -121,16 +122,15 @@ export interface TodayBriefProps {
   onNeedsCount?: (count: number | null) => void;
 }
 
-type View = "home" | "attendance";
-
 export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me, authTrainer, trainers, machines, clients, onNavigateProfile, onOpen, onOpenMyStudio, onNeedsCount }: TodayBriefProps) {
   const studioId = studio.id as string;
   const tz = studio.timezone || undefined;
-  const [view, setView] = useState<View>("home");
-  useEffect(() => {
-    setView("home");
-  }, [homeSignal]);
+  // Pressing Today while on it: the page has no views of its own any more (the
+  // attendance watch is Clients → Journey), so it closes the chase list.
   const [showChase, setShowChase] = useState(false);
+  useEffect(() => {
+    setShowChase(false);
+  }, [homeSignal]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [snoozing, setSnoozing] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -216,6 +216,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       activeStudioId: studioId,
       schedules: week.entries,
       bookingsFresh: true,
+      // The week read is today and six days: a booking last night's record holds past it still counts.
+      horizonDays: 6,
       recentSessions: null,
       packageIndex,
       packageStudioId: studioId,
@@ -248,9 +250,36 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   );
   const catchCount = catchRows === null ? null : catchRows.length + (leftRows?.length ?? 0);
 
-  /* ---- Slipping away: the attendance watch ---- */
-  const attendanceAll = useMemo(() => attendanceQuestion(clients, today, Number.POSITIVE_INFINITY), [clients, today]);
-  const watched = useMemo(() => splitWatched(attendanceAll.rows, watchlist.value, today), [attendanceAll.rows, watchlist.value, today]);
+  /* ---- Slipping away: the Journey's one rule (journey/states.ts) ---- */
+  const journeys = useMemo(() => {
+    if (renewalSettings.loading) return null;
+    return studioJourneys({
+      clients,
+      studioId,
+      today,
+      now,
+      tz,
+      studios,
+      weekEntries: week.entries,
+      weekReady: week.read === "ready",
+      packageIndex,
+      trainers,
+      myIds: myTrainerIds(authTrainer, uid),
+      myName: authTrainer.fullName ?? null,
+      settings,
+      nightlyStale: nightly.stale,
+      watchlist: watchlist.value,
+    });
+  }, [renewalSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, watchlist.value]);
+  const slipping = useMemo(() => {
+    if (!journeys) return null;
+    const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];
+    // Catchable first across both: not yet answered, their usual trainer in today, then the louder line, then the closest to it.
+    const rank = (e: JourneyEntry) => (e.watch === "watching" ? 0 : 1) * 4 + (e.usualInToday ? 0 : 2) + (e.journey.state === "at-risk" ? 0 : 1);
+    return both.sort((a, b) => rank(a) - rank(b) || (a.journey.daysSince ?? 0) - (b.journey.daysSince ?? 0));
+  }, [journeys]);
+  const slippingOpen = useMemo(() => (slipping ?? []).filter((e) => e.watch === "watching"), [slipping]);
+  const slippingWeek = useMemo(() => (journeys ? thisWeek(journeys, today) : null), [journeys, today]);
   const back = useMemo(() => backAgain(watchlist.value, clients, today), [watchlist.value, clients, today]);
 
   /* ---- Since yesterday ---- */
@@ -350,27 +379,6 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     });
   const dismissClient = (clientId: string) => run(`watch:${clientId}`, () => writeWatch(studioId, dismissal(clientId, clients.find((c) => c.id === clientId), me, today)));
   const gotIt = (clientId: string) => run(`watch:${clientId}`, () => clearWatch(studioId, clientId));
-
-  if (view === "attendance") {
-    return (
-      <AttendanceWatchView
-        studio={studio}
-        today={today}
-        rows={attendanceAll}
-        watched={watched}
-        back={back}
-        watchlist={watchlist.value}
-        clients={clients}
-        breakDays={settings.breakDays}
-        busyKey={busyKey}
-        onSnooze={snoozeClient}
-        onDismiss={dismissClient}
-        onClear={gotIt}
-        onBack={() => setView("home")}
-        onOpenClient={onNavigateProfile}
-      />
-    );
-  }
 
   const door = (to: OverviewLink, label: string) =>
     onOpen && (
@@ -583,56 +591,59 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       <BriefSection
         id="slipping"
         title="Slipping away"
-        count={watched.shown.length}
+        count={slipping === null ? null : slippingOpen.length}
         sub={
-          attendanceAll.measured === 0
-            ? "no client has a measured rhythm yet"
-            : `${watched.shown.length} on the attendance watch · ${attendanceAll.measured} with a measured rhythm${watched.snoozed.length + watched.dismissed.length > 0 ? ` · ${watched.snoozed.length} snoozed, ${watched.dismissed.length} dismissed` : ""}`
+          slipping === null
+            ? "reading the studio's clients…"
+            : `${slipping.filter((e) => e.journey.state === "drifting").length} drifting · ${slipping.filter((e) => e.journey.state === "at-risk").length} at risk${
+                slippingWeek && slippingWeek.back.length > 0 ? ` · ${slippingWeek.back.length} booked again after a gap` : ""
+              }${slipping.length > slippingOpen.length ? ` · ${slipping.length - slippingOpen.length} already answered` : ""}`
         }
-        door={
-          <AdminButton size="sm" variant="quiet" onClick={() => setView("attendance")}>
-            The whole list <ChevronRight className="w-3.5 h-3.5" aria-hidden />
-          </AdminButton>
-        }
+        door={door("journey", "Journey")}
       >
         {nightly.stale && (
           <p className="ops-sec__note">
             {nightly.lastChangedAt
-              ? `The nightly record hasn't changed since ${formatStudioDate(nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, tz)}, and these rows come from it: check a client before acting on one.`
+              ? `The nightly record hasn't changed since ${formatStudioDate(nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, tz)}, so nobody's rhythm is judged from it: nobody is called slipping until it runs again.`
               : "There is no nightly record for this studio yet, so nobody's rhythm is known."}
           </p>
         )}
-        {watched.shown.length === 0 ? (
+        {slipping === null ? (
+          <BriefEmpty>Reading the studio's clients…</BriefEmpty>
+        ) : slippingOpen.length === 0 ? (
           <BriefEmpty>
-            {attendanceAll.measured === 0
-              ? "No client has a measured rhythm yet — the nightly job needs weeks of visits to say what is usual."
-              : `Nobody is off their rhythm or past the studio's ${settings.breakDays}-day quiet line.`}
+            {slipping.length > 0
+              ? "Everyone slipping has already been snoozed or dismissed. They're on the Journey."
+              : week.read !== "ready"
+                ? "Whether anyone is slipping can't be said until the week's bookings are read."
+                : `Nobody is past twice their usual gap or the studio's ${settings.breakDays}-day line with nothing booked.`}
           </BriefEmpty>
         ) : (
           <ActionRows
-            rows={watched.shown.slice(0, SLIPPING_SHOWN).map((r) => ({
-              key: r.clientId,
-              clientId: r.clientId,
-              name: r.name,
-              sentence: r.sentence,
-              proof: r.proof,
-              tone: r.tone,
+            rows={slippingOpen.slice(0, SLIPPING_SHOWN).map((e) => ({
+              key: e.id,
+              clientId: e.id,
+              name: e.row.name.display,
+              sentence: e.journey.why,
+              proof: [e.usual ? (e.usualInToday ? `${e.usual.name.split(" ")[0]} is in today, ${e.usualInToday}` : `usually with ${e.usual.name.split(" ")[0]}`) : null, e.journey.proof].filter(Boolean).join(" · "),
+              tone: e.journey.state === "at-risk" ? "warn" : "info",
+              badge: e.journey.state === "at-risk" ? "At risk" : "Drifting",
               actions: (
                 <>
-                  <AdminButton size="sm" busy={busyKey === `watch:${r.clientId}`} onClick={() => setSnoozing((v) => (v === r.clientId ? null : r.clientId))} aria-expanded={snoozing === r.clientId}>
+                  <AdminButton size="sm" busy={busyKey === `watch:${e.id}`} onClick={() => setSnoozing((v) => (v === e.id ? null : e.id))} aria-expanded={snoozing === e.id}>
                     Snooze
                   </AdminButton>
-                  <AdminButton size="sm" variant="ghost" busy={busyKey === `watch:${r.clientId}`} onClick={() => void dismissClient(r.clientId)}>
+                  <AdminButton size="sm" variant="ghost" busy={busyKey === `watch:${e.id}`} onClick={() => void dismissClient(e.id)}>
                     Dismiss
                   </AdminButton>
                 </>
               ),
-              below: snoozing === r.clientId ? <SnoozeChooser today={today} onPick={(day) => void snoozeClient(r.clientId, day)} onCancel={() => setSnoozing(null)} /> : undefined,
+              below: snoozing === e.id ? <SnoozeChooser today={today} onPick={(day) => void snoozeClient(e.id, day)} onCancel={() => setSnoozing(null)} /> : undefined,
             }))}
-            total={watched.shown.length}
+            total={slippingOpen.length}
             onOpenClient={onNavigateProfile}
             empty=""
-            moreLabel="on the whole list"
+            moreLabel="on the Journey"
           />
         )}
       </BriefSection>

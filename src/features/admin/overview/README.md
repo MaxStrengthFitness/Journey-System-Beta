@@ -12,7 +12,7 @@ One column, the same sections in the same order every day (research-operations �
 2. **The bottom line** — one sentence written by rules (`brief.ts`, `bottomLine`), the rules a tap away ("How this line is written"), the day's facts under it (booked, done, on the floor, to come, trainers on, and a door to the live floor on My Studio → Relay), and the sessions nobody logged as a door ("See who to ask"), never a count.
 3. **Needs you** — only what a leader can clear right here (AJ's question 3, default): acknowledge pain, an incident or a Critical note (`attention/`), take a gesture nobody owns (FORD's `setGestureStatus`, the Delight queue's own writer), review a note that has mattered 60 days (`ReviewNotesDialog`). Its count is Today's badge in the menu, shown only while Today is mounted.
 4. **Catch today** — clients in today with a reason to see them in person, from the Hub's ONE engine (`hub-opportunities/moments-today`, the families renew, welcome and celebrate), in the order they're in; and who trained today with nothing booked in the week (`leftWithNothingBooked`).
-5. **Slipping away** — the attendance watch's top rows with Snooze and Dismiss, and a door to the whole list (`attention/AttendanceWatchView`).
+5. **Slipping away** — the Journey's drifting and at-risk clients (`../journey/`, one rule for "slipping"), catchable first, with Snooze and Dismiss (`attention/`), and a door to Clients → Journey. The old attendance watch and its view went in phase 4.
 6. **Since yesterday** — the cancellations and moves noticed since yesterday began, each held against its own day (`sinceYesterday` over `changes/changes.ts`); "All changes" opens Week.
 7. **Coming up** — the next three days with bookings (`next-days.ts`), Openings' line with its door to My Studio → Openings, who has nothing booked ahead, and the renewal talks due, with a door to Clients → Renewals.
 8. **Going right** — who came back (a dismissed client who booked or visited since: Got it), the week's milestones, dates and owned gestures (`moments.ts`).
@@ -48,8 +48,8 @@ When the Operations scope is **All my studios**, Today is the network view inste
 - `brief.ts` — the bottom line, the nightly record, Catch today, leaving with nothing booked, since yesterday; `brief.test.ts`.
 - `brief-pieces.tsx` — a section, the freshness line, the bottom line box (styles in `../shell/ops.css`, prefix `ops-`).
 - `pieces.tsx` — the row shapes (Rows, ActionRows), the snooze chooser, the tappable line.
-- `today.ts`, `questions.ts`, `moments.ts`, `next-days.ts`, `team.ts`, `floor.ts`, `performance.ts` — pure, each with its test beside it (`performance.ts` is shared with the Sunday job).
+- `today.ts`, `questions.ts` (renewals, pain and incidents, the 60-day review, hours), `moments.ts`, `next-days.ts`, `team.ts`, `floor.ts`, `performance.ts` — pure, each with its test beside it (`performance.ts` is shared with the Sunday job).
 - `useOverviewReads.ts` — incidents, critical and dated notes, the watch document.
 - `useTodaySessions.ts` — today's Journey sessions, live, for what counts as done (`lib/booking-state.ts`).
 - `ReviewNotesDialog.tsx` — the 60-day review.
-- `overview.css` — the row shapes, the Changes day strip and the attendance watch.
+- `overview.css` — the row shapes and the Changes day strip.

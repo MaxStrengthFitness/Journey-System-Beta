@@ -23,7 +23,7 @@ describe("the five destinations", () => {
 
   it("put Renewals and Moments under Clients, Hours under Team, and the setting-up screens under Setup", () => {
     const subs = Object.fromEntries(OPS_PAGES.map((p) => [p.id, p.subs.map((s) => s.label)]));
-    expect(subs.clients).toEqual(["Renewals", "Moments", "Trends"]);
+    expect(subs.clients).toEqual(["Journey", "Renewals", "Moments", "Trends"]);
     expect(subs.team).toEqual(["Hours"]);
     expect(subs.week).toEqual(["This week"]);
     expect(subs.setup).toEqual(["Floor", "People & access", "Announcements", "Mindbody", "Data", "Rules"]);
@@ -43,7 +43,7 @@ describe("the five destinations", () => {
 
 describe("resolvePlace", () => {
   it("opens a destination on its first page, and Setup on its own list", () => {
-    expect(resolvePlace({ page: "clients" })).toEqual({ page: "clients", sub: "renewals" });
+    expect(resolvePlace({ page: "clients" })).toEqual({ page: "clients", sub: "journey" });
     expect(resolvePlace({ page: "team" })).toEqual({ page: "team", sub: "hours" });
     expect(resolvePlace({ page: "setup" })).toEqual({ page: "setup", sub: null });
     expect(defaultSub("setup")).toBeNull();
@@ -52,7 +52,7 @@ describe("resolvePlace", () => {
   it("never opens nothing: an unknown destination is Today, an unknown page is the default", () => {
     expect(resolvePlace(null)).toEqual(HOME_PLACE);
     expect(resolvePlace({ page: "insights" as never })).toEqual(HOME_PLACE);
-    expect(resolvePlace({ page: "clients", sub: "delight" })).toEqual({ page: "clients", sub: "renewals" });
+    expect(resolvePlace({ page: "clients", sub: "delight" })).toEqual({ page: "clients", sub: "journey" });
     expect(resolvePlace({ page: "today", sub: "anything" })).toEqual(HOME_PLACE);
   });
 

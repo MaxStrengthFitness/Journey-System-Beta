@@ -93,7 +93,7 @@ const granted = { ...trainer, id: "lt2", managedStudioIds: ["solon"] } as unknow
 const demoStudio = { id: DEMO_STUDIO_ID, name: "Demo Mode", isDemo: true, timezone: "America/New_York" } as unknown as Studio;
 
 const dayKey = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
-/** Goldberry, twice a week and not seen for 16 days: a row on Today's attendance watch. */
+/** Goldberry, twice a week and not seen for 16 days with nothing booked: At risk, a row on Today's Slipping away. */
 const goldberry = {
   id: "c-gold",
   firstName: "Goldberry",
@@ -113,9 +113,10 @@ const goldberry = {
     lastVisitDate: dayKey(16),
     nextBookingDate: null,
     sessionsLeft: 40,
-    proof: {},
+    proof: { weeksObserved: 12, weeksAttended: 12 },
     coachIds: [],
     dataGaps: [],
+    computedAt: new Date(),
   },
 } as unknown as Client;
 
@@ -197,7 +198,7 @@ describe("the Operations shell", () => {
   it("offers five destinations for a studio's leader, with the pages inside them, and opens on Today", async () => {
     const el = await mount(lead, false);
     expect(tabLabels(el)).toEqual(FIVE);
-    expect(sideLabels(el)).toEqual(["Today", "Week", "Clients", "Renewals", "Moments", "Trends", "Team", "Setup"]);
+    expect(sideLabels(el)).toEqual(["Today", "Week", "Clients", "Journey", "Renewals", "Moments", "Trends", "Team", "Setup"]);
     expect(el.querySelector(".ops-side [aria-current='page']")?.textContent).toBe("Today");
     expect(el.textContent).toContain("Today · Solon");
     // "Looking at" says where, even with nothing to choose.
@@ -217,6 +218,8 @@ describe("the Operations shell", () => {
     const el = await mount(lead, false);
     await clickSide(el, "Week");
     expect(el.textContent).toContain("Solon — Changes");
+    await clickSide(el, "Journey");
+    expect(el.querySelector("[aria-label='Client states']")).toBeTruthy();
     await clickSide(el, "Renewals");
     await clickSide(el, "Moments");
     expect(el.textContent).toContain("The Delight queue");
@@ -251,7 +254,7 @@ describe("the Operations shell", () => {
     await act(async () => tab("Clients").click());
     await settle();
     const seg = el.querySelector("[aria-label='Clients pages']");
-    expect([...(seg?.querySelectorAll("button") ?? [])].map(text)).toEqual(["Renewals", "Moments", "Trends"]);
+    expect([...(seg?.querySelectorAll("button") ?? [])].map(text)).toEqual(["Journey", "Renewals", "Moments", "Trends"]);
     await act(async () => [...seg!.querySelectorAll<HTMLButtonElement>("button")].find((b) => text(b) === "Trends")!.click());
     await settle();
     expect(el.textContent).toContain("What stands out");
@@ -281,6 +284,10 @@ describe("a client, opened inside Operations", () => {
     expect(page?.textContent).toContain("Goldberry River");
     expect(page?.textContent).toContain("Last in");
     expect(page?.textContent).toContain("Renewal:");
+    // Her journey and her case: At risk, past the studio's 14-day line, owned by a leader (no usual trainer on record).
+    expect(page?.querySelector(".ops-case")?.textContent).toContain("At risk");
+    expect(page?.querySelector(".ops-case")?.textContent).toContain("past the studio's 14-day line");
+    expect(page?.querySelector(".ops-case")?.textContent).toContain("Owner: A leader");
     // The page she was opened from is kept, hidden, not unmounted.
     expect(el.querySelector(".ops-page")?.hasAttribute("hidden")).toBe(true);
     expect(el.textContent).toContain("Today · Solon");

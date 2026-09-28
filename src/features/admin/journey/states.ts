@@ -15,7 +15,8 @@
  *             settings ("Warn me when a client has not visited for (days)",
  *             My Studio → Studio). That setting already exists.
  *   Drifting  DRIFT_MULTIPLE × her usual gap, never under DRIFT_MIN_DAYS —
- *             the attendance watch's own rule (overview/questions.ts).
+ *             the attendance watch's rule, which this file replaced (the
+ *             attendance watch is this page now).
  *   Lapsed    LAPSED_DAYS.
  *   New       sessions 1 to NEW_MAX; Settling in to SETTLING_MAX.
  *
@@ -66,9 +67,9 @@ export const STATE_NAMES: Record<JourneyState, string> = {
   unknown: "Unknown",
 };
 
-/** Drifting: this many times her usual gap… (the attendance watch's LONG_BREAK_MULTIPLE). */
+/** Drifting: this many times her usual gap… (the attendance watch's rule before the Journey took it over). */
 export const DRIFT_MULTIPLE = 2;
-/** …but never under this many days (the attendance watch's MIN_BREAK_DAYS). */
+/** …but never under this many days. */
 export const DRIFT_MIN_DAYS = 7;
 /** Lapsed: this many days since her last visit with nothing booked. A studio setting once AJ approves storing it. */
 export const LAPSED_DAYS = 45;

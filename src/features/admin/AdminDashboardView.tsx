@@ -16,6 +16,7 @@ import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { WeekPage } from "./week/WeekPage";
 import { RulesPage } from "./journey/RulesPage";
+import { JourneyPage } from "./journey/JourneyPage";
 import { OperationsScopeProvider, PickOneStudio, scopeKey, useOperationsScope } from "./scope-context";
 import { DelightQueue } from "../ford/DelightQueue";
 import { rememberMyStudioSection } from "../my-studio/section-memory";
@@ -133,6 +134,8 @@ function scrollerOf(el: HTMLElement | null): HTMLElement | null {
  *
  *   Overview        → Today
  *   (its Changes)   → Week → This week
+ *   (its attendance → Clients → Journey (the Journey's one rule,
+ *    watch)            journey/states.ts)
  *   Renewals        → Clients → Renewals
  *   Delight queue   → Clients → Moments
  *   Insights        → Clients → Trends
@@ -367,6 +370,10 @@ function OperationsShell({
           );
         }
         if (place.sub === "trends") return <AdminInsightsTab key={tabKey} studios={studios} trainers={trainers} activeStudioId={activeStudioId ?? null} />;
+        if (place.sub === "journey") {
+          if (ops.scope.kind === "all") return <PickOneStudio what="The Journey" />;
+          return studio ? <JourneyPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} onOpenClient={openClient} /> : noStudio;
+        }
         return (
           <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} />
         );

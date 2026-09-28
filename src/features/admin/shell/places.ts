@@ -8,15 +8,16 @@
  *
  *   Today     the brief: what needs you, who to catch, what changed
  *   Week      the week: this week's cancellations and moves
- *   Clients   Renewals, Moments (the Delight queue) and Trends (the
- *             Insights screen)
+ *   Clients   the Journey (where each client is, against her own rhythm;
+ *             phase 4), Renewals, Moments (the Delight queue) and Trends
+ *             (the Insights screen)
  *   Team      Hours
  *   Setup     how the studio is set up: Floor, People & access (Staff &
  *             Roles), Announcements, Mindbody, Data, and the Rules behind
  *             every sentence (phase 3)
  *
- * Later phases of the round add their pages here: the Journey (phase 4),
- * last week and the week ahead (phase 5), the team this week (phase 6).
+ * Later phases of the round add their pages here: last week and the week
+ * ahead (phase 5), the team this week (phase 6).
  *
  * AJ's question 1 took the default: the fifth place is "Setup", because
  * "Studio" would clash with My Studio. Question 2's default moved Renewals
@@ -59,6 +60,7 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
     id: "clients",
     label: "Clients",
     subs: [
+      { id: "journey", label: "Journey" },
       { id: "renewals", label: "Renewals" },
       { id: "moments", label: "Moments" },
       { id: "trends", label: "Trends" },
@@ -159,11 +161,12 @@ export const LEGACY_TAB_PLACE: Record<LegacyTab, OpsPlace> = {
  * A DOOR on one page to another: every old tab id, and the week's changes
  * (Today's "All changes").
  */
-export type OpsDoor = LegacyTab | "week";
+export type OpsDoor = LegacyTab | "week" | "journey";
 
 export const DOOR_PLACE: Record<OpsDoor, OpsPlace> = {
   ...LEGACY_TAB_PLACE,
   week: { page: "week", sub: "now" },
+  journey: { page: "clients", sub: "journey" },
 };
 
 /**

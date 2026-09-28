@@ -10,17 +10,19 @@
  * Operations from it lands here again (shell/place-memory.ts).
  *
  * What it says, and where each word comes from — nothing is read here that
- * the app has not already loaded:
+ * Operations doesn't already read:
  *
  *   last in, next, left, sessions, since   the Client Directory's ONE row
  *                                          model (client-directory/row.ts),
- *                                          over the roster, the bookings and
- *                                          the sessions the app already
- *                                          streams, and the studio's package
- *                                          table (one small document the
- *                                          directory reads too)
+ *                                          over the roster, the week's
+ *                                          bookings as the server answered
+ *                                          them, and the studio's package
+ *                                          table
  *   the renewal line                       last night's snapshot, in the
  *                                          renewals' own words (sentences.ts)
+ *   her journey and her case               the Journey's rules (journey/),
+ *                                          for a client whose home is this
+ *                                          studio (phase 4)
  *
  * Every "Unknown" says why, in words on the page, never only in a tooltip.
  * A client whose whole history predates Journey is never called new: the row
@@ -38,6 +40,9 @@ import { chipText, paceSentence, situationSentence } from "../../renewals/senten
 import type { RenewalSnapshot } from "../../renewals/types";
 import { useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { AdminButton, AdminNotice } from "../primitives";
+import { JourneyCase } from "../journey/JourneyCase";
+import { useStudioJourneys } from "../journey/useStudioJourneys";
+import { useMinuteClock } from "./useMinuteClock";
 import "./ops.css";
 
 export interface ClientPageProps {
@@ -57,7 +62,6 @@ export interface ClientPageProps {
   onBack: () => void;
   /** Her full profile, in the app (leaves Operations; coming back lands here). */
   onOpenProfile?: (clientId: string) => void;
-  /** What a later phase adds under the facts: her Journey and her case. */
   children?: ReactNode;
 }
 
@@ -72,7 +76,11 @@ function Fact({ label, value, sub, why }: { label: string; value: string; sub?: 
   );
 }
 
-/** The directory's row for one client, from what the app already holds. */
+/**
+ * The directory's row for one client from the bookings the app holds — for a
+ * client whose home is another studio, whose journey this studio doesn't
+ * keep.
+ */
 export function useClientRow(input: Omit<ClientPageProps, "backLabel" | "onBack" | "onOpenProfile" | "children">): { client: Client | null; row: DirectoryRow | null; today: string } {
   const { clientId, clients, studios, schedules, sessions, trainers, authTrainer, activeStudioId } = input;
   const studio = studios.find((s) => s.id === activeStudioId) ?? null;
@@ -113,10 +121,22 @@ export function useClientRow(input: Omit<ClientPageProps, "backLabel" | "onBack"
   return { client, row, today };
 }
 
+const NO_STUDIO = { id: "" } as Studio;
+
 export function ClientPage(props: ClientPageProps) {
-  const { clientId, backLabel, onBack, onOpenProfile, children } = props;
-  const { client, row, today } = useClientRow(props);
+  const { clientId, backLabel, onBack, onOpenProfile, children, studios, clients, trainers, authTrainer, activeStudioId } = props;
+  const clock = useMinuteClock();
+  const now = props.now ?? clock;
+  const studio = studios.find((s) => s.id === activeStudioId) ?? null;
+  // Her journey, for a client whose home is this studio: the Journey's own rules and reads.
+  const journeys = useStudioJourneys({ studio: studio ?? NO_STUDIO, studios, clients, trainers, authTrainer, now, only: clientId });
+  const entry = journeys.entries.find((e) => e.id === clientId) ?? null;
+  const plain = useClientRow({ ...props, now });
+  const client = plain.client;
+  const row = entry?.row ?? plain.row;
+  const today = journeys.today || plain.today;
   const renewal = (client?.renewal as RenewalSnapshot | undefined) ?? null;
+  const me = { id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id ?? "", name: authTrainer.fullName };
 
   return (
     <section className="ops-client" aria-label={row ? `${row.name.display}, opened in Operations` : "A client, opened in Operations"}>
@@ -145,6 +165,7 @@ export function ClientPage(props: ClientPageProps) {
                 {[
                   row.since.label ? `${row.since.label} ${row.since.text}` : null,
                   row.visitingFrom ? `Home studio: ${row.visitingFrom}` : null,
+                  entry?.usual ? `Usually with ${entry.usual.name}` : null,
                   ...row.badges,
                 ]
                   .filter(Boolean)
@@ -173,6 +194,14 @@ export function ClientPage(props: ClientPageProps) {
             </p>
             {renewal && <p className="ops-quiet">{paceSentence(renewal)}.</p>}
           </div>
+
+          {entry && studio?.id ? (
+            <JourneyCase entry={entry} studioId={studio.id} today={today} me={me} />
+          ) : !journeys.ready ? (
+            <p className="ops-quiet">Reading her journey…</p>
+          ) : row.visitingFrom ? (
+            <p className="ops-quiet">Her home studio, {row.visitingFrom}, keeps her journey.</p>
+          ) : null}
 
           {children}
         </>

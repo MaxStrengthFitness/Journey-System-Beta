@@ -26,6 +26,7 @@ screen mounted as it was. `shell/places.ts` is the list.
 | --- | --- |
 | The shell — the sidebar (wide), the tabs across the top (upright), "Looking at", the client opened inside Operations, where a leader was | `AdminDashboardView.tsx` and `shell/` (`places.ts` the destinations and their pages, `place-memory.ts` the place, each destination's page, the client and the scroll, forgotten at sign-out; `OperationsNav.tsx` the two menus, Looking at and Setup's list; `ClientPage.tsx` a client opened in Operations, from the Client Directory's row model; `ops.css` every `ops-` class). `AdminDashboardView.render.test.tsx` opens every page |
 | Today (was Overview) | `overview/` — the brief (`TodayBrief.tsx`; `brief.ts` the bottom line, the nightly record, Catch today and since yesterday; `floor.ts` the day's arithmetic), `changes/` (the week's cancellations and moves; `useStudioWeek.ts` the week as the server answered it), `attention/` (the watchlist and acknowledgements) |
+| Clients → Journey (was the Overview's attendance watch) | `journey/` — `JourneyPage.tsx`, the rhythm (`rhythm.ts`), the states (`states.ts`), the case (`case.ts`), the studio's Journey in one pass (`journey-list.ts`, `useStudioJourneys.ts`), and her journey and case on the client page (`JourneyCase.tsx`). Read `journey/README.md` |
 | Week → This week | `week/WeekPage.tsx` (the Changes view, `changes/ChangesView.tsx`) |
 | Clients → Renewals | `renewals/` (the engine is `src/features/renewals/`) |
 | Clients → Moments (was Delight queue) | `src/features/ford/` (drawn by the shell) |

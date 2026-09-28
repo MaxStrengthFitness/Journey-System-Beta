@@ -217,18 +217,24 @@ const snapshot = (extra: Record<string, unknown>) => ({
   lastVisitDate: dayKey(1),
   nextBookingDate: dayKey(-2),
   sessionsLeft: 40,
-  proof: {},
+  proof: { weeksObserved: 12, weeksAttended: 12 },
   coachIds: [],
   dataGaps: [],
+  primaryTrainerId: "t1",
+  // Written by last night's job: the studio's nightly record is fresh.
+  computedAt: daysAgo(0),
   ...extra,
 });
 const clients = () =>
   [
-    { id: "c1", firstName: "Ann", lastName: "Able", isActive: true, renewal: snapshot({ conversationDue: true, sessionsLeft: 6, focusDate: "2026-10-10" }) },
-    { id: "c2", firstName: "Bea", lastName: "Best", isActive: true, renewal: snapshot({ lastVisitDate: dayKey(16), nextBookingDate: null, flags: [{ code: "no-future-booking", text: "Nothing booked in the next 14 days." }] }) },
-    { id: "c3", firstName: "Cy", lastName: "Cole", isActive: true, renewal: snapshot({}) },
-    { id: "c5", firstName: "Eve", lastName: "Eames", isActive: true, renewal: snapshot({ conversationDue: true, sessionsLeft: 5, focusDate: "2026-10-08" }) },
-    { id: "c6", firstName: "Fay", lastName: "Fern", isActive: true, renewal: snapshot({ nextBookingDate: null }) },
+    { id: "c1", firstName: "Ann", lastName: "Able", isActive: true, homeStudioId: "solon", renewal: snapshot({ conversationDue: true, sessionsLeft: 6, focusDate: "2026-10-10" }) },
+    // Sixteen days out, and booked again on Wednesday: Back.
+    { id: "c2", firstName: "Bea", lastName: "Best", isActive: true, homeStudioId: "solon", renewal: snapshot({ lastVisitDate: dayKey(16), nextBookingDate: null, flags: [{ code: "no-future-booking", text: "Nothing booked in the next 14 days." }] }) },
+    { id: "c3", firstName: "Cy", lastName: "Cole", isActive: true, homeStudioId: "solon", renewal: snapshot({}) },
+    { id: "c5", firstName: "Eve", lastName: "Eames", isActive: true, homeStudioId: "solon", renewal: snapshot({ conversationDue: true, sessionsLeft: 5, focusDate: "2026-10-08" }) },
+    { id: "c6", firstName: "Fay", lastName: "Fern", isActive: true, homeStudioId: "solon", renewal: snapshot({ nextBookingDate: null }) },
+    // Twice a week, ten days out, nothing booked: Drifting.
+    { id: "c7", firstName: "Gil", lastName: "Galdor", isActive: true, homeStudioId: "solon", renewal: snapshot({ lastVisitDate: dayKey(10), nextBookingDate: null }) },
   ] as unknown as Client[];
 
 let root: Root | null = null;
@@ -344,13 +350,18 @@ describe("Today, the brief", () => {
     expect(catchSec.textContent).not.toContain("Bea Best");
   });
 
-  it("Slipping away snoozes through the watchlist; Since yesterday holds this morning's cancellation against today", async () => {
+  it("Slipping away is the Journey's rule, snoozes through the watchlist; Since yesterday holds this morning's cancellation against today", async () => {
     const el = await mount();
-    expect(section(el, "slipping").textContent).toContain("No visit in 16 days — they usually come every 4 days.");
+    const slipping = section(el, "slipping").textContent ?? "";
+    // Gil: twice a week, ten days out, nothing booked. Bea booked again on Wednesday: Back, not slipping.
+    expect(slipping).toContain("Gil Galdor");
+    expect(slipping).toContain("She usually trains every 3–4 days. It has been 10 days, and nothing is booked.");
+    expect(slipping).toContain("1 drifting · 0 at risk · 1 booked again after a gap");
+    expect(slipping).not.toContain("Bea Best");
     await click(buttonByText(section(el, "slipping"), "Snooze"));
     expect(el.textContent).toContain("Remind me again in");
     await click(buttonByText(el, "1 week"));
-    const watch = writes.find((w) => w.path === "studios/solon/watchlist/c2");
+    const watch = writes.find((w) => w.path === "studios/solon/watchlist/c7");
     expect((watch!.data as { snoozedUntil: string }).snoozedUntil).toBe(dayKey(-7));
 
     const since = section(el, "since").textContent ?? "";
@@ -364,7 +375,7 @@ describe("Today, the brief", () => {
     const coming = section(el, "coming").textContent ?? "";
     expect(coming).toContain("Tomorrow");
     expect(coming).toContain("with a live note: Bea Best");
-    expect(coming).toContain("1 of 5 active clients with a nightly record have nothing booked ahead.");
+    expect(coming).toContain("1 of 6 active clients with a nightly record have nothing booked ahead.");
     expect(coming).toContain("2 renewal talks due now, 0 before a charge, 2 with no conversation logged yet.");
     // With no nightly record at all, nobody is called booked ahead (the old line said "Everyone active is booked ahead").
     act(() => root?.unmount());
@@ -386,12 +397,13 @@ describe("Today, the brief", () => {
     expect(section(el, "catch").textContent).toContain("who trained today and has nothing booked can't be told yet");
   });
 
-  it("opens the attendance watch and comes back to Today", async () => {
-    const el = await mount();
-    await click(buttonByText(el, "The whole list"));
-    expect(el.textContent).toContain("Solon — Attendance watch");
-    await click(buttonByText(el, "Today"));
-    expect(el.textContent).toContain("Today · Solon");
+  it("its doors open the pages each section summarises: the Journey, the week's changes, Renewals", async () => {
+    const opened: string[] = [];
+    const el = await mount((t) => opened.push(t));
+    await click(buttonByText(section(el, "slipping"), "Journey"));
+    await click(buttonByText(section(el, "since"), "All changes"));
+    await click(buttonByText(section(el, "coming"), "Renewals"));
+    expect(opened).toEqual(["journey", "week", "renewals"]);
   });
 
   it("Coming up carries Openings' line, and its door opens Openings in trainer mode", async () => {

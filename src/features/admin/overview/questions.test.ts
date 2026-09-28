@@ -3,7 +3,7 @@ import type { Client, ClinicalIncident, WorkoutSession } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
-import { attendanceQuestion, hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
+import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
 
 const TODAY = "2026-09-21"; // a Monday
 
@@ -89,53 +89,6 @@ describe("renewalsQuestion — counted, not listed", () => {
     const q = renewalsQuestion([client("a", "Ann", { conversationDue: true, sessionsLeft: 8 })], {}, settings, TODAY, false);
     expect(q.notTalked).toBeNull();
     expect(q.rows[0].proof).toBe("Whether anyone has talked to them couldn't be read just now.");
-  });
-});
-
-describe("attendanceQuestion — long breaks and missed bookings", () => {
-  it("calls a gap of twice the client's rhythm a long break, and says what the rhythm was", () => {
-    const q = attendanceQuestion([client("a", "Ann", { pacePerWeek: 2, lastVisitDate: "2026-09-10", nextBookingDate: null, flags: [{ code: "no-future-booking", text: "Nothing booked in the next 14 days." }] })], TODAY);
-    expect(q.longBreaks).toBe(1);
-    expect(q.rows[0].sentence).toBe("No visit in 11 days — they usually come every 4 days.");
-    expect(q.rows[0].proof).toBe("Last visit 2026-09-10; about 2 a week over the last eight weeks. Nothing booked ahead.");
-    expect(q.rows[0].tone).toBe("alert");
-    expect(q.measured).toBe(1);
-  });
-
-  it("never claims a rhythm it has not measured — the engine's break flag stands on its own", () => {
-    const q = attendanceQuestion([client("a", "Ann", { pacePerWeek: null, lastVisitDate: "2026-08-20", flags: [{ code: "on-break", text: "No visit in 32 days (last Aug 20)." }] })], TODAY);
-    expect(q.rows[0].sentence).toBe("No visit in 32 days (last Aug 20).");
-    expect(q.rows[0].proof).toContain("No pace measured yet");
-    expect(q.rows[0].tone).toBe("warn");
-    expect(q.measured).toBe(0);
-  });
-
-  it("leaves a twice-a-week client who came four days ago alone, and ignores away, lapsed and inactive clients", () => {
-    const q = attendanceQuestion(
-      [
-        client("a", "Ann", { pacePerWeek: 2, lastVisitDate: "2026-09-17" }),
-        client("b", "Bea", { situation: "away", lastVisitDate: "2026-07-01" }),
-        client("c", "Cal", { situation: "lapsed", lastVisitDate: "2026-06-01", flags: [{ code: "on-break", text: "No visit in 112 days." }] }),
-        client("d", "Dee", { lastVisitDate: "2026-06-01", flags: [{ code: "on-break", text: "x" }] }, { isActive: false }),
-      ],
-      TODAY,
-    );
-    expect(q.rows).toEqual([]);
-    expect(q.total).toBe(0);
-  });
-
-  it("reports missed bookings as their own anomaly, longest gap first", () => {
-    const q = attendanceQuestion(
-      [
-        client("a", "Ann", { pacePerWeek: 2, lastVisitDate: "2026-09-19", flags: [{ code: "missed-sessions", text: "3 cancellations or no-shows in the last 28 days." }] }),
-        client("b", "Bea", { pacePerWeek: 2, lastVisitDate: "2026-09-05" }),
-      ],
-      TODAY,
-    );
-    expect(q.rows.map((r) => r.name)).toEqual(["Bea T", "Ann T"]);
-    expect(q.missedBookings).toBe(1);
-    expect(q.rows[1].sentence).toBe("3 cancellations or no-shows in the last 28 days.");
-    expect(q.rows[1].proof).toBe("Still booked ahead.");
   });
 });
 

@@ -15,24 +15,19 @@
  *                studio's renewal cycles and settings — the same lanes and
  *                next steps as Operations → Renewals (renewals/pipeline.ts),
  *                counted rather than listed
- *   attendance   the same snapshots: the nightly job already measured each
- *                client's pace (visits a week over eight weeks, from Mindbody
- *                bookings AND Journey sessions) and last visit, and flagged
- *                a break, missed bookings and nothing booked ahead
+ *   (attendance  moved to the Journey's one rule, journey/states.ts, in the
+ *                redesign's Operations room, Sep 28 2026)
  *   pain         the last week's sessions (the Dial's body regions), open
  *                incidents, and critical notes still in their window
  *
- * WHAT IT REFUSES TO SAY. Attendance is Mindbody's record as well as
- * Journey's, so the migration caveat (docs/business/migration-and-prior-
- * history.md) does not bite here — but a client with no measured pace gets
- * no "longer than usual" claim, only the engine's plain break flag, and a
- * client who is away, lapsed or unknown to the engine is not an anomaly.
+ * WHAT IT REFUSES TO SAY. A failed read of the conversations is unknown,
+ * never "nobody has talked to them" (renewalsQuestion's `cyclesKnown`).
  */
 import type { Client, ClinicalIncident, WorkoutSession } from "../../../types";
 import type { JournalEntry } from "../../../types/journal";
 import { clientDisplayName } from "../../../lib/client-name";
 import { studioDateKey } from "../../../lib/studio-time";
-import { addDays, daysBetween } from "../../client-history/model";
+import { addDays } from "../../client-history/model";
 import { daysMattering, mattersOn, needsReview } from "../../client-notes/mattering";
 import { ackKey } from "../attention/attention";
 import { regionDial } from "../../rating/session-reads";
@@ -123,80 +118,6 @@ export function renewalsQuestion(
     counts,
     notTalked: cyclesKnown ? notTalked : null,
     rows: candidates.slice(0, RENEWALS_ROWS_SHOWN).map(({ lane: _l, focus: _f, ...row }) => row),
-    total: candidates.length,
-  };
-}
-
-/* ------------------------------------------------------------------ *
- * 2. Attendance anomalies
- * ------------------------------------------------------------------ */
-
-/** A gap this many times the client's usual gap is a long break. */
-export const LONG_BREAK_MULTIPLE = 2;
-/** But never less than this many days, whatever the rhythm. */
-export const MIN_BREAK_DAYS = 7;
-export const ATTENDANCE_ROWS_SHOWN = 8;
-
-export interface AttendanceQuestion {
-  longBreaks: number;
-  missedBookings: number;
-  /** Live clients with a measured pace: the sample the claims are drawn from. */
-  measured: number;
-  rows: OverviewRow[];
-  total: number;
-}
-
-const LIVE = new Set<RenewalSnapshot["situation"]>(["on-track", "will-bank", "will-run-out", "ended"]);
-
-export function attendanceQuestion(clients: Client[], today: string, rowsShown: number = ATTENDANCE_ROWS_SHOWN): AttendanceQuestion {
-  let longBreaks = 0;
-  let missedBookings = 0;
-  let measured = 0;
-  const candidates: Array<OverviewRow & { gap: number }> = [];
-  for (const c of clients) {
-    const s = c.renewal as RenewalSnapshot | undefined;
-    if (!c.id || !s || c.isActive === false || !LIVE.has(s.situation)) continue;
-    const flags = new Map(s.flags.map((f) => [f.code, f.text]));
-    const usualGap = s.pacePerWeek && s.pacePerWeek > 0 ? 7 / s.pacePerWeek : null;
-    if (usualGap !== null) measured += 1;
-    const gap = s.lastVisitDate ? daysBetween(s.lastVisitDate, today) : null;
-    const breakByRhythm =
-      usualGap !== null && gap !== null && gap >= Math.max(MIN_BREAK_DAYS, Math.ceil(usualGap * LONG_BREAK_MULTIPLE));
-    const breakFlag = flags.get("on-break");
-    const missed = flags.get("missed-sessions");
-    const noBooking = flags.get("no-future-booking");
-    if (!breakByRhythm && !breakFlag && !missed) continue;
-
-    let sentence: string;
-    let proof: string;
-    let tone: OverviewTone;
-    if (breakByRhythm && gap !== null && usualGap !== null) {
-      longBreaks += 1;
-      sentence = `No visit in ${gap} days — they usually come every ${usualGap < 1.5 ? "day or so" : `${Math.round(usualGap)} days`}.`;
-      proof = `Last visit ${s.lastVisitDate}; about ${s.pacePerWeek} a week over the last eight weeks.${noBooking ? " Nothing booked ahead." : ""}`;
-      tone = "alert";
-    } else if (breakFlag) {
-      longBreaks += 1;
-      sentence = breakFlag;
-      proof = usualGap === null ? "No pace measured yet, so this is the studio's break rule, not their rhythm." : `About ${s.pacePerWeek} a week over the last eight weeks.`;
-      tone = "warn";
-    } else {
-      sentence = missed as string;
-      proof = noBooking ? "Nothing booked ahead either." : "Still booked ahead.";
-      tone = "warn";
-    }
-    if (missed && (breakByRhythm || breakFlag)) {
-      proof += ` ${missed}`;
-    }
-    if (missed) missedBookings += 1;
-    candidates.push({ clientId: c.id, name: nameOf(c), sentence, proof, tone, gap: gap ?? 0 });
-  }
-  candidates.sort((a, b) => b.gap - a.gap || a.name.localeCompare(b.name));
-  return {
-    longBreaks,
-    missedBookings,
-    measured,
-    rows: candidates.slice(0, rowsShown).map(({ gap: _g, ...row }) => row),
     total: candidates.length,
   };
 }
