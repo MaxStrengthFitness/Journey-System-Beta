@@ -77,6 +77,8 @@ import { useStudioWeek } from "../changes/useStudioWeek";
 import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze } from "../attention/attention";
 import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch } from "../attention/useAttention";
 import { listFor, studioJourneys, thisWeek, type JourneyEntry } from "../journey/journey-list";
+import { linesOf, multipleWords } from "../journey/states";
+import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
 import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
 import { dropSentence } from "./performance";
@@ -148,6 +150,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const delight = useDelightQueue({ studioId });
   const renewalSettings = useRenewalSettings(studioId);
   const settings = renewalSettings.settings;
+  // The Journey's five lines: the studio's own, else Max Strength's default, else the app's (wave 2).
+  const studioSettings = useStudioSettings(studioId, studio);
+  const lines = useMemo(() => linesOf(studioSettings.all), [studioSettings.all]);
   const cycleKeys = useMemo(() => clients.map((c) => (c.renewal as RenewalSnapshot | undefined)?.cycleKey).filter((k): k is string => Boolean(k)), [clients]);
   const cyclesRead = useCyclesRead(studioId, cycleKeys);
   // Anchored on the studio day, not the ticking clock, so the read happens once a day.
@@ -255,7 +260,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- Slipping away: the Journey's one rule (journey/states.ts) ---- */
   const journeys = useMemo(() => {
-    if (renewalSettings.loading) return null;
+    if (renewalSettings.loading || studioSettings.loading) return null;
     return studioJourneys({
       clients,
       studioId,
@@ -271,9 +276,10 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       myName: authTrainer.fullName ?? null,
       settings,
       nightlyStale: nightly.stale,
+      lines,
       watchlist: watchlist.value,
     });
-  }, [renewalSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, watchlist.value]);
+  }, [renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value]);
   const slipping = useMemo(() => {
     if (!journeys) return null;
     const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];
@@ -668,7 +674,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
               ? "Everyone slipping has already been snoozed or dismissed. They're on the Journey."
               : week.read !== "ready"
                 ? "Whether anyone is slipping can't be said until the week's bookings are read."
-                : `Nobody is past twice their usual gap or the studio's ${settings.breakDays}-day line with nothing booked.`}
+                : `Nobody is past ${multipleWords(lines.driftMultiple).toLowerCase()} their usual gap or the studio's ${settings.breakDays}-day line with nothing booked.`}
           </BriefEmpty>
         ) : (
           <ActionRows

@@ -5,13 +5,16 @@
  * The redesign's Operations room, phase 4 (Sep 28 2026). Reads: the week's
  * bookings as the server answered them (changes/useStudioWeek — the same
  * listener shape Today uses), the studio's renewal settings (one small
- * document: `breakDays` is the At-risk line), and the watchlist (what a leader
- * already answered). The roster, the trainers and the studios are the app's.
- * Nothing is read per client.
+ * document: `breakDays` is the At-risk line), the studio settings (the five
+ * lines: Drifting's multiple and least, Lapsed, New and Settling in — the
+ * studio's own, else Max Strength's default, else the app's; wave 2, Sep 28
+ * 2026), and the watchlist (what a leader already answered). The roster, the
+ * trainers and the studios are the app's. Nothing is read per client.
  *
- * While the settings are still being read the states are not worked out at
- * all (`ready` is false): the At-risk line would otherwise be the default for
- * a moment and a client could flicker between states.
+ * While either settings read is still out the states are not worked out at
+ * all (`ready` is false): a line would otherwise be the default for a moment
+ * and a client could flicker between states. A settings read that failed
+ * falls through to the layer beneath, and the page says so.
  */
 import { useMemo } from "react";
 import type { Client, Studio, Trainer } from "../../../types";
@@ -21,11 +24,13 @@ import { studioDateKey } from "../../../lib/studio-time";
 import { buildPackageNameIndex } from "../../renewals/settings";
 import type { RenewalSettings } from "../../renewals/types";
 import { useRenewalSettings } from "../../renewals/useRenewalSettings";
+import { useStudioSettings, type StudioSettings } from "../../studio-settings/useStudioSettings";
 import { useStudioWeek, type StudioWeek } from "../changes/useStudioWeek";
 import { useWatchlist, type StreamState } from "../attention/useAttention";
 import type { WatchlistEntry } from "../attention/attention";
 import { nightlyRead, type NightlyRead } from "../overview/brief";
 import { studioJourneys, type JourneyEntry } from "./journey-list";
+import { linesOf, type JourneyLines } from "./states";
 
 export interface StudioJourneys {
   ready: boolean;
@@ -40,6 +45,12 @@ export interface StudioJourneys {
   settings: RenewalSettings;
   /** The settings couldn't be read: the defaults stand, and the page says so. */
   settingsFailed: boolean;
+  /** The five lines the states were worked out with. */
+  lines: JourneyLines;
+  /** The studio settings behind them: each value and where it came from. */
+  studioSettings: StudioSettings;
+  /** A settings layer couldn't be read: the lines fell through to the layer beneath. */
+  linesFailed: boolean;
 }
 
 export function useStudioJourneys({
@@ -65,6 +76,8 @@ export function useStudioJourneys({
   const today = studioDateKey(now, tz) ?? "";
   const week = useStudioWeek(studioId, today, tz);
   const settingsState = useRenewalSettings(studioId);
+  const studioSettings = useStudioSettings(studioId, studio);
+  const lines = useMemo(() => linesOf(studioSettings.all), [studioSettings.all]);
   const watchlist = useWatchlist(studioId);
   const nightly = useMemo(() => nightlyRead(clients, studioId, now), [clients, studioId, now]);
   const packageIndex = useMemo(() => {
@@ -72,7 +85,7 @@ export function useStudioJourneys({
     return buildPackageNameIndex(settingsState.settings);
   }, [settingsState.loading, settingsState.error, settingsState.forStudioId, settingsState.settings, studioId]);
   const uid = auth.currentUser?.uid ?? null;
-  const ready = !settingsState.loading;
+  const ready = !settingsState.loading && !studioSettings.loading;
   const entries = useMemo(() => {
     if (!ready) return [];
     const scope = only ? clients.filter((c) => c.id === only) : clients;
@@ -91,10 +104,25 @@ export function useStudioJourneys({
       myName: authTrainer.fullName ?? null,
       settings: settingsState.settings,
       nightlyStale: nightly.stale,
+      lines,
       watchlist: watchlist.value,
     });
     // `now` is read once per render on purpose: the page re-renders every minute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, watchlist.value]);
-  return { ready, entries, today, tz, week, nightly, watchlist, breakDays: settingsState.settings.breakDays, settings: settingsState.settings, settingsFailed: Boolean(settingsState.error) };
+  }, [ready, only, clients, studioId, today, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settingsState.settings, nightly.stale, lines, watchlist.value]);
+  return {
+    ready,
+    entries,
+    today,
+    tz,
+    week,
+    nightly,
+    watchlist,
+    breakDays: settingsState.settings.breakDays,
+    settings: settingsState.settings,
+    settingsFailed: Boolean(settingsState.error),
+    lines,
+    studioSettings,
+    linesFailed: studioSettings.failed,
+  };
 }

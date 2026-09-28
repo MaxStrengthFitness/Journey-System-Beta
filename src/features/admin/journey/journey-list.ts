@@ -12,8 +12,8 @@
  *
  *   the lenses        All clients · Renewal window (the renewal pipeline's
  *                     own lanes: talk now, before the charge, coming up) ·
- *                     New (her first 24 sessions, from a total that may be
- *                     quoted)
+ *                     New (her first sessions to the studio's Settling in
+ *                     line, 24 by default, from a total that may be quoted)
  *   the order         slipping lists read "catchable first": clients a leader
  *                     has already answered (snoozed, dismissed) last, then
  *                     those whose usual trainer is in today, then the closest
@@ -29,7 +29,7 @@ import { laneOf } from "../../renewals/pipeline";
 import type { RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { watchState, type WatchState, type WatchlistEntry } from "../attention/attention";
 import { caseOf, type CaseView } from "./case";
-import { BESIDE_STATES, LINE_STATES, SETTLING_MAX, isSlipping, journeyOf, type ClientJourney, type JourneyState } from "./states";
+import { BESIDE_STATES, LINE_STATES, isSlipping, journeyOf, type ClientJourney, type JourneyLines, type JourneyState } from "./states";
 
 export type JourneyLens = "all" | "renewal" | "new";
 
@@ -47,7 +47,7 @@ export interface JourneyEntry {
   case: CaseView;
   /** In the renewal pipeline's live lanes (talk now, before the charge, coming up). */
   inRenewalWindow: boolean;
-  /** Her first 24 sessions, from a total that may be quoted. */
+  /** Her first sessions to the studio's Settling in line, from a total that may be quoted. */
   early: boolean;
   /** Her usual trainer, when last night's record names one Journey knows. */
   usual: { id: string; name: string } | null;
@@ -74,6 +74,8 @@ export interface StudioJourneysInput {
   kaizen?: readonly KaizenRosterEntry[] | null;
   settings: Pick<RenewalSettings, "breakDays" | "horizonMonths" | "chargeWarnDays" | "chargeWarnMinBanked" | "conversationAtSessionsLeft">;
   nightlyStale: boolean;
+  /** The studio's five lines (studio-settings: its own, else Max Strength's default, else the app's). */
+  lines: JourneyLines;
   watchlist: ReadonlyMap<string, WatchlistEntry>;
 }
 
@@ -143,6 +145,7 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
       today: i.today,
       breakDays: i.settings.breakDays,
       nightlyStale: i.nightlyStale,
+      lines: i.lines,
     });
     const trainer = trainerById(i.trainers, snapshot?.primaryTrainerId);
     const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName } : null;
@@ -156,7 +159,7 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
       journey,
       case: caseOf(journey, { trainer: usual, inToday: usualInToday }, i.today),
       inRenewalWindow: lane === "talk-now" || lane === "before-charge" || lane === "coming-up",
-      early: row.total.state === "known" && row.total.value !== null && row.total.value <= SETTLING_MAX,
+      early: row.total.state === "known" && row.total.value !== null && row.total.value <= i.lines.settlingMax,
       usual,
       usualInToday,
       watch: watchState(entry ?? undefined, i.today),

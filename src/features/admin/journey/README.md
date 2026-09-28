@@ -19,17 +19,17 @@ A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a
 | `case.ts` | Her **case**: owner (her usual trainer, the snapshot's `primaryTrainerId`, else a leader), next step (always a person; q6: a phone call counts as in person, noted afterwards on her profile), the day it becomes the leader's (`CASE_ESCALATE_DAYS`, 3, q7), and the one outcome Journey sees by itself: booked again. |
 | `journey-list.ts` | The studio's Journey in one pass (`studioJourneys`, over the Client Directory's row model), the lenses, each list's order, and this week's derived movement (`thisWeek`). |
 | `useStudioJourneys.ts` | The hook: the week as the server answered it, the renewal settings (the At-risk line) and the watchlist; nothing per client. |
-| `RulesPage.tsx` | Setup → Rules: every number behind the sentences, the studio's own (read from its renewal settings, set on My Studio → Studio) and Max Strength's (the named constants below). |
+| `RulesPage.tsx` | Setup → Rules: every number behind the sentences — the studio's renewal numbers (its renewal settings), the Journey's five lines (the studio settings, each with where it came from: the studio's own, Max Strength's default or the app's), and the rules the same at every studio (the named constants below) — with a door to My Studio → Studio, where they are set. |
 
 ### The states, in the order they are decided
 
 1. **Unknown** — no nightly record for her, or the studio's record has stopped changing (`overview/brief.ts`, three quiet days).
 2. **Away** — Mindbody's away event (Vacation, Snowbird, Medical) on last night's snapshot, with its reason and return date. The date passing with nothing booked is **At risk** ("was due back on …"); booked again, **Back**; bookings unread, Unknown.
 3. **Unknown**, no visit on record — her last visit isn't known, so no gap can be measured. **Never Lapsed off an unknown.** (New or Settling in if her total may be quoted.)
-4. With **nothing booked** (the bookings were read): **Lapsed** at 45 days, **At risk** at the studio's own number (`breakDays`, "Warn me when a client has not visited for (days)"), **Drifting** at twice her usual gap, at least 7 days.
+4. With **nothing booked** (the bookings were read): **Lapsed** at the studio's `lapsedDays` (45 by default), **At risk** at the studio's own number (`breakDays`, "Warn me when a client has not visited for (days)"), **Drifting** at the studio's `driftMultiple` of her usual gap (twice by default), never under its `driftMinDays` (7 by default).
 5. **Unknown**, bookings unread — past a line, and whether anything is booked couldn't be read. Never Steady.
 6. **Back** — booked again after crossing a line.
-7. **New** (sessions 1–10) or **Settling in** (11–24) — only from a total that may be quoted (`lib/client-coverage` `canQuoteSessionNumber`, through the Client Directory's row): a twelve-year client nobody has recorded a total for is never New.
+7. **New** (sessions 1 to the studio's `newMax`, 10 by default) or **Settling in** (to its `settlingMax`, 24 by default) — only from a total that may be quoted (`lib/client-coverage` `canQuoteSessionNumber`, through the Client Directory's row): a twelve-year client nobody has recorded a total for is never New.
 8. **Steady** — a measured rhythm, inside it.
 9. **Unknown**, too new to judge — no measured rhythm and no quotable stage.
 
@@ -37,13 +37,13 @@ A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a
 
 | Line | Number | Where |
 | --- | --- | --- |
-| At risk | the studio's `breakDays` (default 14) | the studio's renewal settings, My Studio → Studio |
-| Drifting | `DRIFT_MULTIPLE` 2 × the usual gap, at least `DRIFT_MIN_DAYS` 7 | named constant (the attendance watch's own rule) |
-| Lapsed | `LAPSED_DAYS` 45 | named constant |
-| New, Settling in | `NEW_MAX` 10, `SETTLING_MAX` 24 | named constants |
-| A usual gap | `MIN_RHYTHM_VISITS` 6 over `MIN_RHYTHM_WEEKS` 4 | named constants |
+| At risk | the studio's `breakDays` (default 14) | the studio's renewal settings, My Studio → Studio → Renewals |
+| Drifting | `driftMultiple` (2) × the usual gap, never under `driftMinDays` (7) | the studio settings |
+| Lapsed | `lapsedDays` (45) | the studio settings |
+| New, Settling in | `newMax` (10), `settlingMax` (24) | the studio settings |
+| A usual gap | `MIN_RHYTHM_VISITS` 6 over `MIN_RHYTHM_WEEKS` 4 | named constants, the same at every studio |
 
-AJ's question 5 took "each a studio setting". Storing a new setting is a data change that waits for his OK, so the four are constants with a comment until then, and Setup → Rules says so beside each.
+**The studio settings** (wave 2, Sep 28 2026: AJ, "all yes", and "let the admins assign the default within the app"; `src/features/studio-settings/`). Each of the five is the studio's own (`studios/{s}/config/settings`, set by its leaders on My Studio → Studio → This studio's settings), else Max Strength's default (`system/studioDefaults`, set by head office on the Admins dashboard), else the app's (the registry's `appDefault`, the numbers in brackets above). `states.ts` holds no number of its own: every rule takes `lines` (`JourneyLines`), `linesOf` reads them out of `resolveAll` (the nightly job) or `useStudioSettings().all` (a screen), and `APP_LINES` is the registry's app defaults, for tests and the moment before the settings answer. `useStudioJourneys` and Today wait for both settings reads before working out any state, so nobody flickers from the app's line to the studio's. **Setup → Rules** shows each line with where it came from (`SOURCE_WORDS`: "This studio's own", "Max Strength's default", "The app's default") and a door to My Studio → Studio: it is never a second editor.
 
 ## What is not built, and why
 

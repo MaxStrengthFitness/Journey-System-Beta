@@ -7,22 +7,29 @@
  * in, Steady, Drifting, At risk, Lapsed, and beside the line Away, Back and
  * Unknown — on leader screens only. Question 5 took the default: Drifting at
  * twice her usual gap (at least 7 days) with nothing booked, At risk at the
- * studio's own number, Lapsed at 45 days, each meant to be a studio setting.
+ * studio's own number, Lapsed at 45 days, each meant to be a studio setting —
+ * and each is one since wave 2 (below).
  *
  * THE LINES, and where each number lives:
  *
  *   At risk   the studio's own number: `breakDays` on the studio's renewal
  *             settings ("Warn me when a client has not visited for (days)",
  *             My Studio → Studio). That setting already exists.
- *   Drifting  DRIFT_MULTIPLE × her usual gap, never under DRIFT_MIN_DAYS —
+ *   Drifting  `driftMultiple` × her usual gap, never under `driftMinDays` —
  *             the attendance watch's rule, which this file replaced (the
  *             attendance watch is this page now).
- *   Lapsed    LAPSED_DAYS.
- *   New       sessions 1 to NEW_MAX; Settling in to SETTLING_MAX.
+ *   Lapsed    `lapsedDays`.
+ *   New       sessions 1 to `newMax`; Settling in to `settlingMax`.
  *
- * The last four are NAMED CONSTANTS for now. Making each a studio setting
- * means storing new fields on the studio's settings, a data change that waits
- * for AJ's OK; until then the Rules page (Setup → Rules) says each number.
+ * The last five are STUDIO SETTINGS since wave 2 (AJ, Sep 28 2026: "all
+ * yes", and "let the admins assign the default within the app"): each
+ * studio's own, else Max Strength's default set by head office in the app,
+ * else the app's (features/studio-settings, `registry.ts` holds the app's
+ * defaults and nothing here repeats them). Every rule below takes them as
+ * `lines` (`JourneyLines`), so no caller can forget the studio's own; a
+ * screen resolves them with `useStudioSettings`, the nightly job with
+ * `resolveAll`, and `linesOf` turns either into the five. Setup → Rules
+ * shows each with where it came from; My Studio → Studio changes them.
  *
  * WHAT IT REFUSES TO SAY (the house rules):
  *
@@ -46,6 +53,10 @@
  */
 import { addDays, daysBetween } from "../../client-history/model";
 import type { RenewalSnapshot } from "../../renewals/types";
+// The pure halves only: the job imports this file, and the settings' index
+// brings the Firestore listeners with it.
+import { SETTING_BY_KEY, type SettingKey } from "../../studio-settings/registry";
+import { resolveAll, type ResolvedSetting } from "../../studio-settings/resolve";
 import { rhythmFromSnapshot, rhythmProof, type Rhythm, type RhythmResult } from "./rhythm";
 
 export type JourneyState = "new" | "settling" | "steady" | "drifting" | "at-risk" | "lapsed" | "away" | "back" | "unknown";
@@ -67,16 +78,61 @@ export const STATE_NAMES: Record<JourneyState, string> = {
   unknown: "Unknown",
 };
 
-/** Drifting: this many times her usual gap… (the attendance watch's rule before the Journey took it over). */
-export const DRIFT_MULTIPLE = 2;
-/** …but never under this many days. */
-export const DRIFT_MIN_DAYS = 7;
-/** Lapsed: this many days since her last visit with nothing booked. A studio setting once AJ approves storing it. */
-export const LAPSED_DAYS = 45;
-/** New: sessions 1 to this many (a total that may be quoted). */
-export const NEW_MAX = 10;
-/** Settling in: to this many sessions. */
-export const SETTLING_MAX = 24;
+/**
+ * THE FIVE LINES a studio may set for itself (wave 2, Sep 28 2026). Their
+ * values are the studio settings' (features/studio-settings/registry.ts:
+ * `driftMultiple`, `driftMinDays`, `lapsedDays`, `newMax`, `settlingMax`).
+ */
+export interface JourneyLines {
+  /** Drifting: this many times her usual gap… (the attendance watch's rule before the Journey took it over). */
+  driftMultiple: number;
+  /** …but never under this many days. */
+  driftMinDays: number;
+  /** Lapsed: this many days since her last visit, with nothing booked. */
+  lapsedDays: number;
+  /** New: sessions 1 to this many (a total that may be quoted). */
+  newMax: number;
+  /** Settling in: to this many sessions. */
+  settlingMax: number;
+}
+
+export type LineKey = keyof JourneyLines;
+
+/** The five, in the order Setup → Rules reads them. */
+export const LINE_KEYS: readonly LineKey[] = ["driftMultiple", "driftMinDays", "lapsedDays", "newMax", "settlingMax"];
+
+const lineValue = (all: Record<SettingKey, ResolvedSetting>, key: LineKey): number => {
+  const v = all[key]?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : (SETTING_BY_KEY[key].appDefault as number);
+};
+
+/** The five lines out of a studio's resolved settings (`resolveAll`, or `useStudioSettings().all`). */
+export function linesOf(all: Record<SettingKey, ResolvedSetting>): JourneyLines {
+  return {
+    driftMultiple: lineValue(all, "driftMultiple"),
+    driftMinDays: lineValue(all, "driftMinDays"),
+    lapsedDays: lineValue(all, "lapsedDays"),
+    newMax: lineValue(all, "newMax"),
+    settlingMax: lineValue(all, "settlingMax"),
+  };
+}
+
+/**
+ * The app's own lines — the registry's app defaults, and nothing more: what
+ * a studio reads until its settings and head office's answer, and what the
+ * tests measure against. Never a studio's line on its own.
+ */
+export const APP_LINES: JourneyLines = linesOf(resolveAll({ studio: null, company: null }));
+
+/** Two sets of lines are the same five numbers. */
+export function sameLines(a: JourneyLines, b: JourneyLines): boolean {
+  return LINE_KEYS.every((k) => a[k] === b[k]);
+}
+
+/** "Twice", "2.5 times": the drift multiple in a sentence. */
+export function multipleWords(m: number): string {
+  return m === 2 ? "Twice" : m === 3 ? "Three times" : `${m} times`;
+}
 
 export type LineCrossed = "twice-usual" | "studio-line" | "lapse-line" | "due-back" | null;
 
@@ -97,6 +153,8 @@ export interface JourneyInput {
   breakDays: number;
   /** The studio's nightly record has stopped changing. */
   nightlyStale: boolean;
+  /** The studio's five lines (its own, else Max Strength's default, else the app's). */
+  lines: JourneyLines;
   /** A rhythm measured some other way (from visit days); by default, from the snapshot. */
   rhythm?: RhythmResult;
 }
@@ -116,7 +174,7 @@ export interface ClientJourney {
   crossed: LineCrossed;
   /** The day she crossed it (her last visit plus the line), when there is one. */
   since: string | null;
-  /** The drift line in days for her (twice her usual gap, at least 7), when measured. */
+  /** The drift line in days for her (the studio's multiple of her usual gap, never under its least), when measured. */
   driftDays: number | null;
   /** The sentence: why she is where she is. */
   why: string;
@@ -133,16 +191,16 @@ const dayWords = (day: string, today: string) => {
 
 const daysText = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
 
-/** The drift line for a usual gap: twice it, never under a week. */
-export function driftLine(gapDays: number): number {
-  return Math.max(DRIFT_MIN_DAYS, Math.ceil(gapDays * DRIFT_MULTIPLE));
+/** The drift line for a usual gap: the studio's multiple of it (twice, by default), never under its least (a week). */
+export function driftLine(gapDays: number, lines: Pick<JourneyLines, "driftMultiple" | "driftMinDays">): number {
+  return Math.max(lines.driftMinDays, Math.ceil(gapDays * lines.driftMultiple));
 }
 
 /** The stage a quotable total puts her at, or null past Settling in or with no total. */
-export function stageOf(total: number | null): "new" | "settling" | null {
+export function stageOf(total: number | null, lines: Pick<JourneyLines, "newMax" | "settlingMax">): "new" | "settling" | null {
   if (total === null || total < 0) return null;
-  if (total <= NEW_MAX) return "new";
-  if (total <= SETTLING_MAX) return "settling";
+  if (total <= lines.newMax) return "new";
+  if (total <= lines.settlingMax) return "settling";
   return null;
 }
 
@@ -181,7 +239,8 @@ export function journeyOf(i: JourneyInput): ClientJourney {
   const rhythm = rhythmResult.measured === true ? rhythmResult.rhythm : null;
   const rhythmWhy = rhythmResult.measured === false ? rhythmResult.why : null;
   const daysSince = i.lastVisit ? daysBetween(i.lastVisit, i.today) : null;
-  const drift = rhythm ? driftLine(rhythm.gapDays) : null;
+  const L = i.lines;
+  const drift = rhythm ? driftLine(rhythm.gapDays, L) : null;
   const booked = i.next.state === "booked";
   const nothingBooked = i.next.state === "none";
   const lastText = i.lastVisit ? `last visit ${dayWords(i.lastVisit, i.today)}` : "no visit on record";
@@ -227,12 +286,12 @@ export function journeyOf(i: JourneyInput): ClientJourney {
 
   /* ---- No last visit: nothing to measure a gap from ---- */
   if (daysSince === null) {
-    const stage = stageOf(i.quotableTotal);
+    const stage = stageOf(i.quotableTotal, L);
     if (stage && i.quotableTotal !== null) {
       return {
         ...common,
         state: stage,
-        why: stage === "new" ? `At session ${i.quotableTotal} of her first ${NEW_MAX}.` : `Settling in: ${i.quotableTotal} sessions.`,
+        why: stage === "new" ? `At session ${i.quotableTotal} of her first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions.`,
         proof: `${lastText} · ${nextText}`,
       };
     }
@@ -241,13 +300,13 @@ export function journeyOf(i: JourneyInput): ClientJourney {
 
   /* ---- The lines she crossed with nothing booked ---- */
   if (nothingBooked) {
-    if (daysSince >= LAPSED_DAYS) {
+    if (daysSince >= L.lapsedDays) {
       return {
         ...common,
         state: "lapsed",
         crossed: "lapse-line",
-        since: addDays(i.lastVisit as string, LAPSED_DAYS),
-        why: `${daysText(daysSince)} since her last visit, past the ${LAPSED_DAYS}-day line, and nothing is booked.`,
+        since: addDays(i.lastVisit as string, L.lapsedDays),
+        why: `${daysText(daysSince)} since her last visit, past the ${L.lapsedDays}-day line, and nothing is booked.`,
         proof: `${lastText} · nothing booked${withRhythm}`,
       };
     }
@@ -268,13 +327,13 @@ export function journeyOf(i: JourneyInput): ClientJourney {
         crossed: "twice-usual",
         since: addDays(i.lastVisit as string, drift),
         why: `She usually trains ${rhythm.words}. It has been ${daysText(daysSince)}, and nothing is booked.`,
-        proof: `${lastText} · nothing booked · twice her usual gap is ${daysText(drift)} · ${rhythmProof(rhythm)}`,
+        proof: `${lastText} · nothing booked · ${multipleWords(L.driftMultiple).toLowerCase()} her usual gap is ${daysText(drift)} · ${rhythmProof(rhythm)}`,
       };
     }
   }
 
   /* ---- A line crossed, and her bookings unread: nothing can be said ---- */
-  const crossedLine = daysSince >= LAPSED_DAYS || daysSince >= i.breakDays || (drift !== null && daysSince >= drift);
+  const crossedLine = daysSince >= L.lapsedDays || daysSince >= i.breakDays || (drift !== null && daysSince >= drift);
   if (crossedLine && i.next.state === "unknown") {
     return {
       ...unknown("bookings-unread", `${daysText(daysSince)} since her last visit, and whether anything is booked couldn't be read, so whether she is slipping can't be said.`, `${lastText} · next booking unknown${withRhythm}`, rhythmWhy),
@@ -294,12 +353,12 @@ export function journeyOf(i: JourneyInput): ClientJourney {
   }
 
   /* ---- Her stage, when her total may be quoted ---- */
-  const stage = stageOf(i.quotableTotal);
+  const stage = stageOf(i.quotableTotal, L);
   if (stage && i.quotableTotal !== null) {
     return {
       ...common,
       state: stage,
-      why: stage === "new" ? `At session ${i.quotableTotal} of her first ${NEW_MAX}.` : `Settling in: ${i.quotableTotal} sessions${rhythm ? `, ${rhythm.words}` : ""}.`,
+      why: stage === "new" ? `At session ${i.quotableTotal} of her first ${L.newMax}.` : `Settling in: ${i.quotableTotal} sessions${rhythm ? `, ${rhythm.words}` : ""}.`,
       proof: `${lastText} · ${nextText}${withRhythm}`,
     };
   }

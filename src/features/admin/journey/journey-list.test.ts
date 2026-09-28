@@ -3,6 +3,7 @@ import type { Client, ScheduleEntry, Trainer } from "../../../types";
 import { DEFAULT_RENEWAL_SETTINGS } from "../../renewals/settings";
 import type { WatchlistEntry } from "../attention/attention";
 import { listFor, shiftToday, stateCounts, studioJourneys, thisWeek, type StudioJourneysInput } from "./journey-list";
+import { APP_LINES } from "./states";
 
 const TODAY = "2026-09-28"; // a Monday
 const NOW = new Date("2026-09-28T13:00:00Z"); // 9 AM Eastern
@@ -51,6 +52,7 @@ const base = (clients: Client[], weekEntries: ScheduleEntry[] = [], watchlist = 
   trainers,
   settings: DEFAULT_RENEWAL_SETTINGS,
   nightlyStale: false,
+  lines: APP_LINES,
   watchlist,
 });
 

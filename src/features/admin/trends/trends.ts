@@ -29,7 +29,7 @@ import { concernLabel } from "../../renewals/conversation";
 import type { OutcomeRow, OutcomeTally } from "../../renewals/rates";
 import type { RenewalConcern } from "../../renewals/types";
 import type { JourneyEntry } from "../journey/journey-list";
-import { LAPSED_DAYS } from "../journey/states";
+import { APP_LINES } from "../journey/states";
 
 /** A rate (or a share) appears from this many. */
 export const RATE_MIN = 10;
@@ -95,10 +95,10 @@ const MONTH = ["January", "February", "March", "April", "May", "June", "July", "
  * The clients who started in each of the last three full months, by a date
  * Mindbody proves (lib/client-since, given her coverage: Journey's first
  * session counts only when Journey holds her whole story). Still training:
- * a visit inside the lapse line. A client whose last visit isn't known is
- * counted apart, never as stopped.
+ * a visit inside the studio's lapse line (its `lapsedDays` setting). A client
+ * whose last visit isn't known is counted apart, never as stopped.
  */
-export function startGroups(entries: readonly JourneyEntry[], today: string, tz?: string): StartGroup[] {
+export function startGroups(entries: readonly JourneyEntry[], today: string, tz?: string, lapsedDays: number = APP_LINES.lapsedDays): StartGroup[] {
   const firstOfThisMonth = `${today.slice(0, 7)}-01`;
   const months: string[] = [];
   let cursor = firstOfThisMonth;
@@ -116,12 +116,12 @@ export function startGroups(entries: readonly JourneyEntry[], today: string, tz?
     g.members += 1;
     const days = e.journey.daysSince;
     if (days === null) g.unknown += 1;
-    else if (days < LAPSED_DAYS) g.stillTraining += 1;
+    else if (days < lapsedDays) g.stillTraining += 1;
   }
   return months.map((m) => groups.get(m) as StartGroup);
 }
 
-export function startGroupsLine(groups: readonly StartGroup[]): TrendLine {
+export function startGroupsLine(groups: readonly StartGroup[], lapsedDays: number = APP_LINES.lapsedDays): TrendLine {
   const said = groups
     .filter((g) => g.members > 0)
     .map((g) => {
@@ -135,7 +135,7 @@ export function startGroupsLine(groups: readonly StartGroup[]): TrendLine {
     id: "starts",
     title: "Start groups",
     say: said.length ? said.join(" ") : "Nobody started in the last three months by a date Mindbody can prove.",
-    min: `A share appears from ${RATE_MIN} in a group; smaller groups show counts. Still training means a visit in the last ${LAPSED_DAYS} days.`,
+    min: `A share appears from ${RATE_MIN} in a group; smaller groups show counts. Still training means a visit in the last ${lapsedDays} days.`,
     ready: groups.some((g) => g.members >= RATE_MIN),
   };
 }
