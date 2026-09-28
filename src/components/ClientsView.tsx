@@ -74,6 +74,7 @@ import { bookingSessionNumber, cardMarks, isNewToJourney, usualServiceOf } from 
 import { yourDay } from "../features/hub-schedule/your-day";
 import { nextHalfHour, stripOpen } from "../features/hub-schedule/next-half-hour";
 import { NextStrip, type NextStripItem } from "../features/hub-schedule/NextStrip";
+import { focusColumnId, readFocus, writeFocus, type HubFocus } from "../features/hub-schedule/focus";
 import { hubCardState } from "../lib/hub-card-state";
 import { clientDisplayName } from "../lib/client-name";
 
@@ -164,6 +165,8 @@ export function ClientsView({
   const [listRequest, setListRequest] = useState<{ filter: FilterId; nonce: number } | null>(null);
   /** The card whose peek is open (a tap on a card: Hub question 1's default). */
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
+  /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
+  const [focus, setFocus] = useState<HubFocus>(() => readFocus());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -571,11 +574,12 @@ export function ClientsView({
    * YOUR OWN COLUMN, IN WORDS (hub cherry round, Sep 28 2026; Hub direction
    * B's focus column): your column takes more of the spare room, its head
    * says your day in words, and its cards say every mark they may say out
-   * loud. Only when you have a column on the day on screen.
+   * loud. Only when you have a column on the day on screen, and Focus is on
+   * Me (Everyone makes every column alike: features/hub-schedule/focus.ts).
    */
   const myColumn = visibleTrainersList.find((t) => isSelfTrainer(t));
   const myColumnId = myColumn ? String(myColumn.id) : null;
-  const focusId = myColumnId;
+  const focusId = focusColumnId(focus, myColumnId);
   const gridColumns: GridColumn[] = visibleTrainersList.map((t) => {
     const nickname = ((t as any).nickname || "").trim();
     const id = String(t.id);
@@ -1159,6 +1163,17 @@ export function ClientsView({
                   setSpot(null);
                   setLayer("opportunities");
                 }}
+                focus={
+                  myColumnId
+                    ? {
+                        value: focus,
+                        onChange: (next) => {
+                          setFocus(next);
+                          writeFocus(next);
+                        },
+                      }
+                    : null
+                }
               />
             )}
             <KeySheet open={keyOpen} onClose={() => setKeyOpen(false)} />

@@ -255,6 +255,72 @@
   }
 }
 
+/* ---- Focus: Me | Everyone (hub cherry round, Hub direction B) ----
+   At the end of the same line, so the top keeps its two rows: with the
+   switch there, the chips give up room and scroll rather than push it onto
+   a line of its own. */
+.hd-sum[data-focus-switch="true"] .hd-chips {
+  flex: 1 1 0;
+}
+
+.hd-focus {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.hd-focus-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.hd-seg {
+  display: inline-flex;
+  border: 1px solid var(--eq-border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--eq-surface);
+}
+
+.hd-seg-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--eq-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hd-seg-btn + .hd-seg-btn {
+  border-left: 1px solid var(--eq-border);
+}
+
+.hd-seg-btn[aria-pressed="true"] {
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
+.hd-seg-btn:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
+}
+
+/* Upright, the switch speaks for itself. */
+@container (max-width: 900px) {
+  .hd-focus-label {
+    display: none;
+  }
+}
+
 /* ---- the Key ---- */
 
 .hd-key-list {
