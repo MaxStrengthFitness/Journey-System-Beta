@@ -17,7 +17,8 @@
    Prefixes, one owner each (src/css-class-owners.test.ts):
      rjn   Just now, the teammates' lines (the notices)
      rbd   the Board: Right now, the doors, the dealt card, Also fits, Later
-           today, Team today, and what sits behind the open door
+           today, Team today, what sits behind the open door, and Undo
+     rwho  Who? — a leader's faces on the dealt card
 
    Widths follow the Board's own box, not the screen's (a container query on
    .rbd): with the Context Panel open beside it on a landscape iPad the Board
@@ -339,6 +340,14 @@
 .rbd-btn--primary { border-color: var(--st-live); background: var(--st-live); color: var(--st-live-on); }
 .rbd-acts__note { flex: 1 1 8rem; font-size: 12px; color: var(--st-ink-muted); }
 
+.rbd-dealt__named { margin: 0; font-size: 14px; color: var(--st-ink-2); }
+.rbd-dealt__named b { color: var(--st-ink); }
+
+/* The card rides on a swipe row: right is Done, left is Not now, each undone
+   from the line at the foot. The buttons do the same, so nothing is
+   gesture-only. */
+.rbd-swipe .sw__under { border-radius: 18px; }
+
 .rbd-state {
   display: flex;
   flex-wrap: wrap;
@@ -438,6 +447,149 @@
 .rbd-row__t { flex: 1 1 14rem; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
 .rbd-row__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
 .rbd-row__acts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* ------------------------------------------------------------------ *
+ * Undo — one line at the foot of the Board, for eight seconds
+ * ------------------------------------------------------------------ */
+
+.rbd-undo {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 4;
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  max-width: min(100%, 40rem);
+  padding: 6px 6px 6px 16px;
+  border-radius: 999px;
+  background: var(--st-ink);
+  color: var(--st-surface);
+  box-shadow: 0 8px 24px var(--st-shadow);
+}
+.rbd-undo__t { flex: 1 1 12rem; min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.rbd-undo__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rbd-undo__btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ *
+ * Who? — a leader's faces on the dealt card
+ * ------------------------------------------------------------------ */
+
+.rwho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--st-border);
+}
+.rwho__l { display: flex; flex-direction: column; gap: 1px; font-size: 14px; font-weight: 800; color: var(--st-ink-2); }
+.rwho__hint { font-size: 12px; font-weight: 600; color: var(--st-ink-muted); }
+.rwho__faces { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.rwho__wrap { position: relative; display: inline-flex; }
+.rwho__face {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--st-border);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.rwho__face:focus-visible,
+.rwho__more:focus-visible,
+.rwho__span:focus-visible,
+.rwho__pop-item:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rwho__av {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--st-live-fill);
+  color: var(--st-live);
+  font-size: 12px;
+  font-weight: 800;
+}
+.rwho__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow-wrap: anywhere; }
+.rwho__why { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
+.rwho__more,
+.rwho__span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rwho__span { border-style: solid; }
+.rwho__pop {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 15rem;
+  max-width: min(90vw, 20rem);
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  box-shadow: 0 10px 30px var(--st-shadow);
+}
+.rwho__pop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.rwho__pop-item:hover { background: var(--st-surface-2); }
+.rwho__pop-item[aria-checked="true"] { background: var(--st-live-fill); color: var(--st-live); }
+.rwho__pop-note { padding: 4px 10px 6px; font-size: 12px; color: var(--st-ink-muted); }
 
 /* ------------------------------------------------------------------ *
  * Just now — what the team did today, still and whole

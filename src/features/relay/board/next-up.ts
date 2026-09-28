@@ -228,6 +228,19 @@ export function snooze(studioId: string, todayKey: string, phase: ShiftPhase, id
   return next;
 }
 
+/**
+ * Take back a "Not now" (Relay room, Sep 28 2026: every pass-over and every
+ * swipe on the Board has an Undo). Nothing was written, so nothing is.
+ */
+export function unsnooze(studioId: string, todayKey: string, phase: ShiftPhase, id: string): void {
+  const key = snoozeKey(studioId, todayKey, phase);
+  const cur = snoozes.get(key);
+  if (!cur || !cur.has(id)) return;
+  const next = new Set(cur);
+  next.delete(id);
+  snoozes.set(key, next);
+}
+
 /** Test seam. */
 export function resetSnoozes(): void {
   snoozes.clear();

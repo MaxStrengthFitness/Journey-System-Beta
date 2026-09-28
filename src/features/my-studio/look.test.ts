@@ -148,6 +148,8 @@ const NAME_CLASSES = [
   "rbd-part__t", // a machine on the dealt card's checklist
   "rbd-team__t", // a chore on Team today
   "rbd-later__t", // a row of Later today (a client's name)
+  "rbd-undo__t", // what Undo takes back (a job's name)
+  "rwho__name", // a trainer on a leader's Who? faces
   "sh__group-title", // a machine group or a duty
   "sh__row-name", // a machine in the group
   "sh__entry-title", // a playbook entry
@@ -233,6 +235,11 @@ const TAP_CLASSES = [
   "rbd-alt",
   "rbd-part",
   "rbd-link",
+  "rbd-undo__btn",
+  "rwho__face",
+  "rwho__more",
+  "rwho__span",
+  "rwho__pop-item",
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -328,6 +335,8 @@ const BUTTON_CLASSES = [
   "msh__pop-item",
   "rbd-btn",
   "rbd-part",
+  "rbd-undo__btn",
+  "rwho__face",
   "tj-open",
   "tj-done__toggle",
   "wl__btn",

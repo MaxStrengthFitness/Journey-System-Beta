@@ -82,7 +82,9 @@ function fakeActions(): TaskActions & { calls: string[] } {
     completeMany: async () => {},
     toggleClaim: rec("toggleClaim") as never,
     toggleClaimGroup: rec("toggleClaimGroup") as never,
-    assign: async () => {},
+    assign: (async (g: { templateId: string }, who: { name: string } | null, opts?: { days?: number }) => {
+      calls.push(`assign:${g.templateId}:${who ? who.name : "nobody"}:${opts?.days ?? 1}`);
+    }) as never,
     closeWithNote: async () => {},
   };
 }
@@ -165,8 +167,9 @@ describe("the Board", () => {
     expect(card?.querySelector(".rbd-dealt__title")?.textContent).toBe("Restock towels");
     expect(card?.textContent).toContain("The studio");
     expect(card?.textContent).toContain("~3 min");
-    const buttons = [...card!.querySelectorAll(".rbd-acts .rbd-btn")].map((b) => b.textContent);
-    expect(buttons).toEqual(["Take it", "Not now"]);
+    const buttons = [...card!.querySelectorAll(".rbd-acts .rbd-btn")].map((b) => b.textContent?.trim());
+    // Take it and Not now first and the same size; Done closes a chore in one tap.
+    expect(buttons).toEqual(["Take it", "Not now", "Done"]);
     expect(card?.textContent).toContain('"Not now" leaves no trace.');
     // Two more that also fit, and Deal me another.
     const alts = [...h.querySelectorAll(".rbd-alt")].map((a) => a.querySelector(".rbd-alt__t")?.firstChild?.textContent);
@@ -230,6 +233,86 @@ describe("the Board", () => {
     expect(team?.textContent).toContain("Mid chores · 1 of 4");
     // Never a person's count.
     expect(team?.textContent).not.toMatch(/Ioreth|Beregond|Mablung/);
+  });
+
+  it("offers an Undo after Not now, and Undo brings the card back", async () => {
+    const { h } = await render();
+    await click([...h.querySelectorAll(".rbd-acts .rbd-btn")].find((b) => b.textContent === "Not now"));
+    const bar = h.querySelector(".rbd-undo");
+    expect(bar?.textContent).toContain('Passed over "Restock towels". Nothing was recorded.');
+    await click(bar?.querySelector("button"));
+    expect(h.querySelector(".rbd-dealt__title")?.textContent).toBe("Restock towels");
+    expect(h.querySelector(".rbd-undo")).toBeNull();
+  });
+
+  it("closes a chore from the card's own Done, with an Undo that opens its machines again", async () => {
+    const { h, actions } = await render();
+    await click([...h.querySelectorAll(".rbd-alt")].find((a) => a.textContent?.includes("Wipe-down round")));
+    await click([...h.querySelectorAll(".rbd-acts .rbd-btn")].find((b) => b.textContent?.includes("Done")));
+    expect(actions.calls).toContain("completeGroup:wipe-down");
+    expect(h.querySelector(".rbd-undo")?.textContent).toContain("Wipe-down round: marked done.");
+    await click(h.querySelector(".rbd-undo button"));
+    expect(actions.calls.filter((c) => c.startsWith("reopen:"))).toHaveLength(2);
+  });
+
+  it("marks a card done with a swipe right, and passes it over with a swipe left, each with an Undo", async () => {
+    const { h, actions } = await render();
+    const swipe = async (dx: number) => {
+      const card = h.querySelector(".rbd-swipe .sw__card")!;
+      await act(async () => {
+        card.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 200, clientY: 100, button: 0 }));
+        card.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 200 + dx, clientY: 100 }));
+      });
+      await act(async () => {
+        card.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 200 + dx, clientY: 100 }));
+      });
+    };
+    await swipe(-120);
+    expect(h.querySelector(".rbd-dealt__title")?.textContent).toBe("Wipe-down round");
+    expect(h.querySelector(".rbd-undo")?.textContent).toContain("Nothing was recorded.");
+    await swipe(120);
+    expect(actions.calls).toContain("completeGroup:wipe-down");
+    expect(h.querySelector(".rbd-undo")?.textContent).toContain("marked done");
+  });
+
+  it("gives a studio's leader the Who? faces, in the order of who can help now, and names for a week", async () => {
+    const people = [BEREGOND, MABLUNG, IORETH].map((p) => ({ id: p.id, fullName: p.name, role: "LifeTransformer", primaryHomeStudioId: "s1", accessibleStudioIds: ["s1"] }));
+    const { h, actions } = await render({ relay: { canLead: true, trainers: people as never } });
+    // Bring the chore up: Who? is offered on shared chores and asks.
+    await click([...h.querySelectorAll(".rbd-alt")].find((a) => a.textContent?.includes("Wipe-down round")));
+    const faces = [...h.querySelectorAll(".rwho__face")];
+    // Mablung has a client now and Beregond is with one too: both busy; the leader choosing is left out.
+    expect(faces.map((f) => f.getAttribute("aria-label"))).toEqual([
+      "Put Beregond Guard on it: with a client until 2:30 PM",
+      "Put Mablung Ranger on it: with a client until 2:40 PM",
+    ]);
+    expect(h.querySelector(".rwho")?.textContent).toContain("a name is a heads-up, not a lock");
+    await click(h.querySelector(".rwho__span"));
+    await click([...h.querySelectorAll('.rwho__pop [role="menuitemradio"]')].find((b) => b.textContent === "This week"));
+    await click(faces[0]);
+    expect(actions.calls).toContain("assign:wipe-down:Beregond Guard:7");
+    expect(h.querySelector(".rbd-undo")?.textContent).toContain("Beregond has it for this week.");
+    await click(h.querySelector(".rbd-undo button"));
+    expect(actions.calls).toContain("assign:wipe-down:nobody:1");
+  });
+
+  it("never offers a trainer the faces: leadership assigns, trainers offer (AJ, q5)", async () => {
+    const { h } = await render({ relay: { canLead: false } });
+    await click([...h.querySelectorAll(".rbd-alt")].find((a) => a.textContent?.includes("Wipe-down round")));
+    expect(h.querySelector(".rwho")).toBeNull();
+  });
+
+  it("lets the person an ask was handed to say they can't: it goes back on the board, with an Undo", async () => {
+    const { h } = await render({
+      requests: [ask("hugo", { kind: "handoff", title: "Finish Hugo's report", createdBy: BEREGOND, forId: IORETH.id, forName: IORETH.name })],
+    });
+    // Handed to you opens Mine.
+    expect(h.querySelector(".rbd-lens")?.textContent).toContain("Beregond handed you something.");
+    await click([...h.querySelectorAll(".rbd-acts .rbd-btn")].find((b) => b.textContent === "I can't"));
+    expect(writes.updates).toContainEqual({ path: "studios/s1/taskRequests/hugo", data: { forId: "__delete__", forName: "__delete__" } });
+    expect(h.querySelector(".rbd-undo")?.textContent).toContain("Back on the board, for anyone to take.");
+    await click(h.querySelector(".rbd-undo button"));
+    expect(writes.updates).toContainEqual({ path: "studios/s1/taskRequests/hugo", data: { forId: IORETH.id, forName: IORETH.name } });
   });
 
   it("won't guess on an empty list: no door is Relay's pick, and it says so", async () => {

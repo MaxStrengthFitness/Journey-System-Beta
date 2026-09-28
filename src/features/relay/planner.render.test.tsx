@@ -414,6 +414,15 @@ describe("My Studio", () => {
     expect(document.body.textContent).toContain("At the time");
   });
 
+  it("keeps Someone for a leader: a trainer offers work on the board instead (AJ, q5)", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__plus"));
+    await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.startsWith("A to-do for me")));
+    const labels = [...document.querySelectorAll(".rk-seg button")].map((b) => b.textContent);
+    expect(labels).toContain("Me");
+    expect(labels).not.toContain("Someone");
+  });
+
   it("captures: the sentence follows the destination and the chips", async () => {
     const h = await mount(lead);
     // The header's + → "A to-do for me" (the floating Capture button went in the Relay room).

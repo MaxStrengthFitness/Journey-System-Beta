@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   CalendarClock,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   Compass,
@@ -17,14 +18,21 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { useToast } from "../../../contexts/ToastContext";
+import { notify } from "../../notifications";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
-import type { TaskRequest } from "../../studio-tasks/requests";
+import { reopenRequest, setRequestFor, type TaskRequest } from "../../studio-tasks/requests";
 import type { ClientTaskAction, TaskRow } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
+import { studioRoster } from "../../studio-tasks/initiatives";
+import { repeatPlanForward } from "../../studio-tasks/recurrence";
+import { joinJob, leaveJob } from "../jobs/mutations";
 import type { TeamJob } from "../jobs/types";
 import { forgetOnSignOut } from "../../sign-out/memory";
 import { useRelay } from "./RelayContext";
-import { emptyPrompt, snoozedIds } from "./next-up";
+import { emptyPrompt, snoozedIds, unsnooze } from "./next-up";
+import { SwipeRow } from "./SwipeRow";
+import { FACES_SHOWN, NAME_SPANS, namedLine, whoFaces, type NameSpan, type WhoFace } from "./who";
 import { RING_LABEL, RING_PHASES, shiftRings } from "./rings";
 import { minutesToClock } from "./now-context";
 import { floorLoad, laterToday, rightNow } from "./right-now";
@@ -123,6 +131,7 @@ export interface BoardProps {
 export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpenClientTask, loading, behind }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
+  const { success: toastSuccess, error: toastError } = useToast();
   const [snoozeTick, setSnoozeTick] = useState(0);
   const [userDoor, setUserDoor] = useState<DoorId | null>(null);
   const [pinned, setPinned] = useState<Partial<Record<DoorId, string>>>({});
@@ -219,10 +228,134 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
   const tracked = useTracked(relay.studioId, now.todayKey);
 
   const chooseDoor = (next: DoorId) => setUserDoor(next === pick.door ? null : next);
+
+  /*
+   * EVERY PASS-OVER AND EVERY SWIPE HAS AN UNDO (phase 3, "Cards and names").
+   * One line at the foot of the Board for eight seconds: what just happened,
+   * and Undo, 44px. Nothing else is asked.
+   */
+  const [undo, setUndo] = useState<{ key: number; label: string; run: () => Promise<unknown> | void } | null>(null);
+  const offerUndo = (label: string, run: () => Promise<unknown> | void) => setUndo({ key: Date.now(), label, run });
+  const clearUndo = useCallback(() => setUndo(null), []);
+
   const passOver = (s: BoardScored) => {
     cardActions.notNow(s.item);
     setPinned((p) => ({ ...p, [door]: undefined }));
     setSnoozeTick((t) => t + 1);
+    offerUndo(`Passed over "${s.item.title}". Nothing was recorded.`, () => {
+      if (relay.studioId) unsnooze(relay.studioId, now.todayKey, now.phase, s.item.id);
+      setSnoozeTick((t) => t + 1);
+    });
+  };
+
+  /** Done, from the card's own button or a swipe right, with its Undo. */
+  const markDone = (s: BoardScored) => {
+    const item = s.item;
+    if (item.kind === "group") {
+      const open = item.group.rows.filter((r) => r.status === "open");
+      void actions.completeGroup(item.group);
+      offerUndo(`${item.title}: marked done.`, async () => {
+        for (const r of open) await actions.reopen(r);
+      });
+    } else if (item.kind === "client") {
+      void actions.complete(item.row);
+      // A task that needs a closing note asks for it first (its dialog): nothing was done yet.
+      if (!item.row.template.requiresNote) offerUndo(`${item.title}: marked done.`, () => actions.reopen(item.row));
+    } else if (item.kind === "ask") {
+      cardActions.done(item);
+      offerUndo(`Closed "${item.title}".`, () => (relay.studioId ? reopenRequest(relay.studioId, item.request.id) : undefined));
+    } else {
+      cardActions.done(item);
+    }
+  };
+
+  /*
+   * WHO? (leaders only; AJ, q5: "leadership can just directly assign"). A face
+   * puts that person's name on the job, for today, this week or two weeks on a
+   * shift chore; an ask stands until it is done. It arrives already theirs;
+   * the tick stays open to everyone.
+   */
+  const [span, setSpan] = useState<NameSpan>(1);
+  const people = useMemo(() => studioRoster(relay.trainers, relay.studioId), [relay.trainers, relay.studioId]);
+  const whoList = useMemo(
+    () =>
+      whoFaces({
+        people,
+        trainers: relay.trainers,
+        schedules: relay.schedules,
+        todayKey: now.todayKey,
+        nowMin: now.nowMin,
+        excludeIds: [relay.uid, author?.id],
+      }),
+    [people, relay.trainers, relay.schedules, now.todayKey, now.nowMin, relay.uid, author?.id],
+  );
+  const actor = relay.uid ? { id: relay.uid, name: relay.authTrainer?.fullName ?? author?.name ?? "A trainer" } : null;
+
+  const nameIt = async (s: BoardScored, face: WhoFace) => {
+    const person = { id: face.id, name: face.name };
+    const item = s.item;
+    if (item.kind === "group") {
+      const open = item.group.rows.filter((r) => r.status === "open");
+      const template = open[0]?.template;
+      const planned = span > 1 && template && now.todayKey ? repeatPlanForward(open, template, now.todayKey, span) : open;
+      await actions.assign(item.group, person, { planned, days: span });
+      offerUndo(`${namedLine(face.name, span)}.`, () => actions.assign(item.group, null));
+      return;
+    }
+    if (item.kind === "ask" && relay.studioId) {
+      try {
+        await setRequestFor({ studioId: relay.studioId, requestId: item.request.id, person });
+        // The one bell a hand-off has always rung (Capture's), once.
+        if (actor)
+          await notify({
+            to: face.id,
+            actor,
+            kind: "handoff",
+            title: `${actor.name.split(" ")[0]} put your name on: ${item.request.title}`.slice(0, 200),
+            studioId: relay.studioId,
+            link: { view: "studio-tasks", id: "mine" },
+          });
+        toastSuccess(`${face.name.split(" ")[0]} has it. It's under Mine for them.`);
+        offerUndo(`${face.name.split(" ")[0]} has it.`, () =>
+          relay.studioId ? setRequestFor({ studioId: relay.studioId, requestId: item.request.id, person: null }) : undefined,
+        );
+      } catch (err) {
+        console.warn("[relay] naming failed:", err);
+        toastError("Could not put a name on that. Check your connection.");
+      }
+    }
+  };
+
+  /*
+   * "I CAN'T" on work with your name on it: a leader's assignment arrives
+   * already yours, with a way to say you can't. An ask goes back on the board
+   * as an offer anyone can take; a team job lets you step off. A chore or a
+   * client task keeps the leader's name (only a leader may change it, by the
+   * rules), so it opens an ask to the team instead, for you to post.
+   */
+  const cantDo = async (s: BoardScored) => {
+    const item = s.item;
+    try {
+      if (item.kind === "ask" && relay.studioId && item.request.forId) {
+        const was = { id: item.request.forId, name: item.request.forName ?? author?.name ?? "You" };
+        await setRequestFor({ studioId: relay.studioId, requestId: item.request.id, person: null });
+        offerUndo("Back on the board, for anyone to take.", () =>
+          relay.studioId ? setRequestFor({ studioId: relay.studioId, requestId: item.request.id, person: was }) : undefined,
+        );
+      } else if (item.kind === "job" && author) {
+        await leaveJob(item.job, author);
+        offerUndo(`You stepped off "${item.title}".`, () => joinJob(item.job, author));
+      } else {
+        relay.openCapture({
+          destination: "floor",
+          askKind: "help",
+          text: `Can anyone take this? ${item.title}\nMy name is on it, and I can't get to it.`,
+        });
+      }
+    } catch (err) {
+      console.warn("[relay] can't-do failed:", err);
+      toastError("Could not change that. Check your connection.");
+    }
   };
 
   const later = laterToday(now);
@@ -313,6 +446,13 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
               tracking={tracked?.id === dealt.item.id}
               onTake={() => cardActions.take(dealt.item)}
               onNotNow={() => passOver(dealt)}
+              onDone={closable(dealt.item) ? () => markDone(dealt) : undefined}
+              onCant={door === "mine" ? () => void cantDo(dealt) : undefined}
+              named={namedOn(dealt.item, me)}
+              faces={relay.canLead && assignable(dealt.item) ? whoList : undefined}
+              span={span}
+              onSpan={setSpan}
+              onName={(face) => void nameIt(dealt, face)}
               onStopTracking={() => untrack(relay.studioId, now.todayKey, dealt.item.id)}
             />
           ) : door === "floor" ? (
@@ -402,6 +542,9 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
                       <button type="button" className="rbd-btn rbd-btn--primary" onClick={() => cardActions.take(s.item)}>
                         {primaryWord(s.item)}
                       </button>
+                      <button type="button" className="rbd-btn" onClick={() => void cantDo(s)}>
+                        I can't
+                      </button>
                     </span>
                   </li>
                 ))}
@@ -417,6 +560,59 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
         )}
         {behind(door)}
       </section>
+
+      {undo && <UndoBar key={undo.key} label={undo.label} onUndo={() => void undo.run()} onGone={clearUndo} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * What a card offers, by kind
+ * ------------------------------------------------------------------ */
+
+/** Can the card close its job in one tap (Done, or a swipe right)? */
+function closable(item: BoardItem): boolean {
+  return item.kind === "group" || item.kind === "client" || item.kind === "ask";
+}
+
+/** Can a leader put a name on it? A shared chore, or an ask; never someone's private task. */
+function assignable(item: BoardItem): boolean {
+  if (item.kind === "group") return item.group.scope !== "personal";
+  return item.kind === "ask";
+}
+
+/** Whose name is already on it (not yours): the card says so, a heads-up and never a lock. */
+function namedOn(item: BoardItem, me: Set<string>): string | null {
+  if (item.kind === "group" && item.group.assignedTo && !me.has(item.group.assignedTo.id)) return item.group.assignedTo.name;
+  if (item.kind === "ask" && item.request.forId && !me.has(item.request.forId)) return item.request.forName ?? null;
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Undo — one line at the foot of the Board
+ * ------------------------------------------------------------------ */
+
+const UNDO_MS = 8000;
+
+export function UndoBar({ label, onUndo, onGone }: { label: string; onUndo: () => void; onGone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onGone, UNDO_MS);
+    return () => clearTimeout(t);
+  }, [onGone]);
+  return (
+    <div className="rbd-undo" role="status" aria-live="polite">
+      <span className="rbd-undo__t">{label}</span>
+      <button
+        type="button"
+        className="rbd-undo__btn"
+        onClick={() => {
+          onUndo();
+          onGone();
+        }}
+      >
+        <Undo2 size={16} aria-hidden />
+        Undo
+      </button>
     </div>
   );
 }
@@ -450,6 +646,13 @@ export function DealtCard({
   tracking,
   onTake,
   onNotNow,
+  onDone,
+  onCant,
+  named = null,
+  faces,
+  span = 1,
+  onSpan,
+  onName,
   onStopTracking,
 }: {
   scored: BoardScored;
@@ -459,10 +662,22 @@ export function DealtCard({
   tracking: boolean;
   onTake: () => void;
   onNotNow: () => void;
+  /** Close it in one tap (and a swipe right); absent for work that closes elsewhere. */
+  onDone?: () => void;
+  /** Your name is on it and you can't: back to the board, or off the job. */
+  onCant?: () => void;
+  /** Whose name is on it already (not yours). */
+  named?: string | null;
+  /** The Who? faces: a leader's, on a job that takes a name. */
+  faces?: WhoFace[];
+  span?: NameSpan;
+  onSpan?: (days: NameSpan) => void;
+  onName?: (face: WhoFace) => void;
   onStopTracking: () => void;
 }) {
   const relay = useRelay();
   const { item } = scored;
+  const [menu, setMenu] = useState<"more" | "span" | null>(null);
   const giver = giverOf(item);
   const pressure = pressureOf(scored);
   const why = whyNow(scored.why);
@@ -484,7 +699,18 @@ export function DealtCard({
         ? item.row.clientName ?? null
         : null;
 
+  const shown = (faces ?? []).slice(0, FACES_SHOWN);
+  const rest = (faces ?? []).slice(FACES_SHOWN);
+
   return (
+    <SwipeRow
+      onSwipeRight={onDone}
+      onSwipeLeft={onNotNow}
+      rightLabel="Done"
+      leftLabel="Not now"
+      className="rbd-swipe"
+      disabled={tracking}
+    >
     <article className="rbd-dealt" aria-label={`Dealt to you: ${item.title}`}>
       <div className="rbd-dealt__top">
         <span className="rbd-giver">
@@ -550,6 +776,11 @@ export function DealtCard({
           })}
         </div>
       )}
+      {named && (
+        <p className="rbd-dealt__named">
+          <b>{named.split(" ")[0]} has it</b> <span className="rbd-mute">(a heads-up, not a lock: anyone may still do it)</span>
+        </p>
+      )}
       {tracking ? (
         <div className="rbd-state">
           <Crosshair size={17} aria-hidden />
@@ -563,15 +794,128 @@ export function DealtCard({
       ) : (
         <div className="rbd-acts">
           <button type="button" className="rbd-btn rbd-btn--primary" onClick={onTake}>
-            {primaryWord(item)}
+            {named ? "Help too" : primaryWord(item)}
           </button>
           <button type="button" className="rbd-btn" onClick={onNotNow}>
             Not now
           </button>
-          <span className="rbd-acts__note">"Not now" leaves no trace.</span>
+          {onDone && (
+            <button type="button" className="rbd-btn" onClick={onDone}>
+              <Check size={16} aria-hidden /> Done
+            </button>
+          )}
+          {onCant && (
+            <button type="button" className="rbd-btn" onClick={onCant}>
+              I can't
+            </button>
+          )}
+          <span className="rbd-acts__note">"Not now" leaves no trace. A swipe does the same, with an Undo.</span>
+        </div>
+      )}
+      {faces && faces.length > 0 && onName && (
+        <div className="rwho" role="group" aria-label="Who? Put a name on it">
+          <span className="rwho__l">
+            Who?
+            <span className="rwho__hint">a name is a heads-up, not a lock</span>
+          </span>
+          <span className="rwho__faces">
+            {shown.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className="rwho__face"
+                aria-label={`Put ${f.name} on it: ${f.reason}`}
+                onClick={() => onName(f)}
+              >
+                <span className="rwho__av" aria-hidden>
+                  {initialsOf(f.name)}
+                </span>
+                <span className="rwho__name">
+                  {f.name.split(" ")[0]}
+                  <span className="rwho__why">{f.reason}</span>
+                </span>
+              </button>
+            ))}
+            {rest.length > 0 && (
+              <span className="rwho__wrap">
+                <button
+                  type="button"
+                  className="rwho__more"
+                  aria-haspopup="menu"
+                  aria-expanded={menu === "more"}
+                  aria-label={`Everyone else: ${rest.length} more`}
+                  onClick={() => setMenu((m) => (m === "more" ? null : "more"))}
+                >
+                  +{rest.length}
+                </button>
+                {menu === "more" && (
+                  <span className="rwho__pop" role="menu" aria-label="Everyone else">
+                    {rest.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        role="menuitem"
+                        className="rwho__pop-item"
+                        onClick={() => {
+                          setMenu(null);
+                          onName(f);
+                        }}
+                      >
+                        <span className="rwho__av" aria-hidden>
+                          {initialsOf(f.name)}
+                        </span>
+                        <span className="rwho__name">
+                          {f.name}
+                          <span className="rwho__why">{f.reason}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </span>
+            )}
+            {item.kind === "group" && onSpan && (
+              <span className="rwho__wrap">
+                <button
+                  type="button"
+                  className="rwho__span"
+                  aria-haspopup="menu"
+                  aria-expanded={menu === "span"}
+                  aria-label={`How long a name lasts: ${NAME_SPANS.find((s) => s.days === span)?.label}`}
+                  onClick={() => setMenu((m) => (m === "span" ? null : "span"))}
+                >
+                  {NAME_SPANS.find((s) => s.days === span)?.label}
+                  <ChevronDown size={16} aria-hidden />
+                </button>
+                {menu === "span" && (
+                  <span className="rwho__pop" role="menu" aria-label="How long a name lasts">
+                    {NAME_SPANS.map((s) => (
+                      <button
+                        key={s.days}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={s.days === span}
+                        className="rwho__pop-item"
+                        onClick={() => {
+                          setMenu(null);
+                          onSpan(s.days);
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                    <span className="rwho__pop-note" role="none">
+                      Then it ends by itself. Nothing is locked.
+                    </span>
+                  </span>
+                )}
+              </span>
+            )}
+          </span>
         </div>
       )}
     </article>
+    </SwipeRow>
   );
 }
 

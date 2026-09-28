@@ -84,9 +84,14 @@ export function CaptureSheet({
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   // A fresh draft each time the sheet opens, seeded by whoever opened it.
+  // Only a leader hands work to a named person (AJ, q5, Sep 27 2026:
+  // "Trainers can post offers where other trainers can pick it up but
+  // leadership can just directly assign"), so a trainer's "someone" preset
+  // becomes an offer on the board.
   useEffect(() => {
     if (!open) return;
-    setState(blankCapture(preset ?? {}));
+    const seeded = blankCapture(preset ?? {});
+    setState(seeded.destination === "someone" && !relay.canLead ? { ...seeded, destination: "floor", people: [] } : seeded);
     // A reminder preset arrives with a time: open the When picker so the
     // bell choices are in view without a tap.
     setPicker(preset?.time ? "when" : null);
@@ -95,7 +100,7 @@ export function CaptureSheet({
     setError(null);
     const t = setTimeout(() => textRef.current?.focus(), 50);
     return () => clearTimeout(t);
-  }, [open, preset]);
+  }, [open, preset, relay.canLead]);
 
   const todayKey = relay.now.todayKey;
   const { machines } = useStudioMachines(open ? relay.studioId : null, { bridgeWhenRosterEmpty: true });
@@ -112,7 +117,9 @@ export function CaptureSheet({
   const problemFor = (f: CaptureProblem["field"]) => problems.find((p) => p.field === f)?.message;
   const sentence = captureSentence(state, { todayKey, studioName: relay.studioName, machineName });
 
-  const destinations: CaptureDestination[] = ["me", "floor", "someone"];
+  // Someone is a leader's: they assign straight to a person. A trainer offers
+  // work on the board, where anyone can take it (AJ, q5).
+  const destinations: CaptureDestination[] = relay.canLead ? ["me", "floor", "someone"] : ["me", "floor"];
 
   const submit = async () => {
     const issues = captureProblems(state, { todayKey });

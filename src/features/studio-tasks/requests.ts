@@ -401,6 +401,29 @@ export async function setRequestClaim(params: {
   });
 }
 
+/**
+ * Put a name on an ask, or take it off (Relay room, Sep 28 2026).
+ *
+ * AJ, q5: "Trainers can post offers where other trainers can pick it up but
+ * leadership can just directly assign." A leader's Who? faces on the Board
+ * write this: the ask arrives as that person's, under Handed to you. With
+ * `null` the name comes off and the ask is an offer on the board again,
+ * which is how the person named says they can't take it. `forId` and
+ * `forName` are the two fields a hand-off has always carried; nothing new is
+ * stored, and a name is still a heads-up, never a lock (anyone may close it).
+ */
+export async function setRequestFor(params: {
+  studioId: string;
+  requestId: string;
+  person: TaskAuthor | null;
+}): Promise<void> {
+  const { studioId, requestId, person } = params;
+  await updateDoc(
+    requestDocRef(studioId, requestId),
+    person ? { forId: person.id, forName: person.name } : { forId: deleteField(), forName: deleteField() },
+  );
+}
+
 export async function resolveRequest(params: {
   studioId: string;
   requestId: string;

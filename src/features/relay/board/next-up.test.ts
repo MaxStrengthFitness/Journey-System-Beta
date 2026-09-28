@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { emptyPrompt, nextUp, resetSnoozes, snooze, snoozedIds } from "./next-up";
+import { emptyPrompt, nextUp, resetSnoozes, snooze, snoozedIds, unsnooze } from "./next-up";
 import type { TaskRow, TaskTemplate } from "../../studio-tasks/types";
 import type { TeamJob } from "../jobs/types";
 import type { TaskRequest } from "../../studio-tasks/requests";
@@ -139,6 +139,16 @@ describe("nextUp", () => {
     expect(snoozedIds("s1", TODAY, "closing").size).toBe(0);
     const list = nextUp({ ...base, rows: [], jobs: [], requests, snoozed });
     expect(list.map((s) => s.item.title)).toEqual(["b", "c", "d"]);
+  });
+
+  it("takes a snooze back on Undo, and leaves the rest where they were (Relay room, Sep 28 2026)", () => {
+    snooze("s1", TODAY, "mid", "ask:a");
+    snooze("s1", TODAY, "mid", "ask:b");
+    unsnooze("s1", TODAY, "mid", "ask:a");
+    expect([...snoozedIds("s1", TODAY, "mid")]).toEqual(["ask:b"]);
+    // Nothing to take back is nothing.
+    unsnooze("s1", TODAY, "closing", "ask:z");
+    expect(snoozedIds("s1", TODAY, "closing").size).toBe(0);
   });
 });
 
