@@ -30,7 +30,10 @@ export interface ChangesViewProps {
   loading: boolean;
   failed: boolean;
   today: string;
-  onBack: () => void;
+  /** The page it was opened from; without one (Week → This week so far) there is no Back. */
+  onBack?: () => void;
+  /** Where Back goes, in words. */
+  backLabel?: string;
   onOpenClient?: (clientId: string) => void;
 }
 
@@ -49,7 +52,7 @@ const longLabel = (day: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
 };
 
-export function ChangesView({ studio, entries, loading, failed, today, onBack, onOpenClient }: ChangesViewProps) {
+export function ChangesView({ studio, entries, loading, failed, today, onBack, backLabel = "Overview", onOpenClient }: ChangesViewProps) {
   const tz = studio.timezone || undefined;
   const days = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDays(today, i)), [today]);
   const counts = useMemo(() => changeCounts(entries, days, tz), [entries, days, tz]);
@@ -64,9 +67,11 @@ export function ChangesView({ studio, entries, loading, failed, today, onBack, o
         title={`${studio.name} — Changes`}
         subtitle="Cancellations and moves, held against the day the session was for. A day's list clears when that day ends. A cancellation reads as a reschedule only when the client rebooked: another session that week, booked within 12 hours before the cancellation or any time after it, and not already past. A booking they already held doesn't count."
         actions={
-          <AdminButton variant="quiet" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4" /> Overview
-          </AdminButton>
+          onBack ? (
+            <AdminButton variant="quiet" onClick={onBack}>
+              <ArrowLeft className="w-4 h-4" /> {backLabel}
+            </AdminButton>
+          ) : undefined
         }
       />
 

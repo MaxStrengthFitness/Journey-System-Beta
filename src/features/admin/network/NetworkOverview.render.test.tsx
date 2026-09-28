@@ -127,7 +127,7 @@ afterEach(() => {
 describe("the Overview under the Operations scope", () => {
   it("shows one studio's Overview, then every studio's tiles under All my studios, and a location switches the app", async () => {
     const el = await mount();
-    expect(el.textContent).toContain("Solon — Overview");
+    expect(el.textContent).toContain("Today · Solon");
     // One studio's Overview is not where an owner who can choose "All my
     // studios" launches across them.
     expect(el.textContent).not.toContain("Launch an initiative");
@@ -159,7 +159,7 @@ describe("a franchise owner who sees one studio", () => {
     const soloOwner = { ...owner, ownedStudioIds: ["solon"] } as unknown as Trainer;
     const el = await mount(soloOwner, [studios[0]]);
     expect(el.querySelector("#ops-scope")).toBeNull();
-    expect(el.textContent).toContain("Solon — Overview");
+    expect(el.textContent).toContain("Today · Solon");
     expect(el.textContent).toContain("Launch at 1 studio");
   });
 });
@@ -178,7 +178,7 @@ describe("a franchise owner inside Demo Mode", () => {
     const el = await mount(franchiseOwner, [demo, ...studios], "demo-studio", [ohio]);
     // One studio in the realm, so no "All my studios" to choose.
     expect(el.querySelector("#ops-scope")).toBeNull();
-    expect(el.textContent).toContain("Demo Studio — Overview");
+    expect(el.textContent).toContain("Today · Demo Studio");
     expect(el.querySelector("#nw-focus-n-ohio-mastery")).toBeNull();
     expect(el.textContent).not.toContain("Hip hinge");
     expect(el.textContent).toContain("Demo Studio is not in a network");

@@ -6,7 +6,7 @@ import { yourWeekQueryStart } from "./your-week";
 /**
  * YOUR WEEK'S ONE READ (Openings round, phase 11, Sep 27 2026).
  *
- * The read Operations → Insights → Hours makes — the studio's sessions by
+ * The read Operations → Team → Hours makes — the studio's sessions by
  * `createdAt`, on the existing (hostedAtStudioId, createdAt) index — from the
  * day before last Monday, answered by the SERVER, then filtered to the
  * trainer in memory. No new index, no listener, one read per open.

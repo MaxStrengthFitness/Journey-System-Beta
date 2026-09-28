@@ -208,7 +208,7 @@ export function TrainerProfileView({
       {/* Openings round, phase 11 (Sep 27 2026): Your week at the studio
           the iPad is in -- clients trained, sessions, session time and first
           session to last. The trainer's own profile only; leaders already
-          see clients and training hours on Operations -> Insights -> Hours. */}
+          see clients and training hours on Operations -> Team -> Hours. */}
       {visibility.scope === "self" && activeStudioId && trainer.id && (
         <YourWeek
           trainerId={trainer.id}

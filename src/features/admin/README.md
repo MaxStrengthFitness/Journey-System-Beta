@@ -12,25 +12,33 @@ fragmented the first time.
 
 ---
 
-## Where each Operations tab lives
+## Where each Operations page lives
 
 Every Operations screen is in this folder since the beta-prep trim (Sep 17
 2026). The Operations overhaul (Sep 19) cut the tabs to nine and moved the
 company tier to the Admins dashboard (`src/features/admins/`), which mounts
-this folder's screens too — moved, not rewritten.
+this folder's screens too — moved, not rewritten. The redesign's Operations
+room (Sep 28 2026, `docs/rounds/2026-09-28-operations.md`) put the nine under
+**five destinations — Today · Week · Clients · Team · Setup** — each tab's
+screen mounted as it was. `shell/places.ts` is the list.
 
-| Tab (group) | Folder or file |
+| Destination → page | Folder or file |
 | --- | --- |
-| The shell - the sidebar and which tab is showing | `AdminDashboardView.tsx` (`AdminDashboardView.render.test.tsx` opens every tab) |
-| Overview (Every day) | `overview/` (today, Needs you, the panels, the week; `floor.ts` is the day's arithmetic), `changes/` (the week's cancellations and moves), `attention/` (the watchlist and acknowledgements) |
-| Renewals (Clients) | `renewals/` (the engine is `src/features/renewals/`) |
-| Delight queue (Clients) | `src/features/ford/` (drawn by the shell) |
-| Floor (Studio) | `floor/` — mounts `src/features/my-studio/MachinesSection` (the one floor editor), `machine-fit/` and `routines/` |
-| Staff & Roles (Studio) | `staff/`, `provisional/` |
-| Insights (Studio) | `insights/` (`InsightsAndHours.tsx` puts `hours/` inside it) |
-| Announcements (Studio) | `announcements/` (the audiences follow the tier) |
-| Mindbody (Behind the scenes) | `mindbody/` (`company` off = a leader's own studio), `useAutoSync.ts`, `syncPolicy.ts` |
-| Data (Behind the scenes) | `data/` |
+| The shell — the sidebar (wide), the tabs across the top (upright), "Looking at", the client opened inside Operations, where a leader was | `AdminDashboardView.tsx` and `shell/` (`places.ts` the destinations and their pages, `place-memory.ts` the place, each destination's page, the client and the scroll, forgotten at sign-out; `OperationsNav.tsx` the two menus, Looking at and Setup's list; `ClientPage.tsx` a client opened in Operations, from the Client Directory's row model; `ops.css` every `ops-` class). `AdminDashboardView.render.test.tsx` opens every page |
+| Today (was Overview) | `overview/` — the brief (`TodayBrief.tsx`; `brief.ts` the bottom line, the nightly record, Catch today and since yesterday; `floor.ts` the day's arithmetic), `changes/` (the week's cancellations and moves; `useStudioWeek.ts` the week as the server answered it), `attention/` (the watchlist and acknowledgements) |
+| Clients → Journey (was the Overview's attendance watch) | `journey/` — `JourneyPage.tsx`, the rhythm (`rhythm.ts`), the states (`states.ts`), the case (`case.ts`), the studio's Journey in one pass (`journey-list.ts`, `useStudioJourneys.ts`), and her journey and case on the client page (`JourneyCase.tsx`). Read `journey/README.md` |
+| Week → Last week · This week so far · Week ahead | `week/` — `WeekPage.tsx` draws all three: the Monday review (a bottom line by rules, day by day, who crossed a line and who came back, the renewals decided, the team in name order, the trust line), this week so far (with the Changes view, `changes/ChangesView.tsx`) and the next seven days. `review.ts` is the pure half (the week's days, done means logged, late cancellations, the bottom line, how many days were read in full, each trainer's week); `useCoverageRecord.ts` reads the whole-read record's month documents |
+| Clients → Renewals | `renewals/` (the engine is `src/features/renewals/`) |
+| Clients → Moments (was Delight queue) | `src/features/ford/` (drawn by the shell) |
+| Clients → Trends (was Insights) | `trends/` — `TrendsPage.tsx`, the quarter's lines (`trends.ts`: renewal outcomes, a longer package, start groups, studio rhythm, lost reasons, and the two that wait for stored history), each with its named minimum, then `insights/AdminInsightsTab.tsx` below (By trainer in name order, never ranked) |
+| Team → This week, and the huddle | `team/` — `TeamWeekPage.tsx`: a card per trainer in today's schedule order, then who is off today (`team-week.ts`: last week's logging, their usual clients who are slipping, what is worth recognising, with the team's kudos from `useKudosThisWeek.ts`), Recognise onto today's huddle (`huddle-memory.ts`, this iPad's memory only), and the leaders-only renewal counts with the chance check (`renewal-counts.ts`). The huddle Today's "Start huddle" opens is `HuddleSheet.tsx`, its five items `huddle-agenda.ts`. Read `team/README.md` |
+| Team → Hours (was inside Insights) | `hours/` |
+| Setup → Floor | `floor/` — mounts `src/features/my-studio/MachinesSection` (the one floor editor), `machine-fit/` and `routines/` |
+| Setup → People & access (was Staff & Roles) | `staff/`, `provisional/` |
+| Setup → Announcements | `announcements/` (the audiences follow the tier) |
+| Setup → Mindbody | `mindbody/` (`company` off = a leader's own studio), `useAutoSync.ts`, `syncPolicy.ts` |
+| Setup → Data | `data/` |
+| Setup → Rules | `journey/RulesPage.tsx` — the numbers behind every sentence; the rhythm and state engine is `journey/rhythm.ts` and `journey/states.ts` (read `journey/README.md`) |
 | — on the Admins dashboard (`src/features/admins/`, its README) — | |
 | Home | `src/features/admins/home/` (what needs you, the network, the standard) |
 | Studios → All studios, a studio's page, Franchises | `src/features/admins/studios/` (the screens); the registry's editors here in `studios/` (`registry.ts`, `registry-writes.ts`, `StudioDetailsForm`, `NewStudioPanel`, `NetworksPanel`, `RegistryHealthPanel`), `equipment/`, `upkeep/`, `provisional/` |
@@ -144,7 +152,9 @@ looking at.** Four screens answered it four ways (a picker inside the tab,
 the app's studio, "every studio to everyone", the Franchise screen). The
 house answer is one control in the shell — **Looking at: this studio · All
 my studios** — read through `useOperationsScope()` (`scope.ts`,
-`scope-context.tsx`):
+`scope-context.tsx`). Since the redesign's Operations room it sits at the top
+of the sidebar when wide and in the top row when upright (`shell/OperationsNav`
+`LookingAt`), and says which studio even when there is nothing to choose:
 
 - **This studio is the app's active studio.** Picking a studio on the bar
   calls `setActiveStudioId`, so the roster, the schedule and today's
@@ -160,9 +170,10 @@ my studios** — read through `useOperationsScope()` (`scope.ts`,
   owners and the company, Focus this quarter and Launch an initiative —
   `overview/README.md`, "Under All my studios"); a tab that reads one studio
   renders `<PickOneStudio what="…" />` under "all" and nothing else.
-- Tabs are keyed on `scopeKey(ops.scope)` in the shell, so a switch
-  remounts them clean. `useOperationsScope()` outside the provider returns
-  a standalone value (the app's studio), never throws.
+- Pages are keyed on `scopeKey(ops.scope)` in the shell, so a switch
+  remounts them clean (and closes a client opened inside Operations: she may
+  not be the new studio's). `useOperationsScope()` outside the provider
+  returns a standalone value (the app's studio), never throws.
 - **Operations looks; My Studio edits.** A studio's own settings — details,
   its day, renewal settings, its notices — have one editor, on My Studio →
   Studio. An Operations tab that needs one points there

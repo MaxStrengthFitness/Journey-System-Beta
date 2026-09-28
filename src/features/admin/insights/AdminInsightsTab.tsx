@@ -296,7 +296,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
 
       <AdminPanel
         title="By trainer"
-        subtitle="Volume is a rota fact, not a ranking. The rates are the part worth reading."
+        subtitle="In name order, never a ranking (the redesign's Operations room, Sep 28 2026). Volume is a rota fact; a rate with a small sample says so."
         flush
       >
         {failed ? (
@@ -318,7 +318,7 @@ export function AdminInsightsTab({ studios, trainers, activeStudioId }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {perTrainer.map((t) => (
+                {[...perTrainer].sort((a, b) => a.label.localeCompare(b.label)).map((t) => (
                   <TrainerRow key={t.trainerKey} t={t} />
                 ))}
               </tbody>
@@ -346,7 +346,8 @@ function TrainerRow({ t }: { t: TrainerMetrics }) {
       </th>
       <td>{t.sessions}</td>
       <td>{pct(t.loadShare)}</td>
-      <td className={t.enoughToJudge && t.completionRate < 0.85 ? "adm-ins-bad" : undefined}>
+      {/* No red on a person's number: recognition, never ranking (the redesign's Operations room, Sep 28 2026). */}
+      <td>
         {pct(t.completionRate)}
       </td>
       <td>{t.clients}</td>

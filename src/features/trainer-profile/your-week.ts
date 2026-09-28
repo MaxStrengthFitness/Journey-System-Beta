@@ -8,7 +8,7 @@
  *
  * THE SAME NUMBERS HOURS SHOWS, BY CONSTRUCTION
  * ---------------------------------------------
- * Operations → Insights → Hours already counts a trainer's sessions. Your
+ * Operations → Team → Hours already counts a trainer's sessions. Your
  * week is that count for one person, two weeks, at the studio the iPad is
  * in, so it reuses Hours' rules rather than restating them:
  *

@@ -6,11 +6,13 @@ import { describe, expect, it } from "vitest";
 /**
  * WHERE THE HOURS ARE (voice review follow-up, final review, Sep 27 2026).
  *
- * Operations has had no Hours tab since the Operations overhaul: Hours is a
- * view inside Operations → Insights (InsightsAndHours). My Studio → Studio's
- * sentences were corrected in the round (relay-floor.render.test.tsx holds
- * them); Operations → Data's export card still sent a leader to
- * "Operations → Hours". No screen, comment or README in the app says it now.
+ * Operations had no Hours tab from the Operations overhaul: Hours was a view
+ * inside Operations → Insights. Since the redesign's Operations room (Sep 28
+ * 2026) it is a page of its own under Team: Operations → Team → Hours. A
+ * pointer to a bare "Operations → Hours" was wrong then and is still wrong,
+ * so none may come back. (Some sentences still say "Operations → Insights →
+ * Hours" in folders another room owns tonight; the round document's "For the
+ * integrator" lists them.)
  */
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -23,7 +25,7 @@ function files(dir: string): string[] {
 }
 
 describe("the pointer to Hours", () => {
-  it("names Operations → Insights → Hours, never an Operations → Hours tab", () => {
+  it("never names a bare Operations → Hours tab", () => {
     const stale = files(SRC)
       .filter((f) => /Operations (?:→|->) Hours/.test(readFileSync(f, "utf8")))
       .map((f) => relative(SRC, f));

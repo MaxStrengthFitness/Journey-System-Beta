@@ -127,7 +127,7 @@ AJ, on who sees what for the beta: "im not too concerned for permission at this 
 | Team's line and door ("3 free slots in the next 7 days · See them on Openings.") | The studio tier, on My Studio → Team, as before |
 | The Operations Overview's Openings line and door | Whoever opens the Overview and may read the studio's standing weeks |
 | The Wrap-up's **Times with room** | The trainer running the Wrap-up. The sheet shows times only, never a name, so it is safe to turn to the client |
-| **Your week** and **My clients** (My Profile) | The trainer themselves, on their own profile only. Another trainer's profile can't be opened in the app today, so no leader view is built; leaders see clients and training hours on Operations → Insights → Hours. Your week's read names the studio, which is what the existing sessions rule allows (works at, leads, franchise owner, administrator) |
+| **Your week** and **My clients** (My Profile) | The trainer themselves, on their own profile only. Another trainer's profile can't be opened in the app today, so no leader view is built; leaders see clients and training hours on Operations → Team → Hours. Your week's read names the studio, which is what the existing sessions rule allows (works at, leads, franchise owner, administrator) |
 | The weekly summary (`studios/{s}/watch/openings`) | Read by the studio's people; written by the Sunday job only, never from the app |
 
 ## Studio boundaries
