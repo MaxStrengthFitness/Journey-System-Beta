@@ -23,7 +23,7 @@
  */
 import type { ScheduleEntry } from "../../../types";
 import { formatStudioTime } from "../../../lib/studio-time";
-import type { LoggedSessions } from "../../../lib/booking-state";
+import type { BookingMarks, LoggedSessions } from "../../../lib/booking-state";
 import { attentionItems, summariseFloor, type FloorSummary } from "./floor";
 
 export interface TodayNumbers {
@@ -45,8 +45,8 @@ export interface TodayNumbers {
   clients: number;
 }
 
-export function todayNumbers(dayEntries: ScheduleEntry[], now: Date, logged: LoggedSessions | null, tz?: string): TodayNumbers {
-  const f: FloorSummary = summariseFloor(dayEntries, now, logged, tz);
+export function todayNumbers(dayEntries: ScheduleEntry[], now: Date, logged: LoggedSessions | null, tz?: string, marks?: BookingMarks | null): TodayNumbers {
+  const f: FloorSummary = summariseFloor(dayEntries, now, logged, tz, marks);
   const booked = f.booked - f.cancelled;
   const notCompleted = f.cancelled + f.noShow + f.unresolved;
   return {
@@ -67,6 +67,8 @@ export function todayNumbers(dayEntries: ScheduleEntry[], now: Date, logged: Log
 
 export interface ChaseRow {
   id: string;
+  /** The booking's own document id, when it has one: what a leader's "didn't come" is keyed by. */
+  bookingId: string | null;
   clientId: string | null;
   clientName: string;
   trainerName: string;
@@ -75,12 +77,14 @@ export interface ChaseRow {
   atMs: number;
 }
 
-/** The sessions nobody logged, earliest first — the list a leader takes to the floor. */
-export function chaseList(dayEntries: ScheduleEntry[], now: Date, logged: LoggedSessions | null, tz?: string): ChaseRow[] {
-  return attentionItems(dayEntries, now, logged, tz)
+/** The sessions nobody logged, earliest first — the list a leader takes to the floor (and marks "didn't come" from, wave 2). */
+export function chaseList(dayEntries: ScheduleEntry[], now: Date, logged: LoggedSessions | null, tz?: string, marks?: BookingMarks | null): ChaseRow[] {
+  const ids = new Set(dayEntries.map((e) => e.id).filter(Boolean));
+  return attentionItems(dayEntries, now, logged, tz, marks)
     .filter((i) => i.kind === "unresolved")
     .map((i) => ({
       id: i.id,
+      bookingId: ids.has(i.id) ? i.id : null,
       clientId: i.clientId ?? null,
       clientName: i.clientName,
       trainerName: i.trainerName,

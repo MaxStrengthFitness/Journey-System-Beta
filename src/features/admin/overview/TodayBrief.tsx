@@ -10,12 +10,17 @@
  *                        last changed, and how many clients can't be judged
  *                        (a button that says who and why)
  *   the bottom line      one sentence written by rules (brief.ts), the rules
- *                        a tap away, the day's facts under it, and the
- *                        sessions nobody logged as a door, never a count
+ *                        a tap away, the day's facts under it, and today's
+ *                        "didn't come" marks with Take back
  *   Needs you            only what a leader can clear right here: acknowledge
  *                        pain, an incident or a Critical note; take a gesture
  *                        nobody owns; review a note that has mattered 60 days
- *                        (AJ's question 3, default)
+ *                        (AJ's question 3, default); and, since wave 2 (AJ,
+ *                        Sep 28 2026: "all yes"), a session nobody logged,
+ *                        cleared by "Didn't come" once a leader has asked, or
+ *                        by itself when its trainer logs the workout. For
+ *                        someone who can't mark here (a leader visiting
+ *                        another studio) it stays a door, never a count
  *   Catch today          clients in today with a reason to see them in
  *                        person, from the Hub's ONE engine (hub-
  *                        opportunities/moments-today), and who trained today
@@ -50,8 +55,10 @@ import { auth } from "../../../firebase";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
 import { isStaffBlock } from "../../../lib/booking-state";
+import { canManageRenewals } from "../../renewals/permissions";
+import { markNoShow, takeBackNoShow, useBookingMarks } from "../attention/booking-marks";
 import { myTrainerIds } from "../../../lib/live-session";
-import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
+import { formatStudioDate, formatStudioTime, toDate } from "../../../lib/studio-time";
 import { useDelightQueue } from "../../ford/useClientFord";
 import { setGestureStatus } from "../../ford/ford-write";
 import { useCyclesRead } from "../../renewals/usePipeline";
@@ -144,6 +151,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const week = useStudioWeek(studioId, today, tz);
   const weekUnread = week.loading || week.failed;
   const logged = useTodaySessions(studioId, today, tz);
+  // The leaders' "didn't come" on today's bookings (wave 2).
+  const marks = useBookingMarks(studioId, today, today);
+  const canMark = canManageRenewals(authTrainer, studioId);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
   const acks = useAcknowledgements(studioId);
@@ -165,9 +175,17 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
 
   /* ---- today ---- */
   const todayEntries = useMemo(() => entriesForDay(week.entries, today), [week.entries, today]);
-  const numbers = useMemo(() => todayNumbers(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
-  const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
-  const neverLogged = weekUnread || logged.loading || logged.failed || numbers.unknown > 0 ? null : numbers.neverLogged;
+  const numbers = useMemo(() => todayNumbers(todayEntries, now, logged.logged, tz, marks.marks), [todayEntries, now, logged.logged, tz, marks.marks]);
+  const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz, marks.marks), [todayEntries, now, logged.logged, tz, marks.marks]);
+  // While today's marks are still out, a marked session would show as unlogged for a beat: nothing is counted until they answer.
+  const neverLogged = weekUnread || logged.loading || logged.failed || marks.loading || numbers.unknown > 0 ? null : numbers.neverLogged;
+  const marked = useMemo(() => {
+    const byId = new Map(todayEntries.filter((e) => e.id).map((e) => [e.id as string, e]));
+    return marks.rows
+      .filter((m) => m.noShow && m.day === today)
+      .map((m) => ({ ...m, booking: byId.get(m.id) ?? null }))
+      .sort((a, b) => (toDate(a.booking?.startTime)?.getTime() ?? 0) - (toDate(b.booking?.startTime)?.getTime() ?? 0));
+  }, [marks.rows, todayEntries, today]);
   const trainersOn = useMemo(() => {
     const on = new Set<string>();
     for (const b of todayEntries) {
@@ -195,9 +213,16 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   );
   const delightById = useMemo(() => new Map(delight.rows.map((r) => [`gesture:${r.entry.id}`, r])), [delight.rows]);
   const unowned = useMemo(() => moment.rows.filter((r) => r.kind === "gesture" && r.needsOwner && delightById.get(r.key)?.entry.opportunity), [moment.rows, delightById]);
+  // A session nobody logged is a Needs-you row for whoever can mark it here (wave 2), and a door for anyone else.
+  const unlogged = canMark && neverLogged !== null ? chase : [];
+  // Until the week, today's logging and today's marks have all answered, who nobody logged is unknown: there may be more.
+  const unloggedUnknown = canMark && (neverLogged === null || marks.failed);
   const needsLoading = own.loading || recent.loading || acks.loading || delight.isLoading;
-  const needsPartial = own.failed.incidents || own.failed.critical || recent.failed || acks.failed || delight.failed;
-  const needsCount = painPending.pending.length + unowned.length + review.length;
+  const otherPartial = own.failed.incidents || own.failed.critical || recent.failed || acks.failed || delight.failed;
+  const needsPartial = otherPartial || unloggedUnknown;
+  // Still reading (not failed): say so in those words.
+  const unloggedStillReading = !otherPartial && canMark && neverLogged === null && !marks.failed && (week.loading || logged.loading || marks.loading);
+  const needsCount = painPending.pending.length + unowned.length + review.length + unlogged.length;
   useEffect(() => {
     onNeedsCount?.(needsLoading ? null : needsCount);
   }, [onNeedsCount, needsLoading, needsCount]);
@@ -434,6 +459,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     });
   const dismissClient = (clientId: string) => run(`watch:${clientId}`, () => writeWatch(studioId, dismissal(clientId, clients.find((c) => c.id === clientId), me, today)));
   const gotIt = (clientId: string) => run(`watch:${clientId}`, () => clearWatch(studioId, clientId));
+  const didntCome = (bookingId: string, clientId: string) => run(`mark:${bookingId}`, () => markNoShow(studioId, { id: bookingId, clientId, day: today }, me));
+  const takeBack = (bookingId: string) => run(`mark:${bookingId}`, () => takeBackNoShow(studioId, bookingId));
 
   const door = (to: OverviewLink, label: string) =>
     onOpen && (
@@ -450,6 +477,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     needsPartial: needsPartial || needsLoading,
     catchCount,
     neverLogged,
+    unloggedInNeeds: canMark,
     week: week.read,
     renewalUnknown,
     nightly,
@@ -519,7 +547,34 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
           )
         }
         below={
-          neverLogged !== null && neverLogged > 0 ? (
+          canMark ? (
+            marked.length > 0 ? (
+              <div className="ops-bluf__chase">
+                <p className="ops-quiet">
+                  Marked didn't come today: {marked.length}. They count as no-shows, never as visits. Marked by mistake? Take it back and the session is
+                  unlogged again.
+                </p>
+                <ActionRows
+                  rows={marked.map((m) => ({
+                    key: `marked:${m.id}`,
+                    clientId: m.clientId,
+                    name: m.booking?.clientName || clientName(m.clientId ?? ""),
+                    sentence: `${m.booking ? `${formatStudioTime(toDate(m.booking.startTime) ?? now, tz)} with ${m.booking.trainerName || "no trainer named"}` : "Today"} — didn't come.`,
+                    proof: m.markedBy?.name ? `Marked by ${m.markedBy.name}.` : "Marked by a leader.",
+                    tone: "info",
+                    badge: "Didn't come",
+                    actions: (
+                      <AdminButton size="sm" variant="ghost" busy={busyKey === `mark:${m.id}`} onClick={() => void takeBack(m.id)}>
+                        Take back
+                      </AdminButton>
+                    ),
+                  }))}
+                  onOpenClient={onNavigateProfile}
+                  empty=""
+                />
+              </div>
+            ) : undefined
+          ) : neverLogged !== null && neverLogged > 0 ? (
             <div className="ops-bluf__chase">
               <p className="ops-quiet">
                 {neverLogged} finished {neverLogged === 1 ? "session has" : "sessions have"} no workout logged. Its trainer logs it on the client's profile; a
@@ -566,7 +621,15 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
         {needsLoading ? (
           <BriefEmpty>Reading incidents, notes and the Dial…</BriefEmpty>
         ) : needsCount === 0 ? (
-          <BriefEmpty>{needsPartial ? "Nothing that could be read needs you. Part of this couldn't be read just now, so there may be more." : `Nothing to acknowledge, take or review. Checked ${checkedAt}.`}</BriefEmpty>
+          <BriefEmpty>
+            {unloggedStillReading
+              ? "Nothing needs you so far. Today's logging is still being read, so a session nobody logged may not be here yet."
+              : needsPartial
+                ? "Nothing that could be read needs you. Part of this couldn't be read just now, so there may be more."
+                : canMark
+                  ? `Nothing to acknowledge, take, review or mark. Checked ${checkedAt}.`
+                  : `Nothing to acknowledge, take or review. Checked ${checkedAt}.`}
+          </BriefEmpty>
         ) : (
           <>
             <ActionRows
@@ -587,6 +650,28 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
               onOpenClient={onNavigateProfile}
               empty=""
             />
+            {unlogged.length > 0 && (
+              <ActionRows
+                rows={unlogged.map((c) => ({
+                  key: `unlogged:${c.id}`,
+                  clientId: c.clientId,
+                  name: c.clientName,
+                  sentence: `${c.at} with ${c.trainerName} — past its slot, nothing logged.`,
+                  proof:
+                    "No Journey session for her today. Ask on the floor: if she trained, her trainer logs it on her profile and this row goes by itself; if she didn't come, mark it.",
+                  tone: "alert",
+                  badge: "Not logged",
+                  actions:
+                    c.bookingId && c.clientId ? (
+                      <AdminButton size="sm" busy={busyKey === `mark:${c.bookingId}`} onClick={() => void didntCome(c.bookingId as string, c.clientId as string)}>
+                        Didn't come
+                      </AdminButton>
+                    ) : undefined,
+                }))}
+                onOpenClient={onNavigateProfile}
+                empty=""
+              />
+            )}
             <ActionRows
               rows={unowned.map((r) => ({
                 key: r.key,
@@ -615,7 +700,11 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
                 </AdminButton>
               </div>
             )}
-            {needsPartial && <p className="ops-sec__note">Part of this couldn't be read just now, so the list may be short.</p>}
+            {needsPartial && (
+              <p className="ops-sec__note">
+                {unloggedStillReading ? "Today's logging is still being read, so a session nobody logged may not be here yet." : "Part of this couldn't be read just now, so the list may be short."}
+              </p>
+            )}
           </>
         )}
       </BriefSection>

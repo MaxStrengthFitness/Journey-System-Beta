@@ -429,6 +429,26 @@ service cloud.firestore {
       return roleIsSuper(r) || roleIsFranchise(r) || trainerLeads(r, t, studioId);
     }
 
+    /* WAVE 2 OPERATIONS: who may, with the caller resolved ONCE (Sep 28
+       2026). getRole() and callerTrainer() each read the trainer document;
+       asked once here, everything below them is a map lookup, so the wave's
+       rules stay far inside the 1,000-expression budget. The same answers as
+       the renewals' (renewalsManageable: the studio's leaders, the grant
+       included, franchise owners and administrators; renewalsReadable: also
+       everyone who works there), which the app mirrors with
+       canManageRenewals / canTakePartInRenewals. */
+    function wave2Leads(studioId) {
+      let r = getRole();
+      let t = callerTrainer();
+      return renewalsManageable(studioId, r, t);
+    }
+
+    function wave2WorksHere(studioId) {
+      let r = getRole();
+      let t = callerTrainer();
+      return renewalsReadable(studioId, r, t);
+    }
+
     /** Absent, or a number inside [lo, hi]. */
     function numberWithin(d, key, lo, hi) {
       return !(key in d) || (d[key] is number && d[key] >= lo && d[key] <= hi);
@@ -2518,6 +2538,37 @@ service cloud.firestore {
                               && writesForStudio(studioId)
                               && request.resource.data.acknowledgedBy == request.auth.uid;
         allow delete: if false;
+      }
+
+      /*
+       * WAVE 2 OPERATIONS: a leader's "didn't come" (Sep 28 2026; AJ: "all
+       * yes"). One document per booking, keyed by the booking's own id: a
+       * leader who chased a session nobody logged and learned she didn't
+       * come marks it on Operations → Today, and lib/booking-state.ts reads
+       * it as a no-show from then on (the Week pages, Team, and the nightly
+       * renewals job, which reads it through the Admin SDK). Read by the
+       * people who work at the studio; written, and taken back (deleted), by
+       * its leaders. Signed with the Auth uid and the server's time. The
+       * cheap field checks come before the one that reads the trainer.
+       */
+      match /bookingMarks/{bookingId} {
+        function bookingMarkValid(d) {
+          return d.keys().hasOnly(['noShow', 'clientId', 'day', 'markedBy', 'markedAt'])
+              && d.keys().hasAll(['noShow', 'clientId', 'day', 'markedBy', 'markedAt'])
+              && d.noShow == true
+              && d.clientId is string && d.clientId.size() > 0 && d.clientId.size() <= 128
+              && d.day is string && d.day.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+              && d.markedBy is map
+              && d.markedBy.keys().hasOnly(['id', 'name'])
+              && d.markedBy.id == request.auth.uid
+              && d.markedBy.name is string && d.markedBy.name.size() <= 120
+              && d.markedAt == request.time;
+        }
+        allow read: if isAuthenticated() && wave2WorksHere(studioId);
+        allow create, update: if isAuthenticated()
+                              && bookingMarkValid(request.resource.data)
+                              && wave2Leads(studioId);
+        allow delete: if isAuthenticated() && wave2Leads(studioId);
       }
 
       /*

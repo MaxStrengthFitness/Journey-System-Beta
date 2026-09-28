@@ -28,7 +28,14 @@
  *      logged reads both done. It beats a Mindbody "No-Show", because a
  *      logged session is proof they trained.
  *   3. Mindbody said Completed or No-Show (manual marking there; the sync does
- *      not carry it today, the type allows it) → that.
+ *      not carry it today, the type allows it) → that. A LEADER'S MARK is the
+ *      same as Mindbody's No-Show (wave 2, Sep 28 2026; AJ: "all yes"): a
+ *      leader who chased a session nobody logged and learned she didn't come
+ *      marks it on Operations → Today (`studios/{s}/bookingMarks/{bookingId}`,
+ *      `noShow: true`), and from then on it is a no-show everywhere this rule
+ *      is asked with the marks: not a visit, not "never logged", and off
+ *      Needs you. A logged session still beats it (rule 2), so a session
+ *      logged later for that day makes it done again, whatever was marked.
  *   4. Otherwise the clock, the Overview's rule since the floor snapshot: not
  *      started → upcoming; started, slot not over (five minutes' slack) → in
  *      progress; slot over → never logged.
@@ -43,7 +50,10 @@
  *
  * PURE. The caller reads the sessions — one bounded query scoped to the studio
  * (or to the one client), never one query per client — and hands them over
- * through `loggedSessions`, which indexes them once.
+ * through `loggedSessions`, which indexes them once. The marks, likewise, are
+ * one bounded read of the studio's `bookingMarks` (by `day`), indexed once by
+ * `bookingMarks`. A caller that doesn't read them passes nothing, and a
+ * marked booking then reads as it did before the mark (never logged).
  */
 import type { ScheduleEntry, WorkoutSession } from "../types";
 import { sessionDayKey } from "../features/client-history/model";
@@ -64,6 +74,8 @@ export type BookingState =
 
 /** What a booking needs to carry. Any schedule-shaped row fits. */
 export interface BookingLike {
+  /** The booking's document id (Mindbody's appointment id): what a leader's mark is keyed by. */
+  id?: string | null;
   clientId?: string | null;
   startTime: unknown;
   endTime?: unknown;
@@ -79,6 +91,23 @@ export type SessionLike = Pick<WorkoutSession, "status"> & Partial<WorkoutSessio
  */
 export interface LoggedSessions {
   has(clientId: string, day: string): boolean;
+}
+
+/**
+ * The bookings a studio's leaders marked "didn't come" (`studios/{s}/bookingMarks`,
+ * keyed by the booking's id). Built once from a read of the marks; `null` in
+ * its place means the marks weren't read, and nothing is taken as marked.
+ */
+export interface BookingMarks {
+  noShow(bookingId: string): boolean;
+}
+
+/** Index a read of the marks. Only a mark that says `noShow: true` counts. */
+export function bookingMarks(rows: ReadonlyArray<{ id: string; noShow?: unknown }> | null | undefined): BookingMarks | null {
+  if (!rows) return null;
+  const ids = new Set<string>();
+  for (const r of rows) if (r && r.noShow === true && typeof r.id === "string" && r.id) ids.add(r.id);
+  return { noShow: (id) => ids.has(id) };
 }
 
 /** Five minutes of slack: a session that ran two minutes over is not an operational problem. */
@@ -138,13 +167,15 @@ export function slotOver(booking: BookingLike, now: Date): boolean {
 /**
  * The booking's operational state on the studio's Eastern day. `logged` is
  * `loggedSessions(...)` over the sessions read for that day (or that client);
- * `null` when they could not be read.
+ * `null` when they could not be read. `marks` is `bookingMarks(...)` over the
+ * studio's marks, when the caller read them.
  */
 export function bookingState(
   booking: BookingLike,
   logged: LoggedSessions | null,
   now: Date,
   tz?: string,
+  marks?: BookingMarks | null,
 ): BookingState {
   if (booking.status === "Cancelled") return "cancelled";
 
@@ -154,6 +185,8 @@ export function bookingState(
   }
   if (booking.status === "Completed") return "completed";
   if (booking.status === "No-Show") return "no-show";
+  // A leader marked it "didn't come" (rule 3): only a logged session, above, outranks it.
+  if (marks && booking.id && marks.noShow(booking.id)) return "no-show";
 
   const start = toDate(booking.startTime as never);
   if (!start || start > now) return "upcoming";

@@ -47,7 +47,7 @@ const writes: Array<{ op: string; path: string; data?: unknown }> = [];
  * live listener's server answer, delivered when a test says so. `quiet`
  * empties the sessions, incidents and notes.
  */
-const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, serverLater: [] as Array<() => void> }));
+const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, quiet: false, serverLater: [] as Array<() => void>, marks: [] as Array<Record<string, unknown>> }));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -125,6 +125,8 @@ vi.mock("firebase/firestore", () => {
           finalAt: daysAgo(30),
         },
       ]);
+    // A leader's "didn't come" marks on today's bookings (wave 2).
+    if (path === "studios/solon/bookingMarks") return snap(failures.marks);
     if (path === "studios/solon/openingsMarks")
       return snap([
         { id: "2-1030", weekday: 2, time: "10:30", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) },
@@ -250,6 +252,7 @@ afterEach(() => {
   failures.weekCacheOnly = false;
   failures.quiet = false;
   failures.serverLater.length = 0;
+  failures.marks = [];
   NOW = MONDAY;
   localStorage.clear();
   vi.useRealTimers();
@@ -301,14 +304,14 @@ describe("Today, the brief", () => {
   it("leads with a bottom line written by rules, then the sections in their fixed order", async () => {
     const counts: Array<number | null> = [];
     const el = await mount(undefined, { onNeedsCount: (n) => counts.push(n) });
-    // Two things clear here (Ann's critical note and pain, Bea's incident); Eve is in at 11 with
-    // her renewal talk due and Fay trained today with nothing booked; Dee's session is unlogged.
+    // Three things clear here (Ann's critical note and pain, Bea's incident, Dee's unlogged session);
+    // Eve is in at 11 with her renewal talk due and Fay trained today with nothing booked.
     expect(bottomLine(el)).toBe(
-      "Two things need you this morning, and two clients are worth catching in person. One of today's finished sessions has no workout logged yet.",
+      "Three things need you this morning, and two clients are worth catching in person. One of today's finished sessions has no workout logged yet: ask on the floor, then its trainer logs it or you mark it didn't come.",
     );
     expect([...el.querySelectorAll(".ops-sec__t")].map((h) => h.textContent)).toEqual(["Needs you", "Catch today", "Slipping away", "Since yesterday", "Coming up", "Going right", "Worth a look"]);
     // The count reaches the menu's badge.
-    expect(counts.at(-1)).toBe(2);
+    expect(counts.at(-1)).toBe(3);
     // The freshness line says when the schedule was read.
     expect(el.querySelector(".ops-fresh__line")?.textContent).toContain("Schedule read");
     // The day's facts: four live bookings, two done (Ann's in Mindbody, Bea's logged in Journey).
@@ -317,7 +320,7 @@ describe("Today, the brief", () => {
     expect(facts).toContain("2 done");
     // The rules are one tap away.
     await click(buttonByText(el, "How this line is written"));
-    expect(el.querySelector(".ops-bluf__rules")?.textContent).toContain("Needs you: 2 rows you can clear on this page");
+    expect(el.querySelector(".ops-bluf__rules")?.textContent).toContain("Needs you: 3 rows you can clear on this page (acknowledge, take a gesture, review a note, or mark a session nobody logged \"didn't come\")");
   });
 
   it("Start huddle opens the morning's agenda from the brief's own lines, and writes nothing", async () => {
@@ -349,12 +352,16 @@ describe("Today, the brief", () => {
     const needs = section(el, "needs");
     expect(needs.textContent).toContain("Ann Able");
     expect(needs.textContent).toContain("Bea Best");
-    // Dee's unlogged session is a door under the bottom line, never a Needs-you row.
-    expect(needs.textContent).not.toContain("Dee Dunn");
-    await click(buttonByText(el, "See who to ask"));
-    expect(el.querySelector(".ops-bluf__chase")?.textContent).toContain("7:00 AM with AJ Jurgens — past its slot, nothing logged.");
+    // Dee's unlogged session is a Needs-you row a leader clears with "Didn't come" (wave 2).
+    expect(needs.textContent).toContain("Dee Dunn");
+    expect(needs.textContent).toContain("7:00 AM with AJ Jurgens — past its slot, nothing logged.");
     // Bea's session is logged: she is not chased.
-    expect(el.querySelector(".ops-bluf__chase")?.textContent).not.toContain("7:30 AM with AJ Jurgens");
+    expect(needs.textContent).not.toContain("7:30 AM with AJ Jurgens");
+    expect(buttonByText(el, "See who to ask")).toBeUndefined();
+    await click(buttonByText(needs, "Didn't come"));
+    const mark = writes.find((w) => w.path === "studios/solon/bookingMarks/s7");
+    expect(mark?.op).toBe("set");
+    expect(mark?.data).toMatchObject({ noShow: true, clientId: "c4", day: dayKey(0), markedBy: { id: "lead", name: "Lee Leader" } });
 
     await click(buttonByText(el, "Acknowledge all"));
     const acks = writes.filter((w) => w.path.startsWith("studios/solon/acknowledgements/"));
@@ -496,8 +503,45 @@ describe("Today, the brief", () => {
     failures.quiet = true;
     const el = await mount(undefined, { clients: [] });
     // Dee's and Bea's sessions are never logged here (the sessions read is empty): named, not steady.
-    expect(bottomLine(el)).toContain("of today's finished sessions have no workout logged yet.");
+    expect(bottomLine(el)).toContain("of today's finished sessions have no workout logged yet");
     expect(bottomLine(el)).not.toContain("steady");
-    expect(section(el, "needs").textContent).toContain("Nothing to acknowledge, take or review.");
+    const needs = section(el, "needs").textContent ?? "";
+    expect(needs).toContain("Dee Dunn");
+    expect(needs).toContain("Bea Best");
+  });
+
+  it("clears a session a leader marked didn't come, and Take back puts it back", async () => {
+    failures.marks = [{ id: "s7", noShow: true, clientId: "c4", day: dayKey(0), markedBy: { id: "lead", name: "Lee Leader" }, markedAt: new Date() }];
+    const el = await mount();
+    // Off Needs you, off the bottom line's unlogged count.
+    expect(section(el, "needs").textContent).not.toContain("Dee Dunn");
+    expect(bottomLine(el)).toContain("Two things need you this morning");
+    expect(bottomLine(el)).not.toContain("no workout logged");
+    // Under the bottom line, with who marked it and Take back.
+    const chase = el.querySelector(".ops-bluf__chase")?.textContent ?? "";
+    expect(chase).toContain("Marked didn't come today: 1.");
+    expect(chase).toContain("7:00 AM with AJ Jurgens — didn't come.");
+    expect(chase).toContain("Marked by Lee Leader.");
+    await click(buttonByText(el.querySelector<HTMLElement>(".ops-bluf__chase")!, "Take back"));
+    expect(writes.find((w) => w.path === "studios/solon/bookingMarks/s7")?.op).toBe("delete");
+  });
+
+  it("keeps a session nobody logged as a door for someone who can't mark it at this studio", async () => {
+    act(() => root?.unmount());
+    const visitor = { id: "lead", fullName: "Lee Leader", role: "HeadTrainer", primaryHomeStudioId: "elsewhere", accessibleStudioIds: ["elsewhere", "solon"] } as unknown as Trainer;
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(<OverviewPage authTrainer={visitor} studios={[studio]} trainers={trainers} machines={machines} clients={clients()} schedules={[]} activeStudioId="solon" onOpen={() => {}} />);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(section(host, "needs").textContent).not.toContain("Dee Dunn");
+    expect(buttonByText(host, "Didn't come")).toBeUndefined();
+    await click(buttonByText(host, "See who to ask"));
+    expect(host.querySelector(".ops-bluf__chase")?.textContent).toContain("7:00 AM with AJ Jurgens — past its slot, nothing logged.");
   });
 });

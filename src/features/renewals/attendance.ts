@@ -15,7 +15,10 @@
  *              miss: it is on the Overview's chase list, and a session logged
  *              later makes it a visit the next night. (Calling it a no-show
  *              would put a trainer's forgotten log in the watch's
- *              "cancellations or no-shows" sentence.)
+ *              "cancellations or no-shows" sentence.) A booking a studio's
+ *              leader marked "didn't come" on Operations → Today (wave 2,
+ *              Sep 28 2026; `studios/{s}/bookingMarks`) IS a no-show, before
+ *              the cutover as after it: a leader chased it and knows.
  *   sessions   Journey workouts recorded on the iPad. Always a visit.
  *
  * Both become AttendanceRow on the studio's calendar, which is all the engine
@@ -25,12 +28,12 @@
 import { doseOf, readinessDial } from "../rating/session-reads";
 import type { ScheduleEntry, WorkoutSession } from "../../types";
 import { studioDateKey, toDate } from "../../lib/studio-time";
-import { bookingState, type LoggedSessions } from "../../lib/booking-state";
+import { bookingState, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { sessionDayKey, type HistorySession } from "../client-history/model";
 import type { AttendanceRow, SessionFeelRow } from "./engine";
 
 type ScheduleLike = Pick<ScheduleEntry, "startTime" | "status" | "trainerId"> &
-  Partial<Pick<ScheduleEntry, "endTime" | "clientId" | "studioId">>;
+  Partial<Pick<ScheduleEntry, "id" | "endTime" | "clientId" | "studioId">>;
 
 /** What Journey holds for this client, to read their bookings against. */
 export interface JourneyRecord {
@@ -38,6 +41,8 @@ export interface JourneyRecord {
   logged: LoggedSessions | null;
   /** A studio's `journeyCutoverDate` (yyyy-mm-dd), or null when unset or unknown. */
   cutoverOf: (studioId: string | null | undefined) => string | null;
+  /** The bookings a leader marked "didn't come" (`bookingMarks(...)`), when they were read. */
+  marks?: BookingMarks | null;
 }
 
 export function attendanceFromSchedules(
@@ -53,7 +58,7 @@ export function attendanceFromSchedules(
     const day = studioDateKey(start, tz);
     if (!day) continue;
     let kind: AttendanceRow["kind"];
-    switch (bookingState(r, journey?.logged ?? null, now, tz)) {
+    switch (bookingState(r, journey?.logged ?? null, now, tz, journey?.marks ?? null)) {
       case "cancelled":
         kind = "cancelled";
         break;

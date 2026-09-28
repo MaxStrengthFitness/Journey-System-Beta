@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../../types";
-import { loggedSessions } from "../../../lib/booking-state";
+import { bookingMarks, loggedSessions } from "../../../lib/booking-state";
 import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 
 const TZ = "America/New_York";
@@ -45,10 +45,19 @@ describe("the week's days", () => {
     expect(d.toCome).toBe(1);
     expect(dayLine(d)).toBe("1 booked, 1 to come");
   });
+
+  it("counts a booking a leader marked \"didn't come\" as that, never as not logged", () => {
+    const entries = [booking("a", "ann", "2026-09-24", "09:00"), booking("b", "bea", "2026-09-24", "10:00")];
+    const logged = loggedSessions([], TZ);
+    const d = dayFacts(entries, "2026-09-24", logged, NOW, TZ, bookingMarks([{ id: "b", noShow: true }]));
+    expect(d).toMatchObject({ booked: 2, done: 0, notLogged: 1, noShow: 1 });
+    expect(dayLine(d)).toBe("0 of 2 logged · 1 not logged · 1 didn't come");
+    expect(totals([d]).noShow).toBe(1);
+  });
 });
 
 describe("the Monday review's bottom line", () => {
-  const day = (over: Partial<DayFacts>): DayFacts => ({ day: "2026-09-21", label: "Mon", booked: 0, done: 0, notLogged: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0, ...over });
+  const day = (over: Partial<DayFacts>): DayFacts => ({ day: "2026-09-21", label: "Mon", booked: 0, done: 0, notLogged: 0, noShow: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0, ...over });
 
   it("says what was logged, the late cancellations, who slipped and came back, and the renewals decided", () => {
     const t = totals([day({ booked: 56, done: 54, notLogged: 2 }), day({ day: "2026-09-22", booked: 49, done: 49, late: 3, cancelled: 3 })]);
@@ -72,9 +81,9 @@ describe("the Monday review's bottom line", () => {
 describe("the whole-read record, and the busiest day", () => {
   it("counts days with bookings read in full, and can't tell a month whose record failed", () => {
     const days = [
-      { day: "2026-09-29", label: "Tue", booked: 3, done: null, notLogged: null, toCome: 3, cancelled: 0, late: 0, unstamped: 0 },
-      { day: "2026-09-30", label: "Wed", booked: 0, done: null, notLogged: null, toCome: 0, cancelled: 0, late: 0, unstamped: 0 },
-      { day: "2026-10-01", label: "Thu", booked: 5, done: null, notLogged: null, toCome: 5, cancelled: 0, late: 0, unstamped: 0 },
+      { day: "2026-09-29", label: "Tue", booked: 3, done: null, notLogged: null, noShow: 0, toCome: 3, cancelled: 0, late: 0, unstamped: 0 },
+      { day: "2026-09-30", label: "Wed", booked: 0, done: null, notLogged: null, noShow: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0 },
+      { day: "2026-10-01", label: "Thu", booked: 5, done: null, notLogged: null, noShow: 0, toCome: 5, cancelled: 0, late: 0, unstamped: 0 },
     ];
     const record = new Map<string, ReadonlySet<string> | null>([["2026-09", new Set(["2026-09-29"])], ["2026-10", null]]);
     expect(readInFull(days, record)).toEqual({ read: 1, of: 2, unknown: 1 });
@@ -106,6 +115,13 @@ describe("each trainer's week", () => {
       ["Beregond Guard", 2, 2],
     ]);
     expect(week[1].missing.map((m) => m.clientName)).toEqual(["bea", "ann"]);
+  });
+
+  it("leaves a booking a leader marked \"didn't come\" off the trainer's not logged", () => {
+    const entries = [booking("a", "ann", "2026-09-21", "09:00"), booking("b", "bea", "2026-09-21", "10:00")];
+    const week = teamWeek(entries, loggedSessions([], TZ), "2026-09-21", "2026-09-27", trainers, NOW, TZ, bookingMarks([{ id: "a", noShow: true }]));
+    expect(week[0]).toMatchObject({ name: "Beregond Guard", booked: 2, notLogged: 1 });
+    expect(week[0].missing.map((m) => m.clientName)).toEqual(["bea"]);
   });
 
   it("is unknown, never zero, when the sessions couldn't be read", () => {

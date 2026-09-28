@@ -4380,4 +4380,103 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
     });
   });
+  // -- WAVE 2 OPERATIONS (Sep 28 2026; AJ: "all yes"). Each part of the
+  // wave's Operations data, written the way the app writes it, by every kind
+  // of person the rules name. Nobody here has a role claim on the token, so
+  // each reads its role from its trainer document: the costliest path.
+  describe("wave 2 operations", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+    type Db = ReturnType<typeof as>;
+
+    async function seedPeople() {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+          setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+        await person("franchiseX", "FranchiseOwner", "studioB");
+        await person("adminX", "Admin", "studioB");
+        await person("headA", "HeadTrainer", "studioA");
+        await person("leaderA", "StudioLeader", "studioA");
+        await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+        await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+        await person("headB", "HeadTrainer", "studioB");
+      });
+    }
+
+    const LEADERS = ["ownerA", "headA", "leaderA", "grantA", "franchiseX", "adminX"];
+
+    // -- A leader's "didn't come" on a booking nobody logged.
+    describe("booking marks", () => {
+      const markRef = (db: Db, studioId: string, bookingId: string) => doc(db, "studios", studioId, "bookingMarks", bookingId);
+      /** What the app writes (attention/booking-marks.ts markDoc). */
+      const mark = (uid: string, over: Record<string, unknown> = {}) => ({
+        noShow: true,
+        clientId: "client-eowyn",
+        day: "2026-09-28",
+        markedBy: { id: uid, name: `Person ${uid}` },
+        markedAt: serverTimestamp(),
+        ...over,
+      });
+
+      it("lets the studio's leaders, franchise owners and administrators mark, read and take back", async () => {
+        await seedPeople();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(setDoc(markRef(db, "studioA", `b-${uid}`), mark(uid)));
+          await assertSucceeds(getDoc(markRef(db, "studioA", `b-${uid}`)));
+          await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "bookingMarks"), where("day", ">=", "2026-09-21"), where("day", "<=", "2026-09-28"))));
+          await assertSucceeds(deleteDoc(markRef(db, "studioA", `b-${uid}`)));
+        }
+      });
+
+      it("lets everyone who works there read the marks, and no one but a leader write one", async () => {
+        await seedPeople();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+          await setDoc(doc(ctx.firestore(), "studios", "studioA", "bookingMarks", "b1"), { ...mark("ownerA"), markedAt: new Date() });
+        });
+        for (const uid of ["trainerA", "guestA"]) {
+          const db = as(uid);
+          await assertSucceeds(getDoc(markRef(db, "studioA", "b1")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "bookingMarks")));
+          await assertFails(setDoc(markRef(db, "studioA", "b2"), mark(uid)));
+          await assertFails(deleteDoc(markRef(db, "studioA", "b1")));
+        }
+        for (const uid of ["trainerB", "headB"]) {
+          const db = as(uid);
+          await assertFails(getDoc(markRef(db, "studioA", "b1")));
+          await assertFails(setDoc(markRef(db, "studioA", "b2"), mark(uid)));
+          await assertFails(deleteDoc(markRef(db, "studioA", "b1")));
+        }
+        const out = testEnv.unauthenticatedContext().firestore();
+        await assertFails(getDoc(markRef(out, "studioA", "b1")));
+      });
+
+      it("holds the mark's shape, and signs it as the person marking, now", async () => {
+        const db = as("ownerA");
+        const refused: Record<string, unknown>[] = [
+          mark("ownerA", { markedBy: { id: "headA", name: "Head A" } }),
+          mark("ownerA", { markedBy: { id: "ownerA" } }),
+          mark("ownerA", { markedBy: { id: "ownerA", name: "x".repeat(121) } }),
+          mark("ownerA", { markedBy: { id: "ownerA", name: "Owner A", role: "Admin" } }),
+          mark("ownerA", { noShow: false }),
+          mark("ownerA", { noShow: "yes" }),
+          mark("ownerA", { clientId: "" }),
+          mark("ownerA", { clientId: 7 }),
+          mark("ownerA", { day: "28/09/2026" }),
+          mark("ownerA", { day: "2026-13-01" }),
+          mark("ownerA", { markedAt: new Date("2026-01-01T12:00:00Z") }),
+          mark("ownerA", { note: "she texted" }),
+          { noShow: true, clientId: "client-eowyn", day: "2026-09-28", markedBy: { id: "ownerA", name: "Owner A" } },
+        ];
+        for (const data of refused) await assertFails(setDoc(markRef(db, "studioA", "b1"), data));
+        await assertSucceeds(setDoc(markRef(db, "studioA", "b1"), mark("ownerA")));
+      });
+
+      it("follows Demo Mode's rule: everyone signed in leads the practice studio", async () => {
+        const db = as("trainerB");
+        await assertSucceeds(setDoc(markRef(db, "demo-studio", "b1"), mark("trainerB")));
+        await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "b1")));
+      });
+    });
+  });
 });

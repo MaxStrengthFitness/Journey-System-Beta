@@ -25,6 +25,12 @@
  * last 90 days: the cost stays flat as history grows. (The leaderboard job
  * reads every exercise log ever written, every night; this one must not.)
  *
+ * A LEADER'S "DIDN'T COME" (wave 2, Sep 28 2026): every studio's booking
+ * marks from the same 90 days (`studios/{s}/bookingMarks`, by `day`, a few a
+ * week), so a booking a leader marked is a no-show in tonight's attendance,
+ * never a visit (lib/booking-state.ts, renewals/attendance.ts). A studio
+ * whose marks can't be read is read without them, and the log says so.
+ *
  * NOTHING HERE CONTACTS ANYONE, and nothing writes to Mindbody: every
  * Mindbody call is a GET (server/mindbody-client.ts).
  */
@@ -41,7 +47,7 @@ import { buildMasterSyncPatchWith, type MasterSyncFound } from "../src/lib/mindb
 import { DEFAULT_FIRST_SYNC_MAX, firstSyncOrder, needsFirstSync } from "../src/lib/first-booking-sync.ts";
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, studioDateKey, studioTodayKey } from "../src/lib/studio-time.ts";
-import { loggedSessions } from "../src/lib/booking-state.ts";
+import { bookingMarks, loggedSessions, type BookingMarks } from "../src/lib/booking-state.ts";
 import { cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
 import {
@@ -203,7 +209,8 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     .get();
   const schedulesByClient = new Map<string, ScheduleEntry[]>();
   schedulesSnap.docs.forEach((d) => {
-    const row = d.data() as ScheduleEntry;
+    // The id travels with the row: a leader's mark is keyed by it.
+    const row = { ...(d.data() as ScheduleEntry), id: d.id };
     if (!row.clientId) return;
     const list = schedulesByClient.get(row.clientId) ?? [];
     list.push(row);
@@ -224,6 +231,21 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     `Read ${studioDocs.length} studios, ${schedulesSnap.size} bookings and ${sessionsSnap.size} workouts in the window.`,
   );
 
+  // Every studio's "didn't come" marks in the window, even under --only-studio:
+  // a client's booking at another location is marked there.
+  const marksSince = new Date(now.getTime() - 92 * DAY_MS).toISOString().slice(0, 10);
+  const markRows: Array<{ id: string; noShow?: unknown }> = [];
+  for (const studio of allStudioDocs) {
+    try {
+      const snap = await db.collection(`studios/${studio.id}/bookingMarks`).where("day", ">=", marksSince).get();
+      snap.docs.forEach((d) => markRows.push({ id: d.id, noShow: d.get("noShow") }));
+    } catch (err: any) {
+      log(`The "didn't come" marks at ${typeof studio.name === "string" ? studio.name : studio.id} couldn't be read, so tonight reads its bookings without them: ${err?.message || err}`);
+    }
+  }
+  const marks: BookingMarks | null = bookingMarks(markRows);
+  if (markRows.length > 0) log(`${markRows.length} booking${markRows.length === 1 ? "" : "s"} marked "didn't come" in the window.`);
+
   const build = (run: StudioRun, client: Client): RenewalSnapshot => {
     const schedules = schedulesByClient.get(client.id!) ?? [];
     const sessions = sessionsByClient.get(client.id!) ?? [];
@@ -237,6 +259,7 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
         ...attendanceFromSchedules(schedules, now, run.tz, {
           logged: loggedSessions(sessions, run.tz),
           cutoverOf: (studioId) => cutoverOf(cutovers, studioId),
+          marks,
         }),
         ...attendanceFromSessions(sessions, run.tz, run.today),
       ],

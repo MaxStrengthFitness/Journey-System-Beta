@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WorkoutSession } from "../types";
-import { bookingState, loggedSessions, slotOver, type BookingLike } from "./booking-state";
+import { bookingMarks, bookingState, loggedSessions, slotOver, type BookingLike } from "./booking-state";
 
 const TZ = "America/New_York";
 const at = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -107,5 +107,32 @@ describe("bookingState — a failed read is unknown, never 'never logged'", () =
 
   it("an empty read is known: nothing logged is never logged", () => {
     expect(bookingState(booking("09:00"), loggedSessions([]), NOW, TZ)).toBe("never-logged");
+  });
+});
+
+// Wave 2 (Sep 28 2026, AJ: "all yes"): a leader's "didn't come" on a booking nobody logged.
+describe("bookingState — a leader's mark", () => {
+  const marks = bookingMarks([{ id: "b1", noShow: true }, { id: "b2", noShow: false }]);
+
+  it("reads a marked booking as a no-show, never as never logged", () => {
+    expect(bookingState(booking("09:00", { id: "b1" }), logged(), NOW, TZ, marks)).toBe("no-show");
+    // Unknown logging doesn't hide the mark: she didn't come, whatever the read.
+    expect(bookingState(booking("09:00", { id: "b1" }), null, NOW, TZ, marks)).toBe("no-show");
+  });
+
+  it("lets a session logged for that day beat the mark: it is proof she trained", () => {
+    expect(bookingState(booking("09:00", { id: "b1" }), logged(session({})), NOW, TZ, marks)).toBe("completed");
+  });
+
+  it("never outranks a cancellation", () => {
+    expect(bookingState(booking("09:00", { id: "b1", status: "Cancelled" }), logged(), NOW, TZ, marks)).toBe("cancelled");
+  });
+
+  it("counts only a mark that says noShow, on its own booking, and only when the marks were read", () => {
+    expect(bookingState(booking("09:00", { id: "b2" }), logged(), NOW, TZ, marks)).toBe("never-logged");
+    expect(bookingState(booking("09:00", { id: "b3" }), logged(), NOW, TZ, marks)).toBe("never-logged");
+    expect(bookingState(booking("09:00"), logged(), NOW, TZ, marks)).toBe("never-logged");
+    expect(bookingState(booking("09:00", { id: "b1" }), logged(), NOW, TZ)).toBe("never-logged");
+    expect(bookingState(booking("09:00", { id: "b1" }), logged(), NOW, TZ, bookingMarks(null))).toBe("never-logged");
   });
 });
