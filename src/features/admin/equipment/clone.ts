@@ -24,7 +24,7 @@
 
 import type {
   MachineDefinition,
-  RosterEntryFromCatalog,
+  StudioMachineRosterEntry,
 } from "../../../types/machines";
 import { ADDITIVE_DEFINITION_FIELDS, pruneMergedField } from "../../../lib/resolve-machine";
 import { sameValue } from "../formState";
@@ -37,16 +37,6 @@ export interface LocalMetadata {
   serialNumber?: string;
   manufacturer?: string;
   installedAt?: string;
-}
-
-export interface CloneInput {
-  studioId: string;
-  catalogId: string;
-  catalog: Partial<MachineDefinition>;
-  /** Fields the studio deliberately changed. */
-  edits?: Partial<MachineDefinition>;
-  local?: LocalMetadata;
-  authorUid?: string | null;
 }
 
 /**
@@ -97,53 +87,80 @@ export function isPlainAdoption(
 }
 
 /**
- * The roster document for a cloned machine.
+ * The four things Local set-up shows, as the field paths it writes them to.
  *
- * `source: "catalog"` with `basedOn`, NOT `source: "custom"`. A cloned MSF
- * template is still that template — it must keep inheriting the catalog and
- * must keep rolling up against every other one of its kind in network
- * reporting. `custom` is for equipment the catalog has never heard of, and
- * choosing it here would quietly split a leaderboard.
+ * Nothing else on a roster entry is the dialog's (Sep 28 2026). Its save
+ * used to rebuild the whole document (`source: "catalog"`, `basedOn` its own
+ * id, `status: "active"`) and merge it in, which turned a studio's own
+ * machine into a copy of a catalog machine that does not exist (the floor
+ * then dropped it), put a machine that was out of service back in service,
+ * and kept any box cleared on purpose, because a merge keeps every key the
+ * write leaves out. What a machine IS (`machineId`, `studioId`, `source`,
+ * `basedOn`), whether it is in service (`status`, the floor list's switch),
+ * the machine editor's other overrides, `order`, `shared`, an offer's marker
+ * and the unit's install date all belong to someone else.
  */
-export function buildClone(input: CloneInput): Omit<
-  RosterEntryFromCatalog,
-  "updatedAt"
-> & { updatedBy: string | null } {
-  const overrides = pruneOverrides(input.catalog, {
-    ...(input.edits ?? {}),
-    ...(input.local?.localName?.trim()
-      ? ({ name: input.local.localName.trim() } as Partial<MachineDefinition>)
-      : {}),
-  });
+export const LOCAL_SETUP_FIELDS = [
+  "overrides.name",
+  "studioNotes",
+  "unit.serialNumber",
+  "unit.manufacturer",
+] as const;
 
-  const unit =
-    input.local?.serialNumber?.trim() ||
-    input.local?.manufacturer?.trim() ||
-    input.local?.installedAt
-      ? {
-          ...(input.local?.serialNumber?.trim()
-            ? { serialNumber: input.local.serialNumber.trim() }
-            : {}),
-          ...(input.local?.manufacturer?.trim()
-            ? { manufacturer: input.local.manufacturer.trim() }
-            : {}),
-          ...(input.local?.installedAt
-            ? { installedAt: input.local.installedAt }
-            : {}),
-        }
-      : undefined;
+export type LocalSetupField = (typeof LOCAL_SETUP_FIELDS)[number];
 
-  return {
-    machineId: input.catalogId,
-    studioId: input.studioId,
-    source: "catalog",
-    basedOn: input.catalogId,
-    status: "active",
-    ...(Object.keys(overrides).length ? { overrides } : {}),
-    ...(input.local?.notes?.trim() ? { studioNotes: input.local.notes.trim() } : {}),
-    ...(unit ? { unit } : {}),
-    updatedBy: input.authorUid ?? null,
-  } as Omit<RosterEntryFromCatalog, "updatedAt"> & { updatedBy: string | null };
+export type LocalSetupUpdate =
+  | {
+      ok: true;
+      /** What to write, by field path. */
+      set: Partial<Record<LocalSetupField, string>>;
+      /** Left blank: deleted, so the catalog's name comes back and an old note goes. */
+      clear: LocalSetupField[];
+    }
+  | { ok: false; reason: string };
+
+/**
+ * What saving Local set-up writes to an EXISTING roster entry, for
+ * `updateDoc` and never `setDoc(..., { merge: true })`.
+ *
+ * Every field the dialog shows is either set or cleared, and nothing else is
+ * touched. A local name equal to the catalog's is cleared rather than stored
+ * (pruneOverrides), so the machine keeps inheriting any future rename.
+ *
+ * Refused on a studio's own machine, or a copy of another studio's: it has no
+ * catalog machine behind it, and its name is its own definition's, changed
+ * with Edit on the floor list.
+ */
+export function localSetupUpdate(input: {
+  entry: Pick<StudioMachineRosterEntry, "source">;
+  catalog: Partial<MachineDefinition>;
+  local: LocalMetadata;
+}): LocalSetupUpdate {
+  if (input.entry.source === "custom") {
+    return {
+      ok: false,
+      reason: "This is the studio's own machine. Change it with Edit on the floor list.",
+    };
+  }
+
+  const localName = input.local.localName?.trim();
+  const values: Record<LocalSetupField, string | undefined> = {
+    "overrides.name": localName
+      ? pruneOverrides(input.catalog, { name: localName }).name
+      : undefined,
+    studioNotes: input.local.notes?.trim() || undefined,
+    "unit.serialNumber": input.local.serialNumber?.trim() || undefined,
+    "unit.manufacturer": input.local.manufacturer?.trim() || undefined,
+  };
+
+  const set: Partial<Record<LocalSetupField, string>> = {};
+  const clear: LocalSetupField[] = [];
+  for (const field of LOCAL_SETUP_FIELDS) {
+    const value = values[field];
+    if (value) set[field] = value;
+    else clear.push(field);
+  }
+  return { ok: true, set, clear };
 }
 
 /**

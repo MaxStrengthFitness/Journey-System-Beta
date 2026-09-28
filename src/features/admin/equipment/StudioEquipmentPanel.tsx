@@ -305,8 +305,8 @@ export function StudioEquipmentPanel({
           studioId={studioId}
           machineId={editingRow.entry.machineId}
           catalogName={catalogById[editingRow.entry.machineId]?.name ?? editingRow.name}
-          catalog={catalogById[editingRow.entry.machineId] as any}
-          entry={editingRow.entry as any}
+          catalog={catalogById[editingRow.entry.machineId]}
+          entry={editingRow.entry}
           onClose={() => setEditing(null)}
         />
       )}

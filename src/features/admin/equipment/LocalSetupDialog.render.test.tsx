@@ -204,8 +204,8 @@ async function open(machineId: string, catalogName: string) {
           studioId="solon"
           machineId={machineId}
           catalogName={catalogName}
-          catalog={catalog as never}
-          entry={entry as never}
+          catalog={catalog}
+          entry={entry}
           onClose={() => closed++}
         />
       </>,
@@ -277,5 +277,104 @@ describe("Local set-up on a studio's own machine", () => {
     await act(async () => button("Close")!.click());
     expect(closed).toBe(1);
     expect(fs.writes).toEqual([]);
+  });
+});
+
+describe("Local set-up on a Max Strength machine", () => {
+  it("keeps a machine that is out of service out of service when a note is saved", async () => {
+    fs.docs.set(`${ROSTER}/m-leg-press`, {
+      machineId: "m-leg-press",
+      studioId: "solon",
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "maintenance",
+    });
+    await open("m-leg-press", "LEG PRESS");
+    await typeInto("Notes about this unit", "Pin sticks on the 90lb stack.");
+    await save();
+
+    expect(stored("m-leg-press")).toMatchObject({ status: "maintenance", studioNotes: "Pin sticks on the 90lb stack." });
+    expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", status: "maintenance" }));
+    expect(closed).toBe(1);
+  });
+
+  it("clears what was cleared: the catalog's name comes back and the old unit details go", async () => {
+    fs.docs.set(`${ROSTER}/m-leg-press`, {
+      machineId: "m-leg-press",
+      studioId: "solon",
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "active",
+      overrides: { name: "Hoist Leg Press" },
+      studioNotes: "Seat replaced March 2026.",
+      unit: { serialNumber: "HS-4471", manufacturer: "Hoist" },
+    });
+    await open("m-leg-press", "LEG PRESS");
+    expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", name: "Hoist Leg Press" }));
+
+    await typeInto("What this studio calls it", "");
+    await typeInto("Notes about this unit", "");
+    await typeInto("Serial number", "");
+    await save();
+
+    // "Leave blank to keep LEG PRESS", as the box says.
+    expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", name: "LEG PRESS" }));
+    const after = stored("m-leg-press");
+    expect((after.overrides as Doc | undefined)?.name).toBeUndefined();
+    expect(after.studioNotes).toBeUndefined();
+    expect(after.unit).toEqual({ manufacturer: "Hoist" });
+  });
+
+  it("leaves alone everything it does not show", async () => {
+    fs.docs.set(`${ROSTER}/m-leg-press`, {
+      machineId: "m-leg-press",
+      studioId: "solon",
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "active",
+      order: 3,
+      // The machine editor's own overrides, beside the name.
+      overrides: { name: "Hoist Leg Press", universalBaseline: { seatPosition: "Seat at 7." } },
+      unit: { serialNumber: "HS-4471", installedAt: "2024-03-01" },
+    });
+    await open("m-leg-press", "LEG PRESS");
+    await typeInto("What this studio calls it", "Nautilus Leg Press");
+    await save();
+
+    expect(stored("m-leg-press")).toMatchObject({
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "active",
+      order: 3,
+      overrides: { name: "Nautilus Leg Press", universalBaseline: { seatPosition: "Seat at 7." } },
+      unit: { serialNumber: "HS-4471", installedAt: "2024-03-01" },
+    });
+    expect(floor()).toContainEqual(expect.objectContaining({ id: "m-leg-press", name: "Nautilus Leg Press" }));
+  });
+
+  it("writes only the fields it shows, never what the machine is or whether it is in service", async () => {
+    fs.docs.set(`${ROSTER}/m-leg-press`, {
+      machineId: "m-leg-press",
+      studioId: "solon",
+      source: "catalog",
+      basedOn: "m-leg-press",
+      status: "active",
+    });
+    await open("m-leg-press", "LEG PRESS");
+    await typeInto("What this studio calls it", "Hoist Leg Press");
+    await typeInto("Serial number", "HS-4471");
+    await save();
+
+    expect(fs.writes).toHaveLength(1);
+    const [write] = fs.writes;
+    // An update of named fields: never setDoc's merge, which keeps a cleared key.
+    expect(write.kind).toBe("update");
+    expect(write.path).toBe(`${ROSTER}/m-leg-press`);
+    expect(Object.keys(write.data).sort()).toEqual(
+      ["overrides.name", "studioNotes", "unit.manufacturer", "unit.serialNumber", "updatedAt", "updatedBy"].sort(),
+    );
+    expect(write.data["overrides.name"]).toBe("Hoist Leg Press");
+    expect(write.data["unit.serialNumber"]).toBe("HS-4471");
+    expect(write.data.updatedBy).toBe("uid-leader");
   });
 });

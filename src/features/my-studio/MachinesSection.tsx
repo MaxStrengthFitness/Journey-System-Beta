@@ -528,8 +528,8 @@ function MachineDoor({
           studioId={studioId}
           machineId={entry.machineId}
           catalogName={catalogName}
-          catalog={catalogEntry as never}
-          entry={entry as never}
+          catalog={catalogEntry}
+          entry={entry}
           onClose={() => setLocalSetup(false)}
         />
       )}
