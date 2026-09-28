@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runMachineTrends } from "../../../server/machine-trends-job";
 import { buildDocument, openingsReport, readOpeningsStudios, readOpeningsTrainers, readStudio } from "../../../server/openings-step";
-import { readSummary } from "../openings/summary-doc";
+import { cellFor, readSummary } from "../openings/summary-doc";
 import { usualWeek } from "../openings/usual";
 
 type Docs = Record<string, Record<string, unknown>>;
@@ -286,7 +286,7 @@ function withOpenings(): Record<string, Docs> {
     data.schedules[`s${i}`] = { ...slot, studioId: "solon", clientId: `sc${i}`, clientName: `Solon Client ${i}`, trainerName: "Somebody" };
     data.schedules[`d${i}`] = { ...slot, studioId: "demo-studio", clientId: `dc${i}`, clientName: `Demo Client ${i}`, trainerId: "t-dana", trainerName: "Dana Demo", isDemo: true };
   });
-  // A Mindbody "Unavailable" block in Sam's 8:30 on the newest Monday: never a booking.
+  // A Mindbody "Unavailable" block in Sam's 8:30 on the newest Monday: never a booking, but it takes Sam out then.
   data.schedules.block = { studioId: "westlake", clientName: "Unavailable", trainerId: "t-sam", trainerName: "Sam Lee", startTime: eastern(WINDOW_MONDAYS[0], 8, 30), endTime: eastern(WINDOW_MONDAYS[0], 9), status: "Scheduled", serviceName: "Unavailable", source: "MindBody" };
   return data;
 }
@@ -305,9 +305,12 @@ describe("the weekly job — step 8, Openings", () => {
     expect(westlake.summary.builtAt).toBe(NOW.toISOString());
     expect(westlake.summary.weeks.map((w) => w.m)).toEqual(WINDOW_MONDAYS);
     expect(usualWeek(westlake.summary).weeksCounted).toBe(8);
-    // Sam's 8:00 was booked every Monday; at 8:30 nobody was booked, the Unavailable block notwithstanding.
+    // Sam's 8:00 was booked every Monday. At 8:30 nobody was booked; on the newest Monday his Unavailable
+    // block took him out (nobody in, so nothing is stored and it reads back "out"), on the others he was in and free.
     expect(westlake.summary.cells["1-0800"]["0"].s).toBe("f");
-    expect(westlake.summary.cells["1-0830"]["0"]).toEqual({ s: "n", i: ["0"] });
+    expect(westlake.summary.cells["1-0830"]["0"]).toBeUndefined();
+    expect(cellFor(westlake.summary, "1-0830", 0)).toMatchObject({ word: "out", booked: 0, inKeys: [] });
+    expect(westlake.summary.cells["1-0830"]["1"]).toEqual({ s: "n", i: ["0"] });
     expect(Object.values(westlake.summary.who).map((w) => w.n)).toEqual(["Sam Lee"]);
 
     // Solon: nothing recorded as read in full, so nothing counts, but the document is there.

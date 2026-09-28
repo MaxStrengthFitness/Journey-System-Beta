@@ -39,6 +39,10 @@
  * session came after it, so it is made only where Journey owns the days
  * after it (`canClaimGap` over `ownedWindow`, judged by the client's HOME
  * studio's cutover). Anywhere else it reads "Last in Journey: Sep 25".
+ * Either way it is HER last session, with any trainer (`lastSessionDate`
+ * is the client's, not yours), so it says so: "Last in Journey, with any
+ * trainer: Sep 25". Beside "42 sessions with you" a bare date read as your
+ * last session with her (the final review; on AJ's screen-audit list).
  *
  * PURE MODULE — no React, no Firestore, no clock.
  */
@@ -62,7 +66,7 @@ export interface MyClientRow {
   coachedLately: boolean;
   /** On your Kaizen Roster. */
   onRoster: boolean;
-  /** "Last in Journey: Sep 25" / "Last session: Sep 25", or null with no date. */
+  /** "Last in Journey, with any trainer: Sep 25" / "Last session, with any trainer: Sep 25", or null with no date. */
   last: string | null;
 }
 
@@ -101,9 +105,10 @@ export function shortDate(day: string, today: string): string {
 }
 
 /**
- * The client's last session as a sentence, or null when no usable date is
- * on file. `lastSessionDate` is the day stamped as a session completes; a
- * date after today is a typo, not a visit, and is not quoted.
+ * The client's last session, with any trainer, as a sentence, or null when
+ * no usable date is on file. `lastSessionDate` is the day stamped as a
+ * session completes; a date after today is a typo, not a visit, and is not
+ * quoted.
  */
 export function lastSessionSentence(
   c: Pick<Client, "lastSessionDate" | "priorHistory" | "historyIsComplete" | "firstSessionDate" | "clientsNumberOfVisitsAtSite">,
@@ -117,7 +122,7 @@ export function lastSessionSentence(
   const window = ownedWindow({ coverage: coverageOfClient(c, cutover), prior: priorHistoryOf(c), cutover });
   const after = dayAfter(day);
   const claimable = after !== null && canClaimGap(after, window);
-  return `${claimable ? "Last session" : "Last in Journey"}: ${shortDate(day, today)}`;
+  return `${claimable ? "Last session" : "Last in Journey"}, with any trainer: ${shortDate(day, today)}`;
 }
 
 /** "42 sessions with you in Journey". */

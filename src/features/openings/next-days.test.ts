@@ -128,6 +128,20 @@ describe("2. a cancellation nobody booked into", () => {
     const herRebook = pat("2026-11-11", "10:00", { ...bob, createdAt: new Date(cancelledAt.getTime() + 60_000) });
     expect(withRefill(herRebook).lines).toHaveLength(1);
   });
+
+  it("a booking MOVED into the time since fills it: it keeps its old createdAt, and arrives when it moved (the final review)", () => {
+    const cancelledAt = at("2026-11-06", "10:00");
+    const hours = (h: number) => new Date(cancelledAt.getTime() + h * 3_600_000);
+    const bob = { clientId: "c-bob", clientName: "Bob Hart" };
+    const withRow = (b: ScheduleEntry) => nextDays(input({ docs: [], bookings: [sam(TODAY, "07:00"), judyAt8(), patCancelled({ cancelledAt, ...bob }), b, sam(TODAY, "09:00")] }));
+    // Created on Aug 1 (the fixture's), moved into Pat's 8:00 two hours after the cancellation: the time was booked into.
+    const movedIn = pat(TODAY, "08:00", { movedFromDay: "2026-11-11", movedFromStart: at("2026-11-11", "09:00"), movedAt: hours(2) });
+    expect(withRow(movedIn).lines).toEqual([]);
+    // Moved there more than 12 hours before the cancellation: someone's standing booking, so the cancelled place is still open.
+    expect(kinds(withRow({ ...movedIn, movedAt: hours(-13) }))).toEqual([[TODAY, "1-0800", ["cancellation"]]]);
+    // A row Journey can't date (neither stamp): not proof that nobody booked into it.
+    expect(withRow(pat(TODAY, "08:00", { createdAt: undefined })).lines).toEqual([]);
+  });
 });
 
 describe("3. a usually-full time with room", () => {
@@ -151,9 +165,14 @@ describe("3. a usually-full time with room", () => {
     expect(nextDays(input({ bookings: [sam(TODAY, "07:00"), judyAt8(), unplaced, sam(TODAY, "09:00")] })).lines).toEqual([]);
   });
 
-  it("an Unavailable block is not a booking: Pat still has room", () => {
+  it("an Unavailable block is not a booking, but it takes Pat out for the time it covers: no room with Pat", () => {
     const block = pat(TODAY, "08:00", { clientName: "Unavailable", clientId: undefined });
-    expect(kinds(nextDays(input({ bookings: [sam(TODAY, "07:00"), judyAt8(), block, sam(TODAY, "09:00")] })))).toEqual([[TODAY, "1-0800", ["usually-full"]]]);
+    const n = nextDays(input({ bookings: [sam(TODAY, "07:00"), judyAt8(), block, sam(TODAY, "09:00")] }));
+    expect(n.lines).toEqual([]);
+    // A cancelled block blocks nothing: Pat has room again.
+    const cancelled = nextDays(input({ bookings: [sam(TODAY, "07:00"), judyAt8(), { ...block, status: "Cancelled" }, sam(TODAY, "09:00")] }));
+    expect(kinds(cancelled)).toEqual([[TODAY, "1-0800", ["usually-full"]]]);
+    expect(cancelled.lines[0]).toMatchObject({ bookedNow: 1, room: { count: 1, with: ["t-pat"] } });
   });
 
   it("a time marked Always full counts as usually full; a time that reads room doesn't", () => {
@@ -184,8 +203,31 @@ describe("narrowing, and the Wrap-up's times with room", () => {
       [510, false],
       [570, false],
     ]);
-    // Anyone: Pat's free 7:00 and 7:30 too.
-    expect(timesWithRoom(input({ bookings }), null, n.lines).map((t) => t.row)).toEqual([420, 450, 480, 510, 570]);
+    // Anyone: Pat's free 7:00 and 7:30 too. Pat is booked at 8:00, so its room is still Judy's, this week only.
+    const anyone = timesWithRoom(input({ bookings }), null, n.lines);
+    expect(anyone.map((t) => t.row)).toEqual([420, 450, 480, 510, 570]);
+    expect(anyone.find((t) => t.row === 480)?.thisWeekOnly).toBe(true);
     expect(timesWithRoom(input({ bookings, read: "offline" }), null)).toEqual([]);
+  });
+
+  it("under Anyone, a time with room with another trainer too is not 'this week only' (the final review)", () => {
+    // Judy is out at 8:00 with Sam, and Pat isn't booked then either.
+    const bookings = [sam(TODAY, "07:00"), sam(TODAY, "09:00")];
+    const lines = nextDays(input({ bookings })).lines;
+    const at8 = (forTrainer: string | null) => timesWithRoom(input({ bookings }), forTrainer, lines).find((t) => t.row === 480)?.thisWeekOnly;
+    expect(at8(null)).toBe(false);
+    expect(at8("t-pat")).toBe(false);
+    expect(at8("t-sam")).toBe(true);
+  });
+
+  it("a trainer's Unavailable block takes the time it covers off their times with room", () => {
+    const tuesday = "2026-11-10";
+    const samTuesday = standingWeek({ final: { hours: [{ weekday: 2, from: "07:00", to: "10:00" }], regulars: [] } });
+    const block = sam(tuesday, "08:00", { clientName: "Unavailable", clientId: undefined, minutes: 60 });
+    const rows = (b: ScheduleEntry[]) => timesWithRoom(input({ bookings: b, docs: [samTuesday] }), "t-sam").map((t) => t.row);
+    expect(rows([sam(tuesday, "07:00"), block, sam(tuesday, "09:00")])).toEqual([450, 570]);
+    // The same hour booked for real reads the same; with nothing there, 8:00 and 8:30 have room.
+    expect(rows([sam(tuesday, "07:00"), sam(tuesday, "08:00", { minutes: 60 }), sam(tuesday, "09:00")])).toEqual([450, 570]);
+    expect(rows([sam(tuesday, "07:00"), sam(tuesday, "09:00")])).toEqual([450, 480, 510, 570]);
   });
 });

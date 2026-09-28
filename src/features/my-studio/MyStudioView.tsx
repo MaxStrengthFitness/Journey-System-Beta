@@ -136,9 +136,12 @@ export function MyStudioView({
    * typing inside `sectionScope` (unsaved changes, Sep 24 2026).
    */
   const sectionScope = useLeaveScope();
-  const choose = (next: MyStudioSection) => {
+  const choose = (next: MyStudioSection, arrive?: () => void) => {
     const go = () => {
       rememberMyStudioSection(next);
+      // What a door sets inside the section (Openings' part and chip), only
+      // now the move is happening, and before the section mounts and reads it.
+      arrive?.();
       setSection(next);
       setPanel(null);
     };
@@ -156,7 +159,7 @@ export function MyStudioView({
   useEffect(() => {
     chooseRef.current = choose;
   });
-  useEffect(() => onMyStudioSectionRequest((next) => chooseRef.current(next)), []);
+  useEffect(() => onMyStudioSectionRequest((next, arrive) => chooseRef.current(next, arrive)), []);
 
   const todayKey = studioDateKey(new Date()) ?? "";
   const today = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), {

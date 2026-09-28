@@ -40,6 +40,9 @@ import {
   regularsLine,
   removeQuestion,
   rotationDaySentence,
+  rotationDays,
+  rotationLines,
+  rotationTimesSentence,
   sinceLine,
   summaryStateSentence,
   teamLine,
@@ -125,7 +128,9 @@ describe("the usual word, in the proposal's own sentences", () => {
       "Wednesday 6:00 AM · Usually 3 booked (3 or more in 6 of the 7 Wednesdays counted). Room can't be judged yet: not every trainer's week is agreed.",
     );
     const rota: Spec = { cell: { s: "o", b: 5, r: 5 } };
-    expect(usualSentence(at("6-0900", [rota, rota, rota, rota, rota, rota, rota, rota]))).toBe("Saturday 9:00 AM · Usually 5 booked on the rotation. Saturdays run on the rotation: ask the front desk.");
+    // The whole day only when it is a rotation day (rotationDays); otherwise the time.
+    expect(usualSentence(at("6-0900", [rota, rota, rota, rota, rota, rota, rota, rota]), true)).toBe("Saturday 9:00 AM · Usually 5 booked on the rotation. Saturdays run on the rotation: ask the front desk.");
+    expect(usualSentence(at("6-0900", [rota, rota, rota, rota, rota, rota, rota, rota]))).toBe("Saturday 9:00 AM · Usually 5 booked on the rotation. This time runs on the rotation: ask the front desk.");
     expect(usualSentence(at("5-1900", [F, F, F, U, U, U, U, U]))).toBe("Friday 7:00 PM · Not enough weeks yet: 3 Fridays counted so far.");
     expect(usualSentence(at("5-1900", [F, U, U, U, U, U, U, U]))).toBe("Friday 7:00 PM · Not enough weeks yet: 1 Friday counted so far.");
     expect(usualSentence(at("1-1900", [{}, {}, {}, {}, {}, {}, {}, {}]))).toBe("Monday 7:00 PM · Nothing booked and nobody in, in all of the last 8 Mondays.");
@@ -262,6 +267,8 @@ describe("next 7 days", () => {
       clients: [{ clientId: "c-bob", clientName: "Bob Hart", trainerId: "t-pat", reason: "cancellation" }],
     });
     expect(lineSentence(cancelled, names, NOBODY, TZ)).toBe("Thu, Oct 8 · 5:30 PM · usually 4 booked. A cancellation on Oct 2, and nobody has booked into it since (3 booked now).");
+    // An agreed week there, and room for nobody: still says how many are booked now.
+    expect(lineSentence({ ...cancelled, room: { count: 0, with: [] } }, names, NOBODY, TZ)).toContain("nobody has booked into it since (3 booked now).");
     const moved = line({ reasons: [{ kind: "regular-moved", finding: finding({ kind: "moved", movedTo: { dateKey: "2026-10-06", start: "09:30", trainerName: "Sam Lee", sameTrainer: true } }) }] });
     expect(lineSentence(moved, names, NOBODY, TZ)).toBe("Mon, Oct 5 · 8:00 AM · usually full · room with 1 trainer. A regular is booked Tue, Oct 6 at 9:30 AM instead.");
     expect(lineSentence(line({ reasons: [{ kind: "usually-full" }], room: { count: 1, with: ["t-pat"] } }), names, NOBODY, TZ)).toBe(
@@ -390,6 +397,24 @@ describe("the Wrap-up's times, Team's line, the Overview's line", () => {
     // Each chip as the sheet shows it, "(this week only)" included: the sheet never splits the sentence.
     expect(days[0].times.map((t) => t.said)).toEqual(["6:00 AM", "8:00 AM (this week only)", "11:30 AM"]);
     expect(rotationDaySentence(6)).toBe("Saturdays run on the rotation. Ask the front desk.");
+    expect(rotationTimesSentence(1, [390, 360])).toBe("Mondays at 6:00 AM · 6:30 AM run on the rotation. Ask the front desk.");
+  });
+
+  it("a weekday runs on the rotation only when every time on it with a word reads Rotation (the final review)", () => {
+    const rota: Spec = { cell: { s: "o", b: 1, r: 1 } };
+    const eight = (s: Spec) => [s, s, s, s, s, s, s, s];
+    const times = (list: UsualTime[]) => new Map(list.map((u) => [u.key, u]));
+    // A whole Saturday on the rotation, with a blank time and a "–" beside it: a rotation day.
+    const saturday = [at("6-0900", eight(rota)), at("6-0930", eight(rota)), at("6-1000", eight({})), at("6-1030", [F, F, F, U, U, U, U, U])];
+    expect(rotationDays(times(saturday))).toEqual([6]);
+    // One Rotation half-hour on a Monday beside times with room and full times: that time, not the day.
+    const monday = [at("1-0600", eight(rota)), at("1-0700", eight(R)), at("1-0800", eight(F))];
+    expect(rotationDays(times(monday))).toEqual([]);
+    expect(rotationDays(times([...monday, ...saturday]))).toEqual([6]);
+    expect(rotationLines(times([...monday, ...saturday])).map((l) => l.sentence)).toEqual([
+      "Mondays at 6:00 AM run on the rotation. Ask the front desk.",
+      "Saturdays run on the rotation. Ask the front desk.",
+    ]);
   });
 
   it("Team keeps one line and a door, counting the regulars Openings lists", () => {

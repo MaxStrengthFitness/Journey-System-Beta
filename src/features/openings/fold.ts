@@ -41,7 +41,7 @@ import { weekdayOf } from "../studio-tasks/recurrence";
 import { blocksIn, carryHistory, currentVersions, rowsCovered, versionOn, type AgreedHistory } from "./agreed";
 import { addDays, monthOf, type CoverageRecord } from "./coverage";
 import { countDays } from "./days";
-import { cancellationOf, pastRow, trainersBooked, whyNotJudged, type PlacedBooking, type RoomDay } from "./room";
+import { addBlock, cancellationOf, pastRow, trainersBooked, whyNotJudged, type PlacedBooking, type RoomDay } from "./room";
 import { OPENINGS_WEEKDAYS, ROW_MINUTES, bookingTime, timeKey } from "./rows";
 import {
   SUMMARY_VERSION,
@@ -124,6 +124,8 @@ interface DayPlan {
   weekIndex: number;
   weekday: number;
   bookings: PlacedBooking[];
+  /** The half-hours each trainer's own "Unavailable" blocks took them out for (room.ts `addBlock`). */
+  blocked: Map<string, Set<number>>;
 }
 
 /** Fold the window into the summary the job writes. */
@@ -136,18 +138,22 @@ export function foldSummary(input: FoldInput): OpeningsSummary {
   window.mondays.forEach((monday, weekIndex) => {
     for (const weekday of OPENINGS_WEEKDAYS) {
       const day = addDays(monday, weekday - 1);
-      plans.set(day, { day, weekIndex, weekday, bookings: [] });
+      plans.set(day, { day, weekIndex, weekday, bookings: [], blocked: new Map() });
     }
   });
 
-  // Every booking placed on its day: staff blocks are never bookings.
+  // Every booking placed on its day. A staff block is never a booking: it
+  // takes its trainer out for the half-hours it covers (room.ts).
   const bookingNames = new Map<string, string>();
   for (const entry of input.bookings) {
-    if (isStaffBlock(entry)) continue;
     const at = bookingTime(entry, tz);
     const plan = at ? plans.get(at.dateKey) : undefined;
     if (!at || !plan) continue;
     const place = placeBooking(entry, input.trainers);
+    if (isStaffBlock(entry)) {
+      addBlock(plan.blocked, entry, place, at.rows);
+      continue;
+    }
     if (place.kind === "trainer" && entry.trainerName && !bookingNames.has(place.trainerId)) bookingNames.set(place.trainerId, entry.trainerName);
     plan.bookings.push({ rows: at.rows, place, cancellation: cancellationOf(entry) });
   }
@@ -186,7 +192,7 @@ export function foldSummary(input: FoldInput): OpeningsSummary {
       const v = versionOn(versions, plan.day);
       if (v) agreed.set(id, blocksIn(v));
     }
-    const day: RoomDay = { weekday: plan.weekday, bookings: plan.bookings, agreed };
+    const day: RoomDay = { weekday: plan.weekday, bookings: plan.bookings, agreed, blocked: plan.blocked };
     const why = whyNotJudged(day);
     const judged = why === null;
     weekDays[plan.weekIndex][String(plan.weekday)] = judged ? { n: live, j: 1 } : { n: live, q: why === "unplaced" ? "p" : "a" };

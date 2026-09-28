@@ -171,12 +171,23 @@ describe("Standing weeks on Team", () => {
     await act(async () => door()!.click());
     stop();
     expect(asked).toEqual(["openings"]);
+    // The shell didn't move (a "Keep editing"): Openings' part and chip are as they were.
+    expect(rememberedOpeningsPart()).toBe("usual");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "you" });
+    // The shell moves: they are set as it arrives.
+    const moves = onMyStudioSectionRequest((_next, arrive) => arrive?.());
+    await act(async () => door()!.click());
+    moves();
     expect(rememberedOpeningsPart()).toBe("next");
     expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes({ kind: "you" });
     // With none on screen, it only remembers, so the next open lands there.
     rememberMyStudioSection("team");
     await act(async () => door()!.click());
     expect(rememberedMyStudioSection()).toBe("openings");
+    expect(rememberedOpeningsPart()).toBe("next");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
     rememberMyStudioSection("relay");
     rememberOpeningsPart("usual");
     rememberWhoseTimes(null);

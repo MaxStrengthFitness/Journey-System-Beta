@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isStaffBlock } from "../../lib/booking-state";
 import {
   LATE_CANCEL_HOURS,
+  addBlock,
   atRow,
   bookedForUsual,
   cancellationOf,
@@ -80,6 +81,19 @@ describe("a past day", () => {
     expect(inOnPastDay(day([sam([420]), pat([480], "early")]), 480)).toEqual(["t-sam"]);
     expect(inOnPastDay(day([sam([420]), pat([480], "late")]), 480)).toEqual(["t-pat", "t-sam"]);
     expect(inOnPastDay(day([sam([420]), pat([480])]), 540)).toEqual(["t-sam"]);
+    // Sam's own Unavailable block takes him out for the time it covers, and never makes him "in" anywhere.
+    const blocked = new Map([["t-sam", new Set([480, 510])]]);
+    expect(inOnPastDay({ ...day([sam([420]), pat([480])]), blocked }, 480)).toEqual(["t-pat"]);
+    expect(inOnPastDay({ ...day([sam([420]), pat([480])]), blocked }, 540)).toEqual(["t-sam"]);
+  });
+
+  it("a staff block counts only when live and placed with a trainer", () => {
+    const into = new Map<string, Set<number>>();
+    addBlock(into, { status: "Scheduled" }, { kind: "trainer", trainerId: "t-sam" }, [480, 510]);
+    addBlock(into, { status: "Cancelled" }, { kind: "trainer", trainerId: "t-pat" }, [480]);
+    addBlock(into, { status: "Scheduled" }, { kind: "rotation" }, [480]);
+    addBlock(into, { status: "Scheduled" }, { kind: "unplaced" }, [480]);
+    expect([...into.entries()].map(([id, rows]) => [id, [...rows]])).toEqual([["t-sam", [480, 510]]]);
   });
 
   it("can be judged only when everyone with a booking there is known", () => {
@@ -121,6 +135,8 @@ describe("the next 7 days", () => {
     const away = standingWeek({ away: [{ id: "a1", from: "2026-11-09", to: "2026-11-13" }] });
     expect(inAhead([away, PAT_WEEK], "2026-11-09", 480)).toEqual(["t-pat"]);
     expect(inAhead([standingWeek({ final: null })], "2026-11-09", 480)).toEqual([]);
+    // Pat's own Unavailable block covers 8:00: not in then.
+    expect(inAhead([SAM_WEEK, PAT_WEEK], "2026-11-09", 480, undefined, new Map([["t-pat", new Set([480])]]))).toEqual(["t-sam"]);
   });
 
   it("free, and whether the names are known once the rotation has taken places", () => {

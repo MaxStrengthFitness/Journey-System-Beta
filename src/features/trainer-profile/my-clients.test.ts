@@ -111,12 +111,12 @@ describe("the order", () => {
 
 describe("the last session, through history-claims", () => {
   it("says Last in Journey while her home studio has no cutover and her story isn't known whole", () => {
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25" }), null, TODAY)).toBe("Last in Journey: Sep 25");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25" }), null, TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
   });
 
   it("says Last session when Journey holds her whole story", () => {
     expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25", historyIsComplete: true }), null, TODAY)).toBe(
-      "Last session: Sep 25",
+      "Last session, with any trainer: Sep 25",
     );
   });
 
@@ -125,14 +125,14 @@ describe("the last session, through history-claims", () => {
       lastSessionDate: "2026-09-25",
       priorHistory: { sessions: 300, through: "2026-08-31", source: "filemaker" },
     });
-    expect(lastSessionSentence(c, "2026-09-01", TODAY)).toBe("Last session: Sep 25");
+    expect(lastSessionSentence(c, "2026-09-01", TODAY)).toBe("Last session, with any trainer: Sep 25");
     // Before the cutover, Journey doesn't own the days after it.
-    expect(lastSessionSentence(c, "2026-09-28", TODAY)).toBe("Last in Journey: Sep 25");
+    expect(lastSessionSentence(c, "2026-09-28", TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
   });
 
   it("names the year when it isn't this one, and quotes nothing it can't read", () => {
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2025-12-02" }), null, TODAY)).toBe("Last in Journey: Dec 2, 2025");
-    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25T14:00:00" }), null, TODAY)).toBe("Last in Journey: Sep 25");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2025-12-02" }), null, TODAY)).toBe("Last in Journey, with any trainer: Dec 2, 2025");
+    expect(lastSessionSentence(client("a", { lastSessionDate: "2026-09-25T14:00:00" }), null, TODAY)).toBe("Last in Journey, with any trainer: Sep 25");
     expect(lastSessionSentence(client("a", { lastSessionDate: "2026-10-09" }), null, TODAY)).toBeNull(); // after today
     expect(lastSessionSentence(client("a", { lastSessionDate: "soon" }), null, TODAY)).toBeNull();
     expect(lastSessionSentence(client("a"), null, TODAY)).toBeNull();

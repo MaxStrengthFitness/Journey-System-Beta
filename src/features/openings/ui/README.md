@@ -35,7 +35,15 @@ door does); a tap on the time already open asks nothing.
 
 It draws its own frame, as Relay and Machines do: the part and, beside it,
 the Context Panel (a right column in landscape, a sheet from the foot in
-portrait), where a time's sheet opens.
+portrait), where a time's sheet opens. In portrait the sheet lies over the
+foot of the grid, so while one is open the part gets at least the sheet's
+height of room at its foot (`openings.css`, `.op:has(.cp)`), and the time
+just tapped scrolls clear of it: without that, the grid's last rows, the
+evening, stayed under the sheet at full scroll (the final review; measured
+in headless Chrome at 744 and 834 wide). Landscape is unchanged.
+
+The Wrap-up's sheet draws each time as a label, not a pill: no border and no
+full rounding, so only the Whose-times buttons read as something to tap.
 
 Names (AJ, Sep 27 2026: "keep it relaxed and we will tighten up later"):
 everyone at the studio sees other trainers' names; the person looking is
@@ -154,8 +162,14 @@ trainer with an agreed week here, in name order, with no count beside a name
 remembered on the iPad (`part-memory.ts`) and shared by Next 7 days and A new
 regular time. With nothing chosen, a trainer with an agreed week here starts
 on their own times ("With you"), everyone else on "Anyone". A door that
-arrives with a count of the studio's free slots (Team's line) sets "Anyone":
-`showOpenings("next", { kind: "anyone" })` before `openMyStudioSection("openings")`.
+arrives with a count of the studio's free slots (Team's line) sets "Anyone"
+AS IT ARRIVES: `openMyStudioSection("openings", () => showOpenings("next",
+{ kind: "anyone" }))`. My Studio runs the arrival only when the move happens
+(after the leave question), just before the section mounts, so a "Keep
+editing" leaves Openings' part and chip as they were (the final review; before
+it, the door set them first). The Overview, outside My Studio, sets them and
+then switches the app's view, as master's other doors do: it has no typing
+to keep.
 
 The chips narrow the list, never the sentence about the studio. When a chip
 alone empties a list that Anyone still has lines in, the part says so by the

@@ -308,7 +308,11 @@ export function formatNextBooking(at: Date, now = new Date()): string {
  *               today, CHECK_DAYS (7) otherwise, or while that isn't known.
  *   cant-check  offline, the read failed, or only this iPad's cache answered
  *               (server-read.ts): a cache is never an answer, even one with a
- *               booking in it.
+ *               booking in it. And at a studio whose bookings aren't linked
+ *               (no Site ID, or marked offline): Journey holds none of its
+ *               bookings, so "nothing booked" there would be a claim about
+ *               nothing it read (the final review). A booking it did hear of,
+ *               at a linked studio on the same Mindbody, still answers.
  */
 export type NextBookingAnswer =
   | { state: "booked"; at: Date; elsewhere: string | null }
@@ -333,6 +337,8 @@ export interface NextBookingInput<T extends BookingLike> {
   hereStudioId: string | null;
   /** A studio's name, or null when Journey doesn't know it. */
   studioName: (studioId: string) => string | null;
+  /** The studio's bookings are linked (Openings' `bookingsKnown`); unlinked, Journey holds none of this studio's bookings. */
+  linked: boolean;
   now?: number;
 }
 
@@ -349,6 +355,7 @@ export function nextBookingAnswer<T extends BookingLike>(input: NextBookingInput
   if (input.read !== "ready") return { state: "cant-check" };
   const heard = nextBookingFor(input.clientId, input.heard, now);
   if (heard) return { state: "booked", at: heard.at, elsewhere: where(heard.booking) };
+  if (!input.linked) return { state: "cant-check" };
   return { state: "none", days: input.monthRead === true ? BACK_FROM_DAYS : CHECK_DAYS };
 }
 

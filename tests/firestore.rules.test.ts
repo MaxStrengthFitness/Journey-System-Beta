@@ -2316,6 +2316,10 @@ describe("Firestore Security Rules", () => {
         rows: [{ clientId: "clientA", machineId: "m-leg-press", weight: 100, reps: 4, medianReps: 10, priorSets: 5, day: "2026-09-19", drop: 0.6 }],
         clients: 1,
       });
+      // Openings' usual week (Sep 27 2026), written by the same Sunday job, the Demo studio's too.
+      const openings = { v: 1, builtAt: "2026-09-27T07:00:00.000Z", tz: "America/New_York", row: 30, since: null, weeks: [], who: {}, agreed: {}, cells: {} };
+      await setDoc(doc(ctx.firestore(), "studios", "studioA", "watch", "openings"), openings);
+      await setDoc(doc(ctx.firestore(), "studios", "demo-studio", "watch", "openings"), openings);
     });
     const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertSucceeds(getDoc(doc(trainer, "studios", "studioA", "watch", "performance")));
@@ -2325,6 +2329,11 @@ describe("Firestore Security Rules", () => {
     await assertFails(getDoc(doc(other, "studios", "studioA", "watch", "performance")));
     await assertFails(updateDoc(doc(owner, "studios", "studioA", "watch", "performance"), { rows: [] }));
     await assertFails(setDoc(doc(trainer, "studios", "studioA", "watch", "anything"), { rows: [] }));
+    // watch/openings: the studio's people read it, another studio's trainer doesn't, the Demo studio's is everyone's, and nobody writes it.
+    await assertSucceeds(getDoc(doc(trainer, "studios", "studioA", "watch", "openings")));
+    await assertFails(getDoc(doc(other, "studios", "studioA", "watch", "openings")));
+    await assertSucceeds(getDoc(doc(other, "studios", "demo-studio", "watch", "openings")));
+    await assertFails(setDoc(doc(owner, "studios", "studioA", "watch", "openings"), { cells: {} }));
   });
 
   it("lets a studio's leader offer one of its machines to the catalog, as themselves, pending — and only withdraw it afterwards", async () => {

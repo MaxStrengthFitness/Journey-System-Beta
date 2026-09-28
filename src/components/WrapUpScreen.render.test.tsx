@@ -903,11 +903,16 @@ describe("the Wrap-up follows the theme, and keeps its confetti", () => {
     expect(cls).not.toContain("font-display");
   });
 
-  it("keeps every text size in its source on the scale, and no cyan focus left", () => {
-    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "WrapUpScreen.tsx"), "utf8");
-    const sizes = new Set([...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1])));
-    expect([...sizes].filter((n) => ![11, 12, 14, 17, 30].includes(n))).toEqual([]);
-    expect(src).not.toMatch(/ring-cyan|border-cyan/);
+  it("keeps every text size in its source on the scale, and no cyan focus left: the Wrap-up and the Times with room sheet it opens", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    // The sheet is drawn in a portal, out of the DOM palette test's reach, so its source is held here too (the final review).
+    for (const f of ["WrapUpScreen.tsx", "../features/openings/ui/TimesWithRoomSheet.tsx"]) {
+      const src = readFileSync(join(here, f), "utf8");
+      const sizes = new Set([...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1])));
+      expect([...sizes].filter((n) => ![11, 12, 14, 17, 30].includes(n)), f).toEqual([]);
+      expect(src, f).not.toMatch(/ring-cyan|border-cyan/);
+      expect(src.split(/["'`]/).filter((s) => PALETTE.test(s)), f).toEqual([]);
+    }
   });
 
   /* Where the work went: hero orange (chart-2, the same colour as --cta) is
@@ -1053,11 +1058,11 @@ describe("Next: her next booking, and the door to Times with room", () => {
     vi.restoreAllMocks();
   });
 
-  function NextScreen({ schedules = [] as unknown[] }: { schedules?: unknown[] }) {
+  function NextScreen({ schedules = [] as unknown[], studio = WESTLAKE }: { schedules?: unknown[]; studio?: Studio }) {
     return (
       <WrapUpScreen
         studioName="Westlake"
-        studio={WESTLAKE}
+        studio={studio}
         studios={[WESTLAKE, STRONGSVILLE]}
         trainers={[SAM, PAT]}
         client={client}
@@ -1149,6 +1154,14 @@ describe("Next: her next booking, and the door to Times with room", () => {
     expect(nextText(host)).toBe("Can't check the next booking right now.");
     expect(door(host)?.getAttribute("data-door")).not.toBe("prominent");
     online.mockRestore();
+  });
+
+  it("at a studio whose bookings aren't linked, can't check the next booking, never 'nothing booked' (the final review)", async () => {
+    const host = await mount(<NextScreen studio={{ ...WESTLAKE, mindbodySiteId: "" } as unknown as Studio} />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("cant-check");
+    expect(nextText(host)).toBe("Can't check the next booking right now.");
+    expect(door(host)).toBeNull();
   });
 
   it("a failed read says it can't check, never that nothing is booked", async () => {

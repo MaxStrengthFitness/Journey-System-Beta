@@ -23,10 +23,11 @@
  *   THIS WEEK beside it: "This Tuesday, Oct 6: room" or "This Tuesday: full".
  *
  * FREE for a chosen trainer means they usually take clients then, aren't
- * away, have nothing booked, and no rotation booking sits there that could
- * be theirs unseen; for anyone, that a trainer who could offer it is free
- * once the rotation has taken its places. A booking Journey can't place at
- * that time is never free. A modest "no" is always the answer to doubt: the
+ * away, have nothing booked, no "Unavailable" block of theirs covers it
+ * (room.ts `addBlock`), and no rotation booking sits there that could be
+ * theirs unseen; for anyone, that a trainer who could offer it is free once
+ * the rotation has taken its places. A booking Journey can't place at that
+ * time is never free. A modest "no" is always the answer to doubt: the
  * offer is "for good", and every line ends "Check it in Mindbody before you
  * promise it. Journey doesn't book."
  *
@@ -42,7 +43,7 @@ import { takesClientsAt } from "./agreed";
 import { addDays } from "./coverage";
 import { offerable, type OpeningsMark } from "./marks";
 import { rowStart } from "./next-days";
-import { atRow, freeAt, inAhead, type PlacedBooking } from "./room";
+import { addBlock, atRow, freeAt, inAhead, type PlacedBooking } from "./room";
 import { bookingTime, parseTimeKey, type TimeKey } from "./rows";
 import type { UsualTime } from "./usual";
 import { placeBooking, type TrainerRef } from "./whose";
@@ -95,15 +96,27 @@ export interface Offer {
   thisWeek: { day: string; state: "room" | "full" | "cant-tell" } | null;
 }
 
-/** Every live booking of a read, placed, by studio day. */
-function byDay(read: BookingsRead | null, input: Pick<OfferInput, "tz" | "trainers">): Map<string, PlacedBooking[]> {
-  const out = new Map<string, PlacedBooking[]>();
+interface ByDay {
+  bookings: Map<string, PlacedBooking[]>;
+  /** Each day's staff blocks: never bookings, but their trainer is out for the time they cover. */
+  blocked: Map<string, Map<string, Set<number>>>;
+}
+
+/** Every live booking of a read, placed, by studio day; and each day's staff blocks, apart. */
+function byDay(read: BookingsRead | null, input: Pick<OfferInput, "tz" | "trainers">): ByDay {
+  const out: ByDay = { bookings: new Map(), blocked: new Map() };
   for (const entry of read?.bookings ?? []) {
-    if (entry.status === "Cancelled" || isStaffBlock(entry)) continue;
+    if (entry.status === "Cancelled") continue;
     const time = bookingTime(entry, input.tz);
     if (!time) continue;
-    if (!out.has(time.dateKey)) out.set(time.dateKey, []);
-    out.get(time.dateKey)!.push({ rows: time.rows, place: placeBooking(entry, input.trainers), cancellation: "none" });
+    const place = placeBooking(entry, input.trainers);
+    if (isStaffBlock(entry)) {
+      if (!out.blocked.has(time.dateKey)) out.blocked.set(time.dateKey, new Map());
+      addBlock(out.blocked.get(time.dateKey)!, entry, place, time.rows);
+      continue;
+    }
+    if (!out.bookings.has(time.dateKey)) out.bookings.set(time.dateKey, []);
+    out.bookings.get(time.dateKey)!.push({ rows: time.rows, place, cancellation: "none" });
   }
   return out;
 }
@@ -135,10 +148,10 @@ export function offers(input: OfferInput): Offer[] {
     const who = input.forTrainer ? candidates.filter((id) => id === input.forTrainer) : candidates;
     if (who.length === 0) continue;
 
-    const freeOn = (day: string, bookings: Map<string, PlacedBooking[]>): boolean => {
-      const at = atRow(bookings.get(day) ?? [], t.row);
+    const freeOn = (day: string, read: ByDay): boolean => {
+      const at = atRow(read.bookings.get(day) ?? [], t.row);
       if (at.unplaced > 0) return false;
-      const inIds = inAhead(input.docs, day, t.row, input.worksHere);
+      const inIds = inAhead(input.docs, day, t.row, input.worksHere, read.blocked.get(day));
       const free = freeAt(inIds, at).free.filter((id) => who.includes(id));
       return free.length > at.rotation;
     };

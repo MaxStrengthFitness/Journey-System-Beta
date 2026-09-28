@@ -2146,10 +2146,13 @@ service cloud.firestore {
       // Anyone who works at the studio (and franchise owners and
       // administrators) reads the marks, and sets, changes, keeps or removes
       // one, as the notes rule has it: any trainer may close a thread and any
-      // trainer may reopen it. Always AS THEMSELVES: `by.id` is the caller's
-      // Auth uid and `at` is this write's time, so a mark can be neither
-      // written in someone else's name nor backdated. A change, and a Keep at
-      // the review, sign the mark again as the person making them. The id is
+      // trainer may reopen it. Always AS THEMSELVES: `by.id` must be the
+      // caller's Auth uid and `at` this write's time, so a mark can be neither
+      // put under someone else's id nor backdated. `by.name` is the app's copy
+      // of the signer's name, checked only for length, as the standing week's
+      // stamps are (pinning it would cost budget here and refuse the admins
+      // who have no trainer document). A change, and a Keep at the review,
+      // sign the mark again as the person making them. The id is
       // the weekday and the time the document holds, so one time has one mark.
       // Limits match src/features/openings/marks.ts (`markForWrite`, written
       // by openings/ui/marks-store.ts).

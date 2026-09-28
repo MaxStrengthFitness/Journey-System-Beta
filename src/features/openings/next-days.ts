@@ -13,16 +13,24 @@
  *   2. A CANCELLATION NOBODY BOOKED INTO: a stamped cancellation for that
  *      time, and nothing booked into the TIME since: a booking at that time,
  *      with the same trainer (or, for a booking Journey couldn't place,
- *      anyone), that first appeared around or after the cancellation.
+ *      anyone), that ARRIVED there around or after the cancellation.
  *      `isRealRebook` is borrowed only for that timing test (the booking
- *      first appeared no more than REBOOK_WINDOW_MS before the cancellation,
- *      or after it, and starts after it); here it is applied to a booking
- *      into the same time and place, never to the client's other bookings,
- *      so it is deliberately NOT Changes' "reschedule". Her own booking elsewhere that
- *      week doesn't take the time back: the time is still open, and "booked
- *      again from" says when she is next in. So the line never says "not
- *      rebooked", which on Changes means she didn't reschedule. Needs no
- *      agreed week, so it works from the first day.
+ *      arrived no more than REBOOK_WINDOW_MS before the cancellation, or
+ *      after it, and starts after it); here it is applied to a booking into
+ *      the same time and place, never to the client's other bookings, so it
+ *      is deliberately NOT Changes' "reschedule". A booking ARRIVES at its
+ *      time when Journey first saw it (`createdAt`) or, when Mindbody later
+ *      moved it there, when it moved (`movedAt`): a move keeps the row and
+ *      its old `createdAt`, so a booking a leader moves into the freed time
+ *      fills it (`arrivedAt`, the final review). A booking with neither stamp
+ *      can't be dated, so it is taken as filling the time rather than
+ *      claiming nobody booked into it. A booking REASSIGNED to the trainer at
+ *      the same time carries no stamp at all (the sync stamps only a changed
+ *      time or status), so it still doesn't count. Her own booking elsewhere
+ *      that week doesn't take the time back: the time is still open, and
+ *      "booked again from" says when she is next in. So the line never says
+ *      "not rebooked", which on Changes means she didn't reschedule. Needs
+ *      no agreed week, so it works from the first day.
  *   3. A USUALLY-FULL TIME WITH ROOM: the time reads Always or Usually full
  *      (or is marked Always full), and a trainer who usually takes clients
  *      then has nothing booked.
@@ -34,7 +42,9 @@
  *
  * ROOM AHEAD comes from the agreed weeks and the days away, so it is only
  * ever "usually takes clients then and has nothing booked" (room.ts). A
- * cancelled booking ahead, late or not, is room like any other.
+ * cancelled booking ahead, late or not, is room like any other. A trainer's
+ * own "Unavailable" block is never a booking, but the half-hours it covers
+ * are never room with them (room.ts `addBlock`).
  *
  * WHEN IT CAN'T TELL. Loading, failed, offline or answered only by this
  * iPad's cache: no lines, and the state says which. Mindbody not linked: no
@@ -56,7 +66,7 @@ import { weekdayOf } from "../studio-tasks/recurrence";
 import { rowsCovered } from "./agreed";
 import { addDays } from "./coverage";
 import { countsAsFull, type OpeningsMark } from "./marks";
-import { atRow, cancellationOf, freeAt, inAhead, wordAt, type PlacedBooking } from "./room";
+import { addBlock, atRow, cancellationOf, freeAt, inAhead, wordAt, type PlacedBooking } from "./room";
 import { bookingTime, isOpeningsWeekday, rowClock, rowOf, timeKey, type BookingTime, type TimeKey } from "./rows";
 import type { UsualTime } from "./usual";
 import { placeBooking, type Place, type TrainerRef } from "./whose";
@@ -150,16 +160,26 @@ export function rowStart(dateKey: string, row: number, tz: string): Date | null 
   return wallClockToInstant(`${dateKey}T${rowClock(row)}:00`, tz);
 }
 
-/** The window's bookings placed on their days: live ones, and the cancellations, apart. */
+/**
+ * The window's bookings placed on their days: live ones, and the
+ * cancellations, apart; and each day's staff blocks, which are never
+ * bookings but take their trainer out for the time they cover (`blockedOn`).
+ */
 function placeWindow(input: Pick<NextDaysInput, "bookings" | "today" | "tz" | "trainers"> & { days: number }) {
   const last = addDays(input.today, input.days - 1);
   const live = new Map<string, Row[]>();
   const cancelled: Row[] = [];
+  const blocked = new Map<string, Map<string, Set<number>>>();
   for (const entry of input.bookings) {
-    if (isStaffBlock(entry)) continue;
     const time = bookingTime(entry, input.tz);
     if (!time || time.dateKey < input.today || time.dateKey > last || !isOpeningsWeekday(time.weekday)) continue;
-    const row: Row = { entry, time, place: placeBooking(entry, input.trainers) };
+    const place = placeBooking(entry, input.trainers);
+    if (isStaffBlock(entry)) {
+      if (!blocked.has(time.dateKey)) blocked.set(time.dateKey, new Map());
+      addBlock(blocked.get(time.dateKey)!, entry, place, time.rows);
+      continue;
+    }
+    const row: Row = { entry, time, place };
     if (entry.status === "Cancelled") cancelled.push(row);
     else {
       if (!live.has(time.dateKey)) live.set(time.dateKey, []);
@@ -167,10 +187,24 @@ function placeWindow(input: Pick<NextDaysInput, "bookings" | "today" | "tz" | "t
     }
   }
   const placed = (day: string): PlacedBooking[] => (live.get(day) ?? []).map((r) => ({ rows: r.time.rows, place: r.place, cancellation: "none" }));
-  return { live, cancelled, placed, last };
+  const blockedOn = (day: string) => blocked.get(day);
+  return { live, cancelled, placed, blockedOn, last };
 }
 
-/** Was a cancelled booking's time taken again: a booking into it, with the same trainer, that came with or after the cancellation? */
+/**
+ * When a live booking came to its time: the later of when Journey first saw
+ * it and when Mindbody last moved it (a live row's `movedAt` is always the
+ * move INTO its current time: a move out would have changed its start).
+ * Null when it carries neither stamp.
+ */
+export function arrivedAt(e: Pick<ScheduleEntry, "createdAt" | "movedAt">): Date | null {
+  const created = toDate((e.createdAt ?? null) as DateLike);
+  const moved = toDate((e.movedAt ?? null) as DateLike);
+  if (created && moved) return moved.getTime() > created.getTime() ? moved : created;
+  return moved ?? created;
+}
+
+/** Was a cancelled booking's time taken again: a booking into it, with the same trainer, that arrived with or after the cancellation? */
 function refilled(c: Row, cancelledAt: Date, live: readonly Row[]): boolean {
   return live.some((b) => {
     if (!b.time.rows.some((r) => c.time.rows.includes(r))) return false;
@@ -178,7 +212,11 @@ function refilled(c: Row, cancelledAt: Date, live: readonly Row[]): boolean {
       c.place.kind === "unplaced" ||
       (c.place.kind === "rotation" && b.place.kind === "rotation") ||
       (c.place.kind === "trainer" && b.place.kind === "trainer" && b.place.trainerId === c.place.trainerId);
-    return samePlace && isRealRebook({ createdAt: b.entry.createdAt, startTime: b.time.startAt }, cancelledAt);
+    if (!samePlace) return false;
+    const arrived = arrivedAt(b.entry);
+    // Can't tell when it came: don't claim nobody booked into it.
+    if (!arrived) return true;
+    return isRealRebook({ createdAt: arrived, startTime: b.time.startAt }, cancelledAt);
   });
 }
 
@@ -200,7 +238,7 @@ export function nextDays(input: NextDaysInput): NextDays {
     connected: input.connected,
     staffIds: input.staffIds,
   });
-  const { live, cancelled, placed, last } = placeWindow({ ...input, days });
+  const { live, cancelled, placed, blockedOn, last } = placeWindow({ ...input, days });
   const ahead = (at: Date | null) => !!at && at.getTime() > input.now.getTime();
 
   const lines = new Map<string, { dateKey: string; row: number; reasons: LineReason[]; trainerIds: Set<string>; clients: LineClient[] }>();
@@ -249,7 +287,7 @@ export function nextDays(input: NextDaysInput): NextDays {
         const key = timeKey(weekday, row);
         if (!countsAsFull(input.usual?.get(key)?.word, input.marks?.get(key))) continue;
         if (!ahead(rowStart(day, row, input.tz))) continue;
-        const inIds = inAhead(input.docs, day, row, input.worksHere);
+        const inIds = inAhead(input.docs, day, row, input.worksHere, blockedOn(day));
         const at = atRow(placed(day), row);
         const word = wordAt(at.unplaced === 0, inIds, at);
         if (word !== "room" && word !== "none") continue;
@@ -266,7 +304,7 @@ export function nextDays(input: NextDaysInput): NextDays {
     const usual = input.usual?.get(key) ?? null;
     const mark = input.marks?.get(key) ?? null;
     const at = atRow(placed(l.dateKey), l.row);
-    const inIds = inAhead(input.docs, l.dateKey, l.row, input.worksHere);
+    const inIds = inAhead(input.docs, l.dateKey, l.row, input.worksHere, blockedOn(l.dateKey));
     const free = freeAt(inIds, at);
     const room = inIds.length > 0 && at.unplaced === 0 ? { count: free.room, with: free.namesKnown ? free.free : [] } : null;
     return {
@@ -301,20 +339,44 @@ export interface RoomTime {
   thisWeekOnly: boolean;
 }
 
+/** The places a line's one-off reasons free up: the trainers named, and the cancellations placed with nobody (the rotation's, or one Journey couldn't place). */
+interface OneOff {
+  named: Set<string>;
+  unnamed: number;
+}
+
 /**
  * Every half-hour ahead with room: with the trainer given (who must be free,
  * with no rotation booking there to take their place unseen), or with anyone
  * who usually takes clients then. Empty unless the read is an answer.
+ *
+ * "This week only": with a trainer, the time is theirs only because their
+ * regular is out or their client cancelled. Under "Anyone", only when the
+ * room is gone once those one-off places are taken back: Judy out at 8:00
+ * with Sam, and Pat free then too, is room with Pat, not room this week only
+ * (the final review).
  */
 export function timesWithRoom(input: NextDaysInput, forTrainer: string | null, lines?: readonly NextDaysLine[]): RoomTime[] {
   if (!input.connected || input.read !== "ready") return [];
   const days = input.days ?? CHECK_DAYS;
-  const { placed, last } = placeWindow({ ...input, days });
+  const { placed, blockedOn, last } = placeWindow({ ...input, days });
   const onlyThisWeek = new Set(
     (lines ?? [])
       .filter((l) => l.reasons.some((r) => r.kind !== "usually-full" && (!forTrainer || ("finding" in r ? r.finding.trainerId === forTrainer : r.trainerId === forTrainer))))
       .map((l) => `${l.dateKey}|${l.row}`),
   );
+  const oneOff = new Map<string, OneOff>();
+  for (const l of lines ?? []) {
+    for (const r of l.reasons) {
+      if (r.kind === "usually-full") continue;
+      const key = `${l.dateKey}|${l.row}`;
+      if (!oneOff.has(key)) oneOff.set(key, { named: new Set(), unnamed: 0 });
+      const o = oneOff.get(key)!;
+      const trainerId = "finding" in r ? r.finding.trainerId : r.trainerId;
+      if (trainerId) o.named.add(trainerId);
+      else o.unnamed += 1;
+    }
+  }
   const out: RoomTime[] = [];
   for (let day = input.today; day <= last; day = addDays(day, 1)) {
     const weekday = weekdayOf(day);
@@ -323,12 +385,16 @@ export function timesWithRoom(input: NextDaysInput, forTrainer: string | null, l
     for (const d of input.docs) if (d.final && d.trainerId && (!forTrainer || d.trainerId === forTrainer)) for (const r of rowsCovered(d.final.hours, weekday)) rows.add(r);
     for (const row of [...rows].sort((a, b) => a - b)) {
       if (!(rowStart(day, row, input.tz)!.getTime() > input.now.getTime())) continue;
-      const inIds = inAhead(input.docs, day, row, input.worksHere);
+      const inIds = inAhead(input.docs, day, row, input.worksHere, blockedOn(day));
       const at = atRow(placed(day), row);
       if (at.unplaced > 0) continue;
       const free = freeAt(inIds, at);
       const hasRoom = forTrainer ? free.free.includes(forTrainer) && at.rotation === 0 : free.room > 0;
-      if (hasRoom) out.push({ dateKey: day, row, thisWeekOnly: onlyThisWeek.has(`${day}|${row}`) });
+      if (!hasRoom) continue;
+      const key = `${day}|${row}`;
+      const o = oneOff.get(key);
+      const thisWeekOnly = forTrainer ? onlyThisWeek.has(key) : !!o && free.room - free.free.filter((id) => o.named.has(id)).length - o.unnamed <= 0;
+      out.push({ dateKey: day, row, thisWeekOnly });
     }
   }
   return out;

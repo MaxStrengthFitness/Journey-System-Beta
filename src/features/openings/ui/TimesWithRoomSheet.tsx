@@ -20,7 +20,7 @@ import {
   builtLine,
   chips,
   noOffersWithSentence,
-  rotationDaySentence,
+  rotationLines,
   timesWithRoomByDay,
 } from "../present";
 import { clockLabel, weekdayPlural } from "../rows";
@@ -52,7 +52,11 @@ import type { OpeningsData } from "./useOpeningsData";
  *                 the core can only leave out a mark it is given. So offline,
  *                 where the proposal hoped to show Most weeks from the saved
  *                 summary, it says it can't tell, as Openings does.
- *   Rotation      one line per day that runs on the rotation.
+ *   Rotation      one line per weekday with a Rotation time: the whole day
+ *                 when every time that day with a word reads Rotation, its
+ *                 rotation times otherwise (present.ts `rotationLines`), so
+ *                 the sheet never offers a Monday time and says Mondays run
+ *                 on the rotation in the same view.
  *   The foot      OFFER_FOOT, always.
  *
  * ONE LINE, NOT TWO THE SAME. When both parts would say the same thing (both
@@ -241,10 +245,7 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
     };
   }, [data, week.read, week.input.bookings, monthRead, coming, forTrainer]);
 
-  const rotationDays = useMemo(() => {
-    if (!data.connected || !data.usual) return [];
-    return [...new Set([...data.usual.times.values()].filter((u) => u.word === "rotation").map((u) => u.weekday))].sort((a, b) => a - b);
-  }, [data.connected, data.usual]);
+  const rotation = useMemo(() => (data.connected && data.usual ? rotationLines(data.usual.times) : []), [data.connected, data.usual]);
 
   const whole = wholeLine([next, most]);
 
@@ -299,11 +300,11 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
           </>
         )}
 
-        {rotationDays.length > 0 && (
+        {rotation.length > 0 && (
           <div className="flex flex-col gap-1" data-testid="times-rotation">
-            {rotationDays.map((wd) => (
-              <p key={wd} className="text-[14px] text-ink-d2">
-                {rotationDaySentence(wd)}
+            {rotation.map((r) => (
+              <p key={r.weekday} className="text-[14px] text-ink-d2">
+                {r.sentence}
               </p>
             ))}
           </div>
@@ -342,10 +343,11 @@ function TimesPart<T>({ title, testId, part, groups }: { title: string; testId: 
               <li key={g.key} className="flex flex-col gap-1.5" aria-label={g.sentence}>
                 <span className="text-[14px] font-bold text-ink-d1 break-words">{g.label}</span>
                 <span className="flex flex-wrap gap-1.5">
+                  {/* A time is a label, not a control: no border, no pill, so only the Whose-times buttons read as tappable (the final review). */}
                   {g.times.map((t) => (
                     <span
                       key={t}
-                      className="inline-flex items-center min-h-8 px-3 rounded-full border border-div-d bg-bg-dark-3 text-[14px] font-semibold text-ink-d1"
+                      className="inline-flex items-center px-2.5 py-1 rounded-md bg-bg-dark-3 text-[14px] font-semibold text-ink-d1"
                       data-testid="time-chip"
                     >
                       {t}

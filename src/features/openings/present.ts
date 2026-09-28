@@ -200,17 +200,39 @@ function whyNoRoom(u: UsualTime): string {
 }
 
 /**
- * The time's whole sentence, the button's label for VoiceOver too:
- * "Monday 8:00 AM · Always full: full in all of the last 8 Mondays."
+ * The weekdays that run on the rotation: at least one time reads Rotation,
+ * and every time that day with a word reads Rotation (nothing reads full,
+ * room, mixed or "N booked"; "–" and a blank time say nothing either way).
+ * One Rotation half-hour beside times with room makes that half-hour the
+ * rotation's, not the day (the final review): a Saturday where one trainer
+ * takes clients 7:00 - 9:00 and the rotation covers the rest is not "a
+ * rotation day", or the Wrap-up's sheet would offer Saturday times and in
+ * the same view tell the client Saturdays run on the rotation.
  */
-export function usualSentence(u: UsualTime): string {
+export function rotationDays(times: ReadonlyMap<string, UsualTime>): number[] {
+  const rotation = new Set<number>();
+  const other = new Set<number>();
+  for (const u of times.values()) {
+    if (u.word === "rotation") rotation.add(u.weekday);
+    else if (u.word !== "blank" && u.word !== "not-enough") other.add(u.weekday);
+  }
+  return [...rotation].filter((wd) => !other.has(wd)).sort((a, b) => a - b);
+}
+
+/**
+ * The time's whole sentence, the button's label for VoiceOver too:
+ * "Monday 8:00 AM · Always full: full in all of the last 8 Mondays." A
+ * Rotation time says its whole day runs on the rotation only when
+ * `rotationDay` (`rotationDays` holds its weekday); otherwise the time does.
+ */
+export function usualSentence(u: UsualTime, rotationDay = false): string {
   const time = timeName(u.key);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   switch (u.word) {
     case "booked":
       return `${time} · ${cap(usualDetail(u))}. ${whyNoRoom(u)}`;
     case "rotation":
-      return `${time} · ${cap(usualDetail(u))}. ${weekdayPlural(u.weekday)} run on the rotation: ask the front desk.`;
+      return `${time} · ${cap(usualDetail(u))}. ${rotationDay ? `${weekdayPlural(u.weekday)} run` : "This time runs"} on the rotation: ask the front desk.`;
     case "not-enough":
       return `${time} · Not enough weeks yet: ${usualDetail(u)}.`;
     case "blank":
@@ -524,7 +546,8 @@ function reasonText(line: NextDaysLine, tz: string): string {
       return to ? `A regular is booked ${dayLabel(to.dateKey, tz)} at ${clockLabel(minutesOf(to.start) ?? 0)} instead` : "A regular is booked another time instead";
     }
     case "cancellation":
-      return `A cancellation on ${shortDay(r.cancelledOn, tz)}, and nobody has booked into it since${line.room ? "" : ` (${line.bookedNow} booked now)`}`;
+      // "(N booked now)" wherever the head names no room: no agreed week there, or room for nobody.
+      return `A cancellation on ${shortDay(r.cancelledOn, tz)}, and nobody has booked into it since${line.room && line.room.count > 0 ? "" : ` (${line.bookedNow} booked now)`}`;
     case "usually-full":
       return "Nothing is booked with them yet";
   }
@@ -711,6 +734,30 @@ export const DONE = "Done";
 /** "Saturdays run on the rotation. Ask the front desk." */
 export function rotationDaySentence(weekday: number): string {
   return `${weekdayPlural(weekday)} run on the rotation. Ask the front desk.`;
+}
+
+/** "Mondays at 6:00 AM · 6:30 AM run on the rotation. Ask the front desk.": a day that isn't a rotation day names its rotation times. */
+export function rotationTimesSentence(weekday: number, rows: readonly number[]): string {
+  const at = [...rows].sort((a, b) => a - b).map((r) => clockLabel(r)).join(" · ");
+  return `${weekdayPlural(weekday)} at ${at} run on the rotation. Ask the front desk.`;
+}
+
+/**
+ * The Wrap-up sheet's rotation lines, one per weekday with a Rotation time,
+ * Monday first: the whole day when it is a rotation day (`rotationDays`),
+ * otherwise its rotation times.
+ */
+export function rotationLines(times: ReadonlyMap<string, UsualTime>): { weekday: number; sentence: string }[] {
+  const days = new Set(rotationDays(times));
+  const rows = new Map<number, number[]>();
+  for (const u of times.values()) {
+    if (u.word !== "rotation") continue;
+    if (!rows.has(u.weekday)) rows.set(u.weekday, []);
+    rows.get(u.weekday)!.push(u.row);
+  }
+  return [...rows.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([weekday, rs]) => ({ weekday, sentence: days.has(weekday) ? rotationDaySentence(weekday) : rotationTimesSentence(weekday, rs) }));
 }
 
 /**

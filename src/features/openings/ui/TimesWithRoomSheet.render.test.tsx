@@ -199,6 +199,11 @@ describe("times with room", () => {
     expect(most.find((l) => l.startsWith("Tuesdays"))).toBe("Tuesdays: 10:30 AM | 11:00 AM | 11:30 AM");
     expect(most.find((l) => l.startsWith("Mondays"))).not.toContain("7:00 AM |");
     expect(sheet().querySelector("[data-testid='times-foot']")?.textContent).toBe(OFFER_FOOT);
+    // A time is a label, not a button: no border and no pill like the Whose-times buttons (the final review).
+    const chip = sheet().querySelector("[data-testid='time-chip']")!;
+    expect(chip.tagName).toBe("SPAN");
+    expect(chip.className.split(/\s+/)).not.toContain("rounded-full");
+    expect(chip.className.split(/\s+/)).not.toContain("border");
   });
 
   it("names nobody and never says why a time is free", async () => {
@@ -292,6 +297,17 @@ describe("times with room", () => {
     fake.summary = foldFixture({ bookings: [...MONDAYS.flatMap(monday), ...tuesdays, ...rota] });
     await mount();
     expect(sheet().querySelector("[data-testid='times-rotation']")?.textContent).toBe("Saturdays run on the rotation. Ask the front desk.");
+  });
+
+  it("one rotation time on a day with times offered names the time, never the whole day (the final review)", async () => {
+    const tuesdays = MONDAYS.map((m) => samAt(addDays(m, 1), "10:00"));
+    const early = MONDAYS.map((m) => booking(m, "06:00", { trainerId: undefined, trainerName: "Westlake Rotation" }));
+    fake.summary = foldFixture({ bookings: [...MONDAYS.flatMap(monday), ...tuesdays, ...early] });
+    await mount({ viewer: LEE });
+    expect(groups("times-most").some((l) => l.startsWith("Mondays: "))).toBe(true);
+    const rotation = sheet().querySelector("[data-testid='times-rotation']")?.textContent ?? "";
+    expect(rotation).toBe("Mondays at 6:00 AM run on the rotation. Ask the front desk.");
+    expect(rotation).not.toContain("Mondays run on the rotation");
   });
 
   it("closes with Done, back to the Wrap-up", async () => {

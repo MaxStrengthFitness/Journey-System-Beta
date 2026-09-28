@@ -51,6 +51,18 @@
 }
 .op__page > * { flex: none; }
 
+/* Portrait: a time's sheet lies over the foot of the frame (relay.css .cp,
+   55% of the frame, or 90% when tall), so while one is open the part gets at
+   least that much room at its foot and the grid's last rows, the evening,
+   can be scrolled above it (the final review). The screen's height is more
+   than the frame's, so it is always enough. */
+@media (max-width: 899px) {
+  .op:has(.cp) .op__page { padding-bottom: calc(55dvh + 1rem); }
+  .op:has(.cp--tall) .op__page { padding-bottom: calc(90dvh + 1rem); }
+  /* A tapped time scrolls clear of the sheet (UsualWeekPart). */
+  .op:has(.cp) .op-cell { scroll-margin-bottom: calc(55dvh + 0.5rem); }
+}
+
 /* A part's one sentence when it has nothing else to say (loading, never
    built, not enough weeks, not linked). */
 .op__lead {

@@ -588,9 +588,10 @@ export function WrapUpScreen({
         monthRead,
         hereStudioId: studio?.id ?? null,
         studioName: (id) => studios.find((s) => s.id === id)?.name ?? null,
+        linked: openings.connected,
         now: nowMs,
       }),
-    [client.id, schedules, her.rows, her.read, monthRead, studio?.id, studios, nowMs],
+    [client.id, schedules, her.rows, her.read, monthRead, studio?.id, studios, openings.connected, nowMs],
   );
   const door = timesDoor(next, hasTimesToOffer(openings));
   const [timesOpen, setTimesOpen] = useState(false);

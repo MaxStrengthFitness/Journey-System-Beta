@@ -70,7 +70,8 @@ plain, dense and calm. This is now too.
 ├──────────────────────────────────────────────────────────────────────────┤
 │ MY CLIENTS (your own page)                              31 clients       │
 │   COACHED LATELY · THE LAST 60 DAYS                                      │
-│   ◈ Judy Daus   42 sessions with you in Journey · Last in Journey: Sep 25│
+│   ◈ Judy Daus   42 sessions with you in Journey ·                        │
+│                 Last in Journey, with any trainer: Sep 25                │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ MY RENEWALS · MY STANDING WEEK (your own page)                           │
 ├──────────────────────────────────────────────────────────────────────────┤
@@ -345,7 +346,10 @@ with the team); My clients is who you have TRAINED, for "my off time".
   through `lib/history-claims.ts`: "Last session: Sep 25" is a claim that no
   session came after it, so it is made only where Journey owns the days
   after it (`canClaimGap` over `ownedWindow`, judged by the client's home
-  studio's cutover); otherwise "Last in Journey: Sep 25". While the studio
+  studio's cutover); otherwise "Last in Journey: Sep 25". Either way the date
+  is HER last session with any trainer, so the row says "with any trainer"
+  (the final review: beside "42 sessions with you" a bare date read as your
+  last session with her; on AJ's screen-audit list). While the studio
   has no cutover date, or it has not come yet (a cutover set ahead of time
   is a studio still on FileMaker), the card says older sessions may be
   missing.

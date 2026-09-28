@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { WEEKDAY_NAME, WEEKDAY_SHORT } from "../../standing-week/week";
 import { weekdayOf } from "../../studio-tasks/recurrence";
 import { useRelay } from "../../relay/board/RelayContext";
-import { READING_USUAL_WEEK, builtLine, notEnoughSentence, sinceLine, summaryStateSentence, unagreedLine, usualSentence, wordLabel } from "../present";
+import { READING_USUAL_WEEK, builtLine, notEnoughSentence, rotationDays, sinceLine, summaryStateSentence, unagreedLine, usualSentence, wordLabel } from "../present";
 import { OPENINGS_WEEKDAYS, clockLabel, timeKey, timeName, type TimeKey } from "../rows";
 import { isStale } from "../summary-doc";
 import { firstWordsOn, type UsualTime, type UsualWord } from "../usual";
@@ -26,7 +26,9 @@ import "../openings.css";
  *   - A tap opens the time's sheet in the Context Panel. A tap on ANOTHER
  *     time asks first when a mark is half-written on the sheet that is open
  *     (`guard`, the parts' leave scope); the time already open asks nothing,
- *     because its sheet stays as it is.
+ *     because its sheet stays as it is. In portrait the sheet lies over the
+ *     foot of the grid, so the part gets that much room at its foot while it
+ *     is open (openings.css) and the time just tapped scrolls clear of it.
  *   - Narrower than 640px (the part's own width, not the screen's: the
  *     Context Panel may sit beside it), one day at a time with a day picker.
  *
@@ -77,6 +79,7 @@ export function UsualWeekPart({ guard = straightThrough }: UsualWeekPartProps = 
   }
 
   const old = isStale(summary, data.now);
+  const rotationDay = new Set(rotationDays(usual.times));
   const since = sinceLine(summary, usual.weeksCounted, data.tz);
   const weeksKnown = !data.weeks.loading && !data.weeks.error;
   const unagreed = weeksKnown
@@ -88,7 +91,7 @@ export function UsualWeekPart({ guard = straightThrough }: UsualWeekPartProps = 
       )
     : null;
 
-  const open = (u: UsualTime) => {
+  const open = (u: UsualTime, cell: HTMLElement) => {
     // Set nothing before the answer: the whole move goes inside it.
     const go = () => {
       setOpenKey(u.key);
@@ -96,6 +99,10 @@ export function UsualWeekPart({ guard = straightThrough }: UsualWeekPartProps = 
       // it stays on the day of the time just opened.
       setDay(u.weekday);
       openPanel({ kicker: "The usual week", title: timeName(u.key), body: <TimeSheet timeKey={u.key} /> });
+      // Portrait: once the sheet (and the room it gives the part) is drawn,
+      // bring the time just tapped above it (its scroll margin, openings.css).
+      const later = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (f: () => void) => setTimeout(f, 0);
+      later(() => cell.scrollIntoView?.({ block: "nearest" }));
     };
     // The time already open keeps its sheet (the body is keyed by the time), so it never asks.
     if (panel && openKey === u.key) go();
@@ -146,9 +153,9 @@ export function UsualWeekPart({ guard = straightThrough }: UsualWeekPartProps = 
                   className={`op-cell op-cell--${TONE[u.word]}`}
                   data-wd={wd}
                   data-key={key}
-                  aria-label={marked ? `${usualSentence(u)} Marked.` : usualSentence(u)}
+                  aria-label={marked ? `${usualSentence(u, rotationDay.has(wd))} Marked.` : usualSentence(u, rotationDay.has(wd))}
                   aria-current={panel && openKey === key ? "true" : undefined}
-                  onClick={() => open(u)}
+                  onClick={(e) => open(u, e.currentTarget)}
                 >
                   {word && <span className="op-cell__word">{word}</span>}
                   {marked && <span className="op-cell__mark">Marked</span>}

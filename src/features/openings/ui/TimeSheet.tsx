@@ -7,6 +7,7 @@ import {
   notCountedLines,
   outnumberedLine,
   regularsLine,
+  rotationDays,
   summaryStateSentence,
   usualSentence,
   usuallyBookedLine,
@@ -73,7 +74,8 @@ function TimeSheetBody({ u, weekday, row }: { u: UsualTime; weekday: number; row
   const name = relay?.authTrainer?.fullName || data.refs.find((r) => r.id === data.viewer.trainerId)?.name || "";
   const m = useMarkThisTime({ studioId: data.studioId, timeKey, mark, signer: uid ? { uid, name } : null });
 
-  const lead = mark ? markLines(u, mark, data.viewer, data.today, data.tz) : [usualSentence(u)];
+  const rotationDay = !!data.usual && rotationDays(data.usual.times).includes(weekday);
+  const lead = mark ? markLines(u, mark, data.viewer, data.today, data.tz) : [usualSentence(u, rotationDay)];
   // The mark's note follows the line that says who marked it (after the bookings' disagreement, when there is one).
   const markedAt = mark ? (disagreement(u, mark) ? 1 : 0) : -1;
   const reviewing = Boolean(mark) && data.marks.read === "ready" && needsReview(mark!, data.today, data.tz);

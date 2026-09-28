@@ -77,7 +77,7 @@ import { MyStudioView } from "../../my-studio/MyStudioView";
 import { openMyStudioSection, rememberedMyStudioSection } from "../../my-studio/section-memory";
 import { forgetPersonalMemory } from "../../sign-out/memory";
 import { UnsavedChangesProvider } from "../../unsaved-changes";
-import { rememberedOpeningsPart } from "./part-memory";
+import { rememberedOpeningsPart, rememberedWhoseTimes, showOpenings } from "./part-memory";
 
 const lead = { id: "t-lead", fullName: "Lee Leader", role: "HeadTrainer", primaryHomeStudioId: "s1", accessibleStudioIds: ["s1"] } as never;
 const trainer = { ...(lead as object), role: "LifeTransformer" } as never;
@@ -165,9 +165,12 @@ describe("Openings in My Studio", () => {
   it("opens from a door on another section, and a sign-out forgets it", async () => {
     const h = await mount(lead);
     await click(tab("Team"));
-    await act(async () => openMyStudioSection("openings"));
+    await act(async () => openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" })));
     await settle();
     expect(tab("Openings")?.getAttribute("aria-selected")).toBe("true");
+    // The door's part, set as the move happened and read as the section mounted.
+    expect(h.querySelector("#op-tab-next")?.getAttribute("aria-selected")).toBe("true");
+    await click(h.querySelector("#op-tab-usual"));
     expect(h.textContent).toContain("The usual week is built early each Sunday.");
     forgetPersonalMemory();
     expect(rememberedMyStudioSection()).toBe("relay");
@@ -179,13 +182,16 @@ describe("Openings in My Studio", () => {
     await mount(lead);
     await click(tab("Team"));
     expect(rememberedMyStudioSection()).toBe("team");
-    await act(async () => openMyStudioSection("openings"));
+    await act(async () => openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" })));
     await settle();
     const keep = document.querySelector('[data-action="keep-editing"]');
     await click(keep);
     expect(tab("Team")?.getAttribute("aria-selected")).toBe("true");
-    // The next plain open of My Studio lands where they stayed, not where they chose not to go.
+    // The next plain open of My Studio lands where they stayed, not where they chose not to go,
+    // and the next plain open of Openings where it was, not on the part the door would have set.
     expect(rememberedMyStudioSection()).toBe("team");
+    expect(rememberedOpeningsPart()).toBe("usual");
+    expect(rememberedWhoseTimes()).toBeNull();
   });
 
   it("with no My Studio on screen, a door only remembers the section", () => {

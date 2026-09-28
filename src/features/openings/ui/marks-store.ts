@@ -21,8 +21,9 @@
  * Always AS THE PERSON SIGNED IN: `by.id` is the Auth uid, never the
  * trainers/{id} (CLAUDE.md: the two differ on older accounts), and `at` is the
  * server's time. firestore.rules (`match /openingsMarks/{markKey}`) refuses a
- * mark in someone else's name, a backdated one, and an id that names another
- * time than the fields.
+ * mark under someone else's uid, a backdated one, and an id that names another
+ * time than the fields. `by.name` is this app's copy of the signer's name: the
+ * rule checks only its length, as it does for the standing week's stamps.
  *
  * Nothing here books, holds or asks Mindbody anything, and nobody is pinged:
  * the mark shows on Openings, to whoever opens it.

@@ -169,6 +169,7 @@ describe("nextBookingAnswer", () => {
     monthRead: true as boolean | null,
     hereStudioId: "westlake",
     studioName: (id: string) => names[id] ?? null,
+    linked: true,
     now,
   };
 
@@ -224,6 +225,15 @@ describe("nextBookingAnswer", () => {
     expect(nextBookingAnswer({ ...base, monthRead: false })).toEqual({ state: "none", days: CHECK_DAYS });
     expect(nextBookingAnswer({ ...base, monthRead: null })).toEqual({ state: "none", days: CHECK_DAYS });
     expect([BACK_FROM_DAYS, CHECK_DAYS]).toEqual([30, 7]);
+  });
+
+  it("at a studio whose bookings aren't linked, never says nothing is booked; a booking it heard of still answers (the final review)", () => {
+    expect(nextBookingAnswer({ ...base, linked: false })).toEqual({ state: "cant-check" });
+    expect(nextBookingAnswer({ ...base, linked: false, heard: [here("2026-11-12T13:00:00Z", { studioId: "strongsville" })] })).toMatchObject({
+      state: "booked",
+      elsewhere: "Strongsville",
+    });
+    expect(nextBookingAnswer({ ...base, linked: false, loaded: [here("2026-11-10T13:00:00Z")] })).toMatchObject({ state: "booked" });
   });
 });
 

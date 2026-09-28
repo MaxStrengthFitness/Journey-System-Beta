@@ -12,9 +12,12 @@
  *          agreed week here, "Anyone" for everyone else.
  *
  * A door from elsewhere (Team's line about the free slots, the Overview's
- * line) sets both, then opens the section: `showOpenings("next", { kind:
- * "anyone" })`, then `openMyStudioSection("openings")` from inside My Studio
- * or `rememberMyStudioSection("openings")` and the app's view from outside.
+ * line) sets both and opens the section. From inside My Studio it passes
+ * `showOpenings` as the arrival, `openMyStudioSection("openings", () =>
+ * showOpenings("next", { kind: "anyone" }))`, so the part and the chip change
+ * only when the move happens, never after a "Keep editing" (the final
+ * review). From outside, `showOpenings(...)`, `rememberMyStudioSection
+ * ("openings")` and the app's view, as master's other doors do.
  *
  * PURE MODULE (no React).
  */

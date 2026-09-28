@@ -277,10 +277,17 @@ describe("foldSummary — rotation, and bookings Journey can't place", () => {
     expect(cell(s, "1-0730", "2026-11-02")).toMatchObject({ word: "booked", booked: 1 });
   });
 
-  it("an Unavailable block is never a booking", () => {
-    const s = foldSummary(input({ bookings: [...everyMonday(), sam("2026-11-02", "09:30", { clientName: "Unavailable", clientId: undefined })] }));
+  it("an Unavailable block is never a booking, but it takes its trainer out for the time it covers", () => {
+    const block = sam("2026-11-02", "09:30", { clientName: "Unavailable", clientId: undefined });
+    const s = foldSummary(input({ bookings: [...everyMonday(), block] }));
     expect(s.weeks[0].d["1"]).toEqual({ n: 4, j: 1 });
-    expect(cell(s, "1-0930", "2026-11-02")).toMatchObject({ word: "none", booked: 0 });
+    // Sam was the only one in at 9:30, and his block took him out: nobody in, never "nobody booked".
+    expect(cell(s, "1-0930", "2026-11-02")).toMatchObject({ word: "out", booked: 0, inKeys: [] });
+    // Another Monday, no block: Sam in and free.
+    expect(cell(s, "1-0930", "2026-10-26")).toMatchObject({ word: "none", booked: 0 });
+    // A cancelled block blocks nothing.
+    const cancelled = foldSummary(input({ bookings: [...everyMonday(), { ...block, status: "Cancelled" }] }));
+    expect(cell(cancelled, "1-0930", "2026-11-02")).toMatchObject({ word: "none", booked: 0 });
   });
 });
 

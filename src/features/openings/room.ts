@@ -25,7 +25,13 @@
  *                                            it takes one free trainer's place
  *   a booking Journey can't place             booked; room that day can't be
  *                                            judged
- *   a Mindbody "Unavailable" block            not a booking (isStaffBlock)
+ *   a Mindbody "Unavailable" block            not a booking (isStaffBlock);
+ *                                            a live one placed with a
+ *                                            trainer takes that trainer out
+ *                                            for the half-hours it covers
+ *                                            (`blocked`). One Journey can't
+ *                                            place, one on the rotation, or
+ *                                            a cancelled one is ignored
  *
  * WHO IS IN. On a past day: an agreed week was in force that day with them
  * taking clients across the whole half-hour, AND they had at least one
@@ -33,7 +39,10 @@
  * and Journey can't tell). In the next 7 days: their agreed week has them in
  * then, they still work at the studio, and the day isn't one of their days
  * away. A day that hasn't happened can't prove more, so room ahead is always
- * worded as "usually takes clients then".
+ * worded as "usually takes clients then". Either way, a half-hour their own
+ * "Unavailable" block covers is not in: the Calendar and Relay draw it as
+ * blocked in their lane, so it is never room (the final review). A block
+ * never proves they worked that day either (`trainersBooked` ignores it).
  *
  * A PAST DAY CAN BE JUDGED only when everyone who had a booking there is
  * known: every trainer with a booking had an agreed week in force that day,
@@ -104,12 +113,32 @@ export interface PlacedBooking {
   cancellation: Cancellation;
 }
 
-/** One studio day, as room reads it. Staff blocks are already left out. */
+/** The half-hours of one day each trainer's Mindbody "Unavailable" blocks cover, by trainers/{id}. */
+export type Blocked = ReadonlyMap<string, ReadonlySet<number>>;
+
+/**
+ * Note a staff block: a live one placed with a trainer takes them out for
+ * the half-hours it covers. A cancelled one, one on the rotation and one
+ * Journey can't place are ignored.
+ */
+export function addBlock(into: Map<string, Set<number>>, entry: { status?: string | null }, place: Place, rows: readonly number[]): void {
+  if (entry.status === "Cancelled" || place.kind !== "trainer") return;
+  let set = into.get(place.trainerId);
+  if (!set) {
+    set = new Set();
+    into.set(place.trainerId, set);
+  }
+  for (const r of rows) set.add(r);
+}
+
+/** One studio day, as room reads it. Staff blocks are never among its bookings: they are `blocked`. */
 export interface RoomDay {
   weekday: number;
   bookings: readonly PlacedBooking[];
   /** The blocks of each trainer's agreed week in force that day, by trainers/{id}; a trainer with none that day is absent. */
   agreed: ReadonlyMap<string, readonly WorkHours[]>;
+  /** The half-hours each trainer's own "Unavailable" blocks take them out for (`addBlock`). */
+  blocked?: Blocked;
 }
 
 /** The trainers with a booking at the studio that day (booked for the usual word). */
@@ -133,27 +162,38 @@ export function whyNotJudged(day: RoomDay): NotJudged | null {
   return null;
 }
 
-/** Who was in at a half-hour of a past day, by trainers/{id}, sorted. */
+/** Who was in at a half-hour of a past day, by trainers/{id}, sorted: never a trainer their own block took out. */
 export function inOnPastDay(day: RoomDay, row: number): string[] {
   const booked = trainersBooked(day);
   const out: string[] = [];
-  for (const [id, blocks] of day.agreed) if (booked.has(id) && takesClientsAt(blocks, day.weekday, row)) out.push(id);
+  for (const [id, blocks] of day.agreed) {
+    if (day.blocked?.get(id)?.has(row)) continue;
+    if (booked.has(id) && takesClientsAt(blocks, day.weekday, row)) out.push(id);
+  }
   return out.sort();
 }
 
 /**
  * Who usually takes clients at a half-hour of a day ahead, by trainers/{id},
  * sorted: an agreed week has them in then, they still work at the studio
- * (`worksHere`; left out, everyone with an agreed week does), and the day
- * isn't one of their days away.
+ * (`worksHere`; left out, everyone with an agreed week does), the day isn't
+ * one of their days away, and no "Unavailable" block of theirs covers the
+ * half-hour (`blocked`, that day's).
  */
-export function inAhead(docs: readonly StandingWeekDoc[], dateKey: string, row: number, worksHere?: (trainerId: string) => boolean): string[] {
+export function inAhead(
+  docs: readonly StandingWeekDoc[],
+  dateKey: string,
+  row: number,
+  worksHere?: (trainerId: string) => boolean,
+  blocked?: Blocked,
+): string[] {
   const weekday = weekdayOf(dateKey);
   const out = new Set<string>();
   for (const doc of docs) {
     if (!doc.final || !doc.trainerId) continue;
     if (worksHere && !worksHere(doc.trainerId)) continue;
     if (awayOn(doc.away, dateKey)) continue;
+    if (blocked?.get(doc.trainerId)?.has(row)) continue;
     if (takesClientsAt(doc.final.hours, weekday, row)) out.add(doc.trainerId);
   }
   return [...out].sort();

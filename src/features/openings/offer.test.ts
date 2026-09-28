@@ -76,6 +76,15 @@ describe("offers", () => {
     expect(keys(input({ docs: [SAM, away] }))).toEqual([]);
   });
 
+  it("an Unavailable block of Pat's on one coming Tuesday: not free for good; a cancelled one blocks nothing", () => {
+    const block = pat("2026-11-24", "10:30", { clientName: "Unavailable", clientId: undefined });
+    expect(keys(input({ coming: { read: "ready", bookings: [block] } }))).toEqual([]);
+    expect(keys(input({ coming: { read: "ready", bookings: [{ ...block, status: "Cancelled" }] } }))).toEqual(["2-1030"]);
+    // This Tuesday's block: the time is still offered for good, and this week reads full.
+    const thisTuesday = pat("2026-11-10", "10:30", { clientName: "Unavailable", clientId: undefined });
+    expect(offers(input({ thisWeek: { read: "ready", bookings: [thisTuesday] } }))[0].thisWeek).toEqual({ day: "2026-11-10", state: "full" });
+  });
+
   it("can't check the coming weeks until the month is read, and says it is checking while they are read", () => {
     expect(offers(input({ monthRead: false }))[0].coming.state).toBe("cant-check");
     expect(offers(input({ coming: null }))[0].coming.state).toBe("checking");

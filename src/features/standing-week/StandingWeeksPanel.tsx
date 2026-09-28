@@ -84,10 +84,13 @@ function useMinuteClock(): Date {
   return now;
 }
 
-/** The door on Team's line: Openings, on Next 7 days, for anyone (the count is the studio's). */
+/**
+ * The door on Team's line: Openings, on Next 7 days, for anyone (the count
+ * is the studio's). The part and the chip are set only when the move
+ * happens, so a "Keep editing" leaves Openings' memory as it was.
+ */
 function openOpeningsNextDays() {
-  showOpenings("next", { kind: "anyone" });
-  openMyStudioSection("openings");
+  openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" }));
 }
 
 export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: StandingWeeksPanelProps) {

@@ -43,7 +43,13 @@ promise it. Journey doesn't book."
 
 `isStaffBlock` (a Mindbody "Unavailable" block is never a booking) lives in
 `src/lib/booking-state.ts`, beside the other answers about a booking; Team's
-check and Operations → Changes ask it too.
+check and Operations → Changes ask it too. On Openings a block is also the
+trainer's blocked time, as the Calendar and Relay draw it: a live block
+placed with a trainer takes that trainer out of "in" for the half-hours it
+covers (`room.ts` `addBlock`), in the Sunday job's fold, in the next 7 days
+and in A new regular time alike, so a blocked hour is never offered as room
+(the final review). It never proves they worked that day, and one Journey
+can't place, one on the rotation or a cancelled one blocks nothing.
 
 The whole-read record is written, after the pull and only after it, by the
 background pull (`features/admin/useAutoSync.ts`), the header's and the
@@ -136,10 +142,30 @@ call it.
 - **"More booked than the agreed weeks have in"** never counts a week whose
   bookings there were all on the rotation with nobody in, and never shows on
   a rotation time: nobody's usual week is missing on a rotation Saturday.
+- **A rotation DAY** (`rotationDays`) is a weekday where at least one time
+  reads Rotation and every time with a word reads Rotation ("–" and blank
+  say nothing either way). Only then do the time's sentence and the Wrap-up
+  sheet say "Saturdays run on the rotation". One Rotation half-hour beside
+  times with room is that half-hour's: "This time runs on the rotation", and
+  on the sheet "Mondays at 6:00 AM run on the rotation" (`rotationLines`), so
+  the sheet never offers Monday times and says Mondays run on the rotation
+  in the same view (the final review).
+- **"This week only"** on the Wrap-up's sheet (`timesWithRoom`): with a
+  trainer, the time is theirs only because their regular is out or their
+  client cancelled; under "Anyone", only when the room is gone once those
+  one-off places are taken back. Judy out at 8:00 with Sam while Pat is free
+  then too is room with Pat, not room this week only (the final review).
 - **"A cancellation nobody booked into"** is a stamped cancellation with
   nothing booked into that TIME since: a booking at that time, with the same
-  trainer, that first appeared no more than 12 hours before the cancellation
-  or after it (`isRealRebook`, borrowed for its timing test only). Her own
+  trainer, that ARRIVED there no more than 12 hours before the cancellation
+  or after it (`isRealRebook`, borrowed for its timing test only). A booking
+  arrives when Journey first saw it (`createdAt`) or, when Mindbody moved it
+  there, when it moved (`movedAt`): a move keeps the row and its old
+  `createdAt`, so without `arrivedAt` a booking a leader moved into the freed
+  time left the line up saying nobody had booked into it (the final review).
+  A row with neither stamp is taken as filling the time. A booking
+  REASSIGNED to the trainer at the same time carries no stamp, so it still
+  doesn't count: closing that needs a new stamp from the sync. Her own
   rebook on another day doesn't take the time back (the time is still open);
   "booked again from" says when she is next in. So the line says "and nobody
   has booked into it since", never "not rebooked": on Operations → Changes a
