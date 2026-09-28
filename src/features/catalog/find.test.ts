@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BODY_REGIONS, regionNames } from "./body-lens";
 import { findOnFloor, findUnitsFrom, type FindHit, type FindUnit } from "./find";
 import { MOVEMENTS } from "./names";
 import type { CatalogMachine } from "./types";
@@ -132,6 +133,30 @@ describe("Find on the floor", () => {
   it("keeps the Academy's name off a row whose floor name already says it", () => {
     expect(find("LEG PRESS 2").top?.sub).toBe("LP");
     expect(find("LUMBAR").top?.sub).toBe("Lumbar Extension · Lumb · Out of service");
+  });
+});
+
+describe("Find knows the body (Catalog R3)", () => {
+  const regions = BODY_REGIONS.map((r) => ({ id: r.id, label: r.label, names: regionNames(r), mainCount: r.id === "upper-back" ? 2 : 0 }));
+  const withBody = (query: string) => findOnFloor({ query, units: FLOOR, studioName: "Solon", regions });
+
+  it("opens the body lens on a muscle's own name", () => {
+    const r = withBody("lats");
+    expect(r.top?.kind).toBe("muscle");
+    expect(r.top?.label).toBe("Upper back and lats");
+    expect(r.top?.sub).toBe("2 on Solon's floor train it most");
+  });
+
+  it("says plainly when nothing on the floor trains a part most", () => {
+    const r = withBody("quadriceps");
+    expect(r.top?.kind).toBe("muscle");
+    expect(r.top?.sub).toBe("Nothing on Solon's floor trains it most");
+  });
+
+  it("still opens the neck machine first on 'neck', the body lens beside it", () => {
+    const r = withBody("neck");
+    expect(r.top?.kind).toBe("unit");
+    expect(r.groups.find((g) => g.key === "muscle")?.hits[0]?.label).toBe("Neck");
   });
 });
 

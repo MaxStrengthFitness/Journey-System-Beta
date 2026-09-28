@@ -120,6 +120,9 @@ const TAPS: Record<string, "height" | "square"> = {
   ".mcat-filter__clear": "height",
   ".mcat-row": "height",
   ".mcat-door": "height",
+  ".mcat-lens__btn": "height",
+  ".mcat-body__chip": "height",
+  ".mcat-body__other": "height",
   ".ssc__value": "height",
   ".ssc__remove": "square",
   ".ssc__addbtn": "square",
@@ -200,7 +203,7 @@ describe("Learning's text is on the codex's scale", () => {
     },
   );
 
-  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2"])(
+  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2", ".mcat-body__title"])(
     "gives the title %s the display face at 800, in italic capitals",
     (selector) => {
       const body = typeRule(selector).body;

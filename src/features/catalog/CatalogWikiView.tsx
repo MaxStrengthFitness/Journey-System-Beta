@@ -39,7 +39,10 @@ import { CATEGORY_LABEL, categoryOf, type AcademyCategory } from "../routine-bui
 import { machinesForBodySlug } from "./anatomy";
 import { UNCATEGORISED_KEY, UNCATEGORISED_LABEL, academyCategoryOf } from "./grouping";
 import { MachineTrendsPanel } from "../machine-trends/MachineTrendsPanel";
+import { BODY_REGIONS, mainCounts, regionNames } from "./body-lens";
+import { BodyLens } from "./BodyLens";
 import { CatalogFind } from "./CatalogFind";
+import { CatalogLenses, type CatalogLens } from "./CatalogLenses";
 import { findOnFloor, findUnitsFrom, type FindHit } from "./find";
 import { FloorRow } from "./FloorRow";
 import { flagLineOf, floorSentence, presetOf } from "./floor-index";
@@ -50,7 +53,7 @@ import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useSectionState } from "./useSectionState";
-import type { CatalogMachine, GroupingMode } from "./types";
+import type { CatalogMachine } from "./types";
 import { forgetOnSignOut } from "../sign-out/memory";
 
 /**
@@ -111,21 +114,18 @@ import { forgetOnSignOut } from "../sign-out/memory";
  * never draws the MSF standard in its place (floor-index.ts). Flags are
  * Relay's (studios/{s}/machineCare, read only); the Catalog counts no
  * cleaning of its own (q4). Head office opens on All MSF machines (q2).
+ *
+ * THREE WAYS IN (Catalog R3)
+ * --------------------------
+ * The floor, the body and All MSF machines (CatalogLenses). The body is the
+ * app's own anatomy model with its parts also as a list (BodyLens); All MSF
+ * machines is grouped by the Academy's five families, and its old grouping
+ * switch (Category · Kinematics · Region) is gone with the text AJ asked to
+ * cut.
  */
 
 /** Machines shown under "Related" on an article. Six is two rows of chips. */
 const MAX_RELATED = 6;
-
-/**
- * All MSF machines' grouping switch, in the wiki's own order and words.
- * The floor itself is not grouped since the Machine Catalog round: it is the
- * walking order.
- */
-const WIKI_GROUPINGS: { mode: GroupingMode; label: string }[] = [
-  { mode: "academy", label: "Category" },
-  { mode: "movement", label: "Kinematics" },
-  { mode: "region", label: "Region" },
-];
 
 type Route =
   | { kind: "index" }
@@ -147,17 +147,17 @@ interface FloorFilter {
 }
 
 /**
- * Which list the Catalog shows — this studio's floor, or every MSF machine
- * (Learning + Planner round, features/machine-db). Remembered for the
- * session, like the Planner's tab. Null until the reader chooses: a trainer
- * then opens on the floor and head office (administrators and the founder)
- * on All MSF machines (the Machine Catalog round, q2).
+ * Which way in the Catalog shows — this studio's floor, the body, or every
+ * MSF machine (features/machine-db). Remembered for the session, like the
+ * Planner's tab. Null until the reader chooses: a trainer then opens on the
+ * floor and head office (administrators and the founder) on All MSF machines
+ * (the Machine Catalog round, q2).
  */
-let rememberedScope: CatalogScope | null = null;
+let rememberedLens: CatalogLens | null = null;
 
 // A sign-out is a fresh load for the next person (Sep 24 2026).
 forgetOnSignOut(() => {
-  rememberedScope = null;
+  rememberedLens = null;
 });
 
 export interface CatalogWikiViewProps {
@@ -179,7 +179,7 @@ export interface CatalogWikiViewProps {
   openGroupKey?: string | null;
   onOpenedGroup?: () => void;
   /** Open the index in this scope — the front page's "All MSF machines" card. */
-  openScope?: CatalogScope | null;
+  openScope?: CatalogScope | CatalogLens | null;
   onOpenedScope?: () => void;
   /**
    * Jump to the Academy tab at this machine's card or script. Owned by
@@ -220,15 +220,16 @@ export function CatalogWikiView({
    */
   const floorMachines = floorState === "ready" ? catalogMachines : NO_MACHINES;
 
-  const [scope, setScopeState] = useState<CatalogScope>(
-    () => rememberedScope ?? (isAdmin ? "msf" : "floor"),
+  const [scope, setScopeState] = useState<CatalogLens>(
+    () => rememberedLens ?? (isAdmin ? "msf" : "floor"),
   );
-  const setScope = (next: CatalogScope) => {
-    rememberedScope = next;
+  const setScope = (next: CatalogLens) => {
+    rememberedLens = next;
     setScopeState(next);
   };
   const [route, setRoute] = useState<Route>({ kind: "index" });
-  const [grouping, setGrouping] = useState<GroupingMode>("academy");
+  // The part of the body the body lens is on (Catalog R3).
+  const [regionId, setRegionId] = useState<string | null>(null);
   // Find, on top of the floor (Catalog R1), and what it narrowed the floor to.
   const [find, setFind] = useState("");
   const [floorFilter, setFloorFilter] = useState<FloorFilter | null>(null);
@@ -280,33 +281,15 @@ export function CatalogWikiView({
   };
 
   const scopeSwitch = (
-    <ScopeSwitch
-      scope={scope}
-      studioName={activeStudio?.name ?? "this studio"}
+    // The three ways in (Catalog R3): the floor, the body, All MSF machines.
+    <CatalogLenses
+      lens={scope}
+      studioName={studioName}
       onChange={(next) => {
         setScope(next);
         setRoute({ kind: "index" });
       }}
     />
-  );
-
-  /* Grouping is a property of the INDEX, not of a picker inside a sheet.
-     Changing it re-labels the contents and re-sorts the list in place;
-     nothing opens, closes or filters. Shared by both scopes. */
-  const groupingControl = (
-    <div className="wk__seg" role="group" aria-label="Group machines by">
-      {WIKI_GROUPINGS.map(({ mode, label }) => (
-        <button
-          key={mode}
-          type="button"
-          className="wk__seg-btn"
-          aria-pressed={grouping === mode}
-          onClick={() => setGrouping(mode)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
   );
 
   /* ── derived state ─────────────────────────────────────────────── */
@@ -416,9 +399,17 @@ export function CatalogWikiView({
     () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds }),
     [floorMachines, makers, flaggedIds],
   );
+  // The body's parts, for Find's "Muscles" (Catalog R3): "lats" opens the body lens.
+  const findRegions = useMemo(() => {
+    const counts = mainCounts(floorMachines);
+    return BODY_REGIONS.map((r) => ({ id: r.id, label: r.label, names: regionNames(r), mainCount: counts[r.id] ?? 0 }));
+  }, [floorMachines]);
   const findResult = useMemo(
-    () => (find.trim() ? findOnFloor({ query: find, units: findUnits, studioName }) : null),
-    [find, findUnits, studioName],
+    () =>
+      find.trim()
+        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions })
+        : null,
+    [find, findUnits, studioName, findRegions],
   );
   // Another studio's floor is another list: what was typed or filtered for
   // the last one means nothing here.
@@ -448,13 +439,22 @@ export function CatalogWikiView({
     else if (hit.kind === "line") {
       setRoute({ kind: "machine", id: hit.unitId, found: { section: hit.section, text: hit.text } });
     } else if (hit.kind === "filter") setFloorFilter(hit.filter);
-    else {
-      // Not on this floor: its page in All MSF machines. Not remembered as
-      // the reader's scope, exactly like a link to a machine not here.
-      setDbJump(hit.movementId);
-      setScopeState("msf");
+    else if (hit.kind === "muscle") {
+      setRegionId(hit.regionId);
+      setScope("body");
       setRoute({ kind: "index" });
-    }
+    } else openMovement(hit.movementId);
+  };
+
+  /**
+   * A movement this floor does not have: its page in All MSF machines. Not
+   * remembered as the reader's scope, exactly like a link to a machine that
+   * is not here.
+   */
+  const openMovement = (movementId: string) => {
+    setDbJump(movementId);
+    setScopeState("msf");
+    setRoute({ kind: "index" });
   };
 
   /* ── all MSF machines ───────────────────────────────────────────── */
@@ -474,8 +474,9 @@ export function CatalogWikiView({
         studioName={studioName}
         authTrainer={authTrainer ?? null}
         scopeSwitch={scopeSwitch}
-        grouping={grouping}
-        groupingControl={groupingControl}
+        // By the Academy's five families, and no switch to change it (R3).
+        grouping="academy"
+        groupingControl={null}
         onOpenFloorMachine={(id) => {
           setScope("floor");
           setRoute({ kind: "machine", id });
@@ -681,6 +682,27 @@ export function CatalogWikiView({
               </section>
             ) : undefined
           }
+        />
+      </WikiShell>
+    );
+  }
+
+  /* ── the body (Catalog R3) ─────────────────────────────────────── */
+
+  if (scope === "body") {
+    return (
+      <WikiShell crumbs={[{ label: "Catalog" }]} scrollKey="Catalog / The body">
+        <WikiIndexHeader lead={scopeSwitch} title="The body" subtitle="What trains what, main movers first." />
+        <BodyLens
+          floor={floorMachines}
+          floorState={floorState}
+          studioName={studioName}
+          regionId={regionId}
+          onRegion={setRegionId}
+          presetFor={(m) => presetOf(m, settingsByMachineId[m.id])}
+          flaggedIds={flaggedIds}
+          onOpenMachine={openMachine}
+          onOpenMovement={openMovement}
         />
       </WikiShell>
     );

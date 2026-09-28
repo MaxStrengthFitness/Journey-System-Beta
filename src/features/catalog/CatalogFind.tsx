@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { BookOpen, CornerDownLeft, Filter, Library, MapPin, Search, X } from "lucide-react";
+import { BookOpen, CornerDownLeft, Filter, Library, MapPin, PersonStanding, Search, X } from "lucide-react";
 import { useWikiPageGuard } from "../wiki/page-guard";
 import type { FindHit, FindResult } from "./find";
 
@@ -35,6 +35,7 @@ export interface CatalogFindProps {
 const ICON: Record<FindHit["kind"], typeof MapPin> = {
   unit: MapPin,
   movement: Library,
+  muscle: PersonStanding,
   filter: Filter,
   line: BookOpen,
 };

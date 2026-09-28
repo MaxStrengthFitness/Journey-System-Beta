@@ -8,6 +8,7 @@
  *   LUMBAR, Low Back and Lumb     all open the Lumbar Extension on this floor
  *   lp2                           the floor's second Leg Press, in walking order
  *   handoff, a maker's name       filter the floor
+ *   lats, quads                   open the body lens there (Catalog R3)
  *   a word inside a page          finds the line, and says which page
  *
  * Before this, search matched a machine's floor name, its code and its
@@ -66,6 +67,8 @@ export type FindHit =
   | { kind: "unit"; unitId: string; label: string; sub: string; score: number }
   /** A movement NOT on this floor: opens its page in All MSF. */
   | { kind: "movement"; movementId: string; label: string; sub: string; score: number }
+  /** A part of the body: opens the body lens there (Catalog R3). */
+  | { kind: "muscle"; regionId: string; label: string; sub: string; score: number }
   /** Filters the floor: a switch, a maker, or a movement this floor has more than one of. */
   | {
       kind: "filter";
@@ -209,14 +212,26 @@ export function findUnitsFrom(
   }));
 }
 
+/** A part of the body, as Find reads it (body-lens.ts builds these). */
+export interface FindRegion {
+  id: string;
+  label: string;
+  /** Its label and other words, normalised. */
+  names: string[];
+  /** Floor machines that train it most. */
+  mainCount: number;
+}
+
 export interface FindInput {
   query: string;
   /** The floor, in walking order. */
   units: FindUnit[];
   studioName: string;
+  /** The body's regions; omit and Find knows no muscles as places. */
+  regions?: FindRegion[];
 }
 
-export function findOnFloor({ query, units, studioName }: FindInput): FindResult {
+export function findOnFloor({ query, units, studioName, regions = [] }: FindInput): FindResult {
   const q = normaliseName(query);
   if (!q) return { query, top: null, groups: [], none: false };
   const qWords = q.split(" ");
@@ -273,6 +288,22 @@ export function findOnFloor({ query, units, studioName }: FindInput): FindResult
         score,
       });
     }
+  }
+
+  /* ── parts of the body: the body lens ────────────────────────────── */
+  for (const r of regions) {
+    const score = r.names.includes(q) ? EXACT : bestOf(r.names, q, qWords);
+    if (!score) continue;
+    hits.push({
+      kind: "muscle",
+      regionId: r.id,
+      label: r.label,
+      sub:
+        r.mainCount > 0
+          ? `${r.mainCount} on ${studioName}'s floor ${r.mainCount === 1 ? "trains" : "train"} it most`
+          : `Nothing on ${studioName}'s floor trains it most`,
+      score,
+    });
   }
 
   /* ── switches and makers ─────────────────────────────────────────── */
@@ -346,6 +377,7 @@ export function findOnFloor({ query, units, studioName }: FindInput): FindResult
   const GROUPS: { key: FindHit["kind"]; label: string }[] = [
     { key: "unit", label: `On ${studioName}'s floor` },
     { key: "movement", label: "Other MSF machines" },
+    { key: "muscle", label: "Muscles" },
     { key: "filter", label: "Switches and makers" },
     { key: "line", label: "Inside a page" },
   ];

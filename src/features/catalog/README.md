@@ -87,6 +87,35 @@
   studio's copy of the leg press is in Lower Body rather than "Not in the
   Academy categories".
 
+### 0.3 The body and All MSF (Catalog R3)
+
+- **Three ways in** (`CatalogLenses`): the floor, the body, All MSF machines,
+  above the title on every lens (All MSF gets it through MachineDatabase's
+  `scopeSwitch`). The lens is module memory (`rememberedLens`), forgotten at
+  sign-out. machine-db's two-way `ScopeSwitch` is no longer drawn by the
+  Catalog; its import was left in `CatalogWikiView.tsx` on purpose so the
+  share-switch change merging tonight lands cleanly (drop it after).
+- **The body** (`BodyLens`, rules in `body-lens.ts`) is the app's own anatomy
+  model (`components/anatomy/BodyModel`), as AJ asked, with every part it can
+  light also in a list beside it (grouped Upper body · Trunk · Lower body,
+  each with the floor's count). A part is one of the MODEL's regions, named
+  for what it covers: where the model has one patch for two muscles the name
+  says both ("Upper back and lats", "Glutes and outer hip"). The panel lists
+  the floor's main movers, then its helpers (FloorRow, so the preset and the
+  status are there too), then the MSF movements the floor lacks, which open
+  in All MSF. An unreadable floor lists the MSF movements under a neutral
+  heading, never "not on this floor". The figure is painted with
+  `--wk-muscle-*`, never the model's built-in hex. AJ said the model's
+  markings are not the most accurate: the round document lists the ones that
+  look wrong; nothing here redraws them.
+- **All MSF machines is grouped by the five families** (`grouping="academy"`,
+  no grouping control): the Category · Kinematics · Region switch went, with
+  the text.
+- **Find knows the body**: a muscle's name ("lats", "quads", "erectors") opens
+  the body lens there (`FindRegion`, the "Muscles" group); a machine's own
+  exact name still wins ("neck" opens the neck machine, the Neck region
+  beside it).
+
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced
 > that screen with `CatalogWikiView` + `MachineArticle` on the shared

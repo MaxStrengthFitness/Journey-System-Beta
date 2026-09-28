@@ -65,20 +65,31 @@ vi.mock("../academy/useAcademyContent", () => ({ useAcademyCards: () => null, us
 vi.mock("../comments", () => ({ CommentsPanel: () => null }));
 vi.mock("../machine-trends/MachineTrendsPanel", () => ({ MachineTrendsPanel: () => null }));
 vi.mock("../machine-db", () => ({
-  MachineDatabase: ({ openMachineId, floor }: { openMachineId?: string | null; floor: unknown[] }) => (
-    <div data-screen="msf" data-open={openMachineId ?? ""} data-floor={floor.length} />
-  ),
-  NetworkNotes: () => null,
-  ScopeSwitch: ({ onChange }: { onChange: (s: string) => void }) => (
-    <div data-screen="scope">
-      <button type="button" data-scope="floor" onClick={() => onChange("floor")}>
-        Floor
-      </button>
-      <button type="button" data-scope="msf" onClick={() => onChange("msf")}>
-        All MSF
-      </button>
+  MachineDatabase: ({
+    openMachineId,
+    floor,
+    grouping,
+    groupingControl,
+    scopeSwitch,
+  }: {
+    openMachineId?: string | null;
+    floor: unknown[];
+    grouping: string;
+    groupingControl: unknown;
+    scopeSwitch: React.ReactNode;
+  }) => (
+    <div
+      data-screen="msf"
+      data-open={openMachineId ?? ""}
+      data-floor={floor.length}
+      data-grouping={grouping}
+      data-control={groupingControl ? "yes" : "no"}
+    >
+      {scopeSwitch}
     </div>
   ),
+  NetworkNotes: () => null,
+  ScopeSwitch: () => null,
   ShareToggle: () => null,
   setMachineShared: async () => {},
   setNoteShared: async () => {},
@@ -212,6 +223,8 @@ const click = (el: Element | null | undefined) =>
     (el as HTMLElement).click();
   });
 const rowNames = () => [...host.querySelectorAll(".mcat-row__name")].map((t) => t.textContent);
+const lens = (label: string) =>
+  [...host.querySelectorAll(".mcat-lens__btn")].find((b) => b.textContent === label);
 const rowOf = (name: string) =>
   [...host.querySelectorAll(".mcat-row")].find((r) => r.querySelector(".mcat-row__name")?.textContent === name);
 
@@ -368,7 +381,7 @@ describe("where the Catalog opens", () => {
 
   it("remembers the reader's choice until sign-out", async () => {
     await mount();
-    await click(host.querySelector('[data-scope="msf"]'));
+    await click(lens("All MSF machines"));
     await act(async () => root.unmount());
     root = createRoot(host);
     await mount();
@@ -384,5 +397,48 @@ describe("where the Catalog opens", () => {
     await mount({ openGroupKey: "legs", onOpenedGroup: () => {} });
     expect(host.querySelector(".mcat-filter")?.textContent).toContain("Showing Lower Body · 1 on Solon's floor");
     expect(rowNames()).toEqual(["LEG PRESS"]);
+  });
+});
+
+describe("the three ways in (Catalog R3)", () => {
+  it("shows the floor, the body and All MSF above the title", async () => {
+    await mount();
+    expect([...host.querySelectorAll(".mcat-lens__btn")].map((b) => b.textContent)).toEqual([
+      "Solon's floor",
+      "The body",
+      "All MSF machines",
+    ]);
+  });
+
+  it("groups All MSF machines by the five families, with no switch to change it", async () => {
+    await mount();
+    await click(lens("All MSF machines"));
+    const msf = host.querySelector('[data-screen="msf"]');
+    expect(msf?.getAttribute("data-grouping")).toBe("academy");
+    expect(msf?.getAttribute("data-control")).toBe("no");
+    // The three ways in ride on All MSF's own header too.
+    expect(msf?.querySelectorAll(".mcat-lens__btn")).toHaveLength(3);
+  });
+
+  it("opens the body, and a part picked there lists what on the floor trains it", async () => {
+    await mount();
+    await click(lens("The body"));
+    expect(host.querySelector(".wk__index-title")?.textContent).toBe("The body");
+    const quads = [...host.querySelectorAll(".mcat-body__chip")].find((c) => c.firstElementChild?.textContent === "Quads");
+    await click(quads);
+    expect(host.querySelector(".mcat-body__title")?.textContent).toBe("Quads");
+    expect(rowNames()).toEqual(["LEG PRESS"]);
+    // A machine opened from the body comes back to the body.
+    await click(host.querySelector(".mcat-row"));
+    expect(host.querySelector(".wk__h1")?.textContent).toBe("LEG PRESS");
+    await click([...host.querySelectorAll(".wk__crumb")].find((c) => c.textContent === "Catalog"));
+    expect(host.querySelector(".mcat-body__title")?.textContent).toBe("Quads");
+  });
+
+  it("opens the body lens from Find on a muscle's name", async () => {
+    await mount();
+    await type("lats");
+    await enter();
+    expect(host.querySelector(".mcat-body__title")?.textContent).toBe("Upper back and lats");
   });
 });

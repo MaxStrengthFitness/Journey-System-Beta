@@ -18,6 +18,8 @@
      MachineArticle   .mcat-found*  "Found on this page", when Find opened it
                       .mcat-flag*   Relay's flag on the unit (R2)
                       .mcat-ntf*    the Academy's never-to-failure rule (R2)
+     CatalogLenses    .mcat-lens*   the three ways in (R3)
+     BodyLens         .mcat-body*   the body, on the app's anatomy model (R3)
 
    Find borrows the wiki's search field and result rows (.wk__search-*,
    .wk__hit), so only its layout lives here.
@@ -567,4 +569,206 @@
   line-height: 1.5;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
+}
+
+/* ── THREE WAYS IN (Catalog R3, Sep 28 2026) ─────────────────────────────
+   The floor, the body, All MSF machines: above the title on every lens, so
+   the reader always sees which list they are in. 44px buttons whose words
+   wrap rather than hide. */
+.mcat-lens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0 0 0.875rem;
+}
+
+.mcat-lens__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 44px;
+  padding: 0 0.875rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.mcat-lens__btn[aria-pressed="true"] {
+  border-color: var(--wk-live);
+  background: var(--wk-live-fill);
+  color: var(--wk-live-text);
+}
+.mcat-lens__btn:focus-visible {
+  outline: 2px solid var(--wk-focus-ring);
+  outline-offset: 2px;
+}
+
+.mcat-lens__label {
+  overflow-wrap: anywhere;
+}
+
+/* ── THE BODY (Catalog R3) ───────────────────────────────────────────────
+   The parts of the body as a list AND as the figure, then what trains the
+   part picked. One column on a portrait iPad; from 900px the list and the
+   figure sit beside the panel. */
+.mcat-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 0.875rem;
+}
+
+@media (min-width: 900px) {
+  .mcat-body {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.mcat-body__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mcat-body__regions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mcat-body__group-label {
+  margin: 0 0 0.375rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.mcat-body__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.mcat-body__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface);
+  color: var(--wk-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.mcat-body__chip[aria-pressed="true"] {
+  border-color: var(--wk-live);
+  background: var(--wk-live-fill);
+  color: var(--wk-live-text);
+}
+.mcat-body__chip:focus-visible {
+  outline: 2px solid var(--wk-focus-ring);
+  outline-offset: 2px;
+}
+
+/* How many units on this floor train the part most. */
+.mcat-body__count {
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: var(--wk-radius-pill);
+  background: var(--wk-surface-2);
+  color: var(--wk-ink-2);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.mcat-body__figure {
+  padding: 0.75rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+}
+
+.mcat-body__panel {
+  min-width: 0;
+}
+
+.mcat-body__title {
+  margin: 0;
+  font-family: var(--wk-font-display);
+  font-size: 30px;
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.mcat-body__heading {
+  margin: 1.25rem 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-ink-muted);
+}
+
+.mcat-body__others {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  overflow: hidden;
+}
+
+.mcat-body__others > li + li {
+  border-top: 1px solid var(--wk-border);
+}
+
+.mcat-body__other {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  background: var(--wk-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mcat-body__other:hover { background: var(--wk-surface-2); }
+.mcat-body__other:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
+
+.mcat-body__other-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.mcat-body__other-chev {
+  flex: none;
+  color: var(--wk-ink-faint);
 }
