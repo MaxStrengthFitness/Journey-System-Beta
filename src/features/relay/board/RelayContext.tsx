@@ -45,6 +45,12 @@ export interface RelayContextValue {
   openPanel: (content: PanelContent) => void;
   closePanel: () => void;
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /**
+   * Straight to one of Relay's tabs (Relay room, Sep 28 2026): the Board's
+   * Mine door ends with the way to the trainer's whole list. The shell holds
+   * the tab since the one header; absent outside it.
+   */
+  openRelayTab?: (tab: "floor" | "mine" | "notes") => void;
 }
 
 const RelayCtx = createContext<RelayContextValue | null>(null);

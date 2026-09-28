@@ -173,19 +173,44 @@ afterEach(() => {
 });
 
 describe("My Studio", () => {
-  it("mounts on Relay's Floor with the Now Bar, Next up, the shift rings and an empty team-jobs lane", async () => {
+  it("mounts on the Board: Right now, the five doors, the dealt card, Just now, and Floor work's lanes behind its door", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
     // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
     expect(h.textContent).toContain("Just now");
     expect(h.textContent).toContain("No sessions on your schedule");
-    expect(h.textContent).toContain("Next up");
-    expect(h.textContent).toContain("Nothing waiting on the Floor.");
+    // Right now won't guess how busy the floor is from a list with nothing on it.
+    expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
+    const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
+    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "Mine"]);
+    expect(h.textContent).toContain("Dealt to you");
+    expect(h.textContent).toContain("Nothing waiting on the floor.");
+    // Behind Floor work: the shift rings, the floor map and the team jobs, unchanged.
+    expect(h.textContent).toContain("Behind Floor work");
     expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");
+  });
+
+  it("opens each door on a tap and shows what sits behind it, with the way back to Relay's pick", async () => {
+    const h = await mount(lead);
+    const door = (label: string) => [...h.querySelectorAll<HTMLButtonElement>(".rbd-door")].find((d) => d.textContent?.includes(label));
+    await click(door("Help a teammate"));
+    expect(door("Help a teammate")?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.textContent).toContain("Behind Help a teammate");
+    expect(h.textContent).toContain("Asks from teammates");
+    expect(h.textContent).toContain("You opened Help a teammate.");
+    await click(door("From leadership"));
+    expect(h.textContent).toContain("Behind From leadership");
+    expect(h.textContent).toContain("No initiatives from the studio's leaders right now.");
+    await click(door("Desk work"));
+    expect(h.textContent).toContain("Behind Desk work");
+    await click(door("Mine"));
+    expect(h.textContent).toContain("Nothing on the board has your name on it right now.");
+    await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("Back to Relay's pick")));
+    expect(h.textContent).toContain("Behind Floor work");
   });
 
   it("unfolds the day strip from the gap meter", async () => {
@@ -253,7 +278,7 @@ describe("My Studio", () => {
     expect(tab("Floor")).toBeUndefined();
     await openSection("Relay");
     await click(tab("Floor"));
-    expect(h.textContent).toContain("Next up");
+    expect(h.textContent).toContain("Dealt to you");
   });
 
   it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {

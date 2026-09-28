@@ -144,7 +144,7 @@ describe("nextUp", () => {
 
 describe("emptyPrompt", () => {
   it("is sized to the gap", () => {
-    expect(emptyPrompt(null, null).title).toBe("Nothing waiting on the Floor.");
+    expect(emptyPrompt(null, null).title).toBe("Nothing waiting on the floor.");
     expect(emptyPrompt(3, "Priya").body).toBe("Priya is up.");
     expect(emptyPrompt(14, "Priya").body).toContain("14 min until Priya");
   });

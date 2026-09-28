@@ -233,12 +233,16 @@ export function resetSnoozes(): void {
   snoozes.clear();
 }
 
-/** The empty-state prompt: what a trainer could do with the gap they have. */
+/**
+ * The empty-state prompt behind Floor work: what a trainer could do with the
+ * gap they have (the Board's, since the Relay room, Sep 28 2026; it was Next
+ * up's).
+ */
 export function emptyPrompt(gapMinutes: number | null, nextClient: string | null): { title: string; body: string } {
-  if (gapMinutes === null) return { title: "Nothing waiting on the Floor.", body: "Everything open is on someone's list. Capture anything you notice." };
+  if (gapMinutes === null) return { title: "Nothing waiting on the floor.", body: "Everything open is on someone's list." };
   if (gapMinutes < 5) return { title: "Nothing waiting, and your next session is about to start.", body: nextClient ? `${nextClient} is up.` : "" };
   return {
     title: "Quiet floor.",
-    body: `${gapMinutes} min${nextClient ? ` until ${nextClient}` : ""}. Wipe down a warm machine on the map, or capture something you noticed.`,
+    body: `${gapMinutes} min${nextClient ? ` until ${nextClient}` : ""}. Wipe down a warm machine on the map below, or ask the team for something.`,
   };
 }

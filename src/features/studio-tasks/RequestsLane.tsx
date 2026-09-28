@@ -141,6 +141,14 @@ export interface RequestsLaneProps {
   roster?: { id: string; name: string }[];
   /** For the initiative submit picker. */
   clients?: Client[];
+  /**
+   * Which asks this lane shows (Relay room, Sep 28 2026): the Board's Help a
+   * teammate door holds the asks, and From leadership the initiatives. Absent
+   * means both, as the lane always showed them.
+   */
+  kinds?: "asks" | "initiatives";
+  /** The lane's heading; "Requests" when absent. */
+  title?: string;
 }
 
 export function RequestsLane({
@@ -151,6 +159,8 @@ export function RequestsLane({
   mineOnly,
   roster,
   clients,
+  kinds,
+  title: laneTitle = "Requests",
 }: RequestsLaneProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { open: rawRequests } = useStudioRequests(studioId);
@@ -172,7 +182,13 @@ export function RequestsLane({
       }),
     [rawRequests, todayKey, currentUserId, author?.id, topic, mineOnly],
   );
-  const openRequests = useMemo(() => cards.map((c) => c.request), [cards]);
+  const openRequests = useMemo(
+    () =>
+      cards
+        .map((c) => c.request)
+        .filter((r) => !kinds || (kinds === "initiatives" ? r.kind === "initiative" : r.kind !== "initiative")),
+    [cards, kinds],
+  );
 
   // Inside Relay, asks are posted through Capture (relay/board); the inline
   // composer below stays for the hub mounted anywhere else.
@@ -377,19 +393,21 @@ export function RequestsLane({
     <section className="stq" aria-label="Studio requests">
       <header className="stq__head">
         <MessageSquare size={14} aria-hidden />
-        <h2 className="stq__title">Requests</h2>
+        <h2 className="stq__title">{laneTitle}</h2>
         {openRequests.length > 0 && (
           <span className="stq__count">{openRequests.length}</span>
         )}
-        <button
-          type="button"
-          className="stq__new"
-          onClick={() => (relay ? relay.openCapture({ destination: "floor", askKind: "help" }) : setComposing((v) => !v))}
-          aria-expanded={composing}
-        >
-          {composing ? <X size={13} aria-hidden /> : <Send size={13} aria-hidden />}
-          {composing ? "Cancel" : "Ask the studio"}
-        </button>
+        {kinds !== "initiatives" && (
+          <button
+            type="button"
+            className="stq__new"
+            onClick={() => (relay ? relay.openCapture({ destination: "floor", askKind: "help" }) : setComposing((v) => !v))}
+            aria-expanded={composing}
+          >
+            {composing ? <X size={13} aria-hidden /> : <Send size={13} aria-hidden />}
+            {composing ? "Cancel" : "Ask the studio"}
+          </button>
+        )}
       </header>
 
       {composing && (
@@ -463,8 +481,9 @@ export function RequestsLane({
       {openRequests.length === 0 ? (
         !composing && (
           <p className="stq__empty">
-            Nothing floating. Post here to ask for cover, flag something, or
-            get another trainer's read on a client.
+            {kinds === "initiatives"
+              ? "No initiatives from the studio's leaders right now. When they start one, it shows here with the studio's progress."
+              : "Nothing floating. Post here to ask for cover, flag something, or get another trainer's read on a client."}
           </p>
         )
       ) : (
@@ -478,6 +497,7 @@ export function RequestsLane({
             return (
               <li
                 key={r.id}
+                id={`ask-card-${r.id}`}
                 className="stq__item"
                 data-urgent={r.priority === "urgent" || undefined}
               >

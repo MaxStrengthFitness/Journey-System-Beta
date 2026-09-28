@@ -43,7 +43,7 @@ the Planner they were Studio · My tasks · Notes · Team.
 
 | Tab | What | Where the data lives |
 | --- | --- | --- |
-| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`): Next up, the shift rings, the Floor Map, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus as a quiet line (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
+| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`), drawn as **the Board** since the Relay room (Sep 28 2026, `board/Board.tsx`): Right now, five doors (Floor work · Desk work · Help a teammate · From leadership · Mine), one job dealt to you, Just now; behind the doors, unchanged: the shift rings, the shift strip and the Floor Map, client tasks and renewals, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
 | Mine | A trainer's own list (`MyTasksPanel`): today, handed to you, follow-ups, growth, reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
 | Notes | A trainer's own notes, in folders, linked to clients, built over time; shared onto a client's record or with colleagues (`notes/`, with its own README) | `trainers/{uid}/notes`, `noteFolders`; copies at `clients/{id}/sharedNotes` and `studios/{s}/noteShares` |
 

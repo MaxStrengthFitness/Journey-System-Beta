@@ -234,6 +234,14 @@ export function MyStudioView({
   /* Tracking: the one job this trainer took (relay/board/tracked.ts). */
   const tracked = useTracked(activeStudioId ?? null, now.todayKey);
 
+  // A card's door to one of Relay's tabs (the Board's Mine door ends with the
+  // way to Mine), through the same guarded move as the header's.
+  const goToRelayTabRef = useRef(goToRelayTab);
+  useEffect(() => {
+    goToRelayTabRef.current = goToRelayTab;
+  });
+  const openRelayTab = useCallback((tab: PlannerTab) => goToRelayTabRef.current(tab), []);
+
   const relay = useMemo<RelayContextValue>(
     () => ({
       studioId: activeStudioId ?? null,
@@ -252,6 +260,7 @@ export function MyStudioView({
       openPanel,
       closePanel,
       onOpenClientTask,
+      openRelayTab,
     }),
     [
       activeStudioId,
@@ -269,6 +278,7 @@ export function MyStudioView({
       openPanel,
       closePanel,
       onOpenClientTask,
+      openRelayTab,
     ],
   );
 

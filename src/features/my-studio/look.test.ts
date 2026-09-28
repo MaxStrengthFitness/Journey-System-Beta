@@ -140,7 +140,14 @@ const NAME_CLASSES = [
   "tj-card__title", // a team job
   "tj-person__name",
   "tj-part__label",
-  "nu__title", // a Next up card
+  "rbd-dealt__title", // the Board's dealt card (Next up's cards until Sep 28 2026)
+  "rbd-giver__name", // who a card comes from
+  "rbd-alt__t", // an Also fits row
+  "rbd-row__t", // a job behind Mine
+  "rbd-door__label", // a door's name
+  "rbd-part__t", // a machine on the dealt card's checklist
+  "rbd-team__t", // a chore on Team today
+  "rbd-later__t", // a row of Later today (a client's name)
   "sh__group-title", // a machine group or a duty
   "sh__row-name", // a machine in the group
   "sh__entry-title", // a playbook entry
@@ -219,8 +226,13 @@ const TAP_CLASSES = [
   "stq__act",
   "stq__react",
   "stm__preset",
-  "nu__more",
   "rjn__kudos",
+  // The Board (Relay room, Sep 28 2026): 44px on the cards, per the blueprint.
+  "rbd-door",
+  "rbd-btn",
+  "rbd-alt",
+  "rbd-part",
+  "rbd-link",
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -234,7 +246,6 @@ const TAP_CLASSES = [
   "rk-toggle",
   "tj-open",
   "tj-done__toggle",
-  "nu__do",
   "cp__close",
   // The one header (Relay room, Sep 28 2026): 44px, as a bar's controls are.
   "msh__sect",
@@ -315,7 +326,8 @@ const BUTTON_CLASSES = [
   "msh__tab",
   "msh__track",
   "msh__pop-item",
-  "nu__do",
+  "rbd-btn",
+  "rbd-part",
   "tj-open",
   "tj-done__toggle",
   "wl__btn",
@@ -445,7 +457,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "rjn__title", "rbd-h"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);
