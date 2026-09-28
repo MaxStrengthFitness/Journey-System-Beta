@@ -5,9 +5,10 @@ import {
   ClipboardList,
   Layers,
   MessageSquareQuote,
+  OctagonAlert,
   Settings2,
   ShieldAlert,
-  Sparkles,
+  SlidersHorizontal,
   Target,
   TrendingUp,
   UserCog,
@@ -31,9 +32,35 @@ import {
   accentForPattern,
   type WikiChip,
 } from "../wiki";
-import { abbr as academyAbbr } from "../routine-builder/academy";
-import type { UpkeepStatus } from "../admin/upkeep/upkeepLog";
+import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
+import { presetLine, type FlagLine, type Preset } from "./floor-index";
+import { floorNameHidesMovement, movementOf } from "./names";
 import type { CatalogMachine } from "./types";
+
+/** A line Find opened this page on: which part of the page, and the sentence. */
+export interface FoundOnPage {
+  section: string;
+  text: string;
+}
+
+/**
+ * The line above a machine's name (Catalog R1, the names). A unit keeps its
+ * floor name as the title; the line above says which Academy movement it is
+ * and its code — "LUMB · LUMBAR EXTENSION" over "LUMBAR" — or, when the floor
+ * name already says the movement, the code and the Academy family ("LP ·
+ * LOWER BODY" over "LEG PRESS"). A machine with no lineage keeps the movement
+ * pattern it always showed.
+ */
+export function eyebrowFor(machine: CatalogMachine): string {
+  const movement = movementOf(machine);
+  if (!movement) return machine.movementPattern || "Equipment";
+  const code = movement.code ?? academyAbbr(movement.id);
+  if (floorNameHidesMovement(machine.name, movement.name)) {
+    return [code, movement.name].filter(Boolean).join(" · ");
+  }
+  const family = categoryOf(movement.id);
+  return [code, family ? CATEGORY_LABEL[family] : machine.movementPattern].filter(Boolean).join(" · ");
+}
 
 /**
  * A MACHINE PAGE.
@@ -51,10 +78,10 @@ import type { CatalogMachine } from "./types";
  *
  * The rule here is READING versus DOING:
  *
- *   on the page      the infobox, clinical warnings, setup, execution,
- *                    contraindications, the studio's playbook. You opened
- *                    this page to read these.
- *   folded away      upkeep, studio setup, studio notes. Tools you
+ *   on the page      the infobox, the never-to-failure rule, clinical
+ *                    warnings, setup, execution, contraindications, the
+ *                    studio's playbook. You opened this page to read these.
+ *   folded away      how it's used, studio setup, studio notes. Tools you
  *                    occasionally operate, and each one is an editor.
  *
  * Two things are deliberately NOT collapsible under any circumstances:
@@ -62,9 +89,13 @@ import type { CatalogMachine } from "./types";
  * a longer page) and the musculature, which now lives in the infobox where it
  * sits beside the figure that draws it.
  *
+ * The Upkeep foldable (cleaning, and a flag that never cleared) went in the
+ * Machine Catalog round (Sep 28 2026): cleaning lives in Relay, and the
+ * page reads Relay's flag (`flag`).
+ *
  * THE COMPOSITION IS SLOTTED, NOT MOUNTED
  * ---------------------------------------
- * `upkeep`, `playbook`, `studioSetup` and `figure` arrive as nodes from
+ * `playbook`, `studioSetup` and `figure` arrive as nodes from
  * CatalogWikiView for the same reason they did before: each is backed by a
  * Firestore snapshot over the whole studio, and mounting them here would tear
  * down and rebuild those listeners on every tap in the index.
@@ -81,6 +112,8 @@ export interface MachineAcademyLinks {
 
 export interface MachineArticleProps {
   machine: CatalogMachine;
+  /** Find opened this page on a line inside it: said at the top of the page. */
+  found?: FoundOnPage;
   /** The anatomy figure. See MachineFigure. */
   figure: ReactNode;
   /** Machines a trainer would look at next. Same pattern, then same category. */
@@ -88,11 +121,18 @@ export interface MachineArticleProps {
   onOpenMachine: (id: string) => void;
   academy?: MachineAcademyLinks;
 
-  isFlagged?: boolean;
-  upkeepStatus?: UpkeepStatus;
+  /**
+   * Relay's flag on this unit (studios/{s}/machineCare, read only), said at the
+   * top of the page in the caution plum. Null or absent: not flagged, or the
+   * page is not a floor's (All MSF machines). Since the Machine Catalog round
+   * (Sep 28 2026) the Catalog reads flags from Relay alone and counts no
+   * cleaning of its own; the Upkeep card that did went with it.
+   */
+  flag?: FlagLine | null;
+  /** This unit's preset — where its dials sit — for a floor's page. */
+  preset?: Preset;
 
   /** Slotted cards, owned by features/studio-tasks. See the note above. */
-  upkeep?: ReactNode;
   playbook?: ReactNode;
   studioSetup?: ReactNode;
   studioNotes?: ReactNode;
@@ -133,13 +173,13 @@ export interface MachineArticleProps {
 
 export function MachineArticle({
   machine,
+  found,
   figure,
   related,
   onOpenMachine,
   academy,
-  isFlagged,
-  upkeepStatus,
-  upkeep,
+  flag,
+  preset,
   playbook,
   studioSetup,
   studioNotes,
@@ -153,27 +193,45 @@ export function MachineArticle({
   setOpen,
 }: MachineArticleProps) {
   const accent = accentForPattern(machine.movementPattern);
-  const code = academyAbbr(machine.id);
 
   const fold = (id: string, fallback: boolean) => ({
     open: isOpen(id, fallback),
     onToggle: (next: boolean) => setOpen(id, next),
   });
 
+  /* The Academy's code used to be a sixth row here. It is on the line above
+     the title now (eyebrowFor), beside the movement's name, so the box says
+     it once (Catalog R1: AJ asked for less text). */
   const facts = [
+    // A floor's page leads with where this unit's dials sit (Catalog R2).
+    ...(preset
+      ? [{ label: "Preset", icon: <SlidersHorizontal size={11} aria-hidden />, value: presetLine(preset) }]
+      : []),
     { label: "Class", icon: <Activity size={11} aria-hidden />, value: machine.kinematicClassification },
     { label: "Posture", icon: <Target size={11} aria-hidden />, value: machine.executionPosture },
     { label: "Setup", icon: <Settings2 size={11} aria-hidden />, value: machine.setupGap },
     { label: "Handoff", icon: <Users size={11} aria-hidden />, value: machine.requiresHandoff ? "Required" : "None" },
     { label: "Region", icon: <Layers size={11} aria-hidden />, value: machine.anatomicalRegion },
   ];
-  /* The Academy's own two- or three-letter code for this machine ("ADD, SD,
-     CR, TR, OH" is how a sequence is written in the curriculum). Only shown
-     when the corpus actually has one, because an invented code would be read
-     as authoritative. */
-  if (code) {
-    facts.push({ label: "Academy", icon: <BookOpen size={11} aria-hidden />, value: code });
-  }
+
+  const foundLine = found ? (
+    <p className="mcat-found" role="status">
+      <span className="mcat-found__where">Found on this page · {found.section}</span>
+      <span className="mcat-found__text">{found.text}</span>
+    </p>
+  ) : null;
+
+  /* Relay's flag, whole: who, when and what, and where it is cleared. */
+  const flagLine = flag ? (
+    <p className="mcat-flag" role="status">
+      <span className="mcat-flag__who">
+        Flagged by {flag.who}
+        {flag.when ? ` · ${flag.when}` : ""}
+      </span>
+      {flag.note && <span className="mcat-flag__note">{flag.note}</span>}
+      <span className="mcat-flag__where">Cleared on My Studio → Relay.</span>
+    </p>
+  ) : null;
 
   const hasSetup = Boolean(machine.setup) || machine.setupCues.length > 0;
   const hasExecution = Boolean(machine.execution) || machine.executionCues.length > 0;
@@ -183,7 +241,7 @@ export function MachineArticle({
 
   return (
     <WikiArticle
-      eyebrow={machine.movementPattern || "Equipment"}
+      eyebrow={eyebrowFor(machine)}
       accent={accent}
       title={machine.name}
       lede={machine.clinicalNote || undefined}
@@ -200,32 +258,20 @@ export function MachineArticle({
           {machine.rosterStatus === "inactive" && <WikiBadge tone="neutral">Inactive</WikiBadge>}
           {/* A flag is a caution: the app's plum, as "Out of service" is.
               Crimson is a Critical note's and a set's that needs work. */}
-          {isFlagged && <WikiBadge tone="warn">Flagged by a trainer</WikiBadge>}
-          {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
-            <WikiBadge tone="warn">
-              {upkeepStatus === "overdue" ? "Cleaning overdue" : "Cleaning due"}
-            </WikiBadge>
-          )}
+          {flag && <WikiBadge tone="warn">Flagged</WikiBadge>}
         </>
       }
-      notice={notice}
+      notice={
+        foundLine || flagLine || notice ? (
+          <>
+            {foundLine}
+            {flagLine}
+            {notice}
+          </>
+        ) : undefined
+      }
       aside={
-        <Infobox
-          title="At a glance"
-          figure={figure}
-          footer={
-            isFlagged || upkeepStatus === "overdue" || upkeepStatus === "due" ? (
-              <>
-                {isFlagged && <WikiBadge tone="warn">Flagged — see Upkeep</WikiBadge>}
-                {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
-                  <WikiBadge tone="warn">
-                    {upkeepStatus === "overdue" ? "Overdue" : "Due"}
-                  </WikiBadge>
-                )}
-              </>
-            ) : undefined
-          }
-        >
+        <Infobox title="At a glance" figure={figure}>
           <InfoboxGroup label="Specification">
             <InfoboxRows rows={facts} />
           </InfoboxGroup>
@@ -241,6 +287,21 @@ export function MachineArticle({
         </Infobox>
       }
     >
+      {/* The Academy's never-to-failure rule, first and never folded: it is a
+          stop rule, not a tip (Catalog R2). Its reason is the Academy's own
+          sentence; an unexplained prohibition gets ignored (the-floor.md). */}
+      {machine.neverToFailure && (
+        <section className="mcat-ntf" aria-labelledby="mcat-ntf-head">
+          <h2 className="mcat-ntf__head" id="mcat-ntf-head">
+            <OctagonAlert size={14} aria-hidden />
+            Never to failure
+          </h2>
+          <p className="mcat-ntf__text">
+            {machine.safetyNotice || "The Academy says never to take this machine to failure."}
+          </p>
+        </section>
+      )}
+
       <ClinicalWarnings warnings={machine.clinicalWarnings} />
 
       {hasSetup && (
@@ -301,7 +362,7 @@ export function MachineArticle({
               accent={accent}
               icon={<ClipboardList size={16} aria-hidden />}
               title="Quick reference card"
-              detail="Written to be read standing at the machine — target muscles, setup, posture, turnarounds."
+              detail="Muscles, setup, posture, turnarounds."
               onClick={academy.onOpenCard}
             />
           )}
@@ -310,7 +371,7 @@ export function MachineArticle({
               accent={accent}
               icon={<MessageSquareQuote size={16} aria-hidden />}
               title="Full spoken script"
-              detail="Word for word, setup through the last rep."
+              detail="Word for word, setup to the last rep."
               onClick={academy.onOpenScript}
             />
           )}
@@ -319,7 +380,7 @@ export function MachineArticle({
               accent={accent}
               icon={<Layers size={16} aria-hidden />}
               title="Deep dive"
-              detail="The complete write-up — everything a practitioner holds before training anyone on it."
+              detail="The complete write-up."
               onClick={academy.onOpenOverview}
             />
           )}
@@ -351,19 +412,6 @@ export function MachineArticle({
           {...fold("studio-setup", false)}
         >
           {studioSetup}
-        </WikiFoldable>
-      )}
-
-      {upkeep && (
-        <WikiFoldable
-          id="upkeep"
-          title="Upkeep"
-          icon={<Sparkles size={13} aria-hidden />}
-          meta={isFlagged ? "Flagged" : undefined}
-          /* Opens itself when something is wrong, and only then. */
-          {...fold("upkeep", Boolean(isFlagged) || upkeepStatus === "overdue")}
-        >
-          {upkeep}
         </WikiFoldable>
       )}
 

@@ -55,28 +55,29 @@ export function homeCategoryTiles(machines: CatalogMachine[]): HomeCategoryTile[
   }));
 }
 
+/**
+ * What the floor needs noticed today: out of service (the machine list) and
+ * flagged (Relay's care record). Since the Machine Catalog round (Sep 28
+ * 2026) the front page, like the Catalog, counts no cleaning of its own —
+ * cleaning lives in Relay (the room's question 4). `flaggedIds` null means
+ * the flags are unknown (loading, or unreadable): nothing is counted.
+ */
 export interface FloorStatus {
   flagged: number;
   outOfService: number;
-  /** Due or overdue for cleaning. */
-  due: number;
 }
 
 export function floorStatus(
   machines: CatalogMachine[],
-  upkeepStatusById: Record<string, string | undefined>,
-  flaggedIds: ReadonlySet<string>,
+  flaggedIds: ReadonlySet<string> | null,
 ): FloorStatus {
   let flagged = 0;
   let outOfService = 0;
-  let due = 0;
   for (const m of machines) {
-    if (flaggedIds.has(m.id)) flagged += 1;
+    if (flaggedIds?.has(m.id)) flagged += 1;
     if (m.rosterStatus === "maintenance") outOfService += 1;
-    const s = upkeepStatusById[m.id];
-    if (s === "due" || s === "overdue") due += 1;
   }
-  return { flagged, outOfService, due };
+  return { flagged, outOfService };
 }
 
 export interface AcademyIndexLike {

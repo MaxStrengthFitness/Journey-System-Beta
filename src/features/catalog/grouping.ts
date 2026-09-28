@@ -44,6 +44,7 @@ import {
   type UpkeepPolicy,
   type UpkeepStatus,
 } from "../admin/upkeep/upkeepLog";
+import { canonicalMachineId } from "./machine-identity";
 import type { CatalogGroup, CatalogMachine, GroupingMode } from "./types";
 
 export const GROUPING_LABEL: Record<GroupingMode, string> = {
@@ -58,10 +59,19 @@ export const GROUPING_MODES: GroupingMode[] = ["movement", "region", "academy"];
 export const UNCATEGORISED_KEY = "uncategorised";
 export const UNCATEGORISED_LABEL = "Not in the Academy categories";
 
+/**
+ * The Academy family a machine belongs to: its own id, else its lineage — a
+ * studio's copy of the leg press, or its own machine based on one, is in
+ * Lower Body, not "Not in the Academy categories" (Machine Catalog round,
+ * Sep 28 2026: the pin that every studio machine landed there).
+ */
 export function academyCategoryOf(
-  machine: Pick<CatalogMachine, "id">,
+  machine: Pick<CatalogMachine, "id"> & { comparisonKey?: string },
 ): AcademyCategory | null {
-  return categoryOf(machine.id);
+  const own = categoryOf(machine.id);
+  if (own) return own;
+  if (!machine.comparisonKey || machine.comparisonKey === machine.id) return null;
+  return categoryOf(canonicalMachineId(machine.comparisonKey));
 }
 
 /** The bucket key for one machine under one grouping. */

@@ -75,6 +75,14 @@ export interface UseStudioMachinesResult {
   /** Raw roster entries, for the roster manager's edit forms. */
   rosterEntries: StudioMachineRosterEntry[];
   loading: boolean;
+  /**
+   * The roster or the catalog could not be READ (the Machine Catalog round,
+   * Sep 28 2026). A failed read also ends with `loading` false and an empty
+   * list, so a screen that says what is on a floor checks this to say "can't
+   * read the floor" rather than "nothing here". Additive: every caller that
+   * ignores it behaves exactly as before.
+   */
+  failed: boolean;
 }
 
 export function useStudioMachines(
@@ -87,11 +95,18 @@ export function useStudioMachines(
     bridgeWhenRosterEmpty = false,
   } = opts;
 
-  const { catalog, byId: catalogById, loading: catalogLoading } = useMachineCatalog();
+  const {
+    catalog,
+    byId: catalogById,
+    loading: catalogLoading,
+    failed: catalogFailed,
+  } = useMachineCatalog();
   const [roster, setRoster] = useState<StudioMachineRosterEntry[]>([]);
   const [rosterLoaded, setRosterLoaded] = useState(false);
+  const [rosterFailed, setRosterFailed] = useState(false);
 
   useEffect(() => {
+    setRosterFailed(false);
     if (!studioId) {
       setRoster([]);
       setRosterLoaded(true);
@@ -114,8 +129,10 @@ export function useStudioMachines(
         setRosterLoaded(true);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.GET, "studio machine roster");
+        // Before the handler, which throws outside a browser.
+        setRosterFailed(true);
         setRosterLoaded(true);
+        handleFirestoreError(error, OperationType.GET, "studio machine roster");
       },
     );
     return () => unsub();
@@ -212,5 +229,6 @@ export function useStudioMachines(
     catalog,
     rosterEntries: roster,
     loading: catalogLoading || !rosterLoaded,
+    failed: rosterFailed || catalogFailed,
   };
 }

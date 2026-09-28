@@ -25,8 +25,9 @@ import {
   useStudioWiki,
 } from "../wiki";
 import { useCatalogMachines } from "../catalog/useCatalogMachines";
-import { dayKey, upkeepByMachine, upkeepEventsFrom } from "../catalog/grouping";
-import { useMachineUpkeep } from "../studio-tasks/useMachineUpkeep";
+import type { CatalogMachine } from "../catalog/types";
+// Relay's care record, READ ONLY: the one record for flags (Machine Catalog round).
+import { useMachineCare } from "../relay/board/machine-care-store";
 import { ACADEMY_INDEX } from "../academy/useAcademyContent";
 import type { AcademyGroupKey } from "../academy/AcademyWikiView";
 import {
@@ -81,18 +82,26 @@ export function LearningHome({
   const { activeStudioId, activeStudio } = useActiveStudio();
   const studioName = activeStudio?.name ?? "This studio";
 
-  const { machines: catalog, loading: floorLoading } = useCatalogMachines(activeStudioId, machines);
-  const { byMachineId: upkeepById } = useMachineUpkeep(activeStudioId);
+  const { machines: list, loading: listLoading, floor } = useCatalogMachines(activeStudioId, machines);
+  /*
+   * The FLOOR, which is not always the list: an empty machine list comes back
+   * as the MSF catalog standing in, and the front page never calls that
+   * "Machines at {studio}" (Machine Catalog round, Sep 28 2026).
+   */
+  const floorState = floor ?? (listLoading ? "loading" : "ready");
+  const catalog = floorState === "ready" ? list : NO_MACHINES;
+  const floorLoading = floorState === "loading";
+  const care = useMachineCare(activeStudioId);
   const { pages, loading: pagesLoading, error: pagesError } = useStudioWiki(activeStudioId);
 
   const tiles = useMemo(() => homeCategoryTiles(catalog), [catalog]);
   const status = useMemo(() => {
-    const statusById = upkeepByMachine(catalog, upkeepEventsFrom(upkeepById), dayKey());
-    const flagged = new Set(
-      Object.keys(upkeepById).filter((id) => upkeepById[id]?.flagged),
-    );
-    return floorStatus(catalog, statusById, flagged);
-  }, [catalog, upkeepById]);
+    const flagged =
+      care.loading || care.error
+        ? null
+        : new Set(Object.keys(care.byMachineId).filter((id) => care.byMachineId[id]?.flag));
+    return floorStatus(catalog, flagged);
+  }, [catalog, care.loading, care.error, care.byMachineId]);
   const facts = useMemo(() => academyFacts(ACADEMY_INDEX), []);
   const recent = useMemo(() => recentPages(pages, 5), [pages]);
 
@@ -125,6 +134,8 @@ export function LearningHome({
                 can be the whole MSF catalog standing in for it. */}
             {floorLoading ? (
               <>Counting {studioName}'s machines…</>
+            ) : floorState === "unreadable" ? (
+              <>{studioName}'s machines couldn't be read</>
             ) : (
               <>
                 <strong>{catalog.length}</strong> {catalog.length === 1 ? "machine" : "machines"} at{" "}
@@ -164,7 +175,7 @@ export function LearningHome({
           </button>
         </header>
 
-        {(status.flagged > 0 || status.outOfService > 0 || status.due > 0) && (
+        {(status.flagged > 0 || status.outOfService > 0) && (
           <button
             type="button"
             className="lh__status"
@@ -178,13 +189,16 @@ export function LearningHome({
             {status.outOfService > 0 && (
               <WikiBadge tone="warn">{status.outOfService} out of service</WikiBadge>
             )}
-            {status.due > 0 && (
-              <WikiBadge tone="warn">{status.due} due for cleaning</WikiBadge>
-            )}
           </button>
         )}
 
-        {tiles.length === 0 ? (
+        {floorLoading ? (
+          <p className="wk__empty">Reading {studioName}'s floor…</p>
+        ) : floorState === "unreadable" ? (
+          <p className="wk__empty">
+            Can't read {studioName}'s floor right now. All MSF machines still works.
+          </p>
+        ) : tiles.length === 0 ? (
           <p className="wk__empty">
             No machines at {studioName} yet. A studio leader adds them on My
             Studio → Machines.
@@ -237,7 +251,7 @@ export function LearningHome({
               accent="other"
               icon={<Database size={16} aria-hidden />}
               title="All MSF machines"
-              detail={`Every machine in the MSF catalog, and the ones studios have made and shared — with what other studios wrote about each. Add one to ${studioName}'s floor from its page.`}
+              detail="Every MSF machine, and the ones studios made and shared."
               onClick={onOpenDatabase}
             />
           </div>
@@ -327,9 +341,8 @@ export function LearningHome({
           <p className="wk__empty">Loading {studioName}'s pages…</p>
         ) : recent.length === 0 ? (
           <p className="wk__empty">
-            Nothing written at {studioName} yet. Studio leaders can add pages — the
-            studio's own way of doing things, kept beside the Academy, never on top
-            of it. Any trainer can add a studio note to a machine or an Academy page.
+            Nothing written at {studioName} yet. Studio leaders add pages; any
+            trainer can add a note to a machine or an Academy page.
           </p>
         ) : (
           <WikiGroup
@@ -367,3 +380,5 @@ export function LearningHome({
     </WikiShell>
   );
 }
+
+const NO_MACHINES: CatalogMachine[] = [];

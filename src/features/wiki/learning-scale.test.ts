@@ -116,6 +116,13 @@ const TAPS: Record<string, "height" | "square"> = {
   ".lh__machine": "height",
   ".lh__start": "height",
   ".cat__btn": "height",
+  // The Catalog's own index (Machine Catalog round, Sep 28 2026).
+  ".mcat-filter__clear": "height",
+  ".mcat-row": "height",
+  ".mcat-door": "height",
+  ".mcat-lens__btn": "height",
+  ".mcat-body__chip": "height",
+  ".mcat-body__other": "height",
   ".ssc__value": "height",
   ".ssc__remove": "square",
   ".ssc__addbtn": "square",
@@ -196,7 +203,7 @@ describe("Learning's text is on the codex's scale", () => {
     },
   );
 
-  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2"])(
+  it.each([".wk__mast-title", ".wk__index-title", ".wk__h1", ".lh__title", ".lh__h2", ".mcat-body__title"])(
     "gives the title %s the display face at 800, in italic capitals",
     (selector) => {
       const body = typeRule(selector).body;
@@ -214,7 +221,7 @@ describe("Learning's text is on the codex's scale", () => {
     expect(body).not.toMatch(/italic|uppercase/);
   });
 
-  it.each([".wk__searchbtn", ".wk__warnings-more", ".wk__studio-edit", ".wk__btn", ".lh__more", ".cat__btn", ".ssc__save", ".cm__btn", ".cm__link"])(
+  it.each([".wk__searchbtn", ".wk__warnings-more", ".wk__studio-edit", ".wk__btn", ".lh__more", ".cat__btn", ".mcat-filter__clear", ".mcat-door", ".ssc__save", ".cm__btn", ".cm__link"])(
     "writes the button %s in 14px bold sentence case",
     (selector) => {
       const body = typeRule(selector).body;

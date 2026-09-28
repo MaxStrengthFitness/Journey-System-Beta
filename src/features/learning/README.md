@@ -31,7 +31,7 @@ Outside the tab the shell renders exactly as before.
 
 **One search.** `LearningSearch` searches everything in the tab:
 
-- this studio's machines — by name, by Academy code (`CP`), and by muscle and category;
+- this studio's machines — by name, by Academy code (`CP`), and by muscle and category, and since the Machine Catalog round (Sep 28 2026) by every other name a machine goes by (the Academy's, the Academy tab's, FileMaker's: `catalog/names.ts`), so "low back" finds LUMBAR;
 - machines other MSF studios made and shared (a copy is listed by its original);
 - the Academy's machine documents, modules, topic titles and glossary terms;
 - this studio's pages.
@@ -66,6 +66,7 @@ Academy ids are slugs of the source files, so a rebuilt corpus can rename one. E
 **Nothing is concluded from a list that hasn't loaded** (review fixes).
 
 - The Catalog waits for the studio's floor before deciding a machine isn't on it. Until the roster and the catalog have both loaded, `useCatalogMachines` says `loading` and its list can be the whole MSF catalog standing in — which has none of the studio's own machines. A machine that really isn't on the floor then opens in All MSF machines, and that jump isn't remembered as the reader's choice of scope.
+- Since the Machine Catalog round (Sep 28 2026) `useCatalogMachines` also says what the FLOOR is (`floor`: loading, ready, empty, unreadable), and the Overview and the Catalog draw the floor only when it is `ready`: an empty machine list is never shown as "Machines at {studio}" with the MSF catalog in it, and an unreadable one says it can't be read. The Overview's "On the floor today" line reads Relay's flags (the care record, read only) and counts no cleaning of its own.
 - Studio pages (`useStudioWiki`) are held with the studio they belong to: after a studio switch the old studio's pages are never shown or linked, `loading` is true until this studio's arrive, and a failed read gives an `error`. The Overview and a studio page say "Loading…" or "Couldn't load" instead of "Nothing written here" or "That page is gone".
 - A link from the bell to something at another studio (a comment tag, a flag, a studio page) doesn't open this studio's page in its place: the app says where it happened (AppContent's `onNavigate`).
 
@@ -77,7 +78,7 @@ Academy ids are slugs of the source files, so a rebuilt corpus can rename one. E
 
 Learning follows the client codex's kit (`client-codex/kit/kit.css`, `client-codex/codex.tokens.css`), the screen AJ loved, so a new round starts from the rule rather than from a copy of one screen (voice review follow-up, Sep 27 2026, under the creative control AJ gave the round):
 
-- **One colour per meaning.** Blue acts and selects, and every Save is solid blue with its on-colour (`--wk-live` / `--wk-live-on`). Orange is the Learning brand mark and nothing else here; Start Session is the app's one orange action. Plum is caution: a clinical warning, cleaning due, out of service and a machine a trainer flagged. Crimson is critical: an error, a destructive button (Retire). Green is done. The palette is the app's (`equipment.tokens.css`), held by `wiki/learning-tokens.test.ts`, and no stylesheet here writes a hex value.
+- **One colour per meaning.** Blue acts and selects, and every Save is solid blue with its on-colour (`--wk-live` / `--wk-live-on`). Orange is the Learning brand mark and nothing else here; Start Session is the app's one orange action. Plum is caution: a clinical warning, out of service and a machine a trainer flagged (cleaning due was one until the Machine Catalog round, when cleaning left Learning for Relay). Crimson is critical: an error, a destructive button (Retire), and the Academy's never-to-failure rule on a machine. Green is done. The palette is the app's (`equipment.tokens.css`), held by `wiki/learning-tokens.test.ts`, and no stylesheet here writes a hex value.
 - **Readable words are never in the faint ink**, which is for chevrons, separators and icons. A category colour that colours words uses its `-text` shade (`--wk-cat-*-text`, 4.5:1 on its tint, the card and the page); the bright one is for stripes. The body figure takes `--wk-muscle-*`, never the model's built-in colours.
 - **The app's type voice.** Titles are the display face (Saira Condensed, `--wk-font-display`) at 800 in italic capitals, as the codex's page title; Settings' own title is the display face upright, as My Profile writes a name. Buttons are 14px bold sentence case. Text sits on the codex's scale, 11 / 12 / 14 / 17 / 30, and a field is 16px so iOS does not zoom the page when it is focused. Empty states are the codex's dashed box with a sentence.
 - **Taps and names.** Nothing tappable under 40px; nothing clipped (no ellipsis, no line clamp); the breadcrumb scrolls to its end so the page you are on is in view.
@@ -97,4 +98,4 @@ Learning follows the client codex's kit (`client-codex/kit/kit.css`, `client-cod
 | `permissions.ts` | Mirrors of the rules, for buttons: studio pages, and `writesForStudio` |
 | `useLearningEntries.ts` | Everything that can be found or linked to, for search and the announcement picker |
 | `learning.css` | The front page and the search stash, on the `--wk-*` tokens |
-| `LearningHome.render.test.tsx` | The Overview mounted: PageScroller's layout effect, the flag in plum, the empty floor's pointer, the place forgotten at sign-out |
+| `LearningHome.render.test.tsx` | The Overview mounted: PageScroller's layout effect, Relay's flag in plum, the empty and unreadable floor, the place forgotten at sign-out |

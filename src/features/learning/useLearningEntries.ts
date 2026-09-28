@@ -4,6 +4,7 @@ import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { resolveUnrostered } from "../../lib/resolve-machine";
 import { PAGE_SECTION_LABEL, accentForPattern, useStudioWiki, type WikiAccent } from "../wiki";
 import { fromResolvedMachine } from "../catalog/adapters";
+import { movementOf, namesForMachine } from "../catalog/names";
 import { useCatalogMachines } from "../catalog/useCatalogMachines";
 import { useSharedMachines } from "../machine-db/hooks";
 import {
@@ -102,18 +103,23 @@ export function useLearningEntries({
     const out: LearningSearchEntry[] = [];
 
     for (const m of catalog) {
-      const category = categoryOf(m.id);
+      const movement = movementOf(m);
+      const category = categoryOf(movement?.id ?? m.id);
       out.push({
         ref: { kind: "machine", id: m.id },
         group: "catalog",
         title: m.name,
-        code: abbr(m.id),
+        // A studio's copy of a catalog machine carries its movement's code too.
+        code: movement?.code ?? abbr(m.id),
         meta: [m.movementPattern, m.anatomicalRegion].filter(Boolean).join(" · ") || undefined,
         accent: accentForPattern(m.movementPattern),
         keywords: [
           ...m.targetMuscles,
           ...m.synergists,
           ...(category ? [CATEGORY_LABEL[category]] : []),
+          // Every name it goes by (Catalog R1): "low back" finds LUMBAR,
+          // "torso arm" finds PULLDOWN.
+          ...namesForMachine(m),
         ],
       });
     }
@@ -130,7 +136,7 @@ export function useLearningEntries({
         title: s.machine.name,
         meta: [`Shared by ${s.studioName}`, s.machine.movementPattern].filter(Boolean).join(" · "),
         accent: accentForPattern(s.machine.movementPattern),
-        keywords: [...s.machine.targetMuscles, ...s.machine.synergists, s.studioName],
+        keywords: [...s.machine.targetMuscles, ...s.machine.synergists, s.studioName, ...namesForMachine(s.machine)],
       });
     }
 

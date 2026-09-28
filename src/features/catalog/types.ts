@@ -39,6 +39,29 @@ export interface CatalogMachine {
   executionPosture: string;
   setupGap: string;
   requiresHandoff: boolean;
+  /**
+   * The Academy says never to take this machine to failure (the Lumbar and
+   * the Cervical today): `execution.neverToFailure`, with its reason in
+   * `safetyNotice`. Optional, so a machine assembled before the Catalog round
+   * (Sep 28 2026) reads as "not flagged" rather than failing to build.
+   */
+  neverToFailure?: boolean;
+  /** The Academy's own sentence for why, shown with the switch. */
+  safetyNotice?: string;
+
+  // ── the unit's dials (Machine Catalog round, Catalog R2) ─────────
+  /**
+   * The dials this studio's unit has, in order: the resolved machine's
+   * `settingFields` (key and label), or the legacy machine's setting labels.
+   * Optional for the same reason as above.
+   */
+  dials?: { key: string; label: string }[];
+  /**
+   * Where the dials sit by default on this unit: the resolved machine's
+   * `defaultSettings` (the studio's override merged over the catalog's), keyed
+   * by the dial's key or, on the legacy path, its label.
+   */
+  dialDefaults?: Record<string, string>;
 
   // ── the sections ─────────────────────────────────────────────────
   /** Precise anatomy as the coach reads it — the diagram cannot say

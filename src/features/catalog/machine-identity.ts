@@ -25,8 +25,13 @@
 
 import { MACHINE_ANATOMY } from "../../data/machine-anatomy-map";
 
-/** MACHINE_DATABASE / routine-template keys -> the app's canonical m-* id. */
-const DB_KEY_TO_CANONICAL: Record<string, string> = {
+/**
+ * MACHINE_DATABASE / routine-template keys -> the app's canonical m-* id.
+ *
+ * Exported for the Catalog's name table (./names.ts), which reads every name
+ * a machine goes by from the tables already in the code.
+ */
+export const DB_KEY_TO_CANONICAL: Record<string, string> = {
   "4_way_neck": "m-neck",
   cervical_extension: "m-neck",
   leg_press: "m-leg-press",

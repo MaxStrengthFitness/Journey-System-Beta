@@ -6,34 +6,21 @@ import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useStudioMachineSettings } from "../../hooks/useStudioMachineSettings";
 import { isStudioLeader } from "../../lib/permissions";
+import { LoadingMark } from "../../components/LoadingMark";
 import {
-  WikiContents,
-  WikiGroup,
   WikiIndexHeader,
-  WikiRow,
-  WikiSearch,
   WikiShell,
-  WikiBadge,
   StudioWikiPanel,
   useStudioWiki,
-  accentForGroupKey,
   accentForPattern,
-  groupElementId,
-  type WikiContentsCard,
   type WikiCrumb,
-  type WikiSearchGroup,
 } from "../wiki";
 // Direct sub-module imports, not the studio-tasks barrel - see ClientsView.
-import { MachineUpkeepCard } from "../studio-tasks/MachineUpkeepCard";
 import { MachinePlaybookCard } from "../studio-tasks/MachinePlaybookCard";
-import { TaskNoteDialog } from "../studio-tasks/TaskNoteDialog";
-import { notifyTaskCompletion } from "../studio-tasks/notify";
 import { searchPlaybook } from "../studio-tasks/playbook";
-import { setTaskStatus, studioLocation } from "../studio-tasks/mutations";
-import { useMachineUpkeep } from "../studio-tasks/useMachineUpkeep";
 import { usePlaybook } from "../studio-tasks/usePlaybook";
-import { useStudioTasks } from "../studio-tasks/useStudioTasks";
-import type { TaskRow } from "../studio-tasks/types";
+// Relay's care record, READ ONLY: the one record for flags (Catalog R2, q4).
+import { useMachineCare } from "../relay/board/machine-care-store";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
 import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
 import { CommentsPanel } from "../comments";
@@ -49,25 +36,25 @@ import {
   tapOffers,
   type CatalogScope,
 } from "../machine-db";
-import { abbr } from "../routine-builder/academy";
+import { CATEGORY_LABEL, categoryOf, type AcademyCategory } from "../routine-builder/academy";
 import { machinesForBodySlug } from "./anatomy";
-import {
-  dayKey,
-  groupKeyOf,
-  groupLabelOf,
-  groupMachines,
-  searchMachines,
-  upkeepByMachine,
-  upkeepEventsFrom,
-} from "./grouping";
+import { UNCATEGORISED_KEY, UNCATEGORISED_LABEL, academyCategoryOf } from "./grouping";
 import { MachineTrendsPanel } from "../machine-trends/MachineTrendsPanel";
-import { MachineArticle } from "./MachineArticle";
+import { BODY_REGIONS, mainCounts, regionNames } from "./body-lens";
+import { BodyLens } from "./BodyLens";
+import { CatalogFind } from "./CatalogFind";
+import { CatalogLenses, type CatalogLens } from "./CatalogLenses";
+import { findOnFloor, findUnitsFrom, type FindHit } from "./find";
+import { FloorRow } from "./FloorRow";
+import { flagLineOf, floorSentence, presetOf } from "./floor-index";
+import { MachineArticle, type FoundOnPage } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
+import { movementOf } from "./names";
 import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
 import { useSectionState } from "./useSectionState";
-import type { GroupingMode } from "./types";
+import type { CatalogMachine } from "./types";
 import { forgetOnSignOut } from "../sign-out/memory";
 
 /**
@@ -104,11 +91,12 @@ import { forgetOnSignOut } from "../sign-out/memory";
  *
  * ROUTING
  * -------
- * `index` and `machine` are the two real screens; `search` and `academy` are
- * places you go from them. All four are plain state rather than a router,
- * because AppContent owns navigation for the whole app and adding a second
- * routing system inside one tab is how a back button ends up meaning two
- * different things.
+ * `index` and `machine` are the two real screens. Both are plain state rather
+ * than a router, because AppContent owns navigation for the whole app and
+ * adding a second routing system inside one tab is how a back button ends up
+ * meaning two different things. (A `search` screen of its own went in the
+ * Machine Catalog round: Learning's masthead search had always covered it,
+ * and Find is on the index.)
  *
  * ONE LAYOUT, NOT TWO
  * -------------------
@@ -117,49 +105,60 @@ import { forgetOnSignOut } from "../sign-out/memory";
  * and it came back anyway as two different pickers. The wiki has one tree;
  * the only thing that changes at 1024px is CSS grid moving the infobox into a
  * sticky column. Nothing renders differently, so nothing can drift.
+ *
+ * FLOOR FIRST (the Machine Catalog round, Sep 28 2026)
+ * ----------------------------------------------------
+ * AJ picked "Floor first, codex behind". The index is the studio's floor in
+ * the leader's walking order (one order everywhere, q3), each row carrying
+ * its preset, switches and status (FloorRow), with Find on top (CatalogFind).
+ * It says so plainly when the floor is loading, empty or cannot be read, and
+ * never draws the MSF standard in its place (floor-index.ts). Flags are
+ * Relay's (studios/{s}/machineCare, read only); the Catalog counts no
+ * cleaning of its own (q4). Head office opens on All MSF machines (q2).
+ *
+ * THREE WAYS IN (Catalog R3)
+ * --------------------------
+ * The floor, the body and All MSF machines (CatalogLenses). The body is the
+ * app's own anatomy model with its parts also as a list (BodyLens); All MSF
+ * machines is grouped by the Academy's five families, and its old grouping
+ * switch (Category · Kinematics · Region) is gone with the text AJ asked to
+ * cut.
  */
 
 /** Machines shown under "Related" on an article. Six is two rows of chips. */
 const MAX_RELATED = 6;
 
-/**
- * The index's grouping switch, in the wiki's own order and words.
- *
- * Category first, because it is the default and the vocabulary a trainer
- * plans in. It was labelled "Academy", which put a second "Academy" a few
- * pixels under the Learning tab's Academy section — one word, two meanings.
- * The legacy picker keeps GROUPING_MODES / GROUPING_LABEL as they were.
- */
-const WIKI_GROUPINGS: { mode: GroupingMode; label: string }[] = [
-  { mode: "academy", label: "Category" },
-  { mode: "movement", label: "Kinematics" },
-  { mode: "region", label: "Region" },
-];
-
-/** The primary muscles, without the parenthetical detail, for the wide row. */
-function musclesLine(targetMuscles: string[]): string {
-  return targetMuscles
-    .slice(0, 3)
-    .map((t) => t.replace(/\s*\([^)]*\)\s*/g, " ").trim())
-    .filter(Boolean)
-    .join(" · ");
-}
-
 type Route =
   | { kind: "index" }
-  | { kind: "machine"; id: string }
-  | { kind: "search" };
+  /** `found`: Find opened this page on a line inside it, and the page says where. */
+  | { kind: "machine"; id: string; found?: FoundOnPage };
+
+/** The Academy family a floor machine belongs to, through its lineage. */
+function familyOf(machine: CatalogMachine): AcademyCategory | null {
+  return academyCategoryOf(machine) ?? categoryOf(movementOf(machine)?.id ?? "");
+}
 
 /**
- * Which list the Catalog shows — this studio's floor, or every MSF machine
- * (Learning + Planner round, features/machine-db). Remembered for the
- * session, like the Planner's tab; a fresh load starts on the floor.
+ * The floor narrowed by Find (a switch, a maker, a movement the floor has
+ * more than one of). Shown with its name and a way back to the whole floor.
  */
-let rememberedScope: CatalogScope = "floor";
+interface FloorFilter {
+  label: string;
+  unitIds: string[];
+}
+
+/**
+ * Which way in the Catalog shows — this studio's floor, the body, or every
+ * MSF machine (features/machine-db). Remembered for the session, like the
+ * Planner's tab. Null until the reader chooses: a trainer then opens on the
+ * floor and head office (administrators and the founder) on All MSF machines
+ * (the Machine Catalog round, q2).
+ */
+let rememberedLens: CatalogLens | null = null;
 
 // A sign-out is a fresh load for the next person (Sep 24 2026).
 forgetOnSignOut(() => {
-  rememberedScope = "floor";
+  rememberedLens = null;
 });
 
 export interface CatalogWikiViewProps {
@@ -181,7 +180,7 @@ export interface CatalogWikiViewProps {
   openGroupKey?: string | null;
   onOpenedGroup?: () => void;
   /** Open the index in this scope — the front page's "All MSF machines" card. */
-  openScope?: CatalogScope | null;
+  openScope?: CatalogScope | CatalogLens | null;
   onOpenedScope?: () => void;
   /**
    * Jump to the Academy tab at this machine's card or script. Owned by
@@ -207,21 +206,34 @@ export function CatalogWikiView({
   onOpenedScope,
   onOpenAcademy,
 }: CatalogWikiViewProps) {
-  const { activeStudioId, activeStudio } = useActiveStudio();
+  const { activeStudioId, activeStudio, isAdmin } = useActiveStudio();
   const {
     machines: catalogMachines,
     source: floorSource,
-    loading: floorLoading,
+    makers,
+    floor: floorState,
   } = useCatalogMachines(activeStudioId, machines);
+  /*
+   * The FLOOR, which is not always the list above: when the studio's machine
+   * list is empty the list is the MSF catalog standing in, and when it could
+   * not be read it is nothing to go on. Either way the floor shows nothing in
+   * its place (floor-index.ts). Everything on the floor side reads this.
+   */
+  const floorMachines = floorState === "ready" ? catalogMachines : NO_MACHINES;
 
-  const [scope, setScopeState] = useState<CatalogScope>(rememberedScope);
-  const setScope = (next: CatalogScope) => {
-    rememberedScope = next;
+  const [scope, setScopeState] = useState<CatalogLens>(
+    () => rememberedLens ?? (isAdmin ? "msf" : "floor"),
+  );
+  const setScope = (next: CatalogLens) => {
+    rememberedLens = next;
     setScopeState(next);
   };
   const [route, setRoute] = useState<Route>({ kind: "index" });
-  const [grouping, setGrouping] = useState<GroupingMode>("academy");
-  const [query, setQuery] = useState("");
+  // The part of the body the body lens is on (Catalog R3).
+  const [regionId, setRegionId] = useState<string | null>(null);
+  // Find, on top of the floor (Catalog R1), and what it narrowed the floor to.
+  const [find, setFind] = useState("");
+  const [floorFilter, setFloorFilter] = useState<FloorFilter | null>(null);
   const [view, setView] = useState<"front" | "back">("front");
   const [gender, setGender] = useState<"male" | "female">("male");
 
@@ -229,19 +241,19 @@ export function CatalogWikiView({
   const { success: toastSuccess, error: toastError } = useToast();
 
   /*
-   * These four are read ONCE here and passed down, exactly as the old view
-   * did: each is a snapshot over the whole studio, and mounting them inside
-   * the article would tear down and rebuild every listener on every tap in
-   * the index — twenty-two teardowns while a trainer scrolls.
+   * These are read ONCE here and passed down, exactly as the old view did:
+   * each is a snapshot over the whole studio, and mounting them inside the
+   * article would tear down and rebuild every listener on every tap in the
+   * index — twenty-two teardowns while a trainer scrolls.
+   *
+   * Relay's care record replaced two reads in the Machine Catalog round: the
+   * studio's machine task instances (the old Upkeep card's history, which
+   * grew without bound) and today's task rows.
    */
-  const { byMachineId: upkeepById } = useMachineUpkeep(activeStudioId);
+  const care = useMachineCare(activeStudioId);
   const { settingsByMachineId } = useStudioMachineSettings(activeStudioId);
   const { entries: playbookEntries } = usePlaybook(activeStudioId);
-  const { rows: todayTaskRows } = useStudioTasks(activeStudioId);
   const { overlayFor } = useStudioWiki(activeStudioId);
-
-  const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
-  const [upkeepBusy, setUpkeepBusy] = useState(false);
 
   const canEditStudioSetup = isStudioLeader(authTrainer ?? null);
   const author = authTrainer?.id
@@ -275,9 +287,10 @@ export function CatalogWikiView({
   };
 
   const scopeSwitch = (
-    <ScopeSwitch
-      scope={scope}
-      studioName={activeStudio?.name ?? "this studio"}
+    // The three ways in (Catalog R3): the floor, the body, All MSF machines.
+    <CatalogLenses
+      lens={scope}
+      studioName={studioName}
       onChange={(next) => {
         setScope(next);
         setRoute({ kind: "index" });
@@ -285,33 +298,14 @@ export function CatalogWikiView({
     />
   );
 
-  /* Grouping is a property of the INDEX, not of a picker inside a sheet.
-     Changing it re-labels the contents and re-sorts the list in place;
-     nothing opens, closes or filters. Shared by both scopes. */
-  const groupingControl = (
-    <div className="wk__seg" role="group" aria-label="Group machines by">
-      {WIKI_GROUPINGS.map(({ mode, label }) => (
-        <button
-          key={mode}
-          type="button"
-          className="wk__seg-btn"
-          aria-pressed={grouping === mode}
-          onClick={() => setGrouping(mode)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-
   /* ── derived state ─────────────────────────────────────────────── */
 
   const selected = useMemo(
     () =>
       route.kind === "machine"
-        ? (catalogMachines.find((m) => m.id === route.id) ?? null)
+        ? (floorMachines.find((m) => m.id === route.id) ?? null)
         : null,
-    [catalogMachines, route],
+    [floorMachines, route],
   );
 
   /*
@@ -329,16 +323,17 @@ export function CatalogWikiView({
   const [dbJump, setDbJump] = useState<string | null>(null);
   useEffect(() => {
     if (route.kind !== "machine") return;
-    // Until the floor has loaded, the list is the global fallback (which has
-    // none of the studio's own machines) or a roster short of its catalog
-    // machines, so "not on this floor" can't be concluded yet.
-    if (floorLoading || catalogMachines.length === 0) return;
-    if (catalogMachines.some((m) => m.id === route.id)) return;
+    // Until the floor has loaded, "not on this floor" can't be concluded.
+    // Once it has, a machine that is not on it opens in All MSF — and so does
+    // every machine when the floor is empty or unreadable: the MSF standard is
+    // never drawn as this studio's (Machine Catalog round).
+    if (floorState === "loading") return;
+    if (floorMachines.some((m) => m.id === route.id)) return;
     setDbJump(route.id);
     // Not remembered: the next visit opens on the floor, as the reader left it.
     setScopeState("msf");
     setRoute({ kind: "index" });
-  }, [catalogMachines, route, floorLoading]);
+  }, [floorMachines, route, floorState]);
 
   /*
    * A cross-link from the Academy tab. Honoured once and then cleared, so a
@@ -353,11 +348,11 @@ export function CatalogWikiView({
   }, [openMachineId, onOpenedMachine]);
 
   /*
-   * A category to scroll the index to: from the front page's tiles, or from
-   * the category crumb on a machine page. Held until the index has rendered,
-   * because the group's element does not exist before it has.
+   * An Academy family to show: the front page's category tiles. The floor is
+   * the walking order now, not groups, so the family narrows the floor to its
+   * machines (with a way back to the whole floor) once the floor has loaded.
    */
-  const [pendingGroup, setPendingGroup] = useState<string | null>(null);
+  const [pendingFamily, setPendingFamily] = useState<string | null>(null);
 
   useEffect(() => {
     if (!openScope) return;
@@ -369,11 +364,23 @@ export function CatalogWikiView({
   useEffect(() => {
     if (!openGroupKey) return;
     setScope("floor");
-    setGrouping("academy");
     setRoute({ kind: "index" });
-    setPendingGroup(openGroupKey);
+    setPendingFamily(openGroupKey);
     onOpenedGroup?.();
   }, [openGroupKey, onOpenedGroup]);
+
+  useEffect(() => {
+    if (!pendingFamily || floorState === "loading") return;
+    const ids = floorMachines
+      .filter((m) => (familyOf(m) ?? UNCATEGORISED_KEY) === pendingFamily)
+      .map((m) => m.id);
+    const label =
+      pendingFamily === UNCATEGORISED_KEY
+        ? UNCATEGORISED_LABEL
+        : (CATEGORY_LABEL[pendingFamily as AcademyCategory] ?? pendingFamily);
+    setFloorFilter(ids.length > 0 ? { label, unitIds: ids } : null);
+    setPendingFamily(null);
+  }, [pendingFamily, floorState, floorMachines]);
 
   // Turn the figure to the side that actually shows the activation, on every
   // path that can change the selection. Doing this in a click handler is what
@@ -384,44 +391,38 @@ export function CatalogWikiView({
     if (preferredView) setView(preferredView);
   }, [selected?.id, preferredView]);
 
-  const upkeepEvents = useMemo(() => upkeepEventsFrom(upkeepById), [upkeepById]);
-  const upkeepStatusById = useMemo(
-    () => upkeepByMachine(catalogMachines, upkeepEvents, dayKey()),
-    [catalogMachines, upkeepEvents],
-  );
-  const flaggedIds = useMemo(
-    () => new Set(Object.keys(upkeepById).filter((id) => upkeepById[id]?.flagged)),
-    [upkeepById],
-  );
+  /*
+   * Relay's flags, by machine. Null while the care record is loading or when
+   * it could not be read: unknown, never "nothing flagged".
+   */
+  const flaggedIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (care.loading || care.error) return null;
+    return new Set(Object.keys(care.byMachineId).filter((id) => care.byMachineId[id]?.flag));
+  }, [care.loading, care.error, care.byMachineId]);
 
-  const groups = useMemo(
-    () => groupMachines(catalogMachines, grouping),
-    [catalogMachines, grouping],
+  /* Find (Catalog R1): every name a machine goes by, over this floor. */
+  const findUnits = useMemo(
+    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds }),
+    [floorMachines, makers, flaggedIds],
   );
-
+  // The body's parts, for Find's "Muscles" (Catalog R3): "lats" opens the body lens.
+  const findRegions = useMemo(() => {
+    const counts = mainCounts(floorMachines);
+    return BODY_REGIONS.map((r) => ({ id: r.id, label: r.label, names: regionNames(r), mainCount: counts[r.id] ?? 0 }));
+  }, [floorMachines]);
+  const findResult = useMemo(
+    () =>
+      find.trim()
+        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions })
+        : null,
+    [find, findUnits, studioName, findRegions],
+  );
+  // Another studio's floor is another list: what was typed or filtered for
+  // the last one means nothing here.
   useEffect(() => {
-    // Held until the floor has loaded: the group may exist only in the
-    // studio's own list ("Not in the Academy categories").
-    if (!pendingGroup || route.kind !== "index" || floorLoading) return;
-    const target = groupElementId(pendingGroup);
-    // After paint: the index has only just been rendered in place of the page.
-    // Cleared INSIDE the frame: clearing it here would re-render, run this
-    // effect's cleanup and cancel the frame before it ever fired.
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(target)?.scrollIntoView({ block: "start" });
-      setPendingGroup(null);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [pendingGroup, route, groups, floorLoading]);
-
-  const machineTaskRows = useMemo(() => {
-    const map: Record<string, TaskRow[]> = {};
-    for (const r of todayTaskRows) {
-      if (!r.machineId) continue;
-      (map[r.machineId] ??= []).push(r);
-    }
-    return map;
-  }, [todayTaskRows]);
+    setFind("");
+    setFloorFilter(null);
+  }, [activeStudioId]);
 
   /*
    * The Academy's per-machine cards and scripts, loaded only once a machine
@@ -437,39 +438,29 @@ export function CatalogWikiView({
   const openMachine = (id: string) => setRoute({ kind: "machine", id });
   const openIndex = () => setRoute({ kind: "index" });
 
-  const runUpkeep = async (
-    row: TaskRow,
-    status: "done" | "open",
-    note?: string,
-    flagged?: boolean,
-  ) => {
-    if (!activeStudioId) return;
-    setUpkeepBusy(true);
-    try {
-      await setTaskStatus({
-        // Machine upkeep is always the studio's shared checklist, never a
-        // trainer's private list: the machine belongs to the location.
-        location: studioLocation(activeStudioId),
-        planned: row,
-        status,
-        author,
-        note,
-        flagged,
-      });
-      // The Catalog is where a broken pad actually gets noticed, so this path
-      // matters more than the board's: a trainer standing at the machine flags
-      // it here and the studio leader hears about it without anyone walking to
-      // the To-Do screen.
-      if (status === "done") {
-        await notifyTaskCompletion({ row, author, studioId: activeStudioId, flagged, note });
-      }
-      toastSuccess(status === "done" ? "Marked done." : "Re-opened.");
-    } catch (err) {
-      console.error("Failed to update machine upkeep:", err);
-      toastError("Could not save. Check your connection.");
-    } finally {
-      setUpkeepBusy(false);
-    }
+  /** Where a Find result leads: a page, a filtered floor, or All MSF. */
+  const openFound = (hit: FindHit) => {
+    setFind("");
+    if (hit.kind === "unit") openMachine(hit.unitId);
+    else if (hit.kind === "line") {
+      setRoute({ kind: "machine", id: hit.unitId, found: { section: hit.section, text: hit.text } });
+    } else if (hit.kind === "filter") setFloorFilter(hit.filter);
+    else if (hit.kind === "muscle") {
+      setRegionId(hit.regionId);
+      setScope("body");
+      setRoute({ kind: "index" });
+    } else openMovement(hit.movementId);
+  };
+
+  /**
+   * A movement this floor does not have: its page in All MSF machines. Not
+   * remembered as the reader's scope, exactly like a link to a machine that
+   * is not here.
+   */
+  const openMovement = (movementId: string) => {
+    setDbJump(movementId);
+    setScopeState("msf");
+    setRoute({ kind: "index" });
   };
 
   /* ── all MSF machines ───────────────────────────────────────────── */
@@ -478,15 +469,20 @@ export function CatalogWikiView({
     return (
       <MachineDatabase
         legacyMachines={machines}
-        floor={catalogMachines}
-        floorSource={floorSource}
-        floorLoading={floorLoading}
+        // Only a floor that was read and has machines is the floor. An empty
+        // one is "global" (adoption points to My Studio → Machines, as it
+        // always has), and an unreadable one is still being checked, so no
+        // page says a machine is on the floor, or off it, on a guess.
+        floor={floorMachines}
+        floorSource={floorState === "ready" ? floorSource : "global"}
+        floorLoading={floorState === "loading" || floorState === "unreadable"}
         studioId={activeStudioId}
         studioName={studioName}
         authTrainer={authTrainer ?? null}
         scopeSwitch={scopeSwitch}
-        grouping={grouping}
-        groupingControl={groupingControl}
+        // By the Academy's five families, and no switch to change it (R3).
+        grouping="academy"
+        groupingControl={null}
         onOpenFloorMachine={(id) => {
           setScope("floor");
           setRoute({ kind: "machine", id });
@@ -498,97 +494,31 @@ export function CatalogWikiView({
     );
   }
 
-  /* ── empty roster ──────────────────────────────────────────────── */
-
-  if (catalogMachines.length === 0) {
-    // Inside the shell, so the Learning masthead (and with it the way to the
-    // other sections) is still there on an empty studio.
-    return (
-      <WikiShell crumbs={[{ label: "Catalog" }]}>
-        <div className="wk__index-head">{scopeSwitch}</div>
-        <div className="wk__placeholder">
-          <p className="wk__placeholder-title">No machines yet</p>
-          <p className="wk__placeholder-body">
-            {activeStudioId
-              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. A studio leader adds them on My Studio → Machines.`
-              : "Select a studio to see its equipment."}
-          </p>
-        </div>
-      </WikiShell>
-    );
-  }
-
-  /* ── search ────────────────────────────────────────────────────── */
-
-  if (route.kind === "search") {
-    const hits = searchMachines(catalogMachines, query);
-    const searchGroups: WikiSearchGroup[] = [
-      {
-        key: "machines",
-        label: "Machines",
-        items: hits.map((m) => ({
-          id: m.id,
-          title: m.name,
-          code: abbr(m.id),
-          meta: m.movementPattern || m.anatomicalRegion,
-          accent: accentForPattern(m.movementPattern),
-        })),
-      },
-    ];
-
-    return (
-      <WikiSearch
-        value={query}
-        onChange={setQuery}
-        onClose={openIndex}
-        onPick={(id) => {
-          setQuery("");
-          openMachine(id);
-        }}
-        groups={searchGroups}
-        placeholder={`Search ${catalogMachines.length} machines…`}
-        idle={
-          <p className="wk__empty">
-            Search by name, movement pattern, region or muscle — “row”,
-            “posterior”, “glute”.
-          </p>
-        }
-      />
-    );
-  }
-
   /* ── a machine ─────────────────────────────────────────────────── */
 
   if (route.kind === "machine" && selected) {
-    const groupKey = groupKeyOf(selected, grouping);
-    const groupLabel = groupLabelOf(groupKey, grouping);
-
+    // The floor is one list in walking order, so the way up is the floor.
     const crumbs: WikiCrumb[] = [
       { label: "Catalog", onClick: openIndex },
-      {
-        label: groupLabel,
-        onClick: () => {
-          openIndex();
-          setPendingGroup(groupKey);
-        },
-      },
       { label: selected.name },
     ];
 
     /*
      * Related machines: the rest of this machine's movement pattern first,
-     * topped up from its wider group if that is thin. A machine on its own in
-     * a pattern is exactly the case where a lateral link is most useful, so
+     * topped up from its Academy family if that is thin. A machine on its own
+     * in a pattern is exactly the case where a lateral link is most useful, so
      * falling back rather than showing nothing matters.
      */
-    const samePattern = catalogMachines.filter(
+    const family = familyOf(selected);
+    const samePattern = floorMachines.filter(
       (m) => m.id !== selected.id && m.movementPattern === selected.movementPattern,
     );
-    const sameGroup = catalogMachines.filter(
+    const sameGroup = floorMachines.filter(
       (m) =>
         m.id !== selected.id &&
         !samePattern.some((s) => s.id === m.id) &&
-        groupKeyOf(m, grouping) === groupKey,
+        family !== null &&
+        familyOf(m) === family,
     );
     const related = [...samePattern, ...sameGroup]
       .slice(0, MAX_RELATED)
@@ -600,6 +530,7 @@ export function CatalogWikiView({
 
     const card = academyCards?.find((c) => c.machineId === selected.id) ?? null;
     const script = academyScripts?.find((s) => s.machineId === selected.id) ?? null;
+    const careFlag = care.byMachineId[selected.id]?.flag ?? null;
 
     const playbookHits = searchPlaybook(playbookEntries, "", { machineId: selected.id });
     const overlay = overlayFor("machine", selected.id);
@@ -608,16 +539,14 @@ export function CatalogWikiView({
       Boolean(uid && authorId === uid) || leadsStudioPerRules(authTrainer ?? null, activeStudioId);
 
     return (
-      <WikiShell
-        crumbs={crumbs}
-        onOpenSearch={() => setRoute({ kind: "search" })}
-      >
+      <WikiShell crumbs={crumbs}>
         <MachineArticle
           machine={selected}
+          found={route.found}
           isOpen={isOpen}
           setOpen={setOpen}
-          isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
-          upkeepStatus={upkeepStatusById[selected.id]}
+          flag={careFlag ? flagLineOf(careFlag) : null}
+          preset={presetOf(selected, settingsByMachineId[selected.id])}
           onOpenMachine={openMachine}
           related={related}
           /* The panel reads machineTrends/{id} only once the foldable is open,
@@ -644,7 +573,7 @@ export function CatalogWikiView({
                 // Tapping a muscle group on the figure is a cross-link: it
                 // goes to a machine on THIS roster that trains it, or does
                 // nothing rather than dead-ending on one that isn't here.
-                const owned = new Set(catalogMachines.map((m) => m.id));
+                const owned = new Set(floorMachines.map((m) => m.id));
                 const target = machinesForBodySlug(slug).find((id) => owned.has(id));
                 if (target) openMachine(target);
               }}
@@ -684,22 +613,6 @@ export function CatalogWikiView({
               setting={settingsByMachineId[selected.id]}
               canEdit={canEditStudioSetup}
               authorId={authTrainer?.id ?? null}
-            />
-          }
-          upkeep={
-            <MachineUpkeepCard
-              machineId={selected.id}
-              rows={machineTaskRows[selected.id] ?? []}
-              upkeep={upkeepById[selected.id]}
-              busy={upkeepBusy}
-              onComplete={(row) => {
-                if (row.status !== "done" && row.template?.requiresNote) {
-                  setNoteRow(row);
-                  return;
-                }
-                runUpkeep(row, row.status === "done" ? "open" : "done");
-              }}
-              onAddNote={setNoteRow}
             />
           }
           studioWiki={
@@ -778,14 +691,26 @@ export function CatalogWikiView({
             ) : undefined
           }
         />
+      </WikiShell>
+    );
+  }
 
-        <TaskNoteDialog
-          row={noteRow}
-          open={Boolean(noteRow)}
-          onOpenChange={(o) => !o && setNoteRow(null)}
-          onSubmit={(note, flagged) =>
-            noteRow ? runUpkeep(noteRow, "done", note, flagged) : undefined
-          }
+  /* ── the body (Catalog R3) ─────────────────────────────────────── */
+
+  if (scope === "body") {
+    return (
+      <WikiShell crumbs={[{ label: "Catalog" }]} scrollKey="Catalog / The body">
+        <WikiIndexHeader lead={scopeSwitch} title="The body" subtitle="What trains what, main movers first." />
+        <BodyLens
+          floor={floorMachines}
+          floorState={floorState}
+          studioName={studioName}
+          regionId={regionId}
+          onRegion={setRegionId}
+          presetFor={(m) => presetOf(m, settingsByMachineId[m.id])}
+          flaggedIds={flaggedIds}
+          onOpenMachine={openMachine}
+          onOpenMovement={openMovement}
         />
       </WikiShell>
     );
@@ -793,117 +718,103 @@ export function CatalogWikiView({
 
   /* ── the index ─────────────────────────────────────────────────── */
 
-  const needsUpkeep = catalogMachines.filter(
-    (m) => upkeepStatusById[m.id] === "due" || upkeepStatusById[m.id] === "overdue",
-  ).length;
-  const flaggedCount = catalogMachines.filter((m) => flaggedIds.has(m.id)).length;
-  const outOfService = catalogMachines.filter(
-    (m) => m.rosterStatus === "maintenance",
-  ).length;
+  const outOfService = floorMachines.filter((m) => m.rosterStatus === "maintenance").length;
+  const flaggedCount = flaggedIds ? floorMachines.filter((m) => flaggedIds.has(m.id)).length : null;
+  // Find's filter narrows the floor to the machines it named, in walking order.
+  const shown = floorFilter
+    ? floorMachines.filter((m) => floorFilter.unitIds.includes(m.id))
+    : floorMachines;
 
-  const contents: WikiContentsCard[] = groups.map((g) => {
-    const due = g.machines.filter(
-      (m) => upkeepStatusById[m.id] === "due" || upkeepStatusById[m.id] === "overdue",
-    ).length;
-    const flagged = g.machines.filter((m) => flaggedIds.has(m.id)).length;
-    const notes: { label: string; tone: "warn" | "alert" }[] = [];
-    if (due > 0) notes.push({ label: `${due} due`, tone: "warn" });
-    // A flagged machine is a caution, in the app's plum: crimson is a
-    // Critical note's and a set's that needs work (voice review follow-up).
-    if (flagged > 0) notes.push({ label: `${flagged} flagged`, tone: "warn" });
-    return {
-      key: g.key,
-      label: g.label,
-      accent: accentForGroupKey(g.key, grouping),
-      count: g.machines.length,
-      countLabel: `${g.machines.length} machine${g.machines.length === 1 ? "" : "s"}`,
-      notes,
-      target: groupElementId(g.key),
-    };
-  });
+  const subtitle =
+    floorState === "ready"
+      ? floorSentence({
+          count: floorMachines.length,
+          outOfService,
+          flagged: flaggedCount,
+          flagsFailed: Boolean(care.error),
+        })
+      : undefined;
+
+  const openAllMsf = () => {
+    setScope("msf");
+    setRoute({ kind: "index" });
+  };
 
   return (
-    <WikiShell
-      crumbs={[{ label: "Catalog" }]}
-      onOpenSearch={() => setRoute({ kind: "search" })}
-    >
-      <WikiIndexHeader
-        lead={scopeSwitch}
-        title={activeStudio?.name ? `Machines at ${activeStudio.name}` : "Machines"}
-        subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}, each with its Academy code. What every machine on this floor trains, how ${activeStudio?.name ?? "this studio"} sets it up, and how it is running today.`}
-        stats={[
-          { label: "On the roster", value: catalogMachines.length },
-          {
-            label: "Needs cleaning",
-            value: needsUpkeep,
-            tone: needsUpkeep > 0 ? "warn" : undefined,
-          },
-          {
-            label: "Flagged",
-            value: flaggedCount,
-            tone: flaggedCount > 0 ? "warn" : undefined,
-          },
-          { label: "Out of service", value: outOfService },
-        ]}
-      >
-        {groupingControl}
-      </WikiIndexHeader>
+    <WikiShell crumbs={[{ label: "Catalog" }]}>
+      <WikiIndexHeader lead={scopeSwitch} title={`${studioName}'s floor`} subtitle={subtitle} />
 
-      <WikiContents cards={contents} label="Contents" />
+      {/* Find knows the MSF movements as well as this floor, so it stays on
+          an empty floor (a movement there opens in All MSF). Not on an
+          unreadable one: "not on this floor" would be a guess. */}
+      {(floorState === "ready" || floorState === "empty") && (
+        <CatalogFind value={find} onChange={setFind} result={findResult} onPick={openFound} />
+      )}
 
-      {groups.map((g) => (
-        <WikiGroup
-          key={g.key}
-          id={groupElementId(g.key)}
-          label={g.label}
-          accent={accentForGroupKey(g.key, grouping)}
-          count={g.machines.length}
-        >
-          {g.machines.map((m) => {
-            const status = upkeepStatusById[m.id];
-            const flagged = flaggedIds.has(m.id);
-            const showBadges =
-              m.isStudioCustom ||
-              m.rosterStatus === "maintenance" ||
-              flagged ||
-              status === "due" ||
-              status === "overdue";
-            return (
-              <WikiRow
-                key={m.id}
-                title={m.name}
-                code={abbr(m.id)}
-                meta={
-                  grouping === "movement"
-                    ? m.anatomicalRegion
-                    : m.movementPattern || m.anatomicalRegion
-                }
-                detail={musclesLine(m.targetMuscles)}
-                onClick={() => openMachine(m.id)}
-                badges={
-                  showBadges ? (
-                    <>
-                      {m.isStudioCustom && (
-                        <WikiBadge tone={m.shared ? "live" : "neutral"}>{m.shared ? "Studio · shared" : "Studio"}</WikiBadge>
-                      )}
-                      {(m.rosterStatus === "maintenance" || flagged) && (
-                        <WikiBadge tone="warn">
-                          {flagged ? "Flagged" : "Out of service"}
-                        </WikiBadge>
-                      )}
-                      {(status === "due" || status === "overdue") && (
-                        <WikiBadge tone="warn">
-                          {status === "overdue" ? "Overdue" : "Due"}
-                        </WikiBadge>
-                      )}
-                    </>
-                  ) : undefined
-                }
-              />
-            );
-          })}
-        </WikiGroup>
-      ))}
+      {/* While something is typed, Find's results stand in for the list. */}
+      {!findResult && floorFilter && floorState === "ready" && (
+        <div className="mcat-filter" role="status">
+          <span className="mcat-filter__text">
+            Showing <strong>{floorFilter.label}</strong> · {floorFilter.unitIds.length} on {studioName}'s floor
+          </span>
+          <button type="button" className="mcat-filter__clear" onClick={() => setFloorFilter(null)}>
+            Show the whole floor
+          </button>
+        </div>
+      )}
+
+      {floorState === "loading" && (
+        <div className="mcat-wait">
+          <LoadingMark label={`Reading ${studioName}'s floor…`} />
+        </div>
+      )}
+
+      {floorState === "unreadable" && (
+        <div className="wk__placeholder" role="status">
+          <p className="wk__placeholder-title">Can't read {studioName}'s floor right now</p>
+          <p className="wk__placeholder-body">
+            Its machine list didn't load, so nothing is shown in its place. All MSF machines still works.
+          </p>
+          <button type="button" className="mcat-door" onClick={openAllMsf}>
+            Open All MSF machines
+          </button>
+        </div>
+      )}
+
+      {floorState === "empty" && !findResult && (
+        <div className="wk__placeholder">
+          <p className="wk__placeholder-title">
+            {activeStudioId ? `No machines on ${studioName}'s floor yet` : "No studio chosen"}
+          </p>
+          <p className="wk__placeholder-body">
+            {activeStudioId
+              ? "A studio leader adds them on My Studio → Machines. Every MSF machine is in All MSF machines."
+              : "Select a studio to see its equipment."}
+          </p>
+          {activeStudioId && (
+            <button type="button" className="mcat-door" onClick={openAllMsf}>
+              Open All MSF machines
+            </button>
+          )}
+        </div>
+      )}
+
+      {floorState === "ready" && !findResult && (
+        <ol className="mcat-floor" aria-label={`${studioName}'s floor, in walking order`}>
+          {shown.map((m) => (
+            <FloorRow
+              key={m.id}
+              walk={floorMachines.indexOf(m) + 1}
+              machine={m}
+              preset={presetOf(m, settingsByMachineId[m.id])}
+              flagged={Boolean(flaggedIds?.has(m.id))}
+              onOpen={() => openMachine(m.id)}
+            />
+          ))}
+        </ol>
+      )}
     </WikiShell>
   );
 }
+
+const NO_MACHINES: CatalogMachine[] = [];
