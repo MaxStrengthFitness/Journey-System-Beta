@@ -5,7 +5,8 @@
  * The redesign's Operations room, phase 4 (Sep 28 2026). One pass over what
  * the page already holds: the roster (each client's nightly snapshot), the
  * week's bookings as the server answered them, the studio's package table
- * and renewal settings, the trainers and the watchlist. Each client's facts
+ * and renewal settings, the trainers, the watchlist and the stored cases
+ * (wave 2, case-store.ts). Each client's facts
  * come from the Client Directory's ONE row model (client-directory/row.ts),
  * so Last in and Next here are the directory's own; her state from
  * states.ts; her case from case.ts. No read per client.
@@ -29,6 +30,7 @@ import { laneOf } from "../../renewals/pipeline";
 import type { RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { watchState, type WatchState, type WatchlistEntry } from "../attention/attention";
 import { caseOf, type CaseView } from "./case";
+import type { StoredCase } from "./case-store";
 import { BESIDE_STATES, LINE_STATES, isSlipping, journeyOf, type ClientJourney, type JourneyLines, type JourneyState } from "./states";
 
 export type JourneyLens = "all" | "renewal" | "new";
@@ -45,12 +47,14 @@ export interface JourneyEntry {
   row: DirectoryRow;
   journey: ClientJourney;
   case: CaseView;
+  /** The case a leader stored for her (wave 2), or null: the case is then worked out. */
+  storedCase: StoredCase | null;
   /** In the renewal pipeline's live lanes (talk now, before the charge, coming up). */
   inRenewalWindow: boolean;
   /** Her first sessions to the studio's Settling in line, from a total that may be quoted. */
   early: boolean;
-  /** Her usual trainer, when last night's record names one Journey knows. */
-  usual: { id: string; name: string } | null;
+  /** Her usual trainer, when last night's record names one Journey knows; `uid` is their sign-in id. */
+  usual: { id: string; name: string; uid: string } | null;
   /** "7:00 AM – 3:00 PM" when her usual trainer has bookings today; null otherwise. */
   usualInToday: string | null;
   watch: WatchState;
@@ -77,6 +81,8 @@ export interface StudioJourneysInput {
   /** The studio's five lines (studio-settings: its own, else Max Strength's default, else the app's). */
   lines: JourneyLines;
   watchlist: ReadonlyMap<string, WatchlistEntry>;
+  /** The studio's stored cases by client (wave 2); absent or null while unread, and every case is worked out. */
+  cases?: ReadonlyMap<string, StoredCase> | null;
 }
 
 const homeOf = (c: Client): string | null => c.homeStudioId || (c as { studioId?: string }).studioId || null;
@@ -148,16 +154,18 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
       lines: i.lines,
     });
     const trainer = trainerById(i.trainers, snapshot?.primaryTrainerId);
-    const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName } : null;
+    const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName, uid: trainer.authUid || trainer.id } : null;
     const usualInToday = i.weekReady ? shiftToday(i.weekEntries, trainer, i.today, i.tz) : null;
     const lane = snapshot ? laneOf(snapshot, null, settings, i.today) : null;
     const entry = i.watchlist.get(client.id as string) ?? null;
+    const stored = i.cases?.get(client.id as string) ?? null;
     out.push({
       id: client.id as string,
       client,
       row,
       journey,
-      case: caseOf(journey, { trainer: usual, inToday: usualInToday }, i.today),
+      case: caseOf(journey, { trainer: usual, inToday: usualInToday }, i.today, { stored, updatedOn: stored?.updatedAt ? studioDateKey(stored.updatedAt, i.tz) : null }),
+      storedCase: stored,
       inRenewalWindow: lane === "talk-now" || lane === "before-charge" || lane === "coming-up",
       early: row.total.state === "known" && row.total.value !== null && row.total.value <= i.lines.settlingMax,
       usual,

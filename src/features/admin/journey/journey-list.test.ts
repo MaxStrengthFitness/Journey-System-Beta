@@ -94,11 +94,35 @@ describe("the studio's Journey", () => {
   it("owns each case with her usual trainer, and says when that trainer is in today", () => {
     const entries = studioJourneys(base(clients, week));
     const adelard = entries.find((e) => e.id === "adelard")!;
-    expect(adelard.usual).toEqual({ id: "t-ber", name: "Beregond Guard" });
+    expect(adelard.usual).toEqual({ id: "t-ber", name: "Beregond Guard", uid: "t-ber" });
     expect(adelard.usualInToday).toBe("11:00 AM – 3:30 PM");
     expect(adelard.case.nextStep).toContain("Beregond is in today");
+    expect(adelard.case.stored).toBe(false);
+    expect(adelard.storedCase).toBeNull();
     const mungo = entries.find((e) => e.id === "mungo")!;
     expect(mungo.usualInToday).toBeNull();
+  });
+
+  it("reads a stored case for the client it names, and dates its last step on the studio's clock (wave 2)", () => {
+    const stored = {
+      clientId: "adelard",
+      clientName: "Adelard Took",
+      owner: { id: "t-mab", name: "Mablung Ranger" },
+      nextStep: "Mablung phones him Thursday.",
+      dueOn: "2026-10-01",
+      outcome: "open" as const,
+      reason: null,
+      openedAt: new Date("2026-09-20T12:00:00Z"),
+      // 11 PM Eastern on the 23rd is the 24th in UTC: the studio's day is the 23rd.
+      updatedAt: new Date("2026-09-24T03:00:00Z"),
+      updatedBy: "lead",
+    };
+    const entries = studioJourneys({ ...base(clients, week), cases: new Map([["adelard", stored]]) });
+    const adelard = entries.find((e) => e.id === "adelard")!;
+    expect(adelard.storedCase).toEqual(stored);
+    expect(adelard.case).toMatchObject({ stored: true, owner: { id: "t-mab", name: "Mablung Ranger", usual: false }, nextStep: "Mablung phones him Thursday.", dueDay: "2026-10-01", leaders: true });
+    expect(adelard.case.leadersWhy).toContain("since Wednesday, Sep 23");
+    expect(entries.find((e) => e.id === "mungo")!.case.stored).toBe(false);
   });
 
   it("puts a client a leader already answered last, then the catchable, then the closest to the line", () => {

@@ -37,6 +37,7 @@ import { useMinuteClock } from "../shell/useMinuteClock";
 import { LENSES, listFor, stateCounts, thisWeek, type JourneyEntry, type JourneyLens } from "./journey-list";
 import { BESIDE_STATES, LINE_STATES, STATE_NAMES, isSlipping, multipleWords, type JourneyLines, type JourneyState } from "./states";
 import { useStudioJourneys } from "./useStudioJourneys";
+import { OUTCOME_WORDS } from "./case-store";
 import "../shell/ops.css";
 
 export interface JourneyPageProps {
@@ -137,6 +138,9 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
         <AdminNotice tone="warn">Part of the studio's settings couldn't be read just now, so a line may be Max Strength's or the app's default rather than the studio's own. Setup → Rules says which.</AdminNotice>
       )}
       {j.week.failed && <AdminNotice tone="warn">The week's bookings couldn't be read just now: anyone past a line reads Unknown, never slipping, until they are.</AdminNotice>}
+      {j.cases.failed && (
+        <AdminNotice tone="warn">The studio's cases couldn't be read just now, so each case here is the one Journey works out, not the one the team wrote.</AdminNotice>
+      )}
 
       <div className="ops-line-strip" role="group" aria-label="Client states">
         <div className="ops-line-strip__groups" aria-hidden="true">
@@ -220,6 +224,20 @@ function groupBy<T>(rows: T[], keyOf: (r: T) => string): Record<string, T[]> {
   return out;
 }
 
+/** "Case: Beregond owns it, due Thu, Oct 1" — a stored case in a row (wave 2). */
+function caseLine(e: JourneyEntry): string {
+  const c = e.case;
+  if (c.bookedAgainOnRead) return "case: booked again, ready to close";
+  if (c.outcome && c.outcome !== "booked-again") return `case: ${OUTCOME_WORDS[c.outcome].toLowerCase()}`;
+  if (c.outcome === "booked-again") return "case: closed, booked again";
+  return `case: ${c.owner.name.split(" ")[0]} owns it${c.dueDay ? `, due ${shortDay(c.dueDay)}` : ""}`;
+}
+
+function shortDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 function JourneyRows({ rows, onOpenClient }: { rows: JourneyEntry[]; onOpenClient?: (clientId: string) => void }) {
   return (
     <ul className="ops-jr-list">
@@ -231,6 +249,7 @@ function JourneyRows({ rows, onOpenClient }: { rows: JourneyEntry[]; onOpenClien
             <span className="ops-jr-row__meta">
               {[
                 e.usual ? (e.usualInToday ? `${e.usual.name.split(" ")[0]} is in today, ${e.usualInToday}` : `usually with ${e.usual.name.split(" ")[0]}`) : null,
+                e.case.stored ? caseLine(e) : null,
                 e.watch === "snoozed" ? "snoozed" : e.watch === "dismissed" ? "dismissed: someone knows why" : null,
                 e.case.leaders ? "the leader's now" : null,
               ]

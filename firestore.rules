@@ -2572,6 +2572,59 @@ service cloud.firestore {
       }
 
       /*
+       * WAVE 2 OPERATIONS: a client's case (Sep 28 2026; AJ: "all yes"). One
+       * document per client (features/admin/journey/case-store.ts): who
+       * owns catching her (owner.id is the owner's SIGN-IN uid), the next
+       * step, the due day, the outcome and its reason. The studio's leaders
+       * read and write every case; the case's owner reads theirs (Relay asks
+       * where('owner.id', '==', uid), the cases index) and may change its
+       * next step, due day, outcome and reason, never the owner, the name or
+       * when it opened. Every write is signed with the Auth uid and the
+       * server's time; openedAt is set now on a create, and on an update is
+       * kept or set now (a leader reopening it). Cases are history: nothing
+       * deletes one. The cheap field checks come before anything that reads
+       * the trainer.
+       */
+      match /cases/{clientId} {
+        function caseValid(d) {
+          return d.keys().hasOnly(['clientId', 'clientName', 'owner', 'nextStep', 'dueOn', 'outcome',
+                                   'reason', 'openedAt', 'updatedAt', 'updatedBy'])
+              && d.keys().hasAll(['clientId', 'clientName', 'owner', 'nextStep', 'dueOn', 'outcome',
+                                  'openedAt', 'updatedAt', 'updatedBy'])
+              && d.clientId == clientId
+              && d.clientName is string && d.clientName.size() <= 120
+              && d.owner is map
+              && d.owner.keys().hasOnly(['id', 'name'])
+              && d.owner.id is string && d.owner.id.size() > 0 && d.owner.id.size() <= 128
+              && d.owner.name is string && d.owner.name.size() <= 120
+              && d.nextStep is string && d.nextStep.size() <= 500
+              && (d.dueOn == null
+                  || (d.dueOn is string && d.dueOn.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')))
+              && d.outcome in ['open', 'booked-again', 'paused', 'lost']
+              && (!('reason' in d) || (d.reason is string && d.reason.size() <= 300))
+              && d.updatedAt == request.time
+              && d.updatedBy == request.auth.uid;
+        }
+        allow read: if isAuthenticated()
+                    && ((resource.data.owner.id == request.auth.uid && wave2WorksHere(studioId))
+                        || wave2Leads(studioId));
+        allow create: if isAuthenticated()
+                      && caseValid(request.resource.data)
+                      && request.resource.data.openedAt == request.time
+                      && wave2Leads(studioId);
+        allow update: if isAuthenticated()
+                      && caseValid(request.resource.data)
+                      && ((resource.data.owner.id == request.auth.uid
+                           && request.resource.data.diff(resource.data).affectedKeys()
+                                .hasOnly(['nextStep', 'dueOn', 'outcome', 'reason', 'updatedAt', 'updatedBy'])
+                           && wave2WorksHere(studioId))
+                          || ((request.resource.data.openedAt == resource.data.openedAt
+                               || request.resource.data.openedAt == request.time)
+                              && wave2Leads(studioId)));
+        allow delete: if false;
+      }
+
+      /*
        * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
        * was last wiped and deep cleaned, by whom, and a flag. Written from
        * the Floor Map's care sheet by anyone who works at the studio; a wipe

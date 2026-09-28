@@ -85,6 +85,7 @@ import { backAgain, dismissal, keysToAcknowledge, pendingAcks, snooze } from "..
 import { acknowledge, clearWatch, useAcknowledgements, useWatchlist, writeWatch } from "../attention/useAttention";
 import { listFor, studioJourneys, thisWeek, type JourneyEntry } from "../journey/journey-list";
 import { linesOf, multipleWords } from "../journey/states";
+import { useStudioCases } from "../journey/case-store";
 import { useStudioSettings } from "../../studio-settings/useStudioSettings";
 import { entriesForDay } from "./floor";
 import { hoursThisWeek, notesToReview, painQuestion, renewalsQuestion } from "./questions";
@@ -156,6 +157,8 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   const canMark = canManageRenewals(authTrainer, studioId);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
+  // The stored cases (wave 2): Slipping away names who owns each one.
+  const cases = useStudioCases(studioId);
   const acks = useAcknowledgements(studioId);
   const delight = useDelightQueue({ studioId });
   const renewalSettings = useRenewalSettings(studioId);
@@ -303,8 +306,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       nightlyStale: nightly.stale,
       lines,
       watchlist: watchlist.value,
+      cases: cases.cases,
     });
-  }, [renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value]);
+  }, [renewalSettings.loading, studioSettings.loading, clients, studioId, today, now, tz, studios, week.entries, week.read, packageIndex, trainers, authTrainer, uid, settings, nightly.stale, lines, watchlist.value, cases.cases]);
   const slipping = useMemo(() => {
     if (!journeys) return null;
     const both = [...listFor(journeys, "at-risk", "all"), ...listFor(journeys, "drifting", "all")];

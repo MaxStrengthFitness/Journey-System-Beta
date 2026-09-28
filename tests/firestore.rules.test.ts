@@ -4478,5 +4478,124 @@ describe("marks on a time", () => {
         await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "b1")));
       });
     });
+
+    // -- A client's case: the leaders' to open and run; its owner may change
+    // the next step, the due day, the outcome and the reason.
+    describe("cases", () => {
+      const caseRef = (db: Db, studioId: string, clientId: string) => doc(db, "studios", studioId, "cases", clientId);
+      /** What the app writes when a leader opens a case (journey/case-store.ts newCaseDoc). */
+      const opened = (uid: string, over: Record<string, unknown> = {}) => ({
+        clientId: "eowyn",
+        clientName: "Éowyn Rohan",
+        owner: { id: "trainerA", name: "Trainer A" },
+        nextStep: "Phone her after Thursday's shift.",
+        dueOn: "2026-10-01",
+        outcome: "open",
+        openedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        ...over,
+      });
+      /** A case a leader opened last week, owned by Trainer A. */
+      const seedCase = (studioId = "studioA", over: Record<string, unknown> = {}) =>
+        testEnv.withSecurityRulesDisabled(async (ctx) => {
+          await setDoc(doc(ctx.firestore(), "studios", studioId, "cases", "eowyn"), {
+            clientId: "eowyn",
+            clientName: "Éowyn Rohan",
+            owner: { id: "trainerA", name: "Trainer A" },
+            nextStep: "Ask Trainer A",
+            dueOn: "2026-09-30",
+            outcome: "open",
+            openedAt: new Date("2026-09-21T12:00:00Z"),
+            updatedAt: new Date("2026-09-21T12:00:00Z"),
+            updatedBy: "ownerA",
+            ...over,
+          });
+        });
+      /** Only what changed, stamped (case-store.ts saveCase). */
+      const stamped = (uid: string, over: Record<string, unknown>) => ({ ...over, updatedAt: serverTimestamp(), updatedBy: uid });
+
+      it("lets the studio's leaders, franchise owners and administrators open, read, change and reopen a case", async () => {
+        await seedPeople();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened(uid)));
+          await assertSucceeds(getDoc(caseRef(db, "studioA", "eowyn")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "cases")));
+          // Hand it to someone else, close it with a reason, and take the reason back out.
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { owner: { id: "headA", name: "Head A" } })));
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { outcome: "lost", reason: "Moved to Minas Tirith" })));
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { outcome: "paused", reason: deleteField() })));
+          // Reopened: a new owner, step and openedAt.
+          await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened(uid, { owner: { id: "trainerA", name: "Trainer A" } })));
+          await assertFails(deleteDoc(caseRef(db, "studioA", "eowyn")));
+        }
+      });
+
+      it("lets the case's owner read theirs, find it by owner.id, and change the step, the day, the outcome and the reason — nothing else", async () => {
+        await seedCase();
+        const db = as("trainerA");
+        await assertSucceeds(getDoc(caseRef(db, "studioA", "eowyn")));
+        await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "cases"), where("owner.id", "==", "trainerA"))));
+        await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "cases"), where("owner.id", "==", "trainerA"), where("outcome", "==", "open"))));
+        await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { nextStep: "Called her: back Tuesday", dueOn: null })));
+        await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { outcome: "paused", reason: "Knee surgery, back in November" })));
+        // Never the owner, the name or when it opened; never unsigned; never a new case; never a delete.
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { owner: { id: "trainerB", name: "Trainer B" } })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { clientName: "Someone else" })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { openedAt: serverTimestamp() })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), { nextStep: "unsigned" }));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("ownerA", { nextStep: "signed as someone else" })));
+        await assertFails(setDoc(caseRef(db, "studioA", "faramir"), opened("trainerA", { clientId: "faramir" })));
+        await assertFails(deleteDoc(caseRef(db, "studioA", "eowyn")));
+      });
+
+      it("keeps a case from anyone else: a colleague who doesn't own it, another studio, or someone signed out", async () => {
+        await seedPeople();
+        await seedCase();
+        for (const uid of ["guestA", "trainerB", "headB"]) {
+          const db = as(uid);
+          await assertFails(getDoc(caseRef(db, "studioA", "eowyn")));
+          await assertFails(getDocs(collection(db, "studios", "studioA", "cases")));
+          await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { nextStep: "Mine now" })));
+          await assertFails(setDoc(caseRef(db, "studioA", "faramir"), opened(uid, { clientId: "faramir" })));
+        }
+        // Trainer A reads only their own: not the studio's whole list.
+        await assertFails(getDocs(collection(as("trainerA"), "studios", "studioA", "cases")));
+        const out = testEnv.unauthenticatedContext().firestore();
+        await assertFails(getDoc(caseRef(out, "studioA", "eowyn")));
+      });
+
+      it("holds the case's shape", async () => {
+        const db = as("ownerA");
+        const refused: Record<string, unknown>[] = [
+          opened("ownerA", { clientId: "faramir" }),
+          opened("ownerA", { clientName: "x".repeat(121) }),
+          opened("ownerA", { owner: { id: "", name: "Nobody" } }),
+          opened("ownerA", { owner: { id: "trainerA" } }),
+          opened("ownerA", { owner: { id: "trainerA", name: "Trainer A", role: "Admin" } }),
+          opened("ownerA", { nextStep: "x".repeat(501) }),
+          opened("ownerA", { dueOn: "next week" }),
+          opened("ownerA", { outcome: "won" }),
+          opened("ownerA", { reason: "y".repeat(301) }),
+          opened("ownerA", { updatedBy: "trainerA" }),
+          opened("ownerA", { updatedAt: new Date("2026-01-01T12:00:00Z") }),
+          opened("ownerA", { openedAt: new Date("2026-01-01T12:00:00Z") }),
+          opened("ownerA", { notes: "extra" }),
+        ];
+        for (const data of refused) await assertFails(setDoc(caseRef(db, "studioA", "eowyn"), data));
+        await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened("ownerA", { dueOn: null, reason: "Asked by the front desk" })));
+      });
+
+      it("fits the fullest case inside the rules' budget, for the owner and for every leader", async () => {
+        await seedPeople();
+        const fullest = { nextStep: "n".repeat(500), dueOn: "2026-12-31", outcome: "paused", reason: "r".repeat(300) };
+        await seedCase("studioA", { clientName: "c".repeat(120), owner: { id: "grantA", name: "g".repeat(120) } });
+        await assertSucceeds(updateDoc(caseRef(as("grantA"), "studioA", "eowyn"), stamped("grantA", fullest)));
+        for (const uid of LEADERS) {
+          await assertSucceeds(setDoc(caseRef(as(uid), "studioA", "eowyn"), opened(uid, { ...fullest, clientName: "c".repeat(120), owner: { id: "grantA", name: "g".repeat(120) } })));
+        }
+      });
+    });
   });
 });

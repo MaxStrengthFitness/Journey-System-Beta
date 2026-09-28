@@ -14,7 +14,7 @@ vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead"
 
 const NOW = new Date("2026-09-28T13:00:00Z"); // Monday 9 AM Eastern
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
-const failures = vi.hoisted(() => ({ week: false }));
+const failures = vi.hoisted(() => ({ week: false, cases: [] as Array<Record<string, unknown>> }));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -44,6 +44,7 @@ vi.mock("firebase/firestore", () => {
   const answer = (path: string) => {
     if (path === "schedules") return snap([booking("b1", "hamfast", "t-ber", "2026-09-28", "11:00"), booking("b2", "rosie", "t-mab", "2026-10-01", "10:00")]);
     if (path === "studios/westlake/watchlist") return snap([{ id: "halbarad", clientId: "halbarad", snoozedUntil: "2026-10-05", dismissedAt: null }]);
+    if (path === "studios/westlake/cases") return snap(failures.cases);
     return snap([]);
   };
   return {
@@ -117,6 +118,7 @@ afterEach(() => {
   root = null;
   host = null;
   failures.week = false;
+  failures.cases = [];
   vi.useRealTimers();
 });
 
@@ -164,6 +166,26 @@ describe("Clients → Journey", () => {
     expect(listNames(el)).toEqual(["Adelard Took", "Estella Bolger", "Halbarad Dunedain"]);
     expect(el.querySelector(".ops-jr-row")?.textContent).toContain("Beregond is in today, 11:00 AM – 11:30 AM");
     expect(el.textContent).toContain("snoozed");
+  });
+
+  it("shows who owns a stored case, and when it is due (wave 2)", async () => {
+    failures.cases = [
+      {
+        id: "estella",
+        clientId: "estella",
+        clientName: "Estella Bolger",
+        owner: { id: "t-ber", name: "Beregond Guard" },
+        nextStep: "Beregond phones her after his shift.",
+        dueOn: "2026-10-01",
+        outcome: "open",
+        openedAt: new Date("2026-09-27T14:00:00Z"),
+        updatedAt: new Date("2026-09-27T14:00:00Z"),
+        updatedBy: "lead",
+      },
+    ];
+    const el = await mount();
+    const row = [...el.querySelectorAll(".ops-jr-row")].find((r) => r.textContent?.includes("Estella Bolger"));
+    expect(row?.textContent).toContain("case: Beregond owns it, due Thu, Oct 1");
   });
 
   it("names who is too new to judge, and opens a client inside Operations", async () => {
