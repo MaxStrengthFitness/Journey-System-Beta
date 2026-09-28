@@ -14,6 +14,17 @@
  *   days since the last deep clean a thin bar that fills over the studio's
  *                                 interval (deepCleanIntervalDays, default 14)
  *
+ * THE STUDIO'S OWN CLEANING LOG (the second wave, Sep 28 2026; AJ: "allow
+ * studios to customize how the cleaning log works, it can be used for daily
+ * deep cleans, for weekly maintenance, or for cleaning it after X amount of
+ * uses"). Three studio settings, read through features/studio-settings by
+ * the Floor Map (the studio's own, else Max Strength's default, else the
+ * app's): deepCleanDays (1 is a daily deep clean; the studio document's
+ * deepCleanIntervalDays still answers until the settings hold one),
+ * wipeAfterSessions (a machine WANTS A WIPE once that many sessions used it
+ * since its last wipe), and weeklyMaintenanceDay (a line on the map on that
+ * day, or none).
+ *
  * One document per machine at studios/{s}/machineCare/{machineId}, written
  * from the care sheet. A wipe or deep clean is ALSO appended to the studio's
  * upkeepLog, which the Operations equipment panel already reads, so the two
@@ -24,6 +35,7 @@
  */
 import type { WorkoutSession } from "../../../types";
 import { MACHINE_ANATOMY, MOVEMENT_PATTERN_ORDER } from "../../../data/machine-anatomy-map";
+import { SETTING_BY_KEY, WEEKDAY_NAMES } from "../../studio-settings/registry";
 
 export interface CareActor {
   id: string;
@@ -49,7 +61,9 @@ export interface MachineCare {
   updatedAt?: unknown;
 }
 
-export const DEFAULT_DEEP_CLEAN_DAYS = 14;
+/** The app's defaults, from the studio settings' registry (the studio's own or head office's win). */
+export const DEFAULT_DEEP_CLEAN_DAYS = SETTING_BY_KEY.deepCleanDays.appDefault ?? 14;
+export const DEFAULT_WIPE_AFTER_SESSIONS = SETTING_BY_KEY.wipeAfterSessions.appDefault ?? 4;
 export const FLAG_NOTE_MAX = 500;
 
 export type Heat = 0 | 1 | 2 | 3;
@@ -65,6 +79,8 @@ export interface MachineWear {
   /** 0..1 of the deep-clean interval used up; 1 means due. */
   deepFraction: number;
   deepDue: boolean;
+  /** Used by the studio's number of sessions (wipeAfterSessions) or more since its last wipe. */
+  wantsWipe: boolean;
   flag: MachineFlag | null;
 }
 
@@ -109,6 +125,8 @@ export function wearOf(
     care: MachineCare | null | undefined;
     now: number;
     deepCleanDays?: number;
+    /** The studio's wipe-after number (studio settings); the app's default when absent. */
+    wipeAfterSessions?: number;
   },
 ): MachineWear {
   const care = input.care ?? null;
@@ -133,6 +151,7 @@ export function wearOf(
     daysSinceDeep,
     deepFraction,
     deepDue: deepFraction >= 1,
+    wantsWipe: touches >= Math.max(1, input.wipeAfterSessions ?? DEFAULT_WIPE_AFTER_SESSIONS),
     flag: care?.flag ?? null,
   };
 }
@@ -151,6 +170,22 @@ export function deepSentence(w: MachineWear, days = DEFAULT_DEEP_CLEAN_DAYS): st
   if (w.daysSinceDeep === 0) return "Deep cleaned today";
   if (w.deepDue) return `Deep clean due · ${w.daysSinceDeep} days`;
   return `Deep clean in ${days - w.daysSinceDeep} days`;
+}
+
+/** "Wants a wipe: 5 sessions since the last one (this studio wipes after 4).", or null. */
+export function wantsWipeSentence(w: Pick<MachineWear, "wantsWipe" | "touches">, wipeAfterSessions: number = DEFAULT_WIPE_AFTER_SESSIONS): string | null {
+  if (!w.wantsWipe) return null;
+  return `Wants a wipe: ${w.touches} ${w.touches === 1 ? "session" : "sessions"} since the last one (this studio wipes after ${wipeAfterSessions}).`;
+}
+
+/** The weekly maintenance line on the studio's day for it (0 = Sunday … 6 = Saturday), or null (none set, or not today). */
+export function weeklyMaintenanceLine(weekday: number | null | undefined, todayKey: string): string | null {
+  if (weekday === null || weekday === undefined || !Number.isInteger(weekday) || weekday < 0 || weekday > 6) return null;
+  const [y, m, d] = todayKey.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const today = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  if (today !== weekday) return null;
+  return `Weekly maintenance today: ${WEEKDAY_NAMES[weekday]} is this studio's day for it.`;
 }
 
 /* ------------------------------------------------------------------ *
