@@ -15,7 +15,7 @@
  * real provider; the floor list is a stand-in that opens a machine the way
  * StudioInventoryManager's Open button does.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -42,16 +42,35 @@ vi.mock("../catalog/mutations", async (importOriginal) => ({
 vi.mock("../../contexts/ActiveStudioContext", () => ({
   useActiveStudio: () => ({ activeStudio: { id: "solon", name: "Solon" }, activeStudioId: "solon" }),
 }));
+// Whether the person at the door leads Solon (a trainer, unless a test says).
+const lead = vi.hoisted(() => ({ value: false }));
+vi.mock("../relay/leads", () => ({ leadsHere: () => lead.value }));
 
 const ROSTER = [
   { machineId: "m-chest-press", studioId: "solon", source: "catalog", basedOn: "m-chest-press", status: "active" },
   { machineId: "m-leg-press", studioId: "solon", source: "catalog", basedOn: "m-leg-press", status: "active" },
+  // Solon's own machine, and a copy of one Westlake shared.
+  { machineId: "sm-solon-sled", studioId: "solon", source: "custom", basedOn: "m-leg-press", status: "active", definition: { name: "Solon Sled" } },
+  {
+    machineId: "sm-solon-hip-sled",
+    studioId: "solon",
+    source: "custom",
+    basedOn: "m-leg-press",
+    status: "active",
+    definition: { name: "Hip Sled" },
+    adoptedFrom: { studioId: "westlake", machineId: "sm-westlake-hip-sled", studioName: "Westlake" },
+  },
 ];
 vi.mock("../../hooks/useStudioMachines", () => ({
   useStudioMachines: () => ({
     rosterEntries: ROSTER,
     catalog: [],
-    byId: { "m-chest-press": { name: "Chest Press" }, "m-leg-press": { name: "Leg Press" } },
+    byId: {
+      "m-chest-press": { name: "Chest Press" },
+      "m-leg-press": { name: "Leg Press" },
+      "sm-solon-sled": { name: "Solon Sled" },
+      "sm-solon-hip-sled": { name: "Hip Sled" },
+    },
     loading: false,
   }),
 }));
@@ -72,6 +91,12 @@ vi.mock("../admin/machines/StudioInventoryManager", () => ({
       </button>
       <button type="button" onClick={() => onOpenMachine?.("m-leg-press")}>
         Open Leg Press
+      </button>
+      <button type="button" onClick={() => onOpenMachine?.("sm-solon-sled")}>
+        Open Solon Sled
+      </button>
+      <button type="button" onClick={() => onOpenMachine?.("sm-solon-hip-sled")}>
+        Open Hip Sled
       </button>
     </div>
   ),
@@ -172,5 +197,41 @@ describe("the machine's door on My Studio → Machines", () => {
     await click("Close");
     expect(question()).toBe("");
     expect(door()).toBeNull();
+  });
+});
+
+/**
+ * LOCAL SET-UP IS FOR A MAX STRENGTH MACHINE (Sep 28 2026). It says what this
+ * studio calls a catalog machine and what its unit is; a studio's own machine,
+ * or a copy of another studio's, has no catalog machine behind it, and saving
+ * Local set-up on one turned it into a copy of a catalog machine that does not
+ * exist, so it dropped off the floor (LocalSetupDialog.render.test.tsx). Its
+ * name and set-up are changed with Edit on the floor list instead.
+ */
+describe("the door's Local set-up, for a leader", () => {
+  beforeAll(() => {
+    lead.value = true;
+  });
+  afterAll(() => {
+    lead.value = false;
+  });
+
+  const doorButtons = () => [...(door()?.querySelectorAll("button") ?? [])].map((b) => b.textContent?.trim());
+
+  it("is on a Max Strength machine's door", async () => {
+    await click("Open Leg Press");
+    expect(doorButtons()).toContain("Local set-up");
+  });
+
+  it("is not on the studio's own machine, or on a copy of another studio's", async () => {
+    await click("Open Solon Sled");
+    expect(doorTitle()).toContain("Solon Sled");
+    expect(doorButtons()).not.toContain("Local set-up");
+    // Offering it to the catalog is still there: this is the leader's door.
+    expect(doorButtons()).toContain("Offer to the MSF catalog");
+
+    await click("Open Hip Sled");
+    expect(doorTitle()).toContain("Hip Sled");
+    expect(doorButtons()).not.toContain("Local set-up");
   });
 });

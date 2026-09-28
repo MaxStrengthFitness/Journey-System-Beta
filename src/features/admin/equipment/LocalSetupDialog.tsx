@@ -98,6 +98,46 @@ export function LocalSetupDialog({
     }
   };
 
+  // A studio's own machine, or a copy of another studio's, has no catalog
+  // machine behind it, and its name lives in its own definition. Neither door
+  // offers Local set-up on one; this is the net under them, because saving
+  // here once rewrote such a machine as a copy of a catalog machine that does
+  // not exist, and the floor dropped it (Sep 28 2026).
+  if (entry?.source === "custom") {
+    return (
+      <div
+        className="adm-scrim adm"
+        role="presentation"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          className="adm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Local setup for ${catalogName}`}
+          style={{ maxWidth: 560 }}
+        >
+          <div className="adm-dialog__body">
+            <h3 className="adm-dialog__title">{catalogName}</h3>
+            <p className="adm-dialog__text">
+              This is the studio&apos;s own machine rather than a Max Strength
+              one, so there is nothing to set up locally. Change its name and
+              set-up with Edit on the floor list. What a trainer walking up
+              should know goes in the floor&apos;s notes.
+            </p>
+          </div>
+          <div className="adm-dialog__foot">
+            <AdminButton variant="primary" onClick={onClose}>
+              Close
+            </AdminButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="adm-scrim adm"
