@@ -20,11 +20,13 @@
  * Sep 27 2026). Firestore here keeps a persistent local cache
  * (src/firebase.ts), so with no connection, or before the server has
  * answered, a listener is handed what this iPad last saw. By default that
- * snapshot is reported as a finished read, as the Overview has always read
- * it. `{ confirmed: true }` listens with `includeMetadataChanges` and says
+ * snapshot is reported as a finished read, as the Overview read it until the
+ * Openings round (Sep 27 2026); every caller now opts in. `{ confirmed: true }`
+ * listens with `includeMetadataChanges` and says
  * `fromCache` while the latest answer of either stream came only from the
  * cache, so a caller that must never call a day "open" off a stale or empty
- * cache (My Studio -> Team's week check) can wait. Without
+ * cache (My Studio -> Team's week check, Openings' Next 7 days, and the
+ * Operations Overview, whose line points to Openings) can wait. Without
  * includeMetadataChanges a listener is never told when the server merely
  * CONFIRMS the rows the cache already held, so waiting for that would wait
  * forever: the option is what makes the wait end.
@@ -66,7 +68,7 @@ export interface WeekSchedule {
   /**
    * Only with `{ confirmed: true }`: the latest answer of either stream came
    * from this iPad's cache alone, not yet confirmed by the server. Without
-   * the option it is always false, as the Overview has always read it.
+   * the option it is always false (no caller reads it that way any more).
    */
   fromCache: boolean;
 }
@@ -114,7 +116,7 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
       return next;
     };
     type Snap = QuerySnapshot<DocumentData>;
-    // Only the opt-in reads the cache flag: the Overview's read is as it was.
+    // Only the opt-in reads the cache flag: a read without it is as it always was.
     const cacheOnly = (snap: Snap) => confirmed && snap.metadata?.fromCache === true;
     const listen = (q: Query<DocumentData>, set: (s: Stream) => void) => {
       const next = (snap: Snap) => set({ key, rows: toMap(snap.docs), loading: false, failed: false, fromCache: cacheOnly(snap) });

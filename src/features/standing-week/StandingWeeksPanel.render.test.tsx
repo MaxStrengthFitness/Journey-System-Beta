@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 /**
  * MY STUDIO → TEAM → STANDING WEEKS (voice-review round, Sep 27 2026),
- * mounted: a leader sees whose week is waiting and which slots are free this
- * week, agrees a proposal as it is or changed, and removes a week. A day
- * whose bookings weren't read is never called open.
+ * mounted: a leader sees whose week is waiting and how many slots are free
+ * in the next 7 days, with a door to Openings, which lists them (Openings
+ * round, phase 7); agrees a proposal as it is or changed, and removes a week.
+ * A day whose bookings weren't read is never called open, and until the
+ * server answers there is no line at all.
  *
- * Today is Monday Sep 28 2026, noon Eastern.
+ * Today is Monday Sep 28 2026, 7 AM Eastern: Ann's Monday 8:00 regular is
+ * still ahead.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -51,6 +54,8 @@ vi.mock("../admin/changes/useWeekSchedule", () => ({
 
 import { StandingWeeksPanel } from "./StandingWeeksPanel";
 import { UnsavedChangesProvider } from "../unsaved-changes";
+import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSection } from "../my-studio/section-memory";
+import { rememberOpeningsPart, rememberWhoseTimes, rememberedOpeningsPart, rememberedWhoseTimes } from "../openings/ui/part-memory";
 
 const studio = { id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957" } as unknown as Studio;
 const person = (id: string, fullName: string) =>
@@ -90,7 +95,7 @@ let root: Root;
 let host: HTMLDivElement;
 
 beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T12:00:00-04:00") });
+  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T07:00:00-04:00") });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   fake.writes.length = 0;
   fake.scheduleAsked.length = 0;
@@ -134,35 +139,92 @@ const click = async (label: string) => {
     button(label).click();
   });
 };
+const door = () => host.querySelector<HTMLButtonElement>("[data-testid='week-openings-door']");
+const stateLine = () => host.querySelector("[data-testid='week-check-state']")?.textContent ?? null;
 
 describe("Standing weeks on Team", () => {
-  it("says whose week is waiting, and which agreed slot is free this week", async () => {
+  it("says whose week is waiting, and points to Openings for the free slot, naming no client", async () => {
     await mount();
     expect(host.textContent).toContain("Sam has a week waiting to be agreed.");
-    const findings = host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']");
-    expect(findings?.textContent).toContain("Ann's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
-    expect(findings?.textContent).toContain("Free slot");
+    // One line, the count Openings' Next 7 days lists, and it is the door.
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    // The slots themselves are Openings': Team lists none and names no client.
+    expect(host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']")).toBeNull();
+    expect(host.textContent).not.toContain("Judy Smith");
+    expect(host.textContent).not.toContain("Free slot");
+    expect(stateLine()).toBeNull();
     // People by name, never ranked: Ann before Sam although Sam's is the one waiting.
     expect([...host.querySelectorAll(".adm-row__name")].map((n) => n.textContent)).toEqual(["Ann Park", "Sam Lee"]);
+  });
+
+  it("the door opens Openings on Next 7 days for anyone, through My Studio's own move", async () => {
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes({ kind: "you" });
+    await mount();
+    // With My Studio on screen, the door asks the shell (which asks about typing first).
+    const asked: string[] = [];
+    const stop = onMyStudioSectionRequest((next) => asked.push(next));
+    await act(async () => door()!.click());
+    stop();
+    expect(asked).toEqual(["openings"]);
+    expect(rememberedOpeningsPart()).toBe("next");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
+    // With none on screen, it only remembers, so the next open lands there.
+    rememberMyStudioSection("team");
+    await act(async () => door()!.click());
+    expect(rememberedMyStudioSection()).toBe("openings");
+    rememberMyStudioSection("relay");
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes(null);
+  });
+
+  it("counts two trainers' regulars out at one half-hour as two free slots", async () => {
+    const bobMon = { id: "r2", weekday: 1, start: "08:00", clientId: "c-bob", clientName: "Bob Jones" };
+    const samWeek = { hours: [{ weekday: 1, from: "07:00", to: "13:00" }], regulars: [bobMon] };
+    fake.weeks = { ...fake.weeks, docs: [{ ...fake.weeks.docs[0], proposed: samWeek, final: samWeek, finalAt: new Date("2026-09-20T14:00:00Z") }, fake.weeks.docs[1]] };
+    await mount();
+    expect(door()?.textContent).toBe("2 free slots in the next 7 days · See them on Openings.");
+  });
+
+  it("counts what Openings lists, not the check: a slot earlier today is no free slot now", async () => {
+    vi.setSystemTime(new Date("2026-09-28T12:00:00-04:00"));
+    await mount();
+    expect(door()).toBeNull();
+    // The check still holds Ann's 8:00 this morning, so it isn't "booked as usual": nothing is said.
+    expect(stateLine()).toBeNull();
+    expect(host.textContent).not.toContain("free slot");
   });
 
   it("says nothing is out of place when the regular is booked as usual", async () => {
     fake.schedule = { entries: [booking("2026-09-28", "08:00")], loading: false, failed: false };
     await mount();
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+    expect(stateLine()).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+    expect(door()).toBeNull();
+  });
+
+  it("says nothing about free slots until the server answers", async () => {
+    fake.schedule = { entries: [], loading: true, failed: false };
+    await mount();
+    expect(stateLine()).toBe("Reading the week's bookings…");
+    expect(door()).toBeNull();
+    expect(host.textContent).not.toMatch(/free slot/i);
+    // The server answers: now the empty Monday 8:00 is an answer.
+    fake.schedule = { entries: [], loading: false, failed: false };
+    await mount();
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
   });
 
   it("never calls a slot open when the bookings weren't read, or can't be", async () => {
     fake.schedule = { entries: [], loading: false, failed: true };
     await mount();
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toContain("nothing here says a slot is open");
+    expect(stateLine()).toContain("nothing here says a slot is open");
+    expect(door()).toBeNull();
     act(() => root.unmount());
     root = createRoot(host);
     fake.schedule = { entries: [], loading: false, failed: false };
     await mount({ ...studio, mindbodyMode: "offline" } as Studio);
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe(
-      "Mindbody isn't connected for this studio, so the week can't be checked against bookings.",
-    );
+    expect(stateLine()).toBe("Mindbody isn't connected for this studio, so the week can't be checked against bookings.");
+    expect(door()).toBeNull();
   });
 
   it("agrees a proposal as it stands, signed by the leader", async () => {
@@ -208,9 +270,9 @@ describe("Standing weeks on Team", () => {
     });
     fake.weeks = { ...fake.weeks, docs: [...fake.weeks.docs, leftBehind] };
     await mount();
-    const findings = host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']");
-    expect(findings?.textContent).not.toContain("Gone");
-    expect(findings?.querySelectorAll("li")).toHaveLength(1);
+    // Gone's Monday 10:00 regular is still ahead, and isn't counted: the same who-works-here Openings uses.
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(host.textContent).not.toContain("Judy Smith");
     // Listed after the staff, so a leader can remove it.
     expect([...host.querySelectorAll(".adm-row__name")].map((n) => n.textContent)).toEqual(["Ann Park", "Sam Lee", "Gone Away"]);
   });
@@ -219,7 +281,8 @@ describe("Standing weeks on Team", () => {
     fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0]] }; // Sam's proposal only
     await mount();
     expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toContain("No standing week is agreed yet");
+    expect(stateLine()).toContain("No standing week is agreed yet");
+    expect(door()).toBeNull();
     act(() => root.unmount());
     root = createRoot(host);
     fake.scheduleAsked.length = 0;
@@ -231,11 +294,9 @@ describe("Standing weeks on Team", () => {
     fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], away: [{ id: "a1", from: "2026-09-28", to: "2026-09-28", note: "Dentist" }] }] };
     await mount();
     expect(host.querySelector("[aria-label='Away this week']")?.textContent).toBe("Ann is away on Mon, Sep 28.");
-    expect(host.textContent).not.toContain("Free slot");
+    expect(door()).toBeNull();
     // Ann's Monday regular falls in the window, on her day away: unchecked, not absent.
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe(
-      "Nothing else to check: the agreed slots in the next seven days fall on days away.",
-    );
+    expect(stateLine()).toBe("Nothing else to check: the agreed slots in the next seven days fall on days away.");
   });
 
   it("says once, not twice, that the weeks are still being read or couldn't be", async () => {
@@ -261,15 +322,14 @@ describe("Standing weeks on Team", () => {
     await act(async () => {
       root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("5746957")]} clients={clients} />);
     });
-    const findings = () => host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']")?.textContent ?? "";
-    expect(findings()).toContain("Bob Jones is booked in Judy Smith's Mon, Sep 28 at 8:00 AM slot with Ann.");
-    expect(findings()).not.toContain("Free slot");
+    // Taken is no free slot: nothing points to Openings, and nothing claims "booked as usual".
+    expect(door()).toBeNull();
+    expect(stateLine()).toBeNull();
     // Ann's id from the other site proves nothing here: Judy's slot is simply open.
     await act(async () => {
       root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("29068")]} clients={clients} />);
     });
-    expect(findings()).toContain("Ann's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
-    expect(findings()).toContain("Free slot");
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
   });
 
   it("lets a leader set a trainer's dates away from the review", async () => {

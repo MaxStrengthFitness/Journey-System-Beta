@@ -6,13 +6,16 @@
  * fake listener, because the hole was in the read: Firestore keeps a
  * persistent cache here, and a snapshot only the cache answered used to reach
  * the week check as a finished read, so an iPad with no connection listed
- * every agreed slot the cache lacked as open, with a Free slot badge.
+ * every agreed slot the cache lacked as open, with a Free slot badge. Since
+ * the Openings round (phase 7) Team says one line with a door to Openings
+ * instead of listing the slots: that line, too, waits for the server.
  *
- * Also the Operations Overview's side of the same hook: without the opt-in it
- * listens exactly as it always has.
+ * Also the hook's side without the opt-in: it listens exactly as it always
+ * has (no caller uses it since the Overview's week read opted in, in the
+ * same round).
  *
- * Today is Monday Sep 28 2026, noon Eastern. Ann's agreed week has Judy Smith
- * on Mondays at 8:00.
+ * Today is Monday Sep 28 2026, 7 AM Eastern. Ann's agreed week has Judy
+ * Smith on Mondays at 8:00, still ahead.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
@@ -82,7 +85,7 @@ let root: Root;
 let host: HTMLDivElement;
 
 beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T12:00:00-04:00") });
+  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T07:00:00-04:00") });
   fake.listeners.length = 0;
   fake.weeks = { docs: [annDoc], loading: false, error: null };
   host = document.createElement("div");
@@ -97,6 +100,7 @@ afterEach(() => {
 });
 
 const stateLine = () => host.querySelector("[data-testid='week-check-state']")?.textContent ?? "";
+const door = () => host.querySelector("[data-testid='week-openings-door']");
 
 describe("the week check on a cache-only snapshot", () => {
   it("waits for the server, says can't tell offline, and checks once the server answers", async () => {
@@ -110,19 +114,20 @@ describe("the week check on a cache-only snapshot", () => {
     // The cache answers alone, with nothing for Monday: not an answer.
     await answer(true);
     expect(stateLine()).toBe("Reading the week's bookings…");
-    expect(host.textContent).not.toContain("Free slot");
-    expect(host.textContent).not.toContain("is open");
+    expect(door()).toBeNull();
+    expect(host.textContent).not.toMatch(/free slot/i);
 
     // The iPad is offline: can't tell, in its own sentence.
     await act(async () => setOnline(false));
     expect(stateLine()).toContain("Can't tell: this iPad can't reach the week's bookings just now");
-    expect(host.textContent).not.toContain("Free slot");
+    expect(door()).toBeNull();
+    expect(host.textContent).not.toMatch(/free slot/i);
 
     // Back online, and the server confirms: now the empty Monday is an answer.
     await act(async () => setOnline(true));
     await answer(false);
-    expect(host.textContent).toContain("Ann's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
-    expect(host.textContent).toContain("Free slot");
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(stateLine()).toBe("");
   });
 
   it("says can't tell once the server has kept it waiting", async () => {
@@ -135,11 +140,12 @@ describe("the week check on a cache-only snapshot", () => {
       vi.advanceTimersByTime(15_000);
     });
     expect(stateLine()).toContain("Can't tell");
+    expect(door()).toBeNull();
   });
 });
 
 describe("the first frame of a read", () => {
-  it("never paints a Free slot before the bookings are read, when the weeks arrive", async () => {
+  it("never paints a free slot before the bookings are read, when the weeks arrive", async () => {
     // The weeks are still being read, so nothing needs the bookings yet.
     fake.weeks = { docs: [], loading: true, error: null };
     const panel = () => <StandingWeeksPanel studio={studio} authTrainer={person("t-pat", "Pat Doe")} trainers={[person("t-ann", "Ann Park")]} clients={[]} />;
@@ -160,8 +166,9 @@ describe("the first frame of a read", () => {
     watch.disconnect();
     for (const r of watch.takeRecords()) for (const n of r.addedNodes) added.push(n.textContent ?? "");
     expect(fake.listeners).toHaveLength(2);
-    expect(added.join(" ")).not.toContain("Free slot");
+    expect(added.join(" ")).not.toMatch(/free slot/i);
     expect(added.join(" ")).not.toContain("is open");
+    expect(door()).toBeNull();
     expect(stateLine()).toBe("Reading the week's bookings…");
   });
 
@@ -189,7 +196,7 @@ describe("the first frame of a read", () => {
   });
 });
 
-describe("the Overview's read of the same week", () => {
+describe("a read of the same week without the opt-in", () => {
   it("listens as it always has, and never reports the cache flag", async () => {
     let seen: WeekSchedule | null = null;
     function Overview() {

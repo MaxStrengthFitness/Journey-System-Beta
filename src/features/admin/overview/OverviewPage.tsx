@@ -25,7 +25,9 @@
  * right; on a portrait iPad they stack in reading order.
  *
  * READS PER OPEN, one studio: the week's schedule (live; changes/
- * useWeekSchedule), today's Journey sessions (live; useTodaySessions — a
+ * useWeekSchedule, waiting for the server: an answer only this iPad's cache
+ * gave is no week, so nothing on the page is said from it — Openings round,
+ * Sep 27 2026), today's Journey sessions (live; useTodaySessions — a
  * booking is DONE when a session was logged for that client that day, AJ
  * Sep 24 2026, because Mindbody's "Completed" never reaches the booking),
  * the renewal settings and cycles, the last 14 days of
@@ -33,7 +35,19 @@
  * the Team panel all come from it), the studio's incidents, critical notes,
  * dated notes and the Sunday watch document (useOverviewReads), the
  * watchlist and acknowledgements (live), the Delight queue and the
- * machine-fit index. Under "All my studios" the page is the network view.
+ * machine-fit index, and what Openings starts from (openings/ui
+ * useOpeningsData: its weekly summary, held for a day, the standing weeks
+ * and the marks), for someone who may read the studio's standing weeks.
+ * Under "All my studios" the page is the network view.
+ *
+ * OPENINGS' LINE (Openings round, Sep 27 2026, phase 7). The next three days
+ * panel says, only when there is one, each usually-full time in those days
+ * that has room: "Mon, Oct 5 · 8:00 AM, usually full, has room · See it on
+ * Openings." It is `overviewLines` over `nextDays`, given exactly what
+ * Openings' Next 7 days is given, with this page's own week read, so the
+ * line needs a read the server answered; the door switches the app to My
+ * Studio → Openings, on Next 7 days and "Anyone" (a cue a person opens, never
+ * a bell).
  */
 import { useEffect, useMemo, useState } from "react";
 import { Activity, CalendarClock, CalendarDays, CalendarRange, ChevronRight, Clock3, Gift, HeartPulse, NotebookPen, Ruler, TrendingDown, TrendingUp, UserRoundX, Users } from "lucide-react";
@@ -48,6 +62,13 @@ import type { RenewalSnapshot } from "../../renewals/types";
 import { observations, returnRate, studioSummary, trainerMetrics } from "../insights/metrics";
 import { formatHours, sessionMinutesOf, trainerNames } from "../hours/hours";
 import { useWorthALook } from "../machine-fit/useFitFloor";
+import { rememberMyStudioSection } from "../../my-studio/section-memory";
+import { nextDays as openingsNextDays } from "../../openings/next-days";
+import { overviewLines } from "../../openings/present";
+import { showOpenings, useOpeningsData } from "../../openings/ui";
+import { mayReadWeeks } from "../../standing-week/present";
+import { serverRead } from "../../standing-week/server-read";
+import { useServerWait } from "../../standing-week/useServerWait";
 import { NetworkOverview } from "../network/NetworkOverview";
 import { NetworkActions } from "../network/NetworkActions";
 import { mayActForNetwork } from "../network/network-actions";
@@ -90,11 +111,24 @@ export interface OverviewPageProps {
   onOpen?: (tab: OverviewLink) => void;
   /** The franchise networks, for the network's focus (voice-review round, Sep 27 2026). */
   networks?: FranchiseNetwork[];
+  /**
+   * Switches the app to My Studio, in trainer mode (the shell's
+   * `onOpenStudioTasks`). The page says which section first, as the Staff &
+   * Roles door does: Openings' line opens Openings. Without it, or for
+   * someone who may not read the studio's standing weeks, the line is said
+   * but is not a door.
+   */
+  onOpenMyStudio?: () => void;
 }
 
 const DAYS_READ = 14;
+/** How many of Openings' lines the next three days panel shows before "and N more on Openings". */
+const OPENINGS_SHOWN = 3;
+const NO_ENTRIES: ScheduleEntry[] = [];
+/** A read that failed, or one the server never answered: said, never counted as zero. */
+const NOT_READ = "Could not be read just now.";
 
-export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [] }: OverviewPageProps) {
+export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [], onOpenMyStudio }: OverviewPageProps) {
   const ops = useOperationsScope();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -143,11 +177,13 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
       today={today}
       now={now}
       me={{ id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id, name: authTrainer.fullName }}
+      authTrainer={authTrainer}
       trainers={trainers}
       machines={machines}
       clients={clients}
       onNavigateProfile={onNavigateProfile}
       onOpen={onOpen}
+      onOpenMyStudio={onOpenMyStudio}
     />
   );
 }
@@ -165,11 +201,13 @@ function StudioOverview({
   today,
   now,
   me,
+  authTrainer,
   trainers,
   machines,
   clients,
   onNavigateProfile,
   onOpen,
+  onOpenMyStudio,
 }: {
   /** Drawn at the foot of the home view: the network's actions, for a franchise owner with one studio. */
   footer?: React.ReactNode;
@@ -178,11 +216,13 @@ function StudioOverview({
   today: string;
   now: Date;
   me: { id: string; name: string };
+  authTrainer: Trainer;
   trainers: Trainer[];
   machines: Machine[];
   clients: Client[];
   onNavigateProfile?: (clientId: string) => void;
   onOpen?: (tab: OverviewLink) => void;
+  onOpenMyStudio?: () => void;
 }) {
   const studioId = studio.id;
   const tz = studio.timezone || undefined;
@@ -197,7 +237,26 @@ function StudioOverview({
   const fold = useFolded();
 
   /* ---- the reads ---- */
-  const week = useWeekSchedule(studioId, today, tz);
+  /*
+   * The week waits for the server (Openings round, Sep 27 2026). Firestore
+   * keeps a persistent cache here, and a snapshot only the cache answered
+   * (offline, or before the server has) used to be read as the finished week:
+   * today's numbers, the changes list and the next three days said what this
+   * iPad last saw. Now that is "reading" until the server answers, and once
+   * this iPad is offline, or the server has not answered in SERVER_WAIT_MS,
+   * it is a week that could not be read: said, never counted as zero.
+   */
+  const weekLive = useWeekSchedule(studioId, today, tz, { confirmed: true });
+  const weekWait = useServerWait(weekLive.loading || weekLive.fromCache);
+  const weekRead = serverRead({ loading: weekLive.loading, failed: weekLive.failed, fromCache: weekLive.fromCache, ...weekWait });
+  const week = useMemo(
+    () => ({
+      entries: weekRead === "ready" ? weekLive.entries : NO_ENTRIES,
+      loading: weekRead === "loading",
+      failed: weekRead === "failed" || weekRead === "offline",
+    }),
+    [weekRead, weekLive.entries],
+  );
   const logged = useTodaySessions(studioId, today, tz);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
@@ -219,7 +278,43 @@ function StudioOverview({
   const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
   // Done, Not completed and Never logged wait for both reads; a finished slot whose logging could not be read is missing, not zero.
   const dayLoading = week.loading || logged.loading;
-  const missing = numbers.unknown > 0;
+  // A week that couldn't be read leaves every tile missing, not zero (the notice under them says why).
+  const missing = week.failed || numbers.unknown > 0;
+  const tileFoot = (text: string) => (week.failed ? undefined : text);
+
+  /* ---- Openings: a usually-full time with room in the next three days ---- */
+  // Only for someone who may read the studio's standing weeks: the rules
+  // would refuse anyone else, and a refused read says nothing here.
+  const readsWeeks = mayReadWeeks(authTrainer, studioId);
+  const openings = useOpeningsData({ studio: readsWeeks ? studio : null, trainers, authTrainer });
+  const openingsLines = useMemo(() => {
+    if (!readsWeeks) return [];
+    // What Openings' Next 7 days is given (openings/ui/useNextSevenDays.ts), with this page's own week read.
+    const next = openingsNextDays({
+      today: openings.today,
+      now: openings.now,
+      tz: openings.tz,
+      read: weekRead,
+      connected: openings.connected,
+      bookings: week.entries,
+      docs: openings.weeks.docs,
+      trainers: openings.refs,
+      staffIds: openings.staffIds,
+      worksHere: openings.worksHere,
+      usual: openings.usual?.times ?? null,
+      marks: openings.marks.byTime,
+    });
+    return overviewLines(next.lines, openings.today, openings.tz);
+  }, [readsWeeks, openings.today, openings.now, openings.tz, weekRead, openings.connected, week.entries, openings.weeks.docs, openings.refs, openings.staffIds, openings.worksHere, openings.usual, openings.marks.byTime]);
+  // The door: My Studio → Openings, on Next 7 days and "Anyone", in trainer mode.
+  const openOpenings =
+    onOpenMyStudio && readsWeeks
+      ? () => {
+          showOpenings("next", { kind: "anyone" });
+          rememberMyStudioSection("openings");
+          onOpenMyStudio();
+        }
+      : undefined;
 
   /* ---- changes ---- */
   const weekDays = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDay(today, i)), [today]);
@@ -356,18 +451,23 @@ function StudioOverview({
       {/* 1 · Today */}
       <div id="ov-today" className="adm-ov__today">
         <AdminTiles>
-          <AdminStatTile label="Booked today" value={numbers.booked} foot={numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`} loading={week.loading} />
-          <AdminStatTile label="Done" value={missing ? "—" : numbers.done} foot={foot.done} loading={dayLoading} />
-          <AdminStatTile label="Not completed" value={missing ? "—" : numbers.notCompleted} tone={!missing && numbers.noShow > 0 ? "attention" : undefined} foot={!missing && numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted} loading={dayLoading} />
+          <AdminStatTile
+            label="Booked today"
+            value={week.failed ? "—" : numbers.booked}
+            foot={tileFoot(numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`)}
+            loading={week.loading}
+          />
+          <AdminStatTile label="Done" value={missing ? "—" : numbers.done} foot={tileFoot(foot.done)} loading={dayLoading} />
+          <AdminStatTile label="Not completed" value={missing ? "—" : numbers.notCompleted} tone={!missing && numbers.noShow > 0 ? "attention" : undefined} foot={tileFoot(!missing && numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted)} loading={dayLoading} />
           <AdminStatTile
             label="Never logged"
             value={missing ? "—" : numbers.neverLogged}
             tone={!missing && numbers.neverLogged > 0 ? "alert" : undefined}
-            foot={!missing && numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged}
+            foot={tileFoot(!missing && numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged)}
             onClick={missing ? undefined : () => setShowChase((v) => !v)}
             loading={dayLoading}
           />
-          <AdminStatTile label="On the floor now" value={numbers.onTheFloor} foot={foot.floor} loading={dayLoading} />
+          <AdminStatTile label="On the floor now" value={week.failed ? "—" : numbers.onTheFloor} foot={tileFoot(foot.floor)} loading={dayLoading} />
         </AdminTiles>
         {week.failed && (
           <div className="mt-3">
@@ -414,9 +514,11 @@ function StudioOverview({
           sentence={
             week.loading
               ? "Reading the week…"
-              : changesToday.length === 0
-                ? `Nothing cancelled or moved for today. ${weekDays.slice(1).reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} waiting on later days this week.`
-                : `${changesToday.filter((c) => c.reading === "cancellation").length} cancelled, ${changesToday.filter((c) => c.reading === "reschedule").length} moved or rebooked — held against the day the session was for.`
+              : week.failed
+                ? NOT_READ
+                : changesToday.length === 0
+                  ? `Nothing cancelled or moved for today. ${weekDays.slice(1).reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} waiting on later days this week.`
+                  : `${changesToday.filter((c) => c.reading === "cancellation").length} cancelled, ${changesToday.filter((c) => c.reading === "reschedule").length} moved or rebooked — held against the day the session was for.`
           }
           actions={
             <AdminButton size="sm" variant="quiet" onClick={() => setView("changes")}>
@@ -433,7 +535,7 @@ function StudioOverview({
             })}
             total={changesToday.length}
             onOpenClient={onNavigateProfile}
-            empty="No changes for today."
+            empty={week.loading || week.failed ? "" : "No changes for today."}
             moreLabel="in the week's list"
           />
         </OverviewPanel>
@@ -447,29 +549,43 @@ function StudioOverview({
           sentence={
             week.loading
               ? "Reading the week…"
-              : `${days.reduce((n, d) => n + d.booked, 0)} booked over ${days.map((d) => d.label).join(", ")}. ${unbooked.count === 0 ? "Everyone active is booked ahead." : `${unbooked.count} active client${unbooked.count === 1 ? " has" : "s have"} nothing booked ahead.`}`
+              : week.failed
+                ? NOT_READ
+                : `${days.reduce((n, d) => n + d.booked, 0)} booked over ${days.map((d) => d.label).join(", ")}. ${unbooked.count === 0 ? "Everyone active is booked ahead." : `${unbooked.count} active client${unbooked.count === 1 ? " has" : "s have"} nothing booked ahead.`}`
           }
           folded={fold.folded.has("next")}
           onToggle={() => fold.toggle("next")}
         >
-          <div className="adm-ov__days">
-            {days.map((d) => (
-              <div key={d.day} className="adm-ov__day">
-                <div className="adm-ov__day-head">
-                  <span className="adm-ov__day-label">{d.label}</span>
-                  <span className="adm-ov__day-date">{d.dateLabel}</span>
+          {/* The days are the week's bookings: none are drawn (as "0 booked") until the server has answered. */}
+          {!week.loading && !week.failed && (
+            <div className="adm-ov__days">
+              {days.map((d) => (
+                <div key={d.day} className="adm-ov__day">
+                  <div className="adm-ov__day-head">
+                    <span className="adm-ov__day-label">{d.label}</span>
+                    <span className="adm-ov__day-date">{d.dateLabel}</span>
+                  </div>
+                  <div className="adm-ov__day-big">
+                    {d.booked} <span>booked</span>
+                  </div>
+                  <ul className="adm-ov__day-facts">
+                    <li className={d.changes > 0 ? "adm-ov__fact--warn" : undefined}>{d.changes === 0 ? "no changes yet" : `${d.changes} change${d.changes === 1 ? "" : "s"} already`}</li>
+                    <li className={d.hot > 0 ? "adm-ov__fact--alert" : undefined}>{d.hot === 0 ? "nobody with a live note" : `${d.hot} with a live note: ${d.hotNames.join(", ")}`}</li>
+                    <li>{d.moments === 0 ? "no moments" : `${d.moments} moment${d.moments === 1 ? "" : "s"}`}</li>
+                  </ul>
                 </div>
-                <div className="adm-ov__day-big">
-                  {d.booked} <span>booked</span>
-                </div>
-                <ul className="adm-ov__day-facts">
-                  <li className={d.changes > 0 ? "adm-ov__fact--warn" : undefined}>{d.changes === 0 ? "no changes yet" : `${d.changes} change${d.changes === 1 ? "" : "s"} already`}</li>
-                  <li className={d.hot > 0 ? "adm-ov__fact--alert" : undefined}>{d.hot === 0 ? "nobody with a live note" : `${d.hot} with a live note: ${d.hotNames.join(", ")}`}</li>
-                  <li>{d.moments === 0 ? "no moments" : `${d.moments} moment${d.moments === 1 ? "" : "s"}`}</li>
-                </ul>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+          {/* Openings' line: a usually-full time with room, only when there is one, and only off a week the server answered. */}
+          {openingsLines.length > 0 && (
+            <div className="p-3 flex flex-col gap-2" role="group" aria-label="Openings in the next three days">
+              {openingsLines.slice(0, OPENINGS_SHOWN).map((text) => (
+                <Line key={text} icon={<CalendarRange className="w-4 h-4" />} label="Openings" text={text} tone="neutral" onOpen={openOpenings} />
+              ))}
+              {openingsLines.length > OPENINGS_SHOWN && <p className="adm-ov__more">and {openingsLines.length - OPENINGS_SHOWN} more on Openings</p>}
+            </div>
+          )}
           {unbooked.count > 0 && (
             <div className="adm-ov__unbooked">
               <span className="adm-ov__unbooked-title">Nothing booked ahead ({unbooked.count} of {unbooked.measured} active)</span>
@@ -781,7 +897,7 @@ function StudioOverview({
         <Line
           icon={<CalendarDays className="w-4 h-4" />}
           label="This week's changes"
-          text={week.loading ? "Reading the week…" : `${weekDays.reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} cancellations or moves recorded across the week, held against the day each session was for.`}
+          text={week.loading ? "Reading the week…" : week.failed ? NOT_READ : `${weekDays.reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} cancellations or moves recorded across the week, held against the day each session was for.`}
           tone="neutral"
           onOpen={() => setView("changes")}
         />

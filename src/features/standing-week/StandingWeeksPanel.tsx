@@ -1,14 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { auth } from "../../firebase";
-import { studioTodayKey } from "../../lib/studio-time";
+import { DEFAULT_TIME_ZONE, isValidTimeZone, studioTodayKey } from "../../lib/studio-time";
 import type { Client, Studio, Trainer } from "../../types";
-import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
+import { AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
+import { openMyStudioSection } from "../my-studio/section-memory";
+import { nextDays } from "../openings/next-days";
+import { teamLine } from "../openings/present";
+import { showOpenings } from "../openings/ui";
+import { trainerRefs } from "../openings/whose";
 import { UnsavedChangesScope, useLeaveScope, useUnsavedChanges } from "../unsaved-changes";
 import { AwayEditor } from "./AwayEditor";
-import { awaySentence, awayThisWeek, checkWeek, findingSentence, isFreeSlot, staffIdsAt, stateSentence } from "./check";
-import { serverRead } from "./server-read";
+import { awaySentence, awayThisWeek, checkWeek, staffIdsAt, stateSentence } from "./check";
+import { serverRead, type ServerRead } from "./server-read";
 import { useServerWait } from "./useServerWait";
 import { formOf, reviewSentence, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
 import { agreeWeek, removeWeek, setAway } from "./store";
@@ -28,12 +33,21 @@ import "./standing-week.css";
  *
  * Two parts:
  *
- *   the next seven days   the week's Mindbody bookings against every AGREED
- *                         week (check.ts): the slots that are free, the
- *                         regulars booked somewhere else, and the slots
- *                         someone else is booked in. Read only; nothing is
- *                         written to Mindbody, and an unread day is "can't
- *                         tell", never "open".
+ *   the next seven days   who is away this week, said once each, and ONE
+ *                         line with a door to Openings: "3 free slots in the
+ *                         next 7 days · See them on Openings." (Openings
+ *                         round, Sep 27 2026, phase 7; AJ: "perfect"). The
+ *                         free slots themselves are listed on My Studio →
+ *                         Openings → Next 7 days, so one rule feeds one list
+ *                         and Team stays people and standards. The count is
+ *                         Openings' own (`teamLine(nextDays(...))`, built
+ *                         with the same who-works-here and Mindbody staff ids
+ *                         Openings uses), never the raw check, which also
+ *                         holds slots earlier today and on Sundays. The door
+ *                         opens Openings on Next 7 days and "Anyone", since
+ *                         the count is the studio's. Nothing is written to
+ *                         Mindbody, and an unread day is "can't tell", never
+ *                         "open": until the server answers there is no line.
  *   each person's         by name, never ranked: where it stands, and Review
  *   standing week
  *                         to agree a proposal as it is or changed first.
@@ -54,10 +68,27 @@ export interface StandingWeeksPanelProps {
   clients: Client[];
 }
 
+/** A clock for "still ahead": a free slot at 8:00 has passed by 8:30, with the panel left open. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+/** The door on Team's line: Openings, on Next 7 days, for anyone (the count is the studio's). */
+function openOpeningsNextDays() {
+  showOpenings("next", { kind: "anyone" });
+  openMyStudioSection("openings");
+}
+
 export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: StandingWeeksPanelProps) {
   const studioId = studio.id;
   const tz = studio.timezone || undefined;
-  const today = studioTodayKey(new Date(), tz);
+  const now = useMinuteClock();
+  const today = studioTodayKey(now, tz);
   const weeks = useStandingWeeks(studioId);
   const [reviewing, setReviewing] = useState<string | null>(null);
   // Opening another person's week, or closing this one from its row, would
@@ -92,6 +123,39 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
       }),
     [checked, schedule.entries, read, today, tz, studio, staffIds],
   );
+  /*
+   * TEAM'S LINE (Openings round, Sep 27 2026, phase 7): how many free slots
+   * Openings' Next 7 days lists, counted by `teamLine` from `nextDays` built
+   * exactly as Openings builds it (openings/ui/useOpeningsData.ts): the
+   * studio's standing weeks, who works here (the standing weeks' own
+   * `teamWeeks`, on staff), every trainer placed with their Mindbody staff id
+   * at this studio's site, and this read. The usual week and the marks only
+   * add "usually full" lines, never a regular, so Team reads neither: the
+   * count is the same without them. With no agreed week to check, no
+   * bookings are read, and an unread week is never "nothing booked".
+   */
+  const onStaff = useMemo(() => new Set(rows.filter((r) => r.onStaff).map((r) => r.trainerId)), [rows]);
+  const worksHere = useMemo(() => (trainerId: string) => onStaff.has(trainerId), [onStaff]);
+  const refs = useMemo(() => trainerRefs(trainers.map((t) => ({ id: t.id, name: t.fullName })), staffIds), [trainers, staffIds]);
+  const zone = isValidTimeZone(studio.timezone) ? (studio.timezone as string) : DEFAULT_TIME_ZONE;
+  const nextRead: ServerRead = needsBookings ? read : "loading";
+  const next = useMemo(
+    () =>
+      nextDays({
+        today,
+        now,
+        tz: zone,
+        read: nextRead,
+        connected: bookingsKnown(studio),
+        bookings: schedule.entries,
+        docs: weeks.docs,
+        trainers: refs,
+        staffIds,
+        worksHere,
+      }),
+    [today, now, zone, nextRead, studio, schedule.entries, weeks.docs, refs, staffIds, worksHere],
+  );
+  const line = teamLine(next);
   // Who is away this week, said once each; their slots aren't checked.
   const away = useMemo(() => awayThisWeek(checked, today), [checked, today]);
   const waiting = waitingSentence(rows);
@@ -122,20 +186,20 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
               ))}
             </ul>
           )}
-          {weeks.error || weeks.loading ? null : check.findings.length === 0 ? (
+          {/* One line and a door when Openings lists a free slot. Otherwise
+              the check's own sentence while it can't tell (reading, offline,
+              failed, not linked, nothing agreed), or when it found nothing
+              at all; a slot someone else is booked in, or one earlier today
+              or on a Sunday, is nothing Openings lists, so it says nothing. */}
+          {weeks.error || weeks.loading ? null : line ? (
+            <button type="button" className="stw-btn stw-btn--quiet" data-testid="week-openings-door" onClick={openOpeningsNextDays}>
+              {line}
+            </button>
+          ) : check.state !== "ready" || check.findings.length === 0 ? (
             <p className="stw-hint" data-testid="week-check-state">
               {stateSentence(check)}
             </p>
-          ) : (
-            <ul className="stw-findings" aria-label="Where the bookings differ from the agreed weeks">
-              {check.findings.map((f) => (
-                <li key={`${f.trainerId}-${f.dateKey}-${f.start}-${f.clientId}`} className="stw-finding">
-                  <span>{findingSentence(f, tz)}</span>
-                  {isFreeSlot(f) && <AdminBadge tone="live">Free slot</AdminBadge>}
-                </li>
-              ))}
-            </ul>
-          )}
+          ) : null}
         </section>
 
         <section aria-labelledby="stw-each-week">

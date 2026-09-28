@@ -9,6 +9,11 @@
  * button that writes the wrong document. And the rule AJ set on Sep 24 2026:
  * a booking is done when a Journey session was logged for that client that
  * day, and a failed read of the sessions is missing, never "never logged".
+ *
+ * Openings (Sep 27 2026, phase 7): the week read waits for the server, so a
+ * snapshot only this iPad's cache answered says nothing, and the next three
+ * days carry Openings' line (a usually-full time with room) with a door to
+ * My Studio -> Openings.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -34,8 +39,12 @@ const dayKey = (n: number) => daysAgo(n).toISOString().slice(0, 10);
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
 
 const writes: Array<{ op: string; path: string; data?: unknown }> = [];
-/** Flip to make the live read of today's sessions fail (the listener's error callback). */
-const failures = vi.hoisted(() => ({ liveSessions: false }));
+/**
+ * Flip to make the live read of today's sessions fail (the listener's error callback), or to have
+ * the week's bookings answered by this iPad's cache alone: `serverLater` then holds each live
+ * listener's server answer, delivered when a test says so.
+ */
+const failures = vi.hoisted(() => ({ liveSessions: false, weekCacheOnly: false, serverLater: [] as Array<() => void> }));
 
 vi.mock("firebase/firestore", () => {
   // doc(db, "a", "b") and doc(collection(db, "a"), "b") both become "a/b".
@@ -97,6 +106,11 @@ vi.mock("firebase/firestore", () => {
       return snap([{ id: "i1", clientId: "c2", studioId: "solon", region: "Shoulder", severity: "moderate", description: "pinch on the press", reportedByTrainerId: "t1", createdAt: daysAgo(2).toISOString() }]);
     if (path === "journalEntries")
       return snap([{ id: "j1", clientId: "c1", studioId: "solon", importance: "critical", body: "Post-op: no overhead work until cleared.", occurredAt: daysAgo(10).toISOString(), effectiveUntil: eastern(dayKey(-20), "23:59"), resolvedAt: null, isArchived: false }]);
+    // Openings: AJ usually takes clients on Tuesdays 10:00 to 11:00 (agreed), and 10:30 on a
+    // Tuesday is marked Always full. Ann is booked at 10:00 tomorrow; nobody at 10:30.
+    if (path === "studios/solon/standingWeeks")
+      return snap([{ id: "t1", studioId: "solon", trainerUid: "t1", trainerId: "t1", trainerName: "AJ Jurgens", final: { hours: [{ weekday: 2, from: "10:00", to: "11:00" }], regulars: [] }, finalAt: daysAgo(30) }]);
+    if (path === "studios/solon/openingsMarks") return snap([{ id: "2-1030", weekday: 2, time: "10:30", mark: "full", note: "", by: { id: "lead", name: "Lee Leader" }, at: daysAgo(3) }]);
     return snap([]);
   };
   return {
@@ -110,11 +124,20 @@ vi.mock("firebase/firestore", () => {
     onSnapshot: (target: { path: string }, a: unknown, b?: unknown, c?: unknown) => {
       const next = (typeof a === "function" ? a : b) as (s: unknown) => void;
       const fail = (typeof a === "function" ? b : c) as ((e: unknown) => void) | undefined;
+      let live = true;
       const t = setTimeout(() => {
         if (target.path === "sessions" && failures.liveSessions) fail?.(new Error("permission-denied"));
-        else next(target.path.split("/").length % 2 === 0 ? { exists: () => false, data: () => undefined, id: "id" } : answer(target.path));
+        else if (target.path === "schedules" && failures.weekCacheOnly) {
+          next({ ...answer(target.path), metadata: { fromCache: true } });
+          failures.serverLater.push(() => {
+            if (live) next(answer(target.path));
+          });
+        } else next(target.path.split("/").length % 2 === 0 ? { exists: () => false, data: () => undefined, id: "id" } : answer(target.path));
       }, 0);
-      return () => clearTimeout(t);
+      return () => {
+        live = false;
+        clearTimeout(t);
+      };
     },
     getDocs: async (target: { path?: string }) => answer(target?.path ?? lastCollection),
     getDoc: async (target: { path: string }) =>
@@ -152,8 +175,12 @@ vi.mock("firebase/firestore", () => {
 
 import { OverviewPage } from "./OverviewPage";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
+import { rememberMyStudioSection, rememberedMyStudioSection } from "../../my-studio/section-memory";
+import { rememberOpeningsPart, rememberWhoseTimes, rememberedOpeningsPart, rememberedWhoseTimes } from "../../openings/ui/part-memory";
 
 const studio = { id: "solon", name: "Solon", timezone: "America/New_York", sessionMinutes: 30 } as unknown as Studio;
+/** Solon with its Mindbody linked, so Openings reads its bookings, its summary and its marks. */
+const linked = { ...studio, mindbodySiteId: "5746957" } as unknown as Studio;
 const lead = { id: "lead", fullName: "Lee Leader", initials: "LL", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
 const trainers = [lead, { id: "t1", fullName: "AJ Jurgens", initials: "AJ", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] }] as unknown as Trainer[];
 const machines = [{ id: "m-leg-press", name: "Leg Press" }] as unknown as Machine[];
@@ -191,11 +218,13 @@ afterEach(() => {
   host = null;
   writes.length = 0;
   failures.liveSessions = false;
+  failures.weekCacheOnly = false;
+  failures.serverLater.length = 0;
   localStorage.clear();
   vi.useRealTimers();
 });
 
-async function mount(onOpen: (t: string) => void = () => {}) {
+async function mount(onOpen: (t: string) => void = () => {}, extra: { studio?: Studio; onOpenMyStudio?: () => void } = {}) {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -203,7 +232,17 @@ async function mount(onOpen: (t: string) => void = () => {}) {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <OverviewPage authTrainer={lead} studios={[studio]} trainers={trainers} machines={machines} clients={clients} schedules={[]} activeStudioId="solon" onOpen={(t) => onOpen(t)} />
+        <OverviewPage
+          authTrainer={lead}
+          studios={[extra.studio ?? studio]}
+          trainers={trainers}
+          machines={machines}
+          clients={clients}
+          schedules={[]}
+          activeStudioId="solon"
+          onOpen={(t) => onOpen(t)}
+          onOpenMyStudio={extra.onOpenMyStudio}
+        />
       </StrictMode>,
     );
   });
@@ -330,6 +369,76 @@ describe("the Overview", () => {
     expect(el.textContent).toContain("To look at1");
     await click(buttonByText(el, "Overview"));
     expect(el.textContent).toContain("Solon — Overview");
+  });
+
+  it("the next three days carry Openings' line, and its door opens Openings in trainer mode", async () => {
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes({ kind: "you" });
+    rememberMyStudioSection("relay");
+    let opened = 0;
+    const el = await mount(undefined, { studio: linked, onOpenMyStudio: () => (opened += 1) });
+    const group = el.querySelector("[aria-label='Openings in the next three days']");
+    expect(group?.textContent).toContain("Tue, Sep 22 · 10:30 AM, marked always full, has room · See it on Openings.");
+    // Only usually-full times: today's cancellation at 9:30 is Openings' to list, not the Overview's.
+    expect(group?.querySelectorAll(".adm-ov__line")).toHaveLength(1);
+    await click(group!.querySelector<HTMLButtonElement>(".adm-ov__line--tappable") ?? undefined);
+    expect(opened).toBe(1);
+    // As the Staff & Roles door does for Team: the section first, then the switch to My Studio.
+    expect(rememberedMyStudioSection()).toBe("openings");
+    expect(rememberedOpeningsPart()).toBe("next");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
+    rememberMyStudioSection("relay");
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes(null);
+  });
+
+  it("says Openings' line without a door when the shell gives none, and nothing where Mindbody isn't linked", async () => {
+    let el = await mount(undefined, { studio: linked });
+    const group = el.querySelector("[aria-label='Openings in the next three days']");
+    expect(group?.textContent).toContain("Tue, Sep 22 · 10:30 AM, marked always full, has room");
+    expect(group?.querySelector(".adm-ov__line--tappable")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    // The plain studio (no Mindbody site) has no bookings Openings can read: no line at all.
+    el = await mount(undefined, { onOpenMyStudio: () => {} });
+    expect(el.querySelector("[aria-label='Openings in the next three days']")).toBeNull();
+    expect(el.textContent).not.toContain("See it on Openings");
+  });
+
+  it("says nothing from the week until the server answers: reading, then could not be read, never zero", async () => {
+    failures.weekCacheOnly = true;
+    const el = await mount(undefined, { studio: linked, onOpenMyStudio: () => {} });
+    // The cache answered with the whole week, and none of it is said.
+    let text = el.textContent ?? "";
+    expect(text).toContain("Reading the week…");
+    expect(text).not.toContain("Booked today4");
+    expect(text).not.toContain("Cy Cole");
+    expect(text).not.toContain("See it on Openings");
+    expect(el.querySelector(".adm-ov__days")).toBeNull();
+
+    // The server keeps it waiting: the week could not be read. Missing, never zero.
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+    });
+    text = el.textContent ?? "";
+    expect(text).toContain("The week's schedule could not be read just now");
+    expect(text).toContain("Booked today—");
+    expect(text).toContain("Never logged—");
+    expect(text).not.toContain("Nothing cancelled or moved for today");
+    expect(text).not.toContain("No changes for today.");
+    expect(text).not.toMatch(/\d booked over/);
+    expect(text).not.toContain("See it on Openings");
+    expect(el.querySelector(".adm-ov__days")).toBeNull();
+
+    // The server answers: now the week is said, Openings' line with it.
+    await act(async () => {
+      for (const deliver of failures.serverLater) deliver();
+    });
+    text = el.textContent ?? "";
+    expect(text).toContain("Booked today4");
+    expect(text).toContain("Cy Cole");
+    expect(text).not.toContain("could not be read just now");
+    expect(el.querySelector("[aria-label='Openings in the next three days']")?.textContent).toContain("Tue, Sep 22 · 10:30 AM, marked always full, has room");
   });
 
   it("a folded panel keeps its sentence and remembers the fold on this device", async () => {

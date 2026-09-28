@@ -315,6 +315,9 @@ function AdminDashboardShell({
             onNavigateProfile={onNavigateProfile}
             onOpen={openFromOverview}
             networks={networks}
+            // Openings' line opens My Studio → Openings in trainer mode; the
+            // page remembers the section first, as Staff & Roles does for Team.
+            onOpenMyStudio={onOpenStudioTasks}
           />
         )}
 
