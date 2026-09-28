@@ -336,8 +336,9 @@ the briefing's markers (every 25th, 21 days) onto the one engine; the top in
 portrait. Technical leftovers: "Couldn't load, retrying" when the schedule read
 fails; columns by trainer id only; a column header, "+N" and "Show on schedule"
 as doors; FORD "Get to know" (a new read: Needs OK); `mayReadWeeks` in a
-small file of its own (about 4 kB off the first download); the cherry on top,
-last.
+small file of its own (about 4 kB off the first download).
+
+**The Hub's cherry on top (Sep 28 2026)** — to do by hand: walk Round 27 of the testing checklist (render tests only so far). Decisions for AJ, in the round document's "Open, for AJ": Focus opening on Me or Everyone; words for a Watch or Renew mark in your own column; the Next 30 minutes always there on today, and its words; All stars' reading (the average over the weeks she came; 24 of 26 weeks) and where it shows. **Needs AJ's OK before it can show:** All stars (the nightly renewals job keeping the answer on each client: a new stored field and a 26-week read) and Get to know (one read of the studio's FORD details for the Hub). Technical leftovers: Zoom (Day | Close) from direction B; the strip worked out on every render.
 
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll

@@ -137,7 +137,9 @@ describe("--cat-* has no token without a reader", () => {
     const sources = featureSources().split(CATALOG).join("");
     const unread = Object.keys(palettes.cat.light).filter((token) => !sources.includes(`var(${token}`));
     expect(unread).toEqual([]);
-  });
+    // It reads every feature's source: over the 5-second default on a busy PC
+    // (Sep 28 2026, five builds testing at once), though a second alone.
+  }, 30_000);
 });
 
 describe("the critical colour", () => {

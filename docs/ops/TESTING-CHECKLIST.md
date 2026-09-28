@@ -1991,6 +1991,58 @@ light and dark**. Seen so far only on a harness page in headless Chrome.
 
 ---
 
+## Round 27 — The Hub's cherry on top · *Sep 28 2026, branch `redesign/hub-cherry`*
+
+Hub direction B, held for the Hub's last round: your own column in words, the
+Next 30 minutes strip and Focus: Me or Everyone. The round document is
+`docs/rounds/2026-09-28-hub-cherry.md`. Nothing to deploy first: no rules, no
+index, no Cloud Function, no new read. Walk it on TODAY, on a busy morning,
+signed in as a **Life Transformer with bookings** and as a **leader with
+none**, **portrait and landscape, light and dark**. Nothing in this round has
+been seen in a browser or on an iPad yet: render tests only.
+
+**Your column**
+
+- [ ] **Wide on its side.** Landscape, five or fewer trainers: your column is
+  the wide one; nobody else's column is pushed off the screen that would have
+  fitted before. Upright, or with more trainers than fit, it is as wide as
+  the rest.
+- [ ] **Your day in words.** Under your name: "12 sessions · 6:00 AM – 12:00
+  PM · 8 to go" (no "to go" before your first or after your last); upright the
+  times drop and it stays two lines.
+- [ ] **Its cards in words.** On its side, a card with two marks says both
+  words ("100th", "turns 80"); "first with you" for a client's first session
+  with you. Never a Pulse flag's, a waiver's or a renewal's words.
+- [ ] **A number is never cut.** A card with three marks in a narrow column
+  still reads "9:30 · #212" whole; only "Not logged", "New to Journey" or a
+  service gives way, with "…".
+
+**The Next 30 minutes**
+
+- [ ] **Under the top, not in it.** The top keeps its two rows; the strip is
+  a row of its own above the grid.
+- [ ] **Who is on it.** In session (blue), due now ("Now · 9:30") and due in
+  the next half hour ("9:45"), across every column, yours first at the same
+  time; whole names; the red triangle only for a Critical note.
+- [ ] **Never a session that is over.** Finish a session: it leaves the strip.
+- [ ] **A tap opens the peek**, the same one a card opens. A booking with no
+  profile says "Not synced yet" and opens nothing.
+- [ ] **Its row stays.** In a quiet stretch it says "Nobody due in the next 30
+  minutes."; before the first booking's half hour and after the last one, it
+  is gone. Tomorrow has no strip.
+
+**Me · Everyone**
+
+- [ ] **At the end of the summary's line.** Landscape: "Focus  Me | Everyone"
+  after the chips; upright, without "Focus". Not there for someone with no
+  column today, nor on the spotlight's bar.
+- [ ] **Everyone** makes every column alike and your head says "12 sessions";
+  **Me** brings the wide column back.
+- [ ] **Remembered, and forgotten.** Leave and come back: the same focus. Sign
+  out and sign in as someone else: Me.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -2041,4 +2093,5 @@ Screenshot:
 | 24 — The Client Directory and the Hub's Opportunities (Sep 28) | 16 | | |
 | 25 — The calm Hub (Sep 28) | 22 | | |
 | 26 — My Studio → Studio read only, and AJ's three answers (Sep 28) | 13 | | |
-| **Total** | **455** | | |
+| 27 — The Hub's cherry on top (Sep 28) | 12 | | |
+| **Total** | **467** | | |
