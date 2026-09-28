@@ -31,14 +31,17 @@ this folder's screens too — moved, not rewritten.
 | Announcements (Studio) | `announcements/` (the audiences follow the tier) |
 | Mindbody (Behind the scenes) | `mindbody/` (`company` off = a leader's own studio), `useAutoSync.ts`, `syncPolicy.ts` |
 | Data (Behind the scenes) | `data/` |
-| — on the Admins dashboard — | |
-| All locations | `studios/`, `equipment/`, `upkeep/` |
-| Catalog | `machines/` (every machine, the submissions queue in `catalog/`) |
-| Standard template | `src/features/admins/StandardTemplateTab.tsx` (`catalog/StandardSetPanel` + `routines/`) |
-| Limbo | `limbo/` |
-| Bug reports | `bugs/` |
-| System tools | `system/` |
-| Data (any studio) | `data/` |
+| — on the Admins dashboard (`src/features/admins/`, its README) — | |
+| Home | `src/features/admins/home/` (what needs you, the network, the standard) |
+| Studios → All studios, a studio's page, Franchises | `src/features/admins/studios/` (the screens); the registry's editors here in `studios/` (`registry.ts`, `registry-writes.ts`, `StudioDetailsForm`, `NewStudioPanel`, `NetworksPanel`, `RegistryHealthPanel`), `equipment/`, `upkeep/`, `provisional/` |
+| Standard → Machines | `machines/` (every machine, the submissions queue in `catalog/`), with `src/features/admins/standard/` (where studios set their own) above it |
+| Standard → Standard template | `src/features/admins/StandardTemplateTab.tsx` (`catalog/StandardSetPanel` + `routines/`) |
+| Standard → Waiting for review | `src/features/admins/ReviewQueuePage.tsx`, hosting `features/machine-db/ShareReviewPanel` (sharing with every studio waits for an administrator, AJ Sep 28 2026) |
+| Machinery → Limbo | `limbo/` (`limbo-groups.ts`, `limbo-undo.ts`) |
+| Machinery → Mindbody sync (every studio) | `src/features/admins/machinery/` (a studio's own panel stays Operations → Mindbody, `mindbody/`) |
+| Machinery → Bug reports | `bugs/` (`fetch-reports.ts` is the one read, shared with Home) |
+| Machinery → System tools | `system/` |
+| Machinery → Data (any studio) | `data/`, through `src/features/admins/AdminsDataPage.tsx` |
 | Legacy chart importer (its own screen) | `import/` |
 | The network view under "All my studios" | `network/` (`NetworkOverview` the setup health; `NetworkActions` the network's focus and a launch at every studio, moved from Relay → Network on Sep 27 2026, the ranking dropped; for a franchise owner who sees one studio, at the foot of that studio's Overview); the old Franchise screen's pieces in `franchise/` |
 

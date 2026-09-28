@@ -73,9 +73,11 @@ function useShareOffers() {
 export interface ShareReviewPanelProps {
   studios: Pick<Studio, "id" | "name">[];
   trainers: Trainer[];
+  /** The panel's heading; the Admins page that hosts it carries the page's own. */
+  title?: string;
 }
 
-export function ShareReviewPanel({ studios, trainers }: ShareReviewPanelProps) {
+export function ShareReviewPanel({ studios, trainers, title = "Waiting for review" }: ShareReviewPanelProps) {
   const { load, reload, remove } = useShareOffers();
   const studioName = useMemo(() => new Map(studios.map((s) => [s.id, s.name])), [studios]);
   const nameOf = useCallback(
@@ -85,7 +87,7 @@ export function ShareReviewPanel({ studios, trainers }: ShareReviewPanelProps) {
 
   return (
     <AdminPanel
-      title="Waiting for review"
+      title={title}
       icon={<Share2 className="w-3.5 h-3.5" />}
       subtitle="What studios have offered to every MSF studio: a note on a machine, a tip, or a machine they made. Nothing reaches another studio until you share it."
       actions={

@@ -38,11 +38,18 @@ import type {
 
 export type ReportStatus = "open" | "investigating" | "fixed" | "wont-fix";
 
+/**
+ * The four statuses in plain words (the Admins room, Sep 28 2026; the
+ * design's names, AJ's default for q11). The stored values are unchanged:
+ * a report nobody has looked at yet is `open`, and reads "New". The reporter
+ * sees their own report's status on Settings in words of its own
+ * (features/settings/TrainerSettingsView.tsx).
+ */
 export const STATUS_LABEL: Record<ReportStatus, string> = {
-  open: "Open",
-  investigating: "Looking at it",
+  open: "New",
+  investigating: "Looking into it",
   fixed: "Fixed",
-  "wont-fix": "Not doing",
+  "wont-fix": "Won't fix",
 };
 
 /** The order a triage list wants: unhandled first, closed last. */

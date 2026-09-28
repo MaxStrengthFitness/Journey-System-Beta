@@ -69,7 +69,7 @@ New code goes here.
 | Folder | What it is | Read first |
 | --- | --- | --- |
 | `admin/` | Every Operations screen, and the kit they are built from. It has its own table of which folder each tab lives in | `README.md` |
-| `admins/` | The Admins dashboard (administrators and the founder): each tab is the Operations screen it was, moved from `admin/`; `StandardTemplateTab` is its own | `AdminsDashboardView.tsx` |
+| `admins/` | The Admins dashboard (administrators and the founder), the Command Center since Sep 28 2026: four places (Home · Studios · Standard · Machinery), a search across the company, every studio grouped by what Journey knows with a page each, every studio's Mindbody pull at once; the screens that were tabs are still here, moved from `admin/`. Read its `README.md` | `AdminsDashboardView.tsx` |
 | `trainer-profile/` | A trainer's own profile, the Kaizen Roster, the Edit Trainer modal | `README.md` |
 | `trainer-identity/` | Claiming a placeholder trainer profile at first sign-in | `claim.ts` |
 | `settings/` | Trainer Settings: what is left after the settings tiers round | `TrainerSettingsView.tsx` |
