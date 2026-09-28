@@ -4380,4 +4380,59 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
     });
   });
+
+  // -- WAVE 2 OF THE MACHINE CATALOG ROOM (Sep 28 2026, AJ: "all yes"):
+  // "Standard machine" on a machine's own page (administrators only, the
+  // catalog's existing rule), a reason on Out of service, head office's
+  // aliases. docs/rounds/2026-09-28-catalog-2.md.
+  describe("wave 2 catalog", () => {
+    async function seedWave2() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "trainers", "adminW2"), {
+          fullName: "Elrond Peredhel",
+          initials: "EP",
+          role: "Admin",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "trainers", "leaderA"), {
+          fullName: "Glorfindel of the Golden Flower",
+          initials: "GG",
+          role: "StudioLeader",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "machines", "m-leg-press"), {
+          id: "m-leg-press",
+          name: "LEG PRESS",
+          status: "active",
+          inStandardSet: true,
+          defaultOrder: 10,
+          schemaVersion: 1,
+        });
+      });
+    }
+
+    const stamp = (uid: string) => ({ updatedAt: serverTimestamp(), updatedBy: uid });
+
+    it("lets only an administrator mark a machine as a standard machine", async () => {
+      await seedWave2();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const machine = (db: typeof admin) => doc(db, "machines", "m-leg-press");
+      // A studio's leaders, its owner and its trainers can't set it, either way.
+      await assertFails(updateDoc(machine(leader), { inStandardSet: false, ...stamp("leaderA") }));
+      await assertFails(updateDoc(machine(owner), { inStandardSet: false, ...stamp("ownerA") }));
+      await assertFails(updateDoc(machine(trainer), { inStandardSet: false, ...stamp("trainerA") }));
+      await assertFails(setDoc(machine(leader), { inStandardSet: true }, { merge: true }));
+      // An administrator takes it out and puts it back.
+      await assertSucceeds(updateDoc(machine(admin), { inStandardSet: false, ...stamp("adminW2") }));
+      await assertSucceeds(updateDoc(machine(admin), { inStandardSet: true, ...stamp("adminW2") }));
+      // Everyone signed in still reads it.
+      await assertSucceeds(getDoc(machine(trainer)));
+    });
+  });
 });

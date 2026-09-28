@@ -42,6 +42,39 @@ export function outsideStandard(catalog: MachineCatalogEntry[]): MachineCatalogE
   return catalog.filter((m) => m.status === "active" && !isStandardSetMachine(m)).sort(byOrder);
 }
 
+/* ------------------------------------------------------------------ *
+ * Putting a machine in, or taking it out — one write, two doors
+ * ------------------------------------------------------------------ *
+ *
+ * Wave 2 of the Machine Catalog room (AJ, Sep 28 2026: "a machine just needs
+ * to be able to be marked as a standard machine, a task only by admins").
+ * The Standard template's list (StandardSetPanel) and the machine's own page
+ * in the catalog editor ("Standard machine", StandardMachineSwitch) write the
+ * same field the same way and say the same thing, so the two can't drift:
+ * membership only, `defaultOrder` untouched, and an explicit `false` to take
+ * a machine out (isStandardSetMachine treats an absent flag as in).
+ */
+
+/** The fields a change of membership writes, before the caller's stamp. */
+export function standardSetPatch(inStandardSet: boolean): { inStandardSet: boolean } {
+  return { inStandardSet };
+}
+
+/** What the toast says once the write lands. */
+export function standardSetSaid(name: string, inStandardSet: boolean): string {
+  return inStandardSet
+    ? `${name} is in the standard set. Floors are offered it under "New in the MSF standard".`
+    : `${name} is out of the standard set. Floors that have it keep it.`;
+}
+
+/** Taking a machine out asks first, in these words, wherever it is done. */
+export function takeOutQuestion(name: string): { title: string; body: string } {
+  return {
+    title: `Take ${name} out of the standard set?`,
+    body: 'New floors will not start with it, and existing floors will see it under "No longer in the standard" — but no floor loses it, and every set ever logged on it stays.',
+  };
+}
+
 export interface OrderWrite {
   id: string;
   defaultOrder: number;

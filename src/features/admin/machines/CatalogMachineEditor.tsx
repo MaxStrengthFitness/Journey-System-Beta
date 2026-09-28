@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
+import { StandardMachineSwitch } from "../catalog/StandardMachineSwitch";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
 
@@ -19,6 +20,15 @@ import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
  * There is no `standard` prop. This IS the standard, so there is nothing to
  * inherit from and nothing to revert to — the editor renders without any of
  * its inheritance marks.
+ *
+ * THE MACHINE'S STANDING (wave 2 of the Machine Catalog room, Sep 28 2026).
+ * Above the sections, for a machine that exists: "Standard machine", the
+ * switch that marks it as one (AJ: "a machine just needs to be able to be
+ * marked as a standard machine, a task only by admins"), written at once and
+ * on its own, apart from the definition's save bar, because it is a catalog
+ * field and not part of what the machine IS. `notice` adds a host's own
+ * lines under it (head office's view in the Catalog says where studios
+ * changed the standard there).
  */
 
 /** 'LEG PRESS' -> 'm-leg-press'. The existing catalog id convention. */
@@ -38,12 +48,18 @@ export function CatalogMachineEditor({
   existingIds,
   catalogSize,
   onBack,
+  backLabel = "Catalog",
+  notice,
 }: {
   /** Absent for a new machine. */
   machine?: MachineCatalogEntry;
   existingIds: string[];
   catalogSize: number;
   onBack: () => void;
+  /** What the back button says it goes to. */
+  backLabel?: string;
+  /** A host's own lines, under the machine's standing. */
+  notice?: ReactNode;
 }) {
   const { success: toastSuccess } = useToast();
   const isNew = !machine;
@@ -78,13 +94,25 @@ export function CatalogMachineEditor({
         ...(isNew ? value : {}),
         ...patch,
         id,
-        status: machine?.status ?? "active",
-        defaultOrder: machine?.defaultOrder ?? (catalogSize + 1) * 10,
-        inStandardSet: machine?.inStandardSet ?? true,
-        schemaVersion: 1,
+        // The catalog's own fields go in once, on create. An edit leaves
+        // them alone (wave 2, Sep 28 2026): "Standard machine" and the
+        // Standard template write `inStandardSet` themselves, and an edit
+        // that re-wrote it from the copy it opened with would undo a switch
+        // turned a moment before, in this screen or another.
         ...(isNew
-          ? { createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid ?? null }
-          : {}),
+          ? {
+              status: "active",
+              defaultOrder: (catalogSize + 1) * 10,
+              inStandardSet: true,
+              createdAt: serverTimestamp(),
+              createdBy: auth.currentUser?.uid ?? null,
+            }
+          : // A document from before `status` existed is active; the lists
+            // that offer a machine to a floor read only active ones.
+            machine?.status
+            ? {}
+            : { status: "active" }),
+        schemaVersion: 1,
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       },
@@ -104,10 +132,18 @@ export function CatalogMachineEditor({
       value={value}
       scope="catalog"
       whose="The Max Strength standard"
-      backLabel="Catalog"
+      backLabel={backLabel}
       onBack={onBack}
       onSave={save}
       isNew={isNew}
+      notice={
+        machine || notice ? (
+          <>
+            {machine && <StandardMachineSwitch machine={machine} />}
+            {notice}
+          </>
+        ) : undefined
+      }
     />
   );
 }

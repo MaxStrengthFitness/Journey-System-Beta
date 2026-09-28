@@ -85,7 +85,8 @@ it: **read the machine, correct it, then publish** (the catalog gate round,
 | --- | --- |
 | `AdminMachinesTab.tsx` | Admins → Catalog. Holds which machine is open; the editor REPLACES the screen. |
 | `CatalogList.tsx` | The rows: display order, what each machine is still missing, standard-set, retire. |
-| `CatalogMachineEditor.tsx` | Writing the standard itself. No `standard` prop — this IS it. |
+| `CatalogMachineEditor.tsx` | Writing the standard itself. No `standard` prop — this IS it. Above the sections of a machine that exists: its standing (`../catalog/StandardMachineSwitch.tsx`, wave 2, Sep 28 2026) — **Standard machine**, administrators only, written at once and apart from the save bar. An edit's save writes the definition's diff and never the catalog's own fields (`status`, `defaultOrder`, `inStandardSet`), which go in once, on create. |
+| `../catalog/StandardMachineSwitch.tsx` | The switch that marks a machine as a standard machine: the Standard template's own write and words (`standard-set.ts`: `standardSetPatch`, `standardSetSaid`, `takeOutQuestion`), so the two doors can't drift. |
 | `StudioMachineEditor.tsx` | A studio's copy, or its own machine. Writes a DIFF for the former, the whole definition for the latter. |
 | `StudioInventoryManager.tsx` | The floor list. Mounted by My Studio → Machines, Operations → Floor and Admins → All locations → Equipment — one implementation, three doors. |
 | `editor/MachineEditor.tsx` | The screen: masthead, section rail, pinned warnings, save bar. |
