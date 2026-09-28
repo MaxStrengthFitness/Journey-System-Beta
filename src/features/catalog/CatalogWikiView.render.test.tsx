@@ -26,6 +26,8 @@ const fx = vi.hoisted(() => ({
   // The model records (wave 2, Catalog R4), and whether the Catalog asked.
   models: { state: "off" } as unknown,
   modelsAsked: [] as boolean[],
+  // Head office's own names, off the catalog documents (wave 2).
+  aliases: {} as Record<string, string[]>,
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: null } }));
@@ -49,6 +51,7 @@ vi.mock("./useCatalogMachines", () => ({
     loading: fx.floor === "loading",
     floor: fx.floor,
     makers: fx.makers,
+    aliases: fx.aliases,
   }),
 }));
 vi.mock("./useMachineModels", () => ({
@@ -195,6 +198,7 @@ beforeEach(() => {
   fx.isAdmin = false;
   fx.models = { state: "off" };
   fx.modelsAsked = [];
+  fx.aliases = {};
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -371,6 +375,14 @@ describe("Find, on the floor", () => {
     await click(line);
     expect(host.querySelector(".wk__h1")?.textContent).toBe("LEG PRESS");
     expect(host.querySelector(".mcat-found__where")?.textContent).toBe("Found on this page · Clinical warnings");
+  });
+
+  it("knows a name head office added, and opens the unit on Enter (wave 2)", async () => {
+    fx.aliases = { "m-lumbar": ["Bad Back Box"] };
+    await mount();
+    await type("bad back box");
+    await enter();
+    expect(host.querySelector(".wk__h1")?.textContent).toBe("LUMBAR");
   });
 
   it("sends a machine this floor does not have to All MSF machines", async () => {

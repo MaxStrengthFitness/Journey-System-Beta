@@ -49,7 +49,7 @@ import { flagLineOf, floorSentence, presetOf } from "./floor-index";
 import { MachineArticle, type FoundOnPage } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
 import { modelForUnit, modelName, modelsById } from "./models";
-import { movementOf } from "./names";
+import { movementOf, movementsWithAliases } from "./names";
 import { useMachineModels } from "./useMachineModels";
 import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
@@ -212,8 +212,11 @@ export function CatalogWikiView({
     machines: catalogMachines,
     source: floorSource,
     makers,
+    aliases,
     floor: floorState,
   } = useCatalogMachines(activeStudioId, machines);
+  // Find's names, with head office's own merged in (wave 2; names.ts).
+  const movements = useMemo(() => movementsWithAliases(aliases ?? NO_ALIASES), [aliases]);
   /*
    * The FLOOR, which is not always the list above: when the studio's machine
    * list is empty the list is the MSF catalog standing in, and when it could
@@ -421,8 +424,8 @@ export function CatalogWikiView({
 
   /* Find (Catalog R1): every name a machine goes by, over this floor. */
   const findUnits = useMemo(
-    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds, models: unitModels }),
-    [floorMachines, makers, flaggedIds, unitModels],
+    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds, models: unitModels, movements }),
+    [floorMachines, makers, flaggedIds, unitModels, movements],
   );
   // The body's parts, for Find's "Muscles" (Catalog R3): "lats" opens the body lens.
   const findRegions = useMemo(() => {
@@ -432,9 +435,9 @@ export function CatalogWikiView({
   const findResult = useMemo(
     () =>
       find.trim()
-        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions })
+        ? findOnFloor({ query: find, units: findUnits, studioName, regions: findRegions, movements })
         : null,
-    [find, findUnits, studioName, findRegions],
+    [find, findUnits, studioName, findRegions, movements],
   );
   // Another studio's floor is another list: what was typed or filtered for
   // the last one means nothing here.
@@ -840,3 +843,4 @@ export function CatalogWikiView({
 }
 
 const NO_MACHINES: CatalogMachine[] = [];
+const NO_ALIASES: Record<string, string[]> = {};

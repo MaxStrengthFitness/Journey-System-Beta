@@ -4,7 +4,7 @@ import { useMachineCatalog } from "../../hooks/useMachineCatalog";
 import { resolveUnrostered } from "../../lib/resolve-machine";
 import { PAGE_SECTION_LABEL, accentForPattern, useStudioWiki, type WikiAccent } from "../wiki";
 import { fromResolvedMachine } from "../catalog/adapters";
-import { movementOf, namesForMachine } from "../catalog/names";
+import { aliasesByMovement, movementOf, movementsWithAliases, namesForMachine } from "../catalog/names";
 import { useCatalogMachines } from "../catalog/useCatalogMachines";
 import { useSharedMachines } from "../machine-db/hooks";
 import {
@@ -76,6 +76,8 @@ export function useLearningEntries({
     onFloor ? machines : NO_MACHINES,
   );
   const { catalog: msfCatalog } = useMachineCatalog();
+  // Every name a machine goes by, head office's own included (wave 2, Sep 28 2026).
+  const movements = useMemo(() => movementsWithAliases(aliasesByMovement(msfCatalog)), [msfCatalog]);
   const msf = useMemo(
     () =>
       msfCatalog
@@ -118,8 +120,8 @@ export function useLearningEntries({
           ...m.synergists,
           ...(category ? [CATEGORY_LABEL[category]] : []),
           // Every name it goes by (Catalog R1): "low back" finds LUMBAR,
-          // "torso arm" finds PULLDOWN.
-          ...namesForMachine(m),
+          // "torso arm" finds PULLDOWN; and head office's own (wave 2).
+          ...namesForMachine(m, movements),
         ],
       });
     }
@@ -136,7 +138,7 @@ export function useLearningEntries({
         title: s.machine.name,
         meta: [`Shared by ${s.studioName}`, s.machine.movementPattern].filter(Boolean).join(" · "),
         accent: accentForPattern(s.machine.movementPattern),
-        keywords: [...s.machine.targetMuscles, ...s.machine.synergists, s.studioName, ...namesForMachine(s.machine)],
+        keywords: [...s.machine.targetMuscles, ...s.machine.synergists, s.studioName, ...namesForMachine(s.machine, movements)],
       });
     }
 
@@ -223,7 +225,7 @@ export function useLearningEntries({
       }
     }
     return out;
-  }, [catalog, shared, academyMachines, pages, glossary, studioId, includeStudioPages]);
+  }, [catalog, shared, academyMachines, pages, glossary, studioId, includeStudioPages, movements]);
 
   return entries;
 }

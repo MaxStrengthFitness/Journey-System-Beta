@@ -17,7 +17,7 @@
  * `machines/{id}`; this keeps the switch off the screen for them too (a
  * menu is not a gate), and says in words who changes it.
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ListOrdered } from "lucide-react";
 import { auth, db } from "../../../firebase";
@@ -37,11 +37,9 @@ export interface StandardMachineSwitchProps {
    * app's own answer (`isAdmin` on the active-studio context).
    */
   canEdit?: boolean;
-  /** Anything else the machine's standing wants to say, under the switch (the aliases, wave 2). */
-  children?: ReactNode;
 }
 
-export function StandardMachineSwitch({ machine, canEdit, children }: StandardMachineSwitchProps) {
+export function StandardMachineSwitch({ machine, canEdit }: StandardMachineSwitchProps) {
   const ctx = useOptionalActiveStudio();
   const allowed = canEdit ?? ctx?.isAdmin ?? false;
   const { success: toastSuccess, error: toastError } = useToast();
@@ -100,7 +98,6 @@ export function StandardMachineSwitch({ machine, canEdit, children }: StandardMa
       ) : (
         <p className="adm-row__meta">An administrator marks a machine as a standard machine.</p>
       )}
-      {children}
       <ConfirmDialog
         open={asking}
         title={question.title}

@@ -4524,5 +4524,17 @@ describe("marks on a time", () => {
       await assertFails(updateDoc(entry(outsider), outOfService("trainerB")));
       await assertSucceeds(updateDoc(entry(admin), outOfService("adminW2")));
     });
+
+    it("lets only an administrator add head office's names to a catalog machine, and everyone read them", async () => {
+      await seedWave2();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      await assertFails(updateDoc(doc(leader, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("leaderA") }));
+      await assertFails(updateDoc(doc(trainer, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("trainerA") }));
+      await assertSucceeds(updateDoc(doc(admin, "machines", "m-leg-press"), { aliases: arrayUnion("The Sled"), ...stamp("adminW2") }));
+      await assertSucceeds(updateDoc(doc(admin, "machines", "m-leg-press"), { aliases: arrayRemove("The Sled"), ...stamp("adminW2") }));
+      await assertSucceeds(getDoc(doc(trainer, "machines", "m-leg-press")));
+    });
   });
 });

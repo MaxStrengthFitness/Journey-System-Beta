@@ -166,6 +166,9 @@ export function definitionOf(entry: object): MachineDefinition {
     createdBy: _createdBy,
     updatedAt: _updatedAt,
     updatedBy: _updatedBy,
+    // Head office's other names for the machine (wave 2, Sep 28 2026): the
+    // catalog's, written on the machine's page apart from the definition.
+    aliases: _aliases,
     ...definition
   } = entry as Record<string, unknown>;
   return normalizeMachineDefinition(definition as Partial<MachineDefinition>);

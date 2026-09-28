@@ -7,12 +7,19 @@ import scriptsFile from "../academy/content/scripts.json";
 import { MACHINE_CATEGORY } from "../routine-builder/academy";
 import {
   ACADEMY_MOVEMENT_NAME,
+  ALIASES_MAX,
+  ALIAS_MAX_LENGTH,
   MOVEMENTS,
   MOVEMENT_IDS,
+  aliasProblem,
+  aliasesByMovement,
   floorNameHidesMovement,
+  headOfficeAliasesOf,
   movementOf,
+  movementsWithAliases,
   namesForMachine,
   normaliseName,
+  tidyAlias,
 } from "./names";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -139,5 +146,71 @@ describe("a floor name that leaves the Academy's name unsaid", () => {
     expect(floorNameHidesMovement("TRICEP EXTENSION", "Triceps Extension")).toBe(false);
     expect(floorNameHidesMovement("HIP ABDUCTION", "Abduction")).toBe(false);
     expect(floorNameHidesMovement("SEATED ABDOMINALS", "Abdominals")).toBe(false);
+  });
+});
+
+describe("head office's own names (wave 2, Sep 28 2026)", () => {
+  it("reads the names off a catalog document: strings, tidied, each once, within the limits", () => {
+    expect(
+      headOfficeAliasesOf({
+        aliases: ["  The   Rack ", "the rack", 7, "", "x".repeat(ALIAS_MAX_LENGTH + 1), "Solon sled"],
+      }),
+    ).toEqual(["The Rack", "Solon sled"]);
+    expect(headOfficeAliasesOf({})).toEqual([]);
+    expect(headOfficeAliasesOf({ aliases: "The Rack" })).toEqual([]);
+    expect(headOfficeAliasesOf(null)).toEqual([]);
+    expect(headOfficeAliasesOf({ aliases: Array.from({ length: 40 }, (_, i) => `name ${i}`) })).toHaveLength(ALIASES_MAX);
+  });
+
+  it("takes them only from a document that is one of the twenty", () => {
+    expect(
+      aliasesByMovement([
+        { id: "m-lumbar", aliases: ["Bad Back Box"] },
+        { id: "m-hip-sled", aliases: ["The Sled"] },
+        { id: "m-neck" },
+      ]),
+    ).toEqual({ "m-lumbar": ["Bad Back Box"] });
+  });
+
+  it("gives back the code's own table when head office has added nothing", () => {
+    expect(movementsWithAliases({})).toBe(MOVEMENTS);
+    expect(movementsWithAliases({ "m-lumbar": [] })).toBe(MOVEMENTS);
+  });
+
+  it("merges a name into its movement, where it opens the movement on its own", () => {
+    const table = movementsWithAliases({ "m-lumbar": ["Bad Back Box"] });
+    expect(table["m-lumbar"].aliases).toContain("Bad Back Box");
+    expect(table["m-lumbar"].exact).toContain("bad back box");
+    // The code's table is left as it was.
+    expect(MOVEMENTS["m-lumbar"].aliases).not.toContain("Bad Back Box");
+    expect(namesForMachine({ id: "m-lumbar" }, table)).toContain("Bad Back Box");
+    expect(movementOf({ id: "m-lumbar" }, table)?.aliases).toContain("Bad Back Box");
+  });
+
+  it("never lets a name two movements were given open either", () => {
+    const table = movementsWithAliases({ "m-lumbar": ["The Box"], "m-abs": ["The Box"] });
+    expect(table["m-lumbar"].aliases).toContain("The Box");
+    expect(table["m-lumbar"].exact).not.toContain("the box");
+    expect(table["m-abs"].exact).not.toContain("the box");
+    const all = MOVEMENT_IDS.flatMap((id) => table[id].exact);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("refuses a name that says nothing new, or that another movement goes by, in words", () => {
+    expect(aliasProblem("   ", "m-lumbar")).toBe("Type a name.");
+    expect(aliasProblem("x".repeat(ALIAS_MAX_LENGTH + 1), "m-lumbar")).toBe(`Keep a name to ${ALIAS_MAX_LENGTH} characters.`);
+    expect(aliasProblem("low back", "m-lumbar")).toBe("Find already knows “low back” for Lumbar Extension.");
+    expect(aliasProblem("LUMBAR", "m-lumbar")).toBe("Find already knows “LUMBAR” for Lumbar Extension.");
+    expect(aliasProblem("Leg Press", "m-lumbar")).toBe("“Leg Press” already means Leg Press.");
+    expect(aliasProblem("torso arm", "m-lumbar")).toBe("“torso arm” already means Pulldown.");
+    expect(aliasProblem("Bad Back Box", "m-lumbar")).toBeNull();
+    // Another movement's head office name, too.
+    const table = movementsWithAliases({ "m-abs": ["The Box"] });
+    expect(aliasProblem("the box", "m-lumbar", table)).toBe("“the box” already means Abdominals.");
+    expect(aliasProblem("the box", "m-abs", table)).toBe("Find already knows “the box” for Abdominals.");
+  });
+
+  it("stores a name the way it reads: one space between words", () => {
+    expect(tidyAlias("  Bad   Back\tBox ")).toBe("Bad Back Box");
   });
 });

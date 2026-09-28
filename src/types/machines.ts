@@ -516,6 +516,14 @@ export interface MachineCatalogEntry extends MachineDefinition {
   defaultOrder: number;
   /** Pre-checked in the studio onboarding picker. */
   inStandardSet: boolean;
+  /**
+   * Head office's other names for the machine (wave 2 of the Machine Catalog
+   * room, Sep 28 2026): written by an administrator on the machine's page in
+   * the catalog editor, merged by features/catalog/names.ts with the names the
+   * code holds, so Find knows them. Catalog bookkeeping, not part of the
+   * definition: definitionOf strips it, and the template boundary never sees it.
+   */
+  aliases?: string[];
 
   createdAt?: any;
   createdBy?: string;

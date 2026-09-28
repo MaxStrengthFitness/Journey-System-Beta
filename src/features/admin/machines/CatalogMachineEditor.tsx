@@ -4,6 +4,7 @@ import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
 import { StandardMachineSwitch } from "../catalog/StandardMachineSwitch";
+import { MachineAliases } from "../catalog/MachineAliases";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
 
@@ -26,9 +27,11 @@ import { definitionOf, emptyMachineDefinition } from "./definition-defaults";
  * switch that marks it as one (AJ: "a machine just needs to be able to be
  * marked as a standard machine, a task only by admins"), written at once and
  * on its own, apart from the definition's save bar, because it is a catalog
- * field and not part of what the machine IS. `notice` adds a host's own
- * lines under it (head office's view in the Catalog says where studios
- * changed the standard there).
+ * field and not part of what the machine IS. Under it, for one of the twenty
+ * movements, the other names Find knows it by, head office's own among them
+ * (`aliases`, ../catalog/MachineAliases.tsx), added and taken off the same
+ * way. `notice` adds a host's own lines under those (head office's view in
+ * the Catalog says where studios changed the standard there).
  */
 
 /** 'LEG PRESS' -> 'm-leg-press'. The existing catalog id convention. */
@@ -140,6 +143,8 @@ export function CatalogMachineEditor({
         machine || notice ? (
           <>
             {machine && <StandardMachineSwitch machine={machine} />}
+            {/* Head office's own names for the movement (wave 2): Find knows them. */}
+            {machine && <MachineAliases machine={machine} />}
             {notice}
           </>
         ) : undefined

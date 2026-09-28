@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BODY_REGIONS, regionNames } from "./body-lens";
 import { findOnFloor, findUnitsFrom, type FindHit, type FindUnit } from "./find";
-import { MOVEMENTS } from "./names";
+import { MOVEMENTS, movementsWithAliases } from "./names";
 import type { CatalogMachine } from "./types";
 
 /** A floor machine with only what Find reads. */
@@ -37,6 +37,32 @@ const find = (query: string, units = FLOOR) => findOnFloor({ query, units, studi
 const label = (h: FindHit | null) => (h ? h.label : null);
 const inGroup = (query: string, key: FindHit["kind"]) =>
   find(query).groups.find((g) => g.key === key)?.hits.map((h) => h.label) ?? [];
+
+describe("Find with head office's own names (wave 2)", () => {
+  const table = movementsWithAliases({ "m-lumbar": ["Bad Back Box"], "m-pulldown": ["The Lat Tower"] });
+  const floorWith = () =>
+    findUnitsFrom(
+      [
+        { id: "m-lumbar", name: "LUMBAR", comparisonKey: "m-lumbar", rosterStatus: "active", requiresHandoff: false, targetMuscles: [], synergists: [], clinicalWarnings: [], setup: "", setupCues: [], execution: "", executionCues: [], contraindicatedFor: [] } as unknown as CatalogMachine,
+      ],
+      { movements: table },
+    );
+
+  it("opens a unit on this floor by a name head office added", () => {
+    const r = findOnFloor({ query: "bad back box", units: floorWith(), studioName: "Solon", movements: table });
+    expect(r.top?.kind).toBe("unit");
+    expect(r.top?.label).toBe("LUMBAR");
+  });
+
+  it("opens a movement the floor lacks in All MSF by head office's name for it", () => {
+    const r = findOnFloor({ query: "the lat tower", units: floorWith(), studioName: "Solon", movements: table });
+    expect(r.top).toMatchObject({ kind: "movement", movementId: "m-pulldown" });
+  });
+
+  it("knows none of them without the merged table", () => {
+    expect(findOnFloor({ query: "bad back box", units: findUnitsFrom([]), studioName: "Solon" }).none).toBe(true);
+  });
+});
 
 describe("Find on the floor", () => {
   it("opens the Lumbar from every name it goes by", () => {

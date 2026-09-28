@@ -153,6 +153,20 @@ administrators in the catalog editor, not in code. The round is
   All MSF only while a page is open, and an unreadable read draws nothing.
   Find knows a unit by its model's name, and the model's maker filters the
   floor where the studio recorded none on the unit.
+- **Aliases head office can edit** (`names.ts`: `headOfficeAliasesOf`,
+  `aliasesByMovement`, `movementsWithAliases`, `aliasProblem`). A catalog
+  document may carry `aliases: string[]`, written by an administrator on the
+  machine's page in the catalog editor ("Other names",
+  `admin/catalog/MachineAliases.tsx`, at once, apart from the save bar; only
+  for the twenty movements). `names.ts` merges them into the table as one
+  more source of names, under the same rule as every other alias: a name one
+  movement goes by opens it, a name two claim only ranks, and `aliasProblem`
+  refuses the name that says nothing new or already means another movement.
+  Find (`findUnitsFrom` / `findOnFloor` take the merged `movements`) and
+  Learning's one search (`useLearningEntries`) both know them; the Catalog
+  reads them off the catalog documents it already has (`useCatalogMachines`
+  → `aliases`), no read of its own. `definitionOf` strips `aliases`, so the
+  definition, the template boundary and a studio's overrides never see them.
 
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced

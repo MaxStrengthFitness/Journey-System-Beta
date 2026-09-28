@@ -199,12 +199,14 @@ export function findUnitsFrom(
      * maker stands in where the studio recorded none on the unit.
      */
     models?: Record<string, { name: string; brand: string } | undefined>;
+    /** The movements with head office's own names merged in (wave 2; names.ts). */
+    movements?: Readonly<Record<string, MovementNames>>;
   } = {},
 ): FindUnit[] {
   return machines.map((m) => ({
     id: m.id,
     name: m.name,
-    movement: movementOf(m),
+    movement: movementOf(m, opts.movements),
     maker: opts.makers?.[m.id] ?? opts.models?.[m.id]?.brand ?? null,
     model: opts.models?.[m.id]?.name ?? null,
     requiresHandoff: m.requiresHandoff,
@@ -245,9 +247,14 @@ export interface FindInput {
   studioName: string;
   /** The body's regions; omit and Find knows no muscles as places. */
   regions?: FindRegion[];
+  /**
+   * The movements with head office's own names merged in (wave 2; names.ts
+   * `movementsWithAliases`). Omitted: the code's own names.
+   */
+  movements?: Readonly<Record<string, MovementNames>>;
 }
 
-export function findOnFloor({ query, units, studioName, regions = [] }: FindInput): FindResult {
+export function findOnFloor({ query, units, studioName, regions = [], movements = MOVEMENTS }: FindInput): FindResult {
   const q = normaliseName(query);
   if (!q) return { query, top: null, groups: [], none: false };
   const qWords = q.split(" ");
@@ -287,7 +294,8 @@ export function findOnFloor({ query, units, studioName, regions = [] }: FindInpu
 
   /* ── movements: not on this floor (All MSF), or more than one here (a filter) ── */
   for (const id of MOVEMENT_IDS) {
-    const m = MOVEMENTS[id];
+    const m = movements[id];
+    if (!m) continue;
     const here = byMovement.get(id) ?? [];
     if (here.length === 1) continue; // its unit already answers, above
     const score = m.exact.includes(q) ? EXACT : bestOf([m.name, ...m.aliases], q, qWords);
