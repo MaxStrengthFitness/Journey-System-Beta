@@ -1,17 +1,18 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { cn } from "../../../lib/utils";
 import type { TaskRow } from "../../studio-tasks/types";
 import { useRelayMaybe } from "./RelayContext";
-import { RING_LABEL, publishClosedRings, shiftRings, type Ring } from "./rings";
+import { RING_LABEL, shiftRings, type Ring } from "./rings";
 
 /**
  * THE SHIFT RINGS — Opening, Mid, Closing, each a ring that fills.
  *
  * Round: Relay, Sep 2026. The studio's recurring work for each part of the
- * day, as three rings rather than "0 of 20 done". A ring closes with a short
- * sweep and stays on the Now Bar as a dot for the rest of the day. The
- * current phase's ring is drawn larger. Tapping a ring scrolls to the shift
- * strip below, which is still where the ticking happens.
+ * day, as three rings rather than "0 of 20 done". The current phase's ring
+ * is drawn larger. Tapping a ring scrolls to the shift strip below, which is
+ * still where the ticking happens. Behind the Board's Floor work door since
+ * the Relay room (Sep 28 2026); the closed-ring dots it published for the
+ * Now Bar went with the Now Bar.
  */
 const R = 22;
 const C = 2 * Math.PI * R;
@@ -19,10 +20,6 @@ const C = 2 * Math.PI * R;
 export function ShiftRings({ rows, onOpen }: { rows: TaskRow[]; onOpen?: () => void }) {
   const relay = useRelayMaybe();
   const rings = useMemo(() => shiftRings(rows), [rows]);
-  const closed = rings.filter((r) => r.closed).length;
-  useEffect(() => {
-    if (relay?.studioId) publishClosedRings(relay.studioId, closed);
-  }, [relay?.studioId, closed]);
   const phase = relay?.now.phase ?? "mid";
   return (
     <div className="shr" role="group" aria-label="The shift">

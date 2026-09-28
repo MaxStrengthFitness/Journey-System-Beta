@@ -16,8 +16,8 @@
 import React from "react";
 import type { Machine } from "../../types";
 import type { JournalAuthor } from "../../hooks/useClientJournal";
-import { noteCardLabel, noteCategoryOf } from "./note-catalog";
-import { NoteCategoryIcon } from "./NoteCategoryChips";
+import { noteCardLabel } from "./note-catalog";
+import { NoteRootIcon } from "./NoteCategoryChips";
 import type { NoteThread } from "./threads";
 import { threadRowMeta } from "./record-selectors";
 import { NoteThreadCard } from "./NoteThreadCard";
@@ -60,7 +60,7 @@ export function ThreadRow({ thread, zone, machines, today, expanded, onToggle, a
         onClick={onToggle}
       >
         <span className="nx-row__label">
-          <NoteCategoryIcon id={noteCategoryOf(root)} className="nx-row__icon" />
+          <NoteRootIcon entry={root} className="nx-row__icon" />
           <span className="nx-row__kind">{noteCardLabel(root)}</span>
         </span>
         <span className="nx-row__body">

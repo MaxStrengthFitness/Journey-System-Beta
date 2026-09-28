@@ -313,6 +313,8 @@ describe("one thread, in words", () => {
     expect(closeWordsOf(entry({ id: "a", kind: "equipment" }))).toEqual({ close: "Close", reopen: "Reopen" });
     expect(closeWordsOf(entry({ id: "a", kind: "preference" })).close).toBe("Close");
     expect(closeWordsOf(entry({ id: "a", kind: "coaching", category: "Pace" })).close).toBe("Close");
+    // An open question from Relay is answered, not healed (Sep 28 2026).
+    expect(closeWordsOf(entry({ id: "a", kind: "question" }))).toEqual({ close: "Answered", reopen: "Open again" });
   });
 });
 

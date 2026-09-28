@@ -3,6 +3,7 @@ import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "..
 import type { ClientTaskAction } from "../../studio-tasks/types";
 import type { NowContext } from "./now-context";
 import type { CapturePreset } from "./capture";
+import type { AskPreset } from "./ask";
 
 /**
  * RELAY CONTEXT — what every Relay tab can reach without prop-threading.
@@ -45,6 +46,18 @@ export interface RelayContextValue {
   openPanel: (content: PanelContent) => void;
   closePanel: () => void;
   onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /**
+   * Straight to one of Relay's tabs (Relay room, Sep 28 2026): the Board's
+   * Mine door ends with the way to the trainer's whole list. The shell holds
+   * the tab since the one header; absent outside it.
+   */
+  openRelayTab?: (tab: "floor" | "mine" | "notes") => void;
+  /**
+   * "Ask the team" (Relay room, Sep 28 2026; phase 7): the Ask sheet's six
+   * tiles, opened from where the need is with its tile, client, day or time
+   * filled in (board/ask.ts). The shell holds the sheet; absent outside it.
+   */
+  openAsk?: (preset?: AskPreset) => void;
 }
 
 const RelayCtx = createContext<RelayContextValue | null>(null);

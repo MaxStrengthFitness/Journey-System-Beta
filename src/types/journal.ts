@@ -30,7 +30,16 @@ export type JournalKind =
   | "injury"        // a standing limitation, surgery, pain      -> Injury
   | "preference"    // how they like things done                 -> Preference
   | "consultation"  // intake / discovery / Mindbody imports     -> Admin
-  | "general";      // older "Note" entries, no longer offered   -> Preferences & other
+  | "general"       // older "Note" entries, no longer offered   -> Preferences & other
+  /**
+   * An open question about one client, asked of the team on Relay (Relay
+   * room, Sep 28 2026; AJ approved). The root of a thread written by the
+   * asker, at Heads up while it is open; the ask on the board carries its id
+   * (taskRequests.threadId), and the answer closes it. Filed under Coaching
+   * tip, labelled "Open question from {name}" (note-catalog.ts), never
+   * offered by the composer and never unfiled.                 -> Coaching tip
+   */
+  | "question";
 
 /** The 4 P's. Also the categories a trainer focus can be set to. */
 export type FocusCategory = "Posture" | "Path" | "Pace" | "Purpose";
@@ -373,6 +382,14 @@ const VISUALS = {
     accent: "text-stone-600 dark:text-stone-300",
     tint: "bg-stone-500/[0.05]",
     label: "Preference",
+  },
+  question: {
+    edge: "bg-blue-500",
+    chip: "bg-blue-500/12 text-blue-600 dark:text-blue-300 border-blue-500/25",
+    icon: "MessageSquare",
+    accent: "text-blue-600 dark:text-blue-300",
+    tint: "bg-blue-500/[0.05]",
+    label: "Question",
   },
   coaching: {
     edge: "bg-cyan-500",

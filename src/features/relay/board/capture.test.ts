@@ -68,7 +68,7 @@ describe("the sentence", () => {
       blankCapture({ text: "Deep-clean the leg press", destination: "floor", machineIds: ["lp"], date: "2026-09-17", estMinutes: 10 }),
       ctx,
     );
-    expect(s).toBe("On the Floor. Anyone at Solon can take it. Leg Press. Wanted by tomorrow. About 10 min.");
+    expect(s).toBe("On the Board. Anyone at Solon can take it. Leg Press. Wanted by tomorrow. About 10 min.");
     expect(captureSentence(blankCapture({ text: "x", destination: "floor", askKind: "cover" }), ctx)).toContain("as a cover request");
   });
   it("a hand-off names the person", () => {

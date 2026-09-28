@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, Plus, StickyNote, UserRound, Users } from "lucide-react";
-import { useActiveStudio } from "../../contexts/ActiveStudioContext";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BookOpen, LayoutGrid, ListChecks, type LucideIcon } from "lucide-react";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
 import type { ClientTaskAction } from "../studio-tasks/types";
@@ -8,9 +7,7 @@ import { MyTasksPanel } from "./MyTasksPanel";
 import { NotesPanel } from "./notes/NotesPanel";
 import { clearPlannerIntent, peekPlannerIntent, type PlannerIntent } from "./intent";
 import { useRelay } from "./board/RelayContext";
-import { NowBar } from "./board/NowBar";
 import { ContextPanel } from "./board/ContextPanel";
-import { useClosedRings } from "./board/rings";
 import { forgetOnSignOut } from "../sign-out/memory";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
@@ -22,7 +19,7 @@ import "./board/relay.css";
  * RELAY — the studio's asynchronous board and each trainer's second brain.
  *
  * Round: Relay, Sep 2026; a section of My Studio since the My Studio round
- * (features/my-studio/MyStudioView, which owns the masthead, the Relay
+ * (features/my-studio/MyStudioView, which owns the header, the Relay
  * context and the Capture sheet — this file draws the board under it). The
  * Sep 16 Planner had the right THINGS (studio tasks, team jobs, asks, the
  * playbook, private notes, reminders) and was built like a form-filling app:
@@ -30,15 +27,23 @@ import "./board/relay.css";
  * it was. Relay keeps the documents and the rules of who may do what, and
  * changes how the work is SEEN and CAPTURED:
  *
- *   the Now Bar      pinned on every tab — the shift phase, the trainer's next
- *                    session and minutes free, and "Just now" (relay/board/NowBar)
- *   Floor            the studio's shared board: Next up, the shift rings, the
- *                    floor map, asks, the playbook (studio-tasks/StudioHubView)
- *   Mine             the trainer's own list: today, handed to you, follow-ups,
- *                    growth (MyTasksPanel)
- *   Notes            working notes beside the note, publish with an audience
- *   Capture          one composer for all of it, under the right thumb
+ *   Board            the studio's shared board: Right now, five doors, the job
+ *                    dealt to you, and behind the doors the shift, the floor
+ *                    map, asks, the playbook (studio-tasks/StudioHubView, drawn
+ *                    by relay/board/Board). Its id is still "floor"
+ *   Tracker          the trainer's own list, by when: handed to you, now,
+ *                    follow-ups, closing, coming up (MyTasksPanel). Id "mine"
+ *   Journal          working notes beside the note, publish with an audience.
+ *                    Id "notes"
+ *   Capture          one composer for all of it (the header's + and Ask)
  *   Context Panel    detail beside the board, never a modal over it
+ *
+ * THE ONE HEADER (Relay room, Sep 28 2026): Relay's tabs, the time (the Now
+ * Bar's shift, gap and next session) and Tracking are in My Studio's header
+ * now (my-studio/StudioHeader), so this view draws no bar of its own. Which
+ * tab is showing is the shell's (it owns the header); this view keeps the
+ * tab's memory and acts on an arriving request. "Just now", the teammates'
+ * ticker that sat on the Now Bar, is a still list on the Board.
  *
  * Team was Relay's fourth tab and is My Studio → Team now (My Studio round,
  * Sep 2026): people and standards since the voice-review round (Sep 27
@@ -47,8 +52,8 @@ import "./board/relay.css";
  * tab, for franchise owners and the company. It moved to Operations →
  * Overview → All my studios in the voice-review round ("Relay must
  * prioritize the trainers transitioning between clients"), and the ranking
- * was dropped. So Relay is Floor · Mine · Notes, and every tab is
- * everyone's.
+ * was dropped. So Relay is Board · Tracker · Journal (Floor · Mine · Notes
+ * until the Relay room, Sep 28 2026), and every tab is everyone's.
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
@@ -74,17 +79,19 @@ forgetOnSignOut(() => {
   rememberedTab = "floor";
 });
 
-export interface PlannerViewProps {
-  authTrainer?: Trainer | null;
-  clients?: Client[];
-  trainers?: Trainer[];
-  onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
-}
-
-const TABS: { id: PlannerTab; label: string; icon: typeof Users }[] = [
-  { id: "floor", label: "Floor", icon: LayoutGrid },
-  { id: "mine", label: "Mine", icon: UserRound },
-  { id: "notes", label: "Notes", icon: StickyNote },
+/**
+ * Relay's tabs, in order: what the header draws. AJ (q1, Sep 28 2026):
+ * rename them **Board · Tracker · Journal** — his own three nouns, "a
+ * mission board, a mission tracker and a full on journal" — which also
+ * stops "Floor" meaning three things (Relay's tab, the machine map, and
+ * Operations → Floor). Only the words changed: the ids ("floor", "mine",
+ * "notes") are stored in bells' links, in intents and in this module's
+ * memory, so they never change.
+ */
+export const PLANNER_TABS: { id: PlannerTab; label: string; icon: LucideIcon }[] = [
+  { id: "floor", label: "Board", icon: LayoutGrid },
+  { id: "mine", label: "Tracker", icon: ListChecks },
+  { id: "notes", label: "Journal", icon: BookOpen },
 ];
 
 /** Which tab an arrival request opens. */
@@ -94,9 +101,33 @@ function tabFor(intent: PlannerIntent): PlannerTab {
   return "notes";
 }
 
-export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }: PlannerViewProps) {
-  const { activeStudioId } = useActiveStudio();
-  const { now, panel, openCapture, closePanel } = useRelay();
+/**
+ * The tab Relay opens on: an arriving request's (a client's profile, a
+ * notification), else the one this iPad was last on. The shell asks it once,
+ * when it mounts.
+ */
+export function initialPlannerTab(): PlannerTab {
+  const intent = peekPlannerIntent();
+  if (intent) rememberedTab = tabFor(intent);
+  return rememberedTab;
+}
+
+/** Remember the tab for the rest of this session (module memory, forgotten at sign-out). */
+export function rememberPlannerTab(tab: PlannerTab): void {
+  rememberedTab = tab;
+}
+
+export interface PlannerViewProps {
+  authTrainer?: Trainer | null;
+  clients?: Client[];
+  trainers?: Trainer[];
+  onOpenClientTask?: (clientId: string, action?: ClientTaskAction) => void;
+  /** The tab showing: the shell's header chooses it. */
+  tab: PlannerTab;
+}
+
+export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask, tab }: PlannerViewProps) {
+  const { panel, closePanel } = useRelay();
 
   // A request from a client's profile or a notification, read on arrival —
   // see ./intent.ts. Held until the trainer changes tab, so it acts once.
@@ -104,90 +135,53 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
   useEffect(() => {
     clearPlannerIntent(intent);
   }, [intent]);
-  // The tab on screen. Every tab is everyone's since Network left Relay.
-  const [shown, setShown] = useState<PlannerTab>(() => {
-    if (intent) rememberedTab = tabFor(intent);
-    return rememberedTab;
-  });
 
-  const clearIntent = useCallback(() => setIntent(null), []);
-  const choose = (next: PlannerTab) => {
-    rememberedTab = next;
-    setShown(next);
+  // A tab change drops the request and the panel of the tab being left.
+  const firstTab = useRef(tab);
+  useEffect(() => {
+    rememberPlannerTab(tab);
+    if (tab === firstTab.current) return;
+    firstTab.current = tab;
     setIntent(null);
     closePanel();
-  };
+  }, [tab, closePanel]);
 
+  const clearIntent = useCallback(() => setIntent(null), []);
   const openClient = onOpenClientTask ? (clientId: string) => onOpenClientTask(clientId) : undefined;
-  const closedRings = useClosedRings(activeStudioId ?? null);
 
   return (
-    <>
-      <div className="pl__subbar">
-        <div className="pl__tabs" role="tablist" aria-label="Relay">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`pl-tab-${id}`}
-              aria-selected={shown === id}
-              aria-controls="pl-panel"
-              aria-label={label}
-              className="pl__tab"
-              onClick={() => choose(id)}
-            >
-              <Icon size={14} aria-hidden />
-              <span className="pl__tab-label">{label}</span>
-            </button>
-          ))}
-        </div>
+    <div className="pl__frame">
+      <div className="pl__body" role="tabpanel" id="pl-panel" aria-labelledby={`pl-tab-${tab}`}>
+        {tab === "floor" && (
+          <StudioHubView
+            embedded
+            authTrainer={authTrainer}
+            clients={clients}
+            trainers={trainers}
+            onOpenClientTask={onOpenClientTask}
+            openJobId={intent?.kind === "open-job" ? intent.jobId : null}
+            onOpenedJob={clearIntent}
+          />
+        )}
+        {tab === "mine" && (
+          <MyTasksPanel
+            authTrainer={authTrainer}
+            clients={clients}
+            trainers={trainers}
+            onOpenClientTask={onOpenClientTask}
+          />
+        )}
+        {tab === "notes" && (
+          <NotesPanel
+            authTrainer={authTrainer}
+            clients={clients}
+            trainers={trainers}
+            intent={intent && tabFor(intent) === "notes" ? intent : null}
+            onOpenClient={openClient}
+          />
+        )}
       </div>
-
-      <NowBar now={now} studioId={activeStudioId ?? null} closedRings={closedRings} />
-
-      <div className="pl__frame">
-        <div className="pl__body" role="tabpanel" id="pl-panel" aria-labelledby={`pl-tab-${shown}`}>
-          {shown === "floor" && (
-            <StudioHubView
-              embedded
-              authTrainer={authTrainer}
-              clients={clients}
-              trainers={trainers}
-              onOpenClientTask={onOpenClientTask}
-              openJobId={intent?.kind === "open-job" ? intent.jobId : null}
-              onOpenedJob={clearIntent}
-            />
-          )}
-          {shown === "mine" && (
-            <MyTasksPanel
-              authTrainer={authTrainer}
-              clients={clients}
-              trainers={trainers}
-              onOpenClientTask={onOpenClientTask}
-            />
-          )}
-          {shown === "notes" && (
-            <NotesPanel
-              authTrainer={authTrainer}
-              clients={clients}
-              trainers={trainers}
-              intent={intent && tabFor(intent) === "notes" ? intent : null}
-              onOpenClient={openClient}
-            />
-          )}
-        </div>
-        <ContextPanel content={panel} onClose={closePanel} />
-      </div>
-
-      {/* Capture steps aside while the Context Panel is open: the panel's
-          foot (an ask's Done, Next up's Mark all) sits in the same corner. */}
-      {shown !== "notes" && !panel && (
-        <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
-          <Plus size={22} aria-hidden />
-          <span className="cf__label">Capture</span>
-        </button>
-      )}
-    </>
+      <ContextPanel content={panel} onClose={closePanel} />
+    </div>
   );
 }

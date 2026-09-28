@@ -355,7 +355,7 @@ export function ManagePanel({
           <p className="stm__empty">
             Nothing standing yet. These are the duties this studio is held to -
             cleaning, opening and closing, equipment checks, client follow-ups.
-            Trainers see them on Relay's Floor on the days they fall due, and
+            Trainers see them on Relay's Board, behind Floor work, on the days they fall due, and
             tick them off there.
           </p>
         ) : (

@@ -254,7 +254,7 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           </h3>
           <p className="pl__list-note">
             The standing duties {studioName} is held to, how each one went this week, initiatives, and the loops left
-            open. Trainers see the standing duties on Relay's Floor on the days they fall due.
+            open. Trainers see the standing duties on Relay's Board, behind Floor work, on the days they fall due.
           </p>
           {relay && (
             <OpenLoops

@@ -294,6 +294,10 @@ const IMPORT_ORIGINS: ReadonlySet<JournalOrigin> = new Set<JournalOrigin>([
  *   preference            -> Preference
  *   general               -> Preference ("Preferences & other")
  *   consultation          -> Admin
+ *   question              -> Coaching tip (an open question about one client,
+ *                                      from Relay: a coaching question, filed
+ *                                      with the cues it is about; its card says
+ *                                      "Open question from …", never Preference)
  *   any other import from the profile, Mindbody or the intake -> Admin
  *   anything unrecognised -> Preference ("& other"), never dropped
  */
@@ -310,6 +314,7 @@ export function noteCategoryOf(
   if (entry.isLegacy && IMPORT_ORIGINS.has(entry.origin)) return "admin";
   switch (entry.kind) {
     case "coaching":
+    case "question":
       return "coaching";
     case "equipment":
       return "equipment";
@@ -323,8 +328,20 @@ export function noteCategoryOf(
   }
 }
 
-/** The label a single card wears. Older "Note" entries keep saying Note. */
-export function noteCardLabel(entry: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">): string {
+/**
+ * The label a single card wears. Older "Note" entries keep saying Note. An
+ * open question (Relay room, Sep 28 2026) says whose it is while it is open,
+ * "Open question from Ioreth", and "Question, answered" once its thread is
+ * closed, so it reads as what it is on every card, the briefing's included.
+ */
+export function noteCardLabel(
+  entry: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy"> & Partial<Pick<JournalEntry, "authorName" | "resolvedAt">>,
+): string {
+  if (entry.kind === "question") {
+    if (entry.resolvedAt) return "Question, answered";
+    const first = (entry.authorName ?? "").trim().split(/\s+/)[0];
+    return first ? `Open question from ${first}` : "Open question";
+  }
   if (entry.kind === "coaching" && entry.category) return entry.category;
   if (entry.kind === "general" && !(entry.isLegacy && IMPORT_ORIGINS.has(entry.origin))) return "Note";
   return NOTE_CATEGORY_META[noteCategoryOf(entry)].label;
@@ -425,6 +442,8 @@ export function matchesSearch(entry: JournalEntry, needle: string): boolean {
     entry.legacySource ?? "",
     meta.label,
     meta.shelf,
+    // What the card itself says: "Open question from Ioreth" is found by "question".
+    noteCardLabel(entry),
   ]
     .join(" ")
     .toLowerCase();

@@ -216,6 +216,23 @@ describe("a thread on screen", () => {
     expect(byText("back")).toBeNull();
   });
 
+  it("an open question from Relay reads as one: whose it is, the whole exchange, and Answered to close it (Sep 28 2026)", () => {
+    mount(
+      [
+        entry({ id: "q", kind: "question", importance: "elevated", authorName: "Ioreth Healer", authorInitials: "IH", body: "Nancy isn't feeling her seated dip" }),
+        entry({ id: "q1", threadId: "q", kind: "question", importance: "standard", authorName: "Beregond Guard", authorInitials: "BG", body: "Beregond took it on.", occurredAt: new Date("2026-09-02T16:00:00Z") }),
+      ],
+      { defaultOpen: true },
+    );
+    expect(host.querySelector(".nt-cat")?.textContent).toBe("Open question from Ioreth");
+    expect(host.querySelector('[data-testid="spine-q"]')?.textContent).toContain("Beregond took it on.");
+    expect(byText("Answered")).not.toBeNull();
+    expect(host.textContent).not.toContain("Preference");
+    mount([entry({ id: "q", kind: "question", importance: "elevated", authorName: "Ioreth Healer", resolvedAt: new Date("2026-09-03T16:00:00Z") })]);
+    expect(host.querySelector(".nt-cat")?.textContent).toBe("Question, answered");
+    expect(byText("Open again")).not.toBeNull();
+  });
+
   it("an imported record is read-only — no update, no close, no ⋯ — and says where it lives", () => {
     mount([entry({ id: "a", isLegacy: true, legacySource: "Mindbody account notes", authorId: "unknown" })]);
     expect(byText("Add an update")).toBeNull();

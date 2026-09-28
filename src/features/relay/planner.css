@@ -1,14 +1,13 @@
 /* ==========================================================================
-   PLANNER — the masthead, My tasks, and (Phase 3) Notes
+   PLANNER — the segments, My tasks, and (Phase 3) Notes
    --------------------------------------------------------------------------
    Round: Learning + Planner, Sep 2026.
 
    On the Studio Hub's --st-* tokens (features/studio-tasks/studio-tasks.css),
    which carry the app's values (equipment.tokens.css), as Learning's --wk-*
-   do — both since Sep 27 2026. The masthead is deliberately the same shape
-   as Learning's — title, sections, and the context on the right — so the two
-   tabs AJ asked to be given "a good header" got the same one. Nothing here
-   writes a hex value.
+   do — both since Sep 27 2026. The masthead that was deliberately the same
+   shape as Learning's is My Studio's one header since the Relay room (Sep 28
+   2026, my-studio.css). Nothing here writes a hex value.
    ========================================================================== */
 
 .pl {
@@ -22,45 +21,14 @@
 .pl *, .pl *::before, .pl *::after { box-sizing: border-box; }
 
 /* ------------------------------------------------------------------ *
- * Masthead
- * ------------------------------------------------------------------ */
+ * Segments
+ * ------------------------------------------------------------------ *
+ * My Studio's masthead (the title, the sections, the studio and the day)
+ * became the one header in the Relay room, Sep 28 2026 (my-studio.css,
+ * .msh). What stays here is the segmented control and its lighter second
+ * level, which Openings' parts use (.pl__subbar). */
 
-.pl__mast {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 58px;
-  padding: 0.5rem 1rem;
-  background: var(--st-surface);
-  border-bottom: 1px solid var(--st-border);
-}
-
-.pl__brand {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--st-ink);
-}
-.pl__brand svg { flex: none; color: var(--st-hero); }
-
-/* The page-title voice (the codex's .cx-page-title): the display face,
-   800, slanted capitals — at 17px, the scale's heading size, because this
-   is a bar and not a page. Learning's masthead takes the same voice; the
-   slant was a faked italic of the body face until Sep 27 2026. */
-.pl__title {
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 800;
-  font-style: italic;
-  line-height: 1.1;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-/* The sections: the same segmented control as Learning's .wk__seg--bar. */
+/* The same segmented control as Learning's .wk__seg--bar. */
 .pl__tabs {
   flex: none;
   display: inline-flex;
@@ -98,24 +66,11 @@
 }
 .pl__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
 
-.pl__where {
-  margin-left: auto;
-  min-width: 0;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--st-ink-muted);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-/* My Studio round (Sep 2026): the masthead above is My Studio's — its
-   sections are Relay · Machines · Team · Studio — and Relay's own tabs
-   (Floor · Mine · Notes) sit on a second row under it. That row was a second
-   copy of the segmented control, so a trainer saw two rows of tabs of equal
-   weight; since Sep 27 2026 it is a lighter second level: plain words,
-   the chosen one underlined in the action blue, on a hairline. */
+/* A second level under the header: plain words, the chosen one underlined
+   in the action blue, on a hairline. Relay's own tabs sat here until the
+   Relay room moved them into the one header (Sep 28 2026); Openings' parts
+   still do. It was a second copy of the segmented control until Sep 27 2026,
+   so a trainer saw two rows of tabs of equal weight. */
 .pl__subbar {
   flex: none;
   display: flex;
@@ -151,10 +106,7 @@
 .pl__subbar .pl__tab:focus-visible { outline-offset: -2px; }
 
 @media (max-width: 640px) {
-  .pl__mast { gap: 0.5rem; }
-  .pl__title { display: none; }
   .pl__tab { padding: 0 0.625rem; }
-  .pl__tab-label { display: none; }
 }
 
 /* The tab's content fills what is left. Each panel brings its own scroller
@@ -210,7 +162,7 @@
  * The studio hub, embedded (StudioHubView `embedded`)
  * ------------------------------------------------------------------ */
 
-/* The masthead already says which studio and which day, so the hub's own
+/* The header already says which studio and which day, so the hub's own
    header becomes a slim toolbar: what this tab is, and its two switches. */
 .st__head--embedded { padding: 0.625rem 0; }
 .st__sub-title {
@@ -359,10 +311,6 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--st-ink-muted);
-}
-
-@media (min-width: 1024px) {
-  .pl__mast { padding: 0.5rem 1.5rem; }
 }
 
 /* ------------------------------------------------------------------ *

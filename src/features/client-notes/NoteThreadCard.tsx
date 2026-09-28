@@ -42,8 +42,8 @@ import { studioDateKey } from "../../lib/studio-time";
 import { LOUDNESS_TONE } from "../rating/Loudness";
 import { addThreadUpdate, archiveThread, closeThread, reopenThread } from "./thread-write";
 import { updateCountLabel, type NoteThread } from "./threads";
-import { noteCardLabel, noteCategoryOf } from "./note-catalog";
-import { NoteCategoryIcon } from "./NoteCategoryChips";
+import { noteCardLabel } from "./note-catalog";
+import { NoteRootIcon } from "./NoteCategoryChips";
 import { windowEnded } from "./mattering";
 import { closeWordsOf, shortDay, threadCardMeta, whoOf, type BriefingStatus } from "./record-selectors";
 import "./notes-page.css";
@@ -236,7 +236,7 @@ export function NoteThreadCard({
     <article className={className} id={`thread-${root.id}`} data-testid={`thread-${root.id}`}>
       <div className="nt-top">
         <span className="nt-cat">
-          <NoteCategoryIcon id={noteCategoryOf(root)} className="nt-cat__icon" />
+          <NoteRootIcon entry={root} className="nt-cat__icon" />
           {noteCardLabel(root)}
         </span>
         {root.kind === "life" && root.category ? <span className="nt-chip">{root.category}</span> : null}

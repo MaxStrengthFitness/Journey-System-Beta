@@ -1,10 +1,11 @@
 /* ==========================================================================
    MY STUDIO — the studio's home on the bottom bar (My Studio round, Sep 2026)
    --------------------------------------------------------------------------
-   The shell reuses Relay's masthead, frame, Context Panel and Capture button
-   (features/relay/planner.css, relay/board/relay.css) so the four sections
-   read as one screen. What is here is only what the other sections add: a
-   plain scrolling body for a section that has no scroller of its own. Tokens
+   The shell reuses Relay's frame and Context Panel (features/relay/
+   planner.css, relay/board/relay.css) so the five sections read as one
+   screen, and draws its own one header (below). The rest is what the other
+   sections add: a plain scrolling body for a section that has no scroller of
+   its own. Tokens
    are the Studio Hub's --st-*, except where a rule sits among the Operations
    kit's panels (Machines, Studio, Team's staff) and takes their --adm-*:
    the waiting notice's link, and the sentences inside a panel (.ms__line,
@@ -12,24 +13,305 @@
    holds that for every stylesheet My Studio draws with.
    ========================================================================== */
 
-/* The masthead with five sections (Relay · Openings · Machines · Team ·
-   Studio). Measured in headless Chrome when Openings joined (Sep 27 2026):
-   at 744px (an iPad mini in portrait) the studio-and-date line was squeezed
-   to 60px and wrapped onto four lines, making the bar 73px tall. So in
-   portrait it moves under the tabs. The masthead is MyStudioView's, so its
-   rule is here, in the stylesheet MyStudioView imports (it was in
-   openings.css until the round's integration pass). */
+/* ------------------------------------------------------------------ *
+ * The one header (StudioHeader, Relay room, Sep 28 2026)
+ * ------------------------------------------------------------------ *
+ * My Studio's masthead, Relay's tabs and the Now Bar were three bars, about a
+ * quarter of an upright iPad before any work. They are one: the section (its
+ * menu holds the five), Relay's tabs, the time, Tracking, Ask and +. One row
+ * on a landscape iPad; upright, the time and Tracking take a second row. It is
+ * MyStudioView's, so its rules are here, in the stylesheet MyStudioView and
+ * StudioHeader import (the masthead's portrait rule lived here too). */
+
+.msh {
+  flex: none;
+  position: relative;
+  z-index: 8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 64px;
+  padding: 0.5rem 1rem;
+  background: var(--st-surface);
+  border-bottom: 1px solid var(--st-border);
+}
+
+.msh__sect-wrap,
+.msh__track-wrap,
+.msh__plus-wrap {
+  position: relative;
+  flex: none;
+  display: flex;
+}
+
+/* The section: "My Studio" small, the section in the page-title voice. */
+.msh__sect {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  min-height: 48px;
+  padding: 3px 10px 3px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.msh__sect:hover,
+.msh__sect[aria-expanded="true"] { background: var(--st-surface-2); }
+.msh__sect:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.msh__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+}
+.msh__kicker svg { color: var(--st-hero); }
+.msh__sect-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  font-style: italic;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.msh__sect-name svg { flex: none; color: var(--st-ink-muted); }
+
+/* A popover under its button: the sections, Tracking, the + menu. */
+.msh__pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 15rem;
+  max-width: min(92vw, 22rem);
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  box-shadow: 0 10px 30px var(--st-shadow);
+}
+.msh__track-wrap > .msh__pop,
+.msh__plus-wrap > .msh__pop { left: auto; right: 0; }
+.msh__pop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.375rem 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.msh__pop-item svg { flex: none; color: var(--st-ink-2); }
+.msh__pop-item:hover,
+.msh__pop-item:focus-visible { background: var(--st-surface-2); outline: none; }
+.msh__pop-item[aria-checked="true"] { background: var(--st-live-fill); color: var(--st-live); }
+.msh__pop-item[aria-checked="true"] svg { color: var(--st-live); }
+.msh__pop-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
+.msh__pop-hint { font-size: 12px; font-weight: 600; color: var(--st-ink-muted); }
+.msh__pop-tick { margin-left: auto; }
+.msh__pop-head {
+  margin: 0;
+  padding: 0.5rem 12px 0.25rem;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+  overflow-wrap: anywhere;
+}
+.msh__pop-note { margin: 0; padding: 0.375rem 12px 0.5rem; font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); }
+
+/* Relay's tabs: a segmented control, the chosen one filled in the action blue's
+   ink, 44px (they are what a trainer taps most in the bar). */
+.msh__tabs {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface-2);
+}
+.msh__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--st-ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.msh__tab svg { flex: none; }
+.msh__tab[aria-selected="true"] {
+  background: var(--st-surface);
+  color: var(--st-live);
+  box-shadow: 0 1px 2px var(--st-shadow);
+}
+.msh__tab:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+/* The time: the shift, the minutes free and the next session, a tap to unfold
+   the day strip. It wraps before it cuts a client's name. */
+.msh__now {
+  flex: 1 1 16rem;
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "a chev" "b chev";
+  align-items: center;
+  gap: 2px 8px;
+  padding: 4px 8px 4px 12px;
+  border: 0;
+  border-left: 1px solid var(--st-border);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.msh__now:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; border-radius: 8px; }
+.msh__now-a { grid-area: a; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.msh__now-b { grid-area: b; font-size: 14px; font-weight: 700; color: var(--st-ink-2); overflow-wrap: anywhere; }
+.msh__now-chev { grid-area: chev; display: inline-flex; color: var(--st-ink-muted); }
+.msh__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--st-ink-2);
+  white-space: nowrap;
+}
+.msh__phase-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st-ink-faint); }
+.msh__phase--opening .msh__phase-dot { background: var(--st-hero); }
+.msh__phase--mid .msh__phase-dot { background: var(--st-done); }
+.msh__phase--closing .msh__phase-dot { background: var(--st-flag); }
+.msh__gap { font-size: 14px; font-weight: 800; color: var(--st-ink); }
+
+/* Tracking: dashed while nothing is taken, filled in the dealt card's orange
+   once something is. The job's name wraps; it is never cut. */
+.msh__track {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 22rem;
+  padding: 4px 14px 4px 12px;
+  border: 1px dashed var(--st-border-strong);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--st-ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.msh__track svg { flex: none; }
+.msh__track:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.msh__track--on { border-style: solid; border-color: var(--st-hero); background: var(--st-hero-fill); color: var(--st-ink); }
+.msh__track--on svg { color: var(--st-hero-text); }
+.msh__track-text { min-width: 0; overflow-wrap: anywhere; }
+
+/* Ask the team: the bar's one solid button. + is its quiet neighbour. */
+.msh__ask {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--st-live);
+  border-radius: 999px;
+  background: var(--st-live);
+  color: var(--st-live-on);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.msh__ask:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.msh__plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  cursor: pointer;
+}
+.msh__plus[aria-expanded="true"] { background: var(--st-surface-2); }
+.msh__plus:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* The other sections: the studio and the day, where Relay has its time. */
+.msh__where {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-ink-muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* Upright: the section, the tabs, Ask and + on the first row; the time and
+   Tracking on the second. At 744px (an iPad mini) the first row is about
+   600px, so nothing is squeezed. */
 @media (max-width: 899px) {
-  .ms > .pl__mast {
-    flex-wrap: wrap;
-    row-gap: 0.25rem;
+  .ms > .msh--relay {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "sect tabs . ask plus"
+      "now now now track track";
+    row-gap: 0.375rem;
+    column-gap: 0.5rem;
+    padding: 0.5rem 0.875rem 0.625rem;
   }
-  .ms > .pl__mast > .pl__where {
-    order: 3;
-    flex: 1 0 100%;
-    margin-left: 0;
-    text-align: left;
-  }
+  .ms > .msh--relay > .msh__sect-wrap { grid-area: sect; }
+  .ms > .msh--relay > .msh__tabs { grid-area: tabs; }
+  .ms > .msh--relay > .msh__now { grid-area: now; border-left: 0; padding-left: 4px; }
+  .ms > .msh--relay > .msh__track-wrap { grid-area: track; justify-self: end; }
+  .ms > .msh--relay > .msh__ask { grid-area: ask; }
+  .ms > .msh--relay > .msh__plus-wrap { grid-area: plus; }
 }
 
 /* A section body that scrolls as one page (the Team panel brings .st__scroll

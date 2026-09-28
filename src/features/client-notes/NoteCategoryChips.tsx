@@ -11,14 +11,16 @@ import {
   ClipboardList,
   Dumbbell,
   Heart,
+  MessageCircleQuestion,
   MessageSquare,
   Target,
   ThumbsUp,
 } from "lucide-react";
-import { getEntryVisual } from "../../types/journal";
+import { getEntryVisual, type JournalEntry } from "../../types/journal";
 import {
   COMPOSER_CATEGORIES,
   NOTE_CATEGORY_META,
+  noteCategoryOf,
   type NoteCategory,
   type NoteCategoryMeta,
 } from "./note-catalog";
@@ -42,6 +44,22 @@ export function categoryDotClass(id: NoteCategory): string {
 export function NoteCategoryIcon({ id, className }: { id: NoteCategory; className?: string }) {
   const Icon = NOTE_ICONS[NOTE_CATEGORY_META[id].icon] || MessageSquare;
   return <Icon className={className ?? "h-4 w-4"} aria-hidden />;
+}
+
+/**
+ * The glyph a note's own card wears: its category's, except an open question
+ * (Relay room, Sep 28 2026), which is filed under Coaching tip but is drawn as
+ * the question it is.
+ */
+export function NoteRootIcon({
+  entry,
+  className,
+}: {
+  entry: Pick<JournalEntry, "kind" | "category" | "origin" | "isLegacy">;
+  className?: string;
+}) {
+  if (entry.kind === "question") return <MessageCircleQuestion className={className ?? "h-4 w-4"} aria-hidden />;
+  return <NoteCategoryIcon id={noteCategoryOf(entry)} className={className} />;
 }
 
 export function NoteCategoryChips({

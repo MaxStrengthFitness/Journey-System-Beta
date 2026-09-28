@@ -6,7 +6,7 @@ context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
 the studio's staff), and the Network tab moved to Operations → Overview → All
 my studios (voice-review round, Sep 27 2026; its ranking of studios was
-dropped), so the board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
+dropped), so the board's tabs were **Floor · Mine · Notes**, and since the Relay room (Sep 28 2026; AJ, q1) they read **Board · Tracker · Journal** (the ids `floor`, `mine`, `notes` never change). Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
 
@@ -38,13 +38,13 @@ this.
 
 ## Tabs
 
-Relay's tabs are **Floor · Mine · Notes**, and every one is everyone's. In
+Relay's tabs are **Board · Tracker · Journal** (Floor · Mine · Notes until the Relay room, Sep 28 2026; the ids stay), and every one is everyone's. In
 the Planner they were Studio · My tasks · Notes · Team.
 
 | Tab | What | Where the data lives |
 | --- | --- | --- |
-| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`): Next up, the shift rings, the Floor Map, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus as a quiet line (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
-| Mine | A trainer's own list (`MyTasksPanel`): today, handed to you, follow-ups, growth, reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
+| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`), drawn as **the Board** since the Relay room (Sep 28 2026, `board/Board.tsx`): Right now, five doors (Floor work · Desk work · Help a teammate · From leadership · Mine), one job dealt to you, Just now; behind the doors, unchanged: the shift rings, the shift strip and the Floor Map, client tasks and renewals, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
+| Mine | A trainer's own list, drawn as **the Tracker** since the Relay room (Sep 28 2026, `MyTasksPanel` over `tracker.ts`): lists by WHEN, not by where the work came from — **Today** (Handed to you · Now · Follow-ups · Closing), **Coming up**, **Anytime**, **Someday · Growth**, **Done** — with Tracking, the lists and + To-do, New reminder and All my tasks in a rail beside them (above them upright) | `trainers/{uid}/task*` — private by path, since the Settings-tiers round; and the studio's asks, rows and team jobs the Board reads |
 | Notes | A trainer's own notes, in folders, linked to clients, built over time; shared onto a client's record or with colleagues (`notes/`, with its own README) | `trainers/{uid}/notes`, `noteFolders`; copies at `clients/{id}/sharedNotes` and `studios/{s}/noteShares` |
 
 **Team is not a tab.** It is My Studio → Team (`team/TeamPanel`, mounted by
@@ -68,14 +68,20 @@ Overview for a franchise owner who sees one studio
 
   The old list and its `?classic-todo` escape hatch were deleted in the cost
   round (Sep 2026).
-- **A masthead like Learning's.** A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
+- **A masthead like Learning's** (Learning + Planner round). A title, the tabs, and the studio and day on the right. AJ said both screens lacked "a good header", and both got the same one.
   - Embedded in the Planner, the hub's own title and date give way to one line: "Shared with everyone at {studio}".
-  - Everything below the header is untouched.
+- **One header** (Relay room, Sep 28 2026; the redesign's phase 1, AJ's pick). My Studio's masthead, Relay's tabs and the Now Bar were three bars, about a quarter of an upright iPad before any work. They are one bar (`my-studio/StudioHeader`): the section (its menu holds the five sections), Relay's tabs, the time (the shift, minutes free, the next session; a tap unfolds the day strip), Tracking (the job you took, `board/tracked.ts`), Ask and +. The floating Capture button went with it: Ask asks the team, + holds your own to-do, reminder or note (and a leader's studio task or team job). "Just now" is a still list on the Floor (`board/JustNow.tsx`).
 - **My tasks shows what already existed.** Personal tasks were mixed into the studio's shift strip with a "Just you" badge. "New personal task" could only be reached through Manage → task form → back.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
   - If any of its reads fails, it says it couldn't load all of today's tasks — never "Nothing on your list today" (`useStudioTasks` now reports an `error`, and waits for the personal task list before it stops loading).
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
-- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are.
+- **Asking the team has its own sheet** (Relay room, Sep 28 2026; phase 7, `board/AskSheet.tsx`). The header's Ask opens six typed tiles (Cover me · A hand on the floor · Hand this off · A question · Something's broken · Other), each asking only for what it needs, and the same sheet opens from where the need is: a session on the day strip ("I need cover"), a client's task on Desk work ("Ask"), and the row of tiles behind Help a teammate. The header's + stays for your own to-dos. A leader's hand-off arrives already that person's (AJ, q5); a trainer's is an offer anyone can take. The cover ask does not keep its time as a field (not approved): the time is in its words.
+- **The open-questions trail** (AJ approved, Sep 28 2026). A question about one client opens a thread on her record, written by the asker (kind `question`, Heads up while it is open, labelled "Open question from {name}"); the ask keeps the thread's id (`taskRequests.threadId`, the one new field); every reply, take-over and the answer is written onto the thread by the person doing it, and the answer closes it. The rules are `studio-tasks/question-trail.ts` and `client-notes/thread-write.ts`; the words on the record are `client-notes/note-catalog.ts`. A question is answered, not ticked: the Board deals it with "Answer", the Tracker opens its answer box beside the list, and Help a teammate's lane names the client and keeps a closed question's answer on screen ("Answered lately").
+- **The Tracker sorts by when** (Relay room, Sep 28 2026; the redesign's phase 5, AJ's "mission tracker"). Mine had eight lanes that answered "whose is it" (your list, handed to you, team jobs, assigned at the studio, follow-ups, coming up, growth, done today) when a trainer between clients asks "what's next". The Tracker's rules are `tracker.ts` (+ test): Handed to you is work someone else put your name on (an ask handed to you, a chore a leader assigned, a team job with your name); Now is your own to-dos for today and what you took on the Board that is due today or overdue; Closing is your own to-dos for the end of the day (the closing shift, or a time from the studio's Closing on); Coming up is your timed to-dos in the next six days and what you took that is due later; Anytime is what you took with no day on it (a to-do you add always has one); Someday is Growth; Done is what you finished today, on your list, on the floor, on the board and in team jobs, newest first, and a tick on your own list can be taken back there. Nothing new is stored.
+  - **A leader's assignment is simply yours** (AJ, q5): Done and "I can't", never "Take it · Not me · Later". "I can't" puts an ask back on the board for anyone, steps you off a team job, or opens Capture to ask the team to take a chore (only a leader may take a name off a chore, by the rules). The first two can be undone for eight seconds (the Board's `UndoBar`); stepping back onto a job you were on rings nobody's bell.
+  - **An empty list is said only once every read has answered**: a read on its way is "Loading…", a failed one says some of the list couldn't be loaded, and neither says "Nothing on your list today".
+  - The list you are on is module memory, and a sign-out forgets it.
+- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are. Since the one header, a tab change asks about typing first (a leave scope in `MyStudioView`), as a section change does.
 - **A client's profile can open the Planner** at a note: **Write a plan**, **Jot a note**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
 - **A bell notification can open the Planner too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
 
@@ -93,9 +99,9 @@ Overview for a franchise owner who sees one studio
 
 | File | What |
 | --- | --- |
-| `PlannerView.tsx` | Relay's tab bar, the Now Bar and the board under My Studio's masthead (`features/my-studio/MyStudioView` owns the masthead, Capture and the Context Panel) |
+| `PlannerView.tsx` | Relay's tabs' content and the Context Panel beside it. Since the Relay room (Sep 28 2026) the tabs, the time and Tracking are in My Studio's one header (`features/my-studio/StudioHeader`), so the shell chooses the tab (`PLANNER_TABS`, `initialPlannerTab`, `rememberPlannerTab`) and a tab change is a leave scope |
 | `GlanceBand.tsx` | The Floor's three at-a-glance tiles, drawn by `studio-tasks/StudioHubView` (it was the Planner's Studio tab) |
-| `MyTasksPanel.tsx` + `my-tasks.ts` | Mine (it was My tasks), and its pure sorting |
+| `MyTasksPanel.tsx` + `tracker.ts` (+ test) + `tracker.css` | The Tracker (it was Mine, and My tasks before that), its pure lists by when, and its rail (prefix `rtk`). `Tracker.render.test.tsx` mounts it. `my-tasks.ts` keeps `taskMeta` (a row's small print); its `myTaskBuckets`, and `board/mine.ts`'s `handedAsks`, went with Mine |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | My Studio → Team, people and standards: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |

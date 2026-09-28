@@ -1,7 +1,9 @@
 /**
- * MY TASKS — a trainer's own list, sorted for a glance between sessions.
+ * MY TASKS — the small print of a trainer's own list.
  *
- * Round: Learning + Planner, Sep 2026.
+ * Round: Learning + Planner, Sep 2026. Since the Relay room (Sep 28 2026)
+ * the list itself is the Tracker, sorted by when in ./tracker.ts; this file
+ * keeps the line under a task's title (its time, its client, its machine).
  *
  * Personal tasks already existed (trainers/{uid}/task*, private by path — see
  * TaskScope in features/studio-tasks/types.ts). What did not exist was a place
@@ -18,44 +20,7 @@
  * PURE MODULE — no React, no Firestore.
  */
 
-import { taskScopeOf, type TaskRow } from "../studio-tasks/types";
-
-export interface MyTaskBuckets {
-  open: TaskRow[];
-  done: TaskRow[];
-  assigned: TaskRow[];
-}
-
-/** "HH:MM" first (earliest first), then untimed, then by title. */
-function byTimeThenTitle(a: TaskRow, b: TaskRow): number {
-  const ta = a.template.timeOfDay ?? "";
-  const tb = b.template.timeOfDay ?? "";
-  if (ta && tb && ta !== tb) return ta.localeCompare(tb);
-  if (ta && !tb) return -1;
-  if (!ta && tb) return 1;
-  return a.title.localeCompare(b.title);
-}
-
-export function myTaskBuckets(rows: TaskRow[], trainerId: string | null): MyTaskBuckets {
-  const open: TaskRow[] = [];
-  const done: TaskRow[] = [];
-  const assigned: TaskRow[] = [];
-  for (const r of rows) {
-    if (taskScopeOf(r.template) === "personal") {
-      if (r.status === "open") open.push(r);
-      else if (r.status === "done") done.push(r);
-      continue;
-    }
-    if (trainerId && r.status === "open" && r.instance?.assignedTo?.id === trainerId) {
-      assigned.push(r);
-    }
-  }
-  return {
-    open: open.sort(byTimeThenTitle),
-    done: done.sort(byTimeThenTitle),
-    assigned: assigned.sort(byTimeThenTitle),
-  };
-}
+import type { TaskRow } from "../studio-tasks/types";
 
 /** "09:30" -> "9:30 AM". Anything else is shown as it is. */
 export function timeLabel(hhmm: string | undefined): string | null {

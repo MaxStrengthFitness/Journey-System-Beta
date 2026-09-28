@@ -18,6 +18,15 @@
  * MINE is a filter, not a fifth lane. Almost all of it is derived from what
  * you already claimed or authored, so it costs no extra data.
  *
+ * INSIDE RELAY IT IS THE BOARD (Relay room, Sep 28 2026; the redesign's
+ * Mission Board, AJ's pick): one "Right now" sentence, five doors, one job
+ * dealt to you (relay/board/Board.tsx), and every lane below sorted behind
+ * the door where its work happens: the shift, the rings and the floor map
+ * behind Floor work; client tasks and renewals behind Desk work; the asks
+ * and the playbook behind Help a teammate; the network's focus and the
+ * initiatives behind From leadership; your team jobs behind Mine. The lanes
+ * themselves are unchanged. Mounted anywhere else, the lanes stack as below.
+ *
  * SELF-CONTAINED, DELIBERATELY
  * This took the same three props as the original StudioTasksView and fetches
  * everything else itself, so routing it was a one-line swap in AppContent.
@@ -64,11 +73,14 @@ import { JobComposer } from "../relay/jobs/JobComposer";
 import { JobSheet } from "../relay/jobs/JobSheet";
 import { isOnJob, isUpForGrabs, jobTopic } from "../relay/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../relay/GlanceBand";
-import { NextUpQueue } from "../relay/board/NextUpQueue";
+import { Board } from "../relay/board/Board";
+import { jobsBehind, type DoorId } from "../relay/board/doors";
 import { ShiftRings } from "../relay/board/ShiftRings";
 import { FloorMap } from "../relay/board/FloorMap";
 import { FocusBanner } from "../relay/board/FocusBanner";
 import { publishPulse, pulseEvents } from "../relay/board/pulse";
+import { publishTrackedProgress, useTracked } from "../relay/board/tracked";
+import { trackedLive } from "../relay/board/track-live";
 import { leadsHere } from "../relay/leads";
 import { useRelayMaybe } from "../relay/board/RelayContext";
 import type { TeamJob } from "../relay/jobs/types";
@@ -165,12 +177,17 @@ export function StudioHubView({
    */
   const ownerId = auth.currentUser?.uid ?? null;
 
-  const { rows, loading } = useStudioTasks(activeStudioId, {
+  const { rows, loading, error: tasksError } = useStudioTasks(activeStudioId, {
     ownerId,
     clientNames,
   });
   const { categories } = useStudioTaskCategories(activeStudioId);
-  const { open: openRequests, recentlyResolved } = useStudioRequests(activeStudioId ?? null);
+  const {
+    open: openRequests,
+    recentlyResolved,
+    loading: requestsLoading,
+    failed: requestsFailed,
+  } = useStudioRequests(activeStudioId ?? null);
   const { search, stale } = usePlaybook(activeStudioId ?? null);
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
@@ -313,60 +330,182 @@ export function StudioHubView({
     );
   }, [activeStudioId, relay, rows, teamJobs.jobs, openRequests, recentlyResolved]);
 
+  /*
+   * TRACKING (Relay room, Sep 28 2026). The header's chip shows the job this
+   * trainer took; this screen holds the live documents, so it says how the
+   * job stands now ("1 of 3") and lets go once it is done. Only once every
+   * read has answered: a list still loading, or one that failed, would read
+   * as "the job is gone" and drop work the trainer is still on.
+   */
+  const trackedNow = useTracked(activeStudioId ?? null, relay?.now.todayKey ?? todayKey);
+  const everyReadAnswered =
+    !loading && !tasksError && !requestsLoading && !requestsFailed && !teamJobs.loading && !teamJobs.error;
+  useEffect(() => {
+    if (!relay || !trackedNow || !everyReadAnswered) return;
+    publishTrackedProgress(
+      activeStudioId ?? null,
+      relay.now.todayKey,
+      trackedNow.id,
+      trackedLive(trackedNow.id, { rows, jobs: teamJobs.jobs, requests: openRequests }),
+    );
+  }, [relay, trackedNow, everyReadAnswered, activeStudioId, rows, teamJobs.jobs, openRequests]);
+
+  /* ------------------------------------------------------------------ *
+   * The Floor's own lanes. Inside Relay they sit behind the Board's doors
+   * (Relay room, Sep 28 2026); anywhere else they stack as they always did.
+   * Their logic is unchanged: the same props, the same writes.
+   * ------------------------------------------------------------------ */
+
+  const mineToggle = (
+    <button
+      type="button"
+      className="sh__mine"
+      aria-pressed={mineOnly}
+      onClick={() => setMineOnly((v) => !v)}
+    >
+      {mineOnly ? <UserRound size={14} /> : <Users size={14} />}
+      {mineOnly ? "Mine" : "Everyone"}
+    </button>
+  );
+
+  const shiftLanes = (
+    <>
+      <div id="planner-shift" />
+      {relay && !(loading && rows.length === 0) && (
+        <ShiftRings
+          rows={visibleShiftRows}
+          onOpen={() => document.getElementById("planner-strip")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        />
+      )}
+      <div id="planner-strip" />
+      {loading && rows.length === 0 ? (
+        <p className="sh__loading">Loading today…</p>
+      ) : (
+        <ShiftStrip
+          rows={visibleShiftRows}
+          studioCategories={categories}
+          busyIds={actions.busyIds}
+          trainerId={trainerId}
+          mineOnly={mineOnly}
+          onComplete={actions.complete}
+          onCompleteGroup={actions.completeGroup}
+          onReopen={actions.reopen}
+          onFlag={setNoteRow}
+          onToggleClaim={actions.toggleClaimGroup}
+          onAssign={canAssign ? setAssignGroup : undefined}
+        />
+      )}
+      {relay && <FloorMap rows={shiftRows} actions={actions} />}
+    </>
+  );
+
+  const jobsLane = (jobs: TeamJob[], opts: { title?: string; hideWhenEmpty?: boolean; canPost?: boolean } = {}) => (
+    <TeamJobsLane
+      jobs={jobs}
+      loading={teamJobs.loading}
+      error={teamJobs.error}
+      me={author}
+      mineOnly={mineOnly}
+      canPost={opts.canPost ?? leadsJobs}
+      title={opts.title}
+      hideWhenEmpty={opts.hideWhenEmpty}
+      onPost={() => (relay ? relay.openCapture({ destination: "someone", someoneForm: "job" }) : setComposingJob(true))}
+      onOpen={(job) => setOpenJobKey(job.id)}
+      onError={toastError}
+    />
+  );
+
+  const clientLanes = (
+    <>
+      <ClientTasksLane
+        rows={clientRows}
+        busyIds={actions.busyIds}
+        mineOnly={mineOnly}
+        currentUserId={trainerId}
+        onComplete={actions.complete}
+        onReopen={actions.reopen}
+        onOpenClientTask={onOpenClientTask}
+        onAskAbout={relay?.openAsk ? (client) => relay.openAsk?.({ tile: "question", client }) : undefined}
+      />
+      {/* Renewals round (Sep 2026): this week's clients with a renewal
+          conversation due, from their nightly snapshots. */}
+      <RenewalsLane
+        studioId={activeStudioId ?? null}
+        clients={clients}
+        onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
+      />
+    </>
+  );
+
+  const requestsLane = (kinds?: "asks" | "initiatives", title?: string) => (
+    <RequestsLane
+      studioId={activeStudioId ?? null}
+      author={author}
+      currentUserId={trainerId}
+      topic={topic}
+      mineOnly={mineOnly}
+      roster={roster}
+      clients={clients}
+      kinds={kinds}
+      title={title}
+    />
+  );
+
+  const playbookLane = (
+    <PlaybookLane
+      search={search}
+      stale={stale}
+      trainerId={trainerId}
+      todayKey={todayKey}
+      onConfirm={onConfirm}
+      onRetire={onRetire}
+    />
+  );
+
+  /** What sits behind each of the Board's doors: the Floor's lanes, sorted by where the work happens. */
+  const behind = (door: DoorId) => {
+    switch (door) {
+      case "floor":
+        return (
+          <>
+            <div className="sh__head-actions rbd-tools">{mineToggle}</div>
+            {shiftLanes}
+            {jobsLane(jobsBehind("floor", teamJobs.jobs), { title: "Team jobs" })}
+          </>
+        );
+      case "desk":
+        return (
+          <>
+            <div className="sh__head-actions rbd-tools">{mineToggle}</div>
+            {clientLanes}
+            {jobsLane(jobsBehind("desk", teamJobs.jobs), { title: "Team jobs for clients", hideWhenEmpty: true, canPost: false })}
+          </>
+        );
+      case "help":
+        return (
+          <>
+            <div className="sh__head-actions rbd-tools">{mineToggle}</div>
+            {requestsLane("asks", "Asks from teammates")}
+            {playbookLane}
+          </>
+        );
+      case "lead":
+        return (
+          <>
+            <FocusBanner />
+            {requestsLane("initiatives", "Initiatives")}
+          </>
+        );
+      case "mine":
+        return jobsLane(teamJobs.jobs, { title: "Your team jobs", hideWhenEmpty: true, canPost: false });
+    }
+  };
+
   return (
     <div className="st">
       <div className="st__scroll touch-pane">
-        <header className={cn("st__head", embedded && "st__head--embedded")}>
-          {embedded && relay ? (
-            <p className="st__sub-title">Shared with everyone at {activeStudio?.name ?? "the studio"}</p>
-          ) : embedded ? (
-            <GlanceBand counts={glance} loading={loading && rows.length === 0} />
-          ) : (
-            <div>
-              <h1 className="st__title">Studio hub</h1>
-              <span className="st__date">
-                {activeStudio?.name ?? "Studio"} ·{" "}
-                {formatStudioDate(
-                  todayKey ? `${todayKey}T12:00:00` : new Date(),
-                  { weekday: "short", month: "short", day: "numeric" },
-                )}
-              </span>
-            </div>
-          )}
-
-          {/*
-            MINE sits in the header rather than among the topic chips because
-            it is a different KIND of filter: the chips narrow the board by
-            SUBJECT, this narrows every lane by PERSON.
-
-            It genuinely narrows every lane as of Sep 2026. Until then this
-            comment claimed it did while `mineOnly` was passed to two lanes of
-            four -- the shift strip could not honour it, because no row knew
-            whose it was. The Playbook is the deliberate exception and always
-            will be: it is the studio's accumulated knowledge, and "only show
-            me what I wrote" is the opposite of what it is for.
-          */}
-          <div className="sh__head-actions">
-            <button
-              type="button"
-              className="sh__mine"
-              aria-pressed={mineOnly}
-              onClick={() => setMineOnly((v) => !v)}
-            >
-              {mineOnly ? <UserRound size={14} /> : <Users size={14} />}
-              {mineOnly ? "Mine" : "Everyone"}
-            </button>
-
-          </div>
-        </header>
-
-        {/*
-          Loading is said once, at the top, rather than as a spinner per lane.
-          Four spinners on a tablet reads as four things going wrong.
-        */}
-        {relay && <FocusBanner />}
-        {relay && (
-          <NextUpQueue
+        {relay ? (
+          <Board
             rows={rows}
             jobs={teamJobs.jobs}
             requests={openRequests}
@@ -375,107 +514,64 @@ export function StudioHubView({
             onOpenJob={(job) => setOpenJobKey(job.id)}
             onOpenClientTask={onOpenClientTask}
             loading={loading && rows.length === 0}
+            behind={behind}
+            resolved={recentlyResolved}
+            unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
           />
-        )}
-        <div id="planner-shift" />
-        {relay && !(loading && rows.length === 0) && (
-          <ShiftRings
-            rows={visibleShiftRows}
-            onOpen={() => document.getElementById("planner-strip")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          />
-        )}
-        <div id="planner-strip" />
-        {loading && rows.length === 0 ? (
-          <p className="sh__loading">Loading today…</p>
         ) : (
-          <ShiftStrip
-            rows={visibleShiftRows}
-            studioCategories={categories}
-            busyIds={actions.busyIds}
-            trainerId={trainerId}
-            mineOnly={mineOnly}
-            onComplete={actions.complete}
-            onCompleteGroup={actions.completeGroup}
-            onReopen={actions.reopen}
-            onFlag={setNoteRow}
-            onToggleClaim={actions.toggleClaimGroup}
-            onAssign={canAssign ? setAssignGroup : undefined}
-          />
-        )}
-
-        {relay && <FloorMap rows={shiftRows} actions={actions} />}
-
-        <nav className="sh__chips" aria-label="Filter the board" id="planner-board">
-          {TOPICS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={cn("sh__chip", topic === t && "sh__chip--on")}
-              aria-pressed={topic === t}
-              onClick={() => setTopic(t)}
-            >
-              {BOARD_TOPIC_LABEL[t]}
-              {counts[t] > 0 && (
-                <span className="sh__chip-count tabular">{counts[t]}</span>
+          <>
+            <header className={cn("st__head", embedded && "st__head--embedded")}>
+              {embedded ? (
+                <GlanceBand counts={glance} loading={loading && rows.length === 0} />
+              ) : (
+                <div>
+                  <h1 className="st__title">Studio hub</h1>
+                  <span className="st__date">
+                    {activeStudio?.name ?? "Studio"} ·{" "}
+                    {formatStudioDate(
+                      todayKey ? `${todayKey}T12:00:00` : new Date(),
+                      { weekday: "short", month: "short", day: "numeric" },
+                    )}
+                  </span>
+                </div>
               )}
-            </button>
-          ))}
-        </nav>
 
-        {topic !== "initiatives" && (
-          <TeamJobsLane
-            jobs={visibleJobs}
-            loading={teamJobs.loading}
-            error={teamJobs.error}
-            me={author}
-            mineOnly={mineOnly}
-            canPost={leadsJobs}
-            onPost={() => (relay ? relay.openCapture({ destination: "someone", someoneForm: "job" }) : setComposingJob(true))}
-            onOpen={(job) => setOpenJobKey(job.id)}
-            onError={toastError}
-          />
+              {/*
+                MINE sits in the header rather than among the topic chips because
+                it is a different KIND of filter: the chips narrow the board by
+                SUBJECT, this narrows every lane by PERSON. The Playbook is the
+                deliberate exception and always will be: it is the studio's
+                accumulated knowledge, and "only show me what I wrote" is the
+                opposite of what it is for.
+              */}
+              <div className="sh__head-actions">{mineToggle}</div>
+            </header>
+
+            {shiftLanes}
+
+            <nav className="sh__chips" aria-label="Filter the board" id="planner-board">
+              {TOPICS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={cn("sh__chip", topic === t && "sh__chip--on")}
+                  aria-pressed={topic === t}
+                  onClick={() => setTopic(t)}
+                >
+                  {BOARD_TOPIC_LABEL[t]}
+                  {counts[t] > 0 && (
+                    <span className="sh__chip-count tabular">{counts[t]}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            {topic !== "initiatives" && jobsLane(visibleJobs)}
+            {showClients && clientLanes}
+            {requestsLane()}
+            {playbookLane}
+          </>
         )}
-
-        {showClients && (
-          <ClientTasksLane
-            rows={clientRows}
-            busyIds={actions.busyIds}
-            mineOnly={mineOnly}
-            currentUserId={trainerId}
-            onComplete={actions.complete}
-            onReopen={actions.reopen}
-            onOpenClientTask={onOpenClientTask}
-          />
-        )}
-
-        {/* Renewals round (Sep 2026): this week's clients with a renewal
-            conversation due, from their nightly snapshots. */}
-        {showClients && (
-          <RenewalsLane
-            studioId={activeStudioId ?? null}
-            clients={clients}
-            onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
-          />
-        )}
-
-        <RequestsLane
-          studioId={activeStudioId ?? null}
-          author={author}
-          currentUserId={trainerId}
-          topic={topic}
-          mineOnly={mineOnly}
-          roster={roster}
-          clients={clients}
-        />
-
-        <PlaybookLane
-          search={search}
-          stale={stale}
-          trainerId={trainerId}
-          todayKey={todayKey}
-          onConfirm={onConfirm}
-          onRetire={onRetire}
-        />
       </div>
 
       <JobComposer

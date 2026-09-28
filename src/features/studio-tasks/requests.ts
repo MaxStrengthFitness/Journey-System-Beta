@@ -245,6 +245,17 @@ export interface TaskRequest {
   /** One tap of thanks per person: { [uid]: true }. */
   kudos?: Record<string, true>;
 
+  /*
+   * THE OPEN-QUESTIONS TRAIL (Relay room, Sep 28 2026; AJ approved the one
+   * field). A question about ONE client opens a thread on her record
+   * (journalEntries, kind "question"), written by the asker; this is that
+   * thread's root id. Every reply, take-over and the answer is written onto
+   * the thread by the person doing it (question-trail.ts, through
+   * client-notes/thread-write.ts), and the answer closes it. Absent on every
+   * other ask.
+   */
+  threadId?: string;
+
   createdBy: TaskAuthor;
   createdAt?: unknown;
 
@@ -337,6 +348,8 @@ export interface CreateRequestInput {
   dueOn?: string;
   estMinutes?: number;
   notifyOnDone?: boolean;
+  /** A question about one client: its thread on her record (see TaskRequest.threadId). */
+  threadId?: string;
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<string> {
@@ -363,6 +376,7 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     ...(input.dueOn ? { dueOn: input.dueOn } : {}),
     ...(typeof input.estMinutes === "number" ? { estMinutes: input.estMinutes } : {}),
     ...(input.notifyOnDone ? { notifyOnDone: true } : {}),
+    ...(input.threadId ? { threadId: input.threadId } : {}),
 
     createdBy: author,
     createdAt: serverTimestamp(),
@@ -399,6 +413,29 @@ export async function setRequestClaim(params: {
     claimedBy: claimed ? author : null,
     claimedAt: claimed ? serverTimestamp() : null,
   });
+}
+
+/**
+ * Put a name on an ask, or take it off (Relay room, Sep 28 2026).
+ *
+ * AJ, q5: "Trainers can post offers where other trainers can pick it up but
+ * leadership can just directly assign." A leader's Who? faces on the Board
+ * write this: the ask arrives as that person's, under Handed to you. With
+ * `null` the name comes off and the ask is an offer on the board again,
+ * which is how the person named says they can't take it. `forId` and
+ * `forName` are the two fields a hand-off has always carried; nothing new is
+ * stored, and a name is still a heads-up, never a lock (anyone may close it).
+ */
+export async function setRequestFor(params: {
+  studioId: string;
+  requestId: string;
+  person: TaskAuthor | null;
+}): Promise<void> {
+  const { studioId, requestId, person } = params;
+  await updateDoc(
+    requestDocRef(studioId, requestId),
+    person ? { forId: person.id, forName: person.name } : { forId: deleteField(), forName: deleteField() },
+  );
 }
 
 export async function resolveRequest(params: {

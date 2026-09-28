@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Building2, CalendarRange, Dumbbell, Plus, Settings2, Users, Zap } from "lucide-react";
+import { BellPlus, CalendarRange, ClipboardList, Dumbbell, ListChecks, Settings2, StickyNote, Users, UsersRound, Zap } from "lucide-react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import type { Client, Machine, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { ClientTaskAction } from "../studio-tasks/types";
-import { PlannerView } from "../relay/PlannerView";
+import { reminderPreset } from "../studio-tasks/task-wizard";
+import { PLANNER_TABS, PlannerView, initialPlannerTab, rememberPlannerTab, type PlannerTab } from "../relay/PlannerView";
 import { TeamSection } from "./TeamSection";
 import { StudioSection } from "./StudioSection";
 import { MachinesSection } from "./MachinesSection";
@@ -14,10 +15,14 @@ import { mayReadWeeks } from "../standing-week/present";
 import { peekPlannerIntent } from "../relay/intent";
 import { RelayProvider, useRelay, type PanelContent, type RelayContextValue } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
-import { useNowContext } from "../relay/board/NowBar";
+import { DayStrip, useNowContext } from "../relay/board/NowBar";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { CaptureSheet } from "../relay/board/CaptureSheet";
 import type { CapturePreset } from "../relay/board/capture";
+import { AskSheet } from "../relay/board/AskSheet";
+import { coverPresetOf, type AskPreset } from "../relay/board/ask";
+import { untrack, useTracked } from "../relay/board/tracked";
+import { StudioHeader, type HeaderMenuItem, type HeaderSection } from "./StudioHeader";
 import "../studio-tasks/studio-tasks.css";
 import "../studio-tasks/studio-hub.css";
 import "../relay/kit.css";
@@ -38,8 +43,8 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * control over its own studio", so the Relay tab becomes **My Studio**, with
  * Relay as a section inside it, and the studio's own world beside it:
  *
- *   Relay      the board for the trainer between clients: Floor · Mine ·
- *              Notes, the Now Bar, Capture (features/relay/PlannerView).
+ *   Relay      the board for the trainer between clients: Board · Tracker ·
+ *              Journal, and Capture (features/relay/PlannerView).
  *              Its Network tab moved to Operations → Overview → All my
  *              studios on Sep 27 2026, and its ranking of studios was dropped
  *   Openings   when the studio is usually busy, what opened up, and what to
@@ -55,6 +60,15 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  *   Studio     the studio's own record: details, the cutover date, hours,
  *              renewal settings, announcements (phase 2)
  *
+ * THE ONE HEADER (Relay room, Sep 28 2026, the redesign's phase 1). My
+ * Studio's masthead, Relay's tabs and the Now Bar were three bars; they are
+ * one (StudioHeader): the section, whose menu holds the five; on Relay its
+ * tabs, the time (tap for the day strip) and Tracking; then Ask and +. The
+ * floating Capture button went with it: Ask asks the team (the Ask sheet's
+ * six typed tiles since phase 7, relay/board/AskSheet, held here beside
+ * Capture and opened through RelayContext's openAsk), + is something just
+ * for you (or, for a leader, a studio task or a team job).
+ *
  * Who sees what: everyone at the studio gets Relay and Machines; Openings is
  * everyone who may read the studio's standing weeks (`mayReadWeeks`: the
  * people who work there, franchise owners and administrators), because it
@@ -66,7 +80,7 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * "Leaders edit it; trainers can view it read-only"). Hiding a section is a
  * convenience; the rules are the boundary.
  *
- * The Relay context (RelayContext) is owned HERE now rather than by
+ * The Relay context (RelayContext) is owned HERE rather than by
  * PlannerView, so a card on any section — a machine flag on Team, a note
  * from Studio — can open Capture or the Context Panel through the same two
  * doors the board uses. "My Studio is where you run the studio; Operations
@@ -86,20 +100,19 @@ export type { MyStudioSection };
  * everyone who works here may read (the rules let them read the studio, its
  * renewal settings and its notices) and only its leaders change.
  */
-const SECTIONS: { id: MyStudioSection; label: string; icon: typeof Users; tier?: "leads" | "weeks" | "reads" }[] = [
+const SECTIONS: (HeaderSection & { tier?: "leads" | "weeks" | "reads" })[] = [
   { id: "relay", label: "Relay", icon: Zap },
   { id: "openings", label: "Openings", icon: CalendarRange, tier: "weeks" },
   { id: "machines", label: "Machines", icon: Dumbbell },
-  { id: "team", label: "Team", icon: Users, tier: "leads" },
+  { id: "team", label: "Team", icon: Users, tier: "leads", note: "The studio's leaders" },
   { id: "studio", label: "Studio", icon: Settings2, tier: "reads" },
 ];
-
 
 export interface MyStudioViewProps {
   authTrainer?: Trainer | null;
   clients?: Client[];
   trainers?: Trainer[];
-  /** The Calendar's rows (AppContent's useLiveSchedule): the Now Bar's clock. */
+  /** The Calendar's rows (AppContent's useLiveSchedule): the header's clock. */
   schedules?: ScheduleEntry[];
   /** Today's sessions at this studio (AppContent's useSessions): machine wear. */
   sessions?: WorkoutSession[];
@@ -167,6 +180,41 @@ export function MyStudioView({
   });
   useEffect(() => onMyStudioSectionRequest((next, arrive) => chooseRef.current(next, arrive)), []);
 
+  /*
+   * RELAY'S TABS live in the header now, so the shell holds which one shows.
+   * A tab unmounts the one before it (a note half-written on Notes, a task
+   * being edited on Mine), so a tab change asks about typing inside
+   * `relayScope` first, as a section change does (the Relay room, Sep 28
+   * 2026: the tabs were never a leave scope until they moved here).
+   */
+  const [relayTab, setRelayTab] = useState<PlannerTab>(initialPlannerTab);
+  const relayScope = useLeaveScope();
+  const chooseTab = useCallback(
+    (next: PlannerTab) => {
+      relayScope.guard(() => {
+        rememberPlannerTab(next);
+        setRelayTab(next);
+      });
+    },
+    [relayScope],
+  );
+
+  /**
+   * Straight to a Relay tab from anywhere in My Studio (the + menu's note,
+   * Tracking's "Show it"): from another section the tab is set only once the
+   * section move happens, so a "Keep editing" leaves both where they were.
+   */
+  const goToRelayTab = (tab: PlannerTab) => {
+    if (shown === "relay") {
+      chooseTab(tab);
+      return;
+    }
+    choose("relay", () => {
+      rememberPlannerTab(tab);
+      setRelayTab(tab);
+    });
+  };
+
   const todayKey = studioDateKey(new Date()) ?? "";
   const today = formatStudioDate(todayKey ? `${todayKey}T12:00:00` : new Date(), {
     weekday: "short",
@@ -178,13 +226,28 @@ export function MyStudioView({
 
   /* The clock. */
   const now = useNowContext(schedules ?? NONE, authTrainer, activeStudio?.shiftHours ?? null);
+  const [dayOpen, setDayOpen] = useState(false);
 
   /* The two doors any card can open. */
   const [panel, setPanel] = useState<PanelContent | null>(null);
   const [capture, setCapture] = useState<{ preset: CapturePreset } | null>(null);
   const openCapture = useCallback((preset: CapturePreset = {}) => setCapture({ preset }), []);
+  // Ask the team (phase 7): its own sheet; + stays for your own to-dos.
+  const [ask, setAsk] = useState<{ preset: AskPreset } | null>(null);
+  const openAsk = useCallback((preset: AskPreset = {}) => setAsk({ preset }), []);
   const openPanel = useCallback((content: PanelContent) => setPanel(content), []);
   const closePanel = useCallback(() => setPanel(null), []);
+
+  /* Tracking: the one job this trainer took (relay/board/tracked.ts). */
+  const tracked = useTracked(activeStudioId ?? null, now.todayKey);
+
+  // A card's door to one of Relay's tabs (the Board's Mine door ends with the
+  // way to Mine), through the same guarded move as the header's.
+  const goToRelayTabRef = useRef(goToRelayTab);
+  useEffect(() => {
+    goToRelayTabRef.current = goToRelayTab;
+  });
+  const openRelayTab = useCallback((tab: PlannerTab) => goToRelayTabRef.current(tab), []);
 
   const relay = useMemo<RelayContextValue>(
     () => ({
@@ -204,6 +267,8 @@ export function MyStudioView({
       openPanel,
       closePanel,
       onOpenClientTask,
+      openRelayTab,
+      openAsk,
     }),
     [
       activeStudioId,
@@ -221,87 +286,115 @@ export function MyStudioView({
       openPanel,
       closePanel,
       onOpenClientTask,
+      openRelayTab,
+      openAsk,
     ],
   );
+
+  /* The header's +: something just for you, and a leader's two forms. */
+  const plusItems: HeaderMenuItem[] = [
+    { id: "todo", label: "A to-do for me", icon: ListChecks, hint: "Only you see it", onSelect: () => openCapture({ destination: "me" }) },
+    {
+      id: "reminder",
+      label: "A reminder",
+      icon: BellPlus,
+      hint: "Rings on this iPad at the time",
+      onSelect: () => {
+        const preset = reminderPreset(todayKey, new Date());
+        openCapture({ destination: "me", time: preset.timeOfDay ?? null, remindMinutesBefore: 0 });
+      },
+    },
+    {
+      id: "note",
+      label: "A note",
+      icon: StickyNote,
+      hint: "Opens your notes",
+      onSelect: () => goToRelayTab("notes"),
+    },
+    ...(canLead
+      ? [
+          {
+            id: "task",
+            label: "A studio task",
+            icon: ClipboardList,
+            hint: "On the shift for everyone",
+            onSelect: () => openCapture({ destination: "floor", floorForm: "task" }),
+          },
+          {
+            id: "job",
+            label: "A team job",
+            icon: UsersRound,
+            hint: "Parts to tick off, people on it",
+            onSelect: () => openCapture({ destination: "someone", someoneForm: "job" }),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <RelayProvider value={relay}>
       <div className="pl ms" data-section={shown}>
-        <header className="pl__mast">
-          <div className="pl__brand">
-            <Building2 size={19} aria-hidden />
-            <span className="pl__title">My Studio</span>
-          </div>
+        <StudioHeader
+          sections={sections}
+          shown={shown}
+          onChooseSection={(id) => choose(id)}
+          relayTabs={PLANNER_TABS}
+          relayTab={relayTab}
+          onRelayTab={chooseTab}
+          now={now}
+          dayOpen={dayOpen}
+          onToggleDay={() => setDayOpen((v) => !v)}
+          studioName={activeStudio?.name ?? "Studio"}
+          todayLabel={today}
+          tracked={tracked}
+          onShowTracked={() => goToRelayTab("floor")}
+          onStopTracking={() => untrack(activeStudioId ?? null, now.todayKey)}
+          onAsk={() => openAsk()}
+          plusItems={plusItems}
+        />
 
-          <div className="pl__tabs" role="tablist" aria-label="My Studio">
-            {sections.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`ms-tab-${id}`}
-                aria-selected={shown === id}
-                aria-controls="ms-panel"
-                aria-label={label}
-                className="pl__tab"
-                onClick={() => choose(id)}
-              >
-                <Icon size={14} aria-hidden />
-                <span className="pl__tab-label">{label}</span>
-              </button>
-            ))}
-          </div>
-
-          <span className="pl__where">
-            {activeStudio?.name ?? "Studio"} · {today}
-          </span>
-        </header>
+        {shown === "relay" && dayOpen && <DayStrip now={now} onNeedCover={(session) => openAsk(coverPresetOf(session))} />}
 
         <UnsavedChangesScope scope={sectionScope}>
-        {shown === "relay" && (
-          <PlannerView
-            authTrainer={authTrainer}
-            clients={clients}
-            trainers={trainers}
-            onOpenClientTask={onOpenClientTask}
-          />
-        )}
+          {shown === "relay" && (
+            <UnsavedChangesScope scope={relayScope}>
+              <PlannerView
+                authTrainer={authTrainer}
+                clients={clients}
+                trainers={trainers}
+                onOpenClientTask={onOpenClientTask}
+                tab={relayTab}
+              />
+            </UnsavedChangesScope>
+          )}
 
-        {/* Openings draws its own frame too: its parts, and a time's sheet beside them. */}
-        {shown === "openings" && activeStudio && (
-          <OpeningsSection studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} />
-        )}
+          {/* Openings draws its own frame too: its parts, and a time's sheet beside them. */}
+          {shown === "openings" && activeStudio && (
+            <OpeningsSection studio={activeStudio} authTrainer={authTrainer ?? null} trainers={trainers ?? NONE} />
+          )}
 
-        {/* Machines draws its own frame: the machine's door is its own panel. */}
-        {shown === "machines" && <MachinesSection authTrainer={authTrainer} trainers={trainers} />}
+          {/* Machines draws its own frame: the machine's door is its own panel. */}
+          {shown === "machines" && <MachinesSection authTrainer={authTrainer} trainers={trainers} />}
 
-        {shown === "team" && (
-          <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
-            <TeamSection authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
-          </SectionFrame>
-        )}
+          {shown === "team" && (
+            <SectionFrame id="ms-panel" labelledBy="ms-tab-team">
+              <TeamSection authTrainer={authTrainer} clients={clients} trainers={trainers} onOpenClient={openClient} />
+            </SectionFrame>
+          )}
 
-        {shown === "studio" && (
-          <SectionFrame id="ms-panel" labelledBy="ms-tab-studio">
-            <StudioSection authTrainer={authTrainer} trainers={trainers} />
-          </SectionFrame>
-        )}
+          {shown === "studio" && (
+            <SectionFrame id="ms-panel" labelledBy="ms-tab-studio">
+              <StudioSection authTrainer={authTrainer} trainers={trainers} />
+            </SectionFrame>
+          )}
         </UnsavedChangesScope>
-
-        {/* Capture steps aside while the Context Panel is open, so it never
-            covers the panel's foot; Machines' own door is caught in relay.css. */}
-        {shown !== "relay" && !panel && (
-          <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
-            <Plus size={22} aria-hidden />
-            <span className="cf__label">Capture</span>
-          </button>
-        )}
 
         <CaptureSheet
           open={capture !== null}
           preset={capture?.preset ?? null}
           onOpenChange={(o) => !o && setCapture(null)}
         />
+        <AskSheet open={ask !== null} preset={ask?.preset ?? null} onOpenChange={(o) => !o && setAsk(null)} />
       </div>
     </RelayProvider>
   );
@@ -310,9 +403,9 @@ export function MyStudioView({
 /**
  * A section's frame: the body and, beside it, the Context Panel — a right
  * column in landscape, a bottom sheet in portrait (relay.css, .pl__frame /
- * .cp). Relay's own frame is drawn by PlannerView with its tabs and the Now
- * Bar above; the other sections use this one. The panel's content comes from
- * the shell's context, so a card on any section can open it.
+ * .cp). Relay's own frame is drawn by PlannerView; the other sections use
+ * this one. The panel's content comes from the shell's context, so a card on
+ * any section can open it.
  */
 export function SectionFrame({
   id,

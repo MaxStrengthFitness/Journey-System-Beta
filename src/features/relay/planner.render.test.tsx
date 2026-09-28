@@ -117,8 +117,7 @@ async function mount(authTrainer: unknown) {
   // The shell remembers the last section on this iPad (module memory), so a
   // test that ended on Team would hand the next one a board with no tabs.
   // Start each test on Relay, the way a person would tap back to it.
-  const relay = tab("Relay");
-  if (relay && relay.getAttribute("aria-selected") !== "true") await click(relay);
+  if (currentSection() !== "Relay") await openSection("Relay");
   return host;
 }
 
@@ -126,8 +125,35 @@ const settle = () => act(async () => {
   await new Promise((r) => setTimeout(r, 5));
 });
 
+/** Relay's own tabs (and any other tab list on screen). */
 function tab(name: string): HTMLButtonElement | undefined {
   return [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent?.includes(name));
+}
+
+/*
+ * My Studio's sections live in the one header's menu (Relay room, Sep 28
+ * 2026): the section button opens it, and each section is a menu item.
+ */
+function currentSection(): string | null | undefined {
+  return document.querySelector(".msh__sect-name")?.textContent;
+}
+
+async function sectionNames(): Promise<string[]> {
+  await click(document.querySelector(".msh__sect"));
+  const names = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map(
+    (b) => b.querySelector(".msh__pop-text")?.firstChild?.textContent ?? "",
+  );
+  await click(document.querySelector(".msh__sect"));
+  return names;
+}
+
+async function openSection(name: string) {
+  await click(document.querySelector(".msh__sect"));
+  await click(
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find(
+      (b) => b.querySelector(".msh__pop-text")?.firstChild?.textContent === name,
+    ),
+  );
 }
 
 async function click(el: Element | undefined | null) {
@@ -147,19 +173,44 @@ afterEach(() => {
 });
 
 describe("My Studio", () => {
-  it("mounts on Relay's Floor with the Now Bar, Next up, the shift rings and an empty team-jobs lane", async () => {
+  it("mounts on the Board: Right now, the five doors, the dealt card, Just now, and Floor work's lanes behind its door", async () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
     // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
     expect(h.textContent).toContain("Just now");
     expect(h.textContent).toContain("No sessions on your schedule");
-    expect(h.textContent).toContain("Next up");
-    expect(h.textContent).toContain("Nothing waiting on the Floor.");
+    // Right now won't guess how busy the floor is from a list with nothing on it.
+    expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
+    const doors = [...h.querySelectorAll(".rbd-door .rbd-door__label")].map((d) => d.textContent);
+    expect(doors).toEqual(["Floor work", "Desk work", "Help a teammate", "From leadership", "Mine"]);
+    expect(h.textContent).toContain("Dealt to you");
+    expect(h.textContent).toContain("Nothing waiting on the floor.");
+    // Behind Floor work: the shift rings, the floor map and the team jobs, unchanged.
+    expect(h.textContent).toContain("Behind Floor work");
     expect(h.querySelectorAll(".shr__ring")).toHaveLength(3);
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Team jobs");
     expect(h.textContent).toContain("Post a job");
+  });
+
+  it("opens each door on a tap and shows what sits behind it, with the way back to Relay's pick", async () => {
+    const h = await mount(lead);
+    const door = (label: string) => [...h.querySelectorAll<HTMLButtonElement>(".rbd-door")].find((d) => d.textContent?.includes(label));
+    await click(door("Help a teammate"));
+    expect(door("Help a teammate")?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.textContent).toContain("Behind Help a teammate");
+    expect(h.textContent).toContain("Asks from teammates");
+    expect(h.textContent).toContain("You opened Help a teammate.");
+    await click(door("From leadership"));
+    expect(h.textContent).toContain("Behind From leadership");
+    expect(h.textContent).toContain("No initiatives from the studio's leaders right now.");
+    await click(door("Desk work"));
+    expect(h.textContent).toContain("Behind Desk work");
+    await click(door("Mine"));
+    expect(h.textContent).toContain("Nothing on the board has your name on it right now.");
+    await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("Back to Relay's pick")));
+    expect(h.textContent).toContain("Behind Floor work");
   });
 
   it("unfolds the day strip from the gap meter", async () => {
@@ -168,14 +219,62 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("The whole day is a gap");
   });
 
+  it("has one header: the section and its menu, Relay's tabs, the time, Tracking, Ask and + (Relay room, Sep 28 2026)", async () => {
+    const h = await mount(lead);
+    // One bar, not three: no masthead, no second row of Relay tabs, no Now Bar.
+    expect(h.querySelectorAll("header.msh")).toHaveLength(1);
+    expect(h.querySelector(".pl__mast")).toBeNull();
+    expect(h.querySelector(".pl__subbar")).toBeNull();
+    expect(h.querySelector(".rnb")).toBeNull();
+    expect(currentSection()).toBe("Relay");
+    expect(await sectionNames()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
+    expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Board", "Tracker", "Journal"]);
+    expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
+    // "Just now" is a still list on the Board, with nothing ticking.
+    expect(h.querySelector(".rjn")?.textContent).toContain("Quiet so far today.");
+    // A leader's + holds the studio task and the team job beside their own things.
+    await click(h.querySelector(".msh__plus"));
+    const plus = [...document.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent ?? "");
+    expect(plus.some((t) => t.startsWith("A to-do for me"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A studio task"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A team job"))).toBe(true);
+  });
+
+  it("opens Ask the team from the header's Ask: six tiles, and + stays for your own things (phase 7)", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__ask"));
+    expect(document.body.textContent).toContain("Ask the team");
+    expect([...document.querySelectorAll(".rak-tile__t")].map((t) => t.textContent)).toEqual([
+      "Cover me",
+      "A hand on the floor",
+      "Hand this off",
+      "A question",
+      "Something's broken",
+      "Other",
+    ]);
+    // Capture, the composer for your own to-dos, is not what Ask opens.
+    expect(document.body.textContent).not.toContain("Relay it");
+  });
+
+  it("keeps a trainer's + to their own things", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__plus"));
+    const plus = [...document.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent ?? "");
+    expect(plus.some((t) => t.startsWith("A to-do for me"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A reminder"))).toBe(true);
+    expect(plus.some((t) => t.startsWith("A studio task"))).toBe(false);
+    expect(plus.some((t) => t.startsWith("A team job"))).toBe(false);
+  });
+
   it("shows the Team section to a leader and walks every tab and section without throwing", async () => {
     const h = await mount(lead);
-    await click(tab("Mine"));
-    expect(h.textContent).toContain("Your list");
+    await click(tab("Tracker"));
+    // The Tracker (Relay room, Sep 28 2026): your lists by when.
+    expect(h.textContent).toContain("Someday · Growth");
     expect(h.textContent).toContain("New reminder");
-    await click(tab("Notes"));
+    await click(tab("Journal"));
     expect(h.textContent).toContain("New note");
-    await click(tab("Team"));
+    await openSection("Team");
     expect(h.textContent).toContain("Your team");
     // People and standards (voice-review round, Sep 27 2026): the panels that
     // repeated the Hub (who's in today) and Operations (the month's client
@@ -193,15 +292,15 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Solon's staff");
     expect(h.textContent).toContain("Temporary");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
-    expect(tab("Floor")).toBeUndefined();
-    await click(tab("Relay"));
-    await click(tab("Floor"));
-    expect(h.textContent).toContain("Next up");
+    expect(tab("Board")).toBeUndefined();
+    await openSection("Relay");
+    await click(tab("Board"));
+    expect(h.textContent).toContain("Dealt to you");
   });
 
   it("mounts the Studio section for a leader: details, sync, the studio's day, renewals and announcements", async () => {
     const h = await mount(lead);
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Studio details");
     expect(h.textContent).toContain("Journey cutover date");
     expect(h.textContent).toContain("Mindbody Site ID");
@@ -219,7 +318,7 @@ describe("My Studio", () => {
 
   it("mounts the Machines section for a trainer: the floor and what other studios shared, nothing that writes", async () => {
     const h = await mount(trainer);
-    await click(tab("Machines"));
+    await openSection("Machines");
     expect(h.textContent).toContain("The floor");
     expect(h.textContent).toContain("Shared by other MSF studios");
     expect(h.textContent).not.toContain("Custom machine");
@@ -228,7 +327,7 @@ describe("My Studio", () => {
 
   it("mounts the Machines section for a leader without pushing anything onto an empty floor", async () => {
     const h = await mount(lead);
-    await click(tab("Machines"));
+    await openSection("Machines");
     expect(h.textContent).toContain("The floor");
     // An empty floor and an empty catalog: nothing to adopt yet, nothing pushed.
     expect(h.textContent).not.toContain("New in the MSF standard");
@@ -236,7 +335,7 @@ describe("My Studio", () => {
 
   it("shows a trainer the Studio section read only: every field locked, nothing to save or publish (AJ's voice review, Sep 2026)", async () => {
     const h = await mount(trainer);
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Studio details");
     expect(h.textContent).toContain("The studio's day");
     expect(h.textContent).toContain("InBody: the scanner's normal variation");
@@ -260,15 +359,15 @@ describe("My Studio", () => {
 
   it("keeps Studio open to change for a trainer the studio's leadership granted the studio", async () => {
     const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
-    await click(tab("Studio"));
+    await openSection("Studio");
     expect(h.textContent).toContain("Use Max Strength's defaults");
     expect(h.textContent).not.toContain("Only this studio's leaders can change the studio's day.");
   });
 
   it("shows the Team section to a trainer the studio's leadership granted the studio (My Studio, Sep 2026)", async () => {
     const h = await mount({ ...(trainer as object), managedStudioIds: ["s1"] });
-    expect(tab("Team")).toBeTruthy();
-    await click(tab("Team"));
+    expect(await sectionNames()).toContain("Team");
+    await openSection("Team");
     expect(h.textContent).toContain("Your team");
   });
 
@@ -276,7 +375,7 @@ describe("My Studio", () => {
     fakeData.accessRequests = [{ id: "r1", data: { status: "Pending", fullName: "Nia New", email: "nia@example.com", userId: "u-nia" } }];
     try {
       const h = await mount(lead);
-      await click(tab("Team"));
+      await openSection("Team");
       await settle();
       expect(h.textContent).toContain("One person is waiting to be let in.");
       const go = [...h.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Let them in");
@@ -295,34 +394,35 @@ describe("My Studio", () => {
     // the ranking of studios was dropped.
     const h = await mount({ ...(lead as object), role: "FranchiseOwner" });
     expect(tab("Network")).toBeUndefined();
-    expect(tab("Floor")).toBeTruthy();
-    expect(tab("Mine")).toBeTruthy();
-    expect(tab("Notes")).toBeTruthy();
-    expect(tab("Team")).toBeTruthy();
+    expect(tab("Board")).toBeTruthy();
+    expect(tab("Tracker")).toBeTruthy();
+    expect(tab("Journal")).toBeTruthy();
+    expect(await sectionNames()).toContain("Team");
+    expect(await sectionNames()).not.toContain("Network");
     expect(h.textContent).not.toContain("Launch an initiative");
     expect(h.textContent).not.toContain("Studios are ranked here");
   });
 
   it("never offers the Team section to a trainer", async () => {
     await mount(trainer);
-    expect(tab("Team")).toBeUndefined();
+    expect(await sectionNames()).not.toContain("Team");
     expect(document.body.textContent).not.toContain("Post a job");
   });
 
   it("treats a head trainer visiting another studio as a trainer there", async () => {
     await mount({ ...(lead as object), primaryHomeStudioId: "s9" });
-    expect(tab("Team")).toBeUndefined();
+    expect(await sectionNames()).not.toContain("Team");
     expect(document.body.textContent).not.toContain("Post a job");
   });
 
   it("opens a new note, the task wizard and the job composer", async () => {
     const h = await mount(lead);
-    await click(tab("Notes"));
+    await click(tab("Journal"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New note")));
     expect(document.body.textContent).toContain("Working notes");
     expect(document.body.textContent).toContain("Share with colleagues");
 
-    await click(tab("Mine"));
+    await click(tab("Tracker"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New reminder")));
     expect(document.body.textContent).toContain("Capture");
     expect(document.body.textContent).toContain("Relay it");
@@ -331,9 +431,20 @@ describe("My Studio", () => {
     expect(document.body.textContent).toContain("At the time");
   });
 
+  it("keeps Someone for a leader: a trainer offers work on the board instead (AJ, q5)", async () => {
+    const h = await mount(trainer);
+    await click(h.querySelector(".msh__plus"));
+    await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.startsWith("A to-do for me")));
+    const labels = [...document.querySelectorAll(".rk-seg button")].map((b) => b.textContent);
+    expect(labels).toContain("Me");
+    expect(labels).not.toContain("Someone");
+  });
+
   it("captures: the sentence follows the destination and the chips", async () => {
     const h = await mount(lead);
-    await click(h.querySelector(".cf"));
+    // The header's + → "A to-do for me" (the floating Capture button went in the Relay room).
+    await click(h.querySelector(".msh__plus"));
+    await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.startsWith("A to-do for me")));
     const sheet = document.body;
     expect(sheet.textContent).toContain("Say what it is, then who it's for.");
     const text = sheet.querySelector<HTMLTextAreaElement>(".cs__text");
@@ -346,7 +457,7 @@ describe("My Studio", () => {
     await settle();
     expect(sheet.textContent).toContain("For you, today. Only you see it.");
 
-    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Board"));
     expect(sheet.textContent).toContain("Anyone at Solon can take it.");
     // A leader is offered the studio-task form and the ask kinds.
     expect(sheet.textContent).toContain("A studio task");
@@ -361,7 +472,7 @@ describe("My Studio", () => {
 
     await click([...sheet.querySelectorAll("button")].find((b) => b.textContent?.includes("~min")));
     await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "~10 min"));
-    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Board"));
     expect(sheet.textContent).toContain("About 10 min.");
   });
 });

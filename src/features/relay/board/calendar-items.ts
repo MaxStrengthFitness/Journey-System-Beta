@@ -112,7 +112,7 @@ export function relayCalendarItems(input: CalendarItemsInput): RelayCalendarItem
       dateKey: due,
       time: null,
       title: r.title,
-      sub: r.kind === "initiative" ? "initiative" : r.kind === "handoff" ? `from ${r.createdBy.name.split(" ")[0]}` : "on the Floor",
+      sub: r.kind === "initiative" ? "initiative" : r.kind === "handoff" ? `from ${r.createdBy.name.split(" ")[0]}` : "on the Board",
       origin: mine ? "mine" : "floor",
       kind: r.kind === "initiative" ? "initiative" : r.kind === "handoff" ? "handoff" : "ask",
       open: mine ? { kind: "open-tab", tab: "mine" } : { kind: "open-floor" },
