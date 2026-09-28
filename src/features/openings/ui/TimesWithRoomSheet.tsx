@@ -47,6 +47,13 @@ import { noOffersWithSentence } from "./words";
  *   Rotation      one line per day that runs on the rotation.
  *   The foot      OFFER_FOOT, always.
  *
+ * ONE LINE, NOT TWO THE SAME. When both parts would say the same thing (both
+ * looking, both failed, both unknown offline, or both empty for the whole
+ * studio) the sheet says it once (`wholeLine`). "No usual times with room
+ * right now" is said only when that is true of the WHOLE studio: a part
+ * emptied only by "With you" says so and points to Anyone, whatever the
+ * other part says.
+ *
  * WHOSE TIMES. It opens on the trainer running the Wrap-up ("With you") when
  * they have an agreed week here; "Anyone" widens it. Not remembered: every
  * Wrap-up opens on the trainer again. The toggle filters this sheet and
@@ -78,8 +85,13 @@ export const TIMES_WITH_ROOM = "Times with room";
 /** The sheet's two parts. */
 export const NEXT_7_DAYS = "Next 7 days";
 export const MOST_WEEKS = "Most weeks";
-/** Next 7 days, with no time with room. Never "nothing open": the front desk sees every opening. */
-export const NO_TIMES_NEXT_7 = "No times with room in the next 7 days.";
+/**
+ * Next 7 days, with no time with room anywhere Journey can see. Never a flat
+ * "nothing open": `timesWithRoom` knows only the hours of an AGREED week, and
+ * leaves out a half-hour with a booking it can't place, so a trainer with no
+ * agreed week, or the front desk, may well have room. Hedged as NO_OFFERS is.
+ */
+export const NO_TIMES_NEXT_7 = "No times with room in the next 7 days. The front desk can see every opening in Mindbody.";
 /** Next 7 days, when "With you" alone empties it while Anyone has times. */
 export const YOU_NO_TIMES_NEXT_7 = "You have no times with room in the next 7 days. Anyone shows the rest of the studio.";
 /** Most weeks, while the coming weeks are read (the proposal's words). */
@@ -114,8 +126,27 @@ type Part<T> =
   | { kind: "cant-check" }
   | { kind: "cant-tell" }
   | { kind: "checking" }
-  | { kind: "empty"; sentence: string }
+  /**
+   * `narrowed`: empty only because "With you" narrowed it while Anyone has
+   * times (its sentence points to Anyone). Two empty parts become the one
+   * studio-wide NO_OFFERS line only when neither was narrowed.
+   */
+  | { kind: "empty"; sentence: string; narrowed: boolean }
   | { kind: "list"; items: T; note: string | null; built: string | null };
+
+/**
+ * One line for the whole sheet, in place of its two parts, when both parts
+ * would say the same thing: both still looking, both failed, both unknown
+ * offline, or both empty for the WHOLE studio. Anything else, the parts
+ * answer under their own headings.
+ */
+function wholeLine(parts: readonly Part<unknown>[]): string | null {
+  if (parts.every((p) => p.kind === "looking")) return WRAP_UP_LOOKING;
+  if (parts.every((p) => p.kind === "cant-check")) return WRAP_UP_CANT_CHECK;
+  if (parts.every((p) => p.kind === "cant-tell")) return WRAP_UP_CANT_TELL;
+  if (parts.every((p) => p.kind === "empty" && !p.narrowed)) return NO_OFFERS;
+  return null;
+}
 
 interface TimeGroup {
   key: string;
@@ -199,13 +230,13 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
     const days = timesWithRoomByDay(timesWithRoom(week.input, forTrainer, week.next.lines), data.tz);
     if (days.length > 0) return { kind: "list", items: days, note: null, built: null };
     const anyoneHas = forTrainer !== null && timesWithRoom(week.input, null, week.next.lines).length > 0;
-    return { kind: "empty", sentence: anyoneHas ? YOU_NO_TIMES_NEXT_7 : NO_TIMES_NEXT_7 };
+    return { kind: "empty", sentence: anyoneHas ? YOU_NO_TIMES_NEXT_7 : NO_TIMES_NEXT_7, narrowed: anyoneHas };
   }, [data.connected, data.weeks.error, data.weeks.loading, data.tz, week.read, week.input, week.next.lines, forTrainer]);
 
   const most = useMemo<Part<TimeGroup[]>>(() => {
     if (!data.connected) return { kind: "cant-check" };
     if (data.weeks.loading || data.summary.state === "loading" || data.marks.read === "loading") return { kind: "looking" };
-    if (data.summary.state === "none") return { kind: "empty", sentence: NO_OFFERS };
+    if (data.summary.state === "none") return { kind: "empty", sentence: NO_OFFERS, narrowed: false };
     if (data.summary.state === "unreadable" || !data.usual) return { kind: "cant-check" };
     // A mark can take a time off the list, so nothing is offered off marks not yet read.
     if (data.marks.read === "offline") return { kind: "cant-tell" };
@@ -229,8 +260,8 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
       });
     const list = offersFor(forTrainer);
     if (list.length === 0) {
-      const anyoneHas = forTrainer !== null && offersFor(null).length > 0;
-      return { kind: "empty", sentence: anyoneHas && forTrainer ? noOffersWithSentence(forTrainer, data.names, data.viewer) : NO_OFFERS };
+      const narrowed = forTrainer !== null && offersFor(null).length > 0;
+      return { kind: "empty", sentence: narrowed && forTrainer ? noOffersWithSentence(forTrainer, data.names, data.viewer) : NO_OFFERS, narrowed };
     }
     if (list.every((o) => o.coming.state === "checking")) return { kind: "checking" };
     const summary = data.summary.state === "ok" ? data.summary.summary : null;
@@ -247,8 +278,7 @@ function SheetBody({ data, onClose }: { data: OpeningsData; onClose: () => void 
     return [...new Set([...data.usual.times.values()].filter((u) => u.word === "rotation").map((u) => u.weekday))].sort((a, b) => a - b);
   }, [data.connected, data.usual]);
 
-  const parts = [next, most];
-  const whole = parts.every((p) => p.kind === "looking") ? WRAP_UP_LOOKING : parts.every((p) => p.kind === "empty") ? NO_OFFERS : null;
+  const whole = wholeLine([next, most]);
 
   // The Wrap-up's own column (max-w-205), so the sheet lines up with the
   // screen it opens over, in landscape as in portrait.

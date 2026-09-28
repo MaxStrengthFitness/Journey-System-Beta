@@ -1075,6 +1075,8 @@ describe("Next: her next booking, and the door to Times with room", () => {
   }
 
   const nextLine = (host: HTMLElement) => host.querySelector('[data-testid="next-booking"]') as HTMLElement;
+  /** The Next line's sentence alone (the door sits in the same line). */
+  const nextText = (host: HTMLElement) => host.querySelector('[data-testid="next-booking-sentence"]')?.textContent;
   const door = (host: HTMLElement) => host.querySelector('[data-testid="times-door"]') as HTMLElement | null;
   const sheet = () => document.querySelector('[data-testid="times-with-room"]') as HTMLElement | null;
 
@@ -1083,7 +1085,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     const host = await mount(<NextScreen />);
     await settle();
     expect(nextLine(host).getAttribute("data-state")).toBe("booked");
-    expect(nextLine(host).textContent).toBe("Next session: Thu, Nov 12 · 8:00 AM at Strongsville.");
+    expect(nextText(host)).toBe("Next session: Thu, Nov 12 · 8:00 AM at Strongsville.");
     expect(door(host)?.getAttribute("data-door")).toBe("quiet");
   });
 
@@ -1091,7 +1093,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     const host = await mount(<NextScreen />);
     await settle();
     expect(nextLine(host).getAttribute("data-state")).toBe("none");
-    expect(nextLine(host).textContent).toBe("Nothing booked in the next 30 days. Book the next one before they leave.");
+    expect(nextText(host)).toBe("Nothing booked in the next 30 days. Book the next one before they leave.");
     expect(host.textContent).not.toContain("Nothing booked yet");
     expect(door(host)?.getAttribute("data-door")).toBe("prominent");
     expect(door(host)?.textContent).toBe("Times with room");
@@ -1103,17 +1105,18 @@ describe("Next: her next booking, and the door to Times with room", () => {
     openingsFake.lease = { lastDeepScheduleSyncAt: new Date("2026-11-07T06:30:00-05:00").getTime() };
     const host = await mount(<NextScreen />);
     await settle();
-    expect(nextLine(host).textContent).toBe("Nothing booked in the next 7 days. Book the next one before they leave.");
+    expect(nextText(host)).toBe("Nothing booked in the next 7 days. Book the next one before they leave.");
   });
 
   it("booked in the schedule already on screen: says so at once, without listening, and the door is the quiet link", async () => {
     her.answer = "never";
     const host = await mount(<NextScreen schedules={[booking("2026-11-10T10:00:00-05:00")]} />);
-    expect(nextLine(host).textContent).toBe("Next session: Tomorrow · 10:00 AM.");
+    expect(nextText(host)).toBe("Next session: Tomorrow · 10:00 AM.");
     expect(her.listens).toBe(0);
     await settle();
     expect(door(host)?.getAttribute("data-door")).toBe("quiet");
-    expect(door(host)!.className.split(/\s+/)).toEqual(expect.arrayContaining(["min-h-10", "font-bold", "text-[14px]"]));
+    // The same 44px as the prominent door, so one turning into the other moves nothing.
+    expect(door(host)!.className.split(/\s+/)).toEqual(expect.arrayContaining(["min-h-11", "font-bold", "text-[14px]"]));
   });
 
   it("while her bookings are still coming, says it is checking, in the same space", async () => {
@@ -1121,7 +1124,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     const host = await mount(<NextScreen />);
     await settle();
     expect(nextLine(host).getAttribute("data-state")).toBe("checking");
-    expect(nextLine(host).textContent).toBe("Checking the next booking…");
+    expect(nextText(host)).toBe("Checking the next booking…");
     expect(nextLine(host).className.split(/\s+/)).toContain("min-h-14");
     expect(door(host)?.getAttribute("data-door")).toBe("quiet");
   });
@@ -1143,7 +1146,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     const host = await mount(<NextScreen />);
     await settle();
     expect(nextLine(host).getAttribute("data-state")).toBe("cant-check");
-    expect(nextLine(host).textContent).toBe("Can't check the next booking right now.");
+    expect(nextText(host)).toBe("Can't check the next booking right now.");
     expect(door(host)?.getAttribute("data-door")).not.toBe("prominent");
     online.mockRestore();
   });
@@ -1152,7 +1155,7 @@ describe("Next: her next booking, and the door to Times with room", () => {
     her.answer = "fails";
     const host = await mount(<NextScreen />);
     await settle();
-    expect(nextLine(host).textContent).toBe("Can't check the next booking right now.");
+    expect(nextText(host)).toBe("Can't check the next booking right now.");
     expect(door(host)?.getAttribute("data-door")).toBe("quiet");
   });
 
@@ -1165,9 +1168,37 @@ describe("Next: her next booking, and the door to Times with room", () => {
       her.emit();
     });
     expect(nextLine(host).getAttribute("data-state")).toBe("booked");
-    expect(nextLine(host).textContent).toBe("Next session: Mon, Nov 16 · 8:00 AM.");
+    expect(nextText(host)).toBe("Next session: Mon, Nov 16 · 8:00 AM.");
     expect(nextLine(host).className).toContain("bg-(--eq-ok-fill)");
     expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+  });
+
+  it("keeps the door inside the Next line, so its arriving moves nothing on the card above the dose Dial", async () => {
+    /** The Next card's rows down to the dose card, by what they are. */
+    const rowsAboveDose = (host: HTMLElement) => {
+      const rows = Array.from(nextLine(host).parentElement!.children);
+      const dose = rows.findIndex((el) => el.getAttribute("data-testid") === "dose-card");
+      expect(dose).toBeGreaterThan(0);
+      return rows.slice(0, dose).map((el) => `${el.tagName}:${el.getAttribute("data-testid") ?? ""}`);
+    };
+
+    const withDoor = await mount(<NextScreen />);
+    await settle();
+    expect(door(withDoor)).not.toBeNull();
+    expect(door(withDoor)!.closest('[data-testid="next-booking"]')).toBe(nextLine(withDoor));
+    // The live region is the sentence, not the door beside it.
+    expect(nextLine(withDoor).hasAttribute("aria-live")).toBe(false);
+    expect(withDoor.querySelector('[data-testid="next-booking-sentence"]')!.getAttribute("aria-live")).toBe("polite");
+    const rowsWithDoor = rowsAboveDose(withDoor);
+
+    // A studio with nothing to offer yet: no door, and the same rows.
+    forgetPersonalMemory();
+    openingsFake.summary = null;
+    openingsFake.weeks = { docs: [{ ...samWeek(), final: null, proposed: samWeek().final }], loading: false, error: null };
+    const noDoor = await mount(<NextScreen />);
+    await settle();
+    expect(door(noDoor)).toBeNull();
+    expect(rowsAboveDose(noDoor)).toEqual(rowsWithDoor);
   });
 
   it("opens Times with room on top of the Wrap-up, naming no client, and closes back to it", async () => {

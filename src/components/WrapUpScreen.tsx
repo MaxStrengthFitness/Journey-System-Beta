@@ -149,10 +149,16 @@ import { useTheme } from "./ThemeProvider";
  *     once the month was read in full today, 7 otherwise), and offline or
  *     failed says it can't check. lib/post-session.ts has every sentence.
  * The line keeps its space in every state, so nothing moves while the
- * client reads it. The door to Times with room is quiet (a text button) on
- * every Wrap-up with something to offer, prominent (the plum line and a
- * button) only when the server confirmed nothing is booked, and absent
- * before the studio has anything to offer (`hasTimesToOffer`). It opens a
+ * client reads it. The door to Times with room sits INSIDE that line, after
+ * the sentence, so its arriving (the Openings reads answer a second or more
+ * after the screen opens) moves nothing the trainer is reaching for below:
+ * the unsaved note's Save note / Drop it, the dose Dial. It is quiet (a text
+ * button) on every Wrap-up with something to offer, prominent (the plum line
+ * and a bordered button) only when the server confirmed nothing is booked,
+ * both 44px tall, and absent before the studio has anything to offer
+ * (`hasTimesToOffer`). Openings' reads therefore run on every Wrap-up, not
+ * only once the sheet opens: the door needs them to know whether to show
+ * itself; the sheet's own booking reads start only when it opens. It opens a
  * sheet ON TOP of this screen (features/openings/ui/TimesWithRoomSheet.tsx),
  * times only, naming nobody; the Profile note and any unfinished note are
  * never lost. Openings' reads (`useOpeningsData`: the weekly summary by id,
@@ -705,10 +711,18 @@ export function WrapUpScreen({
             <Kicker>Next</Kicker>
             {/* Booked is done (green); nothing booked is a caution (plum);
                 checking and can't-check are neither. The line keeps room for
-                two lines in every state, so the answer arriving moves nothing
-                while the client reads it. */}
+                two lines of the sentence, or the 44px door, in every state,
+                so neither the answer nor the door arriving moves anything
+                while the client reads it or the trainer reaches for the
+                controls below.
+
+                The door to Times with room sits INSIDE the line, after the
+                sentence: prominent only when the server confirmed nothing is
+                booked, quiet on every other Wrap-up with something to offer,
+                absent before there is anything. Both are the same height, so
+                one turning into the other moves nothing either. */}
             <div
-              className={`flex items-center gap-3 min-h-14 py-2 px-3 rounded-xl border ${
+              className={`flex items-center gap-3 min-h-14 py-1.5 px-3 rounded-xl border ${
                 next.state === "booked"
                   ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)"
                   : next.state === "none"
@@ -717,8 +731,6 @@ export function WrapUpScreen({
               }`}
               data-testid="next-booking"
               data-state={next.state}
-              role="status"
-              aria-live="polite"
             >
               {next.state === "booked" ? (
                 <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" aria-hidden="true" />
@@ -727,37 +739,38 @@ export function WrapUpScreen({
               ) : (
                 <CalendarSearch size={18} className="text-ink-d3 shrink-0" aria-hidden="true" />
               )}
-              <span className={`text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}>
+              <span
+                className={`min-w-0 flex-1 text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}
+                data-testid="next-booking-sentence"
+                role="status"
+                aria-live="polite"
+              >
                 {nextBookingSentence(next, openings.now)}
               </span>
+              {door === "prominent" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="prominent"
+                  className="shrink-0 min-h-11 rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+                  {TIMES_WITH_ROOM}
+                </button>
+              )}
+              {door === "quiet" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="quiet"
+                  className="shrink-0 min-h-11 px-2 rounded-md text-[14px] font-bold text-(--eq-live-text) whitespace-nowrap underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  {TIMES_WITH_ROOM}
+                </button>
+              )}
             </div>
-
-            {/* The door to Times with room: prominent only when the server
-                confirmed nothing is booked, quiet on every other Wrap-up with
-                something to offer, absent before there is anything. */}
-            {door === "prominent" && (
-              <button
-                type="button"
-                onClick={() => setTimesOpen(true)}
-                data-testid="times-door"
-                data-door="prominent"
-                className="min-h-11 w-full rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
-              >
-                <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
-                {TIMES_WITH_ROOM}
-              </button>
-            )}
-            {door === "quiet" && (
-              <button
-                type="button"
-                onClick={() => setTimesOpen(true)}
-                data-testid="times-door"
-                data-door="quiet"
-                className="self-start min-h-10 px-1 rounded-md text-[14px] font-bold text-(--eq-live-text) underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
-              >
-                {TIMES_WITH_ROOM}
-              </button>
-            )}
 
             {/* A note started during the session and never saved. Said
                 plainly, above everything else on this card, because the

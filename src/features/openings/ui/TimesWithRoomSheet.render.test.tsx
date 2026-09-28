@@ -102,7 +102,7 @@ import { NO_OFFERS, OFFER_FOOT, WRAP_UP_CANT_CHECK, WRAP_UP_CANT_TELL, WRAP_UP_L
 import type { OpeningsMark } from "../marks";
 import type { UsualWeek } from "../usual";
 import { LEE, MONDAYS, PAT, PAT_WEEK, SAM, SAM_TUESDAYS, WESTLAKE, foldFixture } from "./test-shell";
-import { CHECKING_COMING, COMING_CANT_CHECK, DONE, TimesWithRoomSheet, YOU_NO_TIMES_NEXT_7, hasTimesToOffer } from "./TimesWithRoomSheet";
+import { CHECKING_COMING, COMING_CANT_CHECK, DONE, NO_TIMES_NEXT_7, TimesWithRoomSheet, YOU_NO_TIMES_NEXT_7, hasTimesToOffer } from "./TimesWithRoomSheet";
 import { useOpeningsData } from "./useOpeningsData";
 
 const ANN_TUESDAY = { id: "r1", weekday: 2, start: "10:00", clientId: "c-ann", clientName: "Ann Regular" };
@@ -233,6 +233,48 @@ describe("times with room", () => {
     expect(sheet().textContent).not.toContain("Pat");
   });
 
+  it("with the trainer's own times empty in BOTH parts while others have some, never says the studio has none", async () => {
+    // Pat takes clients Tuesdays too. Sam is booked all through this Tuesday,
+    // and at every one of his usual times in the coming weeks.
+    const patTuesdays: StandingWeekDoc = {
+      ...PAT_WEEK,
+      final: { hours: [...PAT_WEEK.final!.hours, { weekday: 2, from: "10:00", to: "12:00" }], regulars: [] },
+    };
+    fake.weeks = { docs: [samWeek(), patTuesdays], loading: false, error: null };
+    fake.schedule.entries = ["10:00", "10:30", "11:00", "11:30"].map((t, i) => samAt("2026-11-10", t, { id: `s${i}` }));
+    const SAM_MONDAY = ["07:00", "07:30", "08:00", "08:30", "09:00", "09:30"];
+    const SAM_TUESDAY = ["10:00", "10:30", "11:00", "11:30"];
+    fake.comingRows = [
+      ...["2026-11-16", "2026-11-23", "2026-11-30"].flatMap((d) => [...SAM_MONDAY.map((t) => samAt(d, t)), patAt(d, "08:00")]),
+      ...["2026-11-17", "2026-11-24", "2026-12-01"].flatMap((d) => SAM_TUESDAY.map((t) => samAt(d, t))),
+    ];
+    await mount();
+    expect(button("With you").getAttribute("aria-pressed")).toBe("true");
+    expect(sheet().querySelector("[data-testid='times-whole']")).toBeNull();
+    expect(sheet().textContent).not.toContain(NO_OFFERS);
+    expect(part("times-next")?.textContent).toContain(YOU_NO_TIMES_NEXT_7);
+    expect(part("times-most")?.textContent).toContain("You have no usual times with room to offer right now. Anyone shows the rest of the studio.");
+    expect(groups("times-next")).toEqual([]);
+    expect(groups("times-most")).toEqual([]);
+
+    await act(async () => button("Anyone").click());
+    expect(groups("times-next")).toEqual(["Tue, Nov 10: 10:00 AM | 10:30 AM | 11:00 AM | 11:30 AM"]);
+    expect(groups("times-most").find((l) => l.startsWith("Mondays"))).toMatch(/^Mondays: 7:00 AM/);
+    expect(sheet().textContent).not.toContain("Pat");
+  });
+
+  it("with no time with room this week anywhere Journey can see, says so with the front desk, and still lists most weeks", async () => {
+    // Lee has no agreed week, so the sheet opens on Anyone. Every agreed
+    // hour left this week (Sam's Tuesday) is booked; Pat's Monday is next week.
+    fake.schedule.entries = ["10:00", "10:30", "11:00", "11:30"].map((t, i) => samAt("2026-11-10", t, { id: `s${i}` }));
+    await mount({ viewer: LEE });
+    expect(sheet().querySelector("[data-testid='times-whole']")).toBeNull();
+    expect(part("times-next")?.textContent).toContain(NO_TIMES_NEXT_7);
+    expect(NO_TIMES_NEXT_7).toContain("The front desk can see every opening in Mindbody.");
+    expect(groups("times-next")).toEqual([]);
+    expect(groups("times-most").some((l) => l.startsWith("Mondays: 7:00 AM"))).toBe(true);
+  });
+
   it("says which days run on the rotation, in one line each", async () => {
     const tuesdays = MONDAYS.map((m) => samAt(addDays(m, 1), "10:00"));
     const rota = MONDAYS.flatMap((m) => [0, 1, 2].map(() => booking(addDays(m, 5), "09:00", { trainerId: undefined, trainerName: "Westlake Rotation" })));
@@ -289,15 +331,16 @@ describe("its states, worded for a client to see", () => {
     expect(groups("times-most").length).toBeGreaterThan(0);
   });
 
-  it("offline: can't tell, for both, and offers nothing off an unread mark", async () => {
+  it("offline: can't tell, for both, said once, and offers nothing off an unread mark", async () => {
     const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     fake.schedule = { entries: [], loading: false, failed: false, fromCache: true };
     fake.marksAnswer = "cache";
     await mount();
-    expect(part("times-next")?.textContent).toContain(WRAP_UP_CANT_TELL);
-    expect(part("times-most")?.textContent).toContain(WRAP_UP_CANT_TELL);
-    expect(groups("times-next")).toEqual([]);
-    expect(groups("times-most")).toEqual([]);
+    expect(sheet().querySelector("[data-testid='times-whole']")?.textContent).toBe(WRAP_UP_CANT_TELL);
+    expect(part("times-next")).toBeNull();
+    expect(part("times-most")).toBeNull();
+    expect(sheet().querySelectorAll("[data-testid='time-chip']")).toHaveLength(0);
+    expect(sheet().textContent!.split(WRAP_UP_CANT_TELL)).toHaveLength(2);
     online.mockRestore();
   });
 
@@ -305,7 +348,7 @@ describe("its states, worded for a client to see", () => {
     fake.marks = [{ id: "2-1030", data: { weekday: 2, time: "10:30", mark: "full", by: { id: "u1", name: "Jo" } } }];
     await mount();
     expect(groups("times-most").find((l) => l.startsWith("Tuesdays"))).toBe("Tuesdays: 11:00 AM | 11:30 AM");
-    expect(sheet().textContent).not.toMatch(/Jo/);
+    expect(sheet().textContent).not.toMatch(/\bJo\b/);
 
     act(() => root.unmount());
     root = createRoot(host);
@@ -333,8 +376,10 @@ describe("its states, worded for a client to see", () => {
 
   it("a studio whose bookings aren't linked can't check the times, and reads no bookings", async () => {
     await mount({ studio: { ...WESTLAKE, mindbodySiteId: "" } as unknown as Studio });
-    expect(part("times-next")?.textContent).toContain(WRAP_UP_CANT_CHECK);
-    expect(part("times-most")?.textContent).toContain(WRAP_UP_CANT_CHECK);
+    // Both parts would say it, so it is said once.
+    expect(sheet().querySelector("[data-testid='times-whole']")?.textContent).toBe(WRAP_UP_CANT_CHECK);
+    expect(part("times-next")).toBeNull();
+    expect(sheet().textContent!.split(WRAP_UP_CANT_CHECK)).toHaveLength(2);
     expect(fake.queries).toHaveLength(0);
   });
 });
