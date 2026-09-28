@@ -20,11 +20,24 @@ vi.mock("../../../firebase", () => ({
 
 const writes: Array<{ kind: string; path: string; data: Record<string, unknown> }> = [];
 
+/** The model records the picker offers (machineModels), fed to onSnapshot. */
+const models = vi.hoisted(() => ({
+  docs: [] as { id: string; data: () => Record<string, unknown> }[],
+}));
+
 vi.mock("firebase/firestore", () => ({
   doc: (...parts: unknown[]) => ({
     path: parts.filter((p) => typeof p === "string").join("/"),
   }),
+  collection: (...parts: unknown[]) => ({
+    path: parts.filter((p) => typeof p === "string").join("/"),
+  }),
+  onSnapshot: (_q: unknown, next: (snap: { docs: typeof models.docs }) => void) => {
+    next({ docs: models.docs });
+    return () => {};
+  },
   serverTimestamp: () => "now",
+  deleteField: () => "__delete__",
   setDoc: async (t: { path: string }, data: Record<string, unknown>) => {
     writes.push({ kind: "set", path: t.path, data });
   },
@@ -176,6 +189,58 @@ describe("a studio's copy of a catalog machine", () => {
 
     expect(writes[0].data.overrides).toEqual({});
     expect(toasts[0]).toContain("follows the Max Strength standard exactly");
+  });
+});
+
+describe("the unit's model (Codex R2)", () => {
+  const hoist = {
+    id: "mm-hoist-roc-it-leg-press",
+    data: () => ({ brand: "Hoist", model: "ROC-IT Leg Press", movementId: "m-leg-press", updatedBy: "admin" }),
+  };
+  const nautilus = {
+    id: "mm-nautilus-nitro-leg-press",
+    data: () => ({ brand: "Nautilus", model: "Nitro Leg Press", movementId: "m-leg-press", updatedBy: "admin" }),
+  };
+
+  afterEach(() => {
+    models.docs = [];
+  });
+
+  it("writes the model a studio picks on the roster entry, never into the overrides", async () => {
+    models.docs = [hoist, nautilus];
+    const el = await mount({ entry: rosterEntry, resolved: legPress, catalogEntry: legPress });
+    const picker = el.querySelector("#machine-model") as HTMLSelectElement;
+    expect(picker).toBeTruthy();
+    // Only this movement's models are offered.
+    expect([...picker.options].map((o) => o.textContent)).toEqual([
+      "Not recorded",
+      "Hoist ROC-IT Leg Press",
+      "Nautilus Nitro Leg Press",
+    ]);
+    await act(async () => {
+      picker.value = "mm-nautilus-nitro-leg-press";
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await save(el);
+    expect(writes[0].data.modelId).toBe("mm-nautilus-nitro-leg-press");
+    expect((writes[0].data.overrides as Record<string, unknown>).modelId).toBeUndefined();
+  });
+
+  it("deletes the model when a studio clears it, so not recorded is absent", async () => {
+    models.docs = [hoist];
+    const el = await mount({
+      entry: { ...rosterEntry, modelId: "mm-hoist-roc-it-leg-press" },
+      resolved: { ...legPress, modelId: "mm-hoist-roc-it-leg-press" },
+      catalogEntry: legPress,
+    });
+    const picker = el.querySelector("#machine-model") as HTMLSelectElement;
+    expect(picker.value).toBe("mm-hoist-roc-it-leg-press");
+    await act(async () => {
+      picker.value = "";
+      picker.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await save(el);
+    expect(writes[0].data.modelId).toBe("__delete__");
   });
 });
 

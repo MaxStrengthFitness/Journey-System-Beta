@@ -21,6 +21,7 @@ import {
 import { SECTIONS, completeness, describeGaps, sectionStates } from "../completeness";
 import { SECTION_BODIES, type SectionProps } from "./sections";
 import { CODEX_SECTIONS, codexLinesIn, tidyCodexLists, type CodexSectionProps } from "./codex-sections";
+import type { ModelWithId } from "../../../machine-codex/models";
 import "./editor.css";
 import "./codex-editor.css";
 
@@ -98,6 +99,19 @@ export interface MachineEditorProps {
   notice?: React.ReactNode;
   /** True for a machine being created, so the save bar says so. */
   isNew?: boolean;
+  /**
+   * More buttons for the masthead — the catalog's Codex modes (Compare,
+   * History, Models). Handed `guard`, which asks about unsaved edits before
+   * running what it is given: switching mode unmounts this screen.
+   */
+  extraActions?: (guard: (proceed: () => void) => void) => React.ReactNode;
+  /** The MSF movement this machine is (a catalog id), for its models. */
+  movementId?: string;
+  /**
+   * Every model record (machineModels), for the model picker. Absent: the
+   * picker is not shown (a host that has not read them).
+   */
+  models?: ModelWithId[];
 }
 
 export function MachineEditor({
@@ -111,6 +125,9 @@ export function MachineEditor({
   unit,
   notice,
   isNew,
+  extraActions,
+  movementId,
+  models,
 }: MachineEditorProps) {
   // Stable identity or the form adopts on every render — useDirtyForm's own
   // warning, and the reason StudioDetailsForm memoises its external too.
@@ -214,6 +231,7 @@ export function MachineEditor({
                 </>
               )}
             </AdminButton>
+            {extraActions?.((proceed) => form.leave.guard(proceed))}
           </>
         }
       />
@@ -354,6 +372,9 @@ export function MachineEditor({
               changed,
               revert,
               canWrite,
+              scope,
+              movementId,
+              models,
             };
             const Body = c.Body;
             return (

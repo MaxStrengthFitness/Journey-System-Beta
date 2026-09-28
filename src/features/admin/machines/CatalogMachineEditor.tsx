@@ -3,8 +3,11 @@ import { deleteField, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
+import { Layers } from "lucide-react";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
+import { AdminButton } from "../primitives";
+import { useMachineModels } from "../../machine-codex/models-store";
 
 /**
  * EDITING THE STANDARD — the Max Strength catalog entry itself.
@@ -38,15 +41,19 @@ export function CatalogMachineEditor({
   existingIds,
   catalogSize,
   onBack,
+  onOpenModels,
 }: {
   /** Absent for a new machine. */
   machine?: MachineCatalogEntry;
   existingIds: string[];
   catalogSize: number;
   onBack: () => void;
+  /** The models of this movement (Codex R2). Absent: no door to them. */
+  onOpenModels?: (movementId: string) => void;
 }) {
   const { success: toastSuccess } = useToast();
   const isNew = !machine;
+  const { models } = useMachineModels();
 
   const value = useMemo(
     () => (machine ? definitionOf(machine) : emptyMachineDefinition()),
@@ -116,6 +123,15 @@ export function CatalogMachineEditor({
       onBack={onBack}
       onSave={save}
       isNew={isNew}
+      movementId={machine?.id}
+      models={models}
+      extraActions={(guard) =>
+        machine && onOpenModels ? (
+          <AdminButton variant="quiet" onClick={() => guard(() => onOpenModels(machine.id))}>
+            <Layers className="w-4 h-4" /> Models
+          </AdminButton>
+        ) : null
+      }
     />
   );
 }

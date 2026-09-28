@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type {
@@ -13,6 +13,7 @@ import { definitionFieldsOnly, describeFields, scopeOverrides } from "../../../l
 import { pruneOverrides } from "../equipment/clone";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
+import { useMachineModels } from "../../machine-codex/models-store";
 
 /**
  * EDITING A STUDIO'S OWN MACHINE.
@@ -93,12 +94,25 @@ export function StudioMachineEditor({
   // ever logged on the machine and split its leaderboard in two.
   const [existingId] = useState(() => entry?.machineId ?? null);
 
+  // The model records, for "Which model this unit is" (Codex R2).
+  const { models } = useMachineModels();
+  const movementId = catalogEntry?.id ?? (basedOn || undefined);
+
   const save = async (
     patch: Partial<MachineDefinition>,
-    draft: MachineDefinition,
+    draftIn: MachineDefinition,
   ) => {
-    const name = (draft.name ?? "").trim();
+    const name = (draftIn.name ?? "").trim();
     if (!name) throw new Error("Give the machine a name first.");
+
+    // THE UNIT'S MODEL lives on the roster entry itself (`modelId`), never in
+    // the definition or its overrides: the definition's own `modelId` is the
+    // catalog's reference unit. Deleted when cleared, so "not recorded" is
+    // absent rather than "".
+    const { modelId: pickedModel, ...draft } = draftIn;
+    const unitModel = pickedModel?.trim() || undefined;
+    const modelWrite = (updating: boolean) =>
+      unitModel ? { modelId: unitModel } : updating ? { modelId: deleteField() } : {};
 
     if (isCustom) {
       const machineId = existingId ?? studioMachineId(studioId, name);
@@ -117,6 +131,7 @@ export function StudioMachineEditor({
         // resolved machine and carries the floor's bookkeeping too), and
         // with nothing `undefined` in it, which Firestore refuses.
         definition: stripUndefined(definitionFieldsOnly(draft)),
+        ...modelWrite(!!existingId),
         updatedAt: serverTimestamp(),
         updatedBy: auth.currentUser?.uid ?? null,
       };
@@ -150,6 +165,7 @@ export function StudioMachineEditor({
       // setDoc({overrides}, {merge:true}) would keep a key the studio has
       // just reverted — "use the standard" would appear to work and then not.
       overrides,
+      ...modelWrite(!!entry),
       updatedAt: serverTimestamp(),
       updatedBy: auth.currentUser?.uid ?? null,
     };
@@ -180,6 +196,8 @@ export function StudioMachineEditor({
       onBack={onBack}
       onSave={save}
       isNew={isNew}
+      movementId={movementId}
+      models={models}
       unit={
         <>
           {isNew && (

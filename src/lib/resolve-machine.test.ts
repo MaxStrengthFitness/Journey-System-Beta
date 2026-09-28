@@ -588,6 +588,41 @@ describe("the Codex format, v2 — merging a studio's copy", () => {
   });
 });
 
+describe("the unit's model (Codex R2)", () => {
+  const withReference: MachineCatalogEntry = { ...legPress, modelId: "mm-hoist-roc-it-leg-press" };
+
+  it("never gives a copy the catalog's reference model", () => {
+    const r = resolveMachine(fromCatalog(), withReference)!;
+    expect("modelId" in r).toBe(false);
+  });
+
+  it("names the model the roster entry names", () => {
+    const r = resolveMachine(fromCatalog(undefined, { modelId: "mm-nautilus-nitro-leg-press" }), withReference)!;
+    expect(r.modelId).toBe("mm-nautilus-nitro-leg-press");
+  });
+
+  it("does not let an override smuggle a model in", () => {
+    const r = resolveMachine(fromCatalog({ modelId: "mm-somewhere-else" }), legPress)!;
+    expect("modelId" in r).toBe(false);
+  });
+
+  it("reads a studio's own machine's model from its entry, then its definition", () => {
+    const own: RosterEntryCustom = {
+      machineId: "sm-studio-solon-sled",
+      studioId: STUDIO,
+      source: "custom",
+      status: "active",
+      definition: { ...legPress, modelId: "mm-hammer-strength-sled" },
+    };
+    expect(resolveMachine(own)!.modelId).toBe("mm-hammer-strength-sled");
+    expect(resolveMachine({ ...own, modelId: "mm-hammer-strength-sled-2" })!.modelId).toBe("mm-hammer-strength-sled-2");
+  });
+
+  it("has no unit, so no model, on equipment the studio has not added", () => {
+    expect("modelId" in resolveUnrostered(withReference, STUDIO)).toBe(false);
+  });
+});
+
 describe("pruneMergedField — the Codex format's write side", () => {
   it("stores only the object leaf's keys that differ", () => {
     expect(

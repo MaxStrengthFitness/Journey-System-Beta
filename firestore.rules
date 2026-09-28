@@ -1355,6 +1355,15 @@ service cloud.firestore {
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
     }
 
+    /* WAVE 2 CODEX: the Codex fields on a roster entry (Sep 28 2026). The
+       unit's model, when named, is a model id (machineModels/{id}), set by
+       the studio's leaders. Pure map lookups: no document is read, so the
+       roster rule asks this before anything that calls get(). */
+    function rosterCodexValid(d) {
+      return !('modelId' in d)
+          || (d.modelId is string && d.modelId.size() > 0 && d.modelId.size() <= 100);
+    }
+
     /* ...and a copy stays a copy: an update can't drop `adoptedFrom` and list
        it in the same write (review fix). The studio it names is the one its
        path names, so a shared machine can't claim another studio. */
@@ -1703,6 +1712,38 @@ service cloud.firestore {
         allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
         allow update, delete: if false;
       }
+    }
+
+    // WAVE 2 CODEX: the model record (Codex R2, Sep 28 2026; AJ approved
+    // the Codex's new data "all yes"). A maker's model of an MSF movement —
+    // "Hoist ROC-IT Leg Press" — its dials and stacks, written once and
+    // pointed at by each studio's unit (roster entry `modelId`). The shape is
+    // exactly features/machine-codex/models.ts's `modelDocument` plus the
+    // stamp: the Catalog's model tier reads it. Written whole (setDoc, no
+    // merge), so every write carries the stamp and the rule can pin it.
+    function machineModelValid(d) {
+      return d.keys().hasOnly(['brand', 'model', 'movementId', 'dials', 'notes', 'updatedAt', 'updatedBy'])
+          && d.keys().hasAll(['brand', 'model', 'movementId', 'updatedAt', 'updatedBy'])
+          && d.brand is string && d.brand.size() > 0 && d.brand.size() <= 60
+          && d.model is string && d.model.size() > 0 && d.model.size() <= 80
+          && d.movementId is string && d.movementId.size() > 0 && d.movementId.size() <= 100
+          && (!('dials' in d) || (d.dials is list && d.dials.size() <= 20))
+          && (!('notes' in d) || (d.notes is string && d.notes.size() <= 2000))
+          && d.updatedAt == request.time
+          && d.updatedBy == request.auth.uid;
+    }
+
+    // WAVE 2 CODEX: everyone signed in reads the models (a unit's model is
+    // named on the floor); administrators write them. The shape is checked
+    // first — map lookups, no document read — and isSuperAdmin() last, so a
+    // malformed write is refused before the role is ever looked up. Never
+    // deleted: a unit may name it, and the weekly job pools by its id.
+    match /machineModels/{modelId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+                             && machineModelValid(request.resource.data)
+                             && isSuperAdmin();
+      allow delete: if false;
     }
 
     match /machineSettingChanges/{changeId} {
@@ -2335,8 +2376,13 @@ service cloud.firestore {
       // also covers a direct read of that one document.
       match /roster/{machineId} {
         allow read: if isAuthenticated() && writesForStudio(studioId);
+        // WAVE 2 CODEX: rosterCodexValid (the unit's model) is pure map
+        // lookups on the document being written, so it runs FIRST and a bad
+        // write is refused before isSuperAdmin() or the leader check read
+        // anything (the 1,000-expression budget; docs/KNOWN-TRAPS.md).
         allow create, update:
-          if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
+          if rosterCodexValid(request.resource.data)
+             && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
              && rosterWriteValid(studioId);
         allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);

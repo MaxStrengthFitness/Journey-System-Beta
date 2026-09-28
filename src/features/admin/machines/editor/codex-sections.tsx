@@ -23,6 +23,9 @@ import {
 import { FieldShell } from "./controls";
 import { LeafField, LeafLine, RecordList, cleanList, withLine, type RecordField } from "./codex-controls";
 import type { SectionProps } from "./sections";
+import type { EditScope } from "../../../../lib/machine-template";
+import type { ModelWithId } from "../../../machine-codex/models";
+import { ModelPicker } from "../models/ModelPicker";
 import "./codex-editor.css";
 
 /**
@@ -44,6 +47,12 @@ import "./codex-editor.css";
 export interface CodexSectionProps extends SectionProps {
   /** May this scope write this field? lib/machine-template.ts's canEdit. */
   canWrite: (key: keyof MachineDefinition) => boolean;
+  /** Who is editing: the standard (catalog), or a studio's machine. */
+  scope?: EditScope;
+  /** The MSF movement this machine is, for its models. */
+  movementId?: string;
+  /** Every model record; absent, the model picker is not shown. */
+  models?: ModelWithId[];
 }
 
 export type CodexSectionId = "codex-machine" | "codex-set" | "codex-study" | "codex-sources";
@@ -194,12 +203,34 @@ function AtTheMachine(p: CodexSectionProps) {
   const script = line("begin", "script", "The words", "As the spoken script has them.");
   const delay = line("begin", "delayHandoffWhen", "When to delay the handoff");
 
+  const modelLocked = p.readOnly || !p.canWrite("modelId");
+
   return (
     <div className="adm-me__fields">
       <p className="adm-me__blurb">
         What the Codex page opens on at the machine: the stop rules, the switches, each dial&apos;s
         rule and number, and how the set begins. Optional — a machine is not incomplete without it.
       </p>
+
+      {p.models && (
+        <FieldShell
+          label={p.scope === "catalog" ? "The reference model" : "Which model this unit is"}
+          hint={
+            p.scope === "catalog"
+              ? "The unit the standard's numbers were written on, if there is one. A studio's copy names its own unit's model."
+              : "Settings are compared with other units of the same model. Models are recorded by head office, from the catalog."
+          }
+          locked={modelLocked}
+        >
+          <ModelPicker
+            models={p.models}
+            movementId={p.movementId}
+            value={p.value.modelId}
+            readOnly={modelLocked}
+            onChange={(next) => p.set("modelId", next as never)}
+          />
+        </FieldShell>
+      )}
 
       <FieldShell
         label="Stop rules"

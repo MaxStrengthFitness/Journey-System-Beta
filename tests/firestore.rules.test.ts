@@ -4380,4 +4380,91 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
     });
   });
+
+  // -- WAVE 2 CODEX (Sep 28 2026; AJ approved the Machine Codex's new data
+  // "all yes"). The model record (machineModels/{id}), the unit's model on a
+  // roster entry, a studio removing a safety line only with a reason (the
+  // Sep 21 rule), and a catalog machine's change log.
+  describe("wave 2 codex", () => {
+    async function seedCodexPeople() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, "trainers", "adminCodex"), {
+          fullName: "Galadriel",
+          initials: "GA",
+          role: "Admin",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+        await setDoc(doc(db, "studios", "studioA", "roster", "m-leg-press"), {
+          machineId: "m-leg-press",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-leg-press",
+          status: "active",
+        });
+      });
+    }
+
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid}@test.com` }).firestore();
+
+    const model = (uid: string, extra: Record<string, unknown> = {}) => ({
+      brand: "Hoist",
+      model: "ROC-IT Leg Press",
+      movementId: "m-leg-press",
+      dials: [
+        { key: "gap", label: "Gap", letter: "G" },
+        { key: "seat-distance", label: "Seat Distance", letter: "S", default: "7" },
+      ],
+      notes: "An 18 lb accessory stack.",
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+      ...extra,
+    });
+
+    it("lets an administrator write a model whole, and everyone signed in read it", async () => {
+      await seedCodexPeople();
+      const admin = as("adminCodex");
+      await assertSucceeds(setDoc(doc(admin, "machineModels", "mm-hoist-roc-it-leg-press"), model("adminCodex")));
+      // Written again, whole, with the notes and dials taken out.
+      const { dials: _d, notes: _n, ...bare } = model("adminCodex");
+      await assertSucceeds(setDoc(doc(admin, "machineModels", "mm-hoist-roc-it-leg-press"), bare));
+      await assertSucceeds(getDoc(doc(as("trainerA"), "machineModels", "mm-hoist-roc-it-leg-press")));
+      await assertSucceeds(getDocs(collection(as("trainerB"), "machineModels")));
+      await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), "machineModels", "mm-hoist-roc-it-leg-press")));
+    });
+
+    it("refuses a model from anyone else, signed as someone else, or outside its shape, and never deletes one", async () => {
+      await seedCodexPeople();
+      const ref = (db: ReturnType<typeof as>) => doc(db, "machineModels", "mm-hoist-roc-it-leg-press");
+      await assertFails(setDoc(ref(as("ownerA")), model("ownerA")));
+      await assertFails(setDoc(ref(as("trainerA")), model("trainerA")));
+      const admin = as("adminCodex");
+      await assertFails(setDoc(ref(admin), model("ownerA")));
+      await assertFails(setDoc(ref(admin), model("adminCodex", { colour: "red" })));
+      await assertFails(setDoc(ref(admin), model("adminCodex", { movementId: "" })));
+      await assertFails(setDoc(ref(admin), model("adminCodex", { brand: "" })));
+      await assertFails(
+        setDoc(ref(admin), model("adminCodex", { dials: Array.from({ length: 21 }, (_, i) => ({ key: `d${i}`, label: `D${i}` })) })),
+      );
+      await assertFails(setDoc(ref(admin), model("adminCodex", { notes: "n".repeat(2001) })));
+      const { movementId: _m, ...noMovement } = model("adminCodex");
+      await assertFails(setDoc(ref(admin), noMovement));
+      await assertSucceeds(setDoc(ref(admin), model("adminCodex")));
+      await assertFails(deleteDoc(ref(admin)));
+    });
+
+    it("lets a studio's leaders name their unit's model, and refuses a model id that is not one", async () => {
+      await seedCodexPeople();
+      const owner = as("ownerA");
+      const entry = doc(owner, "studios", "studioA", "roster", "m-leg-press");
+      await assertSucceeds(updateDoc(entry, { modelId: "mm-hoist-roc-it-leg-press" }));
+      await assertSucceeds(updateDoc(entry, { modelId: deleteField() }));
+      await assertFails(updateDoc(entry, { modelId: "" }));
+      await assertFails(updateDoc(entry, { modelId: 42 }));
+      await assertFails(updateDoc(entry, { modelId: "m".repeat(101) }));
+      // A trainer still cannot write the roster at all.
+      await assertFails(updateDoc(doc(as("trainerA"), "studios", "studioA", "roster", "m-leg-press"), { modelId: "mm-hoist-roc-it-leg-press" }));
+    });
+  });
 });

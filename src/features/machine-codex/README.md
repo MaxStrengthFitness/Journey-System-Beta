@@ -56,11 +56,37 @@ Beside the leaves:
   model record). A studio's copy names its unit's model on the roster entry, and
   never inherits the catalog's.
 
+## The model record (Codex R2)
+
+`machineModels/{modelId}` — **exactly** `{ brand, model, movementId, dials?, notes?,
+updatedAt, updatedBy }` (`MachineModel` in `types/machines.ts`; the Catalog's model
+tier reads it). A seat 4 on a Nautilus is not a seat 4 on a Hoist: a model is the
+tier between the movement (`movementId`, a catalog machine id) and the unit, the
+dials and stacks every unit of one maker's model shares, written once.
+
+- **Administrators write it; everyone signed in reads it; nobody deletes it**
+  (firestore.rules, "WAVE 2 CODEX: the model record"). Written whole with `setDoc`
+  and no merge, so a note or a dial removed in the editor leaves the record; the
+  rules pin `updatedAt` to the request time and `updatedBy` to the Auth uid.
+- **The id is minted once** from the brand and model (`modelIdFor`, `mm-…`) and
+  never re-minted: it is a foreign key on every unit that names it and in the
+  weekly job's pools. A dial keeps its key, like the movement's own dials.
+- **A unit names its model** on its roster entry (`RosterEntryBase.modelId`), set
+  by the studio's leaders in the machine editor's "Which model this unit is". A
+  copy of a catalog machine never takes the catalog's own `modelId` (that is the
+  reference unit the standard was written on): `resolveMachine` gives a
+  `ResolvedMachine` only the unit's model.
+- **Where it is edited:** Admins → Catalog → **Models** (every model, by movement),
+  or a catalog machine's **Models** button (that movement's models).
+  `features/admin/machines/models/`.
+
 ## Files
 
 | | |
 | --- | --- |
 | `format.ts` | The one reader of the format: `CODEX_LEAVES`, `switchesOf` + `switchWords`, `presetOf` + `presetLine` (the preset strip), `stopLinesOf` (never to failure with its reason, then the stop rules), `methodLines` (every method line with its source), `sourceLabel`, `sourceCoverage` + `coverageSentence`. Pure. |
+| `models.ts` | The model record: `modelIdFor` (minted once), `modelLabel`, `modelProblems` (what stops a save, named), `modelDocument` (exactly the shape), `dialsFromMovement`, `modelsFor`, `dialSummary`. Pure. |
+| `models-store.ts` | Its reads — `useMachineModels` (live, for the editors), `fetchMachineModels` / `useMachineModelsOnce` (once a session, for a screen that only names a model; a failed read stays failed) — and its one write, `saveMachineModel`. |
 
 ## How a studio's copy merges
 

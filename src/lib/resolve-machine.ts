@@ -406,6 +406,13 @@ export function resolveMachine(
   let overriddenFields: MachineDefinitionField[] = [];
   let comparisonKey: string;
 
+  // THE UNIT'S MODEL (Codex R2, Sep 28 2026). The roster entry names it. A
+  // copy never takes the catalog's own `modelId` — that is the reference
+  // unit the standard was written on, and calling Solon's leg press a Hoist
+  // for being a copy of the page would be a confident wrong answer. A
+  // studio's own machine may carry one in its definition.
+  let modelId: string | undefined = entry.modelId?.trim() || undefined;
+
   if (entry.source === "custom") {
     // Self-contained: nothing is inherited, `basedOn` is lineage only.
     definition = {
@@ -416,6 +423,7 @@ export function resolveMachine(
       ),
     };
     comparisonKey = entry.basedOn ?? entry.machineId;
+    modelId = modelId ?? (entry.definition.modelId?.trim() || undefined);
   } else {
     if (!catalog) return null;
     const merged = mergeMachineDefinition(catalog, entry.overrides);
@@ -423,6 +431,8 @@ export function resolveMachine(
     overriddenFields = merged.overriddenFields;
     comparisonKey = entry.basedOn;
   }
+  const { modelId: _inheritedModel, ...unitDefinition } = definition;
+  definition = unitDefinition as MachineDefinition;
 
   return {
     ...definition,
@@ -439,6 +449,7 @@ export function resolveMachine(
     catalogStatus: catalog?.status,
     comparisonKey,
     overriddenFields,
+    ...(modelId ? { modelId } : {}),
     // The MSF machine database (Learning + Planner round): carried through
     // untouched, so the Catalog can show and toggle them.
     ...(entry.shared === true ? { shared: true } : {}),
@@ -459,8 +470,11 @@ export function resolveUnrostered(
   catalog: MachineCatalogEntry,
   studioId: string,
 ): ResolvedMachine {
+  // No unit, so no unit's model: the catalog's reference model is not this
+  // studio's (see resolveMachine).
+  const { modelId: _referenceModel, ...rest } = catalog;
   return {
-    ...catalog,
+    ...rest,
     machineId: catalog.id,
     studioId,
     source: "catalog",

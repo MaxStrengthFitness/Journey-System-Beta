@@ -800,6 +800,53 @@ export interface MachineDefinition {
 /** Every key on MachineDefinition, for override bookkeeping. */
 export type MachineDefinitionField = keyof MachineDefinition;
 
+// ─────────────────────────────────────────────────────────────────────
+// THE MODEL RECORD (Codex R2, Sep 28 2026)
+//
+// A seat 4 on a Nautilus is not a seat 4 on a Hoist. A MODEL is the tier
+// between the movement (the catalog machine) and the unit (a studio's
+// roster entry): the facts every unit of one maker's model shares — its
+// dials, their ranges, its stacks — written once and pointed at by each
+// unit (`RosterEntryBase.modelId`). Settings pool per model in the weekly
+// machine-trends job; weights keep pooling per movement.
+//
+// Firestore: machineModels/{modelId}. Administrators write it; everyone
+// signed in reads it. The shape is EXACTLY the one below — the Catalog's
+// model tier reads it — and `features/machine-codex/models.ts` is the one
+// place a model is built, checked and named.
+// ─────────────────────────────────────────────────────────────────────
+
+/** One dial as a model has it. The key matches the movement's dial key. */
+export interface ModelDial {
+  /** Same immutable key as the movement's `MachineSettingField.key`. */
+  key: string;
+  label: string;
+  /** The letter on this model's plate ("G", "P", "SP"). */
+  letter?: string;
+  type?: MachineSettingField["type"];
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Where it sits by default on this model, as the maker ships it. */
+  default?: string;
+}
+
+export interface MachineModel {
+  /** "Hoist". */
+  brand: string;
+  /** "ROC-IT Leg Press". */
+  model: string;
+  /** The MSF movement it is: a catalog machine id ("m-leg-press"). */
+  movementId: string;
+  dials?: ModelDial[];
+  /** Anything else every unit of it shares ("an 18 lb accessory stack"). */
+  notes?: string;
+  updatedAt: any;
+  /** The Auth uid of the administrator who saved it. */
+  updatedBy: string;
+}
+
 /** House cadence standard — prefilled for every new machine. */
 export const DEFAULT_CADENCE = { concentricSeconds: 6, eccentricSeconds: 6 };
 
@@ -870,6 +917,14 @@ interface RosterEntryBase {
     installedAt?: any;
     lastServicedAt?: any;
   };
+
+  /**
+   * Which model this unit is: machineModels/{modelId} (Codex R2, Sep 28
+   * 2026). The unit's, set by the studio's leaders; absent means nobody has
+   * recorded it. A copy of a catalog machine never takes the catalog's own
+   * reference model — only this field names the unit's.
+   */
+  modelId?: string;
 
   updatedAt?: any;
   updatedBy?: string;
@@ -1007,6 +1062,13 @@ export interface ResolvedMachine extends MachineDefinition {
   /** Which definition fields this studio deliberately changed. Drives the
    *  "overridden" badge in the roster manager. */
   overriddenFields: MachineDefinitionField[];
+
+  /*
+   * `modelId` (from MachineDefinition) is THIS UNIT's model here: the roster
+   * entry's for a copy (never the catalog's reference model), the roster
+   * entry's or its own definition's for a studio's own machine, and absent
+   * on equipment the studio has not added (lib/resolve-machine.ts).
+   */
 
   /** Listed in the MSF machine database (custom machines only). */
   shared?: boolean;
