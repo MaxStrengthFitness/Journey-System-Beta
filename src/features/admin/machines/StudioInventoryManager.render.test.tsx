@@ -35,6 +35,10 @@ vi.mock("firebase/firestore", () => ({
     if (gate.hold) await gate.hold;
     writes.push({ kind: "set", path: t.path, data });
   },
+  updateDoc: async (t: { path: string }, data: Record<string, unknown>) => {
+    if (gate.hold) await gate.hold;
+    writes.push({ kind: "update", path: t.path, data });
+  },
   deleteDoc: async (t: { path: string }) => {
     if (gate.hold) await gate.hold;
     writes.push({ kind: "delete", path: t.path });
@@ -103,7 +107,19 @@ const MACHINES: ResolvedMachine[] = [
 
 const ROSTER: StudioMachineRosterEntry[] = [
   { machineId: "m-leg-press", studioId: "solon", source: "catalog", basedOn: "m-leg-press", status: "active" },
-  { machineId: "m-lumbar", studioId: "solon", source: "catalog", basedOn: "m-lumbar", status: "maintenance" },
+  // Out of service with the reason a leader gave (wave 2, Sep 28 2026).
+  {
+    machineId: "m-lumbar",
+    studioId: "solon",
+    source: "catalog",
+    basedOn: "m-lumbar",
+    status: "maintenance",
+    outOfService: {
+      reason: "A new cable is on order",
+      by: { uid: "uid-glorfindel", name: "Glorfindel of the Golden Flower" },
+      at: Date.UTC(2026, 8, 27, 12, 52),
+    },
+  } as StudioMachineRosterEntry,
   { machineId: "c-sled", studioId: "solon", source: "custom", status: "active" } as StudioMachineRosterEntry,
 ];
 
@@ -175,13 +191,22 @@ describe("the floor list, with machines on it", () => {
     expect(badges(rowOf(el, LONG_NAME)!)).toEqual([["Ours", "adm-badge adm-badge--neutral"]]);
     expect(badges(rowOf(el, "Leg Press")!)).toEqual([["1 override", "adm-badge adm-badge--neutral"]]);
     expect(badges(rowOf(el, "Lumbar Extension")!)).toEqual([
-      ["Maintenance", "adm-badge adm-badge--warn"],
+      ["Out of service", "adm-badge adm-badge--warn"],
       ["Never to failure", "adm-badge adm-badge--alert"],
     ]);
-    // Out of service is the switch's state, and only on a machine the studio has.
-    expect(rowOf(el, "Lumbar Extension")!.querySelector("[role='switch']")?.getAttribute("aria-checked")).toBe("true");
-    expect(rowOf(el, "Leg Press")!.querySelector("[role='switch']")?.getAttribute("aria-checked")).toBe("false");
-    expect(rowOf(el, "Chest Press")!.querySelector("[role='switch']")).toBeNull();
+    // Out of service is a button on a machine the studio has: "Back in service"
+    // on one that is out, "Out of service" on one that isn't, none on the rest.
+    expect(byText(rowOf(el, "Lumbar Extension")!, "Back in service")).toBeDefined();
+    expect(byText(rowOf(el, "Leg Press")!, "Out of service")).toBeDefined();
+    expect(byText(rowOf(el, "Chest Press")!, "Out of service")).toBeUndefined();
+    expect(el.querySelector("[role='switch']")).toBeNull();
+  });
+
+  it("says why a machine is out of service, and who said so, under its name", async () => {
+    const el = await mount();
+    const line = rowOf(el, "Lumbar Extension")!.querySelector("[data-testid='out-of-service-reason']");
+    expect(line?.textContent).toMatch(/^Out of service: A new cable is on order · Glorfindel, Sep 27, \d{1,2}:52 [AP]M$/);
+    expect(rowOf(el, "Leg Press")!.querySelector("[data-testid='out-of-service-reason']")).toBeNull();
   });
 
   it("gives every row's action the kit's 40px button, and the switch a 40px label", async () => {
@@ -195,10 +220,11 @@ describe("the floor list, with machines on it", () => {
     for (const label of ["Reorder", "Add standard set", "Custom machine"]) {
       expect(byText(el, label)?.className, label).toMatch(/\badm-btn\b/);
     }
-    // A machine the studio has: Open, its set-up, and We don't have this.
+    // A machine the studio has: Open, its set-up, Out of service and We don't have this.
     expect(buttons(rowOf(el, "Leg Press")!).map((b) => b.textContent?.trim()).filter(Boolean)).toEqual([
       "Open",
       "Set up for us",
+      "Out of service",
       "We don't have this",
     ]);
     expect(byText(rowOf(el, LONG_NAME)!, "Edit")).toBeDefined();
@@ -277,6 +303,75 @@ describe("the floor list, with machines on it", () => {
     expect(labels).toEqual(["Open", "Open", "Open"]);
     expect(byText(el, "Reorder")).toBeUndefined();
     expect(el.querySelector("[role='switch']")).toBeNull();
+  });
+});
+
+describe("out of service, and why (wave 2, Sep 28 2026)", () => {
+  const dialog = () => document.body.querySelector("[role='dialog']") as HTMLElement | null;
+  const typeReason = async (value: string) => {
+    const box = dialog()!.querySelector("textarea")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(box, value);
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+
+  it("asks why before a machine goes out of service, and writes the status with a reason signed by the person at the iPad", async () => {
+    const el = await mount({ authorName: "Beregond of the Guard" });
+    await act(async () => byText(rowOf(el, "Leg Press")!, "Out of service")!.click());
+    expect(dialog()?.getAttribute("aria-label")).toBe("Take Leg Press out of service");
+    // Nothing to send until a reason is typed.
+    const take = byText(dialog()!, "Take it out of service")!;
+    expect(take.disabled).toBe(true);
+    await typeReason("  A new   cable is on order ");
+    await act(async () => byText(dialog()!, "Take it out of service")!.click());
+    await settle();
+    expect(writes).toEqual([
+      {
+        kind: "update",
+        path: "studios/solon/roster/m-leg-press",
+        data: {
+          status: "maintenance",
+          outOfService: { reason: "A new cable is on order", by: { uid: "leader", name: "Beregond of the Guard" }, at: "now" },
+          updatedAt: "now",
+          updatedBy: "leader",
+        },
+      },
+    ]);
+    // Never what the machine IS: no source, basedOn or studio on the write.
+    expect(Object.keys(writes[0].data!)).not.toContain("source");
+    expect(dialog()).toBeNull();
+    expect(toasts).toEqual(["Leg Press is out of service. Trainers see why."]);
+  });
+
+  it("writes nothing on Cancel", async () => {
+    const el = await mount();
+    await act(async () => byText(rowOf(el, "Leg Press")!, "Out of service")!.click());
+    await typeReason("Pin sticks");
+    await act(async () => byText(dialog()!, "Cancel")!.click());
+    expect(dialog()).toBeNull();
+    expect(writes).toEqual([]);
+  });
+
+  it("puts a machine back in service in one tap, and takes the reason off with it", async () => {
+    const el = await mount();
+    await act(async () => byText(rowOf(el, "Lumbar Extension")!, "Back in service")!.click());
+    await settle();
+    expect(writes).toEqual([
+      {
+        kind: "update",
+        path: "studios/solon/roster/m-lumbar",
+        data: { status: "active", outOfService: "__delete__", updatedAt: "now", updatedBy: "leader" },
+      },
+    ]);
+  });
+
+  it("takes the reason off when a machine leaves the floor, too", async () => {
+    const el = await mount();
+    await act(async () => byText(rowOf(el, "Lumbar Extension")!, "We don't have this")!.click());
+    await settle();
+    expect(writes[0].data).toMatchObject({ status: "inactive", outOfService: "__delete__" });
   });
 });
 

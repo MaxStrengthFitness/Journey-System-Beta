@@ -195,4 +195,14 @@ describe("the floor's machines, as Find reads them", () => {
     expect(findUnitsFrom([machine({})], { flagged: null })[0].flagged).toBeNull();
     expect(findUnitsFrom([machine({})], {})[0].flagged).toBe(false);
   });
+
+  it("finds a unit by why it is out of service, and only while it is (wave 2)", () => {
+    const outOfService = { reason: "A new cable is on order", by: { uid: "u", name: "Glorfindel" }, at: 0 };
+    const [out] = findUnitsFrom([machine({ rosterStatus: "maintenance", outOfService })]);
+    expect(out.lines[0]).toEqual({ section: "Out of service", text: "A new cable is on order" });
+    const hit = findOnFloor({ query: "cable", units: [out], studioName: "Solon" });
+    expect(hit.groups.find((g) => g.key === "line")?.hits[0]).toMatchObject({ kind: "line", section: "Out of service" });
+    const [back] = findUnitsFrom([machine({ rosterStatus: "active", outOfService })]);
+    expect(back.lines.some((l) => l.section === "Out of service")).toBe(false);
+  });
 });

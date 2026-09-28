@@ -120,6 +120,26 @@
   exact name still wins ("neck" opens the neck machine, the Neck region
   beside it).
 
+### 0.4 Wave 2 (Sep 28 2026): the new data AJ approved
+
+AJ approved the room's Needs OK list ("all yes", Sep 28 2026) and ruled that
+the codex source check's nineteen line corrections are made by
+administrators in the catalog editor, not in code. The round is
+`docs/rounds/2026-09-28-catalog-2.md`.
+
+- **A reason on Out of service** (`out-of-service.ts`). A leader taking a
+  machine out of service on the floor editor is asked why
+  (`admin/machines/OutOfServiceDialog.tsx`, 1 to 140 characters), and the
+  roster entry carries `outOfService: { reason, by: { uid, name }, at }`
+  beside `status: "maintenance"`; back in service (or off the floor) takes it
+  off. The rules hold it signed by the person writing, at the write's own
+  time (`rosterOutOfServiceOk`). The Catalog reads it off the roster entries
+  it already has (`useCatalogMachines`, no read of its own): the floor row
+  says why and who in one line (`.mcat-row__why`), the page says why, who,
+  when and where it goes back in (`.mcat-oos`), and Find finds a unit by its
+  reason. Only a unit that IS out of service says a reason; one set out of
+  service before reasons existed keeps just its badge.
+
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced
 > that screen with `CatalogWikiView` + `MachineArticle` on the shared

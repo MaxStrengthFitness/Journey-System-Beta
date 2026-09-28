@@ -41,6 +41,7 @@ import { useStudioUpkeep } from "../upkeep/useStudioUpkeep";
 import { DEFAULT_UPKEEP_POLICY, tallyUpkeep, worstStatus } from "../upkeep/upkeepLog";
 import { studioDateKey } from "../../../lib/studio-time";
 import { writesForStudioPerRules } from "../../learning/permissions";
+import { outOfServiceOfEntry, outOfServiceShort } from "../../catalog/out-of-service";
 
 export interface StudioEquipmentPanelProps {
   studio: Studio;
@@ -106,6 +107,8 @@ export function StudioEquipmentPanel({
                 : describeOverrides(overrides),
             risky: overriddenSafetyFields(overrides),
             notes: entry.studioNotes,
+            // Why it is out of service, and who said so (wave 2, Sep 28 2026).
+            outOfService: entry.status === "maintenance" ? outOfServiceOfEntry(entry) : null,
             serial: entry.unit?.serialNumber,
             upkeep: worstStatus(
               tallyUpkeep(upkeepEvents, entry.machineId, todayKey),
@@ -221,6 +224,7 @@ export function StudioEquipmentPanel({
                     {row.summary}
                     {row.serial ? ` · ${row.serial}` : ""}
                     {row.notes ? ` · ${row.notes}` : ""}
+                    {row.outOfService ? ` · Out of service: ${outOfServiceShort(row.outOfService)}` : ""}
                   </>
                 }
                 trailing={
@@ -231,11 +235,13 @@ export function StudioEquipmentPanel({
                         {row.risky.length === 1 ? "" : "s"} overridden
                       </AdminBadge>
                     )}
-                    {row.entry.status !== "active" && (
+                    {row.entry.status === "maintenance" ? (
+                      <AdminBadge tone="warn">Out of service</AdminBadge>
+                    ) : row.entry.status !== "active" ? (
                       <AdminBadge tone="neutral">
                         {row.entry.status}
                       </AdminBadge>
-                    )}
+                    ) : null}
                     {row.upkeep === "overdue" && (
                       <AdminBadge tone="alert">Upkeep overdue</AdminBadge>
                     )}
@@ -283,6 +289,7 @@ export function StudioEquipmentPanel({
             studioId={studioId}
             studioName={studio.name}
             scope="admin"
+            authorName={authTrainer?.fullName ?? null}
           />
         </div>
       )}

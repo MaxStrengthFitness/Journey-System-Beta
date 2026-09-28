@@ -4,6 +4,7 @@ import { useWikiPageGuard } from "../wiki/page-guard";
 import { abbr as academyAbbr } from "../routine-builder/academy";
 import { presetLine, type Preset } from "./floor-index";
 import { floorNameHidesMovement, movementOf } from "./names";
+import { outOfServiceShort } from "./out-of-service";
 import type { CatalogMachine } from "./types";
 
 /**
@@ -78,6 +79,11 @@ export function FloorRow({ walk, machine, preset, flagged, onOpen }: FloorRowPro
               {machine.neverToFailure && <WikiBadge tone="alert">Never to failure</WikiBadge>}
               {machine.requiresHandoff && <WikiBadge tone="neutral">Handoff</WikiBadge>}
             </span>
+          )}
+          {/* Why, and who said so (wave 2, Sep 28 2026). An entry set out of
+              service before reasons existed says only the badge above. */}
+          {outOfService && machine.outOfService && (
+            <span className="mcat-row__why">{outOfServiceShort(machine.outOfService)}</span>
           )}
         </span>
         <ChevronRight size={16} className="mcat-row__chev" aria-hidden />

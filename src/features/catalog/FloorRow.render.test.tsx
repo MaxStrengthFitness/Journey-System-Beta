@@ -104,6 +104,23 @@ describe("a unit on the floor, mounted", () => {
     );
     const warn = [...host.querySelectorAll(".wk__badge--warn")].map((b) => b.textContent);
     expect(warn).toEqual(["Out of service", "Flagged"]);
+    // Set out of service before reasons existed: the badge, and nothing guessed.
+    expect(host.querySelector(".mcat-row__why")).toBeNull();
+  });
+
+  it("says why a unit is out of service, and who said so (wave 2)", async () => {
+    const outOfService = { reason: "A new cable is on order", by: { uid: "u", name: "Glorfindel of the Golden Flower" }, at: 0 };
+    await mount(
+      <FloorRow walk={1} machine={machine({ rosterStatus: "maintenance", outOfService })} preset={SET} flagged={false} onOpen={() => {}} />,
+    );
+    expect(host.querySelector(".mcat-row__why")?.textContent).toBe("A new cable is on order · Glorfindel");
+  });
+
+  it("never says a reason for a unit that is back in service", async () => {
+    const outOfService = { reason: "A new cable is on order", by: { uid: "u", name: "Glorfindel" }, at: 0 };
+    await mount(<FloorRow walk={1} machine={machine({ rosterStatus: "active", outOfService })} preset={SET} flagged={false} onOpen={() => {}} />);
+    expect(host.querySelector(".mcat-row__why")).toBeNull();
+    expect(host.textContent).not.toContain("cable");
   });
 
   it("asks about typing on the page before it opens the unit", async () => {

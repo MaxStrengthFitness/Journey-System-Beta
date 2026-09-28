@@ -35,6 +35,7 @@ import {
 import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
 import { presetLine, type FlagLine, type Preset } from "./floor-index";
 import { floorNameHidesMovement, movementOf } from "./names";
+import { outOfServiceLineOf } from "./out-of-service";
 import type { CatalogMachine } from "./types";
 
 /** A line Find opened this page on: which part of the page, and the sentence. */
@@ -221,6 +222,24 @@ export function MachineArticle({
     </p>
   ) : null;
 
+  /* Out of service, whole: why, who said so and when, and where it goes back
+     in (wave 2, Sep 28 2026). Only on a unit that IS out of service; one set
+     out of service before reasons existed keeps just its badge. */
+  const oos =
+    machine.rosterStatus === "maintenance" && machine.outOfService
+      ? outOfServiceLineOf(machine.outOfService)
+      : null;
+  const oosLine = oos ? (
+    <p className="mcat-oos" role="status">
+      <span className="mcat-oos__who">
+        Out of service · {oos.who}
+        {oos.when ? ` · ${oos.when}` : ""}
+      </span>
+      <span className="mcat-oos__note">{oos.reason}</span>
+      <span className="mcat-oos__where">Back in service is on My Studio → Machines.</span>
+    </p>
+  ) : null;
+
   /* Relay's flag, whole: who, when and what, and where it is cleared. */
   const flagLine = flag ? (
     <p className="mcat-flag" role="status">
@@ -262,9 +281,10 @@ export function MachineArticle({
         </>
       }
       notice={
-        foundLine || flagLine || notice ? (
+        foundLine || oosLine || flagLine || notice ? (
           <>
             {foundLine}
+            {oosLine}
             {flagLine}
             {notice}
           </>

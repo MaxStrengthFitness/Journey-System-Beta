@@ -11,6 +11,7 @@
  */
 
 import type { MachineAnatomy } from "./anatomy";
+import type { OutOfService } from "./out-of-service";
 
 export type CatalogRosterStatus = "active" | "inactive" | "maintenance";
 
@@ -27,6 +28,13 @@ export interface CatalogMachine {
   /** Defined by this studio rather than inherited from the shared catalog. */
   isStudioCustom: boolean;
   rosterStatus: CatalogRosterStatus;
+  /**
+   * Why this unit is out of service, and who said so (wave 2 of the Machine
+   * Catalog room, Sep 28 2026): the roster entry's `outOfService`, carried
+   * only while the unit IS out of service. Absent on an entry set out of
+   * service before reasons existed, which reads as it always did.
+   */
+  outOfService?: OutOfService | null;
 
   // ── the figure ───────────────────────────────────────────────────
   anatomy: MachineAnatomy;

@@ -6,6 +6,7 @@ import { useStudioMachineNotes } from "./useStudioMachineNotes";
 import { fromLegacyMachine, fromResolvedMachine } from "./adapters";
 import { floorStateOf, type FloorState } from "./floor-index";
 import { dedupeMachines } from "./machine-identity";
+import { outOfServiceOfEntry, type OutOfService } from "./out-of-service";
 import type { CatalogMachine } from "./types";
 
 /**
@@ -80,8 +81,19 @@ export function useCatalogMachines(
     return out;
   }, [rosterEntries]);
 
+  // Why each unit is out of service, where its leader said (wave 2, Sep 28
+  // 2026). Read off the entries already in hand: no read of its own.
+  const outOfService = useMemo(() => {
+    const out: Record<string, OutOfService> = {};
+    for (const e of rosterEntries) {
+      const o = outOfServiceOfEntry(e);
+      if (o) out[e.machineId] = o;
+    }
+    return out;
+  }, [rosterEntries]);
+
   const result = useMemo<UseCatalogMachinesResult>(() => {
-    const opts = { studioNotes: notesByMachineId };
+    const opts = { studioNotes: notesByMachineId, outOfService };
 
     if (resolved.length > 0) {
       // useStudioMachines has already sorted by the studio's own order.
@@ -121,7 +133,7 @@ export function useCatalogMachines(
 
     return { machines, source: "global", makers: {}, loading, floor, collisions } as
       UseCatalogMachinesResult & { collisions: Record<string, string[]> };
-  }, [resolved, legacyMachines, notesByMachineId, loading, makers, floor]);
+  }, [resolved, legacyMachines, notesByMachineId, outOfService, loading, makers, floor]);
 
   // Name the duplicate rather than hiding it — the stray document is still in
   // Firestore and will keep coming back until someone deletes it.

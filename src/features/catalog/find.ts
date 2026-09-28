@@ -201,6 +201,10 @@ export function findUnitsFrom(
     flagged: opts.flagged === null ? null : Boolean(opts.flagged?.has(m.id)),
     muscles: [...m.targetMuscles, ...m.synergists],
     lines: [
+      // Why it is out of service (wave 2): "cable" finds the unit waiting on one.
+      ...(m.rosterStatus === "maintenance" && m.outOfService
+        ? [{ section: "Out of service", text: m.outOfService.reason }]
+        : []),
       ...(m.safetyNotice ? [{ section: "Never to failure", text: m.safetyNotice }] : []),
       ...m.clinicalWarnings.map((text) => ({ section: "Clinical warnings", text })),
       ...(m.setup ? [{ section: "Setup", text: m.setup }] : []),

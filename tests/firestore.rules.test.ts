@@ -4434,5 +4434,95 @@ describe("marks on a time", () => {
       // Everyone signed in still reads it.
       await assertSucceeds(getDoc(machine(trainer)));
     });
+
+    async function seedRosterEntry() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "roster", "m-leg-press"), {
+          machineId: "m-leg-press",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-leg-press",
+          status: "active",
+        });
+      });
+    }
+
+    /** What the floor editor writes to take a machine out of service. */
+    const outOfService = (uid: string, reason = "A new cable is on order") => ({
+      status: "maintenance",
+      outOfService: { reason, by: { uid, name: "Glorfindel of the Golden Flower" }, at: serverTimestamp() },
+      ...stamp(uid),
+    });
+
+    it("takes a machine out of service with a reason signed by the leader writing it, keeps it through other writes, and takes it off", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const entry = doc(leader, "studios", "studioA", "roster", "m-leg-press");
+      await assertSucceeds(updateDoc(entry, outOfService("leaderA")));
+      // The walking order and any other write leave the record as it was.
+      await assertSucceeds(updateDoc(entry, { order: 3, ...stamp("leaderA") }));
+      await assertSucceeds(setDoc(entry, { order: 4, updatedAt: serverTimestamp() }, { merge: true }));
+      // Back in service: the record comes off with it.
+      await assertSucceeds(updateDoc(entry, { status: "active", outOfService: deleteField(), ...stamp("leaderA") }));
+      // And a reason as long as the floor editor allows.
+      await assertSucceeds(updateDoc(entry, outOfService("leaderA", "x".repeat(140))));
+    });
+
+    it("refuses a reason signed as someone else, stamped with another time, empty, too long, or carrying more", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const leader = testEnv.authenticatedContext("leaderA", { email: "leadera@test.com" }).firestore();
+      const entry = doc(leader, "studios", "studioA", "roster", "m-leg-press");
+      await assertFails(updateDoc(entry, outOfService("trainerA")));
+      await assertFails(
+        updateDoc(entry, {
+          status: "maintenance",
+          outOfService: { reason: "Cable", by: { uid: "leaderA", name: "Glorfindel" }, at: new Date("2026-09-01T12:00:00Z") },
+        }),
+      );
+      await assertFails(updateDoc(entry, outOfService("leaderA", "")));
+      await assertFails(updateDoc(entry, outOfService("leaderA", "x".repeat(141))));
+      await assertFails(
+        updateDoc(entry, {
+          status: "maintenance",
+          outOfService: { reason: "Cable", by: { uid: "leaderA", name: "Glorfindel" }, at: serverTimestamp(), note: "more" },
+        }),
+      );
+      await assertFails(
+        updateDoc(entry, { status: "maintenance", outOfService: { reason: "Cable", by: { uid: "leaderA" }, at: serverTimestamp() } }),
+      );
+      // A record made while creating the entry is held to the same.
+      await assertFails(
+        setDoc(doc(leader, "studios", "studioA", "roster", "m-lumbar"), {
+          machineId: "m-lumbar",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-lumbar",
+          ...outOfService("trainerA"),
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(leader, "studios", "studioA", "roster", "m-lumbar"), {
+          machineId: "m-lumbar",
+          studioId: "studioA",
+          source: "catalog",
+          basedOn: "m-lumbar",
+          ...outOfService("leaderA"),
+        }),
+      );
+    });
+
+    it("still lets only the studio's leaders and administrators take a machine out of service", async () => {
+      await seedWave2();
+      await seedRosterEntry();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+      const admin = testEnv.authenticatedContext("adminW2", { email: "adminw2@test.com" }).firestore();
+      const entry = (db: typeof admin) => doc(db, "studios", "studioA", "roster", "m-leg-press");
+      await assertFails(updateDoc(entry(trainer), outOfService("trainerA")));
+      await assertFails(updateDoc(entry(outsider), outOfService("trainerB")));
+      await assertSucceeds(updateDoc(entry(admin), outOfService("adminW2")));
+    });
   });
 });

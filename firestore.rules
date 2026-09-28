@@ -1367,6 +1367,41 @@ service cloud.firestore {
           && shareDecisionOk();
     }
 
+    /* WAVE 2 CATALOG: a reason on Out of service (AJ, Sep 28 2026, "all yes":
+       "a short note and who set it, on the studio's machine entry, so the row
+       can say why"). `outOfService` is { reason, by: { uid, name }, at },
+       written with status 'maintenance' by the floor editor
+       (features/catalog/out-of-service.ts; OUT_OF_SERVICE_REASON_MAX there
+       is the 140 below, and its test reads this file). A write that leaves
+       it as it was, or takes it off (back in service), passes on that alone;
+       a write that sets it is signed by the person writing, at the write's
+       own time, with a reason of 1 to 140 characters. Field checks only, no
+       get(): the roster rule asks it first, before its role checks. */
+    function rosterOutOfServiceOk() {
+      return !('outOfService' in request.resource.data)
+          || (resource != null
+              && 'outOfService' in resource.data
+              && request.resource.data.outOfService == resource.data.outOfService)
+          || outOfServiceValid(request.resource.data.outOfService);
+    }
+
+    // WAVE 2 CATALOG: the shape of one Out of service record, signed.
+    function outOfServiceValid(o) {
+      return o is map
+          && o.keys().hasOnly(['reason', 'by', 'at'])
+          && o.keys().hasAll(['reason', 'by', 'at'])
+          && o.reason is string
+          && o.reason.size() > 0
+          && o.reason.size() <= 140
+          && o.by is map
+          && o.by.keys().hasOnly(['uid', 'name'])
+          && o.by.keys().hasAll(['uid', 'name'])
+          && o.by.uid == request.auth.uid
+          && o.by.name is string
+          && o.by.name.size() <= 100
+          && o.at == request.time;
+    }
+
     /* A comment on a Learning page (features/comments). No client field
        exists to fill: hasOnly is the guard, as on the playbook and wiki. */
     function commentValid(d, studioId) {
@@ -2335,8 +2370,11 @@ service cloud.firestore {
       // also covers a direct read of that one document.
       match /roster/{machineId} {
         allow read: if isAuthenticated() && writesForStudio(studioId);
+        // WAVE 2 CATALOG: rosterOutOfServiceOk() first — field checks only,
+        // so the reason on Out of service costs the role checks nothing.
         allow create, update:
-          if (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
+          if rosterOutOfServiceOk()
+             && (isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId))
              && rosterWriteValid(studioId);
         allow delete:
           if isSuperAdmin() || isStudioOwnerOrHeadTrainer(studioId);

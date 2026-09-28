@@ -5,6 +5,7 @@ import {
   doc,
   serverTimestamp,
   setDoc,
+  updateDoc,
   writeBatch,
 } from "firebase/firestore";
 import {
@@ -27,7 +28,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { db, auth } from "../../../firebase";
 import { seedStandardSet } from "../equipment/seed";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
@@ -39,6 +39,8 @@ import { RosterStatus } from "../../../types/machines";
 import { StudioMachineEditor } from "./StudioMachineEditor";
 import type { EditScope } from "../../../lib/machine-template";
 import { AdminBadge, AdminButton, AdminNotice } from "../primitives";
+import { outOfServiceLineOf, outOfServiceOfEntry } from "../../catalog/out-of-service";
+import { OutOfServiceDialog } from "./OutOfServiceDialog";
 import "../admin.css";
 
 /**
@@ -113,6 +115,7 @@ export function StudioInventoryManager({
   onOpenMachine,
   hideHeading = false,
   scope = "studio",
+  authorName,
 }: {
   studioId: string | null;
   studioName?: string;
@@ -137,6 +140,12 @@ export function StudioInventoryManager({
    * location from the Admins dashboard, with no locks. See lib/machine-template.
    */
   scope?: EditScope;
+  /**
+   * The name a reason on Out of service is signed with (wave 2, Sep 28 2026):
+   * the person at the iPad, as trainers will read it. The uid beside it is
+   * always the Auth uid, which the rules pin.
+   */
+  authorName?: string | null;
 }) {
   const { machines, byId, catalog, rosterEntries, loading } = useStudioMachines(studioId, {
     includeInactive: true,
@@ -160,6 +169,8 @@ export function StudioInventoryManager({
    */
   const [reorderIds, setReorderIds] = useState<string[] | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  /** The machine whose reason for being out of service is being asked for. */
+  const [askingOut, setAskingOut] = useState<{ machineId: string; name: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -217,6 +228,9 @@ export function StudioInventoryManager({
           studioId,
           status,
           ...(isCustom ? {} : { source: "catalog", basedOn: machineId }),
+          // A machine leaving the floor, or coming back to it, takes any
+          // reason it was out of service with it (wave 2, Sep 28 2026).
+          outOfService: deleteField(),
           updatedAt: serverTimestamp(),
           updatedBy: auth.currentUser?.uid ?? null,
         },
@@ -225,6 +239,61 @@ export function StudioInventoryManager({
     } catch (err) {
       console.error(err);
       toastError("Could not update the roster. Studio leads and admins only.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Out of service, with the reason a leader gave (wave 2, Sep 28 2026; AJ:
+   * "a short note and who set it, on the studio's machine entry, so the row
+   * can say why"). The status and the signed reason together, as paths with
+   * updateDoc on the entry that is already there: what the machine IS is
+   * never written from here (docs/KNOWN-TRAPS.md, the Local set-up trap).
+   * Signed with the Auth uid, which the rules pin, and the server's time.
+   */
+  const takeOutOfService = async (machineId: string, reason: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      toastError("Sign in again before taking a machine out of service.");
+      return;
+    }
+    setBusy(machineId);
+    try {
+      await updateDoc(doc(db, "studios", studioId, "roster", machineId), {
+        status: "maintenance",
+        outOfService: {
+          reason,
+          by: { uid, name: (authorName ?? "").trim() || auth.currentUser?.displayName?.trim() || "A leader" },
+          at: serverTimestamp(),
+        },
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+      });
+      setAskingOut(null);
+      toastSuccess(`${byId[machineId]?.name ?? "The machine"} is out of service. Trainers see why.`);
+    } catch (err) {
+      console.error(err);
+      toastError("Could not take it out of service. Studio leads and admins only.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Back in service: the status, and the reason off with it. */
+  const putBackInService = async (machineId: string) => {
+    setBusy(machineId);
+    try {
+      await updateDoc(doc(db, "studios", studioId, "roster", machineId), {
+        status: "active",
+        outOfService: deleteField(),
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid ?? null,
+      });
+      toastSuccess(`${byId[machineId]?.name ?? "The machine"} is back in service.`);
+    } catch (err) {
+      console.error(err);
+      toastError("Could not put it back in service. Studio leads and admins only.");
     } finally {
       setBusy(null);
     }
@@ -514,6 +583,13 @@ export function StudioInventoryManager({
           {visible.map((m) => {
             const rostered = rosteredIds.has(m.machineId);
             const owned = rostered && m.rosterStatus !== "inactive";
+            const out = m.rosterStatus === "maintenance";
+            // Why, and who set it: only on a machine that IS out of service,
+            // and never guessed for one set out of service before reasons.
+            const reason = out
+              ? outOfServiceOfEntry(rosterEntries.find((e) => e.machineId === m.machineId))
+              : null;
+            const reasonLine = reason ? outOfServiceLineOf(reason) : null;
             return (
               <div
                 key={m.machineId}
@@ -526,9 +602,9 @@ export function StudioInventoryManager({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="adm-row__name">{m.name}</span>
                     {m.source === "custom" && <AdminBadge tone="neutral">Ours</AdminBadge>}
-                    {m.rosterStatus === "maintenance" && (
+                    {out && (
                       <AdminBadge tone="warn" icon={<Wrench className="h-3 w-3" aria-hidden />}>
-                        Maintenance
+                        Out of service
                       </AdminBadge>
                     )}
                     {m.overriddenFields.length > 0 && (
@@ -549,6 +625,12 @@ export function StudioInventoryManager({
                   <p className="adm-row__meta break-words">
                     {m.movementPattern} · gap {m.universalBaseline?.startingWeightStackGap || "—"}
                   </p>
+                  {reasonLine && (
+                    <p className="adm-row__meta break-words" data-testid="out-of-service-reason">
+                      <span className="font-semibold">Out of service:</span> {reasonLine.reason} · {reasonLine.who}
+                      {reasonLine.when ? `, ${reasonLine.when}` : ""}
+                    </p>
+                  )}
                   {flags?.[m.machineId] && (
                     <p className="adm-row__meta font-semibold">{flags[m.machineId]}</p>
                   )}
@@ -573,16 +655,28 @@ export function StudioInventoryManager({
                       {m.source === "custom" ? "Edit" : "Set up for us"}
                     </AdminButton>
                   )}
+                  {/* Out of service asks why (wave 2, Sep 28 2026); back in
+                      service is one tap and takes the reason off with it. */}
                   {owned && !readOnly && (
-                    <label className="flex min-h-10 cursor-pointer items-center gap-1.5 text-xs text-[var(--adm-ink-muted)]">
-                      <Switch
-                        checked={m.rosterStatus === "maintenance"}
-                        onCheckedChange={(c) =>
-                          setRosterStatus(m.machineId, c ? "maintenance" : "active")
-                        }
-                      />
-                      Out of service
-                    </label>
+                    out ? (
+                      <AdminButton
+                        variant="quiet"
+                        size="sm"
+                        busy={busy === m.machineId}
+                        onClick={() => void putBackInService(m.machineId)}
+                      >
+                        {busy !== m.machineId && "Back in service"}
+                      </AdminButton>
+                    ) : (
+                      <AdminButton
+                        variant="quiet"
+                        size="sm"
+                        disabled={busy === m.machineId}
+                        onClick={() => setAskingOut({ machineId: m.machineId, name: m.name })}
+                      >
+                        Out of service
+                      </AdminButton>
+                    )
                   )}
 
                   {readOnly ? null : owned ? (
@@ -613,6 +707,14 @@ export function StudioInventoryManager({
         </div>
       )}
 
+      {askingOut && (
+        <OutOfServiceDialog
+          machineName={askingOut.name}
+          busy={busy === askingOut.machineId}
+          onCancel={() => setAskingOut(null)}
+          onConfirm={(reason) => void takeOutOfService(askingOut.machineId, reason)}
+        />
+      )}
     </div>
   );
 }
