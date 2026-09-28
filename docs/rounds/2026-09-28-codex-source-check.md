@@ -8,9 +8,9 @@ The Codex room's question 2 on the Blueprints page: "Who rules when sources disa
 
 AJ's answers that touch it:
 
-> On the body figure: keep it, although "it doesn't really have the most accurate markings on the correct muscle points". So the markings that look wrong are listed at the end, not redrawn.
+> On the body figure: "I would like to use our current body model for the body model ... I know it doesn't really have the most accurate markings on the correct muscle points I feel like we can spend a little bit more time to kind of make that a better accurate". So the markings that look wrong are listed at the end, for that later work; nothing is redrawn tonight.
 
-> On starting weights: "i dont like our current starting weights and would rather have actual data".
+> On starting weights: "i dont like our current starting weights and would rather have actual data to go off of for our suggested weights from our clients data once we have it on the app".
 
 > On The Renaissance of Exercise: paraphrase it with a book reference, never quote it. The book is not in `docs/msf-academy/`, so it played no part in this check.
 
@@ -61,7 +61,7 @@ Each has a suggested answer, which is the Academy's own. "Follow the Academy on 
 
 **The figure**
 
-19. **The markings that look wrong** (the table under "The body figure"). Four of them are choices in the anatomy map, not in the drawing: the Leg Curl's glutes, the Triceps' forearms, the trapezius shown only as a helper on the Compound Row and the neck machine, and the neck machine drawn from the front. Suggested: fix those four in the map, with no redrawing, and leave the rest as the figure's limits, as AJ decided.
+19. **The markings that look wrong** (the table under "The body figure"). Four of them are choices in the anatomy map, not in the drawing: the Leg Curl's glutes, the Triceps' forearms, the trapezius shown only as a helper on the Compound Row and the neck machine, and the neck machine drawn from the front. Suggested: fix those four in the map first, with no redrawing; the other five need the figure itself made more accurate, the later work AJ described.
 
 ## Finding 2 — the Leg Press
 
@@ -218,7 +218,7 @@ Each step needs AJ's OK: the generated file and the live catalog are the method,
 
 ## The body figure
 
-AJ keeps the figure. What looks wrong on it, for the record:
+AJ keeps the figure and wants its markings made more accurate later. What looks wrong on it today:
 
 | What looks wrong | Why | Whose |
 | --- | --- | --- |

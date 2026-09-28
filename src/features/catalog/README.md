@@ -3,7 +3,9 @@
 > **Newest first: the Machine Catalog round (Sep 28 2026).** AJ picked "Floor
 > first, codex behind" in the Redesign Blueprints and asked for less text. The
 > round is `docs/rounds/2026-09-28-catalog.md`; what it changed here is in
-> **§0** just below. The rest of this file is older and says so.
+> **§0** just below. The twenty machines' method lines were checked against
+> the Academy in `docs/rounds/2026-09-28-codex-source-check.md`, with rulings
+> still AJ's to make. The rest of this file is older and says so.
 
 ## 0. The Machine Catalog round (Sep 28 2026)
 
@@ -80,8 +82,9 @@
 - **The page** leads its box with the preset, says Relay's flag whole (who,
   when, the note, where it is cleared) and puts the Academy's never-to-failure
   rule first, in the Academy's words (`mcat-ntf`).
-- **Head office opens on All MSF machines** (question 2): `rememberedScope` is
-  null until the reader chooses, then remembered until sign-out.
+- **Head office opens on All MSF machines** (question 2): the lens is null
+  until the reader chooses, then remembered until sign-out (`rememberedLens`
+  since R3, §0.3).
 - **The front page's family tiles** narrow the floor to that family, and
   `academyCategoryOf` (grouping.ts) now reads a machine's lineage, so a
   studio's copy of the leg press is in Lower Body rather than "Not in the
@@ -106,8 +109,9 @@
   in All MSF. An unreadable floor lists the MSF movements under a neutral
   heading, never "not on this floor". The figure is painted with
   `--wk-muscle-*`, never the model's built-in hex. AJ said the model's
-  markings are not the most accurate: the round document lists the ones that
-  look wrong; nothing here redraws them.
+  markings are not the most accurate: the Codex source check
+  (`docs/rounds/2026-09-28-codex-source-check.md`, "The body figure") lists
+  the ones that look wrong; nothing here redraws them.
 - **All MSF machines is grouped by the five families** (`grouping="academy"`,
   no grouping control): the Category · Kinematics · Region switch went, with
   the text.
