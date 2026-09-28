@@ -63,8 +63,9 @@ export interface SettingDef {
   readers: string[];
   /**
    * A field on the studio's own document that held this before the settings
-   * existed, read as the studio's value when its settings document has none:
-   * the studio's day panel still edits it there (one editor, not two).
+   * existed, read as the studio's value when its settings document has none.
+   * Nothing edits it since Sep 28 2026 (This studio's settings is the one
+   * editor), and clearing the setting there clears the field too.
    */
   legacyStudioField?: "deepCleanIntervalDays";
 }

@@ -117,6 +117,13 @@ export const SOURCE_WORDS: Record<SettingSource, string> = {
   app: "The app's default",
 };
 
+/** The same words in the middle of a sentence ("Now 45 days: Max Strength's default."): the brand keeps its capitals. */
+export const SOURCE_PHRASE: Record<SettingSource, string> = {
+  studio: "this studio's own",
+  company: "Max Strength's default",
+  app: "the app's default",
+};
+
 /**
  * What an editor's typed text becomes: a usable value, `null` for "back to
  * the default" (an empty box, or a weekday's None is its own value), or an

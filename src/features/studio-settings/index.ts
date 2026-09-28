@@ -10,6 +10,7 @@ export {
   formatSetting,
   parseSetting,
   usable,
+  SOURCE_PHRASE,
   SOURCE_WORDS,
   type ResolvedSetting,
   type SettingLayers,

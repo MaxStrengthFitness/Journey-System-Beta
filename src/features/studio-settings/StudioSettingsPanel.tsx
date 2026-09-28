@@ -7,7 +7,7 @@ import type { Studio } from "../../types";
 import { AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, AdminSelect, SaveBar } from "../admin/primitives";
 import { useDirtyForm } from "../admin/useDirtyForm";
 import { GROUP_LABEL, SETTINGS, WEEKDAY_NAMES, type SettingDef, type SettingKey } from "./registry";
-import { SOURCE_WORDS, formatSetting, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
+import { SOURCE_PHRASE, formatSetting, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
 import { saveStudioSettings, type SettingsPatch } from "./store";
 import { useStudioSettings } from "./useStudioSettings";
 import "../admin/admin.css";
@@ -128,7 +128,7 @@ export function StudioSettingsPanel({ studioId, studio, canEdit }: StudioSetting
               {defs.map((def) => {
                 const now = settings.all[def.key];
                 const fallback = fallbackFor(def.key, settings.companyValues);
-                const hint = `${def.help} Now ${formatSetting(def.key, now.value)}${def.unit ? ` ${def.unit}` : ""}: ${SOURCE_WORDS[now.source].toLowerCase()}.`;
+                const hint = `${def.help} Now ${formatSetting(def.key, now.value)}${def.unit ? ` ${def.unit}` : ""}: ${SOURCE_PHRASE[now.source]}.`;
                 const id = `ms-setting-${def.key}`;
                 return (
                   <AdminField key={def.key} label={def.label} hint={hint} htmlFor={id}>

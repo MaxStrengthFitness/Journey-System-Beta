@@ -713,6 +713,7 @@ the data files with esbuild's text loader, so that field comes back as the
 - **Use the Auth uid, not `authTrainer.id`, for anything a rule pins to the signed-in person** — note paths, comment authors, `readBy`, personal tasks. The two differ on older accounts.
 
 - **Shared lists are collection-group reads.** Each needs a `{path=**}` rule its filters satisfy (`shared == true`) and a collection-group index. Until a new index finishes building, the screen says it couldn't load the shared part.
+- **A new query on the Enterprise edition works without its index — by scanning** (wave 2 hub, Sep 28 2026). This database is Firestore's Enterprise edition: it builds no index by itself, and an unindexed query still answers, reading every document in the collection group company-wide, billed by the byte. Nothing fails, so no test sees it. A new query ships with its index in `firestore.indexes.json`, and the index is deployed before the app (the Hub's Get to know read ships with two `ford` indexes).
 
 
 - **Roster entries name their own studio** (`studioId` must match the path), and a copy adopted from another studio can't be shared.

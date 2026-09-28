@@ -112,7 +112,7 @@ describe("This studio's settings", () => {
     const el = await mount(true);
     expect(el.textContent).toContain("This studio's settings");
     // Head office's default, the studio's own, and the app's.
-    expect(el.textContent).toContain("Now 3 sessions running or starting soon, or fewer: max strength's default.");
+    expect(el.textContent).toContain("Now 3 sessions running or starting soon, or fewer: Max Strength's default.");
     expect(el.textContent).toContain("Now 60 days since her last visit, with nothing booked: this studio's own.");
     expect(el.textContent).toContain("Now 7 days: the app's default.");
     expect(input(el, "lapsedDays").value).toBe("60");

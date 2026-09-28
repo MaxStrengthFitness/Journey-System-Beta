@@ -2316,6 +2316,77 @@ yet: only in mounted tests.
 - [ ] It is never offered in the Wrap-up's To-file tray and never says
   "Preference".
 
+## Round 32 — The studio settings: head office's default, a studio's own · *Sep 28 2026, branch `redesign/wave2`*
+
+AJ's "let the admins assign the default within the app". The round document
+is `docs/rounds/2026-09-28-wave-2.md`. **The rules go first** (the ship
+script deploys them). Walk it signed in as a **studio leader**, a **Life
+Transformer** at the same studio, and someone **offline**, **portrait and
+landscape, light and dark**. Nothing in this round has been seen on an iPad
+yet: render tests only.
+
+- [ ] **My Studio → Studio → This studio's settings** has three groups
+  (Relay · Where a client is · The machines' care), and every box says where
+  its number comes from ("Now 45 days since her last visit, with nothing
+  booked: Max Strength's default.").
+- [ ] **A leader sets one.** Type 1 in A quiet floor and Save changes: the
+  toast says "{studio}'s screens follow the new numbers." and the box's line
+  says "this studio's own".
+- [ ] **Clearing goes back.** Empty the box and save: the line names the
+  default again.
+- [ ] **Out of range is refused with a sentence.** 40 in A quiet floor:
+  "Enter a number between 0 and 12", and nothing is saved.
+- [ ] **Settling in must end after New.** New up to session 30: "Settling in
+  has to end after New.", and nothing is saved.
+- [ ] **The deep clean moved.** The studio's day no longer has Deep clean
+  every; This studio's settings does, showing the studio's old number as its
+  own. Clearing it leaves the Floor Map on the default.
+- [ ] **A trainer reads it, locked**: every box greyed, "Only this studio's
+  leaders can change these settings.", no save bar.
+- [ ] **Offline or unread**: "Couldn't read every layer of these settings
+  just now…", and no save bar.
+
+## Round 33 — The Hub, wave 2: Get to know and All stars · *Sep 28 2026, branch `redesign/hub-2`*
+
+AJ's "all yes" to the cherry round's two reads. The round document is
+`docs/rounds/2026-09-28-hub-2.md`. **Deploy the two new indexes first**
+(`firebase deploy --only firestore:indexes`); no rules deploy. Walk it on
+TODAY, signed in as a **Life Transformer at the studio** and as **someone
+from another studio**, **portrait and landscape, light and dark**. Nothing in
+this round has been seen on an iPad yet: render tests only.
+
+**Get to know**
+
+- [ ] **The ✎ on the card.** A client with a FORD detail dated this week (or
+  noted in the last two weeks) has a blue speech bubble on her card, alone —
+  no words beside it, in anyone's column, yours included. With two other
+  marks it is inside the "+N".
+- [ ] **The peek says it.** A tap on her card: "Ask about: … — Saturday,
+  Oct 3 (Family, noted Sep 15)." last among the lines.
+- [ ] **The list has it.** Opportunities: the chip "Ask: the recital · Sat",
+  the filter "Get to know 1", and the sentence under Something to say.
+- [ ] **The top and the Key.** A "Get to know" chip on the summary's line
+  lights her card ("Showing 1 to ask about on the grid"); the Key has "Ask
+  about."
+- [ ] **Asked about the day.** Flip to the day after the detail's day: no ✎.
+  A detail that happened yesterday, noted weeks ago: no ✎.
+- [ ] **Once per visit.** Leave the Hub for a session and come back: the ✎
+  is there at once. Sign out and in: read again.
+- [ ] **Not for a visitor.** Signed in from another studio: no ✎ anywhere,
+  and no complaint either.
+- [ ] **A finished session** drops the ✎ with every other mark.
+
+**All stars**
+
+- [ ] **Nothing yet.** Until the renewals job names someone, no All stars
+  section on the Sessions sort and no All star line in any peek.
+- [ ] **Once named** (a test document at `studios/{s}/watch/hubMarks` with
+  today's `computedAt`): her peek says "All star: in 25 of the last 26 weeks,
+  about twice a week."; Opportunities → Sessions has "All stars (1)" after
+  Regulars, her row "#264 · in 25 of the last 26 weeks". Nothing on her card.
+- [ ] **Stale says nothing.** A `computedAt` four days old: no section, no
+  line.
+
 ---
 
 ## Findings log
@@ -2373,4 +2444,6 @@ Screenshot:
 | 29 — The Machine Catalog (Sep 28) | 18 | | |
 | 30 — Operations, five destinations (Sep 28) | 17 | | |
 | 31 — The Relay room (Sep 28) | 26 | | |
-| **Total** | **544** | | |
+| 32 — The studio settings (Sep 28) | 8 | | |
+| 33 — The Hub, wave 2 (Sep 28) | 11 | | |
+| **Total** | **563** | | |
