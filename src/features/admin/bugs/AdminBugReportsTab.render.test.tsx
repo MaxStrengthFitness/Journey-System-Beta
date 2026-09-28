@@ -19,7 +19,15 @@ vi.mock("firebase/firestore", () => {
   const reports = [
     { id: "b1", kind: "bug", description: "Timer froze after the Wrap-up", status: "open", userName: "Ioreth", createdAt: new Date("2026-09-26T14:00:00Z") },
     { id: "b2", kind: "ui", description: "Leg Press seat setting missing on the briefing", userName: "Mablung", createdAt: new Date("2026-09-27T14:00:00Z") },
-    { id: "b3", kind: "idea", description: "A second theme for the Wrap-up", status: "wont-fix", userName: "Beregond", createdAt: new Date("2026-09-12T14:00:00Z") },
+    {
+      id: "b3",
+      kind: "idea",
+      description: "A second theme for the Wrap-up",
+      status: "wont-fix",
+      userName: "Beregond",
+      createdAt: new Date("2026-09-12T14:00:00Z"),
+      reply: { text: "The Wrap-up follows the app's theme, so it stays one switch.", by: { uid: "adm", name: "Faramir" }, at: new Date("2026-09-13T14:00:00Z") },
+    },
     { id: "b4", kind: "bug", description: "Renewals list shows yesterday late at night", status: "investigating", userName: "Bergil", createdAt: new Date("2026-09-21T14:00:00Z") },
   ];
   return {
@@ -33,6 +41,7 @@ vi.mock("firebase/firestore", () => {
       return { docs: reports.map((r) => ({ id: r.id, data: () => r })) };
     },
     updateDoc: async (ref: { path: string }, data: unknown) => void writes.push({ path: ref.path, data }),
+    serverTimestamp: () => "SERVER_TIME",
   };
 });
 
@@ -58,7 +67,7 @@ async function mount(onChanged?: () => void) {
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(<AdminBugReportsTab studios={[]} onChanged={onChanged} />);
+    root!.render(<AdminBugReportsTab studios={[]} onChanged={onChanged} replierName="Faramir" />);
   });
   await act(async () => {
     await new Promise((r) => setTimeout(r, 5));
@@ -99,6 +108,38 @@ describe("bug reports", () => {
     await click([...group.querySelectorAll("button")].find((b) => b.textContent === "Looking into it"));
     expect(writes).toEqual([{ path: "bug_reports/b2", data: { status: "investigating" } }]);
     expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it("replies to the reporter in the app, signed and dated, and says nothing is emailed", async () => {
+    const el = await mount();
+    await click(el.querySelector(".adm-bug-row"));
+    await click([...el.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Reply to Mablung"));
+    const box = el.querySelector<HTMLTextAreaElement>("#hq-reply-b2")!;
+    expect(el.textContent).toContain("Mablung reads it on this report in Settings, the next time they look. Nothing is emailed.");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(box, "It's in the briefing's set-up card now. Thanks, Mablung.");
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click([...el.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Save the reply"));
+    expect(writes).toEqual([
+      {
+        path: "bug_reports/b2",
+        data: { reply: { text: "It's in the briefing's set-up card now. Thanks, Mablung.", by: { uid: "adm", name: "Faramir" }, at: "SERVER_TIME" } },
+      },
+    ]);
+    // Shown as the reply the reporter reads, with Edit.
+    expect(el.querySelector(".hq-reply__text")?.textContent).toBe("It's in the briefing's set-up card now. Thanks, Mablung.");
+    expect([...el.querySelectorAll("button")].some((b) => b.textContent?.trim() === "Edit the reply")).toBe(true);
+    expect(el.querySelector(".adm-bug-row--on .adm-bug-row__who")?.textContent).toContain("replied");
+  });
+
+  it("shows a reply already given, with who and when", async () => {
+    const el = await mount();
+    const row = [...el.querySelectorAll(".adm-bug-row")].find((r) => r.textContent?.includes("A second theme"));
+    await click(row);
+    expect(el.textContent).toContain("Faramir replied on Sun, Sep 13. Beregond reads it in Settings.");
+    expect(el.querySelector(".hq-reply__text")?.textContent).toBe("The Wrap-up follows the app's theme, so it stays one switch.");
   });
 
   it("says a read that failed failed, never No reports yet", async () => {

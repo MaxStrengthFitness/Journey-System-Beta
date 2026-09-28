@@ -25,6 +25,13 @@
  * in inks readable on white; no machine count (it was the whole catalog's,
  * not the studio's floor); and the Operations door asks the app's one rule
  * (`mayOpenOperations`) and switches the app mode, as the menu does.
+ *
+ * The Admins room's second wave (Sep 28 2026, AJ "all yes"): a report's
+ * status reads in the words Admins uses — New · Looking into it · Fixed ·
+ * Won't fix (STATUS_LABEL, admin/bugs/reportView.ts; the stored values are
+ * unchanged) — and a reply an administrator wrote shows under the report,
+ * with who and when (admin/bugs/bug-reply.ts). Nothing is emailed: this is
+ * where it is read.
  */
 
 import {
@@ -42,6 +49,8 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 import { mayOpenOperations } from "../admin/operations-access";
+import { STATUS_LABEL, type ReportStatus } from "../admin/bugs/reportView";
+import { replyLine, replyOf } from "../admin/bugs/bug-reply";
 import { whoWorksHere } from "../../lib/who-works-here";
 import { useFeedback, useMyFeedback, FEEDBACK_KIND_SHORT } from "../feedback";
 import type { FeedbackKind } from "../feedback";
@@ -64,11 +73,12 @@ const KIND_BUTTONS: { kind: FeedbackKind; icon: typeof Bug }[] = [
   { kind: "idea", icon: Lightbulb },
 ];
 
-const STATUS: Record<string, { label: string; tone: "ok" | "open" | "closed" }> = {
-  open: { label: "Open", tone: "open" },
-  investigating: { label: "Looking at it", tone: "open" },
-  fixed: { label: "Fixed", tone: "ok" },
-  "wont-fix": { label: "Closed", tone: "closed" },
+/** Each stored status in Admins' words, and the ink it reads in. */
+const STATUS_TONE: Record<ReportStatus, "ok" | "open" | "closed"> = {
+  open: "open",
+  investigating: "open",
+  fixed: "ok",
+  "wont-fix": "closed",
 };
 
 function Card({
@@ -187,11 +197,20 @@ export function TrainerSettingsView({
             </p>
             <ul className="stg-reports">
               {reports.slice(0, 3).map((r) => {
-                const status = STATUS[r.status] ?? { label: r.status, tone: "open" as const };
+                const known = (r.status in STATUS_TONE ? r.status : "open") as ReportStatus;
+                const reply = replyOf((r as { reply?: unknown }).reply);
                 return (
                   <li key={r.id} className="stg-report">
-                    <span className="stg-report__text">{r.description}</span>
-                    <span className={`stg-status stg-status--${status.tone}`}>{status.label}</span>
+                    <span className="stg-report__row">
+                      <span className="stg-report__text">{r.description}</span>
+                      <span className={`stg-status stg-status--${STATUS_TONE[known]}`}>{STATUS_LABEL[known]}</span>
+                    </span>
+                    {reply ? (
+                      <span className="stg-reply">
+                        <span className="stg-reply__who">{replyLine(reply)}</span>
+                        <span className="stg-reply__text">{reply.text}</span>
+                      </span>
+                    ) : null}
                   </li>
                 );
               })}

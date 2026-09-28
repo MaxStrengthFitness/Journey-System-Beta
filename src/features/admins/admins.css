@@ -1388,3 +1388,35 @@
 .hq-sheet__foot {
   flex-wrap: wrap;
 }
+
+/* ---------- A reply on a bug report (the second wave, Sep 28 2026) --------- */
+
+.hq-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface-2);
+}
+.hq-reply__head {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+.hq-reply__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.hq-reply__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

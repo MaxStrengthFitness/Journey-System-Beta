@@ -3059,10 +3059,32 @@ service cloud.firestore {
     // trainer but the owner, silently, so the reports went nowhere visibly
     // too. A reporter may read their OWN report; nobody else can.
     match /bug_reports/{reportId} {
+      // WAVE 2 ADMINS: A REPLY THE REPORTER READS IN SETTINGS (Sep 28 2026; AJ
+      // "all yes", q11: "in the app only. Nothing is emailed"). One field,
+      //   reply: { text, by: { uid, name }, at }
+      // written by an administrator from Admins -> Machinery -> Bug reports
+      // (features/admin/bugs/BugReplyBox.tsx), signed with their Auth uid and
+      // the server's time. The shape is checked only when the reply changes,
+      // so setting a status on a report that already has one isn't refused.
+      // The reporter reads it with the report (the read rule below), and a
+      // report is never filed with a reply already on it.
+      function bugReplyValid(d) {
+        return !('reply' in d)
+            || d.reply == resource.data.get('reply', null)
+            || (d.reply is map
+                && d.reply.keys().hasOnly(['text', 'by', 'at'])
+                && d.reply.text is string && d.reply.text.size() > 0 && d.reply.text.size() <= 1000
+                && d.reply.by is map && d.reply.by.keys().hasOnly(['uid', 'name'])
+                && d.reply.by.uid == request.auth.uid
+                && d.reply.by.name is string && d.reply.by.name.size() <= 120
+                && d.reply.at == request.time);
+      }
+
       allow read: if isSuperAdmin()
                   || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update, delete: if isSuperAdmin();
+      allow create: if isAuthenticated() && !('reply' in request.resource.data);
+      allow update: if isAuthenticated() && bugReplyValid(request.resource.data) && isSuperAdmin();
+      allow delete: if isSuperAdmin();
     }
 
     // WAVE 2 ADMINS: THE ACTIVITY RECORD (the Admins room's second wave, Sep

@@ -107,20 +107,41 @@ describe("Trainer Settings", () => {
     expect(fact("Mindbody")).toBe("Not linked — a studio leader links you on My Studio → Team");
   });
 
-  it("shows what happened to the trainer's reports, in words", async () => {
+  it("shows what happened to the trainer's reports, in the words Admins uses", async () => {
     feedback.reports = [
       { id: "f1", description: "The grid froze", status: "fixed" },
       { id: "f2", description: "Button too small", status: "investigating" },
+      { id: "f3", description: "A second theme", status: "wont-fix" },
     ];
     await mount(person({}));
-    expect(host.textContent).toContain("Your reports · 1 open · 1 closed");
+    expect(host.textContent).toContain("Your reports · 1 open · 2 closed");
     const statuses = [...host.querySelectorAll(".stg-status")].map((s) => [s.textContent, s.className]);
     expect(statuses).toEqual([
       ["Fixed", "stg-status stg-status--ok"],
-      ["Looking at it", "stg-status stg-status--open"],
+      ["Looking into it", "stg-status stg-status--open"],
+      ["Won't fix", "stg-status stg-status--closed"],
     ]);
     await act(async () => (host.querySelector(".stg-kind") as HTMLButtonElement).click());
     expect(feedback.open).toHaveBeenCalledWith("bug");
+  });
+
+  it("shows an administrator's reply under the report, with who and when", async () => {
+    feedback.reports = [
+      {
+        id: "f1",
+        description: "Can't find where to add a machine photo",
+        status: "fixed",
+        reply: { text: "It's in My Studio → Machines → the machine → Photo.", by: { uid: "adm", name: "Faramir" }, at: new Date("2026-09-28T14:05:00Z") },
+      } as { id: string; description: string; status: string },
+      { id: "f2", description: "New one", status: "open" },
+    ];
+    await mount(person({}));
+    const replies = [...host.querySelectorAll(".stg-reply")];
+    expect(replies).toHaveLength(1);
+    expect(replies[0].querySelector(".stg-reply__who")?.textContent).toBe("Faramir replied on Mon, Sep 28");
+    expect(replies[0].querySelector(".stg-reply__text")?.textContent).toBe("It's in My Studio → Machines → the machine → Photo.");
+    // A new report reads "New".
+    expect([...host.querySelectorAll(".stg-status")].map((s) => s.textContent)).toEqual(["Fixed", "New"]);
   });
 
   it("shows a whole report, never two lines of it", async () => {

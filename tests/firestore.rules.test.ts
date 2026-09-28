@@ -4544,5 +4544,51 @@ describe("marks on a time", () => {
       await assertFails(setDoc(itemRef(ctx("franchiseW"), "studioB", "floor-names"), item("franchiseW")));
       await assertSucceeds(getDocs(collection(ctx("adminW"), "studios", "studioB", "setupItems")));
     });
+
+    // ---- A reply on a bug report -----------------------------------------
+    async function seedReport(over: Record<string, unknown> = {}) {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "bug_reports", "rep1"), {
+          userId: "trainerA",
+          userName: "Trainer A",
+          description: "The timer froze after the Wrap-up.",
+          status: "open",
+          ...over,
+        });
+      });
+    }
+    const reply = (uid: string, over: Record<string, unknown> = {}) => ({ text: "Fixed in today's version.", by: { uid, name: `Person ${uid}` }, at: serverTimestamp(), ...over });
+
+    it("lets an administrator reply to a report, signed and dated, and the reporter read it", async () => {
+      await seedWave2People();
+      await seedReport();
+      const admin = ctx("adminW");
+      await assertSucceeds(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW"), status: "fixed" }));
+      // A status set later, with the reply untouched.
+      await assertSucceeds(updateDoc(doc(ctx("founderW"), "bug_reports", "rep1"), { status: "investigating" }));
+      // Replaced by another administrator's reply, signed as them.
+      await assertSucceeds(updateDoc(doc(ctx("founderW"), "bug_reports", "rep1"), { reply: reply("founderW", { text: "Looking again." }) }));
+      const mine = await assertSucceeds(getDoc(doc(ctx("trainerA"), "bug_reports", "rep1")));
+      expect(mine.data()?.reply?.text).toBe("Looking again.");
+      await assertFails(getDoc(doc(ctx("trainerB"), "bug_reports", "rep1")));
+      await assertSucceeds(deleteDoc(doc(admin, "bug_reports", "rep1")));
+    });
+
+    it("refuses a reply signed as someone else, backdated, empty or too long, and any reply but an administrator's", async () => {
+      await seedWave2People();
+      await seedReport();
+      const admin = ctx("adminW");
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("founderW") }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { at: new Date("2026-09-01T12:00:00Z") }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { text: "" }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { text: "x".repeat(1001) }) }));
+      await assertFails(updateDoc(doc(admin, "bug_reports", "rep1"), { reply: reply("adminW", { cc: "everyone" }) }));
+      // The reporter, and a studio's leader, never write one.
+      await assertFails(updateDoc(doc(ctx("trainerA"), "bug_reports", "rep1"), { reply: reply("trainerA") }));
+      await assertFails(updateDoc(doc(ctx("leaderW"), "bug_reports", "rep1"), { reply: reply("leaderW") }));
+      // And a report is never filed with a reply already on it.
+      await assertFails(setDoc(doc(ctx("trainerB"), "bug_reports", "rep2"), { userId: "trainerB", description: "x", status: "open", reply: reply("trainerB") }));
+      await assertSucceeds(setDoc(doc(ctx("trainerB"), "bug_reports", "rep3"), { userId: "trainerB", description: "x", status: "open" }));
+    });
   });
 });

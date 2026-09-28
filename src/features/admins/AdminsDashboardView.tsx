@@ -519,7 +519,7 @@ function AdminsShell({
                 onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "mindbody" })}
               />
             )}
-            {page === "bugs" && <AdminBugReportsTab studios={studios} onChanged={recount} />}
+            {page === "bugs" && <AdminBugReportsTab studios={studios} onChanged={recount} replierName={authTrainer.fullName} />}
             {page === "data" && (
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />
             )}

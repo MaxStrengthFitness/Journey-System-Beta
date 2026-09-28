@@ -35,6 +35,7 @@ import type {
   FeedbackErrorSample,
   FeedbackKind,
 } from "../../feedback/types";
+import { replyOf, type BugReply } from "./bug-reply";
 
 export type ReportStatus = "open" | "investigating" | "fixed" | "wont-fix";
 
@@ -42,8 +43,8 @@ export type ReportStatus = "open" | "investigating" | "fixed" | "wont-fix";
  * The four statuses in plain words (the Admins room, Sep 28 2026; the
  * design's names, AJ's default for q11). The stored values are unchanged:
  * a report nobody has looked at yet is `open`, and reads "New". The reporter
- * sees their own report's status on Settings in words of its own
- * (features/settings/TrainerSettingsView.tsx).
+ * sees their own report's status on Settings in the same words since the
+ * second wave (features/settings/TrainerSettingsView.tsx reads this map).
  */
 export const STATUS_LABEL: Record<ReportStatus, string> = {
   open: "New",
@@ -79,6 +80,8 @@ export interface RawReport {
   status?: string;
   createdAt?: unknown;
   context?: FeedbackContext;
+  /** An administrator's answer, which the reporter reads on Settings (bug-reply.ts). */
+  reply?: unknown;
   /** Pre-Sep-2026 documents kept these at the top level. */
   platform?: string;
   browser?: string;
@@ -113,6 +116,8 @@ export interface ReportView {
   errors: FeedbackErrorSample[];
   /** True when there is anything beyond the description to look at. */
   hasDiagnostics: boolean;
+  /** An administrator's reply, or null. */
+  reply: BugReply | null;
 }
 
 const KINDS = new Set<FeedbackKind>(["bug", "ui", "idea"]);
@@ -225,6 +230,7 @@ export function toReportView(raw: RawReport, index = 0): ReportView {
     diagnostics: rows,
     errors,
     hasDiagnostics: rows.length > 0 || errors.length > 0,
+    reply: replyOf(raw.reply),
   };
 }
 
@@ -321,6 +327,9 @@ export function reportAsText(r: ReportView, at: (ms: number) => string): string 
     for (const e of r.errors) {
       lines.push(`  [${e.type}] ${e.message}${e.at ? ` (${at(e.at)})` : ""}`);
     }
+  }
+  if (r.reply) {
+    lines.push("", `Reply from ${r.reply.byName}${r.reply.at ? ` (${at(r.reply.at)})` : ""}:`, r.reply.text);
   }
   return lines.join("\n");
 }
