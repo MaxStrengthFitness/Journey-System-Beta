@@ -136,3 +136,21 @@ AJ, on who sees what for the beta: "im not too concerned for permission at this 
 - A client can be approved to **cross-train** at other studios; trainers there can then read the client, but editing stays with the home studio. The one exception is a session: a trainer at a studio the client is approved at can run and finish her session there, and Journey updates her session count, last session and starting weights (Sep 24 2026). Her name, her home studio, her approvals, her medical history and her package stay with the home studio.
 - Trainers can have **guest** access to other studios.
 - Queries always name the studios they read (`src/lib/tenancy.ts`), and the rules check the same thing.
+
+## A studio's machine knowledge, and sharing it (Sep 28 2026)
+
+AJ, the voice review notes: "Studio-local machine notes stay with that studio. Only the official standard flows company-wide." And on sharing: it "should submit to admins first for review, we can review in admin dashboard".
+
+| | Who |
+| --- | --- |
+| Read a studio's machines (its roster: custom machines, local names, overrides), its Studio notes and its machine set-up | The people who work there or run it, franchise owners, administrators (`writesForStudio`). Until Sep 28 2026 any signed-in account could read them by asking the database directly |
+| Change a studio's machine set-up (the Catalog's set-up card) | The studio's leaders (head trainer, studio leader, studio owner there, or the grant) and administrators. Until Sep 28 2026 the rules let any trainer at any studio change or delete it |
+| Offer something to every MSF studio (the studio's note on a machine, a playbook tip, or a machine the studio made) — and take it back | Whoever may already edit it: anyone at the studio for a note, the tip's author or a leader for a tip, the studio's leaders for a machine |
+| Share an offer with every studio, or decide against it (with a note the studio reads) | Administrators only, on the Admins dashboard → Waiting for review |
+| Read what an administrator shared | Everyone signed in, on each machine's Catalog page ("From other MSF studios") and in All MSF machines |
+
+## How often a studio asks Mindbody (Sep 28 2026)
+
+| | Who |
+| --- | --- |
+| Turn a studio's automatic schedule pull on or off, or change how often it runs (Operations → Mindbody) | Administrators only (AJ: "yes"): it changes the Mindbody bill. A studio leader sees both read only; the rules refuse anyone else |

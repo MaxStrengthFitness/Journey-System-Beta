@@ -82,6 +82,82 @@ The composer itself stays where it is. Posting a studio's notice from
 Operations was AJ's call in the Operations overhaul (Sep 19: "leaders
 announce to their own studio"), and a notice is a post, not a setting.
 
+## AJ's answers (Sep 28 2026), and what they built
+
+His answers to "For AJ's word" below, in his words:
+
+1. The open-questions trail — the new link field, the Heads up on the next
+   briefing, and building it in the Relay round: *"yes yes yes"*. It is
+   being built in the Relay redesign round (`docs/rounds/2026-09-28-relay.md`).
+2. The machine-notes rules: *"fix it"*.
+3. The Share switch: *"it should submit to admins first for review, we can
+   review in admin dashboard"*.
+4. Operations → Mindbody's sync settings administrators only: *"yes"*.
+5. Relay's tabs: *"Board Tracker Journal"* (the Relay round).
+
+Then: *"lets keep moving to the next stage"* and *"lets try to complete all
+rounds tonight and get it to master"*.
+
+### Unit 3 — the rules: a studio's machine knowledge stays with it, sharing waits for an administrator, the sync settings are administrators'
+
+One rules change, one commit, with its tests (206 passing, 202 before):
+
+- **A studio's roster** (`studios/{s}/roster`: custom machines' whole
+  definitions, local names, overrides) and its **Studio notes**
+  (`studios/{s}/machineNotes`) are readable by the people who work at or
+  run the studio, franchise owners and administrators (`writesForStudio`).
+  Until now any signed-in account could read them by asking the database
+  directly, which the Studio notes card promised it couldn't ("It does not
+  follow you to other locations"). A machine an administrator shared stays
+  readable by everyone through the `{path=**}/roster` rule, which also
+  answers a direct read of that one document.
+- **A studio's machine set-up** (`studioMachineSettings/{studio}_{machine}`)
+  is read by the same people (the app reads it `where studioId ==`, which
+  the rule can judge) and changed only by the studio's leaders and
+  administrators, on the id the document names. Until now any trainer at any
+  studio could create, change or delete any studio's set-up.
+- **Only an administrator shares.** `shareDecisionOk` refuses a studio that
+  sets `shared` to true, marks an offer "approved" or "declined", or writes
+  the review fields; a studio may offer (`shareStatus: "pending"`) and take
+  back. Administrators may list offers across studios. The check runs its
+  field tests first and asks `isSuperAdmin()` only for a publish or a
+  decision: the other way round, the tip and note rules ran out of
+  Firestore's 1000-expression budget in the rules tests.
+- **How often a studio asks Mindbody** (`autoSyncEnabled`,
+  `syncIntervalMinutes`) is administrators' alone; a studio's leaders and
+  franchise owners may still change everything else on the studio's record.
+
+### Unit 4 — sharing waits for an administrator
+
+- **The switch** says "Offer to all MSF studios". Offered, it says "Offered ·
+  waiting for review" with "An administrator reads it before other studios
+  see it. Tap to withdraw it."; shared, "Shared with all MSF studios"; after
+  a no, "Offer again" with the administrator's note under it
+  (`ShareToggle`, `shareStateOf`, `tapOffers`). A studio's own machine says
+  the same in its card's sentence.
+- **Admins → Waiting for review** (a new place on the Admins dashboard,
+  `ShareReviewPanel`): every offer across studios, oldest first, each whole
+  — what it is, whose (the studio the path names), who offered it and when,
+  and what it says — with **Share with every studio** or **Don't share**
+  (an optional note, up to 300 characters, the studio reads beside its
+  switch). It reads once when opened, with Refresh; a failed read says it
+  can't tell, never "Nothing waiting". Its three reads carry no index of
+  their own (the database builds none automatically), so each scans that
+  small collection group, and only administrators may run them.
+- **Only the first share is reviewed.** A note or tip an administrator
+  shared stays shared when its studio edits it. Whether every later edit
+  should go back for review is for AJ.
+- Offers already switched on before tonight stay shared: nothing changes a
+  document that exists.
+
+### Unit 5 — Operations → Mindbody's sync settings, for administrators
+
+A studio leader sees "Automatic sync" and "Every" as read-only lines ("Administrators set how often a studio asks Mindbody, because it changes the Mindbody bill."); an administrator keeps the two controls. On the way, a real bug: the Mindbody panels' default interval was 15 minutes ("Matches syncPolicy") while the pull itself has run every 30 since the cost plan (Sep 26), so Operations → Mindbody and My Studio → Studio said "every 15 minutes" and called a studio lagging halfway to its real next pull. `diagnostics.ts` now takes `syncPolicy`'s default, so the two can't drift.
+
+### Deploy (units 3–5)
+
+`scripts/ship/ship-review-decisions.ps1`: `prepare` (the typecheck, the suite, THE rules tests on AJ's PC, the build), then `golive` (the restore tag, `firebase deploy --only firestore:rules`, the push). No index, no function, no server or Mindbody change. The rules narrow access and go first: the app the iPads run now only reads its own studio's machines, and for the minutes until the new app is live a studio's Share tap or a leader's sync change is refused with a message.
+
 ## For AJ's word
 
 ### Open questions as a trail in client history (item 4)
@@ -201,6 +277,7 @@ deploys the app.
 | GitHub's way | `npm test` under `TZ=UTC`: 7,330 passing and 1 skipped in 485 files |
 | Build | `npx vite build`: clean |
 | Case check | no two tracked files differ only by case |
+| After AJ's three answers | typecheck 4; **7,141** passing in 475 files (Eastern); rules tests **206** passing (202 before), on the emulator on AJ's PC; build clean |
 
 The read-only Studio page was drawn on a harness page (LOTR data, no
 Firebase) in headless Chrome at iPad portrait width; it has not been seen

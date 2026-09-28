@@ -1942,7 +1942,7 @@ signed-in app on an iPad yet: only on a harness page in headless Chrome.
 
 ---
 
-## Round 26 — My Studio → Studio, read only for trainers · *Sep 28 2026, branch `voice-review-notes`*
+## Round 26 — My Studio → Studio read only, and AJ's three answers · *Sep 28 2026, branch `voice-review-notes`*
 
 AJ's voice review notes: "Leaders edit it; trainers can view it read-only."
 The round document is `docs/rounds/2026-09-28-voice-review-notes.md`.
@@ -1971,6 +1971,23 @@ light and dark**. Seen so far only on a harness page in headless Chrome.
   {studio}, and lets them change its studio settings and machines".
 - [ ] **Operations → Announcements** (as a studio leader whose account is an
   older one, if there is one): Publish works and the notice reaches the bell.
+
+**AJ's answers (after `ship-review-decisions.ps1`: the rules go first)**
+
+- [ ] **Offer, don't publish.** On a machine's Catalog page, tap "Offer to all
+  MSF studios" on the studio's note: it reads "Offered · waiting for review"
+  and another studio's iPad does NOT show it under "From other MSF studios".
+  Tap again: withdrawn.
+- [ ] **Waiting for review.** As an administrator, Admins → Waiting for review
+  lists the offer whole (whose, who offered it, what it says). Share with
+  every studio: it now shows on the other studio's page.
+- [ ] **A no comes back with its note.** Offer a tip, then Don't share it with
+  a note: the studio's switch reads "Offer again" with "Not shared: {note}".
+- [ ] **The set-up card.** A Life Transformer sees the Catalog's set-up card
+  read only; a leader saves it.
+- [ ] **Sync settings.** As a studio leader, Operations → Mindbody shows
+  Automatic sync and Every as plain lines ("every 30 minutes" unless the
+  studio set its own); as an administrator, the two controls.
 
 ---
 
@@ -2023,5 +2040,5 @@ Screenshot:
 | 23 — Openings (Sep 27) | 36 | | |
 | 24 — The Client Directory and the Hub's Opportunities (Sep 28) | 16 | | |
 | 25 — The calm Hub (Sep 28) | 22 | | |
-| 26 — My Studio → Studio, read only for trainers (Sep 28) | 8 | | |
-| **Total** | **450** | | |
+| 26 — My Studio → Studio read only, and AJ's three answers (Sep 28) | 13 | | |
+| **Total** | **455** | | |
