@@ -95,6 +95,13 @@ describe("the peek", () => {
     });
   });
 
+  it("says the nightly marks' All star, with its proof, only for a client they name (wave 2 hub)", () => {
+    const named = peekContent(entryFor(belladonna, [booking], { allStarOf: (id) => (id === "belladonna" ? { clientId: id, weeksIn: 25, perWeek: 2 } : null) }));
+    expect(named.star).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+    expect(peekContent(entryFor(belladonna, [booking], { allStarOf: () => null })).star).toBeNull();
+    expect(peekContent(entryFor(belladonna, [booking])).star).toBeNull();
+  });
+
   it("says, quietly, when her FORD couldn't be checked", () => {
     const peek = peekContent(entryFor(belladonna, [booking], { fordFor: () => null }));
     expect(peek.notes).toEqual([

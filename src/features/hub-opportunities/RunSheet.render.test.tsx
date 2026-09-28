@@ -177,6 +177,24 @@ describe("RunSheet", () => {
   });
 });
 
+describe("RunSheet: All stars (wave 2 hub)", () => {
+  it("is a section after Regulars on the Sessions sort, and her opened row says it with its proof", async () => {
+    const { host } = await mount({ allStarOf: (id) => (id === "arwen" ? { clientId: id, weeksIn: 25, perWeek: 2 } : null) });
+    await click(button(host, ".ho-seg-btn", "Sessions"));
+    // Arwen's total can't be quoted, but the nightly marks' claim is about the 26 weeks Journey holds.
+    expect([...host.querySelectorAll(".ho-sechead")].map((h) => h.textContent)).toEqual(["Milestone (1)", "All stars (1)", "Can’t tell yet (1)"]);
+    expect(sentence(host, "arwen")).toBe("In 25 of the last 26 weeks");
+    await click(host.querySelector('.ho-row[data-client-id="arwen"] .ho-rowbtn'));
+    expect(host.querySelector(".ho-open")?.textContent).toContain("All star: in 25 of the last 26 weeks, about twice a week.");
+  });
+
+  it("with no marks, there is no All stars section and nothing is said", async () => {
+    const { host } = await mount();
+    await click(button(host, ".ho-seg-btn", "Sessions"));
+    expect(host.textContent).not.toContain("All star");
+  });
+});
+
 describe("RunSheet: Get to know (wave 2 hub)", () => {
   const PARTY = {
     id: "f-party",

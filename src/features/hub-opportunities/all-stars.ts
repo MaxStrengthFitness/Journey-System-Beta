@@ -30,14 +30,18 @@
  * screen says nothing — never a guess, and never "not an all star" either:
  * "not yet" is for the rule's own use and no screen shows it.
  *
- * UNWIRED, ON PURPOSE. Twenty-six weeks of a client's visits are in nothing
- * the Hub holds: the app streams one day of sessions, the Hub's bookings run
- * from yesterday to a week ahead, and the nightly renewals job reads 90 days
- * (its proof counts 12 weeks, its pace 8). Reading 26 weeks of sessions for
- * a studio on the Hub is the kind of scan the house rules refuse, and having
- * the nightly job keep the answer on the client is a new stored field and a
- * longer read for that job — both need AJ's OK. The rule and its words wait
- * here for whichever he picks.
+ * WIRED (wave 2 hub, Sep 28 2026; AJ: "all yes"). Twenty-six weeks of a
+ * client's visits are in nothing the Hub holds, and the iPad never works
+ * them out: the nightly renewals job does (the Operations helper's addition,
+ * wave 2), and writes the studio's all stars to ONE document,
+ * `studios/{studioId}/watch/hubMarks` — `allStars: [{ clientId,
+ * weeksWithVisit, perWeek }]` and `computedAt`. The Hub reads it once per
+ * studio visit (use-hub-marks.ts) and `readHubMarks` below decides what may
+ * be said: nothing when the document is missing, older than three days or
+ * not one this app can read, and nothing about a client who isn't in it.
+ * Where it shows: an "All stars" section after New · Building · Regulars on
+ * the Sessions sort, and `allStarWords` ("All star: in 25 of the last 26
+ * weeks, about twice a week.") in the peek and the opened row.
  */
 import type { OwnedWindow } from "../../lib/history-claims";
 import { addDays } from "../client-history/model";
@@ -122,4 +126,95 @@ export function allStarWords(s: AllStarStanding): string | null {
   const n = Math.round(s.perWeek);
   const pace = n === 2 ? "about twice a week" : n === 3 ? "about three times a week" : `about ${n} times a week`;
   return `All star: in ${s.weeksIn} of the last ${ALL_STAR_WEEKS} weeks, ${pace}.`;
+}
+
+/* ------------------------------------------------------------------ */
+/* The nightly marks (wave 2 hub)                                      */
+/* ------------------------------------------------------------------ */
+
+/** The document the nightly renewals job writes: `studios/{studioId}/watch/hubMarks`. */
+export const HUB_MARKS_WATCH_ID = "hubMarks";
+/** Marks older than this are stale, and the Hub says nothing (AJ's wave 2 brief: "older than 3 days"). */
+export const HUB_MARKS_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+/** A `computedAt` further ahead of the iPad's clock than this is not one to trust. */
+const HUB_MARKS_FUTURE_SKEW_MS = 24 * 60 * 60 * 1000;
+
+/** One client the job named an all star, as the Hub holds her. */
+export interface AllStarMark {
+  clientId: string;
+  /** Weeks with a visit, of the last 26. */
+  weeksIn: number;
+  /** Visits a week over those weeks, to the nearest quarter. */
+  perWeek: number;
+}
+
+export type HubMarksRead =
+  | { state: "ok"; computedAt: Date; allStars: ReadonlyMap<string, AllStarMark> }
+  /** Written, but longer ago than three days: say nothing. */
+  | { state: "stale"; computedAt: Date }
+  /** Not a document this app can read (no date, no list): say nothing. */
+  | { state: "unreadable" };
+
+/** A Firestore Timestamp, a Date, an ISO string, milliseconds or `{ seconds }`, as a Date. */
+function instantOf(v: unknown): Date | null {
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  if (typeof v === "string" || typeof v === "number") {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (v && typeof v === "object") {
+    const t = v as { toDate?: () => Date; seconds?: unknown };
+    if (typeof t.toDate === "function") {
+      try {
+        return instantOf(t.toDate());
+      } catch {
+        return null;
+      }
+    }
+    if (typeof t.seconds === "number") return instantOf(t.seconds * 1000);
+  }
+  return null;
+}
+
+/**
+ * One row the job wrote, or null for one the rule wouldn't stand behind —
+ * dropped, never guessed at. The iPad recomputes nothing: it only checks the
+ * numbers are the rule's (24 to 26 weeks, about twice a week or more).
+ */
+function markOf(row: unknown): AllStarMark | null {
+  if (!row || typeof row !== "object") return null;
+  const r = row as { clientId?: unknown; weeksWithVisit?: unknown; perWeek?: unknown };
+  const clientId = typeof r.clientId === "string" ? r.clientId.trim() : "";
+  if (!clientId) return null;
+  const weeksIn = r.weeksWithVisit;
+  if (typeof weeksIn !== "number" || !Number.isInteger(weeksIn) || weeksIn < ALL_STAR_MIN_WEEKS || weeksIn > ALL_STAR_WEEKS) return null;
+  if (typeof r.perWeek !== "number" || !Number.isFinite(r.perWeek)) return null;
+  const perWeek = Math.round(r.perWeek * 4) / 4;
+  if (perWeek < ALL_STAR_PER_WEEK) return null;
+  return { clientId, weeksIn, perWeek };
+}
+
+/**
+ * What the Hub may say from the nightly marks, `now` being the iPad's clock.
+ * Only "ok" says anything, and only about the clients it names.
+ */
+export function readHubMarks(data: unknown, now: Date): HubMarksRead {
+  if (!data || typeof data !== "object") return { state: "unreadable" };
+  const d = data as { computedAt?: unknown; allStars?: unknown };
+  const computedAt = instantOf(d.computedAt);
+  if (!computedAt || !Array.isArray(d.allStars)) return { state: "unreadable" };
+  const age = now.getTime() - computedAt.getTime();
+  if (age < -HUB_MARKS_FUTURE_SKEW_MS) return { state: "unreadable" };
+  if (age > HUB_MARKS_MAX_AGE_MS) return { state: "stale", computedAt };
+  const allStars = new Map<string, AllStarMark>();
+  for (const row of d.allStars) {
+    const mark = markOf(row);
+    if (mark) allStars.set(mark.clientId, mark);
+  }
+  return { state: "ok", computedAt, allStars };
+}
+
+/** "All star: in 25 of the last 26 weeks, about twice a week." for a client the marks name. */
+export function allStarMarkWords(mark: AllStarMark): string {
+  return allStarWords({ standing: "all-star", weeksIn: mark.weeksIn, perWeek: mark.perWeek, from: "", to: "" }) as string;
 }

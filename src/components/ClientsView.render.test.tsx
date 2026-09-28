@@ -54,6 +54,10 @@ const hub = vi.hoisted(() => {
     fordCalls: [] as Array<string | null | undefined>,
     details: {} as Record<string, unknown[]>,
     fordFor: (id: string) => state.details[id] ?? [],
+    /* The nightly marks for All stars (wave 2 hub), the same way. */
+    marksCalls: [] as Array<string | null | undefined>,
+    stars: {} as Record<string, { clientId: string; weeksIn: number; perWeek: number }>,
+    allStarOf: (id: string) => state.stars[id] ?? null,
   };
   return state;
 });
@@ -61,6 +65,12 @@ vi.mock("../features/hub-opportunities/use-hub-ford", () => ({
   useHubFord: (studioId: string | null | undefined) => {
     hub.fordCalls.push(studioId);
     return studioId ? { status: "ready", fordFor: hub.fordFor } : { status: "off" };
+  },
+}));
+vi.mock("../features/hub-opportunities/use-hub-marks", () => ({
+  useHubMarks: (studioId: string | null | undefined) => {
+    hub.marksCalls.push(studioId);
+    return studioId ? { status: "ready", allStarOf: hub.allStarOf } : { status: "off" };
   },
 }));
 vi.mock("../features/renewals/useRenewalSettings", async () => {
@@ -93,6 +103,8 @@ beforeEach(() => {
   }
   hub.fordCalls = [];
   hub.details = {};
+  hub.marksCalls = [];
+  hub.stars = {};
 });
 
 let root: Root | null = null;
@@ -378,5 +390,45 @@ describe("the Hub: Get to know", () => {
     await openOpportunities(el);
     const row = el.querySelector<HTMLElement>('.ho-row[data-client-id="laura"]');
     expect([...row!.querySelectorAll(".ho-chip")].map((c) => c.textContent)).toEqual(["Ask: the shop · Thu"]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * ALL STARS (wave 2 hub; AJ's Hub question 6): the nightly renewals job's
+ * word, one document read once per studio visit. The iPad counts nothing.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: All stars", () => {
+  it("reads the nightly marks for someone who works at the studio, and for nobody else", () => {
+    mount();
+    expect(hub.marksCalls[hub.marksCalls.length - 1]).toBe("westlake");
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ ...trainer("t-grimbold", "Grimbold"), primaryHomeStudioId: "solon" });
+    expect(hub.marksCalls[hub.marksCalls.length - 1]).toBeNull();
+  });
+
+  it("says it in the peek and gives her a section on the Sessions sort; nothing on the card", async () => {
+    hub.stars = { hamfast: { clientId: "hamfast", weeksIn: 25, perWeek: 2 } };
+    const { el } = mount();
+    expect(cardOf(el, "Hamfast Gamgee")?.textContent).not.toContain("All star");
+    act(() => cardOf(el, "Hamfast Gamgee")!.click());
+    expect(document.querySelector(".hp-star")?.textContent).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    await openOpportunities(el);
+    await act(async () => {
+      [...el.querySelectorAll<HTMLButtonElement>(".ho-seg-btn")].find((b) => b.textContent === "Sessions")!.click();
+    });
+    const heads = [...el.querySelectorAll(".ho-sechead")].map((h) => h.textContent);
+    expect(heads).toContain("All stars (1)");
+    expect(el.querySelector('.ho-row[data-client-id="hamfast"] .ho-sentence')?.textContent).toBe("#331 · in 25 of the last 26 weeks");
+  });
+
+  it("says nothing when the marks name nobody here", () => {
+    const { el } = mount();
+    act(() => cardOf(el, "Hamfast Gamgee")!.click());
+    expect(document.querySelector(".hp-star")).toBeNull();
   });
 });

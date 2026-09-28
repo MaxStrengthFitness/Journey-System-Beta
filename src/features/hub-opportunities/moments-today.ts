@@ -37,9 +37,14 @@
  *                weeks, one per client, from the Hub's one FORD read (wave 2
  *                hub, Sep 28 2026; `fordFor`, handed in as `criticalFor` is)
  *
+ * All stars (wave 2 hub, AJ's Hub question 6) is not a moment: it is a
+ * section of the Sessions sort, after Regulars, and a sentence in the peek
+ * and the opened row, for a client the nightly marks name (`allStarOf`,
+ * all-stars.ts). The engine never counts her 26 weeks.
+ *
  * No reads: the caller hands in the Hub's bookings, roster, sessions,
- * Critical notes and FORD details, and the directory's rows for the facts
- * (last in, left).
+ * Critical notes, FORD details and nightly marks, and the directory's rows
+ * for the facts (last in, left).
  */
 import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
@@ -58,6 +63,7 @@ import { promptText, renewalPromptDue } from "../renewals/conversation";
 import { daysBetween, weekdayOf } from "../client-history/model";
 import { bookedWithMe, pastDayWords, type DirectoryRow } from "../client-directory/row";
 import { ASK_ABOUT_LABEL, askAboutFor } from "./get-to-know";
+import { ALL_STARS_LABEL, ALL_STAR_WEEKS, allStarMarkWords, type AllStarMark } from "./all-stars";
 
 /* ------------------------------------------------------------------ */
 /* Families and filters                                                */
@@ -251,6 +257,12 @@ export interface RunSheetEntry {
   /** The session number this booking will be, when it may be quoted. */
   sessionNumber: number | null;
   /**
+   * The nightly marks name her an all star (wave 2 hub): her weeks, her pace
+   * and the sentence the peek and the opened row say. Null for everyone
+   * else — nothing ever says who isn't one.
+   */
+  allStar: { weeksIn: number; perWeek: number; words: string } | null;
+  /**
    * Clinical history is on her record. Standing context, never a mark or a
    * filter (it would sit on most clients the studio has): the Hub's peek and
    * the opened row say it quietly, and the briefing holds the detail.
@@ -281,6 +293,12 @@ export interface MomentsTodayInput {
    * read, or not answered yet), and nothing is said either way.
    */
   fordFor?: (clientId: string) => readonly FordEntry[] | null;
+  /**
+   * The nightly marks (use-hub-marks.ts): the all star the job named, or
+   * null. Absent when the marks are missing, stale or unreadable: then no
+   * one is one, and nothing is said.
+   */
+  allStarOf?: (clientId: string) => AllStarMark | null;
   myIds: ReadonlyArray<string>;
   myName?: string | null;
   trainerNameOf?: (trainerId: string) => string | null;
@@ -364,6 +382,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   let criticalUnknown = false;
   let askUnknown = false;
   let sessionNumber: number | null = null;
+  let allStar: RunSheetEntry["allStar"] = null;
   let clinicalOnFile = false;
 
   if (client && clientId) {
@@ -398,6 +417,25 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
         unknown: false,
         value: n,
       };
+    }
+
+    /* ---- All stars: the nightly marks' word, never counted here ---- */
+    // Her own section on the Sessions sort, after Regulars — unless today is
+    // a milestone, which is today's news and keeps its section. The claim is
+    // the job's (only where Journey holds every visit in the 26 weeks), so it
+    // stands even when her total can't be quoted.
+    const star = input.allStarOf?.(clientId) ?? null;
+    if (star) {
+      allStar = { weeksIn: star.weeksIn, perWeek: star.perWeek, words: allStarMarkWords(star) };
+      if (!milestone) {
+        const weeks = `in ${star.weeksIn} of the last ${ALL_STAR_WEEKS} weeks`;
+        facts.sessions = {
+          sentence: sessionNumber !== null ? `#${sessionNumber} · ${weeks}` : `${weeks.charAt(0).toUpperCase()}${weeks.slice(1)}`,
+          bucket: "all-stars",
+          unknown: false,
+          value: sessionNumber,
+        };
+      }
     }
 
     /* ---- Welcome ---- */
@@ -535,6 +573,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     criticalUnknown,
     askUnknown,
     sessionNumber,
+    allStar,
     clinicalOnFile,
   };
 }
@@ -630,6 +669,8 @@ const SECTION_ORDER: Record<RunSortKey, Array<{ id: string; label: string; folde
     { id: "new", label: "New (1\u20133)" },
     { id: "building", label: "Building (4\u201349)" },
     { id: "regulars", label: "Regulars (50+)" },
+    // AJ's Hub question 6 (wave 2 hub): only for a client the nightly marks name.
+    { id: "all-stars", label: ALL_STARS_LABEL },
   ],
   left: [
     { id: "talk", label: "Talk about renewing" },

@@ -27,6 +27,7 @@ afterEach(() => {
   root = null;
   host = null;
   ford = undefined;
+  stars = undefined;
 });
 
 const client = makeClient({
@@ -55,6 +56,8 @@ const HARVEST = {
 } as unknown as FordEntry;
 
 let ford: ((id: string) => readonly FordEntry[] | null) | undefined;
+/** All stars (wave 2 hub): the nightly marks, handed to the engine. */
+let stars: ((id: string) => { clientId: string; weeksIn: number; perWeek: number } | null) | undefined;
 
 function entry() {
   const rows = buildDirectoryRows([client], makeContext({ schedules: [booking] }));
@@ -70,6 +73,7 @@ function entry() {
     logged: loggedSessions([]),
     criticalFor: () => [],
     fordFor: ford,
+    allStarOf: stars,
     myIds: ["t-me"],
     myName: "Sam Rivera",
   })[0];
@@ -143,6 +147,15 @@ describe("the peek", () => {
       "Ask about: Judging the Bywater harvest fair on Friday — Friday, Oct 2 (Recreation, noted Sep 20).",
     ]);
     expect(lines[1].querySelector(".hs-g")?.getAttribute("data-family")).toBe("get-to-know");
+  });
+
+  it("says she is an all star, in one sentence under the marks, only when the nightly marks name her (wave 2 hub)", () => {
+    expect(mount().el.querySelector(".hp-star")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    stars = (id) => (id === "rosie" ? { clientId: id, weeksIn: 25, perWeek: 2 } : null);
+    const { el } = mount();
+    expect(el.querySelector(".hp-star")?.textContent).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
   });
 
   it("says, quietly, when her FORD couldn't be checked", () => {

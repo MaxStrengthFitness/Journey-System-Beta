@@ -146,6 +146,9 @@ export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, o
           </ul>
         )}
 
+        {/* All stars (wave 2 hub): the nightly marks' word, with its proof. */}
+        {content.star && <p className="hp-star">{content.star}</p>}
+
         <ul className="hp-facts">
           {content.facts.map((f) => (
             <li key={f.label}>

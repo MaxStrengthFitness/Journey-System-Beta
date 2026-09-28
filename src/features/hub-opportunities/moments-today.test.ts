@@ -350,6 +350,48 @@ describe("Get to know: the ✎ Ask about from FORD (wave 2 hub)", () => {
   });
 });
 
+describe("All stars: the nightly marks' word on the Sessions sort (wave 2 hub)", () => {
+  const star = (clientId: string, weeksIn = 25, perWeek = 2) => ({ clientId, weeksIn, perWeek });
+  const allStarOf = (...ids: string[]) => (id: string) => (ids.includes(id) ? star(id) : null);
+
+  it("gets her own section after Regulars, with her number and her weeks; everyone else keeps theirs", () => {
+    const entries = run(
+      [makeClient({ id: "a", sessionCount: 263, ...COMPLETE }), makeClient({ id: "r", sessionCount: 120, ...COMPLETE }), makeClient({ id: "b", sessionCount: 20, ...COMPLETE })],
+      [makeBooking({ clientId: "a", start: today("15:00") }), makeBooking({ clientId: "r", start: today("15:30") }), makeBooking({ clientId: "b", start: today("16:00") })],
+      { allStarOf: allStarOf("a") },
+    );
+    const a = entries.find((e) => e.clientId === "a")!;
+    expect(a.allStar).toEqual({ weeksIn: 25, perWeek: 2, words: "All star: in 25 of the last 26 weeks, about twice a week." });
+    expect(a.facts.sessions).toMatchObject({ sentence: "#264 · in 25 of the last 26 weeks", bucket: "all-stars", unknown: false });
+    expect(runSections(entries, "sessions").map((s) => [s.label, s.entries.map((e) => e.clientId)])).toEqual([
+      ["Building (4–49)", ["b"]],
+      ["Regulars (50+)", ["r"]],
+      ["All stars", ["a"]],
+    ]);
+    expect(entries.find((e) => e.clientId === "r")!.allStar).toBeNull();
+  });
+
+  it("a milestone today keeps its own section; she is still an all star in the peek", () => {
+    const [entry] = run([makeClient({ id: "a", sessionCount: 99, ...COMPLETE })], [makeBooking({ clientId: "a", start: today("15:00") })], { allStarOf: allStarOf("a") });
+    expect(entry.facts.sessions.bucket).toBe("milestone");
+    expect(entry.allStar?.words).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+  });
+
+  it("stands where her total can't be quoted: the job's claim is about the 26 weeks Journey holds", () => {
+    const [entry] = run([makeClient({ id: "m", sessionCount: 99, clientsNumberOfVisitsAtSite: 400 })], [makeBooking({ clientId: "m", start: today("15:00") })], {
+      allStarOf: allStarOf("m"),
+    });
+    expect(entry.sessionNumber).toBeNull();
+    expect(entry.facts.sessions).toMatchObject({ sentence: "In 25 of the last 26 weeks", bucket: "all-stars", unknown: false, value: null });
+  });
+
+  it("with no marks (missing, stale, unreadable), nobody is one and nothing is said", () => {
+    const [entry] = run([makeClient({ id: "a", sessionCount: 263, ...COMPLETE })], [makeBooking({ clientId: "a", start: today("15:00") })]);
+    expect(entry.allStar).toBeNull();
+    expect(entry.facts.sessions.bucket).toBe("regulars");
+  });
+});
+
 describe("clinical history is standing context, never a mark", () => {
   it("rides on the entry for the peek and the opened row, and is not among the moments or the filters", () => {
     const entries = run([makeClient({ id: "h", clinicalNotes: "Hip replacement, 2024" } as Partial<Client> & { id: string })], [makeBooking({ clientId: "h", start: today("16:00") })]);

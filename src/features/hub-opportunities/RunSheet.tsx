@@ -22,6 +22,11 @@
  * chips says so once, and her opened row says so rather than "Nothing
  * special today."
  *
+ * All stars (wave 2 hub): a section after Regulars on the Sessions sort
+ * ("#264 · in 25 of the last 26 weeks"), and "All star: in 25 of the last 26
+ * weeks, about twice a week." under "Where she is" — only for a client the
+ * nightly marks name.
+ *
  * Out of scope: surgery or away from dated notes, "Show on schedule".
  */
 import React, { useEffect, useMemo, useState } from "react";
@@ -143,6 +148,8 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   const f = entry.facts;
   const where = [
     { key: "sessions", text: f.sessions.sentence, muted: f.sessions.unknown },
+    // All stars (wave 2 hub): the nightly marks' word, only for a client they name.
+    ...(entry.allStar ? [{ key: "star", text: entry.allStar.words, muted: false }] : []),
     { key: "last", text: f.lastSeen.sentence, muted: f.lastSeen.unknown },
     { key: "left", text: f.left.sentence, muted: f.left.unknown },
   ];

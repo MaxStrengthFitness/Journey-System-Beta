@@ -4467,5 +4467,26 @@ describe("marks on a time", () => {
       await assertFails(getDocs(await hubFordQuery(as("trainerB"), "studioA")));
       await assertFails(getDocs(await hubFordQuery(as("trainerA"), null)));
     });
+
+    // WAVE 2 HUB: All stars. The nightly renewals job writes
+    // studios/{s}/watch/hubMarks (the Admin SDK, past the rules); the Hub
+    // reads it by id. The existing `match /watch/{watchId}` covers it — read
+    // by the studio's people, franchise owners and administrators, written
+    // by nobody in the app — so no rule was added for it here.
+    it("lets the studio's people read its nightly marks, and nobody write them", async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "watch", "hubMarks"), {
+          allStars: [{ clientId: "clientHubA", weeksWithVisit: 25, perWeek: 2 }],
+          computedAt: new Date("2026-09-28T07:10:00Z"),
+        });
+      });
+      const marks = (uid: string) => doc(as(uid), "studios", "studioA", "watch", "hubMarks");
+      for (const uid of ["trainerA", "ownerA", "grantedHub", "adminHub"]) {
+        await assertSucceeds(getDoc(marks(uid)));
+      }
+      await assertFails(getDoc(marks("trainerB")));
+      await assertFails(setDoc(marks("trainerA"), { allStars: [], computedAt: new Date() }));
+      await assertFails(setDoc(marks("adminHub"), { allStars: [], computedAt: new Date() }));
+    });
   });
 });
