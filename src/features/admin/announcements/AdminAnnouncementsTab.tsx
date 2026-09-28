@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { Megaphone } from "lucide-react";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 import type {
   FranchiseNetwork,
   HubAnnouncement,
@@ -104,7 +104,12 @@ export function AdminAnnouncementsTab({
         subtitle="Everything posted here lands in the alerts bell, for whoever it is addressed to."
       />
       <AnnouncementComposer
-        author={{ id: authTrainer.id, fullName: authTrainer.fullName }}
+        // The rules pin the author to the signed-in person (authorId ==
+        // request.auth.uid), and authTrainer.id differs from the uid on older
+        // accounts (CLAUDE.md), so the uid first, as My Studio → Studio does.
+        // With the trainer document's id, every publish from such an account
+        // was refused (found in the voice review notes' audit, Sep 28 2026).
+        author={{ id: auth.currentUser?.uid || authTrainer.id, fullName: authTrainer.fullName }}
         studios={studios}
         networks={networkOptions}
         scopes={scopes}
