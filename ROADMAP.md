@@ -346,6 +346,8 @@ small file of its own (about 4 kB off the first download).
 
 **The Operations room (Sep 28 2026)** — to do by hand: walk Round 30 of the testing checklist. Waiting on AJ's OK, all in the round document's "Not built": a no-show mark; client states written by the nightly job; case fields on the attendance watchlist; a nightly summary per studio; the lines as studio settings; trainers' own cases in Relay → Mine; a place for 1:1 notes. His questions are the round document's "Open, for AJ" (the client page inside Operations, "This week so far", the chance check's floors, kudos on Team, the huddle on one iPad). Technical leftovers: ARCHITECTURE §2.5 still describes nine tabs (the round document has a replacement); `.adm-ins-bad` has no reader.
 
+**The Relay room (Sep 28 2026), waiting on AJ**: a quiet-floor number per studio (q3; 2 for every studio meanwhile); a cover ask that keeps its time; Since you were in (a last-seen marker per trainer, a new-to-the-studio lookup); the Journal (note types, templates, shelves, hunches; Opening's things to carry and Close out's day log); announcements that ask "I've read it" (q7: the retired `readBy` stamp and the private `announcementReads`); a studio's own cleaning log; claim times. Questions: the open question's three weeks on the briefing, closing it on her Notes page, trainers naming one person, Opening's 90 minutes. Technical: a load status from `useLiveSchedule` for Right now and Opening; folding Capture's "The Board" into the Ask sheet.
+
 **Decisions still waiting on AJ** — whether the tracker should suggest starting
 weights at all; the three unwired Academy safety rules; who runs the payroll
 export and how often; the bootstrap e-mail hard-coded in

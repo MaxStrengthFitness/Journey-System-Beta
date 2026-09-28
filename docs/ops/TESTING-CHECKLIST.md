@@ -2235,6 +2235,89 @@ mounted tests.
 
 ---
 
+## Round 31 — The Relay room · *Sep 28 2026, branch `redesign/relay`*
+
+Relay rebuilt as AJ picked it (Mission Board + Journal): one header, the
+Board, the Tracker, Opening and Close out, the Ask sheet and the
+open-questions trail. The round document is `docs/rounds/2026-09-28-relay.md`.
+Nothing to deploy first: no rules, no index, no Cloud Function. Walk it
+signed in as a **Life Transformer** and as a **head trainer**, **portrait and
+landscape, light and dark**. Nothing in this round has been seen on an iPad
+yet: only in mounted tests.
+
+**The header**
+
+- [ ] **One bar.** My Studio · RELAY ▾, Board · Tracker · Journal, the time,
+  Tracking, Ask and +; one row on its side, two upright; nothing cut short.
+- [ ] **The section menu** opens on a tap and lists the sections this person
+  may open; a trainer sees no Team.
+- [ ] **The time** says the shift and the next session; a tap unfolds the day
+  strip, whose sessions still to come say "I need cover".
+- [ ] **+** holds your own to-do, reminder and note (a leader also a studio
+  task and a team job); **Ask** opens "Ask the team".
+
+**The Board**
+
+- [ ] **Right now** is one sentence that says why ("The floor is quiet: 2
+  sessions running now…") and opens its door; on a day with nothing booked it
+  opens no door and says so.
+- [ ] **Five doors** say how many and how long; another door holds until
+  "Back to Relay's pick" or your next gap.
+- [ ] **Dealt to you**: one job, big; Take it puts it in the header's
+  Tracking chip; Not now deals the next and says nothing was recorded; Undo
+  brings it back. A swipe right is Done, left is Not now, each undoable.
+- [ ] **Who?** (head trainer only): faces by who can help now, the reason in
+  words; a name for today, this week or two weeks. A trainer sees no faces.
+- [ ] **I can't** on something with your name on it: back on the board, off
+  the job, or an ask to the team for a leader's chore; Undo works.
+- [ ] **Just now** is a still list with hearts; **Team today** counts the
+  studio's chores, never your own to-dos.
+- [ ] **No red anywhere** on the Board; every button 44px.
+
+**Opening and Close out**
+
+- [ ] Before your first session, **Opening** lists what's waiting, each line
+  with its door; Got it folds it, and the line under Later today brings it
+  back.
+- [ ] After your last session, **Close out** lists what's still open, each
+  with its hand-on (back to the board, hand back, step off, move to
+  tomorrow, ask the team) and an Undo, and your day so far in facts.
+- [ ] Before then, "Close out · opens at …" previews it.
+
+**The Tracker**
+
+- [ ] **Today** in its four parts, Handed to you first; the other lists with
+  their counts; the rail beside the list on its side, above it upright.
+- [ ] **Done** lists today's finished things with times; a tick on your own
+  list can be taken back there.
+- [ ] Offline or a failed read says so and never "Nothing on your list today".
+
+**Ask the team**
+
+- [ ] **Six tiles**; each asks only its own questions; Post waits for what it
+  needs.
+- [ ] **Cover me** from the day strip arrives with the client and the time
+  ("Cover … at 4:00 PM").
+- [ ] **Hand this off**: a trainer's goes on the Board as an offer; a head
+  trainer's names a person and rings their bell once.
+- [ ] **Something's broken** flags the machine on the Floor Map and rings the
+  studio leader's bell.
+- [ ] Typing, then Cancel, asks before throwing it away.
+
+**The open-questions trail**
+
+- [ ] Ask a question **about a client**. Her Notes page shows "Open question
+  from {you}" under Open, and her next briefing reads it out as a Heads up.
+- [ ] Another trainer **takes it** and **replies**: each line appears on her
+  thread under that trainer's name.
+- [ ] **Answer** it on the Board: the ask closes, "Answered: …" is on her
+  thread, the thread moves to Resolved, and Help a teammate shows it under
+  Answered lately.
+- [ ] It is never offered in the Wrap-up's To-file tray and never says
+  "Preference".
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -2289,4 +2372,5 @@ Screenshot:
 | 28 — The Admins dashboard, the Command Center (Sep 28) | 16 | | |
 | 29 — The Machine Catalog (Sep 28) | 18 | | |
 | 30 — Operations, five destinations (Sep 28) | 17 | | |
-| **Total** | **518** | | |
+| 31 — The Relay room (Sep 28) | 26 | | |
+| **Total** | **544** | | |
