@@ -4,6 +4,7 @@ import { resolveMachineOrder } from "../../data/machine-display-order";
 import { useStudioMachines } from "../../hooks/useStudioMachines";
 import { useStudioMachineNotes } from "./useStudioMachineNotes";
 import { fromLegacyMachine, fromResolvedMachine } from "./adapters";
+import { floorStateOf, type FloorState } from "./floor-index";
 import { dedupeMachines } from "./machine-identity";
 import type { CatalogMachine } from "./types";
 
@@ -50,13 +51,23 @@ export interface UseCatalogMachinesResult {
    * never conclude "not on this floor" from it.
    */
   loading: boolean;
+  /**
+   * What the studio's FLOOR is, as distinct from the list above (Machine
+   * Catalog round, Sep 28 2026): `ready` when the roster gave machines;
+   * `empty` when it was read and has none (the list is then the global
+   * catalog standing in, which is not this floor); `unreadable` when the
+   * roster or the catalog could not be read; `loading` until one of those.
+   * The Catalog and the Overview draw the floor only when it is `ready`.
+   */
+  floor: FloorState;
 }
 
 export function useCatalogMachines(
   studioId: string | null,
   legacyMachines: Machine[],
 ): UseCatalogMachinesResult {
-  const { machines: resolved, loading, rosterEntries } = useStudioMachines(studioId);
+  const { machines: resolved, loading, rosterEntries, failed } = useStudioMachines(studioId);
+  const floor = floorStateOf({ loading, failed: Boolean(failed), count: resolved.length });
   const { notesByMachineId } = useStudioMachineNotes(studioId);
   const warnedRef = useRef<Set<string>>(new Set());
 
@@ -83,6 +94,7 @@ export function useCatalogMachines(
         source: "roster",
         makers,
         loading,
+        floor,
       };
     }
 
@@ -107,9 +119,9 @@ export function useCatalogMachines(
       )
       .map((m) => fromLegacyMachine(m, opts));
 
-    return { machines, source: "global", makers: {}, loading, collisions } as
+    return { machines, source: "global", makers: {}, loading, floor, collisions } as
       UseCatalogMachinesResult & { collisions: Record<string, string[]> };
-  }, [resolved, legacyMachines, notesByMachineId, loading, makers]);
+  }, [resolved, legacyMachines, notesByMachineId, loading, makers, floor]);
 
   // Name the duplicate rather than hiding it — the stray document is still in
   // Firestore and will keep coming back until someone deletes it.

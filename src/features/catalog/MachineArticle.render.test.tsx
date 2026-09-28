@@ -22,6 +22,7 @@ import { WikiShell } from "../wiki";
 import { MachineArticle } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
 import { resolveMachineAnatomy } from "./anatomy";
+import type { Preset } from "./floor-index";
 
 const chestPress: CatalogMachine = {
   id: "m-chest-press",
@@ -60,14 +61,24 @@ afterEach(async () => {
   host.remove();
 });
 
-function Page({ flagged, onOpenMachine }: { flagged?: boolean; onOpenMachine: (id: string) => void }) {
+function Page({
+  flagged,
+  machine = chestPress,
+  preset,
+  onOpenMachine,
+}: {
+  flagged?: boolean;
+  machine?: CatalogMachine;
+  preset?: Preset;
+  onOpenMachine: (id: string) => void;
+}) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   return (
-    <WikiShell crumbs={[{ label: "Catalog", onClick: () => {} }, { label: "Chest Press" }]}>
+    <WikiShell crumbs={[{ label: "Catalog", onClick: () => {} }, { label: machine.name }]}>
       <MachineArticle
-        machine={chestPress}
-        isFlagged={flagged}
-        upkeepStatus="due"
+        machine={machine}
+        flag={flagged ? { who: "Bergil", when: "Sep 27, 8:52 AM", note: "Seat pin sticks." } : null}
+        preset={preset}
         related={[{ id: "m-chest-fly", label: "Chest Fly", accent: "push" }]}
         onOpenMachine={onOpenMachine}
         figure={
@@ -100,12 +111,54 @@ describe("a machine page, mounted", () => {
     expect(host.querySelector(".wk__scroll")).not.toBeNull();
   });
 
-  it("shows a flag in the caution plum, on the badge and in the infobox", async () => {
+  it("shows Relay's flag in the caution plum: the badge, and who, when and what", async () => {
     await mount(<Page flagged onOpenMachine={() => {}} />);
     const flags = [...host.querySelectorAll(".wk__badge")].filter((b) => b.textContent?.startsWith("Flagged"));
-    expect(flags.map((b) => b.textContent)).toEqual(["Flagged by a trainer", "Flagged — see Upkeep"]);
+    expect(flags.map((b) => b.textContent)).toEqual(["Flagged"]);
     for (const b of flags) expect(b.className).toContain("wk__badge--warn");
     expect(host.querySelector(".wk__badge--alert")).toBeNull();
+    expect(host.querySelector(".mcat-flag__who")?.textContent).toBe("Flagged by Bergil · Sep 27, 8:52 AM");
+    expect(host.querySelector(".mcat-flag__note")?.textContent).toBe("Seat pin sticks.");
+  });
+
+  it("counts no cleaning of its own: no Upkeep card, no cleaning badge", async () => {
+    await mount(<Page onOpenMachine={() => {}} />);
+    expect(host.textContent).not.toContain("Upkeep");
+    expect(host.textContent).not.toMatch(/Cleaning (due|overdue)/);
+  });
+
+  it("names its movement above the floor name, with the Academy's code", async () => {
+    const lumbar = { ...chestPress, id: "m-lumbar", name: "LUMBAR", movementPattern: "Core: Spine Extension" };
+    await mount(<Page machine={lumbar} onOpenMachine={() => {}} />);
+    expect(host.querySelector(".wk__eyebrow")?.textContent).toBe("Lumb · Lumbar Extension");
+    // The code is said once, above the title: no separate Academy row.
+    expect(host.textContent).not.toContain("Academy");
+  });
+
+  it("puts the Academy's never-to-failure rule first, in its own words", async () => {
+    const lumbar: CatalogMachine = {
+      ...chestPress,
+      id: "m-lumbar",
+      name: "LUMBAR",
+      neverToFailure: true,
+      safetyNotice: "Safety Notice: Never take Lumbar Extension to failure.",
+    };
+    await mount(<Page machine={lumbar} onOpenMachine={() => {}} />);
+    const rule = host.querySelector(".mcat-ntf");
+    expect(rule?.textContent).toContain("Never to failure");
+    expect(rule?.textContent).toContain("Never take Lumbar Extension to failure.");
+    // Before the clinical warnings, never folded.
+    const body = host.querySelector(".wk__body")!;
+    expect(body.firstElementChild?.className).toBe("mcat-ntf");
+  });
+
+  it("leads the box with the unit's preset, or says it has no numbers", async () => {
+    await mount(
+      <Page preset={{ dials: [{ label: "Gap", value: "2" }], unset: 0, state: "set" }} onOpenMachine={() => {}} />,
+    );
+    expect(host.querySelector(".wk__aside")?.textContent).toContain("Gap 2");
+    await mount(<Page preset={{ dials: [], unset: 3, state: "none" }} onOpenMachine={() => {}} />);
+    expect(host.querySelector(".wk__aside")?.textContent).toContain("No numbers set for this unit yet");
   });
 
   it("paints the body in Learning's figure colours, the worked muscles apart from the rest", async () => {

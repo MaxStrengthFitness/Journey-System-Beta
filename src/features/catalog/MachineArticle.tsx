@@ -5,9 +5,10 @@ import {
   ClipboardList,
   Layers,
   MessageSquareQuote,
+  OctagonAlert,
   Settings2,
   ShieldAlert,
-  Sparkles,
+  SlidersHorizontal,
   Target,
   TrendingUp,
   UserCog,
@@ -32,7 +33,7 @@ import {
   type WikiChip,
 } from "../wiki";
 import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
-import type { UpkeepStatus } from "../admin/upkeep/upkeepLog";
+import { presetLine, type FlagLine, type Preset } from "./floor-index";
 import { floorNameHidesMovement, movementOf } from "./names";
 import type { CatalogMachine } from "./types";
 
@@ -77,10 +78,10 @@ export function eyebrowFor(machine: CatalogMachine): string {
  *
  * The rule here is READING versus DOING:
  *
- *   on the page      the infobox, clinical warnings, setup, execution,
- *                    contraindications, the studio's playbook. You opened
- *                    this page to read these.
- *   folded away      upkeep, studio setup, studio notes. Tools you
+ *   on the page      the infobox, the never-to-failure rule, clinical
+ *                    warnings, setup, execution, contraindications, the
+ *                    studio's playbook. You opened this page to read these.
+ *   folded away      how it's used, studio setup, studio notes. Tools you
  *                    occasionally operate, and each one is an editor.
  *
  * Two things are deliberately NOT collapsible under any circumstances:
@@ -88,9 +89,13 @@ export function eyebrowFor(machine: CatalogMachine): string {
  * a longer page) and the musculature, which now lives in the infobox where it
  * sits beside the figure that draws it.
  *
+ * The Upkeep foldable (cleaning, and a flag that never cleared) went in the
+ * Machine Catalog round (Sep 28 2026): cleaning lives in Relay, and the
+ * page reads Relay's flag (`flag`).
+ *
  * THE COMPOSITION IS SLOTTED, NOT MOUNTED
  * ---------------------------------------
- * `upkeep`, `playbook`, `studioSetup` and `figure` arrive as nodes from
+ * `playbook`, `studioSetup` and `figure` arrive as nodes from
  * CatalogWikiView for the same reason they did before: each is backed by a
  * Firestore snapshot over the whole studio, and mounting them here would tear
  * down and rebuild those listeners on every tap in the index.
@@ -116,11 +121,18 @@ export interface MachineArticleProps {
   onOpenMachine: (id: string) => void;
   academy?: MachineAcademyLinks;
 
-  isFlagged?: boolean;
-  upkeepStatus?: UpkeepStatus;
+  /**
+   * Relay's flag on this unit (studios/{s}/machineCare, read only), said at the
+   * top of the page in the caution plum. Null or absent: not flagged, or the
+   * page is not a floor's (All MSF machines). Since the Machine Catalog round
+   * (Sep 28 2026) the Catalog reads flags from Relay alone and counts no
+   * cleaning of its own; the Upkeep card that did went with it.
+   */
+  flag?: FlagLine | null;
+  /** This unit's preset — where its dials sit — for a floor's page. */
+  preset?: Preset;
 
   /** Slotted cards, owned by features/studio-tasks. See the note above. */
-  upkeep?: ReactNode;
   playbook?: ReactNode;
   studioSetup?: ReactNode;
   studioNotes?: ReactNode;
@@ -166,9 +178,8 @@ export function MachineArticle({
   related,
   onOpenMachine,
   academy,
-  isFlagged,
-  upkeepStatus,
-  upkeep,
+  flag,
+  preset,
   playbook,
   studioSetup,
   studioNotes,
@@ -192,6 +203,10 @@ export function MachineArticle({
      the title now (eyebrowFor), beside the movement's name, so the box says
      it once (Catalog R1: AJ asked for less text). */
   const facts = [
+    // A floor's page leads with where this unit's dials sit (Catalog R2).
+    ...(preset
+      ? [{ label: "Preset", icon: <SlidersHorizontal size={11} aria-hidden />, value: presetLine(preset) }]
+      : []),
     { label: "Class", icon: <Activity size={11} aria-hidden />, value: machine.kinematicClassification },
     { label: "Posture", icon: <Target size={11} aria-hidden />, value: machine.executionPosture },
     { label: "Setup", icon: <Settings2 size={11} aria-hidden />, value: machine.setupGap },
@@ -203,6 +218,18 @@ export function MachineArticle({
     <p className="mcat-found" role="status">
       <span className="mcat-found__where">Found on this page · {found.section}</span>
       <span className="mcat-found__text">{found.text}</span>
+    </p>
+  ) : null;
+
+  /* Relay's flag, whole: who, when and what, and where it is cleared. */
+  const flagLine = flag ? (
+    <p className="mcat-flag" role="status">
+      <span className="mcat-flag__who">
+        Flagged by {flag.who}
+        {flag.when ? ` · ${flag.when}` : ""}
+      </span>
+      {flag.note && <span className="mcat-flag__note">{flag.note}</span>}
+      <span className="mcat-flag__where">Cleared on My Studio → Relay.</span>
     </p>
   ) : null;
 
@@ -231,39 +258,20 @@ export function MachineArticle({
           {machine.rosterStatus === "inactive" && <WikiBadge tone="neutral">Inactive</WikiBadge>}
           {/* A flag is a caution: the app's plum, as "Out of service" is.
               Crimson is a Critical note's and a set's that needs work. */}
-          {isFlagged && <WikiBadge tone="warn">Flagged by a trainer</WikiBadge>}
-          {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
-            <WikiBadge tone="warn">
-              {upkeepStatus === "overdue" ? "Cleaning overdue" : "Cleaning due"}
-            </WikiBadge>
-          )}
+          {flag && <WikiBadge tone="warn">Flagged</WikiBadge>}
         </>
       }
       notice={
-        foundLine || notice ? (
+        foundLine || flagLine || notice ? (
           <>
             {foundLine}
+            {flagLine}
             {notice}
           </>
         ) : undefined
       }
       aside={
-        <Infobox
-          title="At a glance"
-          figure={figure}
-          footer={
-            isFlagged || upkeepStatus === "overdue" || upkeepStatus === "due" ? (
-              <>
-                {isFlagged && <WikiBadge tone="warn">Flagged — see Upkeep</WikiBadge>}
-                {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
-                  <WikiBadge tone="warn">
-                    {upkeepStatus === "overdue" ? "Overdue" : "Due"}
-                  </WikiBadge>
-                )}
-              </>
-            ) : undefined
-          }
-        >
+        <Infobox title="At a glance" figure={figure}>
           <InfoboxGroup label="Specification">
             <InfoboxRows rows={facts} />
           </InfoboxGroup>
@@ -279,6 +287,21 @@ export function MachineArticle({
         </Infobox>
       }
     >
+      {/* The Academy's never-to-failure rule, first and never folded: it is a
+          stop rule, not a tip (Catalog R2). Its reason is the Academy's own
+          sentence; an unexplained prohibition gets ignored (the-floor.md). */}
+      {machine.neverToFailure && (
+        <section className="mcat-ntf" aria-labelledby="mcat-ntf-head">
+          <h2 className="mcat-ntf__head" id="mcat-ntf-head">
+            <OctagonAlert size={14} aria-hidden />
+            Never to failure
+          </h2>
+          <p className="mcat-ntf__text">
+            {machine.safetyNotice || "The Academy says never to take this machine to failure."}
+          </p>
+        </section>
+      )}
+
       <ClinicalWarnings warnings={machine.clinicalWarnings} />
 
       {hasSetup && (
@@ -389,19 +412,6 @@ export function MachineArticle({
           {...fold("studio-setup", false)}
         >
           {studioSetup}
-        </WikiFoldable>
-      )}
-
-      {upkeep && (
-        <WikiFoldable
-          id="upkeep"
-          title="Upkeep"
-          icon={<Sparkles size={13} aria-hidden />}
-          meta={isFlagged ? "Flagged" : undefined}
-          /* Opens itself when something is wrong, and only then. */
-          {...fold("upkeep", Boolean(isFlagged) || upkeepStatus === "overdue")}
-        >
-          {upkeep}
         </WikiFoldable>
       )}
 

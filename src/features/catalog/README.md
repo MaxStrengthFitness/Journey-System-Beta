@@ -44,6 +44,49 @@
 - **Less text**: the index's subtitle, the Academy link cards' long lines and
   two of the Overview's paragraphs were cut.
 
+### 0.2 Our floor (Catalog R2)
+
+- **The index is the floor, in the leader's walking order** (the roster's
+  order, the one the Journey grid and the session use: question 3's default,
+  "one order everywhere"). It is not grouped any more; the grouping switch
+  (Category · Kinematics · Region) stays on All MSF machines only. A row is
+  `FloorRow`: the number on the walk, the floor name whole, the Academy code,
+  the Academy name only when the floor name leaves it unsaid, the PRESET, the
+  switches (Never to failure in crimson, Handoff plain) and the status (Out of
+  service, Flagged, in plum).
+- **Four states, never three** (`floor-index.ts`, `floorStateOf`): loading,
+  unreadable (a read failed), empty (read, nothing on it) and ready. The MSF
+  standard is never drawn as the studio's floor: `useCatalogMachines` still
+  returns the global list for an empty roster (the Overview's search and the
+  announcement picker use it), and says `floor: "empty"` beside it; the
+  Catalog and the Overview draw the floor only when `ready`. A machine route
+  on an empty or unreadable floor opens in All MSF machines. **`failed` on
+  `useStudioMachines`** (a shared hook, additive) is what tells "can't read"
+  from "empty": a failed roster or catalog read used to end as an empty list.
+- **The preset** (`presetOf`, `presetLine`) reads the studio's own setup card
+  first (studioMachineSettings), then the unit's dial defaults — the same order
+  as the Active Session's ghost values (`features/equipment/adapters.ts`). A
+  dial with no number is counted ("Gap 4 · 3 not set"); a unit with none says
+  "No numbers set for this unit yet". Dial letters (G, P, SP) are not invented:
+  the definition carries none (the codex source check lists what the Academy
+  calls them).
+- **Flags are Relay's** (`studios/{s}/machineCare`, read through
+  `relay/board/machine-care-store.ts`'s `useMachineCare`, never written here).
+  A flag that could not be read is unknown ("flags couldn't be read"), never
+  "none flagged". **The Catalog counts no cleaning of its own** (question 4):
+  the Needs cleaning / Due / Overdue counts and the machine page's Upkeep card
+  went, and with them the two reads behind them (every machine task instance,
+  and today's task rows). `MachineUpkeepCard` in studio-tasks now has no host.
+- **The page** leads its box with the preset, says Relay's flag whole (who,
+  when, the note, where it is cleared) and puts the Academy's never-to-failure
+  rule first, in the Academy's words (`mcat-ntf`).
+- **Head office opens on All MSF machines** (question 2): `rememberedScope` is
+  null until the reader chooses, then remembered until sign-out.
+- **The front page's family tiles** narrow the floor to that family, and
+  `academyCategoryOf` (grouping.ts) now reads a machine's lineage, so a
+  studio's copy of the leg press is in Lower Body rather than "Not in the
+  Academy categories".
+
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced
 > that screen with `CatalogWikiView` + `MachineArticle` on the shared

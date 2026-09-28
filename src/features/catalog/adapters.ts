@@ -133,6 +133,12 @@ export function fromLegacyMachine(
     // definition's execution block even on this legacy path.
     ...neverToFailureOf((machine as { execution?: ExecutionLike }).execution),
 
+    dials: (machine.settingOptions ?? [])
+      .map((label) => label.trim())
+      .filter(Boolean)
+      .map((label) => ({ key: label, label })),
+    dialDefaults: { ...(machine.standardSettings ?? {}) },
+
     targetMuscles:
       firstOf(
         asList(machine.targetMusculature),
@@ -210,6 +216,11 @@ export function fromResolvedMachine(
     requiresHandoff:
       machine.execution?.requiresHandoff ?? db?.requiresHandoff ?? false,
     ...neverToFailureOf(machine.execution),
+
+    dials: (machine.settingFields ?? [])
+      .map((f) => ({ key: f.key, label: (f.label || f.key || "").trim() }))
+      .filter((d) => d.label),
+    dialDefaults: { ...(machine.defaultSettings ?? {}) },
 
     targetMuscles:
       firstOf(machine.musculature?.primary, db?.targetMuscles) ?? [],

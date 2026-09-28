@@ -42,15 +42,17 @@ describe("homeCategoryTiles", () => {
 });
 
 describe("floorStatus", () => {
-  it("counts flags, out-of-service and cleaning that is due", () => {
+  it("counts Relay's flags and what is out of service, and no cleaning of its own", () => {
     const machines = [
       m("a", "A", { rosterStatus: "maintenance" }),
       m("b", "B"),
       m("c", "C"),
     ];
-    expect(
-      floorStatus(machines, { a: "ok", b: "overdue", c: "due" }, new Set(["b"])),
-    ).toEqual({ flagged: 1, outOfService: 1, due: 2 });
+    expect(floorStatus(machines, new Set(["b"]))).toEqual({ flagged: 1, outOfService: 1 });
+  });
+
+  it("counts no flag it could not read", () => {
+    expect(floorStatus([m("b", "B")], null)).toEqual({ flagged: 0, outOfService: 0 });
   });
 });
 
