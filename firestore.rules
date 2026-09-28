@@ -3170,6 +3170,38 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isSuperAdmin();
     }
 
+    // WAVE 2 ADMINS: HOME'S TAKE IT / SNOOZE / DISMISS (the Admins room's
+    // second wave, Sep 28 2026; AJ "all yes" to "small records for Home's
+    // Take it, Snooze and Dismiss"). One document per mark, shared by every
+    // administrator (src/features/admins/home/home-marks.ts; written only by
+    // home-marks-store.ts):
+    //   { state: taken | snoozed | dismissed, by: { uid, name }, until?, reason?, at }
+    // The id is the item's kind and a hash of its condition, so a mark holds
+    // for that condition only. A snooze says until when; a dismiss says why.
+    // Written whole, signed with the Auth uid and the server's time; Let it
+    // go, Bring it back, Undo and an ended condition delete it.
+    // Administrators only, reading and writing.
+    match /adminHome/{itemKey} {
+      function homeMarkValid(d) {
+        return d.keys().hasOnly(['state', 'by', 'until', 'reason', 'at'])
+            && d.keys().hasAll(['state', 'by', 'at'])
+            && d.state in ['taken', 'snoozed', 'dismissed']
+            && d.by is map && d.by.keys().hasOnly(['uid', 'name'])
+            && d.by.uid == request.auth.uid
+            && d.by.name is string && d.by.name.size() <= 120
+            && d.at == request.time
+            && (!('until' in d) || (d.until is string && d.until.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+            && (!('reason' in d) || (d.reason is string && d.reason.size() > 0 && d.reason.size() <= 200))
+            && (d.state != 'snoozed' || 'until' in d)
+            && (d.state != 'dismissed' || 'reason' in d)
+            && itemKey.size() <= 200;
+      }
+
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow create, update: if isAuthenticated() && homeMarkValid(request.resource.data) && isSuperAdmin();
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+
     // ANNOUNCEMENTS
     //
     // Learning + Planner round, Sep 2026: posting and editing were open to

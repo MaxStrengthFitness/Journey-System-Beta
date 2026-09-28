@@ -24,6 +24,12 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 }));
 vi.mock("../../lib/authed-fetch", () => ({ authedFetch: async () => ({ ok: true, json: async () => ({}) }) }));
 
+// Home's marks (the second wave): what adminHome holds, and what was deleted.
+const homeState = vi.hoisted(() => ({
+  marks: [] as Array<{ id: string } & Record<string, unknown>>,
+  deleted: [] as string[],
+}));
+
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
     const first = parts[0] as { path?: string } | undefined;
@@ -62,13 +68,13 @@ vi.mock("firebase/firestore", () => {
       const t = setTimeout(() => next(answer), 0);
       return () => clearTimeout(t);
     },
-    getDocs: async () => snapOf([]),
+    getDocs: async (target: { path?: string }) => snapOf(target?.path === "adminHome" ? homeState.marks : []),
     getDoc: async () => emptyDoc,
     getCountFromServer: async () => ({ data: () => ({ count: 0 }) }),
     updateDoc: async () => {},
     setDoc: async () => {},
     addDoc: async () => ({ id: "new" }),
-    deleteDoc: async () => {},
+    deleteDoc: async (target: { path: string }) => void homeState.deleted.push(target.path),
     deleteField: () => ({ __delete: true }),
     writeBatch: () => ({ set: () => {}, update: () => {}, delete: () => {}, commit: async () => {} }),
     serverTimestamp: () => new Date(),
@@ -95,6 +101,8 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  homeState.marks = [];
+  homeState.deleted = [];
 });
 
 const settle = async () => {
@@ -310,6 +318,14 @@ describe("the Admins dashboard", () => {
     await settle();
     expect(el.querySelector(".hq-search")).toBeNull();
     expect(el.textContent).toContain("The standard template");
+  });
+
+  it("removes a Home mark whose condition has ended, once its read has answered", async () => {
+    // A dismissal of new bug reports that are all dealt with now: nothing new in this empty Firestore.
+    homeState.marks = [{ id: "bugs--oldhash", state: "dismissed", by: { uid: "adm", name: "Ada Admin" }, reason: "Already handled", at: new Date() }];
+    const el = await mount(admin, true);
+    expect(el.textContent).toContain("Nothing needs you right now.");
+    expect(homeState.deleted).toContain("adminHome/bugs--oldhash");
   });
 
   it("refuses anyone who is not an administrator", async () => {

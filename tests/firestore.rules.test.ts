@@ -4590,5 +4590,46 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(ctx("trainerB"), "bug_reports", "rep2"), { userId: "trainerB", description: "x", status: "open", reply: reply("trainerB") }));
       await assertSucceeds(setDoc(doc(ctx("trainerB"), "bug_reports", "rep3"), { userId: "trainerB", description: "x", status: "open" }));
     });
+
+    // ---- Home's Take it / Snooze / Dismiss: adminHome/{itemKey} -------------
+    const mark = (uid: string, over: Record<string, unknown> = {}) => ({ state: "taken", by: { uid, name: `Person ${uid}` }, at: serverTimestamp(), ...over });
+    const markRef = (db: ReturnType<typeof ctx>, key: string) => doc(db, "adminHome", key);
+
+    it("lets an administrator take, snooze and dismiss a Home item, signed as themselves, and clear it", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertSucceeds(setDoc(markRef(admin, "bugs--1x2y3z"), mark("adminW")));
+      await assertSucceeds(setDoc(markRef(ctx("founderW"), "bugs--1x2y3z"), mark("founderW", { state: "snoozed", until: "2026-09-29" })));
+      await assertSucceeds(setDoc(markRef(admin, "limbo--9q8w7e"), mark("adminW", { state: "dismissed", reason: "Someone else has it" })));
+      await assertSucceeds(getDocs(collection(admin, "adminHome")));
+      await assertSucceeds(deleteDoc(markRef(admin, "bugs--1x2y3z")));
+    });
+
+    it("refuses a snooze with no day, a dismiss with no reason, a mark in someone else's name or backdated", async () => {
+      await seedWave2People();
+      const admin = ctx("adminW");
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "snoozed" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "snoozed", until: "tomorrow" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "dismissed" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "dismissed", reason: "" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("founderW")));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { at: new Date("2026-09-01T12:00:00Z") })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { state: "ignored" })));
+      await assertFails(setDoc(markRef(admin, "bugs--a"), mark("adminW", { note: "extra" })));
+    });
+
+    it("keeps Home's marks to administrators: nobody else reads or writes them", async () => {
+      await seedWave2People();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "adminHome", "bugs--1x2y3z"), { state: "taken", by: { uid: "adminW", name: "Admin W" }, at: new Date() });
+      });
+      for (const uid of ["trainerA", "ownerA", "leaderW", "franchiseW"]) {
+        const db = ctx(uid);
+        await assertFails(getDoc(markRef(db, "bugs--1x2y3z")));
+        await assertFails(getDocs(collection(db, "adminHome")));
+        await assertFails(setDoc(markRef(db, "bugs--other"), mark(uid)));
+        await assertFails(deleteDoc(markRef(db, "bugs--1x2y3z")));
+      }
+    });
   });
 });

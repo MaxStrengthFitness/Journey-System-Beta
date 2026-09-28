@@ -89,6 +89,10 @@ import { syncRowOf, syncRows } from "./machinery/sync-check";
 import { AdminsHome } from "./home/AdminsHome";
 import { useHomeSignals } from "./home/useHomeSignals";
 import { needItems, type NeedDoor } from "./home/needs";
+import { useHomeMarks } from "./home/useHomeMarks";
+import { clearHomeMark, setHomeMark } from "./home/home-marks-store";
+import { staleMarkKeys, type HomeMarkState } from "./home/home-marks";
+import { studioTodayKey } from "../../lib/studio-time";
 import { networkSentence, standardSentence } from "./home/sentences";
 import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
 import { SettingDefaultsPage } from "./standard/SettingDefaultsPage";
@@ -308,6 +312,42 @@ function AdminsShell({
     else go({ page: door.page, studioId: door.studioId ?? null, tab: door.tab ?? null });
   };
 
+  // Home's Take it, Snooze and Dismiss (the second wave, Sep 28 2026;
+  // home/home-marks.ts): read with Home's other reads, kept in step with what
+  // this iPad writes. A mark whose condition has ended is removed once every
+  // read behind that kind of item has answered, never while one is missing.
+  const homeMarks = useHomeMarks(signalsSeq);
+  const { put: putMark, drop: dropMarks } = homeMarks;
+  const today = studioTodayKey(new Date(now));
+  const settledKinds = useMemo(() => {
+    const kinds = new Set<string>(["mindbody-setup", "registry"]);
+    if (allSync.every((r) => r.kind !== "checking" && r.kind !== "unknown")) kinds.add("sync-failing");
+    if (signals.limbo.state === "ok") kinds.add("limbo");
+    if (signals.offers.state === "ok") kinds.add("offers");
+    if (signals.bugs.state === "ok") kinds.add("bugs");
+    return kinds;
+  }, [allSync, signals]);
+  useEffect(() => {
+    if (homeMarks.state !== "ok") return;
+    const stale = staleMarkKeys(homeMarks.marks, [...needs.items, ...needs.more], settledKinds, today);
+    if (stale.length === 0) return;
+    dropMarks(stale);
+    for (const key of stale) void clearHomeMark(key).catch((err) => console.warn("Couldn't remove an ended mark", err));
+  }, [homeMarks.state, homeMarks.marks, needs, settledKinds, today, dropMarks]);
+  const markNeed = useCallback(
+    async (key: string, input: { state: HomeMarkState; until?: string | null; reason?: string | null }) => {
+      putMark(await setHomeMark(key, input, authTrainer.fullName));
+    },
+    [putMark, authTrainer.fullName],
+  );
+  const clearNeed = useCallback(
+    async (key: string) => {
+      await clearHomeMark(key);
+      dropMarks([key]);
+    },
+    [dropMarks],
+  );
+
   const current = navKeyOf(page);
   const place = placeOf(page);
   const placePages = pagesOf(place);
@@ -411,6 +451,11 @@ function AdminsShell({
                 onCheckAgain={checkAgain}
                 onOpenStudios={() => go({ page: "studios" })}
                 onOpenMachines={() => go({ page: "machines" })}
+                marks={homeMarks.marks}
+                marksState={homeMarks.state}
+                today={today}
+                onMark={markNeed}
+                onClearMark={clearNeed}
               />
             )}
             {page === "studios" && (
