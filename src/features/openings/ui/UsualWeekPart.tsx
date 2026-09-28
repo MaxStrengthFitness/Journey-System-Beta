@@ -24,7 +24,10 @@ import "../openings.css";
  *     sentence, for VoiceOver. Colour only echoes the word (a hot spot in the
  *     heat's orange, a time with room in the action blue), never the only
  *     signal, and never the kaizen red.
- *   - A tap opens the time's sheet in the Context Panel.
+ *   - A tap opens the time's sheet in the Context Panel. A tap on ANOTHER
+ *     time asks first when a mark is half-written on the sheet that is open
+ *     (`guard`, the parts' leave scope); the time already open asks nothing,
+ *     because its sheet stays as it is.
  *   - Narrower than 640px (the part's own width, not the screen's: the
  *     Context Panel may sit beside it), one day at a time with a day picker.
  *
@@ -45,7 +48,14 @@ const TONE: Record<UsualWord, Tone> = {
   blank: "blank",
 };
 
-export function UsualWeekPart() {
+export interface UsualWeekPartProps {
+  /** The parts' leave scope: asks about a half-written mark before another time's sheet replaces it. */
+  guard?: (proceed: () => void) => void;
+}
+
+const straightThrough = (proceed: () => void) => proceed();
+
+export function UsualWeekPart({ guard = straightThrough }: UsualWeekPartProps = {}) {
   const data = useOpenings();
   const { openPanel, panel } = useRelay();
   const todayWeekday = weekdayOf(data.today);
@@ -80,11 +90,17 @@ export function UsualWeekPart() {
     : null;
 
   const open = (u: UsualTime) => {
-    setOpenKey(u.key);
-    // With the sheet beside it the part may narrow to one day at a time:
-    // it stays on the day of the time just opened.
-    setDay(u.weekday);
-    openPanel({ kicker: "The usual week", title: timeName(u.key), body: <TimeSheet timeKey={u.key} /> });
+    // Set nothing before the answer: the whole move goes inside it.
+    const go = () => {
+      setOpenKey(u.key);
+      // With the sheet beside it the part may narrow to one day at a time:
+      // it stays on the day of the time just opened.
+      setDay(u.weekday);
+      openPanel({ kicker: "The usual week", title: timeName(u.key), body: <TimeSheet timeKey={u.key} /> });
+    };
+    // The time already open keeps its sheet (the body is keyed by the time), so it never asks.
+    if (panel && openKey === u.key) go();
+    else guard(go);
   };
 
   return (

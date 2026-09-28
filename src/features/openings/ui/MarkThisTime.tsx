@@ -7,10 +7,10 @@ import {
   CHANGE_THE_MARK,
   KEEP,
   KEEP_FAILED,
-  MARK_CHANGES,
   MARK_CHOICE_LABEL,
   MARK_INTRO,
   MARK_NOTE_LABEL,
+  MARK_QUEUED,
   MARK_THIS_TIME,
   MARK_WORD,
   REMOVE,
@@ -20,6 +20,7 @@ import {
   SAVE_FAILED,
   SAVE_THE_MARK,
   SAVING_THE_MARK,
+  markChangeLine,
   markNoteHint,
   removeQuestion,
 } from "./mark-words";
@@ -44,8 +45,14 @@ import "../openings.css";
  *   - Choosing a word the bookings clearly disagree with shows their
  *     disagreement FIRST, in the caution plum, before the save: the core's
  *     own line (`markLines`), never a second sentence.
- *   - What each word changes is said under the choice.
+ *   - What the chosen word changes FOR THIS TIME is said under the choice
+ *     (`markChangeLine`: the core's `offerable` decides, so a time that
+ *     reads Always full is never promised as an offer).
  *   - Removing asks once: the mark goes for everyone at the studio.
+ *   - A write never hangs the sheet (useMarkThisTime, `settleOrQueue`):
+ *     offline, the form or the question closes at once and the foot says
+ *     "Saved on this iPad. It goes to the studio when the connection is
+ *     back." A refusal that comes after that is said at the foot too.
  *
  * `MarkReview` is the 60-day review's two answers, drawn by the sheet right
  * under "Marked 64 days ago. Still true?": Keep signs the mark again, as the
@@ -139,7 +146,11 @@ function MarkForm({ m, u, viewer, today, tz, studioName }: MarkPartProps) {
             {against}
           </p>
         )}
-        {m.draft.word && <p className="rk-hint">{MARK_CHANGES[m.draft.word]}</p>}
+        {m.draft.word && (
+          <p className="rk-hint" data-testid="mark-changes">
+            {markChangeLine(u, m.draft.word)}
+          </p>
+        )}
       </div>
 
       <div className="rk-field">
@@ -174,6 +185,30 @@ function MarkForm({ m, u, viewer, today, tz, studioName }: MarkPartProps) {
   );
 }
 
+/**
+ * What the foot says after the form or the question has closed: a write
+ * saved on this iPad and on its way, or one refused after that. A refusal
+ * while the form or the question is open is said there, and Keep's under
+ * the review's question while the mark is still up for review.
+ */
+function AfterLine({ m, reviewing }: { m: MarkThisTime; reviewing: boolean }) {
+  if (m.editing || m.confirmingRemove) return null;
+  if (m.queued) {
+    return (
+      <p className="rk-hint" role="status" data-testid="mark-queued">
+        {MARK_QUEUED[m.queued]}
+      </p>
+    );
+  }
+  const failed = m.failed === "save" ? SAVE_FAILED : m.failed === "remove" ? REMOVE_FAILED : m.failed === "keep" && !reviewing ? KEEP_FAILED : null;
+  if (!failed) return null;
+  return (
+    <p className="rk-problem" role="alert">
+      {failed}
+    </p>
+  );
+}
+
 /** The foot of a time's sheet: "Mark this time", or the mark's own doors, or the form. */
 export function MarkThisTimePart(props: MarkPartProps) {
   const { m, mark, studioName, ready, reviewing } = props;
@@ -201,6 +236,7 @@ export function MarkThisTimePart(props: MarkPartProps) {
             {MARK_THIS_TIME}
           </button>
         </div>
+        <AfterLine m={m} reviewing={reviewing} />
       </section>
     );
   }
@@ -233,6 +269,7 @@ export function MarkThisTimePart(props: MarkPartProps) {
         {MARK_THIS_TIME}
       </h3>
       {body}
+      <AfterLine m={m} reviewing={reviewing} />
     </section>
   );
 }

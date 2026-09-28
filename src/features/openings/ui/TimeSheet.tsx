@@ -43,7 +43,9 @@ import "../openings.css";
  * The sheet reads the section's data live, so a mark that arrives while it
  * is open shows at once. Its body is keyed by the time, so a half-written
  * mark can never be saved onto another time; while it is being written it is
- * registered with the leave warning (useMarkThisTime).
+ * registered with the leave warning (useMarkThisTime), inside the parts'
+ * leave scope, so the panel's X and Escape (OpeningsSection) and a tap on
+ * another time (UsualWeekPart) ask before they would replace the sheet.
  */
 export function TimeSheet({ timeKey }: { timeKey: TimeKey }) {
   const data = useOpenings();

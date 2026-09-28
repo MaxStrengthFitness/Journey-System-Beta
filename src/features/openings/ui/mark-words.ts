@@ -5,8 +5,12 @@
  * ("Marked Always full by Jo, Oct 3.", "The bookings say: …", "Marked 64 days
  * ago. Still true?") and the bookings' disagreement ("The bookings disagree:
  * room in 6 of the last 8 Mondays.") come from `markLines`, never from here.
- * What is here is the form's own few words: its heading, its buttons, what
- * each word changes, the note's hint, and what it says when a write fails.
+ * What is here is the form's own few words: its heading, its buttons, the
+ * note's hint, what it says when a write fails or waits on the iPad, and
+ * `markChangeLine`, what the chosen word would change for THIS time (the
+ * core's `offerable` decides it, so the form never promises an offer the
+ * core won't make). That one IS a sentence about the time: it waits here
+ * only because present.ts is the core's file, and goes into present.ts first.
  *
  * They sit beside words.ts (the screens' other words, in one place) only
  * while other parts of the round write that file at the same time; the next
@@ -15,8 +19,12 @@
  *
  * PURE MODULE.
  */
-import { MAX_MARK_NOTE, type MarkWord } from "../marks";
+import { MAX_MARK_NOTE, offerable, type MarkWord, type OpeningsMark } from "../marks";
 import { timeName } from "../rows";
+import type { UsualTime } from "../usual";
+
+/** The three writes a time's sheet makes. */
+export type MarkAction = "save" | "keep" | "remove";
 
 /** The foot of a time's sheet: its heading, and the button that opens the form. */
 export const MARK_THIS_TIME = "Mark this time";
@@ -35,11 +43,23 @@ export const MARK_WORD: Record<MarkWord, string> = {
 /** The choice's label. */
 export const MARK_CHOICE_LABEL = "This time is";
 
-/** What each word changes (the proposal's "What a mark changes"). */
-export const MARK_CHANGES: Record<MarkWord, string> = {
-  full: "Always full counts as usually full on Next 7 days, and is never offered as a new regular time.",
-  room: "Usually has room is offered as a new regular time, with the mark and the numbers shown beside it.",
-};
+/**
+ * What choosing a word would change, for THIS time (the proposal's "What a
+ * mark changes"). The core's `offerable` decides, never a fixed line: a time
+ * that reads Always full is never offered whatever the mark, and a time that
+ * can be offered is listed on A new regular time only when someone's agreed
+ * week has them in then with no regular there, and the coming weeks don't
+ * show it taken (`offers`). When it reads Usually has room already, the offer
+ * is the numbers' own sentence and names no mark (`offerSentence`).
+ */
+export function markChangeLine(u: UsualTime, word: MarkWord): string {
+  if (word === "full") return "Always full counts as usually full on Next 7 days, and is never offered as a new regular time.";
+  const provisional: OpeningsMark = { id: u.key, weekday: u.weekday, time: "", mark: "room", note: "", by: { id: "", name: "" }, at: null };
+  if (!offerable(u.word, provisional)) return "This time reads Always full, so it isn't offered as a new regular time, whatever the mark.";
+  const beside =
+    u.word === "usually-room" ? "" : u.word === "not-enough" || u.word === "blank" ? ", with the mark beside it" : ", with the mark and the numbers beside it";
+  return `Usually has room can be offered as a new regular time when someone's agreed week has them in then with no regular there, and the coming weeks don't show it taken${beside}.`;
+}
 
 export const MARK_NOTE_LABEL = "A note, if it helps";
 
@@ -65,6 +85,18 @@ export const REMOVE_IT = "Remove it";
 export const SAVE_FAILED = "Couldn't save the mark just now. Check the connection and try again.";
 export const KEEP_FAILED = "Couldn't keep the mark just now. Check the connection and try again.";
 export const REMOVE_FAILED = "Couldn't remove the mark just now. Check the connection and try again.";
+
+/**
+ * A write made while the iPad is offline (or with no answer in a moment) is
+ * on the iPad at once and reaches the studio when the connection is back
+ * (session-record's `settleOrQueue`): the form closes and says so, rather
+ * than "Saving…" until the Wi-Fi returns.
+ */
+export const MARK_QUEUED: Record<MarkAction, string> = {
+  save: "Saved on this iPad. It goes to the studio when the connection is back.",
+  keep: "Kept on this iPad. It goes to the studio when the connection is back.",
+  remove: "Removed on this iPad. It goes to the studio when the connection is back.",
+};
 
 /** What the leave question calls a half-written mark: "You have unsaved changes to the mark on Monday 8:00 AM." */
 export function markLabel(key: string): string {

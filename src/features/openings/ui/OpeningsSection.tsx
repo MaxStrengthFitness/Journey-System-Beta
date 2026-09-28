@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { CalendarClock, CalendarDays, CalendarPlus, Users } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { ContextPanel } from "../../relay/board/ContextPanel";
@@ -32,7 +32,10 @@ import "../openings.css";
  * tabs of equal weight. It opens on The usual week; each iPad remembers the
  * part it was on (ui/part-memory.ts, forgotten at sign-out). A part holding
  * typing (a mark's note, the marks phase) is asked about before another part
- * replaces it: the parts are a leave scope.
+ * replaces it: the parts are a leave scope. So is the Context Panel beside
+ * them: its X and Escape, and a tap on another time in the grid, ask about a
+ * half-written mark before they would replace the sheet (as My Studio →
+ * Machines' door does).
  *
  * WHO: everyone who works at the studio, and franchise owners and
  * administrators (`mayReadWeeks`, the rule for reading the standing weeks,
@@ -79,6 +82,9 @@ function Openings({ studio, authTrainer, trainers }: OpeningsSectionProps) {
   const [part, setPart] = useState<OpeningsPart>(PARTS.some((p) => p.id === remembered) ? remembered : "usual");
   const partScope = useLeaveScope();
 
+  // The sheet's X and Escape (ContextPanel routes Escape to onClose) ask first.
+  const closeSheet = useCallback(() => partScope.guard(closePanel), [partScope, closePanel]);
+
   const choose = (next: OpeningsPart) => {
     if (next === part) return;
     partScope.guard(() => {
@@ -115,13 +121,13 @@ function Openings({ studio, authTrainer, trainers }: OpeningsSectionProps) {
           <div className="pl__frame">
             <div className="pl__body" role="tabpanel" id="op-panel" aria-labelledby={`op-tab-${part}`}>
               <div className="op__page">
-                {part === "usual" && <UsualWeekPart />}
+                {part === "usual" && <UsualWeekPart guard={partScope.guard} />}
                 {part === "next" && <NextDaysPart />}
                 {part === "offer" && <NewRegularPart />}
                 {part === "who" && <WhosInPart />}
               </div>
             </div>
-            <ContextPanel content={panel} onClose={closePanel} />
+            <ContextPanel content={panel} onClose={closeSheet} />
           </div>
         </UnsavedChangesScope>
       </div>

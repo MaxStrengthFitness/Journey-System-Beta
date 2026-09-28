@@ -11,11 +11,15 @@
  *   - a colleague's mark changed (signed by the person changing it, a note
  *     taken out is gone) and removed (one question first);
  *   - the 60-day review: "Still true?" with Keep, which signs it again today;
- *   - a half-written mark is typing: Openings' parts and the form's own
- *     Cancel ask before they would lose it, and it is never saved onto
- *     another time;
- *   - a failed write keeps the typing and says so; with the marks unknown,
- *     nothing can be marked.
+ *   - what the chosen word changes is the core's answer for THIS time: a
+ *     time that reads Always full is never promised as an offer;
+ *   - a half-written mark is typing: Openings' parts, the Context Panel's X
+ *     and Escape, a tap on another time and the form's own Cancel ask
+ *     before they would lose it, and it is never saved onto another time;
+ *   - a failed write keeps the typing and says so; a write the database
+ *     hasn't answered (offline, or slow) never hangs the sheet: the form
+ *     closes and says it is saved on this iPad, and a later refusal is said;
+ *     with the marks unknown, nothing can be marked.
  *
  * Today is Monday Nov 9 2026, noon Eastern, the day after the fixture's
  * Sunday run. Monday 8:00 AM reads Always full (full in all of the last 8
@@ -39,7 +43,10 @@ const fake = vi.hoisted(() => ({
   listeners: new Set<(snap: unknown) => void>(),
   writes: [] as Write[],
   writeFails: false,
+  /** The write is on the iPad (its copy answers the listener) and its promise waits for the database. */
   writeHangs: false,
+  pending: [] as { resolve: () => void; reject: (err: unknown) => void }[],
+  answer: () => {},
 }));
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-sam" } }, functions: {} }));
@@ -48,15 +55,16 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   const ref = (_db: unknown, ...parts: unknown[]) => ({ path: parts.filter((p) => typeof p === "string").join("/") });
   const snapshot = () => ({ docs: fake.marks.map((m) => ({ id: m.id, data: () => m.data })), metadata: { fromCache: false } });
   const answer = () => setTimeout(() => fake.listeners.forEach((next) => next(snapshot())), 0);
+  fake.answer = answer;
   const written = (op: Write["op"], r: { path: string }, data?: Record<string, unknown>, options?: unknown) => {
     fake.writes.push({ op, path: r.path, data, options });
-    if (fake.writeHangs) return new Promise<void>(() => {});
     if (fake.writeFails) return Promise.reject(Object.assign(new Error("offline"), { code: "unavailable" }));
     const id = r.path.split("/").pop()!;
     fake.marks = fake.marks.filter((m) => m.id !== id);
-    // The server stamps its own time.
+    // The server stamps its own time (the iPad's copy estimates it).
     if (op === "set") fake.marks.push({ id, data: { ...data, at: new Date() } });
     answer();
+    if (fake.writeHangs) return new Promise<void>((resolve, reject) => fake.pending.push({ resolve, reject }));
     return Promise.resolve();
   };
   return {
@@ -83,6 +91,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
 vi.mock("../../standing-week/useStandingWeeks", () => ({ useStandingWeeks: () => fake.weeks }));
 
 import { forgetPersonalMemory } from "../../sign-out/memory";
+import { FINISH_WAIT_MS } from "../../session-record/finish-wait";
 import { OpeningsSection } from "./OpeningsSection";
 import { PAT, PAT_WEEK, SAM, SAM_TUESDAYS, Shell, WESTLAKE, foldFixture } from "./test-shell";
 
@@ -101,6 +110,7 @@ beforeEach(() => {
   fake.writes = [];
   fake.writeFails = false;
   fake.writeHangs = false;
+  fake.pending = [];
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -152,6 +162,19 @@ async function type(text: string) {
 }
 /** The leave question, rendered into <body>. */
 const question = () => [...document.body.querySelectorAll("[role='alertdialog'], [role='dialog']")].find((d) => /unsaved changes/i.test(d.textContent ?? "")) ?? null;
+const MONDAY_QUESTION = "You have unsaved changes to the mark on Monday 8:00 AM. Leave without saving?";
+const panelTitle = () => host.querySelector(".cp__title")?.textContent ?? null;
+/** The iPad knows it is offline (no online/offline event: the marks were read before it went). */
+const goOffline = () => vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+const queuedLine = () => host.querySelector("[data-testid='mark-queued']")?.textContent ?? null;
+const disabledIn = (within: ParentNode) => [...within.querySelectorAll("button")].filter((b) => b.disabled).map((b) => b.textContent);
+/** Monday 8:00 with the form open, Usually has room chosen and a note typed. */
+async function typingOnMonday(text = "Monday's note") {
+  await open("1-0800");
+  await tap(buttonIn(markPart()!, "Mark this time"));
+  await tap(chip("Usually has room"));
+  await type(text);
+}
 
 /** Pat's mark on a time, as the server holds it. */
 const patsMark = (key: string, over: Record<string, unknown> = {}): Stored => {
@@ -189,7 +212,10 @@ describe("a time nobody has marked", () => {
     // Usually has room agrees with them: no disagreement.
     await tap(chip("Usually has room"));
     expect(host.querySelector("[data-testid='mark-disagree']")).toBeNull();
-    expect(markPart()?.textContent).toContain("Usually has room is offered as a new regular time, with the mark and the numbers shown beside it.");
+    // The time already reads Usually has room: the offer is the numbers' own, and when it would be listed.
+    expect(host.querySelector("[data-testid='mark-changes']")?.textContent).toBe(
+      "Usually has room can be offered as a new regular time when someone's agreed week has them in then with no regular there, and the coming weeks don't show it taken.",
+    );
     expect(fake.writes).toEqual([]);
   });
 
@@ -264,6 +290,9 @@ describe("a colleague's mark", () => {
     expect(note().value).toBe("The rotation's regulars");
     await tap(chip("Usually has room"));
     expect(host.querySelector("[data-testid='mark-disagree']")?.textContent).toBe("The bookings disagree: full in 8 of the last 8 Mondays.");
+    // A time that reads Always full is never offered, whatever the mark: the form doesn't promise it.
+    expect(markPart()?.textContent).toContain("This time reads Always full, so it isn't offered as a new regular time, whatever the mark.");
+    expect(markPart()?.textContent).not.toContain("can be offered as a new regular time");
     await type("");
     await tap(buttonIn(markPart()!, "Save the mark"));
     expect(fake.writes).toHaveLength(1);
@@ -373,19 +402,74 @@ describe("a half-written mark is typing", () => {
     expect(buttonIn(markPart()!, "Mark this time")).not.toBeNull();
   });
 
-  it("is never saved onto another time", async () => {
+  it("a tap on another time asks first, and the typing is never saved onto it", async () => {
     await mount();
-    await open("1-0800");
-    await tap(buttonIn(markPart()!, "Mark this time"));
-    await tap(chip("Usually has room"));
-    await type("Monday's note");
+    await typingOnMonday();
     await open("2-1030");
     await settle();
-    expect(host.querySelector(".cp__title")?.textContent).toContain("Tuesday 10:30 AM");
-    // Tuesday's sheet starts clean: no form, no Monday note.
+    expect(question()?.textContent).toContain(MONDAY_QUESTION);
+    // Keep editing: Monday's sheet, with the typing.
+    await tap(buttonIn(question()!, "Keep editing"));
+    expect(panelTitle()).toContain("Monday 8:00 AM");
+    expect(note().value).toBe("Monday's note");
+    expect(cell("1-0800").getAttribute("aria-current")).toBe("true");
+    // Leave: Tuesday's sheet starts clean, no form, no Monday note.
+    await open("2-1030");
+    await settle();
+    await tap(buttonIn(question()!, "Leave"));
+    expect(panelTitle()).toContain("Tuesday 10:30 AM");
     expect(markPart()?.querySelector("textarea")).toBeNull();
     expect(buttonIn(markPart()!, "Mark this time")).not.toBeNull();
     expect(fake.writes).toEqual([]);
+  });
+
+  it("a tap on the time already open asks nothing and keeps the typing", async () => {
+    await mount();
+    await typingOnMonday();
+    await open("1-0800");
+    await settle();
+    expect(question()).toBeNull();
+    expect(note().value).toBe("Monday's note");
+  });
+
+  it("the sheet's X asks first", async () => {
+    await mount();
+    await typingOnMonday();
+    await tap(host.querySelector<HTMLButtonElement>(".cp__close"));
+    expect(question()?.textContent).toContain(MONDAY_QUESTION);
+    await tap(buttonIn(question()!, "Keep editing"));
+    expect(panelTitle()).toContain("Monday 8:00 AM");
+    expect(note().value).toBe("Monday's note");
+    await tap(host.querySelector<HTMLButtonElement>(".cp__close"));
+    await tap(buttonIn(question()!, "Leave"));
+    expect(host.querySelector("[data-testid='time-sheet']")).toBeNull();
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("Escape asks first", async () => {
+    await mount();
+    await typingOnMonday();
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await settle();
+    expect(question()?.textContent).toContain(MONDAY_QUESTION);
+    await tap(buttonIn(question()!, "Keep editing"));
+    expect(panelTitle()).toContain("Monday 8:00 AM");
+    expect(note().value).toBe("Monday's note");
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("with nothing typed, another time and the X just go", async () => {
+    await mount();
+    await open("1-0800");
+    await open("2-1030");
+    await settle();
+    expect(question()).toBeNull();
+    expect(panelTitle()).toContain("Tuesday 10:30 AM");
+    await tap(host.querySelector<HTMLButtonElement>(".cp__close"));
+    expect(question()).toBeNull();
+    expect(host.querySelector("[data-testid='time-sheet']")).toBeNull();
   });
 });
 
@@ -405,7 +489,7 @@ describe("when a write can't be made", () => {
     await tap(buttonIn(question()!, "Keep editing"));
   });
 
-  it("while a save is on its way, the form waits and says so", async () => {
+  it("while a save is on its way, the form waits a moment and says so, then closes: it never hangs", async () => {
     fake.writeHangs = true;
     await mount();
     await open("1-0800");
@@ -416,6 +500,82 @@ describe("when a write can't be made", () => {
     expect(saving?.disabled).toBe(true);
     expect(buttonIn(markPart()!, "Cancel")?.disabled).toBe(true);
     expect(fake.writes).toHaveLength(1);
+    // No answer from the database in a moment: saved on this iPad, and the form closes.
+    await act(async () => {
+      vi.advanceTimersByTime(FINISH_WAIT_MS);
+    });
+    await settle();
+    expect(markPart()?.querySelector("textarea")).toBeNull();
+    expect(queuedLine()).toBe("Saved on this iPad. It goes to the studio when the connection is back.");
+    expect(disabledIn(sheet())).toEqual([]);
+    // The database answers: the line goes.
+    await act(async () => fake.pending[0].resolve());
+    await settle();
+    expect(queuedLine()).toBeNull();
+  });
+
+  it("offline, Save closes the form at once, and the sheet shows the mark from the iPad", async () => {
+    fake.writeHangs = true;
+    await mount();
+    await typingOnMonday("Two regulars moved to 7:00");
+    goOffline();
+    await tap(buttonIn(markPart()!, "Save the mark"));
+    expect(buttonIn(markPart()!, "Saving…")).toBeNull();
+    expect(markPart()?.querySelector("textarea")).toBeNull();
+    expect(queuedLine()).toBe("Saved on this iPad. It goes to the studio when the connection is back.");
+    expect(leadLines()).toEqual(["The bookings disagree: full in 8 of the last 8 Mondays.", "Marked Usually has room by you, Nov 9."]);
+    expect(buttonIn(markPart()!, "Change the mark")).not.toBeNull();
+    expect(disabledIn(sheet())).toEqual([]);
+    // Nothing half-written is left to ask about: the X just closes.
+    await tap(host.querySelector<HTMLButtonElement>(".cp__close"));
+    expect(question()).toBeNull();
+    expect(host.querySelector("[data-testid='time-sheet']")).toBeNull();
+  });
+
+  it("offline, a save the database refuses later says so at the foot of the sheet", async () => {
+    fake.writeHangs = true;
+    await mount();
+    await typingOnMonday();
+    goOffline();
+    await tap(buttonIn(markPart()!, "Save the mark"));
+    expect(queuedLine()).not.toBeNull();
+    // Refused: the iPad's copy takes the mark back, and the write's promise says so.
+    await act(async () => {
+      fake.marks = [];
+      fake.answer();
+      fake.pending[0].reject(Object.assign(new Error("denied"), { code: "permission-denied" }));
+    });
+    await settle();
+    expect(queuedLine()).toBeNull();
+    expect(markPart()?.textContent).toContain("Couldn't save the mark just now. Check the connection and try again.");
+    expect(buttonIn(markPart()!, "Mark this time")).not.toBeNull();
+  });
+
+  it("offline, Remove it closes the question at once", async () => {
+    fake.writeHangs = true;
+    fake.marks = [patsMark("1-0800")];
+    await mount();
+    await open("1-0800");
+    goOffline();
+    await tap(buttonIn(markPart()!, "Remove the mark"));
+    await tap(buttonIn(host.querySelector("[data-testid='mark-remove-question']")!, "Remove it"));
+    expect(host.querySelector("[data-testid='mark-remove-question']")).toBeNull();
+    expect(queuedLine()).toBe("Removed on this iPad. It goes to the studio when the connection is back.");
+    expect(leadLines()).toEqual(["Monday 8:00 AM · Always full: full in all of the last 8 Mondays."]);
+    expect(disabledIn(sheet())).toEqual([]);
+  });
+
+  it("offline, Keep signs the mark on the iPad at once, and nothing stays disabled", async () => {
+    fake.writeHangs = true;
+    fake.marks = [patsMark("1-0800", { at: new Date("2026-09-06T16:00:00Z") })];
+    await mount();
+    await open("1-0800");
+    goOffline();
+    await tap(buttonIn(host.querySelector("[data-testid='mark-review']")!, "Keep"));
+    expect(queuedLine()).toBe("Kept on this iPad. It goes to the studio when the connection is back.");
+    expect(host.querySelector("[data-testid='mark-review']")).toBeNull();
+    expect(leadLines()[0]).toBe("Marked Always full by you, Nov 9.");
+    expect(disabledIn(sheet())).toEqual([]);
   });
 
   it("with the marks unknown, nothing can be marked, and the sheet says it can't tell", async () => {
