@@ -20,7 +20,7 @@ import { auth, db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
 import { Client, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
-import { bookingDay, loggedSessions } from "../lib/booking-state";
+import { bookingDay, isStaffBlock, loggedSessions } from "../lib/booking-state";
 import { sessionsByClientDay } from "../lib/hub-card-state";
 import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // Import the hook file directly, not the studio-tasks barrel (index.ts).
@@ -61,6 +61,11 @@ import { LoadingArea } from "./LoadingMark";
 import { LayerSwitch, type HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
 import { HubCard } from "../features/hub-schedule/HubCard";
+import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
+import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
+import type { Span } from "../features/hub-schedule/grid-model";
+import { useStandingWeeks } from "../features/standing-week/useStandingWeeks";
+import { weekdayOf } from "../features/client-history/model";
 import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 
 /*
@@ -71,42 +76,8 @@ import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../feature
  */
 const RunSheet = React.lazy(() => import("../features/hub-opportunities/RunSheet"));
 
-/** Grid geometry. Row height is fixed so the NOW line can be placed in px. */
-const SLOT_MINUTES = 30;
-/**
- * Height of one 30-minute row: 2.2px a minute (calm Hub round, Sep 28 2026),
- * so a 30-minute card is 64px with its gap. At the old 56px a card had room
- * for a cut name and 8px letters (research-hub §1).
- */
-const ROW_PX = 66;
-/** Height of the sticky trainer header row (Tailwind h-16). */
-const HEADER_PX = 64;
-/**
- * The timeline runs 5:30 AM -> 8:00 PM. Trainers take early exceptions and
- * late make-ups, and the old 7 AM floor hid them below the scroll. A booking
- * outside this window still stretches the grid to include it.
- */
-const DEFAULT_START_MIN = 5 * 60 + 30;
-/** The LAST row STARTS here, so the grid closes at 8:00 PM. */
-const DEFAULT_END_MIN = 19 * 60 + 30;
-/**
- * Minimum width per trainer column before the grid scrolls sideways: at 156px
- * a line holds about 17 characters, so a first name and a surname on two lines
- * cover nearly every name, whole (research-hub §6.0).
- */
-const MIN_COLUMN_PX = 156;
-const TIME_AXIS_PX = 56;
-
-/** "7 AM", "12 PM", "6:30 AM" … for the left time axis. */
 /** One empty list, so a missing schedule doesn't look new on every render. */
 const NO_SCHEDULES: any[] = [];
-
-const hourLabel = (minutes: number): string => {
-  const h24 = Math.floor(minutes / 60);
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  const mm = minutes % 60;
-  return `${h12}${mm ? `:${String(mm).padStart(2, "0")}` : ""} ${h24 >= 12 ? "PM" : "AM"}`;
-};
 
 /**
  * One number in the Hub's day strip.
@@ -391,19 +362,10 @@ export function ClientsView({
     return false;
   };
 
-  /**
-   * Minutes since the studio's midnight, snapped down to the 30-minute row
-   * the appointment starts in. Numbers instead of "7:30 AM" strings keep the
-   * row math trivial (a 60-minute session spans two rows, and so on).
-   */
+  /** Minutes since the studio's midnight: where a booking sits on the grid. */
   const studioMinutes = (date: Date): number => {
     const hm = zonedHM(date);
     return hm ? hm.hour * 60 + hm.minute : 0;
-  };
-  const slotOf = (s: any): number | null => {
-    const date = safeToDate(s?.startTime || s?.StartDateTime || s?.date);
-    if (!date) return null;
-    return Math.floor(studioMinutes(date) / SLOT_MINUTES) * SLOT_MINUTES;
   };
 
   // Sessions for the selected day, bounded by the STUDIO's midnight. Using the
@@ -425,35 +387,6 @@ export function ClientsView({
         getMillis(a.startTime || a.StartDateTime || a.date) -
         getMillis(b.startTime || b.StartDateTime || b.date),
     );
-
-  /**
-   * One unbroken timeline for the whole day — no AM/PM shift break. The grid
-   * defaults to 5:30 → 20:00 and stretches to include any booking outside it.
-   */
-  const timelineSlots = React.useMemo(() => {
-    let startMin = DEFAULT_START_MIN;
-    let endMin = DEFAULT_END_MIN; // last row starts at 19:30, closing at 8 PM
-    (todaysSchedules || []).forEach((s) => {
-      const start = safeToDate(s.startTime || s.StartDateTime || s.date);
-      if (!start) return;
-      const startSlot =
-        Math.floor(studioMinutes(start) / SLOT_MINUTES) * SLOT_MINUTES;
-      if (startSlot < startMin) startMin = startSlot;
-      const end = safeToDate(s.endTime || s.EndDateTime);
-      const endMinutes = end
-        ? studioMinutes(end)
-        : studioMinutes(start) + SLOT_MINUTES;
-      // The row that CONTAINS the end (an 8:00–9:00 session needs the 8:30 row).
-      const lastSlot =
-        Math.ceil(endMinutes / SLOT_MINUTES) * SLOT_MINUTES - SLOT_MINUTES;
-      if (lastSlot > endMin) endMin = lastSlot;
-    });
-    const slots: number[] = [];
-    for (let m = startMin; m <= endMin; m += SLOT_MINUTES) slots.push(m);
-    return slots;
-  }, [todaysSchedules]);
-
-  const timelineStartMin = timelineSlots[0] ?? DEFAULT_START_MIN;
 
   const preBookedCount = todaysSchedules.filter(
     (s) => !s.clientName?.toLowerCase().includes("unavailab"),
@@ -486,44 +419,6 @@ export function ClientsView({
       target.offsetLeft - container.clientWidth / 2 + target.offsetWidth / 2;
     container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [selectedDate]);
-
-  /* LAND ON NOW (tracker round, Sep 2026). "At 3:30 I open the Hub and it
-     starts me at the top; I scroll all the way down to find my next
-     client." When the selected day is today, the timeline scrolls once so
-     the Now line sits a third of the way down — the next session is right
-     under it. Once per day selection, never while the trainer is reading. */
-  const timelineRef = useRef<HTMLDivElement | null>(null);
-  const landedOnRef = useRef<string | null>(null);
-
-  /**
-   * "NOW" line, in pixels from the top of the grid. Only drawn when the
-   * selected day is today (by the studio's clock) and the time falls inside
-   * the rendered timeline.
-   */
-  const nowLineTop = (() => {
-    if (calendarLabelKey(selectedDate) !== studioDateKey(currentTime))
-      return null;
-    const mins = studioMinutes(currentTime);
-    const lastSlot = timelineSlots[timelineSlots.length - 1];
-    if (lastSlot === undefined) return null;
-    if (mins < timelineStartMin || mins > lastSlot + SLOT_MINUTES) return null;
-    return HEADER_PX + ((mins - timelineStartMin) / SLOT_MINUTES) * ROW_PX;
-  })();
-
-  useEffect(() => {
-    const key = calendarLabelKey(selectedDate);
-    if (nowLineTop === null) {
-      landedOnRef.current = null;
-      return;
-    }
-    if (landedOnRef.current === key) return;
-    const el = timelineRef.current;
-    // Hidden under the Opportunities layer: land when Schedule is back.
-    if (!el || layer !== "schedule") return;
-    landedOnRef.current = key;
-    const top = Math.max(0, nowLineTop - Math.round(el.clientHeight / 3));
-    el.scrollTo({ top, behavior: "auto" });
-  }, [nowLineTop, selectedDate, layer]);
 
   /**
    * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
@@ -691,6 +586,87 @@ export function ClientsView({
     }
     return list;
   }, [sortedTrainers, activeStudioId, todaysSchedules, authTrainer]);
+
+  /*
+   * THE GRID (calm Hub round, Sep 28 2026): features/hub-schedule/HubGrid.
+   * Each booking goes in ONE column, the first trainer it matches (you are
+   * first), at its own start and end in studio minutes: real lengths, so a
+   * 45-minute consult is drawn as 45 minutes.
+   */
+  const gridDayKey = calendarLabelKey(selectedDate);
+  const gridBlocks: GridBlock[] = [];
+  todaysSchedules.forEach((s, i) => {
+    const column = visibleTrainersList.find((t) => isTrainerMatch(s, t));
+    if (!column) return;
+    const start = safeToDate(s.startTime || s.StartDateTime || s.date);
+    if (!start) return;
+    const end = safeToDate(s.endTime || s.EndDateTime);
+    const from = studioMinutes(start);
+    let to = end ? studioMinutes(end) : from + 30;
+    if (to <= from) to = from + 30;
+    gridBlocks.push({
+      key: String(s.id || s.mindbodyAppointmentId || `${column.id}-${from}-${i}`),
+      columnId: String(column.id),
+      span: { from, to },
+      booking: s,
+    });
+  });
+  const gridColumns: GridColumn[] = visibleTrainersList.map((t) => {
+    const nickname = ((t as any).nickname || "").trim();
+    return {
+      id: String(t.id),
+      // The name they go by, whole (research-hub §6.0), never cut.
+      name: nickname || (t.fullName || "").trim().split(" ")[0] || "Trainer",
+      initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
+      isMe: isSelfTrainer(t),
+      count: gridBlocks.filter((b) => b.columnId === String(t.id) && !isStaffBlock(b.booking as any)).length,
+    };
+  });
+  const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
+
+  /*
+   * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
+   * glance"): the AGREED standing weeks, one read of the studio's, hatch the
+   * hours a trainer isn't on and a day away. No agreed week, or no answer,
+   * hatches nothing (off-hours.ts).
+   */
+  const standingWeeks = useStandingWeeks(activeStudioId || null);
+  const weeks = React.useMemo(() => weeksByTrainer(standingWeeks.docs), [standingWeeks.docs]);
+  const gridWeekday = weekdayOf(gridDayKey);
+  const frameOf = React.useCallback(
+    (columnId: string, range: Span) => trainerDayFrame(weeks.get(columnId), gridDayKey, gridWeekday, range),
+    [weeks, gridDayKey, gridWeekday],
+  );
+
+  const renderCard = (block: GridBlock) => {
+    const session: any = block.booking;
+    const clientObj = isStaffBlock(session) ? null : findClientForSession(session);
+    const workoutSession = clientObj
+      ? workoutSessionOn(
+          clientObj.id,
+          bookingDay({ startTime: session.startTime || session.StartDateTime || session.date, status: session.status }),
+        )
+      : null;
+    const entry = clientObj?.id ? dayMoments.byClientId.get(clientObj.id) ?? null : null;
+    return (
+      <HubCard
+        booking={session}
+        client={clientObj}
+        entry={entry}
+        sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
+        newToJourney={isNewToJourney(entry, clientObj)}
+        usualService={usualService}
+        rosterLoading={rosterLoading}
+        workoutSession={workoutSession}
+        logged={logged}
+        now={currentTime}
+        onOpen={(clientId) => {
+          onSelectClient(clientId);
+          setView("profile");
+        }}
+      />
+    );
+  };
 
   /* ------------------------------------------------------------------ *
    * The day at a glance.
@@ -1200,271 +1176,17 @@ export function ClientsView({
               </p>
             )}
 
-            {/* Continuous timeline. This element is the ONLY scroller (both axes),
-                which is what lets the trainer header and the time axis stick. */}
-            <div ref={timelineRef} className="flex-1 min-h-0 overflow-auto relative" hidden={layer !== "schedule"}>
-              <div
-                className="relative"
-                style={{
-                  minWidth:
-                    TIME_AXIS_PX +
-                    Math.max(1, visibleTrainersList.length) * MIN_COLUMN_PX,
-                }}
-              >
-                {nowLineTop !== null && (
-                  <div
-                    className="absolute left-0 right-0 h-px bg-linear-to-r from-orange-500 via-orange-500/70 to-transparent z-30 pointer-events-none"
-                    style={{ top: nowLineTop }}
-                  >
-                    <div className="absolute left-0 -top-2 bg-orange-500 text-white text-[10px] font-black uppercase px-1.5 py-0.5 rounded-r-full flex items-center gap-1 leading-none">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      Now
-                    </div>
-                  </div>
-                )}
-
-                <table className="w-full border-separate border-spacing-0 table-fixed">
-                  <colgroup>
-                    <col style={{ width: TIME_AXIS_PX }} />
-                    {visibleTrainersList.length === 0 && <col />}
-                    {visibleTrainersList.map((t) => (
-                      <col key={t.id} />
-                    ))}
-                  </colgroup>
-                  <thead>
-                    <tr className="h-16">
-                      {/* Corner cell: sticks to the top AND the left. */}
-                      <th className="sticky top-0 left-0 z-40 bg-slate-100 dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-800" />
-                      {visibleTrainersList.length === 0 && (
-                        <th className="sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                          No trainers scheduled
-                        </th>
-                      )}
-                      {visibleTrainersList.map((trainer) => {
-                        const isMe = isSelfTrainer(trainer);
-                        const sessionCount = todaysSchedules.filter((s) => {
-                          if (!isTrainerMatch(s, trainer)) return false;
-                          if (s.clientName?.toLowerCase().includes("unavailab"))
-                            return false;
-                          return s.status !== "Cancelled";
-                        }).length;
-                        return (
-                          <th
-                            key={trainer.id}
-                            className={cn(
-                              "sticky top-0 z-30 border-b border-r last:border-r-0 border-slate-200 dark:border-slate-800 px-2 text-left font-normal",
-                              // Sticky cells must be opaque or the grid shows through.
-                              isMe
-                                ? "bg-slate-200 dark:bg-slate-800"
-                                : "bg-slate-100 dark:bg-slate-900",
-                            )}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div
-                                className={cn(
-                                  "w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-black uppercase tracking-wider",
-                                  isMe
-                                    ? "bg-cyan text-slate-900"
-                                    : "bg-primary text-primary-foreground",
-                                )}
-                              >
-                                {(trainer.initials || trainer.fullName || "??")
-                                  .substring(0, 2)}
-                              </div>
-                              <div className="min-w-0 leading-tight">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="text-[13px] font-black uppercase tracking-wider text-foreground dark:text-white truncate">
-                                    {trainer.fullName.split(" ")[0]}
-                                  </span>
-                                  {isMe && (
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan shrink-0">
-                                      You
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground tabular-nums">
-                                  {sessionCount}{" "}
-                                  {sessionCount === 1 ? "session" : "sessions"}
-                                </span>
-                              </div>
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const skippedGridCells = new Set<string>();
-                      return timelineSlots.map((slot, sIdx) => {
-                        const isHour = slot % 60 === 0;
-                        // The first row always gets a label, even at :30.
-                        const showLabel = isHour || sIdx === 0;
-                        return (
-                          <tr key={slot} style={{ height: ROW_PX }}>
-                            {/* Time axis: label on the hour, quiet on the half hour. */}
-                            <td
-                              className={cn(
-                                "sticky left-0 z-20 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 align-top px-1 pt-1 text-right",
-                                isHour
-                                  ? "border-b border-slate-200/70 dark:border-slate-800/70"
-                                  : "border-b border-slate-300 dark:border-slate-700",
-                              )}
-                            >
-                              {showLabel && (
-                                <span className="text-[11px] font-bold tabular-nums text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                                  {hourLabel(slot)}
-                                </span>
-                              )}
-                            </td>
-                            {visibleTrainersList.length === 0 && (
-                              <td
-                                className={cn(
-                                  "border-b",
-                                  isHour
-                                    ? "border-slate-200/70 dark:border-slate-800/70"
-                                    : "border-slate-300 dark:border-slate-700",
-                                )}
-                              />
-                            )}
-                            {visibleTrainersList.map((trainer) => {
-                              const cellId = `${trainer.id}-${slot}`;
-                              if (skippedGridCells.has(cellId)) return null;
-                              const isMe = isSelfTrainer(trainer);
-
-                              const cellSessions = todaysSchedules.filter(
-                                (s) =>
-                                  isTrainerMatch(s, trainer) &&
-                                  slotOf(s) === slot &&
-                                  s.status !== "Cancelled",
-                              );
-
-                              // A 60-minute booking spans two 30-minute rows.
-                              let rowSpan = 1;
-                              if (cellSessions.length === 1) {
-                                const session = cellSessions[0];
-                                const start = safeToDate(
-                                  session.startTime ||
-                                    session.StartDateTime ||
-                                    session.date,
-                                );
-                                const end = safeToDate(
-                                  session.endTime || session.EndDateTime,
-                                );
-                                if (start && end) {
-                                  const duration =
-                                    (end.getTime() - start.getTime()) /
-                                    (1000 * 60);
-                                  rowSpan = Math.max(
-                                    1,
-                                    Math.round(duration / SLOT_MINUTES),
-                                  );
-                                  // Never span over a row that holds another
-                                  // booking for this trainer — that would hide it.
-                                  for (let i = 1; i < rowSpan; i++) {
-                                    const laterSlot = timelineSlots[sIdx + i];
-                                    if (laterSlot === undefined) {
-                                      rowSpan = i;
-                                      break;
-                                    }
-                                    const collides = todaysSchedules.some(
-                                      (s) =>
-                                        isTrainerMatch(s, trainer) &&
-                                        slotOf(s) === laterSlot &&
-                                        s.status !== "Cancelled",
-                                    );
-                                    if (collides) {
-                                      rowSpan = i;
-                                      break;
-                                    }
-                                  }
-                                  for (let i = 1; i < rowSpan; i++) {
-                                    skippedGridCells.add(
-                                      `${trainer.id}-${timelineSlots[sIdx + i]}`,
-                                    );
-                                  }
-                                }
-                              }
-
-                              // The last spanned row decides the bottom border weight.
-                              const lastSlot = timelineSlots[sIdx + rowSpan - 1];
-                              const endsOnHour =
-                                lastSlot !== undefined && lastSlot % 60 === 0;
-
-                              return (
-                                <td
-                                  key={cellId}
-                                  rowSpan={rowSpan}
-                                  className={cn(
-                                    "p-0.5 border-r last:border-r-0 border-slate-200 dark:border-slate-800 align-top",
-                                    endsOnHour
-                                      ? "border-b border-slate-200/70 dark:border-slate-800/70"
-                                      : "border-b border-slate-300 dark:border-slate-700",
-                                    isMe && "bg-slate-200/40 dark:bg-slate-800/50",
-                                  )}
-                                >
-                                  {cellSessions.length > 0 && (
-                                    // Explicit height keeps every row exactly ROW_PX
-                                    // tall, so the NOW line and rowSpans line up.
-                                    <div
-                                      className="flex flex-col gap-0.5 w-full overflow-hidden"
-                                      style={{ height: rowSpan * ROW_PX - 4 }}
-                                    >
-                                      {cellSessions.map((session, i) => {
-                                        const clientObj =
-                                          findClientForSession(session);
-                                        const workoutSession = clientObj
-                                          ? workoutSessionOn(
-                                              clientObj.id,
-                                              bookingDay({
-                                                startTime:
-                                                  session.startTime ||
-                                                  session.StartDateTime ||
-                                                  session.date,
-                                                status: session.status,
-                                              }),
-                                            )
-                                          : null;
-                                        const entry = clientObj?.id
-                                          ? dayMoments.byClientId.get(clientObj.id) ?? null
-                                          : null;
-                                        return (
-                                          <HubCard
-                                            key={
-                                              session.id ||
-                                              session.mindbodyAppointmentId ||
-                                              i
-                                            }
-                                            booking={session}
-                                            client={clientObj}
-                                            entry={entry}
-                                            sessionNumber={bookingSessionNumber(entry, clientObj, session, dayMoments.input)}
-                                            newToJourney={isNewToJourney(entry, clientObj)}
-                                            usualService={usualService}
-                                            rosterLoading={rosterLoading}
-                                            workoutSession={workoutSession}
-                                            logged={logged}
-                                            now={currentTime}
-                                            onOpen={(clientId) => {
-                                              onSelectClient(clientId);
-                                              setView("profile");
-                                            }}
-                                          />
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* The day's schedule (calm Hub round): Mindbody's layout, calmer.
+                The grid stays mounted under Opportunities, only hidden. */}
+            <HubGrid
+              dayKey={gridDayKey}
+              columns={gridColumns}
+              blocks={gridBlocks}
+              nowMin={gridNowMin}
+              renderCard={renderCard}
+              frameOf={frameOf}
+              hidden={layer !== "schedule"}
+            />
 
             {/* Opportunities: every client booked on the day on screen, sorted
                 by what matters today (features/hub-opportunities). It reads

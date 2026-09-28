@@ -1,0 +1,306 @@
+/* ==========================================================================
+   The Hub grid (calm Hub round, Sep 28 2026). Prefix hs-.
+   Mindbody's layout, calmer: time down the left, trainers across the top,
+   blocks at their real length, the empty middle of the day folded, and your
+   column pinned while the others scroll. Colour from equipment.tokens.css.
+
+   ONE scroller for both axes (the old table's rule): that is what lets the
+   trainer row stick to the top and the time axis to the left.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.hs-scroll {
+  --hs-axis: 56px;
+  --hs-col-min: 156px;
+  --hs-head: 56px;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--eq-bg);
+}
+
+.hs-canvas {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* ---- the trainer row ---- */
+
+.hs-head {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  min-height: var(--hs-head);
+  border-bottom: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+}
+
+.hs-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: none;
+  width: var(--hs-axis);
+  background: var(--eq-surface-2);
+  border-right: 1px solid var(--eq-border);
+}
+
+.hs-colhead {
+  flex: 1 0 var(--hs-col-min);
+  width: var(--hs-col-min);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-right: 1px solid var(--eq-border);
+  background: var(--eq-surface-2);
+}
+
+.hs-colhead[data-me="true"] {
+  position: sticky;
+  left: var(--hs-axis);
+  z-index: 1;
+  background: var(--eq-surface-3);
+}
+
+.hs-avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--eq-ink-2);
+  color: var(--eq-surface);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.hs-colhead[data-me="true"] .hs-avatar {
+  background: var(--eq-live);
+  color: var(--eq-live-on);
+}
+
+.hs-colname {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.hs-colname strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--eq-ink);
+  overflow-wrap: anywhere;
+}
+
+.hs-you {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hs-colcount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the day ---- */
+
+.hs-body {
+  position: relative;
+  display: flex;
+}
+
+.hs-axis {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  flex: none;
+  width: var(--hs-axis);
+  background: var(--eq-surface-2);
+  border-right: 1px solid var(--eq-border);
+}
+
+.hs-tick {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--eq-ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hs-tick[data-hour="false"] {
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--eq-ink-faint);
+}
+
+.hs-col {
+  position: relative;
+  flex: 1 0 var(--hs-col-min);
+  width: var(--hs-col-min);
+  box-sizing: border-box;
+  border-right: 1px solid var(--eq-border);
+}
+
+.hs-col[data-me="true"] {
+  position: sticky;
+  left: var(--hs-axis);
+  z-index: 3;
+  background: var(--eq-bg);
+  box-shadow: 1px 0 0 var(--eq-border-strong);
+}
+
+.hs-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--eq-border);
+  pointer-events: none;
+}
+
+.hs-line[data-hour="false"] {
+  border-top-style: dashed;
+  opacity: 0.6;
+}
+
+/* A trainer who isn't on (the agreed week, or a day away): hatched, so it
+   reads in both themes. It only shades; a booking there is still drawn. */
+.hs-off {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--eq-border) 7px 8px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.hs-away {
+  position: sticky;
+  top: calc(var(--hs-head) + 8px);
+  display: inline-block;
+  margin: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hs-slot {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  padding: 0 3px;
+  z-index: 1;
+}
+
+/* ---- the folds ---- */
+
+.hs-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-top: 1px dashed var(--eq-border-strong);
+  border-bottom: 1px dashed var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hs-band-words {
+  position: sticky;
+  left: calc(var(--hs-axis) + 10px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: calc(var(--hs-axis) + 10px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--eq-surface);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hs-band:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: -3px;
+}
+
+/* ---- now ---- */
+
+.hs-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  height: 0;
+  border-top: 2px solid var(--eq-hero);
+  pointer-events: none;
+}
+
+.hs-now-pill {
+  position: sticky;
+  left: 4px;
+  display: inline-block;
+  transform: translateY(-50%);
+  margin-top: -1px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--eq-hero);
+  color: var(--eq-hero-on);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hs-empty {
+  position: absolute;
+  top: 24px;
+  left: calc(var(--hs-axis) + 16px);
+  z-index: 4;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+}

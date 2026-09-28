@@ -235,12 +235,14 @@
   padding: 0 5px;
 }
 
-/* A glyph's word only where there is room for it, and only on the first. */
+/* A glyph's word only where there is room for it, and only on the first.
+   The width is the card's INSIDE (its padding and edge left out): 176px
+   is a card of about 200px, a landscape column of five trainers. */
 .hs-g-word {
   display: none;
 }
 
-@container (min-width: 196px) {
+@container (min-width: 176px) {
   .hs-g:first-child .hs-g-word {
     display: inline;
   }
