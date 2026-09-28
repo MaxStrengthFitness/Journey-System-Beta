@@ -254,6 +254,81 @@
 }
 
 /* ------------------------------------------------------------------ *
+ * Next 7 days: one line per day and half-hour, a tap shows who
+ * ------------------------------------------------------------------ */
+
+.op-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.op-lines__item {
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  overflow: hidden;
+}
+.op-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.op-line:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+.op-line__chev { flex: none; margin-top: 2px; color: var(--st-ink-muted); transition: transform 160ms ease; }
+.op-line[aria-expanded="true"] .op-line__chev { transform: rotate(180deg); }
+/* The line's sentence names trainers, and a tap names clients: never cut short. */
+.op-line__text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--st-ink);
+  overflow-wrap: anywhere;
+}
+.op-line__detail {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--st-border);
+  background: var(--st-surface-2);
+}
+.op-line__who { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+/* ------------------------------------------------------------------ *
+ * A new regular time
+ * ------------------------------------------------------------------ */
+
+.op-offers { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.op-offer {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+.op-offer__text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--st-ink);
+  overflow-wrap: anywhere;
+}
+.op-offer__meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--st-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ *
  * A time's sheet, in the Context Panel
  * ------------------------------------------------------------------ */
 

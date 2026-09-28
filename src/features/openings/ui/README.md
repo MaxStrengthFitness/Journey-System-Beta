@@ -17,7 +17,9 @@ owners and administrators), because it reads them. `OpeningsSection` asks the
 same question itself: a menu is not a gate.
 
 Its parts are Relay's light second level (`.pl__subbar`), not a second row of
-tabs: **The usual week** (it opens here). Each iPad remembers the part it was
+tabs: **The usual week** (it opens here) · **Next 7 days** · **A new regular
+time**. They wrap onto a second line rather than scroll sideways, and their
+words never hide. Each iPad remembers the part it was
 on (`part-memory.ts`, forgotten at sign-out). The parts are a leave scope, so
 typing in one (a mark's note, the marks phase) is asked about before another
 replaces it.
@@ -40,7 +42,11 @@ client at the iPad.
 | `context.ts` | The section's data for what it draws in the Context Panel (the time's sheet reads it live) |
 | `UsualWeekPart.tsx` | The usual week: the one sentence before four weeks are counted, or the grid |
 | `TimeSheet.tsx` | A time's sheet: `usualTime` and present.ts's lines; marks shown, never set |
-| `part-memory.ts` | Which part this iPad was on; how a door from elsewhere opens a part |
+| `useNextSevenDays.ts` | **The live reads** (below): the next 7 days, "booked again from", the month, the coming weeks |
+| `NextDaysPart.tsx` | Next 7 days: `nextDays`' lines, a tap for who, "booked again from" |
+| `NewRegularPart.tsx` | A new regular time: `offers`, "Safe to show a client", every offer ending `OFFER_FOOT` |
+| `WhoseChips.tsx` | "With you · Anyone · With Sam": whose times, remembered on the iPad |
+| `part-memory.ts` | Which part this iPad was on, and whose times; how a door from elsewhere opens a part |
 | `openings.css` (one folder up) | The section's own look, on My Studio's `--st-*` tokens |
 | `test-shell.tsx` | Test helpers only: the Relay shell's doors, and a summary folded from the core's fixtures |
 
@@ -74,3 +80,46 @@ const data = useOpeningsData({ studio: activeStudio, trainers, authTrainer });
 ```
 
 and then call the core with it, never a rule of its own.
+
+## The live reads — `useNextSevenDays`, `useComingWeeks`, `useMonthRead`
+
+Made only by a part that shows them (and the Wrap-up's sheet, the same way):
+
+| Read | How | Index |
+| --- | --- | --- |
+| The next 7 days | `useWeekSchedule(studio, today, tz, { confirmed: true })`, Team's read, with `useServerWait` and `serverRead`: loading, failed, offline, or a cache-only answer, and `nextDays` lists nothing ("Can't tell yet"). Not read at all where Mindbody isn't linked | (studioId, startTime), (studioId, movedFromDay) |
+| Booked again from | ONE `getDocs` per 30 clients (`clientBatches`) for the lines about one client, from the day after the earliest slot to today + 30; this studio's live rows only (`backFrom`). A cache's answer is "can't tell". Read again only when the clients or the day change | (clientId, startTime) |
+| The month was read in full today | the sync lease (`useSyncLease`, `leaseOf`, `monthReadToday`); `null` while the lease is still coming, which the offers read as "Checking the coming weeks…", never "can't check" | none (by id) |
+| The coming weeks | ONE `getDocs` of the studio's bookings, days 7 to 27 (`comingRange`), when A new regular time opens and only when the month was read in full today; a cache's answer is `offline` | (studioId, startTime) |
+
+```ts
+const week = useNextSevenDays(data, { bookedAgain: false }); // the Wrap-up needs no client read
+const times = timesWithRoom(week.input, forTrainer, week.next.lines);
+const coming = useComingWeeks(data, week.monthRead === true);
+const most = offers({ ...,
+  thisWeek: { read: week.read, bookings: week.input.bookings },
+  coming: week.monthRead === null ? null : coming,
+  monthRead: week.monthRead !== false,
+});
+```
+
+No new index: every query starts with a field an existing index in
+`firestore.indexes.json` starts with. Nothing here asks Mindbody anything.
+
+## Whose times
+
+The chips are `present.ts`'s `chips`: "With you", "Anyone", then one per
+trainer with an agreed week here, in name order, with no count beside a name
+(everyone gets the trainers' chips: AJ's relaxed answer). The choice is
+remembered on the iPad (`part-memory.ts`) and shared by Next 7 days and A new
+regular time. With nothing chosen, a trainer with an agreed week here starts
+on their own times ("With you"), everyone else on "Anyone". A door that
+arrives with a count of the studio's free slots (Team's line) sets "Anyone":
+`showOpenings("next", { kind: "anyone" })` before `openMyStudioSection("openings")`.
+
+## Client names only after a tap
+
+A line of the next 7 days is a button: its sentence (`lineSentence`) names no
+client; a tap shows `lineDetail` (who, whose regular, what happened) and then
+"Check it in Mindbody before you promise it." A new regular time names no
+client at all, which is why it says "Safe to show a client".

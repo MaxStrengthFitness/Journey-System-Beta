@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { ContextPanel } from "../../relay/board/ContextPanel";
 import { useRelay } from "../../relay/board/RelayContext";
@@ -9,6 +9,8 @@ import { OpeningsContext } from "./context";
 import { rememberOpeningsPart, rememberedOpeningsPart, type OpeningsPart } from "./part-memory";
 import { useOpeningsData } from "./useOpeningsData";
 import { UsualWeekPart } from "./UsualWeekPart";
+import { NextDaysPart } from "./NextDaysPart";
+import { NewRegularPart } from "./NewRegularPart";
 import "../../relay/planner.css";
 import "../../relay/board/relay.css";
 import "../openings.css";
@@ -47,7 +49,11 @@ export interface OpeningsSectionProps {
   trainers: readonly Trainer[];
 }
 
-const PARTS: { id: OpeningsPart; label: string; icon: typeof CalendarDays }[] = [{ id: "usual", label: "The usual week", icon: CalendarDays }];
+const PARTS: { id: OpeningsPart; label: string; icon: typeof CalendarDays }[] = [
+  { id: "usual", label: "The usual week", icon: CalendarDays },
+  { id: "next", label: "Next 7 days", icon: CalendarClock },
+  { id: "offer", label: "A new regular time", icon: CalendarPlus },
+];
 
 export function OpeningsSection({ studio, authTrainer, trainers }: OpeningsSectionProps) {
   const allowed = mayReadWeeks(authTrainer, studio.id);
@@ -105,7 +111,11 @@ function Openings({ studio, authTrainer, trainers }: OpeningsSectionProps) {
         <UnsavedChangesScope scope={partScope}>
           <div className="pl__frame">
             <div className="pl__body" role="tabpanel" id="op-panel" aria-labelledby={`op-tab-${part}`}>
-              <div className="op__page">{part === "usual" && <UsualWeekPart />}</div>
+              <div className="op__page">
+                {part === "usual" && <UsualWeekPart />}
+                {part === "next" && <NextDaysPart />}
+                {part === "offer" && <NewRegularPart />}
+              </div>
             </div>
             <ContextPanel content={panel} onClose={closePanel} />
           </div>

@@ -151,6 +151,8 @@ const NAME_CLASSES = [
   "rk-title", // a dialog's title (a job's own name, in the job sheet)
   "op__line", // Openings: whose week isn't agreed yet, by name
   "op-sheet__line", // a time's sheet: who is usually in, by name
+  "op-line__text", // a line of the next 7 days (a trainer), and after a tap a client
+  "op-offer__meta", // who could take a time for good
 ] as const;
 
 describe("names in My Studio", () => {
@@ -236,6 +238,7 @@ const TAP_CLASSES = [
   "ms__waiting-go",
   "op-cell", // a time of Openings' usual week
   "op-chip", // Openings' day picker and whose times
+  "op-line", // a line of the next 7 days, tapped to show who
 ] as const;
 
 const px =(v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
