@@ -21,7 +21,7 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HubCard } from "./HubCard";
 import { loggedSessions, type LoggedSessions } from "../../lib/booking-state";
-import { momentsToday, type MomentsTodayInput } from "../hub-opportunities/moments-today";
+import { momentsToday, type MomentsTodayInput, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import type { Client, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
 
@@ -305,6 +305,52 @@ describe("the card's words and marks come from the Hub's one engine", () => {
     expect(c.text).toContain("Unavailable");
     expect(c.text).toContain("12:00 – 12:30 PM");
     expect(c.card.getAttribute("role")).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Your own column, in words (hub cherry round, Sep 28 2026): a card in the
+ * focus column may say every mark's word, "first with you" among them; and
+ * on every card the time and her number are never the part that is cut.
+ * ------------------------------------------------------------------ */
+
+describe("your own column, in words", () => {
+  const entryWith = (moments: RunSheetEntry["moments"]) =>
+    ({ key: "b1", clientId: "c1", moments, sessionNumber: 5, criticalUnknown: false, clinicalOnFile: false }) as unknown as RunSheetEntry;
+  const firstWithYou = { family: "welcome", kind: "first-with-trainer", chip: "First with Sara", sentence: "Her first session with Sara." } as const;
+  const milestone = { family: "celebrate", kind: "milestone", chip: "100th", sentence: "Her 100th session." } as const;
+
+  function card(wordy: boolean, moments: RunSheetEntry["moments"] = [firstWithYou, milestone]) {
+    if (root) {
+      act(() => root!.unmount());
+      host?.remove();
+    }
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => {
+      root!.render(
+        <HubCard booking={booking("15:00")} client={client} entry={entryWith([...moments])} sessionNumber={264} wordy={wordy} logged={NOTHING_LOGGED} now={NOW} onOpen={() => {}} />,
+      );
+    });
+    return host.firstElementChild as HTMLElement;
+  }
+
+  it("marks a card in your column for its words, and says 'first with you' there", () => {
+    const mine = card(true);
+    expect(mine.dataset.words).toBe("all");
+    expect([...mine.querySelectorAll(".hs-g-word")].map((w) => w.textContent)).toEqual(["first with you", "100th"]);
+    const theirs = card(false);
+    expect(theirs.dataset.words).toBeUndefined();
+    expect([...theirs.querySelectorAll(".hs-g-word")].map((w) => w.textContent)).toEqual(["100th"]);
+  });
+
+  it("keeps the time and her number together, apart from the words that may give way", () => {
+    const c = card(false, []);
+    expect(c.querySelector(".hs-card-when")?.textContent).toBe("3:00 · #264");
+    const late = mount({ hm: "10:00", sessionNumber: 264 });
+    expect(late.card.querySelector(".hs-card-when")?.textContent).toContain("#264");
+    expect(late.card.querySelector(".hs-card-rest")?.textContent).toBe(" · Not logged");
   });
 });
 

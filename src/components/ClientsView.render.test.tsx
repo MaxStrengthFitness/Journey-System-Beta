@@ -237,6 +237,51 @@ describe("the Hub", () => {
     expect(cardOf(el, "Belladonna Took")?.dataset.dim).toBe("true");
   });
 
+  it("reads your own column in words: the focus column, its head, and its cards", () => {
+    const { el } = mount();
+    const head = el.querySelector<HTMLElement>('.hs-colhead[data-focus="true"]');
+    expect(head?.querySelector("strong")?.textContent).toBe("IorethYou");
+    expect(head?.querySelector(".hs-colcount")?.textContent).toBe("2 sessions · 9:00 – 10:00 AM");
+    expect(cardOf(el, "Belladonna Took")?.dataset.words).toBe("all");
+    // Everyone else's cards keep to the calm Hub's words.
+    expect(cardOf(el, "Estella Bolger")?.dataset.words).toBeUndefined();
+  });
+
+  it("Focus: Everyone makes every column alike, and the iPad remembers it", () => {
+    const { el } = mount();
+    const focusBtn = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('[aria-label="Focus"] button')].find((b) => b.textContent === label)!;
+    expect(focusBtn("Me").getAttribute("aria-pressed")).toBe("true");
+    act(() => focusBtn("Everyone").click());
+    expect(el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
+    expect(cardOf(el, "Belladonna Took")?.dataset.words).toBeUndefined();
+    expect(el.querySelector(".hs-colhead .hs-colcount")?.textContent).toBe("2 sessions");
+    expect(window.localStorage.getItem("journey.hub.focus")).toBe("everyone");
+    // The next visit opens on Everyone.
+    act(() => root?.unmount());
+    host?.remove();
+    const again = mount();
+    expect(again.el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
+    expect([...again.el.querySelectorAll<HTMLButtonElement>('[aria-label="Focus"] button')].find((b) => b.textContent === "Everyone")?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("shows who is due in the next 30 minutes, across the floor, and a tap opens the peek", () => {
+    const { el } = mount();
+    const strip = el.querySelector<HTMLElement>('section[aria-label="Next 30 minutes"]');
+    expect([...strip!.querySelectorAll(".hn-name")].map((n) => n.textContent)).toEqual(["Hamfast Gamgee", "Belladonna Took", "Estella Bolger"]);
+    expect([...strip!.querySelectorAll(".hn-when")].map((w) => w.textContent)).toEqual(["In session", "9:30", "9:30"]);
+    expect([...strip!.querySelectorAll(".hn-with")].map((w) => w.textContent)).toEqual(["with you", "with you", "with Damrod"]);
+    // The 10:00 consult is past the half hour; Mindbody's "Unavailable" is never on it.
+    expect(strip!.textContent).not.toContain("Targon");
+    act(() => [...strip!.querySelectorAll<HTMLButtonElement>(".hn-item")].find((b) => b.textContent?.includes("Estella"))!.click());
+    expect(document.querySelector(".hp-name")?.textContent).toBe("Estella Bolger");
+  });
+
+  it("has no Next 30 minutes on another day", () => {
+    const { el } = mount();
+    act(() => el.querySelectorAll<HTMLButtonElement>(".hd-day")[1].click());
+    expect(el.querySelector('section[aria-label="Next 30 minutes"]')).toBeNull();
+  });
+
   it("opens Opportunities on the same day's entries", async () => {
     const { el } = mount();
     await act(async () => {

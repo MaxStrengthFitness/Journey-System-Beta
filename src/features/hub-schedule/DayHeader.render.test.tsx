@@ -130,6 +130,26 @@ describe("the day in words, the chips and the spotlight", () => {
     expect(summary({ sessions: 0, chips: [] }).el.querySelector(".hd-sum-words")?.textContent).toBe("Monday, Sep 28 · nothing booked");
   });
 
+  it("ends the same line with Focus: Me | Everyone, for someone with a column (hub cherry round)", () => {
+    const picked: string[] = [];
+    const { el } = summary({ focus: { value: "me", onChange: (f) => picked.push(f) } });
+    const seg = el.querySelector('[role="group"][aria-label="Focus"]');
+    expect([...seg!.querySelectorAll("button")].map((b) => [b.textContent, b.getAttribute("aria-pressed")])).toEqual([
+      ["Me", "true"],
+      ["Everyone", "false"],
+    ]);
+    act(() => btn(el, "Everyone")!.click());
+    expect(picked).toEqual(["everyone"]);
+    // One line: the switch sits in the summary itself, after the chips.
+    expect(el.querySelector(".hd-sum")?.lastElementChild?.className).toBe("hd-focus");
+  });
+
+  it("offers no switch without a column, nor on the spotlight's bar", () => {
+    expect(summary().el.querySelector(".hd-focus")).toBeNull();
+    act(() => root?.unmount());
+    expect(summary({ spot: "celebrate", spotText: "3 to celebrate", focus: { value: "me", onChange: () => {} } }).el.querySelector(".hd-focus")).toBeNull();
+  });
+
   it("turns into the spotlight's bar: what it shows, Next, the list, and Done", () => {
     const { el, calls } = summary({ spot: "celebrate", spotText: "3 to celebrate: 2 birthdays, 1 milestone" });
     expect(el.querySelector(".hd-spot-words")?.textContent).toBe("Showing 3 to celebrate: 2 birthdays, 1 milestone on the grid");

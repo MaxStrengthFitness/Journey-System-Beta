@@ -12,7 +12,9 @@
  *               sessions · 5 trainers") and the Opportunities list's own five
  *               chips. A chip lights its cards on the grid (the spotlight);
  *               the bar then says what it shows, steps to the next card, and
- *               opens the same group as a list.
+ *               opens the same group as a list. At its end, for someone with
+ *               a column that day, Focus: Me | Everyone (hub cherry round) —
+ *               on the same line, so the top keeps its two rows.
  *   KeySheet    every mark and state in words, on both layers.
  *
  * Presentational; the pure half is day-summary.ts.
@@ -38,6 +40,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { LayerSwitch, type HubLayer } from "../hub-opportunities/LayerSwitch";
 import type { MomentFamily } from "../hub-opportunities/moments-today";
 import type { StripDay, SummaryChip } from "./day-summary";
+import type { HubFocus } from "./focus";
 import "./hub-card.css";
 import "./day-header.css";
 
@@ -141,9 +144,33 @@ export interface DaySummaryProps {
   onNext: () => void;
   /** The same group on the Opportunities list. */
   onAsList: () => void;
+  /**
+   * Me / Everyone (hub cherry round, Hub direction B): your own column in
+   * words, or every column alike. Offered only to someone with a column on
+   * the day; absent, no switch.
+   */
+  focus?: { value: HubFocus; onChange: (next: HubFocus) => void } | null;
 }
 
-export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList }: DaySummaryProps) {
+function FocusSwitch({ value, onChange }: { value: HubFocus; onChange: (next: HubFocus) => void }) {
+  return (
+    <div className="hd-focus">
+      <span className="hd-focus-label" aria-hidden>
+        Focus
+      </span>
+      <div className="hd-seg" role="group" aria-label="Focus">
+        <button type="button" className="hd-seg-btn" aria-pressed={value === "me"} onClick={() => onChange("me")}>
+          Me
+        </button>
+        <button type="button" className="hd-seg-btn" aria-pressed={value === "everyone"} onClick={() => onChange("everyone")}>
+          Everyone
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function DaySummary({ title, sessions, trainers, chips, spot, spotText, onSpot, onNext, onAsList, focus = null }: DaySummaryProps) {
   if (spot) {
     return (
       <div className="hd-sum" data-spot="true" role="status">
@@ -168,7 +195,7 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
     );
   }
   return (
-    <div className="hd-sum">
+    <div className="hd-sum" data-focus-switch={focus ? "true" : undefined}>
       <span className="hd-sum-words">
         <strong>{title}</strong>
         {sessions > 0
@@ -185,6 +212,7 @@ export function DaySummary({ title, sessions, trainers, chips, spot, spotText, o
           ))}
         </div>
       )}
+      {focus && <FocusSwitch value={focus.value} onChange={focus.onChange} />}
     </div>
   );
 }

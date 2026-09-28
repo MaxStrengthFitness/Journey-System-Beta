@@ -16,6 +16,7 @@ import {
   foldableGaps,
   layoutDay,
   placeColumn,
+  rangeWords,
   yOf,
   type Span,
 } from "./grid-model";
@@ -144,5 +145,11 @@ describe("words", () => {
     expect(bandWords(span("13:00", "15:00"))).toBe("No sessions 1:00 – 3:00 PM");
     expect(bandWords(span("11:00", "13:00"))).toBe("No sessions 11:00 AM – 1:00 PM");
     expect(bandWords(span("12:30", "14:00"))).toBe("No sessions 12:30 – 2:00 PM");
+  });
+
+  it("says any stretch of the day the same way (your column's head, hub cherry round)", () => {
+    expect(rangeWords(span("06:00", "12:00"))).toBe("6:00 AM – 12:00 PM");
+    expect(rangeWords(span("09:00", "10:00"))).toBe("9:00 – 10:00 AM");
+    expect(rangeWords(span("15:00", "18:30"))).toBe("3:00 – 6:30 PM");
   });
 });

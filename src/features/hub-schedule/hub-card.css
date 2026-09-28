@@ -128,23 +128,40 @@
   min-width: 0;
 }
 
+/* The time and her number: never cut (a clipped "#212" reads "#2"). */
 .hs-card-when {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-width: 0;
   font-size: 12px;
   font-weight: 600;
   line-height: 16px;
   font-variant-numeric: tabular-nums;
   color: var(--eq-ink-muted);
   white-space: nowrap;
-  overflow: hidden;
 }
 
-.hs-card-when strong {
+.hs-card-when strong,
+.hs-card-rest strong {
   font-weight: 800;
   color: var(--eq-ink-2);
+}
+
+/* The words after them ("Not logged", "New to Journey", a service) give way
+   first, with an ellipsis, when the glyphs need the room. */
+.hs-card-rest {
+  flex: 1 1 0;
+  min-width: 0;
+  /* It begins " · ", so it takes back the row's gap. */
+  margin-left: -6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--eq-ink-muted);
 }
 
 .hs-card[data-state="in-session"] .hs-card-when {
@@ -244,6 +261,16 @@
 
 @container (min-width: 176px) {
   .hs-g:first-child .hs-g-word {
+    display: inline;
+  }
+}
+
+/* Your own column, in words (hub cherry round): every glyph says its word
+   once the card has room for both beside the time — about 280px inside, the
+   focus column on an iPad on its side. Upright, or beside another booking,
+   the card keeps to the rule above: the first word only. */
+@container (min-width: 280px) {
+  .hs-card[data-words="all"] .hs-g-word {
     display: inline;
   }
 }

@@ -1,6 +1,6 @@
 # The Hub's Schedule layer — the calm Hub
 
-*Calm Hub round, Sep 28 2026 — `docs/rounds/2026-09-28-calm-hub.md`. Design: the Redesign Blueprints' Hub room (★ "Calm schedule + Run-sheet", picked by AJ on Sep 27) and research-hub §5–§8 (S1, "Calm Mindbody").*
+*Calm Hub round, Sep 28 2026 — `docs/rounds/2026-09-28-calm-hub.md`. Design: the Redesign Blueprints' Hub room (★ "Calm schedule + Run-sheet", picked by AJ on Sep 27) and research-hub §5–§8 (S1, "Calm Mindbody"). The cherry on top — your own column in words, the Next 30 minutes strip and Focus: Me | Everyone, from Hub direction B (research-hub §6.2, S2) — is the hub cherry round, Sep 28 2026: `docs/rounds/2026-09-28-hub-cherry.md`.*
 
 AJ, on Mindbody's staff schedule (his screenshots, Sep 28): **"I don't want it to look like this but the layout is the foundation."** Kept: time down the left, trainers across the top, the week strip with each day's count, blocks at their real length, who's working at a glance, one tap back to today. Changed: names cut to fit, the service repeated on every block, the unexplained red "nw" corner, everything in one colour. And on the Blueprints page (Sep 27): the top bar **"is very jumbled"**.
 
@@ -19,6 +19,10 @@ This folder is the Hub's Schedule layer: the grid, its cards, the top, the spotl
 | `DayHeader.tsx` + `day-header.css` | `DayHeader` (layers, week, Today, Tasks, Key), `DaySummary` (the day in words, the chips, the spotlight's bar), `KeySheet` (prefix `hd-`) |
 | `peek-model.ts` | What the peek says, from the same entry as an opened Opportunities row. Pure |
 | `Peek.tsx` + `peek.css` | The peek (prefix `hp-`) |
+| `your-day.ts` | Your own column, in words: the head's line ("12 sessions · 6:00 AM – 12:00 PM · 8 to go"), in parts so a narrow head can drop the span. Pure (hub cherry round) |
+| `next-half-hour.ts` | Who is on the Next 30 minutes strip and when it shows: today only, from half an hour before the first booking to the end of the last; never a booking that is over. Pure (hub cherry round) |
+| `NextStrip.tsx` + `next-strip.css` | The Next 30 minutes strip (prefix `hn-`): one quiet row under the top; a tap opens the peek (hub cherry round) |
+| `focus.ts` | Focus: Me or Everyone, remembered on the iPad (local storage, cleared at sign-out); the focus column's id (hub cherry round) |
 
 `components/ClientsView.tsx` is still the screen: it decides the columns (`visibleTrainersList`) and which booking goes in which (one column each, the first trainer it matches), and hands the grid its cards. `ClientsView.render.test.tsx` mounts it.
 
@@ -39,15 +43,25 @@ This folder is the Hub's Schedule layer: the grid, its cards, the top, the spotl
 - **The spotlight** (research-hub §6.1): a chip lights its cards and dims the rest; the bar says what it shows in words, steps to the next card, opens the same group as a list (the Run-sheet's `request`), or is done.
 - **The tap opens a peek** (Hub question 1's default), not the profile: every mark in words with its proof, where she is, and Open profile / Start session. Beside the card when the Hub is wide; centred when narrow, so it never covers the bottom bar and pays no inset.
 
+### The cherry on top (hub cherry round, Sep 28 2026)
+
+- **Your own column, in words** (Hub direction B's focus column). Your column takes four shares of the SPARE room to every other column's one, up to 420px, and never more than there is: its least is every column's least (156px), so it pushes no column off an iPad the others would have fit. On an iPad on its side with five trainers that is about 330px. Its head says your day in words (`your-day.ts`): "12 sessions · 6:00 AM – 12:00 PM · 8 to go" — "to go" is the clock's answer (a slot not over yet), never "done", which the cards say; the span gives way first in a narrow head. Its cards (`HubCard wordy`) say every mark's sayable word once they have about 280px inside, not only the first, and "first with you" joins the sayable words there (`sayableWord(m, { yours: true })`). A Pulse flag, a waiver or a renewal talk is still a glyph alone.
+- **A number is never cut.** The card's time and her number (`.hs-card-when`) never shrink; "Not logged", "New to Journey" and a service (`.hs-card-rest`) give way first, with an ellipsis. Before, a card with two glyphs and "+N" in a narrow column could clip "#212" to "#2" — a confident wrong number.
+- **The Next 30 minutes strip** (`next-half-hour.ts`, `NextStrip`): who is due across the floor, with whole names, in one quiet row UNDER the top — the top keeps its two rows (AJ: "very jumbled"). Today only; from half an hour before the day's first booking until its last one ends, so the row doesn't come and go under the trainer's finger ("Nobody due in the next 30 minutes." in a quiet gap). A booking is on it while its slot overlaps the next half hour: "In session" (a Journey session open), "Now · 9:30" (under way, none open yet) or "9:45" — the Opportunities list's "Now and the next 30 min", asked of each booking. Never one that is over (AJ, Hub question 2), by the card's own state. Soonest first; yours first at the same time; then the columns left to right. Each item: when, the name she goes by, who with, the triangle (the only red) and the card's own marks with their sayable words. A tap opens the same peek; a booking with no profile is shown and opens nothing.
+- **Focus: Me | Everyone** (`focus.ts`): at the end of the day summary's own line (the chips scroll rather than push it onto a line of its own), offered only to someone with a column that day. Me is the focus column; Everyone is every column alike — the calm Hub as it was, for a leader watching the whole floor. Me by default; remembered on the iPad in local storage, which a sign-out clears (no module memory, so no `forgetOnSignOut`).
+
 ## Reads
 
 Beyond what the Hub already streams: **one listener on the studio's standing weeks** (`useStandingWeeks`, `studios/{s}/standingWeeks`, for the hatching) and **the studio's package table** (`useRenewalSettings`, one document, for the peek's Package line — the read the profile and the directory make). No per-client query, no Mindbody call, no new index, no write.
 
+The cherry on top adds no read: the focus column, the strip and the switch work from the bookings, the sessions and the one engine the Hub already has, and the choice of focus is kept in the iPad's local storage.
+
 ## Out of scope (and why)
 
-- **FORD "Get to know"** (✎ "Ask about") and **surgery or away from dated notes**: each needs one new studio-scoped read (a collection-group query like the Delight queue's) — a new read AJ has to OK (the room's Needs OK).
+- **FORD "Get to know"** (✎ "Ask about") and **surgery or away from dated notes**: each needs one new studio-scoped read (a collection-group query like the Delight queue's) — a new read AJ has to OK (the room's Needs OK). The Ask about rule itself is built and tested, unwired: `hub-opportunities/get-to-know.ts`.
 - **"Couldn't load, retrying"** when the schedule read fails: `useLiveSchedule` doesn't say so yet; it needs the hook to expose the failure.
 - **Columns by trainer id only** and an "Unassigned" column (the Screen Atlas): the matching is the old `isTrainerMatch`, unchanged, until the sync's staff ids are checked.
 - **A tap on a column header** opening Opportunities for that trainer, **"+N" opening the row**, **"Show on schedule"** from the list: the list has no trainer filter or scroll target yet.
-- **All stars** (AJ, Hub question 6): needs a definition and a client's weekly attendance, which Journey holds in full only after the migration.
-- **The cherry on top** (your own column in words, the Next 30 minutes strip, Me / Everyone): last, as AJ asked.
+- **All stars** (AJ, Hub question 6): the rule is built and tested, unwired (`hub-opportunities/all-stars.ts`): it needs 26 weeks of a client's visits, which nothing the Hub holds carries.
+- **Zoom (Day | Close)** from Hub direction B: not asked for in the cherry round.
+- **Words for a Watch or Renew mark in your own column** ("No waiver", "Renewal talk", "Pulse flag", as the blueprint's B drew them): kept a glyph alone, because a client stands at the iPad — a question for AJ.

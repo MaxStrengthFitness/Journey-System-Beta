@@ -67,6 +67,27 @@ describe("only sayable words beside a glyph (a client stands at the iPad)", () =
   });
 });
 
+describe("your own column, in words (hub cherry round)", () => {
+  const firstWith = m({ kind: "first-with-trainer", family: "welcome", chip: "First with Ioreth" });
+
+  it("says 'first with you' in your column, and leaves it a glyph in anyone else's", () => {
+    expect(sayableWord(firstWith, { yours: true })).toBe("first with you");
+    expect(sayableWord(firstWith)).toBeNull();
+    const marks = cardMarks([waiver, firstWith], undefined, { yours: true });
+    // A mark that can say a word goes first, where the card has room for it.
+    expect(marks.glyphs.map((g) => [g.kind, g.word])).toEqual([
+      ["first-with-trainer", "first with you"],
+      ["waiver", null],
+    ]);
+  });
+
+  it("still never says a Pulse flag, a waiver, a renewal talk or a plain birthday out loud", () => {
+    for (const x of [pulse, waiver, renew, birthday]) expect(sayableWord(x, { yours: true })).toBeNull();
+    expect(sayableWord(milestone, { yours: true })).toBe("100th");
+    expect(sayableWord(back, { yours: true })).toBe("back");
+  });
+});
+
 describe("the day's usual service (AJ's Mindbody screenshots: it repeated on every block)", () => {
   const b = (serviceName: string, clientName = "Client") => ({ serviceName, clientName });
 

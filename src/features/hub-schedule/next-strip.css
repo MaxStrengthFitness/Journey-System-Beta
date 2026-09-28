@@ -1,0 +1,164 @@
+/* ==========================================================================
+   The Next 30 minutes strip (hub cherry round, Sep 28 2026). Prefix hn-.
+   Hub direction B: who is due across the floor, whole names, one quiet row
+   under the Hub's top — part of the schedule, not the top (AJ: the old top
+   bar "is very jumbled"). It scrolls sideways and keeps its height through
+   the day. Colour from equipment.tokens.css; nothing tappable under 40px.
+   ========================================================================== */
+@import "../equipment/equipment.tokens.css";
+
+.hn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 6px 0 6px 12px;
+  border-bottom: 1px solid var(--eq-border);
+  background: var(--eq-bg);
+  color: var(--eq-ink);
+}
+
+.hn-label {
+  flex: none;
+  width: 44px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+
+.hn-empty {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--eq-ink-muted);
+}
+
+.hn-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0;
+  padding: 0 12px 0 0;
+  list-style: none;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.hn-cell {
+  flex: none;
+  display: flex;
+}
+
+.hn-item {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "when name"
+    "when meta";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  min-height: 48px;
+  min-width: 184px;
+  max-width: 300px;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--eq-border);
+  border-left: 4px solid var(--eq-ink-faint);
+  border-radius: 10px;
+  background: var(--eq-surface);
+  color: var(--eq-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The left edge says the booking's state, as on the grid's cards. */
+.hn-item[data-when="in-session"] {
+  border-left-color: var(--eq-live);
+  background: var(--eq-live-fill);
+}
+
+.hn-item[data-when="now"] {
+  border-left-color: var(--eq-ink-2);
+}
+
+.hn-item[data-kind="unlinked"] {
+  border-style: dashed;
+  border-left-width: 1px;
+  background: var(--eq-surface-2);
+  cursor: default;
+}
+
+.hn-item[data-open="true"] {
+  border-color: var(--eq-live);
+  box-shadow: 0 0 0 2px var(--eq-live);
+}
+
+.hn-item:focus-visible {
+  outline: 3px solid var(--eq-focus-ring);
+  outline-offset: 2px;
+}
+
+.hn-when {
+  grid-area: when;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--eq-ink);
+}
+
+.hn-when[data-when="in-session"] {
+  color: var(--eq-live-text);
+}
+
+/* Whole, wrapping onto a second line: never cut. */
+.hn-name {
+  grid-area: name;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+
+.hn-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.hn-with {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+}
+
+/* The strip has a line of its own for the marks: each says its word. */
+.hn-item .hs-g-word {
+  display: inline;
+}

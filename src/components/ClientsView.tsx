@@ -70,7 +70,13 @@ import { Peek } from "../features/hub-schedule/Peek";
 import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
 import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
-import { bookingSessionNumber, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
+import { bookingSessionNumber, cardMarks, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
+import { yourDay } from "../features/hub-schedule/your-day";
+import { nextHalfHour, stripOpen } from "../features/hub-schedule/next-half-hour";
+import { NextStrip, type NextStripItem } from "../features/hub-schedule/NextStrip";
+import { focusColumnId, readFocus, writeFocus, type HubFocus } from "../features/hub-schedule/focus";
+import { hubCardState } from "../lib/hub-card-state";
+import { clientDisplayName } from "../lib/client-name";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -159,6 +165,8 @@ export function ClientsView({
   const [listRequest, setListRequest] = useState<{ filter: FilterId; nonce: number } | null>(null);
   /** The card whose peek is open (a tap on a card: Hub question 1's default). */
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
+  /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
+  const [focus, setFocus] = useState<HubFocus>(() => readFocus());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -561,18 +569,31 @@ export function ClientsView({
       booking: s,
     });
   });
+  const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
+  /*
+   * YOUR OWN COLUMN, IN WORDS (hub cherry round, Sep 28 2026; Hub direction
+   * B's focus column): your column takes more of the spare room, its head
+   * says your day in words, and its cards say every mark they may say out
+   * loud. Only when you have a column on the day on screen, and Focus is on
+   * Me (Everyone makes every column alike: features/hub-schedule/focus.ts).
+   */
+  const myColumn = visibleTrainersList.find((t) => isSelfTrainer(t));
+  const myColumnId = myColumn ? String(myColumn.id) : null;
+  const focusId = focusColumnId(focus, myColumnId);
   const gridColumns: GridColumn[] = visibleTrainersList.map((t) => {
     const nickname = ((t as any).nickname || "").trim();
+    const id = String(t.id);
+    const own = gridBlocks.filter((b) => b.columnId === id && !isStaffBlock(b.booking as any));
     return {
-      id: String(t.id),
+      id,
       // The name they go by, whole (research-hub §6.0), never cut.
       name: nickname || (t.fullName || "").trim().split(" ")[0] || "Trainer",
       initials: ((t as any).initials || t.fullName || "??").substring(0, 2).toUpperCase(),
       isMe: isSelfTrainer(t),
-      count: gridBlocks.filter((b) => b.columnId === String(t.id) && !isStaffBlock(b.booking as any)).length,
+      count: own.length,
+      detail: id === focusId ? yourDay({ spans: own.map((b) => b.span), nowMin: gridNowMin }) : null,
     };
   });
-  const gridNowMin = gridDayKey === studioDateKey(currentTime) ? studioMinutes(currentTime) : null;
 
   /*
    * Who's on (AJ's Mindbody screenshots, Keep: "who's working, at a
@@ -589,15 +610,19 @@ export function ClientsView({
     [weeks, gridDayKey, gridWeekday],
   );
 
-  const renderCard = (block: GridBlock) => {
-    const session: any = block.booking;
-    const clientObj = isStaffBlock(session) ? null : findClientForSession(session);
-    const workoutSession = clientObj
+  /** Her newest Journey session on the booking's studio day, if one exists. */
+  const workoutSessionFor = (session: any, clientObj: Client | null) =>
+    clientObj
       ? workoutSessionOn(
           clientObj.id,
           bookingDay({ startTime: session.startTime || session.StartDateTime || session.date, status: session.status }),
         )
       : null;
+
+  const renderCard = (block: GridBlock) => {
+    const session: any = block.booking;
+    const clientObj = isStaffBlock(session) ? null : findClientForSession(session);
+    const workoutSession = workoutSessionFor(session, clientObj);
     const entry = clientObj?.id ? dayMoments.byClientId.get(clientObj.id) ?? null : null;
     return (
       <HubCard
@@ -608,6 +633,7 @@ export function ClientsView({
         newToJourney={isNewToJourney(entry, clientObj)}
         usualService={usualService}
         dimmed={activeSpot !== null && !(entry && hasFamily(entry, activeSpot))}
+        wordy={focusId !== null && block.columnId === focusId}
         rosterLoading={rosterLoading}
         workoutSession={workoutSession}
         logged={logged}
@@ -673,6 +699,52 @@ export function ClientsView({
     const el = Array.from(document.querySelectorAll<HTMLElement>(".hs-slot")).find((s) => s.dataset.blockKey === key);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
   };
+
+  /*
+   * THE NEXT 30 MINUTES (hub cherry round, Sep 28 2026; Hub direction B):
+   * who is due across the floor, one quiet row under the top, on today only
+   * and only while the studio's day runs (next-half-hour.ts). Each booking's
+   * state is the card's own, so a session that is over is never on it.
+   */
+  const clientBlocks = gridBlocks.filter((b) => !isStaffBlock(b.booking as any));
+  const nextOpen = layer === "schedule" && gridNowMin !== null && stripOpen(clientBlocks.map((b) => b.span), gridNowMin);
+  const nextItems: NextStripItem[] = nextOpen
+    ? nextHalfHour(
+        clientBlocks.map((b) => {
+          const session: any = b.booking;
+          const clientObj = findClientForSession(session);
+          const workoutSession = workoutSessionFor(session, clientObj);
+          const state = hubCardState(
+            { clientId: clientObj?.id ?? session.clientId ?? null, startTime: session.startTime || session.StartDateTime || session.date, endTime: session.endTime || session.EndDateTime, status: session.status },
+            logged,
+            currentTime,
+            { sessionOpen: workoutSession?.status === "In-Progress" },
+          );
+          return { item: { block: b, clientObj }, span: b.span, state, mine: b.columnId === myColumnId, order: gridColumns.findIndex((c) => c.id === b.columnId) };
+        }),
+        gridNowMin as number,
+      ).map(({ item, when }) => {
+        const { block, clientObj } = item;
+        const session: any = block.booking;
+        const entry = clientObj?.id ? dayMoments.byClientId.get(clientObj.id) ?? null : null;
+        const mine = block.columnId === myColumnId;
+        const marks = cardMarks(clientObj ? entry?.moments : null, undefined, { yours: mine });
+        const column = gridColumns.find((c) => c.id === block.columnId);
+        return {
+          key: block.key,
+          when,
+          time: cardTime(safeToDate(session.startTime || session.StartDateTime || session.date), null),
+          name: clientObj ? clientDisplayName(clientObj, session.clientName || "Client") : String(session.clientName || "Reservation").trim(),
+          withText: mine ? "with you" : column ? `with ${column.name}` : null,
+          critical: marks.critical,
+          glyphs: marks.glyphs,
+          more: marks.more,
+          moreLabel: marks.moreLabel,
+          clientId: clientObj?.id ?? null,
+          pending: !clientObj && rosterLoading && Boolean(session.clientId),
+        };
+      })
+    : [];
 
   return (
     <motion.div
@@ -1091,6 +1163,17 @@ export function ClientsView({
                   setSpot(null);
                   setLayer("opportunities");
                 }}
+                focus={
+                  myColumnId
+                    ? {
+                        value: focus,
+                        onChange: (next) => {
+                          setFocus(next);
+                          writeFocus(next);
+                        },
+                      }
+                    : null
+                }
               />
             )}
             <KeySheet open={keyOpen} onClose={() => setKeyOpen(false)} />
@@ -1136,6 +1219,18 @@ export function ClientsView({
               </p>
             )}
 
+            {/* Who is due in the next half hour, across the floor (hub cherry
+                round): a row of the schedule's own, under the top. */}
+            {nextOpen && (
+              <NextStrip
+                items={nextItems}
+                openKey={activePeek?.blockKey ?? null}
+                onOpen={(item, anchor) => {
+                  if (item.clientId) setPeek({ clientId: item.clientId, blockKey: item.key, day: gridDayKey, anchor });
+                }}
+              />
+            )}
+
             {/* The day's schedule (calm Hub round): Mindbody's layout, calmer.
                 The grid stays mounted under Opportunities, only hidden. */}
             <HubGrid
@@ -1146,6 +1241,7 @@ export function ClientsView({
               renderCard={renderCard}
               frameOf={frameOf}
               hidden={layer !== "schedule"}
+              focusId={focusId}
             />
 
             {/* Opportunities: every client booked on the day on screen, sorted

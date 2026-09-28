@@ -113,3 +113,29 @@ describe("the Hub grid", () => {
     expect(mount({ blocks: [] }).querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
   });
 });
+
+describe("the focus column (hub cherry round)", () => {
+  const detail = { count: "2 sessions", span: "9:30 AM – 3:30 PM", toGo: "1 to go" };
+  const withDetail = COLUMNS.map((c) => (c.isMe ? { ...c, detail } : c));
+
+  it("marks your column, head and body, and says your day in words under your name", () => {
+    const el = mount({ columns: withDetail, focusId: "t-ioreth" });
+    const head = el.querySelector<HTMLElement>('.hs-colhead[data-focus="true"]');
+    expect(head?.querySelector(".hs-colcount")?.textContent).toBe("2 sessions · 9:30 AM – 3:30 PM · 1 to go");
+    // The span is its own part, so a narrow head can leave it out.
+    expect(head?.querySelector(".hs-colcount-span")?.textContent).toBe(" · 9:30 AM – 3:30 PM");
+    expect(el.querySelectorAll('.hs-col[data-focus="true"]')).toHaveLength(1);
+    expect(el.querySelector('.hs-col[data-focus="true"]')?.getAttribute("data-me")).toBe("true");
+  });
+
+  it("with no focus, every column is alike and says its count", () => {
+    const el = mount({ columns: withDetail, focusId: null });
+    expect(el.querySelectorAll('[data-focus="true"]')).toHaveLength(0);
+    expect(el.querySelector(".hs-colcount")?.textContent).toBe("2 sessions");
+  });
+
+  it("a day away still says Away, focus or not", () => {
+    const el = mount({ columns: withDetail, focusId: "t-ioreth", frameOf: (id) => (id === "t-ioreth" ? { kind: "away", note: null } : { kind: "unknown" }) });
+    expect(el.querySelector('.hs-colhead[data-focus="true"] .hs-colcount')?.textContent).toBe("Away");
+  });
+});
