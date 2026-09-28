@@ -1275,3 +1275,261 @@
     grid-row: auto;
   }
 }
+
+/* ---------- Team → This week ------------------------------------------- */
+
+/* One card per trainer, in today's schedule order: never a ranking. */
+.ops-team {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+}
+
+.ops-tr {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+}
+
+.ops-tr--off {
+  background: var(--adm-surface-2);
+}
+
+.ops-tr__h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ops-tr__av {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--adm-live-fill);
+  color: var(--adm-live-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.ops-tr__name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-tr__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.ops-tr__l {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-tr__lab {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.ops-tr__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Leaders only: the quarter's renewals by trainer, in name order. */
+.ops-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.ops-tbl th,
+.ops-tbl td {
+  padding: 10px 16px;
+  border-top: 1px solid var(--adm-border);
+  text-align: left;
+  vertical-align: top;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-tbl thead th {
+  border-top: 0;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--adm-ink-muted);
+}
+
+.ops-tbl tbody th {
+  font-weight: 700;
+}
+
+.ops-tbl__out {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--adm-ink-2);
+}
+
+.ops-check {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px dashed var(--adm-border-strong);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--adm-ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- The huddle ------------------------------------------------- */
+
+/* The sheet runs the full screen (components/ui/sheet pays both insets). */
+.ops-huddle {
+  background: var(--adm-bg);
+  color: var(--adm-ink);
+}
+
+.ops-huddle__in {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.ops-huddle__bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ops-huddle__title {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--adm-ink);
+}
+
+.ops-huddle__hint {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--adm-ink-muted);
+}
+
+.ops-huddle__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+}
+
+.ops-huddle__i {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-height: 96px;
+  padding: 16px 18px;
+  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-huddle__i:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+.ops-huddle__i[aria-pressed="true"] {
+  border-color: var(--adm-ok);
+  background: var(--adm-ok-fill);
+}
+
+.ops-huddle__n {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--adm-surface-2);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.ops-huddle__i[aria-pressed="true"] .ops-huddle__n {
+  background: var(--adm-ok);
+  color: var(--adm-surface);
+}
+
+.ops-huddle__c {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ops-huddle__t {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.ops-huddle__t em {
+  margin-left: 8px;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--adm-ink-muted);
+}
+
+.ops-huddle__l {
+  display: block;
+  font-size: 17px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ops-huddle__l i {
+  margin-right: 8px;
+  font-style: normal;
+  font-weight: 800;
+  color: var(--adm-ink-2);
+}
+
+.ops-huddle__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--adm-ink-muted);
+}

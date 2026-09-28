@@ -320,6 +320,30 @@ describe("Today, the brief", () => {
     expect(el.querySelector(".ops-bluf__rules")?.textContent).toContain("Needs you: 2 rows you can clear on this page");
   });
 
+  it("Start huddle opens the morning's agenda from the brief's own lines, and writes nothing", async () => {
+    const el = await mount();
+    const before = writes.length;
+    await click(buttonByText(el, "Start huddle"));
+    const huddle = document.querySelector<HTMLElement>("[data-testid='huddle']");
+    expect(huddle).not.toBeNull();
+    const item = (n: number) => huddle!.querySelectorAll(".ops-huddle__i")[n]?.textContent ?? "";
+    // The first thing Needs you is waiting on, and who is back.
+    expect(item(0)).toMatch(/Concern(Ann Able|Bea Best): /);
+    expect(item(0)).toContain("WinBea Best is booked again after a gap.");
+    // Who to catch, in the order they're in, and whose usual trainer may know why.
+    expect(item(1)).toContain("11:00 AMEve Eames: Renewal: 5 left. Talk about it today?");
+    expect(item(1)).toContain("Nothing bookedFay Fern: Trained today, and has nothing booked in the next 7 days.");
+    expect(item(1)).toContain("AskAJ may know why Gil Galdor hasn't been in.");
+    // The floor: the session nobody logged.
+    expect(item(2)).toContain("AJ Jurgens: Dee Dunn's 7:00 AM session has no workout logged yet.");
+    expect(item(3)).toContain("Bea Best is booked again after a gap, usually with AJ.");
+    expect(item(4)).toContain("None showing in the bell.");
+    const end = [...huddle!.querySelectorAll("button")].find((b) => b.textContent?.includes("End huddle"));
+    await click(end);
+    expect(document.querySelector("[data-testid='huddle']")).toBeNull();
+    expect(writes.length).toBe(before);
+  });
+
   it("Needs you holds only what clears here, and Acknowledge all writes one acknowledgement per thing as the signed-in person", async () => {
     const el = await mount();
     const needs = section(el, "needs");

@@ -18,6 +18,8 @@ One column, the same sections in the same order every day (research-operations �
 8. **Going right** — who came back (a dismissed client who booked or visited since: Got it), the week's milestones, dates and owned gestures (`moments.ts`).
 9. **Worth a look** — Sunday's strength list (`performance.ts`), machine fit, Trends (the Insights line), Hours.
 
+**Start huddle** (phase 6), beside the date: huddle mode, full screen, five items built from the lines above (`../team/huddle-agenda.ts`, drawn by `../team/HuddleSheet.tsx`): a concern and a win, who to catch today and whose usual trainer may know why someone has drifted, the sessions nobody logged and machine fit, what Team → This week recognised, and what the bell is showing. The brief works the huddle's lines out only while it is open. Nothing is sent and nothing is written.
+
 ## What the page refuses to say (the pins "Some lines give false comfort")
 
 - **"Nothing needs you" off a partial read.** A failed or unfinished read behind Needs you (incidents, critical notes, the Dial, acknowledgements, the Delight queue) makes it "nothing that could be read needs you", with a line saying the list may be short.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../../types";
 import { loggedSessions } from "../../../lib/booking-state";
-import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, totals, weekFrom, type DayFacts } from "./review";
+import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 
 const TZ = "America/New_York";
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
@@ -80,5 +80,36 @@ describe("the whole-read record, and the busiest day", () => {
     expect(readInFull(days, record)).toEqual({ read: 1, of: 2, unknown: 1 });
     expect(readInFull(days, null)).toBeNull();
     expect(busiestDay(days)?.label).toBe("Thu");
+  });
+});
+
+describe("each trainer's week", () => {
+  const trainers = [
+    { id: "t1", fullName: "Beregond Guard" },
+    { id: "t2", authUid: "uid-2", fullName: "Anborn Ranger" },
+  ];
+
+  it("counts only the days asked about, in name order, with who isn't logged yet, earliest first", () => {
+    const entries = [
+      booking("a", "ann", "2026-09-21", "10:00"),
+      booking("b", "bea", "2026-09-21", "09:00"),
+      booking("c", "cy", "2026-09-22", "09:00", { trainerId: "uid-2" }), // an older account's sign-in id
+      booking("d", "dee", "2026-09-23", "09:00", { status: "Cancelled" }),
+      booking("e", "eve", "2026-09-29", "09:00"), // moved away from the week: not its day
+      booking("f", "blk", "2026-09-22", "10:00", { clientName: "Unavailable" }),
+      booking("g", "gil", "2026-09-22", "11:00", { trainerId: null, trainerName: "Westlake Rotation" }),
+    ];
+    const logged = loggedSessions([{ status: "Completed", clientId: "cy", date: "2026-09-22" } as never], TZ);
+    const week = teamWeek(entries, logged, "2026-09-21", "2026-09-27", trainers, NOW, TZ);
+    expect(week.map((r) => [r.name, r.booked, r.notLogged])).toEqual([
+      ["Anborn Ranger", 1, 0],
+      ["Beregond Guard", 2, 2],
+    ]);
+    expect(week[1].missing.map((m) => m.clientName)).toEqual(["bea", "ann"]);
+  });
+
+  it("is unknown, never zero, when the sessions couldn't be read", () => {
+    const week = teamWeek([booking("a", "ann", "2026-09-21", "09:00")], null, "2026-09-21", "2026-09-27", trainers, NOW, TZ);
+    expect(week[0]).toMatchObject({ name: "Beregond Guard", booked: 1, notLogged: null, missing: [] });
   });
 });

@@ -25,7 +25,7 @@
  */
 import type { ScheduleEntry } from "../../../types";
 import { bookingState, isStaffBlock, type LoggedSessions } from "../../../lib/booking-state";
-import { studioDateKey } from "../../../lib/studio-time";
+import { studioDateKey, toDate } from "../../../lib/studio-time";
 import { addDays, weekdayOf } from "../../client-history/model";
 import { cancellationOf } from "../../openings/room";
 import { wasReadInFull, type CoverageRecord } from "../../openings/coverage";
@@ -163,6 +163,64 @@ export function reviewLine(t: WeekTotals, x: ReviewExtras): string {
   }
   if (x.renewalUnknown > 0) parts.push(`Renewal timing is unknown for ${plural(x.renewalUnknown, "client", "clients")}.`);
   return parts.join(" ");
+}
+
+export interface TrainerWeek {
+  /** The trainer's id when Journey knows them, else their name in lower case. */
+  key: string;
+  trainerId: string | null;
+  name: string;
+  /** Live bookings over the days asked about. */
+  booked: number;
+  /** Finished with nothing logged in Journey. Null when what was logged couldn't be read. */
+  notLogged: number | null;
+  /** The ones not logged yet, earliest first. */
+  missing: Array<{ clientId: string | null; clientName: string; day: string; startMs: number }>;
+}
+
+interface TrainerLike {
+  id?: string;
+  authUid?: string | null;
+  fullName: string;
+}
+
+/**
+ * Each trainer's bookings over the studio days `from`..`to`, in name order:
+ * facts, never a ranking (Week → Last week's team line and Team → This week
+ * read the same numbers). Only the days asked about count — the week read
+ * also carries bookings moved AWAY from it, whose start is elsewhere — and a
+ * studio rotation or a staff block is nobody's session. "Not logged" is
+ * done-means-logged's own "never-logged": a slot that is over with no
+ * Journey session for that client that day.
+ */
+export function teamWeek(
+  entries: readonly ScheduleEntry[],
+  logged: LoggedSessions | null,
+  from: string,
+  to: string,
+  trainers: readonly TrainerLike[],
+  now: Date,
+  tz?: string,
+): TrainerWeek[] {
+  const out = new Map<string, TrainerWeek>();
+  for (const b of entries) {
+    if (b.status === "Cancelled" || isStaffBlock(b)) continue;
+    const day = studioDateKey(b.startTime, tz);
+    if (!day || day < from || day > to) continue;
+    const known = b.trainerId ? trainers.find((t) => t.id === b.trainerId || (t.authUid && t.authUid === b.trainerId)) : undefined;
+    const name = (known?.fullName ?? b.trainerName ?? "").trim();
+    if (!name || / rotation$/i.test(name)) continue;
+    const key = known?.id ?? name.toLowerCase();
+    const row = out.get(key) ?? { key, trainerId: known?.id ?? null, name, booked: 0, notLogged: logged ? 0 : null, missing: [] };
+    row.booked += 1;
+    if (logged && bookingState(b, logged, now, tz) === "never-logged") {
+      row.notLogged = (row.notLogged ?? 0) + 1;
+      row.missing.push({ clientId: b.clientId ?? null, clientName: (b.clientName ?? "").trim() || "A client", day, startMs: toDate(b.startTime)?.getTime() ?? 0 });
+    }
+    out.set(key, row);
+  }
+  for (const row of out.values()) row.missing.sort((a, b) => a.startMs - b.startMs);
+  return [...out.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** "Mon 54 of 56 logged · 2 not logged · 1 late cancel" — one day's line. */

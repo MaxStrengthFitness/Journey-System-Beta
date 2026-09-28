@@ -30,7 +30,7 @@ export interface ChangesViewProps {
   loading: boolean;
   failed: boolean;
   today: string;
-  /** The page it was opened from; without one (Week → This week) there is no Back. */
+  /** The page it was opened from; without one (Week → This week so far) there is no Back. */
   onBack?: () => void;
   /** Where Back goes, in words. */
   backLabel?: string;

@@ -12,13 +12,11 @@
  *   Clients   the Journey (where each client is, against her own rhythm;
  *             phase 4), Renewals, Moments (the Delight queue) and Trends
  *             (the quarter's lines over the Insights screen; phase 5)
- *   Team      Hours
+ *   Team      this week (each trainer in today's schedule order, the
+ *             leaders-only renewal counts; phase 6) and Hours
  *   Setup     how the studio is set up: Floor, People & access (Staff &
  *             Roles), Announcements, Mindbody, Data, and the Rules behind
  *             every sentence (phase 3)
- *
- * A later phase of the round adds its page here: the team this week
- * (phase 6).
  *
  * AJ's question 1 took the default: the fifth place is "Setup", because
  * "Studio" would clash with My Studio. Question 2's default moved Renewals
@@ -57,7 +55,7 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
     label: "Week",
     subs: [
       { id: "last", label: "Last week" },
-      { id: "now", label: "This week" },
+      { id: "now", label: "This week so far" },
       { id: "ahead", label: "Week ahead" },
     ],
   },
@@ -74,7 +72,10 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
   {
     id: "team",
     label: "Team",
-    subs: [{ id: "hours", label: "Hours" }],
+    subs: [
+      { id: "week", label: "This week" },
+      { id: "hours", label: "Hours" },
+    ],
   },
   {
     id: "setup",
@@ -163,15 +164,16 @@ export const LEGACY_TAB_PLACE: Record<LegacyTab, OpsPlace> = {
 };
 
 /**
- * A DOOR on one page to another: every old tab id, and the week's changes
- * (Today's "All changes").
+ * A DOOR on one page to another: every old tab id, the week's changes
+ * (Today's "All changes"), the Journey and the team this week.
  */
-export type OpsDoor = LegacyTab | "week" | "journey";
+export type OpsDoor = LegacyTab | "week" | "journey" | "team";
 
 export const DOOR_PLACE: Record<OpsDoor, OpsPlace> = {
   ...LEGACY_TAB_PLACE,
   week: { page: "week", sub: "now" },
   journey: { page: "clients", sub: "journey" },
+  team: { page: "team", sub: "week" },
 };
 
 /**

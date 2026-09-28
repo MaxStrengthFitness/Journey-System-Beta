@@ -26,7 +26,7 @@
 import { useMemo } from "react";
 import { CalendarRange, ChevronRight } from "lucide-react";
 import type { Client, Studio, Trainer } from "../../../types";
-import { isStaffBlock, loggedSessions } from "../../../lib/booking-state";
+import { loggedSessions } from "../../../lib/booking-state";
 import { formatStudioTime, studioDateKey, studioDayBoundsForKey } from "../../../lib/studio-time";
 import { addDays } from "../../client-history/model";
 import { tallyOutcomes } from "../../renewals/rates";
@@ -44,7 +44,7 @@ import { useStudioJourneys } from "../journey/useStudioJourneys";
 import { isSlipping } from "../journey/states";
 import { useMinuteClock } from "../shell/useMinuteClock";
 import type { OpsDoor } from "../shell/places";
-import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, totals, weekFrom, type DayFacts } from "./review";
+import { busiestDay, dayFacts, dayLine, mondayOf, readInFull, reviewLine, teamWeek, totals, weekFrom, type DayFacts } from "./review";
 import { useCoverageRecord } from "./useCoverageRecord";
 import "../shell/ops.css";
 
@@ -125,25 +125,8 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
   const reading = week.loading || sessions.loading || !j.ready;
   const line = reviewLine(t, { crossed: crossed.length, back: back.length, renewals: tally, coverage: cov, renewalUnknown: renewalUnknownCount(j.nightly) });
 
-  // The team, from the week's bookings: each trainer's facts, in name order, never ranked.
-  // Only the week's own days count: the read also carries bookings moved AWAY
-  // from the week (useWeekSchedule's second stream), whose start is elsewhere.
-  const team = useMemo(() => {
-    const byTrainer = new Map<string, { name: string; booked: number; notLogged: number }>();
-    for (const b of week.entries) {
-      if (b.status === "Cancelled" || isStaffBlock(b)) continue;
-      const day = studioDateKey(b.startTime, tz);
-      if (!day || day < lastMonday || day > lastSunday) continue;
-      const name = (trainers.find((tr) => tr.id === b.trainerId)?.fullName ?? b.trainerName ?? "").trim();
-      if (!name || / rotation$/i.test(name)) continue;
-      const row = byTrainer.get(name) ?? { name, booked: 0, notLogged: 0 };
-      row.booked += 1;
-      // Every day of last week is over, so a booking with nothing logged is "not logged yet".
-      if (logged && b.clientId && !logged.has(b.clientId, day)) row.notLogged += 1;
-      byTrainer.set(name, row);
-    }
-    return [...byTrainer.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [week.entries, trainers, logged, lastMonday, lastSunday, tz]);
+  // The team, from the week's bookings: each trainer's facts, in name order, never ranked (review.ts).
+  const team = useMemo(() => teamWeek(week.entries, logged, lastMonday, lastSunday, trainers, now, tz), [week.entries, logged, lastMonday, lastSunday, trainers, now, tz]);
 
   return (
     <AdminScreen>
@@ -204,7 +187,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
         )}
       </BriefSection>
 
-      <BriefSection id="team" title="Team" sub="facts from the week's bookings, in name order — recognition, never ranking" door={<Door label="Team" to="hours" onOpen={onOpen} />}>
+      <BriefSection id="team" title="Team" sub="facts from the week's bookings, in name order — recognition, never ranking" door={<Door label="Team" to="team" onOpen={onOpen} />}>
         {week.loading ? (
           <BriefEmpty>Reading last week…</BriefEmpty>
         ) : team.length === 0 ? (
@@ -212,9 +195,9 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
         ) : (
           <ul className="ops-jr-list">
             {team.map((r) => (
-              <li key={r.name} className="ops-sec__note">
+              <li key={r.key} className="ops-sec__note">
                 <b>{r.name}</b>: {r.booked} booked
-                {logged === null ? "" : r.notLogged === 0 ? ", every one logged." : `, ${r.notLogged} not logged yet.`}
+                {r.notLogged === null ? "." : r.notLogged === 0 ? ", every one logged." : `, ${r.notLogged} not logged yet.`}
               </li>
             ))}
           </ul>

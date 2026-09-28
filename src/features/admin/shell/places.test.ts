@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { HOME_PLACE, LEGACY_TAB_PLACE, OPS_PAGES, defaultSub, placeChanges, placeKey, placeLabel, resolvePlace } from "./places";
+import { DOOR_PLACE, HOME_PLACE, LEGACY_TAB_PLACE, OPS_PAGES, defaultSub, placeChanges, placeKey, placeLabel, resolvePlace } from "./places";
 import {
   rememberClient,
   rememberPlace,
@@ -21,11 +21,11 @@ describe("the five destinations", () => {
     expect(OPS_PAGES.map((p) => p.label)).toEqual(["Today", "Week", "Clients", "Team", "Setup"]);
   });
 
-  it("put Renewals and Moments under Clients, Hours under Team, and the setting-up screens under Setup", () => {
+  it("put Renewals and Moments under Clients, the team this week and Hours under Team, and the setting-up screens under Setup", () => {
     const subs = Object.fromEntries(OPS_PAGES.map((p) => [p.id, p.subs.map((s) => s.label)]));
     expect(subs.clients).toEqual(["Journey", "Renewals", "Moments", "Trends"]);
-    expect(subs.team).toEqual(["Hours"]);
-    expect(subs.week).toEqual(["Last week", "This week", "Week ahead"]);
+    expect(subs.team).toEqual(["This week", "Hours"]);
+    expect(subs.week).toEqual(["Last week", "This week so far", "Week ahead"]);
     expect(subs.setup).toEqual(["Floor", "People & access", "Announcements", "Mindbody", "Data", "Rules"]);
     expect(subs.today).toEqual([]);
   });
@@ -39,12 +39,20 @@ describe("the five destinations", () => {
     expect(LEGACY_TAB_PLACE.overview).toEqual(HOME_PLACE);
     for (const place of Object.values(LEGACY_TAB_PLACE)) expect(resolvePlace(place)).toEqual(place);
   });
+
+  it("every door between pages opens a page that exists", () => {
+    expect(DOOR_PLACE.week).toEqual({ page: "week", sub: "now" });
+    expect(DOOR_PLACE.journey).toEqual({ page: "clients", sub: "journey" });
+    expect(DOOR_PLACE.team).toEqual({ page: "team", sub: "week" });
+    expect(DOOR_PLACE.hours).toEqual({ page: "team", sub: "hours" });
+    for (const place of Object.values(DOOR_PLACE)) expect(resolvePlace(place)).toEqual(place);
+  });
 });
 
 describe("resolvePlace", () => {
   it("opens a destination on its first page, and Setup on its own list", () => {
     expect(resolvePlace({ page: "clients" })).toEqual({ page: "clients", sub: "journey" });
-    expect(resolvePlace({ page: "team" })).toEqual({ page: "team", sub: "hours" });
+    expect(resolvePlace({ page: "team" })).toEqual({ page: "team", sub: "week" });
     expect(resolvePlace({ page: "setup" })).toEqual({ page: "setup", sub: null });
     expect(defaultSub("setup")).toBeNull();
   });

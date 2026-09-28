@@ -12,6 +12,7 @@ import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
 import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
 import { TrendsPage } from "./trends/TrendsPage";
 import { AdminHoursTab } from "./hours/AdminHoursTab";
+import { TeamWeekPage } from "./team/TeamWeekPage";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { WeekPage } from "./week/WeekPage";
@@ -133,13 +134,13 @@ function scrollerOf(el: HTMLElement | null): HTMLElement | null {
  * Week · Clients · Team · Setup, each tab's screen mounted as it was:
  *
  *   Overview        → Today
- *   (its Changes)   → Week → This week
+ *   (its Changes)   → Week → This week so far
  *   (its attendance → Clients → Journey (the Journey's one rule,
  *    watch)            journey/states.ts)
  *   Renewals        → Clients → Renewals
  *   Delight queue   → Clients → Moments
  *   Insights        → Clients → Trends
- *   Hours           → Team → Hours
+ *   Hours           → Team → Hours (beside Team → This week, new in phase 6)
  *   Floor           → Setup → Floor
  *   Staff & Roles   → Setup → People & access
  *   Announcements   → Setup → Announcements
@@ -395,6 +396,10 @@ function OperationsShell({
           <AdminRenewalsTab key={tabKey} authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId ?? null} trainers={trainers} machines={machines} onOpenMyStudio={openMyStudio} />
         );
       case "team":
+        if (place.sub === "week") {
+          if (ops.scope.kind === "all") return <PickOneStudio what="The team this week" />;
+          return studio ? <TeamWeekPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} /> : noStudio;
+        }
         return <AdminHoursTab key={tabKey} trainers={trainers} />;
       case "setup":
         switch (place.sub) {

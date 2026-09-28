@@ -45,7 +45,7 @@
  * could not be, nothing counted from its bookings is said.
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarRange, ChevronRight, Clock3, Ruler, TrendingDown, TrendingUp } from "lucide-react";
+import { CalendarRange, ChevronRight, Clock3, Ruler, TrendingDown, TrendingUp, UsersRound } from "lucide-react";
 import { auth } from "../../../firebase";
 import type { Client, Machine, Studio, Trainer } from "../../../types";
 import { clientDisplayName } from "../../../lib/client-name";
@@ -90,6 +90,8 @@ import { useTodaySessions } from "./useTodaySessions";
 import { BottomLineBox, BriefEmpty, BriefSection, FreshnessLine } from "./brief-pieces";
 import { bottomLine, catchToday, dayStartMs, heldAgainst, leftWithNothingBooked, nightlyRead, partOfDay, renewalUnknownCount, sinceYesterday } from "./brief";
 import type { OverviewLink } from "./OverviewPage";
+import { BriefHuddle } from "../team/HuddleSheet";
+import type { BriefHuddleInput } from "../team/huddle-agenda";
 import "./overview.css";
 import "../shell/ops.css";
 
@@ -132,6 +134,7 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
     setShowChase(false);
   }, [homeSignal]);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [huddleOpen, setHuddleOpen] = useState(false);
   const [snoozing, setSnoozing] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
@@ -353,6 +356,52 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
   };
   const machineName = (id: string) => machines.find((m) => m.id === id)?.name ?? id;
 
+  /* ---- the huddle: the brief's own lines, worked out only while it is open (team/huddle-agenda.ts) ---- */
+  const huddleInput = useMemo<BriefHuddleInput | null>(() => {
+    if (!huddleOpen) return null;
+    const pending = painPending.pending[0] ?? null;
+    const acknowledged = pending ? null : (pain.rows[0] ?? null);
+    const concern = needsLoading
+      ? undefined
+      : pending
+        ? `${pending.name}: ${pending.sentence}`
+        : acknowledged
+          ? `${acknowledged.name}: ${acknowledged.sentence} It's acknowledged.`
+          : null;
+    const backRow = back[0] ?? null;
+    const journeyBack = slippingWeek?.back[0] ?? null;
+    const moment = goingRight[0] ?? null;
+    const win = backRow
+      ? `${backRow.name}: ${backRow.sentence}`
+      : journeyBack
+        ? `${journeyBack.row.name.display} is booked again after a gap.`
+        : moment
+          ? `${moment.name}: ${dayWord(moment.day, today)} — ${moment.sentence}`
+          : delight.isLoading || own.loading || !journeys
+            ? undefined
+            : null;
+    const firstName = (name: string) => name.split(" ")[0];
+    const catchLines =
+      catchRows === null
+        ? null
+        : [
+            ...catchRows.map((r) => ({ tag: formatStudioTime(new Date(r.at), tz), text: `${r.name}: ${r.proof}` })),
+            ...(leftRows ?? []).map((r) => ({ tag: "Nothing booked", text: `${r.name}: ${r.sentence}` })),
+            ...slippingOpen
+              .filter((e) => e.usual && e.usualInToday)
+              .slice(0, SLIPPING_SHOWN)
+              .map((e) => ({ tag: "Ask", text: `${firstName(e.usual!.name)} may know why ${e.row.name.display} hasn't been in. ${e.journey.why}` })),
+          ];
+    const floor = [
+      ...(neverLogged ? chase.map((c) => `${c.trainerName}: ${c.clientName}'s ${c.at} session has no workout logged yet.`) : []),
+      ...(fit.status !== "loading" && fit.status !== "failed" && fit.clients > 0
+        ? [`Machine fit: ${fit.clients} client${fit.clients === 1 ? " is" : "s are"} set somewhere unusual for their build, on ${fit.machines} machine${fit.machines === 1 ? "" : "s"}.`]
+        : []),
+    ];
+    const recognition = (slippingWeek?.back ?? []).filter((e) => e.usual).map((e) => `${e.row.name.display} is booked again after a gap, usually with ${firstName(e.usual!.name)}.`);
+    return { concern, win, catchLines, floor, recognition };
+  }, [huddleOpen, painPending.pending, pain.rows, needsLoading, back, slippingWeek, goingRight, today, delight.isLoading, own.loading, journeys, catchRows, leftRows, slippingOpen, tz, neverLogged, chase, fit]);
+
   /* ---- the actions ---- */
   const run = async (key: string, work: () => Promise<unknown>) => {
     setBusyKey(key);
@@ -417,6 +466,9 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
           <span className="ops-brief__eyebrow">Today · {studio.name}</span>
           <h1 className="ops-brief__title">{formatStudioDate(now, { weekday: "long", month: "long", day: "numeric" }, tz)}</h1>
         </div>
+        <AdminButton variant="hero" onClick={() => setHuddleOpen(true)}>
+          <UsersRound className="w-4 h-4" aria-hidden /> Start huddle
+        </AdminButton>
       </header>
 
       <FreshnessLine
@@ -858,6 +910,17 @@ export function TodayBrief({ footer, homeSignal, studio, studios, today, now, me
       {footer}
 
       {reviewOpen && <ReviewNotesDialog open onOpenChange={setReviewOpen} rows={review} onOpenClient={onNavigateProfile} />}
+      {huddleInput && (
+        <BriefHuddle
+          studioId={studioId}
+          studioName={studio.name}
+          today={today}
+          dateLabel={formatStudioDate(now, { weekday: "long", month: "long", day: "numeric" }, tz)}
+          authTrainer={authTrainer}
+          input={huddleInput}
+          onClose={() => setHuddleOpen(false)}
+        />
+      )}
     </div>
   );
 }
