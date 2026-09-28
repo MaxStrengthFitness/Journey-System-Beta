@@ -258,6 +258,16 @@ describe("the Admins dashboard", () => {
     expect(el.textContent).toContain("grouped by what Journey knows today");
   });
 
+  it("lands on the page when the sidebar is used while the search is open", async () => {
+    const el = await mount(admin, true);
+    await click(el.querySelector(".hq-side .hq-find"));
+    await type(el, "sol");
+    await click(byText(el, ".hq-side .hq-nav__item", "Franchises"));
+    expect(el.querySelector(".hq-search")).toBeNull();
+    expect(el.querySelector<HTMLElement>(".hq-page")!.hidden).toBe(false);
+    expect(el.textContent).toContain("A franchise groups studios under one owner");
+  });
+
   it("opens a machine the search found in the catalog's own editor", async () => {
     const el = await mount(admin, true);
     await click(el.querySelector(".hq-side .hq-find"));

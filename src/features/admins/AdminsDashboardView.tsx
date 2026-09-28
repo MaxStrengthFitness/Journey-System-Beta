@@ -59,7 +59,6 @@ import {
   Network,
   RefreshCw,
   Search,
-  ShieldCheck,
   BookOpenCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -236,8 +235,16 @@ function AdminsShell({
         (to.studioId ?? null) === focus.studioId &&
         (to.machineId ?? null) === focus.machineId &&
         (to.tab ?? null) === focus.tab;
-      if (sameThing) return;
+      if (sameThing) {
+        setSearchOpen(false);
+        setQuery("");
+        return;
+      }
       pagesScope.guard(() => {
+        // A move from the sidebar or the bar while the search is open lands
+        // on the page, not behind the search.
+        setSearchOpen(false);
+        setQuery("");
         setPage(to.page);
         setFocus((f) => ({ studioId: to.studioId ?? null, machineId: to.machineId ?? null, tab: to.tab ?? null, seq: f.seq + 1 }));
       });
@@ -327,9 +334,6 @@ function AdminsShell({
   return (
     <div ref={shellRef} className="adm hq hq-shell" data-testid="admins-dashboard">
       <aside className="hq-side" aria-label="Admins pages">
-        <div className="hq-side__who">
-          <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> Admin
-        </div>
         {findButton}
         {ADMINS_NAV.map((group) => (
           <nav key={group.place} aria-label={group.label ?? "Home"}>

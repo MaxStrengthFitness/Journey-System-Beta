@@ -69,6 +69,7 @@ export function SearchPanel({ query, onQuery, onClose, onPick, index, machinesLo
           <Search aria-hidden="true" />
           <input
             ref={input}
+            autoFocus
             className="hq-search__input"
             type="search"
             enterKeyHint="search"
