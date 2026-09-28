@@ -2043,6 +2043,73 @@ been seen in a browser or on an iPad yet: render tests only.
 
 ---
 
+## Round 28 — The Admins dashboard, the Command Center · *Sep 28 2026, branch `redesign/admins`*
+
+The Admins room of the redesign. The round document is
+`docs/rounds/2026-09-28-admins.md`. Nothing to deploy first: no rules, no
+index, no Cloud Function. Sign in as an **administrator**, on an iPad in
+**portrait and landscape, light and dark**, and once on a PC. Not seen on an
+iPad yet: only in render tests.
+
+**The shell**
+
+- [ ] **Portrait**: a bar of four places at the top (Home · Studios · Standard
+  · Machinery) and a Search button; the place's pages as chips under it;
+  nothing runs off the right edge. The bar stays at the top while a long page
+  scrolls, with nothing showing through it.
+- [ ] **Landscape**: a sidebar with every page under Studios, The MSF
+  standard and The machinery; System tools reachable at the foot (the sidebar
+  scrolls on its own on a short screen, never under the bottom bar). Limbo
+  and Bug reports show a count when something waits.
+- [ ] **Search**: Search (or Ctrl K on a PC) opens it at the top; "sol" finds
+  Solon, "leg press" the machine, a trainer's first name the person. A pick
+  opens the studio's page, the machine's editor, or the person's studio on
+  Team. With a studio's details half typed, a search pick asks first.
+- [ ] **Anyone else** (a head trainer who is not an administrator) is refused
+  in words.
+
+**Home**
+
+- [ ] It opens on "N things need you" or "Nothing needs you right now", with
+  "Checked at …" and Check again. Each item says a sentence, its proof and
+  when it clears; its button goes where it says.
+- [ ] Put an event in Limbo (or find one): Home says so; release or dismiss
+  it and Home's line goes when Home is checked again.
+- [ ] The network and the standard each read as one sentence.
+
+**Studios**
+
+- [ ] All studios: the groups say what they are built from; every name whole;
+  each row's sentence names the Mindbody link, the cutover, the active
+  clients and the last pull.
+- [ ] A studio's page: Setup · Mindbody · Floor · Team. Change the phone
+  number and tap another tab: it asks first. Save still works.
+- [ ] The danger zone (on a practice or throwaway studio only): Delete stays
+  greyed until the studio's name is typed; Keep it closes without a write.
+- [ ] Franchises: the list, and the repair panel only when the listings
+  disagree.
+
+**The machinery**
+
+- [ ] Mindbody sync: every studio, worst first, each in words; a studio whose
+  record can't be read says Couldn't check; Check again re-reads.
+- [ ] Limbo: events grouped by site and location, the registry's studio
+  chosen in each picker with "Lands at …"; Dismiss, then Undo, puts the event
+  back.
+- [ ] Bug reports: New · Looking into it · Fixed · Won't fix, with counts;
+  a status set with a button sticks after Reload.
+
+**The standard**
+
+- [ ] Machines: where two studios or more set their own seat position (or
+  another default), one line says so above the catalog; with none, nothing is
+  drawn.
+- [ ] Waiting for review: "Offered to every studio" lists what studios
+  offered (Round 26's sharing items walk it), and points to Machines for
+  machines offered to the catalog.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -2094,4 +2161,5 @@ Screenshot:
 | 25 — The calm Hub (Sep 28) | 22 | | |
 | 26 — My Studio → Studio read only, and AJ's three answers (Sep 28) | 13 | | |
 | 27 — The Hub's cherry on top (Sep 28) | 12 | | |
-| **Total** | **467** | | |
+| 28 — The Admins dashboard, the Command Center (Sep 28) | 16 | | |
+| **Total** | **483** | | |
