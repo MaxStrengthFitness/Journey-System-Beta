@@ -38,9 +38,14 @@ import type { JobDraft } from "../jobs/types";
 import type { Person } from "../kit";
 
 export type CaptureDestination = "me" | "floor" | "someone";
+/**
+ * The destinations' words. "floor" is the stored id and stays; since the
+ * Relay room (Sep 28 2026) the tab it lands on is the Board, so a trainer
+ * reads "The Board" (AJ, q1: Board · Tracker · Journal).
+ */
 export const DESTINATION_LABEL: Record<CaptureDestination, string> = {
   me: "Me",
-  floor: "The Floor",
+  floor: "The Board",
   someone: "Someone",
 };
 
@@ -256,7 +261,7 @@ export function captureSentence(
       : "";
   const due = s.date ? ` Wanted by ${dayWords(s.date, ctx.todayKey)}.` : "";
   const est = s.estMinutes ? ` About ${s.estMinutes} min.` : "";
-  return `On the Floor${s.askKind === "todo" ? "" : ` as a ${ASK_KIND_WORD[s.askKind]}`}. Anyone at ${
+  return `On the Board${s.askKind === "todo" ? "" : ` as a ${ASK_KIND_WORD[s.askKind]}`}. Anyone at ${
     ctx.studioName
   } can take it.${about}${due}${est}`;
 }

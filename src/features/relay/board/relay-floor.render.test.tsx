@@ -223,7 +223,7 @@ describe("Capture's kinds of ask", () => {
     await click(h.querySelector(".msh__plus"));
     await click([...document.querySelectorAll('[role="menuitem"]')].find((b) => b.textContent?.includes("A to-do for me")));
     const sheet = document.body;
-    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Board"));
     // The default kind is a to-do.
     expect(sheet.querySelector("#cs-kind-hint")?.textContent).toBe("Something anyone can pick up and finish");
     const headsUp = [...sheet.querySelectorAll<HTMLButtonElement>(".rk-chip")].find((b) => b.textContent === "Heads-up");

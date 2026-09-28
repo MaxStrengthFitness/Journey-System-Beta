@@ -552,7 +552,7 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
             )}
             {relay.openRelayTab && (
               <button type="button" className="rbd-link" onClick={() => relay.openRelayTab?.("mine")}>
-                Your own list, follow-ups and what's coming up are on Mine
+                Your own list, follow-ups and what's coming up are in the Tracker
                 <ChevronRight size={16} aria-hidden />
               </button>
             )}

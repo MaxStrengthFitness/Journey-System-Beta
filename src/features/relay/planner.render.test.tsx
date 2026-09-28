@@ -228,9 +228,9 @@ describe("My Studio", () => {
     expect(h.querySelector(".rnb")).toBeNull();
     expect(currentSection()).toBe("Relay");
     expect(await sectionNames()).toEqual(["Relay", "Openings", "Machines", "Team", "Studio"]);
-    expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Floor", "Mine", "Notes"]);
+    expect([...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent)).toEqual(["Board", "Tracker", "Journal"]);
     expect(h.querySelector(".msh__track")?.textContent).toBe("Tracking: nothing yet");
-    // "Just now" is a still list on the Floor, with nothing ticking.
+    // "Just now" is a still list on the Board, with nothing ticking.
     expect(h.querySelector(".rjn")?.textContent).toContain("Quiet so far today.");
     // A leader's + holds the studio task and the team job beside their own things.
     await click(h.querySelector(".msh__plus"));
@@ -252,10 +252,10 @@ describe("My Studio", () => {
 
   it("shows the Team section to a leader and walks every tab and section without throwing", async () => {
     const h = await mount(lead);
-    await click(tab("Mine"));
+    await click(tab("Tracker"));
     expect(h.textContent).toContain("Your list");
     expect(h.textContent).toContain("New reminder");
-    await click(tab("Notes"));
+    await click(tab("Journal"));
     expect(h.textContent).toContain("New note");
     await openSection("Team");
     expect(h.textContent).toContain("Your team");
@@ -275,9 +275,9 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("Solon's staff");
     expect(h.textContent).toContain("Temporary");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.
-    expect(tab("Floor")).toBeUndefined();
+    expect(tab("Board")).toBeUndefined();
     await openSection("Relay");
-    await click(tab("Floor"));
+    await click(tab("Board"));
     expect(h.textContent).toContain("Dealt to you");
   });
 
@@ -377,9 +377,9 @@ describe("My Studio", () => {
     // the ranking of studios was dropped.
     const h = await mount({ ...(lead as object), role: "FranchiseOwner" });
     expect(tab("Network")).toBeUndefined();
-    expect(tab("Floor")).toBeTruthy();
-    expect(tab("Mine")).toBeTruthy();
-    expect(tab("Notes")).toBeTruthy();
+    expect(tab("Board")).toBeTruthy();
+    expect(tab("Tracker")).toBeTruthy();
+    expect(tab("Journal")).toBeTruthy();
     expect(await sectionNames()).toContain("Team");
     expect(await sectionNames()).not.toContain("Network");
     expect(h.textContent).not.toContain("Launch an initiative");
@@ -400,12 +400,12 @@ describe("My Studio", () => {
 
   it("opens a new note, the task wizard and the job composer", async () => {
     const h = await mount(lead);
-    await click(tab("Notes"));
+    await click(tab("Journal"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New note")));
     expect(document.body.textContent).toContain("Working notes");
     expect(document.body.textContent).toContain("Share with colleagues");
 
-    await click(tab("Mine"));
+    await click(tab("Tracker"));
     await click([...h.querySelectorAll("button")].find((b) => b.textContent?.includes("New reminder")));
     expect(document.body.textContent).toContain("Capture");
     expect(document.body.textContent).toContain("Relay it");
@@ -440,7 +440,7 @@ describe("My Studio", () => {
     await settle();
     expect(sheet.textContent).toContain("For you, today. Only you see it.");
 
-    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Board"));
     expect(sheet.textContent).toContain("Anyone at Solon can take it.");
     // A leader is offered the studio-task form and the ask kinds.
     expect(sheet.textContent).toContain("A studio task");
@@ -455,7 +455,7 @@ describe("My Studio", () => {
 
     await click([...sheet.querySelectorAll("button")].find((b) => b.textContent?.includes("~min")));
     await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "~10 min"));
-    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Floor"));
+    await click([...sheet.querySelectorAll("button")].find((b) => b.textContent === "The Board"));
     expect(sheet.textContent).toContain("About 10 min.");
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LayoutGrid, StickyNote, UserRound, type LucideIcon } from "lucide-react";
+import { BookOpen, LayoutGrid, ListChecks, type LucideIcon } from "lucide-react";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
 import type { ClientTaskAction } from "../studio-tasks/types";
@@ -27,11 +27,14 @@ import "./board/relay.css";
  * it was. Relay keeps the documents and the rules of who may do what, and
  * changes how the work is SEEN and CAPTURED:
  *
- *   Floor            the studio's shared board: Next up, the shift rings, the
- *                    floor map, asks, the playbook (studio-tasks/StudioHubView)
- *   Mine             the trainer's own list: today, handed to you, follow-ups,
- *                    growth (MyTasksPanel)
- *   Notes            working notes beside the note, publish with an audience
+ *   Board            the studio's shared board: Right now, five doors, the job
+ *                    dealt to you, and behind the doors the shift, the floor
+ *                    map, asks, the playbook (studio-tasks/StudioHubView, drawn
+ *                    by relay/board/Board). Its id is still "floor"
+ *   Tracker          the trainer's own list, by when: handed to you, now,
+ *                    follow-ups, closing, coming up (MyTasksPanel). Id "mine"
+ *   Journal          working notes beside the note, publish with an audience.
+ *                    Id "notes"
  *   Capture          one composer for all of it (the header's + and Ask)
  *   Context Panel    detail beside the board, never a modal over it
  *
@@ -40,7 +43,7 @@ import "./board/relay.css";
  * now (my-studio/StudioHeader), so this view draws no bar of its own. Which
  * tab is showing is the shell's (it owns the header); this view keeps the
  * tab's memory and acts on an arriving request. "Just now", the teammates'
- * ticker that sat on the Now Bar, is a still list on the Floor.
+ * ticker that sat on the Now Bar, is a still list on the Board.
  *
  * Team was Relay's fourth tab and is My Studio → Team now (My Studio round,
  * Sep 2026): people and standards since the voice-review round (Sep 27
@@ -49,8 +52,8 @@ import "./board/relay.css";
  * tab, for franchise owners and the company. It moved to Operations →
  * Overview → All my studios in the voice-review round ("Relay must
  * prioritize the trainers transitioning between clients"), and the ranking
- * was dropped. So Relay is Floor · Mine · Notes, and every tab is
- * everyone's.
+ * was dropped. So Relay is Board · Tracker · Journal (Floor · Mine · Notes
+ * until the Relay room, Sep 28 2026), and every tab is everyone's.
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
@@ -76,11 +79,19 @@ forgetOnSignOut(() => {
   rememberedTab = "floor";
 });
 
-/** Relay's tabs, in order: what the header draws. The ids are stored in links and memory, so they never change. */
+/**
+ * Relay's tabs, in order: what the header draws. AJ (q1, Sep 28 2026):
+ * rename them **Board · Tracker · Journal** — his own three nouns, "a
+ * mission board, a mission tracker and a full on journal" — which also
+ * stops "Floor" meaning three things (Relay's tab, the machine map, and
+ * Operations → Floor). Only the words changed: the ids ("floor", "mine",
+ * "notes") are stored in bells' links, in intents and in this module's
+ * memory, so they never change.
+ */
 export const PLANNER_TABS: { id: PlannerTab; label: string; icon: LucideIcon }[] = [
-  { id: "floor", label: "Floor", icon: LayoutGrid },
-  { id: "mine", label: "Mine", icon: UserRound },
-  { id: "notes", label: "Notes", icon: StickyNote },
+  { id: "floor", label: "Board", icon: LayoutGrid },
+  { id: "mine", label: "Tracker", icon: ListChecks },
+  { id: "notes", label: "Journal", icon: BookOpen },
 ];
 
 /** Which tab an arrival request opens. */

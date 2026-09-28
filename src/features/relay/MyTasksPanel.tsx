@@ -213,8 +213,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           <button
             type="button"
             className="pl__btn"
-            title="Send to the Floor — anyone at the studio can take it"
-            aria-label={`Send “${r.title}” to the Floor`}
+            aria-label={`Offer “${r.title}” on the Board: anyone at the studio can take it`}
             onClick={() =>
               relay.openCapture({
                 destination: "floor",
@@ -225,7 +224,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
             }
           >
             <ArrowRightLeft size={14} aria-hidden />
-            Floor
+            Offer it
           </button>
         )}
       </li>

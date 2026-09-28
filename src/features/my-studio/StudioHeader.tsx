@@ -285,7 +285,7 @@ export function StudioHeader<T extends string>({
                     }}
                   >
                     <Crosshair size={17} aria-hidden />
-                    <span className="msh__pop-text">Show it on the Floor</span>
+                    <span className="msh__pop-text">Show it on the Board</span>
                   </button>
                   <button
                     type="button"
@@ -303,7 +303,7 @@ export function StudioHeader<T extends string>({
                 </>
               ) : (
                 <p className="msh__pop-note">
-                  Nothing yet. Take a job on the Floor and it rides along here, on every tab, until it's done.
+                  Nothing yet. Take a job on the Board and it rides along here, on every tab, until it's done.
                 </p>
               )}
             </Popover>

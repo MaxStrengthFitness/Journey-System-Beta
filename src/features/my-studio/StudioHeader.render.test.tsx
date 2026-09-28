@@ -21,9 +21,9 @@ const SECTIONS: HeaderSection[] = [
   { id: "studio", label: "Studio", icon: Settings2 },
 ];
 const TABS = [
-  { id: "floor" as const, label: "Floor", icon: LayoutGrid },
-  { id: "mine" as const, label: "Mine", icon: UserRound },
-  { id: "notes" as const, label: "Notes", icon: StickyNote },
+  { id: "floor" as const, label: "Board", icon: LayoutGrid },
+  { id: "mine" as const, label: "Tracker", icon: UserRound },
+  { id: "notes" as const, label: "Journal", icon: StickyNote },
 ];
 
 const session = (id: string, clientName: string, startMin: number, endMin: number): NowSession => ({
@@ -95,7 +95,7 @@ describe("the one header", () => {
     // The section's label keeps the old tab's id, so the section's panel is labelled by it.
     expect(h.querySelector("#ms-tab-relay")?.textContent).toBe("Relay");
     const tabs = [...h.querySelectorAll('[role="tablist"][aria-label="Relay"] [role="tab"]')].map((t) => t.textContent);
-    expect(tabs).toEqual(["Floor", "Mine", "Notes"]);
+    expect(tabs).toEqual(["Board", "Tracker", "Journal"]);
     expect(h.querySelector("#pl-tab-floor")?.getAttribute("aria-selected")).toBe("true");
     expect(h.querySelector(".msh__now")?.textContent).toContain("Mid shift");
     expect(h.querySelector(".msh__now")?.textContent).toContain("22 min free");
@@ -166,7 +166,7 @@ describe("the one header", () => {
   it("says what Tracking is for while nothing is taken", () => {
     const { h } = render();
     click(h.querySelector(".msh__track"));
-    expect(h.querySelector('[role="dialog"]')?.textContent).toContain("Take a job on the Floor and it rides along here");
+    expect(h.querySelector('[role="dialog"]')?.textContent).toContain("Take a job on the Board and it rides along here");
   });
 
   it("asks the team from Ask, and keeps your own things behind +", () => {

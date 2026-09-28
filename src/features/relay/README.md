@@ -6,7 +6,7 @@ context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
 the studio's staff), and the Network tab moved to Operations → Overview → All
 my studios (voice-review round, Sep 27 2026; its ranking of studios was
-dropped), so the board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
+dropped), so the board's tabs were **Floor · Mine · Notes**, and since the Relay room (Sep 28 2026; AJ, q1) they read **Board · Tracker · Journal** (the ids `floor`, `mine`, `notes` never change). Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
 
@@ -38,7 +38,7 @@ this.
 
 ## Tabs
 
-Relay's tabs are **Floor · Mine · Notes**, and every one is everyone's. In
+Relay's tabs are **Board · Tracker · Journal** (Floor · Mine · Notes until the Relay room, Sep 28 2026; the ids stay), and every one is everyone's. In
 the Planner they were Studio · My tasks · Notes · Team.
 
 | Tab | What | Where the data lives |

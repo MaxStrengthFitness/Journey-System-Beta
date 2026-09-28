@@ -3,7 +3,7 @@
 Round: Relay, Sep 16 2026 (`docs/rounds/2026-09-16-relay.md`). Pure logic in
 `.ts` with a `.test.ts` beside it; screens in `.tsx`. Everything reads the
 data My Studio, Relay and AppContent already load unless the file says
-otherwise. Relay's tabs are **Floor · Mine · Notes**.
+otherwise. Relay's tabs are **Board · Tracker · Journal** since the Relay room (Sep 28 2026; ids `floor`, `mine`, `notes`).
 
 | File | What |
 | --- | --- |

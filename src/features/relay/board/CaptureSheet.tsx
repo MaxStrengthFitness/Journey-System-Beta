@@ -152,7 +152,7 @@ export function CaptureSheet({
           author,
           isNew: true,
         });
-        toastSuccess("On the Floor — it's on the shift now.");
+        toastSuccess("It's on the shift now, for everyone.");
       } else if (state.destination === "someone" && state.someoneForm === "job" && relay.canLead) {
         const draft = toJobDraft(state, { clients: relay.clients });
         await postTeamJob({ studioId: relay.studioId, draft, author, machineName });
@@ -172,7 +172,7 @@ export function CaptureSheet({
           });
           toastSuccess(`Handed to ${input.forName.split(" ")[0]} — it's on their list.`);
         } else {
-          toastSuccess("On the Floor.");
+          toastSuccess("On the Board.");
         }
         void id;
       }

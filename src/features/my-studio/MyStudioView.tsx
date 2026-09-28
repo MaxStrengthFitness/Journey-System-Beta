@@ -41,8 +41,8 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  * control over its own studio", so the Relay tab becomes **My Studio**, with
  * Relay as a section inside it, and the studio's own world beside it:
  *
- *   Relay      the board for the trainer between clients: Floor · Mine ·
- *              Notes, and Capture (features/relay/PlannerView).
+ *   Relay      the board for the trainer between clients: Board · Tracker ·
+ *              Journal, and Capture (features/relay/PlannerView).
  *              Its Network tab moved to Operations → Overview → All my
  *              studios on Sep 27 2026, and its ranking of studios was dropped
  *   Openings   when the studio is usually busy, what opened up, and what to
