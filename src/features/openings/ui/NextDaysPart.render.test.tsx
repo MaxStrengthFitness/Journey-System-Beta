@@ -30,6 +30,9 @@ const fake = vi.hoisted(() => ({
   clientFromCache: false,
   comingRows: [] as unknown[],
   queries: [] as { kind: "client" | "coming"; wheres: { f: string; op: string; v: unknown }[] }[],
+  /** The studio's marks, and how their one listener answers. */
+  marks: [] as { id: string; data: Record<string, unknown> }[],
+  marksAnswer: "server" as "server" | "fails" | "never" | "cache",
 }));
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "uid-pat" } }, functions: {} }));
@@ -49,8 +52,13 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     orderBy: () => ({ order: true }),
     query: (c: { path: string }, ...cs: unknown[]) => ({ path: c.path, wheres: cs.filter((x): x is W => !!x && typeof x === "object" && "f" in x) }),
     getDoc: () => Promise.resolve({ exists: () => true, data: () => fake.summary, metadata: { fromCache: false } }),
-    onSnapshot: (_r: unknown, _o: unknown, next: (s: unknown) => void) => {
-      const t = setTimeout(() => next({ docs: [], metadata: { fromCache: false } }), 0);
+    // The one listener Openings makes here: the marks.
+    onSnapshot: (_r: unknown, _o: unknown, next: (s: unknown) => void, fail: (e: unknown) => void) => {
+      if (fake.marksAnswer === "never") return () => {};
+      const t = setTimeout(() => {
+        if (fake.marksAnswer === "fails") return fail(Object.assign(new Error("denied"), { code: "permission-denied" }));
+        next({ docs: fake.marks.map((m) => ({ id: m.id, data: () => m.data })), metadata: { fromCache: fake.marksAnswer === "cache" } });
+      }, 0);
       return () => clearTimeout(t);
     },
     getDocs: (q: { wheres: W[] }) => {
@@ -70,7 +78,9 @@ vi.mock("../../admin/changes/useWeekSchedule", () => ({
 vi.mock("../../admin/sync-lease", () => ({ useSyncLease: () => fake.lease }));
 
 import { forgetPersonalMemory } from "../../sign-out/memory";
-import { OFFER_FOOT } from "../present";
+import { SERVER_WAIT_MS } from "../../standing-week/server-read";
+import { NO_OFFERS, OFFER_FOOT } from "../present";
+import { MARKS_UNKNOWN_OFFERS, READING_USUAL_WEEK } from "./words";
 import { OpeningsSection } from "./OpeningsSection";
 import { rememberOpeningsPart } from "./part-memory";
 import { LEE, PAT, PAT_WEEK, SAM, SAM_TUESDAYS, Shell, WESTLAKE, foldFixture } from "./test-shell";
@@ -96,6 +106,8 @@ beforeEach(() => {
   fake.clientFromCache = false;
   fake.comingRows = [];
   fake.queries.length = 0;
+  fake.marks = [];
+  fake.marksAnswer = "server";
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -188,6 +200,30 @@ describe("next 7 days", () => {
     expect(lineTexts()[0]).toContain("Wed, Nov 11 · 9:00 AM");
     // No count beside any name.
     expect([...host.querySelectorAll(".op-chip")].map((c) => c.textContent)).toEqual(["With you", "Anyone", "With Pat"]);
+  });
+
+  it("when the chip alone empties the list, says so by the chip, never 'nothing has opened up' about the whole studio", async () => {
+    // Judy is booked into Sam's Tuesday: nothing opened up with Sam. Pat's Wednesday 9:00 did.
+    fake.schedule.entries = [samAt("2026-11-10", "10:00", { id: "judy-booked", clientId: "c-judy", clientName: "Judy Smith" }), patCancelled()];
+    await mount("next", { viewer: SAM });
+    expect(host.querySelector(".op-chip[aria-pressed='true']")?.textContent).toBe("With you");
+    expect(lineTexts()).toEqual([]);
+    expect(host.querySelector("[data-testid='next-narrowed']")?.textContent).toBe(
+      "Nothing has opened up with you in the next 7 days. Anyone shows the rest of the studio.",
+    );
+    expect(text()).not.toContain("Nothing has opened up in the next 7 days.");
+    await act(async () => button("Anyone").click());
+    expect(lineTexts()).toHaveLength(1);
+    expect(lineTexts()[0]).toContain("Wed, Nov 11 · 9:00 AM");
+    expect(host.querySelector("[data-testid='next-narrowed']")).toBeNull();
+    expect(host.querySelector("[data-testid='next-state']")).toBeNull();
+  });
+
+  it("says nothing has opened up only when nothing has, for the whole studio", async () => {
+    fake.schedule.entries = [samAt("2026-11-10", "10:00", { id: "judy-booked", clientId: "c-judy", clientName: "Judy Smith" })];
+    await mount("next", { viewer: SAM });
+    expect(host.querySelector("[data-testid='next-state']")?.textContent).toBe("Nothing has opened up in the next 7 days.");
+    expect(host.querySelector("[data-testid='next-narrowed']")).toBeNull();
   });
 
   it("with no week agreed, lists cancellations only, and says so", async () => {
@@ -288,12 +324,96 @@ describe("a new regular time", () => {
     expect(text()).toContain("Checking the coming weeks…");
   });
 
-  it("with the chips on a trainer with no room to offer, says there is none, and still ends 'check it in Mindbody'", async () => {
+  it("narrowed to a trainer, lists only times with them, and still ends 'check it in Mindbody'", async () => {
     await mount("offer", { viewer: SAM });
     await act(async () => button("With Pat").click());
-    // Pat is in on Monday mornings only, and every usually-room Monday time is offered with him too.
-    expect([...host.querySelectorAll(".op-offer")].every((o) => o.textContent?.includes("With Pat"))).toBe(true);
+    // Pat is in on Monday mornings only: Monday 7:00, 7:30 and 8:30 are his to offer.
+    const offers = [...host.querySelectorAll(".op-offer")];
+    expect(offers).toHaveLength(3);
+    expect(offers.every((o) => o.textContent?.includes("With Pat"))).toBe(true);
     expect(host.querySelector("[data-testid='offer-foot']")?.textContent).toBe(OFFER_FOOT);
+  });
+
+  it("with the chips on a trainer with nothing to offer while others have, says so by the chip", async () => {
+    // Pat is booked at each of his three times on the first coming Monday.
+    fake.comingRows = [patAt("2026-11-16", "07:00", { id: "p1" }), patAt("2026-11-16", "07:30", { id: "p2" }), patAt("2026-11-16", "08:30", { id: "p3" })];
+    await mount("offer", { viewer: SAM });
+    await act(async () => button("With Pat").click());
+    expect(host.querySelectorAll(".op-offer")).toHaveLength(0);
+    expect(host.querySelector("[data-testid='no-offers']")?.textContent).toBe(
+      "Pat has no usual times with room to offer right now. Anyone shows the rest of the studio.",
+    );
+    expect(host.querySelector("[data-testid='offer-foot']")?.textContent).toBe(OFFER_FOOT);
+    await act(async () => button("Anyone").click());
+    expect(host.querySelectorAll(".op-offer").length).toBeGreaterThan(0);
+  });
+
+  it("with no time the studio can offer, says the front desk can see every opening", async () => {
+    // Nobody's week is agreed, so nobody is usually in to take a time for good.
+    fake.weeks = {
+      docs: [
+        { ...samWeek(), final: null, proposed: samWeek().final },
+        { ...PAT_WEEK, final: null, proposed: PAT_WEEK.final },
+      ],
+      loading: false,
+      error: null,
+    };
+    await mount("offer");
+    expect(host.querySelectorAll(".op-offer")).toHaveLength(0);
+    expect(host.querySelector("[data-testid='no-offers']")?.textContent).toBe(NO_OFFERS);
+    expect(host.querySelector("[data-testid='offer-foot']")?.textContent).toBe(OFFER_FOOT);
+  });
+
+  describe("never offers a time someone marked Always full, even when the marks can't be read", () => {
+    // Tuesday 10:30 reads Usually has room; Jo marked it Always full.
+    const JO_MARKED_FULL = { id: "2-1030", data: { weekday: 2, time: "10:30", mark: "full", by: { id: "u1", name: "Jo" } } };
+    const offered = () => [...host.querySelectorAll(".op-offer")].map((o) => o.textContent ?? "");
+    beforeEach(() => {
+      fake.marks = [JO_MARKED_FULL];
+    });
+
+    it("answered by the server: the marked time is left out, the rest are offered", async () => {
+      await mount("offer");
+      expect(offered().some((o) => o.startsWith("Tuesday 10:30 AM"))).toBe(false);
+      expect(offered().some((o) => o.startsWith("Tuesday 11:00 AM"))).toBe(true);
+      expect(host.querySelector("[data-testid='marks-unknown']")).toBeNull();
+    });
+
+    it("refused: offers nothing, and says it can't tell", async () => {
+      fake.marksAnswer = "fails";
+      await mount("offer");
+      expect(offered()).toEqual([]);
+      expect(host.querySelector("[data-testid='marks-unknown']")?.textContent).toBe(MARKS_UNKNOWN_OFFERS);
+      expect(host.querySelector("[data-testid='offer-foot']")?.textContent).toBe(OFFER_FOOT);
+    });
+
+    it("never answered: offers nothing, and says it is reading", async () => {
+      fake.marksAnswer = "never";
+      await mount("offer");
+      expect(offered()).toEqual([]);
+      expect(text()).toContain(READING_USUAL_WEEK);
+    });
+
+    it("answered by this iPad's cache alone, once the wait is over: offers nothing, and says it can't tell", async () => {
+      fake.marksAnswer = "cache";
+      await mount("offer");
+      expect(offered()).toEqual([]);
+      expect(text()).toContain(READING_USUAL_WEEK);
+      await act(async () => {
+        vi.advanceTimersByTime(SERVER_WAIT_MS + 1);
+      });
+      expect(offered()).toEqual([]);
+      expect(host.querySelector("[data-testid='marks-unknown']")?.textContent).toBe(MARKS_UNKNOWN_OFFERS);
+    });
+
+    it("answered by the cache with the iPad offline: offers nothing, and says it can't tell", async () => {
+      const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+      fake.marksAnswer = "cache";
+      await mount("offer");
+      expect(offered()).toEqual([]);
+      expect(host.querySelector("[data-testid='marks-unknown']")?.textContent).toBe(MARKS_UNKNOWN_OFFERS);
+      online.mockRestore();
+    });
   });
 
   it("isn't linked to Mindbody: says so", async () => {

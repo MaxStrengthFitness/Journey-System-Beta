@@ -2,9 +2,14 @@
 
 My Studio → **Openings**: when the studio is usually busy, what opened up, and
 what to offer a client. The round is `docs/rounds/2026-09-27-openings.md`;
-the rules and every sentence are the pure core one folder up
-(`../README.md`). Nothing here works a rule out or words a sentence of its
-own: the screens read, call the core, and draw.
+the rules and every sentence about the studio's times are the pure core one
+folder up (`../README.md`). Nothing here works a rule out: the screens read,
+call the core, and draw. The few words the screens say that the core has no
+sentence for yet (the loading lines, the gate's line, what a screen says
+when the marks couldn't be read, the two sentences for a chip that narrows a
+list to nothing, and Who's usually in's copies of `ColleagueStandingWeek`'s
+words) are in ONE place, `words.ts`, handed to the core to fold into
+`present.ts`; no part types a sentence of its own.
 
 It books nothing, holds nothing, asks Mindbody nothing and pings nobody.
 
@@ -44,12 +49,13 @@ client at the iPad.
 | `TimeSheet.tsx` | A time's sheet: `usualTime` and present.ts's lines; marks shown, never set |
 | `useNextSevenDays.ts` | **The live reads** (below): the next 7 days, "booked again from", the month, the coming weeks |
 | `NextDaysPart.tsx` | Next 7 days: `nextDays`' lines, a tap for who, "booked again from" |
-| `NewRegularPart.tsx` | A new regular time: `offers`, "Safe to show a client", every offer ending `OFFER_FOOT` |
+| `NewRegularPart.tsx` | A new regular time: `offers`, "Safe to show a client", every offer ending `OFFER_FOOT`; nothing offered until the marks are read |
 | `WhoseChips.tsx` | "With you · Anyone · With Sam": whose times, remembered on the iPad |
 | `WhosInPart.tsx` | Who's usually in: everyone who works here, in name order, each with their agreed week read only |
 | `part-memory.ts` | Which part this iPad was on, and whose times; how a door from elsewhere opens a part |
 | `openings.css` (one folder up) | The section's own look, on My Studio's `--st-*` tokens |
-| `index.ts` | The one door for another feature: the section, the data hook and the live reads, and `showOpenings` |
+| `words.ts` | The screens' own few words, in one place until the core takes them (above) |
+| `index.ts` | The one door for another feature: the data hook, the live reads and `showOpenings`. Reads only: not the section, which `MyStudioView` imports from its module, so the Wrap-up (in the session's chunk) never pulls in the section, Relay's Context Panel or their stylesheets |
 | `test-shell.tsx` | Test helpers only: the Relay shell's doors, and a summary folded from the core's fixtures |
 
 ## The data hook — `useOpeningsData`
@@ -62,9 +68,13 @@ It reads three things and nothing else (no bookings, no Mindbody):
 
 | Read | How | What the screen may say |
 | --- | --- | --- |
-| The summary, `studios/{s}/watch/openings` | ONE `getDoc` by id, held per studio for a day and shared by every caller (`loadSummary`), forgotten at sign-out | `data.summary.state`: `loading`, `none` (the server says it was never built), `unreadable` (the read failed, the document isn't version 1, or the iPad is offline with no copy), `ok` (with `fromCache` when the copy is this iPad's; it carries its own date). Never confuse the three: `summaryStateSentence` has one sentence for each |
+| The summary, `studios/{s}/watch/openings` | ONE `getDoc` by id, held per studio for a day and shared by every caller (`loadSummary`), forgotten at sign-out. Only a summary the server returned is held: "never built", a failure and a cache's copy are asked again at the next open. With the screen left open it is read again when the held copy turns a day old (on the minute clock), and when an answer that wasn't the server's meets the iPad coming back online; the answer on screen stays until the new one comes | `data.summary.state`: `loading`, `none` (the server says it was never built), `unreadable` (the read failed, the document isn't version 1, or the iPad is offline with no copy), `ok` (with `fromCache` when the copy is this iPad's; it carries its own date). Never confuse the three: `summaryStateSentence` has one sentence for each |
 | The standing weeks | `useStandingWeeks` (Team's read: only the server's answer is one) | `data.weeks.loading` / `data.weeks.error` are "can't tell yet", never "none agreed" |
-| The marks, `studios/{s}/openingsMarks` | one live listener on the small collection, read only | `data.marks.read`: only `ready` is an answer; before it (or refused, or offline) no mark is known |
+| The marks, `studios/{s}/openingsMarks` | one live listener on the small collection, read only | `data.marks.read`: only `ready` is an answer; before it (or refused, or offline) no mark is known, so A new regular time offers nothing (a time marked Always full is never offered, and an unread mark can't be left out) |
+
+A studio whose Mindbody isn't linked (`connected` false) reads neither the
+summary nor the marks: there is no usual week to draw, and every part says so
+before anything else.
 
 And it gives, worked out once: `usual` (`usualWeek`, when the summary is
 readable), `team` (everyone who works here, with their standing week, by name:
@@ -83,10 +93,14 @@ import { useOpeningsData, useNextSevenDays, useComingWeeks } from "../features/o
 const data = useOpeningsData({ studio: activeStudio, trainers, authTrainer });
 ```
 
-It is an ordinary import (the section is not lazily loaded), so the
-new-version rules (`lazy-screens.test.ts`) are untouched.
+It is an ordinary import, so the new-version rules (`lazy-screens.test.ts`)
+are untouched, and the door is safe for the session's chunk: `index.ts`
+exports reads only, never the section or a stylesheet.
 
-and then call the core with it, never a rule of its own.
+Then call the core with it, never a rule of its own. The offers wait for the
+marks, as A new regular time does: `offers` can only leave out a mark it is
+given, so with `data.marks.read` anything but `"ready"` the sheet offers
+nothing and says it can't tell ("Looking for times…" while it loads).
 
 ## The live reads — `useNextSevenDays`, `useComingWeeks`, `useMonthRead`
 
@@ -103,7 +117,9 @@ Made only by a part that shows them (and the Wrap-up's sheet, the same way):
 const week = useNextSevenDays(data, { bookedAgain: false }); // the Wrap-up needs no client read
 const times = timesWithRoom(week.input, forTrainer, week.next.lines);
 const coming = useComingWeeks(data, week.monthRead === true);
+if (data.marks.read !== "ready") /* say it's looking, or can't tell: offer nothing */;
 const most = offers({ ...,
+  marks: data.marks.byTime,
   thisWeek: { read: week.read, bookings: week.input.bookings },
   coming: week.monthRead === null ? null : coming,
   monthRead: week.monthRead !== false,
@@ -123,6 +139,13 @@ regular time. With nothing chosen, a trainer with an agreed week here starts
 on their own times ("With you"), everyone else on "Anyone". A door that
 arrives with a count of the studio's free slots (Team's line) sets "Anyone":
 `showOpenings("next", { kind: "anyone" })` before `openMyStudioSection("openings")`.
+
+The chips narrow the list, never the sentence about the studio. When a chip
+alone empties a list that Anyone still has lines in, the part says so by the
+chip ("Nothing has opened up with you in the next 7 days. Anyone shows the
+rest of the studio.", "Pat has no usual times with room to offer right
+now."); "Nothing has opened up in the next 7 days" and "No usual times with
+room right now" are said only when that is true of the whole studio.
 
 ## Who's usually in
 
@@ -156,16 +179,25 @@ names a regular only after "Show the regulars' names".
   Sunday job would write (the core's fixtures folded by `foldSummary`), a
   time's sheet, a mark shown read-only, and every way the summary can't be
   used (loading, never built, failed, a cache with no copy, an old one, a
-  document of another version, not linked); the one sentence before four
-  weeks; no week agreed; a trainer's view and a leader's.
+  document of another version, not linked, which reads neither the summary
+  nor the marks); the summary read again while the screen stays open (back
+  online after a cache with no copy, a held copy a day old, "never built"
+  not held); the one sentence before four weeks; no week agreed; a trainer's
+  view and a leader's.
 - `NextDaysPart.render.test.tsx`: Next 7 days and A new regular time, with
   every read the part makes faked at `firebase/firestore`: a client name only
-  after a tap, "booked again from" and its one read, the chips, cancellations
-  only with nothing agreed, not linked, and never an open slot off a read
-  still loading, failed, answered by the cache alone, or offline; the offers,
-  the coming weeks read or not, and the foot.
+  after a tap, "booked again from" and its one read, the chips (and a chip
+  that empties the list saying so by its name), cancellations only with
+  nothing agreed, not linked, and never an open slot off a read still
+  loading, failed, answered by the cache alone, or offline; the offers, the
+  coming weeks read or not, the foot, a trainer with nothing to offer, the
+  studio with nothing to offer, and never a time marked Always full, whether
+  the marks were answered, refused, never answered, or answered by the cache
+  alone.
 - `WhosInPart.render.test.tsx`: the people in name order, their agreed weeks
   read only, the days away, names after a tap, and a failed read.
 - `MyStudioOpenings.render.test.tsx`: the real `MyStudioView`: the sections'
   order, who sees Openings, every part mounting in the shell, a door from
-  another section, and sign-out forgetting the part.
+  another section (and "Keep editing" keeping the section and its memory),
+  and sign-out forgetting the part.
+- `words.test.ts`: the screens' own words, quoted.

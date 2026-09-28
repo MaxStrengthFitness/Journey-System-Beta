@@ -109,6 +109,16 @@ describe("My Studio's Machines and Studio sections, and the Context Panel", () =
     });
   }
 
+  it("MyStudioView imports the stylesheet that holds its masthead's portrait rule itself", () => {
+    // `.ms > .pl__mast` is in openings.css (Openings made the masthead five
+    // sections long). It must not reach My Studio only because the section
+    // happens to share its chunk: a lazily loaded section would take it away.
+    expect(DEFINED["openings.css"].has("ms")).toBe(true);
+    const text = read("features/my-studio/MyStudioView.tsx");
+    expect(classWords(text).has("ms")).toBe(true);
+    expect(imports(text, "openings.css")).toBe(true);
+  });
+
   it("draws Openings with Relay's second level and frame, and its own stylesheet", () => {
     expect(DEFINED["openings.css"].has("op-cell")).toBe(true);
     const words = classWords(read("features/openings/ui/OpeningsSection.tsx"));

@@ -8,6 +8,7 @@ import { isStale } from "../summary-doc";
 import { firstWordsOn, type UsualTime, type UsualWord } from "../usual";
 import { useOpenings } from "./context";
 import { TimeSheet } from "./TimeSheet";
+import { READING_USUAL_WEEK } from "./words";
 import "../openings.css";
 
 /**
@@ -52,7 +53,7 @@ export function UsualWeekPart() {
   const [openKey, setOpenKey] = useState<TimeKey | null>(null);
 
   if (!data.connected) return <p className="op__lead">{summaryStateSentence("unlinked", data.studioName)}</p>;
-  if (data.summary.state === "loading") return <p className="op__lead">Reading the usual week…</p>;
+  if (data.summary.state === "loading") return <p className="op__lead">{READING_USUAL_WEEK}</p>;
   if (data.summary.state === "none") return <p className="op__lead">{summaryStateSentence("never", data.studioName)}</p>;
   if (data.summary.state === "unreadable" || !data.usual) return <p className="op__lead">{summaryStateSentence("unreadable", data.studioName)}</p>;
 

@@ -60,6 +60,18 @@ vi.mock("firebase/firestore", () => {
   };
 });
 
+// Team stands in for any section holding typing: dirty when a test says so.
+const team = vi.hoisted(() => ({ dirty: false }));
+vi.mock("../../my-studio/TeamSection", async () => {
+  const { useUnsavedChanges } = await import("../../unsaved-changes");
+  return {
+    TeamSection: function TeamSection() {
+      useUnsavedChanges(team.dirty, "A standing week");
+      return <p>Team</p>;
+    },
+  };
+});
+
 import { ToastProvider } from "../../../contexts/ToastContext";
 import { MyStudioView } from "../../my-studio/MyStudioView";
 import { openMyStudioSection, rememberedMyStudioSection } from "../../my-studio/section-memory";
@@ -76,6 +88,7 @@ let host: HTMLElement | null = null;
 
 beforeEach(() => {
   forgetPersonalMemory();
+  team.dirty = false;
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -159,5 +172,24 @@ describe("Openings in My Studio", () => {
     forgetPersonalMemory();
     expect(rememberedMyStudioSection()).toBe("relay");
     expect(rememberedOpeningsPart()).toBe("usual");
+  });
+
+  it("a door asks about typing first, and 'Keep editing' keeps the section and the memory where they were", async () => {
+    team.dirty = true;
+    await mount(lead);
+    await click(tab("Team"));
+    expect(rememberedMyStudioSection()).toBe("team");
+    await act(async () => openMyStudioSection("openings"));
+    await settle();
+    const keep = document.querySelector('[data-action="keep-editing"]');
+    await click(keep);
+    expect(tab("Team")?.getAttribute("aria-selected")).toBe("true");
+    // The next plain open of My Studio lands where they stayed, not where they chose not to go.
+    expect(rememberedMyStudioSection()).toBe("team");
+  });
+
+  it("with no My Studio on screen, a door only remembers the section", () => {
+    openMyStudioSection("openings");
+    expect(rememberedMyStudioSection()).toBe("openings");
   });
 });

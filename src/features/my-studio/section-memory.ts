@@ -9,10 +9,12 @@
  *
  * A screen INSIDE My Studio (Team's line about the free slots, the Openings
  * round, Sep 27 2026) can't switch the app's view to where it already is, so
- * it asks the shell instead: `openMyStudioSection(next)` remembers the
- * section and tells the mounted My Studio, which moves there through its
- * own leave scope (anything typed in the section being left is asked about
- * first, exactly as a tap on the masthead's tab is).
+ * it asks the shell instead: `openMyStudioSection(next)` tells the mounted
+ * My Studio, which moves there through its own leave scope (anything typed
+ * in the section being left is asked about first, exactly as a tap on the
+ * masthead's tab is) and records the section only once the move happens. A
+ * "Keep editing" leaves both the screen and the memory where they were.
+ * With no My Studio mounted, it only remembers.
  */
 
 import { forgetOnSignOut } from "../sign-out/memory";
@@ -40,11 +42,17 @@ export function rememberMyStudioSection(next: MyStudioSection): void {
 
 /**
  * Send someone to a section of the My Studio that is on screen (a door on
- * one section to another). With no My Studio mounted it only remembers, so
- * the next open lands there.
+ * one section to another). The shell remembers the section once it has
+ * moved there, after the leave question if there is one; remembering it
+ * here first would make a "Keep editing" land the next plain open on the
+ * section they chose not to go to (the section's review, Sep 27 2026). With
+ * no My Studio mounted it only remembers, so the next open lands there.
  */
 export function openMyStudioSection(next: MyStudioSection): void {
-  rememberedSection = next;
+  if (requests.size === 0) {
+    rememberedSection = next;
+    return;
+  }
   for (const request of [...requests]) request(next);
 }
 

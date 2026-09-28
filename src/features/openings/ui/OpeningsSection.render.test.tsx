@@ -25,6 +25,8 @@ const fake = vi.hoisted(() => ({
   summary: "missing" as unknown,
   /** Every document read, by path. */
   reads: [] as string[],
+  /** Every listener made, by path. */
+  listens: [] as string[],
   weeks: { docs: [] as unknown[], loading: false, error: null as string | null },
   marks: [] as { id: string; data: Record<string, unknown> }[],
   marksFail: false,
@@ -48,6 +50,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
       return Promise.resolve({ exists: () => true, data: () => a.data, metadata: { fromCache: a.fromCache === true } });
     },
     onSnapshot: (r: { path: string }, _opts: unknown, next: (s: unknown) => void, fail: (e: unknown) => void) => {
+      fake.listens.push(r.path);
       const t = setTimeout(() => {
         if (fake.marksFail) return fail(Object.assign(new Error("denied"), { code: "permission-denied" }));
         next({ docs: fake.marks.map((m) => ({ id: m.id, data: () => m.data })), metadata: { fromCache: false } });
@@ -72,6 +75,7 @@ beforeEach(() => {
   forgetPersonalMemory();
   fake.summary = { data: foldFixture() };
   fake.reads.length = 0;
+  fake.listens.length = 0;
   fake.weeks = { docs: [SAM_TUESDAYS, PAT_WEEK], loading: false, error: null };
   fake.marks = [];
   fake.marksFail = false;
@@ -201,10 +205,55 @@ describe("when the summary can't be used", () => {
     expect(text()).toContain("Can't read the usual week just now.");
   });
 
-  it("not linked to Mindbody: says so, and reads nothing", async () => {
+  it("not linked to Mindbody: says so, and reads neither the summary nor the marks", async () => {
     await mount({ studio: { ...WESTLAKE, mindbodySiteId: "" } as unknown as Studio });
     expect(text()).toContain("Westlake's bookings aren't linked to Journey, so Openings can't read them.");
     expect(host.querySelector(".op-grid")).toBeNull();
+    expect(fake.reads).toEqual([]);
+    expect(fake.listens).toEqual([]);
+  });
+});
+
+describe("the summary is read again while Openings stays open", () => {
+  it("when the iPad comes back online after a cache with no copy", async () => {
+    fake.summary = "cache-missing";
+    await mount();
+    expect(text()).toContain("Can't read the usual week just now.");
+    fake.summary = { data: foldFixture() };
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await settle();
+    expect(cell("1-0800")?.textContent).toBe("Always full");
+    expect(new Set(fake.reads)).toEqual(new Set(["studios/westlake/watch/openings"]));
+  });
+
+  it("when the copy held turns a day old, keeping the old one on screen until the new one comes", async () => {
+    await mount();
+    const first = fake.reads.length;
+    expect(cell("1-0800")?.textContent).toBe("Always full");
+    // Sunday's build lands; the iPad was left on Openings.
+    vi.setSystemTime(new Date("2026-11-10T12:30:00-05:00"));
+    fake.summary = "never";
+    await act(async () => {
+      vi.advanceTimersByTime(60_000);
+    });
+    await settle();
+    expect(fake.reads.length).toBe(first + 1);
+    // The new read is still out: the grid it had stays.
+    expect(cell("1-0800")?.textContent).toBe("Always full");
+  });
+
+  it("'never built' isn't held: the next open reads it again and finds the first build", async () => {
+    fake.summary = "missing";
+    await mount();
+    expect(text()).toContain("The first one comes this Sunday.");
+    act(() => root.unmount());
+    root = createRoot(host);
+    fake.summary = { data: foldFixture() };
+    await mount();
+    expect(cell("1-0800")?.textContent).toBe("Always full");
+    expect(text()).not.toContain("The first one comes this Sunday.");
   });
 });
 

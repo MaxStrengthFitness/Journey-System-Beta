@@ -243,7 +243,7 @@ const TAP_CLASSES = [
   "op-btn", // Who's usually in: show the regulars' names
 ] as const;
 
-const px =(v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
+const px = (v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
 
 describe("the Now Bar", () => {
   it("never hides the teammates line, which holds the only kudos button (it was hidden in portrait until Sep 27 2026)", () => {
@@ -426,7 +426,7 @@ describe("My Studio's type", () => {
 
   it("has one heading style for every card and section head (Sep 27 2026)", () => {
     // My Profile's card head (.tp-card__title): 12px, 800, 0.12em, upright capitals.
-    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head", "op__h"]) {
+    for (const cls of ["pl__h2", "pl__list-head", "rl-h__title", "stm__title", "ms__door-h", "stw-team__head", "stw-away__head"]) {
       const [head] = rulesFor(cls).filter((r) => r.selectors.includes(`.${cls}`));
       expect(head, cls).toBeDefined();
       expect(declared(head.body, "font-size"), cls).toEqual(["12px"]);

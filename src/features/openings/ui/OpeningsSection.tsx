@@ -12,6 +12,7 @@ import { UsualWeekPart } from "./UsualWeekPart";
 import { NextDaysPart } from "./NextDaysPart";
 import { NewRegularPart } from "./NewRegularPart";
 import { WhosInPart } from "./WhosInPart";
+import { notForYouSentence } from "./words";
 import "../../relay/planner.css";
 import "../../relay/board/relay.css";
 import "../openings.css";
@@ -63,7 +64,7 @@ export function OpeningsSection({ studio, authTrainer, trainers }: OpeningsSecti
     return (
       <div className="op" role="tabpanel" id="ms-panel" aria-labelledby="ms-tab-openings">
         <div className="op__page">
-          <p className="op__lead">Openings is for the people who work at {studio.name}.</p>
+          <p className="op__lead">{notForYouSentence(studio.name)}</p>
         </div>
       </div>
     );

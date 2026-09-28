@@ -4,6 +4,7 @@ import { timeLabel } from "../../standing-week/check";
 import { NO_BLOCKS, awayLabel, blocksLabel, daysOf, teamWeekSentence } from "../../standing-week/present";
 import { upcomingAway } from "../../standing-week/week";
 import { useOpenings } from "./context";
+import { EMPTY_WEEK, HIDE_REGULARS, NO_AGREED_WEEK, READING_WEEKS, SHOW_REGULARS, nobodyHereSentence } from "./words";
 import type { OpeningsData } from "./useOpeningsData";
 import "../../standing-week/standing-week.css";
 import "../openings.css";
@@ -32,8 +33,8 @@ import "../openings.css";
 export function WhosInPart() {
   const data = useOpenings();
   if (data.weeks.error) return <p className="op__lead">{data.weeks.error}</p>;
-  if (data.weeks.loading) return <p className="op__lead">Reading the standing weeks…</p>;
-  if (data.team.length === 0) return <p className="op__lead">Nobody works at {data.studioName} yet.</p>;
+  if (data.weeks.loading) return <p className="op__lead">{READING_WEEKS}</p>;
+  if (data.team.length === 0) return <p className="op__lead">{nobodyHereSentence(data.studioName)}</p>;
   return (
     <ul className="op-people" aria-label={`Who works at ${data.studioName}`}>
       {data.team.map((row) => (
@@ -66,7 +67,7 @@ function PersonWeek({ row, data }: { row: TeamWeekRow; data: OpeningsData }) {
             {/* The agreed week, never the proposal waiting on a leader. */}
             <p className="stw-status">{teamWeekSentence(doc ? { ...doc, proposed: doc.final } : null, row.name, data.tz)}</p>
             {days.length === 0 ? (
-              <p className="stw-hint">An empty week.</p>
+              <p className="stw-hint">{EMPTY_WEEK}</p>
             ) : (
               <dl className="stw-read" aria-label={`${first}'s agreed week`}>
                 {days.map((d) => (
@@ -90,12 +91,12 @@ function PersonWeek({ row, data }: { row: TeamWeekRow; data: OpeningsData }) {
             )}
             {regulars && (
               <button type="button" className="op-btn" aria-expanded={names} onClick={() => setNames((n) => !n)}>
-                {names ? "Hide the regulars' names" : "Show the regulars' names"}
+                {names ? HIDE_REGULARS : SHOW_REGULARS}
               </button>
             )}
           </>
         ) : (
-          <p className="stw-status">No agreed week yet.</p>
+          <p className="stw-status">{NO_AGREED_WEEK}</p>
         )}
         {away.length > 0 && (
           <div className="stw-away">

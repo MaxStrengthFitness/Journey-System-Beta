@@ -28,8 +28,11 @@
    Team · Studio). Measured in headless Chrome when Openings joined: at
    744px (an iPad mini in portrait) the studio-and-date line was squeezed
    to 60px and wrapped onto four lines, making the bar 73px tall. So in
-   portrait it moves under the tabs, as the round planned. It lives here, in
-   the round's own stylesheet, because the fifth section is Openings. */
+   portrait it moves under the tabs, as the round planned. The masthead is
+   MyStudioView's, so MyStudioView imports this stylesheet itself rather
+   than rely on Openings' section arriving in the same chunk
+   (my-studio/css-imports.test.ts holds it); its better home is
+   my-studio.css, handed to that file's owner. */
 @media (max-width: 899px) {
   .ms > .pl__mast {
     flex-wrap: wrap;
@@ -69,16 +72,6 @@
   container-name: op-page;
 }
 .op__page > * { flex: none; }
-
-/* A part's heading: the one heading style (planner.css, .pl__h2). */
-.op__h {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--st-ink-2);
-}
 
 /* A part's one sentence when it has nothing else to say (loading, never
    built, not enough weeks, not linked). */

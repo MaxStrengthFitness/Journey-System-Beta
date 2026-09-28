@@ -24,8 +24,11 @@ import { trainerRefs, type TrainerRef } from "../whose";
  *
  *   the summary        `studios/{s}/watch/openings`, ONE document read BY ID,
  *                      once per studio while the app is open and again when
- *                      the copy held is a day old (`loadSummary`). Three
- *                      different answers, never mixed up:
+ *                      the copy held is a day old, even with the screen left
+ *                      open (`loadSummary`, `useOpeningsSummary`); an answer
+ *                      that wasn't the server's is asked again when the iPad
+ *                      comes back online. Three different answers, never
+ *                      mixed up:
  *                        loading     nothing back yet
  *                        none        the server says it was never built
  *                        unreadable  the read failed, the document isn't one
@@ -44,7 +47,9 @@ import { trainerRefs, type TrainerRef } from "../whose";
  *                      screens say so rather than showing none.
  *
  * It asks Mindbody nothing and reads no bookings: the next 7 days' read is
- * `useNextSevenDays`, made only by a part that shows them.
+ * `useNextSevenDays`, made only by a part that shows them. A studio whose
+ * Mindbody isn't linked reads neither the summary nor the marks: there is no
+ * usual week to draw, and every part says so first.
  *
  * WHO WORKS HERE is the standing weeks' own list (`teamWeeks`: everyone who
  * works at the studio by lib/who-works-here.ts, plus, at the Demo studio,
@@ -98,7 +103,10 @@ export function heldSummary(studioId: string, now = Date.now()): SummaryState | 
 /**
  * The studio's summary: the one held, or one read by id (a read already on
  * its way is shared, so Openings and the Wrap-up never read it twice). Only
- * the server's answer is held; a failure or a cache's copy is asked again.
+ * a summary the server returned is held; a failure, a cache's copy and
+ * "never built" are asked again at the next open. "Never built" is only true
+ * until the first Sunday, and holding it for a day kept saying "the first
+ * one comes this Sunday" after the job had written it.
  */
 export function loadSummary(studioId: string): Promise<SummaryState> {
   const h = heldSummary(studioId);
@@ -107,31 +115,55 @@ export function loadSummary(studioId: string): Promise<SummaryState> {
   if (pending) return pending;
   const read = fetchSummary(studioId).then((value) => {
     inFlight.delete(studioId);
-    if ((value.state === "ok" && !value.fromCache) || value.state === "none") held.set(studioId, { at: Date.now(), value });
+    if (value.state === "ok" && !value.fromCache) held.set(studioId, { at: Date.now(), value });
     return value;
   });
   inFlight.set(studioId, read);
   return read;
 }
 
-export function useOpeningsSummary(studioId: string | null | undefined): SummaryState {
+/**
+ * The summary for a studio, read by id (`loadSummary`), and read again while
+ * the screen stays open when:
+ *   - the copy held turns a day old (`now`, the screen's minute clock): an
+ *     iPad left on Openings over the weekend gets Sunday's build;
+ *   - the answer wasn't the server's (a failure, or this iPad's cache) and
+ *     the iPad comes back online.
+ * Still one getDoc by id each time; the answer on screen stays until the new
+ * one arrives.
+ */
+export function useOpeningsSummary(studioId: string | null | undefined, now?: Date): SummaryState {
   const key = studioId ?? null;
   const [state, setState] = useState<{ key: string | null; value: SummaryState }>(() => ({
     key,
     value: (key && heldSummary(key)) || LOADING,
   }));
+  const [retry, setRetry] = useState(0);
+  // Flips when the held copy turns a day old, which asks again.
+  const fresh = key ? heldSummary(key, now?.getTime() ?? Date.now()) !== null : false;
+
   useEffect(() => {
     if (!key) return;
     let live = true;
     void loadSummary(key).then((value) => {
-      if (live) setState({ key, value });
+      if (live) setState((s) => (s.key === key && s.value === value ? s : { key, value }));
     });
     return () => {
       live = false;
     };
-  }, [key]);
+  }, [key, fresh, retry]);
+
+  const current = state.key === key ? state.value : null;
+  const answered = current !== null && ((current.state === "ok" && !current.fromCache) || current.state === "none");
+  useEffect(() => {
+    if (!key || answered) return;
+    const again = () => setRetry((n) => n + 1);
+    window.addEventListener("online", again);
+    return () => window.removeEventListener("online", again);
+  }, [key, answered]);
+
   // An answer about another studio is this one still loading.
-  return state.key === key ? state.value : (key && heldSummary(key)) || LOADING;
+  return current ?? ((key && heldSummary(key)) || LOADING);
 }
 
 /* ------------------------------------------------------------------ */
@@ -245,9 +277,10 @@ export function useOpeningsData({ studio, trainers, authTrainer }: OpeningsInput
   const today = studioTodayKey(now, tz);
   const connected = bookingsKnown(studio ?? null);
 
-  const summary = useOpeningsSummary(studioId);
+  // Not linked: no usual week, so neither read is made (each part says so first).
+  const summary = useOpeningsSummary(connected ? studioId : null, now);
   const weeks = useStandingWeeks(studioId);
-  const marks = useOpeningsMarks(studioId);
+  const marks = useOpeningsMarks(connected ? studioId : null);
 
   const usual = useMemo(() => (summary.state === "ok" ? usualWeek(summary.summary) : null), [summary]);
 

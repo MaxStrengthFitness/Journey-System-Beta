@@ -24,6 +24,9 @@ import "../relay/kit.css";
 import "../relay/planner.css";
 import "../relay/board/relay.css";
 import "./my-studio.css";
+// The masthead's five-section rule for portrait (.ms > .pl__mast) is in
+// Openings' stylesheet: imported here, since the masthead is this view's.
+import "../openings/openings.css";
 import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSection, type MyStudioSection } from "./section-memory";
 
@@ -45,7 +48,7 @@ import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSe
  *   Openings   when the studio is usually busy, what opened up, and what to
  *              offer a client (features/openings/ui, the Openings round,
  *              Sep 27 2026): read only, it books nothing and pings nobody
- *   Machines  the floor and what the studio has done to it — everyone reads
+ *   Machines   the floor and what the studio has done to it — everyone reads
  *              it and leaves machine notes; leaders edit it (phase 3)
  *   Team       people and standards (AJ, Sep 27 2026): who is waiting to be
  *              let in, the standing weeks, each person's week by name, the

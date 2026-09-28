@@ -13,6 +13,7 @@ import { regularsAt } from "../room";
 import { parseTimeKey, type TimeKey } from "../rows";
 import { usualTime } from "../usual";
 import { useOpenings } from "./context";
+import { MARKS_UNKNOWN_TIME } from "./words";
 import "../openings.css";
 
 /**
@@ -86,7 +87,7 @@ export function TimeSheet({ timeKey }: { timeKey: TimeKey }) {
           ))}
         </ul>
       )}
-      {marksUnknown && <p className="op-sheet__line op-sheet__line--quiet">Can't tell just now whether anyone has marked this time.</p>}
+      {marksUnknown && <p className="op-sheet__line op-sheet__line--quiet">{MARKS_UNKNOWN_TIME}</p>}
     </div>
   );
 }

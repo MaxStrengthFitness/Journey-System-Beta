@@ -7,6 +7,7 @@ import { useOpenings } from "./context";
 import { lineKey, useNextSevenDays } from "./useNextSevenDays";
 import type { OpeningsData } from "./useOpeningsData";
 import { WhoseChips, useWhoseTimes } from "./WhoseChips";
+import { READING_WEEKS, nothingOpenedWithSentence } from "./words";
 import "../openings.css";
 
 /**
@@ -22,6 +23,12 @@ import "../openings.css";
  * whose Mindbody isn't linked says so and lists nothing; with no week agreed
  * it lists cancellations only, and says so.
  *
+ * The chips narrow the lines, never the sentence about the studio: when a
+ * chip alone empties the list ("With you" is where a trainer with an agreed
+ * week starts), it says "Nothing has opened up with you" and that Anyone
+ * shows the rest, never "Nothing has opened up in the next 7 days" while
+ * Anyone has lines (the section's review, Sep 27 2026).
+ *
  * A line names no client. A tap on it shows who, and what happened (the
  * client standing at the iPad never sees another client's name unasked),
  * then "Check it in Mindbody before you promise it." A line about one client
@@ -33,11 +40,14 @@ export function NextDaysPart() {
   const whose = useWhoseTimes(data);
 
   if (data.weeks.error) return <p className="op__lead">{data.weeks.error}</p>;
-  if (data.weeks.loading) return <p className="op__lead">Reading the standing weeks…</p>;
+  if (data.weeks.loading) return <p className="op__lead">{READING_WEEKS}</p>;
 
   const lines = linesFor(week.next.lines, whose.narrowed);
-  const state = nextDaysStateSentence({ ...week.next, lines }, data.studioName);
+  // The state is the whole studio's, so it is chosen from the unnarrowed list:
+  // "Nothing has opened up in the next 7 days" only when nothing has.
+  const state = nextDaysStateSentence(week.next, data.studioName);
   const ready = week.next.state === "ready";
+  const chipEmptied = ready && whose.narrowed !== null && lines.length === 0 && week.next.lines.length > 0;
 
   return (
     <>
@@ -45,6 +55,11 @@ export function NextDaysPart() {
       {state && (
         <p className="op__lead" data-testid="next-state">
           {state}
+        </p>
+      )}
+      {chipEmptied && whose.narrowed && (
+        <p className="op__lead" data-testid="next-narrowed">
+          {nothingOpenedWithSentence(whose.narrowed, data.names, data.viewer)}
         </p>
       )}
       {lines.length > 0 && (
