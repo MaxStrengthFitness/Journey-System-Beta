@@ -18,9 +18,11 @@
  *
  * WHICH STUDIOS. Every studio whose bookings are linked to Journey
  * (`bookingsKnown`, the standing week's own test: a Site ID and not marked
- * "offline"), and the Demo studio (`isDemoStudio`), whose days all count
- * because the seeder wrote every booking (`isDemo` on the fold). A studio
- * that isn't linked gets no document; its Openings says so.
+ * "offline"), and the Demo studio (`isDemoStudio`). Nothing pulls the Demo
+ * studio's bookings (the seeder wrote them), so it has no whole-read record:
+ * the fold decides which of its days count by Demo's own rule (`isDemo` on
+ * the fold), never this file. A studio that isn't linked gets no document;
+ * its Openings says so.
  *
  * WHAT IT READS, per studio (the README's recipe):
  *
@@ -52,6 +54,11 @@
  * unreadable (another version, a broken document) is not a failed read: the
  * fold then uses only the current agreed weeks, and the grid says less,
  * never more.
+ *
+ * A SUMMARY THE FOLD CAN'T BUILD SKIPS THE STUDIO TOO (a row the core can't
+ * handle), the same way: last week's is kept. It is logged as "the summary
+ * couldn't be built", never as a failed read, so nobody goes looking at
+ * Firestore when the cause is a row.
  *
  * WHAT IT WRITES. One `studios/{s}/watch/openings` per studio, built on its
  * own, passed through `summaryForWrite` and `withoutUndefined` (the Admin SDK
@@ -393,7 +400,7 @@ export interface ReportWeek {
   rows: number;
   cancelled: ReportCancellations;
   unavailable: number;
-  /** Rows carrying the webhook's event stamp (`mindbodyEventAt`); the rest only a pull has written. */
+  /** Rows carrying the webhook's event stamp (`mindbodyEventAt`); the rest carry none (a pull wrote them, or the Demo seeder). */
   webhook: number;
   days: ReportDay[];
 }
@@ -405,6 +412,13 @@ export interface OpeningsReport {
   bytes: number;
   refused: string | null;
   previousState: SummaryRead["state"];
+  /**
+   * Whether the fold asks the whole-read record which days count. False for
+   * the Demo studio: nothing pulls its bookings (the seeder wrote them), so it
+   * has no record and the fold counts its days by Demo's own rule. The report
+   * then says so rather than "0 days read in full".
+   */
+  recordUsed: boolean;
   /** Each month of the record the window touches: the days it holds, or null when it couldn't be read. */
   months: { month: string; days: number | null }[];
   /** Monday-to-Saturday days of the window: recorded as read in full, not, and can't tell. */
@@ -488,6 +502,7 @@ export function openingsReport(read: StudioRead, built: BuiltDocument): Openings
     bytes: built.bytes,
     refused: built.refused,
     previousState: read.previousState,
+    recordUsed: input.isDemo !== true,
     months: [...input.coverage.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([month, set]) => ({ month, days: set ? set.size : null })),
     daysInWindow: days.length,
     daysRecorded: days.filter((d) => d.recorded === true).length,
@@ -498,6 +513,9 @@ export function openingsReport(read: StudioRead, built: BuiltDocument): Openings
 }
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+
+/** An error's own words, for a log line. */
+export const messageOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 /**
  * Step 8. Reads, folds and writes each linked studio's document. Throws only
@@ -524,34 +542,48 @@ export async function runOpeningsStep(options: OpeningsStepOptions): Promise<Ope
   for (const studio of linked) {
     const result: OpeningsStudioResult = { studioId: studio.id, name: studio.name, outcome: "skipped" };
     results.push(result);
+    const skip = (reason: string) => {
+      result.reason = reason;
+      log(`  ${studio.name}: SKIPPED, ${reason}; last week's is kept.`);
+    };
+
+    // The reads and the fold fail for different reasons, and the log says which.
+    let read: StudioRead;
     try {
-      const read = await readStudio(db, studio, trainers, now);
-      result.bookingsRead = read.bookings.length;
-      if (read.previousState === "unreadable") {
-        log(`  ${studio.name}: last Sunday's summary couldn't be read, so older weeks use only the agreed weeks as they are now.`);
-      }
-      const built = buildDocument(read.input);
-      result.weeksCounted = built.weeksCounted;
-      result.bytes = built.bytes;
-      const about =
-        `${plural(read.bookings.length, "booking", "bookings")} read, ${built.weeksCounted} of ${read.window.mondays.length} weeks counted ` +
-        `(${read.window.first} to ${read.window.last}), ${kib(built.bytes)}`;
-      if (built.refused) {
-        result.reason = built.refused;
-        log(`  ${studio.name}: ${about} — SKIPPED: ${built.refused}; last week's is kept.`);
-        continue;
-      }
-      if (dryRun) {
-        result.outcome = "dry-run";
-        log(`  ${studio.name}: ${about} — would be written.`);
-        continue;
-      }
-      queued.push({ studio, result, doc: built.doc, bytes: built.bytes });
-      log(`  ${studio.name}: ${about}.`);
+      read = await readStudio(db, studio, trainers, now);
     } catch (err) {
-      result.reason = `a read failed: ${err instanceof Error ? err.message : String(err)}`;
-      log(`  ${studio.name}: SKIPPED, ${result.reason}; last week's is kept.`);
+      skip(`a read failed: ${messageOf(err)}`);
+      continue;
     }
+    result.bookingsRead = read.bookings.length;
+    if (read.previousState === "unreadable") {
+      log(`  ${studio.name}: last Sunday's summary couldn't be read, so older weeks use only the agreed weeks as they are now.`);
+    }
+    let built: BuiltDocument;
+    try {
+      built = buildDocument(read.input);
+    } catch (err) {
+      skip(`the summary couldn't be built: ${messageOf(err)}`);
+      continue;
+    }
+
+    result.weeksCounted = built.weeksCounted;
+    result.bytes = built.bytes;
+    const about =
+      `${plural(read.bookings.length, "booking", "bookings")} read, ${built.weeksCounted} of ${read.window.mondays.length} weeks counted ` +
+      `(${read.window.first} to ${read.window.last}), ${kib(built.bytes)}`;
+    if (built.refused) {
+      result.reason = built.refused;
+      log(`  ${studio.name}: ${about} — SKIPPED: ${built.refused}; last week's is kept.`);
+      continue;
+    }
+    if (dryRun) {
+      result.outcome = "dry-run";
+      log(`  ${studio.name}: ${about} — would be written.`);
+      continue;
+    }
+    queued.push({ studio, result, doc: built.doc, bytes: built.bytes });
+    log(`  ${studio.name}: ${about}.`);
   }
 
   // Their own batches: the job's main commit has already gone out.
@@ -565,7 +597,7 @@ export async function runOpeningsStep(options: OpeningsStepOptions): Promise<Ope
       await batch.commit();
       for (const q of these) q.result.outcome = "written";
     } catch (err) {
-      const why = err instanceof Error ? err.message : String(err);
+      const why = messageOf(err);
       for (const q of these) {
         q.result.outcome = "write-failed";
         q.result.reason = `the write failed: ${why}`;
@@ -584,7 +616,7 @@ export async function runOpeningsStep(options: OpeningsStepOptions): Promise<Ope
       bytes += q.bytes;
     } catch (err) {
       q.result.outcome = "write-failed";
-      q.result.reason = `the write was refused: ${err instanceof Error ? err.message : String(err)}`;
+      q.result.reason = `the write was refused: ${messageOf(err)}`;
       log(`  ${q.studio.name}: the write was refused; last week's is kept. ${q.result.reason}`);
     }
   }

@@ -13,11 +13,14 @@
  *
  *   - the window, and how many weeks count so far (four are needed before
  *     the usual week says anything);
- *   - the whole-read record: which days of the window Journey read in full;
+ *   - the whole-read record: which days of the window Journey read in full
+ *     (the Demo studio has none: nothing pulls its bookings, the seeder wrote
+ *     them, so the report says the record isn't used there);
  *   - per week: the rows on file, the cancellations (early, late, found after
  *     the start, and the old sweep's unstamped ones), the Mindbody
  *     "Unavailable" blocks (`isStaffBlock`: never bookings), and how many rows
- *     carry the webhook's stamp against rows only a pull wrote;
+ *     carry the webhook's stamp against rows that don't (a pull wrote them,
+ *     or the Demo seeder);
  *   - each day as the summary would have it, with its live bookings;
  *   - the summary's size against its ceiling.
  *
@@ -32,13 +35,16 @@ import { connectFirestore, flag } from "./lib/admin.ts";
 import {
   buildDocument,
   kib,
+  messageOf,
   openingsReport,
   readOpeningsStudios,
   readOpeningsTrainers,
   readStudio,
+  type BuiltDocument,
   type OpeningsReport,
   type ReportCancellations,
   type ReportDayStatus,
+  type StudioRead,
 } from "../server/openings-step.ts";
 import { SKIP_ABOVE_BYTES, WINDOW_WEEKS } from "../src/features/openings/fold.ts";
 import { MIN_WEEKS } from "../src/features/openings/usual.ts";
@@ -76,12 +82,17 @@ function print(name: string, id: string, tz: string, r: OpeningsReport) {
     `  Weeks counted: ${r.weeksCounted} of ${WINDOW_WEEKS}` +
       (r.weeksCounted >= MIN_WEEKS ? "." : ` (the usual week needs ${MIN_WEEKS} before it says anything).`),
   );
-  const months = r.months.map((m) => `${m.month}: ${m.days === null ? "can't read" : `${n(m.days)} days`}`).join(", ");
-  console.log(
-    `  Whole-read record: ${n(r.daysRecorded)} of the window's ${n(r.daysInWindow)} days read in full` +
-      (r.daysCantTell ? `, ${n(r.daysCantTell)} can't tell (a month couldn't be read)` : "") +
-      ` (${months}).`,
-  );
+  if (r.recordUsed) {
+    const months = r.months.map((m) => `${m.month}: ${m.days === null ? "can't read" : `${n(m.days)} days`}`).join(", ");
+    console.log(
+      `  Whole-read record: ${n(r.daysRecorded)} of the window's ${n(r.daysInWindow)} days read in full` +
+        (r.daysCantTell ? `, ${n(r.daysCantTell)} can't tell (a month couldn't be read)` : "") +
+        ` (${months}).`,
+    );
+  } else {
+    console.log("  Whole-read record: not used here. Nothing pulls the Demo studio's bookings (the Demo seeder wrote them),");
+    console.log("  so which of its days count is Demo's own rule; each day's mark below is the summary's own.");
+  }
   console.log(
     `  Last Sunday's summary: ${r.previousState === "ok" ? "read" : r.previousState === "none" ? "none yet" : "couldn't be read (older weeks use only the agreed weeks as they are now)"}.`,
   );
@@ -90,7 +101,7 @@ function print(name: string, id: string, tz: string, r: OpeningsReport) {
   );
   console.log(
     `  Rows read: ${n(r.rows)}. Cancelled: ${cancelledText(r.cancelled)}. "Unavailable" blocks: ${n(r.unavailable)}. ` +
-      `Webhook-stamped: ${n(r.webhook)}, only a pull: ${n(r.rows - r.webhook)}.` +
+      `Webhook-stamped: ${n(r.webhook)}, not webhook-stamped: ${n(r.rows - r.webhook)}${r.recordUsed ? "" : " (written by the Demo seeder)"}.` +
       (r.sundayRows ? ` On Sundays (never folded): ${n(r.sundayRows)}.` : "") +
       (r.unreadable ? ` With no readable start: ${n(r.unreadable)}.` : ""),
   );
@@ -104,7 +115,9 @@ function print(name: string, id: string, tz: string, r: OpeningsReport) {
     );
   }
   console.log("  Each day: its live bookings, then ok = counted and judged, a = counted, not judged (a trainer booked that day");
-  console.log("  had no agreed week), p = counted, not judged (a booking Journey can't place), r = not read in full,");
+  console.log(
+    `  had no agreed week), p = counted, not judged (a booking Journey can't place), r = ${r.recordUsed ? "not read in full" : "not counted (Demo's own rule)"},`,
+  );
   console.log("  c = closed, or nearly.");
 }
 
@@ -119,14 +132,37 @@ async function main() {
     process.exit(0);
   }
   const trainers = await readOpeningsTrainers(db);
+  // The reads, the fold and this report each fail for their own reasons, and each says which.
   for (const s of linked) {
+    let read: StudioRead;
     try {
-      const read = await readStudio(db, s, trainers, now);
-      print(s.name, s.id, s.tz, openingsReport(read, buildDocument(read.input)));
+      read = await readStudio(db, s, trainers, now);
     } catch (err) {
       console.log("");
-      console.log(`${s.name} (${s.id}): a read failed, so the job would skip it and keep last week's. ${err instanceof Error ? err.message : String(err)}`);
+      console.log(`${s.name} (${s.id}): a read failed, so the job would skip it and keep last week's. ${messageOf(err)}`);
+      continue;
     }
+    let built: BuiltDocument;
+    try {
+      built = buildDocument(read.input);
+    } catch (err) {
+      console.log("");
+      console.log(`${s.name} (${s.id}): the summary couldn't be built, so the job would skip it and keep last week's. ${messageOf(err)}`);
+      continue;
+    }
+    let report: OpeningsReport;
+    try {
+      report = openingsReport(read, built);
+    } catch (err) {
+      console.log("");
+      console.log(
+        `${s.name} (${s.id}): this report couldn't be drawn, which is the report's own trouble, not the job's: ` +
+          (built.refused ? `the job would skip it (${built.refused}).` : `the job would still write its summary (${kib(built.bytes)}).`) +
+          ` ${messageOf(err)}`,
+      );
+      continue;
+    }
+    print(s.name, s.id, s.tz, report);
   }
   for (const s of unlinked) {
     console.log("");

@@ -315,7 +315,7 @@ describe("the weekly job — step 8, Openings", () => {
     expect(solon.state).toBe("ok");
     if (solon.state === "ok") expect(usualWeek(solon.summary).weeksCounted).toBe(0);
 
-    // The Demo studio: every day counts (the seeder wrote them), and the realm rule holds both ways.
+    // The Demo studio: its days count without the record (the seeder wrote them), and the realm rule holds both ways.
     const demo = readSummary(openingsOf(store, "demo-studio"));
     expect(demo.state).toBe("ok");
     if (demo.state === "ok") expect(usualWeek(demo.summary).weeksCounted).toBe(8);
@@ -387,6 +387,21 @@ describe("the weekly job — step 8, Openings", () => {
     expect(lines.some((l) => l.includes("Westlake: SKIPPED, a read failed"))).toBe(true);
     expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
     expect(store["studios/westlake/watch"].performance).toBeDefined();
+  });
+
+  it("says the summary couldn't be built, not that a read failed, when the fold throws on a row, and keeps that studio's last week's", async () => {
+    const data = withOpenings();
+    // A trainer name that isn't text: the reads come back, the fold can't handle the row.
+    data.schedules.odd = { studioId: "westlake", clientId: "wo", clientName: "Odd Client", trainerName: 42, startTime: eastern(WINDOW_MONDAYS[2], 11), status: "Scheduled" };
+    const lines: string[] = [];
+    const { db, store } = fakeDb(data);
+    const summary = await runMachineTrends({ db, now: NOW, log: (l) => lines.push(l) });
+    expect(openingsOf(store, "westlake")).toEqual(LAST_WEEK);
+    expect(readSummary(openingsOf(store, "solon")).state).toBe("ok");
+    expect(summary.openings).toEqual({ studios: 3, written: 2, skipped: 1 });
+    expect(lines.some((l) => l.includes("Westlake: SKIPPED, the summary couldn't be built") && l.includes("last week's is kept"))).toBe(true);
+    expect(lines.some((l) => l.includes("a read failed"))).toBe(false);
+    expect((store.machineTrends["m-leg-press"] as { sets: number }).sets).toBe(1);
   });
 
   it("keeps last week's documents, and the trends, when the step fails as a whole", async () => {
@@ -502,6 +517,22 @@ describe("the Openings report (scripts/openings-report.ts)", () => {
       { month: "2026-08", days: 31 },
       { month: "2026-09", days: 20 },
     ]);
+    expect(report.recordUsed).toBe(true);
+    expect(written).toEqual([]);
+  });
+
+  it("says the Demo studio doesn't use the whole-read record, rather than '0 days read in full'", async () => {
+    const { db, written } = fakeDb(withOpenings());
+    const { linked } = await readOpeningsStudios(db, ["demo-studio"]);
+    const read = await readStudio(db, linked[0], await readOpeningsTrainers(db), NOW);
+    const report = openingsReport(read, buildDocument(read.input));
+    // Nothing pulls Demo's bookings, so there is no record, and the fold doesn't ask it.
+    expect(report.recordUsed).toBe(false);
+    expect(report.daysRecorded).toBe(0);
+    // Every Monday holds a seeded booking and counts, the empty record notwithstanding.
+    expect(report.weeks.map((w) => w.days[0].status)).toEqual(Array.from({ length: 8 }, () => "not-agreed"));
+    // The seeder's rows carry no webhook stamp.
+    expect(report).toMatchObject({ rows: 8, webhook: 0 });
     expect(written).toEqual([]);
   });
 });
