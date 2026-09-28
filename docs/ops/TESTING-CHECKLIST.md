@@ -2184,6 +2184,57 @@ mounted in tests.
 
 ---
 
+## Round 30 — Operations, five destinations · *Sep 28 2026, branch `redesign/operations`*
+
+The redesign's Operations room. The round document is
+`docs/rounds/2026-09-28-operations.md`. Nothing to deploy first: no rules, no
+index, no Cloud Function. Sign in as a **studio leader**, then as a **head
+trainer**, **portrait and landscape, light and dark**. Seen so far only in
+mounted tests.
+
+- [ ] **Five destinations.** On its side: a sidebar with Looking at, Today,
+  Week (Last week, This week so far, Week ahead), Clients (Journey, Renewals,
+  Moments, Trends), Team (This week, Hours) and Setup, which folds. Upright:
+  the five across the top and each one's pages under them.
+- [ ] **Your place is kept.** Open Moments, scroll, leave Operations and come
+  back: Moments, at the same scroll. Sign out and in: Today.
+- [ ] **A client inside Operations.** Tap a name on Today: her page opens in
+  Operations with her state and case; Back returns to the same spot; Open
+  full profile, then come back: her page again.
+- [ ] **Today's bottom line** is one sentence; "How this line is written"
+  shows the rules; the facts under it add up with the Hub.
+- [ ] **Needs you** holds only rows you can clear here, and its count is the
+  badge on Today. Acknowledge one: it goes, and the count drops.
+- [ ] **A session nobody logged** is not a Needs-you row: "See who to ask"
+  under the bottom line lists it.
+- [ ] **Catch today** matches the Hub's Opportunities for today; **Slipping
+  away** names the same clients as Clients → Journey's Drifting and At risk.
+- [ ] **Start huddle** opens full screen, clear of the clock and the home
+  indicator, in both orientations; each item marks covered on a tap; End
+  huddle closes it. Nothing reaches anyone.
+- [ ] **Clients → Journey.** Tap a state: its list. The lenses recount. A
+  client with years in FileMaker and few Journey sessions is never Lapsed or
+  New off her Journey count ("too new to judge" instead).
+- [ ] **Setup → Rules** shows the lines the Journey uses (twice her usual gap,
+  at least 7 days; the studio's break line; 45 days).
+- [ ] **Week → Last week**: the bottom line, each day's logged and not
+  logged, who crossed a line, the renewals decided, the team in name order,
+  and the trust line.
+- [ ] **This week so far** and **Week ahead** say "couldn't be read" when
+  offline, never zero.
+- [ ] **Clients → Trends**: every line names its minimum; Insights' By trainer
+  is in name order with no red.
+- [ ] **Team → This week**: the cards run in today's schedule order, then Off
+  today in name order; last week's unlogged sessions by name; their slipping
+  clients.
+- [ ] **Recognise** turns to "On today's huddle"; Start huddle on Today shows
+  the line under Recognition.
+- [ ] **Leaders only**: renewal points and kept, by trainer in name order, a
+  rate only from 10; "How we check" in words. A head trainer sees it.
+- [ ] **Names whole**, every tap at least 40px, nothing hidden behind hover.
+
+---
+
 ## Findings log
 
 Copy a block per finding. This is what goes back into the roadmap.
@@ -2237,4 +2288,5 @@ Screenshot:
 | 27 — The Hub's cherry on top (Sep 28) | 12 | | |
 | 28 — The Admins dashboard, the Command Center (Sep 28) | 16 | | |
 | 29 — The Machine Catalog (Sep 28) | 18 | | |
-| **Total** | **501** | | |
+| 30 — Operations, five destinations (Sep 28) | 17 | | |
+| **Total** | **518** | | |
