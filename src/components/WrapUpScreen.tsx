@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { AppHeader } from "./AppHeader";
-import type { DialValue } from "../types";
+import type { DialValue, Studio } from "../types";
 import {
   Client,
   WorkoutSession,
@@ -22,7 +22,7 @@ import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../
 import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
 import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
-import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
   promptText,
@@ -34,13 +34,20 @@ import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
   doseSentence,
-  formatNextBooking,
   journeySentence,
+  nextBookingAnswer,
   nextBookingFor,
+  nextBookingSentence,
+  timesDoor,
   todayHeadline,
   type JourneyRead,
+  type NextBookingAnswer,
   type TodayLine,
 } from "../lib/post-session";
+import { useMonthRead, useOpeningsData } from "../features/openings/ui";
+import { TIMES_WITH_ROOM, TimesWithRoomSheet, hasTimesToOffer } from "../features/openings/ui/TimesWithRoomSheet";
+import { isCacheOnly, serverRead, type ServerRead } from "../features/standing-week/server-read";
+import { useServerWait } from "../features/standing-week/useServerWait";
 
 import { canQuoteLifetime, type HistoryCoverage } from "../lib/prior-history";
 import { canQuoteSessionNumber } from "../lib/client-coverage";
@@ -70,7 +77,11 @@ import { useTheme } from "./ThemeProvider";
  *      are up 21% since July across four machines — strongest on lower
  *      body". Says "not enough history yet" below the bar, never a number
  *      it cannot stand behind.
- *   3. NEXT — are they booked? Then how the session landed — the dose Dial
+ *   3. NEXT — are they booked? (Openings round, Sep 27 2026: the card listens
+ *      for her own bookings from the server, at any studio on the same
+ *      Mindbody, and never says a plain "Nothing booked yet"; see NEXT
+ *      below.) Then the door to Times with room, and how the session
+ *      landed — the dose Dial
  *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
  *      more · Barely worked, the trainer's own judgement, saved the moment it
  *      is tapped as `sessions.dose`; untouched is "not judged", never a
@@ -120,11 +131,105 @@ import { useTheme } from "./ThemeProvider";
  * title in the codex page-title voice (display, 800, italic capitals, 30px),
  * the card heads in small upright capitals like My Profile's, buttons bold
  * sentence case at 14px, and every size on the 11 / 12 / 14 / 17 / 30 scale.
+ *
+ * NEXT, AND TIMES WITH ROOM (Openings round, Sep 27 2026, phase 8). Until
+ * then the Next card judged "nothing booked" from the schedule the Hub held,
+ * about eight days of this studio, so a client booked ten days out, or at
+ * Strongsville, read as unbooked, and it said "Nothing booked yet" exactly
+ * when Journey had read least. Now:
+ *   - a booking in the schedule already on screen is shown at once;
+ *   - otherwise the card LISTENS to her own bookings from now on (the
+ *     profile header's query: clientId and startTime on the existing index,
+ *     up to 50 rows, cancelled ones dropped), and only the server's answer
+ *     is one (server-read.ts). A listener, not a read: if the desk books her
+ *     while she is still standing there, the webhook writes the booking
+ *     within seconds, the card turns green and the door steps back;
+ *   - it says where a booking elsewhere is ("at Strongsville");
+ *   - nothing on file says how far ahead Journey holds bookings (30 days
+ *     once the month was read in full today, 7 otherwise), and offline or
+ *     failed says it can't check. lib/post-session.ts has every sentence.
+ * The line keeps its space in every state, so nothing moves while the
+ * client reads it. The door to Times with room is quiet (a text button) on
+ * every Wrap-up with something to offer, prominent (the plum line and a
+ * button) only when the server confirmed nothing is booked, and absent
+ * before the studio has anything to offer (`hasTimesToOffer`). It opens a
+ * sheet ON TOP of this screen (features/openings/ui/TimesWithRoomSheet.tsx),
+ * times only, naming nobody; the Profile note and any unfinished note are
+ * never lost. Openings' reads (`useOpeningsData`: the weekly summary by id,
+ * the standing weeks, the marks) and her bookings run in the background;
+ * nothing on this screen waits for them (floor-loop rank 2). It books
+ * nothing: every offer ends "Check it in Mindbody before you promise it.
+ * Journey doesn't book."
  */
+
+/** Her bookings from now on, as the profile header reads them: the soonest 50. */
+const HER_BOOKINGS_LIMIT = 50;
+
+/**
+ * Her own bookings from now on, live (the profile header's query, as a
+ * listener), and whether the server has answered: a snapshot this iPad's
+ * cache answered alone is not an answer until the server confirms it. Once
+ * the server has answered, later snapshots are shown as they come (a booking
+ * arriving). Not listened to at all while `enabled` is false (a booking is
+ * already on screen).
+ */
+function useHerBookings(clientId: string, enabled: boolean): { rows: ScheduleEntry[]; read: ServerRead } {
+  const key = enabled && clientId ? clientId : "";
+  const [from] = useState(() => Timestamp.now());
+  const [held, setHeld] = useState<{ key: string; rows: ScheduleEntry[]; loading: boolean; failed: boolean; fromCache: boolean }>({
+    key: "",
+    rows: [],
+    loading: true,
+    failed: false,
+    fromCache: false,
+  });
+
+  useEffect(() => {
+    if (!key) return;
+    // A listener started again (her on-screen booking came and went) starts
+    // from nothing: the last one's rows are not this one's answer.
+    setHeld({ key, rows: [], loading: true, failed: false, fromCache: false });
+    let answered = false;
+    return onSnapshot(
+      query(collection(db, "schedules"), where("clientId", "==", key), where("startTime", ">=", from), orderBy("startTime", "asc"), limit(HER_BOOKINGS_LIMIT)),
+      { includeMetadataChanges: true },
+      (snap) => {
+        if (!isCacheOnly(snap)) answered = true;
+        setHeld({
+          key,
+          rows: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ScheduleEntry),
+          loading: false,
+          failed: false,
+          fromCache: !answered,
+        });
+      },
+      (err) => {
+        console.warn("[wrap-up] her next booking couldn't be read:", err);
+        setHeld({ key, rows: [], loading: false, failed: true, fromCache: false });
+      },
+    );
+  }, [key, from]);
+
+  // An answer about another client (or none yet) is this one still loading.
+  const current = held.key === key ? held : { rows: [] as ScheduleEntry[], loading: true, failed: false, fromCache: false };
+  const wait = useServerWait(Boolean(key) && (current.loading || current.fromCache));
+  const read = serverRead({ loading: current.loading, failed: current.failed, fromCache: current.fromCache, ...wait });
+  return { rows: current.rows, read };
+}
 
 export interface WrapUpScreenProps {
   /** The studio the session is at, for the header (the active studio's name). */
   studioName?: string;
+  /**
+   * The studio the iPad is in (the active studio: the Demo Mode realm rule).
+   * Openings' reads for Times with room, and where "at Strongsville" is
+   * measured from. Without it there is no door.
+   */
+  studio?: Studio | null;
+  /** Every studio Journey knows, to name the studio of a booking elsewhere. */
+  studios?: Studio[];
+  /** The trainers the app holds: who works here, for Times with room. */
+  trainers?: Trainer[];
   /**
    * How much of this client's story Journey holds (lib/client-coverage.ts).
    *
@@ -269,6 +374,9 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
 
 export function WrapUpScreen({
   studioName,
+  studio = null,
+  studios = [],
+  trainers = [],
   client,
   session,
   logs,
@@ -454,7 +562,31 @@ export function WrapUpScreen({
   const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
   /* --- next ------------------------------------------------------------- */
-  const next = useMemo(() => nextBookingFor(client.id, schedules), [client.id, schedules]);
+  // Openings' reads for the door (the summary by id, the standing weeks, the
+  // marks), in the background: nothing below waits for them.
+  const openings = useOpeningsData({ studio, trainers, authTrainer });
+  const monthRead = useMonthRead(openings);
+  // A booking in the schedule already on screen answers at once; only
+  // without one does the card listen for her own bookings.
+  const onScreen = useMemo(() => nextBookingFor(client.id, schedules), [client.id, schedules]);
+  const her = useHerBookings(client.id, !onScreen);
+  const nowMs = openings.now.getTime();
+  const next: NextBookingAnswer = useMemo(
+    () =>
+      nextBookingAnswer({
+        clientId: client.id,
+        loaded: schedules,
+        heard: her.rows,
+        read: her.read,
+        monthRead,
+        hereStudioId: studio?.id ?? null,
+        studioName: (id) => studios.find((s) => s.id === id)?.name ?? null,
+        now: nowMs,
+      }),
+    [client.id, schedules, her.rows, her.read, monthRead, studio?.id, studios, nowMs],
+  );
+  const door = timesDoor(next, hasTimesToOffer(openings));
+  const [timesOpen, setTimesOpen] = useState(false);
 
   /* --- lifetime (the client's own running counters; allLogs is the fallback) */
   const lifetime = useMemo(() => {
@@ -571,13 +703,61 @@ export function WrapUpScreen({
           {/* 3 · next */}
           <Card delay={0.18}>
             <Kicker>Next</Kicker>
-            {/* Booked is done (green); nothing booked is a caution (plum). */}
-            <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)" : "border-(--eq-warn)/40 bg-(--eq-warn-fill)"}`}>
-              {next ? <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" /> : <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" />}
-              <span className="text-[14px] font-semibold text-ink-d1">
-                {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
+            {/* Booked is done (green); nothing booked is a caution (plum);
+                checking and can't-check are neither. The line keeps room for
+                two lines in every state, so the answer arriving moves nothing
+                while the client reads it. */}
+            <div
+              className={`flex items-center gap-3 min-h-14 py-2 px-3 rounded-xl border ${
+                next.state === "booked"
+                  ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)"
+                  : next.state === "none"
+                    ? "border-(--eq-warn)/40 bg-(--eq-warn-fill)"
+                    : "border-div-d bg-bg-dark-3"
+              }`}
+              data-testid="next-booking"
+              data-state={next.state}
+              role="status"
+              aria-live="polite"
+            >
+              {next.state === "booked" ? (
+                <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" aria-hidden="true" />
+              ) : next.state === "none" ? (
+                <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+              ) : (
+                <CalendarSearch size={18} className="text-ink-d3 shrink-0" aria-hidden="true" />
+              )}
+              <span className={`text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}>
+                {nextBookingSentence(next, openings.now)}
               </span>
             </div>
+
+            {/* The door to Times with room: prominent only when the server
+                confirmed nothing is booked, quiet on every other Wrap-up with
+                something to offer, absent before there is anything. */}
+            {door === "prominent" && (
+              <button
+                type="button"
+                onClick={() => setTimesOpen(true)}
+                data-testid="times-door"
+                data-door="prominent"
+                className="min-h-11 w-full rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+              >
+                <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+                {TIMES_WITH_ROOM}
+              </button>
+            )}
+            {door === "quiet" && (
+              <button
+                type="button"
+                onClick={() => setTimesOpen(true)}
+                data-testid="times-door"
+                data-door="quiet"
+                className="self-start min-h-10 px-1 rounded-md text-[14px] font-bold text-(--eq-live-text) underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+              >
+                {TIMES_WITH_ROOM}
+              </button>
+            )}
 
             {/* A note started during the session and never saved. Said
                 plainly, above everything else on this card, because the
@@ -826,6 +1006,9 @@ export function WrapUpScreen({
         trainer={authTrainer}
         machines={machines}
       />
+
+      {/* On top of this screen, never instead of it: the notes stay put. */}
+      <TimesWithRoomSheet open={timesOpen} onClose={() => setTimesOpen(false)} data={openings} />
     </div>
   );
 }

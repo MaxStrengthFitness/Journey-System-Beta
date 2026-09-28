@@ -86,6 +86,38 @@ const unfiledDoc = {
   }),
 };
 
+/**
+ * THE NEXT CARD'S LISTENER on her own bookings (Openings round, phase 8), and
+ * Openings' reads for the door: each test sets what the server says.
+ *   answer   "server" answers at once; "cache" answers from this iPad's cache
+ *            alone; "never" keeps it waiting; "fails" refuses it.
+ *   emit()   sends the listener a new snapshot (a booking arriving).
+ */
+const her = vi.hoisted(() => ({
+  rows: [] as Record<string, unknown>[],
+  answer: "server" as "server" | "cache" | "never" | "fails",
+  listens: 0,
+  listeners: [] as ((snap: unknown) => void)[],
+  emit() {
+    const snap = {
+      docs: her.rows.map((r) => ({ id: String(r.id), data: () => r })),
+      metadata: { fromCache: her.answer === "cache" },
+    };
+    for (const l of her.listeners) l(snap);
+  },
+}));
+const openingsFake = vi.hoisted(() => ({
+  summary: null as unknown,
+  weeks: { docs: [] as unknown[], loading: false, error: null as string | null },
+  schedule: { entries: [] as unknown[], loading: false, failed: false, fromCache: false },
+  lease: undefined as unknown,
+}));
+vi.mock("../features/standing-week/useStandingWeeks", () => ({ useStandingWeeks: () => openingsFake.weeks }));
+vi.mock("../features/admin/changes/useWeekSchedule", () => ({
+  useWeekSchedule: (studioId: string | null) => (studioId ? openingsFake.schedule : { entries: [], loading: false, failed: false, fromCache: false }),
+}));
+vi.mock("../features/admin/sync-lease", () => ({ useSyncLease: () => openingsFake.lease }));
+
 vi.mock("firebase/firestore", async (importOriginal) => {
   const real = await importOriginal<typeof import("firebase/firestore")>();
   const path = (...parts: any[]) => parts.filter((p) => typeof p === "string").join("/");
@@ -97,16 +129,43 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     where: () => ({}),
     orderBy: () => ({}),
     limit: () => ({}),
-    // The journal stream feeds one unfiled note; every other stream is empty.
-    onSnapshot: (q: any, next: (snap: any) => void, error?: (err: any) => void) => {
-      if (fordError && q?.__path === "clients/c1/ford") {
+    // The journal stream feeds one unfiled note; her bookings and the marks
+    // answer as the test says; every other stream is empty. A listener may
+    // pass options (includeMetadataChanges) before its callbacks.
+    onSnapshot: (q: any, a: any, b?: any, c?: any) => {
+      const withOptions = typeof a !== "function";
+      const next: (snap: any) => void = withOptions ? b : a;
+      const error: ((err: any) => void) | undefined = withOptions ? c : b;
+      const at = q?.__path ?? "";
+      if (fordError && at === "clients/c1/ford") {
         error?.({ code: fordError, message: fordError });
         return () => {};
       }
-      const docs = q?.__path === "journalEntries" ? [unfiledDoc, ...moreJournal] : [];
+      if (at === "schedules") {
+        her.listens += 1;
+        if (her.answer === "fails") {
+          error?.({ code: "unavailable", message: "unavailable" });
+          return () => {};
+        }
+        her.listeners.push(next);
+        if (her.answer !== "never") her.emit();
+        return () => {
+          her.listeners = her.listeners.filter((l) => l !== next);
+        };
+      }
+      if (at.endsWith("/openingsMarks")) {
+        next({ docs: [], metadata: { fromCache: false } });
+        return () => {};
+      }
+      const docs = at === "journalEntries" ? [unfiledDoc, ...moreJournal] : [];
       next({ docs, size: docs.length, empty: docs.length === 0 });
       return () => {};
     },
+    // The weekly summary Openings reads by id; nothing else is read by id here.
+    getDoc: async (ref: any) =>
+      String(ref?.__path ?? "").endsWith("/watch/openings") && openingsFake.summary
+        ? { exists: () => true, data: () => openingsFake.summary, metadata: { fromCache: false } }
+        : { exists: () => false, data: () => undefined, metadata: { fromCache: false } },
     getDocs: async () => ({ docs: [], size: 0 }),
     addDoc: async () => ({ id: "new" }),
     updateDoc: async (ref: any, data: any) => {
@@ -120,7 +179,10 @@ import { WrapUpScreen } from "./WrapUpScreen";
 import { AppBottomBar } from "./AppBottomBar";
 import { DOSE_SCALE } from "../features/rating";
 import { UnsavedChangesProvider, useGuardedState } from "../features/unsaved-changes";
-import type { Client, View, WorkoutSession } from "../types";
+import { forgetPersonalMemory } from "../features/sign-out/memory";
+import { PAT, PAT_WEEK, SAM, SAM_TUESDAYS, WESTLAKE, foldFixture } from "../features/openings/ui/test-shell";
+import { OFFER_FOOT } from "../features/openings/present";
+import type { Client, Studio, View, WorkoutSession } from "../types";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -142,6 +204,14 @@ beforeEach(() => {
   fordError = null;
   moreJournal = [];
   renewalSettings.state = null;
+  her.rows = [];
+  her.answer = "server";
+  her.listens = 0;
+  her.listeners = [];
+  openingsFake.summary = null;
+  openingsFake.weeks = { docs: [], loading: false, error: null };
+  openingsFake.schedule = { entries: [], loading: false, failed: false, fromCache: false };
+  openingsFake.lease = undefined;
 });
 
 afterEach(async () => {
@@ -915,5 +985,215 @@ describe("the post-session screen says where the session is saved (session recor
     const host = await mount(screen(true));
     expect(host.textContent).toContain("Wrap-up · session saved on this iPad");
     expect(host.textContent).toContain("It sends to the studio's records when the connection is back. Nothing more to do.");
+  });
+});
+
+/*
+ * NEXT, AND TIMES WITH ROOM (Openings round, Sep 27 2026, phase 8). The Next
+ * card listens for her own bookings from the server (at any studio on the
+ * same Mindbody) and never says a plain "Nothing booked yet"; the door to
+ * Times with room is quiet on every Wrap-up with something to offer,
+ * prominent only when nothing is booked, and absent before there is anything;
+ * the sheet opens on top of the Wrap-up and names nobody.
+ *
+ * Today is Monday Nov 9 2026, noon Eastern, at Westlake. Sam (running this
+ * Wrap-up) takes clients Monday 7:00 - 10:00 and Tuesday 10:00 - 12:00, with
+ * Ann Regular his Tuesday 10:00 regular; Pat takes them Monday 7:00 - 9:00.
+ */
+describe("Next: her next booking, and the door to Times with room", () => {
+  /* The sheet is a base-ui dialog, which wants both. */
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (!("ResizeObserver" in g)) {
+    g.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+  if (typeof window.matchMedia !== "function") {
+    window.matchMedia = ((q: string) => ({
+      matches: false,
+      media: q,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  }
+
+  const STRONGSVILLE = { id: "strongsville", name: "Strongsville", timezone: "America/New_York", mindbodySiteId: "29068" } as unknown as Studio;
+  const ANN_TUESDAY = { id: "r1", weekday: 2, start: "10:00", clientId: "c-ann", clientName: "Ann Regular" };
+  const samWeek = () => ({ ...SAM_TUESDAYS, final: { ...SAM_TUESDAYS.final!, regulars: [ANN_TUESDAY] } });
+  const booking = (iso: string, over: Record<string, unknown> = {}) => ({
+    id: `b-${iso}`,
+    clientId: "c1",
+    clientName: "Judy Client",
+    trainerId: "t-sam",
+    trainerName: "Sam Lee",
+    studioId: "westlake",
+    startTime: new Date(iso),
+    endTime: new Date(new Date(iso).getTime() + 30 * 60_000),
+    status: "Scheduled",
+    ...over,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-11-09T12:00:00-05:00") });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    forgetPersonalMemory();
+    openingsFake.summary = foldFixture();
+    openingsFake.weeks = { docs: [samWeek(), PAT_WEEK], loading: false, error: null };
+    // The month was read in full this morning.
+    openingsFake.lease = { lastDeepScheduleSyncAt: new Date("2026-11-09T06:30:00-05:00").getTime() };
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function NextScreen({ schedules = [] as unknown[] }: { schedules?: unknown[] }) {
+    return (
+      <WrapUpScreen
+        studioName="Westlake"
+        studio={WESTLAKE}
+        studios={[WESTLAKE, STRONGSVILLE]}
+        trainers={[SAM, PAT]}
+        client={client}
+        session={session}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={schedules as any}
+        authTrainer={SAM}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        machines={[{ id: "m1", name: "Leg Press" } as any]}
+      />
+    );
+  }
+
+  const nextLine = (host: HTMLElement) => host.querySelector('[data-testid="next-booking"]') as HTMLElement;
+  const door = (host: HTMLElement) => host.querySelector('[data-testid="times-door"]') as HTMLElement | null;
+  const sheet = () => document.querySelector('[data-testid="times-with-room"]') as HTMLElement | null;
+
+  it("counts a booking at another studio on the same Mindbody, and says where", async () => {
+    her.rows = [booking("2026-11-12T08:00:00-05:00", { studioId: "strongsville" })];
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("booked");
+    expect(nextLine(host).textContent).toBe("Next session: Thu, Nov 12 · 8:00 AM at Strongsville.");
+    expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+  });
+
+  it("with nothing booked, confirmed by the server, says how far ahead and shows the prominent door", async () => {
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("none");
+    expect(nextLine(host).textContent).toBe("Nothing booked in the next 30 days. Book the next one before they leave.");
+    expect(host.textContent).not.toContain("Nothing booked yet");
+    expect(door(host)?.getAttribute("data-door")).toBe("prominent");
+    expect(door(host)?.textContent).toBe("Times with room");
+    // The prominent door is a 44px button in the Wrap-up's own voice.
+    expect(door(host)!.className.split(/\s+/)).toEqual(expect.arrayContaining(["min-h-11", "font-bold", "text-[14px]", "focus-visible:ring-(--eq-focus-ring)"]));
+  });
+
+  it("says 7 days, not 30, when the month wasn't read in full today", async () => {
+    openingsFake.lease = { lastDeepScheduleSyncAt: new Date("2026-11-07T06:30:00-05:00").getTime() };
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).textContent).toBe("Nothing booked in the next 7 days. Book the next one before they leave.");
+  });
+
+  it("booked in the schedule already on screen: says so at once, without listening, and the door is the quiet link", async () => {
+    her.answer = "never";
+    const host = await mount(<NextScreen schedules={[booking("2026-11-10T10:00:00-05:00")]} />);
+    expect(nextLine(host).textContent).toBe("Next session: Tomorrow · 10:00 AM.");
+    expect(her.listens).toBe(0);
+    await settle();
+    expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+    expect(door(host)!.className.split(/\s+/)).toEqual(expect.arrayContaining(["min-h-10", "font-bold", "text-[14px]"]));
+  });
+
+  it("while her bookings are still coming, says it is checking, in the same space", async () => {
+    her.answer = "never";
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("checking");
+    expect(nextLine(host).textContent).toBe("Checking the next booking…");
+    expect(nextLine(host).className.split(/\s+/)).toContain("min-h-14");
+    expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+  });
+
+  it("with nothing to offer yet, shows no door", async () => {
+    openingsFake.summary = null;
+    openingsFake.weeks = { docs: [{ ...samWeek(), final: null, proposed: samWeek().final }], loading: false, error: null };
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("none");
+    expect(door(host)).toBeNull();
+  });
+
+  it("offline: says it can't check the next booking, and never shows the prominent door", async () => {
+    const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    her.answer = "cache";
+    // Even with a booking in this iPad's cache: a cache is not an answer.
+    her.rows = [booking("2026-11-12T08:00:00-05:00")];
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).getAttribute("data-state")).toBe("cant-check");
+    expect(nextLine(host).textContent).toBe("Can't check the next booking right now.");
+    expect(door(host)?.getAttribute("data-door")).not.toBe("prominent");
+    online.mockRestore();
+  });
+
+  it("a failed read says it can't check, never that nothing is booked", async () => {
+    her.answer = "fails";
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(nextLine(host).textContent).toBe("Can't check the next booking right now.");
+    expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+  });
+
+  it("a booking arriving while the screen is open turns the card green, and the door steps back", async () => {
+    const host = await mount(<NextScreen />);
+    await settle();
+    expect(door(host)?.getAttribute("data-door")).toBe("prominent");
+    await act(async () => {
+      her.rows = [booking("2026-11-16T08:00:00-05:00")];
+      her.emit();
+    });
+    expect(nextLine(host).getAttribute("data-state")).toBe("booked");
+    expect(nextLine(host).textContent).toBe("Next session: Mon, Nov 16 · 8:00 AM.");
+    expect(nextLine(host).className).toContain("bg-(--eq-ok-fill)");
+    expect(door(host)?.getAttribute("data-door")).toBe("quiet");
+  });
+
+  it("opens Times with room on top of the Wrap-up, naming no client, and closes back to it", async () => {
+    const host = await mount(<NextScreen />);
+    await settle();
+    const note = host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(note, "Asked about Tuesdays");
+      note.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(door(host));
+    await settle();
+    const s = sheet()!;
+    expect(s).toBeTruthy();
+    expect(s.textContent).toContain("Times with room");
+    expect(s.textContent).toContain("Tue, Nov 10");
+    expect(s.textContent).toContain("10:30 AM");
+    expect(s.querySelector('[data-testid="times-foot"]')?.textContent).toBe(OFFER_FOOT);
+    // Times only: no client (hers or anyone's), no trainer, and never why.
+    for (const name of ["Judy", "Ann", "Regular", "Sam", "Pat"]) expect(s.textContent).not.toContain(name);
+    expect(s.textContent).not.toMatch(/cancel|isn't booked/i);
+    // It never left the Wrap-up: the Profile note is still there as typed.
+    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe("Asked about Tuesdays");
+    await click(Array.from(s.querySelectorAll("button")).find((b) => b.textContent === "Done"));
+    await settle();
+    expect(sheet()).toBeNull();
+    expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe("Asked about Tuesdays");
   });
 });

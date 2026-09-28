@@ -2925,6 +2925,11 @@ export function WorkoutTrackerView({
     return (
       <WrapUpScreen
         studioName={activeStudio?.name}
+        // Times with room (Openings round): the studio the iPad is in, every
+        // studio (to name a booking elsewhere), and who works here.
+        studio={activeStudio}
+        studios={studios}
+        trainers={trainers}
         client={postSession.client}
         coverage={clientCoverage}
         session={postSession.session}
