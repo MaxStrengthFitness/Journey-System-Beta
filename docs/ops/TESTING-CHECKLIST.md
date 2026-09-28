@@ -1782,8 +1782,8 @@ only in headless Chrome on harness pages.
 - [ ] **Your week offline.** Wi-Fi off, open your profile: "Can't read the
   sessions just now.", never 0.
 - [ ] **My clients.** Right after the Kaizen Roster: coached lately first,
-  "N sessions with you in Journey", "Last in Journey: {date}" (or "Last
-  session" where Journey holds her whole story), the Kaizen mark on roster
+  "N sessions with you in Journey", "Last visit on file: {date}" (never "Last
+  session" or "Last in Journey"), the Kaizen mark on roster
   clients, whole names that wrap in portrait, **Show all N** past 12, and a
   tap opens the client. While the studio has no cutover date (or it is still
   ahead) the FileMaker line shows.
