@@ -7,38 +7,60 @@
  * difference between a form and a feedback loop. Beta testers stop reporting
  * when reports feel like they go nowhere.
  *
- * Ordered client-side rather than with orderBy so this needs no composite
- * index: `userId ==` alone is covered by Firestore's automatic single-field
- * index, and a report list is a handful of documents.
+ * Ordered client-side rather than with orderBy. `userId ==` has no index
+ * (the Enterprise-edition database builds none automatically and
+ * firestore.indexes.json has no bug_reports entry), so it scans
+ * bug_reports, which holds a handful of documents.
+ *
+ * A read that fails is "unknown", never "no reports" (voice review
+ * follow-up, Sep 27 2026): the error comes back as `error`, and Settings
+ * says it could not load them rather than quietly hiding the section.
  */
 
 import { useEffect, useMemo, useState } from "react";
 import { onSnapshot, query, where } from "firebase/firestore";
 import { collection } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import type { FeedbackReport } from "./types";
 
-export function useMyFeedback(userId: string | null | undefined) {
+/**
+ * Read by the signed-in person's Auth uid (voice review follow-up, Sep 27
+ * 2026). The read rule lets a trainer read a report whose `userId` is their
+ * Auth uid (firestore.rules, bug_reports), and on an older account the uid
+ * and the trainer document's id differ, so a query by the document's id was
+ * refused outright. Reports are filed under the uid too (./mutations.ts).
+ * A report an older account filed under its document id before then was
+ * never readable by that trainer and still is not: asking for it as well
+ * would only turn the whole read into a refusal. The signed-in tree is
+ * keyed on the person (sign-out round), so the uid read here is current.
+ */
+export function useMyFeedback() {
+  const userId = auth.currentUser?.uid ?? null;
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) {
       setReports([]);
+      setError(null);
       return;
     }
     setLoading(true);
+    setError(null);
     const unsub = onSnapshot(
       query(collection(db, "bug_reports"), where("userId", "==", userId)),
       (snap) => {
         setReports(
           snap.docs.map((d) => ({ ...(d.data() as FeedbackReport), id: d.id })),
         );
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error("Error loading your feedback:", err);
         setReports([]);
+        setError("Couldn't load your reports.");
         setLoading(false);
       },
     );
@@ -61,5 +83,5 @@ export function useMyFeedback(userId: string | null | undefined) {
     return { open, resolved, total: reports.length };
   }, [reports]);
 
-  return { reports: sorted, counts, loading };
+  return { reports: sorted, counts, loading, error };
 }

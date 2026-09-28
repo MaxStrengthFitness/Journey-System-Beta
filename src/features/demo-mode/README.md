@@ -70,7 +70,7 @@ studio twice; either half makes it demo.
 | `roster.ts` | Six clients and three trainers, each there to teach something |
 | `loads.ts` | Pure. What a client lifts and how it moves — the stack, the bands, the double progression |
 | `seed-core.ts` | Pure. The 1,202 documents the demo studio is made of, as `{ path, data }` |
-| `week.ts` | Pure. The standing week the Hub reads — eleven appointments, repeated for eight weeks |
+| `week.ts` | Pure. The demo week the Hub reads — eleven appointments, repeated for eight weeks |
 | `seed-write.ts` | Lays that list down with the client SDK, in batches |
 | `DemoBanner.tsx` | One line across every screen, the Active Session included |
 | `SetUpDemoCard.tsx` | Set up and reset, from the studio selection screen |
@@ -254,7 +254,7 @@ and this table can be deleted in favour of reading them.
 
 `demo-mode.test.ts` (recognising and guarding), `access.test.ts` (who may do
 what, and the realm rule), `seed.test.ts` (the documents themselves),
-`week.test.ts` (the standing week, the ids that never orphan, the wall clock
+`week.test.ts` (the demo week, the ids that never orphan, the wall clock
 across the change to standard time, and the fields the rules require),
 `loads.test.ts` (the stack, the table, the rep bands and the progression),
 `leaks.test.ts` (the two above), `DemoBanner.render.test.tsx`. Plus 13

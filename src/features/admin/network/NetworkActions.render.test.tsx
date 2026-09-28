@@ -12,7 +12,11 @@
  *     choices (the Relay form's defaults were refused at every studio), and
  *     names a studio it missed, posting there only on Launch again;
  *   - a studio leader is offered neither; an owner with no network is told
- *     there is nowhere to keep a focus.
+ *     there is nowhere to keep a focus, but only once the networks have been
+ *     read: an empty list is "can't see the networks yet";
+ *   - an owner is offered the focus of every network that holds a studio in
+ *     scope, listed on it or not (AJ, Sep 27 2026), and none from the
+ *     practice studio (the Demo Mode realm rule).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -142,9 +146,46 @@ describe("Focus this quarter", () => {
     expect(button(el, "Set the focus")).toBeUndefined();
   });
 
-  it("tells an owner with no network there is nowhere to keep one", async () => {
-    const el = await render({ networks: [] });
+  it("says who set the focus and on which day while nothing is being edited", async () => {
+    const setAt = { toDate: () => new Date("2026-09-28T02:30:00Z") };
+    const el = await render({ networks: [ohio({ mastery: "Hip hinge", machine: "", note: "", setBy: { id: "uid-ann", name: "Ann Owner" }, setAt })] });
+    expect(el.textContent).toContain("Set by Ann Owner on Sep 27, 2026.");
+  });
+
+  it("says there is no focus yet when none is set", async () => {
+    const el = await render({ networks: [ohio()] });
+    expect(el.textContent).toContain("No focus yet: the Floors show nothing.");
+  });
+
+  it("tells an owner with no network there is nowhere to keep one, once the networks have been read", async () => {
+    const elsewhere: FranchiseNetwork = { id: "n-west", name: "West", studioIds: ["denver"] };
+    const el = await render({ networks: [elsewhere] });
     expect(el.textContent).toContain("No network yet");
+    expect(el.textContent).toContain("None of these studios is in a network");
+  });
+
+  it("never says a studio is not in a network while the networks have not come through (a failed read is unknown, never empty)", async () => {
+    const el = await render({ networks: [] });
+    expect(el.textContent).toContain("Can't see the networks yet");
+    expect(el.textContent).toContain("it can't tell yet whether these studios are in one");
+    expect(el.textContent).not.toContain("not in a network");
+    const one = await render({ networks: [], studios: [studios[0]] });
+    expect(one.textContent).toContain("whether Solon is in one");
+  });
+
+  it("offers an owner the focus of a network that holds their studio, even one that does not list them", async () => {
+    const unlisted: FranchiseNetwork = { id: "n-lake", name: "Lake", studioIds: ["westlake"] };
+    const el = await render({ networks: [unlisted] });
+    expect(el.querySelector("#nw-focus-n-lake-mastery")).not.toBeNull();
+    expect(el.textContent).not.toContain("No network yet");
+  });
+
+  it("offers no real network's focus from the practice studio", async () => {
+    const demo = [{ id: "demo-studio", name: "Demo Studio", isDemo: true }] as unknown as Studio[];
+    const el = await render({ studios: demo });
+    expect(el.querySelector("#nw-focus-n-ohio-mastery")).toBeNull();
+    expect(el.textContent).toContain("Demo Studio is not in a network");
+    expect(el.textContent).toContain("Launch at 1 studio");
   });
 });
 

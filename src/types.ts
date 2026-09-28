@@ -36,7 +36,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   // same level as a head trainer or studio leader AT THAT STUDIO (AJ, Sep 18)
   // -- so the label says so. The multi-studio owner keeps "Franchise Owner".
   StudioOwner: "Studio Owner",
-  HeadTrainer: "Studio Leader",
+  // Voice review follow-up (Sep 27 2026): AJ named the studio tier's picker
+  // "Trainer, Head trainer, Studio Leader/Owner". A head trainer read
+  // "Studio Leader" too, so the picker offered Studio Leader twice.
+  HeadTrainer: "Head Trainer",
   Trainer: "Life Transformer",
 };
 
@@ -1166,7 +1169,14 @@ export interface WorkoutSession {
   startedByTrainerId?: string;
   /** Activity checkpoint updated during logs to detect abandonment (Lazy Cleanup) */
   lastHeartbeatAt?: any;
-  notes?: string; // Original notes field (deprecated in favor of sub-collection)
+  /**
+   * The Note for the next trainer (the End Session box), copied here whole at
+   * Finish; its journal copy is a Heads up cut at 5,000 characters. History,
+   * the session pop-up (which can edit it), the studio export and the
+   * journal's read-only "Session summary" read it. Older sessions hold
+   * whatever their notes field held.
+   */
+  notes?: string;
   /** @deprecated Read through `dialFromClientFeel`; the reporting round writes `dose`. */
   clientFeel?: ClientFeel | string;
   /**
@@ -1769,7 +1779,7 @@ export interface Studio {
   deepCleanIntervalDays?: number;
   /**
    * Operations round (Sep 2026): the booked length of one session, in
-   * minutes — "Strength 30" is a 30-minute slot. Operations → Hours counts a
+   * minutes — "Strength 30" is a 30-minute slot. Operations → Insights → Hours counts a
    * completed session as this many minutes, whatever the stopwatch said.
    * Set on My Studio → Studio → The studio's day. Default 30.
    */

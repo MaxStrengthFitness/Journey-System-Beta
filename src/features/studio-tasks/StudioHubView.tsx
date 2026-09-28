@@ -32,7 +32,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebase";
 import { studioDateKey, formatStudioDate } from "../../lib/studio-time";
 import { cn } from "../../lib/utils";
-import { isStudioLeader } from "../../lib/permissions";
 import type { Client, Trainer } from "../../types";
 import type { ClientTaskAction, TaskRow } from "./types";
 import {
@@ -83,9 +82,9 @@ export interface StudioHubViewProps {
   /** For naming client tasks and opening them. */
   clients?: Client[];
   /**
-   * Everyone on the app, filtered here to this studio's own team. Feeds the
-   * initiative roll-up's denominator — see studioRoster for why it is primary
-   * home studio only.
+   * Everyone on the app, filtered here to this studio's own team: everyone who
+   * works here (studioRoster, lib/who-works-here.ts). Feeds the initiative
+   * roll-up's denominator and the pickers.
    */
   trainers?: Trainer[];
   /**
@@ -123,23 +122,30 @@ export function StudioHubView({
   const [mineOnly, setMineOnly] = useState(false);
   const [noteRow, setNoteRow] = useState<TaskRow | null>(null);
   /*
-   * ASSIGNMENT IS A HEAD TRAINER'S ACT.
+   * ASSIGNMENT IS A LEADER'S ACT — AT THIS STUDIO.
    *
-   * `isStudioLeader` covers StudioLeader, HeadTrainer and owners — the same
-   * set `isStudioOwnerOrHeadTrainer` gates on in firestore.rules, which is
-   * where it is actually enforced. Hiding the button is a convenience so the
-   * floor is not offered an action that would be refused; it is not the
-   * security boundary, and it must never be mistaken for one.
+   * leadsHere (relay/leads.ts) answers it the way the rules do
+   * (isStudioOwnerOrHeadTrainer on taskInstances): a leader role at their
+   * home or an owned studio, or the grant (managedStudioIds) for this one.
+   * It used to ask the role alone, so a trainer with the grant was never
+   * offered Assign while a head trainer visiting another studio was offered
+   * one the rules refuse (voice review follow-up, Sep 27 2026). Hiding the
+   * button is a convenience so the floor is not offered an action that
+   * would be refused; it is not the security boundary, and it must never be
+   * mistaken for one. (leadsHere also says yes to franchise owners and
+   * administrators; the taskInstances rule lets administrators assign but
+   * not franchise owners — whether they may is AJ's call.)
    */
-  const canAssign = isStudioLeader(authTrainer ?? null);
+  const canAssign = leadsHere(authTrainer, activeStudioId);
   const [assignGroup, setAssignGroup] = useState<ShiftGroup | null>(null);
 
   /*
-   * MANAGE MOVED TO THE TEAM TAB (Planner rework, Sep 2026). It used to be a
-   * toggle in this header, open to everyone "until RBAC lands" — while the
-   * rules only ever let leaders write what it edits. The standing task list,
-   * the seven-day table, initiatives and flags now live on the Planner's
-   * Team tab, which only studio leaders see (features/relay/team).
+   * MANAGE MOVED TO MY STUDIO → TEAM (Planner rework, Sep 2026). It used to
+   * be a toggle in this header, open to everyone "until RBAC lands" — while
+   * the rules only ever let leaders write what it edits. The standing task
+   * list, the seven-day table, initiatives and the loops left open (Open
+   * loops) now live on My Studio → Team, which the studio tier sees — the
+   * grant included (features/relay/team).
    */
 
   const clientNames = useMemo(() => {

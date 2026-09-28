@@ -33,6 +33,15 @@
  * Writes go to studioMachineSettings/{studioId}_{machineId} - the same
  * document TrainerMachineEditor wrote, so nothing about the data changes and
  * every existing reader (the journey grid, the session table) keeps working.
+ *
+ * UNSAVED CHANGES (voice review follow-up, Sep 27 2026)
+ * -----------------------------------------------------
+ * An edit that is not saved (a setting added, removed or changed, or a name
+ * typed into the add field) is registered with the unsaved-changes guard, so
+ * the bottom bar, Learning's sections, the machine page's links and My
+ * Studio's sections ask before they take it away. "Leave" puts the card back
+ * to what is saved: the card survives a switch to another machine, and it
+ * must never carry one machine's edits onto the next.
  */
 
 import { useEffect, useState } from "react";
@@ -41,6 +50,7 @@ import { Check, Lock, Plus, X } from "lucide-react";
 import { db } from "../../firebase";
 import { useToast } from "../../contexts/ToastContext";
 import type { StudioMachineSetting } from "../../types";
+import { useUnsavedChanges } from "../unsaved-changes";
 
 export interface StudioSetupCardProps {
   machineId: string;
@@ -79,6 +89,19 @@ export function StudioSetupCard({
     setDraft("");
     setDirty(false);
   }, [machineId, setting]);
+
+  useUnsavedChanges(
+    canEdit && (dirty || draft.trim() !== ""),
+    `the ${machineName} settings for this studio`,
+    {
+      onDiscard: () => {
+        setOptions(setting?.settingOptions ?? []);
+        setStandard(setting?.standardSettings ?? {});
+        setDraft("");
+        setDirty(false);
+      },
+    },
+  );
 
   const addOption = () => {
     const name = draft.trim();
@@ -219,6 +242,7 @@ export function StudioSetupCard({
               className="ssc__addbtn"
               onClick={addOption}
               disabled={!draft.trim()}
+              aria-label={`Add this setting to ${machineName}`}
             >
               <Plus size={14} aria-hidden />
             </button>

@@ -14,7 +14,7 @@
  *   - server.ts uses both, and the server bundle is built outside dist/.
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -63,6 +63,8 @@ describe("the development server (npm run dev)", () => {
   let root: string;
   let close: () => Promise<void>;
   let port: number;
+  /** Windows and macOS disks ignore case; the Linux CI runner's does not. */
+  let caseInsensitiveDisk = false;
 
   beforeAll(async () => {
     root = tempFolder("dev");
@@ -81,6 +83,7 @@ describe("the development server (npm run dev)", () => {
       ".env": `KEY=${MARKER}`,
       "package.json": `{"name":"${MARKER}"}`,
     });
+    caseInsensitiveDisk = existsSync(join(root, "SERVICE-ACCOUNT.JSON"));
     const { createServer } = await import("vite");
     const vite = await createServer({
       root,
@@ -121,6 +124,12 @@ describe("the development server (npm run dev)", () => {
   ])("refuses the admin key at %s", async (path) => {
     const res = await get(path);
     expect(res.body).not.toContain(MARKER);
+    if (path === "/SERVICE-ACCOUNT.JSON" && !caseInsensitiveDisk) {
+      // On a disk that minds case (the Linux CI runner) this names no file at all, so the
+      // SPA fallback answers with the app shell. The key itself is still never sent.
+      expect(res.body).toContain("/src/main.js");
+      return;
+    }
     expect(res.status).not.toBe(200);
   });
 

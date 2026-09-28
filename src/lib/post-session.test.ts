@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANOTHER_STUDIO,
   doseSentence,
   formatNextBooking,
   journeySentence,
+  nextBookingAnswer,
   nextBookingFor,
+  nextBookingSentence,
   strengthJourney,
+  timesDoor,
   todayHeadline,
   todayLines,
 } from "./post-session";
+import { BACK_FROM_DAYS } from "../features/openings/back-from";
+import { CHECK_DAYS } from "../features/standing-week/check";
 
 const names: Record<string, string> = { hip: "Hip Adduction", leg: "Leg Press", row: "Compound Row", lum: "Lumbar" };
 const nameOf = (id: string) => names[id] ?? id;
@@ -142,6 +148,132 @@ describe("nextBookingFor", () => {
     expect(formatNextBooking(new Date(2026, 8, 13, 14, 0), today)).toMatch(/^Today · /);
     expect(formatNextBooking(new Date(2026, 8, 14, 14, 0), today)).toMatch(/^Tomorrow · /);
     expect(formatNextBooking(new Date(2026, 8, 16, 14, 0), today)).toMatch(/^Wed, Sep 16 · /);
+  });
+});
+
+/*
+ * THE NEXT CARD (Openings round, Sep 27 2026, phase 8): the schedule already
+ * on screen answers at once; otherwise her own bookings, and only the
+ * server's answer is one. Never a plain "Nothing booked yet".
+ */
+describe("nextBookingAnswer", () => {
+  const now = new Date("2026-11-09T17:00:00Z").getTime(); // Mon Nov 9, noon Eastern
+  const at = (iso: string) => new Date(iso);
+  const here = (iso: string, over: Record<string, unknown> = {}) => ({ clientId: "c1", startTime: at(iso), status: "Scheduled", studioId: "westlake", ...over });
+  const names: Record<string, string> = { westlake: "Westlake", strongsville: "Strongsville" };
+  const base = {
+    clientId: "c1",
+    loaded: [] as ReturnType<typeof here>[],
+    heard: [] as ReturnType<typeof here>[],
+    read: "ready" as const,
+    monthRead: true as boolean | null,
+    hereStudioId: "westlake",
+    studioName: (id: string) => names[id] ?? null,
+    linked: true,
+    now,
+  };
+
+  it("answers at once from the schedule on screen, whatever her own read says", () => {
+    const a = nextBookingAnswer({ ...base, loaded: [here("2026-11-10T13:00:00Z")], read: "loading" });
+    expect(a).toEqual({ state: "booked", at: at("2026-11-10T13:00:00Z"), elsewhere: null });
+  });
+
+  it("says it is checking while her bookings haven't come back", () => {
+    expect(nextBookingAnswer({ ...base, read: "loading" })).toEqual({ state: "checking" });
+  });
+
+  it("can't check offline, on a failed read, or on this iPad's cache alone, even with a booking in it", () => {
+    for (const read of ["offline", "failed"] as const) {
+      expect(nextBookingAnswer({ ...base, read, heard: [here("2026-11-12T13:00:00Z")] })).toEqual({ state: "cant-check" });
+    }
+  });
+
+  it("finds a booking ten days out, beyond the schedule on screen", () => {
+    const a = nextBookingAnswer({ ...base, heard: [here("2026-11-19T13:00:00Z")] });
+    expect(a).toEqual({ state: "booked", at: at("2026-11-19T13:00:00Z"), elsewhere: null });
+  });
+
+  it("names another studio on the same Mindbody, and an unknown one as 'another studio'", () => {
+    expect(nextBookingAnswer({ ...base, heard: [here("2026-11-12T13:00:00Z", { studioId: "strongsville" })] })).toMatchObject({
+      state: "booked",
+      elsewhere: "Strongsville",
+    });
+    expect(nextBookingAnswer({ ...base, heard: [here("2026-11-12T13:00:00Z", { studioId: "elsewhere" })] })).toMatchObject({
+      elsewhere: ANOTHER_STUDIO,
+    });
+    // Without knowing where the iPad is, it claims nothing about where.
+    expect(nextBookingAnswer({ ...base, hereStudioId: null, heard: [here("2026-11-12T13:00:00Z", { studioId: "strongsville" })] })).toMatchObject({
+      elsewhere: null,
+    });
+  });
+
+  it("drops cancellations and past bookings, and takes the soonest of the rest", () => {
+    const a = nextBookingAnswer({
+      ...base,
+      heard: [
+        here("2026-11-09T14:00:00Z"), // this morning: already past
+        here("2026-11-10T13:00:00Z", { status: "Cancelled" }),
+        here("2026-11-16T13:00:00Z"),
+        here("2026-11-12T13:00:00Z", { clientId: "c2" }),
+      ],
+    });
+    expect(a).toEqual({ state: "booked", at: at("2026-11-16T13:00:00Z"), elsewhere: null });
+  });
+
+  it("says how far ahead nothing is booked: 30 days once the month was read in full today, 7 otherwise or while unknown", () => {
+    expect(nextBookingAnswer({ ...base, monthRead: true })).toEqual({ state: "none", days: BACK_FROM_DAYS });
+    expect(nextBookingAnswer({ ...base, monthRead: false })).toEqual({ state: "none", days: CHECK_DAYS });
+    expect(nextBookingAnswer({ ...base, monthRead: null })).toEqual({ state: "none", days: CHECK_DAYS });
+    expect([BACK_FROM_DAYS, CHECK_DAYS]).toEqual([30, 7]);
+  });
+
+  it("at a studio whose bookings aren't linked, never says nothing is booked; a booking it heard of still answers (the final review)", () => {
+    expect(nextBookingAnswer({ ...base, linked: false })).toEqual({ state: "cant-check" });
+    expect(nextBookingAnswer({ ...base, linked: false, heard: [here("2026-11-12T13:00:00Z", { studioId: "strongsville" })] })).toMatchObject({
+      state: "booked",
+      elsewhere: "Strongsville",
+    });
+    expect(nextBookingAnswer({ ...base, linked: false, loaded: [here("2026-11-10T13:00:00Z")] })).toMatchObject({ state: "booked" });
+  });
+});
+
+describe("nextBookingSentence", () => {
+  const today = new Date(2026, 10, 9, 12, 0);
+
+  it("says every state in its own words, and never a plain 'Nothing booked yet'", () => {
+    const said = [
+      // A real moment: 8:00 AM Eastern on Nov 12 (EST, -05:00). The line is read
+      // on the studio's clock, so a local-clock Date would be wrong on any
+      // machine not in Eastern time, GitHub's UTC runner included.
+      nextBookingSentence({ state: "booked", at: new Date("2026-11-12T08:00:00-05:00"), elsewhere: null }, today),
+      nextBookingSentence({ state: "booked", at: new Date("2026-11-12T08:00:00-05:00"), elsewhere: "Strongsville" }, today),
+      nextBookingSentence({ state: "checking" }, today),
+      nextBookingSentence({ state: "none", days: 30 }, today),
+      nextBookingSentence({ state: "none", days: 7 }, today),
+      nextBookingSentence({ state: "cant-check" }, today),
+    ];
+    expect(said).toEqual([
+      "Next session: Thu, Nov 12 · 8:00 AM.",
+      "Next session: Thu, Nov 12 · 8:00 AM at Strongsville.",
+      "Checking the next booking…",
+      "Nothing booked in the next 30 days. Book the next one before they leave.",
+      "Nothing booked in the next 7 days. Book the next one before they leave.",
+      "Can't check the next booking right now.",
+    ]);
+    for (const s of said) expect(s).not.toMatch(/Nothing booked yet/);
+  });
+});
+
+describe("timesDoor", () => {
+  it("is absent with nothing to offer, prominent only when nothing is booked, quiet otherwise", () => {
+    const booked = { state: "booked", at: new Date(), elsewhere: null } as const;
+    expect(timesDoor({ state: "none", days: 30 }, false)).toBe("none");
+    expect(timesDoor(booked, false)).toBe("none");
+    expect(timesDoor({ state: "none", days: 7 }, true)).toBe("prominent");
+    expect(timesDoor(booked, true)).toBe("quiet");
+    expect(timesDoor({ state: "checking" }, true)).toBe("quiet");
+    // Offline is never the prominent door: nothing was confirmed.
+    expect(timesDoor({ state: "cant-check" }, true)).toBe("quiet");
   });
 });
 

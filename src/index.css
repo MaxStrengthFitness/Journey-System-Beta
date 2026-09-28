@@ -583,11 +583,14 @@
 /* =====================================================================
    SAFE AREAS — the iPad status bar and home indicator.
 
-   index.html asks for `viewport-fit=cover` and a `black-translucent`
-   status bar, so in the Home Screen app the page runs edge to edge: the
-   status bar (clock, battery; about 24px) is drawn OVER the top of the
-   page and the home indicator (about 20px) over the bottom. The insets
-   are 0 in a Safari tab, so everything below is a no-op there.
+   index.html asks for `viewport-fit=cover`, so in the Home Screen app
+   the page runs to the bottom edge and the home indicator (about 20px on
+   an iPad without a Home button) is drawn OVER the bottom of it. The
+   status bar is the `default` style since Sep 27 2026: iPadOS draws it
+   above the page, so the top inset is 0 there as well. (Under
+   `black-translucent` the page also ran up under the clock, about 24px,
+   and iPadOS 26 then cut off the bottom bar: index.html has the story.)
+   The insets are 0 in a Safari tab, so everything below is a no-op there.
 
    THE RULE: each inset is paid ONCE, by the element at the true edge of
    the screen, never by something stacked above it.
@@ -638,7 +641,9 @@
 
 /* The status band (index.html, first child of <body>). Always there, on
    every screen, above every sheet and toast, and never in the way of a
-   tap. In the dark theme it is clear, so each screen's own dark top runs
+   tap. It is as tall as the top inset, so 0px with the `default` status
+   bar; it matters only if the style goes back to `black-translucent`.
+   Then: in the dark theme it is clear, so each screen's own dark top runs
    up behind the clock. In the light theme every top surface is white or
    near white, and a black-translucent status bar always draws WHITE text,
    so the band paints the one dark neutral that is the same in both themes

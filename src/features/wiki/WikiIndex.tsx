@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { accentStyle, ACCENT_ICON, type WikiAccent } from "./categories";
+import { useWikiPageGuard } from "./page-guard";
 
 /**
  * THE INDEX — one browsable page, not a drill-down.
@@ -233,12 +234,14 @@ export interface WikiRowProps {
 }
 
 export function WikiRow({ title, meta, code, detail, badges, onClick, current }: WikiRowProps) {
+  // A row leaves the page it is on, so it asks about typing there first.
+  const guard = useWikiPageGuard();
   return (
     <button
       type="button"
       className="wk__row"
       aria-current={current ? "true" : undefined}
-      onClick={onClick}
+      onClick={() => guard(onClick)}
     >
       {code && (
         <span className="wk__row-code" aria-hidden>

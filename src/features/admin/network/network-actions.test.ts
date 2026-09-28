@@ -3,10 +3,12 @@ import type { FranchiseNetwork } from "../../../types";
 import {
   focusableNetworks,
   focusFields,
+  focusSetLine,
   focusWrite,
   launchOutcome,
   launchRequest,
   mayActForNetwork,
+  noFocusReason,
   studioList,
 } from "./network-actions";
 
@@ -45,13 +47,53 @@ describe("focusableNetworks", () => {
     expect(focusableNetworks({ id: "t-admin", role: "Founder" }, NETWORKS, ["solon"]).map((n) => n.id)).toEqual(["n-east"]);
   });
 
-  it("gives an owner the networks they own, by ownerId or ownerIds", () => {
-    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-ohio"]);
-    expect(focusableNetworks({ id: "t-own2", role: "Owner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-east"]);
+  it("gives an owner, like the company, every network that holds a studio in their scope (AJ, Sep 27 2026)", () => {
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["westlake", "strongsville"]).map((n) => n.id)).toEqual(["n-ohio"]);
+    expect(focusableNetworks({ id: "t-own2", role: "Owner" }, NETWORKS, all).map((n) => n.id)).toEqual(["n-east", "n-ohio", "n-west"]);
+  });
+
+  it("offers an owner a network that holds their studio even when the network does not list them", () => {
+    // "Choose later" makes a network with no owner, and nothing lists one afterwards.
+    const ownerless = [net("n-lake", "Lake", ["willoughby"])];
+    expect(focusableNetworks({ id: "t-new", role: "FranchiseOwner" }, ownerless, ["willoughby"]).map((n) => n.id)).toEqual(["n-lake"]);
+    // ...and not a network that holds none of the studios in scope.
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["solon"]).map((n) => n.id)).toEqual(["n-east"]);
+  });
+
+  it("offers nothing from inside Demo Mode, whose scope is the practice studio alone", () => {
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, NETWORKS, ["demo-studio"])).toEqual([]);
+    expect(focusableNetworks({ id: "t-admin", role: "Admin" }, NETWORKS, ["demo-studio"])).toEqual([]);
+    // Even a network that somehow listed the practice studio stays out of reach from it.
+    const mixed = [net("n-mixed", "Mixed", ["demo-studio", "westlake"], "t-own")];
+    expect(focusableNetworks({ id: "t-own", role: "FranchiseOwner" }, mixed, ["demo-studio"])).toEqual([]);
   });
 
   it("gives a studio leader none", () => {
     expect(focusableNetworks({ id: "t-own", role: "StudioLeader" }, NETWORKS, all)).toEqual([]);
+  });
+});
+
+describe("noFocusReason", () => {
+  const solon = { id: "solon" };
+  const westlake = { id: "westlake", networkId: "n-ohio" };
+
+  it("cannot tell while the networks have not come through: an empty list is loading, failed or none, and the hook says which of those never", () => {
+    expect(noFocusReason([solon], [])).toBe("cannot-tell");
+    expect(noFocusReason([solon, westlake], [])).toBe("cannot-tell");
+  });
+
+  it("cannot tell when a studio's own record names a network the list does not hold", () => {
+    expect(noFocusReason([westlake], [{ id: "n-east" }])).toBe("cannot-tell");
+  });
+
+  it("says not in a network only once the list came back and no studio points past it", () => {
+    expect(noFocusReason([solon], [{ id: "n-east" }])).toBe("not-in-network");
+    expect(noFocusReason([{ id: "solon", networkId: null }], [{ id: "n-east" }])).toBe("not-in-network");
+  });
+
+  it("knows the practice studio is not in one, whatever the list holds (the realm rule)", () => {
+    expect(noFocusReason([{ id: "demo-studio" }], [])).toBe("not-in-network");
+    expect(noFocusReason([{ id: "demo-studio", networkId: "n-ohio" }], [{ id: "n-east" }])).toBe("not-in-network");
   });
 });
 
@@ -74,6 +116,24 @@ describe("focusWrite", () => {
 
   it("writes nothing for an empty patch", () => {
     expect(focusWrite({}, by, "AT")).toEqual({});
+  });
+
+  it("says who set the focus and on which day, as the studio's Eastern day", () => {
+    // 02:30 UTC on Sep 28 is still Sep 27 in Ohio.
+    const at = new Date("2026-09-28T02:30:00Z");
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: at }, "America/New_York")).toBe("Set by Ann Owner on Sep 27, 2026.");
+    // A Firestore Timestamp, and one that lost its prototype in the cache.
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: { toDate: () => at } }, "America/New_York")).toBe("Set by Ann Owner on Sep 27, 2026.");
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: { seconds: at.getTime() / 1000, nanoseconds: 0 } }, "America/New_York")).toBe(
+      "Set by Ann Owner on Sep 27, 2026.",
+    );
+  });
+
+  it("says who only while the save's time is on its way, and the day only when nobody is named", () => {
+    expect(focusSetLine({ setBy: { name: "Ann Owner" }, setAt: null })).toBe("Set by Ann Owner.");
+    expect(focusSetLine({ setAt: new Date("2026-07-01T16:00:00Z") }, "America/New_York")).toBe("Set on Jul 1, 2026.");
+    expect(focusSetLine({})).toBe("Set.");
+    expect(focusSetLine(undefined)).toBe("Set.");
   });
 
   it("reads a network with no focus as three empty lines", () => {

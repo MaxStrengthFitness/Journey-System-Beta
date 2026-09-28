@@ -13,7 +13,10 @@
        the page scroll sideways; a machine with six settings is common;
      - row height stays at 40px so a value can be tapped without a stylus even
        though nothing here is interactive yet;
-     - numbers are tabular so a column of loads lines up.
+     - numbers are tabular so a column of loads lines up;
+     - text on the codex's scale, 11 / 12 / 14 / 17 / 30, and readable words
+       in the muted ink, never the faint one (voice review follow-up,
+       Sep 27 2026).
    ========================================================================== */
 
 .mt__panel {
@@ -66,7 +69,7 @@
 }
 
 .mt__group-name {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: var(--cat-ink);
 }
@@ -74,7 +77,7 @@
 .mt__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
   display: block;
   overflow-x: auto;
@@ -87,7 +90,7 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--cat-ink-faint);
+  color: var(--cat-ink-muted);
   padding: 0.25rem 0.75rem 0.25rem 0;
   border-bottom: 1px solid var(--cat-border);
 }
@@ -135,5 +138,5 @@
 .mt__withheld {
   font-size: 0.75rem;
   font-style: italic;
-  color: var(--cat-ink-faint);
+  color: var(--cat-ink-muted);
 }

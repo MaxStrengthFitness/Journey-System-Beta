@@ -72,6 +72,7 @@ import { InitiativeRollup } from "./InitiativeRollup";
 import { SubmitInitiativeDialog } from "./SubmitInitiativeDialog";
 import { saveSubmission, fetchSubmissions } from "./playbook-mutations";
 import type { SubmissionEntry } from "./initiatives";
+import { reactedLine } from "./reacted-line";
 
 const KIND_ICON: Record<RequestKind, typeof MessageSquare> = {
   cover: Repeat,
@@ -473,7 +474,7 @@ export function RequestsLane({
             const mine = r.claimedBy?.id === author?.id;
             const isAuthor = r.createdBy.id === author?.id;
             const left = timeLeft(r.expiresAt);
-            const reactions = reactionSummary(r);
+            const reacted = reactedLine(reactionSummary(r));
             return (
               <li
                 key={r.id}
@@ -576,17 +577,12 @@ export function RequestsLane({
                     const bucket = r.reactions?.[preset.id];
                     const count = bucket ? Object.keys(bucket).length : 0;
                     const active = Boolean(author && bucket?.[author.id]);
-                    const who = reactions
-                      .find((x) => x.id === preset.id)
-                      ?.names.filter(Boolean)
-                      .join(", ");
                     return (
                       <button
                         key={preset.id}
                         type="button"
                         className="stq__react"
                         aria-pressed={active}
-                        title={who || preset.label}
                         onClick={() => void react(r, preset.id)}
                         disabled={!author}
                       >
@@ -598,6 +594,9 @@ export function RequestsLane({
                     );
                   })}
                 </div>
+                {/* Who replied, in view once anyone has (it was a hover
+                    tooltip until Sep 27 2026): reacted-line.ts. */}
+                {reacted && <p className="stq__reacted">{reacted}</p>}
 
                 {threadId === r.id && (
                   <RequestThread

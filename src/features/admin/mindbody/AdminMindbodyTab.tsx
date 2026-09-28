@@ -95,6 +95,7 @@ import {
 import { useSyncLeases, withLease } from "../sync-lease";
 import { watchLine, type WebhookWatch } from "../../../lib/webhook-watch";
 import { studioTodayKey } from "../../../lib/studio-time";
+import { recordCoverage } from "../../openings/coverage-record";
 
 interface Props {
   studios: Studio[];
@@ -307,6 +308,7 @@ export function AdminMindbodyTab({
     setSyncing(true);
     setSyncStats(null);
     try {
+      const startedAt = Date.now();
       const result = await syncMindbodySchedules(
         selected.mindbodySiteId,
         trainers,
@@ -318,6 +320,18 @@ export function AdminMindbodyTab({
         selected.id,
         selected.mindbodyLocationId,
       );
+      // A whole answer: write down the days it read in full. For a past
+      // "Pull from" (a back-read) that is every day asked for, up to
+      // tomorrow; for the month ahead, today and tomorrow. Asks Mindbody
+      // nothing and says nothing if it fails
+      // (features/openings/coverage-record.ts).
+      void recordCoverage({
+        studioId: selected.id,
+        window: { start: startDate, end: endDate },
+        answer: result,
+        startedAt,
+        timeZone: selected.timezone,
+      });
       setSyncStats(result);
       if (result.errors.length > 0) {
         toastError(explainSyncError(result.errors[0], selected.mindbodySiteId));

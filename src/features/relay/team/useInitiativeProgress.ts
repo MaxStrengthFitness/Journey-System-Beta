@@ -9,7 +9,7 @@ import type { TaskRequest } from "../../studio-tasks/requests";
 import type { InitiativeLike } from "./accountability";
 
 /**
- * Progress on every open initiative, for the Team tab.
+ * Progress on every open initiative, for My Studio → Team.
  *
  * One listener per open initiative — the same subscription the roll-up card
  * uses — and a studio runs one or two at a time, so this is a handful of

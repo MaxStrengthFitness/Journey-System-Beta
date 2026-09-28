@@ -143,7 +143,7 @@ export function ResolveDialog({
               placeholder="What you actually did, so the next person does not have to work it out again."
               className="w-full rounded-xl border border-input bg-card px-3 py-2 text-sm text-ink-d1 placeholder:text-ink-d3 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <p className="mt-1 text-right text-[10px] text-ink-d3 tabular">
+            <p className="mt-1 text-right text-[11px] text-ink-d3 tabular">
               {resolution.length}/{RESOLUTION_MAX}
             </p>
           </div>
@@ -165,7 +165,7 @@ export function ResolveDialog({
                   className={cn(
                     "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border",
                     keep
-                      ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                      ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                       : "border-input bg-card text-transparent",
                   )}
                 >
@@ -189,7 +189,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-title"
-                      className="block text-[10px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
                     >
                       Title — what someone would search for
                     </label>
@@ -204,7 +204,7 @@ export function ResolveDialog({
                   <div>
                     <label
                       htmlFor="pb-tags"
-                      className="block text-[10px] font-black uppercase tracking-widest text-ink-d3 mb-1"
+                      className="block text-[11px] font-black uppercase tracking-widest text-ink-d3 mb-1"
                     >
                       Tags — comma separated
                     </label>
@@ -243,7 +243,7 @@ export function ResolveDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-10 rounded-xl border border-div-d px-4 text-[11px] font-black uppercase tracking-widest text-ink-d2 hover:border-ink-d3"
+            className="st__btn st__btn--ghost"
           >
             Cancel
           </button>
@@ -251,7 +251,7 @@ export function ResolveDialog({
             type="button"
             disabled={!canSubmit}
             onClick={() => void submit()}
-            className="h-10 rounded-xl bg-cta-strong px-5 text-[11px] font-black uppercase tracking-widest text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="st__btn st__btn--primary"
           >
             {saving
               ? "Saving…"

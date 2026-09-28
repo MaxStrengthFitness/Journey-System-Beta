@@ -46,7 +46,7 @@ export interface AssignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * This studio's own team — see studioRoster for why it is home studio only.
+   * This studio's own team — everyone who works here (studioRoster, lib/who-works-here.ts).
    * `{ id, name }`, the shape studioRoster returns. It was typed as `Trainer[]`
    * and read `fullName`, which that shape does not have, so every row read
    * "A trainer" and that is the name an assignment saved (fixed Sep 10 2026).
@@ -202,7 +202,7 @@ export function AssignDialog({
             </button>
             <button
               type="button"
-              className="st__btn st__btn--done"
+              className="st__btn st__btn--primary"
               disabled={busy || !chosenTrainer}
               onClick={() =>
                 chosenTrainer &&

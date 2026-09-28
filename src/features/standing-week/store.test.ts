@@ -48,7 +48,7 @@ vi.mock("firebase/firestore", async (importOriginal) => {
   };
 });
 
-import { agreeWeek, agreementWrite, proposalWrite, proposeWeek, removeWeek, type WeekOwner } from "./store";
+import { agreeWeek, agreementWrite, awayWrite, proposalWrite, proposeWeek, removeWeek, setAway, type WeekOwner } from "./store";
 import type { StandingWeek } from "./week";
 
 const owner: WeekOwner = { studioId: "solon", trainerUid: "uid-sam", trainerId: "t-sam", trainerName: "  Sam Lee " };
@@ -108,6 +108,32 @@ describe("an agreement", () => {
     const w = agreementWrite(owner, week, pat);
     expect(w).not.toHaveProperty("proposedBy");
     expect(w).not.toHaveProperty("proposedAt");
+  });
+});
+
+describe("the days away (voice review follow-up)", () => {
+  it("writes whose week it is and the list, past ranges dropped, nothing undefined", async () => {
+    await setAway(
+      owner,
+      [
+        { id: "a0", from: "2026-09-01", to: "2026-09-04" },
+        { id: "a1", from: "2026-10-05", to: "2026-10-09", note: undefined },
+      ],
+      "2026-09-28",
+    );
+    expect(fake.writes).toEqual([
+      {
+        op: "set",
+        path: "studios/solon/standingWeeks/uid-sam",
+        options: { merge: true },
+        data: { studioId: "solon", trainerUid: "uid-sam", trainerId: "t-sam", trainerName: "Sam Lee", away: [{ id: "a1", from: "2026-10-05", to: "2026-10-09" }] },
+      },
+    ]);
+  });
+
+  it("writes only fields a trainer may write, and never a proposal or an agreement", () => {
+    const w = awayWrite(owner, [], "2026-09-28");
+    expect(Object.keys(w).sort()).toEqual(["away", "studioId", "trainerId", "trainerName", "trainerUid"]);
   });
 });
 

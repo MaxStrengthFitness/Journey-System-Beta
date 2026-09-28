@@ -14,6 +14,10 @@ import type { DialValue } from "../types";
 import { isPerformedLog, outcomeOf, type SetOutcome } from "./set-outcome";
 import { newMachinesPhrase } from "./history-claims";
 import type { HistoryCoverage } from "./prior-history";
+import { BACK_FROM_DAYS } from "../features/openings/back-from";
+import { CHECK_DAYS } from "../features/standing-week/check";
+import type { ServerRead } from "../features/standing-week/server-read";
+import { formatStudioDate, formatStudioTime, getActiveTimeZone, studioDateKey } from "./studio-time";
 
 export interface TodayLog {
   machineId: string;
@@ -234,6 +238,8 @@ export interface BookingLike {
   clientId?: string;
   startTime?: unknown;
   status?: string;
+  /** Where the booking is: a booking at another studio on the same Mindbody is still her next. */
+  studioId?: string | null;
 }
 
 function toMs(v: unknown): number | null {
@@ -263,15 +269,147 @@ export function nextBookingFor<T extends BookingLike>(
   return best;
 }
 
-export function formatNextBooking(at: Date, now = new Date()): string {
-  const day = new Date(at.getFullYear(), at.getMonth(), at.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const days = Math.round((day.getTime() - today.getTime()) / 86_400_000);
-  const time = at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/**
+ * "Today · 9:00 AM", "Tomorrow · 9:00 AM" or "Thu, Nov 12 · 9:00 AM", on the
+ * STUDIO's clock (lib/studio-time.ts), never the device's: an iPad set to
+ * another zone, or GitHub's UTC runner, must read the booking as the studio
+ * does. It read the device's clock until Sep 28 2026, which on Eastern iPads
+ * happened to agree; CI's first run of the Openings round's Next tests in UTC
+ * showed "1:00 PM" for an 8:00 AM booking.
+ */
+export function formatNextBooking(at: Date, now = new Date(), tz: string = getActiveTimeZone()): string {
+  const dayKey = studioDateKey(at, tz);
+  const todayKey = studioDateKey(now, tz);
+  const days = dayKey && todayKey ? Math.round((keyUtc(dayKey) - keyUtc(todayKey)) / 86_400_000) : null;
+  const time = formatStudioTime(at, tz);
   if (days === 0) return `Today · ${time}`;
   if (days === 1) return `Tomorrow · ${time}`;
-  const when = at.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  const when = formatStudioDate(at, { weekday: "short", month: "short", day: "numeric" }, tz);
   return `${when} · ${time}`;
+}
+
+/** Midnight UTC of a `YYYY-MM-DD` key: only for counting whole days between two keys. */
+function keyUtc(key: string): number {
+  const [y, m, d] = key.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+/* ------------------------------------------------------------------ *
+ * The Next card's answer, and the door to Times with room
+ * (Openings round, Sep 27 2026, phase 8)
+ * ------------------------------------------------------------------ */
+
+/**
+ * WHAT THE NEXT CARD MAY SAY ABOUT HER NEXT BOOKING.
+ *
+ * Until this round the card judged "nothing booked" from the schedule the
+ * Hub already held, about eight days of THIS studio, so a client booked ten
+ * days out, or at Strongsville, read as unbooked; and it said the strongest
+ * claim there is, "Nothing booked yet", exactly when Journey had read least.
+ * Now:
+ *
+ *   booked      a booking still on the books. The schedule already on screen
+ *               answers at once; otherwise her own bookings from now on
+ *               (the profile header's query), heard from the server. A
+ *               booking at another studio on the same Mindbody counts, and
+ *               says where (`elsewhere`): Westlake, Strongsville and
+ *               Willoughby share one, so a booking at any of the three is
+ *               hers. Solon keeps its own records, so a Solon booking of a
+ *               Westlake client isn't seen.
+ *   checking    her bookings haven't come back from the server yet.
+ *   none        the server confirmed nothing on file. Never "nothing booked"
+ *               plainly: `days` is how far ahead Journey holds bookings,
+ *               BACK_FROM_DAYS (30) once the studio's month was read in full
+ *               today, CHECK_DAYS (7) otherwise, or while that isn't known.
+ *   cant-check  offline, the read failed, or only this iPad's cache answered
+ *               (server-read.ts): a cache is never an answer, even one with a
+ *               booking in it. And at a studio whose bookings aren't linked
+ *               (no Site ID, or marked offline): Journey holds none of its
+ *               bookings, so "nothing booked" there would be a claim about
+ *               nothing it read (the final review). A booking it did hear of,
+ *               at a linked studio on the same Mindbody, still answers.
+ */
+export type NextBookingAnswer =
+  | { state: "booked"; at: Date; elsewhere: string | null }
+  | { state: "checking" }
+  | { state: "none"; days: number }
+  | { state: "cant-check" };
+
+/** A booking at a studio Journey can't name. */
+export const ANOTHER_STUDIO = "another studio";
+
+export interface NextBookingInput<T extends BookingLike> {
+  clientId: string;
+  /** The schedule already on screen (the Hub's): a booking there is shown at once. */
+  loaded: readonly T[];
+  /** Her own bookings from now on, as the listener last heard them. */
+  heard: readonly T[];
+  /** Whether the listener's answer is the server's (only "ready" is an answer). */
+  read: ServerRead;
+  /** The studio's month was read in full today; null while the sync lease is still coming. */
+  monthRead: boolean | null;
+  /** The studio the iPad is in; a booking anywhere else says where. */
+  hereStudioId: string | null;
+  /** A studio's name, or null when Journey doesn't know it. */
+  studioName: (studioId: string) => string | null;
+  /** The studio's bookings are linked (Openings' `bookingsKnown`); unlinked, Journey holds none of this studio's bookings. */
+  linked: boolean;
+  now?: number;
+}
+
+export function nextBookingAnswer<T extends BookingLike>(input: NextBookingInput<T>): NextBookingAnswer {
+  const now = input.now ?? Date.now();
+  const where = (b: BookingLike): string | null => {
+    const id = b.studioId;
+    if (!id || !input.hereStudioId || id === input.hereStudioId) return null;
+    return input.studioName(id)?.trim() || ANOTHER_STUDIO;
+  };
+  const onScreen = nextBookingFor(input.clientId, input.loaded, now);
+  if (onScreen) return { state: "booked", at: onScreen.at, elsewhere: where(onScreen.booking) };
+  if (input.read === "loading") return { state: "checking" };
+  if (input.read !== "ready") return { state: "cant-check" };
+  const heard = nextBookingFor(input.clientId, input.heard, now);
+  if (heard) return { state: "booked", at: heard.at, elsewhere: where(heard.booking) };
+  if (!input.linked) return { state: "cant-check" };
+  return { state: "none", days: input.monthRead === true ? BACK_FROM_DAYS : CHECK_DAYS };
+}
+
+/**
+ * The Next card's one line. "Checking…" sits in the same space the answer
+ * will take, so nothing on the card moves while the client reads it.
+ */
+export function nextBookingSentence(answer: NextBookingAnswer, now = new Date()): string {
+  switch (answer.state) {
+    case "booked":
+      return `Next session: ${formatNextBooking(answer.at, now)}${answer.elsewhere ? ` at ${answer.elsewhere}` : ""}.`;
+    case "checking":
+      return "Checking the next booking…";
+    case "none":
+      return `Nothing booked in the next ${answer.days} days. Book the next one before they leave.`;
+    case "cant-check":
+      return "Can't check the next booking right now.";
+  }
+}
+
+/**
+ * THE DOOR TO TIMES WITH ROOM.
+ *
+ *   none        nothing to offer yet (the first weeks after launch never open
+ *               an empty sheet);
+ *   quiet       a text button, on every Wrap-up with something to offer,
+ *               including a client who is booked but wants a better regular
+ *               time, and while her bookings are still coming or can't be
+ *               checked;
+ *   prominent   the plum line and a button, only when the server confirmed
+ *               nothing is booked. A booking that arrives while the screen is
+ *               open (the desk booked her; the webhook writes it within
+ *               seconds) turns the card green and the door steps back.
+ */
+export type TimesDoor = "none" | "quiet" | "prominent";
+
+export function timesDoor(answer: NextBookingAnswer, somethingToOffer: boolean): TimesDoor {
+  if (!somethingToOffer) return "none";
+  return answer.state === "none" ? "prominent" : "quiet";
 }
 
 function formatShortDay(iso: string): string {

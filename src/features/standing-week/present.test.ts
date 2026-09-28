@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { clockChoices, daysOf, defaultHours, formOf, myWeekSentence, outsideHours, rangeLabel, teamWeekSentence, tidyForm, weekChanges, weekOfForm, worksAt } from "./present";
+import {
+  BREAKS_LINE,
+  NO_BLOCKS,
+  OUTSIDE_BLOCKS,
+  addBlockLabel,
+  awayLabel,
+  blockName,
+  blocksLabel,
+  mayReadWeeks,
+  reviewSentence,
+  clockChoices,
+  daysOf,
+  defaultHours,
+  formOf,
+  myWeekSentence,
+  outsideHours,
+  rangeLabel,
+  teamWeekSentence,
+  tidyForm,
+  weekChanges,
+  weekOfForm,
+  worksAt,
+} from "./present";
 import type { StandingWeek, StandingWeekDoc } from "./week";
 
 /** What a standing week says on screen (voice-review round, Sep 27 2026). */
@@ -138,14 +160,99 @@ describe("what a proposal changes", () => {
       note: "Back from vacation Nov 3",
     };
     expect(weekChanges(from, to)).toEqual([
-      "Monday's hours: 6:00 AM – 12:00 PM, was 7:00 AM – 1:00 PM.",
-      "Works Friday, 7:00 AM – 11:00 AM.",
+      "Monday: 6:00 AM – 12:00 PM, was 7:00 AM – 1:00 PM.",
+      "Takes clients on Friday, 7:00 AM – 11:00 AM.",
       "Drops Bob Jones, Monday at 9:00 AM.",
       "Moves Judy Smith from Monday at 8:00 AM to Tuesday at 9:30 AM.",
       "Adds Ann Park, Friday at 8:00 AM.",
       'Note: "Back from vacation Nov 3"',
     ]);
-    expect(weekChanges(to, { ...from, note: undefined })).toContain("No longer works Friday (was 7:00 AM – 11:00 AM).");
+    expect(weekChanges(to, { ...from, note: undefined })).toContain("No longer takes clients on Friday (was 7:00 AM – 11:00 AM).");
     expect(weekChanges(to, { ...to, note: "" })).toEqual(["Takes the note off."]);
+  });
+
+  it("says a day of three blocks as one phrase (Openings round)", () => {
+    const from = week({ regulars: [] });
+    const to = week({
+      regulars: [],
+      hours: [
+        { weekday: 1, from: "06:00", to: "08:00" },
+        { weekday: 1, from: "09:00", to: "11:00" },
+        { weekday: 1, from: "15:00", to: "18:00" },
+      ],
+    });
+    expect(weekChanges(from, to)).toEqual([
+      "Monday: 6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM, was 7:00 AM – 1:00 PM.",
+    ]);
+  });
+});
+
+describe("the editor's words (Openings round)", () => {
+  it("names the blocks by when a trainer takes clients, never hours", () => {
+    expect(NO_BLOCKS).toBe("Doesn't take clients");
+    expect(OUTSIDE_BLOCKS).toBe("Outside when they take clients");
+    expect(BREAKS_LINE).toBe("A break inside a block shows as room on Openings, so leave the breaks out.");
+    expect(addBlockLabel(0, "Monday")).toEqual({ text: "Add a block", label: "Add a block on Monday" });
+    expect(addBlockLabel(1, "Monday")).toEqual({ text: "Add another block", label: "Add another block on Monday" });
+    expect(addBlockLabel(2, "Monday")).toEqual({ text: "Add another block", label: "Add another block on Monday" });
+  });
+
+  it("gives each block of a day its own name for VoiceOver", () => {
+    expect(blockName("Monday", 0)).toBe("Monday");
+    expect(blockName("Monday", 1)).toBe("Monday, block 2");
+    expect(blockName("Monday", 2)).toBe("Monday, block 3");
+  });
+
+  it("says one, two or three blocks as a phrase", () => {
+    const a = { from: "06:00", to: "08:00" };
+    const b = { from: "09:00", to: "11:00" };
+    const c = { from: "15:00", to: "18:00" };
+    expect(blocksLabel([])).toBe("");
+    expect(blocksLabel([a])).toBe("6:00 AM – 8:00 AM");
+    expect(blocksLabel([a, b])).toBe("6:00 AM – 8:00 AM and 9:00 AM – 11:00 AM");
+    expect(blocksLabel([a, b, c])).toBe("6:00 AM – 8:00 AM, 9:00 AM – 11:00 AM and 3:00 PM – 6:00 PM");
+  });
+
+  it("starts a third block an hour after the day's latest ends", () => {
+    const two = { hours: [{ weekday: 1, from: "06:00", to: "09:00" }, { weekday: 1, from: "10:00", to: "13:00" }] };
+    expect(defaultHours(two, 1)).toEqual({ weekday: 1, from: "14:00", to: "18:00" });
+  });
+});
+
+describe("days away, labelled", () => {
+  it("names the first and last day, or the one day", () => {
+    expect(awayLabel({ from: "2026-10-05", to: "2026-10-09" }, "America/New_York")).toBe("Mon, Oct 5 – Fri, Oct 9");
+    expect(awayLabel({ from: "2026-10-05", to: "2026-10-05" }, "America/New_York")).toBe("Mon, Oct 5");
+  });
+});
+
+describe("who may read a studio's standing weeks", () => {
+  const at = (role: string, home: string) => ({ role, primaryHomeStudioId: home, accessibleStudioIds: [home], activeGuestStudioIds: [] });
+  it("is whoever works there, and whoever reads every studio's", () => {
+    expect(mayReadWeeks(at("LifeTransformer", "solon"), "solon")).toBe(true);
+    expect(mayReadWeeks(at("LifeTransformer", "westlake"), "solon")).toBe(false);
+    expect(mayReadWeeks(at("HeadTrainer", "westlake"), "solon")).toBe(false);
+    expect(mayReadWeeks(at("FranchiseOwner", "westlake"), "solon")).toBe(true);
+    expect(mayReadWeeks(at("Admin", "westlake"), "solon")).toBe(true);
+    expect(mayReadWeeks(null, "solon")).toBe(false);
+    expect(mayReadWeeks(at("LifeTransformer", "solon"), null)).toBe(false);
+  });
+});
+
+describe("the Review's line (voice review follow-up)", () => {
+  const week: StandingWeek = { hours: [{ weekday: 1, from: "07:00", to: "13:00" }], regulars: [] };
+  const base: StandingWeekDoc = { id: "uid-sam", studioId: "solon", trainerUid: "uid-sam", trainerId: "t-sam", trainerName: "Sam Lee", proposed: null, final: null };
+  const TZ = "America/New_York";
+
+  it("names who proposed the week and when", () => {
+    const d = { ...base, proposed: week, proposedAt: new Date("2026-09-27T14:00:00Z"), proposedBy: { id: "uid-sam", name: "Sam Lee" } };
+    expect(reviewSentence(d, "Sam Lee", TZ)).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    const changed = { ...d, proposed: { ...week, regulars: [] , note: "x" }, final: week, finalAt: new Date("2026-09-20T14:00:00Z"), finalBy: { id: "uid-pat", name: "Pat Doe" } };
+    expect(reviewSentence(changed, "Sam Lee", TZ)).toBe("Agreed by Pat Doe on Sep 20. A change proposed by Sam Lee on Sep 27.");
+  });
+
+  it("falls back to the person's name, and reads an agreed week or none as the row does", () => {
+    expect(reviewSentence({ ...base, proposed: week, proposedAt: new Date("2026-09-27T14:00:00Z") }, "Sam Lee", TZ)).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    expect(reviewSentence(null, "Sam Lee", TZ)).toBe("Sam hasn't proposed a standing week here.");
   });
 });

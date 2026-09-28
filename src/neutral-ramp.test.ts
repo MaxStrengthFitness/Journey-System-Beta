@@ -211,9 +211,12 @@ const ALWAYS_DARK_SCREENS = new Set([
   "components/ErrorBoundary.tsx",
   "features/admin/import/LegacyChartImporter.tsx",
   "components/ClientProgressReportView.tsx",
-  // The post-session screen is the celebration: deliberately always dark
-  // (bg-bg-dark), rebuilt in the tracker round.
-  "components/WrapUpScreen.tsx",
+  // The Wrap-up (the post-session screen) was on this list from the tracker
+  // round, when it was dark in both themes. It follows the theme now, all of
+  // it (Sep 27 2026): its surfaces are the bg-dark / ink-d tokens, its
+  // colours are tokens that read in both, and the Dial, Loudness and the two
+  // trays are no longer pinned dark inside it. So it is counted like any
+  // other theme-aware screen, and it adds nothing to the count.
 ]);
 
 /**
@@ -276,8 +279,13 @@ function countBarePaletteUtilities(): number {
  *
  * Sep 24 2026 (client codex, cleanup — phase 19): 242 -> 235, the count
  * again: ClientJournalTab, DossierPrimitives and JournalRail deleted.
+ *
+ * Sep 27 2026 (voice review follow-up, the Wrap-up): 235 -> 231, the count
+ * again. The Wrap-up left ALWAYS_DARK_SCREENS with every colour on it moved
+ * to a token, so it adds nothing; the other four had come off in the rounds
+ * since phase 19 without the budget following them.
  */
-const BARE_PALETTE_BUDGET = 235;
+const BARE_PALETTE_BUDGET = 231;
 
 describe("colour drift does not creep back", () => {
   it(`has at most ${BARE_PALETTE_BUDGET} non-theme-aware palette utilities`, () => {

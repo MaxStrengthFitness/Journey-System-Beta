@@ -106,22 +106,6 @@ import { invalidateSessionCount } from './session-count-cache';
 import { completedSessionRollup } from './client-rollups';
 import { studioTodayKey } from "./studio-time";
 import { isPerformedLog } from './set-outcome';
-import { createJournalEntry } from '../hooks/useClientJournal';
-import type { JournalImportance } from '../types/journal';
-import type { DialValue } from '../types';
-
-/**
- * What the post-session screen may hand Finish (reporting round, Sep 2026):
- * the dose Dial's position (`sessions.dose`, −2…2; absent when the trainer
- * never tapped — "not judged", never a default) and the closing note with
- * its Loudness (the journal's own importance). `clientFeel` and the old
- * Low/Medium/High priority are no longer written by anything.
- */
-export interface PostSessionData {
-  dose?: DialValue | null;
-  noteContent: string;
-  importance: JournalImportance;
-}
 
 /**
  * Sessions whose client totals landed although the session itself was
@@ -149,30 +133,35 @@ const totalledSessionIds = new Set<string>();
  * them stale. Both writes are queued before either is awaited, so a reload
  * while offline replays both.
  *
- * The post-session note is NOT in the batch. It is written to the client's
- * Journal (journalEntries, origin post_session) after the batch commits, on
- * its own, so a note the rules refuse — too long, an author id that is not
- * the signed-in uid — can never take the session down with it. Finish saves
- * the core first; notes are append-only (docs/ARCHITECTURE.md §1.2).
+ * No journal note is written here. `currentSessionNotes` is the End Session
+ * box, the Note for the next trainer: it goes onto the session document
+ * (`sessions.notes`, which History, the studio export and the journal's
+ * read-only "Session summary" read), and the tracker files its journal copy,
+ * a Heads up, on its own after this call. The Wrap-up's dose Dial and its
+ * Profile note are written by the Wrap-up itself, as they are tapped and
+ * when the trainer leaves (WorkoutTrackerView: savePostSessionDose,
+ * leavePostSession). A journal write here would only be one more thing the
+ * rules could refuse inside Finish; notes are append-only afterwards
+ * (docs/ARCHITECTURE.md §1.2). Until Sep 27 2026 this function also took the
+ * post-session screen's dose and note, but nothing had passed them since the
+ * reporting round (the fluidity audit, Sep 17, called that branch dead).
  *
- * Returns whether the note landed, so the caller can say so. `null` means
- * there was no note to write. `totalsSaved` is the same for the client's
- * totals: null when there was no client to total.
+ * Returns `totalsSaved`: whether the client's running totals landed, so the
+ * caller can say so; null when there was no client to total.
  */
 export async function completeWorkoutSession(
   db: Firestore,
   currentSession: any,
   selectedClient: any,
   sessionLogs: any[],
-  postData: PostSessionData | undefined,
   currentSessionNotes: string,
   authTrainer: any,
   clientMachineSettings: Record<string, any>,
   userId: string,
   /** Extra fields for the session document — the booking match and lateness (lib/session-timing.ts). */
   sessionExtras?: Record<string, unknown>,
-): Promise<{ noteSaved: boolean | null; totalsSaved: boolean | null }> {
-  if (!currentSession?.id) return { noteSaved: null, totalsSaved: null };
+): Promise<{ totalsSaved: boolean | null }> {
+  if (!currentSession?.id) return { totalsSaved: null };
   const batch = writeBatch(db);
   const homeStudioId = selectedClient?.homeStudioId || null;
 
@@ -199,9 +188,7 @@ export async function completeWorkoutSession(
     if (selectedClient.clinicalProfile) updateData.clientClinicalProfile = selectedClient.clinicalProfile;
   }
 
-  if (postData?.dose !== undefined && postData?.dose !== null) {
-    updateData.dose = postData.dose;
-  }
+  // The Note for the next trainer, whole (the journal's copy is cut at 5,000).
   if (currentSessionNotes.trim()) {
     updateData.notes = currentSessionNotes.trim();
   }
@@ -415,33 +402,5 @@ export async function completeWorkoutSession(
     if ((await totals) === true) totalledSessionIds.add(currentSession.id);
     throw err;
   }
-  const totalsSaved = await totals;
-
-  // 4. The post-session note, into the Journal — after the core is saved,
-  //    never inside the batch (see the header comment). The author is the
-  //    signed-in uid, which is what the journalEntries rule pins authorId to.
-  const noteBody = (postData?.noteContent || '').trim();
-  if (!noteBody || !selectedClient?.id) return { noteSaved: null, totalsSaved };
-  try {
-    const initials = (authTrainer?.initials || (authTrainer?.fullName || '').substring(0, 2) || '??').toUpperCase();
-    const id = await createJournalEntry(
-      selectedClient.id,
-      currentSession.hostedAtStudioId || homeStudioId || '',
-      { id: userId, initials, fullName: authTrainer?.fullName || initials },
-      {
-        kind: 'general',
-        category: null,
-        body: noteBody.slice(0, 5000),
-        importance: postData?.importance ?? 'standard',
-        machineId: null,
-        focusId: null,
-        sessionId: currentSession.id,
-        origin: 'post_session',
-      },
-    );
-    return { noteSaved: id !== null, totalsSaved };
-  } catch (err) {
-    console.error('[finish] post-session note did not reach the Journal', err);
-    return { noteSaved: false, totalsSaved };
-  }
+  return { totalsSaved: await totals };
 }

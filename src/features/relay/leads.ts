@@ -1,13 +1,18 @@
 /**
- * WHO LEADS THIS STUDIO — for the Planner's leader-only parts.
+ * WHO LEADS THIS STUDIO — for My Studio's leader sections (Team and Studio,
+ * and the leader half of Machines) and Relay's leader acts (posting a team
+ * job, assigning a shift task).
  *
- * Round: Planner rework, Sep 2026. The Team tab, posting a team job and
- * changing its people are a leader's acts, and firestore.rules allows them to
- * administrators, franchise owners, and the leaders OF THAT STUDIO (home or
- * owned — `isStudioOwnerOrHeadTrainer(studioId)`). A head trainer visiting
- * another studio is a trainer there, so the buttons must follow the studio
- * the iPad is standing in, not the role alone — otherwise the screen offers
- * what the database refuses. Renewals already answers exactly this question.
+ * Round: Planner rework, Sep 2026. Those are a leader's acts, and
+ * firestore.rules allows them to administrators, franchise owners, and the
+ * leaders OF THAT STUDIO — a leader role (head trainer, studio leader,
+ * studio owner) at their home or an owned studio, or a trainer the studio's
+ * leadership gave THE GRANT for it (`managedStudioIds`, My Studio round) —
+ * `isStudioOwnerOrHeadTrainer(studioId)` / `trainerLeads`. A head trainer
+ * visiting another studio is a trainer there, so the buttons must follow the
+ * studio the iPad is standing in, not the role alone — otherwise the screen
+ * offers what the database refuses. Inside Demo Mode everyone leads. Renewals
+ * already answers exactly this question (renewals/permissions.ts).
  */
 
 import type { Trainer } from "../../types";

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, NotebookPen, Plus, StickyNote, UserRound, Users } from "lucide-react";
+import { LayoutGrid, Plus, StickyNote, UserRound, Users } from "lucide-react";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, Trainer } from "../../types";
 import { StudioHubView } from "../studio-tasks/StudioHubView";
@@ -31,7 +31,7 @@ import "./board/relay.css";
  * changes how the work is SEEN and CAPTURED:
  *
  *   the Now Bar      pinned on every tab — the shift phase, the trainer's next
- *                    session and minutes free, and the Pulse (relay/NowBar)
+ *                    session and minutes free, and "Just now" (relay/board/NowBar)
  *   Floor            the studio's shared board: Next up, the shift rings, the
  *                    floor map, asks, the playbook (studio-tasks/StudioHubView)
  *   Mine             the trainer's own list: today, handed to you, follow-ups,
@@ -40,13 +40,15 @@ import "./board/relay.css";
  *   Capture          one composer for all of it, under the right thumb
  *   Context Panel    detail beside the board, never a modal over it
  *
- * Team — who's in, cohorts, open loops, the vault — was Relay's fourth tab
- * and is My Studio's Team section now, beside this studio's staff (My Studio
- * round, Sep 2026). Network — the network's focus, initiatives across
- * studios and a ranking of studios — was the other fourth tab, for franchise
- * owners and the company. It moved to Operations → All my studios in the
- * voice-review round (Sep 27 2026: "Relay must prioritize the trainers
- * transitioning between clients"), and the ranking was dropped.
+ * Team was Relay's fourth tab and is My Studio → Team now (My Studio round,
+ * Sep 2026): people and standards since the voice-review round (Sep 27
+ * 2026), for the leaders of this studio. Network — the network's focus,
+ * initiatives across studios and a ranking of studios — was the other fourth
+ * tab, for franchise owners and the company. It moved to Operations →
+ * Overview → All my studios in the voice-review round ("Relay must
+ * prioritize the trainers transitioning between clients"), and the ranking
+ * was dropped. So Relay is Floor · Mine · Notes, and every tab is
+ * everyone's.
  *
  * Why "Relay": a team handing work from one leg to the next, and the part
  * that passes a signal on without the sender staying on the line — which is
@@ -95,7 +97,6 @@ function tabFor(intent: PlannerIntent): PlannerTab {
 export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }: PlannerViewProps) {
   const { activeStudioId } = useActiveStudio();
   const { now, panel, openCapture, closePanel } = useRelay();
-  const tabs = TABS;
 
   // A request from a client's profile or a notification, read on arrival —
   // see ./intent.ts. Held until the trainer changes tab, so it acts once.
@@ -103,16 +104,16 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
   useEffect(() => {
     clearPlannerIntent(intent);
   }, [intent]);
-  const [tab, setTab] = useState<PlannerTab>(() => {
+  // The tab on screen. Every tab is everyone's since Network left Relay.
+  const [shown, setShown] = useState<PlannerTab>(() => {
     if (intent) rememberedTab = tabFor(intent);
     return rememberedTab;
   });
-  const shown: PlannerTab = tab;
 
   const clearIntent = useCallback(() => setIntent(null), []);
   const choose = (next: PlannerTab) => {
     rememberedTab = next;
-    setTab(next);
+    setShown(next);
     setIntent(null);
     closePanel();
   };
@@ -124,7 +125,7 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
     <>
       <div className="pl__subbar">
         <div className="pl__tabs" role="tablist" aria-label="Relay">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -179,7 +180,9 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
         <ContextPanel content={panel} onClose={closePanel} />
       </div>
 
-      {shown !== "notes" && (
+      {/* Capture steps aside while the Context Panel is open: the panel's
+          foot (an ask's Done, Next up's Mark all) sits in the same corner. */}
+      {shown !== "notes" && !panel && (
         <button type="button" className="cf" onClick={() => openCapture()} aria-label="Capture">
           <Plus size={22} aria-hidden />
           <span className="cf__label">Capture</span>
@@ -188,6 +191,3 @@ export function PlannerView({ authTrainer, clients, trainers, onOpenClientTask }
     </>
   );
 }
-
-// The notebook icon is still the bottom bar's; the masthead's bolt is Relay's own.
-export { NotebookPen as PlannerNavIcon };

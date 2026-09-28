@@ -165,8 +165,9 @@ export function AdminMachineFitTab({ machines, clients, studios, activeStudioId,
   const studioName = (id: string) => studios.find((s) => s.id === id)?.name ?? id;
 
   const openClient = (clientId: string) => {
-    // Her profile resumes wherever its stored location says; send it to
-    // Programming → Setup, on Check (ui/open-hint.ts).
+    // A one-time handoff: the profile takes it on mount (takeStoredLocation)
+    // and opens at Programming → Setup, on Check (ui/open-hint.ts); the next
+    // visit to her opens on Journey as usual.
     writeStoredLocation(clientId, { tab: "programming", view: "setup" });
     writeSetupHint(clientId, "check");
     onNavigateProfile?.(clientId);

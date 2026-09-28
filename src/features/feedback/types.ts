@@ -102,6 +102,11 @@ export interface FeedbackReport {
   issueType?: string;
   description: string;
 
+  /**
+   * Who filed it: their Firebase Auth uid since Sep 27 2026, which the read
+   * rule compares to; before then, their trainer document's id (the same
+   * value on most accounts, not on older ones).
+   */
   userId: string;
   userEmail: string;
   userName: string;

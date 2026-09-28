@@ -2,19 +2,37 @@
  * THE STANDING WEEK — a trainer's usual week at a studio (voice-review round,
  * Sep 27 2026; docs/rounds/2026-09-27-standing-week.md is the round).
  *
- * The hours they work and their regulars ("Judy, Monday 8:00"). The trainer
- * PROPOSES it on My Profile; a studio leader AGREES it on My Studio → Team.
- * Journey checks the coming week's Mindbody bookings against the agreed week
- * (check.ts) and never writes to Mindbody: the front desk books the regulars,
- * as recurring appointments, exactly as before.
+ * When they usually take clients and their regulars ("Judy, Monday 8:00").
+ * The trainer PROPOSES it on My Profile; a studio leader AGREES it on My
+ * Studio → Team. Journey checks the coming week's Mindbody bookings against
+ * the agreed week (check.ts) and never writes to Mindbody: the front desk
+ * books the regulars, as recurring appointments, exactly as before.
+ *
+ * THE WORDS (Openings round, Sep 27 2026). The stored field is still `hours`
+ * and a row is still a `WorkHours`, but a screen never calls them hours: a
+ * day's rows are its BLOCKS, the times the trainer usually takes clients
+ * ("When I usually take clients"), and a day with none "Doesn't take
+ * clients". A block is not a shift: many trainers are paid per client, and
+ * AJ's "take three clients, have a little break" is two or three blocks with
+ * the breaks left out, because Openings reads a half-hour inside a block
+ * with nothing booked as room. Hence three blocks a day (MAX_RANGES_A_DAY).
  *
  * Every time is the studio's own wall clock, "HH:MM", and every day a weekday
  * 0–6 (0 = Sunday, as `weekdayOf` reports it). Nothing here knows an instant:
  * the week is the same week on the day the clocks change.
  *
+ * AWAY (voice review follow-up, Sep 27 2026). AJ: "if someone has a vacation
+ * then it should block it out." A list of studio days the trainer is away,
+ * `away: [{ id, from, to, note }]`, beside the week rather than inside it: it
+ * needs no agreement, so the trainer sets it on My Profile and a leader on
+ * Team, and a trainer with no proposal can still set it. The week check
+ * skips the trainer's slots on those days. Journey's own: nothing about it
+ * goes to Mindbody.
+ *
  * PURE MODULE.
  */
 
+/** One block: a stretch of a weekday when the trainer usually takes clients. */
 export interface WorkHours {
   /** 0 = Sunday … 6 = Saturday. */
   weekday: number;
@@ -35,8 +53,18 @@ export interface Regular {
 }
 
 export interface StandingWeek {
+  /** The blocks, stored as `hours` (the field kept its first name). */
   hours: WorkHours[];
   regulars: Regular[];
+  note?: string;
+}
+
+/** Days away, both ends included: studio days, "YYYY-MM-DD". */
+export interface AwayRange {
+  /** Stable within the list, so a remove finds its row. */
+  id: string;
+  from: string;
+  to: string;
   note?: string;
 }
 
@@ -54,14 +82,38 @@ export interface StandingWeekDoc {
   final: StandingWeek | null;
   finalAt?: unknown;
   finalBy?: { id: string; name: string } | null;
+  /** Days away, earliest first. Always set by normalizeDoc; optional so a hand-built doc may leave it out. */
+  away?: AwayRange[];
 }
 
-/** The rules hold the same limits (firestore.rules, standingWeekValid). */
-export const MAX_HOURS = 14;
+/**
+ * Blocks a day, as the editor offers them (Openings round, Sep 27 2026: was
+ * two). AJ's per-client trainers "take three clients, have a little break"
+ * and go again; with two blocks such a day was typed as one long block, and
+ * every habitual break inside it would read as room on Openings and be
+ * offered to a client.
+ */
+export const MAX_RANGES_A_DAY = 3;
+
+/**
+ * Blocks in a week: three a day, every day (was 14). The rules hold the same
+ * limits (firestore.rules, standingWeekShapeValid); for the blocks they check
+ * only the list's length, never each block, so the 1,000-expression budget
+ * the days away were measured against doesn't move
+ * (tests/firestore.rules.test.ts, "the standing week", holds it at 21).
+ */
+export const MAX_HOURS = MAX_RANGES_A_DAY * 7;
 export const MAX_REGULARS = 80;
 export const MAX_NOTE = 500;
+/**
+ * Six ranges still to come at a time: the rules check each one, and a
+ * request may evaluate only so many expressions (firestore.rules,
+ * standingWeekAwayValid). Past ranges drop off as it saves.
+ */
+export const MAX_AWAY = 6;
+export const MAX_AWAY_NOTE = 200;
 
-export const EMPTY_WEEK: StandingWeek = { hours: [], regulars: [] };
+export const BLANK_WEEK: StandingWeek = { hours: [], regulars: [] };
 
 /** Monday first, the way a studio's week reads; Sunday last. */
 export const WEEKDAYS_IN_ORDER: readonly number[] = [1, 2, 3, 4, 5, 6, 0];
@@ -113,6 +165,59 @@ export function normalizeWeek(raw: unknown): StandingWeek {
   return { hours, regulars, ...(note ? { note } : {}) };
 }
 
+export function isDateKey(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v);
+}
+
+/**
+ * Days away as stored, made safe to read: a range with a bad date, or one
+ * that ends before it starts, is left out rather than guessed; earliest
+ * first, held to the rules' limits.
+ */
+export function normalizeAway(raw: unknown): AwayRange[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((r): r is AwayRange => {
+      const x = r as Partial<AwayRange> | null;
+      return !!x && typeof x.id === "string" && x.id !== "" && isDateKey(x.from) && isDateKey(x.to) && x.from <= x.to;
+    })
+    .map((r) => {
+      const note = typeof r.note === "string" ? r.note.trim().slice(0, MAX_AWAY_NOTE) : "";
+      return { id: r.id.slice(0, 40), from: r.from, to: r.to, ...(note ? { note } : {}) };
+    })
+    .sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to))
+    .slice(0, MAX_AWAY);
+}
+
+/** The ranges that haven't ended by `today`: the only ones a screen shows. */
+export function upcomingAway(away: readonly AwayRange[] | null | undefined, today: string): AwayRange[] {
+  return normalizeAway(away ?? []).filter((r) => r.to >= today);
+}
+
+/** The range that covers `dateKey`, if the trainer is away that day. */
+export function awayOn(away: readonly AwayRange[] | null | undefined, dateKey: string): AwayRange | null {
+  return (away ?? []).find((r) => r.from <= dateKey && dateKey <= r.to) ?? null;
+}
+
+/**
+ * Days away ready to write: past ranges dropped (only today and after are
+ * shown, so nobody could remove them), no undefined anywhere.
+ */
+export function awayForWrite(away: readonly AwayRange[], today: string): AwayRange[] {
+  return upcomingAway(away, today).map((r) => ({ id: r.id, from: r.from, to: r.to, ...(r.note ? { note: r.note } : {}) }));
+}
+
+/** A new range's id: unique within the list. */
+export function newAwayId(existing: readonly AwayRange[], seed = Date.now()): string {
+  const taken = new Set(existing.map((r) => r.id));
+  let n = seed % 1_000_000;
+  let id = `a${n.toString(36)}`;
+  while (taken.has(id)) {
+    n += 1;
+    id = `a${n.toString(36)}`;
+  }
+  return id;
+}
+
 /** A stored document, made safe to read. */
 export function normalizeDoc(id: string, raw: unknown): StandingWeekDoc {
   const d = (raw ?? {}) as Partial<StandingWeekDoc>;
@@ -128,6 +233,7 @@ export function normalizeDoc(id: string, raw: unknown): StandingWeekDoc {
     final: d.final ? normalizeWeek(d.final) : null,
     finalAt: d.finalAt ?? null,
     finalBy: d.finalBy ?? null,
+    away: normalizeAway(d.away),
   };
 }
 
@@ -164,7 +270,7 @@ export function weekSummary(week: StandingWeek | null): string {
   const regulars = week.regulars.length;
   if (days === 0 && regulars === 0) return "An empty week";
   const parts = [
-    days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "no hours set",
+    days > 0 ? `${days} ${days === 1 ? "day" : "days"}` : "no times set",
     `${regulars} ${regulars === 1 ? "regular" : "regulars"}`,
   ];
   return parts.join(" · ");

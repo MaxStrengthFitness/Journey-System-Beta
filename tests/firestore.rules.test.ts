@@ -2316,6 +2316,10 @@ describe("Firestore Security Rules", () => {
         rows: [{ clientId: "clientA", machineId: "m-leg-press", weight: 100, reps: 4, medianReps: 10, priorSets: 5, day: "2026-09-19", drop: 0.6 }],
         clients: 1,
       });
+      // Openings' usual week (Sep 27 2026), written by the same Sunday job, the Demo studio's too.
+      const openings = { v: 1, builtAt: "2026-09-27T07:00:00.000Z", tz: "America/New_York", row: 30, since: null, weeks: [], who: {}, agreed: {}, cells: {} };
+      await setDoc(doc(ctx.firestore(), "studios", "studioA", "watch", "openings"), openings);
+      await setDoc(doc(ctx.firestore(), "studios", "demo-studio", "watch", "openings"), openings);
     });
     const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
     await assertSucceeds(getDoc(doc(trainer, "studios", "studioA", "watch", "performance")));
@@ -2325,6 +2329,11 @@ describe("Firestore Security Rules", () => {
     await assertFails(getDoc(doc(other, "studios", "studioA", "watch", "performance")));
     await assertFails(updateDoc(doc(owner, "studios", "studioA", "watch", "performance"), { rows: [] }));
     await assertFails(setDoc(doc(trainer, "studios", "studioA", "watch", "anything"), { rows: [] }));
+    // watch/openings: the studio's people read it, another studio's trainer doesn't, the Demo studio's is everyone's, and nobody writes it.
+    await assertSucceeds(getDoc(doc(trainer, "studios", "studioA", "watch", "openings")));
+    await assertFails(getDoc(doc(other, "studios", "studioA", "watch", "openings")));
+    await assertSucceeds(getDoc(doc(other, "studios", "demo-studio", "watch", "openings")));
+    await assertFails(setDoc(doc(owner, "studios", "studioA", "watch", "openings"), { cells: {} }));
   });
 
   it("lets a studio's leader offer one of its machines to the catalog, as themselves, pending — and only withdraw it afterwards", async () => {
@@ -3334,6 +3343,78 @@ describe("a cross-train visitor's session", () => {
   });
 });
 
+// ── MY PROFILE → YOUR WEEK'S READ (Openings round, phase 11, Sep 27 2026) ─
+//
+// Your week reads the studio's sessions the way Operations → Insights → Hours
+// does (features/admin/sessions-range.ts: hostedAtStudioId ==, a createdAt
+// range, newest first, capped) and keeps the trainer's own in memory. Naming
+// the studio is what lets the rules allow it (trainerWorksAt): a query on
+// trainerId alone is allowed only when the sessions carry the reader's
+// sign-in uid, and an older account's sessions carry its trainer document id
+// instead. No rules change; these hold the read to the rules as they stand.
+describe("Your week's read", () => {
+  const since = new Date("2026-09-20T04:00:00Z");
+  const yourWeekQuery = (db: ReturnType<ReturnType<typeof testEnv.authenticatedContext>["firestore"]>, studioId: string) =>
+    query(
+      collection(db, "sessions"),
+      where("hostedAtStudioId", "==", studioId),
+      where("createdAt", ">=", since),
+      orderBy("createdAt", "desc"),
+      limit(1500),
+    );
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      // Signed in as authA2; the sessions this person ran carry the trainer
+      // document id they had before, trainerDocA2 — the two differ.
+      await setDoc(doc(db, "trainers", "authA2"), {
+        fullName: "Trainer A Two",
+        initials: "T2",
+        role: "LifeTransformer",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+        claimedFromId: "trainerDocA2",
+      });
+      for (const [id, day] of [["yw1", "2026-09-22"], ["yw2", "2026-09-29"]]) {
+        await setDoc(doc(db, "sessions", id), {
+          hostedAtStudioId: "studioA",
+          clientId: "clientYW",
+          trainerId: "trainerDocA2",
+          trainerInitials: "T2",
+          status: "Completed",
+          date: day,
+          createdAt: new Date(`${day}T12:00:00Z`),
+        });
+      }
+    });
+  });
+
+  it("lets a trainer whose sign-in id and trainer document id differ read their studio's sessions", async () => {
+    const db = testEnv.authenticatedContext("authA2").firestore();
+    const snap = await assertSucceeds(getDocs(yourWeekQuery(db, "studioA")));
+    const ids = snap.docs.filter((d) => d.data().trainerId === "trainerDocA2").map((d) => d.id).sort();
+    expect(ids).toEqual(["yw1", "yw2"]);
+  });
+
+  it("refuses that same trainer a read by trainerId alone, which is why Your week names the studio", async () => {
+    const db = testEnv.authenticatedContext("authA2").firestore();
+    await assertFails(
+      getDocs(query(collection(db, "sessions"), where("trainerId", "==", "trainerDocA2"), orderBy("createdAt", "desc"), limit(50))),
+    );
+  });
+
+  it("lets the studio's leader make the same read", async () => {
+    const db = testEnv.authenticatedContext("ownerA").firestore();
+    await assertSucceeds(getDocs(yourWeekQuery(db, "studioA")));
+  });
+
+  it("refuses someone from another studio", async () => {
+    const db = testEnv.authenticatedContext("trainerB").firestore();
+    await assertFails(getDocs(yourWeekQuery(db, "studioA")));
+  });
+});
+
 // ── THE STANDING WEEK (voice-review round, Sep 27 2026) ─────────────────
 //
 // studios/{s}/standingWeeks/{uid}: a trainer's usual week at a studio. The
@@ -3455,7 +3536,9 @@ describe("the standing week", () => {
       { trainerId: "" },
       { colour: "blue" },
       { proposed: week({ note: "x".repeat(501) }) },
-      { proposed: week({ hours: Array.from({ length: 15 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
+      // Three blocks a day, 21 a week (Openings round): a 22nd is refused.
+      { proposed: week({ hours: Array.from({ length: 22 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
+      { final: week({ hours: Array.from({ length: 22 }, () => ({ weekday: 1, from: "07:00", to: "08:00" })) }) },
       { proposed: week({ regulars: Array.from({ length: 81 }, (_, i) => ({ id: `r${i}`, weekday: 1, start: "08:00", clientId: "c", clientName: "C" })) }) },
       { proposed: { hours: [], regulars: [], extra: true } },
       { proposed: "Mondays" },
@@ -3465,5 +3548,628 @@ describe("the standing week", () => {
     }
     // A trainer's proposal, backdated.
     await assertFails(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposedAt: new Date("2026-01-01T12:00:00Z") })));
+  });
+
+  // Three blocks a day (Openings round, Sep 27 2026): 21 a week are accepted,
+  // proposed by the trainer and agreed by a leader.
+  it("takes three blocks a day, 21 a week", async () => {
+    const blocks = Array.from({ length: 21 }, (_, i) => ({
+      weekday: i % 7,
+      from: ["06:00", "10:00", "15:00"][Math.floor(i / 7)],
+      to: ["09:00", "13:00", "19:00"][Math.floor(i / 7)],
+    }));
+    await assertSucceeds(setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), proposal("trainerA", { proposed: week({ hours: blocks }) })));
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { ...agreement("ownerA", { final: week({ hours: blocks }) }), proposed: week({ hours: blocks }) }, { merge: true }),
+    );
+  });
+
+  // Who agrees (voice review follow-up): every leader the docs name, and
+  // nobody else. Seeded only where a test needs them.
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home] });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("headA", "HeadTrainer", "studioA");
+      await person("leaderA", "StudioLeader", "studioA");
+      await person("headB", "HeadTrainer", "studioB");
+      await person("colleagueA", "LifeTransformer", "studioA");
+    });
+  }
+  const agreeAs = (uid: string) =>
+    setDoc(weekRef(as(uid), "studioA", "trainerA"), { ...agreement(uid, { finalBy: { id: uid, name: uid } }), proposed: week() }, { merge: true });
+
+  it("lets a franchise owner, an administrator, a head trainer and a studio leader agree", async () => {
+    await seedPeople();
+    for (const uid of ["franchiseX", "adminX", "headA", "leaderA"]) {
+      await seedAgreed();
+      await assertSucceeds(agreeAs(uid));
+    }
+  });
+
+  it("refuses a head trainer from another studio, and a colleague at this one", async () => {
+    await seedPeople();
+    await seedAgreed();
+    await assertFails(agreeAs("headB"));
+    await assertFails(agreeAs("colleagueA"));
+    // A colleague may read the week, but never change it: not the proposal, not the days away.
+    const colleague = as("colleagueA");
+    await assertSucceeds(getDoc(weekRef(colleague, "studioA", "trainerA")));
+    await assertFails(
+      updateDoc(weekRef(colleague, "studioA", "trainerA"), { proposed: week({ regulars: [] }), proposedAt: serverTimestamp(), proposedBy: { id: "colleagueA", name: "colleagueA" } }),
+    );
+    await assertFails(updateDoc(weekRef(colleague, "studioA", "trainerA"), { away: [{ id: "a1", from: "2026-10-05", to: "2026-10-09" }] }));
+    await assertFails(deleteDoc(weekRef(colleague, "studioA", "trainerA")));
+  });
+
+  it("never lets a trainer point their week at another trainer's bookings", async () => {
+    await seedAgreed();
+    const db = as("trainerA");
+    await assertFails(updateDoc(weekRef(db, "studioA", "trainerA"), { trainerId: "trainerB" }));
+    await assertFails(
+      setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA", { trainerId: "trainerB", proposed: week({ regulars: [] }) }), { merge: true }),
+    );
+    // The same write with their own trainer id is theirs to make.
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA", { proposed: week({ regulars: [] }) }), { merge: true }));
+    // A leader may still set it from the roster as they agree.
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { trainerId: "trainerA2" }));
+  });
+
+  // Away (voice review follow-up): the days a trainer is away. No agreement,
+  // so the trainer writes it too, with or without a proposal.
+  const owned = (uid: string, over: Record<string, unknown> = {}) => ({
+    studioId: "studioA",
+    trainerUid: uid,
+    trainerId: uid,
+    trainerName: "Trainer A",
+    ...over,
+  });
+  const range = (over: Record<string, unknown> = {}) => ({ id: "a1", from: "2026-10-05", to: "2026-10-09", note: "Vacation", ...over });
+
+  it("lets a trainer set the days they are away, with no proposal, and change them", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: [range()] }), { merge: true }));
+    await assertSucceeds(
+      setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: [range(), range({ id: "a2", from: "2026-11-02", to: "2026-11-02" })] }), { merge: true }),
+    );
+    // Proposing after, and clearing the days away.
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), proposal("trainerA"), { merge: true }));
+    await assertSucceeds(updateDoc(weekRef(db, "studioA", "trainerA"), { away: [] }));
+    // On an agreed week too: the agreement stays the leader's.
+    await seedAgreed();
+    await assertSucceeds(updateDoc(weekRef(db, "studioA", "trainerA"), { away: [range()] }));
+    // Never someone else's, nor at a studio they don't work at.
+    await assertFails(setDoc(weekRef(db, "studioA", "ownerA"), owned("ownerA", { away: [range()] })));
+    await assertFails(setDoc(weekRef(as("trainerB"), "studioA", "trainerB"), owned("trainerB", { away: [range()] })));
+  });
+
+  it("lets the studio's leader set a trainer's days away", async () => {
+    await assertSucceeds(setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), owned("trainerA", { away: [range()] }), { merge: true }));
+    await seedAgreed();
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { away: [] }));
+  });
+
+  it("holds the shape of the days away", async () => {
+    const db = as("trainerA");
+    const bad = [
+      "October",
+      [range({ from: "2026-10-09", to: "2026-10-05" })],
+      [range({ from: "Oct 5" })],
+      [range({ to: 20261009 })],
+      [range({ note: "x".repeat(201) })],
+      [range({ id: "" })],
+      [range({ colour: "blue" })],
+      ["2026-10-05"],
+      Array.from({ length: 7 }, (_, i) => range({ id: `a${i}` })),
+      // The sixth place is checked as well as the first.
+      [...Array.from({ length: 5 }, (_, i) => range({ id: `a${i}` })), range({ id: "a5", from: "2026-12-31", to: "2026-12-01" })],
+    ];
+    for (const away of bad) {
+      await assertFails(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away })));
+    }
+    // Six, each checked, fit the rules' budget of expressions for a trainer and a leader alike.
+    const six = Array.from({ length: 6 }, (_, i) => range({ id: `a${i}` }));
+    await assertSucceeds(setDoc(weekRef(db, "studioA", "trainerA"), owned("trainerA", { away: six })));
+    await assertSucceeds(updateDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { away: [...six].reverse() }));
+  });
+
+  // The expensive writes (review of the follow-up): every write re-checks the
+  // stored days away, so the fullest real writes must fit the budget too -- a
+  // leader agreeing, and the trainer proposing, on a week that already holds
+  // six ranges and both a proposed and an agreed week. If either fails, lower
+  // MAX_AWAY in week.ts and the six in standingWeekAwayValid together.
+  // The week is the fullest the app writes: 21 blocks, three a day every day
+  // (Openings round, Sep 27 2026; it was 14), and 80 regulars.
+  it("fits a leader's agreement and a trainer's proposal on a week holding six days away", async () => {
+    const full = week({
+      hours: Array.from({ length: 21 }, (_, i) => ({
+        weekday: i % 7,
+        from: ["06:00", "10:00", "15:00"][Math.floor(i / 7)],
+        to: ["09:00", "13:00", "20:00"][Math.floor(i / 7)],
+      })),
+      regulars: Array.from({ length: 80 }, (_, i) => ({ id: `r${i}`, weekday: (i % 6) + 1, start: "08:00", clientId: `c${i}`, clientName: `Client ${i}` })),
+      note: "Mornings, and two evenings",
+    });
+    const six = Array.from({ length: 6 }, (_, i) => range({ id: `a${i}`, from: `2026-1${i % 3}-0${i + 1}`, to: `2026-1${i % 3}-2${i}` }));
+    const seedFull = (uid = "trainerA") =>
+      testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "studios", "studioA", "standingWeeks", uid), {
+          ...proposal(uid, { proposed: full, proposedAt: new Date("2026-09-20T12:00:00Z") }),
+          final: full,
+          finalAt: new Date("2026-09-21T12:00:00Z"),
+          finalBy: { id: "ownerA", name: "Owner A" },
+          away: six,
+        });
+      });
+    // What the app writes (store.ts): whose week it is, then the agreement or the proposal.
+    const owner = { studioId: "studioA", trainerUid: "trainerA", trainerId: "trainerA", trainerName: "Trainer A" };
+    const changed = week({ ...full, note: "Agreed: mornings" });
+    await seedFull();
+    // A leader agrees a changed week: final, proposed and both stamps at once.
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "trainerA"), { ...owner, proposed: changed, ...agreement("ownerA", { final: changed }) }, { merge: true }),
+    );
+    // The trainer proposes a change: the proposal and its stamps, where they work.
+    await seedFull();
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("trainerA"), "studioA", "trainerA"),
+        proposal("trainerA", { proposed: week({ ...full, note: "Evenings only" }) }),
+        { merge: true },
+      ),
+    );
+    // And both again, each changing the days away in the same write.
+    await seedFull();
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("ownerA"), "studioA", "trainerA"),
+        { ...owner, proposed: changed, ...agreement("ownerA", { final: changed }), away: [...six].reverse() },
+        { merge: true },
+      ),
+    );
+    await seedFull();
+    await assertSucceeds(
+      setDoc(weekRef(as("trainerA"), "studioA", "trainerA"), { ...proposal("trainerA", { proposed: changed }), away: [...six].reverse() }, { merge: true }),
+    );
+
+    // ownerA is the cheapest leader: trainerLeads answers on its first two
+    // tests. The costlier ones go further through it before it says yes
+    // (measured Sep 27 2026, voice review follow-up's final review): a
+    // trainer with the grant, a head trainer who runs the studio through
+    // ownedStudioIds, a studio leader based elsewhere with the grant here,
+    // and a leader agreeing their OWN week, where the trainer's branch runs
+    // its diff first and then falls through to the leader's. Each agrees
+    // the full week, with and without rewriting the days away.
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, "trainers", "grantA"), {
+        fullName: "Grant A", initials: "GA", role: "LifeTransformer",
+        primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"], managedStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "trainers", "headA"), {
+        fullName: "Head A", initials: "HA", role: "HeadTrainer",
+        primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB", "studioA"], ownedStudioIds: ["studioA"],
+      });
+      await setDoc(doc(db, "trainers", "leadB"), {
+        fullName: "Lead B", initials: "LB", role: "StudioLeader",
+        primaryHomeStudioId: "studioB", accessibleStudioIds: ["studioB", "studioA"], managedStudioIds: ["studioA"],
+      });
+    });
+    for (const leader of ["grantA", "headA", "leadB"]) {
+      await seedFull();
+      await assertSucceeds(
+        setDoc(weekRef(as(leader), "studioA", "trainerA"), { ...owner, proposed: changed, ...agreement(leader, { final: changed }) }, { merge: true }),
+      );
+      await seedFull();
+      await assertSucceeds(
+        setDoc(
+          weekRef(as(leader), "studioA", "trainerA"),
+          { ...owner, proposed: changed, ...agreement(leader, { final: changed }), away: [...six].reverse() },
+          { merge: true },
+        ),
+      );
+    }
+    const own = { studioId: "studioA", trainerUid: "ownerA", trainerId: "ownerA", trainerName: "Owner A" };
+    await seedFull("ownerA");
+    await assertSucceeds(
+      setDoc(weekRef(as("ownerA"), "studioA", "ownerA"), { ...own, proposed: changed, ...agreement("ownerA", { final: changed }) }, { merge: true }),
+    );
+    await seedFull("ownerA");
+    await assertSucceeds(
+      setDoc(
+        weekRef(as("ownerA"), "studioA", "ownerA"),
+        { ...own, proposed: changed, ...agreement("ownerA", { final: changed }), away: [...six].reverse() },
+        { merge: true },
+      ),
+    );
+  });
+});
+
+// ── THE WHOLE-READ RECORD (Sep 27 2026) ─────────────────────────────────
+//
+// studios/{s}/scheduleCoverage/{yyyy-mm}: the studio days a pull that
+// Mindbody answered in full read, as { days: [...] }. The iPad that pulled
+// adds them with an add-to-list merge (src/features/openings/coverage-record.ts);
+// anyone who works at the studio may, and nobody may take a day away or
+// delete a month from the app. docs/rounds/2026-09-27-coverage-record.md.
+describe("the whole-read record", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const monthRef = (db: ReturnType<typeof as>, studioId: string, month: string) => doc(db, "studios", studioId, "scheduleCoverage", month);
+  /** The first n days of a month, as the app writes them. */
+  const daysOf = (month: string, n: number) => Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+  const add = (db: ReturnType<typeof as>, studioId: string, month: string, days: string[]) =>
+    setDoc(monthRef(db, studioId, month), { days: arrayUnion(...days) }, { merge: true });
+  const seed = (studioId: string, month: string, days: string[]) =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", studioId, "scheduleCoverage", month), { days });
+    });
+
+  // Seeded only where a test needs them: every kind of writer the docs name,
+  // and the costliest path through writesForStudio (a guest, whose studio is
+  // found last, with no role claim on the token, so the role is read from
+  // the trainer document).
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+      await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+    });
+  }
+
+  it("lets a trainer at the studio add the days a pull read, again and again, and read them", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-27", "2026-09-28"]));
+    // The next day's pull: only tomorrow is new; a day already there is no change.
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-29"]));
+    await assertSucceeds(add(db, "studioA", "2026-09", ["2026-09-28", "2026-09-29"]));
+    const snap = await assertSucceeds(getDoc(monthRef(db, "studioA", "2026-09")));
+    expect(snap.data()).toEqual({ days: ["2026-09-27", "2026-09-28", "2026-09-29"] });
+  });
+
+  it("writes a month's end as two documents in one batch", async () => {
+    const db = as("trainerA");
+    const b = writeBatch(db);
+    b.set(monthRef(db, "studioA", "2026-09"), { days: arrayUnion("2026-09-30") }, { merge: true });
+    b.set(monthRef(db, "studioA", "2026-10"), { days: arrayUnion("2026-10-01") }, { merge: true });
+    await assertSucceeds(b.commit());
+  });
+
+  it("lets a leader, a trainer with the grant, a guest, a franchise owner and an administrator add days", async () => {
+    await seedPeople();
+    for (const uid of ["ownerA", "grantA", "guestA", "franchiseX", "adminX"]) {
+      await assertSucceeds(add(as(uid), "studioA", "2026-08", daysOf("2026-08", 3)));
+      await assertSucceeds(getDoc(monthRef(as(uid), "studioA", "2026-08")));
+    }
+  });
+
+  it("refuses a trainer from another studio, reading or writing, and anyone signed out", async () => {
+    await seed("studioA", "2026-09", ["2026-09-27"]);
+    const elsewhere = as("trainerB");
+    await assertFails(add(elsewhere, "studioA", "2026-09", ["2026-09-28"]));
+    await assertFails(add(elsewhere, "studioA", "2026-10", ["2026-10-01"]));
+    await assertFails(getDoc(monthRef(elsewhere, "studioA", "2026-09")));
+    await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "scheduleCoverage")));
+    const out = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(monthRef(out, "studioA", "2026-09")));
+    await assertFails(setDoc(monthRef(out, "studioA", "2026-10"), { days: ["2026-10-01"] }));
+    // Their own studio is theirs.
+    await assertSucceeds(add(elsewhere, "studioB", "2026-09", ["2026-09-27"]));
+  });
+
+  it("never lets a day be taken away, or a month deleted, by anyone in the app", async () => {
+    await seedPeople();
+    await seed("studioA", "2026-09", ["2026-09-26", "2026-09-27", "2026-09-28"]);
+    for (const uid of ["trainerA", "ownerA", "adminX"]) {
+      const db = as(uid);
+      await assertFails(updateDoc(monthRef(db, "studioA", "2026-09"), { days: arrayRemove("2026-09-27") }));
+      await assertFails(setDoc(monthRef(db, "studioA", "2026-09"), { days: ["2026-09-28", "2026-09-29"] }));
+      await assertFails(updateDoc(monthRef(db, "studioA", "2026-09"), { days: [] }));
+      await assertFails(deleteDoc(monthRef(db, "studioA", "2026-09")));
+    }
+    // Writing the whole list back with a day more is still only an add.
+    await assertSucceeds(setDoc(monthRef(as("trainerA"), "studioA", "2026-09"), { days: ["2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29"] }));
+  });
+
+  it("holds the record's shape", async () => {
+    const db = as("trainerA");
+    const refused: [string, Record<string, unknown>][] = [
+      // Not a month.
+      ["2026-13", { days: ["2026-13-01"] }],
+      ["2026-9", { days: ["2026-9-01"] }],
+      ["september", { days: ["september-01"] }],
+      // Another month's day, or not a day.
+      ["2026-09", { days: ["2026-10-01"] }],
+      ["2026-09", { days: ["2026-09-27", "2026-09-32"] }],
+      ["2026-09", { days: ["someday"] }],
+      ["2026-09", { days: [20260927] }],
+      // A day twice, no day, or not a list.
+      ["2026-09", { days: ["2026-09-27", "2026-09-27"] }],
+      ["2026-09", { days: [] }],
+      ["2026-09", { days: "2026-09-27" }],
+      ["2026-09", { days: { "2026-09-27": true } }],
+      // Anything beside the days.
+      ["2026-09", { days: ["2026-09-27"], by: "trainerA" }],
+      ["2026-09", { days: ["2026-09-27"], at: serverTimestamp() }],
+      ["2026-09", {}],
+    ];
+    for (const [month, data] of refused) {
+      await assertFails(setDoc(monthRef(db, "studioA", month), data));
+    }
+    // Thirty-two can't be written: a month has 31 days, and none may come twice.
+    await assertFails(setDoc(monthRef(db, "studioA", "2026-10"), { days: [...daysOf("2026-10", 31), "2026-10-01"] }));
+  });
+
+  // The 1,000-expression budget (a request that runs out comes back
+  // PERMISSION_DENIED, like a refusal). The costliest writes the app can
+  // make: a whole month in one write (a back-read), the 31st day added to
+  // 30, and two full months in one batch, each by every kind of writer,
+  // none with a role on the token, so each reads its role from its trainer
+  // document. Written with writesForStudio itself, the guest's writes ran
+  // out here (Sep 27 2026); the rule resolves the caller once instead
+  // (coverageWriterAllowed), and the measured numbers are beside it.
+  it("fits a full month, and two in one batch, inside the rules' budget for every writer", async () => {
+    for (const uid of ["guestA", "grantA", "trainerA", "ownerA", "franchiseX", "adminX"]) {
+      await testEnv.clearFirestore();
+      await seedPeople();
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, "trainers", "trainerA"), { fullName: "Trainer A", initials: "TA", role: "LifeTransformer", primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"] });
+        await setDoc(doc(db, "trainers", "ownerA"), { fullName: "Owner A", initials: "OA", role: "StudioOwner", primaryHomeStudioId: "studioA", accessibleStudioIds: ["studioA"] });
+      });
+      const db = as(uid);
+      // A whole month, created in one write.
+      await assertSucceeds(add(db, "studioA", "2026-10", daysOf("2026-10", 31)));
+      // The 31st day added to 30: the update checks the new list and keeps the old.
+      await seed("studioA", "2026-12", daysOf("2026-12", 30));
+      await assertSucceeds(add(db, "studioA", "2026-12", ["2026-12-31"]));
+      // Two full months in one batch, each adding its 31st day.
+      await seed("studioA", "2027-01", daysOf("2027-01", 30));
+      await seed("studioA", "2027-03", daysOf("2027-03", 30));
+      const b = writeBatch(db);
+      b.set(monthRef(db, "studioA", "2027-01"), { days: arrayUnion("2027-01-31") }, { merge: true });
+      b.set(monthRef(db, "studioA", "2027-03"), { days: arrayUnion("2027-03-31") }, { merge: true });
+      await assertSucceeds(b.commit());
+      // And a back-read's first write: two whole months at once.
+      const c = writeBatch(db);
+      c.set(monthRef(db, "studioA", "2027-05"), { days: arrayUnion(...daysOf("2027-05", 31)) }, { merge: true });
+      c.set(monthRef(db, "studioA", "2027-07"), { days: arrayUnion(...daysOf("2027-07", 31)) }, { merge: true });
+      await assertSucceeds(c.commit());
+    }
+  });
+});
+
+// ── MARKS ON A TIME (Openings round, Sep 27 2026) ───────────────────────
+//
+// studios/{s}/openingsMarks/{weekday-HHMM}: a person's word on a time of the
+// usual week, "full" (Always full) or "room" (Usually has room), with a short
+// note. Anyone who works at the studio (and franchise owners and
+// administrators) sets, changes, keeps or removes one, always as themselves
+// and at the server's time. The app writes it through
+// src/features/openings/ui/marks-store.ts (`markForWrite` in marks.ts).
+// docs/rounds/2026-09-27-openings.md, "Marks: how a person disagrees".
+describe("marks on a time", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const markRef = (db: ReturnType<typeof as>, studioId: string, key: string) => doc(db, "studios", studioId, "openingsMarks", key);
+  /** What the app writes: the time, the word, the note when there is one, who, and the server's time. */
+  const mark = (uid: string, over: Record<string, unknown> = {}) => ({
+    weekday: 1,
+    time: "08:00",
+    mark: "full",
+    note: "The rotation's regulars",
+    by: { id: uid, name: `Person ${uid}` },
+    at: serverTimestamp(),
+    ...over,
+  });
+  const without = (data: Record<string, unknown>, key: string) => {
+    const out = { ...data };
+    delete out[key];
+    return out;
+  };
+  const seedMark = (studioId: string, key: string, data: Record<string, unknown>) =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", studioId, "openingsMarks", key), data);
+    });
+  /** Owner A's mark on Monday 8:00, set two months ago: the one a colleague changes, keeps or removes. */
+  const seedOld = (studioId = "studioA") =>
+    seedMark(studioId, "1-0800", {
+      weekday: 1,
+      time: "08:00",
+      mark: "full",
+      note: "Always taken",
+      by: { id: "ownerA", name: "Owner A" },
+      at: new Date("2026-07-20T12:00:00Z"),
+    });
+
+  // Every kind of person the docs name, seeded only where a test needs them.
+  // None has a role claim on the token, so each reads its role from its
+  // trainer document: the costliest path through the rules.
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("headA", "HeadTrainer", "studioA");
+      await person("leaderA", "StudioLeader", "studioA");
+      await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+      await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+      await person("headB", "HeadTrainer", "studioB");
+    });
+  }
+
+  it("lets a trainer at the studio set a mark, read the studio's marks, change it and remove it", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA")));
+    const snap = await assertSucceeds(getDoc(markRef(db, "studioA", "1-0800")));
+    expect(snap.data()?.mark).toBe("full");
+    await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+    // Changed to the other word, the note taken out: the write replaces the mark.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), without(mark("trainerA", { mark: "room" }), "note")));
+    await assertSucceeds(deleteDoc(markRef(db, "studioA", "1-0800")));
+  });
+
+  it("lets anyone who works there change, keep or remove a colleague's mark, signing it as themselves", async () => {
+    const db = as("trainerA");
+    // Keep at the review: the same word and note, signed again by the person keeping it, today.
+    await seedOld();
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { note: "Always taken" })));
+    // Changed by a colleague.
+    await seedOld();
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { mark: "room", note: "Two regulars moved to 7:00" })));
+    // Removed by a colleague.
+    await seedOld();
+    await assertSucceeds(deleteDoc(markRef(db, "studioA", "1-0800")));
+  });
+
+  it("never lets a mark be written in someone else's name, or left signed by its old author", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { by: { id: "ownerA", name: "Owner A" } })));
+    // A colleague's mark, changed but still carrying their name and date.
+    await seedOld();
+    await assertFails(updateDoc(markRef(db, "studioA", "1-0800"), { mark: "room" }));
+    await assertFails(updateDoc(markRef(db, "studioA", "1-0800"), { note: "Changed under their name", at: serverTimestamp() }));
+    // A change that signs it again is theirs to make.
+    await assertSucceeds(updateDoc(markRef(db, "studioA", "1-0800"), { mark: "room", by: { id: "trainerA", name: "Trainer A" }, at: serverTimestamp() }));
+  });
+
+  it("never lets a mark be backdated or dated ahead", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2026-01-01T12:00:00Z") })));
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2030-01-01T12:00:00Z") })));
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: "today" })));
+    // Kept, but backdated so it stays fresh for longer.
+    await seedOld();
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2026-07-20T12:00:00Z") })));
+  });
+
+  it("holds the id to the time the mark is about", async () => {
+    const db = as("trainerA");
+    const refused: [string, Record<string, unknown>][] = [
+      // The id names another time than the fields.
+      ["1-0800", { weekday: 2 }],
+      ["1-0830", {}],
+      ["2-0800", {}],
+      ["1-800", { time: "8:00" }],
+      ["mon-0800", {}],
+      // Not a weekday of the usual week (Sundays are left out), or not one at all.
+      ["0-0800", { weekday: 0 }],
+      ["7-0800", { weekday: 7 }],
+      ["1-0800", { weekday: 1.5 }],
+      ["1-0800", { weekday: "1" }],
+      // Not a half-hour.
+      ["1-0815", { time: "08:15" }],
+      ["1-2400", { time: "24:00" }],
+      ["1-0800", { time: 800 }],
+    ];
+    for (const [key, over] of refused) {
+      await assertFails(setDoc(markRef(db, "studioA", key), mark("trainerA", over)));
+    }
+    // The last half-hour of a Saturday is a time like any other.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "6-2330"), mark("trainerA", { weekday: 6, time: "23:30" })));
+  });
+
+  it("holds the mark's shape", async () => {
+    const db = as("trainerA");
+    const refused: Record<string, unknown>[] = [
+      mark("trainerA", { mark: "closed" }),
+      mark("trainerA", { mark: "a regular" }),
+      mark("trainerA", { note: "x".repeat(201) }),
+      mark("trainerA", { note: 42 }),
+      mark("trainerA", { note: null }),
+      mark("trainerA", { by: "trainerA" }),
+      mark("trainerA", { by: { id: "trainerA" } }),
+      mark("trainerA", { by: { id: "trainerA", name: "x".repeat(121) } }),
+      mark("trainerA", { by: { id: "trainerA", name: "Trainer A", role: "Admin" } }),
+      // Nothing about a client, and nothing else beside the mark.
+      mark("trainerA", { clientName: "Judy Smith" }),
+      mark("trainerA", { expiresOn: "2026-12-01" }),
+      without(mark("trainerA"), "by"),
+      without(mark("trainerA"), "at"),
+      without(mark("trainerA"), "mark"),
+      without(mark("trainerA"), "weekday"),
+      without(mark("trainerA"), "time"),
+    ];
+    for (const data of refused) {
+      await assertFails(setDoc(markRef(db, "studioA", "1-0800"), data));
+    }
+    // A note of exactly 200 characters, and no note at all, are both fine.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { note: "x".repeat(200) })));
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), without(mark("trainerA"), "note")));
+  });
+
+  it("refuses a trainer or a leader from another studio, reading or writing, and anyone signed out", async () => {
+    await seedPeople();
+    await seedOld();
+    for (const uid of ["trainerB", "headB"]) {
+      const elsewhere = as(uid);
+      await assertFails(getDoc(markRef(elsewhere, "studioA", "1-0800")));
+      await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "openingsMarks")));
+      await assertFails(setDoc(markRef(elsewhere, "studioA", "1-0800"), mark(uid)));
+      await assertFails(setDoc(markRef(elsewhere, "studioA", "2-0800"), mark(uid, { weekday: 2 })));
+      await assertFails(deleteDoc(markRef(elsewhere, "studioA", "1-0800")));
+    }
+    const out = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(markRef(out, "studioA", "1-0800")));
+    await assertFails(setDoc(markRef(out, "studioA", "2-0800"), mark("nobody", { weekday: 2 })));
+    await assertFails(deleteDoc(markRef(out, "studioA", "1-0800")));
+    // Their own studio's marks are theirs.
+    await assertSucceeds(setDoc(markRef(as("trainerB"), "studioB", "1-0800"), mark("trainerB")));
+  });
+
+  // Who: a trainer, the studio's leaders (a studio owner, a head trainer, a
+  // studio leader, a trainer with the grant), a guest trainer, a franchise
+  // owner and an administrator, each on create, update and delete.
+  it("lets everyone who works there, runs it, or is above it set, change and remove a mark", async () => {
+    await seedPeople();
+    for (const uid of ["trainerA", "ownerA", "headA", "leaderA", "grantA", "guestA", "franchiseX", "adminX"]) {
+      const db = as(uid);
+      await assertSucceeds(setDoc(markRef(db, "studioA", "3-1030"), mark(uid, { weekday: 3, time: "10:30" })));
+      await assertSucceeds(setDoc(markRef(db, "studioA", "3-1030"), mark(uid, { weekday: 3, time: "10:30", mark: "room" })));
+      await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+      await assertSucceeds(deleteDoc(markRef(db, "studioA", "3-1030")));
+    }
+  });
+
+  it("follows Demo Mode's own rule: everyone signed in has the run of the practice studio", async () => {
+    const db = as("trainerB");
+    await assertSucceeds(setDoc(markRef(db, "demo-studio", "1-0800"), mark("trainerB")));
+    await assertSucceeds(getDocs(collection(db, "studios", "demo-studio", "openingsMarks")));
+    await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "1-0800")));
+  });
+
+  // The 1,000-expression budget (a request that runs out comes back
+  // PERMISSION_DENIED, like a refusal). The costliest marks the app writes:
+  // the longest note and name, over a colleague's mark that already holds
+  // both (an update checks the new document whole), by every kind of writer,
+  // none with a role on the token; a new mark; a removal; and the read of the
+  // whole collection.
+  it("fits the fullest mark, set, changed and removed, inside the rules' budget for every writer", async () => {
+    await seedPeople();
+    for (const uid of ["guestA", "grantA", "headA", "leaderA", "trainerA", "ownerA", "franchiseX", "adminX"]) {
+      const db = as(uid);
+      const fullest = mark(uid, { weekday: 6, time: "19:30", mark: "room", note: "y".repeat(200), by: { id: uid, name: "n".repeat(120) } });
+      await seedMark("studioA", "6-1930", {
+        weekday: 6,
+        time: "19:30",
+        mark: "full",
+        note: "z".repeat(200),
+        by: { id: "ownerA", name: "o".repeat(120) },
+        at: new Date("2026-07-20T12:00:00Z"),
+      });
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-1930"), fullest));
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-1930"), { ...fullest, mark: "full" }));
+      await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+      await assertSucceeds(deleteDoc(markRef(db, "studioA", "6-1930")));
+      // A new mark on a time nobody has marked.
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-0530"), mark(uid, { weekday: 6, time: "05:30", note: "q".repeat(200) })));
+    }
   });
 });

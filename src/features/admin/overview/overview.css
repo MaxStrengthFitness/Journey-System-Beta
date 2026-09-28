@@ -43,6 +43,12 @@
   gap: 8px;
 }
 
+/* Why the count is partial (the week's bookings unread): its own line, inside the strip. */
+.adm-ov__needs-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+
 .adm-ov__chip {
   display: inline-flex;
   align-items: center;

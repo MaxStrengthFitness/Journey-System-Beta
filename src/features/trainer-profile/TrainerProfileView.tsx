@@ -26,7 +26,12 @@ import { useRecentlyCoached } from "./useRecentlyCoached";
 import { resolveProfileVisibility, scopeNotice } from "./visibility";
 import { MyRenewals } from "../renewals/MyRenewals";
 import { MyStandingWeek } from "../standing-week/MyStandingWeek";
-import { worksAt } from "../standing-week/present";
+import { ColleagueStandingWeek } from "../standing-week/ColleagueStandingWeek";
+import { mayReadWeeks, worksAt } from "../standing-week/present";
+import { YourWeek } from "./YourWeek";
+import { MyClients } from "./MyClients";
+import { cutoverOf } from "../../lib/client-coverage";
+import type { RosterStatus } from "../../hooks/useStudioRoster";
 import "./trainer-profile.css";
 
 /**
@@ -55,6 +60,12 @@ export interface TrainerProfileViewProps {
   studios: Studio[];
   onSelectClient: (clientId: string) => void;
   setView: (view: any) => void;
+  /**
+   * The studio client list's state (`useStudioRoster`), so My clients can say
+   * "can't read" while it loads or after its read failed rather than listing
+   * nobody. Required, so no caller can leave My clients guessing.
+   */
+  rosterStatus: RosterStatus;
 }
 
 export function TrainerProfileView({
@@ -66,6 +77,7 @@ export function TrainerProfileView({
   studios,
   onSelectClient,
   setView,
+  rosterStatus,
 }: TrainerProfileViewProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const active = useOptionalActiveStudio();
@@ -156,6 +168,24 @@ export function TrainerProfileView({
         />
       )}
 
+      {/* Openings round, phase 12 (Sep 27 2026): the clients you have trained
+          most in Journey at the studio the iPad is in, coached lately first.
+          Right after the Kaizen Roster, and yours alone: the roster is who
+          you chose to track, this is who you have trained. No new read. */}
+      {visibility.scope === "self" && activeStudioId && (
+        <MyClients
+          trainer={trainer}
+          uid={auth.currentUser?.uid ?? null}
+          clients={clients}
+          studioId={activeStudioId}
+          studioName={active?.activeStudio?.name ?? "this studio"}
+          cutover={active?.activeStudio?.journeyCutoverDate ?? cutoverOf(studios, activeStudioId)}
+          rosterStatus={rosterStatus}
+          tz={active?.activeStudio?.timezone || undefined}
+          onSelectClient={openClient}
+        />
+      )}
+
       {/* Renewals round (Sep 2026): the trainer's own list only. */}
       {visibility.scope === "self" && (
         <MyRenewals trainer={trainer} onSelectClient={openClient} />
@@ -174,6 +204,37 @@ export function TrainerProfileView({
           clients={clients}
         />
       )}
+
+      {/* Openings round, phase 11 (Sep 27 2026): Your week at the studio
+          the iPad is in -- clients trained, sessions, session time and first
+          session to last. The trainer's own profile only; leaders already
+          see clients and training hours on Operations -> Insights -> Hours. */}
+      {visibility.scope === "self" && activeStudioId && trainer.id && (
+        <YourWeek
+          trainerId={trainer.id}
+          studioId={activeStudioId}
+          studioName={active?.activeStudio?.name ?? "this studio"}
+          studio={active?.activeStudio ?? null}
+          tz={active?.activeStudio?.timezone || undefined}
+        />
+      )}
+
+      {/* Voice review follow-up (Sep 27 2026), AJ: "schedules are open to
+          all". A colleague's agreed week and days away, read only, at the
+          studio the iPad is in: where they work, where you may read the
+          weeks, and where you share a floor (it names their regulars). */}
+      {visibility.scope !== "self" &&
+        visibility.showSchedule &&
+        activeStudioId &&
+        worksAt(trainer, activeStudioId) &&
+        mayReadWeeks(authTrainer, activeStudioId) && (
+          <ColleagueStandingWeek
+            trainer={trainer}
+            studioId={activeStudioId}
+            studioName={active?.activeStudio?.name ?? "this studio"}
+            tz={active?.activeStudio?.timezone || undefined}
+          />
+        )}
 
       {(visibility.showSchedule || visibility.showRecentlyCoached) && (
         <div className="tp-band tp-band--even">

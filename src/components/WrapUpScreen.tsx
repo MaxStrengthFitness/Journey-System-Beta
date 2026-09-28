@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { AppHeader } from "./AppHeader";
-import type { DialValue } from "../types";
+import type { DialValue, Studio } from "../types";
 import {
   Client,
   WorkoutSession,
@@ -19,9 +19,10 @@ import { PulseQuickLogDialog } from "../features/subjective-report";
 import { FordSweep } from "../features/ford/FordSweep";
 import { useClientFord } from "../features/ford/useClientFord";
 import { NoteSweep, discardUnfiledEntry, fileUnfiledEntry, isUnfiled } from "../features/client-notes";
+import { isNextTrainerNote, type NextTrainerNoteMark } from "../features/client-notes/note-catalog";
 import { Dial, DOSE_SCALE, Loudness } from "../features/rating";
 import type { SessionNoteDraft } from "../features/client-notes/session-draft";
-import { ArrowLeft, CalendarCheck2, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, Check, HeartPulse, MessageSquareText, Star } from "lucide-react";
 import {
   LogConversationDialog,
   promptText,
@@ -33,13 +34,21 @@ import { performedOnly, SKIP_REASON_SHORT } from "../lib/set-outcome";
 import { studioTodayKey } from "../lib/studio-time";
 import {
   doseSentence,
-  formatNextBooking,
   journeySentence,
+  nextBookingAnswer,
   nextBookingFor,
+  nextBookingSentence,
+  timesDoor,
   todayHeadline,
   type JourneyRead,
+  type NextBookingAnswer,
   type TodayLine,
 } from "../lib/post-session";
+import { useMonthRead, useOpeningsData } from "../features/openings/ui";
+import { TIMES_WITH_ROOM } from "../features/openings/present";
+import { TimesWithRoomSheet, hasTimesToOffer } from "../features/openings/ui/TimesWithRoomSheet";
+import { isCacheOnly, serverRead, type ServerRead } from "../features/standing-week/server-read";
+import { useServerWait } from "../features/standing-week/useServerWait";
 
 import { canQuoteLifetime, type HistoryCoverage } from "../lib/prior-history";
 import { canQuoteSessionNumber } from "../lib/client-coverage";
@@ -50,6 +59,7 @@ import { usePackagesDoor } from "../features/packages/usePackagesDoor";
 import { bookedWeekdays } from "../features/packages/booked-days";
 import { DOOR_BUTTON, sheetTitle } from "../features/packages/package-copy";
 import { PackagesSheet } from "../features/packages/PackagesSheet";
+import { useTheme } from "./ThemeProvider";
 /**
  * THE WRAP-UP — the post-session screen (rebuilt in the tracker round, Sep 2026).
  *
@@ -68,7 +78,11 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  *      are up 21% since July across four machines — strongest on lower
  *      body". Says "not enough history yet" below the bar, never a number
  *      it cannot stand behind.
- *   3. NEXT — are they booked? Then how the session landed — the dose Dial
+ *   3. NEXT — are they booked? (Openings round, Sep 27 2026: the card listens
+ *      for her own bookings from the server, at any studio on the same
+ *      Mindbody, and never says a plain "Nothing booked yet"; see NEXT
+ *      below.) Then the door to Times with room, and how the session
+ *      landed — the dose Dial
  *      (reporting round, Sep 2026: Wiped out · Drained · Just right · Had
  *      more · Barely worked, the trainer's own judgement, saved the moment it
  *      is tapped as `sessions.dose`; untouched is "not judged", never a
@@ -82,7 +96,12 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  *   3b. WHAT THEY TOLD YOU — two trays, both silent when empty, which is
  *      most sessions. Notes first: anything saved during the session with no
  *      category yet ("capture now, tag at teardown") comes back as a card
- *      with the categories underneath — one tap files it. Then FORD:
+ *      with the categories underneath — one tap files it. The Note for the
+ *      next trainer comes back here too (Finish writes it as an unfiled
+ *      Heads up): AJ, Sep 27 2026, "made for the next sessions pre session
+ *      briefing but also can be filed to the profile". So its card says
+ *      "Note for the next trainer" and has no Discard, which would take it
+ *      off the next briefing; filing it keeps it there. Then FORD:
  *      anything caught with "Remember this" that has no letter on it yet.
  *      They sit here, after Next and before Lifetime, because filing three
  *      sentences is seconds and Pulse is minutes — short thing first is
@@ -95,14 +114,129 @@ import { PackagesSheet } from "../features/packages/PackagesSheet";
  * There is NO save button. The session was submitted when End Session was
  * confirmed (commitEndSession in the tracker). "Back to Hub" only leaves.
  *
- * The screen follows the app theme: its surfaces are the `bg-dark` / `ink-d`
- * tokens, which go light in the light theme. Only the token-driven features
- * mounted on it (the Dial, Loudness, the two trays) stay dark whatever the
- * theme, each wrapped in a `.dark` + `data-theme="dark"` container that pins
- * `--eq-*` and the FORD / notes tokens to their dark values.
+ * The screen follows the app theme, all of it. Its surfaces are the
+ * `bg-dark` / `ink-d` tokens, which go light in the light theme, and every
+ * colour on it is a token that reads in both: brand blue (`--eq-live*`) for
+ * a gain, a save and the focus ring, green (`--eq-ok`) for booked and saved,
+ * plum (`--eq-warn`) for a caution (nothing booked, a note left unsaved), the
+ * journey grid's gold star for a max-strength set, and sky, amber and neutral
+ * for where the work went (GROUP_TONE says why not the brand's two). Until
+ * Sep 27 2026 the Dial, Loudness and the two trays were pinned dark (a
+ * `.dark` + `data-theme="dark"` wrapper left over from when the whole screen
+ * was), which on the light theme drew dark slabs and white words on a white
+ * card; they now resolve against the document like everywhere else they are
+ * drawn. `src/neutral-ramp.test.ts` counts this file's colours with every
+ * other theme-aware screen's.
+ *
+ * The type is the app's (voice-review follow-up, Sep 27 2026): the masthead
+ * title in the codex page-title voice (display, 800, italic capitals, 30px),
+ * the card heads in small upright capitals like My Profile's, buttons bold
+ * sentence case at 14px, and every size on the 11 / 12 / 14 / 17 / 30 scale.
+ *
+ * NEXT, AND TIMES WITH ROOM (Openings round, Sep 27 2026, phase 8). Until
+ * then the Next card judged "nothing booked" from the schedule the Hub held,
+ * about eight days of this studio, so a client booked ten days out, or at
+ * Strongsville, read as unbooked, and it said "Nothing booked yet" exactly
+ * when Journey had read least. Now:
+ *   - a booking in the schedule already on screen is shown at once;
+ *   - otherwise the card LISTENS to her own bookings from now on (the
+ *     profile header's query: clientId and startTime on the existing index,
+ *     up to 50 rows, cancelled ones dropped), and only the server's answer
+ *     is one (server-read.ts). A listener, not a read: if the desk books her
+ *     while she is still standing there, the webhook writes the booking
+ *     within seconds, the card turns green and the door steps back;
+ *   - it says where a booking elsewhere is ("at Strongsville");
+ *   - nothing on file says how far ahead Journey holds bookings (30 days
+ *     once the month was read in full today, 7 otherwise), and offline or
+ *     failed says it can't check. lib/post-session.ts has every sentence.
+ * The line keeps its space in every state, so nothing moves while the
+ * client reads it. The door to Times with room sits INSIDE that line, after
+ * the sentence, so its arriving (the Openings reads answer a second or more
+ * after the screen opens) moves nothing the trainer is reaching for below:
+ * the unsaved note's Save note / Drop it, the dose Dial. It is quiet (a text
+ * button) on every Wrap-up with something to offer, prominent (the plum line
+ * and a bordered button) only when the server confirmed nothing is booked,
+ * both 44px tall, and absent before the studio has anything to offer
+ * (`hasTimesToOffer`). Openings' reads therefore run on every Wrap-up, not
+ * only once the sheet opens: the door needs them to know whether to show
+ * itself; the sheet's own booking reads start only when it opens. It opens a
+ * sheet ON TOP of this screen (features/openings/ui/TimesWithRoomSheet.tsx),
+ * times only, naming nobody; the Profile note and any unfinished note are
+ * never lost. Openings' reads (`useOpeningsData`: the weekly summary by id,
+ * the standing weeks, the marks) and her bookings run in the background;
+ * nothing on this screen waits for them (floor-loop rank 2). It books
+ * nothing: every offer ends "Check it in Mindbody before you promise it.
+ * Journey doesn't book."
  */
 
+/** Her bookings from now on, as the profile header reads them: the soonest 50. */
+const HER_BOOKINGS_LIMIT = 50;
+
+/**
+ * Her own bookings from now on, live (the profile header's query, as a
+ * listener), and whether the server has answered: a snapshot this iPad's
+ * cache answered alone is not an answer until the server confirms it. Once
+ * the server has answered, later snapshots are shown as they come (a booking
+ * arriving). Not listened to at all while `enabled` is false (a booking is
+ * already on screen).
+ */
+function useHerBookings(clientId: string, enabled: boolean): { rows: ScheduleEntry[]; read: ServerRead } {
+  const key = enabled && clientId ? clientId : "";
+  const [from] = useState(() => Timestamp.now());
+  const [held, setHeld] = useState<{ key: string; rows: ScheduleEntry[]; loading: boolean; failed: boolean; fromCache: boolean }>({
+    key: "",
+    rows: [],
+    loading: true,
+    failed: false,
+    fromCache: false,
+  });
+
+  useEffect(() => {
+    if (!key) return;
+    // A listener started again (her on-screen booking came and went) starts
+    // from nothing: the last one's rows are not this one's answer.
+    setHeld({ key, rows: [], loading: true, failed: false, fromCache: false });
+    let answered = false;
+    return onSnapshot(
+      query(collection(db, "schedules"), where("clientId", "==", key), where("startTime", ">=", from), orderBy("startTime", "asc"), limit(HER_BOOKINGS_LIMIT)),
+      { includeMetadataChanges: true },
+      (snap) => {
+        if (!isCacheOnly(snap)) answered = true;
+        setHeld({
+          key,
+          rows: snap.docs.map((d) => ({ id: d.id, ...d.data() }) as ScheduleEntry),
+          loading: false,
+          failed: false,
+          fromCache: !answered,
+        });
+      },
+      (err) => {
+        console.warn("[wrap-up] her next booking couldn't be read:", err);
+        setHeld({ key, rows: [], loading: false, failed: true, fromCache: false });
+      },
+    );
+  }, [key, from]);
+
+  // An answer about another client (or none yet) is this one still loading.
+  const current = held.key === key ? held : { rows: [] as ScheduleEntry[], loading: true, failed: false, fromCache: false };
+  const wait = useServerWait(Boolean(key) && (current.loading || current.fromCache));
+  const read = serverRead({ loading: current.loading, failed: current.failed, fromCache: current.fromCache, ...wait });
+  return { rows: current.rows, read };
+}
+
 export interface WrapUpScreenProps {
+  /** The studio the session is at, for the header (the active studio's name). */
+  studioName?: string;
+  /**
+   * The studio the iPad is in (the active studio: the Demo Mode realm rule).
+   * Openings' reads for Times with room, and where "at Strongsville" is
+   * measured from. Without it there is no door.
+   */
+  studio?: Studio | null;
+  /** Every studio Journey knows, to name the studio of a booking elsewhere. */
+  studios?: Studio[];
+  /** The trainers the app holds: who works here, for Times with room. */
+  trainers?: Trainer[];
   /**
    * How much of this client's story Journey holds (lib/client-coverage.ts).
    *
@@ -128,8 +262,8 @@ export interface WrapUpScreenProps {
    * never says "Saved".
    */
   onDose: (dose: DialValue | null) => void | boolean | Promise<void | boolean>;
-  /** Leaves the screen; the closing note (if any) is filed on the way out with its Loudness and "until" day. */
-  onLeave: (closing: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
+  /** Leaves the screen; the Profile note (if any) is filed on the way out with its Loudness and "until" day. */
+  onLeave: (profileNote: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => void | Promise<void>;
   /**
    * A note the trainer started mid-session and never saved (fluidity round,
    * Sep 2026). The screen says so and offers to finish it or drop it; a
@@ -138,6 +272,13 @@ export interface WrapUpScreenProps {
   unsavedDraft?: SessionNoteDraft | null;
   onSaveDraft?: (text: string) => void | Promise<void>;
   onDropDraft?: () => void;
+  /**
+   * The Note for the next trainer Finish just wrote, if any: its words as the
+   * journal holds them, and the journal entry's id once the write has
+   * answered (voice-review follow-up, Sep 27 2026). It comes back in the
+   * To-file tray, labelled, with no Discard (`isNextTrainerNote`).
+   */
+  nextTrainerNote?: { id: string | null; body: string } | null;
   /**
    * The session is saved on this iPad and the database has not answered yet:
    * offline, or a slow connection (session record, Sep 26 2026). "Saved" alone
@@ -150,16 +291,26 @@ export interface WrapUpScreenProps {
   onStudioClick?: () => void;
 }
 
+/* Where the work went: one colour per body region, each reading in both
+   themes. Two of the chart palette's five (`--chart-*`, index.css) are brand
+   colours, so neither is used: chart-2 is the hero orange, kept for the one
+   loud action of a screen, and chart-1 is the brand blue of action and
+   selection in the light theme. Nor the meaning colours: green is "done" and
+   plum a caution, and a muscle group is neither. So sky (chart-4), amber
+   (chart-5) and the strong neutral ink, with the chart palette's own grey
+   (chart-3) for "Other". The region's name and share are written beside
+   every bar, so the colour is never the only way to tell. */
 const GROUP_TONE: Record<string, string> = {
-  "Lower Body": "bg-emerald-500",
-  "Upper Body": "bg-cyan",
-  "Core & Spine": "bg-orange-500",
-  Other: "bg-indigo-500",
+  "Lower Body": "bg-chart-4",
+  "Upper Body": "bg-chart-5",
+  "Core & Spine": "bg-ink-d2",
+  Other: "bg-chart-3",
 };
+const OTHER_TONE = GROUP_TONE.Other;
 
 function Kicker({ children }: { children: React.ReactNode }) {
   return (
-    <div className="font-display italic text-cyan text-[11px] uppercase tracking-[0.16em]">{children}</div>
+    <div className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-ink-d2 break-words">{children}</div>
   );
 }
 
@@ -196,12 +347,12 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
       // Her first time only when Journey holds her whole story; otherwise
       // there is simply no earlier set on record, and nothing to compare.
       const tag = firstTimeTag(coverage);
-      return tag ? { text: tag, tone: "text-cyan" } : null;
+      return tag ? { text: tag, tone: "text-(--eq-live-text)" } : null;
     }
     if (line.loadDelta === null) return null;
-    if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-cyan" };
+    if (line.loadDelta > 0) return { text: `▲ +${fmtLb(line.loadDelta)} lb`, tone: "text-(--eq-live-text)" };
     if (line.loadDelta < 0) return { text: `▼ ${fmtLb(line.loadDelta)} lb`, tone: "text-ink-d2" };
-    if ((line.countDelta ?? 0) > 0) return { text: `▲ +${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === 1 ? "" : "s")}`, tone: "text-cyan" };
+    if ((line.countDelta ?? 0) > 0) return { text: `▲ +${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === 1 ? "" : "s")}`, tone: "text-(--eq-live-text)" };
     if ((line.countDelta ?? 0) < 0) return { text: `▼ ${line.countDelta} ${line.isTSC ? "s" : "rep" + (line.countDelta === -1 ? "" : "s")}`, tone: "text-ink-d2" };
     return { text: "Held", tone: "text-ink-d3" };
   })();
@@ -210,14 +361,15 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
       <span className="flex-1 min-w-0 text-[14px] font-semibold text-ink-d1 break-words">{line.name}</span>
       {performed ? (
         <>
-          <span className="font-mono tabular-nums text-[15px] font-bold text-ink-d1 whitespace-nowrap">
+          <span className="font-mono tabular-nums text-[14px] font-bold text-ink-d1 whitespace-nowrap">
             {line.weight !== null ? fmtLb(line.weight) : "–"}
-            <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">lb</span>
+            <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">lb</span>
             <span className="text-ink-d3 mx-1">×</span>
             {line.count ?? "–"}
-            {line.isTSC && <span className="text-[10px] font-semibold text-ink-d3 ml-0.5">s</span>}
+            {line.isTSC && <span className="text-[11px] font-semibold text-ink-d3 ml-0.5">s</span>}
           </span>
-          {line.quality === 3 && <Star size={14} className="text-amber-400 fill-current shrink-0" aria-label="Max-strength set" />}
+          {/* The journey grid's own gold star for a max-strength set. */}
+          {line.quality === 3 && <Star size={14} className="text-(--jg-q-star) fill-current shrink-0" aria-label="Max-strength set" />}
           {delta && <span className={`w-20 text-right text-[11px] font-bold whitespace-nowrap ${delta.tone}`}>{delta.text}</span>}
         </>
       ) : (
@@ -228,6 +380,10 @@ function TodayRow({ line, coverage }: { line: TodayLine; coverage: HistoryCovera
 }
 
 export function WrapUpScreen({
+  studioName,
+  studio = null,
+  studios = [],
+  trainers = [],
   client,
   session,
   logs,
@@ -241,6 +397,7 @@ export function WrapUpScreen({
   unsavedDraft = null,
   onSaveDraft,
   onDropDraft,
+  nextTrainerNote = null,
   savedOnThisIpad = false,
   machines = [],
   rightControls,
@@ -248,6 +405,7 @@ export function WrapUpScreen({
   onStudioClick,
   coverage = "unknown",
 }: WrapUpScreenProps) {
+  const { theme } = useTheme();
   const [dose, setDose] = useState<DialValue | null>(null);
   const [doseSaved, setDoseSaved] = useState(false);
   const [notes, setNotes] = useState("");
@@ -264,6 +422,10 @@ export function WrapUpScreen({
   // sheet used. Only the unfiled ones are kept; a filed note leaves on the
   // next snapshot.
   const [unfiledNotes, setUnfiledNotes] = useState<JournalEntry[]>([]);
+  // The Note for the next trainer is one of them, and its card is told apart.
+  const nextTrainerMark: NextTrainerNoteMark | null = nextTrainerNote
+    ? { sessionId: session.id ?? null, id: nextTrainerNote.id, body: nextTrainerNote.body }
+    : null;
   useEffect(() => {
     if (!session.id) return;
     const q = query(collection(db, "journalEntries"), where("sessionId", "==", session.id));
@@ -305,38 +467,42 @@ export function WrapUpScreen({
   );
 
   /*
-   * UNSAVED CHANGES (Sep 24 2026). The closing note is filed when the trainer
+   * UNSAVED CHANGES (Sep 24 2026). The Profile note is filed when the trainer
    * leaves by "Back to Hub" — but the bottom bar and the header stay live on
    * this screen, and leaving through THEM unmounted it with the note unfiled.
-   * So a typed closing note, or an unfinished mid-session note still waiting
+   * So a typed Profile note, or an unfinished mid-session note still waiting
    * here, is unsaved work, and those exits ask first. "Back to Hub" is not
    * asked about: it files both, and `leave` releases the screen before it
    * navigates.
    */
-  const closingTyped = notes.trim() !== "";
+  const profileNoteTyped = notes.trim() !== "";
   const draftWaiting = !!unsavedDraft && draftText.trim() !== "";
   const unsaved = useUnsavedChanges(
-    !leaving && (closingTyped || draftWaiting),
-    closingTyped && draftWaiting
+    !leaving && (profileNoteTyped || draftWaiting),
+    profileNoteTyped && draftWaiting
       ? "the profile note and the unfinished note"
-      : closingTyped
+      : profileNoteTyped
         ? "the profile note"
         : "the unfinished note",
   );
 
-  // A short burst, then quiet — the numbers are the celebration.
+  /* The confetti: a short burst as the screen opens, a little over a second,
+     then quiet. AJ kept it (Sep 27 2026, asked in the Sep 21 audit and again
+     in the voice review: "I like it keep it"). It never blocks a tap
+     (pointer-events-none) and never repeats. Its colours are tokens, so it
+     shows on the light theme's pale page as well as the dark one. */
   const [particles] = useState(() =>
     Array.from({ length: 36 }).map((_, i) => ({
       id: i,
       x: (Math.random() - 0.5) * 360,
       y: (Math.random() - 0.6) * 300 - 40,
-      tone: ["bg-cta", "bg-cyan", "bg-emerald-400", "bg-amber-300", "bg-white"][i % 5],
+      tone: ["bg-cta", "bg-cyan", "bg-(--eq-ok)", "bg-(--jg-q-star)", "bg-(--eq-live)"][i % 5],
       size: Math.random() * 7 + 4,
       delay: Math.random() * 0.15,
     })),
   );
 
-  /* The closing note is filed when the trainer leaves — by the button, or by
+  /* The Profile note is filed when the trainer leaves — by the button, or by
      closing the tab. Keep the latest text in a ref so an unload can read it. */
   const notesRef = useRef({ notes, importance, effectiveUntil });
   notesRef.current = { notes, importance, effectiveUntil };
@@ -403,7 +569,32 @@ export function WrapUpScreen({
   const maxSets = performed.filter((l) => (l.repQuality || 0) >= 3).length;
 
   /* --- next ------------------------------------------------------------- */
-  const next = useMemo(() => nextBookingFor(client.id, schedules), [client.id, schedules]);
+  // Openings' reads for the door (the summary by id, the standing weeks, the
+  // marks), in the background: nothing below waits for them.
+  const openings = useOpeningsData({ studio, trainers, authTrainer });
+  const monthRead = useMonthRead(openings);
+  // A booking in the schedule already on screen answers at once; only
+  // without one does the card listen for her own bookings.
+  const onScreen = useMemo(() => nextBookingFor(client.id, schedules), [client.id, schedules]);
+  const her = useHerBookings(client.id, !onScreen);
+  const nowMs = openings.now.getTime();
+  const next: NextBookingAnswer = useMemo(
+    () =>
+      nextBookingAnswer({
+        clientId: client.id,
+        loaded: schedules,
+        heard: her.rows,
+        read: her.read,
+        monthRead,
+        hereStudioId: studio?.id ?? null,
+        studioName: (id) => studios.find((s) => s.id === id)?.name ?? null,
+        linked: openings.connected,
+        now: nowMs,
+      }),
+    [client.id, schedules, her.rows, her.read, monthRead, studio?.id, studios, openings.connected, nowMs],
+  );
+  const door = timesDoor(next, hasTimesToOffer(openings));
+  const [timesOpen, setTimesOpen] = useState(false);
 
   /* --- lifetime (the client's own running counters; allLogs is the fallback) */
   const lifetime = useMemo(() => {
@@ -432,8 +623,12 @@ export function WrapUpScreen({
 
       <div className="max-w-205 mx-auto w-full h-full relative flex flex-col border-x border-div-d shadow-2xl">
         <AppHeader
-          variant="dark"
-          trainerInitials={authTrainer?.initials || "AJ"}
+          // The header follows the theme, as the page below it does: a fixed
+          // "dark" header drew the studio's name white on white in the light
+          // theme (its bg-dark-2 is #FFFFFF there).
+          variant={theme === "light" ? "light" : "dark"}
+          studioName={studioName}
+          trainerInitials={authTrainer?.initials}
           rightControls={rightControls}
           trainerDropdown={trainerDropdown}
           onStudioClick={onStudioClick}
@@ -443,15 +638,15 @@ export function WrapUpScreen({
           {/* title */}
           <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="px-6 pt-4 pb-1">
             <Kicker>{savedOnThisIpad ? "Wrap-up · session saved on this iPad" : "Wrap-up · session saved"}</Kicker>
-            <h1 className="font-display italic text-ink-d1 text-[34px] uppercase tracking-[-0.01em] leading-none mt-2 mb-2">
+            <h1 className="font-display font-extrabold italic text-ink-d1 text-[30px] uppercase tracking-[0.01em] leading-none mt-2 mb-2 break-words">
               {clientFirstName(client)}, {maxSets > 0 ? "strong work." : "good work."}
             </h1>
             {savedOnThisIpad && (
-              <p className="text-ink-d2 text-[13px] mb-1" role="status">
+              <p className="text-ink-d2 text-[14px] mb-1" role="status">
                 It sends to the studio's records when the connection is back. Nothing more to do.
               </p>
             )}
-            <div className="text-ink-d2 text-[13px]">
+            <div className="text-ink-d2 text-[14px]">
               {todayHeadline(lines, coverage)}
               {minutes !== null ? ` · ${minutes} min` : ""}
               {sessionTag ? ` · session ${sessionTag}` : ""}
@@ -478,10 +673,10 @@ export function WrapUpScreen({
                 <div className="flex flex-col gap-1.5">
                   {byRegion.map(([g, v]) => (
                     <div key={g} className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${GROUP_TONE[g] ?? "bg-indigo-500"}`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${GROUP_TONE[g] ?? OTHER_TONE}`} />
                       <span className="w-24 text-[12px] text-ink-d2">{g}</span>
                       <span className="flex-1 h-1.5 rounded-full bg-bg-dark-3 overflow-hidden">
-                        <span className={`block h-full ${GROUP_TONE[g] ?? "bg-indigo-500"}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
+                        <span className={`block h-full ${GROUP_TONE[g] ?? OTHER_TONE}`} style={{ width: `${Math.round((100 * v) / tonnage)}%` }} />
                       </span>
                       <span className="w-10 text-right font-mono text-[11px] text-ink-d3">{Math.round((100 * v) / tonnage)}%</span>
                     </div>
@@ -494,11 +689,11 @@ export function WrapUpScreen({
           {/* 2 · the journey */}
           <Card delay={0.12}>
             <Kicker>The journey</Kicker>
-            <p className={`text-[15px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
+            <p className={`text-[14px] leading-snug ${journey.enough ? "text-ink-d1 font-semibold" : "text-ink-d3"}`}>
               {journeySentence(journey, clientFirstName(client))}
             </p>
             {journey.standout && (
-              <p className="text-[12.5px] text-ink-d2">
+              <p className="text-[12px] text-ink-d2">
                 Biggest gain: <b className="text-ink-d1">{journey.standout.name}</b>, {fmtLb(journey.standout.startWeight)} → {fmtLb(journey.standout.nowWeight)} lb (+{journey.standout.pct}%).
               </p>
             )}
@@ -506,7 +701,7 @@ export function WrapUpScreen({
               <div className="flex flex-wrap gap-1.5">
                 {journey.byGroup.map((g) => (
                   <span key={g.group} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-bg-dark-3 border border-div-d text-ink-d2">
-                    {g.group} <span className={g.pct > 0 ? "text-cyan" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
+                    {g.group} <span className={g.pct > 0 ? "text-(--eq-live-text)" : "text-ink-d3"}>{g.pct > 0 ? "+" : ""}{g.pct}%</span>
                   </span>
                 ))}
               </div>
@@ -516,11 +711,67 @@ export function WrapUpScreen({
           {/* 3 · next */}
           <Card delay={0.18}>
             <Kicker>Next</Kicker>
-            <div className={`flex items-center gap-3 min-h-11 px-3 rounded-xl border ${next ? "border-emerald-500/30 bg-emerald-500/10" : "border-orange-500/40 bg-orange-500/10"}`}>
-              {next ? <CalendarCheck2 size={18} className="text-emerald-400 shrink-0" /> : <CalendarX2 size={18} className="text-orange-400 shrink-0" />}
-              <span className="text-[13.5px] font-semibold text-ink-d1">
-                {next ? `Next session: ${formatNextBooking(next.at)}` : "Nothing booked yet — book the next one before they leave."}
+            {/* Booked is done (green); nothing booked is a caution (plum);
+                checking and can't-check are neither. The line keeps room for
+                two lines of the sentence, or the 44px door, in every state,
+                so neither the answer nor the door arriving moves anything
+                while the client reads it or the trainer reaches for the
+                controls below.
+
+                The door to Times with room sits INSIDE the line, after the
+                sentence: prominent only when the server confirmed nothing is
+                booked, quiet on every other Wrap-up with something to offer,
+                absent before there is anything. Both are the same height, so
+                one turning into the other moves nothing either. */}
+            <div
+              className={`flex items-center gap-3 min-h-14 py-1.5 px-3 rounded-xl border ${
+                next.state === "booked"
+                  ? "border-(--eq-ok)/40 bg-(--eq-ok-fill)"
+                  : next.state === "none"
+                    ? "border-(--eq-warn)/40 bg-(--eq-warn-fill)"
+                    : "border-div-d bg-bg-dark-3"
+              }`}
+              data-testid="next-booking"
+              data-state={next.state}
+            >
+              {next.state === "booked" ? (
+                <CalendarCheck2 size={18} className="text-(--eq-ok) shrink-0" aria-hidden="true" />
+              ) : next.state === "none" ? (
+                <CalendarX2 size={18} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+              ) : (
+                <CalendarSearch size={18} className="text-ink-d3 shrink-0" aria-hidden="true" />
+              )}
+              <span
+                className={`min-w-0 flex-1 text-[14px] font-semibold break-words ${next.state === "checking" || next.state === "cant-check" ? "text-ink-d2" : "text-ink-d1"}`}
+                data-testid="next-booking-sentence"
+                role="status"
+                aria-live="polite"
+              >
+                {nextBookingSentence(next, openings.now)}
               </span>
+              {door === "prominent" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="prominent"
+                  className="shrink-0 min-h-11 rounded-xl border border-(--eq-warn)/40 bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 whitespace-nowrap hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  <CalendarClock size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+                  {TIMES_WITH_ROOM}
+                </button>
+              )}
+              {door === "quiet" && (
+                <button
+                  type="button"
+                  onClick={() => setTimesOpen(true)}
+                  data-testid="times-door"
+                  data-door="quiet"
+                  className="shrink-0 min-h-11 px-2 rounded-md text-[14px] font-bold text-(--eq-live-text) whitespace-nowrap underline underline-offset-4 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
+                >
+                  {TIMES_WITH_ROOM}
+                </button>
+              )}
             </div>
 
             {/* A note started during the session and never saved. Said
@@ -529,25 +780,26 @@ export function WrapUpScreen({
                 moment it is still theirs to finish. */}
             {unsavedDraft && (
               <div
-                className="flex flex-col gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3"
+                className="flex flex-col gap-2 rounded-xl border border-(--eq-warn)/40 bg-(--eq-warn-fill) p-3"
                 role="region"
                 aria-label="Unsaved note from this session"
                 data-testid="unsaved-draft"
               >
                 <div className="flex items-center gap-2">
-                  <MessageSquareText size={16} className="text-amber-400 shrink-0" aria-hidden="true" />
-                  <span className="text-[13px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
+                  <MessageSquareText size={16} className="text-(--eq-warn) shrink-0" aria-hidden="true" />
+                  <span className="text-[14px] font-bold text-ink-d1">You started a note during the session and didn't save it</span>
                 </div>
                 <textarea
-                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 resize-none outline-none focus:border-cyan transition-colors"
+                  className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
                   value={draftText}
                   onChange={(e) => setDraftText(e.target.value)}
                   aria-label="Unsaved note"
                 />
                 <div className="flex gap-2">
+                  {/* A save: solid brand blue, its own on-colour. */}
                   <button
                     type="button"
-                    className="min-h-10 flex-1 rounded-xl bg-cyan text-bg-dark-1 text-[12px] font-bold uppercase tracking-wider disabled:opacity-50"
+                    className="min-h-10 flex-1 rounded-xl bg-(--eq-live) text-(--eq-live-on) text-[14px] font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy || !draftText.trim()}
                     onClick={async () => {
                       setDraftBusy(true);
@@ -562,7 +814,7 @@ export function WrapUpScreen({
                   </button>
                   <button
                     type="button"
-                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[12px] font-bold uppercase tracking-wider"
+                    className="min-h-10 px-4 rounded-xl border border-div-d text-ink-d2 text-[14px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
                     disabled={draftBusy}
                     onClick={onDropDraft}
                   >
@@ -576,27 +828,27 @@ export function WrapUpScreen({
             <div className="text-[11px] text-ink-d3 font-semibold mt-1">How did it land · profile note · Pulse</div>
 
             {/* The dose Dial — the trainer's own judgement, saved as it is
-                tapped. Wrapped dark so the rating tokens resolve for this
-                screen whatever the app theme is. */}
-            <div className="dark flex flex-col gap-2" data-theme="dark" data-testid="dose-card">
+                tapped. It follows the app theme like the rest of the screen,
+                as it does everywhere else the Dial is drawn. */}
+            <div className="flex flex-col gap-2" data-testid="dose-card">
               <div className="flex items-baseline justify-between">
-                <span className="font-display italic text-ink-d1 text-[15px] uppercase">How did it land?</span>
+                <span className="text-[14px] font-bold text-ink-d1">How did it land?</span>
                 {doseSaved && dose !== null && (
-                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="text-[11px] text-(--eq-ok) font-bold flex items-center gap-1">
                     <Check size={12} strokeWidth={3} /> Saved
                   </span>
                 )}
               </div>
               <Dial scale={DOSE_SCALE} value={dose} onChange={pickDose} ask="Your read" sub={`Judged by you — nothing to ask ${clientFirstName(client)}`} data-testid="dose-dial" />
               {doseSentence(dose, clientFirstName(client)) && (
-                <p className="text-[12.5px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
+                <p className="text-[12px] text-ink-d2" data-testid="dose-sentence" aria-live="polite">
                   {doseSentence(dose, clientFirstName(client))}
                 </p>
               )}
             </div>
 
             <textarea
-              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[13px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-cyan transition-colors"
+              className="w-full bg-bg-dark-3 border border-div-d rounded-[10px] p-2.5 px-3 min-h-16 text-[14px] text-ink-d1 placeholder:text-ink-d3 placeholder:italic resize-none outline-none focus:border-(--eq-focus-ring) transition-colors"
               placeholder={`Profile note — anything for ${clientFirstName(client)}'s record. It files when you leave this screen.`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -609,7 +861,7 @@ export function WrapUpScreen({
                 Loudness's own hint says where it goes; at Note the generic
                 hint ("found by its category") would be wrong for a note
                 that is filed unfiled, so it says the plain fact instead. */}
-            <div className="dark flex flex-col gap-2" data-theme="dark">
+            <div className="flex flex-col gap-2" data-testid="profile-note-loudness">
               <Loudness value={importance} onChange={setImportance} hint={importance !== "standard"} />
               {importance === "standard" && (
                 <span className="text-[11px] text-ink-d3" data-testid="profile-note-hint">
@@ -621,7 +873,7 @@ export function WrapUpScreen({
                   <span className="text-[11px] text-ink-d3 uppercase tracking-wider font-bold">Matters until (optional)</span>
                   <input
                     type="date"
-                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[13px] text-ink-d1 outline-none focus:border-cyan transition-colors"
+                    className="w-full min-h-11 bg-bg-dark-3 border border-div-d rounded-[10px] px-3 text-[14px] text-ink-d1 outline-none focus:border-(--eq-focus-ring) transition-colors"
                     value={effectiveUntil}
                     min={todayKey}
                     aria-label="Matters until"
@@ -636,9 +888,9 @@ export function WrapUpScreen({
               <button
                 type="button"
                 onClick={() => setShowPulse(true)}
-                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+                className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
               >
-                <HeartPulse className="w-4 h-4 text-cyan" />
+                <HeartPulse className="w-4 h-4 text-(--eq-live)" />
                 Update Pulse
               </button>
               {/* Always reachable while a package is on file ("there's not
@@ -647,13 +899,13 @@ export function WrapUpScreen({
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
-                  className={`min-h-11 rounded-xl border px-4 py-2 font-display italic text-[12px] uppercase tracking-wider hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan ${
+                  className={`min-h-11 rounded-xl border px-4 py-2 text-[14px] font-bold hover:opacity-90 flex items-center justify-center gap-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring) ${
                     renewalDue && !renewalLogged
                       ? "border-cta/50 bg-cta/10 text-ink-d1"
                       : "border-div-d bg-bg-dark-3 text-ink-d1"
                   }`}
                 >
-                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-cyan"}`} />
+                  <MessageSquareText className={`w-4 h-4 shrink-0 ${renewalDue && !renewalLogged ? "text-cta" : "text-(--eq-live)"}`} />
                   {renewalLogged
                     ? "Renewal conversation saved ✓"
                     : renewalDue
@@ -670,8 +922,7 @@ export function WrapUpScreen({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.22 }}
-              className="mx-5 dark"
-              data-theme="dark"
+              className="mx-5"
             >
               <NoteSweep
                 entries={unfiledNotes}
@@ -679,7 +930,7 @@ export function WrapUpScreen({
                 clientFirstName={clientFirstName(client, "them")}
                 onFile={fileUnfiledEntry}
                 onDiscard={discardUnfiledEntry}
-                dark
+                isNextTrainerNote={(entry) => isNextTrainerNote(entry, nextTrainerMark)}
               />
             </motion.div>
           )}
@@ -689,10 +940,6 @@ export function WrapUpScreen({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.24 }}
               className="mx-5"
-              /* The trays stay dark whatever the app theme is (see the
-                 header), so the FORD tokens are pinned to their dark values
-                 rather than resolving against the document. */
-              data-theme="dark"
             >
               <FordSweep
                 clientId={client.id}
@@ -735,8 +982,8 @@ export function WrapUpScreen({
               { label: "Lifetime reps", value: fmtBig(lifetime.reps) },
             ].map((t) => (
               <div key={t.label} className="rounded-xl border border-div-d bg-bg-dark-2 px-3 py-2">
-                <div className="text-[9.5px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
-                <div className="font-mono text-[15px] font-bold text-ink-d2">{t.value}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-ink-d3">{t.label}</div>
+                <div className="font-mono text-[14px] font-bold text-ink-d2">{t.value}</div>
               </div>
             ))}
           </motion.div>
@@ -748,7 +995,7 @@ export function WrapUpScreen({
               type="button"
               onClick={leave}
               disabled={leaving}
-              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 font-display italic text-[14px] uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+              className="w-full min-h-[52px] rounded-2xl bg-bg-dark-2 border border-div-d text-ink-d1 text-[14px] font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
             >
               <ArrowLeft size={16} />
               {leaving ? "Leaving…" : "Back to Hub"}
@@ -774,6 +1021,9 @@ export function WrapUpScreen({
         trainer={authTrainer}
         machines={machines}
       />
+
+      {/* On top of this screen, never instead of it: the notes stay put. */}
+      <TimesWithRoomSheet open={timesOpen} onClose={() => setTimesOpen(false)} data={openings} />
     </div>
   );
 }
@@ -808,26 +1058,26 @@ function PackagesCard({
     <Card delay={0.26}>
       <div data-testid="packages-card" className="flex flex-col gap-3">
         <Kicker>{sheetTitle(door.studioName)}</Kicker>
-        {door.standing.sentence && <p className="text-[13.5px] text-ink-d2">{door.standing.sentence}</p>}
+        {door.standing.sentence && <p className="text-[14px] text-ink-d2">{door.standing.sentence}</p>}
         {door.rows && (
           <ul className="flex flex-col">
             {door.rows.map((r) => (
               <li key={r.key} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5 border-b border-div-d last:border-b-0">
-                <span className="text-[13.5px] font-semibold text-ink-d1 break-words">{r.name}</span>
-                <span className="text-[12.5px] text-ink-d2 break-words">{r.price}</span>
+                <span className="text-[14px] font-semibold text-ink-d1 break-words">{r.name}</span>
+                <span className="text-[12px] text-ink-d2 break-words">{r.price}</span>
               </li>
             ))}
           </ul>
         )}
         {door.standing.pricesOnScreen && failed && (
-          <p className="text-[12.5px] text-ink-d3">
+          <p className="text-[12px] text-ink-d3">
             {door.studioName ? `Couldn’t load ${door.studioName}’s prices.` : "Couldn’t load this studio’s prices."}
           </p>
         )}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 font-display italic text-[12px] uppercase tracking-wider text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+          className="min-h-11 rounded-xl border border-div-d bg-bg-dark-3 px-4 text-[14px] font-bold text-ink-d1 hover:opacity-90 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--eq-focus-ring)"
         >
           {DOOR_BUTTON}
         </button>

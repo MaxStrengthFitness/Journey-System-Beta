@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 /**
  * MY STUDIO → TEAM → STANDING WEEKS (voice-review round, Sep 27 2026),
- * mounted: a leader sees whose week is waiting and which slots are free this
- * week, agrees a proposal as it is or changed, and removes a week. A day
- * whose bookings weren't read is never called open.
+ * mounted: a leader sees whose week is waiting and how many slots are free
+ * in the next 7 days, with a door to Openings, which lists them (Openings
+ * round, phase 7); agrees a proposal as it is or changed, and removes a week.
+ * A day whose bookings weren't read is never called open, and until the
+ * server answers there is no line at all.
  *
- * Today is Monday Sep 28 2026, noon Eastern.
+ * Today is Monday Sep 28 2026, 7 AM Eastern: Ann's Monday 8:00 regular is
+ * still ahead.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -50,6 +53,9 @@ vi.mock("../admin/changes/useWeekSchedule", () => ({
 }));
 
 import { StandingWeeksPanel } from "./StandingWeeksPanel";
+import { UnsavedChangesProvider } from "../unsaved-changes";
+import { onMyStudioSectionRequest, rememberMyStudioSection, rememberedMyStudioSection } from "../my-studio/section-memory";
+import { rememberOpeningsPart, rememberWhoseTimes, rememberedOpeningsPart, rememberedWhoseTimes } from "../openings/ui/part-memory";
 
 const studio = { id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957" } as unknown as Studio;
 const person = (id: string, fullName: string) =>
@@ -89,7 +95,7 @@ let root: Root;
 let host: HTMLDivElement;
 
 beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T12:00:00-04:00") });
+  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date("2026-09-28T07:00:00-04:00") });
   vi.spyOn(console, "warn").mockImplementation(() => {});
   fake.writes.length = 0;
   fake.scheduleAsked.length = 0;
@@ -133,41 +139,120 @@ const click = async (label: string) => {
     button(label).click();
   });
 };
+const door = () => host.querySelector<HTMLButtonElement>("[data-testid='week-openings-door']");
+const stateLine = () => host.querySelector("[data-testid='week-check-state']")?.textContent ?? null;
+const nextSeven = () => host.querySelector("#stw-next-seven");
+const noneLine = () => host.querySelector("[data-testid='week-openings-none']")?.textContent ?? null;
 
 describe("Standing weeks on Team", () => {
-  it("says whose week is waiting, and which agreed slot is free this week", async () => {
+  it("says whose week is waiting, and points to Openings for the free slot, naming no client", async () => {
     await mount();
     expect(host.textContent).toContain("Sam has a week waiting to be agreed.");
-    const findings = host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']");
-    expect(findings?.textContent).toContain("Ann's Mon, Sep 28 at 8:00 AM is open: Judy Smith isn't booked for it.");
-    expect(findings?.textContent).toContain("Free slot");
+    // One line, the count Openings' Next 7 days lists, and it is the door.
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(nextSeven()?.textContent).toBe("The next seven days");
+    expect(noneLine()).toBeNull();
+    // The slots themselves are Openings': Team lists none and names no client.
+    expect(host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']")).toBeNull();
+    expect(host.textContent).not.toContain("Judy Smith");
+    expect(host.textContent).not.toContain("Free slot");
+    expect(stateLine()).toBeNull();
     // People by name, never ranked: Ann before Sam although Sam's is the one waiting.
     expect([...host.querySelectorAll(".adm-row__name")].map((n) => n.textContent)).toEqual(["Ann Park", "Sam Lee"]);
+  });
+
+  it("the door opens Openings on Next 7 days for anyone, through My Studio's own move", async () => {
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes({ kind: "you" });
+    await mount();
+    // With My Studio on screen, the door asks the shell (which asks about typing first).
+    const asked: string[] = [];
+    const stop = onMyStudioSectionRequest((next) => asked.push(next));
+    await act(async () => door()!.click());
+    stop();
+    expect(asked).toEqual(["openings"]);
+    // The shell didn't move (a "Keep editing"): Openings' part and chip are as they were.
+    expect(rememberedOpeningsPart()).toBe("usual");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "you" });
+    // The shell moves: they are set as it arrives.
+    const moves = onMyStudioSectionRequest((_next, arrive) => arrive?.());
+    await act(async () => door()!.click());
+    moves();
+    expect(rememberedOpeningsPart()).toBe("next");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes({ kind: "you" });
+    // With none on screen, it only remembers, so the next open lands there.
+    rememberMyStudioSection("team");
+    await act(async () => door()!.click());
+    expect(rememberedMyStudioSection()).toBe("openings");
+    expect(rememberedOpeningsPart()).toBe("next");
+    expect(rememberedWhoseTimes()).toEqual({ kind: "anyone" });
+    rememberMyStudioSection("relay");
+    rememberOpeningsPart("usual");
+    rememberWhoseTimes(null);
+  });
+
+  it("counts two trainers' regulars out at one half-hour as two free slots", async () => {
+    const bobMon = { id: "r2", weekday: 1, start: "08:00", clientId: "c-bob", clientName: "Bob Jones" };
+    const samWeek = { hours: [{ weekday: 1, from: "07:00", to: "13:00" }], regulars: [bobMon] };
+    fake.weeks = { ...fake.weeks, docs: [{ ...fake.weeks.docs[0], proposed: samWeek, final: samWeek, finalAt: new Date("2026-09-20T14:00:00Z") }, fake.weeks.docs[1]] };
+    await mount();
+    expect(door()?.textContent).toBe("2 free slots in the next 7 days · See them on Openings.");
+  });
+
+  it("counts what Openings lists, not the check: a slot earlier today is no free slot now", async () => {
+    vi.setSystemTime(new Date("2026-09-28T12:00:00-04:00"));
+    await mount();
+    expect(door()).toBeNull();
+    // The check still holds Ann's 8:00 this morning, so it isn't "booked as usual": Openings' own
+    // sentence says there is no free slot ahead, so the heading never stands over nothing.
+    expect(stateLine()).toBeNull();
+    expect(host.textContent).not.toContain("booked as usual");
+    expect(noneLine()).toBe("No free slots ahead in the next 7 days.");
+    expect(nextSeven()).not.toBeNull();
   });
 
   it("says nothing is out of place when the regular is booked as usual", async () => {
     fake.schedule = { entries: [booking("2026-09-28", "08:00")], loading: false, failed: false };
     await mount();
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+    expect(stateLine()).toBe("All 1 agreed slot is booked as usual for the next seven days.");
+    expect(door()).toBeNull();
+  });
+
+  it("says nothing about free slots until the server answers", async () => {
+    fake.schedule = { entries: [], loading: true, failed: false };
+    await mount();
+    expect(stateLine()).toBe("Reading the week's bookings…");
+    expect(door()).toBeNull();
+    expect(host.textContent).not.toMatch(/free slot/i);
+    // The server answers: now the empty Monday 8:00 is an answer.
+    fake.schedule = { entries: [], loading: false, failed: false };
+    await mount();
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
   });
 
   it("never calls a slot open when the bookings weren't read, or can't be", async () => {
     fake.schedule = { entries: [], loading: false, failed: true };
     await mount();
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toContain("nothing here says a slot is open");
+    expect(stateLine()).toContain("nothing here says a slot is open");
+    expect(door()).toBeNull();
     act(() => root.unmount());
     root = createRoot(host);
     fake.schedule = { entries: [], loading: false, failed: false };
     await mount({ ...studio, mindbodyMode: "offline" } as Studio);
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toBe(
-      "Mindbody isn't connected for this studio, so the week can't be checked against bookings.",
-    );
+    expect(stateLine()).toBe("Mindbody isn't connected for this studio, so the week can't be checked against bookings.");
+    expect(door()).toBeNull();
   });
 
   it("agrees a proposal as it stands, signed by the leader", async () => {
+    fake.weeks = { ...fake.weeks, docs: [{ ...fake.weeks.docs[0], proposedBy: { id: "t-sam", name: "Sam Lee" } }, fake.weeks.docs[1]] };
     await mount();
     await click("Review: Sam Lee");
     expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
+    // Who proposed it, and when: proposedBy's reader.
+    expect(host.querySelector("[data-testid='review-status']")?.textContent?.trim()).toBe("Proposed by Sam Lee on Sep 27. Not agreed yet.");
+    expect(host.querySelector("#stw-each-week")?.textContent?.trim()).toBe("Each person's standing week");
     await click("Agree this week");
     expect(fake.writes).toHaveLength(1);
     const w = fake.writes[0];
@@ -203,9 +288,9 @@ describe("Standing weeks on Team", () => {
     });
     fake.weeks = { ...fake.weeks, docs: [...fake.weeks.docs, leftBehind] };
     await mount();
-    const findings = host.querySelector("[aria-label='Where the bookings differ from the agreed weeks']");
-    expect(findings?.textContent).not.toContain("Gone");
-    expect(findings?.querySelectorAll("li")).toHaveLength(1);
+    // Gone's Monday 10:00 regular is still ahead, and isn't counted: the same who-works-here Openings uses.
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+    expect(host.textContent).not.toContain("Judy Smith");
     // Listed after the staff, so a leader can remove it.
     expect([...host.querySelectorAll(".adm-row__name")].map((n) => n.textContent)).toEqual(["Ann Park", "Sam Lee", "Gone Away"]);
   });
@@ -214,12 +299,105 @@ describe("Standing weeks on Team", () => {
     fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0]] }; // Sam's proposal only
     await mount();
     expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
-    expect(host.querySelector("[data-testid='week-check-state']")?.textContent).toContain("No standing week is agreed yet");
+    expect(stateLine()).toContain("No standing week is agreed yet");
+    expect(door()).toBeNull();
     act(() => root.unmount());
     root = createRoot(host);
     fake.scheduleAsked.length = 0;
     await mount({ ...studio, mindbodyMode: "offline" } as Studio);
     expect(fake.scheduleAsked.every((s) => s === null)).toBe(true);
+  });
+
+  it("says once who is away, and leaves their days unchecked (voice review follow-up)", async () => {
+    fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], away: [{ id: "a1", from: "2026-09-28", to: "2026-09-28", note: "Dentist" }] }] };
+    await mount();
+    expect(host.querySelector("[aria-label='Away this week']")?.textContent).toBe("Ann is away on Mon, Sep 28.");
+    expect(nextSeven()).not.toBeNull();
+    expect(door()).toBeNull();
+    // Ann's Monday regular falls in the window, on her day away: unchecked, not absent.
+    expect(stateLine()).toBe("Nothing else to check: the agreed slots in the next seven days fall on days away.");
+  });
+
+  it("says once, not twice, that the weeks are still being read or couldn't be", async () => {
+    fake.weeks = { docs: [], loading: true, error: null };
+    await mount();
+    expect(host.textContent?.split("Reading the standing weeks").length).toBe(2);
+    expect(host.querySelector("#stw-each-week")?.parentElement?.textContent).toContain("Listed here once the standing weeks are read.");
+    expect(host.querySelectorAll(".adm-row__name")).toHaveLength(0);
+    act(() => root.unmount());
+    root = createRoot(host);
+    fake.weeks = { docs: [], loading: false, error: "Couldn't load the standing weeks. Check the connection." };
+    await mount();
+    expect(host.textContent?.split("Couldn't load the standing weeks").length).toBe(2);
+    expect(host.querySelectorAll(".adm-row__name")).toHaveLength(0);
+  });
+
+  it("matches an unlinked booking on a staff id only from this studio's Mindbody site", async () => {
+    // Ann's Monday 8:00 regular, booked by the webhook with no trainer id (a guest), under Ann's
+    // staff id, and Bob booked with her in Judy's slot: taken, because the id is Solon's site's.
+    const guest = { trainerId: undefined, trainerName: "Annie Park", mindbodyStaffId: "42" } as unknown as Partial<ScheduleEntry>;
+    fake.schedule = { entries: [booking("2026-09-28", "08:00", { ...guest, clientId: "c-bob", clientName: "Bob Jones" })], loading: false, failed: false };
+    const ann = (siteId: string) => ({ ...trainers[1], mindbodyStaffId: "42", mindbody: { staffId: "42", siteId } }) as unknown as Trainer;
+    await act(async () => {
+      root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("5746957")]} clients={clients} />);
+    });
+    // Taken is no free slot: nothing points to Openings, nothing claims "booked as usual", and Openings' own sentence says so.
+    expect(door()).toBeNull();
+    expect(stateLine()).toBeNull();
+    expect(noneLine()).toBe("No free slots ahead in the next 7 days.");
+    // Ann's id from the other site proves nothing here: Judy's slot is simply open.
+    await act(async () => {
+      root.render(<StandingWeeksPanel studio={studio} authTrainer={pat} trainers={[trainers[0], ann("29068")]} clients={clients} />);
+    });
+    expect(door()?.textContent).toBe("1 free slot in the next 7 days · See it on Openings.");
+  });
+
+  it("lets a leader set a trainer's dates away from the review", async () => {
+    await mount();
+    await click("Change: Ann Park");
+    await click("Dates away");
+    const field = (label: string) => [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith(label))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(field("To"), "2026-10-02");
+      field("To").dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click("Save dates away");
+    expect(fake.writes).toEqual([
+      {
+        op: "set",
+        path: "studios/solon/standingWeeks/t-ann",
+        options: { merge: true },
+        data: { studioId: "solon", trainerUid: "t-ann", trainerId: "t-ann", trainerName: "Ann Park", away: [{ id: expect.any(String), from: "2026-09-28", to: "2026-10-02" }] },
+      },
+    ]);
+  });
+
+  it("speaks of when trainers take clients, and a leader agrees three blocks on a day (Openings round)", async () => {
+    // Ann proposed a change: two blocks on Monday where there was one.
+    const twoBlocks = { ...annWeek, hours: [{ weekday: 1, from: "07:00", to: "10:00" }, { weekday: 1, from: "11:00", to: "13:00" }] };
+    fake.weeks = { ...fake.weeks, docs: [fake.weeks.docs[0], { ...fake.weeks.docs[1], proposed: twoBlocks, proposedAt: new Date("2026-09-27T14:00:00Z") }] };
+    await mount();
+    expect(host.querySelector(".adm-panel__sub")?.textContent).toContain("Each trainer proposes their usual week — when they take clients, and their regulars — on My Profile");
+    expect(host.textContent).not.toMatch(/\bhours\b/i);
+    await click("Review: Ann Park");
+    expect(host.querySelector("[aria-label='What the change does']")?.textContent).toBe(
+      "Monday: 7:00 AM – 10:00 AM and 11:00 AM – 1:00 PM, was 7:00 AM – 1:00 PM.",
+    );
+    // The leader adds a third before agreeing; three is the most a day holds.
+    await click("Add another block on Monday");
+    expect(host.querySelector("[aria-label='Add another block on Monday']")).toBeNull();
+    expect(host.querySelector("[aria-label='Monday, block 3: starts']")).not.toBeNull();
+    await click("Agree it as changed");
+    expect(fake.writes[0].data).toMatchObject({
+      final: {
+        hours: [
+          { weekday: 1, from: "07:00", to: "10:00" },
+          { weekday: 1, from: "11:00", to: "13:00" },
+          { weekday: 1, from: "14:00", to: "18:00" },
+        ],
+      },
+    });
   });
 
   it("follows the trainer's newer proposal while the review is untouched", async () => {
@@ -234,5 +412,119 @@ describe("Standing weeks on Team", () => {
     expect(host.querySelector("[aria-label='Wednesday: starts']")).not.toBeNull();
     await click("Agree this week");
     expect(fake.writes[0].data).toMatchObject({ final: again });
+  });
+});
+
+describe("a leader's changes never vanish (voice review follow-up)", () => {
+  async function mountGuarded() {
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <UnsavedChangesProvider>
+            <StandingWeeksPanel studio={studio} authTrainer={pat} trainers={trainers} clients={clients} />
+          </UnsavedChangesProvider>
+        </StrictMode>,
+      );
+    });
+  }
+  const bodyButton = (label: string) => {
+    const b = [...document.body.querySelectorAll("button")].find((x) => x.textContent?.trim() === label);
+    if (!b) throw new Error(`No button "${label}" in the page`);
+    return b as HTMLButtonElement;
+  };
+  const question = () => document.body.querySelector("[role='alertdialog']")?.textContent ?? "";
+
+  it("asks before another person's review takes the changes away, and keeps them on Keep editing", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Remove Judy Smith from Monday");
+    await click("Review: Sam Lee");
+    expect(question()).toContain("You have unsaved changes to Ann's standing week. Leave without saving?");
+    // Keep editing: Ann's week is still open, still changed.
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).toBeNull();
+    expect(button("Agree it as changed")).toBeTruthy();
+    // Tapping Ann's own button again, to close it, asks too; Leave goes.
+    await click("Change: Ann Park");
+    expect(question()).toContain("Ann's standing week");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).toBeNull();
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("asks before the Review's Cancel throws a changed week away", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Remove Judy Smith from Monday");
+    await click("Cancel");
+    expect(question()).toContain("Ann's standing week");
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+    expect(button("Agree it as changed")).toBeTruthy();
+    await click("Cancel");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).toBeNull();
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("asks before Agree closes the Review over dates away still being typed", async () => {
+    await mountGuarded();
+    await click("Review: Sam Lee");
+    await click("Dates away");
+    const from = [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith("From"))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(from, "2026-10-05");
+      from.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click("Agree this week");
+    // The week is agreed; the dates typed below it are what the question is about.
+    expect(fake.writes).toHaveLength(1);
+    expect(fake.writes[0].data).toMatchObject({ final: samProposal });
+    expect(question()).toContain("You have unsaved changes to Sam's dates away.");
+    await act(async () => {
+      bodyButton("Keep editing").click();
+    });
+    // Still open, and usable: the dates can be saved.
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
+    expect(button("Save dates away").disabled).toBe(false);
+    await click("Save dates away");
+    expect(fake.writes[1].data).toMatchObject({ away: [{ from: "2026-10-05", to: "2026-10-05" }] });
+  });
+
+  it("asks before the dates-away adder's own Cancel throws typed dates away", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Dates away");
+    const to = [...host.querySelectorAll("label")].find((l) => l.textContent?.startsWith("To"))!.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(to, "2026-10-02");
+      to.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const adderCancel = host.querySelector("[aria-label='Add dates away'] .stw-btn--quiet") as HTMLButtonElement;
+    await act(async () => adderCancel.click());
+    expect(question()).toContain("Ann's dates away");
+    await act(async () => {
+      bodyButton("Leave").click();
+    });
+    expect(host.querySelector("[aria-label='Add dates away']")).toBeNull();
+    // The Review itself stays open: only the adder closed.
+    expect(host.querySelector("[aria-label=\"Ann Park's week\"]")).not.toBeNull();
+  });
+
+  it("moves between reviews without asking when nothing was changed", async () => {
+    await mountGuarded();
+    await click("Change: Ann Park");
+    await click("Review: Sam Lee");
+    expect(question()).toBe("");
+    expect(host.querySelector("[aria-label=\"Sam Lee's week\"]")).not.toBeNull();
   });
 });

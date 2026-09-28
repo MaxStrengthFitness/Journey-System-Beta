@@ -5,9 +5,13 @@
    writes a hex value. Two semantic colours are added so a card's ORIGIN reads
    without a label: --rl-floor (the studio's shared work, the brand orange the
    hub already uses for "now") and --rl-mine (a trainer's own, the brand blue).
+   Orange WORDS are --st-hero-text (the deep orange: solid orange is 3.55:1
+   on white, too faint for a label), and the Floor Map's heat has a ramp of
+   its own (--rl-heat-*) so it never borrows the caution colour.
 
    Held-iPad rules the whole file follows:
-     - nothing tappable under 44px, primary actions at the foot / right thumb;
+     - nothing tappable under 40px (44 where a row allows), primary actions
+       at the foot / right thumb;
      - the Now Bar is pinned; the tab content scrolls under it;
      - the Context Panel is a right column in landscape (>= 900px wide) and a
        bottom sheet in portrait — the board never disappears behind a modal.
@@ -16,6 +20,13 @@
 .pl {
   --rl-floor: var(--st-hero);
   --rl-floor-fill: color-mix(in srgb, var(--st-hero) 12%, transparent);
+  /* The Floor Map's heat: one hue, warming with touches. Low heat borrowed
+     the flag colour until Sep 27 2026, which would have drawn a busy machine
+     in the caution plum once the flag became plum. */
+  --rl-heat-1: color-mix(in srgb, var(--st-hero) 8%, var(--st-surface));
+  --rl-heat-2: color-mix(in srgb, var(--st-hero) 18%, var(--st-surface));
+  --rl-heat-2-edge: color-mix(in srgb, var(--st-hero) 40%, var(--st-border));
+  --rl-heat-3: color-mix(in srgb, var(--st-hero) 32%, var(--st-surface));
   --rl-mine: var(--st-live);
   --rl-mine-fill: var(--st-live-fill);
   --rl-bar-h: 56px;
@@ -62,7 +73,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 999px;
   background: var(--st-surface-2);
   color: var(--st-ink-2);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -81,20 +92,20 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   line-height: 1.25;
 }
 .rnb__next-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
-.rnb__next-who { font-size: 13px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+.rnb__next-who { font-size: 14px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
 
 .rnb__gap-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--st-ink);
   white-space: nowrap;
@@ -127,21 +138,9 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .rnb__ring-dot--closed { border-color: var(--st-done); background: var(--st-done); }
 
-.rnb__toggle {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px; height: 44px;
-  border: 0; border-radius: 10px;
-  background: transparent;
-  color: var(--st-ink-muted);
-  cursor: pointer;
-}
-.rnb__toggle[aria-expanded="true"] { background: var(--st-surface-2); color: var(--st-ink); }
-.rnb__toggle:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-
-/* The Pulse: a slow ticker of what teammates did. One line, fades between. */
+/* "Just now" (PulseTicker): a slow ticker of what teammates did, fading
+   between. Labelled "Pulse" until Sep 27 2026; Pulse is the living
+   assessment. */
 .pt {
   min-width: 0;
   display: flex;
@@ -152,21 +151,22 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .pt__label {
   flex: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--st-ink-muted);
 }
+/* The line carries a teammate's name, so it wraps (to two lines in the bar)
+   rather than being cut with an ellipsis, as it was until Sep 27 2026. */
 .pt__line {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
   animation: pt-in 500ms ease-out;
 }
 .pt__who { font-weight: 800; color: var(--st-ink); }
-.pt__quiet { color: var(--st-ink-faint); font-style: italic; }
+.pt__quiet { color: var(--st-ink-muted); font-style: italic; }
 @keyframes pt-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pt__line { animation: none; } }
 
@@ -189,8 +189,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   top: 6px; bottom: 6px;
   border-radius: 7px;
   background: var(--rl-mine);
-  color: var(--st-surface);
-  font-size: 10px;
+  color: var(--st-live-on);
+  font-size: 11px;
   font-weight: 800;
   line-height: 32px;
   padding: 0 6px;
@@ -210,16 +210,65 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 .ds__empty { font-size: 12px; color: var(--st-ink-muted); padding: 0.25rem 0; }
 
-/* Portrait: where + gap on one row, the pulse folds to a dot with a sheet. */
+/* The day's sessions in words, under the ribbon: the whole name and the
+   time, which the ribbon's blocks have no room for. */
+.ds__list {
+  list-style: none;
+  margin: 0.625rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 4px 12px;
+}
+.ds__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 4px 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+/* The time on its own line over the name, so every item reads the same
+   whether the name is short or wraps. */
+.ds__time {
+  flex: 0 0 100%;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-ink-muted);
+}
+.ds__name { min-width: 0; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+.ds__item--past .ds__name { color: var(--st-ink-muted); font-weight: 700; }
+.ds__tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--st-live);
+}
+
+/* Portrait: where + gap on one row, and "Just now" (the teammates line)
+   on a row of its own under them. It carries the only kudos button in the
+   app, so it is never hidden: until Sep 27 2026 it was display: none here,
+   on every portrait iPad but the 12.9-inch. */
 @media (max-width: 899px) {
-  .rnb { grid-template-columns: minmax(0, 1fr) auto; }
-  .rnb__pulse { display: none; }
+  .rnb { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.25rem; }
+  .rnb__pulse {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--st-border);
+  }
+  .rnb__pulse .pt { flex: 1 1 auto; }
+  .rnb__pulse .pt__line { flex: 1 1 auto; }
   .rnb__gap { min-width: 9rem; }
   .rnb__next-label { display: none; }
 }
@@ -243,7 +292,9 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 /* Landscape: a right column that slides in. */
 .cp {
   flex: none;
-  width: var(--rl-panel-w);
+  /* The fallback is for a host with no .pl around it: Operations -> Floor
+     mounts Machines, and its door, without My Studio's shell. */
+  width: var(--rl-panel-w, 360px);
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -273,7 +324,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .cp__kicker {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -358,23 +409,30 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   padding: 0 1.25rem 0 1rem;
   border: 0;
   border-radius: 999px;
-  background: var(--rl-floor);
-  color: #fff;
+  /* The one loud action, so orange, but the deep orange: white on the
+     bright one is 3.55:1, too faint for a 14px label (--st-hero-on is 6.0:1
+     here, and near-black on the lifted orange in dark). The label is in the
+     button voice every button in My Studio uses since Sep 27 2026: 14px,
+     bold, sentence case (look.test.ts). */
+  background: var(--st-hero-text);
+  color: var(--st-hero-on);
   font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   box-shadow: 0 8px 24px var(--st-shadow);
   cursor: pointer;
 }
 .cf:focus-visible { outline: 3px solid var(--st-live); outline-offset: 2px; }
 .cf:active { transform: scale(0.97); }
 @media (max-width: 640px) { .cf__label { display: none; } .cf { padding: 0; width: 56px; justify-content: center; } }
+/* Capture steps aside while a Context Panel is open: the panel's foot (an
+   ask's Done, Next up's Mark all) is in the same bottom-right corner. The
+   shell already leaves Capture out while ITS panel is open; this catches a
+   section's own panel too (Machines' door). */
+.pl:has(.cp) .cf { display: none; }
 
 /* Room for the button at the foot of every scroller in Relay. */
-.pl .st__scroll,
-.pl .pl__scroll { padding-bottom: 6rem; }
+.pl .st__scroll { padding-bottom: 6rem; }
 
 /* ------------------------------------------------------------------ *
  * Shared card anatomy: origin colour, duration, loop state
@@ -384,13 +442,13 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 .rl-origin::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.rl-origin--floor { color: var(--rl-floor); }
+.rl-origin--floor { color: var(--st-hero-text); }
 .rl-origin--mine { color: var(--rl-mine); }
 
 .rl-dur {
@@ -408,20 +466,6 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .rl-dur--fits { background: var(--st-done-fill); color: var(--st-done); }
 .rl-dur--tight { background: var(--st-flag-fill); color: var(--st-flag); }
 
-.rl-loop {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--st-ink-muted);
-}
-.rl-loop::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 2px solid currentColor; }
-.rl-loop--open { color: var(--st-ink-muted); }
-.rl-loop--onit { color: var(--st-live); }
-.rl-loop--closed { color: var(--st-done); }
-.rl-loop--closed::before { background: currentColor; }
-
 /* A section heading inside a Relay tab. */
 .rl-h {
   display: flex;
@@ -432,9 +476,9 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 }
 .rl-h__title {
   margin: 0;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--st-ink-2);
 }
@@ -450,7 +494,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border: 1px dashed var(--st-border-strong);
   border-radius: var(--st-radius);
   background: var(--st-surface);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--st-ink-2);
 }
 .rl-prompt__text { flex: 1 1 14rem; min-width: 0; }
@@ -492,8 +536,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   cursor: pointer;
   text-align: left;
 }
-.cs__more-hint { font-weight: 600; color: var(--st-ink-faint); }
-.cs__sentence { font-size: 13px; }
+.cs__more-hint { font-weight: 600; color: var(--st-ink-muted); }
+.cs__sentence { font-size: 14px; }
 .cs__go--ready { animation: cs-pulse 700ms ease-out 1; }
 @keyframes cs-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cs__go--ready { animation: none; } }
@@ -515,11 +559,11 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #fff;
   pointer-events: none;
 }
-.sw__under--right { left: 0; right: 0; justify-content: flex-start; background: var(--st-done); }
-.sw__under--left { left: 0; right: 0; justify-content: flex-end; background: var(--st-ink-muted); }
+.sw__under--right { left: 0; right: 0; justify-content: flex-start; background: var(--st-done); color: var(--st-done-on); }
+/* The page's own ground on the muted ink: 5.8:1 in light, 5.4:1 in dark. */
+.sw__under--left { left: 0; right: 0; justify-content: flex-end; background: var(--st-ink-muted); color: var(--st-surface); }
 .sw--right .sw__under--right, .sw--left .sw__under--left { filter: brightness(1.08); }
 
 /* ------------------------------------------------------------------ *
@@ -543,10 +587,10 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .nu__card--mine { border-left-color: var(--rl-mine); }
 .nu__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .nu__top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.nu__title { margin: 0; font-size: 15px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+.nu__title { margin: 0; font-size: 14px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
 .nu__meta { margin: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 12px; color: var(--st-ink-muted); }
 .nu__entity { display: inline-flex; align-items: center; gap: 4px; color: var(--st-ink-2); font-weight: 700; }
-.nu__why { color: var(--st-ink-faint); }
+.nu__why { color: var(--st-ink-muted); }
 .nu__actions { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
 .nu__do {
   display: inline-flex;
@@ -557,19 +601,17 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border: 0;
   border-radius: 999px;
   background: var(--st-live);
-  color: var(--st-surface);
+  color: var(--st-live-on);
   font: inherit;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
 .nu__do:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
 .nu__more {
   align-self: center;
-  width: 44px; height: 32px;
+  width: 44px; height: 40px;
   display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 8px;
   background: transparent; color: var(--st-ink-muted);
@@ -600,13 +642,13 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   background: transparent;
   color: var(--st-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-align: left;
   cursor: pointer;
 }
 .nu__menu button:hover, .nu__menu button:focus-visible { background: var(--st-surface-2); outline: none; }
-.nu__by { margin: 0; font-size: 13px; color: var(--st-ink-2); }
+.nu__by { margin: 0; font-size: 14px; color: var(--st-ink-2); }
 .nu__detail { margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 .nu__foot { display: flex; gap: 0.5rem; width: 100%; }
 .nu__foot .rk-input { flex: 1; min-width: 0; }
@@ -635,10 +677,10 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: inline-flex; align-items: center; justify-content: center;
   border: 2px solid var(--st-border-strong);
   border-radius: 7px;
-  color: var(--st-surface);
+  color: var(--st-done-on);
 }
 .nu__rowtick--on .nu__tick { background: var(--st-done); border-color: var(--st-done); }
-.nu__who { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--st-ink-faint); }
+.nu__who { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--st-ink-muted); }
 
 /* ------------------------------------------------------------------ *
  * The shift rings (ShiftRings.tsx)
@@ -674,7 +716,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .shr__ring--closed .shr__svg { animation: shr-close 600ms ease-out 1; }
 @keyframes shr-close { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .shr__ring--closed .shr__svg { animation: none; } .shr__fill { transition: none; } }
-.shr__label { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.shr__label { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
 .shr__count { font-size: 12px; font-weight: 800; color: var(--st-ink); font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------------ *
@@ -685,7 +727,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .fm__group { margin-bottom: 0.75rem; }
 .fm__group-title {
   margin: 0 0 0.375rem;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -714,10 +756,10 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   transition: background 500ms ease-out, border-color 300ms;
 }
 .fm__tile:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
-/* The tile warms with touches: the hub's flag colour at low heat, the hero at high. */
-.fm__tile--heat1 { background: color-mix(in srgb, var(--st-flag) 12%, var(--st-surface)); }
-.fm__tile--heat2 { background: color-mix(in srgb, var(--st-hero) 18%, var(--st-surface)); border-color: color-mix(in srgb, var(--st-hero) 40%, var(--st-border)); }
-.fm__tile--heat3 { background: color-mix(in srgb, var(--st-hero) 32%, var(--st-surface)); border-color: var(--st-hero); }
+/* The tile warms with touches: the heat ramp (--rl-heat-*, one orange). */
+.fm__tile--heat1 { background: var(--rl-heat-1); }
+.fm__tile--heat2 { background: var(--rl-heat-2); border-color: var(--rl-heat-2-edge); }
+.fm__tile--heat3 { background: var(--rl-heat-3); border-color: var(--st-hero); }
 .fm__tile--flagged { border-color: var(--st-flag); box-shadow: inset 3px 0 0 var(--st-flag); }
 .fm__name { font-size: 12px; font-weight: 800; line-height: 1.25; }
 .fm__facts { display: flex; align-items: center; gap: 6px; margin-top: auto; }
@@ -733,7 +775,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-.fm__tile--heat2 .fm__touches, .fm__tile--heat3 .fm__touches { background: var(--st-hero); color: #fff; }
+.fm__tile--heat2 .fm__touches, .fm__tile--heat3 .fm__touches { background: var(--st-hero-text); color: var(--st-hero-on); }
 .fm__flag { color: var(--st-flag); }
 .fm__deep { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--st-surface-3); }
 .fm__deep-fill { display: block; height: 100%; background: var(--st-live); transition: width 500ms ease-out; }
@@ -741,8 +783,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 
 .fm__sheet { display: flex; flex-direction: column; gap: 0.75rem; }
 .fm__heat { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 800; }
-.fm__heat--2, .fm__heat--3 { color: var(--st-hero); }
-.fm__line { margin: 0; font-size: 13px; color: var(--st-ink-2); }
+.fm__heat--2, .fm__heat--3 { color: var(--st-hero-text); }
+.fm__line { margin: 0; font-size: 14px; color: var(--st-ink-2); }
 .fm__line--due { color: var(--st-flag); font-weight: 700; }
 .fm__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .fm__actions .pl__btn { min-height: 48px; }
@@ -755,20 +797,48 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 12px;
   background: var(--st-flag-fill);
   color: var(--st-flag);
-  font-size: 13px;
+  font-size: 14px;
 }
 .fm__flagbox > div { flex: 1; min-width: 0; }
 .fm__flagbox p { margin: 2px 0 0; color: var(--st-ink-2); white-space: pre-wrap; }
 .fm__flagform { display: flex; flex-direction: column; gap: 0.5rem; }
+/* "Flag the machine" borrows the danger button's shape, but a flag is
+   caution, not a deletion: the plum, not the crimson. */
+.fm__flagform .pl__btn--danger {
+  background: var(--st-flag-fill);
+  border-color: var(--st-flag-border);
+  color: var(--st-flag);
+}
 .fm__rows { display: flex; flex-direction: column; gap: 0.375rem; }
 
 /* ------------------------------------------------------------------ *
- * Open loops (TeamCockpit.tsx) and the vault (VaultPanel.tsx). Who's in
+ * Open loops (OpenLoops.tsx) and the vault (VaultPanel.tsx). Who's in
  * today and the month's client groups went in the voice-review round
  * (Sep 27 2026), with their styles
  * ------------------------------------------------------------------ */
 
-.tc { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+/* Team's two panels are header-strip cards, like the standing duties
+   (.stm__panel) and every Operations-kit panel on the page: one border,
+   14px corners, the title in a tinted strip. Until Sep 27 2026 they were
+   loose headings over loose lists. */
+.tc {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  overflow: hidden;
+}
+.tc > .rl-h {
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--st-surface-2);
+  border-bottom: 1px solid var(--st-border);
+}
+.tc > :not(.rl-h) { margin: 0.75rem 0.875rem 0; }
+.tc > :last-child:not(.rl-h) { margin-bottom: 0.875rem; }
 .tc .rl-h__title { display: inline-flex; align-items: center; gap: 0.375rem; }
 .tc__loops, .vault__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.375rem; }
 .tc__loop {
@@ -782,8 +852,8 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   border-radius: 12px;
   background: var(--st-flag-fill);
 }
-.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-flag); white-space: nowrap; }
-.tc__loop-title { grid-area: title; font-size: 13px; font-weight: 800; }
+.tc__loop-kind { grid-area: kind; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--st-flag); white-space: nowrap; }
+.tc__loop-title { grid-area: title; font-size: 14px; font-weight: 800; }
 .tc__loop-sub { grid-area: sub; font-size: 12px; color: var(--st-ink-2); }
 .tc__loop .pl__btn { grid-area: action; }
 
@@ -805,9 +875,9 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
 .vault__item--closed { opacity: 0.65; }
 .vault__kind { flex: none; margin-top: 3px; color: var(--st-ink-muted); }
 .vault__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.vault__title { font-size: 13px; font-weight: 800; }
+.vault__title { font-size: 14px; font-weight: 800; }
 .vault__meta { font-size: 12px; color: var(--st-ink-muted); }
-.vault__body { margin: 4px 0 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+.vault__body { margin: 4px 0 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
 
 /* ------------------------------------------------------------------ *
  * Kudos, and the small motions
@@ -818,7 +888,7 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  min-width: 36px; height: 32px;
+  min-width: 40px; min-height: 40px;
   padding: 0 8px;
   border: 1px solid var(--st-border);
   border-radius: 999px;
@@ -829,12 +899,12 @@ button.rnb__gap:focus-visible { outline: 2px solid var(--st-live); outline-offse
   font-weight: 800;
   cursor: pointer;
 }
-.pt__kudos--on { border-color: var(--st-hero); color: var(--st-hero); background: var(--rl-floor-fill); }
+.pt__kudos--on { border-color: var(--st-hero); color: var(--st-hero-text); background: var(--rl-floor-fill); }
 .pt__kudos--on svg { fill: currentColor; animation: kudos-pop 300ms ease-out 1; }
-.pt__kudos--mine { cursor: default; color: var(--st-hero); border-color: transparent; background: var(--rl-floor-fill); }
+.pt__kudos--mine { cursor: default; color: var(--st-hero-text); border-color: transparent; background: var(--rl-floor-fill); }
 .pt__kudos--mine svg { fill: currentColor; }
 @keyframes kudos-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
-.tm-card__kudos { display: inline-flex; align-items: center; gap: 3px; color: var(--st-hero); }
+.tm-card__kudos { display: inline-flex; align-items: center; gap: 3px; color: var(--st-hero-text); }
 .tm-card__kudos svg { fill: currentColor; }
 
 /* A card handed to you slides in from the left — the baton. */

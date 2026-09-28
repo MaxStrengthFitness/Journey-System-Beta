@@ -7,7 +7,7 @@
  * the bar, Body & Pulse (injuries, and her notes on each machine), Goals &
  * Focus (how to coach her), FORD (older life notes) and the Overview. Each
  * area's spec wrote its own version of the same selection, and the versions
- * disagreed — one "how to coach her" pulled in every legacy session wrap-up,
+ * disagreed — one "how to coach her" pulled in every session summary,
  * one "machine notes" dropped every standing set-up note. So each selection
  * lives here ONCE, and every page reads `journal.threads` through it. The tab
  * loads the journal once (`useClientJournal`); switching pages reads nothing.
@@ -583,8 +583,9 @@ const isLive = (t: NoteThread, today: string, tz?: string) => zoneOf(t, today, t
  * still true, loudest first.
  *
  * By KIND, not by category: the catalog files every "general" note under
- * "Preferences & other", which would pull in every legacy session wrap-up and
- * label it a Preference. A focus check-in stays on its focus card.
+ * "Preferences & other", which would pull in every session summary (the
+ * journal's read-only copy of `sessions.notes`) and label it a Preference. A
+ * focus check-in stays on its focus card.
  */
 export function howToCoachThreads(threads: readonly NoteThread[], today: string, tz?: string): NoteThread[] {
   return sortThreads(

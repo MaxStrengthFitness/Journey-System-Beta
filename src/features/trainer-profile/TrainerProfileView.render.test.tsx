@@ -34,7 +34,7 @@ vi.mock("firebase/firestore", () => {
     updateDoc: async () => {},
   };
 });
-vi.mock("./KaizenRoster", () => ({ KaizenRoster: () => null }));
+vi.mock("./KaizenRoster", () => ({ KaizenRoster: () => <section data-testid="kaizen-roster" /> }));
 vi.mock("./EditTrainerModal", () => ({ EditTrainerModal: () => null }));
 vi.mock("../renewals/MyRenewals", () => ({ MyRenewals: () => null }));
 // The standing week (voice-review round, Sep 27 2026) has its own render
@@ -44,6 +44,15 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({ useOptionalActiveStudio: 
 vi.mock("../standing-week/MyStandingWeek", () => ({
   MyStandingWeek: ({ studioName, authUid }: { studioName: string; authUid: string }) => (
     <section data-testid="standing-week" data-uid={authUid}>
+      {studioName}
+    </section>
+  ),
+}));
+// Your week (Openings round, phase 11) has its own render test too; here it
+// is a marker carrying what the page handed it.
+vi.mock("./YourWeek", () => ({
+  YourWeek: ({ studioName, trainerId, studioId }: { studioName: string; trainerId: string; studioId: string }) => (
+    <section data-testid="your-week" data-trainer={trainerId} data-studio={studioId}>
       {studioName}
     </section>
   ),
@@ -103,7 +112,17 @@ async function mount() {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <TrainerProfileView trainer={trainer} authTrainer={trainer} schedules={schedules} sessions={sessions} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />
+        <TrainerProfileView
+          trainer={trainer}
+          authTrainer={trainer}
+          schedules={schedules}
+          sessions={sessions}
+          clients={[] as Client[]}
+          studios={studios}
+          onSelectClient={() => {}}
+          setView={() => {}}
+          rosterStatus="ready"
+        />
       </StrictMode>,
     );
   });
@@ -125,14 +144,28 @@ describe("the trainer page's Upcoming", () => {
 });
 
 describe("My standing week on the trainer page", () => {
-  const render = async (viewer: Trainer, studioId: string) => {
+  const render = async (
+    viewer: Trainer,
+    studioId: string,
+    extra: { clients?: Client[]; rosterStatus?: "loading" | "ready" | "error" } = {},
+  ) => {
     activeHolder.value = { activeStudioId: studioId, activeStudio: { name: studioId === "solon" ? "Solon" : "Westlake" } };
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
     await act(async () => {
       root!.render(
-        <TrainerProfileView trainer={trainer} authTrainer={viewer} schedules={[]} sessions={[]} clients={[] as Client[]} studios={studios} onSelectClient={() => {}} setView={() => {}} />,
+        <TrainerProfileView
+          trainer={trainer}
+          authTrainer={viewer}
+          schedules={[]}
+          sessions={[]}
+          clients={extra.clients ?? ([] as Client[])}
+          studios={studios}
+          onSelectClient={() => {}}
+          setView={() => {}}
+          rosterStatus={extra.rosterStatus ?? "ready"}
+        />,
       );
     });
     return host;
@@ -154,5 +187,50 @@ describe("My standing week on the trainer page", () => {
     act(() => root?.unmount());
     host?.remove();
     expect((await render(trainer, "westlake")).querySelector("[data-testid='standing-week']")).toBeNull();
+  });
+
+  it("puts Your week after My standing week on your own page, for the studio the iPad is in", async () => {
+    const el = await render(trainer, "solon");
+    const week = el.querySelector("[data-testid='your-week']");
+    expect(week?.textContent).toBe("Solon");
+    expect(week?.getAttribute("data-trainer")).toBe("t1");
+    expect(week?.getAttribute("data-studio")).toBe("solon");
+    const standing = el.querySelector("[data-testid='standing-week']")!;
+    expect(standing.compareDocumentPosition(week!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps Your week off a colleague's page: it is the trainer's own", async () => {
+    const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
+    expect((await render(colleague, "solon")).querySelector("[data-testid='your-week']")).toBeNull();
+  });
+
+  it("puts My clients right after the Kaizen Roster on your own page, from the client list the page holds", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "ready" });
+    const roster = el.querySelector("[data-testid='kaizen-roster']")!;
+    const mine = el.querySelector("[data-testid='my-clients']")!;
+    expect(roster.nextElementSibling).toBe(mine);
+    expect(mine.textContent).toContain("Judy Daus");
+    expect(mine.textContent).toContain("42 sessions with you in Journey");
+  });
+
+  it("passes the client list's state through: loading says it can't read, not that you trained nobody", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "loading" });
+    expect(el.querySelector("[data-testid='my-clients']")?.textContent).toContain("Can't read the client list just now.");
+  });
+
+  it("after the roster's read failed, a booked client read by id is not the list: it says it can't read", async () => {
+    const judy = { id: "judy", firstName: "Judy", lastName: "Daus", homeStudioId: "solon", isActive: true, trainerTally: { t1: 42 } } as unknown as Client;
+    const el = await render(trainer, "solon", { clients: [judy], rosterStatus: "error" });
+    const mine = el.querySelector("[data-testid='my-clients']")!;
+    expect(mine.querySelectorAll("[data-testid='my-client-row']")).toHaveLength(0);
+    expect(mine.textContent).toContain("Can't read the client list just now.");
+    expect(mine.textContent).not.toContain("Judy Daus");
+  });
+
+  it("keeps My clients off a colleague's page: it is the trainer's own", async () => {
+    const colleague = { ...trainer, id: "t2", fullName: "Pat Doe" } as Trainer;
+    expect((await render(colleague, "solon")).querySelector("[data-testid='my-clients']")).toBeNull();
   });
 });

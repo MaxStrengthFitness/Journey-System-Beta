@@ -46,7 +46,7 @@ A session is recorded by the trainer running it, from any iPad they sign in on; 
 - **Whose session it is** is `isAnotherTrainersSession` with `myTrainerIds`, in `src/lib/live-session.ts`. It matches every id a trainer's sessions can carry, and fails toward recording: a session with no trainer, or a person the app cannot identify, is never someone else's.
 - **`WatchingSession`** is the Active Session drawn read-only: the session bar without its buttons, one line from `watchWords` (`watch.ts`), the grid with a Today column that only reads, and no Now Bar. `WorkoutTrackerView` holds the watched session as `watchedSession`, apart from `currentSession`, so nothing that records runs while watching.
 - **Take over** asks first (`takeOverWords`), then writes `takeOverPatch`: the new trainer, with `startedByTrainerId` kept. Finish credits whoever finishes, as it always has. The iPad it was taken from sends its waiting sets and turns to watching.
-- `sessionMachineList`, `firstOpenMachine` and `machinesDone` are what the watching screen reads off the session, by the same rules as the recording screen. `whoStartedIt` names the starter after a take-over, for the profile's menu and the History pop-up.
+- `sessionMachineList`, `firstOpenMachine` and `machinesDone` are what the watching screen reads off the session, by the same rules as the recording screen. `whoStartedIt` names the starter after a take-over, for the profile's menu and the session pop-up (Activity Archive → Calendar or Sessions).
 
 ## Related pieces elsewhere
 

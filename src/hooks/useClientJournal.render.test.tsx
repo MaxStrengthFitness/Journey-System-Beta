@@ -6,7 +6,7 @@
  *   - `loadState` - notes / focuses / sessions, each loading | ready | failed,
  *     so a screen can say "couldn't load" instead of "No notes yet";
  *   - `recentSessions` - the session documents the hook ALREADY streams for the
- *     wrap-up notes, handed out so no screen opens a second sessions query.
+ *     session summaries, handed out so no screen opens a second sessions query.
  *
  * A fake Firestore records every listener and lets each test answer or fail
  * one by hand.
@@ -186,10 +186,10 @@ describe("useClientJournal.loadState", () => {
   it("never hands out the last client's sessions when another of this client's listeners answers first", async () => {
     const root = await mount(<Probe client={clientA} />);
     for (const p of [...NOTES, ...FOCUSES, "sessions"]) {
-      await answer(p, p === "sessions" ? [{ id: "s-a", clientId: "c1", date: "2026-09-01", notes: "Judy's wrap-up" }] : []);
+      await answer(p, p === "sessions" ? [{ id: "s-a", clientId: "c1", date: "2026-09-01", notes: "Judy's session note" }] : []);
     }
     expect(last!.recentSessions!.map((s) => s.id)).toEqual(["s-a"]);
-    expect(last!.entries.some((e) => e.body.includes("Judy's wrap-up"))).toBe(true);
+    expect(last!.entries.some((e) => e.body.includes("Judy's session note"))).toBe(true);
 
     await act(async () => {
       root.render(
@@ -203,8 +203,8 @@ describe("useClientJournal.loadState", () => {
     expect(last!.loadState!.notes).toBe("ready");
     expect(last!.loadState!.sessions).toBe("loading");
     expect(last!.recentSessions).toEqual([]);
-    // Nor does Judy's wrap-up note sit in Ruth's journal meanwhile.
-    expect(last!.entries.some((e) => e.body.includes("Judy's wrap-up"))).toBe(false);
+    // Nor does Judy's session summary sit in Ruth's journal meanwhile.
+    expect(last!.entries.some((e) => e.body.includes("Judy's session note"))).toBe(false);
 
     await answer("sessions", [{ id: "s-b", clientId: "c2", date: "2026-09-02" }]);
     expect(last!.loadState!.sessions).toBe("ready");
@@ -215,6 +215,80 @@ describe("useClientJournal.loadState", () => {
     await mount(<Probe client={clientA} enabled={false} />);
     expect(fake.listeners).toHaveLength(0);
     expect(last!.loadState).toEqual({ notes: "loading", focuses: "loading", sessions: "loading" });
+  });
+});
+
+/*
+ * The Note for the next trainer, filed on the Wrap-up (voice-review follow-up,
+ * Sep 27 2026). Filing changes its kind and category and nothing else, so the
+ * hook still hands it to the briefing as a Heads up. Discarding archives it,
+ * which is why the Wrap-up offers no Discard on it.
+ */
+describe("useClientJournal.headsUpEntries and the Note for the next trainer", () => {
+  const note = (over: Record<string, unknown> = {}) => ({
+    id: "j-next",
+    clientId: "c1",
+    studioId: "s1",
+    kind: "general",
+    category: null,
+    body: "Knee sore after the move.",
+    importance: "elevated",
+    machineId: null,
+    focusId: null,
+    threadId: null,
+    sessionId: "s-a",
+    origin: "post_session",
+    authorId: "uid-ann",
+    authorInitials: "AN",
+    authorName: "Ann",
+    occurredAt: new Date(Date.now() - 60_000),
+    effectiveFrom: null,
+    effectiveUntil: null,
+    resolvedAt: null,
+    isArchived: false,
+    searchTags: [],
+    ...over,
+  });
+
+  it("hands it to the briefing unfiled, and still once it is filed under a category", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note()]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+    await answer("journalEntries", [note({ kind: "preference" })]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+    await answer("journalEntries", [note({ kind: "coaching", category: "Pace" })]);
+    expect(last!.headsUpEntries!.map((e) => e.id)).toEqual(["j-next"]);
+  });
+
+  it("drops it once it is archived — what a discard would do", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note({ isArchived: true })]);
+    expect(last!.headsUpEntries).toEqual([]);
+  });
+
+  /* Finish writes it onto the session too. The read-only "Session summary"
+     of that copy used to put the same words on Notes a second time. */
+  const sessionWithNote = { id: "s-a", clientId: "c1", date: "2026-09-26", notes: "Knee sore after the move." };
+  const oldSession = { id: "s-old", clientId: "c1", date: "2026-09-10", notes: "Loads up across the board." };
+  const bodies = () => last!.entries.map((e) => e.body);
+
+  it("lists it once on Notes: the session's read-only copy is left out", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note()]);
+    await answer("sessions", [sessionWithNote, oldSession]);
+    expect(bodies().filter((b) => b === "Knee sore after the move.")).toHaveLength(1);
+    expect(last!.entries.find((e) => e.body === "Knee sore after the move.")!.id).toBe("j-next");
+    // A session from before the journal copy existed keeps its card.
+    const old = last!.entries.find((e) => e.body === "Loads up across the board.")!;
+    expect(old.id).toBe("legacy:sessions:s-old");
+    expect(old.legacySource).toBe("Session summary");
+  });
+
+  it("does not bring the read-only copy back when the journal copy is archived", async () => {
+    await mount(<Probe client={clientA} />);
+    await answer("journalEntries", [note({ isArchived: true })]);
+    await answer("sessions", [sessionWithNote]);
+    expect(bodies()).not.toContain("Knee sore after the move.");
   });
 });
 

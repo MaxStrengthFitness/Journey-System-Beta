@@ -3,7 +3,11 @@
    --------------------------------------------------------------------------
    The week editor, the status line and the week check, on My Profile and on
    My Studio -> Team. Colour comes from equipment.tokens.css; no hex below
-   this line. Nothing tappable under 40px.
+   this line. Nothing tappable under 40px. Type is on My Studio's scale
+   (11 / 12 / 14 / 17 / 30; my-studio/look.test.ts holds this file too):
+   14px to read, 12px for a hint, and every head the one 12px style of
+   small upright capitals in --eq-ink-2 (voice review follow-up, final
+   review).
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
 
@@ -25,7 +29,7 @@
 .stw-day__name {
   margin: 0;
   padding-top: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--eq-ink);
 }
@@ -44,9 +48,15 @@
 
 .stw-dash { color: var(--eq-ink-muted); font-weight: 700; }
 
+/* Every block the same width (Openings round: up to three a day), so a day's
+   blocks wrap evenly: one to a line in portrait, side by side where they fit,
+   never the first alone above the other two because one end is a few pixels
+   wider. Measured at 744 and 1133 px in headless Chrome. */
+.stw-range .stw-select { min-width: 112px; }
+
 .stw-quiet {
-  color: var(--eq-ink-faint);
-  font-size: 13px;
+  color: var(--eq-ink-muted);
+  font-size: 14px;
   font-style: italic;
   min-height: 40px;
   display: inline-flex;
@@ -97,7 +107,7 @@
   gap: 6px;
   min-height: 40px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -138,6 +148,8 @@
 .stw-pick:hover { background: var(--eq-live-fill); }
 
 .stw-hint { margin: 0; font-size: 12px; color: var(--eq-ink-muted); }
+/* Under the days: why the breaks stay out of a block (Openings round). */
+.stw-breaks { padding-top: 10px; }
 
 .stw-note { display: grid; gap: 6px; padding-top: 12px; }
 .stw-note__label {
@@ -152,7 +164,18 @@
 /* --- the card around it: status, what changed, actions --------------- */
 
 .stw-status { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--eq-ink); }
-.stw-lede { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--eq-ink-2); }
+.stw-lede { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--eq-ink-2); }
+
+/* My Profile: "When I usually take clients", over the editor (Openings
+   round). The one head style: 12px small upright capitals, as Away's. */
+.stw-week__head {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-2);
+}
 
 .stw-changes {
   margin: 0 0 14px;
@@ -160,7 +183,7 @@
   border-radius: 10px;
   background: var(--eq-live-fill);
   color: var(--eq-live-text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -172,7 +195,7 @@
   gap: 8px;
   padding-top: 14px;
 }
-.stw-actions__msg { margin: 0 auto 0 0; font-size: 13px; font-weight: 700; }
+.stw-actions__msg { margin: 0 auto 0 0; font-size: 14px; font-weight: 700; }
 .stw-actions__msg--ok { color: var(--eq-ok); }
 .stw-actions__msg--error { color: var(--eq-alert); }
 
@@ -181,27 +204,11 @@
 .stw-team { display: grid; gap: 18px; }
 .stw-team__head {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--eq-ink-muted);
-}
-
-.stw-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.stw-finding {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--eq-border);
-  background: var(--eq-surface);
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--eq-ink);
+  color: var(--eq-ink-2);
 }
 
 .stw-review {
@@ -211,4 +218,73 @@
   border: 1px solid var(--eq-border-strong);
   background: var(--eq-surface);
 }
-.stw-review__title { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: var(--eq-ink); }
+.stw-review__title { margin: 0 0 6px; font-size: 14px; font-weight: 800; color: var(--eq-ink); }
+
+/* --- away: the days a trainer is away (voice review follow-up) ---------- */
+
+.stw-away { display: grid; gap: 8px; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--eq-border); }
+.stw-away__head {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-2);
+}
+.stw-away__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stw-away__range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stw-away__when { font-size: 14px; font-weight: 700; color: var(--eq-ink); }
+.stw-away__note { font-size: 12px; color: var(--eq-ink-muted); }
+
+.stw-field { display: grid; gap: 4px; flex: 1 1 160px; min-width: 0; }
+.stw-field__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--eq-ink-muted);
+}
+.stw-input--date { font-family: inherit; }
+.stw-field .stw-input { width: 100%; }
+
+.stw-actions--tight { padding-top: 4px; }
+
+/* Buttons: 14px bold, sentence case, 40px tall. Every Save is solid brand blue. */
+.stw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.stw-btn:focus-visible { outline: 2px solid var(--eq-focus-ring); outline-offset: 2px; }
+.stw-btn:disabled { opacity: 0.45; cursor: default; }
+.stw-btn--save { border: 1px solid var(--eq-live); background: var(--eq-live); color: var(--eq-live-on); }
+.stw-btn--quiet { border: 1px solid var(--eq-border-strong); background: transparent; color: var(--eq-ink-2); }
+.stw-btn--quiet:hover { background: var(--eq-surface-2); }
+
+/* Team: who is away in the next seven days, said once each. */
+.stw-away-lines { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.stw-away-line { font-size: 14px; color: var(--eq-ink-2); }
+
+/* --- a colleague's agreed week, read only (voice review follow-up) ------ */
+
+.stw-read { display: grid; gap: 0; margin: 8px 0 0; }
+.stw-read__day {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--eq-border);
+}
+@media (min-width: 700px) {
+  .stw-read__day { grid-template-columns: 120px 1fr; gap: 12px; }
+}
+.stw-read__name { margin: 0; font-size: 14px; font-weight: 800; color: var(--eq-ink); }
+.stw-read__body { margin: 0; display: grid; gap: 4px; min-width: 0; }
+.stw-read__hours { font-size: 14px; color: var(--eq-ink-2); }
+.stw-read__regulars { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 14px; color: var(--eq-ink); }

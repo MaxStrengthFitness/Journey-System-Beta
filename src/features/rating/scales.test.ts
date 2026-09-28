@@ -18,7 +18,6 @@ import {
   dialFromStressLevel,
   dialTone,
   dialWord,
-  importanceFromPriority,
   isBelowCentre,
   isDialValue,
   regionStateFromDial,
@@ -143,13 +142,6 @@ describe("legacy vocabularies read onto the Dial", () => {
     expect(regionStateFromDial(-2)).toBe("stiff");
     expect(regionStateFromDial(0)).toBe("prime");
     expect(regionStateFromDial(2)).toBe("prime");
-  });
-
-  it("the closing note's priority becomes a journal importance", () => {
-    expect(importanceFromPriority("High")).toBe("critical");
-    expect(importanceFromPriority("Medium")).toBe("elevated");
-    expect(importanceFromPriority("Low")).toBe("standard");
-    expect(importanceFromPriority(undefined)).toBe("standard");
   });
 });
 

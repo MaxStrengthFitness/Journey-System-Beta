@@ -21,6 +21,8 @@ import {
   variationWrite,
   type VariationForm,
 } from "../inbody/variation";
+import "../admin/admin.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → STUDIO → InBody: the scanner's normal variation.
@@ -118,7 +120,7 @@ export function InBodyVariationPanel({ studioId, studio, trainers }: InBodyVaria
         />
       }
     >
-      <p className="mb-3 text-sm" style={{ color: "var(--adm-ink)" }}>
+      <p className="ms__line ms__line--lead">
         {own
           ? `This studio's own numbers${setBy ? `, ${setBy}` : ""}.`
           : "Max Strength's defaults. Change a number and save to make it this studio's own."}
@@ -145,7 +147,7 @@ export function InBodyVariationPanel({ studioId, studio, trainers }: InBodyVaria
           );
         })}
       </AdminGrid>
-      <p className="mt-3 text-xs" style={{ color: "var(--adm-ink-muted)" }}>
+      <p className="ms__note">
         {VARIATION_SOURCE}
       </p>
     </AdminPanel>

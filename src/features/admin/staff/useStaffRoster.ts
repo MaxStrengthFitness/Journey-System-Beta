@@ -8,6 +8,14 @@
  * holds for the studio's site. buildStaffRoster (roster.ts) does the merge;
  * this is the plumbing around it, lifted out of AdminStaffTab so the Team
  * section could not drift into a second copy.
+ *
+ * THE MINDBODY MATCH IS PER STUDIO (voice review follow-up, Sep 27 2026).
+ * Mindbody's staff list belongs to one studio's site, so under Operations'
+ * "All my studios" it is not read, and the page says exactly that — it used
+ * to say "No Mindbody Site ID on this studio yet" and put every account at
+ * every studio under "No Mindbody match". `mindbodyChecked` is false until
+ * a list has actually been read, and the rows say "Has an account" rather
+ * than claim a match nobody looked for.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +26,10 @@ import { OperationType, handleFirestoreError } from "../../../lib/firestore-erro
 import type { Studio, Trainer } from "../../../types";
 import { buildStaffRoster, summariseRoster, type AccessRequest, type MindbodyStaff, type StaffRow } from "./roster";
 
+/** What the page says about Mindbody under "All my studios". */
+const MINDBODY_PER_STUDIO =
+  "The Mindbody match is per studio: choose one studio above to see who is on its Mindbody staff list and who has no match.";
+
 export interface StaffRosterState {
   rows: StaffRow[];
   summary: ReturnType<typeof summariseRoster>;
@@ -25,22 +37,33 @@ export interface StaffRosterState {
   mindbodyStaff: MindbodyStaff[];
   /** Plain English about the Mindbody side: loading, offline, no site id, an error. Empty when fine. */
   staffStatus: string;
+  /** Mindbody's staff list was read, so "No Mindbody match" can be said. */
+  mindbodyChecked: boolean;
 }
 
 export function useStaffRoster({
   trainers,
   studio,
   studioId,
+  studioIds = null,
 }: {
   trainers: Trainer[];
   /** The studio whose Mindbody site the staff list comes from. */
   studio: Studio | null;
-  /** Restricts the rows to one studio when set; null lists everyone. */
+  /** Restricts the rows to one studio when set. */
   studioId: string | null;
+  /**
+   * With no studio: the studios to list — Operations' "All my studios", the
+   * reader's studios. Null (and no studio) lists everyone.
+   */
+  studioIds?: readonly string[] | null;
 }): StaffRosterState {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [mindbodyStaff, setMindbodyStaff] = useState<MindbodyStaff[]>([]);
   const [staffStatus, setStaffStatus] = useState("");
+  const [mindbodyChecked, setMindbodyChecked] = useState(false);
+  const hasStudio = Boolean(studio);
+  const spanning = !hasStudio && studioIds !== null;
 
   /* ---- access requests: a live stream ------------------------------ */
   useEffect(() => {
@@ -56,12 +79,20 @@ export function useStaffRoster({
   const siteId = studio?.mindbodySiteId;
   const mode = studio?.mindbodyMode;
   useEffect(() => {
+    setMindbodyChecked(false);
+    if (spanning) {
+      setMindbodyStaff([]);
+      setStaffStatus(MINDBODY_PER_STUDIO);
+      return;
+    }
     if (!siteId) {
       setMindbodyStaff([]);
       setStaffStatus(
-        mode === "offline"
-          ? "This studio runs offline — nobody arrives from Mindbody."
-          : "No Mindbody Site ID on this studio yet.",
+        !hasStudio
+          ? ""
+          : mode === "offline"
+            ? "This studio runs offline — nobody arrives from Mindbody."
+            : "No Mindbody Site ID on this studio yet.",
       );
       return;
     }
@@ -77,13 +108,18 @@ export function useStaffRoster({
         if (cancelled) return;
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
+          if (cancelled) return;
           setMindbodyStaff([]);
           setStaffStatus(err?.error || "Mindbody did not return a staff list.");
           return;
         }
         const data = await res.json();
+        // Reading the body is a second wait: the studio may have changed
+        // during it, and the old studio's list must not land as checked.
+        if (cancelled) return;
         setMindbodyStaff(data.staff || []);
         setStaffStatus("");
+        setMindbodyChecked(true);
       } catch {
         if (!cancelled) {
           setMindbodyStaff([]);
@@ -94,13 +130,22 @@ export function useStaffRoster({
     return () => {
       cancelled = true;
     };
-  }, [siteId, mode]);
+  }, [siteId, mode, spanning, hasStudio]);
 
+  const idsKey = studioIds ? studioIds.join("|") : null;
   const rows = useMemo(
-    () => buildStaffRoster({ trainers, mindbodyStaff, requests, studioId }),
-    [trainers, mindbodyStaff, requests, studioId],
+    () =>
+      buildStaffRoster({
+        trainers,
+        mindbodyStaff,
+        requests,
+        studioId,
+        studioIds: studioId ? null : idsKey === null ? null : idsKey ? idsKey.split("|") : [],
+        mindbodyChecked,
+      }),
+    [trainers, mindbodyStaff, requests, studioId, idsKey, mindbodyChecked],
   );
   const summary = useMemo(() => summariseRoster(rows), [rows]);
 
-  return { rows, summary, requests, mindbodyStaff, staffStatus };
+  return { rows, summary, requests, mindbodyStaff, staffStatus, mindbodyChecked };
 }

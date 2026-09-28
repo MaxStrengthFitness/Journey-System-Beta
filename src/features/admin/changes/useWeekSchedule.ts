@@ -15,9 +15,44 @@
  *      index, added with this round).
  *
  * Merged by document id. About a week of bookings per studio: small.
+ *
+ * WAITING FOR THE SERVER (an opt-in; standing week, voice review follow-up,
+ * Sep 27 2026). Firestore here keeps a persistent local cache
+ * (src/firebase.ts), so with no connection, or before the server has
+ * answered, a listener is handed what this iPad last saw. By default that
+ * snapshot is reported as a finished read, as the Overview read it until the
+ * Openings round (Sep 27 2026); every caller now opts in. `{ confirmed: true }`
+ * listens with `includeMetadataChanges` and says
+ * `fromCache` while the latest answer of either stream came only from the
+ * cache, so a caller that must never call a day "open" off a stale or empty
+ * cache (My Studio -> Team's week check, Openings' Next 7 days, and the
+ * Operations Overview, whose line points to Openings) can wait. Without
+ * includeMetadataChanges a listener is never told when the server merely
+ * CONFIRMS the rows the cache already held, so waiting for that would wait
+ * forever: the option is what makes the wait end.
+ *
+ * NEVER A STALE FRAME. Each stream's state is stamped with the read it
+ * belongs to (the studio, the day, the zone, the option). The render in which
+ * any of them changes still holds the old state, since the effect that starts
+ * the new read runs after it; the stamp no longer matches, so that render
+ * reports "loading" with no rows. Before this, the first render after the week
+ * check started reading (the studio arriving, or the studio's midnight) held
+ * the idle state, "read, nothing booked", and painted every agreed slot as
+ * open for a frame.
  */
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  where,
+  type DocumentData,
+  type FirestoreError,
+  type Query,
+  type QuerySnapshot,
+} from "firebase/firestore";
 import { db } from "../../../firebase";
 import { OperationType, handleFirestoreError } from "../../../lib/firestore-errors";
 import { studioDayBoundsForKey } from "../../../lib/studio-time";
@@ -30,15 +65,46 @@ export interface WeekSchedule {
   entries: ScheduleEntry[];
   loading: boolean;
   failed: boolean;
+  /**
+   * Only with `{ confirmed: true }`: the latest answer of either stream came
+   * from this iPad's cache alone, not yet confirmed by the server. Without
+   * the option it is always false (no caller reads it that way any more).
+   */
+  fromCache: boolean;
 }
 
-export function useWeekSchedule(studioId: string | null, today: string, tz?: string): WeekSchedule {
-  const [byStart, setByStart] = useState<{ rows: Map<string, ScheduleEntry>; loading: boolean; failed: boolean }>({ rows: new Map(), loading: true, failed: false });
-  const [byMove, setByMove] = useState<{ rows: Map<string, ScheduleEntry>; loading: boolean; failed: boolean }>({ rows: new Map(), loading: true, failed: false });
+export interface WeekScheduleOptions {
+  /** Listen for the server's confirmation and report `fromCache` (see the header). */
+  confirmed?: boolean;
+}
+
+interface Stream {
+  /** The read this state belongs to (readKey); "" for no read at all. */
+  key: string;
+  rows: Map<string, ScheduleEntry>;
+  loading: boolean;
+  failed: boolean;
+  fromCache: boolean;
+}
+
+const NO_ENTRIES: ScheduleEntry[] = [];
+
+/** Which read a stream's state belongs to; "" when there is nothing to read. */
+function readKey(studioId: string | null, today: string, tz: string | undefined, confirmed: boolean): string {
+  return studioId && today ? `${studioId}|${today}|${tz ?? ""}|${confirmed ? 1 : 0}` : "";
+}
+
+const fresh = (key: string): Stream => ({ key, rows: new Map(), loading: Boolean(key), failed: false, fromCache: false });
+
+export function useWeekSchedule(studioId: string | null, today: string, tz?: string, options?: WeekScheduleOptions): WeekSchedule {
+  const confirmed = options?.confirmed === true;
+  const key = readKey(studioId, today, tz, confirmed);
+  const [byStart, setByStart] = useState<Stream>(() => fresh(key));
+  const [byMove, setByMove] = useState<Stream>(() => fresh(key));
 
   useEffect(() => {
-    setByStart({ rows: new Map(), loading: Boolean(studioId && today), failed: false });
-    setByMove({ rows: new Map(), loading: Boolean(studioId && today), failed: false });
+    setByStart(fresh(key));
+    setByMove(fresh(key));
     if (!studioId || !today) return;
     const lastDay = addDays(today, WEEK_DAYS - 1);
     const from = studioDayBoundsForKey(today, tz).start;
@@ -49,8 +115,19 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
       docs.forEach((d) => next.set(d.id, { id: d.id, ...(d.data() as Omit<ScheduleEntry, "id">) }));
       return next;
     };
+    type Snap = QuerySnapshot<DocumentData>;
+    // Only the opt-in reads the cache flag: a read without it is as it always was.
+    const cacheOnly = (snap: Snap) => confirmed && snap.metadata?.fromCache === true;
+    const listen = (q: Query<DocumentData>, set: (s: Stream) => void) => {
+      const next = (snap: Snap) => set({ key, rows: toMap(snap.docs), loading: false, failed: false, fromCache: cacheOnly(snap) });
+      const fail = (err: FirestoreError) => {
+        handleFirestoreError(err, OperationType.GET, "schedules");
+        set({ key, rows: new Map(), loading: false, failed: true, fromCache: false });
+      };
+      return confirmed ? onSnapshot(q, { includeMetadataChanges: true }, next, fail) : onSnapshot(q, next, fail);
+    };
 
-    const unsubStart = onSnapshot(
+    const unsubStart = listen(
       query(
         collection(db, "schedules"),
         where("studioId", "==", studioId),
@@ -58,25 +135,17 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
         where("startTime", "<=", Timestamp.fromDate(to)),
         orderBy("startTime", "asc"),
       ),
-      (snap) => setByStart({ rows: toMap(snap.docs), loading: false, failed: false }),
-      (err) => {
-        handleFirestoreError(err, OperationType.GET, "schedules");
-        setByStart({ rows: new Map(), loading: false, failed: true });
-      },
+      setByStart,
     );
-    const unsubMove = onSnapshot(
+    const unsubMove = listen(
       query(collection(db, "schedules"), where("studioId", "==", studioId), where("movedFromDay", ">=", today), where("movedFromDay", "<=", lastDay)),
-      (snap) => setByMove({ rows: toMap(snap.docs), loading: false, failed: false }),
-      (err) => {
-        handleFirestoreError(err, OperationType.GET, "schedules");
-        setByMove({ rows: new Map(), loading: false, failed: true });
-      },
+      setByMove,
     );
     return () => {
       unsubStart();
       unsubMove();
     };
-  }, [studioId, today, tz]);
+  }, [key, studioId, today, tz, confirmed]);
 
   const entries = useMemo(() => {
     const merged = new Map(byStart.rows);
@@ -84,5 +153,13 @@ export function useWeekSchedule(studioId: string | null, today: string, tz?: str
     return [...merged.values()];
   }, [byStart.rows, byMove.rows]);
 
-  return { entries, loading: byStart.loading || byMove.loading, failed: byStart.failed || byMove.failed };
+  // State from an earlier read (the effect for this one hasn't run yet) is
+  // reported as this read loading, never as its answer.
+  const stale = byStart.key !== key || byMove.key !== key;
+  return {
+    entries: stale ? NO_ENTRIES : entries,
+    loading: stale ? Boolean(key) : byStart.loading || byMove.loading,
+    failed: !stale && (byStart.failed || byMove.failed),
+    fromCache: !stale && (byStart.fromCache || byMove.fromCache),
+  };
 }

@@ -40,7 +40,7 @@ this folder's screens too — moved, not rewritten.
 | System tools | `system/` |
 | Data (any studio) | `data/` |
 | Legacy chart importer (its own screen) | `import/` |
-| The network view under "All my studios" | `network/` (`NetworkOverview` the setup health; `NetworkActions` the network's focus and a launch at every studio, moved from Relay → Network on Sep 27 2026, the ranking dropped); the old Franchise screen's pieces in `franchise/` |
+| The network view under "All my studios" | `network/` (`NetworkOverview` the setup health; `NetworkActions` the network's focus and a launch at every studio, moved from Relay → Network on Sep 27 2026, the ranking dropped; for a franchise owner who sees one studio, at the foot of that studio's Overview); the old Franchise screen's pieces in `franchise/` |
 
 The kit every tab composes: `primitives.tsx`, `formState.ts`,
 `useDirtyForm.ts`, `admin.css`, `admin.tokens.css`.
@@ -148,11 +148,15 @@ my studios** — read through `useOperationsScope()` (`scope.ts`,
   sessions a tab already receives as props follow it. A tab never keeps a
   studio of its own.
 - **All my studios** is `operationsStudios(trainer, studios, networks,
-  isAdmin)` — the company tier every studio, the owner tier the studios
-  that reach them, the studio tier the studios they run. A tab that can
-  aggregate reads `ops.studios` and spans them (Hours, Staff & Roles,
-  Clients, the Monday page); a tab that reads one studio renders
-  `<PickOneStudio what="…" />` under "all" and nothing else.
+  isAdmin, activeStudioId)` — the company tier every studio, the owner tier
+  the studios that reach them, the studio tier the studios they run, and
+  last the Demo Mode realm rule (inside Demo Mode the list is the practice
+  studio alone, so there is nothing to span). A tab that can aggregate reads
+  `ops.studios` and spans them (Hours, Staff & Roles, and the Overview, which
+  becomes the network view: `network/`, the setup view and, for franchise
+  owners and the company, Focus this quarter and Launch an initiative —
+  `overview/README.md`, "Under All my studios"); a tab that reads one studio
+  renders `<PickOneStudio what="…" />` under "all" and nothing else.
 - Tabs are keyed on `scopeKey(ops.scope)` in the shell, so a switch
   remounts them clean. `useOperationsScope()` outside the provider returns
   a standalone value (the app's studio), never throws.

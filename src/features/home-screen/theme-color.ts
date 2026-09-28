@@ -2,7 +2,8 @@
  * Keep `<meta name="theme-color">` the colour of the app's header.
  *
  * The meta tag is what the system tints its own chrome with: the status bar of
- * an installed web app when the status-bar style is `default`, the title bar of
+ * an installed web app when the status-bar style is `default` (Journey's since
+ * Sep 27 2026, so this IS the Home Screen app's status bar), the title bar of
  * a Chrome install, the task switcher. From Safari 26 it is used ONLY for
  * installed web apps (MDN's compatibility data). It cannot name a CSS variable,
  * so it carries a literal colour, and this copies the header's token into it

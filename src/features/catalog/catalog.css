@@ -10,6 +10,12 @@
 
    main.tsx loads this file (and catalog.tokens.css) for the whole app. The
    tokens are on :root, so neither card needs a .cat ancestor.
+
+   Both cards also render on My Studio -> Machines. Since the voice review
+   follow-up (Sep 27 2026) they speak the app's type voice: text on the
+   codex's scale (11 / 12 / 14 / 17 / 30), buttons 14px bold sentence case,
+   every control 40px, and a field at 16px so iOS does not zoom the page
+   when it is focused. learning-scale.test.ts holds it.
    ========================================================================== */
 
 .cat__note {
@@ -25,7 +31,7 @@
 
 /* ── studio notes ────────────────────────────────────────────────────── */
 .cat__notes-scope {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cat-ink-muted);
 }
@@ -34,7 +40,7 @@
    textarea so it is read before the field is touched, not after. */
 .cat__notes-warning {
   margin: 0.25rem 0 0.5rem;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--cat-ink-muted);
 }
@@ -48,12 +54,13 @@
   background: var(--cat-surface);
   color: var(--cat-ink);
   font: inherit;
-  font-size: 13px;
+  /* 16px, or iOS Safari zooms the page when the field is focused. */
+  font-size: 16px;
   line-height: 1.5;
   resize: vertical;
 }
 
-.cat__textarea::placeholder { color: var(--cat-ink-faint); }
+.cat__textarea::placeholder { color: var(--cat-ink-muted); }
 
 .cat__textarea:focus-visible {
   outline: 2px solid var(--cat-focus-ring);
@@ -68,19 +75,19 @@
   background: var(--cat-surface);
   color: var(--cat-ink);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .cat__btn:disabled { opacity: 0.6; cursor: default; }
 
+/* Every Save in the app is solid brand blue with its on-colour (voice review
+   follow-up, Sep 27 2026). White on the dark theme's lighter blue was 2.9:1. */
 .cat__btn--primary {
-  border-color: transparent;
+  border-color: var(--cat-live);
   background: var(--cat-live);
-  color: #fff;
+  color: var(--cat-live-on);
 }
 
 .cat__btn--ok {
@@ -122,7 +129,7 @@
   gap: 0.4rem;
   margin: 0;
   color: var(--cat-ink-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -149,6 +156,7 @@
   border-bottom: 0;
 }
 
+/* A setting's name wraps: never cut (voice review follow-up, Sep 27 2026). */
 .ssc__name {
   flex: 1;
   min-width: 0;
@@ -157,21 +165,21 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--cat-ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+/* Every control on this card is 40px: it is used standing at the machine. */
 .ssc__value {
   width: 4.5rem;
   flex: none;
-  height: 2rem;
+  height: 40px;
   padding: 0 0.5rem;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
   background: var(--cat-surface-2);
   color: var(--cat-ink);
-  font-size: 13px;
+  /* 16px, or iOS Safari zooms the page when the field is focused. */
+  font-size: 16px;
   font-weight: 800;
   text-align: center;
 }
@@ -189,8 +197,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
   background: var(--cat-surface-2);
@@ -213,13 +221,13 @@
 .ssc__draft {
   flex: 1;
   min-width: 0;
-  height: 2rem;
+  height: 40px;
   padding: 0 0.6rem;
   border: 1px solid var(--cat-border);
   border-radius: 8px;
   background: var(--cat-surface);
   color: var(--cat-ink);
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .ssc__save {
@@ -227,17 +235,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  height: 2.25rem;
-  /* --cat-hero-text, not --cat-hero: white on the bright orange is 3.5:1,
-     below AA for 11px text (the wiki's primary button made the same call). */
-  border: 1px solid var(--cat-hero-text);
+  min-height: 40px;
+  /* A Save, so solid brand blue like every other (voice review follow-up,
+     Sep 27 2026). Orange is Start Session's; it was this button's for a day. */
+  border: 1px solid var(--cat-live);
   border-radius: 10px;
-  background: var(--cat-hero-text);
-  color: var(--cat-hero-on);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  background: var(--cat-live);
+  color: var(--cat-live-on);
+  padding: 0 1rem;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .ssc__save:disabled {

@@ -1,14 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { auth } from "../../firebase";
-import { studioTodayKey } from "../../lib/studio-time";
+import { DEFAULT_TIME_ZONE, isValidTimeZone, studioTodayKey } from "../../lib/studio-time";
 import type { Client, Studio, Trainer } from "../../types";
-import { AdminBadge, AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
+import { AdminButton, AdminNotice, AdminPanel, AdminRow, AdminRows, ConfirmDialog } from "../admin/primitives";
 import { useWeekSchedule } from "../admin/changes/useWeekSchedule";
-import { useUnsavedChanges } from "../unsaved-changes";
-import { checkWeek, findingSentence, isFreeSlot, stateSentence } from "./check";
-import { formOf, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
-import { agreeWeek, removeWeek } from "./store";
+import { openMyStudioSection } from "../my-studio/section-memory";
+import { nextDays } from "../openings/next-days";
+import { READING_WEEKS, teamLine, teamNoneSentence } from "../openings/present";
+import { showOpenings } from "../openings/ui";
+import { trainerRefs } from "../openings/whose";
+import { UnsavedChangesScope, useLeaveScope, useUnsavedChanges } from "../unsaved-changes";
+import { AwayEditor } from "./AwayEditor";
+import { awaySentence, awayThisWeek, checkWeek, staffIdsAt, stateSentence } from "./check";
+import { serverRead, type ServerRead } from "./server-read";
+import { useServerWait } from "./useServerWait";
+import { formOf, reviewSentence, teamWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
+import { agreeWeek, removeWeek, setAway } from "./store";
 import { bookingsKnown, teamWeeks, waitingSentence, type TeamWeekRow } from "./team";
 import { useStandingWeeks } from "./useStandingWeeks";
 import { sameWeek, weekSummary } from "./week";
@@ -25,14 +33,35 @@ import "./standing-week.css";
  *
  * Two parts:
  *
- *   the next seven days   the week's Mindbody bookings against every AGREED
- *                         week (check.ts): the slots that are free, the
- *                         regulars booked somewhere else, and the slots
- *                         someone else is booked in. Read only; nothing is
- *                         written to Mindbody, and an unread day is "can't
- *                         tell", never "open".
- *   each person's week    by name, never ranked: where it stands, and Review
+ *   the next seven days   who is away this week, said once each, and ONE
+ *                         line with a door to Openings: "3 free slots in the
+ *                         next 7 days · See them on Openings." (Openings
+ *                         round, Sep 27 2026, phase 7; AJ: "perfect"). The
+ *                         free slots themselves are listed on My Studio →
+ *                         Openings → Next 7 days, so one rule feeds one list
+ *                         and Team stays people and standards. The count is
+ *                         Openings' own (`teamLine(nextDays(...))`, built
+ *                         with the same who-works-here and Mindbody staff ids
+ *                         Openings uses), never the raw check, which also
+ *                         holds slots earlier today and on Sundays. The door
+ *                         opens Openings on Next 7 days and "Anyone", since
+ *                         the count is the studio's. Nothing is written to
+ *                         Mindbody, and an unread day is "can't tell", never
+ *                         "open": until the server answers there is no line.
+ *                         When the check found only what Openings doesn't
+ *                         list (someone else booked in a regular's slot, a
+ *                         slot earlier today, a Sunday), it says "No free
+ *                         slots ahead in the next 7 days." (`teamNoneSentence`),
+ *                         never "booked as usual" and never a heading over
+ *                         nothing.
+ *   each person's         by name, never ranked: where it stands, and Review
+ *   standing week
  *                         to agree a proposal as it is or changed first.
+ *                         Opening another person's week while one holds a
+ *                         leader's changes asks first (a leave scope), and
+ *                         so does every way the Review closes: Cancel, and
+ *                         Agree or Remove with dates away still being typed
+ *                         below them.
  *
  * Team is the studio tier's section; the rules are the boundary
  * (firestore.rules, standingWeeks: a leader agrees, a trainer proposes).
@@ -45,12 +74,35 @@ export interface StandingWeeksPanelProps {
   clients: Client[];
 }
 
+/** A clock for "still ahead": a free slot at 8:00 has passed by 8:30, with the panel left open. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+/**
+ * The door on Team's line: Openings, on Next 7 days, for anyone (the count
+ * is the studio's). The part and the chip are set only when the move
+ * happens, so a "Keep editing" leaves Openings' memory as it was.
+ */
+function openOpeningsNextDays() {
+  openMyStudioSection("openings", () => showOpenings("next", { kind: "anyone" }));
+}
+
 export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: StandingWeeksPanelProps) {
   const studioId = studio.id;
   const tz = studio.timezone || undefined;
-  const today = studioTodayKey(new Date(), tz);
+  const now = useMinuteClock();
+  const today = studioTodayKey(now, tz);
   const weeks = useStandingWeeks(studioId);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  // Opening another person's week, or closing this one from its row, would
+  // take a leader's half-changed week away: it asks first (unsaved-changes).
+  const reviewScope = useLeaveScope();
 
   const rows = useMemo(() => teamWeeks(trainers, weeks.docs, studioId), [trainers, weeks.docs, studioId]);
   // Only the weeks of people who still work here are checked: a week left
@@ -59,7 +111,14 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
   // The week's bookings are read only when there is something to check them
   // against: an agreed week, at a studio whose Mindbody is linked.
   const needsBookings = bookingsKnown(studio) && checked.some((d) => d.final);
-  const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz);
+  // Only the server's answer is a read: a cache-only snapshot (offline, or
+  // before the server answers) would call every slot the cache lacks open.
+  const schedule = useWeekSchedule(needsBookings ? studioId : null, today, tz, { confirmed: true });
+  const wait = useServerWait(needsBookings && (schedule.loading || schedule.fromCache));
+  const read = serverRead({ loading: schedule.loading, failed: schedule.failed, fromCache: schedule.fromCache, ...wait });
+  // A booking the sync couldn't link to a trainer, carrying their Mindbody
+  // staff id, is theirs: only ids from this studio's site (staff ids are per site).
+  const staffIds = useMemo(() => staffIdsAt(trainers, studio.mindbodySiteId), [trainers, studio.mindbodySiteId]);
   const check = useMemo(
     () =>
       checkWeek({
@@ -67,11 +126,54 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
         bookings: schedule.entries,
         today,
         tz,
-        read: schedule.loading ? "loading" : schedule.failed ? "failed" : "ready",
+        read,
         connected: bookingsKnown(studio),
+        staffIds,
       }),
-    [checked, schedule.entries, schedule.loading, schedule.failed, today, tz, studio],
+    [checked, schedule.entries, read, today, tz, studio, staffIds],
   );
+  /*
+   * TEAM'S LINE (Openings round, Sep 27 2026, phase 7): how many free slots
+   * Openings' Next 7 days lists, counted by `teamLine` from `nextDays` built
+   * exactly as Openings builds it (openings/ui/useOpeningsData.ts): the
+   * studio's standing weeks, who works here (the standing weeks' own
+   * `teamWeeks`, on staff), every trainer placed with their Mindbody staff id
+   * at this studio's site, and this read. The usual week and the marks only
+   * add "usually full" lines, never a regular, so Team reads neither: the
+   * count is the same without them. With no agreed week to check, no
+   * bookings are read, and an unread week is never "nothing booked".
+   */
+  const onStaff = useMemo(() => new Set(rows.filter((r) => r.onStaff).map((r) => r.trainerId)), [rows]);
+  const worksHere = useMemo(() => (trainerId: string) => onStaff.has(trainerId), [onStaff]);
+  const refs = useMemo(() => trainerRefs(trainers.map((t) => ({ id: t.id, name: t.fullName })), staffIds), [trainers, staffIds]);
+  const zone = isValidTimeZone(studio.timezone) ? (studio.timezone as string) : DEFAULT_TIME_ZONE;
+  const nextRead: ServerRead = needsBookings ? read : "loading";
+  const next = useMemo(
+    () =>
+      nextDays({
+        today,
+        now,
+        tz: zone,
+        read: nextRead,
+        connected: bookingsKnown(studio),
+        bookings: schedule.entries,
+        docs: weeks.docs,
+        trainers: refs,
+        staffIds,
+        worksHere,
+      }),
+    [today, now, zone, nextRead, studio, schedule.entries, weeks.docs, refs, staffIds, worksHere],
+  );
+  const line = teamLine(next);
+  /*
+   * The check can be ready with findings Openings doesn't list (someone else
+   * booked in a regular's slot, a slot earlier today or on a Sunday): no
+   * door, and "booked as usual" would be untrue, so Team says Openings' own
+   * sentence for it, and never draws the heading over nothing.
+   */
+  const none = teamNoneSentence(next);
+  // Who is away this week, said once each; their slots aren't checked.
+  const away = useMemo(() => awayThisWeek(checked, today), [checked, today]);
   const waiting = waitingSentence(rows);
   const open = rows.find((r) => r.uid === reviewing) ?? null;
 
@@ -79,7 +181,7 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
     <AdminPanel
       title="Standing weeks"
       icon={<CalendarClock className="w-3.5 h-3.5" />}
-      subtitle="Each trainer proposes their usual week — their hours and their regulars — on My Profile, and you agree it here. The coming week's Mindbody bookings are checked against the agreed weeks. Nothing is written to Mindbody: the front desk books as always."
+      subtitle="Each trainer proposes their usual week — when they take clients, and their regulars — on My Profile, and you agree it here. The coming week's Mindbody bookings are checked against the agreed weeks. Nothing is written to Mindbody: the front desk books as always."
     >
       <div className="stw-team">
         <section aria-labelledby="stw-next-seven">
@@ -89,30 +191,49 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
           {weeks.error ? (
             <p className="stw-hint">{weeks.error}</p>
           ) : weeks.loading ? (
-            <p className="stw-hint">Reading the standing weeks…</p>
-          ) : check.findings.length === 0 ? (
-            <p className="stw-hint" data-testid="week-check-state">
-              {stateSentence(check)}
-            </p>
-          ) : (
-            <ul className="stw-findings" aria-label="Where the bookings differ from the agreed weeks">
-              {check.findings.map((f) => (
-                <li key={`${f.trainerId}-${f.dateKey}-${f.start}-${f.clientId}`} className="stw-finding">
-                  <span>{findingSentence(f, tz)}</span>
-                  {isFreeSlot(f) && <AdminBadge tone="live">Free slot</AdminBadge>}
+            <p className="stw-hint">{READING_WEEKS}</p>
+          ) : null}
+          {!weeks.error && !weeks.loading && away.length > 0 && (
+            <ul className="stw-away-lines" aria-label="Away this week">
+              {away.map((n) => (
+                <li key={`${n.trainerId}-${n.from}-${n.to}`} className="stw-away-line">
+                  {awaySentence(n, today, tz)}
                 </li>
               ))}
             </ul>
           )}
+          {/* One line and a door when Openings lists a free slot. Otherwise
+              the check's own sentence while it can't tell (reading, offline,
+              failed, not linked, nothing agreed), or when it found nothing
+              at all; a slot someone else is booked in, or one earlier today
+              or on a Sunday, is nothing Openings lists, so it says there is
+              no free slot ahead (teamNoneSentence). */}
+          {weeks.error || weeks.loading ? null : line ? (
+            <button type="button" className="stw-btn stw-btn--quiet" data-testid="week-openings-door" onClick={openOpeningsNextDays}>
+              {line}
+            </button>
+          ) : check.state !== "ready" || check.findings.length === 0 ? (
+            <p className="stw-hint" data-testid="week-check-state">
+              {stateSentence(check)}
+            </p>
+          ) : none ? (
+            <p className="stw-hint" data-testid="week-openings-none">
+              {none}
+            </p>
+          ) : null}
         </section>
 
-        <section aria-labelledby="stw-people">
-          <h3 className="stw-team__head" id="stw-people">
-            Each person's week
+        <section aria-labelledby="stw-each-week">
+          <h3 className="stw-team__head" id="stw-each-week">
+            Each person's standing week
           </h3>
           {waiting && <AdminNotice tone="info">{waiting}</AdminNotice>}
+          {/* Unread, the list would call everyone "hasn't proposed" and offer
+              "Set a week" over a proposal nobody has seen: it waits. Why is
+              said once, under the next seven days. */}
+          {(weeks.error || weeks.loading) && <p className="stw-hint">Listed here once the standing weeks are read.</p>}
           {!weeks.loading && !weeks.error && rows.length === 0 && <p className="stw-hint">Nobody works at {studio.name} yet.</p>}
-          {!weeks.error && (
+          {!weeks.loading && !weeks.error && (
             <AdminRows>
               {rows.map((r) => (
                 <AdminRow
@@ -124,7 +245,7 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
                       variant={r.status === "proposed" || r.status === "changed" ? "primary" : "quiet"}
                       aria-expanded={reviewing === r.uid}
                       aria-label={`${actionLabel(r)}: ${r.name}`}
-                      onClick={() => setReviewing(reviewing === r.uid ? null : r.uid)}
+                      onClick={() => reviewScope.guard(() => setReviewing(reviewing === r.uid ? null : r.uid))}
                     >
                       {actionLabel(r)}
                     </AdminButton>
@@ -134,15 +255,20 @@ export function StandingWeeksPanel({ studio, authTrainer, trainers, clients }: S
             </AdminRows>
           )}
           {open && (
-            <WeekReview
-              key={open.uid}
-              row={open}
-              studio={studio}
-              authTrainer={authTrainer}
-              clients={clients}
-              tz={tz}
-              onDone={() => setReviewing(null)}
-            />
+            <UnsavedChangesScope scope={reviewScope}>
+              <WeekReview
+                key={open.uid}
+                row={open}
+                studio={studio}
+                authTrainer={authTrainer}
+                clients={clients}
+                tz={tz}
+                today={today}
+                // Every close asks the scope: Cancel with a changed week, or
+                // Agree / Remove with dates away still typed below them.
+                onDone={() => reviewScope.guard(() => setReviewing(null))}
+              />
+            </UnsavedChangesScope>
           )}
         </section>
       </div>
@@ -171,6 +297,7 @@ function WeekReview({
   authTrainer,
   clients,
   tz,
+  today,
   onDone,
 }: {
   row: TeamWeekRow;
@@ -178,6 +305,7 @@ function WeekReview({
   authTrainer: Trainer | null;
   clients: Client[];
   tz?: string;
+  today: string;
   onDone: () => void;
 }) {
   const doc = row.doc;
@@ -210,6 +338,9 @@ function WeekReview({
     setError(null);
     try {
       await agreeWeek({ studioId: studio.id, trainerUid: row.uid, trainerId: row.trainerId, trainerName: row.name }, weekOfForm(form), signer);
+      // Not busy before the close asks: if dates away are still being typed
+      // and the leader keeps editing, the Review must be usable again.
+      setBusy(null);
       onDone();
     } catch (err) {
       console.warn("[standing-week] agree failed:", err);
@@ -224,6 +355,7 @@ function WeekReview({
     try {
       await removeWeek(studio.id, row.uid);
       setConfirmRemove(false);
+      setBusy(null);
       onDone();
     } catch (err) {
       console.warn("[standing-week] remove failed:", err);
@@ -236,7 +368,9 @@ function WeekReview({
   return (
     <div className="stw-review" role="region" aria-label={`${row.name}'s week`}>
       <h4 className="stw-review__title">{row.name}'s week</h4>
-      <p className="stw-status">{row.onStaff ? teamWeekSentence(doc, row.name, tz) : `${row.name} no longer works at ${studio.name}.`}</p>
+      <p className="stw-status" data-testid="review-status">
+        {row.onStaff ? reviewSentence(doc, row.name, tz) : `${row.name} no longer works at ${studio.name}.`}
+      </p>
       {changes.length > 0 && (
         <ul className="stw-changes" aria-label="What the change does">
           {changes.map((c) => (
@@ -277,13 +411,23 @@ function WeekReview({
       <ConfirmDialog
         open={confirmRemove}
         title={`Remove ${first}'s standing week?`}
-        body={`Their proposal and the agreed week both go, and the week check stops looking for their regulars. ${row.onStaff ? `${first} can propose a week again from My Profile.` : ""}`}
+        body={`Their proposal and the agreed week both go${(doc?.away ?? []).length > 0 ? ", with their dates away," : ""} and the week check stops looking for their regulars. ${row.onStaff ? `${first} can propose a week again from My Profile.` : ""}`}
         confirmLabel="Remove it"
         destructive
         busy={busy === "remove"}
         onConfirm={() => void remove()}
         onCancel={() => setConfirmRemove(false)}
       />
+      {row.onStaff && (
+        <AwayEditor
+          away={doc?.away}
+          today={today}
+          tz={tz}
+          whose={`${first}'s`}
+          disabled={busy !== null}
+          onSave={(next) => setAway({ studioId: studio.id, trainerUid: row.uid, trainerId: row.trainerId, trainerName: row.name }, next, today)}
+        />
+      )}
     </div>
   );
 }

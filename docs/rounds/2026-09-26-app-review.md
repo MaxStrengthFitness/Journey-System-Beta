@@ -206,6 +206,23 @@ and reads as a cancellation. Demo Mode's seeded cancellation now reads as
 one, which is what its data says (every demo booking was made a fortnight
 ago).
 
+## 8. The bottom bar in the Home Screen app (Sep 27, after midnight)
+
+AJ, from his iPad: "we do currently have an issue in the app where the
+bottom bar gets cut off when in the new fullscreen mode." The Home Screen
+app (`2026-09-26-home-screen.md`, merged that night) had chosen the
+`black-translucent` status bar, so the page ran up under the clock. iPadOS 26 has a bug in that style: it lays the app out a status bar
+taller than it shows it, so a black strip covered the last 20 to 24 points
+of the screen and cut the bar's labels in half. Nothing in CSS can reach
+that strip.
+
+The status bar is now `default` (one line in `index.html`): iPadOS draws it
+above the page in `theme-color`, which already followed the header's colour,
+and the page gets the whole screen below it. The icon already on an iPad
+keeps the old style until it is deleted and added again. The Home Screen
+round's "After the round" section has the evidence, the steps for AJ and
+what to look for.
+
 ---
 
 ## Found, not fixed
@@ -255,3 +272,6 @@ Pushes to `master`, no rules, index or function change:
    this document (pushed 22:39).
 5. `c82ecdc` Operations → Changes: a reschedule only for a real rebook · the
    sessions split (header and Account) · section 7.
+6. `16613ad` Sessions before Journey off the profile's header (section 3).
+7. The Home Screen app's status bar, `default` (section 8), on branch
+   `fullscreen-bottom-bar`.

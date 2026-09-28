@@ -19,7 +19,7 @@ const TZ = "America/New_York";
    which is where an off-by-one in the occurrence numbering would show. */
 const TODAY = "2026-09-20";
 
-describe("the standing week", () => {
+describe("the demo week", () => {
   it("gives every client a place on it", () => {
     const booked = new Set(DEMO_WEEK.map((s) => s.clientKey));
     for (const client of DEMO_CLIENTS) expect(booked).toContain(client.key);

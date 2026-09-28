@@ -10,19 +10,31 @@
  *                        house form (useDirtyForm + SaveBar): only the lines
  *                        that changed are written, a focus that arrives after
  *                        the page opened is taken up rather than wiped, and a
- *                        half-typed line asks before the page is left. Every
- *                        Floor in the network shows it (relay/board/
- *                        FocusBanner).
- *   Launch an initiative one ask at every studio in the reader's "All my
- *                        studios" (never Demo Mode's, by the realm rule in
- *                        scope.ts), after a confirmation that names each
- *                        studio. A studio the launch missed is named, and
- *                        Launch again posts there only.
+ *                        half-typed line asks before the page is left. At
+ *                        rest it says who set it and on which day ("Set by
+ *                        Ann Owner on Sep 27, 2026."). Every Floor in the
+ *                        network shows it (relay/board/FocusBanner).
+ *   Launch an initiative one ask at every studio in scope, after a
+ *                        confirmation that names each studio: under "All my
+ *                        studios" never the practice studio (the realm rule
+ *                        in scope.ts), and from the practice studio's own
+ *                        footer only there. A studio the launch missed is
+ *                        named, and Launch again posts there only.
  *
  * Shown to the people who saw Relay → Network: franchise owners and the
- * company (mayActForNetwork). OverviewPage mounts it under "All my studios",
- * and for such a reader who can see only one studio (no "All my studios" to
- * choose), under that studio's Overview, so nobody who had it lost it.
+ * company (mayActForNetwork). Each of them is offered the focus of every
+ * network that holds a studio in their scope (focusableNetworks), which is
+ * the reach Relay gave an owner: the network holding the studio they stood
+ * in, whether or not it listed them. OverviewPage mounts this under "All my
+ * studios", and for such a reader who can see only one studio (no "All my
+ * studios" to choose) at the foot of that studio's Overview. Inside Demo Mode
+ * that one studio is the practice studio, so no real network's focus is
+ * offered there and a launch posts at the practice studio only.
+ *
+ * When no focus is offered, the panel says why only when it knows
+ * (noFocusReason): the networks list is empty while it loads and after a
+ * failed read, so an empty list reads "can't see the networks yet", never
+ * "not in a network".
  */
 import { useCallback, useMemo, useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -51,11 +63,13 @@ import {
   LAUNCH_FLOWS,
   PER_TRAINER_CHOICES,
   focusFields,
+  focusSetLine,
   focusWrite,
   focusableNetworks,
   launchOutcome,
   launchRequest,
   mayActForNetwork,
+  noFocusReason,
   studioList,
   type FocusFields,
   type LaunchDraft,
@@ -81,7 +95,15 @@ export function NetworkActions({ trainer, uid, studios, networks, todayKey }: Ne
     <>
       {focusable.length === 0 ? (
         <AdminPanel title="Focus this quarter" subtitle="Shown on every Floor in the network, as a quiet line." icon={<Sparkles className="w-4 h-4" />}>
-          <AdminEmpty title="No network yet">None of these studios is in a network of yours, so there is nowhere to keep a shared focus.</AdminEmpty>
+          {noFocusReason(studios, networks) === "cannot-tell" ? (
+            <AdminEmpty title="Can't see the networks yet">
+              {`Journey hasn't read the networks, so it can't tell yet whether ${studios.length === 1 ? `${studios[0].name} is` : "these studios are"} in one.`}
+            </AdminEmpty>
+          ) : (
+            <AdminEmpty title="No network yet">
+              {studios.length === 1 ? `${studios[0].name} is not in a network` : "None of these studios is in a network"}, so there is nowhere to keep a shared focus.
+            </AdminEmpty>
+          )}
         </AdminPanel>
       ) : (
         focusable.map((n) => <FocusEditor key={n.id} network={n} by={by} title={focusable.length > 1 ? `Focus this quarter · ${n.name}` : "Focus this quarter"} />)
@@ -108,7 +130,6 @@ function FocusEditor({ network, by, title }: { network: FranchiseNetwork; by: { 
   );
   const form = useDirtyForm<FocusFields>(external, onSave, { label: `the focus for ${network.name}` });
   const idp = `nw-focus-${network.id}`;
-  const setBy = rf?.setBy?.name;
   const anySet = Boolean(external.mastery || external.machine || external.note);
 
   return (
@@ -123,7 +144,7 @@ function FocusEditor({ network, by, title }: { network: FranchiseNetwork; by: { 
           onSave={() => void form.save()}
           onDiscard={form.discard}
           saveLabel="Set the focus"
-          idle={anySet ? (setBy ? `Set by ${setBy}.` : "Set.") : "No focus yet: the Floors show nothing."}
+          idle={anySet ? focusSetLine(rf) : "No focus yet: the Floors show nothing."}
         />
       }
     >

@@ -2,11 +2,35 @@
    MY STUDIO — the studio's home on the bottom bar (My Studio round, Sep 2026)
    --------------------------------------------------------------------------
    The shell reuses Relay's masthead, frame, Context Panel and Capture button
-   (features/planner/planner.css, relay/relay.css) so the four sections read
-   as one screen. What is here is only what the other sections add: a plain
-   scrolling body for a section that has no scroller of its own. Tokens are
-   the Studio Hub's --st-*; nothing here writes a hex value.
+   (features/relay/planner.css, relay/board/relay.css) so the four sections
+   read as one screen. What is here is only what the other sections add: a
+   plain scrolling body for a section that has no scroller of its own. Tokens
+   are the Studio Hub's --st-*, except where a rule sits among the Operations
+   kit's panels (Machines, Studio, Team's staff) and takes their --adm-*:
+   the waiting notice's link, and the sentences inside a panel (.ms__line,
+   .ms__note, .ms__quiet). Nothing here writes a hex value, and look.test.ts
+   holds that for every stylesheet My Studio draws with.
    ========================================================================== */
+
+/* The masthead with five sections (Relay · Openings · Machines · Team ·
+   Studio). Measured in headless Chrome when Openings joined (Sep 27 2026):
+   at 744px (an iPad mini in portrait) the studio-and-date line was squeezed
+   to 60px and wrapped onto four lines, making the bar 73px tall. So in
+   portrait it moves under the tabs. The masthead is MyStudioView's, so its
+   rule is here, in the stylesheet MyStudioView imports (it was in
+   openings.css until the round's integration pass). */
+@media (max-width: 899px) {
+  .ms > .pl__mast {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+  .ms > .pl__mast > .pl__where {
+    order: 3;
+    flex: 1 0 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+}
 
 /* A section body that scrolls as one page (the Team panel brings .st__scroll
    of its own; Machines and Studio use this). */
@@ -16,12 +40,23 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 0 1rem 6rem;
+  /* The first card sits a gap below the masthead rather than on its line. */
+  padding: 0.875rem 1rem 6rem;
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
 }
 .ms__page > * { flex: none; }
+
+/* Sentences inside an Operations-kit panel on Machines and Studio. They
+   were inline colour styles until Sep 27 2026. */
+.ms__line { margin: 0; font-size: 14px; line-height: 1.5; color: var(--adm-ink); }
+.ms__line--muted { color: var(--adm-ink-muted); }
+.ms__line--lead { margin-bottom: 0.75rem; }
+/* A small note under a panel's fields: where a default comes from, what to do next. */
+.ms__note { margin: 0.75rem 0 0; font-size: 12px; line-height: 1.45; color: var(--adm-ink-muted); }
+/* A quiet line standing in for an empty or loading list in a flush panel. */
+.ms__quiet { margin: 0; padding: 1rem 14px; font-size: 14px; color: var(--adm-ink-muted); }
 
 /* The machine's door (Machines section): the settings card and the notes
    box stacked in the Context Panel, with the three actions under them. The
@@ -31,13 +66,15 @@
   flex-direction: column;
   gap: 1.25rem;
 }
+/* The door's section heads are the one heading style (planner.css,
+   .pl__list-head): small upright capitals, 12px. */
 .ms__door-h {
   margin: 0 0 0.25rem;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 .ms__door-sub {
   margin: 0 0 0.625rem;
@@ -51,9 +88,49 @@
   gap: 0.5rem;
 }
 
-/* The Team section: the Team cockpit (planner/team/TeamPanel, which brings
+/* The machine's door on Operations → Floor (MachinesSection without My
+   Studio's shell). In My Studio the frame is the height of the screen, so
+   the door is a column beside the list (landscape) or a sheet at the foot
+   of the screen (portrait). Operations bounds nothing: the frame is as tall
+   as the machine list and the whole page is one scroller (AppContent's
+   <main>), so the door opened at the top of a long list, or at its foot,
+   off-screen. Here it rides that scroller instead, sticky, and the list
+   scrolls under it. Its height is the screen less the app's header and
+   bottom bar and Operations' own top (about 11rem on an iPad; 12rem is the
+   margin). Voice review follow-up, Sep 27 2026. */
+.ms__frame--hosted {
+  --ms-hosted-chrome: 12rem;
+}
+@media (min-width: 900px) {
+  .ms__frame--hosted > .cp {
+    position: sticky;
+    top: 0.75rem;
+    align-self: flex-start;
+    max-height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+}
+@media (max-width: 899px) {
+  /* The door follows the list rather than lying over the frame, so sticky
+     can hold it at the foot of the screen while the list is in view. */
+  .ms__frame--hosted {
+    flex-direction: column;
+  }
+  .ms__frame--hosted > .cp {
+    position: sticky;
+    left: auto;
+    right: auto;
+    bottom: 0;
+    height: 55dvh;
+    max-height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+  .ms__frame--hosted > .cp--tall {
+    height: calc(100dvh - var(--ms-hosted-chrome));
+  }
+}
+
+/* The Team section: people and standards (relay/team/TeamPanel, which brings
    its own .st__scroll) and the studio's staff below it, as ONE page. The
-   cockpit's scroller is unwound here so the whole section scrolls together;
+   panel's scroller is unwound here so the whole section scrolls together;
    .ms__team is the scroller instead. */
 .ms__team {
   flex: 1;

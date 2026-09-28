@@ -4,25 +4,25 @@
 (`features/my-studio/MyStudioView`), which owns the masthead, the Relay
 context and the Capture sheet now; `PlannerView` draws the board under it.
 Relay's **Team** tab became My Studio's Team section (`team/TeamPanel`, beside
-the studio's staff), and the Network tab moved to Operations → All my studios
-(voice-review round, Sep 27 2026; its ranking of studios was dropped), so the
-board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
+the studio's staff), and the Network tab moved to Operations → Overview → All
+my studios (voice-review round, Sep 27 2026; its ranking of studios was
+dropped), so the board's tabs are **Floor · Mine · Notes**. Relay is first for the trainer
 between clients (AJ, Sep 27: leaders "have operations and the hub").
 Read `features/my-studio/README.md` first.
 
 **Relay (Sep 16 2026)** rebuilt the Planner as the studio's asynchronous
 board and each trainer's second brain: the Now Bar, one Capture composer,
 Next up and the Floor Map on the Floor, Mine's four lanes, the two-pane note
-editor, the Team cockpit and the vault (Team is people and standards since Sep 27), the Network tab (now on Operations), the Calendar layer,
-kudos. Everything Relay added lives in `board/` (its own README there; it was
+editor, the Team cockpit and the vault (Team is people and standards since
+Sep 27), the Network tab (now on Operations), the Calendar layer, kudos. Everything Relay added lives in `board/` (its own README there; it was
 `planner/relay/` until the beta-prep trim renamed this folder from
 `features/planner/` to `features/relay/` on Sep 17 2026); the round is
 `docs/rounds/2026-09-16-relay.md`. The view id stays `studio-tasks`.
 
 The tabs were **Floor · Mine · Notes · Team · Network** until the My Studio
 round moved Team out and the voice-review round (Sep 27 2026) moved Network
-to Operations; the table below describes what each one was before
-Relay and still holds.
+to Operations → Overview → All my studios (`features/admin/network/`). The
+table under **Tabs** is what each one holds today.
 
 Round: Learning + Planner, Sep 2026. AJ's brief:
 
@@ -38,17 +38,30 @@ this.
 
 ## Tabs
 
+Relay's tabs are **Floor · Mine · Notes**, and every one is everyone's. In
+the Planner they were Studio · My tasks · Notes · Team.
+
 | Tab | What | Where the data lives |
 | --- | --- | --- |
-| Studio | The studio hub (`features/studio-tasks/StudioHubView`, `embedded`): the at-a-glance band (`GlanceBand`), the shift strip, the team jobs lane (`jobs/`), the board, the playbook | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook` |
-| My tasks | A trainer's own list (`MyTasksPanel`), reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
+| Floor | The studio's shared board (`features/studio-tasks/StudioHubView`, `embedded`): Next up, the shift rings, the Floor Map, the team jobs lane (`jobs/`), asks and initiatives, the playbook, and the network's focus as a quiet line (`board/FocusBanner`) | `studios/{s}/task*`, `taskRequests`, `teamJobs`, `playbook`; the focus on `networks/{id}.relayFocus` |
+| Mine | A trainer's own list (`MyTasksPanel`): today, handed to you, follow-ups, growth, reminders and "Coming up" (`reminders/`), and the team jobs they're on | `trainers/{uid}/task*` — private by path, since the Settings-tiers round |
 | Notes | A trainer's own notes, in folders, linked to clients, built over time; shared onto a client's record or with colleagues (`notes/`, with its own README) | `trainers/{uid}/notes`, `noteFolders`; copies at `clients/{id}/sharedNotes` and `studios/{s}/noteShares` |
-| Team | **Leaders of this studio only** (`leads.ts`): who has work with their name on it, who finished it, who is behind (`team/`); Manage (compliance) and the task manager moved here | reads the Studio tab's paths |
+
+**Team is not a tab.** It is My Studio → Team (`team/TeamPanel`, mounted by
+`features/my-studio/TeamSection`), for the leaders of this studio
+(`leads.ts`): people and standards since the voice-review round, Sep 27 2026.
+People are listed by name, never ranked, with no "Behind" verdict. It reads
+the Floor's paths.
+
+**Network is not a tab.** The network's focus and a launch at every studio
+are on Operations → Overview → All my studios, and at the foot of the
+Overview for a franchise owner who sees one studio
+(`features/admin/network/`). The ranking of studios was dropped.
 
 ## Decisions
 
 - **The view id stays `studio-tasks`.** Notifications already sitting in trainers' bells link to it. Only the labels changed:
-  - the bottom bar ("Planner", notebook icon);
+  - the bottom bar ("Planner", notebook icon; it is **My Studio** since Sep 18);
   - the settings link;
   - the Operations overview ("Studio tasks");
   - the Hub's day strip ("Tasks").
@@ -62,7 +75,7 @@ this.
   - My tasks lists them on their own, in three groups: open, in time order; done today; and studio tasks a head trainer assigned to you today.
   - If any of its reads fails, it says it couldn't load all of today's tasks — never "Nothing on your list today" (`useStudioTasks` now reports an `error`, and waits for the personal task list before it stops loading).
   - Creating and editing uses the existing `TaskManager` in its personal-only mode. Nothing new is stored.
-- **The tab is remembered for the session** (module state, not storage). A fresh load starts on Studio, where the shift strip is.
+- **The tab is remembered for the session** (module state, not storage), and a sign-out forgets it. A fresh load starts on the Floor, where the shift rings are.
 - **A client's profile can open the Planner** at a note: **Write a plan**, **Jot a note**, or **Edit in your Planner** on a shared note. The profile leaves its request in `intent.ts`, and the Planner reads it when it mounts. That avoids threading more state through AppContent, since the Planner is not mounted while the profile is showing.
 - **A bell notification can open the Planner too** (rework): its link is `{ view: "studio-tasks", id }` with `id` = `job:<jobId>`, `share:<noteId>` or `mine`, turned into an intent by `plannerIntentFromLink` in `AppContent`.
 
@@ -70,7 +83,7 @@ this.
 
 - **Name kept: Planner**, not "Command" (the brief's suggestion). **Sharing is a copy**, not an `isShared` flag.
 - **Team jobs** (`jobs/`) are neither task templates (those reset daily) nor board requests (those belong to whoever picks them up). One document at `studios/{s}/teamJobs/{id}`; parts are a MAP written one key at a time so two iPads never erase each other's ticks. **Nothing locks**: anyone at the studio can tick or close.
-- **The Team tab counts only work with someone's name on it** (`team/accountability.ts` — its header is the rulebook). Today isn't judged; skipped isn't missed; a task someone else finished is done; notes are never counted. Counts with the thing named, no percentages. People are listed **by name, never ranked**, with no "Behind" verdict (voice-review round, Sep 27 2026: they were behind first, by a weight nobody saw).
+- **My Studio → Team counts only work with someone's name on it** (it was Relay's Team tab) (`team/accountability.ts` — its header is the rulebook). Today isn't judged; skipped isn't missed; a task someone else finished is done; notes are never counted. Counts with the thing named, no percentages. People are listed **by name, never ranked**, with no "Behind" verdict (voice-review round, Sep 27 2026: they were behind first, by a weight nobody saw).
 - **Leader-only parts follow the studio the iPad is in** (`leads.ts`, the same answer as the `teamJobs` rules). `isStudioLeader` alone would offer a visiting head trainer buttons the rules refuse.
 - **A reminder is a personal task with a set time** and `remindMinutesBefore` (`reminders/`). The trainer's own iPad writes the bell notification while the app is open (`PlannerReminders`, mounted in `AppContent`), at a fixed id so two iPads ring once; up to `LATE_GRACE_MINUTES` late. Nothing is pushed, texted or emailed.
 - **The task form is a wizard** (`studio-tasks/TaskWizard.tsx`, pure steps in `task-wizard.ts`) ending with a sentence. `saveTaskTemplate` strips `undefined` — Firestore refuses it.
@@ -80,15 +93,15 @@ this.
 
 | File | What |
 | --- | --- |
-| `PlannerView.tsx` | The masthead and tabs |
-| `GlanceBand.tsx` | The Studio tab's three at-a-glance tiles |
-| `MyTasksPanel.tsx` + `my-tasks.ts` | My tasks, and its pure sorting |
+| `PlannerView.tsx` | Relay's tab bar, the Now Bar and the board under My Studio's masthead (`features/my-studio/MyStudioView` owns the masthead, Capture and the Context Panel) |
+| `GlanceBand.tsx` | The Floor's three at-a-glance tiles, drawn by `studio-tasks/StudioHubView` (it was the Planner's Studio tab) |
+| `MyTasksPanel.tsx` + `my-tasks.ts` | Mine (it was My tasks), and its pure sorting |
 | `jobs/` | Team jobs: `types.ts`, `jobs.ts` (+ test), `mutations.ts`, `useTeamJobs.ts`, `JobComposer`, `JobSheet`, `TeamJobsLane` |
 | `team/` | My Studio → Team, people and standards: `accountability.ts` (+ test), `useInitiativeProgress.ts`, `TeamPanel` |
 | `reminders/` | `reminders.ts` (+ test), `useReminderBell.ts`, `PlannerReminders` (the watcher). The Calendar's strip is `board/RelayStrip` since the Relay round; the older `ReminderStrip` was deleted, unused, in the beta-prep trim (Sep 17 2026) |
 | `notes/` | The Notes tab — see `notes/README.md` |
 | `kit.tsx`, `kit.css`, `ClientPicker.tsx` | Shared pieces |
-| `leads.ts` | Who leads the studio the iPad is in |
-| `intent.ts` (+ test) | Opening the Planner at a note, a job, a share or My tasks |
-| `planner.render.test.tsx` | Mounts all four tabs and opens a note, the reminder wizard and the job composer |
+| `leads.ts` | Who leads the studio the iPad is in (`leadsHere`): My Studio asks it for Team and Studio, and the rules give the same answer |
+| `intent.ts` (+ test) | Opening Relay at a note, a job, a share, Mine or the Floor |
+| `planner.render.test.tsx` | Mounts My Studio: Relay's three tabs and every section, and opens a note, the task wizard and the job composer |
 | `planner.css` | On the Studio Hub's `--st-*` tokens |

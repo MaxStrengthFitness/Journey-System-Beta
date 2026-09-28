@@ -73,10 +73,10 @@ If any of these is wrong, stop and fix it before continuing — everything downs
 - [ ] **Header at 1024 portrait.** It must be the *two-row* layout, not the one-band layout — the switch is at `xl`, and 1024 is `lg`. *If it is one band:* the breakpoint regressed.
 - [ ] **A 21-machine client on the Journey tab**, with a settings menu open. Every machine and 10–14 sessions fit with no dead space.
 - [ ] **Analytics column:** tap the header to cycle First → Lowest → Highest → Most reps → Fewest reps. Then tap a value and confirm it jumps.
-- [ ] **Routines tab with Routine B off**, and again with nothing chosen for today. No "G 0" chip on a machine with no setting.
-- [ ] **Equipment tab during the backfill** — the "from loaded sessions" label must **disappear on its own** after the first open, without a refresh.
-- [ ] **Generate a 12-month Clinical Report on a real 100-session client. Time it.** Then read every insight card and ask whether a clinician would nod at it. *This is the highest-value item on the page* — the numbers are unit-tested, the judgement is not.
-- [ ] **Journal and History in dark mode.** Neither is harness-verifiable; both subscribe to Firestore, so this is the first real look.
+- [ ] **Programming → Routine A / Routine B with Routine B off**, and again with nothing chosen for today. No "G 0" chip on a machine with no setting.
+- [ ] **Programming → All Machines during the backfill** — the "from loaded sessions" label must **disappear on its own** after the first open, without a refresh.
+- [ ] **Build the Deep Dive (Activity Archive → Deep Dive) on a real 100-session client. Time it.** Then read every insight card and ask whether a clinician would nod at it. *This is the highest-value item on the page* — the numbers are unit-tested, the judgement is not.
+- [ ] **Notes & Profile → Notes and Activity Archive → Calendar in dark mode.** Neither is harness-verifiable; both subscribe to Firestore, so this is the first real look.
 - [ ] **Start Session when one is already in progress.** Your own: Continue session and Discard. Another trainer's: Watch session and Discard, with Take over on the watching screen (session record, Sep 26 2026).
 - [ ] **Predicted problem — try to edit a journal entry you just wrote.** *Expected:* you cannot. The edit mutations exist (`useClientJournal.ts:180,357`) with no UI calling them, so entries are append-only. A mistyped clinical note is permanent. Decide if that is acceptable.
 - [ ] **Predicted problem — save something slow and watch the button.** Four `isSaving*` flags are set and never rendered, so a slow save looks like a dead button and invites a double-tap.
@@ -107,7 +107,7 @@ record items in **Round 14** instead. The Body, Goals, Assessment, Admin and
 
 - [ ] **Portrait: 8 history columns and 8 machines with no vertical scroll.** That was the measured result of the Now-bar round. *If you get fewer:* the 8-machine rule broke, and it is the whole point of that round.
 - [ ] **A full session end to end** — weight, reps, quality on several machines; a Torso Rotation left/right set; **Log-as-TSC** from the stopwatch; **Add-to-session** on a machine not in today's routine; a note from the Notes button. Finish the session.
-- [ ] **Then check the Journal tab** — the in-session note is there with `origin: in_session`. *If not:* the `journalEntries` rule did not deploy (back to Gate 0).
+- [ ] **Then check Notes & Profile → Notes** — the in-session note is there with `origin: in_session`. *If not:* the `journalEntries` rule did not deploy (back to Gate 0).
 - [ ] **The Older rail stays pinned** behind the machine column at every scroll offset.
 - [ ] **The inroad glyph** — unbroken, snapped, and absent all read differently **in greyscale** (screenshot it and desaturate). Colour is not the carrier by design.
 - [ ] **The Now bar in portrait** — three rows, Next full-width, timer legible at arm's length on a rack.
@@ -180,9 +180,9 @@ The round is `docs/rounds/2026-09-16-relay.md`. Two iPads at the same studio, on
 - [ ] **Publish audiences.** Share with one colleague and tick Hand it off. *Expected:* their copy has a **Take it over** button. A franchise owner also sees **All MSF studios**: sharing there shows the note under From colleagues on an iPad at ANOTHER studio.
 - [ ] **The client's record.** Open a client → Notes & Profile. *Expected:* "Your working notes" under Plans from the team shows your last jots about them; adding one there appears in the Planner note's log; the other iPad (a different trainer) does not see it.
 - [ ] **Team tab as the head trainer (people and standards since Sep 27 2026).** *Expected:* no Who's in today and no client groups (the Hub and Operations answer those); people by name, each with the sentences of their week; under The studio's standards, Open loops lists an ask nobody picked up for a day, a machine flagged on the Floor Map or reported on the shift list (once), and an overdue job; the vault logs an incident that the trainer's iPad cannot read (switch to it: no vault section). A pending sign-in request shows "waiting to be let in" at the top, and Let them in scrolls to the staff list.
-- [ ] **Kudos.** On the other iPad's Pulse line about your work, tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
+- [ ] **Kudos.** On the other iPad's Just now line about your work (it was labelled Pulse until Sep 27 2026), tap the heart. *Expected:* your bell rings once ("sent kudos"); the heart shows 1; the Team tab's card for you shows a heart with 1. You cannot kudos your own line.
 - [ ] **The Calendar.** *Expected:* the strip above the month says Relay and shows a timed studio task on every day it falls, a team job on its due day with initials, a hand-off in blue; Mine narrows it to yours; a tap lands in Relay on the right tab.
-- [ ] **The network as a franchise owner (Operations → Overview → Looking at: All my studios, since Sep 27 2026).** *Expected:* no Network tab in Relay; under All my studios, Focus this quarter (one per network you own) — Set the focus shows a banner on the Floor of every studio in it; Launch an initiative asks first and names every studio, then shows under Initiatives on each studio's board; no ranking of studios anywhere. An owner with one studio finds both at the foot of that studio's Overview.
+- [ ] **The network as a franchise owner (Operations → Overview → Looking at: All my studios, since Sep 27 2026).** *Expected:* no Network tab in Relay; under All my studios, Focus this quarter (one for every network that holds one of your studios, whether or not it names you: voice review follow-up, Sep 27 2026) — Set the focus shows a banner on the Floor of every studio in it; Launch an initiative asks first and names every studio, then shows under Initiatives on each studio's board; no ranking of studios anywhere. An owner with one studio finds both at the foot of that studio's Overview.
 - [ ] **Old iPad (iPadOS 15/16) cold load.** *Expected:* the app opens and Relay draws (color-mix and the swipe rows degrade gracefully; no blank app).
 
 ### Hub sync fixes · *branch `hub-sync-fixes` (Sep 16)*
@@ -209,13 +209,13 @@ The round is `docs/rounds/2026-09-16-reporting-round.md`. Everything a trainer r
 - [ ] **Start the session, open Notes (the sheet).** *Expected:* three tabs — Note · Remember this · Pulse. On Note, NO category is pre-selected and the button reads "Save — file later". Type "left knee clicky on leg press" and save without a category. Under "This session" a "To file · 1" tray appears with the note and five category chips.
 - [ ] **In the same sheet: pick Injury, type a note, set How loud to Heads up.** *Expected:* a "Matters until (optional)" date appears with "After this it stops showing on the briefing." Save. The card shows a HEADS UP chip.
 - [ ] **Pulse tab in the sheet.** *Expected:* the same tiles as the briefing's Update Pulse, compact; one tap into an area, one Dial tap, Done returns to the Note tab. Nothing about the session moved.
-- [ ] **End the session → the post-session screen.** *Expected:* under Next, "How did it land?" is a Dial — Wiped out · Drained · Just right · Had more · Barely worked — with "Your read · judged by you". Tap Just right → "Saved" and a one-line sentence under it. Tap again → clears (stores nothing). The closing note has Note · Heads up · Critical with **Note** selected; picking Heads up reveals "Matters until". The unfiled knee note is in a "To file" tray ABOVE the FORD sweep — tap Equipment → it files and disappears. "Update Pulse" opens the same sheet as the briefing.
+- [ ] **End the session → the Wrap-up.** *Expected:* under Next, "How did it land?" is a Dial — Wiped out · Drained · Just right · Had more · Barely worked — with "Your read · judged by you". Tap Just right → "Saved" and a one-line sentence under it. Tap again → clears (stores nothing). The Profile note has Note · Heads up · Critical with **Note** selected; picking Heads up reveals "Matters until". The unfiled knee note is in a "To file" tray ABOVE the FORD sweep — tap Equipment → it files and disappears. "Update Pulse" opens the same sheet as the briefing.
 - [ ] **Back to Hub → open the client → Notes & Profile.** *Expected:* the Notes area has a "To file" tray only if something is still unfiled; the record's section is titled **Pulse** ("How life is going — filled a little at a time, never done") with a "Hand to client" button. Expand Sleep & Recovery: the three statements are on the Dial with the five words; NO 0–10 buttons anywhere; one note box per area ("In their words / worth remembering"), none per statement.
 - [ ] **Hand to client.** *Expected:* a full-screen sheet — "Judy, tap the word that fits." — one area at a time, Back / Next on a 48px bar, no scores, no coach notes, no history. Answer one, Next, "Done — hand back" at the end → the panel says "Judy's own answers" in its header. Answer something yourself → it goes back to the coach.
 - [ ] **Activity Archive → Reports → build a Progress Report.** *Expected:* FIVE steps (Volume · Accolades · Machines · 4 P's · Blueprint) as equal columns whose names never truncate in portrait. On 4 P's each P is one Dial (Needs work … Mastered); no red/black/green, no 1–5. Pick Strong on Posture → the printed copy says "Strong" and a five-segment bar, never a number. On Blueprint the top card is "Pulse · as of <date> · by <trainer>" read-only, or "No Pulse on file yet — nothing is printed."
 - [ ] **Activity Archive → Deep Dive segment.** *Expected:* the gate says Kaizen Deep Dive; "Build the Deep Dive". The report opens with the caveat line ("It can be wrong — treat every line as a question…") directly under the sticky bar, then Progression stalls → Readiness vs output (sleep · energy · recovery · stress · body regions · dose, each Off days / As usual / Up days; a level under 3 sessions reads "needs 3") → Attendance rhythm (one sentence) → Pain & incidents + Pulse trend → Time under tension → the heat map. No "tonnage" anywhere.
 - [ ] **A session from before today (Activity Archive → Calendar → open one).** *Expected:* "On the way in & how it landed" shows the old answers in the Dial's words (Poor → "A bit short", Wiped Out → "Wiped out"), never "poor" or "3 / 5".
-- [ ] **Dark mode, all of the above.** *Expected:* every Dial reads on its card (the post-session screen is dark whatever the theme); no white flash, no unreadable segment.
+- [ ] **Dark mode, all of the above.** *Expected:* every Dial reads on its card (the Wrap-up follows the theme since Sep 27 2026: light on the light theme, dark on the dark, its Dial, Loudness and trays included); no white flash, no unreadable segment.
 
 ### Calendar · *branch `calendar-redesign`*
 
@@ -231,7 +231,7 @@ The round is `docs/rounds/2026-09-16-reporting-round.md`. Everything a trainer r
 
 - [ ] **First-time machine setup:** ghost placeholders stay ghosted (never saved), and **Gap pre-fills to 0**.
 - [ ] **Portrait drill-in and landscape split**, both themes.
-- [ ] **A settings change with an audit reason** shows up on the Journal tab.
+- [ ] **A settings change with an audit reason** shows up on Notes & Profile → Notes.
 - [ ] **A maintenance-flagged note reaches the pre-session briefing** as critical.
 - [ ] **The weight steppers** at the 2 lb studio increment; the delta reads (+26, +65%).
 - [ ] **The in-session setup prompt on a genuinely never-performed machine** — appears once per machine per mount; skipping writes nothing.
@@ -256,7 +256,7 @@ The round is `docs/rounds/2026-09-16-reporting-round.md`. Everything a trainer r
 ## Round 4 — Multi-tenancy & roles · *the one that matters at 100 locations*
 
 - [ ] **The read boundary, tested honestly.** Sign in as a plain trainer at one studio. Open the console and read a client document belonging to a **different** studio directly. *Expected:* **it works.** Rules allow `read: if isAuthenticated()` on `clients`, `sessions`, `exerciseLogs`, `journalEntries` and `clinicalIncidents`; the studio filtering is client-side only. This is a known deferral — confirm the scope so it can be dated.
-- [ ] **Admin screens with no role gate.** `admin-dashboard`, `franchise-dashboard`, `trainer-hub` and `integrations` are rendered on `currentView === X && authTrainer` with **no role check** — the only gate is the button. Confirm whether a plain trainer can reach them by any other route.
+- [ ] **Admin screens with no role gate.** *(Since then: `franchise-dashboard` was deleted on Sep 19 2026 and `admin-dashboard` asks `mayOpenOperations` since Sep 24; check the rest.)* `admin-dashboard`, `franchise-dashboard`, `trainer-hub` and `integrations` are rendered on `currentView === X && authTrainer` with **no role check** — the only gate is the button. Confirm whether a plain trainer can reach them by any other route.
 - [ ] **The `?view=trainer-hub` deep link** — gated on Admin/Founder/Overseer, but it also **fabricates a fake Owner trainer** (`id: "owner-temp"`, `pin: "0000"`) when no trainers exist (`AppContent.tsx:931-937`). Test it against an empty studio and decide whether that bootstrap should survive to production.
 - [ ] **Per-studio machine possession toggle** — it controls Machine Settings only; it does **not** hide un-owned machines from the Journey grid or Active Session. Confirm, then decide if that is acceptable at beta.
 - [ ] **Check the live deployment for the contractor's hardcoded admin email** (fixed in this copy only).
@@ -276,7 +276,7 @@ The whole app has been verified against mock data on a good network. This round 
 - [ ] **Import a broken legacy chart.** *Predicted:* silence. `isImporting`, `importStats` and `legacyError` are all set and never displayed.
 - [ ] **Make something throw** on a screen other than Calendar. *Expected:* a white screen — `CalendarView` is the only view with an `ErrorBoundary`, and `ErrorBoundary.tsx` itself is `@ts-nocheck`.
 - [ ] **Two iPads, same client, two trainers** (session record, Sep 26 2026). JC starts Judy's session on one iPad; AJ opens Judy on the other. *Expected:* AJ's iPad watches: "JC is running this session on another iPad", no Now Bar and no Finish, and each set JC saves appears within a few seconds. Tap Take over and answer Keep watching: nothing changes.
-- [ ] **Take over, then finish.** AJ takes over, and JC's iPad says "AJ took over this session on another iPad" within a few seconds. Any reps JC had typed are in the session. AJ finishes. *Expected:* the session counts once, for AJ, and the History pop-up says "Started by JC".
+- [ ] **Take over, then finish.** AJ takes over, and JC's iPad says "AJ took over this session on another iPad" within a few seconds. Any reps JC had typed are in the session. AJ finishes. *Expected:* the session counts once, for AJ, and the session pop-up (Activity Archive → Sessions) says "Started by JC".
 - [ ] **A dead iPad.** JC's iPad dies mid-session; JC signs in on another iPad and opens Judy. *Expected:* JC carries on recording, not watching, with every set that was saved.
 - [ ] **Watching, then the trainer finishes.** *Expected:* the watching iPad says "JC finished the session." and shows the briefing.
 - [ ] **File a bug report through the in-app reporter**, then try to close it as an admin. *Expected:* you cannot — `AdminBugReports` has no `updateDoc`. Every report is written `status: "open"` forever and the reporter never hears back.
@@ -290,7 +290,8 @@ The whole app has been verified against mock data on a good network. This round 
 - [ ] **Open a client profile with heavy history.** `ClientProfileView` is a 413 KB chunk on its own.
 - [ ] **The 12-month clinical report timing** from Round 3 — write the number down; it is your worst realistic case.
 - [ ] **Add the app to the iPad home screen** (the Home Screen round, Sep 26 2026: `src/features/home-screen/README.md`). Safari → Share → Add to Home Screen, leave "Open as Web App" on. *Expected:* the Journey icon and the name "Journey"; it opens full screen with no address bar; the sign-in screen (the icon has its own storage, separate from Safari).
-  - The clock and battery are readable on every screen in both themes. In dark they sit on the header's navy; in light, on a dark strip.
+  - The clock and battery are readable on every screen in both themes. iPadOS draws the status bar above the app in the header's colour: navy in dark, white in light (the `default` style since Sep 27 2026).
+  - The bottom bar is whole, in portrait and in landscape: every label (Hub, Client, Start Session, Learning, My Studio, Calendar) reads in full, and no black strip sits under the bar. An icon added before Sep 27 keeps the old style: delete it and add it again first.
   - Nothing tappable sits under the clock or on the home indicator: the header, the bottom bar, the Notifications and Feedback sheets, the Active Session's Pulse, Notes and Watch-outs panels, the Packages sheet, Pulse "Hand to client" and the studio picker.
   - Rotate the iPad: it turns both ways.
   - Then run the sign-in test in `docs/rounds/2026-09-26-home-screen.md` **before telling trainers to use the icon**.
@@ -550,6 +551,9 @@ studio's record for anything that saves — the Studio section writes the real
 ---
 
 ## Round 11 — Operations · *Sep 19 2026 round, branch `operations-round`*
+
+*Monday is the Overview since Round 13; the network's focus and launch are
+walked in Rounds 3 and 20, and an owner's reach in Round 22.*
 
 The round is `docs/rounds/2026-09-19-operations.md`. None of it has been on
 an iPad. Sign-ins: a **head trainer** of one studio, a **franchise owner**
@@ -1185,7 +1189,7 @@ whose home is that second studio.
 
 - [ ] **The visitor's session saves.** Signed in as the visiting trainer, at
   the second studio: start the client's session, log two or three machines,
-  Finish. The post-session screen appears with no error, and her History
+  Finish. The Wrap-up appears with no error, and her Activity Archive
   (on either iPad) shows today's session with its sets.
 - [ ] **Her totals moved too.** On her profile the session count went up by
   one and the last session is today; on the next session, the machines you
@@ -1241,7 +1245,9 @@ he asked for after it. The round documents are
 (`npm run test:rules`, then `firebase deploy --only firestore:rules`): the
 standing week's collection is new, and without its rules My Profile and Team
 say "the new database rules may not be deployed yet". Walk it with a Life
-Transformer's iPad and a head trainer's, portrait and landscape.
+Transformer's iPad and a head trainer's, portrait and landscape. What the
+voice review follow-up changed since (the Wrap-up's tray, days away, a
+colleague's card, offline, the new names and looks) is walked in Round 22.
 
 **The Wrap-up and its two notes**
 
@@ -1275,8 +1281,8 @@ Transformer's iPad and a head trainer's, portrait and landscape.
 **Settings and Learning**
 
 - [ ] **Settings reads plainly.** Tap the gear (its label is "Trainer
-  Settings"): My account shows the role's name ("Life Transformer", "Studio
-  Leader"), never "HeadTrainer"; Mindbody says Linked, or "Not linked — a
+  Settings"): My account shows the role's name ("Life Transformer", "Head
+  Trainer", "Studio Leader"), never "HeadTrainer"; Mindbody says Linked, or "Not linked — a
   studio leader links you on My Studio → Team", readable in both themes. My
   studio says how many people are on the team and no machine count.
 - [ ] **Open Operations opens Operations mode.** As a head trainer, Settings ->
@@ -1284,16 +1290,23 @@ Transformer's iPad and a head trainer's, portrait and landscape.
   says Operations. As a Life Transformer: no Operations card at all.
 - [ ] **Learning's warnings are the app's caution colour.** Learning -> Catalog
   -> a machine with clinical warnings: the box is plum, not amber, in light
-  and dark. In dark mode, the orange buttons (a wiki page's Save, the studio
-  setting sheet's Save) have dark text you can read.
+  and dark. Every Save in Learning and on the studio setting sheet (a wiki
+  page's Save, "Save for this studio", "Save notes", Post) is solid blue with
+  readable words in light and dark (since Sep 27 2026; they were orange), and
+  orange appears only on the Learning brand mark. A flagged machine is plum
+  on its badge and in its Upkeep card.
 
 **The standing week — the trainer (My Profile)**
 
 - [ ] **The card is on your own profile, at your studio.** Open your own
   profile: **My standing week** with the studio's name, "Not proposed yet."
-  Open a colleague's profile: no card. *If it says the rules may not be
-  deployed:* deploy them.
-- [ ] **Build a week.** Tap **Hours** on Monday (7:00 AM – 1:00 PM), then on
+  (A colleague's profile can't be opened in the app since Sep 26 2026: their
+  agreed week is on My Studio → Openings → Who's usually in, Round 23.) *If
+  it says the rules may not be deployed:* deploy them.
+- [ ] **Build a week.** *(Words since the Openings round: "Hours" is **Add
+  a block**, up to three a day, and "Outside the day's hours" is "Outside when
+  they take clients"; Round 23 walks the three blocks.)* Tap **Hours** on
+  Monday (7:00 AM – 1:00 PM), then on
   Tuesday: Tuesday copies Monday. Change Monday's start to 1:30 PM: the end
   moves after it. The end list only offers times after the start. Tap
   **Regular** on Monday, pick a time, type the first three letters of a
@@ -1321,7 +1334,10 @@ Transformer's iPad and a head trainer's, portrait and landscape.
   Remove a regular in the editor: the button reads **Agree it as changed**.
   Agree it: the trainer's card says "Agreed", and the removed regular is gone
   from their editor too.
-- [ ] **The next seven days.** Give an agreed week a regular who IS booked
+- [ ] **The next seven days.** *(Since the Openings round, Team lists none of
+  this: it shows one line with a door, and My Studio → Openings → Next 7 days
+  lists the free and moved regulars. A slot someone else is booked in is
+  shown nowhere. Walk it there, Round 23.)* Give an agreed week a regular who IS booked
   this week at that time with that trainer: nothing is listed for her ("All N
   agreed slots are booked as usual"). Give it a regular who is NOT booked
   that day: "{Trainer}'s {day} at {time} is open: {her} isn't booked for it."
@@ -1329,9 +1345,12 @@ Transformer's iPad and a head trainer's, portrait and landscape.
   that week and wait for the sync: the line says she is booked then instead.
   A booking she already had another day that week is never called her move
   (the slot just reads open). Book someone else in her slot: it says who.
-- [ ] **Can't tell is never open.** On a studio whose Mindbody is not linked
-  (or turn Wi-Fi off before opening Team): it says the week can't be checked,
-  or couldn't be read — no slot is called open.
+- [ ] **Can't tell is never open.** On a studio whose Mindbody is not linked:
+  it says the week can't be checked. Turn Wi-Fi off before opening Team: it
+  says "Reading the week's bookings…", then within 15 seconds "Can't tell:
+  this iPad can't reach the week's bookings just now…" and lists no slot as
+  open (this failed before Sep 27 2026: the cached bookings were read as the
+  week).
 - [ ] **Remove a week.** **Change** on a person -> **Remove this week** asks
   first; **Remove it** takes the week away on both iPads.
 - [ ] **Nothing reached Mindbody.** In Mindbody, the trainer's schedule and
@@ -1374,6 +1393,401 @@ first. Wait for Render to say the deploy is live before each step.
 - [ ] **No connection.** With Wi-Fi off, lock and unlock on the Hub: nothing
   reloads, and there is never a blank screen. Wi-Fi back on, lock and unlock
   again: it loads.
+
+---
+
+## Round 22 — The voice review follow-up · *Sep 27 2026, branch `voice-review-followup`*
+
+AJ's answers to the audit of the voice review, built in seven units. The round
+document is `docs/rounds/2026-09-27-voice-review-followup.md`. **Deploy the
+rules first** (`npm run test:rules`, then `firebase deploy --only
+firestore:rules`): without them a trainer's days away do not save. Walk it on
+two iPads, a **Life Transformer's** and a **head trainer's**, and sign in as a
+**franchise owner** for the network and Staff & Roles checks. Do every screen
+**portrait and landscape, light and dark**: several of these were checked only
+in headless Chrome, and My Studio's dark mode has never been looked at.
+
+**At the keyboard**
+
+- [ ] **The unused index is gone.** Firebase console → Firestore → the named
+  database `ai-studio-32cbbdcc-6e08-4770-9665-867c68878efa` → Indexes: no
+  `taskInstances` index on `status` and `localDate` (delete it by hand if it
+  is there). If the CLI ever offers to delete indexes that are not in the
+  file, the answer is N.
+
+**The Wrap-up and its two notes**
+
+- [ ] **The Note for the next trainer is filed, never discarded.** End a
+  session with a sentence in "Note for the next trainer". On the Wrap-up the
+  To-file tray shows it labelled "Note for the next trainer · on the next
+  briefing", with category chips and **no Discard** (any other loose note
+  still has Discard). File it under a category, then open that client's
+  briefing from another session start: the note is still there as a Heads up.
+- [ ] **It shows once on Notes.** Open the client's Notes & Profile → Notes:
+  the note is there once, with no read-only "Session summary" card beside it.
+  If it is still unfiled there, the Notes page's To-file tray labels it the
+  same way and offers no Discard.
+- [ ] **The Wrap-up reads on the light theme.** Light theme: the dose Dial,
+  Loudness and the To-file tray are light and readable ("How did it land?",
+  "Your read" and "How loud?" are dark words, never white on white), and "Save
+  note" is solid blue. Dark theme: as it was.
+- [ ] **The confetti stays, and stays out of the way.** It bursts once as the
+  Wrap-up opens, for about a second, in both themes; a tap straight away
+  still works, and it doesn't come back.
+
+**The profile's words and doors**
+
+- [ ] **Past sessions on the Hub card.** The button reads "Past sessions" on
+  two lines with nothing cut off, portrait and landscape, and opens that
+  client at Activity Archive → Sessions. Open the same client again from the
+  directory: it opens on Journey.
+- [ ] **The InBody task lands on the InBody card.** A Relay InBody task opens
+  Notes & Profile → Body & Pulse, scrolled to the InBody card (Add scan).
+- [ ] **Back to Reports.** Build a progress report and tap "Back to Reports"
+  (or the back arrow): the profile opens at Activity Archive → Reports, with
+  the report on the shelf. Open the client again from the Hub: Journey.
+- [ ] **A refused move leaves nothing behind.** Type into a client's record
+  without saving, then tap Past sessions for another client and choose Keep
+  editing. Later open that other client normally: it opens on Journey, not on
+  Sessions.
+- [ ] **Edit in Body & Pulse.** On a client with clinical flags, the strip's
+  button reads "Edit in Body & Pulse", is a comfortable tap, and opens the
+  watch-outs card.
+- [ ] **The messages.** During a session, change a setting on the machine
+  sheet: "Logged to the machine's history (Programming → All Machines)". The
+  profile's tab row looks as it did, in both themes.
+
+**The network (as a franchise owner)**
+
+- [ ] **Every network that holds your studio.** Under Operations → Overview →
+  All my studios, Focus this quarter is offered for a network that holds one
+  of your studios even if it doesn't name you as its owner.
+- [ ] **Set by, and no stray dot.** At rest the Focus editor reads "Set by
+  {name} on {date}." (the studio's day). Save a focus with only "A line for
+  the floor": the Floor's banner reads "This quarter" with no dot after it.
+- [ ] **Nothing real inside Demo Mode.** In Demo Mode, the foot of the
+  practice studio's Overview says "Demo Studio is not in a network" and offers
+  no real network's focus; Launch an initiative posts at the practice studio
+  only.
+
+**Team, Staff & Roles and who works here**
+
+- [ ] **Staff & Roles is read-only for a head trainer.** As the head trainer,
+  Operations → Staff & Roles lists the studio's people with no editor and a
+  button "Open My Studio → Team"; it lands on Team with the trainer bottom
+  bar, not Operations'. As a franchise owner the editor is still there, and
+  under All my studios only your studios are listed. Accounts read "Has an
+  account" until a studio's Mindbody list has been read, never "No Mindbody
+  match" before.
+- [ ] **Head Trainer.** A head trainer's role reads "Head Trainer" in
+  Settings, on Team and in Staff & Roles. The studio tier's picker offers Life
+  Transformer, Head Trainer, Studio Leader; an owner's also offers Studio
+  Owner and Franchise Owner. The grant's hint reads "Opens Team and Studio at
+  {studio}, and lets them change its machines…".
+- [ ] **Everyone who works there.** A trainer who also works at this studio
+  (not their home) has a card on Team, is counted in an initiative's "N of M",
+  appears in Capture's and the job composer's people pickers, and is counted in
+  Settings' "N people on the team", which matches Team.
+- [ ] **Name order.** An initiative's roll-up on Relay's Floor and on Team
+  lists people alphabetically, never whoever has done least first.
+- [ ] **Open loops.** Report a machine on the shift list: it stays on Team's
+  Open loops for the week, once, with the day it was reported. Do the same
+  check clean on a later day: it goes. A machine the Floor Map already flags
+  is not listed twice.
+- [ ] **The seven-day duty grid without a mouse.** Tap a standing duty: each
+  day's count shows; the one-line legend explains the colours.
+- [ ] **Assign follows who runs the studio.** A trainer with the grant sees
+  Assign on the Floor's shift groups; a head trainer visiting another studio
+  does not. Assign and "Save & flag" are solid blue; "Mark done" is green.
+
+**The standing week**
+
+*Since the Openings round, Team shows no slots: where these steps say "Free
+slot" or "open", look at My Studio → Openings → Next 7 days instead (Round
+23). Team keeps who is away and one line with a door.*
+
+- [ ] **Away on My Profile.** Under My standing week, add a range away (even
+  with nothing proposed): it saves at once. On Team: "{name} is away {from} –
+  {to}." once, and no open, moved or Free slot on those days. If every agreed
+  slot falls in them: "Nothing else to check: the agreed slots in the next
+  seven days fall on days away." Remove the range: the slots come back.
+- [ ] **A leader sets it too.** In Team's Review, a leader adds a range away
+  for that trainer; the trainer's My Profile shows it.
+- [ ] **A colleague's week.** A colleague's profile can't be opened in the
+  app, so their agreed week is on My Studio → Openings → **Who's usually
+  in**: when they take clients and their regulars, read only, and their days
+  away that haven't ended, or "No agreed week yet". Their waiting proposal
+  and its note are not shown.
+- [ ] **A leader's changes never vanish.** Change something in one person's
+  Review, then tap another person's Review: "You have unsaved changes to
+  {name}'s standing week. Leave without saving?" Keep editing keeps it. The
+  Review's Cancel asks the same. In a Review, open "Dates away", change From,
+  then tap "Agree this week": the week is agreed and the question names
+  "{name}'s dates away"; Keep editing leaves "Save dates away" usable.
+- [ ] **Dates away offline.** Wi-Fi off, add a range on My Profile: the adder
+  closes and says "Saved on this iPad. It sends when the connection is
+  back." (never "Saving…" for good). Wi-Fi on: the line goes. The note field
+  says "Everyone at the studio can read this note."
+- [ ] **Demo Mode.** Inside Demo Mode, a real trainer proposes a week on My
+  Profile; on My Studio → Team it is listed under their name with Review and
+  Agree, never "No longer on Demo Studio's staff".
+- [ ] **Proposed by.** The Review reads "Proposed by {name} on {date}."
+- [ ] **The studio rotation.** A regular booked "{studio} Rotation" at her
+  usual time reads as usual (no Free slot), before and after the webhook
+  touches the booking.
+- [ ] **One rebook, one claim.** Cancel a regular's two slots and book one
+  other time: it is named as the move for one slot only.
+- [ ] **Two Mindbody sites.** A trainer who also works at a studio on the
+  other Mindbody site shows no Free slots there for bookings that are theirs.
+- [ ] **Offline.** Wi-Fi off, then open Team: "Reading the week's bookings…",
+  then "Can't tell…" within 15 seconds, and no slot called open.
+
+**Learning, Settings and My Profile**
+
+- [ ] **One colour per meaning.** Every Save in Learning (a studio page, "Save
+  for this studio", "Save notes", Post) and My Profile's Save and "Propose
+  this week" are solid blue with readable words in light and dark; orange
+  appears only on the Learning brand mark. A flagged machine is plum on its
+  Catalog badge, the Flagged count and its Upkeep card; the Upkeep card's
+  tick shows in dark mode.
+- [ ] **Typing never vanishes.** On a machine page, type a studio note, then
+  (1) tap the bottom bar, (2) open Learning's search and pick another machine,
+  (3) tap a related machine. Each asks "You have unsaved changes to …". Keep
+  editing returns to the note; Leave opens the other page with its own saved
+  note.
+- [ ] **Type, taps and names.** Titles are the display face in italic
+  capitals (Settings' is upright). Focusing any field doesn't zoom the page.
+  The crumbs, search and its clear, "Show more", the chips and a note's Edit
+  are comfortable taps; a long breadcrumb scrolls so the current page stays in
+  view; setting names wrap instead of being cut off.
+- [ ] **The no-machines message** names My Studio → Machines, and Settings'
+  Operations card names all nine tabs.
+
+**My Studio**
+
+- [ ] **Just now on a portrait iPad.** The Now Bar shows "Just now" on its own
+  row with the kudos heart (it used to vanish below 900px).
+- [ ] **The day strip.** Tap the gap meter: the day's sessions are listed with
+  each client's whole name and time, "Now" on the one under way, past ones
+  dimmed and never called done.
+- [ ] **Capture steps aside.** Open an ask or Next up in the side panel:
+  Capture hides, and closing the panel brings it back. The same for a
+  machine's door on Machines.
+- [ ] **Who replied.** An ask with replies shows "On it: …" (and "Can't: …")
+  under it. In Capture, each Floor ask kind has a line saying what it means.
+- [ ] **Machines' floor list.** Names as stored (not forced into capitals),
+  whole, wrapping if long; "Maintenance" a plum badge and "Never to failure" a
+  crimson one; every button 40px. Reorder mode lists the floor in order and
+  saves it in one go. A search that matches nothing says so. With a machine's
+  door open on Operations → Floor in landscape (and on My Studio on a
+  12.9-inch iPad in portrait), each row's buttons sit under the machine's
+  name, whole, and none is cut off.
+- [ ] **The machine's door asks.** Open a machine's door, type in the floor's
+  notes, then tap another machine's Open: "You have unsaved changes to
+  {studio}'s notes on {machine}". Keep editing keeps the note; Leave opens the
+  other machine with its own saved note. The door's X (and Escape on a
+  keyboard) asks the same.
+- [ ] **Staff & Roles' door.** A head trainer at their own studio sees "Open
+  My Studio → Team" on Operations → Staff & Roles; switched to a studio they
+  don't run, the button isn't there.
+- [ ] **Operations → Floor on a fresh iPad.** On an iPad that has not opened
+  My Studio since loading, Operations → Floor draws the machine list and a
+  machine's door styled; the door stays on screen while the list scrolls (a
+  sheet at the foot in portrait, a column on the right in landscape), also in
+  the Home Screen app with its status strip.
+- [ ] **Studio's sentences.** When the Mindbody sync needs attention, a studio
+  leader is sent to Operations → Mindbody and a trainer with the grant is told
+  to ask their studio leader. The studio's day names Operations → Insights →
+  Hours.
+- [ ] **One icon, one card, one heading.** The bottom bar's My Studio icon is
+  the building, as on the masthead. Every card on Team has the header strip,
+  every heading on Relay and on Team's own cards is the same small upright
+  capitals (the Operations-kit panels, Standing weeks and the staff list,
+  still use the kit's 13px titles and capital buttons; that is known), and a
+  playbook answer on a machine's Catalog page shows in full.
+- [ ] **Dark mode, all of My Studio.** Solid buttons' words read, anything
+  selected is blue, flags and late jobs are plum, Delete is crimson.
+
+## Round 23 — Openings · *Sep 27 2026, branch `openings`*
+
+When the studio is usually busy, what opened up, and what to offer a client;
+three blocks a day on the standing week; Your week and My clients on My
+Profile; Team's and the Overview's line; and the Wrap-up's Times with room.
+The round document is `docs/rounds/2026-09-27-openings.md`. **Deploy the
+rules first** (`npm run test:rules`, then `firebase deploy --only
+firestore:rules`): without them the marks can't be read or set, so A new
+regular time offers nothing, and a week with a 15th block is refused. Walk it
+on two iPads, a **Life Transformer's** and a **head trainer's**, both at the
+same studio, and do every screen **portrait and landscape, light and dark**.
+Nothing in this round has been seen in the signed-in app on an iPad yet:
+only in headless Chrome on harness pages.
+
+**At the keyboard**
+
+- [ ] **Every iPad on the new version.** After the push, on each iPad go to
+  the Hub (or tap the new-version line under the header) until it has loaded
+  the new build. Do this before anyone saves a standing week with three
+  blocks on a day: an older build keeps only the first 14 blocks, and a
+  leader agreeing a week on one saves the shortened week without a word.
+- [ ] **The first summary, if you want it before Sunday.** In PowerShell, in
+  the project folder: `npx tsx scripts/openings-report.ts` (read-only: each
+  studio's weeks, which days counted and why not), then `npx tsx
+  scripts/run-machine-trends.ts --only openings` (a dry run), then the same
+  with `--commit`. In the Firebase console → the named database → `studios`
+  → a studio → `watch` → `openings` is there, with `builtAt` today.
+- [ ] **No index change.** Firebase console → Indexes: nothing new is needed
+  or offered. If the CLI ever offers to delete indexes that are not in the
+  file, the answer is N.
+
+**The standing week: three blocks**
+
+- [ ] **The words.** On My Profile → My standing week the heading over the
+  editor reads **When I usually take clients**, the intro "When you usually
+  take clients at {studio}, and your regulars", and a day with nothing set
+  "Doesn't take clients". No screen says "hours".
+- [ ] **Three blocks, no fourth.** On Monday tap **Add a block**, then **Add
+  another block** twice: after the third the button is gone. Remove the
+  middle one and add again. With VoiceOver on, the second block reads
+  "Monday, block 2: starts".
+- [ ] **The breaks line.** Under the days: "A break inside a block shows as
+  room on Openings, so leave the breaks out."
+- [ ] **Portrait and landscape.** In portrait the three blocks sit one to a
+  line; in landscape side by side, never the first alone above the other two.
+- [ ] **Outside when they take clients.** A regular at a time outside every
+  block shows "Outside when they take clients".
+- [ ] **Propose, then agree.** Propose the week (it saves: the rules allow
+  21 blocks). On My Studio → Team the subtitle reads "when they take
+  clients, and their regulars"; Review shows "Monday: …, … and …, was …";
+  Agree it. The row's summary never says "hours".
+
+**My Studio → Openings**
+
+- [ ] **Five sections.** The masthead reads Relay · Openings · Machines ·
+  Team · Studio on both iPads. In portrait the studio-and-date line sits
+  under the tabs, nothing cut off; in landscape it sits beside them.
+- [ ] **The parts.** The usual week (it opens here) · Next 7 days · A new
+  regular time · Who's usually in, as a light second row that wraps rather
+  than scrolls sideways. Leave Openings on Next 7 days, go to the Hub and
+  back: it opens on Next 7 days. Sign out and in: it opens on The usual week.
+- [ ] **The usual week, before four weeks.** With fewer than four weeks
+  counted, there is no grid, only one sentence: "The usual week needs 4 weeks
+  Journey has read in full. It has N so far …" (or, before the first Sunday,
+  "The usual week is built early each Sunday. The first one comes this
+  Sunday."). A studio whose Mindbody isn't linked says so.
+- [ ] **The grid** (once four weeks are counted, or on a studio seeded from
+  the PC). Monday to Saturday across, half-hours down, each cell a 40px
+  button with its word, whole, never cut short; in portrait no sideways
+  scroll. Tap a time: its sheet opens in the Context Panel (a sheet from the
+  foot in portrait, a column in landscape) with the sentence, the days not
+  counted and why, how many are usually booked and in, the regulars, the
+  cancellations. The "Built Sunday, …" line sits above the grid.
+- [ ] **Next 7 days.** Cancel one of this week's bookings in Mindbody and
+  wait for the sync: the time appears, "A cancellation on {day}, and nobody
+  has booked into it since". A regular not booked this week: "A regular
+  isn't booked for it", with "booked again from …" or "not booked again
+  through …". No client's name until you tap the line; then the name, whose
+  regular, and "Check it in Mindbody before you promise it."
+- [ ] **Can't tell is never open.** Wi-Fi off, open Next 7 days: "Can't tell
+  yet. The next 7 days' bookings haven't come back from the server", no
+  lines. Wi-Fi on: the lines come.
+- [ ] **The chips.** The Life Transformer with an agreed week opens on "With
+  you"; the head trainer without one on "Anyone"; a chip per trainer with an
+  agreed week, in name order, no count beside a name. A chip that empties
+  the list says so by the chip ("Nothing has opened up with you in the next
+  7 days. Anyone shows the rest of the studio.").
+- [ ] **A new regular time.** "Safe to show a client" at the top, every
+  list ending "Check it in Mindbody before you promise it. Journey doesn't
+  book." A time marked Always full is never listed. When the month hasn't
+  been read today: "Can't check the coming {weekdays} yet."
+- [ ] **Who's usually in.** Everyone who works at the studio, in name order,
+  each with their agreed week read only (blocks, regulars as "a regular",
+  days away that haven't ended); "No agreed week yet" for a week nobody has
+  agreed. **Show the regulars' names** shows them. This is where a
+  colleague's week is seen now (their profile can't be opened).
+- [ ] **Names.** Both iPads see trainers' names (AJ: relaxed for the beta);
+  client names only after a tap, on every part.
+
+**Marks**
+
+- [ ] **Mark a time.** On the head trainer's iPad open a time, **Mark this
+  time**, choose the word the bookings disagree with: the plum line saying
+  the bookings disagree shows before Save, and the line under the choice
+  says what the word changes for this time. Add a note and Save. The sheet
+  shows the mark first ("Marked Always full by {you}, {date}.", the note in
+  quotation marks), and "Marked" shows on that cell of the grid on the
+  Life Transformer's iPad at once.
+- [ ] **Change and remove.** On the Life Transformer's iPad change the
+  colleague's mark: it is signed by them now. **Remove the mark** asks once
+  ("Remove this mark? It goes for everyone at {studio}.").
+- [ ] **Typing is never lost.** Type a note, then (1) tap another part, (2)
+  tap another time in the grid, (3) tap the panel's X: each asks "You have
+  unsaved changes to the mark on {time}". Keep editing keeps the note; the
+  time already open asks nothing.
+- [ ] **The keyboard.** With the on-screen keyboard up on the note, the note
+  box and Save can be reached, in portrait and landscape (and on an iPad mini
+  in landscape, if there is one: the headless stand-in left the sheet very
+  little room there).
+- [ ] **Offline.** Wi-Fi off on one iPad: a time's sheet says it can't tell
+  whether anyone has marked the time, with nothing to tap. A form already
+  open saves at once and the foot says "Saved on this iPad. It goes to the
+  studio when the connection is back."; the other iPad gets the mark when the
+  Wi-Fi returns.
+
+**Team and the Overview**
+
+- [ ] **Team's line.** On My Studio → Team → Standing weeks: who is away
+  this week, then one line, "N free slots in the next 7 days · See them on
+  Openings." (or "No free slots ahead in the next 7 days."), naming no client.
+  Tap it: My Studio → Openings → Next 7 days, on "Anyone". With a Review
+  half-typed, the line asks first.
+- [ ] **The Overview's line.** On Operations → Overview, the next three
+  days carries "{day} · {time}, usually full, has room · See it on Openings."
+  when there is one (at most three, then "and N more on Openings"). Tap it:
+  trainer mode, My Studio → Openings → Next 7 days, on "Anyone".
+- [ ] **The Overview never counts an unread week as zero.** Wi-Fi off, open
+  the Overview: at most "Reading the week…" for a moment, then the tiles show
+  "—" and Changes today, the next three days and This week's changes say
+  "Could not be read just now."; Needs you says why inside the strip and
+  never "Nothing needs you right now".
+
+**The Wrap-up**
+
+- [ ] **Her next booking.** Finish a session for a client booked ten days
+  out: "Next session: {day} · {time}." A client booked at Strongsville (on
+  the same Mindbody as Westlake and Willoughby) reads "… at Strongsville."
+- [ ] **Nothing booked.** For a client with nothing on file: "Nothing booked
+  in the next 30 days. Book the next one before they leave." (or 7 days, if
+  the month wasn't read today), with the prominent **Times with room**
+  button inside the same line. The dose Dial and the note buttons don't move
+  when it arrives.
+- [ ] **Booked while she's there.** With the card showing nothing booked,
+  book her in Mindbody: within seconds the card turns green and the door
+  steps back to the quiet text button.
+- [ ] **The sheet.** Type a Profile note, then open Times with room: a sheet
+  over the Wrap-up with Next 7 days (chips by day, "(this week only)" where a
+  regular is out) and Most weeks, "With you · Anyone", the rotation line on a
+  rotation day, and the foot. No client's or trainer's name anywhere, and no
+  reason a time is free. Close it: the Profile note is still there.
+- [ ] **Offline.** Wi-Fi off, finish a session: "Can't check the next
+  booking right now.", no prominent door; the sheet (if its door shows)
+  says "Can't tell right now." once.
+
+**My Profile: Your week and My clients**
+
+- [ ] **Your week.** On your own profile, after My standing week: **Your
+  week at {studio}** with clients trained, sessions and session time for
+  this week and last. Check them against Operations → Insights → Hours for
+  the same trainer and weeks: they match. A day with a morning and an
+  evening block of sessions shows two parts under First session to last.
+- [ ] **Your week offline.** Wi-Fi off, open your profile: "Can't read the
+  sessions just now.", never 0.
+- [ ] **My clients.** Right after the Kaizen Roster: coached lately first,
+  "N sessions with you in Journey", "Last in Journey: {date}" (or "Last
+  session" where Journey holds her whole story), the Kaizen mark on roster
+  clients, whole names that wrap in portrait, **Show all N** past 12, and a
+  tap opens the client. While the studio has no cutover date (or it is still
+  ahead) the FileMaker line shows.
+- [ ] **Your own only.** Neither card shows anywhere but your own profile.
 
 ---
 
@@ -1420,4 +1834,8 @@ Screenshot:
 | 17 — The packages screen (Sep 24) | 10 | | |
 | 18 — A cross-train visitor finishes her session (Sep 24) | 5 | | |
 | 19 — A Critical note marks the Hub card (Sep 24) | 7 | | |
-| **Total** | **296** | | |
+| 20 — The voice review and the standing week (Sep 27) | 22 | | |
+| 21 — A new version, picked up safely (Sep 26) | 7 | | |
+| 22 — The voice review follow-up (Sep 27) | 43 | | |
+| 23 — Openings (Sep 27) | 36 | | |
+| **Total** | **404** | | |

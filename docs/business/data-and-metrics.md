@@ -82,7 +82,10 @@ InBody already follows.
 
 **4. Never rank people inside a studio.** Recognition, never ranking. A cohort
 comparison is about the cohort; it does not become a leaderboard of trainers or
-clients. Studios may be compared.
+clients. Studios may be compared, but not on numbers that are wrong: the Network
+tab's ranking was dropped on Sep 27 2026, because its numbers were wrong during
+the migration, and a comparison comes back only on measures with a named minimum
+sample.
 
 **5. A migration-era cohort is partial by definition.** During the FileMaker
 migration most clients' early sessions are not in Journey, so a "first session
@@ -110,13 +113,54 @@ The client codex (`docs/rounds/2026-09-24-client-codex.md`) kept this rule for e
 
 | Field | Written by | Read by |
 | --- | --- | --- |
-| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review) |
+| `studios/{s}/standingWeeks/{uid}.proposed` (+ `proposedAt`, `proposedBy`) | The trainer, on My Profile → My standing week; an agreement also brings it into line with the agreed week | My Profile (the trainer's own editor and status); My Studio → Team (whose week is waiting, and the Review). `proposedBy` is read by the Review's line "Proposed by Sam Lee on Sep 27." (since Sep 27 2026) |
 | `…final` (+ `finalAt`, `finalBy`) | A studio leader, on My Studio → Team → Review → Agree | Team's week check (the next seven days' bookings against it) and its rows; My Profile ("Agreed by … on …", and what a change would change) |
-| `…trainerId`, `trainerName` | Both writes | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+| `…trainerId`, `trainerName` | Both writes (a trainer's own write never changes `trainerId` once the week exists, since Sep 27 2026) | The week check matches bookings by `trainerId` (a booking carries the `trainers/{id}`); the rows name the person |
+| `…away` — `[{id, from, to, note}]` (voice review follow-up, Sep 27 2026) | `setAway`: the trainer on My Profile → My standing week, a leader in Team's Review; no agreement needed, at most six ranges still to come | The week check (skips those days and counts them as `awaySlots`), Team's "{name} is away …" lines, both Away editors, and a colleague's Standing week card |
+| New readers of existing fields (Sep 27 2026) | — | A schedule row's `mindbodyStaffId` is read by the week check, only ever to confirm that a booking IS the trainer's; `trainers/{id}.mindbody.siteId` is read by `staffIdsAt` to decide whether that staff id counts at a studio |
 
 The week check counts nothing and ranks nobody: it says, one sentence per slot, where the bookings differ from the agreed weeks.
 
 Every number the codex shows about her history keeps the migration rules: the Story's since line and the header's session counts are one computation, a FileMaker client is never called new, and a count of her Journey sessions says "in Journey".
+
+## What the voice review follow-up changed (Sep 27 2026)
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `bug_reports/{id}.userId` | The feedback drawer — the filer's Firebase **Auth uid** since Sep 27 2026 (it was the trainer document id, which differs on older accounts) | Trainer Settings' "Your reports" (`useMyFeedback`), under the read rule that compares it to the signed-in uid. Older reports an older account filed under its trainer document id stay unreadable to their author, as they always were |
+| `networks/{id}.relayFocus.setAt` | Operations → Overview → All my studios, on each focus save | Its first reader: the Focus editor's "Set by {name} on {date}." line (it was a write with no reader) |
+
+## What the whole-read record added (Sep 27 2026)
+
+The first piece of Openings, shipped on its own (`docs/rounds/2026-09-27-coverage-record.md`):
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `studios/{s}/scheduleCoverage/{yyyy-mm}.days` — the studio days a pull Mindbody answered in full read, on the day before, the day or after (at most 31 a month, add-only) | The iPad that pulled, straight after a whole pull whose answer held the studio's bookings (an empty answer is swept on by nothing, so it records nothing: `studioAnswered`, a result field of the sync that only `readWhole` reads): the background pull and the header's and calendar's Refresh record today and tomorrow; Operations → Mindbody's Sync records every day it asked for, up to tomorrow (`features/openings/coverage-record.ts`) | The Sunday job's Openings step (`server/openings-step.ts`: which past days count toward Openings' usual week, through `wasReadInFull` in `features/openings/coverage.ts`) and `scripts/openings-report.ts`, since the Openings round. It was written ahead of its reader on purpose, because a day can't be recorded as read in full after the fact, and without the record Openings could call a partly read week "usually has room" |
+
+## What Openings added, and who reads it (Sep 27 2026)
+
+The Openings round (`docs/rounds/2026-09-27-openings.md`). Openings never counts, totals or ranks trainers' free time: its lines run by time, and a mark sits beside the numbers, never in place of them.
+
+| Field | Written by | Read by |
+| --- | --- | --- |
+| `studios/{s}/watch/openings.v` | The Sunday job's step 8 (`server/openings-step.ts`), each Sunday, for every linked studio and the Demo studio | The reader's guard (`readSummary`): any other version reads as "couldn't be read" |
+| `…builtAt` (an ISO string) | The same | The "Built Sunday, Oct 4" line, an old summary's date (more than 8 days), "the first words can come on …", and next Sunday's job (where it closes an agreed week that is gone) |
+| `…tz` | The same (the studio's clock the job used) | **Nothing yet.** The screens use the studio's own clock from the studio document. A write with no reader, on the work list: a screen could say when the studio's clock changed since the summary was built, or the job could stop writing it |
+| `…row` (30) | The same | The grid's rows (the half-hours between the first and last time anyone was booked or in) |
+| `…since` | The same (the first Monday with a counted day; carried from last Sunday when older) | The usual week's since line ("From the weeks Journey has read in full since Oct 5"), and next Sunday's job |
+| `…weeks[].m`, `…weeks[].d` (`n`, `x`, `j`, `q`) | The same | Every "N of M" count; the sheet's "Not counted" lines (`x`: not read in full, or closed or nearly) and "Not judged" lines (`q`: a trainer's week wasn't agreed, or a booking couldn't be placed); the day's usual count for the closure test |
+| `…who` (short key → `{id, n}`) | The same | The names in sentences (someone who has left included), and next Sunday's carry of the agreed weeks |
+| `…agreed` (the agreed weeks in force, kept eight weeks back) | The same | Next Sunday's job only (`historyOf`): it is the only history of agreed weeks there is, so a changed week keeps its past. Who was usually in comes from the cells' `i`, not from here |
+| `…cells` (`s`, `b`, `r`, `c`, `l`, `i`) | The same | Every word on the grid; the time's sheet (booked, rotation, cancellations and late ones, who is usually in, more booked than the agreed weeks have in); Next 7 days' "usually full"; A new regular time; the Wrap-up's Most weeks and whether it shows its door; the Overview's line. `i` is stored only on judged days, so a missing one means "not known" |
+| `studios/{s}/openingsMarks/{weekday-HHMM}.weekday`, `.time` | A time's sheet on Openings (`features/openings/ui/marks-store.ts`), as the person signed in | The rules' id check, and the grid's key for the mark |
+| `…mark` (`full` Always full, `room` Usually has room) | The same | The grid's "Marked"; the time's sheet (the mark first, and whether the bookings disagree); Next 7 days (Always full counts as usually full); A new regular time and the Wrap-up's sheet (Always full is never offered, Usually has room is); whether the Wrap-up shows its door; the Overview's line |
+| `…note` (at most 200) | The same | The time's sheet, in quotation marks under the mark |
+| `…by` (`{id: the Auth uid, name}`) | The same (the rules pin `id` to the caller) | The sheet's "Marked … by Jo" (or "by you"), and A new regular time's offer sentence |
+| `…at` (the server's time) | The same (the rules pin it to the request's time) | The sheet's date, and the 60-day review ("Marked 64 days ago. Still true?") |
+| New readers of existing fields | — | `studios/{s}/standingWeeks/{uid}.final` (up to 21 blocks since this round) is read as who is in by the Sunday job and Next 7 days, and shown on Who's usually in, with `away`. A schedule row's `startTime`, `endTime`, `status`, `cancelledAt`, trainer and staff fields are read by the Sunday job (eight weeks), Next 7 days, "booked again from" (by client) and the coming weeks. The sync lease's `lastDeepScheduleSyncAt` answers "was the month read in full today" (`monthReadToday`) for A new regular time, "booked again from" and the Wrap-up. The Wrap-up's Next card reads her own `schedules` from now on. **Your week** reads the studio's `sessions` (`createdAt`, `hostedAtStudioId`, `trainerId`, `status`, the times) and `studios/{s}.sessionMinutes` and `journeyCutoverDate`; **My clients** reads `clients.trainerTally`, `renewal.coachIds`, `lastSessionDate`, `homeStudioId`, `isActive` and the prior-history fields |
+
+**`lastSessionDate` has two writers.** Journey writes it at Finish and on import, and the Mindbody webhook writes Mindbody's `lastVisited` into it when Mindbody sends one. My clients says "Last in Journey", so a Mindbody visit Journey never logged could be read as a Journey session. Separating the two is a Cloud Functions change and waits on AJ (the round's "Open, for AJ").
 
 ---
 

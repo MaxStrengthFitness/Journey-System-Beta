@@ -35,6 +35,11 @@
  *   calendar entirely (greying it out clutters the calendar); the list is
  *   where it is recorded.
  *
+ * A MINDBODY "UNAVAILABLE" BLOCK (a row whose client name says
+ * "Unavailable") is a trainer's time blocked off, not a booking
+ * (lib/booking-state.ts, isStaffBlock; the Openings round, Sep 27 2026): it
+ * never shows in the list, and never reads as a client's other booking.
+ *
  * WHAT IT REFUSES TO SAY. A cancelled row with no `cancelledAt` (written
  * before the round) is still a cancellation for its day —
  * the list just cannot say when it was noticed. A row moved twice keeps only
@@ -42,6 +47,7 @@
  * of stamps on the booking rather than a log, and it is rare enough.
  */
 import type { ScheduleEntry } from "../../../types";
+import { isStaffBlock } from "../../../lib/booking-state";
 import { formatStudioDate, formatStudioTime, studioDateKey, toDate } from "../../../lib/studio-time";
 import { addDays, weekdayOf } from "../../client-history/model";
 
@@ -134,10 +140,13 @@ const clientKey = (e: ScheduleEntry) => (e.clientId ? `id:${e.clientId}` : `name
  * `movedFromDay` falls in the week — so the same-week inference has what it
  * needs. Rows come back soonest-original-start first.
  */
-export function changesForDay(entries: ScheduleEntry[], day: string, tz?: string): ChangeRow[] {
+export function changesForDay(all: ScheduleEntry[], day: string, tz?: string): ChangeRow[] {
   const weekStart = weekStartOf(day);
   const weekEnd = weekEndOf(day);
   const dayOf = (v: unknown) => studioDateKey(v as Parameters<typeof studioDateKey>[0], tz);
+  // A Mindbody "Unavailable" block is a trainer's time blocked off, not a
+  // booking: it is never a change, and never a client's other booking.
+  const entries = all.filter((e) => !isStaffBlock(e));
 
   // Every live booking in the week, by client, for the inference.
   const liveByClient = new Map<string, ScheduleEntry[]>();

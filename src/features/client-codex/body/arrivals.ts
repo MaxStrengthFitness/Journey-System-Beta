@@ -16,7 +16,8 @@
  *
  * NO NEW READ. The sessions are the journal's own — `useClientJournal`
  * already streams her newest SESSION_SUMMARY_LIMIT session documents (no
- * exercise logs) for the wrap-up notes, and hands them out as
+ * exercise logs) for the session summaries (each session's own note,
+ * `sessions.notes`), and hands them out as
  * `recentSessions`. A failed listener is final, so there is no "Try again".
  *
  * NOT ASKED IS NOT "AS USUAL". An untouched dial is null and counts as not

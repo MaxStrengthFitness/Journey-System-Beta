@@ -67,6 +67,19 @@ plain, dense and calm. This is now too.
 │ ◈ KAIZEN ROSTER                                        12 tracked        │
 │   Progression 5 · Form 4 · Return 3                                      │
 │   ◈ Judy Daus     Next Tue · watching hip depth      [Progression]  ×    │
+├──────────────────────────────────────────────────────────────────────────┤
+│ MY CLIENTS (your own page)                              31 clients       │
+│   COACHED LATELY · THE LAST 60 DAYS                                      │
+│   ◈ Judy Daus   42 sessions with you in Journey ·                        │
+│                 Last visit on file: Sep 25                               │
+├──────────────────────────────────────────────────────────────────────────┤
+│ MY RENEWALS · MY STANDING WEEK (your own page)                           │
+├──────────────────────────────────────────────────────────────────────────┤
+│ YOUR WEEK AT WESTLAKE (your own page)            This week and last      │
+│   Clients trained 7 · Sessions 18                                        │
+│   Session time 9 h (18 sessions × 30 min)                                │
+│   First session to last  24 h 10 min over 4 days                         │
+│   Mon, Sep 28: 6:58 to 9:34 AM, and 4:02 to 7:10 PM (9 sessions).        │
 ├────────────────────────────────┬─────────────────────────────────────────┤
 │ UPCOMING · 6 booked            │ RECENTLY COACHED · last 30 days         │
 └────────────────────────────────┴─────────────────────────────────────────┘
@@ -247,18 +260,110 @@ staff have no Mindbody photo, and that is not a degraded state.
 | `adapters.ts` | schedule/session view models |
 | `useKaizenRoster.ts` | roster mutations |
 | `useRecentlyCoached.ts` | the 30-day fetch |
+| `your-week.ts` / `useYourWeek.ts` / `YourWeek.tsx` | Your week: the rule and its words (tested), the one read, the card (render-tested) |
+| `my-clients.ts` / `MyClients.tsx` | My clients: the rows and their words (tested), the card (render-tested) |
 | `trainer-profile.tokens.css` | light + dark, AA, incl. the kaizen pair |
 
 **My standing week** (voice-review round, Sep 27 2026) is a card on your OWN
-profile, at the studio the iPad is in and only where you work: the hours you
-usually work there and your regulars, proposed to a studio leader. It lives
+profile, at the studio the iPad is in and only where you work: when you
+usually take clients there (up to three blocks a day, since the Openings
+round) and your regulars, proposed to a studio leader. It lives
 in `src/features/standing-week/` (`MyStandingWeek.tsx`), is keyed by the Auth
 uid rather than `trainer.id`, and writes nothing to Mindbody. The rules must
 be deployed before the app (`standingWeeks`), or the card says so.
 
 ---
 
-## 8. Before this ships
+## 8. Your week and My clients (Openings round, Sep 27 2026)
+
+Two cards on your OWN profile, at the studio the iPad is in. Both are the
+trainer's alone: another trainer's profile cannot be opened in the app today
+(`ClientsView`'s `onSelectTrainer` is never called; other profiles were
+trimmed to My Profile on Sep 26), so no leader's or colleague's view of
+either card is built. Leaders already see each trainer's clients and
+training hours on **Operations → Insights → Hours**. If colleagues' profiles
+come back, `docs/rounds/2026-09-27-openings.md` ("My Profile → Your week")
+has the leader variant: clients, sessions and session time, never the
+first-session-to-last span.
+
+### Your week — `your-week.ts`, `useYourWeek.ts`, `YourWeek.tsx`
+
+"Your week at Westlake": this week (Monday to today) and last week (Monday to
+Sunday). AJ: "this isn't like an hour tracker, but it kind of can be used as
+one".
+
+- **The same numbers Hours shows, by construction.** Completed sessions
+  whose `trainerId` is yours (`trainerKeyOf`), placed on a day by
+  `sessionDay`, weeks by `weekStartOf`, session time = sessions × the
+  studio's session length (`sessionMinutesOf`). `your-week.test.ts` checks
+  the count against `hoursTally` itself. Your sessions under an older id
+  (`claimedFromId`) are Hours' separate row too, and are not counted here.
+- **One read, Hours' read.** `fetchSessionsInRange` (the studio's sessions by
+  `createdAt`, on the existing (hostedAtStudioId, createdAt) index) from the
+  day before last Monday, with no end, filtered to you in memory. No new
+  index, no listener. It passes `fromServer: true` (added to the helper for
+  this; everyone else reads as before), so an offline iPad or a refusal says
+  **"Can't read the sessions just now"**, never zero; past the read's cap
+  (1,500) it says **"Too many sessions to count here."**
+- **Why the studio and not `trainerId ==`.** Naming the studio is what the
+  rules can prove (`trainerWorksAt`). A query on `trainerId` alone is allowed
+  only when the sessions carry the reader's sign-in uid, and an older
+  account's carry its trainer document id. `tests/firestore.rules.test.ts`,
+  "Your week's read", holds both halves. (`useRecentlyCoached` still asks by
+  `trainerId`: see the round document's "Seen on the way".)
+- **First session to last** splits a day wherever two sessions are more than
+  `SPAN_BREAK_MINUTES` (90) apart, measured from the latest end so far, and
+  adds the parts: "24 h 10 min over 4 days". It leaves out sessions with no
+  real clock times — logged by hand (the noon placeholder,
+  `isBackfilledSession`), imported (`isLegacySession`), still open, or longer
+  than `MAX_SPAN_SESSION_MINUTES` (180, Insights' `IMPLAUSIBLE_SESSION_MINUTES`)
+  — and says how many it left out. Clock times are the studio's (`zonedHM`),
+  always with AM or PM.
+- **The card says what it is:** it counts sessions logged in Journey, first
+  session to last isn't a timesheet, the studio is still moving off
+  FileMaker (while it has no cutover date, or either week began before it),
+  and, on a tap, why it can differ from Coaching load. AJ, Sep 19: "No payroll
+  on the app for now."
+
+### My clients — `my-clients.ts`, `MyClients.tsx`
+
+Right after the Kaizen Roster. The roster is who you CHOSE to track (shared
+with the team); My clients is who you have TRAINED, for "my off time".
+
+- **No new read.** The studio's client list the app already streams
+  (`useStudioRoster`). "Sessions with you" is the client's `trainerTally`
+  under every id you have carried (`myTrainerIds`: the trainer document's id,
+  the sign-in uid, a claimed placeholder's). Imported sessions tallied only
+  under initials are not claimed. Only clients whose home is this studio
+  (`homeStudioId`, else `studioId`); inactive clients are left out, as Relay
+  → Mine leaves them out.
+- **Order:** coached lately first — the nightly renewal snapshot's
+  `renewal.coachIds`, the list Relay → Mine reads — most sessions with you,
+  then by name; then everyone else you have trained. `MY_CLIENTS_SHOWN` (12)
+  before "Show all N".
+- **The past in Journey's words.** "42 sessions with you in Journey", never
+  "all time", and no "since" date. The last session (`lastSessionDate`) goes
+  reads "Last visit on file: Sep 25". The field has two writers: Journey
+  stamps it at Finish, and the Mindbody webhook copies Mindbody's
+  `lastVisited` into it, a visit Journey may never have logged. So the date
+  is neither "in Journey" nor proof that nothing came after it, and it is
+  hers, not yours (beside "42 sessions with you" a bare "Last session" read
+  as your last one with her). Keeping the writers apart is a Cloud Functions
+  change for AJ; until then no "Last session" claim is made from it. While the studio
+  has no cutover date, or it has not come yet (a cutover set ahead of time
+  is a studio still on FileMaker), the card says older sessions may be
+  missing.
+- **Loading and failed.** The page takes the roster's state as
+  `rosterStatus`. While it is loading, or its read has failed, the card says
+  **"Can't read the client list just now"** and lists nobody — even though
+  the list the page holds is then not empty: it carries a client opened
+  earlier, and after a failed read the booked clients read by id.
+  `rosterStatus` is required (AppContent passes `useStudioRoster`'s), so no
+  caller can leave the card guessing, and only "ready" lists anyone.
+
+---
+
+## 9. Before this ships
 
 1. `firebase deploy --only firestore:indexes` — `sessions(trainerId, createdAt desc)` or the recently-coached list comes back empty.
 2. `firebase deploy --only firestore:rules` — `rollups` and `mindbody` become server-write-only and `kaizenRoster` becomes owner-only.

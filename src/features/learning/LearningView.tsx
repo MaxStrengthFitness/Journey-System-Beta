@@ -4,6 +4,7 @@ import type { Machine, Trainer } from "../../types";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import { auth } from "../../firebase";
 import { CommentsProvider, mentionablePeople, type CommentsContextValue } from "../comments";
+import { useLeaveGuard } from "../unsaved-changes";
 import { WikiSectionsProvider, type WikiSectionsValue } from "../wiki";
 import { CatalogView } from "../catalog";
 import {
@@ -40,6 +41,19 @@ import "./learning.css";
  *     or in search goes through the same openRef.
  * Each section still owns its own route inside itself — the reason recorded
  * in CatalogWikiView's header still holds: one back button, one meaning.
+ *
+ * EVERY DOOR ASKS FIRST (voice review follow-up review, Sep 27 2026)
+ * ------------------------------------------------------------------
+ * A pick in search, a tile on the Overview or a machine chip on an Academy
+ * page REPLACES the page, often inside the same section, where the view does
+ * not change and the app's guarded screen setter has nothing to ask about. So
+ * each of these doors asks the unsaved-changes gate itself (`through`), and
+ * sets its jump only INSIDE the answer: set first and then refused, a jump
+ * would sit here and fire the next time its section opened. "Leave" puts the
+ * studio cards back and closes an open editor before the page moves, so a
+ * draft written for one machine can never be saved onto the next. A jump from
+ * OUTSIDE the tab (`jump`) does not ask again: AppContent's openLearning asked
+ * before it set it.
  */
 
 export type LearningViewId = "learning" | "machine-anatomy" | "academy";
@@ -98,8 +112,23 @@ export function LearningView({
     [authTrainer?.id, authTrainer?.fullName],
   );
 
-  /** The one door into a page. */
-  const openRef = useCallback(
+  /*
+   * Every door below asks first, and sets its jump only once leaving is
+   * agreed (see the header). Search closes BEFORE the question, so "Keep
+   * editing" puts the trainer back on the page they were typing on. A nested
+   * onViewChange inside the held answer does not ask a second time.
+   */
+  const leave = useLeaveGuard();
+  const through = useCallback(
+    (open: () => void) => {
+      setSearchOpen(false);
+      leave(open);
+    },
+    [leave],
+  );
+
+  /** Opens a page, without asking: for a jump someone has already asked about. */
+  const openRefNow = useCallback(
     (ref: LearningRef) => {
       setSearchOpen(false);
       if (ref.kind === "machine") {
@@ -113,28 +142,35 @@ export function LearningView({
     [onViewChange],
   );
 
+  /** The one door into a page, from inside the tab. */
+  const openRef = useCallback(
+    (ref: LearningRef) => through(() => openRefNow(ref)),
+    [through, openRefNow],
+  );
+
+  // From outside the tab: AppContent's openLearning asked before it set this.
   useEffect(() => {
     if (!jump) return;
-    openRef(jump);
+    openRefNow(jump);
     onJumpHandled();
-  }, [jump, openRef, onJumpHandled]);
+  }, [jump, openRefNow, onJumpHandled]);
 
   const openCatalog = useCallback(
-    (groupKey?: string) => {
-      setSearchOpen(false);
-      if (groupKey) setCatalogGroup(groupKey);
-      onViewChange("machine-anatomy");
-    },
-    [onViewChange],
+    (groupKey?: string) =>
+      through(() => {
+        if (groupKey) setCatalogGroup(groupKey);
+        onViewChange("machine-anatomy");
+      }),
+    [through, onViewChange],
   );
 
   const openAcademy = useCallback(
-    (group?: AcademyGroupKey) => {
-      setSearchOpen(false);
-      if (group) setAcademyJump({ group });
-      onViewChange("academy");
-    },
-    [onViewChange],
+    (group?: AcademyGroupKey) =>
+      through(() => {
+        if (group) setAcademyJump({ group });
+        onViewChange("academy");
+      }),
+    [through, onViewChange],
   );
 
   const sections = useMemo<WikiSectionsValue>(
@@ -174,16 +210,19 @@ export function LearningView({
             onOpen={openRef}
             onOpenSearch={() => setSearchOpen(true)}
             onOpenCatalog={openCatalog}
-            onOpenDatabase={() => {
-              setSearchOpen(false);
-              setCatalogScope("msf");
-              onViewChange("machine-anatomy");
-            }}
+            onOpenDatabase={() =>
+              through(() => {
+                setCatalogScope("msf");
+                onViewChange("machine-anatomy");
+              })
+            }
             onOpenAcademy={openAcademy}
-            onNewPage={() => {
-              setAcademyJump({ newPage: true });
-              onViewChange("academy");
-            }}
+            onNewPage={() =>
+              through(() => {
+                setAcademyJump({ newPage: true });
+                onViewChange("academy");
+              })
+            }
           />
         )}
         {view === "machine-anatomy" && (
@@ -196,10 +235,12 @@ export function LearningView({
             onOpenedGroup={() => setCatalogGroup(null)}
             openScope={catalogScope}
             onOpenedScope={() => setCatalogScope(null)}
-            onOpenAcademy={(machineId, focus, machineName) => {
-              setAcademyJump({ machineId, focus, fromLabel: machineName });
-              onViewChange("academy");
-            }}
+            onOpenAcademy={(machineId, focus, machineName) =>
+              through(() => {
+                setAcademyJump({ machineId, focus, fromLabel: machineName });
+                onViewChange("academy");
+              })
+            }
           />
         )}
         {view === "academy" && (
@@ -208,10 +249,12 @@ export function LearningView({
             onClearJump={() => setAcademyJump(null)}
             canManagePages={canWritePages}
             author={author}
-            onOpenMachine={(machineId) => {
-              setCatalogJump(machineId);
-              onViewChange("machine-anatomy");
-            }}
+            onOpenMachine={(machineId) =>
+              through(() => {
+                setCatalogJump(machineId);
+                onViewChange("machine-anatomy");
+              })
+            }
           />
         )}
       </div>

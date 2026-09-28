@@ -2,9 +2,10 @@
  * The profile's one piece of navigation state.
  *
  * Wraps profileNavReducer with the two things a reducer cannot do on its own:
- * the per-client resume (sessionStorage, best-effort), and the context the
- * reducer needs to pick a default segment for a tab that has not been opened
- * yet.
+ * the one-time handoff another screen may have left for this client
+ * (takeStoredLocation: sessionStorage, best-effort, consumed on read — a
+ * client otherwise always opens on Journey), and the context the reducer
+ * needs to pick a default segment for a tab that has not been opened yet.
  *
  * Everything else about where the trainer is — which tab, which segment,
  * which page of Notes & Profile and which card on it — comes out of here, and
@@ -44,10 +45,18 @@ export interface UseProfileNav {
   setClinicalView: (view: ClinicalView) => void;
   /** Open Notes & Profile at a page, and at a card on it. The cross-tab jump. */
   openRecord: (page: RecordPage, anchor?: RecordAnchor) => void;
-  /** The pre-codex door: a dossier section, landed on its page and card. */
+  /**
+   * The pre-codex door: a dossier section, landed on its page and card. No
+   * screen calls it today (profile-nav.render.test.tsx does); it is kept as
+   * the door for a caller that holds only a dossier section id.
+   */
   openSection: (section: DossierSection) => void;
   go: (to: ProfileLocation) => void;
-  /** Accepts any tab id the profile has ever used. See legacyLocation. */
+  /**
+   * Accepts any tab id the profile has ever used. See legacyLocation. No
+   * screen calls it today (profile-nav.render.test.tsx does); it is kept as
+   * the door for a caller that holds only an old tab id.
+   */
   goLegacy: (id: string) => void;
 }
 

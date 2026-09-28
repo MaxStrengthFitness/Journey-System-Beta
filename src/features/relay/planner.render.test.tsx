@@ -151,7 +151,8 @@ describe("My Studio", () => {
     const h = await mount(lead);
     expect(h.textContent).toContain("My Studio");
     expect(h.textContent).toContain("Relay");
-    expect(h.textContent).toContain("Pulse");
+    // The teammates line is "Just now" (it was "Pulse", the living assessment's name, until Sep 27 2026).
+    expect(h.textContent).toContain("Just now");
     expect(h.textContent).toContain("No sessions on your schedule");
     expect(h.textContent).toContain("Next up");
     expect(h.textContent).toContain("Nothing waiting on the Floor.");
@@ -188,7 +189,7 @@ describe("My Studio", () => {
     expect(h.textContent).toContain("The studio's standards");
     expect(h.textContent).toContain("Open loops");
     expect(h.textContent).toContain("The vault");
-    // The studio's staff, under the cockpit (My Studio round).
+    // The studio's staff, under the studio's standards (My Studio round).
     expect(h.textContent).toContain("Solon's staff");
     expect(h.textContent).toContain("Temporary");
     // Team is a section, not a Relay tab: the board's tabs are gone while it shows.

@@ -28,6 +28,7 @@ import { writesForStudioPerRules } from "../learning/permissions";
 import { ContextPanel } from "../relay/board/ContextPanel";
 import { useRelayMaybe } from "../relay/board/RelayContext";
 import { leadsHere } from "../relay/leads";
+import { UnsavedChangesScope, useLeaveScope } from "../unsaved-changes";
 import {
   buildSubmission,
   canOffer,
@@ -39,7 +40,16 @@ import {
   type CatalogSubmissionDoc,
   type RosterSubmissionMarker,
 } from "./floor";
+// Every stylesheet this section draws with, imported here and not left to
+// the shell: Operations → Floor mounts this section without My Studio's
+// shell, so it cannot count on MyStudioView's imports (.pl__frame, .pl__body
+// and the door's .cp from planner.css and relay.css, .ms__* from
+// my-studio.css). css-imports.test.ts holds it.
 import "../admin/admin.css";
+import "../studio-tasks/studio-tasks.css";
+import "../relay/planner.css";
+import "../relay/board/relay.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → MACHINES — the floor, and what the studio has done to it.
@@ -137,6 +147,11 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   }, [rosterEntries, noLongerStandard]);
 
   const [door, setDoor] = useState<Door | null>(null);
+  // The door holds typing (the floor's notes, the studio's settings), and its
+  // own ways out would unmount it or swap its machine: the X, Escape, and a
+  // tap on another machine in the list beside it. Each asks first (a leave
+  // scope, unsaved-changes), as My Studio's sections and the bottom bar do.
+  const doorScope = useLeaveScope();
   const [seeding, setSeeding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -234,8 +249,12 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
   const doorMachine = door ? byId[door.machineId] ?? null : null;
   const doorName = doorMachine?.name ?? doorEntry?.machineId ?? "";
 
+  // Without My Studio's shell (Operations → Floor) nothing bounds this
+  // frame's height, so the machine's door rides the page's own scroller
+  // instead of sitting at the top or the foot of a long list, off-screen
+  // (my-studio.css, .ms__frame--hosted).
   return (
-    <div className="pl__frame">
+    <div className={relay ? "pl__frame" : "pl__frame ms__frame--hosted"}>
       <div className="pl__body adm ms__page" role="tabpanel" id="ms-panel" aria-labelledby="ms-tab-machines">
         {/* ── New in the MSF standard ─────────────────────────────────── */}
         {!loading && gaps.newInStandard.length > 0 && (
@@ -302,7 +321,11 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
               studioName={studioName}
               readOnly={!canLead}
               flags={flags}
-              onOpenMachine={(machineId) => setDoor({ machineId })}
+              onOpenMachine={(machineId) => {
+                // The machine already open changes nothing, so it never asks.
+                if (machineId === door?.machineId) return;
+                doorScope.guard(() => setDoor({ machineId }));
+              }}
               hideHeading
             />
           )}
@@ -320,11 +343,9 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
               <AdminNotice tone="warn">{shared.error}</AdminNotice>
             </div>
           ) : shared.loading ? (
-            <div className="p-4 text-sm" style={{ color: "var(--adm-ink-muted)" }}>Loading…</div>
+            <p className="ms__quiet">Loading…</p>
           ) : sharedEntries.length === 0 ? (
-            <div className="p-4 text-sm" style={{ color: "var(--adm-ink-muted)" }}>
-              No studio has shared a machine yet.
-            </div>
+            <p className="ms__quiet">No studio has shared a machine yet.</p>
           ) : (
             <AdminRows>
               {sharedEntries.map((e) => (
@@ -363,29 +384,34 @@ export function MachinesSection({ authTrainer }: MachinesSectionProps) {
                 title: doorName,
                 tall: true,
                 body: (
-                  <MachineDoor
-                    studioId={studioId}
-                    studioName={studioName}
-                    entry={doorEntry}
-                    machineName={doorName}
-                    catalogName={
-                      doorEntry.source === "catalog" ? (byId[doorEntry.machineId]?.name ?? doorName) : doorName
-                    }
-                    catalogEntry={doorEntry.source === "catalog" ? (catalog as MachineCatalogEntry[]).find((c) => c.id === (doorEntry as { basedOn?: string }).basedOn) ?? null : null}
-                    setting={settingsByMachineId[doorEntry.machineId]}
-                    noteValue={notesByMachineId[doorEntry.machineId]?.notes ?? ""}
-                    upkeepEvents={upkeepEvents}
-                    upkeepStatus={worstStatus(tallyUpkeep(upkeepEvents, doorEntry.machineId, todayKey), DEFAULT_UPKEEP_POLICY)}
-                    canLead={canLead}
-                    canLogUpkeep={canLogUpkeep}
-                    authTrainer={authTrainer ?? null}
-                    openOffer={door.intent === "submit"}
-                  />
+                  <UnsavedChangesScope scope={doorScope}>
+                    {/* Keyed by machine: each machine gets a fresh door, so a
+                        Leave's discard never re-seeds onto the next one. */}
+                    <MachineDoor
+                      key={doorEntry.machineId}
+                      studioId={studioId}
+                      studioName={studioName}
+                      entry={doorEntry}
+                      machineName={doorName}
+                      catalogName={
+                        doorEntry.source === "catalog" ? (byId[doorEntry.machineId]?.name ?? doorName) : doorName
+                      }
+                      catalogEntry={doorEntry.source === "catalog" ? (catalog as MachineCatalogEntry[]).find((c) => c.id === (doorEntry as { basedOn?: string }).basedOn) ?? null : null}
+                      setting={settingsByMachineId[doorEntry.machineId]}
+                      noteValue={notesByMachineId[doorEntry.machineId]?.notes ?? ""}
+                      upkeepEvents={upkeepEvents}
+                      upkeepStatus={worstStatus(tallyUpkeep(upkeepEvents, doorEntry.machineId, todayKey), DEFAULT_UPKEEP_POLICY)}
+                      canLead={canLead}
+                      canLogUpkeep={canLogUpkeep}
+                      authTrainer={authTrainer ?? null}
+                      openOffer={door.intent === "submit"}
+                    />
+                  </UnsavedChangesScope>
                 ),
               }
             : null
         }
-        onClose={() => setDoor(null)}
+        onClose={() => doorScope.guard(() => setDoor(null))}
       />
     </div>
   );
@@ -456,6 +482,7 @@ function MachineDoor({
         <p className="ms__door-sub">Anyone at {studioName} can write here: the pad that sticks, the footstool, what to watch for.</p>
         <StudioNotesCard
           machineId={entry.machineId}
+          machineName={machineName}
           studioId={studioId}
           studioName={studioName}
           value={noteValue}
@@ -703,11 +730,11 @@ function OfferDialog({
           <DialogTitle className="uppercase tracking-tight">Offer {machineName} to the MSF catalog</DialogTitle>
         </DialogHeader>
         <div className="adm flex flex-col gap-3">
-          <p className="text-sm" style={{ color: "var(--adm-ink-muted)" }}>
+          <p className="ms__line ms__line--muted">
             Corporate reviews it. If it is published, {studioName} is moved onto the catalog version so every studio starts from the same machine, and your history comes with it.
           </p>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--adm-ink-muted)" }}>
+            <span className="adm-label">
               A note for corporate (optional)
             </span>
             <AdminTextarea

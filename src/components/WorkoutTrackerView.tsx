@@ -89,6 +89,13 @@ interface PostSessionSnapshot {
   /** A mid-session note the trainer started and never saved (fluidity round). */
   draft: SessionNoteDraft | null;
   /**
+   * The Note for the next trainer Finish wrote, so the Wrap-up can tell its
+   * card apart in the To-file tray: the words as the journal holds them, and
+   * the entry's id once the journal write answers (null until then, and for
+   * good while offline). Null when the End Session box was empty.
+   */
+  nextTrainerNote: { id: string | null; body: string } | null;
+  /**
    * Saved on this iPad, and the database has not answered yet: offline, or a
    * slow connection (session record, Sep 26 2026). The screen says so, and
    * this goes false when the answer comes.
@@ -180,7 +187,7 @@ import { createJournalEntry, useClientJournal } from "../hooks/useClientJournal"
 import { flagLineOf, machineFlags, sessionFlags } from "../features/journey-grid/session-flags";
 import { SessionFlagsSheet } from "../features/journey-grid/SessionFlagsSheet";
 import { formatStudioDate } from "../lib/studio-time";
-import { NOTE_CATEGORY_META } from "../features/client-notes/note-catalog";
+import { NOTE_CATEGORY_META, journalBodyOf } from "../features/client-notes/note-catalog";
 import {
   clearSessionDraft,
   hasDraftText,
@@ -1495,7 +1502,7 @@ export function WorkoutTrackerView({
           );
         } catch (err) {
           console.error("[start] adjustment note did not reach the Journal", err);
-          toastError("The session started, but the routine note could not be saved. Add it from the Journal.");
+          toastError("The session started, but the routine note could not be saved. Add it from Notes & Profile → Notes.");
         }
       }
 
@@ -1875,9 +1882,10 @@ export function WorkoutTrackerView({
 
      So: commitEndSession() writes the session (the one and only call to
      completeWorkoutSession — its counters are increments, so it must never
-     run twice), then the post-session screen reads from a snapshot. The
-     Feel toggle writes on its own the moment it is tapped; the closing
-     note is written when the trainer leaves the screen. */
+     run twice), then the Wrap-up (the post-session screen) reads from a
+     snapshot. Its dose Dial writes on its own the moment it is tapped
+     (savePostSessionDose); its Profile note is written when the trainer
+     leaves the screen (leavePostSession). */
   /* The session a Finish is running for, if one is (session record, Sep 26
      2026). A second tap must not run it twice: its totals are increments. */
   const finishingRef = useRef<string | null>(null);
@@ -1981,7 +1989,6 @@ export function WorkoutTrackerView({
           currentSession,
           selectedClient,
           finalLogs,
-          undefined,
           currentSessionNotes,
           authTrainer,
           clientMachineSettings,
@@ -2017,9 +2024,13 @@ export function WorkoutTrackerView({
          it); it ALSO files to the journal as a Heads up, which is the one
          loudness the briefing shows for the next three weeks. Outside the
          batch, like every journal write. A note only for the profile is the
-         Wrap-up's Profile note, filed at Note loudness. */
-      const wrap = (currentSessionNotes || "").trim();
-      if (wrap) {
+         Wrap-up's Profile note, filed at Note loudness.
+         Being unfiled, it comes back in the Wrap-up's To-file tray, where it
+         can be filed to the profile (AJ, Sep 27 2026) but not discarded. The
+         snapshot carries its words now and its id when the write answers, so
+         the Wrap-up can tell its card apart (isNextTrainerNote). */
+      const nextTrainerNote = journalBodyOf(currentSessionNotes);
+      if (nextTrainerNote) {
         createJournalEntry(
           selectedClient.id,
           contextActiveStudioId || authTrainer?.primaryHomeStudioId || selectedClient.homeStudioId || "",
@@ -2027,14 +2038,24 @@ export function WorkoutTrackerView({
           {
             kind: "general",
             category: null,
-            body: wrap.slice(0, 5000),
+            body: nextTrainerNote,
             importance: "elevated",
             machineId: null,
             focusId: null,
             sessionId: currentSession.id ?? null,
             origin: "post_session",
           },
-        ).catch(() => toastError("Session saved. The note for the next trainer could not reach the journal — add it from Notes."));
+        ).then(
+          (id) => {
+            if (!id) return;
+            setPostSession((ps) =>
+              ps && ps.session.id === sessionId && ps.nextTrainerNote
+                ? { ...ps, nextTrainerNote: { ...ps.nextTrainerNote, id } }
+                : ps,
+            );
+          },
+          () => toastError("Session saved. The note for the next trainer could not reach their briefing — add it from Notes & Profile → Notes."),
+        );
       }
 
       /* The read the post-session screen shows: today against the last
@@ -2077,6 +2098,7 @@ export function WorkoutTrackerView({
         lines,
         journey,
         draft: hasDraftText(noteDraft) ? noteDraft : null,
+        nextTrainerNote: nextTrainerNote ? { id: null, body: nextTrainerNote } : null,
         queued,
       });
       clearSessionDraft(currentSession?.id);
@@ -2153,19 +2175,19 @@ export function WorkoutTrackerView({
           origin: "in_session",
         },
       ),
-      "That note could not be saved — add it from the Journal.",
+      "That note could not be saved — add it from Notes & Profile → Notes.",
     );
     setPostSession((s) => (s ? { ...s, draft: null } : s));
   };
   const dropSessionDraft = () => setPostSession((s) => (s ? { ...s, draft: null } : s));
 
-  /** Leaving the post-session screen files the closing note, if any, and goes home. */
-  const leavePostSession = async (closing?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
+  /** Leaving the Wrap-up files its Profile note, if any, and goes home. */
+  const leavePostSession = async (profileNote?: { noteContent: string; importance: JournalImportance; effectiveUntil?: Date | null }) => {
     const snap = postSession;
     // A draft the trainer neither saved nor dropped is filed, unfiled, on the
     // way out. The To-file tray exists for exactly this; losing it does not.
     if (snap?.draft && hasDraftText(snap.draft)) await fileSessionDraft(snap.draft.body);
-    const body = closing?.noteContent.trim() ?? "";
+    const body = profileNote?.noteContent.trim() ?? "";
     if (snap && body && user?.uid) {
       await noteOrSay(
         createJournalEntry(
@@ -2176,15 +2198,16 @@ export function WorkoutTrackerView({
             kind: "general",
             category: null,
             body: body.slice(0, 5000),
-            importance: closing?.importance ?? "standard",
-            effectiveUntil: closing?.importance && closing.importance !== "standard" ? (closing.effectiveUntil ?? null) : null,
+            importance: profileNote?.importance ?? "standard",
+            effectiveUntil:
+              profileNote?.importance && profileNote.importance !== "standard" ? (profileNote.effectiveUntil ?? null) : null,
             machineId: null,
             focusId: null,
             sessionId: snap.session.id ?? null,
             origin: "post_session",
           },
         ),
-        "Session saved. The profile note could not be saved — add it from Notes.",
+        "Session saved. The profile note could not be saved — add it from Notes & Profile → Notes.",
       );
     }
     setPostSession(null);
@@ -2901,6 +2924,12 @@ export function WorkoutTrackerView({
   if (screen === "post-session" && postSession) {
     return (
       <WrapUpScreen
+        studioName={activeStudio?.name}
+        // Times with room (Openings round): the studio the iPad is in, every
+        // studio (to name a booking elsewhere), and who works here.
+        studio={activeStudio}
+        studios={studios}
+        trainers={trainers}
         client={postSession.client}
         coverage={clientCoverage}
         session={postSession.session}
@@ -2915,6 +2944,7 @@ export function WorkoutTrackerView({
         unsavedDraft={postSession.draft}
         onSaveDraft={fileSessionDraft}
         onDropDraft={dropSessionDraft}
+        nextTrainerNote={postSession.nextTrainerNote}
         savedOnThisIpad={!!postSession.queued}
         machines={floorMachines}
         rightControls={rightControls}
@@ -2998,6 +3028,7 @@ export function WorkoutTrackerView({
     return (
       <NothingOnScreen
         kind={nothingKind(clientId, clientLookup)}
+        studioName={activeStudio?.name}
         trainerInitials={authTrainer?.initials}
         onRetry={onRetryClient}
         onFindClient={() => setView("client-directory")}
@@ -3076,6 +3107,7 @@ export function WorkoutTrackerView({
     return (
       <>
         <BriefingScreen
+          studioName={activeStudio?.name}
           authTrainer={authTrainer}
           client={selectedClient}
           coverage={clientCoverage}

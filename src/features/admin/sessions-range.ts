@@ -14,7 +14,7 @@
  * month.
  */
 import { useEffect, useState } from "react";
-import { Timestamp, collection, getDocs, limit as fsLimit, orderBy, query, where } from "firebase/firestore";
+import { Timestamp, collection, getDocs, getDocsFromServer, limit as fsLimit, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { OperationType, handleFirestoreError } from "../../lib/firestore-errors";
 import type { WorkoutSession } from "../../types";
@@ -28,6 +28,14 @@ export interface SessionsRange {
   /** Omit for "since startMs". */
   endMs?: number;
   max?: number;
+  /**
+   * Only the server's answer (My Profile → Your week, Openings round, Sep 27
+   * 2026). With the persistent cache, a plain read offline is answered by
+   * whatever this iPad last saw; with this set it fails instead, and the
+   * screen says it can't read. Absent or false: the read Hours, Insights and
+   * Exports have always made.
+   */
+  fromServer?: boolean;
 }
 
 export interface SessionsRangeResult {
@@ -35,7 +43,7 @@ export interface SessionsRangeResult {
   truncated: boolean;
 }
 
-export async function fetchSessionsInRange({ studioId, startMs, endMs, max = MAX_SESSIONS_IN_RANGE }: SessionsRange): Promise<SessionsRangeResult> {
+export async function fetchSessionsInRange({ studioId, startMs, endMs, max = MAX_SESSIONS_IN_RANGE, fromServer = false }: SessionsRange): Promise<SessionsRangeResult> {
   const clauses = [
     where("hostedAtStudioId", "==", studioId),
     where("createdAt", ">=", Timestamp.fromMillis(startMs)),
@@ -43,7 +51,8 @@ export async function fetchSessionsInRange({ studioId, startMs, endMs, max = MAX
     orderBy("createdAt", "desc"),
     fsLimit(max),
   ];
-  const snap = await getDocs(query(collection(db, "sessions"), ...clauses));
+  const q = query(collection(db, "sessions"), ...clauses);
+  const snap = await (fromServer ? getDocsFromServer(q) : getDocs(q));
   return {
     sessions: snap.docs.map((d) => ({ ...(d.data() as WorkoutSession), id: d.id })),
     truncated: snap.size >= max,

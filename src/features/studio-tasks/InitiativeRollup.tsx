@@ -1,5 +1,5 @@
 /**
- * THE ROLL-UP — the manager's half of an initiative.
+ * THE ROLL-UP — who has done an initiative, and with which clients.
  *
  * AJ's spec, near enough verbatim: "the studio manager should be able to put,
  * hey, I need you guys to all do at least five of these assessments for the
@@ -9,15 +9,22 @@
  *
  * So the last clause is the whole design brief, and it rules out the obvious
  * implementation. A progress bar reading "34 of 45" is a number a manager can
- * do nothing with. What they can act on is: Dana has done six, Marcus has
- * done none, and here are the six names so I can go and read those reports.
+ * do nothing with. What they can act on is each person's own count, and the
+ * six client names behind it so they can go and read those reports.
+ *
+ * WHERE IT SHOWS: on the initiative's card on Relay's Floor, for every
+ * trainer, and under Team initiatives on My Studio → Team. AJ kept it whole
+ * on the Floor (voice review follow-up, Sep 27 2026: "the hub should have
+ * everyone"), and it is in NAME order everywhere — it used to put whoever
+ * had logged least at the top, which ranked the team in front of itself
+ * (recognition, never ranking). initiatives.ts initiativeProgress sorts it.
  *
  * THREE THINGS THIS DELIBERATELY DOES
  *
  * 1. EVERY TRAINER IS A ROW, including the ones who have logged nothing.
- *    initiativeProgress takes the roster for exactly this reason. A view
- *    built from submissions alone makes non-participation invisible, which is
- *    the one thing the manager opened this to see.
+ *    initiativeProgress takes the roster (everyone who works at the studio)
+ *    for exactly this reason. A view built from submissions alone makes
+ *    non-participation invisible, which is the question the ask is about.
  *
  * 2. THE HEADLINE COUNTS PEOPLE WHO MET THE TARGET, not entries. Nine
  *    trainers doing one each is not "9 of 45 done", it is nought out of nine
@@ -36,7 +43,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, UserRound } from "lucide-react";
 import { watchSubmissions } from "./playbook-mutations";
 import { initiativeProgress } from "./initiatives";
-import type { InitiativeSubmission, InitiativeTarget } from "./initiatives";
+import type { InitiativeProgress, InitiativeSubmission, InitiativeTarget } from "./initiatives";
 
 export interface InitiativeRollupProps {
   studioId: string | null;
@@ -46,6 +53,12 @@ export interface InitiativeRollupProps {
   roster: { id: string; name: string }[];
   /** Highlight this trainer's own row. */
   currentUserId?: string | null;
+  /**
+   * The roll-up, when the screen already listens to this initiative's
+   * submissions (My Studio → Team does, for its people cards). Without it —
+   * on Relay's Floor — the card listens for itself.
+   */
+  progress?: InitiativeProgress;
 }
 
 export function InitiativeRollup({
@@ -54,24 +67,30 @@ export function InitiativeRollup({
   target,
   roster,
   currentUserId,
+  progress: given,
 }: InitiativeRollupProps) {
   const [subs, setSubs] = useState<InitiativeSubmission[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const listen = !given;
 
   /*
    * Live rather than a one-shot read: this is the card a manager leaves open
    * on a Friday afternoon while the floor finishes, and a stale roll-up is
    * the thing that makes someone chase a trainer who already logged it.
+   * One listener per initiative per screen: when the screen passes the
+   * roll-up in, this card opens none of its own (voice review follow-up,
+   * Sep 27 2026 — Team used to open two).
    */
   useEffect(() => {
-    if (!studioId || !requestId) return;
+    if (!listen || !studioId || !requestId) return;
     return watchSubmissions(studioId, requestId, setSubs);
-  }, [studioId, requestId]);
+  }, [listen, studioId, requestId]);
 
-  const progress = useMemo(
+  const own = useMemo(
     () => initiativeProgress(subs, roster, target),
     [subs, roster, target],
   );
+  const progress = given ?? own;
 
   const per = target?.perTrainer ?? 0;
 

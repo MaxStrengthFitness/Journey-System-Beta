@@ -20,11 +20,18 @@
  * what slipped, and a manager should not have to scan a wall of green to
  * find it. That ranks DUTIES, never people. The unanswered asks and the
  * flagged machines were two more panels here; since the voice-review round
- * (Sep 27 2026) they are Team's Open loops (relay/board/TeamCockpit.tsx), one
+ * (Sep 27 2026) they are Team's Open loops (relay/board/OpenLoops.tsx), one
  * list with one rule, beside this one.
+ *
+ * THE SEVEN-DAY GRID READS WITHOUT A MOUSE (voice review follow-up, Sep 27
+ * 2026). Each square is a coloured dot, and its count lived only in a hover
+ * title — which an iPad has no way to show. Every square now carries its
+ * day and count for a screen reader, a one-line legend says what the
+ * colours mean, and tapping a duty opens the count for each day beneath it.
+ * The headings are h4, under Team's "The studio's standards" (h3).
  */
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   CalendarCheck,
   ClipboardList,
@@ -34,13 +41,13 @@ import {
 } from "lucide-react";
 import { formatStudioDate } from "../../lib/studio-time";
 import { useToast } from "../../contexts/ToastContext";
-import { useTaskCompliance } from "./useTaskCompliance";
+import { useTaskCompliance, type ComplianceCell } from "./useTaskCompliance";
 import { useStudioRequests } from "./useStudioRequests";
-import { createRequest } from "./requests";
+import { createRequest, type TaskRequest } from "./requests";
 import { PostInitiativeDialog } from "./PostInitiativeDialog";
 import { InitiativeRollup } from "./InitiativeRollup";
 import { studioRoster } from "./initiatives";
-import type { InitiativeTarget } from "./initiatives";
+import type { InitiativeProgress, InitiativeTarget } from "./initiatives";
 import type { Trainer } from "../../types";
 import { newTemplateId, saveTaskTemplate, type TaskAuthor } from "./mutations";
 import { categoryLabel } from "./types";
@@ -148,6 +155,45 @@ function dayLabel(dateKey: string): string {
   return formatStudioDate(`${dateKey}T12:00:00`, { weekday: "narrow" });
 }
 
+/** "Mon" — the day line under a duty. */
+function shortDayName(dateKey: string): string {
+  return formatStudioDate(`${dateKey}T12:00:00`, { weekday: "short" });
+}
+
+/** "Monday, Sep 14" — what a screen reader says for a day. */
+function longDay(dateKey: string): string {
+  return formatStudioDate(`${dateKey}T12:00:00`, { weekday: "long", month: "short", day: "numeric" });
+}
+
+type CellState = "none" | "flag" | "done" | "miss" | "part";
+
+/** A square's colour: not due, a problem reported, all done, none done, or some. */
+function cellState(c: ComplianceCell): CellState {
+  if (c.planned === 0) return "none";
+  if (c.flagged > 0) return "flag";
+  if (c.done === c.planned) return "done";
+  if (c.done === 0) return "miss";
+  return "part";
+}
+
+/** A square in words: "2 of 3 done, 1 with a problem reported", or "not due". */
+function cellWords(c: ComplianceCell): string {
+  if (c.planned === 0) return "not due";
+  const problem = c.flagged ? `, ${c.flagged} with a problem reported` : "";
+  return `${c.done} of ${c.planned} done${problem}`;
+}
+
+/** A legend square: the grid's own square, beside its words. */
+function Swatch({ state }: { state: CellState }) {
+  return <span className="stm__cell" data-state={state} aria-hidden style={SWATCH} />;
+}
+
+/* Layout only — the look is the grid's own (studio-tasks.css). */
+const SWATCH = { verticalAlign: "-2px", marginRight: 2 } as const;
+const ROW_BUTTON = { display: "block", width: "100%", minHeight: 40 } as const;
+const DAYS_CELL = { textAlign: "left", padding: 0 } as const;
+const DAYS_LINE = { paddingTop: "0.25rem" } as const;
+
 export interface ManagePanelProps {
   studioId: string | null;
   templates: TaskTemplate[];
@@ -164,11 +210,19 @@ export interface ManagePanelProps {
    */
   trainers?: Trainer[];
   /**
-   * The seven-day read, when the caller already has it (the Planner's Team
-   * tab reads the same week for its people cards). Without it the panel
-   * reads for itself.
+   * The seven-day read, when the caller already has it (My Studio → Team
+   * reads the same week for its people cards). Without it the panel reads
+   * for itself.
    */
   compliance?: ReturnType<typeof useTaskCompliance>;
+  /**
+   * The studio's open and aged-out asks, and each open initiative's roll-up
+   * by request id, when the caller already reads them (Team does). Without
+   * them the panel reads for itself — the same rule either way, so the
+   * numbers cannot drift; passing them only saves the second listener.
+   */
+  requests?: { open: TaskRequest[]; expired: TaskRequest[] };
+  initiativeProgress?: ReadonlyMap<string, InitiativeProgress>;
 }
 
 export function ManagePanel({
@@ -180,24 +234,29 @@ export function ManagePanel({
   onEditTask,
   trainers,
   compliance,
+  requests,
+  initiativeProgress,
 }: ManagePanelProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   // Hooks can't be skipped, so an injected read turns this one off (no studio
   // means no query) rather than running a second copy of it.
   const own = useTaskCompliance(compliance ? null : studioId, templates, 7);
   const { rows, dateKeys, loading, error: complianceError } = compliance ?? own;
-  const { open: openRequests, expired } = useStudioRequests(studioId);
+  const ownRequests = useStudioRequests(requests ? null : studioId);
+  const { open: openRequests, expired } = requests ?? ownRequests;
   const [busy, setBusy] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [postingBusy, setPostingBusy] = useState(false);
+  // The duty whose day-by-day count is open under its row.
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   const roster = studioRoster(trainers ?? [], studioId);
 
   /*
-   * The initiatives already on the board. Split out rather than left in with
-   * the rest, because a manager reading "unanswered requests" is chasing
-   * other people's asks, and an initiative is their own — different question,
-   * different list.
+   * The initiatives already on the board, in a panel of their own: an
+   * initiative is the leader's own ask of the whole team, while the asks
+   * nobody has picked up are other people's, and Team lists those in Open
+   * loops — different question, different list.
    */
   const initiatives = openRequests.filter((r) => r.kind === "initiative");
 
@@ -284,7 +343,7 @@ export function ManagePanel({
       <section className="stm__panel">
         <header className="stm__head">
           <ClipboardList size={14} aria-hidden />
-          <h2 className="stm__title">Studio task list</h2>
+          <h4 className="stm__title">Studio task list</h4>
           <span className="stm__hint">
             {studioTemplates.length === 0
               ? "Nothing yet"
@@ -296,8 +355,8 @@ export function ManagePanel({
           <p className="stm__empty">
             Nothing standing yet. These are the duties this studio is held to -
             cleaning, opening and closing, equipment checks, client follow-ups.
-            Trainers see them on the board on the days they fall due, and tick
-            them off there.
+            Trainers see them on Relay's Floor on the days they fall due, and
+            tick them off there.
           </p>
         ) : (
           <ul className="stm__templates">
@@ -368,7 +427,7 @@ export function ManagePanel({
       <section className="stm__panel">
         <header className="stm__head">
           <CalendarCheck size={14} aria-hidden />
-          <h2 className="stm__title">Last 7 days</h2>
+          <h4 className="stm__title">Last 7 days</h4>
           <span className="stm__hint">Worst first</span>
         </header>
 
@@ -382,6 +441,14 @@ export function ManagePanel({
             they get done.
           </p>
         ) : (
+          <>
+          {/* One line saying what the squares mean. */}
+          <p className="stm__empty" data-testid="stm-legend">
+            <Swatch state="done" /> all done · <Swatch state="part" /> some
+            done · <Swatch state="miss" /> none done · <Swatch state="flag" /> a
+            problem reported · <Swatch state="none" /> not due. Tap a duty for
+            each day's count.
+          </p>
           <div className="stm__scroll">
             <table className="stm__grid">
               <thead>
@@ -390,7 +457,7 @@ export function ManagePanel({
                     Task
                   </th>
                   {dateKeys.map((d) => (
-                    <th key={d} scope="col" title={d}>
+                    <th key={d} scope="col" title={d} aria-label={longDay(d)}>
                       {dayLabel(d)}
                     </th>
                   ))}
@@ -398,51 +465,62 @@ export function ManagePanel({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.template.id}>
-                    <th scope="row" className="stm__grid-name">
-                      <span className="stm__grid-title">{r.template.title}</span>
-                      <span className="stm__grid-sub">
-                        {categoryLabel(r.template.category, categories)}
-                      </span>
-                    </th>
-                    {r.cells.map((c) => {
-                      const state =
-                        c.planned === 0
-                          ? "none"
-                          : c.flagged > 0
-                            ? "flag"
-                            : c.done === c.planned
-                              ? "done"
-                              : c.done === 0
-                                ? "miss"
-                                : "part";
-                      return (
-                        <td key={c.dateKey}>
-                          <span
-                            className="stm__cell"
-                            data-state={state}
-                            title={
-                              c.planned === 0
-                                ? "Not due"
-                                : `${c.done} of ${c.planned} done${
-                                    c.flagged ? `, ${c.flagged} flagged` : ""
-                                  }`
-                            }
-                          />
+                {rows.map((r) => {
+                  const open = openRow === r.template.id;
+                  const daysId = `stm-days-${r.template.id}`;
+                  return (
+                    <Fragment key={r.template.id}>
+                      <tr>
+                        <th scope="row" className="stm__grid-name">
+                          {/* The duty is the tap: each day's count, one
+                              tap away rather than behind a hover. */}
+                          <button
+                            type="button"
+                            className="stm__template-open"
+                            style={ROW_BUTTON}
+                            aria-expanded={open}
+                            aria-controls={open ? daysId : undefined}
+                            onClick={() => setOpenRow(open ? null : r.template.id)}
+                          >
+                            <span className="stm__grid-title">{r.template.title}</span>
+                            <span className="stm__grid-sub">
+                              {categoryLabel(r.template.category, categories)}
+                            </span>
+                          </button>
+                        </th>
+                        {r.cells.map((c) => (
+                          <td key={c.dateKey}>
+                            <span
+                              className="stm__cell"
+                              data-state={cellState(c)}
+                              role="img"
+                              aria-label={`${longDay(c.dateKey)}: ${cellWords(c)}`}
+                              title={cellWords(c)}
+                            />
+                          </td>
+                        ))}
+                        <td className="stm__rate">
+                          {/* A count, not a rate: "2 of 3" says how little it
+                              rests on; "67%" does not (Planner rework). */}
+                          {r.dueDays === 0 ? "—" : `${r.doneDays} of ${r.dueDays}`}
                         </td>
-                      );
-                    })}
-                    <td className="stm__rate">
-                      {/* A count, not a rate: "2 of 3" says how little it
-                          rests on; "67%" does not (Planner rework). */}
-                      {r.dueDays === 0 ? "—" : `${r.doneDays} of ${r.dueDays}`}
-                    </td>
-                  </tr>
-                ))}
+                      </tr>
+                      {open && (
+                        <tr id={daysId}>
+                          <td colSpan={dateKeys.length + 2} style={DAYS_CELL}>
+                            <p className="stm__empty" style={DAYS_LINE}>
+                              {r.cells.map((c) => `${shortDayName(c.dateKey)}: ${cellWords(c)}`).join(" · ")}
+                            </p>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
@@ -455,7 +533,7 @@ export function ManagePanel({
       <section className="stm__panel">
         <header className="stm__head">
           <Target size={14} aria-hidden />
-          <h2 className="stm__title">Team initiatives</h2>
+          <h4 className="stm__title">Team initiatives</h4>
           <span className="stm__hint">
             {roster.length > 0
               ? `${roster.length} trainer${roster.length === 1 ? "" : "s"}`
@@ -490,6 +568,7 @@ export function ManagePanel({
                   target={r.target}
                   roster={roster}
                   currentUserId={author?.id ?? null}
+                  progress={initiativeProgress?.get(r.id)}
                 />
               </li>
             ))}
@@ -512,7 +591,7 @@ export function ManagePanel({
         <section className="stm__panel">
           <header className="stm__head">
             <Clock size={14} aria-hidden />
-            <h2 className="stm__title">Aged out</h2>
+            <h4 className="stm__title">Aged out</h4>
             <span className="stm__hint">Nobody got to these</span>
           </header>
           {/* Off the board, not out of the record. The difference between an

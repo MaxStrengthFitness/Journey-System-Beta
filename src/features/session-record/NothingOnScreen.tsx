@@ -18,6 +18,7 @@ export function NothingOnScreen({
   rightControls,
   trainerDropdown,
   onStudioClick,
+  studioName,
 }: {
   kind: NothingKind;
   trainerInitials?: string;
@@ -27,6 +28,8 @@ export function NothingOnScreen({
   rightControls?: ReactNode;
   trainerDropdown?: ReactNode;
   onStudioClick?: () => void;
+  /** The studio the app is in, for the header. */
+  studioName?: string;
 }) {
   const { theme } = useTheme();
   const words = nothingWords(kind);
@@ -42,6 +45,7 @@ export function NothingOnScreen({
       <AppHeader
         variant={theme === "light" ? "light" : "dark"}
         trainerInitials={trainerInitials}
+        studioName={studioName}
         rightControls={rightControls}
         trainerDropdown={trainerDropdown}
         onStudioClick={onStudioClick}

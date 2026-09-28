@@ -9,7 +9,7 @@ import { useRelay } from "./RelayContext";
 import { VAULT_KIND_LABEL, blankVaultDraft, sortVault, vaultFields, vaultFromDoc, vaultProblem, type VaultDraft, type VaultEntry, type VaultKind } from "./vault";
 
 /**
- * THE VAULT — leadership notes on the Team tab. Model in vault.ts.
+ * THE VAULT — leadership notes on My Studio → Team. Model in vault.ts.
  * Read and written only by the studio's leaders (firestore.rules).
  */
 function vaultRef(studioId: string) {

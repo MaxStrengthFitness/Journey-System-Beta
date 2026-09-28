@@ -1090,31 +1090,70 @@ service cloud.firestore {
     }
 
     /* THE STANDING WEEK (voice-review round, Sep 27 2026) -- a trainer's
-       usual week at a studio: the hours they work and their regulars. The
-       trainer PROPOSES it on My Profile, a leader AGREES it on My Studio ->
-       Team, and the app checks the coming week's bookings against the agreed
-       week. Nothing about it is ever written to Mindbody.
+       usual week at a studio: when they take clients (`hours`, the blocks)
+       and their regulars. The trainer PROPOSES it on My Profile, a leader
+       AGREES it on My Studio -> Team, and the app checks the coming week's
+       bookings against the agreed week. Nothing about it is ever written to
+       Mindbody.
        Shape only; limits match src/features/standing-week/week.ts, and who
        may write what is in the match block. The rows of the two lists are
        not checked one by one (a rule cannot loop): the app normalizes every
-       week it reads, leaving a malformed row out rather than guessing. */
+       week it reads, leaving a malformed row out rather than guessing.
+       `hours` holds the BLOCKS of when the trainer takes clients: three a
+       day, 21 a week (Openings round, Sep 27 2026; was 14, two a day). Only
+       the list's length is checked, so raising it costs no expressions from
+       the 1,000 a request may evaluate (the budget test in "the standing
+       week" writes 21 for every leader it measures). */
     function standingWeekShapeValid(w) {
       return w == null || (w is map
           && w.keys().hasOnly(['hours', 'regulars', 'note'])
-          && w.hours is list && w.hours.size() <= 14
+          && w.hours is list && w.hours.size() <= 21
           && w.regulars is list && w.regulars.size() <= 80
           && (!('note' in w) || (w.note is string && w.note.size() <= 500)));
+    }
+
+    /* AWAY (voice review follow-up, Sep 27 2026) -- the days a trainer is
+       away, beside the week: [{ id, from, to, note }], studio days as
+       "YYYY-MM-DD", both ends included. It needs no agreement, so the
+       trainer writes it as well as the leaders. Limits match
+       src/features/standing-week/week.ts (MAX_AWAY, MAX_AWAY_NOTE). A rule
+       cannot loop, so the six places are checked one by one; a range past
+       the list's end is not there to check. Six, not more, and each check
+       lean, because a request may evaluate at most 1,000 expressions: at
+       ten ranges a leader's write already ran out (measured in the
+       emulator, Sep 27 2026). A check that errors (keys() of a non-map,
+       matches() of a non-string) refuses the write just as `false` does.
+       Six ranges still to come is plenty: past ones drop off as it saves. */
+    function standingWeekAwayRangeValid(r) {
+      return r.keys().hasOnly(['id', 'from', 'to', 'note'])
+          && r.from.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && r.to.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && r.from <= r.to
+          && r.id.matches('^[A-Za-z0-9_-]{1,40}$')
+          && r.get('note', '').matches('(?s).{0,200}');
+    }
+
+    function standingWeekAwayAt(a, i) {
+      return a.size() <= i || standingWeekAwayRangeValid(a[i]);
+    }
+
+    function standingWeekAwayValid(a) {
+      return a == null || (a is list && a.size() <= 6
+          && standingWeekAwayAt(a, 0) && standingWeekAwayAt(a, 1)
+          && standingWeekAwayAt(a, 2) && standingWeekAwayAt(a, 3)
+          && standingWeekAwayAt(a, 4) && standingWeekAwayAt(a, 5));
     }
 
     function standingWeekValid(d, studioId, trainerUid) {
       return d.keys().hasOnly(['studioId', 'trainerUid', 'trainerId', 'trainerName',
                                'proposed', 'proposedAt', 'proposedBy',
-                               'final', 'finalAt', 'finalBy'])
+                               'final', 'finalAt', 'finalBy', 'away'])
           && d.studioId == studioId && d.trainerUid == trainerUid
           && d.trainerId is string && d.trainerId.size() > 0 && d.trainerId.size() <= 128
           && d.trainerName is string && d.trainerName.size() <= 120
           && standingWeekShapeValid(d.get('proposed', null))
-          && standingWeekShapeValid(d.get('final', null));
+          && standingWeekShapeValid(d.get('final', null))
+          && standingWeekAwayValid(d.get('away', null));
     }
 
     /* A stamp names whoever wrote it (the Auth uid), and its time is the
@@ -1130,6 +1169,51 @@ service cloud.firestore {
           && (!changed.hasAny(['finalBy']) || standingWeekStampValid(d.get('finalBy', null)))
           && (!changed.hasAny(['proposedAt']) || d.get('proposedAt', null) == null || d.proposedAt == request.time)
           && (!changed.hasAny(['finalAt']) || d.get('finalAt', null) == null || d.finalAt == request.time);
+    }
+
+    /* THE WHOLE-READ RECORD (Sep 27 2026) -- which studio days a pull that
+       Mindbody answered in full read, one document per month:
+       { days: ["2026-10-01", ...] }. Limits match
+       src/features/openings/coverage.ts. A rule cannot loop, so each day is
+       held to the month by naming the month's 31 possible days and asking
+       the list to hold only those (a "2026-10-31" in September, or anything
+       that isn't a day, refuses the write), with no day twice. */
+    /* Who may add to it: the same people as writesForStudio (administrators,
+       franchise owners, the studio's leaders with the grant, and everyone
+       who works there), with the role and the trainer document resolved
+       ONCE and passed down, as teamJobLeaderAllowed does. writesForStudio
+       itself asks getRole() up to eight times: with it, a guest trainer's
+       write ran out of the 1,000-expression budget in the emulator, and
+       came back PERMISSION_DENIED (Sep 27 2026). Measured with the
+       emulator's rule-coverage report, the guest's write stopped at 2,107
+       evaluations and a home trainer's full month took 2,069, just under;
+       resolved once, the costliest write (a trainer with the grant adding a
+       month's 31st day) takes 907, and a full month by a guest 831. The
+       tests hold a full month, and two in one batch, for every writer. */
+    function coverageWriterAllowed(studioId) {
+      let r = getRole();
+      let t = callerTrainer();
+      return roleIsSuper(r) || roleIsFranchise(r)
+          || trainerWorksAt(t, studioId) || trainerLeads(r, t, studioId);
+    }
+
+    function coverageMonthDays(month) {
+      return [month + '-01', month + '-02', month + '-03', month + '-04', month + '-05',
+              month + '-06', month + '-07', month + '-08', month + '-09', month + '-10',
+              month + '-11', month + '-12', month + '-13', month + '-14', month + '-15',
+              month + '-16', month + '-17', month + '-18', month + '-19', month + '-20',
+              month + '-21', month + '-22', month + '-23', month + '-24', month + '-25',
+              month + '-26', month + '-27', month + '-28', month + '-29', month + '-30',
+              month + '-31'];
+    }
+
+    function coverageValid(month, d) {
+      return month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+          && d.keys().hasOnly(['days'])
+          && d.days is list
+          && d.days.size() > 0 && d.days.size() <= 31
+          && d.days.toSet().size() == d.days.size()
+          && d.days.hasOnly(coverageMonthDays(month));
     }
 
     /* MACHINE CARE (Relay, Sep 2026). Shape only; limits match
@@ -2028,6 +2112,75 @@ service cloud.firestore {
         allow delete: if isSuperAdmin();
       }
 
+      // WHICH DAYS JOURNEY READ IN FULL (the whole-read record, Sep 27 2026;
+      // docs/rounds/2026-09-27-coverage-record.md). One document per month,
+      // scheduleCoverage/{yyyy-mm}: the studio days a pull that Mindbody
+      // answered in full read on the day before, the day, or after. The iPad
+      // that pulled adds them (features/openings/coverage-record.ts) with an
+      // add-to-list merge, so two iPads never overwrite each other; anyone
+      // who works at the studio may, administrators and franchise owners
+      // too (a back-read from Operations -> Mindbody). ADD-ONLY: an update
+      // keeps every day already there, and the app never deletes a month
+      // (a wrong record is mended by hand, never from an iPad). Read by the
+      // studio's people, as the standing weeks are; its readers to come are
+      // the Sunday job (Admin SDK) and Openings.
+      match /scheduleCoverage/{month} {
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create: if isAuthenticated() && coverageWriterAllowed(studioId)
+                      && coverageValid(month, request.resource.data);
+        allow update: if isAuthenticated() && coverageWriterAllowed(studioId)
+                      && coverageValid(month, request.resource.data)
+                      && request.resource.data.days.hasAll(resource.data.days);
+        allow delete: if false;
+      }
+
+      // MARKS ON A TIME (Openings round, Sep 27 2026;
+      // docs/rounds/2026-09-27-openings.md, "Marks: how a person disagrees"
+      // and the data, part 3). One document per half-hour of the week,
+      // openingsMarks/{weekday-HHMM} ("1-0800" is Monday 8:00): a person's
+      // word on that time, "full" (Always full) or "room" (Usually has room),
+      // with an optional note of up to 200 characters. A mark sits beside the
+      // numbers on Openings and never replaces them; it comes up for review
+      // after 60 days, and nothing drops on its own.
+      //
+      // Anyone who works at the studio (and franchise owners and
+      // administrators) reads the marks, and sets, changes, keeps or removes
+      // one, as the notes rule has it: any trainer may close a thread and any
+      // trainer may reopen it. Always AS THEMSELVES: `by.id` must be the
+      // caller's Auth uid and `at` this write's time, so a mark can be neither
+      // put under someone else's id nor backdated. `by.name` is the app's copy
+      // of the signer's name, checked only for length, as the standing week's
+      // stamps are (pinning it would cost budget here and refuse the admins
+      // who have no trainer document). A change, and a Keep at the review,
+      // sign the mark again as the person making them. The id is
+      // the weekday and the time the document holds, so one time has one mark.
+      // Limits match src/features/openings/marks.ts (`markForWrite`, written
+      // by openings/ui/marks-store.ts).
+      //
+      // Who may write asks coverageWriterAllowed: the same people as
+      // writesForStudio, with the caller resolved once (the whole-read
+      // record's function; its answer is "works here, or runs it, or above").
+      match /openingsMarks/{markKey} {
+        function openingsMarkValid(d) {
+          return d.keys().hasOnly(['weekday', 'time', 'mark', 'note', 'by', 'at'])
+              && d.keys().hasAll(['weekday', 'time', 'mark', 'by', 'at'])
+              && d.weekday is int && d.weekday >= 1 && d.weekday <= 6
+              && d.time is string && d.time.matches('^([01][0-9]|2[0-3]):[03]0$')
+              && markKey == string(d.weekday) + '-' + d.time.replace(':', '')
+              && d.mark in ['full', 'room']
+              && (!('note' in d) || (d.note is string && d.note.size() <= 200))
+              && d.by is map && d.by.keys().hasOnly(['id', 'name'])
+              && d.by.id == request.auth.uid
+              && d.by.name is string && d.by.name.size() <= 120
+              && d.at == request.time;
+        }
+
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create, update: if isAuthenticated() && coverageWriterAllowed(studioId)
+                              && openingsMarkValid(request.resource.data);
+        allow delete: if isAuthenticated() && coverageWriterAllowed(studioId);
+      }
+
       // RENEWAL SETTINGS (Renewals round, Sep 2026).
       //
       //   config/renewals      the studio's thresholds and package table.
@@ -2162,13 +2315,15 @@ service cloud.firestore {
 
       /*
        * THE STANDING WEEK (voice-review round, Sep 27 2026) -- one document
-       * per trainer at this studio, keyed by their Auth uid: the hours they
-       * work and their regulars. Read by the studio's people, because the
-       * point is that a team knows when each of them works. The trainer
-       * PROPOSES their own week -- the proposal fields only, never the agreed
-       * week. The studio's leaders (the grant counts), franchise owners and
-       * administrators AGREE it, change it, or remove it. Journey checks the
-       * coming week's bookings against it and writes nothing to Mindbody.
+       * per trainer at this studio, keyed by their Auth uid: when they take
+       * clients (`hours`, the blocks) and their regulars. Read by the
+       * studio's people, because the point is that a team knows when each of
+       * them takes clients. The trainer PROPOSES their own week -- the
+       * proposal fields only, never the agreed week -- and sets the days they
+       * are away (`away`, no agreement needed). The studio's leaders (the
+       * grant counts), franchise owners and administrators AGREE it, change
+       * it, set the days away, or remove it. Journey checks the coming week's
+       * bookings against it and writes nothing to Mindbody.
        */
       match /standingWeeks/{trainerUid} {
         allow read: if isAuthenticated() && writesForStudio(studioId);
@@ -2180,7 +2335,7 @@ service cloud.firestore {
                            (
                              request.auth.uid == trainerUid
                              && request.resource.data.keys().hasOnly(['studioId', 'trainerUid', 'trainerId',
-                                  'trainerName', 'proposed', 'proposedAt', 'proposedBy'])
+                                  'trainerName', 'proposed', 'proposedAt', 'proposedBy', 'away'])
                              && trainerWorksAt(callerTrainer(), studioId)
                            )
                         || teamJobLeaderAllowed(studioId)
@@ -2193,8 +2348,12 @@ service cloud.firestore {
                       && (
                            (
                              request.auth.uid == trainerUid
+                             // Not trainerId: once the week exists it stays
+                             // tied to the trainer the bookings are matched
+                             // on (voice review follow-up). Leaders may still
+                             // set it from the roster as they agree.
                              && request.resource.data.diff(resource.data).affectedKeys()
-                                  .hasOnly(['trainerId', 'trainerName', 'proposed', 'proposedAt', 'proposedBy'])
+                                  .hasOnly(['trainerName', 'proposed', 'proposedAt', 'proposedBy', 'away'])
                              && trainerWorksAt(callerTrainer(), studioId)
                            )
                         || teamJobLeaderAllowed(studioId)

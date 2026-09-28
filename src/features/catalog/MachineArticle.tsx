@@ -198,7 +198,9 @@ export function MachineArticle({
           {extraBadges}
           {machine.rosterStatus === "maintenance" && <WikiBadge tone="warn">Out of service</WikiBadge>}
           {machine.rosterStatus === "inactive" && <WikiBadge tone="neutral">Inactive</WikiBadge>}
-          {isFlagged && <WikiBadge tone="alert">Flagged by a trainer</WikiBadge>}
+          {/* A flag is a caution: the app's plum, as "Out of service" is.
+              Crimson is a Critical note's and a set's that needs work. */}
+          {isFlagged && <WikiBadge tone="warn">Flagged by a trainer</WikiBadge>}
           {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
             <WikiBadge tone="warn">
               {upkeepStatus === "overdue" ? "Cleaning overdue" : "Cleaning due"}
@@ -214,7 +216,7 @@ export function MachineArticle({
           footer={
             isFlagged || upkeepStatus === "overdue" || upkeepStatus === "due" ? (
               <>
-                {isFlagged && <WikiBadge tone="alert">Flagged — see Upkeep</WikiBadge>}
+                {isFlagged && <WikiBadge tone="warn">Flagged — see Upkeep</WikiBadge>}
                 {(upkeepStatus === "due" || upkeepStatus === "overdue") && (
                   <WikiBadge tone="warn">
                     {upkeepStatus === "overdue" ? "Overdue" : "Due"}
@@ -389,7 +391,8 @@ const MAX_VISIBLE = 4;
 
 /**
  * Never collapsible, and never inside a <WikiSection> either — it gets its own
- * amber card directly under the header so it reads before anything else.
+ * caution card (plum) directly under the header so it reads before anything
+ * else.
  *
  * The one concession to length: past MAX_VISIBLE the rest disclose behind a
  * count. The FIRST ones are never hidden, so the trade is "some warnings need

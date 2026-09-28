@@ -530,8 +530,12 @@ export function ClientProfileView({
    * four here — Journey, Programming, Notes & Profile, Activity Archive. The
    * old single `activeTab` string cannot express the new shape, because two
    * of the four carry segments of their own, so where the trainer is now
-   * lives in one reducer: see features/client-profile/profile-nav.ts. It also
-   * resumes per client, which is why walking to the Journey grid and back
+   * lives in one reducer: see features/client-profile/profile-nav.ts. A client
+   * always opens on Journey, unless another screen hands off a location once
+   * (openProfileAt / takeStoredLocation: the Hub's Past sessions, Relay's
+   * Pulse and InBody tasks, Back to Reports, Operations -> Machine fit).
+   * Inside the profile the reducer remembers Programming's segment
+   * (lastProgramming), which is why walking to the Journey grid and back
    * lands on the routine you were reading rather than resetting to A.
    *
    * UNSAVED CHANGES (Sep 24 2026): the tabs unmount when hidden, so a tab
@@ -559,7 +563,7 @@ export function ClientProfileView({
 
   /*
    * NOTES & PROFILE STAYS MOUNTED after its first visit (client codex, Sep
-   * 2026) — the All Machines and Trends precedent. Returning to the tab
+   * 2026) — the All Machines, Setup and Deep Dive precedent. Returning to the tab
    * re-reads nothing, and an unsaved edit survives a trip to Journey (the
    * codex's Save bar says where it is). Stamped with the client, so another
    * client's profile starts unmounted again. Worked out during render, so the
@@ -1109,7 +1113,8 @@ export function ClientProfileView({
    * NOTES & PROFILE (the client codex) — what it is handed from here.
    *
    * The doors that leave the tab belong to this view, which owns the other
-   * tabs and the app's view: the Planner, the archive's reports, a machine,
+   * tabs and the app's view: Relay (the old Planner door, `onOpenPlanner`),
+   * the archive's reports, a machine,
    * the Set-up, and the Migration Hub. The Hub switches to Journey first, as
    * the old record's did, because imported sessions land there. (The filed
    * reports are the Activity Archive's shelf, below; the codex opens none.)
@@ -1323,8 +1328,8 @@ export function ClientProfileView({
                     Profile Setup Needed
                   </p>
                   <p className="text-[11px] font-bold opacity-80 uppercase tracking-widest mt-0.5">
-                    Set up their routine in the 'Equipment' tab or head to
-                    profile details to build their profile.
+                    Set up their routine in Programming, and their details
+                    in Notes &amp; Profile.
                   </p>
                 </div>
               </div>
@@ -1547,8 +1552,19 @@ export function ClientProfileView({
             ever scrolling sideways — and four tracks is roomier than seven
             was: ~208px each at 834pt portrait, where "NOTES & PROFILE" fits
             at 13px with space to spare. `truncate` is the belt to that
-            suspender. The sub-toggle inside Programming and the Activity Archive
-            is the level below this one; see features/client-profile. */}
+            suspender. The level below this one is the one sub-toggle
+            (ProfileSubnav) three of the tabs carry: Programming's four
+            segments, Notes & Profile's seven pages and the Activity Archive's
+            four segments; see features/client-profile.
+
+            The row is PROFILE_TABS and nothing else, in AJ's order (by
+            depth; don't reorder, merge or add a tab without asking).
+            `grid-cols-4` is a literal because Tailwind cannot build a class
+            name at runtime; ClientProfileView.tabs.test.ts holds it equal to
+            PROFILE_TABS.length, and holds one trigger per entry and the four
+            panels below in the same order. The chosen tab's look comes from
+            the TabsTrigger wrapper's `data-active` styling (Base UI marks the
+            chosen tab with data-active, never data-state). */}
         <div className="mb-2 w-full">
           <div className="w-full pb-0.5">
             <TabsList className="bg-slate-100 dark:bg-slate-800/60 p-1 grid grid-cols-4 w-full h-12! rounded-xl gap-1">
@@ -1557,7 +1573,7 @@ export function ClientProfileView({
                   key={tab.id}
                   value={tab.id}
                   title={tab.blurb}
-                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-950 data-[state=active]:text-[#F06C22] dark:data-[state=active]:text-[#F06C22] data-[state=active]:shadow-sm transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
+                  className="relative w-full h-10! px-1 sm:px-2 font-display italic text-[11px] sm:text-[13px] font-bold uppercase tracking-wide sm:tracking-widest text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-all text-center cursor-pointer select-none rounded-lg truncate flex items-center justify-center"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -1745,12 +1761,13 @@ export function ClientProfileView({
           )}
         </TabsContent>
 
-        {/* ---------------- 4 · CLINICAL HISTORY ---------------- */}
-        {/* Clinical and History, which were two tabs over the same past.
-            Calendar and Sessions are promoted out of History's own switch
-            into this tab's sub-toggle, so there is one switch on the screen
-            rather than one inside another. Nothing in Trends loads until the
-            trainer presses Generate, exactly as before. No `overflow-y-auto`
+        {/* ---------------- 4 · ACTIVITY ARCHIVE ---------------- */}
+        {/* Clinical and History, which were two tabs over the same past
+            (the tab was Clinical History until Sep 16; its id is still
+            `clinical`). Calendar and Sessions are promoted out of History's
+            own switch into this tab's sub-toggle, so there is one switch on
+            the screen rather than one inside another. Nothing in the Deep
+            Dive (view id `trends`) loads until the trainer asks for it. No `overflow-y-auto`
             and no bounded height here — the PAGE scrolls, which is what lets
             the year and month headers stay pinned while you read. */}
         <TabsContent

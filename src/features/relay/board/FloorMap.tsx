@@ -29,7 +29,7 @@ import { clearMachineFlag, flagMachine, recordCare, useMachineCare } from "./mac
  * Context Panel: Wiped, Deep cleaned, Flag — and today's cleaning rows for
  * that machine, so a wipe recorded here also ticks the shift strip.
  *
- * Grouping and accents follow the Catalog (movement pattern, --cat-accent-*),
+ * Grouping and accents follow the Catalog (movement pattern, --wk-cat-* in wiki.tokens.css),
  * per AJ's standing direction that machine surfaces match it.
  */
 export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActions }) {

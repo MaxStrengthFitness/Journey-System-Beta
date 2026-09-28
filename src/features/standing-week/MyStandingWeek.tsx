@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { studioTodayKey } from "../../lib/studio-time";
 import type { Client, Trainer } from "../../types";
 import { useDirtyForm } from "../admin/useDirtyForm";
+import { AwayEditor } from "./AwayEditor";
 import { formOf, myWeekSentence, weekChanges, weekOfForm, type WeekForm } from "./present";
-import { proposeWeek, type WeekOwner, type WeekSigner } from "./store";
+import { proposeWeek, setAway, type WeekOwner, type WeekSigner } from "./store";
 import { useStandingWeek } from "./useStandingWeeks";
 import { weekStatus } from "./week";
 import { WeekEditor } from "./WeekEditor";
@@ -14,11 +16,21 @@ import "./standing-week.css";
  * AJ: "Trainers should propose and set their own ideal week via my profile
  * while leaders review and finalize those standings with newly focused team
  * section." The trainer's own profile only, at the studio the iPad is in:
- * the hours they usually work here and their regulars. Saving PROPOSES it;
- * a studio leader agrees it on My Studio → Team. Nothing goes to Mindbody.
+ * when they usually take clients here and their regulars. Saving PROPOSES
+ * it; a studio leader agrees it on My Studio → Team. Nothing goes to
+ * Mindbody.
+ *
+ * The card keeps its name, My standing week; the editor inside it is headed
+ * "When I usually take clients" (Openings round, Sep 27 2026), because a
+ * trainer paid per client doesn't work "hours" and the blocks are what
+ * Openings reads as who is in.
  *
  * Styled as one of the profile's own cards (trainer-profile.css); the editor
  * inside is the one Team uses too.
+ *
+ * Below it, Away (voice review follow-up): the days the trainer is away,
+ * saved as each range is added or removed. It needs no agreement and no
+ * proposal, and the week check leaves those days alone.
  */
 
 export interface MyStandingWeekProps {
@@ -36,10 +48,15 @@ export interface MyStandingWeekProps {
 export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients, tz }: MyStandingWeekProps) {
   const { doc, loading, error } = useStandingWeek(studioId, authUid);
   const status = weekStatus(doc);
+  const today = studioTodayKey(new Date(), tz);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
 
-  const owner: WeekOwner = { studioId, trainerUid: authUid, trainerId: trainer.id, trainerName: trainer.fullName ?? "" };
+  // Once the week exists its trainerId is the leaders' to set (the rules
+  // freeze it for the trainer), so the trainer's own saves keep the stored
+  // one: a save that tried to change it would be refused, and they would be
+  // locked out of their own week.
+  const owner: WeekOwner = { studioId, trainerUid: authUid, trainerId: doc?.trainerId || trainer.id, trainerName: trainer.fullName ?? "" };
   const signer: WeekSigner = { uid: authUid, name: trainer.fullName ?? "" };
 
   // The editor starts from the proposal when there is one, else the agreed week.
@@ -78,9 +95,9 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
       </div>
       <div className="tp-card__body">
         {loading ? (
-          <p className="tp-empty">Reading your week…</p>
+          <p className="stw-hint">Reading your week…</p>
         ) : error ? (
-          <p className="tp-empty" role="status">
+          <p className="stw-hint" role="status">
             {error}
           </p>
         ) : (
@@ -96,17 +113,21 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
               </ul>
             )}
             <p className="stw-lede">
-              The hours you usually work at {studioName}, and your regulars — who you train, and when. Proposing it
+              When you usually take clients at {studioName}, and your regulars — who you train, and when. Proposing it
               sends it to a studio leader to agree. Once agreed, each coming week's bookings are checked against it, so
               the studio sees an open slot in time to fill it. Nothing is sent to Mindbody: the front desk books your
               regulars there, as always.
             </p>
+            <h3 className="stw-week__head" id="my-standing-week-blocks">
+              When I usually take clients
+            </h3>
             <WeekEditor
               value={form.value}
               onChange={(next) => form.setFields(next)}
               clients={clients}
               noteLabel="Note for your studio leader (optional)"
               disabled={form.status === "saving"}
+              labelledBy="my-standing-week-blocks"
             />
             <div className="stw-actions">
               {form.status === "saved" && <p className="stw-actions__msg stw-actions__msg--ok">Proposed.</p>}
@@ -130,15 +151,17 @@ export function MyStandingWeek({ trainer, authUid, studioId, studioName, clients
                   Discard
                 </button>
               )}
+              {/* A save is solid brand blue, like Away's below it (the round's look). */}
               <button
                 type="button"
-                className="tp-btn tp-btn--primary"
+                className="stw-btn stw-btn--save"
                 disabled={!form.dirty || form.status === "saving"}
                 onClick={() => void form.save()}
               >
                 {form.status === "saving" ? "Proposing…" : saveLabel}
               </button>
             </div>
+            <AwayEditor away={doc?.away} today={today} tz={tz} whose="your" onSave={(next) => setAway(owner, next, today)} />
           </>
         )}
       </div>

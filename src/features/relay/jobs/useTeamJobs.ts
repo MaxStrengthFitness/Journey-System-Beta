@@ -9,16 +9,23 @@ import type { TeamJob } from "./types";
 /**
  * A studio's team jobs: every open one, plus the ones closed recently.
  *
- * ONE LISTENER, on `status in [...]` — a single-field filter, covered by
- * Firestore's automatic index, so nothing to deploy. Closed jobs are capped:
- * a studio's history of finished jobs grows forever, and the lane only needs
- * the last few ("Priya finished the birthday cards") and the Team tab only
- * the last fortnight.
+ * TWO LISTENERS, each on a single field (`status == open`, and a range on
+ * `closedOn`). Production is Firestore Enterprise edition, which builds no
+ * index by itself, and firestore.indexes.json has none for teamJobs, so each
+ * read scans this studio's own teamJobs (a small subcollection). Closed
+ * jobs are capped: a studio's history of finished jobs grows
+ * forever, and the lanes only need the last few ("Priya finished the
+ * birthday cards").
+ *
+ * My Studio → Team counts only its own seven days from this (a job by the
+ * day it was closed, a part by the day it was ticked — relay/team/
+ * accountability.ts): the read reaching back further does not stretch what
+ * Team's sentences say (voice review follow-up, Sep 27 2026).
  *
  * A failed read is "unknown", never "no jobs": `error` is set and the lanes
  * say so.
  */
-/** How far back finished jobs are read — the Team tab looks back two weeks. */
+/** How far back finished jobs are read, for the lanes' "recently finished". */
 export const CLOSED_DAYS = 14;
 
 export interface TeamJobsState {
@@ -64,7 +71,7 @@ export function useTeamJobs(studioId: string | null | undefined): TeamJobsState 
       },
     );
     // Recently closed: a range on `closedOn` alone (the studio day it was
-    // finished), which the automatic single-field index covers. A reopened
+    // finished), unindexed, so it scans this studio's teamJobs. A reopened
     // job has closedOn null and drops out of this read; the one above has it.
     const since = addDays(studioDateKey(new Date()) ?? "1970-01-01", -CLOSED_DAYS);
     const offClosed = onSnapshot(

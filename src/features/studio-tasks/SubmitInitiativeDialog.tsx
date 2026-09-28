@@ -164,7 +164,7 @@ export function SubmitInitiativeDialog({
 
           <ul className="max-h-64 overflow-y-auto rounded-xl border border-div-d">
             {matches.length === 0 && (
-              <li className="p-3 text-[13px] text-ink-d3">
+              <li className="p-3 text-[14px] text-ink-d3">
                 No clients match “{term.trim()}”.
               </li>
             )}
@@ -183,7 +183,7 @@ export function SubmitInitiativeDialog({
                       className={cn(
                         "grid h-5 w-5 shrink-0 place-items-center rounded-md border",
                         on
-                          ? "border-[var(--tp-kaizen,#0a548b)] bg-[var(--tp-kaizen-fill,#eaf0f4)] text-[var(--tp-kaizen,#0a548b)]"
+                          ? "border-[var(--st-live)] bg-[var(--st-live-fill)] text-[var(--st-live)]"
                           : "border-input bg-card text-transparent",
                       )}
                     >
@@ -203,7 +203,7 @@ export function SubmitInitiativeDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-10 rounded-xl border border-div-d px-4 text-[11px] font-black uppercase tracking-widest text-ink-d2 hover:border-ink-d3"
+            className="st__btn st__btn--ghost"
           >
             Cancel
           </button>
@@ -211,7 +211,7 @@ export function SubmitInitiativeDialog({
             type="button"
             disabled={saving}
             onClick={() => void onSave(draft)}
-            className="h-10 rounded-xl bg-cta-strong px-5 text-[11px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+            className="st__btn st__btn--primary"
           >
             {saving ? "Saving…" : `Log ${draft.length}`}
           </button>

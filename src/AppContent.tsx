@@ -261,6 +261,7 @@ const ViewLoader = () => <LoadingArea label="" />;
 import { useActiveStudio } from "./contexts/ActiveStudioContext";
 
 import { useAutoSync } from "./features/admin/useAutoSync";
+import { useScheduleRefresh } from "./features/admin/useScheduleRefresh";
 import { useTrainers } from "./hooks/useTrainers";
 import { useStudios } from "./hooks/useStudios";
 import { useNetworks } from "./hooks/useNetworks";
@@ -656,7 +657,18 @@ export default function AppContent({
   const [isReorderingTrainers, setIsReorderingTrainers] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isIntroSession, setIsIntroSession] = useState(false);
-  const [isRefreshingSchedule, setIsRefreshingSchedule] = useState(false);
+  /**
+   * The header's Refresh and the calendar's: asks Mindbody for part of the
+   * schedule, re-reads it here, and writes down the days it read in full
+   * (features/admin/useScheduleRefresh.ts).
+   */
+  const { isRefreshing: isRefreshingSchedule, pull: pullScheduleFromMindbody } = useScheduleRefresh({
+    studios,
+    activeStudioId,
+    trainers,
+    clients,
+    refreshSchedules,
+  });
   /**
    * Global client search. The input lives in the app header, but the results
    * render inside the Hub (ClientsView), so the term is owned here and handed
@@ -679,115 +691,6 @@ export default function AppContent({
     setSelectedClientId,
     setCurrentView,
   );
-
-  /**
-   * Asks Mindbody for part of the schedule and re-reads it on this iPad.
-   *
-   * Two buttons press it. The round one in the header pulls the week ahead.
-   * The calendar's Refresh passes the days on screen, so a trainer looking at
-   * next month brings it up to date there and then instead of waiting for the
-   * morning's whole-month pull (AJ, Sep 26 2026). Resolves when the pull is
-   * done, so the calendar re-reads its range on top of a finished write.
-   */
-  const pullScheduleFromMindbody = async (range?: { from: Date; to: Date }) => {
-    const activeStudio = studios.find((s) => s.id === activeStudioId);
-
-    if (!activeStudio?.mindbodySiteId) {
-      toastError(
-        `${activeStudio?.name || "This studio"} has no Mindbody Site ID. A studio leader sets it on My Studio → Studio before syncing.`,
-      );
-      return;
-    }
-
-    const sharesSite = studios.some(
-      (s) =>
-        s.id !== activeStudio.id &&
-        s.mindbodySiteId &&
-        String(s.mindbodySiteId).trim() ===
-          String(activeStudio.mindbodySiteId).trim(),
-    );
-    if (sharesSite && !activeStudio.mindbodyLocationId) {
-      toastError(
-        `${activeStudio.name} shares MindBody Site ${activeStudio.mindbodySiteId} with another studio but has no Location ID. A studio leader sets it on My Studio → Studio to keep schedules separate.`,
-      );
-      return;
-    }
-
-    setIsRefreshingSchedule(true);
-    try {
-      const siteId = String(activeStudio.mindbodySiteId);
-
-      const { syncMindbodySchedules, syncWindow, screenSyncWindow, settleWindowFor } =
-        await import("./lib/mindbody-api-sync");
-      /*
-       * The header's button pulls the week, not the month.
-       *
-       * Left to the default this asks Mindbody for 30 days, which on a shared
-       * site is thousands of appointments across every studio on it, fetched
-       * before the spinner stops -- to redraw eight days of one studio, which
-       * is all the Hub, the upcoming list and the Operations week can show.
-       * The background auto-sync still covers 30 days for the calendar, and
-       * the calendar's own Refresh pulls the days it is showing.
-       */
-      const win = range
-        ? screenSyncWindow(range.from, range.to, activeStudio?.timezone)
-        : syncWindow(activeStudio?.timezone);
-      // Every day on screen is already past: nothing to ask Mindbody about.
-      // The calendar still re-reads what Journey holds.
-      if (!win) return;
-      const res = await syncMindbodySchedules(
-        siteId,
-        trainers,
-        clients,
-        studios,
-        null,
-        win.start,
-        win.end,
-        activeStudioId,
-        activeStudio?.mindbodyLocationId,
-        // Clients this iPad already names are not looked up again: a press
-        // costs a page or two instead of ~7 calls (the lean pull, Sep 25 2026).
-        // And a booking that left the window is checked against the month
-        // (or further, to the calendar's last day) before it is called
-        // cancelled: it may only have moved further out.
-        {
-          skipKnownClientLookups: true,
-          settleSweepWith: settleWindowFor(win, activeStudio?.timezone),
-        },
-      );
-      // Today and tomorrow reach every iPad through the live listener. The rest
-      // of the week is a fetched cache, so re-read it here, or the iPad that
-      // pressed Refresh keeps showing days 2-8 as they were until its next
-      // timed re-read (up to an hour). The calendar re-reads the week and its
-      // own range itself once this resolves.
-      if (!range) refreshSchedules();
-
-      // "Sep 26 – Oct 10": which days the calendar's press reached.
-      const dayLabel = (key: string) =>
-        new Date(`${key}T12:00:00`).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        });
-      const reached = range
-        ? win.start === win.end
-          ? ` for ${dayLabel(win.start)}`
-          : ` for ${dayLabel(win.start)} – ${dayLabel(win.end)}`
-        : "";
-      if (res.errors && res.errors.length > 0) {
-        toastError(`Sync completed with issues: ${res.errors[0]}`);
-      } else {
-        toastSuccess(
-          `Schedule refreshed${reached}: ${res.added} added, ${res.updated} updated.`,
-        );
-      }
-      console.log("Schedule refresh result:", res);
-    } catch (error: any) {
-      console.error("Failed to refresh schedule:", error);
-      toastError("Failed to refresh schedule: " + error.message);
-    } finally {
-      setIsRefreshingSchedule(false);
-    }
-  };
 
   /** The header's button: the week ahead. Its click event is not a range. */
   const handleRefreshSchedule = () => {
@@ -1625,11 +1528,11 @@ export default function AppContent({
         variant="ghost"
         size="icon"
         onClick={() => setCurrentView("trainer-hub")}
-        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : "active:text-orange-500"}`}
+        className={`${headerIconClass} ${currentView === "trainer-hub" ? "text-foreground" : ""}`}
         title="Trainer Settings"
         aria-label="Trainer Settings"
       >
-        <Settings className="w-5 h-5 sm:w-6 sm:h-6 transition-colors hover:stroke-orange-500" />
+        <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
       </Button>
     </div>
   );
@@ -1906,12 +1809,12 @@ export default function AppContent({
                   (() => {
                     // A client task points at the screen where the work is
                     // actually done, rather than being a tick that claims it
-                    // happened. 'inbody' has no screen of its own yet, so it
-                    // lands on the profile — the closest honest destination.
+                    // happened. 'inbody' opens Notes & Profile → Body & Pulse
+                    // at the InBody card, where a scan is added (it landed on
+                    // Journey until the voice review follow-up, Sep 27 2026).
                     // 'assessment' is the Pulse task (the key predates the
-                    // name): Notes & Profile → Body & Pulse, at the Pulse
-                    // card. It used to open the Initial Consultation wizard
-                    // (Sep 24 2026).
+                    // name): the same page, at the Pulse card. It used to
+                    // open the Initial Consultation wizard (Sep 24 2026).
                     const openClientTask = (
                       clientId: string,
                       action?: ClientTaskAction,
@@ -1924,9 +1827,17 @@ export default function AppContent({
                         reportSelection.newReport();
                         return;
                       }
-                      if (action === "assessment") {
-                        openProfileAt(clientId, recordLocation("body", "body-pulse"));
-                      }
+                      // Handed off only if the move goes ahead: asked about
+                      // unsaved typing and told to stay, a handoff written
+                      // anyway would send the next visit to this client
+                      // somewhere nobody asked for.
+                      const at =
+                        action === "assessment"
+                          ? recordLocation("body", "body-pulse")
+                          : action === "inbody"
+                            ? recordLocation("body", "body-inbody")
+                            : null;
+                      if (at) guardLeave(() => openProfileAt(clientId, at));
                       setCurrentView("profile");
                     };
                     return (
@@ -2014,7 +1925,17 @@ export default function AppContent({
                     const reportClient = clients.find(
                       (c) => c.id === selectedClientId,
                     );
-                    const backToRecord = () => setCurrentView("profile");
+                    // Back to the Activity Archive's Reports, where reports
+                    // are kept and most are started, and where the one just
+                    // filed now sits. A one-time handoff (openProfileAt), and
+                    // written only if the move goes ahead (the report's own
+                    // typing is asked about first): the next visit to this
+                    // client opens on Journey as usual.
+                    const backToRecord = () =>
+                      guardLeave(() => {
+                        openProfileAt(selectedClientId, { tab: "clinical", view: "reports" });
+                        setCurrentView("profile");
+                      });
                     if (!reportClient) {
                       return (
                         <ReportNotOpened
@@ -2059,6 +1980,9 @@ export default function AppContent({
                       schedules={schedules}
                       sessions={sessions}
                       clients={clients}
+                      // My clients says "can't read" while the roster loads or
+                      // after its read fails, never "No clients" (Openings round).
+                      rosterStatus={rosterStatus}
                       studios={studios}
                       onSelectClient={setSelectedClientId}
                       setView={setCurrentView}
@@ -2088,7 +2012,9 @@ export default function AppContent({
                       setSelectedClientId(clientId);
                       setCurrentView("profile");
                     }}
-                    onOpenStudioTasks={() => setCurrentView("studio-tasks")}
+                    // Operations' doors into My Studio (Staff & Roles, Renewals) switch back
+                    // to trainer mode, or My Studio opens with Operations' bottom bar.
+                    onOpenStudioTasks={() => switchAppMode("trainer", "studio-tasks")}
                   />
                 )}
                 {currentView === "admins-dashboard" && authTrainer && (

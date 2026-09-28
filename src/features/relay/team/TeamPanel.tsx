@@ -19,11 +19,11 @@ import { useTeamJobs } from "../jobs/useTeamJobs";
 import type { JobDraft } from "../jobs/types";
 import { Avatar } from "../kit";
 import { useRelayMaybe } from "../board/RelayContext";
-import { OpenLoops } from "../board/TeamCockpit";
+import { OpenLoops } from "../board/OpenLoops";
 import { VaultPanel } from "../board/VaultPanel";
 import { kudosReceived } from "../board/kudos";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
-import { teamRecord, type PersonRecord } from "./accountability";
+import { firstDayOf, teamRecord, type PersonRecord } from "./accountability";
 import { useInitiativeProgress } from "./useInitiativeProgress";
 import "../kit.css";
 import "./team.css";
@@ -60,8 +60,11 @@ import "./team.css";
  *
  * The arithmetic, and what is deliberately never counted, is in
  * ./accountability.ts. Reads: the week's task instances once (shared with the
- * seven-day table below — no second read), the team jobs listener, the open
- * requests the board already reads, and one listener per open initiative.
+ * seven-day table below — no second read), today's shift list, the team
+ * jobs, the studio's requests (one listener, shared with the standards
+ * panel), and one submissions listener per open initiative (shared with its
+ * roll-up card) — voice review follow-up, Sep 27 2026: the standards panel
+ * and each roll-up used to open second copies of the last two.
  */
 
 export interface TeamPanelProps {
@@ -86,10 +89,14 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
   const { categories } = useStudioTaskCategories(studioId);
   const compliance = useTaskCompliance(studioId, templates, DAYS);
   const teamJobs = useTeamJobs(studioId);
-  const { open: openRequests } = useStudioRequests(studioId);
+  const { open: openRequests, expired, recentlyResolved } = useStudioRequests(studioId);
 
   const roster = useMemo(() => studioRoster(trainers ?? [], studioId), [trainers, studioId]);
   const initiatives = useInitiativeProgress(studioId, openRequests, roster);
+  // Handed to the standards panel, so Team opens one requests listener and
+  // one submissions listener per initiative, not two of each.
+  const requestLists = useMemo(() => ({ open: openRequests, expired }), [openRequests, expired]);
+  const progressById = useMemo(() => new Map(initiatives.map((i) => [i.id, i.progress] as const)), [initiatives]);
   const roleOf = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of trainers ?? []) if (t.id && t.role) m.set(t.id, ROLE_LABELS[t.role] ?? t.role);
@@ -106,13 +113,22 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
         jobs: teamJobs.jobs,
         requests: openRequests,
         initiatives,
+        days: DAYS,
       }),
     [roster, todayKey, compliance.instances, templates, teamJobs.jobs, openRequests, initiatives],
   );
-  // Relay: kudos received this week, per person, from what this tab already reads.
+  // Kudos received in the last seven days, per person, from what Team already
+  // reads: the task rows, the jobs, and the ANSWERED asks — an ask's kudos go
+  // to whoever answered it, and the open ones have nobody to credit yet.
   const kudosByPerson = useMemo(
-    () => kudosReceived({ instances: compliance.instances, jobs: teamJobs.jobs, requests: openRequests }),
-    [compliance.instances, teamJobs.jobs, openRequests],
+    () =>
+      kudosReceived({
+        instances: compliance.instances,
+        jobs: teamJobs.jobs,
+        requests: recentlyResolved,
+        since: todayKey ? firstDayOf(todayKey, DAYS) : undefined,
+      }),
+    [compliance.instances, teamJobs.jobs, recentlyResolved, todayKey],
   );
 
   const relay = useRelayMaybe();
@@ -124,9 +140,21 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
     { mode: "new"; scope: "studio" | "personal" } | { mode: "edit"; template: TaskTemplate } | null
   >(null);
 
-  const flaggedRows = useMemo(() => rows.filter((r) => r.instance?.flagged), [rows]);
-  // Relay's cockpit names machines on the open-loops list.
-  const { machines: floorMachines } = useStudioMachines(relay ? studioId : null, { bridgeWhenRosterEmpty: true });
+  // The shift list's reports for Open loops: the seven days' task rows, with
+  // today's live rows last so a report made (or cleared) while Team is open
+  // shows as it is now (team/accountability.ts, shiftListReports).
+  const taskRows = useMemo(() => [...compliance.instances, ...rows.map((r) => r.instance)], [compliance.instances, rows]);
+  const taskTitle = useMemo(() => {
+    const m = new Map(templates.map((t) => [t.id, t.title] as const));
+    return (id: string) => m.get(id) ?? "";
+  }, [templates]);
+  // Open loops names machines from the studio's roster in every state and
+  // the catalog, so a report on a machine switched off or taken off the floor
+  // this week still names it (the duty lists read only the active floor).
+  const { machines: floorMachines } = useStudioMachines(relay ? studioId : null, {
+    includeInactive: true,
+    includeUnrostered: true,
+  });
   const machineNames = useMemo(() => {
     const m = new Map(floorMachines.map((x) => [x.machineId, x.name] as const));
     return (id: string) => m.get(id) ?? "";
@@ -189,8 +217,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
           </p>
           {roster.length === 0 ? (
             <p className="rk-empty">
-              Nobody has {studioName} as their home studio yet, so there is no team to show. Trainers appear here once
-              their profile names this studio.
+              Nobody works at {studioName} yet, so there is no team to show. Trainers appear here once their profile
+              names this studio — as their home, a studio they also work at, or a guest studio.
             </p>
           ) : loading && !readError ? (
             <p className="rk-empty">Loading the week…</p>
@@ -228,7 +256,15 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             The standing duties {studioName} is held to, how each one went this week, initiatives, and the loops left
             open. Trainers see the standing duties on Relay's Floor on the days they fall due.
           </p>
-          {relay && <OpenLoops requests={openRequests} jobs={teamJobs.jobs} machineNames={machineNames} reported={flaggedRows} />}
+          {relay && (
+            <OpenLoops
+              requests={openRequests}
+              jobs={teamJobs.jobs}
+              machineNames={machineNames}
+              taskRows={taskRows}
+              taskTitle={taskTitle}
+            />
+          )}
           <ManagePanel
             studioId={studioId}
             templates={templates}
@@ -236,6 +272,8 @@ export function TeamPanel({ authTrainer, clients, trainers, onOpenClient }: Team
             author={author}
             trainers={trainers}
             compliance={compliance}
+            requests={requestLists}
+            initiativeProgress={progressById}
             onNewTask={() => {
               setManagerIntent({ mode: "new", scope: "studio" });
               setManaging(true);
@@ -299,7 +337,7 @@ function PersonCard({
 }: {
   record: PersonRecord;
   role?: string;
-  /** Relay: kudos received this week. Shown, never ranked. */
+  /** Kudos received in the last seven days. Shown, never ranked. */
   kudos?: number;
   isMe: boolean;
   onOpenJob: (jobId: string) => void;
@@ -318,7 +356,7 @@ function PersonCard({
           {role && <span className="tm-card__role">{role}</span>}
         </span>
         {kudos > 0 && (
-          <span className="rk-tag tm-card__kudos" aria-label={`${kudos} kudos this week`}>
+          <span className="rk-tag tm-card__kudos" aria-label={`${kudos} kudos in the last seven days`}>
             <Heart size={12} aria-hidden /> {kudos}
           </span>
         )}

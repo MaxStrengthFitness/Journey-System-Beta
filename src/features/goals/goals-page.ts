@@ -16,7 +16,7 @@
  *                    strip and the Overview's Goals slot read it, so the
  *                    three never disagree.
  *   howToCoachRows   the notes under it: Notes' own `howToCoachThreads` (by
- *                    KIND, so a legacy session wrap-up is never a
+ *                    KIND, so a session summary is never a
  *                    "Preference"), labelled with Notes' `noteCardLabel`.
  *   herWhyLinks      what else says why she came: Mindbody's long-term goal,
  *                    the consultation, the sign-up notes, and her Dreams in

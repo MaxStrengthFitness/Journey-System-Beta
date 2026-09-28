@@ -25,4 +25,32 @@ describe("kudos", () => {
     expect(m.get("m")).toBe(3);
     expect(m.get("a")).toBe(1);
   });
+
+  it("credits an answered ask to whoever answered it; an open one has nobody to credit (voice review follow-up)", () => {
+    const answered = { status: "done", resolvedBy: { id: "m", name: "M" }, resolvedAt: new Date("2026-09-15T12:00:00-04:00"), kudos: { a: true, b: true } };
+    const open = { status: "open", resolvedBy: null, kudos: { a: true } };
+    const m = kudosReceived({ instances: [], jobs: [], requests: [answered, open] as unknown as TaskRequest[], since: "2026-09-10" });
+    expect(m.get("m")).toBe(2);
+    expect([...m.keys()]).toEqual(["m"]);
+  });
+
+  it("counts only work closed inside the window when given one", () => {
+    const m = kudosReceived({
+      since: "2026-09-10",
+      instances: [
+        { localDate: "2026-09-12", completedBy: { id: "m", name: "M" }, kudos: { a: true } },
+        { localDate: "2026-09-01", completedBy: { id: "m", name: "M" }, kudos: { b: true } },
+      ] as unknown as TaskInstance[],
+      jobs: [
+        { closedOn: "2026-09-11", completedBy: { id: "m", name: "M" }, kudos: { a: true } },
+        { closedOn: "2026-09-03", completedBy: { id: "m", name: "M" }, kudos: { b: true } },
+      ] as unknown as TeamJob[],
+      requests: [
+        { resolvedBy: { id: "m", name: "M" }, resolvedAt: new Date("2026-09-02T12:00:00-04:00"), kudos: { a: true } },
+        // Answered, but with no day to go by: left out, not guessed in.
+        { resolvedBy: { id: "m", name: "M" }, kudos: { c: true } },
+      ] as unknown as TaskRequest[],
+    });
+    expect(m.get("m")).toBe(2);
+  });
 });

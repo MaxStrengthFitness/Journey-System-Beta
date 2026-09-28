@@ -1,5 +1,12 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react";
+import {
+  UnsavedChangesScope,
+  useLeaveScope,
+  type LeaveScope,
+} from "../unsaved-changes";
+import { forgetOnSignOut } from "../sign-out/memory";
+import { WikiPageGuardContext } from "./page-guard";
 import {
   WikiSectionSwitch,
   activeSectionLabel,
@@ -40,6 +47,19 @@ import {
  * bottom nav is a sibling after it, so there is no viewport maths here and no
  * padding to clear a bar that is not overlapping anything. Nested scrollers
  * are what buried Clinical Warnings in a half-screen box last round.
+ *
+ * TYPING ON A PAGE (voice review follow-up, Sep 27 2026)
+ * ------------------------------------------------------
+ * A page is plain state, so the trail swapped it without asking and a half-
+ * written studio note went with it. The page is now a leave scope
+ * (features/unsaved-changes): the back arrow, the crumbs, the section's own
+ * root and a search that replaces the page all ask first when something on
+ * the page holds unsaved typing, and links inside the page ask through
+ * `useWikiPageGuard` (./page-guard). OPENING the masthead's search does not
+ * ask, because it only hides the page; PICKING a result does replace the
+ * page, so LearningView asks then, as it does for every door that opens a
+ * page from outside the page (a tile on the Overview, a machine chip on an
+ * Academy page).
  */
 
 export interface WikiCrumb {
@@ -74,14 +94,26 @@ export interface WikiShellProps {
 }
 
 export function WikiShell({
-  crumbs,
+  crumbs: rawCrumbs,
   scrollKey,
-  onOpenSearch,
+  onOpenSearch: rawOpenSearch,
   searchLabel = "Search",
   actions,
   children,
   className,
 }: WikiShellProps) {
+  // The page is a leave scope: every way off it that the shell draws asks
+  // about the typing on it first (see the header).
+  const page = useLeaveScope();
+  const crumbs = useMemo(
+    () =>
+      rawCrumbs.map((c) => {
+        const go = c.onClick;
+        return go ? { ...c, onClick: () => page.guard(go) } : c;
+      }),
+    [rawCrumbs, page],
+  );
+  const onOpenSearch = rawOpenSearch ? () => page.guard(rawOpenSearch) : undefined;
   const up = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
   // Inside the Learning tab the bar also carries the Catalog | Academy switch
   // — see ./sections. Outside it, `sections` is null and nothing below changes.
@@ -106,6 +138,10 @@ export function WikiShell({
         hideTrail={hideTrail}
         pageKey={pageKey}
         keepsPlace={keepsPlace}
+        page={page}
+        // Opening the Learning tab's own search hides the page and never
+        // unmounts it, so it does not ask here; LearningView asks when a
+        // result is picked. A page's own search screen asks as it opens.
         onOpenSearch={sections.onSearch ?? onOpenSearch}
         searchLabel={sections.searchLabel ?? searchLabel}
         actions={actions}
@@ -137,47 +173,13 @@ export function WikiShell({
           />
         )}
 
-        {/* An <ol> rather than a row of buttons: the trail is an ordered
-            structure and screen readers announce it as one. On a Learning
-            section's index the trail would only repeat the switch, so an empty
-            spacer holds its place and keeps search on the right. */}
+        {/* On a Learning section's index the trail would only repeat the
+            switch, so an empty spacer holds its place and keeps search on
+            the right. The trail itself is <Trail> below. */}
         {hideTrail ? (
           <div className="wk__crumbs" aria-hidden />
         ) : (
-          <nav className="wk__crumbs" aria-label="Breadcrumb">
-            <ol>
-              {crumbs.map((c, i) => {
-                const last = i === crumbs.length - 1;
-                return (
-                  <li key={`${c.label}-${i}`}>
-                    {i > 0 && (
-                      <ChevronRight
-                        size={13}
-                        className="wk__crumb-sep"
-                        aria-hidden
-                      />
-                    )}
-                    {c.onClick && !last ? (
-                      <button
-                        type="button"
-                        className="wk__crumb"
-                        onClick={c.onClick}
-                      >
-                        {c.label}
-                      </button>
-                    ) : (
-                      <span
-                        className="wk__crumb wk__crumb--here"
-                        aria-current={last ? "page" : undefined}
-                      >
-                        {c.label}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
+          <Trail crumbs={crumbs} />
         )}
 
         <div className="wk__bar-actions">
@@ -196,7 +198,7 @@ export function WikiShell({
         </div>
       </header>
 
-      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace} page={page}>
         {children}
       </PageScroller>
     </div>
@@ -229,6 +231,7 @@ function MastheadShell({
   hideTrail,
   pageKey,
   keepsPlace,
+  page,
   onOpenSearch,
   searchLabel,
   actions,
@@ -242,6 +245,7 @@ function MastheadShell({
   hideTrail: boolean;
   pageKey: string;
   keepsPlace: boolean;
+  page: LeaveScope;
   onOpenSearch?: () => void;
   searchLabel: string;
   actions?: ReactNode;
@@ -299,41 +303,63 @@ function MastheadShell({
           {hideTrail ? (
             <div className="wk__crumbs" aria-hidden />
           ) : (
-            <nav className="wk__crumbs" aria-label="Breadcrumb">
-              <ol>
-                {crumbs.map((c, i) => {
-                  const last = i === crumbs.length - 1;
-                  return (
-                    <li key={`${c.label}-${i}`}>
-                      {i > 0 && (
-                        <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />
-                      )}
-                      {c.onClick && !last ? (
-                        <button type="button" className="wk__crumb" onClick={c.onClick}>
-                          {c.label}
-                        </button>
-                      ) : (
-                        <span
-                          className="wk__crumb wk__crumb--here"
-                          aria-current={last ? "page" : undefined}
-                        >
-                          {c.label}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+            <Trail crumbs={crumbs} />
           )}
           {actions && <div className="wk__bar-actions">{actions}</div>}
         </div>
       )}
 
-      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace}>
+      <PageScroller pageKey={pageKey} keepsPlace={keepsPlace} page={page}>
         {children}
       </PageScroller>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * The trail
+ * ------------------------------------------------------------------ */
+
+/**
+ * The breadcrumb, in both layouts.
+ *
+ * An <ol> rather than a row of buttons: the trail is an ordered structure and
+ * screen readers announce it as one. It scrolls sideways rather than wrapping
+ * so the bar stays one row, and a trail that outgrows the bar is scrolled to
+ * its END whenever it changes, so the page you are on (the last crumb, a
+ * machine's or a page's whole name) is the part in view. Nothing did that
+ * until the voice review follow-up (Sep 27 2026): a long trail showed its
+ * start and cut the current name at the edge.
+ */
+function Trail({ crumbs }: { crumbs: WikiCrumb[] }) {
+  const ref = useRef<HTMLElement>(null);
+  const trail = crumbs.map((c) => c.label).join(" / ");
+  useLayoutEffect(() => {
+    const nav = ref.current;
+    if (nav) nav.scrollLeft = nav.scrollWidth;
+  }, [trail]);
+  return (
+    <nav className="wk__crumbs" aria-label="Breadcrumb" ref={ref}>
+      <ol>
+        {crumbs.map((c, i) => {
+          const last = i === crumbs.length - 1;
+          return (
+            <li key={`${c.label}-${i}`}>
+              {i > 0 && <ChevronRight size={13} className="wk__crumb-sep" aria-hidden />}
+              {c.onClick && !last ? (
+                <button type="button" className="wk__crumb" onClick={c.onClick}>
+                  {c.label}
+                </button>
+              ) : (
+                <span className="wk__crumb wk__crumb--here" aria-current={last ? "page" : undefined}>
+                  {c.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -355,10 +381,12 @@ function MastheadShell({
 function PageScroller({
   pageKey,
   keepsPlace,
+  page,
   children,
 }: {
   pageKey: string;
   keepsPlace: boolean;
+  page: LeaveScope;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -375,7 +403,9 @@ function PageScroller({
       ref={ref}
       onScroll={(e) => placeOf.set(keyRef.current, e.currentTarget.scrollTop)}
     >
-      {children}
+      <UnsavedChangesScope scope={page}>
+        <WikiPageGuardContext.Provider value={page.guard}>{children}</WikiPageGuardContext.Provider>
+      </UnsavedChangesScope>
     </div>
   );
 }
@@ -384,5 +414,15 @@ function PageScroller({
  * Where the reader left each page, for the session (review, Learning +
  * Planner round): coming back up to a long index used to land at its top.
  * Only top-level pages read it back.
+ *
+ * Forgotten at sign-out (voice review follow-up, Sep 27 2026): a sign-out
+ * remounts the tree but keeps this module, so the next person on a shared
+ * iPad landed where the last one had been reading.
  */
 const placeOf = new Map<string, number>();
+forgetOnSignOut(() => placeOf.clear());
+
+/** For tests: how many pages have a remembered place. */
+export function rememberedPlaces(): number {
+  return placeOf.size;
+}

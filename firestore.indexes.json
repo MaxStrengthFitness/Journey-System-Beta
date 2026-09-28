@@ -607,20 +607,6 @@
       ]
     },
     {
-      "collectionGroup": "taskInstances",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "localDate",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "journalEntries",
       "queryScope": "COLLECTION",
       "fields": [

@@ -504,7 +504,7 @@ export function CatalogWikiView({
           <p className="wk__placeholder-title">No machines yet</p>
           <p className="wk__placeholder-body">
             {activeStudioId
-              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. Add equipment from Hub → Machine Settings.`
+              ? `${activeStudio?.name ?? "This studio"} has no machines on its roster. A studio leader adds them on My Studio → Machines.`
               : "Select a studio to see its equipment."}
           </p>
         </div>
@@ -728,6 +728,7 @@ export function CatalogWikiView({
           studioNotes={
             <StudioNotesCard
               machineId={selected.id}
+              machineName={selected.name}
               studioId={activeStudioId}
               studioName={activeStudio?.name}
               value={selected.studioNotes}
@@ -799,7 +800,9 @@ export function CatalogWikiView({
     const flagged = g.machines.filter((m) => flaggedIds.has(m.id)).length;
     const notes: { label: string; tone: "warn" | "alert" }[] = [];
     if (due > 0) notes.push({ label: `${due} due`, tone: "warn" });
-    if (flagged > 0) notes.push({ label: `${flagged} flagged`, tone: "alert" });
+    // A flagged machine is a caution, in the app's plum: crimson is a
+    // Critical note's and a set's that needs work (voice review follow-up).
+    if (flagged > 0) notes.push({ label: `${flagged} flagged`, tone: "warn" });
     return {
       key: g.key,
       label: g.label,
@@ -830,7 +833,7 @@ export function CatalogWikiView({
           {
             label: "Flagged",
             value: flaggedCount,
-            tone: flaggedCount > 0 ? "alert" : undefined,
+            tone: flaggedCount > 0 ? "warn" : undefined,
           },
           { label: "Out of service", value: outOfService },
         ]}
@@ -876,7 +879,7 @@ export function CatalogWikiView({
                         <WikiBadge tone={m.shared ? "live" : "neutral"}>{m.shared ? "Studio · shared" : "Studio"}</WikiBadge>
                       )}
                       {(m.rosterStatus === "maintenance" || flagged) && (
-                        <WikiBadge tone={flagged ? "alert" : "warn"}>
+                        <WikiBadge tone="warn">
                           {flagged ? "Flagged" : "Out of service"}
                         </WikiBadge>
                       )}

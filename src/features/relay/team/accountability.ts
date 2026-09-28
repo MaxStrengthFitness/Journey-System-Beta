@@ -1,13 +1,15 @@
 /**
- * THE TEAM TAB'S ARITHMETIC — who has work with their name on it, who
- * finished it, and who is behind.
+ * TEAM'S ARITHMETIC — what each person has with their name on it, and what
+ * they finished, over the last seven studio days (My Studio → Team).
  *
  * Round: Planner rework, Sep 2026. AJ: "Studio leaders need to be able to see
  * what the team is assigned, what they've completed and what they are failing
- * to do and who might be failing to do so."
+ * to do and who might be failing to do so." The voice-review round (Sep 27
+ * 2026) took the verdict out: no "behind" or "on track", people listed by
+ * name, each card only its own person's sentences.
  *
  * WHAT COUNTS — AND WHAT NEVER DOES
- * Only work with a person's name on it can be held against that person:
+ * Only work with a person's name on it is said on that person's card:
  *
  *   - a studio task a head trainer ASSIGNED them, on a day that is over,
  *     still open                                       → "missed"
@@ -28,6 +30,12 @@
  * TODAY IS NOT JUDGED. A task assigned for today is "open", not "missed",
  * until the studio day is over — closing duties are open at 3pm by design.
  *
+ * A SENTENCE COUNTS WHAT IT NAMES (voice review follow-up, Sep 27 2026).
+ * "Finished ... in the last seven days" counts tasks, job parts and jobs
+ * inside those seven days only. The jobs read looks back fourteen days
+ * (useTeamJobs), and a part ticked a month ago on a job still open used to
+ * count as this week's.
+ *
  * SENTENCES, NOT SCORES: every line is a count with the things counted named.
  * No percentages — a rate over two assigned tasks is a confident wrong number.
  *
@@ -40,9 +48,19 @@ import type { InitiativeProgress } from "../../studio-tasks/initiatives";
 import { dayWords, jobProgress, jobTiming } from "../jobs/jobs";
 import type { TeamJob } from "../jobs/types";
 import { addDays, weekdayOf } from "../../studio-tasks/recurrence";
+import { studioDateKey, type DateLike } from "../../../lib/studio-time";
 
 /** How long a claimed request may sit open before it is "holding". */
 export const HOLDING_DAYS = 2;
+
+/** Team's window: the last seven studio days, today included. */
+const TEAM_DAYS = 7;
+
+/** The first studio day of a window of `days` days that ends today. */
+export const firstDayOf = (todayKey: string, days = TEAM_DAYS): string => addDays(todayKey, -(days - 1));
+
+/** The studio day a stored moment fell on, or null when there is none. */
+const studioDayOf = (v: unknown): string | null => (v ? studioDateKey(v as DateLike) : null);
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const shortDay = (dateKey: string) => DAY[weekdayOf(dateKey)];
@@ -77,9 +95,10 @@ export interface InitiativeFlag {
   overdue: boolean;
 }
 
-export type Standing = "behind" | "on-track" | "quiet";
-
-/** One sentence on a person's card. `flag` lines are the reasons they are behind. */
+/**
+ * One sentence on a person's card: `flag` is something still open with their
+ * name on it, `good` something they finished. No line is a verdict on them.
+ */
 export interface RecordLine {
   text: string;
   tone: "flag" | "plain" | "good";
@@ -87,7 +106,6 @@ export interface RecordLine {
 
 export interface PersonRecord {
   person: TaskAuthor;
-  standing: Standing;
   /** Today's studio tasks with their name on them. */
   today: { assigned: number; done: number };
   /** Past days in the window. */
@@ -102,8 +120,9 @@ export interface PersonRecord {
   jobs: {
     on: number;
     overdue: JobFlag[];
-    /** Parts they ticked on open or recently finished jobs. */
+    /** Parts they ticked inside the window. */
     partsDone: number;
+    /** Jobs they closed inside the window. */
     closed: number;
   };
   holding: HeldRequest[];
@@ -137,6 +156,8 @@ export interface TeamRecordInput {
   jobs: TeamJob[];
   requests: TeamRequestLike[];
   initiatives: InitiativeLike[];
+  /** The window in studio days, today included: seven unless a test says otherwise. */
+  days?: number;
   now?: number;
 }
 
@@ -178,6 +199,8 @@ export function missedList(items: MissedItem[], max = 3): string {
 export function teamRecord(input: TeamRecordInput): PersonRecord[] {
   const { roster, todayKey, instances, templates, jobs, requests, initiatives } = input;
   const now = input.now ?? Date.now();
+  const fromKey = firstDayOf(todayKey, input.days ?? TEAM_DAYS);
+  const inWindow = (day: string | null | undefined) => Boolean(day && day >= fromKey && day <= todayKey);
   const titleOf = new Map(templates.map((t) => [t.id, t.title]));
   const studioInstances = instances.filter((i) => i.scope !== "personal");
 
@@ -213,11 +236,15 @@ export function teamRecord(input: TeamRecordInput): PersonRecord[] {
           return { jobId: j.id, title: j.title, dueOn: j.dueOn!, left: p.total - p.done };
         })
         .filter((f) => f.left > 0);
+      // Inside the window only: a part ticked weeks ago on a job still open,
+      // or a job closed thirteen days ago, is not "the last seven days".
       const partsDone = jobs.reduce(
-        (n, j) => n + Object.values(j.parts).filter((p) => p.doneBy?.id === id).length,
+        (n, j) => n + Object.values(j.parts).filter((p) => p.doneBy?.id === id && inWindow(studioDayOf(p.doneAt))).length,
         0,
       );
-      const closed = jobs.filter((j) => j.status === "done" && j.completedBy?.id === id).length;
+      const closed = jobs.filter(
+        (j) => j.status === "done" && j.completedBy?.id === id && inWindow(j.closedOn ?? studioDayOf(j.completedAt)),
+      ).length;
 
       const holding: HeldRequest[] = requests
         .filter((r) => r.status === "open" && r.kind !== "initiative" && r.claimedBy?.id === id)
@@ -243,16 +270,6 @@ export function teamRecord(input: TeamRecordInput): PersonRecord[] {
         })
         .filter((x): x is InitiativeFlag & { met: boolean } => Boolean(x) && !x!.met)
         .map(({ met: _met, ...f }) => f);
-
-      const behind =
-        missed.length > 0 ||
-        leftOpen.length > 0 ||
-        overdue.length > 0 ||
-        holding.length > 0 ||
-        initiativeFlags.some((f) => f.overdue);
-      const anything =
-        mine.length > 0 || onJobs.length > 0 || finished > 0 || partsDone > 0 || closed > 0 || initiativeFlags.length > 0;
-      const standing: Standing = behind ? "behind" : anything ? "on-track" : "quiet";
 
       const lines: RecordLine[] = [];
       const flag = (text: string) => lines.push({ text, tone: "flag" });
@@ -294,12 +311,11 @@ export function teamRecord(input: TeamRecordInput): PersonRecord[] {
       if (finished) credit.push(plural(finished, "task"));
       if (partsDone) credit.push(plural(partsDone, "job part"));
       if (closed) credit.push(plural(closed, "job"));
-      if (credit.length) good(`Finished ${credit.join(", ")} this week.`);
-      if (!lines.length) plain("Nothing with their name on it this week.");
+      if (credit.length) good(`Finished ${credit.join(", ")} in the last seven days.`);
+      if (!lines.length) plain("Nothing with their name on it in the last seven days.");
 
       return {
         person,
-        standing,
         today: { assigned: today.length, done: today.filter((i) => i.status !== "open").length },
         week: {
           assigned: past.length,
@@ -323,7 +339,87 @@ export function teamRecord(input: TeamRecordInput): PersonRecord[] {
     .sort((a, b) => a.person.name.localeCompare(b.person.name));
 }
 
-/** The window the Team tab reads: the last seven studio days, today included. */
-export function teamWindow(todayKey: string, days = 7): { from: string; to: string } {
-  return { from: addDays(todayKey, -(days - 1)), to: todayKey };
+/* ------------------------------------------------------------------ *
+ * Open loops: the shift list's machine reports
+ * ------------------------------------------------------------------ */
+
+/** A problem reported on the shift list, still open on Team. */
+export interface ShiftReport {
+  /** The machine, or the task row itself for a report with no machine. */
+  key: string;
+  machineId?: string;
+  templateId: string;
+  /**
+   * The duty's title as the row itself recorded it (instancePayload writes
+   * it), so a report still reads after its template is renamed or deleted.
+   */
+  title?: string;
+  /** The studio day it was reported. */
+  dateKey: string;
+  note?: string;
+  by: TaskAuthor | null;
+}
+
+/**
+ * The shift list's reports for Open loops (voice review follow-up, Sep 27
+ * 2026): a flagged task row — a machine check closed with a problem — from
+ * Team's seven days, not only today's. They used to drop off Team at
+ * midnight while the seven-day table beside them still showed the flag.
+ *
+ * ONE ROW PER MACHINE, the latest report on it; and none for a machine the
+ * Floor Map already flags, which Open loops lists on a row of its own.
+ *
+ * A REPORT IS A ROW CLOSED WITH A PROBLEM: status "done" and flagged. A
+ * skipped row is not one (useMachineUpkeep leaves those out too), and nor
+ * is a reopened one — reopening keeps the old `flagged` on the document
+ * (instancePayload only writes it when told), but the check is no longer
+ * closed, and it has nobody's name on it.
+ *
+ * A LATER CLEAN CHECK CLOSES IT. When the same duty on the same machine was
+ * done without a flag on a later day, the problem was looked at again and
+ * not found, so the report is over: Team has no button to clear a report,
+ * and without this one would sit on Open loops until it aged out of the
+ * week. Team's seven days are otherwise the whole reach on purpose:
+ * Learning and the Catalog keep a report until someone clears it
+ * (useMachineUpkeep). Whether a report should outlive the week belongs with
+ * the one maintenance log, AJ's call.
+ *
+ * `instances` may hold the same row twice (the seven-day read and today's
+ * live one): the LATER one in the list wins, so pass the live rows last.
+ */
+export function shiftListReports(
+  instances: readonly (TaskInstance | null | undefined)[],
+  floorMapFlagged: ReadonlySet<string> = new Set(),
+): ShiftReport[] {
+  const latestById = new Map<string, TaskInstance>();
+  for (const i of instances) if (i?.id) latestById.set(i.id, i);
+  const rows = [...latestById.values()].filter((i) => i.scope !== "personal");
+  // The last day each duty (on each machine) was closed clean.
+  const dutyKey = (i: TaskInstance) => `${i.templateId}|${i.machineId ?? ""}`;
+  const lastClean = new Map<string, string>();
+  for (const i of rows) {
+    if (i.status !== "done" || i.flagged) continue;
+    const had = lastClean.get(dutyKey(i));
+    if (!had || had < i.localDate) lastClean.set(dutyKey(i), i.localDate);
+  }
+  const byKey = new Map<string, ShiftReport>();
+  for (const i of rows) {
+    if (!i.flagged || i.status !== "done") continue;
+    if (i.machineId && floorMapFlagged.has(i.machineId)) continue;
+    const clean = lastClean.get(dutyKey(i));
+    if (clean && clean > i.localDate) continue;
+    const key = i.machineId || i.id;
+    const had = byKey.get(key);
+    if (had && had.dateKey >= i.localDate) continue;
+    byKey.set(key, {
+      key,
+      ...(i.machineId ? { machineId: i.machineId } : {}),
+      templateId: i.templateId,
+      ...(i.title ? { title: i.title } : {}),
+      dateKey: i.localDate,
+      ...(i.note ? { note: i.note } : {}),
+      by: i.completedBy ?? null,
+    });
+  }
+  return [...byKey.values()].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || a.key.localeCompare(b.key));
 }

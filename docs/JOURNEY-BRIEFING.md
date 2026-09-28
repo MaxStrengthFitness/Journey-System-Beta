@@ -430,7 +430,7 @@ The floor screen, and the one everything else is subordinate to. In sequence:
    trainer choose. It confirms; it does not wall. On the last machine there's no
    dead-end banner — there's "Add another machine," because trainers do, and End
    Session stays at the *top* where a thumb reaching for Next can't hit it.
-4. **Post-session** — about thirty seconds. Instant scannable results ("8%
+4. **Post-session** (the **Wrap-up** since Sep 27 2026: the dose Dial in place of the Feel toggle since Sep 16, the closing note is the Profile note, and the End Session box is the Note for the next trainer) — about thirty seconds. Instant scannable results ("8%
    increase today"), a Feel toggle, a closing note, an optional quick check-in,
    and — when it's time — "Renewal: 9 left. Talk about it today?" with a
    fifteen-second form for what the client said.
@@ -462,16 +462,20 @@ The bottom-bar tab where a studio is *run*. Four sections:
 - **Machines** — the studio's floor, what's new in the MSF standard, each
   machine's door, and "Offer to the MSF catalog."
 - **Team** — who's in, this studio's staff, letting people in, handing out the
-  grant.
+  grant. (People and standards since Sep 27 2026: each person's week by name,
+  the standing weeks, the duties, initiatives, the loops left open and the
+  vault; who's in today is the Hub's.)
 - **Studio** — the studio's own record: details, the Mindbody link, its day, its
   renewal settings, its own notices.
 
-Two rules govern Relay. **Nothing pings anyone** — the Pulse, kudos and hand-offs
+Two rules govern Relay. **Nothing pings anyone** — the Pulse (the Now Bar's "Just now" line since Sep 27 2026), kudos and hand-offs
 are in-app, and a bell rings only for what a person opted into. And
 **recognition, never ranking, inside a studio** — kudos are shown per person to
 leaders and to that person; no points, no badges, no per-person streaks, no
-leaderboards among trainers. Studios may be ranked against each other; people
-inside a studio may not.
+leaderboards among trainers. Studios may be compared, but not on numbers that
+are wrong (the Network tab's ranking was dropped on Sep 27 2026; a comparison
+comes back only on measures with a named minimum sample); people inside a
+studio may not be ranked.
 
 ### Operations
 
@@ -743,6 +747,7 @@ is never the only way to find something, and names are never truncated.
 | Journey Grid | The machine-by-session grid, historical and live |
 | Now Bar | The fixed bar in a live session: this machine, its settings, its weight |
 | Briefing | The pre-session screen |
+| Wrap-up | The post-session screen (named Sep 27 2026) |
 | My Studio | Where you run a studio: Relay · Machines · Team · Studio |
 | Relay | The studio's shared board (was the To-Do, then the Planner) |
 | Operations | The studio-management dashboard — where you *look at* a studio |

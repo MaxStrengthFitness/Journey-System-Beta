@@ -28,7 +28,9 @@
  */
 import type { FranchiseNetwork, Trainer } from "../../../types";
 import { isEveryStudioRole } from "../../renewals/permissions";
+import { isDemoStudioId } from "../../demo-mode/is-demo";
 import { focusOf } from "../../relay/board/focus";
+import { formatStudioDate, toDate, type DateLike } from "../../../lib/studio-time";
 import type { CreateRequestInput } from "../../studio-tasks/requests";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
 import type { ClientTaskAction } from "../../studio-tasks/types";
@@ -42,12 +44,19 @@ export function mayActForNetwork(trainer: Pick<Trainer, "role"> | null | undefin
   return isEveryStudioRole(trainer as Trainer | null | undefined);
 }
 
-const COMPANY = new Set(["Admin", "Founder", "Overseer"]);
-
 /**
- * The networks this reader may set a focus for, among the studios in scope:
- * the company every network that holds one of them, an owner the networks
- * they own. A studio leader gets none. By name.
+ * The networks this reader may set a focus for: every network that holds a
+ * studio in scope, for a franchise owner exactly as for the company. AJ, Sep
+ * 27 2026: an owner may set the focus of every network that holds a studio in
+ * their scope, as Relay allowed (Relay → Network edited the network holding
+ * the studio the owner stood in, whether or not the network listed them, and
+ * a network made with "Choose later" never lists an owner). The rules agree:
+ * any franchise owner may update a network.
+ *
+ * The practice studio never counts. Inside Demo Mode the scope is Demo Mode
+ * alone, so no real network's focus is offered there, even if a network were
+ * ever to list the practice studio: from inside Demo Mode you see Demo Mode
+ * and nothing else (demo-mode/access.ts). A studio leader gets none. By name.
  */
 export function focusableNetworks(
   trainer: Pick<Trainer, "id" | "role"> | null | undefined,
@@ -55,15 +64,37 @@ export function focusableNetworks(
   studioIds: readonly string[],
 ): FranchiseNetwork[] {
   if (!trainer || !mayActForNetwork(trainer)) return [];
-  const inScope = new Set(studioIds);
-  const company = COMPANY.has(trainer.role);
+  const inScope = new Set(studioIds.filter((id) => !isDemoStudioId(id)));
+  if (inScope.size === 0) return [];
   return networks
-    .filter((n) => {
-      if (!n.id) return false;
-      if (company) return (n.studioIds ?? []).some((id) => inScope.has(id));
-      return n.ownerId === trainer.id || (n.ownerIds ?? []).includes(trainer.id);
-    })
+    .filter((n) => Boolean(n.id) && (n.studioIds ?? []).some((id) => inScope.has(id)))
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+}
+
+/**
+ * Why no focus editor is offered, when none is: the studios in scope are not
+ * in a network, or the screen cannot tell yet.
+ *
+ * `networks` is the live list (hooks/useNetworks). It is empty while it
+ * loads and after a failed read, and the hook says neither, so an empty list
+ * cannot tell "not in a network" from "not read yet": a failed read means
+ * unknown, never empty. A studio whose own record names a network the list
+ * does not hold is the same. Only a list that came back, with no studio
+ * pointing past it, lets the screen say a studio is not in a network. The
+ * practice studio is never offered a network (the realm rule above), so
+ * standing there the answer is known whatever the list holds.
+ */
+export type NoFocusReason = "not-in-network" | "cannot-tell";
+
+export function noFocusReason(
+  studios: readonly { id?: string | null; networkId?: string | null }[],
+  networks: readonly Pick<FranchiseNetwork, "id">[],
+): NoFocusReason {
+  const real = studios.filter((s) => Boolean(s.id) && !isDemoStudioId(s.id));
+  if (real.length === 0) return "not-in-network";
+  if (networks.length === 0) return "cannot-tell";
+  const read = new Set(networks.map((n) => n.id));
+  return real.some((s) => Boolean(s.networkId) && !read.has(s.networkId as string)) ? "cannot-tell" : "not-in-network";
 }
 
 /* ------------------------------------------------------------------ *
@@ -77,6 +108,26 @@ export interface FocusFields {
 }
 
 export const FOCUS_LIMITS: Readonly<Record<keyof FocusFields, number>> = { mastery: 120, machine: 120, note: 500 };
+
+/**
+ * The focus editor's idle line: who set the focus, and on which day as the
+ * studio's day (lib/studio-time; the studios are Eastern). Every save writes
+ * `relayFocus.setAt`, and this is what reads it, so an owner can see a focus
+ * set two quarters ago for what it is. "Set by Ann Owner on Sep 27, 2026."
+ * A save still on its way to the server has no time yet, so it says who only.
+ */
+export function focusSetLine(
+  focus: { setBy?: { name?: string } | null; setAt?: unknown } | null | undefined,
+  tz?: string,
+): string {
+  const name = focus?.setBy?.name?.trim();
+  const at = toDate(focus?.setAt as DateLike);
+  const day = at ? formatStudioDate(at, { month: "short", day: "numeric", year: "numeric" }, tz) : null;
+  if (name && day) return `Set by ${name} on ${day}.`;
+  if (name) return `Set by ${name}.`;
+  if (day) return `Set on ${day}.`;
+  return "Set.";
+}
 
 /** The focus form's committed value, from the network document. */
 export function focusFields(network: { relayFocus?: unknown } | null | undefined): FocusFields {

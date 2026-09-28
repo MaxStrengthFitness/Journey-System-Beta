@@ -10,6 +10,7 @@ import { ProvisionalPanel } from "../admin/provisional/ProvisionalPanel";
 import { TeamPanel } from "../relay/team/TeamPanel";
 import { StandingWeeksPanel } from "../standing-week/StandingWeeksPanel";
 import "../admin/admin.css";
+import "./my-studio.css";
 
 /**
  * MY STUDIO → TEAM — people and standards.
@@ -22,14 +23,17 @@ import "../admin/admin.css";
  * vault). relay/team/TeamPanel.tsx says what went and where.
  *
  * Standing weeks come first (the same round): each trainer's usual week,
- * proposed on My Profile and agreed here, and the next seven days' bookings
- * checked against the agreed weeks — the free slots a leader can fill
- * (standing-week/StandingWeeksPanel.tsx).
+ * proposed on My Profile and agreed here. Above them, who is away this week
+ * and ONE line with a door to Openings ("3 free slots in the next 7 days ·
+ * See them on Openings."): the free slots themselves are listed on My
+ * Studio → Openings → Next 7 days since the Openings round (Sep 27 2026),
+ * and Team lists none (standing-week/StandingWeeksPanel.tsx).
  *
- * Round: My Studio, Sep 2026. Relay's Team tab (its panels, the standards,
- * the vault — relay/team/TeamPanel) is the top half. The bottom half is what the studio's leaders could not do from
- * anywhere before: Staff & Roles was owners-and-administrators only, so a
- * head trainer could not let their own new hire in. AJ (Sep 18):
+ * Round: My Studio, Sep 2026. The people and the standards (relay/team/
+ * TeamPanel — what used to be Relay's Team tab) are the top half. The bottom
+ * half is what the studio's leaders could not do from anywhere before: Staff
+ * & Roles was owners-and-administrators only, so a head trainer could not
+ * let their own new hire in. AJ (Sep 18):
  *
  *   · whenever a person requests to log in, a leader should be able to
  *     grant them access, and link them to an existing Mindbody profile if
@@ -42,6 +46,18 @@ import "../admin/admin.css";
  * Same code as Operations → Staff & Roles (useStaffRoster, StaffEditor), with
  * the studio tier's limits passed in: approvals land at THIS studio, the
  * roles on offer stop at studio leader, and the grant is for this studio.
+ * Since the voice review follow-up (Sep 27 2026) this is the studio tier's
+ * ONE editor: Staff & Roles shows them the list read-only, with a door here
+ * (AJ: "yes"); only owners and administrators edit there.
+ *
+ * Who is on Team: everyone who works here (AJ, Sep 27 2026) — home, a
+ * studio they also work at, or a guest — one rule for People, the
+ * initiatives and the standing weeks (lib/who-works-here.ts). The staff
+ * list below is a different list, not a wider one: it ADDS the studio's
+ * owners, everyone Mindbody lists, everyone waiting to be let in and the
+ * placeholders the others leave out, and it LEAVES OUT guests — a guest's
+ * account and role are their home studio's to edit (admin/staff/roster.ts,
+ * listedAt).
  */
 
 export interface TeamSectionProps {

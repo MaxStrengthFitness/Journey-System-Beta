@@ -3,11 +3,14 @@ import { cn } from "@/lib/utils";
 /**
  * The strip under the iPad status bar, at the top of the app shell.
  *
- * In the Home Screen app the page runs up under the status bar (index.html:
- * `viewport-fit=cover`, `black-translucent`), so the shell's first child is
- * this box, exactly as tall as the status bar (`h-safe-top`; 0px in a Safari
- * tab). It is coloured like whatever sits directly under it, so the top of
- * the screen reads as one surface running up behind the clock:
+ * The shell's first child is this box, exactly as tall as the top inset
+ * (`h-safe-top`). Since Sep 27 2026 the status bar is the `default` style,
+ * which iPadOS draws ABOVE the page, so the inset is 0 and the strip is 0px
+ * in the Home Screen app as it is in a Safari tab (index.html says why).
+ * It stays so that `black-translucent`, where the page runs up under the
+ * status bar, is one line away. Under that style it is coloured like
+ * whatever sits directly under it, so the top of the screen reads as one
+ * surface running up behind the clock:
  *
  *   header   the AppHeader (every view but the Active Session)
  *   session  the Active Session, whose top is <main>'s own ground

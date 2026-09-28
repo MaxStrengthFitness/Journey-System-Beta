@@ -39,6 +39,12 @@ export interface MachinePlaybookCardProps {
   renderAction?: (entry: PlaybookEntry) => ReactNode;
 }
 
+/** "Confirmed by 3 trainers", "Confirmed by you and 2 more", "Confirmed by you". */
+export function confirmedBy(count: number, mine: boolean): string {
+  if (mine) return count <= 1 ? "Confirmed by you" : `Confirmed by you and ${count - 1} more`;
+  return `Confirmed by ${count} trainer${count === 1 ? "" : "s"}`;
+}
+
 export function MachinePlaybookCard({
   entries,
   currentUserId,
@@ -88,15 +94,14 @@ export function MachinePlaybookCard({
                   found this held up" is the difference between a note and a
                   method. Zero is left blank rather than shown as 0, which
                   reads as a mark against a perfectly good entry that simply
-                  nobody has hit yet.
+                  nobody has hit yet. Said in words (voice review follow-up,
+                  Sep 27 2026): a tick and a bare number meant something only
+                  in a hover tooltip, and an iPad never hovers.
                 */}
                 {confirms > 0 && (
-                  <span
-                    className={`pbm__confirms${mine ? " pbm__confirms--mine" : ""}`}
-                    title={`${confirms} trainer${confirms === 1 ? "" : "s"} confirmed this`}
-                  >
+                  <span className={`pbm__confirms${mine ? " pbm__confirms--mine" : ""}`}>
                     <Check size={11} strokeWidth={3} aria-hidden />
-                    {confirms}
+                    {confirmedBy(confirms, mine)}
                   </span>
                 )}
                 {renderAction?.(e)}

@@ -21,7 +21,7 @@
  * Voice-review round, Sep 27 2026 (AJ: Settings "needs a visual rework to
  * match the upgraded app", handled lightly until the whole design is
  * settled): the calm card of My Profile instead of italic capitals; the role
- * by its name ("Studio Leader"), never its key ("HeadTrainer"); status words
+ * by its name (ROLE_LABELS), never its key ("HeadTrainer"); status words
  * in inks readable on white; no machine count (it was the whole catalog's,
  * not the studio's floor); and the Operations door asks the app's one rule
  * (`mayOpenOperations`) and switches the app mode, as the menu does.
@@ -42,6 +42,7 @@ import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { ROLE_LABELS, type Studio, type Trainer } from "../../types";
 import { mayOpenOperations } from "../admin/operations-access";
+import { whoWorksHere } from "../../lib/who-works-here";
 import { useFeedback, useMyFeedback, FEEDBACK_KIND_SHORT } from "../feedback";
 import type { FeedbackKind } from "../feedback";
 import "./settings.css";
@@ -130,7 +131,8 @@ export function TrainerSettingsView({
   onOpenOperations,
 }: TrainerSettingsViewProps) {
   const { open } = useFeedback();
-  const { reports, counts } = useMyFeedback(authTrainer?.id);
+  // By the signed-in Auth uid, which the read rule compares to (the hook says why).
+  const { reports, counts, error: reportsError } = useMyFeedback();
 
   const studioName = (id?: string | null) => studios.find((s) => s.id === id)?.name || "—";
   const activeStudio = studios.find((s) => s.id === activeStudioId);
@@ -140,9 +142,9 @@ export function TrainerSettingsView({
     .filter((id) => id && id !== authTrainer?.primaryHomeStudioId)
     .map(studioName);
 
-  const teamCount = trainers.filter(
-    (t) => !t.supersededByUid && (t.primaryHomeStudioId === activeStudioId || t.accessibleStudioIds?.includes(activeStudioId || "")),
-  ).length;
+  // Team's own rule for who works here, so this count and My Studio -> Team
+  // never disagree (voice review follow-up, Sep 27 2026).
+  const teamCount = whoWorksHere(trainers, activeStudioId).length;
 
   const role = authTrainer?.role ? (ROLE_LABELS[authTrainer.role] ?? authTrainer.role) : "Life Transformer";
   // The menu, the route and the Operations shell ask the same question.
@@ -172,8 +174,13 @@ export function TrainerSettingsView({
         </div>
 
         {/* A trainer who never sees what happened to a report stops filing
-            them. This is the loop, and it is why the hero is not just a form. */}
-        {counts.total > 0 && (
+            them. This is the loop, and it is why the hero is not just a form.
+            A read that failed says so: it is not the same as "no reports". */}
+        {reportsError ? (
+          <p className="stg-problem" role="status">
+            Couldn't load your reports. Try again in a moment.
+          </p>
+        ) : counts.total > 0 && (
           <>
             <p className="stg-label">
               Your reports · {counts.open} open · {counts.resolved} closed
@@ -246,7 +253,8 @@ export function TrainerSettingsView({
       {operations && (
         <Card icon={ShieldCheck} title="Operations" subtitle="Where are we going wrong, and where are we going right?">
           <p className="stg-text">
-            The Overview, renewals, the floor, staff and roles, insights, announcements, Mindbody and the studio's data.
+            The Overview, renewals and the Delight queue, the floor, staff and roles, insights, announcements, Mindbody
+            and the studio's data.
             Running the studio day to day stays on My Studio.
           </p>
           <LinkRow icon={ShieldCheck} label="Open Operations" onClick={onOpenOperations} />

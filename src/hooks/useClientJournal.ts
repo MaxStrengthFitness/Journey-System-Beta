@@ -72,6 +72,7 @@ import { adaptClientEvents as adaptFordEvents } from "../features/ford/ford-roll
 import { studioDateKey } from "../lib/studio-time";
 import { mattersOn } from "../features/client-notes/mattering";
 import { assembleThreads, withoutThreadUpdates, type NoteThread } from "../features/client-notes/threads";
+import { journalBodyOf } from "../features/client-notes/note-catalog";
 
 const STREAM_LIMIT = 300;
 const LEGACY_NOTE_LIMIT = 200;
@@ -799,7 +800,49 @@ export function adaptProfileFields(client: Client | null): JournalEntry[] {
   return out;
 }
 
-/** Session wrap-up text stored on the session document itself. */
+/**
+ * The sessions whose own note the journal does NOT already hold (voice-review
+ * follow-up, Sep 27 2026).
+ *
+ * Since Sep 18 Finish writes the End Session box, the Note for the next
+ * trainer, twice: onto the session document (`sessions.notes`, which History
+ * and the export read) and into the journal as a Heads up. The read-only
+ * "Session summary" below then showed the same words a second time on the
+ * client's Notes page. So a session's copy is left out when a journal entry
+ * has the same `sessionId`, `origin: "post_session"` and the same words,
+ * compared as the journal holds them: trimmed and cut at 5,000 characters
+ * (`journalBodyOf`), because the session keeps the whole text.
+ *
+ *   - The journal list is the UNFILTERED one, archived entries included: a
+ *     trainer who archived the journal copy has said they are done with the
+ *     note, and the read-only copy must not come back in its place.
+ *   - Only the same words count. A session note edited later in History
+ *     differs from its journal copy, and both stay.
+ *   - Sessions from before Sep 18 have no journal copy and keep their card.
+ */
+export function sessionsWithoutJournalCopy(
+  sessions: readonly WorkoutSession[],
+  native: readonly Pick<JournalEntry, "sessionId" | "origin" | "body">[],
+): WorkoutSession[] {
+  const journalled = new Map<string, Set<string>>();
+  for (const e of native) {
+    if (e.origin !== "post_session" || !e.sessionId) continue;
+    const body = journalBodyOf(e.body);
+    if (!body) continue;
+    const bodies = journalled.get(e.sessionId) ?? new Set<string>();
+    bodies.add(body);
+    journalled.set(e.sessionId, bodies);
+  }
+  if (journalled.size === 0) return sessions.slice();
+  return sessions.filter((s) => !(s.id && journalled.get(s.id)?.has(journalBodyOf(s.notes))));
+}
+
+/**
+ * The session summary: each session's own note (`sessions.notes`), shown
+ * read-only as "Session summary". Since the reporting round that is the Note
+ * for the next trainer, copied onto the session at Finish; older sessions
+ * hold whatever their notes field held.
+ */
 function adaptSessionSummaries(
   sessions: WorkoutSession[],
   trainers: Trainer[],
@@ -948,7 +991,7 @@ export interface UseClientJournalResult {
   loadState?: JournalLoadState;
   /**
    * The client's newest sessions (up to SESSION_SUMMARY_LIMIT, date desc),
-   * from the listener this hook already runs for the session wrap-ups - no
+   * from the listener this hook already runs for the session summaries - no
    * second sessions query on a screen that holds the journal. Session
    * documents only, no exercise logs. Empty until `loadState.sessions` is
    * `ready` for THIS client - never the last client's rows while this one's
@@ -1094,7 +1137,7 @@ export function useClientJournal({
   useEffect(() => {
     // Emptied on every (re)subscribe, not only when there is no client: the
     // listeners below are re-created per client but the state is not, so
-    // without this the last client's legacy notes and session wrap-ups sat
+    // without this the last client's legacy notes and session summaries sat
     // in this client's `entries` until each listener answered - and one
     // group (say the notes) could read `ready` while another still held the
     // last client's rows (client codex, phase 1).
@@ -1181,7 +1224,8 @@ export function useClientJournal({
           handleFirestoreError(e, OperationType.GET, "trainerFocuses");
         },
       ),
-      // Session wrap-up text lives on the session document itself. The journal
+      // The session summary (each session's own note, `sessions.notes`) lives
+      // on the session document itself. The journal
       // owns this subscription rather than taking `sessions` as a prop: the
       // profile view only loads sessions on some tabs, which would make the
       // timeline's contents depend on which tab you happened to open first.
@@ -1219,7 +1263,10 @@ export function useClientJournal({
       ...adaptIncidents(legacyIncidents, trainers),
       ...adaptEventsToJournal(client),
       ...adaptProfileFields(client),
-      ...adaptSessionSummaries(legacySessions, trainers),
+      // A session's own note only when the journal does not hold it already
+      // (the Note for the next trainer is written to both). Checked against
+      // every native entry, archived ones too.
+      ...adaptSessionSummaries(sessionsWithoutJournalCopy(legacySessions, native), trainers),
     ];
 
     // A migrated entry carries the id of the legacy doc it came from; drop the

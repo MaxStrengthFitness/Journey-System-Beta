@@ -98,6 +98,8 @@ Two documents are in the same state:
 Commit them or remove them, but do not leave them untracked — an untracked file
 is invisible to every check the project runs.
 
+One tracked file looks like clutter but is history: `docs/ops/Journey Screen Audit.docx` is the Sep 13 audit workbook, replaced by the Screen Atlas, and its screen names (the "Victory HUD", the Feel toggle, the closing note) are as of Sep 13; leave it.
+
 ---
 
 ## 6. `Claude outputs/` — keep this one

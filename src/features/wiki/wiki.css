@@ -7,17 +7,25 @@
    doesn't match the rest of the app" was the brief and the Hub is the screen
    AJ likes. Specifically borrowed, on purpose, so the two read as one product:
 
-     - the screen title: 15px / 900 / italic / uppercase  (.st__title)
      - micro-labels: 11px / 800 / 0.14em tracking / uppercase / muted
      - cards: 1px border + 14px radius + a two-part shadow
      - 44px rows, 52px group rows — thumbed on an iPad, per Apple HIG
      - ONE scroller, padded 1rem, with no bottom padding for a nav bar that
        is a sibling and therefore not overlapping anything
 
-   Prefix is `.wk__`, so nothing here can collide with `.cat__` while the old
-   Catalog is still on disk as a rollback.
+   Prefix is `.wk__`. The old Catalog it was kept apart from went in the
+   beta-prep trim (Sep 17 2026); what is left of `.cat__` styles the two
+   studio cards on a machine page (catalog.css).
 
-   Tokens only — no hex values in this file. See wiki.tokens.css.
+   Tokens only — no hex values in this file. See wiki.tokens.css, whose
+   colours are the app's (equipment.tokens.css) since Sep 27 2026.
+
+   THE APP'S TYPE VOICE (voice review follow-up, Sep 27 2026). Titles are
+   the display face (Saira Condensed) at 800 in italic capitals, the client
+   codex's page-title voice; buttons are 14px bold sentence case; text sits
+   on the codex's scale, 11 / 12 / 14 / 17 / 30, with an input at 16 (below).
+   learning-scale.test.ts holds it. The rules are the codex kit's
+   (client-codex/kit/kit.css): read them before adding a size here.
    ========================================================================== */
 
 @import "./wiki.tokens.css";
@@ -89,8 +97,9 @@
   flex: 1 1 auto;
   min-width: 0;
   /* The trail can outgrow a phone. It scrolls horizontally rather than
-     wrapping, so the bar stays one row tall and the CURRENT page — the end of
-     the trail — is what stays in view. */
+     wrapping, so the bar stays one row tall, and WikiShell's Trail scrolls it
+     to its end whenever it changes: the CURRENT page, the end of the trail,
+     is what stays in view. */
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -107,10 +116,15 @@
 }
 .wk__crumbs li { display: inline-flex; align-items: center; gap: 0.125rem; }
 
+/* 40px tall, like every tap in the app: the text stays small, the target
+   does not (voice review follow-up, Sep 27 2026). */
 .wk__crumb {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
   border: 0;
   background: none;
-  padding: 0.25rem 0.25rem;
+  padding: 0 0.375rem;
   font: inherit;
   font-size: 11px;
   font-weight: 800;
@@ -131,17 +145,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-border-strong);
   border-radius: var(--wk-radius-pill);
   background: var(--wk-surface);
   color: var(--wk-ink-2);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .wk__searchbtn:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
@@ -192,13 +204,15 @@
 /* The brand orange marks the one thing that is the tab's own. */
 .wk__mast-home svg { flex: none; color: var(--wk-hero-text); }
 
-/* The Hub's title voice, one size up: this is the tab's name, not a card's. */
+/* The app's title voice at section size: the tab's name, not a page's. */
 .wk__mast-title {
+  font-family: var(--wk-font-display);
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   font-style: italic;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
@@ -218,7 +232,7 @@
   background: var(--wk-bg);
   color: var(--wk-ink-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -226,11 +240,13 @@
 .wk__mast-search:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
 .wk__mast-search:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
 .wk__mast-search svg { flex: none; }
+/* Wraps rather than cutting off: "Search Learning" is two words, and the
+   pill grows a line before it clips one (below 640px the magnifier alone
+   carries it). */
 .wk__mast-search-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 /* Row two: the trail and the page's actions, on the page's own ground. */
@@ -255,20 +271,23 @@
 
 .wk__index-head { padding: 1rem 0 0.25rem; }
 
-/* The Hub's title voice, on purpose. */
+/* The app's page-title voice: the codex's .cx-page-title. */
 .wk__index-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 900;
+  font-family: var(--wk-font-display);
+  font-size: 30px;
+  font-weight: 800;
   font-style: italic;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
+  line-height: 1;
   color: var(--wk-ink);
+  overflow-wrap: anywhere;
 }
 
 .wk__index-sub {
-  margin: 0.25rem 0 0;
-  font-size: 13px;
+  margin: 0.375rem 0 0;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--wk-ink-muted);
 }
@@ -287,18 +306,21 @@
   background: var(--wk-surface);
   box-shadow: var(--wk-elev-1);
 }
+/* A big number, as the codex draws one (.cx-big). */
 .wk__stat-value {
   display: block;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1.1;
+  font-family: var(--wk-font-display);
+  font-size: 30px;
+  font-style: italic;
+  font-weight: 800;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--wk-ink);
 }
 .wk__stat-label {
   display: block;
-  margin-top: 0.125rem;
-  font-size: 10px;
+  margin-top: 0.25rem;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -365,17 +387,17 @@
   margin-bottom: 0.25rem;
   border-radius: 9px;
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
 }
 .wk__cat-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
 .wk__cat-count {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -406,7 +428,7 @@
   padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--wk-border);
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -479,11 +501,11 @@
   overflow-wrap: anywhere;
 }
 .wk__row-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 .wk__row-badges { flex: none; display: flex; flex-wrap: wrap; gap: 0.25rem; justify-content: flex-end; }
 .wk__row-chev { flex: none; color: var(--wk-ink-faint); }
@@ -497,7 +519,7 @@
   padding: 0.1875rem 0.375rem;
   border-radius: 7px;
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
+  color: var(--wk-accent-text, var(--wk-ink-2));
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -533,7 +555,7 @@
   padding: 0.125rem 0.5rem;
   border: 1px solid transparent;
   border-radius: var(--wk-radius-pill);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -549,7 +571,7 @@
 .wk__badge--ok      { background: var(--wk-ok-fill); border-color: var(--wk-ok); color: var(--wk-ok); }
 .wk__badge--warn    { background: var(--wk-warn-fill); border-color: var(--wk-warn-border); color: var(--wk-warn); }
 .wk__badge--alert   { background: var(--wk-alert-fill); border-color: var(--wk-alert); color: var(--wk-alert); }
-.wk__badge--accent  { background: var(--wk-accent-fill); border-color: var(--wk-accent); color: var(--wk-accent); }
+.wk__badge--accent  { background: var(--wk-accent-fill); border-color: var(--wk-accent); color: var(--wk-accent-text); }
 
 /* ------------------------------------------------------------------ *
  * Article
@@ -568,15 +590,19 @@
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--wk-accent, var(--wk-ink-muted));
+  color: var(--wk-accent-text, var(--wk-ink-muted));
 }
 
+/* The page title: the app's voice, as the codex's .cx-page-title. */
 .wk__h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-family: var(--wk-font-display);
+  font-size: 30px;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  line-height: 1;
+  letter-spacing: 0.01em;
   color: var(--wk-ink);
   overflow-wrap: anywhere;
 }
@@ -611,8 +637,8 @@
   padding: 0.5rem 0.875rem;
   border-bottom: 1px solid var(--wk-border);
   background: var(--wk-accent-fill, var(--wk-surface-2));
-  color: var(--wk-accent, var(--wk-ink-2));
-  font-size: 10px;
+  color: var(--wk-accent-text, var(--wk-ink-2));
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -659,7 +685,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -667,7 +693,7 @@
 }
 .wk__fact dd {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--wk-ink);
@@ -687,7 +713,10 @@
   font-weight: 600;
   color: var(--wk-ink-2);
 }
-.wk__muscle-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+/* The key to the figure's two blues. A hairline ring, because the assisting
+   muscles' blue is pale by design (it sits on the far side of the body's
+   grey from the worked muscles' blue). */
+.wk__muscle-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px var(--wk-border-strong); }
 .wk__muscle--primary   .wk__muscle-dot { background: var(--wk-muscle-primary); }
 .wk__muscle--primary   { color: var(--wk-ink); font-weight: 700; }
 .wk__muscle--synergist .wk__muscle-dot { background: var(--wk-muscle-secondary); }
@@ -785,7 +814,7 @@
 .wk__fold-summary::-webkit-details-marker { display: none; }
 .wk__fold-summary:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
 .wk__fold-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.wk__fold-meta { flex: none; color: var(--wk-ink-faint); font-size: 10px; }
+.wk__fold-meta { flex: none; color: var(--wk-ink-muted); font-size: 11px; }
 .wk__fold-chev { flex: none; color: var(--wk-ink-faint); transition: transform 140ms ease; }
 .wk__fold[open] .wk__fold-chev { transform: rotate(180deg); }
 .wk__fold-body { padding: 0 1rem 1rem; border-top: 1px solid var(--wk-border); padding-top: 0.875rem; }
@@ -833,17 +862,15 @@
 }
 .wk__warnings-more {
   margin-top: 0.5rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-warn-border);
   border-radius: var(--wk-radius-pill);
   background: transparent;
   color: var(--wk-warn);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -881,7 +908,7 @@
   height: 32px;
   border-radius: 10px;
   background: var(--wk-accent-fill, var(--wk-live-fill));
-  color: var(--wk-accent, var(--wk-live-text));
+  color: var(--wk-accent-text, var(--wk-live-text));
 }
 .wk__linkcard-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wk__linkcard-title { font-size: 14px; font-weight: 700; color: var(--wk-ink); overflow-wrap: anywhere; }
@@ -893,20 +920,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 0.75rem;
   border: 1px solid var(--wk-border);
   border-radius: var(--wk-radius-pill);
   background: var(--wk-surface);
   color: var(--wk-ink);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
 .wk__chip:hover { border-color: var(--wk-accent, var(--wk-live)); background: var(--wk-accent-fill, var(--wk-live-fill)); }
 .wk__chip:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 1px; }
-.wk__chip svg { color: var(--wk-accent, var(--wk-ink-faint)); }
+.wk__chip svg { color: var(--wk-accent-text, var(--wk-ink-muted)); }
 
 /* ------------------------------------------------------------------ *
  * Segmented control
@@ -935,7 +962,7 @@
   background: transparent;
   color: var(--wk-ink-muted);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1038,18 +1065,34 @@
 }
 .wk__search-input::-webkit-search-cancel-button { display: none; }
 
+/* A 40px target around the 24px circle you see: the circle is drawn behind
+   the cross, the button is the whole square (voice review follow-up). */
 .wk__search-clear {
+  position: relative;
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
+  margin-right: -0.5rem;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: var(--wk-surface-3);
+  background: transparent;
   color: var(--wk-ink-2);
   cursor: pointer;
 }
+.wk__search-clear::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--wk-surface-3);
+}
+.wk__search-clear svg { position: relative; }
+.wk__search-clear:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
 
 .wk__search-results {
   flex: 1;
@@ -1072,7 +1115,7 @@
   text-transform: uppercase;
   color: var(--wk-ink-muted);
 }
-.wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-faint); }
+.wk__search-count { font-variant-numeric: tabular-nums; color: var(--wk-ink-muted); }
 
 .wk__search-list {
   border: 1px solid var(--wk-border);
@@ -1100,40 +1143,43 @@
 .wk__hit + .wk__hit { border-top: 1px solid var(--wk-border); }
 .wk__hit:hover { background: var(--wk-surface-2); }
 .wk__hit:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: -2px; }
-.wk__hit-icon { flex: none; color: var(--wk-accent, var(--wk-ink-faint)); }
+.wk__hit-icon { flex: none; color: var(--wk-accent-text, var(--wk-ink-muted)); }
 .wk__hit-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wk__hit-title { font-size: 14px; font-weight: 600; color: var(--wk-ink); overflow-wrap: anywhere; }
 .wk__hit-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 
 /* ------------------------------------------------------------------ *
  * Empty / placeholder
  * ------------------------------------------------------------------ */
 
+/* The codex's empty state (.cx-empty): a dashed box, a sentence, left-
+   aligned, in the reading ink. A blank space centred in grey read as a
+   screen that had not loaded. */
 .wk__empty {
-  margin: 1.5rem 0;
+  margin: 1rem 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: 12px;
   font-size: 14px;
-  line-height: 1.6;
-  color: var(--wk-ink-muted);
-  text-align: center;
+  line-height: 1.55;
+  color: var(--wk-ink-2);
 }
 
 .wk__placeholder {
-  margin: 2rem auto;
-  max-width: 26rem;
-  padding: 1.5rem;
-  border: 1px solid var(--wk-border);
-  border-radius: var(--wk-radius-lg);
-  background: var(--wk-surface);
-  text-align: center;
+  margin: 1rem 0;
+  max-width: var(--wk-measure);
+  padding: 14px 16px;
+  border: 1px dashed var(--wk-border-strong);
+  border-radius: 12px;
 }
-.wk__placeholder-title { margin: 0 0 0.375rem; font-size: 15px; font-weight: 800; color: var(--wk-ink); }
-.wk__placeholder-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--wk-ink-muted); }
+.wk__placeholder-title { margin: 0 0 0.25rem; font-size: 17px; font-weight: 800; color: var(--wk-ink); }
+.wk__placeholder-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--wk-ink-2); }
 
 /* ------------------------------------------------------------------ *
  * Content blocks — the Academy corpus and studio-written pages
@@ -1143,7 +1189,7 @@
 
 .wk__h3 {
   margin: 0.5rem 0 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.3;
   color: var(--wk-ink);
@@ -1152,7 +1198,7 @@
 
 .wk__h4 {
   margin: 0.25rem 0 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--wk-ink-2);
@@ -1181,7 +1227,7 @@
 .wk__source {
   margin: 0;
   font-size: 11px;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 .wk__source code {
   font-size: 11px;
@@ -1244,14 +1290,14 @@
 }
 .wk__glossary-row--open { border-left-color: var(--wk-live); background: var(--wk-live-fill); }
 .wk__glossary-row dt {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--wk-ink);
 }
 .wk__glossary-row dd {
   margin: 0.125rem 0 0;
   max-width: var(--wk-measure);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--wk-ink-2);
 }
@@ -1274,15 +1320,15 @@
   border-left: 3px solid var(--wk-accent, var(--wk-live));
   border-radius: 0 8px 8px 0;
   background: var(--wk-accent-fill, var(--wk-live-fill));
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.5;
   font-weight: 600;
   color: var(--wk-ink);
 }
 .wk__do {
   margin: 0;
   max-width: var(--wk-measure);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--wk-ink-muted);
 }
@@ -1319,17 +1365,17 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  min-height: 32px;
-  padding: 0 0.625rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
   border: 1px solid var(--wk-border);
   border-radius: var(--wk-radius-pill);
   background: var(--wk-surface-2);
   color: var(--wk-ink-2);
   font: inherit;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   cursor: pointer;
 }
 .wk__studio-edit:hover { border-color: var(--wk-live); color: var(--wk-live-text); }
@@ -1339,7 +1385,7 @@
   padding-top: 0.5rem;
   border-top: 1px solid var(--wk-border);
   font-size: 11px;
-  color: var(--wk-ink-faint);
+  color: var(--wk-ink-muted);
 }
 
 .wk__addnote {
@@ -1361,7 +1407,7 @@
 .wk__addnote:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
 .wk__addnote svg { flex: none; color: var(--wk-ink-muted); }
 .wk__addnote span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.wk__addnote strong { font-size: 13px; font-weight: 700; color: var(--wk-ink); }
+.wk__addnote strong { font-size: 14px; font-weight: 700; color: var(--wk-ink); }
 .wk__addnote em { font-style: normal; font-size: 12px; line-height: 1.4; color: var(--wk-ink-muted); }
 
 /* ------------------------------------------------------------------ *
@@ -1390,11 +1436,12 @@
   background: var(--wk-surface);
   color: var(--wk-ink);
   font: inherit;
-  /* 16px minimum, or iOS Safari zooms the page on focus. */
+  /* 16px minimum, or iOS Safari zooms the page on focus: Learning's one
+     size off the scale, for every field (learning-scale.test.ts). */
   font-size: 16px;
   line-height: 1.5;
 }
-.wk__textarea { resize: vertical; min-height: 7rem; font-size: 15px; }
+.wk__textarea { resize: vertical; min-height: 7rem; }
 .wk__input:focus,
 .wk__textarea:focus {
   outline: none;
@@ -1419,31 +1466,35 @@
 
 .wk__editor-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
+/* The codex's button: 14px bold sentence case, 10px corners. */
 .wk__btn {
   min-height: var(--wk-tap);
   padding: 0 1rem;
   border: 1px solid var(--wk-border-strong);
-  border-radius: var(--wk-radius-pill);
+  border-radius: 10px;
   background: var(--wk-surface);
   color: var(--wk-ink);
   font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 .wk__btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wk__btn:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
-/* --wk-hero-text, not --wk-hero: white on the bright orange is 3.5:1, below
-   AA. The same call index.css makes for --cta vs --cta-strong. */
+/* Save, Publish, Add note: solid brand blue, like every Save in the app
+   (voice review follow-up, Sep 27 2026). It was orange for a day; orange is
+   Start Session's, and a Save beside a blue "Save notes" read as two kinds. */
 .wk__btn--primary {
-  border-color: var(--wk-hero-text);
-  background: var(--wk-hero-text);
-  color: var(--wk-hero-on);
+  border-color: var(--wk-live);
+  background: var(--wk-live);
+  color: var(--wk-live-on);
 }
+/* Quiet is quiet: no crimson on hover (an iPad applies :hover on the tap, so
+   a harmless Close flashed red as it closed). */
 .wk__btn--quiet { border-color: transparent; background: transparent; color: var(--wk-ink-muted); }
-.wk__btn--quiet:hover { color: var(--wk-alert); }
+.wk__btn--quiet:hover { color: var(--wk-ink); }
+/* Retire: destructive, and it says so before anyone touches it. */
+.wk__btn--danger { border-color: var(--wk-alert); background: var(--wk-alert-fill); color: var(--wk-alert); }
 
 /* ------------------------------------------------------------------ *
  * Split layout — 1024px, matching features/equipment's SPLIT_AT and the old
@@ -1455,9 +1506,6 @@
   .wk__scroll { padding: 0 1.5rem 2rem; }
   .wk__bar { padding: 0.5rem 1.5rem; }
   .wk__mast { padding: 0.5rem 1.5rem; }
-
-  .wk__index-title { font-size: 17px; }
-  .wk__h1 { font-size: 28px; }
 
   /* The infobox becomes a sticky right-hand column. It is sticky rather than
      a non-scrolling third pane: same effect — the model stays on screen —

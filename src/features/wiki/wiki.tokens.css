@@ -12,12 +12,16 @@
    palettes means the next edit to either one is a drift waiting to happen.
 
    So --wk-* is the shared vocabulary the Catalog and the Academy both speak.
-   Its values are deliberately IDENTICAL to --st-* today: adopting it changes
-   nothing visually on the Hub side, which is exactly what "make the Catalog
-   feel like the Hub" requires. From here, one edit moves both screens.
+   It began as a copy of --st-* (the Hub's). Since Sep 27 2026 it is a copy
+   of --eq-* instead (ONE PALETTE, below): the app's palette, not the Hub's,
+   and it no longer matches --st-* where the two differ (caution is plum
+   here, amber there; dark blue is --eq-live's).
 
    Contrast checked to WCAG 2.1 AA: body text >= 4.5:1, borders and non-text
-   UI >= 3:1. Ratios kept beside each value so a future edit can be re-checked.
+   UI >= 3:1. The ratio beside a value is against white in light mode and
+   against --wk-surface (#0e151c) in dark, unless it says otherwise, so a
+   future edit can be re-checked. learning-tokens.test.ts computes the ones
+   that matter.
 
    NOTHING IN features/wiki WRITES A HEX VALUE. Same discipline as
    features/catalog and features/studio-tasks.
@@ -28,6 +32,15 @@
    admin-tokens.test.ts does for --adm-*. The visible change was the warnings:
    amber became the app's caution plum, and the flag red the app's crimson.
    The category accents and the figure's colours are Learning's own.
+
+   ONE MEANING PER COLOUR (voice review follow-up, Sep 27 2026, under the
+   creative control AJ gave the round). Blue acts and selects, and every Save
+   is solid blue with --wk-live-on text. Orange is the Learning brand mark and
+   nothing else here. Plum is caution: a clinical warning, cleaning due, out
+   of service, AND a machine a trainer flagged (the flag was crimson for one
+   day, which put the rep-quality red on a machine page beside a plum "Out
+   of service"; that is reversed on purpose). Crimson is critical: an error
+   line, a destructive button. Green is done.
    ========================================================================== */
 
 :root {
@@ -45,6 +58,12 @@
   --wk-nav-w:      17.5rem; /* 280 */
   --wk-tap:        44px;    /* Apple HIG minimum. Everything is thumbed. */
 
+  /* ── type: the app's display face, for titles (voice review follow-up,
+        Sep 27 2026). With its own fallback, as the codex's: this file is
+        not run through Tailwind, so it must not depend on Tailwind having
+        emitted --font-display. ────────────────────────────────────────── */
+  --wk-font-display: var(--font-display, "Saira Condensed", system-ui, sans-serif);
+
   /* ── surfaces ─────────────────────────────────────────────────────── */
   --wk-bg:            #f1f5f8;
   --wk-surface:       #ffffff;
@@ -56,36 +75,40 @@
   /* ── ink ──────────────────────────────────────────────────────────── */
   --wk-ink:       #121c23;   /* 17.3:1 */
   --wk-ink-2:     #3e4952;   /*  9.2:1 */
-  --wk-ink-muted: #5b6770;   /*  5.8:1 */
-  --wk-ink-faint: #848e95;   /*  3.3:1 — decorative only */
+  --wk-ink-muted: #5b6770;   /*  5.8:1 — the quietest ink a reader reads */
+  --wk-ink-faint: #848e95;   /*  3.3:1 — decorative only: chevrons,
+                                 separators, icons. Never words. */
 
-  /* ── hero orange: the thing you are looking at ────────────────────── */
+  /* ── hero orange: the Learning brand mark, and nothing else ─────── */
   --wk-hero:      #ef5302;
   --wk-hero-text: #bc2c00;   /* 6.0:1 on white — anything with a label */
   --wk-hero-fill: #fde7dc;
-  --wk-hero-on:   #ffffff;
 
-  /* ── blue: anything you can act on ────────────────────────────────── */
+  /* ── blue: anything you can act on, and every Save ────────────────── */
   --wk-live:      #0a548b;   /* 7.9:1 */
   --wk-live-text: #034a84;   /* 9.1:1 */
   --wk-live-fill: #e6eef3;
+  --wk-live-on:   #ffffff;   /* the words on a solid blue button, 7.9:1 */
 
   /* ── green: done / healthy ────────────────────────────────────────── */
-  --wk-ok:      #1c7a52;     /* 4.9:1 */
+  --wk-ok:      #1c7a52;     /* 5.3:1 */
   --wk-ok-fill: #e3f1ea;
 
-  /* ── the caution colour: clinical warnings and upkeep. Never collapsed,
-        so it has to read at a glance without being shouty enough to be
-        tuned out. Plum, as everywhere else in the app (a Heads up, a machine
+  /* ── the caution colour: clinical warnings, upkeep and a machine a
+        trainer flagged (the flag since the voice review follow-up, Sep 27
+        2026). Warnings are never collapsed, so it has to read at a glance
+        without being shouty enough to be tuned out. Plum, as everywhere
+        else in the app (a Heads up, a machine
         needing attention); it was amber here until Sep 27 2026, so the same
         machine's warnings were two colours on two screens. ─────────────── */
-  --wk-warn:        #a2457e;   /* 5.1:1 */
+  --wk-warn:        #a2457e;   /* 5.7:1, 4.8:1 on its fill */
   --wk-warn-strong: #a2457e;
   --wk-warn-fill:   #f4e9f0;
-  --wk-warn-border: #a2457e;   /* 3.0:1 */
+  --wk-warn-border: #a2457e;   /* 5.7:1 */
 
-  /* ── the critical colour: flagged by a trainer. The app's crimson. ── */
-  --wk-alert:      #c0203f;    /* 6.6:1 */
+  /* ── the critical colour: an error line, a destructive button. The
+        app's crimson — never a flagged machine, which is plum above. ─── */
+  --wk-alert:      #c0203f;    /* 6.0:1, 4.9:1 on its fill */
   --wk-alert-fill: #fce3e8;
 
   --wk-focus-ring: var(--wk-live);
@@ -101,7 +124,9 @@
      it: the index card, the row stripe, the article eyebrow, the infobox
      header. That consistency is the whole of "colour-coded categories" —
      a colour that means something different on two screens teaches nothing.
-     Values match --cat-accent-* so nothing shifts hue mid-migration. */
+     They are Learning's own; the old Catalog's copies (--cat-accent-*)
+     went with it. A category colour that colours WORDS uses its -text
+     shade below. */
   --wk-cat-push:      #ef5302;
   --wk-cat-pull:      #0a548b;
   --wk-cat-legs:      #1c7a52;
@@ -120,9 +145,27 @@
   --wk-cat-hips-fill:      #fbe8f0;
   --wk-cat-other-fill:     #eceff1;
 
-  /* ── the figure ───────────────────────────────────────────────────── */
+  /* The same six as WORDS (a code chip, a group head, an eyebrow, a count)
+     and as a glyph on a fill: each reads at 4.5:1 or more on its fill, the
+     card and the page, and learning-tokens.test.ts measures it. The bright
+     accent above is for stripes and rules. Push and posterior are darker
+     here (5.0 and 5.8 to 1 on their fills; the accents are 3.0 and 3.9). */
+  --wk-cat-push-text:      #bc2c00;
+  --wk-cat-pull-text:      #0a548b;
+  --wk-cat-legs-text:      #1c7a52;
+  --wk-cat-posterior-text: #8a5300;
+  --wk-cat-trunk-text:     #8a4f9e;
+  --wk-cat-hips-text:      #b5306f;
+  --wk-cat-other-text:     #5b6770;
+
+  /* ── the figure (catalog/MachineFigure passes these to the body) ─────
+     The worked muscles against the rest of the body is the one contrast the
+     figure exists for: 3.2:1 here, 4.1:1 in dark, held by
+     learning-tokens.test.ts. The assisting muscles sit on the other side of
+     the body's grey from the worked ones (paler here, dimmer in dark), so
+     the two blues never read as one. */
   --wk-muscle-primary:   #0a548b;
-  --wk-muscle-secondary: #6fb4e4;
+  --wk-muscle-secondary: #b9dcf5;
   --wk-muscle-base:      #9aa6ae;
 }
 
@@ -132,33 +175,34 @@
   --wk-surface:       #0e151c;
   --wk-surface-2:     #151e27;
   --wk-surface-3:     #1d2833;
-  --wk-border:        #1f2a35;   /* 1.5:1 on surface */
-  --wk-border-strong: #3a4855;   /* 2.9:1 */
+  --wk-border:        #1f2a35;   /* 1.3:1 hairline */
+  --wk-border-strong: #3a4855;   /* 2.0:1 */
 
-  --wk-ink:       #eef3f7;   /* 15.8:1 on surface */
-  --wk-ink-2:     #b3c0cb;   /*  8.6:1 */
-  --wk-ink-muted: #8b98a4;   /*  5.4:1 */
-  --wk-ink-faint: #63707c;   /*  3.1:1 */
+  --wk-ink:       #eef3f7;   /* 16.5:1 */
+  --wk-ink-2:     #b3c0cb;   /*  9.9:1 */
+  --wk-ink-muted: #8b98a4;   /*  6.2:1 */
+  --wk-ink-faint: #63707c;   /*  3.6:1 — decorative only */
 
   /* Dark is not a flip. Saturated pigment vibrates on near-black, so fills
      become low-alpha washes and text tones lift instead of darken. */
   --wk-hero:      #f36d21;
-  --wk-hero-text: #ff9455;   /* 7.2:1 on surface */
+  --wk-hero-text: #ff9455;   /* 8.4:1 */
   --wk-hero-fill: rgba(243, 109, 33, 0.14);
 
-  --wk-live:      #4a9fd8;
-  --wk-live-text: #7cc0ee;   /* 9.4:1 */
+  --wk-live:      #4a9fd8;   /* 6.3:1 */
+  --wk-live-text: #7cc0ee;   /* 9.3:1 */
   --wk-live-fill: rgba(74, 159, 216, 0.14);
+  --wk-live-on:   #04121c;   /* on --wk-live, 6.5:1 */
 
-  --wk-ok:      #4ec08c;
+  --wk-ok:      #4ec08c;     /* 8.1:1 */
   --wk-ok-fill: rgba(78, 192, 140, 0.13);
 
-  --wk-warn:        #d98cbd;   /* 10.4:1 on surface */
+  --wk-warn:        #d98cbd;   /* 7.4:1 */
   --wk-warn-strong: #d98cbd;
   --wk-warn-fill:   rgba(217, 140, 189, 0.14);
   --wk-warn-border: rgba(217, 140, 189, 0.32);
 
-  --wk-alert:      #f2718c;   /* 8.1:1 */
+  --wk-alert:      #f2718c;   /* 6.6:1 */
   --wk-alert-fill: rgba(242, 113, 140, 0.13);
 
   --wk-shadow: rgba(0, 0, 0, 0.5);
@@ -183,9 +227,18 @@
   --wk-cat-hips-fill:      rgba(244, 114, 182, 0.14);
   --wk-cat-other-fill:     rgba(139, 152, 164, 0.12);
 
-  --wk-muscle-primary:   #0a548b;
-  --wk-muscle-secondary: #6fb4e4;
-  --wk-muscle-base:      #4b555c;
-  --wk-hero-on: #1a0c04;
+  /* On near-black the bright accents already read (5.3:1 or more on their
+     washes), so the text shades are the accents themselves. */
+  --wk-cat-push-text:      #ff6a1f;
+  --wk-cat-pull-text:      #38bdf8;
+  --wk-cat-legs-text:      #34d399;
+  --wk-cat-posterior-text: #fbbf24;
+  --wk-cat-trunk-text:     #c084fc;
+  --wk-cat-hips-text:      #f472b6;
+  --wk-cat-other-text:     #8b98a4;
 
+  /* The worked muscles in the live blue, brightest on near-black. */
+  --wk-muscle-primary:   #4a9fd8;
+  --wk-muscle-secondary: #2d6690;
+  --wk-muscle-base:      #2f3942;
 }

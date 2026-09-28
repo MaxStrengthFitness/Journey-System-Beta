@@ -2,7 +2,8 @@
 /**
  * The standing weeks, read live (voice-review round, Sep 27 2026): a failed
  * read is "unknown", never "nobody has a week", and the rules not being
- * deployed yet says so.
+ * deployed yet says so. Since the follow-up, a snapshot only this iPad's
+ * cache answered is not an answer either: the first answer is the server's.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
@@ -11,7 +12,7 @@ import { createRoot, type Root } from "react-dom/client";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const listeners = vi.hoisted(() => ({
-  list: [] as { path: string; next: (snap: unknown) => void; fail: (err: unknown) => void; off: () => void }[],
+  list: [] as { path: string; options: unknown; next: (snap: unknown) => void; fail: (err: unknown) => void; off: () => void }[],
 }));
 
 vi.mock("../../firebase", () => ({ db: { __fake: true }, auth: { currentUser: null }, functions: {} }));
@@ -22,17 +23,26 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     ...real,
     doc: ref,
     collection: ref,
-    onSnapshot: (r: { path: string }, next: (snap: unknown) => void, fail: (err: unknown) => void) => {
+    // Called as (ref, { includeMetadataChanges }, next, fail): the first
+    // answer must be the server's (voice review follow-up).
+    onSnapshot: (r: { path: string }, options: unknown, next: (snap: unknown) => void, fail: (err: unknown) => void) => {
       const off = vi.fn();
-      listeners.list.push({ path: r.path, next, fail, off });
+      listeners.list.push({ path: r.path, options, next, fail, off });
       return off;
     },
   };
 });
 
-import { useStandingWeek, useStandingWeeks } from "./useStandingWeeks";
+import { OFFLINE_ERROR, useStandingWeek, useStandingWeeks } from "./useStandingWeeks";
+import { SERVER_WAIT_MS } from "./server-read";
 
 const docSnap = (id: string, data: Record<string, unknown>) => ({ id, exists: () => true, data: () => data });
+const cached = { fromCache: true, hasPendingWrites: false };
+const confirmed = { fromCache: false, hasPendingWrites: false };
+const setOnline = (online: boolean) => {
+  Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => online });
+  window.dispatchEvent(new Event(online ? "online" : "offline"));
+};
 const week = { hours: [{ weekday: 1, from: "07:00", to: "13:00" }], regulars: [] };
 
 let root: Root;
@@ -56,6 +66,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   act(() => root.unmount());
+  setOnline(true);
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -64,6 +76,8 @@ describe("useStandingWeeks", () => {
     act(() => root.render(<Weeks studioId="solon" />));
     expect(seen).toMatchObject({ loading: true, docs: [] });
     expect(listeners.list[0].path).toBe("studios/solon/standingWeeks");
+    // Told when the server merely confirms the cache, or the wait could never end.
+    expect(listeners.list[0].options).toEqual({ includeMetadataChanges: true });
     act(() =>
       listeners.list[0].next({
         docs: [
@@ -86,6 +100,46 @@ describe("useStandingWeeks", () => {
     act(() => root.render(<Weeks studioId="westlake" />));
     act(() => listeners.list[1].fail({ code: "unavailable" }));
     expect(seen).toMatchObject({ error: "Couldn't load the standing weeks. Check the connection." });
+  });
+});
+
+describe("the first answer is the server's", () => {
+  it("never reads a cache-only empty list as nobody having a week", () => {
+    act(() => root.render(<Weeks studioId="solon" />));
+    act(() => listeners.list[0].next({ docs: [], metadata: cached }));
+    expect(seen).toMatchObject({ loading: true, docs: [], error: null });
+    // The server confirms: now it is an answer.
+    act(() => listeners.list[0].next({ docs: [docSnap("uid-sam", { trainerId: "t-sam", trainerName: "Sam Lee", proposed: week })], metadata: confirmed }));
+    expect(seen).toMatchObject({ loading: false, error: null });
+    expect((seen as { docs: unknown[] }).docs).toHaveLength(1);
+    // Once in step with the server, a blip in the connection keeps what is shown.
+    act(() => listeners.list[0].next({ docs: [docSnap("uid-sam", { trainerId: "t-sam", trainerName: "Sam Lee", proposed: week })], metadata: cached }));
+    expect(seen).toMatchObject({ loading: false, error: null });
+    expect((seen as { docs: unknown[] }).docs).toHaveLength(1);
+  });
+
+  it("says it can't tell when the iPad is offline, and reads again once it's back", () => {
+    act(() => root.render(<Weeks studioId="solon" />));
+    act(() => listeners.list[0].next({ docs: [], metadata: cached }));
+    act(() => setOnline(false));
+    expect(seen).toMatchObject({ loading: false, docs: [], error: OFFLINE_ERROR });
+    act(() => setOnline(true));
+    expect(seen).toMatchObject({ loading: true, error: null });
+    act(() => listeners.list[0].next({ docs: [], metadata: confirmed }));
+    expect(seen).toMatchObject({ loading: false, docs: [], error: null });
+  });
+
+  it("says it can't tell when the server hasn't answered in time", () => {
+    vi.useFakeTimers();
+    act(() => root.render(<Mine studioId="solon" uid="uid-sam" />));
+    act(() => listeners.list[0].next({ id: "uid-sam", exists: () => false, data: () => undefined, metadata: cached }));
+    expect(seen).toMatchObject({ doc: null, loading: true, error: null });
+    act(() => {
+      vi.advanceTimersByTime(SERVER_WAIT_MS);
+    });
+    expect(seen).toMatchObject({ doc: null, loading: false, error: OFFLINE_ERROR });
+    act(() => listeners.list[0].next({ id: "uid-sam", exists: () => true, data: () => ({ trainerId: "t-sam", proposed: week }), metadata: confirmed }));
+    expect(seen).toMatchObject({ doc: { trainerId: "t-sam" }, loading: false, error: null });
   });
 });
 

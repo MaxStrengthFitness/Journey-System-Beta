@@ -79,7 +79,8 @@ export function shiftMonth(month: MonthKey, by: number): MonthKey {
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3));
+/** "Jan" … "Dec". Exported for My Profile → Your week, which names its days the same way. */
+export const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3));
 
 export function monthLabel(month: MonthKey): string {
   const [y, m] = month.split("-").map(Number);

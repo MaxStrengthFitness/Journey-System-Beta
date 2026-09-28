@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { openProfileAt } from "../features/client-profile/profile-nav";
+import { useLeaveGuard } from "../features/unsaved-changes";
 import { homeCutoverOf } from "../lib/client-coverage";
 import { LoadBoundary } from "../features/new-version/LoadBoundary";
 import { LoadingArea } from "./LoadingMark";
@@ -203,6 +204,9 @@ export function ClientsView({
    */
   cutoverStudios?: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }>;
 }) {
+  // The card's Past sessions button hands off to the profile only once the
+  // move is agreed (see there).
+  const guardLeave = useLeaveGuard();
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
 
@@ -1585,17 +1589,31 @@ export function ClientsView({
                           <div className="flex items-center gap-2 shrink-0">
                             <Button
                               variant="outline"
-                              className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
+                              className="h-20 w-20 px-1.5 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
                               onClick={() => {
                                 // The client's history lives on their profile:
-                                // Activity Archive -> Sessions.
-                                onSelectClient(client.id!);
-                                openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
-                                setView("profile");
+                                // Activity Archive -> Sessions. The label says
+                                // what it opens ("History" until the voice
+                                // review follow-up); it wraps to two lines
+                                // inside the 80px square rather than truncate,
+                                // which is what the narrower padding is for.
+                                // The handoff is written only if the move goes
+                                // ahead, as Relay's tasks and Back to Reports
+                                // do: asked about unsaved typing and told to
+                                // stay, a handoff left in storage would send
+                                // the next visit to this client to Sessions
+                                // instead of Journey. The client and the view
+                                // inside are guarded too; the gate runs them
+                                // straight through while it is leaving.
+                                guardLeave(() => {
+                                  onSelectClient(client.id!);
+                                  openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
+                                  setView("profile");
+                                });
                               }}
                             >
                               <History className="w-6 h-6" />
-                              <span className="text-[11px]">History</span>
+                              <span className="text-[11px] leading-tight text-center whitespace-normal">Past sessions</span>
                             </Button>
                             <Button
                               className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 shadow-lg shadow-primary/20 uppercase"

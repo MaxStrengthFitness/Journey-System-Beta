@@ -24,10 +24,19 @@ import { hasKudosFrom, kudosCount, toggleKudos } from "./kudos";
  *
  * Round: Relay, Sep 2026. Three things, left to right: where we are in the
  * day (the shift phase), what is next for THIS trainer and how long they have
- * (the gap meter), and what teammates did (the Pulse). Tapping the middle
+ * (the gap meter), and what teammates did ("Just now"). Tapping the middle
  * unfolds the day strip: the trainer's sessions as a ribbon with the gaps
  * drawn as empty slots, so at 1:00 you can see that the 2:40 gap is the long
- * one today.
+ * one today, and under the ribbon the same sessions as a list with each
+ * client's whole name and time (the ribbon has room for a first name only).
+ *
+ * In portrait (under 900px) the teammates line takes a row of its own under
+ * the other two, because it carries the only kudos button in the app: it
+ * was hidden there until Sep 27 2026.
+ *
+ * "Just now" was labelled "Pulse" until Sep 27 2026. Pulse is the living
+ * assessment on every other screen, so the word named two things; the code
+ * names (pulse.ts, PulseTicker) stay.
  *
  * It reads the schedule rows the Calendar already loads and ticks once a
  * minute. Nothing here fetches.
@@ -142,7 +151,7 @@ export function DayStrip({ now }: { now: NowContext }) {
       {now.sessions.length === 0 ? (
         <p className="ds__empty">Nothing on your schedule today. The whole day is a gap.</p>
       ) : (
-        <div className="ds__ribbon" role="img" aria-label={`${now.sessions.length} sessions today`}>
+        <div className="ds__ribbon" aria-hidden>
           {now.sessions.map((s) => (
             <span
               key={s.id}
@@ -152,12 +161,11 @@ export function DayStrip({ now }: { now: NowContext }) {
                 s === now.current && "ds__block--now",
               )}
               style={{ left: pct(s.startMin), width: `calc(${pct(s.endMin)} - ${pct(s.startMin)})` }}
-              title={`${s.clientName} · ${minutesToClock(s.startMin)}`}
             >
               {s.clientName.split(" ")[0]}
             </span>
           ))}
-          <span className="ds__now" style={{ left: pct(now.nowMin) }} aria-hidden />
+          <span className="ds__now" style={{ left: pct(now.nowMin) }} />
         </div>
       )}
       <div className="ds__hours" aria-hidden>
@@ -166,12 +174,38 @@ export function DayStrip({ now }: { now: NowContext }) {
         <span>{minutesToClock(hours.closing)}</span>
         <span>{minutesToClock(hours.close)}</span>
       </div>
+      {/* The ribbon has room for a first name; the list says who and when in
+          full. Until Sep 27 2026 the whole name and the time were only in a
+          hover tooltip, which an iPad cannot show. A past session is dimmed,
+          never called done: a booking is done when Journey logged it
+          (lib/booking-state), and the strip does not know that. */}
+      {now.sessions.length > 0 && (
+        <ol className="ds__list" aria-label={`Your sessions today, ${now.sessions.length}`}>
+          {now.sessions.map((s) => (
+            <li
+              key={s.id}
+              className={cn(
+                "ds__item",
+                s.endMin <= now.nowMin && "ds__item--past",
+                s === now.current && "ds__item--now",
+              )}
+            >
+              <span className="ds__time">
+                {minutesToClock(s.startMin)} to {minutesToClock(s.endMin)}
+              </span>
+              <span className="ds__name">{s.clientName}</span>
+              {s === now.current && <span className="ds__tag">Now</span>}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * The Pulse ticker
+ * Just now: what teammates did (PulseTicker; labelled "Pulse" until
+ * Sep 27 2026)
  * ------------------------------------------------------------------ */
 
 const TICK_MS = 6000;
@@ -202,7 +236,7 @@ export function PulseTicker({ studioId }: { studioId: string | null }) {
 
   return (
     <div className="pt" aria-live="off" onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)}>
-      <span className="pt__label">Pulse</span>
+      <span className="pt__label">Just now</span>
       {ev ? (
         <>
           <span className="pt__line" key={ev.id}>

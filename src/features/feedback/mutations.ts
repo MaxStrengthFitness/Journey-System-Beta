@@ -5,7 +5,7 @@
  */
 
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import type { FeedbackContext, FeedbackKind } from "./types";
 import { FEEDBACK_KIND_SHORT } from "./types";
 
@@ -44,7 +44,12 @@ export async function submitFeedback(params: SubmitFeedbackParams): Promise<void
     issueType: FEEDBACK_KIND_SHORT[kind],
     description: trimmed.slice(0, 5000),
 
-    userId: author.id || "unknown",
+    // The Auth uid, which the read rule compares a report to, so the person
+    // who filed it can see what became of it (voice review follow-up, Sep 27
+    // 2026). On an older account the trainer document's id differs, and a
+    // report filed under it could never be read back. That id stays the
+    // fallback only for a filing with no one signed in.
+    userId: auth.currentUser?.uid || author.id || "unknown",
     userEmail: author.email || "unknown",
     userName: author.name || "unknown",
     studioId: author.studioId || "unassigned",

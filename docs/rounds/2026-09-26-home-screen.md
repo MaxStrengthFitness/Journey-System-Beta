@@ -43,7 +43,7 @@ Before this round, adding the app to the Home Screen gave a screenshot thumbnail
 
 ## Decisions (Claude's calls; AJ can overturn any)
 
-1. **`black-translucent`, not `default`.** In the dark theme, the default, the header's navy runs up behind the clock, which is the look AJ asked for. In the light theme the status bar's text is still white, so the status band paints a dark strip. Switching to `default` is one line (the README says which, and to re-add the icon after). It hands the bar to iOS, which should colour it with `theme-color` on iPadOS 26+ (unconfirmed on a device).
+1. **`black-translucent`, not `default`.** In the dark theme, the default, the header's navy runs up behind the clock, which is the look AJ asked for. In the light theme the status bar's text is still white, so the status band paints a dark strip. Switching to `default` is one line (the README says which, and to re-add the icon after). It hands the bar to iOS, which should colour it with `theme-color` on iPadOS 26+ (unconfirmed on a device). **Overturned on Sep 27:** AJ's iPad cut the bottom bar off under this style. See "After the round" below.
 2. **No orientation lock**, for the reasons above.
 3. **No service worker.** Every push to `master` deploys, and a caching service worker pins a device to old code. The Home Screen app loads `/`, which the server already sends `no-cache`.
 4. **The manifest is `manifest.webmanifest`, not `manifest.json`.** The extension is the standard one, and Express serves it as `application/manifest+json`. `start_url` is `/`, never `/index.html`: `express.static` caches `/index.html` for an hour.
@@ -157,6 +157,45 @@ The sign-in is a Google or Microsoft popup. What a popup does inside a Home Scre
 - **Use the icon, not a Safari tab.** They are two separate sign-ins.
 - **Finish any session started in Safari before switching to the icon.** Sets waiting to send stay with Safari.
 - **To get a new version,** swipe Journey away in the app switcher and tap the icon.
+
+## After the round: the bottom bar on AJ's iPad (Sep 27)
+
+**What AJ saw.** Just after midnight on Sep 27, AJ opened the icon on his iPad. His words: "the bottom bar gets cut off when in the new fullscreen mode". His screenshot, upright, on the Strongsville Hub:
+
+- The header's navy ran up behind the clock, as designed.
+- A black strip 20 to 24 points tall lay across the very bottom of the screen.
+- The bottom bar's labels (Hub, Client, Start Session and the rest) were cut in half where the strip began.
+
+**Why.** It is a WebKit bug that arrived with iOS and iPadOS 26, and it hits only the `black-translucent` style that decision 1 chose:
+
+- iPadOS draws the page from the top of the screen, under the clock.
+- It lays the page out as if it had the whole screen, but shows it only down to a status bar's height from the bottom. The rest of the screen is a black strip where the page is never drawn.
+- The shell is `100dvh` tall, so the bottom bar sat in the last 80 points of that layout, and its lower part fell into the strip. On this iPad the bottom inset is 0, so the labels sit low in the bar.
+
+Other web apps met the same bug and all left `black-translucent`:
+
+- One measured the page capped 47px short at the bottom and found "no app-side CSS/JS can recover it".
+- One saw the strip at the top on some screens and at the bottom on others.
+- On iOS 26 and 27, `black-translucent` also lays a blur across the top of the page, under the clock.
+
+**What changed.** `apple-mobile-web-app-status-bar-style` is now `default`:
+
+- iPadOS draws its own status bar above the page and colours it with `theme-color`, which already followed the header's colour in both themes.
+- The page gets exactly the screen below the status bar, and the top inset becomes 0, so the shell's strip and the status band collapse to 0px by themselves.
+- Nothing else in the app changed. `home-screen.test.ts` now holds `default`; the README, the Safe areas comments, KNOWN-TRAPS (a new trap) and the iPad checklist say why.
+
+**What AJ does.** iOS reads this tag when the icon is added, so the icon already on the iPad keeps `black-translucent` whatever is deployed:
+
+1. After the deploy, press and hold the Journey icon, then choose **Delete Bookmark** (or Remove App).
+2. Open the live app in Safari, then **Share → Add to Home Screen**, and tap **Add**.
+3. Open the icon and sign in: the icon has its own storage.
+
+**What to look for.**
+
+- The clock sits on the header's navy (white in the light theme) and is readable in both themes.
+- The bottom bar is whole, with no black strip under it, in portrait and in landscape.
+
+**Not yet seen on a device.** In particular, the clock's colour on the navy bar in the dark theme is iPadOS's choice. If it comes out dark on navy, `black` is the one-line fallback: a black bar with white text. It keeps the page below the status bar, so it keeps the bottom whole too.
 
 ## Left for later
 

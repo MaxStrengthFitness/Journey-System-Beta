@@ -89,6 +89,17 @@ describe("StaffEditor", () => {
     expect(writes).toEqual([]);
   });
 
+  it("offers the studio tier's roles once each, by name (voice review follow-up, Sep 27 2026)", async () => {
+    const el = await mount(
+      rowFor({ id: "r3", fullName: "Nia New", email: "nia@example.com", status: "Pending", userId: "uid-nia" }),
+    );
+    const options = [...el.querySelectorAll("option")].map((o) => o.textContent);
+    expect(options.slice(0, 3)).toEqual(["Life Transformer", "Head Trainer", "Studio Leader"]);
+    expect(new Set(options).size).toBe(options.length);
+    // The grant says what it really opens.
+    expect(el.textContent).toContain("Opens Team and Studio at Westlake, and lets them change its machines");
+  });
+
   it("still offers approval for a sign-up", async () => {
     const el = await mount(
       rowFor({ id: "r2", fullName: "Jeff Tomaszewski", email: "jeff@example.com", status: "Pending", userId: "uid-new" }),

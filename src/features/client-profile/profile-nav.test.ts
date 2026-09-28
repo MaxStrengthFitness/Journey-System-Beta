@@ -725,13 +725,41 @@ describe("stored location", () => {
   });
 
   it("openProfileAt makes a freshly mounted profile land where it was pointed", () => {
-    // The Hub's History button: store the location, then switch to the profile.
+    // The Hub's Past sessions button: store the location, then switch to the profile.
     // The profile mounts fresh and resumes what is stored (useProfileNav's lazy
     // initialiser), so this read is exactly what it will open on.
     writeStoredLocation("judy", { tab: "journey" });
     openProfileAt("judy", { tab: "clinical", view: "sessions" });
     expect(readStoredLocation("judy")).toEqual({ tab: "clinical", view: "sessions" });
     expect(() => openProfileAt(null, { tab: "journey" })).not.toThrow();
+  });
+
+  it("round-trips each shape of handoff exactly, once", () => {
+    // A round-trip check of openProfileAt / takeStoredLocation for every
+    // SHAPE of location the doors hand off today (a view, a page with an
+    // anchor): what goes in comes back exactly, once, and the next visit is
+    // Journey again. The locations are copied by hand, so this does NOT
+    // prove what any caller writes: that is held in each caller's source by
+    // tab-words.test.ts (the Hub's Past sessions, Relay's two tasks, Back
+    // to Reports).
+    const doors: [string, ProfileLocation][] = [
+      // The Hub card's "Past sessions" (ClientsView).
+      ["hub-past-sessions", { tab: "clinical", view: "sessions" }],
+      // Relay's Pulse task and InBody task (AppContent's openClientTask).
+      ["relay-pulse", recordLocation("body", "body-pulse")],
+      ["relay-inbody", recordLocation("body", "body-inbody")],
+      // "Back to Reports" from a progress report (AppContent's backToRecord).
+      ["back-to-reports", { tab: "clinical", view: "reports" }],
+      // Operations -> Machine fit's Check (AdminMachineFitTab).
+      ["machine-fit", { tab: "programming", view: "setup" }],
+    ];
+    for (const [clientId, to] of doors) {
+      openProfileAt(clientId, to);
+      expect(takeStoredLocation(clientId), clientId).toStrictEqual(to);
+      expect(takeStoredLocation(clientId), clientId).toBeNull();
+    }
+    // The InBody task lands on the InBody card itself, not just the page.
+    expect(recordLocation("body", "body-inbody")).toEqual({ tab: "record", page: "body", anchor: "body-inbody" });
   });
 
   it("returns null for an unknown client, no client, and rubbish", () => {

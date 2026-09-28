@@ -20,6 +20,8 @@ New code goes here.
 | `rating/` | The Dial and Loudness: the ONE rating control and the ONE loudness control | `scales.ts` |
 | `subjective-report/` | Pulse, the living assessment (code and Firestore still say check-in / subjective) | `README.md` |
 | `client-profile/` | The profile's header and its navigation: four tabs, the sub-toggle, `useProfileNav` | `README.md`, then `profile-nav.ts` |
+| `client-codex/` | Notes & Profile as seven pages (Overview · Notes · FORD · Body & Pulse · Goals & Focus · Story · Account): the kit, the shell and the Overview | `README.md` |
+| `client-story/` | Notes & Profile → Story: the client's dated moments, newest first, each from a record somebody already made | `README.md` |
 | `routines/` | Profile, Programming tab: Routine A and Routine B | `RoutinesTab.tsx` |
 | `routine-builder/` | The routine builder the Edit Routine drawer opens, with the Academy's programming rules | `engine.ts`, `academy.ts` |
 | `equipment/` | Profile, Programming tab: All Machines, the one machine window, setting suggestions | `README.md` |
@@ -35,12 +37,17 @@ New code goes here.
 | `inbody/` | InBody scans (health data: read its rules note first) | `README.md` |
 | `renewals/` | The renewal engine, pipeline and conversation log. Its Operations screens are in `admin/renewals/` | `README.md` |
 | `calendar/` | The Calendar screen | `README.md` |
+| `session-record/` | Never lose or block a session: the line under the session bar, Finish that never hangs or counts twice, a second iPad watching a running session | `README.md` |
+| `packages/` | The studio's packages explained to someone who hasn't chosen, opened from the Wrap-up | `README.md` |
+| `machine-fit/` | Predictive set-up, the passive check and the Kaizen report: Programming → Setup (Operations → Machine fit is `admin/machine-fit/`) | `README.md` |
 
 ## Relay — the studio's shared work
 
 | Folder | What it is | Read first |
 | --- | --- | --- |
-| `relay/` | Relay (was the Planner, was To-Do): the shell, Mine, Notes, Team, Network. Relay's own pieces are in `board/`. The view id is still `studio-tasks` | `README.md`, then `board/README.md` |
+| `my-studio/` | My Studio on the bottom bar: Relay · Machines · Team · Studio, the masthead, and the two doors (Capture, the Context Panel) | `README.md` |
+| `relay/` | Relay (was the Planner, was To-Do), My Studio's first section: the tab bar (Floor · Mine · Notes), Mine, Notes, and My Studio → Team's people and standards (`team/`). Relay's own pieces are in `board/`. The view id is still `studio-tasks`. The network's focus and launch are not here: they are on Operations (`admin/network/`) | `README.md`, then `board/README.md` |
+| `standing-week/` | Each trainer's usual week, proposed on My Profile, agreed on My Studio → Team, and checked against the coming week's Mindbody bookings (a check, never a booking) | `README.md` |
 | `studio-tasks/` | Relay's Floor tab AND the task data layer (templates, instances, requests, initiatives, the playbook, upkeep). The Catalog, the Hub and Operations import it too, which is why it is not inside `relay/` | `README.md` |
 | `notifications/` | The bell in the header, and announcements | `NotificationBell.tsx` |
 | `comments/` | Comments with @tags at the foot of Learning pages | `README.md` |
@@ -62,9 +69,20 @@ New code goes here.
 | Folder | What it is | Read first |
 | --- | --- | --- |
 | `admin/` | Every Operations screen, and the kit they are built from. It has its own table of which folder each tab lives in | `README.md` |
+| `admins/` | The Admins dashboard (administrators and the founder): each tab is the Operations screen it was, moved from `admin/`; `StandardTemplateTab` is its own | `AdminsDashboardView.tsx` |
 | `trainer-profile/` | A trainer's own profile, the Kaizen Roster, the Edit Trainer modal | `README.md` |
 | `trainer-identity/` | Claiming a placeholder trainer profile at first sign-in | `claim.ts` |
 | `settings/` | Trainer Settings: what is left after the settings tiers round | `TrainerSettingsView.tsx` |
+
+## The whole app
+
+| Folder | What it is | Read first |
+| --- | --- | --- |
+| `demo-mode/` | The practice studio at `demo-studio`, and the realm rule: from inside Demo Mode you see Demo Mode and nothing else | `README.md` |
+| `sign-out/` | A sign-out is a fresh load for the next person on a shared iPad; `memory.ts` is where a module-level memory registers its reset | `README.md` |
+| `unsaved-changes/` | The one registry of typed-but-unsaved work, and the one question before leaving it | `README.md` |
+| `new-version/` | Noticing a deploy and loading it safely, never over a session, a send or typing | `README.md` |
+| `home-screen/` | Journey as a Home Screen app: the manifest, the status bar and the safe areas | `README.md` |
 
 ## Which machine hook when
 

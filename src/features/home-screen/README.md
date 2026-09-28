@@ -9,24 +9,25 @@ This is a web app with a manifest, not an App Store app. There is no service wor
 | Piece | Where | What it does |
 | --- | --- | --- |
 | The manifest | `public/manifest.webmanifest` | Name, icon, `display: standalone`, opens at `/`. |
-| The Apple tags | `index.html` `<head>` | `apple-mobile-web-app-capable`, the status-bar style, the title under the icon ("Journey"), the icon. |
-| `viewport-fit=cover` | `index.html` | Lets the page run under the status bar and the home indicator. Without it every `env(safe-area-inset-*)` in the app is 0. |
+| The Apple tags | `index.html` `<head>` | `apple-mobile-web-app-capable`, the status-bar style (`default`), the title under the icon ("Journey"), the icon. |
+| `viewport-fit=cover` | `index.html` | Lets the page run under the home indicator (and under the status bar too, when the style is `black-translucent`). Without it every `env(safe-area-inset-*)` in the app is 0. |
 | The theme before first paint | `index.html` inline script | Sets `.dark`/`.light` on `<html>` from the saved theme, so a launch never flashes the light ground. |
-| `theme-color` | `index.html` + `theme-color.ts` (called by `ThemeProvider`) | Always the header's colour (`--bg-dark-2`): #16263D dark, #FFFFFF light. |
-| The status band | `index.html` `<div class="status-band">`, CSS in `index.css` | A fixed strip as tall as the status bar, on every screen. Clear in the dark theme, the dark neutral in the light theme. |
-| The shell's strip | `StatusBarStrip.tsx`, first child of the shell in `AppContent` | Pays the top inset once for every screen in the shell, coloured like what sits under it. |
+| `theme-color` | `index.html` + `theme-color.ts` (called by `ThemeProvider`) | Always the header's colour (`--bg-dark-2`): #16263D dark, #FFFFFF light. It is the colour of the Home Screen app's status bar. |
+| The status band | `index.html` `<div class="status-band">`, CSS in `index.css` | A fixed strip as tall as the top inset, on every screen: 0px with the `default` status bar. Under `black-translucent`, clear in the dark theme and the dark neutral in the light theme. |
+| The shell's strip | `StatusBarStrip.tsx`, first child of the shell in `AppContent` | Pays the top inset once for every screen in the shell (0px with the `default` status bar), coloured like what sits under it. |
 | The safe-area utilities | `index.css`, "Safe areas" | `pt-safe` / `pb-safe` (the inset), `pt-safe-4` / `pb-safe-6` (the inset plus that much spacing), `top-safe-3` (for an absolutely placed child), `h-safe-top`, `border-t-safe` (for a full-screen scroll pane). |
 | The insets as numbers | `safe-area.ts` | For things placed by JavaScript: the select lists and menus (`ui/select.tsx`, `ui/dropdown-menu.tsx`) keep base-ui's 5px plus the insets from the edge. |
 | The icons | `public/` (generated), sources and generator in `scripts/icons/` | The 180×180 Home Screen icon, 192 and 512 manifest icons, a maskable 512, favicons. `scripts/icons/lockup.svg` is the logo with the wordmark, for the sign-in screen or print; nothing in the app uses it yet. |
 
 ## Decisions
 
-**The status bar is `black-translucent`.** The page runs up under the clock and battery, so each screen's own colour sits behind them rather than a white or black bar. That style always draws the status bar's text in **white**:
+**The status bar is `default` (since Sep 27 2026).** iPadOS draws its own status bar above the page and colours it with `theme-color`, which follows the theme: the header's navy in the dark theme, white in the light. The page is exactly the screen below the status bar. The top inset is 0, so the shell's strip and the status band collapse to 0px by themselves.
 
-- **Dark theme (the default):** every top surface is dark. The header's navy runs up behind the clock with nothing between them.
-- **Light theme:** every top surface is white or near white, so white text would disappear. The status band paints a dark strip there instead. It is legible, but it is a visible strip.
+**Why not `black-translucent`, the first choice.** That style runs the page up under the clock and battery, so each screen's own colour sits behind them. AJ's iPad showed the cost on Sep 27. Under it, iPadOS 26 lays the app out a status bar taller than it shows it. The page's last 20 to 24 points fall into a black strip at the foot of the screen, and the bottom bar's labels were cut in half. No CSS can recover that strip, because iPadOS does not draw the page there. Other web apps hit the same WebKit bug on iOS 26 and made the same switch. iPadOS 26 and later also blur the top of a black-translucent page under the clock.
 
-The alternative is one line in `index.html`: `apple-mobile-web-app-status-bar-style` set to `default`. The system then draws its own status bar above the page, the insets at the top become 0, and nothing in the app needs changing (the strip and the band collapse to 0px by themselves). On iPadOS 26 and later that bar should take the `theme-color`, which follows the app's theme. That is not confirmed on a device. Choose after looking at both on a studio iPad. **iOS reads this setting when the icon is added, so after changing it, delete the icon and add it again.**
+**iOS reads this setting when the icon is added.** After changing it, delete the Home Screen icon and add it again. An icon added before the change keeps the old style, however many times the app is deployed.
+
+**Going back is one line in `index.html`**, once iPadOS fixes the bug. The strip, the band and every `pt-safe` are still in place and would work again. That style always draws the status bar's text in **white**. In the dark theme the header's navy runs up behind it. In the light theme the status band paints a dark strip, or the clock would be white on white.
 
 **Each inset is paid once, by the element at the true edge of the screen.**
 

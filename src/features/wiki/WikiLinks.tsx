@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { accentStyle, ACCENT_ICON, type WikiAccent } from "./categories";
+import { useWikiPageGuard } from "./page-guard";
 
 /**
  * CROSS-LINKS — the thing that makes a wiki feel deep rather than filed.
@@ -54,12 +55,14 @@ export function WikiLinkCard({
   onClick,
   accent,
 }: WikiLinkCardProps) {
+  // Every link here leaves the page, so it asks about typing on it first.
+  const guard = useWikiPageGuard();
   return (
     <button
       type="button"
       className="wk__linkcard"
       style={accent ? accentStyle(accent) : undefined}
-      onClick={onClick}
+      onClick={() => guard(onClick)}
     >
       {icon && <span className="wk__linkcard-icon">{icon}</span>}
       <span className="wk__linkcard-main">
@@ -93,6 +96,7 @@ export function WikiChips({
   items: WikiChip[];
   onPick: (id: string) => void;
 }) {
+  const guard = useWikiPageGuard();
   if (items.length === 0) return null;
   return (
     <div className="wk__chips">
@@ -105,7 +109,7 @@ export function WikiChips({
             type="button"
             className="wk__chip"
             style={accentStyle(accent)}
-            onClick={() => onPick(c.id)}
+            onClick={() => guard(() => onPick(c.id))}
           >
             <Icon size={13} aria-hidden />
             {c.label}

@@ -10,8 +10,8 @@
  *   From – until    Starts [date]  Stops [date]
  *   Only on a day   On [date]   [ ] Every year      — birthdays, anniversaries.
  *
- * One component wherever a note is written (the composer; the closing note
- * on the post-session screen keeps its single "until" for now), so the
+ * One component wherever a note is written (the composer; the Wrap-up's
+ * Profile note keeps its single "until" for now), so the
  * vocabulary is the same everywhere. Nothing here is required: a note with
  * nothing picked is an ALWAYS note that started today.
  */

@@ -120,16 +120,27 @@ export function accentFillVar(accent: WikiAccent): string {
 }
 
 /**
+ * The accent as WORDS or a glyph (voice review follow-up, Sep 27 2026): a
+ * shade that reads at 4.5:1 on its own fill and on the page in both themes.
+ * The bright accent is for stripes and rules; push's orange and posterior's
+ * amber were 3.0 and 3.9 to 1 as the text of a code chip or a heading.
+ */
+export function accentTextVar(accent: WikiAccent): string {
+  return `var(--wk-cat-${accent}-text)`;
+}
+
+/**
  * The CSS custom properties an accented element needs, as a style object.
  *
- * Returned together so a component sets one spread rather than remembering two
- * variable names — the pair going out of sync is exactly how the old catalog
- * ended up with an orange stripe over a blue fill.
+ * Returned together so a component sets one spread rather than remembering
+ * three variable names — the set going out of sync is exactly how the old
+ * catalog ended up with an orange stripe over a blue fill.
  */
 export function accentStyle(accent: WikiAccent): Record<string, string> {
   return {
     "--wk-accent": accentVar(accent),
     "--wk-accent-fill": accentFillVar(accent),
+    "--wk-accent-text": accentTextVar(accent),
   };
 }
 

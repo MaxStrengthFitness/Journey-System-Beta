@@ -820,7 +820,7 @@ export function ClientProgressReportView({
     // already refuses one; this is the last line if anything slips past it.
     if (!client.id || report.clientId !== client.id) {
       toastError(
-        "This report is for a different client, so it was not saved. Go back to the record and start again from there.",
+        "This report is for a different client, so it was not saved. Go back to Reports and start again from there.",
       );
       return;
     }
@@ -1004,7 +1004,7 @@ export function ClientProgressReportView({
           onClick={onBack}
           className="text-slate-300 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-[0.3em] text-[11px] h-12 px-8"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to the record
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Reports
         </Button>
       </div>
     );
@@ -1064,9 +1064,12 @@ export function ClientProgressReportView({
         <div className="max-w-4xl mx-auto px-6 py-4 space-y-4 print-area">
           {/* Controls */}
           <div className="flex justify-between items-center no-print">
+            {/* Short on screen for the row's width; the name says where it lands. */}
             <Button
               variant="ghost"
               onClick={onBack}
+              aria-label="Back to Reports"
+              title="Back to Reports"
               className="h-12 text-white hover:bg-white/10 rounded-2xl gap-2 font-bold uppercase italic tracking-widest px-6"
             >
               <ArrowLeft className="w-5 h-5" /> Back
@@ -1705,6 +1708,8 @@ export function ClientProgressReportView({
               variant="ghost"
               size="icon"
               onClick={onBack}
+              aria-label="Back to Reports"
+              title="Back to Reports"
               className="text-white hover:bg-white/10 rounded-2xl w-11 h-11 print:hidden"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -2467,7 +2472,7 @@ export function ClientProgressReportView({
             </h2>
             <div className="space-y-4">
               <Label className="text-[11px] font-bold uppercase tracking-widest text-(--pr-slate)">
-                Lead Practitioner Wrap-Up
+                Your closing note, printed at the end of the report
               </Label>
               <Textarea
                 value={report.trainerNotes}

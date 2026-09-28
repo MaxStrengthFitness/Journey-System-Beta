@@ -4,10 +4,11 @@
    Round: Learning + Planner, Sep 2026.
 
    On the Studio Hub's --st-* tokens (features/studio-tasks/studio-tasks.css),
-   which carry the same values as Learning's --wk-*: the Planner masthead is
-   deliberately the same shape as Learning's — title, sections, and the
-   context on the right — so the two tabs AJ asked to be given "a good header"
-   got the same one. Nothing here writes a hex value.
+   which carry the app's values (equipment.tokens.css), as Learning's --wk-*
+   do — both since Sep 27 2026. The masthead is deliberately the same shape
+   as Learning's — title, sections, and the context on the right — so the two
+   tabs AJ asked to be given "a good header" got the same one. Nothing here
+   writes a hex value.
    ========================================================================== */
 
 .pl {
@@ -44,13 +45,18 @@
 }
 .pl__brand svg { flex: none; color: var(--st-hero); }
 
-/* The Hub's title voice, one size up — the same as Learning's masthead. */
+/* The page-title voice (the codex's .cx-page-title): the display face,
+   800, slanted capitals — at 17px, the scale's heading size, because this
+   is a bar and not a page. Learning's masthead takes the same voice; the
+   slant was a faked italic of the body face until Sep 27 2026. */
 .pl__title {
+  font-family: var(--font-display);
   font-size: 17px;
-  font-weight: 900;
+  font-weight: 800;
   font-style: italic;
+  line-height: 1.1;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -76,7 +82,7 @@
   background: transparent;
   color: var(--st-ink-muted);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -95,7 +101,7 @@
 .pl__where {
   margin-left: auto;
   min-width: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -105,16 +111,44 @@
 }
 
 /* My Studio round (Sep 2026): the masthead above is My Studio's — its
-   sections are Relay · Machines · Team · Studio — and Relay's own tabs sit
-   on a second, quieter row under it. Same segmented control, no brand, no
-   border below (the Now Bar draws its own edge). */
+   sections are Relay · Machines · Team · Studio — and Relay's own tabs
+   (Floor · Mine · Notes) sit on a second row under it. That row was a second
+   copy of the segmented control, so a trainer saw two rows of tabs of equal
+   weight; since Sep 27 2026 it is a lighter second level: plain words,
+   the chosen one underlined in the action blue, on a hairline. */
 .pl__subbar {
   flex: none;
   display: flex;
-  align-items: center;
-  padding: 0.5rem 1rem 0.375rem;
+  align-items: flex-end;
+  padding: 0 1rem;
   background: var(--st-surface);
+  border-bottom: 1px solid var(--st-border);
 }
+.pl__subbar .pl__tabs {
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.pl__subbar .pl__tab {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.pl__subbar .pl__tab:hover { color: var(--st-ink); }
+.pl__subbar .pl__tab[aria-selected="true"] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--st-live);
+  border-bottom-color: var(--st-live);
+}
+.pl__subbar .pl__tab:focus-visible { outline-offset: -2px; }
 
 @media (max-width: 640px) {
   .pl__mast { gap: 0.5rem; }
@@ -136,7 +170,8 @@
  * Buttons — the Planner's own, at the iPad's 40px floor
  * ------------------------------------------------------------------ */
 
-/* The hub's .sh__mine pill is 36px; everything the Planner adds is 40. */
+/* 40px, the iPad's floor, as every control in My Studio is since Sep 27 2026
+   (the hub's pills were 32 to 36; look.test.ts holds the listed ones). */
 .pl__btn {
   display: inline-flex;
   align-items: center;
@@ -149,10 +184,8 @@
   background: var(--st-surface);
   color: var(--st-ink-2);
   font: inherit;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -162,14 +195,15 @@
 .pl__btn--primary {
   background: var(--st-live);
   border-color: var(--st-live);
-  color: var(--st-surface);
+  color: var(--st-live-on);
 }
-/* No red in the --st-* set (the kaizen red is reserved): destructive
-   confirmations use the flag colours, which read as "careful". */
+/* A destructive confirmation is the app's critical crimson, as the admin
+   kit's is (.adm-btn--danger) — never the kaizen red, which is rep quality's
+   alone. It was the caution colour until Sep 27 2026. */
 .pl__btn--danger {
-  background: var(--st-flag-fill);
-  border-color: var(--st-flag-border);
-  color: var(--st-flag);
+  background: var(--st-alert-fill);
+  border-color: var(--st-alert);
+  color: var(--st-alert);
 }
 
 /* ------------------------------------------------------------------ *
@@ -202,13 +236,15 @@
 .pl__panel-titles { min-width: 0; flex: 1 1 18rem; }
 .pl__panel-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
+/* A panel's heading: small upright capitals, My Profile's card-head voice.
+   Slanted capitals are the display face's, and only a page title's. */
 .pl__h2 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 900;
-  font-style: italic;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: -0.01em;
+  color: var(--st-ink-2);
 }
 .pl__sub {
   margin: 0.25rem 0 0;
@@ -229,16 +265,19 @@
   overflow: hidden;
 }
 
+/* A section head: the one heading style in My Studio (Sep 27 2026), the same
+   small upright capitals as a card's head (.pl__h2, .rl-h__title,
+   .stm__title, .ms__door-h; My Profile's .tp-card__title). */
 .pl__list-head {
   display: flex;
   align-items: center;
   gap: 0.375rem;
   margin: 0 0 0.5rem;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--st-ink-muted);
+  color: var(--st-ink-2);
 }
 .pl__count {
   min-width: 1.5rem;
@@ -298,11 +337,11 @@
 .pl__task-title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .pl__task--done .pl__task-title { color: var(--st-ink-muted); text-decoration: line-through; }
 .pl__task-meta {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--st-ink-faint);
+  color: var(--st-ink-muted);
 }
 .pl__task-detail { font-size: 12px; line-height: 1.45; color: var(--st-ink-muted); overflow-wrap: anywhere; }
 
@@ -317,7 +356,7 @@
 .pl__empty-body {
   margin: 0 auto;
   max-width: 52ch;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--st-ink-muted);
 }
@@ -344,7 +383,7 @@
   gap: 1px;
 }
 .pl__when-day {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;

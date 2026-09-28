@@ -2,7 +2,8 @@
  * ACTIVITY ARCHIVE — everything that has already happened.
  *
  * Renamed from "Clinical History" in the client-profile audit (Sep 2026): the
- * tab is a ledger of visits, trends and filed reports, not a medical tool.
+ * tab is a ledger of visits, the Deep Dive and filed reports, not a medical
+ * tool.
  * The tab id, this file and the ClinicalView type keep the old name so every
  * saved location and legacy link still resolves.
  *
@@ -15,7 +16,9 @@
  *
  *   CALENDAR    when she came, at a glance — every month since her first
  *   SESSIONS    the same visits as a list, with what happened in each
- *   TRENDS      the clinical report: correlations, plateaus, form breakdown
+ *   DEEP DIVE   the Kaizen Deep Dive (view id `trends`, the Trends segment
+ *               until the reporting round): correlations, plateaus, form
+ *               breakdown
  *   REPORTS     the filed assessments, newest first
  *
  * Four decisions:
@@ -32,13 +35,14 @@
  *      every segment, and they never scroll away.
  *
  *   3. THAT STRIP IS READ-ONLY, AND SAYS WHERE TO EDIT. The flags are edited
- *      in exactly one place — the Medical section of Notes & Profile. A second
+ *      in exactly one place — Notes & Profile → Body & Pulse, the watch-outs
+ *      card (the Medical section until the client codex). A second
  *      editable copy is how two screens start disagreeing about whether a
  *      client has been cleared. It costs no read either: every fact in the
  *      strip is already on the client document the profile is streaming.
  *
- *   4. TRENDS KEEPS ITS GATE. The clinical report still fetches nothing until
- *      the trainer picks a range and presses Generate, and once generated it
+ *   4. THE DEEP DIVE KEEPS ITS GATE. It still fetches nothing until the
+ *      trainer picks a range and presses Build the Deep Dive, and once built it
  *      stays mounted so switching to the calendar and back does not throw the
  *      report away. Same "keep alive from first use" rule the machine roster
  *      uses in Programming.
@@ -77,7 +81,7 @@ export interface ClinicalHistoryTabProps {
   onSelectReport: (id: string) => void;
   onDeleteReport: (report: ProgressReport) => void;
   onNewReport: () => void;
-  /** Jump to the Medical section of Notes & Profile, where the flags are edited. */
+  /** Jump to Notes & Profile → Body & Pulse, the watch-outs card, where the flags are edited. */
   onEditMedical?: () => void;
   view: ClinicalView;
   onViewChange: (view: ClinicalView) => void;
@@ -169,7 +173,7 @@ export function ClinicalHistoryTab({
       )}
       {onEditMedical && (
         <button type="button" className="ptab-strip__edit" onClick={onEditMedical}>
-          Edit in Body
+          Edit in Body & Pulse
         </button>
       )}
     </div>

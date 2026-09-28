@@ -25,7 +25,9 @@
  * right; on a portrait iPad they stack in reading order.
  *
  * READS PER OPEN, one studio: the week's schedule (live; changes/
- * useWeekSchedule), today's Journey sessions (live; useTodaySessions — a
+ * useWeekSchedule, waiting for the server: an answer only this iPad's cache
+ * gave is no week, so nothing on the page is said from it — Openings round,
+ * Sep 27 2026), today's Journey sessions (live; useTodaySessions — a
  * booking is DONE when a session was logged for that client that day, AJ
  * Sep 24 2026, because Mindbody's "Completed" never reaches the booking),
  * the renewal settings and cycles, the last 14 days of
@@ -33,7 +35,25 @@
  * the Team panel all come from it), the studio's incidents, critical notes,
  * dated notes and the Sunday watch document (useOverviewReads), the
  * watchlist and acknowledgements (live), the Delight queue and the
- * machine-fit index. Under "All my studios" the page is the network view.
+ * machine-fit index, and what Openings starts from (openings/ui
+ * useOpeningsData: its weekly summary, held for a day, the standing weeks
+ * and the marks), for someone who may read the studio's standing weeks.
+ * Under "All my studios" the page is the network view.
+ *
+ * OPENINGS' LINE (Openings round, Sep 27 2026, phase 7). The next three days
+ * panel says, only when there is one, each usually-full time on the panel's
+ * own days (from tomorrow, the next three with bookings) that has room:
+ * "Mon, Oct 5 · 8:00 AM, usually full, has room · See it on Openings." It is
+ * `overviewLines` over `nextDays`, given exactly what Openings' Next 7 days
+ * is given, with this page's own week read, so the line needs a read the
+ * server answered; the door switches the app to My Studio → Openings, on
+ * Next 7 days and "Anyone" (a cue a person opens, never a bell).
+ *
+ * AN UNREAD WEEK IS NEVER A ZERO. While the week is being read, or could not
+ * be, nothing counted from its bookings is said: the tiles say "—", the
+ * Needs-you strip leaves out never-logged and today's changes and says so
+ * (never "Nothing needs you right now"), Moments says its booked milestones
+ * could not be read, and Team this week drops its "Unlogged today" column.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Activity, CalendarClock, CalendarDays, CalendarRange, ChevronRight, Clock3, Gift, HeartPulse, NotebookPen, Ruler, TrendingDown, TrendingUp, UserRoundX, Users } from "lucide-react";
@@ -48,6 +68,13 @@ import type { RenewalSnapshot } from "../../renewals/types";
 import { observations, returnRate, studioSummary, trainerMetrics } from "../insights/metrics";
 import { formatHours, sessionMinutesOf, trainerNames } from "../hours/hours";
 import { useWorthALook } from "../machine-fit/useFitFloor";
+import { rememberMyStudioSection } from "../../my-studio/section-memory";
+import { nextDays as openingsNextDays } from "../../openings/next-days";
+import { overviewLines, overviewMoreLine } from "../../openings/present";
+import { showOpenings, useOpeningsData } from "../../openings/ui";
+import { mayReadWeeks } from "../../standing-week/present";
+import { serverRead } from "../../standing-week/server-read";
+import { useServerWait } from "../../standing-week/useServerWait";
 import { NetworkOverview } from "../network/NetworkOverview";
 import { NetworkActions } from "../network/NetworkActions";
 import { mayActForNetwork } from "../network/network-actions";
@@ -90,11 +117,28 @@ export interface OverviewPageProps {
   onOpen?: (tab: OverviewLink) => void;
   /** The franchise networks, for the network's focus (voice-review round, Sep 27 2026). */
   networks?: FranchiseNetwork[];
+  /**
+   * Switches the app to My Studio, in trainer mode (the shell's
+   * `onOpenStudioTasks`). The page says which section first, as the Staff &
+   * Roles door does: Openings' line opens Openings. Without it, or for
+   * someone who may not read the studio's standing weeks, the line is said
+   * but is not a door.
+   */
+  onOpenMyStudio?: () => void;
 }
 
 const DAYS_READ = 14;
+/** How many of Openings' lines the next three days panel shows before "and N more on Openings". */
+const OPENINGS_SHOWN = 3;
+const NO_ENTRIES: ScheduleEntry[] = [];
+/** A read that failed, or one the server never answered: said, never counted as zero. */
+const NOT_READ = "Could not be read just now.";
+/** The Needs-you chips counted from the week's bookings: never shown off a week the server hasn't answered. */
+const WEEK_CHIPS: ReadonlySet<string> = new Set(["chase", "changes"]);
+/** Moments' booked milestones come from the week's bookings: said missing, never "no milestones". */
+const MILESTONES_NOT_READ = "Booked milestones (a 50th or 100th session) could not be read just now.";
 
-export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [] }: OverviewPageProps) {
+export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, machines, clients, activeStudioId, onNavigateProfile, onOpen, networks = [], onOpenMyStudio }: OverviewPageProps) {
   const ops = useOperationsScope();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -143,11 +187,13 @@ export function OverviewPage({ homeSignal = 0, authTrainer, studios, trainers, m
       today={today}
       now={now}
       me={{ id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id, name: authTrainer.fullName }}
+      authTrainer={authTrainer}
       trainers={trainers}
       machines={machines}
       clients={clients}
       onNavigateProfile={onNavigateProfile}
       onOpen={onOpen}
+      onOpenMyStudio={onOpenMyStudio}
     />
   );
 }
@@ -165,11 +211,13 @@ function StudioOverview({
   today,
   now,
   me,
+  authTrainer,
   trainers,
   machines,
   clients,
   onNavigateProfile,
   onOpen,
+  onOpenMyStudio,
 }: {
   /** Drawn at the foot of the home view: the network's actions, for a franchise owner with one studio. */
   footer?: React.ReactNode;
@@ -178,11 +226,13 @@ function StudioOverview({
   today: string;
   now: Date;
   me: { id: string; name: string };
+  authTrainer: Trainer;
   trainers: Trainer[];
   machines: Machine[];
   clients: Client[];
   onNavigateProfile?: (clientId: string) => void;
   onOpen?: (tab: OverviewLink) => void;
+  onOpenMyStudio?: () => void;
 }) {
   const studioId = studio.id;
   const tz = studio.timezone || undefined;
@@ -197,7 +247,33 @@ function StudioOverview({
   const fold = useFolded();
 
   /* ---- the reads ---- */
-  const week = useWeekSchedule(studioId, today, tz);
+  /*
+   * The week waits for the server (Openings round, Sep 27 2026). Firestore
+   * keeps a persistent cache here, and a snapshot only the cache answered
+   * (offline, or before the server has) used to be read as the finished week:
+   * today's numbers, the changes list and the next three days said what this
+   * iPad last saw. Now that is "reading" until the server answers, and once
+   * this iPad is offline, or the server has not answered in SERVER_WAIT_MS,
+   * it is a week that could not be read: said, never counted as zero.
+   */
+  const weekLive = useWeekSchedule(studioId, today, tz, { confirmed: true });
+  const weekWait = useServerWait(weekLive.loading || weekLive.fromCache);
+  const weekRead = serverRead({ loading: weekLive.loading, failed: weekLive.failed, fromCache: weekLive.fromCache, ...weekWait });
+  const week = useMemo(
+    () => ({
+      entries: weekRead === "ready" ? weekLive.entries : NO_ENTRIES,
+      loading: weekRead === "loading",
+      failed: weekRead === "failed" || weekRead === "offline",
+    }),
+    [weekRead, weekLive.entries],
+  );
+  /*
+   * Unread, the week's entries are none, and everything counted from them
+   * would be a confident zero: the strip's never-logged and changes chips
+   * ("Nothing needs you right now"), Moments' booked milestones and Team's
+   * "Unlogged today". Each of those says the week is unread instead.
+   */
+  const weekUnread = week.loading || week.failed;
   const logged = useTodaySessions(studioId, today, tz);
   const own = useOverviewReads(studioId, today, tz);
   const watchlist = useWatchlist(studioId);
@@ -219,7 +295,24 @@ function StudioOverview({
   const chase = useMemo(() => chaseList(todayEntries, now, logged.logged, tz), [todayEntries, now, logged.logged, tz]);
   // Done, Not completed and Never logged wait for both reads; a finished slot whose logging could not be read is missing, not zero.
   const dayLoading = week.loading || logged.loading;
-  const missing = numbers.unknown > 0;
+  // A week that couldn't be read leaves every tile missing, not zero (the notice under them says why).
+  const missing = week.failed || numbers.unknown > 0;
+  const tileFoot = (text: string) => (week.failed ? undefined : text);
+
+  /* ---- Openings: read here, said in the next three days (below) ---- */
+  // Only for someone who may read the studio's standing weeks: the rules
+  // would refuse anyone else, and a refused read says nothing here.
+  const readsWeeks = mayReadWeeks(authTrainer, studioId);
+  const openings = useOpeningsData({ studio: readsWeeks ? studio : null, trainers, authTrainer });
+  // The door: My Studio → Openings, on Next 7 days and "Anyone", in trainer mode.
+  const openOpenings =
+    onOpenMyStudio && readsWeeks
+      ? () => {
+          showOpenings("next", { kind: "anyone" });
+          rememberMyStudioSection("openings");
+          onOpenMyStudio();
+        }
+      : undefined;
 
   /* ---- changes ---- */
   const weekDays = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDay(today, i)), [today]);
@@ -244,11 +337,47 @@ function StudioOverview({
     () => moments({ delight: delight.rows, datedNotes: own.dated ?? [], clients, weekEntries: week.entries, today, cutover: studio.journeyCutoverDate ?? null, tz }),
     [delight.rows, own.dated, clients, week.entries, today, studio.journeyCutoverDate, tz],
   );
+  const momentsCounted = `${moment.gestures} gesture${moment.gestures === 1 ? "" : "s"} due${moment.gesturesUnowned > 0 ? ` (${moment.gesturesUnowned} without an owner)` : ""}, ${moment.dates} date${moment.dates === 1 ? "" : "s"} to remember`;
   const days = useMemo(
     () => nextDays({ weekEntries: week.entries, changesByDay, momentsByDay: momentsByDay(moment.rows), hotClientIds: hotIds, clients, today, tz }),
     [week.entries, changesByDay, moment.rows, hotIds, clients, today, tz],
   );
   const unbooked = useMemo(() => notBookedAhead(clients), [clients]);
+  /*
+   * Openings' line: a usually-full time with room, on the panel's OWN days.
+   * The panel's days start tomorrow and are the next three with bookings
+   * (next-days.ts: a Saturday's are Mon, Tue, Wed when Sunday is closed), so
+   * the core's default window (today and the two days after it) would say a
+   * time later today under "the next three days" and leave the panel's last
+   * day out. The lines are kept to the panel's days first, then worded over
+   * the whole week the page reads, so that filter alone decides. Today's
+   * room is Openings' own to show (review of the Openings round, Sep 27 2026).
+   */
+  const openingsLines = useMemo(() => {
+    if (!readsWeeks) return [];
+    // What Openings' Next 7 days is given (openings/ui/useNextSevenDays.ts), with this page's own week read.
+    const next = openingsNextDays({
+      today: openings.today,
+      now: openings.now,
+      tz: openings.tz,
+      read: weekRead,
+      connected: openings.connected,
+      bookings: week.entries,
+      docs: openings.weeks.docs,
+      trainers: openings.refs,
+      staffIds: openings.staffIds,
+      worksHere: openings.worksHere,
+      usual: openings.usual?.times ?? null,
+      marks: openings.marks.byTime,
+    });
+    const panelDays = new Set(days.map((d) => d.day));
+    return overviewLines(
+      next.lines.filter((l) => panelDays.has(l.dateKey)),
+      openings.today,
+      openings.tz,
+      WEEK_DAYS,
+    );
+  }, [readsWeeks, days, openings.today, openings.now, openings.tz, weekRead, openings.connected, week.entries, openings.weeks.docs, openings.refs, openings.staffIds, openings.worksHere, openings.usual, openings.marks.byTime]);
 
   /* ---- the team and the week ---- */
   const names = useMemo(() => trainerNames(trainers), [trainers]);
@@ -257,6 +386,8 @@ function StudioOverview({
     () => teamThisWeek(recent.sessions, todayEntries, logged.logged, now, today, sessionMinutesOf(studio), names, idsByName, tz),
     [recent.sessions, todayEntries, logged.logged, now, today, studio, names, idsByName, tz],
   );
+  // Today's unlogged sessions are counted from the week's bookings and today's logging: both must be read, or the column goes.
+  const unloggedKnown = !weekUnread && team.unknownToday === 0;
   const hours = useMemo(() => hoursThisWeek(recent.sessions, today, sessionMinutesOf(studio)), [recent.sessions, today, studio]);
   const insight = useMemo(() => {
     if (recent.loading || recent.failed) return null;
@@ -291,7 +422,7 @@ function StudioOverview({
   const gotIt = (clientId: string) => run(`watch:${clientId}`, () => clearWatch(studioId, clientId));
 
   /* ---- the strip ---- */
-  const chips: NeedChip[] = [
+  const allChips: NeedChip[] = [
     { id: "chase", count: numbers.neverLogged, label: numbers.neverLogged === 1 ? "session never logged" : "sessions never logged", tone: "alert" },
     { id: "pain", count: painPending.pending.length, label: painPending.pending.length === 1 ? "pain or critical note to acknowledge" : "pain and critical notes to acknowledge", tone: "alert" },
     { id: "changes", count: changesToday.length, label: changesToday.length === 1 ? "change today" : "changes today", tone: "warn" },
@@ -300,6 +431,8 @@ function StudioOverview({
     { id: "moments", count: moment.gesturesUnowned, label: moment.gesturesUnowned === 1 ? "gesture with no owner" : "gestures with no owner", tone: "neutral" },
     { id: "review", count: review.length, label: review.length === 1 ? "note to review" : "notes to review", tone: "neutral" },
   ];
+  // Never logged and today's changes are counted from the week's bookings: unread, they are left out and the strip says why.
+  const chips = weekUnread ? allChips.filter((c) => !WEEK_CHIPS.has(c.id)) : allChips;
   const jumpTo = (id: string) => {
     if (id === "chase") {
       setShowChase(true);
@@ -356,18 +489,23 @@ function StudioOverview({
       {/* 1 · Today */}
       <div id="ov-today" className="adm-ov__today">
         <AdminTiles>
-          <AdminStatTile label="Booked today" value={numbers.booked} foot={numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`} loading={week.loading} />
-          <AdminStatTile label="Done" value={missing ? "—" : numbers.done} foot={foot.done} loading={dayLoading} />
-          <AdminStatTile label="Not completed" value={missing ? "—" : numbers.notCompleted} tone={!missing && numbers.noShow > 0 ? "attention" : undefined} foot={!missing && numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted} loading={dayLoading} />
+          <AdminStatTile
+            label="Booked today"
+            value={week.failed ? "—" : numbers.booked}
+            foot={tileFoot(numbers.cancelled > 0 ? `${numbers.clients} clients · ${numbers.cancelled} cancelled` : `${numbers.clients} ${numbers.clients === 1 ? "client" : "clients"}`)}
+            loading={week.loading}
+          />
+          <AdminStatTile label="Done" value={missing ? "—" : numbers.done} foot={tileFoot(foot.done)} loading={dayLoading} />
+          <AdminStatTile label="Not completed" value={missing ? "—" : numbers.notCompleted} tone={!missing && numbers.noShow > 0 ? "attention" : undefined} foot={tileFoot(!missing && numbers.notCompleted > 0 ? `${pct(numbers.notCompletedPct)} — ${foot.notCompleted}` : foot.notCompleted)} loading={dayLoading} />
           <AdminStatTile
             label="Never logged"
             value={missing ? "—" : numbers.neverLogged}
             tone={!missing && numbers.neverLogged > 0 ? "alert" : undefined}
-            foot={!missing && numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged}
+            foot={tileFoot(!missing && numbers.neverLogged > 0 ? (showChase ? "hide the list" : "tap to see who to chase") : foot.neverLogged)}
             onClick={missing ? undefined : () => setShowChase((v) => !v)}
             loading={dayLoading}
           />
-          <AdminStatTile label="On the floor now" value={numbers.onTheFloor} foot={foot.floor} loading={dayLoading} />
+          <AdminStatTile label="On the floor now" value={week.failed ? "—" : numbers.onTheFloor} foot={tileFoot(foot.floor)} loading={dayLoading} />
         </AdminTiles>
         {week.failed && (
           <div className="mt-3">
@@ -399,7 +537,18 @@ function StudioOverview({
       </div>
 
       {/* 2 · Needs you */}
-      <NeedsYou chips={chips} onPick={jumpTo} />
+      {/* Unread, the week's two chips are left out (`chips`) and the strip says why, never "Nothing needs you right now". */}
+      <NeedsYou
+        chips={chips}
+        onPick={jumpTo}
+        note={
+          !weekUnread
+            ? undefined
+            : week.loading
+              ? "Reading today's bookings: sessions never logged and today's changes are counted once they are read."
+              : "Today's bookings could not be read just now, so sessions never logged and today's changes are missing — not zero."
+        }
+      />
 
       {/* 3 · The panels: act today on the left, look ahead on the right */}
       <div className="adm-ov__grid">
@@ -414,9 +563,11 @@ function StudioOverview({
           sentence={
             week.loading
               ? "Reading the week…"
-              : changesToday.length === 0
-                ? `Nothing cancelled or moved for today. ${weekDays.slice(1).reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} waiting on later days this week.`
-                : `${changesToday.filter((c) => c.reading === "cancellation").length} cancelled, ${changesToday.filter((c) => c.reading === "reschedule").length} moved or rebooked — held against the day the session was for.`
+              : week.failed
+                ? NOT_READ
+                : changesToday.length === 0
+                  ? `Nothing cancelled or moved for today. ${weekDays.slice(1).reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} waiting on later days this week.`
+                  : `${changesToday.filter((c) => c.reading === "cancellation").length} cancelled, ${changesToday.filter((c) => c.reading === "reschedule").length} moved or rebooked — held against the day the session was for.`
           }
           actions={
             <AdminButton size="sm" variant="quiet" onClick={() => setView("changes")}>
@@ -433,7 +584,7 @@ function StudioOverview({
             })}
             total={changesToday.length}
             onOpenClient={onNavigateProfile}
-            empty="No changes for today."
+            empty={week.loading || week.failed ? "" : "No changes for today."}
             moreLabel="in the week's list"
           />
         </OverviewPanel>
@@ -447,29 +598,43 @@ function StudioOverview({
           sentence={
             week.loading
               ? "Reading the week…"
-              : `${days.reduce((n, d) => n + d.booked, 0)} booked over ${days.map((d) => d.label).join(", ")}. ${unbooked.count === 0 ? "Everyone active is booked ahead." : `${unbooked.count} active client${unbooked.count === 1 ? " has" : "s have"} nothing booked ahead.`}`
+              : week.failed
+                ? NOT_READ
+                : `${days.reduce((n, d) => n + d.booked, 0)} booked over ${days.map((d) => d.label).join(", ")}. ${unbooked.count === 0 ? "Everyone active is booked ahead." : `${unbooked.count} active client${unbooked.count === 1 ? " has" : "s have"} nothing booked ahead.`}`
           }
           folded={fold.folded.has("next")}
           onToggle={() => fold.toggle("next")}
         >
-          <div className="adm-ov__days">
-            {days.map((d) => (
-              <div key={d.day} className="adm-ov__day">
-                <div className="adm-ov__day-head">
-                  <span className="adm-ov__day-label">{d.label}</span>
-                  <span className="adm-ov__day-date">{d.dateLabel}</span>
+          {/* The days are the week's bookings: none are drawn (as "0 booked") until the server has answered. */}
+          {!week.loading && !week.failed && (
+            <div className="adm-ov__days">
+              {days.map((d) => (
+                <div key={d.day} className="adm-ov__day">
+                  <div className="adm-ov__day-head">
+                    <span className="adm-ov__day-label">{d.label}</span>
+                    <span className="adm-ov__day-date">{d.dateLabel}</span>
+                  </div>
+                  <div className="adm-ov__day-big">
+                    {d.booked} <span>booked</span>
+                  </div>
+                  <ul className="adm-ov__day-facts">
+                    <li className={d.changes > 0 ? "adm-ov__fact--warn" : undefined}>{d.changes === 0 ? "no changes yet" : `${d.changes} change${d.changes === 1 ? "" : "s"} already`}</li>
+                    <li className={d.hot > 0 ? "adm-ov__fact--alert" : undefined}>{d.hot === 0 ? "nobody with a live note" : `${d.hot} with a live note: ${d.hotNames.join(", ")}`}</li>
+                    <li>{d.moments === 0 ? "no moments" : `${d.moments} moment${d.moments === 1 ? "" : "s"}`}</li>
+                  </ul>
                 </div>
-                <div className="adm-ov__day-big">
-                  {d.booked} <span>booked</span>
-                </div>
-                <ul className="adm-ov__day-facts">
-                  <li className={d.changes > 0 ? "adm-ov__fact--warn" : undefined}>{d.changes === 0 ? "no changes yet" : `${d.changes} change${d.changes === 1 ? "" : "s"} already`}</li>
-                  <li className={d.hot > 0 ? "adm-ov__fact--alert" : undefined}>{d.hot === 0 ? "nobody with a live note" : `${d.hot} with a live note: ${d.hotNames.join(", ")}`}</li>
-                  <li>{d.moments === 0 ? "no moments" : `${d.moments} moment${d.moments === 1 ? "" : "s"}`}</li>
-                </ul>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+          {/* Openings' line: a usually-full time with room, only when there is one, and only off a week the server answered. */}
+          {openingsLines.length > 0 && (
+            <div className="p-3 flex flex-col gap-2" role="group" aria-label="Openings in the next three days">
+              {openingsLines.slice(0, OPENINGS_SHOWN).map((text) => (
+                <Line key={text} icon={<CalendarRange className="w-4 h-4" />} label="Openings" text={text} tone="neutral" onOpen={openOpenings} />
+              ))}
+              {openingsLines.length > OPENINGS_SHOWN && <p className="adm-ov__more">{overviewMoreLine(openingsLines.length - OPENINGS_SHOWN)}</p>}
+            </div>
+          )}
           {unbooked.count > 0 && (
             <div className="adm-ov__unbooked">
               <span className="adm-ov__unbooked-title">Nothing booked ahead ({unbooked.count} of {unbooked.measured} active)</span>
@@ -630,13 +795,16 @@ function StudioOverview({
           count={moment.rows.length}
           tone={moment.gesturesUnowned > 0 ? "warn" : "neutral"}
           sentence={
-            delight.isLoading || own.loading
+            delight.isLoading || own.loading || week.loading
               ? "Reading the list…"
               : delight.needsIndex
                 ? "The Delight queue needs its index — an administrator deploys it."
-                : moment.rows.length === 0
-                  ? "No gestures due, no dates and no milestones in the next seven days."
-                  : `${moment.gestures} gesture${moment.gestures === 1 ? "" : "s"} due${moment.gesturesUnowned > 0 ? ` (${moment.gesturesUnowned} without an owner)` : ""}, ${moment.dates} date${moment.dates === 1 ? "" : "s"} to remember, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}.`
+                : week.failed
+                  ? // Gestures, dates and years with the studio don't need the week; a booked 50th or 100th does: never "no milestones".
+                    `${moment.rows.length === 0 ? "No gestures due and no dates in the next seven days" : `${momentsCounted}${moment.milestones > 0 ? `, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}` : ""}`}. ${MILESTONES_NOT_READ}`
+                  : moment.rows.length === 0
+                    ? "No gestures due, no dates and no milestones in the next seven days."
+                    : `${momentsCounted}, ${moment.milestones} milestone${moment.milestones === 1 ? "" : "s"}.`
           }
           actions={door("delight", "Delight queue")}
           folded={fold.folded.has("moments")}
@@ -653,7 +821,7 @@ function StudioOverview({
             }))}
             total={moment.rows.length}
             onOpenClient={onNavigateProfile}
-            empty="Nothing to mark this week."
+            empty={weekUnread ? "" : "Nothing to mark this week."}
             moreLabel="on the Delight queue and the clients' notes"
           />
         </OverviewPanel>
@@ -707,9 +875,9 @@ function StudioOverview({
           title="Team this week"
           icon={<Users className="w-4 h-4" />}
           sentence={
-            recent.loading || logged.loading
+            recent.loading || logged.loading || week.loading
               ? "Adding up the week…"
-              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
+              : `${team.sessions} session${team.sessions === 1 ? "" : "s"} since Monday ${team.since.slice(5)} by ${team.rows.filter((r) => r.sessions > 0).length} trainer${team.rows.filter((r) => r.sessions > 0).length === 1 ? "" : "s"}${week.failed ? " — today's bookings could not be read" : team.unknownToday > 0 ? " — today's logging could not be read" : team.unloggedToday > 0 ? ` — ${team.unloggedToday} of today's sessions still unlogged` : ""}. ${formatHours(hours.minutes)} on the floor.`
           }
           actions={door("insights", "Insights and hours")}
           folded={fold.folded.has("team")}
@@ -727,7 +895,7 @@ function StudioOverview({
                   <th scope="col">Sessions</th>
                   <th scope="col">Clients</th>
                   <th scope="col">Hours</th>
-                  {team.unknownToday === 0 && <th scope="col">Unlogged today</th>}
+                  {unloggedKnown && <th scope="col">Unlogged today</th>}
                 </tr>
               </thead>
               <tbody>
@@ -737,7 +905,7 @@ function StudioOverview({
                     <td>{r.sessions}</td>
                     <td>{r.clients}</td>
                     <td>{formatHours(r.minutes)}</td>
-                    {team.unknownToday === 0 && <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>}
+                    {unloggedKnown && <td className={r.unloggedToday > 0 ? "adm-ov__team-alert" : undefined}>{r.unloggedToday === 0 ? "—" : r.unloggedToday}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -781,7 +949,7 @@ function StudioOverview({
         <Line
           icon={<CalendarDays className="w-4 h-4" />}
           label="This week's changes"
-          text={week.loading ? "Reading the week…" : `${weekDays.reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} cancellations or moves recorded across the week, held against the day each session was for.`}
+          text={week.loading ? "Reading the week…" : week.failed ? NOT_READ : `${weekDays.reduce((n, d) => n + (changesByDay[d] ?? 0), 0)} cancellations or moves recorded across the week, held against the day each session was for.`}
           tone="neutral"
           onOpen={() => setView("changes")}
         />

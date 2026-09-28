@@ -301,16 +301,6 @@ export function regionStateFromDial(v: DialValue): "stiff" | "prime" {
   return v < 0 ? "stiff" : "prime";
 }
 
-/**
- * Low / Medium / High — the closing note's old priority. Maps onto the
- * journal's importances, which are what Loudness stores.
- */
-export function importanceFromPriority(v: unknown): "standard" | "elevated" | "critical" {
-  if (v === "High") return "critical";
-  if (v === "Medium") return "elevated";
-  return "standard";
-}
-
 /* ------------------------------------------------------------------ *
  * Reading
  * ------------------------------------------------------------------ */

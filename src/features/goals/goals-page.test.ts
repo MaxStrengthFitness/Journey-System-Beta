@@ -218,7 +218,7 @@ describe("howToCoachRows", () => {
         entry({ id: "pref", kind: "preference", body: "Prefers “you owned that one” to numbers.", occurredAt: noon("2027-03-10") }),
         entry({ id: "tip", kind: "coaching", category: "Pace", importance: "critical", machineId: "m-leg", body: "Count the turnaround.", occurredAt: noon("2027-01-01") }),
         entry({ id: "heads", kind: "coaching", category: null, importance: "elevated", body: "Talk her through rep one.", occurredAt: noon("2027-02-01") }),
-        // Left out: a focus check-in, an unfiled capture, a legacy wrap-up, a closed tip, an equipment note.
+        // Left out: a focus check-in, an unfiled capture, a session summary, a closed tip, an equipment note.
         entry({ id: "checkin", kind: "coaching", category: "Posture", focusId: "f1" }),
         entry({ id: "unfiled", kind: "general" }),
         entry({ id: "legacy:sessions:s1", kind: "general", isLegacy: true, origin: "legacy", legacySource: "Session summary" }),

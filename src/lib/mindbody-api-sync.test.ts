@@ -1653,3 +1653,83 @@ describe("syncMindbodySchedules — the second review's fixes", () => {
     expect(op.data.movedFromStart).toBeUndefined();
   });
 });
+
+describe("syncMindbodySchedules — what the whole-read record is told (Sep 27 2026)", () => {
+  const NY = "America/New_York";
+  const DAY = 24 * 60 * 60 * 1000;
+  const ANN = { id: "mb-a", mindbodyClientId: "mb-a", firstName: "Ann", lastName: "Lee", homeStudioId: "studio-solon", height: "", isActive: true, remainingSessions: 0 } as unknown as Client;
+  const row = (id: string, startMs: number) => ({
+    id,
+    data: () => ({ mindbodyAppointmentId: id, studioId: "studio-solon", clientId: "mb-a", clientName: "Ann Lee", trainerId: "trainer-1", status: "Scheduled", startTime: { toMillis: () => startMs } }),
+  });
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const appt = (id: number, ms: number, locationId = 2) =>
+    appointment({ Id: id, ClientId: "mb-a", LocationId: locationId, StartDateTime: iso(ms), EndDateTime: iso(ms + 1800000) });
+  function mockAnswerSequence(...answers: any[][]) {
+    let i = 0;
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ appointments: answers[Math.min(i++, answers.length - 1)] }),
+    })) as any;
+  }
+  const opsFor = (id: string) => batchOps.filter((o) => o.path === "schedules" && o.id === id);
+
+  it("counts this studio's bookings in the answer, after the location filter", async () => {
+    // One of Solon's, one of Westlake's on the same site.
+    mockAppointments([appt(7101, Date.now() + DAY), appt(7102, Date.now() + DAY, 1)]);
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2");
+    expect(res.windowComplete).toBe(true);
+    expect(res.studioAnswered).toBe(1);
+    expect(res.settleAnswered).toBeUndefined();
+  });
+
+  it("says an empty whole answer held none of the studio's bookings: it returned before its sweep", async () => {
+    respectWindow = true;
+    snapshots.schedules = [row("7103", Date.now() + 2 * 3600000)];
+    // Whole and empty for Solon: only Westlake's booking came back.
+    mockAppointments([appt(7104, Date.now() + DAY, 1)]);
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, undefined, undefined, "studio-solon", "2");
+    expect(res.windowComplete).toBe(true);
+    expect(res.studioAnswered).toBe(0);
+    // Nothing Journey holds was checked: the live booking is untouched.
+    expect(opsFor("7103")).toEqual([]);
+  });
+
+  it("says a settling month that came back empty held none, while settledWithMonth stays as it was", async () => {
+    respectWindow = true;
+    const stays = appt(7105, Date.now() + 2 * 3600000);
+    snapshots.schedules = [row("7105", Date.now() + 2 * 3600000), row("7106", Date.now() + DAY)];
+    // The near answer lost 7106; the month comes back whole and empty.
+    mockAnswerSequence([stays], []);
+    const near = syncWindow(NY, NEAR_WINDOW_DAYS);
+
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, near.start, near.end, "studio-solon", "2", {
+      settleSweepWith: syncWindow(NY, DEEP_WINDOW_DAYS),
+    });
+
+    expect(res.sweepDeferred).toBe(1);
+    // Unchanged: the background pull reads this to stamp its month.
+    expect(res.settledWithMonth).toBe(true);
+    expect(res.studioAnswered).toBe(1);
+    expect(res.settleAnswered).toBe(0);
+    // 7106 was neither found nor cancelled.
+    expect(opsFor("7106").some((o) => o.data.status === "Cancelled")).toBe(false);
+  });
+
+  it("says how many a settling month held when it held some", async () => {
+    respectWindow = true;
+    const stays = appt(7107, Date.now() + 2 * 3600000);
+    snapshots.schedules = [row("7107", Date.now() + 2 * 3600000), row("7108", Date.now() + DAY)];
+    mockAnswerSequence([stays], [stays, appt(7109, Date.now() + 5 * DAY)]);
+    const near = syncWindow(NY, NEAR_WINDOW_DAYS);
+
+    const res = await syncMindbodySchedules(SITE, TRAINERS, [ANN], SHARED_SITE_STUDIOS, null, near.start, near.end, "studio-solon", "2", {
+      settleSweepWith: syncWindow(NY, DEEP_WINDOW_DAYS),
+    });
+
+    expect(res.settledWithMonth).toBe(true);
+    expect(res.settleAnswered).toBe(2);
+    // The month's own sweep decided 7108: gone.
+    expect(opsFor("7108").some((o) => o.data.status === "Cancelled")).toBe(true);
+  });
+});
