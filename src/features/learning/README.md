@@ -31,7 +31,7 @@ Outside the tab the shell renders exactly as before.
 
 **One search.** `LearningSearch` searches everything in the tab:
 
-- this studio's machines — by name, by Academy code (`CP`), and by muscle and category;
+- this studio's machines — by name, by Academy code (`CP`), and by muscle and category, and since the Machine Catalog round (Sep 28 2026) by every other name a machine goes by (the Academy's, the Academy tab's, FileMaker's: `catalog/names.ts`), so "low back" finds LUMBAR;
 - machines other MSF studios made and shared (a copy is listed by its original);
 - the Academy's machine documents, modules, topic titles and glossary terms;
 - this studio's pages.

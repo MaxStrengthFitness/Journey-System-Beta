@@ -8,8 +8,19 @@
      StudioNotesCard  .cat__note, .cat__notes-*, .cat__textarea, .cat__btn*
      StudioSetupCard  .ssc*
 
+   And, since the Machine Catalog round (Sep 28 2026), the Catalog's own
+   index, prefixed .mcat- (a prefix no other feature uses):
+
+     CatalogFind      .mcat-find*   Find on top of the Catalog (Catalog R1)
+     the index        .mcat-filter* the floor narrowed by Find
+     MachineArticle   .mcat-found*  "Found on this page", when Find opened it
+
+   Find borrows the wiki's search field and result rows (.wk__search-*,
+   .wk__hit), so only its layout lives here.
+
    main.tsx loads this file (and catalog.tokens.css) for the whole app. The
-   tokens are on :root, so neither card needs a .cat ancestor.
+   tokens are on :root, so neither card needs a .cat ancestor, and the index
+   reads the wiki's --wk-* tokens, also on :root.
 
    Both cards also render on My Studio -> Machines. Since the voice review
    follow-up (Sep 27 2026) they speak the app's type voice: text on the
@@ -252,4 +263,108 @@
   background: var(--cat-surface-2);
   color: var(--cat-ink-muted);
   cursor: default;
+}
+
+/* ── FIND (Catalog R1, Sep 28 2026) ──────────────────────────────────────
+   A field on the index, under the title. The field and the result rows are
+   the wiki's own (.wk__search-field is 44px at 16px; .wk__hit is 52px), so
+   this only places them. */
+.mcat-find {
+  margin-top: 0.875rem;
+}
+
+.mcat-find__field {
+  width: 100%;
+}
+
+.mcat-find__results {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 0.875rem;
+}
+
+/* The one exact name: Enter opens it. Marked by its edge, in the app's blue,
+   which acts and selects. */
+.mcat-find__top {
+  border-left-color: var(--wk-live);
+}
+
+/* A sentence from inside a page, as written: never upper-cased, never cut. */
+.mcat-find__line {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--wk-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mcat-find__enter-icon {
+  flex: none;
+  color: var(--wk-ink-faint);
+}
+
+/* ── the floor narrowed by Find ───────────────────────────────────────── */
+.mcat-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.875rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface-2);
+}
+
+.mcat-filter__text {
+  flex: 1 1 12rem;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--wk-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mcat-filter__clear {
+  flex: none;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--wk-border-strong);
+  border-radius: 10px;
+  background: var(--wk-surface);
+  color: var(--wk-live-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mcat-filter__clear:focus-visible {
+  outline: 2px solid var(--wk-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── "Found on this page" ─────────────────────────────────────────────── */
+.mcat-found {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--wk-live);
+  border-radius: var(--wk-radius);
+  background: var(--wk-live-fill);
+}
+
+.mcat-found__where {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wk-live-text);
+}
+
+.mcat-found__text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
 }

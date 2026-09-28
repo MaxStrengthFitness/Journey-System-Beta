@@ -73,6 +73,24 @@ function asList(value: unknown): string[] | undefined {
   return undefined;
 }
 
+/** The two execution fields the Catalog shows, from any shape that has them. */
+interface ExecutionLike {
+  neverToFailure?: unknown;
+  safetyNotice?: unknown;
+}
+
+/**
+ * The never-to-failure switch and its reason, only when set: an unflagged
+ * machine carries neither field, so it reads exactly as it did before.
+ */
+function neverToFailureOf(
+  execution: ExecutionLike | undefined | null,
+): Pick<CatalogMachine, "neverToFailure" | "safetyNotice"> {
+  if (execution?.neverToFailure !== true) return {};
+  const notice = typeof execution.safetyNotice === "string" ? execution.safetyNotice.trim() : "";
+  return notice ? { neverToFailure: true, safetyNotice: notice } : { neverToFailure: true };
+}
+
 export interface AdaptOptions {
   /** studios/{id}/machineNotes, keyed by machineId. */
   studioNotes?: Record<string, { notes?: string }>;
@@ -111,6 +129,9 @@ export function fromLegacyMachine(
       firstOf(machine.executionPosture, db?.executionPosture) ?? "",
     setupGap: firstOf(machine.setupGap, db?.setupGap) ?? "Standard Gap",
     requiresHandoff: machine.requiresHandoff ?? db?.requiresHandoff ?? false,
+    // A catalog document seeded from data/machine-definitions.ts carries the
+    // definition's execution block even on this legacy path.
+    ...neverToFailureOf((machine as { execution?: ExecutionLike }).execution),
 
     targetMuscles:
       firstOf(
@@ -188,6 +209,7 @@ export function fromResolvedMachine(
       ) ?? "Standard Gap",
     requiresHandoff:
       machine.execution?.requiresHandoff ?? db?.requiresHandoff ?? false,
+    ...neverToFailureOf(machine.execution),
 
     targetMuscles:
       firstOf(machine.musculature?.primary, db?.targetMuscles) ?? [],

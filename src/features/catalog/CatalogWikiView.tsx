@@ -60,7 +60,10 @@ import {
   upkeepEventsFrom,
 } from "./grouping";
 import { MachineTrendsPanel } from "../machine-trends/MachineTrendsPanel";
-import { MachineArticle } from "./MachineArticle";
+import { CatalogFind } from "./CatalogFind";
+import { findOnFloor, findUnitsFrom, type FindHit } from "./find";
+import { floorNameHidesMovement, movementOf } from "./names";
+import { MachineArticle, type FoundOnPage } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
 import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
@@ -146,8 +149,18 @@ function musclesLine(targetMuscles: string[]): string {
 
 type Route =
   | { kind: "index" }
-  | { kind: "machine"; id: string }
+  /** `found`: Find opened this page on a line inside it, and the page says where. */
+  | { kind: "machine"; id: string; found?: FoundOnPage }
   | { kind: "search" };
+
+/**
+ * The floor narrowed by Find (a switch, a maker, a movement the floor has
+ * more than one of). Shown with its name and a way back to the whole floor.
+ */
+interface FloorFilter {
+  label: string;
+  unitIds: string[];
+}
 
 /**
  * Which list the Catalog shows — this studio's floor, or every MSF machine
@@ -211,6 +224,7 @@ export function CatalogWikiView({
     machines: catalogMachines,
     source: floorSource,
     loading: floorLoading,
+    makers,
   } = useCatalogMachines(activeStudioId, machines);
 
   const [scope, setScopeState] = useState<CatalogScope>(rememberedScope);
@@ -221,6 +235,9 @@ export function CatalogWikiView({
   const [route, setRoute] = useState<Route>({ kind: "index" });
   const [grouping, setGrouping] = useState<GroupingMode>("academy");
   const [query, setQuery] = useState("");
+  // Find, on top of the floor (Catalog R1), and what it narrowed the floor to.
+  const [find, setFind] = useState("");
+  const [floorFilter, setFloorFilter] = useState<FloorFilter | null>(null);
   const [view, setView] = useState<"front" | "back">("front");
   const [gender, setGender] = useState<"male" | "female">("male");
 
@@ -388,6 +405,22 @@ export function CatalogWikiView({
     [upkeepById],
   );
 
+  /* Find (Catalog R1): every name a machine goes by, over this floor. */
+  const findUnits = useMemo(
+    () => findUnitsFrom(catalogMachines, { makers, flagged: flaggedIds }),
+    [catalogMachines, makers, flaggedIds],
+  );
+  const findResult = useMemo(
+    () => (find.trim() ? findOnFloor({ query: find, units: findUnits, studioName }) : null),
+    [find, findUnits, studioName],
+  );
+  // Another studio's floor is another list: what was typed or filtered for
+  // the last one means nothing here.
+  useEffect(() => {
+    setFind("");
+    setFloorFilter(null);
+  }, [activeStudioId]);
+
   const groups = useMemo(
     () => groupMachines(catalogMachines, grouping),
     [catalogMachines, grouping],
@@ -430,6 +463,22 @@ export function CatalogWikiView({
 
   const openMachine = (id: string) => setRoute({ kind: "machine", id });
   const openIndex = () => setRoute({ kind: "index" });
+
+  /** Where a Find result leads: a page, a filtered floor, or All MSF. */
+  const openFound = (hit: FindHit) => {
+    setFind("");
+    if (hit.kind === "unit") openMachine(hit.unitId);
+    else if (hit.kind === "line") {
+      setRoute({ kind: "machine", id: hit.unitId, found: { section: hit.section, text: hit.text } });
+    } else if (hit.kind === "filter") setFloorFilter(hit.filter);
+    else {
+      // Not on this floor: its page in All MSF machines. Not remembered as
+      // the reader's scope, exactly like a link to a machine not here.
+      setDbJump(hit.movementId);
+      setScopeState("msf");
+      setRoute({ kind: "index" });
+    }
+  };
 
   const runUpkeep = async (
     row: TaskRow,
@@ -608,6 +657,7 @@ export function CatalogWikiView({
       >
         <MachineArticle
           machine={selected}
+          found={route.found}
           isOpen={isOpen}
           setOpen={setOpen}
           isFlagged={Boolean(upkeepById[selected.id]?.flagged)}
@@ -793,7 +843,14 @@ export function CatalogWikiView({
     (m) => m.rosterStatus === "maintenance",
   ).length;
 
-  const contents: WikiContentsCard[] = groups.map((g) => {
+  // Find's filter narrows every group to the machines it named.
+  const shownGroups = floorFilter
+    ? groups
+        .map((g) => ({ ...g, machines: g.machines.filter((m) => floorFilter.unitIds.includes(m.id)) }))
+        .filter((g) => g.machines.length > 0)
+    : groups;
+
+  const contents: WikiContentsCard[] = shownGroups.map((g) => {
     const due = g.machines.filter(
       (m) => upkeepStatusById[m.id] === "due" || upkeepStatusById[m.id] === "overdue",
     ).length;
@@ -822,7 +879,6 @@ export function CatalogWikiView({
       <WikiIndexHeader
         lead={scopeSwitch}
         title={activeStudio?.name ? `Machines at ${activeStudio.name}` : "Machines"}
-        subtitle={`${catalogMachines.length} machine${catalogMachines.length === 1 ? "" : "s"}, each with its Academy code. What every machine on this floor trains, how ${activeStudio?.name ?? "this studio"} sets it up, and how it is running today.`}
         stats={[
           { label: "On the roster", value: catalogMachines.length },
           {
@@ -841,9 +897,23 @@ export function CatalogWikiView({
         {groupingControl}
       </WikiIndexHeader>
 
-      <WikiContents cards={contents} label="Contents" />
+      <CatalogFind value={find} onChange={setFind} result={findResult} onPick={openFound} />
 
-      {groups.map((g) => (
+      {/* While something is typed, Find's results stand in for the list. */}
+      {!findResult && floorFilter && (
+        <div className="mcat-filter" role="status">
+          <span className="mcat-filter__text">
+            Showing <strong>{floorFilter.label}</strong> · {floorFilter.unitIds.length} on {studioName}'s floor
+          </span>
+          <button type="button" className="mcat-filter__clear" onClick={() => setFloorFilter(null)}>
+            Show the whole floor
+          </button>
+        </div>
+      )}
+
+      {!findResult && <WikiContents cards={contents} label="Contents" />}
+
+      {!findResult && shownGroups.map((g) => (
         <WikiGroup
           key={g.key}
           id={groupElementId(g.key)}
@@ -860,15 +930,16 @@ export function CatalogWikiView({
               flagged ||
               status === "due" ||
               status === "overdue";
+            // The Academy's name under the floor's, only when the floor's
+            // leaves it unsaid ("LUMBAR" is the Lumbar Extension).
+            const movement = movementOf(m);
             return (
               <WikiRow
                 key={m.id}
                 title={m.name}
-                code={abbr(m.id)}
+                code={movement?.code ?? abbr(m.id)}
                 meta={
-                  grouping === "movement"
-                    ? m.anatomicalRegion
-                    : m.movementPattern || m.anatomicalRegion
+                  movement && floorNameHidesMovement(m.name, movement.name) ? movement.name : undefined
                 }
                 detail={musclesLine(m.targetMuscles)}
                 onClick={() => openMachine(m.id)}

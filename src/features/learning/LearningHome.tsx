@@ -237,7 +237,7 @@ export function LearningHome({
               accent="other"
               icon={<Database size={16} aria-hidden />}
               title="All MSF machines"
-              detail={`Every machine in the MSF catalog, and the ones studios have made and shared — with what other studios wrote about each. Add one to ${studioName}'s floor from its page.`}
+              detail="Every MSF machine, and the ones studios made and shared."
               onClick={onOpenDatabase}
             />
           </div>
@@ -327,9 +327,8 @@ export function LearningHome({
           <p className="wk__empty">Loading {studioName}'s pages…</p>
         ) : recent.length === 0 ? (
           <p className="wk__empty">
-            Nothing written at {studioName} yet. Studio leaders can add pages — the
-            studio's own way of doing things, kept beside the Academy, never on top
-            of it. Any trainer can add a studio note to a machine or an Academy page.
+            Nothing written at {studioName} yet. Studio leaders add pages; any
+            trainer can add a note to a machine or an Academy page.
           </p>
         ) : (
           <WikiGroup

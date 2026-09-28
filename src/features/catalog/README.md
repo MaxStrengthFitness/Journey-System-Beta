@@ -1,5 +1,49 @@
 # Catalog — anatomy-first redesign
 
+> **Newest first: the Machine Catalog round (Sep 28 2026).** AJ picked "Floor
+> first, codex behind" in the Redesign Blueprints and asked for less text. The
+> round is `docs/rounds/2026-09-28-catalog.md`; what it changed here is in
+> **§0** just below. The rest of this file is older and says so.
+
+## 0. The Machine Catalog round (Sep 28 2026)
+
+### 0.1 Find and the names (Catalog R1)
+
+- **`names.ts` is every name a machine goes by**, built from the name tables
+  already in the code: the Academy's own movement names (the standardized
+  setup guides' headings, pinned to `docs/msf-academy` by `names.test.ts`),
+  the standard set's floor names (`DEFAULT_MACHINES`), the Academy tab's and
+  the makers' names (`MACHINE_DATABASE`), the database keys, FileMaker's grid
+  names (`machine-fit/shorthand.ts`) and the Academy's codes (`MACHINE_ABBR`
+  plus the quick cards' and scripts' own, which the test reads from
+  `academy/content`). **Movements take the Academy's names; a unit keeps its
+  floor name** (the room's question 1, default). Nothing in the database
+  changes; aliases head office can edit are a later round and need AJ's OK.
+- **`exact` is the safe subset.** An exact alias makes a top match, so only a
+  name that means one movement is exact: FileMaker's "extension" is the Leg
+  Extension on its grid, but three other movements have the word, so it only
+  ranks. `names.test.ts` holds that no name opens two movements.
+- **`find.ts` is Find's rules** (pure): an exact name is the TOP MATCH (Enter
+  opens it); a unit's code and its place among the floor's units of that
+  movement are exact too (`lp2`); a movement the floor has more than one of is
+  a FILTER, never a guess; a movement the floor lacks opens in All MSF; switches
+  (handoff, never to failure, out of service, flagged) and a unit's recorded
+  maker filter the floor; a word inside a page lists the line, whole, and never
+  tops. **No regex look-behind** (older iPadOS Safari throws on parse).
+- **`CatalogFind.tsx` is the field on the index**, not a search screen: it
+  never takes focus by itself, and its results stand in for the list while
+  something is typed. It borrows the wiki's search field and rows.
+- **The page names its movement** (`eyebrowFor` in `MachineArticle.tsx`): the
+  line above the title is "Lumb · Lumbar Extension" over LUMBAR, or "LP ·
+  Lower Body" over LEG PRESS, whose floor name already says it
+  (`floorNameHidesMovement`). The infobox's separate Academy row went with it.
+- **The never-to-failure switch reaches the Catalog** (`CatalogMachine.
+  neverToFailure` / `safetyNotice`, from `execution`), for Find's filter.
+- **Learning's one search knows the names too**: `useLearningEntries` puts
+  `namesForMachine` in each machine's keywords.
+- **Less text**: the index's subtitle, the Academy link cards' long lines and
+  two of the Overview's paragraphs were cut.
+
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced
 > that screen with `CatalogWikiView` + `MachineArticle` on the shared

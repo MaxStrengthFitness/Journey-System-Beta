@@ -39,6 +39,15 @@ export interface CatalogMachine {
   executionPosture: string;
   setupGap: string;
   requiresHandoff: boolean;
+  /**
+   * The Academy says never to take this machine to failure (the Lumbar and
+   * the Cervical today): `execution.neverToFailure`, with its reason in
+   * `safetyNotice`. Optional, so a machine assembled before the Catalog round
+   * (Sep 28 2026) reads as "not flagged" rather than failing to build.
+   */
+  neverToFailure?: boolean;
+  /** The Academy's own sentence for why, shown with the switch. */
+  safetyNotice?: string;
 
   // ── the sections ─────────────────────────────────────────────────
   /** Precise anatomy as the coach reads it — the diagram cannot say

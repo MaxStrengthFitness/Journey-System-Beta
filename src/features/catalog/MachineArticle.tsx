@@ -31,9 +31,35 @@ import {
   accentForPattern,
   type WikiChip,
 } from "../wiki";
-import { abbr as academyAbbr } from "../routine-builder/academy";
+import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
 import type { UpkeepStatus } from "../admin/upkeep/upkeepLog";
+import { floorNameHidesMovement, movementOf } from "./names";
 import type { CatalogMachine } from "./types";
+
+/** A line Find opened this page on: which part of the page, and the sentence. */
+export interface FoundOnPage {
+  section: string;
+  text: string;
+}
+
+/**
+ * The line above a machine's name (Catalog R1, the names). A unit keeps its
+ * floor name as the title; the line above says which Academy movement it is
+ * and its code — "LUMB · LUMBAR EXTENSION" over "LUMBAR" — or, when the floor
+ * name already says the movement, the code and the Academy family ("LP ·
+ * LOWER BODY" over "LEG PRESS"). A machine with no lineage keeps the movement
+ * pattern it always showed.
+ */
+export function eyebrowFor(machine: CatalogMachine): string {
+  const movement = movementOf(machine);
+  if (!movement) return machine.movementPattern || "Equipment";
+  const code = movement.code ?? academyAbbr(movement.id);
+  if (floorNameHidesMovement(machine.name, movement.name)) {
+    return [code, movement.name].filter(Boolean).join(" · ");
+  }
+  const family = categoryOf(movement.id);
+  return [code, family ? CATEGORY_LABEL[family] : machine.movementPattern].filter(Boolean).join(" · ");
+}
 
 /**
  * A MACHINE PAGE.
@@ -81,6 +107,8 @@ export interface MachineAcademyLinks {
 
 export interface MachineArticleProps {
   machine: CatalogMachine;
+  /** Find opened this page on a line inside it: said at the top of the page. */
+  found?: FoundOnPage;
   /** The anatomy figure. See MachineFigure. */
   figure: ReactNode;
   /** Machines a trainer would look at next. Same pattern, then same category. */
@@ -133,6 +161,7 @@ export interface MachineArticleProps {
 
 export function MachineArticle({
   machine,
+  found,
   figure,
   related,
   onOpenMachine,
@@ -153,13 +182,15 @@ export function MachineArticle({
   setOpen,
 }: MachineArticleProps) {
   const accent = accentForPattern(machine.movementPattern);
-  const code = academyAbbr(machine.id);
 
   const fold = (id: string, fallback: boolean) => ({
     open: isOpen(id, fallback),
     onToggle: (next: boolean) => setOpen(id, next),
   });
 
+  /* The Academy's code used to be a sixth row here. It is on the line above
+     the title now (eyebrowFor), beside the movement's name, so the box says
+     it once (Catalog R1: AJ asked for less text). */
   const facts = [
     { label: "Class", icon: <Activity size={11} aria-hidden />, value: machine.kinematicClassification },
     { label: "Posture", icon: <Target size={11} aria-hidden />, value: machine.executionPosture },
@@ -167,13 +198,13 @@ export function MachineArticle({
     { label: "Handoff", icon: <Users size={11} aria-hidden />, value: machine.requiresHandoff ? "Required" : "None" },
     { label: "Region", icon: <Layers size={11} aria-hidden />, value: machine.anatomicalRegion },
   ];
-  /* The Academy's own two- or three-letter code for this machine ("ADD, SD,
-     CR, TR, OH" is how a sequence is written in the curriculum). Only shown
-     when the corpus actually has one, because an invented code would be read
-     as authoritative. */
-  if (code) {
-    facts.push({ label: "Academy", icon: <BookOpen size={11} aria-hidden />, value: code });
-  }
+
+  const foundLine = found ? (
+    <p className="mcat-found" role="status">
+      <span className="mcat-found__where">Found on this page · {found.section}</span>
+      <span className="mcat-found__text">{found.text}</span>
+    </p>
+  ) : null;
 
   const hasSetup = Boolean(machine.setup) || machine.setupCues.length > 0;
   const hasExecution = Boolean(machine.execution) || machine.executionCues.length > 0;
@@ -183,7 +214,7 @@ export function MachineArticle({
 
   return (
     <WikiArticle
-      eyebrow={machine.movementPattern || "Equipment"}
+      eyebrow={eyebrowFor(machine)}
       accent={accent}
       title={machine.name}
       lede={machine.clinicalNote || undefined}
@@ -208,7 +239,14 @@ export function MachineArticle({
           )}
         </>
       }
-      notice={notice}
+      notice={
+        foundLine || notice ? (
+          <>
+            {foundLine}
+            {notice}
+          </>
+        ) : undefined
+      }
       aside={
         <Infobox
           title="At a glance"
@@ -301,7 +339,7 @@ export function MachineArticle({
               accent={accent}
               icon={<ClipboardList size={16} aria-hidden />}
               title="Quick reference card"
-              detail="Written to be read standing at the machine — target muscles, setup, posture, turnarounds."
+              detail="Muscles, setup, posture, turnarounds."
               onClick={academy.onOpenCard}
             />
           )}
@@ -310,7 +348,7 @@ export function MachineArticle({
               accent={accent}
               icon={<MessageSquareQuote size={16} aria-hidden />}
               title="Full spoken script"
-              detail="Word for word, setup through the last rep."
+              detail="Word for word, setup to the last rep."
               onClick={academy.onOpenScript}
             />
           )}
@@ -319,7 +357,7 @@ export function MachineArticle({
               accent={accent}
               icon={<Layers size={16} aria-hidden />}
               title="Deep dive"
-              detail="The complete write-up — everything a practitioner holds before training anyone on it."
+              detail="The complete write-up."
               onClick={academy.onOpenOverview}
             />
           )}
