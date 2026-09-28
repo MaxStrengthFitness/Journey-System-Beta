@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 /**
- * THE ADMINS DASHBOARD MOUNTS — the seven tabs for an administrator, each a
- * click away over an empty Firestore, and a refusal for anyone else.
+ * THE ADMINS DASHBOARD MOUNTS — the Command Center shell for an administrator:
+ * every page a tap away in the sidebar and on the portrait bar, the search
+ * opening a studio, the page kept while the search is open, and a refusal for
+ * anyone else.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
@@ -27,7 +29,19 @@ vi.mock("firebase/firestore", () => {
     const path = [...base, ...parts.filter((p) => typeof p === "string")].join("/");
     return { path, id: path.split("/").pop() ?? "id" };
   };
-  const emptySnap = { docs: [], size: 0, empty: true, forEach: () => {}, docChanges: () => [], metadata: { fromCache: false } };
+  // The machine catalog answers with two machines; everything else is empty.
+  const machines = [
+    { id: "m-leg-press", name: "Leg Press", status: "active" },
+    { id: "m-lumbar", name: "Lumbar Extension", status: "active" },
+  ];
+  const snapOf = (docs: Array<Record<string, unknown> & { id: string }>) => ({
+    docs: docs.map((d) => ({ id: d.id, data: () => d, exists: () => true })),
+    size: docs.length,
+    empty: docs.length === 0,
+    forEach: (fn: (d: unknown) => void) => docs.forEach((d) => fn({ id: d.id, data: () => d })),
+    docChanges: () => [],
+    metadata: { fromCache: false },
+  });
   const emptyDoc = { exists: () => false, data: () => undefined, id: "id", metadata: { fromCache: false } };
   return {
     collection: ref,
@@ -42,16 +56,18 @@ vi.mock("firebase/firestore", () => {
     onSnapshot: (target: { path: string }, a: unknown, b?: unknown) => {
       const next = (typeof a === "function" ? a : b) as (s: unknown) => void;
       const isDoc = target.path.split("/").length % 2 === 0;
-      const t = setTimeout(() => next(isDoc ? emptyDoc : emptySnap), 0);
+      const answer = isDoc ? emptyDoc : snapOf(target.path === "machines" ? machines : []);
+      const t = setTimeout(() => next(answer), 0);
       return () => clearTimeout(t);
     },
-    getDocs: async () => emptySnap,
+    getDocs: async () => snapOf([]),
     getDoc: async () => emptyDoc,
     getCountFromServer: async () => ({ data: () => ({ count: 0 }) }),
     updateDoc: async () => {},
     setDoc: async () => {},
     addDoc: async () => ({ id: "new" }),
     deleteDoc: async () => {},
+    deleteField: () => ({ __delete: true }),
     writeBatch: () => ({ set: () => {}, update: () => {}, delete: () => {}, commit: async () => {} }),
     serverTimestamp: () => new Date(),
     Timestamp: { now: () => new Date(), fromDate: (d: Date) => d, fromMillis: (ms: number) => new Date(ms) },
@@ -61,8 +77,12 @@ vi.mock("firebase/firestore", () => {
 import { AdminsDashboardView } from "./AdminsDashboardView";
 import type { Studio, Trainer } from "../../types";
 
-const studios = [{ id: "solon", name: "Solon", timezone: "America/New_York" }] as unknown as Studio[];
+const studios = [
+  { id: "solon", name: "Solon", timezone: "America/New_York", mindbodySiteId: "5746957" },
+  { id: "westlake", name: "Westlake", timezone: "America/New_York", mindbodySiteId: "29068", mindbodyLocationId: "3" },
+] as unknown as Studio[];
 const admin = { id: "adm", fullName: "Ada Admin", initials: "AA", role: "Admin", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
+const imrahil = { id: "imr", fullName: "Imrahil", initials: "IM", role: "HeadTrainer", primaryHomeStudioId: "westlake", accessibleStudioIds: [] } as unknown as Trainer;
 const lead = { id: "lead", fullName: "Lee Leader", initials: "LL", role: "HeadTrainer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as unknown as Trainer;
 
 let root: Root | null = null;
@@ -75,6 +95,12 @@ afterEach(() => {
   host = null;
 });
 
+const settle = async () => {
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 10));
+  });
+};
+
 async function mount(who: Trainer, isAdmin: boolean) {
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -82,47 +108,140 @@ async function mount(who: Trainer, isAdmin: boolean) {
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminsDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who]} clients={[]} machines={[]} isAdmin={isAdmin} activeStudioId="solon" />
+        <AdminsDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who, imrahil]} clients={[]} machines={[]} isAdmin={isAdmin} activeStudioId="solon" />
       </StrictMode>,
     );
   });
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, 10));
-  });
+  await settle();
   return host;
 }
 
-const navLabels = (el: HTMLElement) => [...el.querySelectorAll<HTMLButtonElement>(".adm-shell__side .adm-nav__btn")].map((b) => (b.textContent ?? "").trim());
-const clickNav = async (el: HTMLElement, label: string) => {
-  const btn = [...el.querySelectorAll<HTMLButtonElement>(".adm-shell__side .adm-nav__btn")].find((b) => (b.textContent ?? "").trim() === label);
-  expect(btn).toBeTruthy();
+const texts = (el: HTMLElement, selector: string) => [...el.querySelectorAll<HTMLElement>(selector)].map((b) => (b.textContent ?? "").trim());
+
+async function click(el: Element | null | undefined) {
+  expect(el, "element to click").toBeTruthy();
   await act(async () => {
-    btn!.click();
+    (el as HTMLElement).click();
   });
+  await settle();
+}
+
+const byText = (el: HTMLElement, selector: string, text: string) =>
+  [...el.querySelectorAll<HTMLElement>(selector)].find((b) => (b.textContent ?? "").trim() === text);
+
+async function type(el: HTMLElement, text: string) {
+  const input = el.querySelector<HTMLInputElement>(".hq-search__input")!;
+  expect(input, "the search field").toBeTruthy();
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   await act(async () => {
-    await new Promise((r) => setTimeout(r, 10));
+    setter.call(input, text);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-};
+}
 
 describe("the Admins dashboard", () => {
-  it("lists the seven, and opens each", async () => {
+  it("lists every page in the sidebar under its place, and opens each", async () => {
     const el = await mount(admin, true);
-    expect(navLabels(el)).toEqual(["All locations", "Catalog", "Standard template", "Limbo", "System tools", "Bug reports", "Data"]);
-    await clickNav(el, "Catalog");
+    expect(texts(el, ".hq-side .hq-nav__group")).toEqual(["Studios", "The MSF standard", "The machinery"]);
+    expect(texts(el, ".hq-side .hq-nav__item")).toEqual([
+      "All studios",
+      "Machines",
+      "Standard template",
+      "Waiting for review",
+      "Limbo",
+      "Bug reports",
+      "Data",
+      "System tools",
+    ]);
+    // It opens on All studios.
+    expect(el.textContent).toContain("All locations");
+    await click(byText(el, ".hq-side .hq-nav__item", "Machines"));
     expect(el.textContent).toContain("Machine catalog");
-    await clickNav(el, "Standard template");
+    await click(byText(el, ".hq-side .hq-nav__item", "Standard template"));
     expect(el.textContent).toContain("The standard template");
-    await clickNav(el, "Limbo");
-    await clickNav(el, "System tools");
-    await clickNav(el, "Bug reports");
-    await clickNav(el, "Data");
+    await click(byText(el, ".hq-side .hq-nav__item", "Waiting for review"));
+    expect(el.textContent).toContain("This queue isn't in this version of Journey yet.");
+    await click(byText(el, ".hq-side .hq-nav__item", "Limbo"));
+    expect(el.textContent).toContain("Limbo");
+    await click(byText(el, ".hq-side .hq-nav__item", "Bug reports"));
+    expect(el.textContent).toContain("What people told us");
+    await click(byText(el, ".hq-side .hq-nav__item", "Data"));
     expect(el.textContent).toContain("An administrator exports any studio's data");
-    await clickNav(el, "All locations");
+    await click(byText(el, ".hq-side .hq-nav__item", "System tools"));
+    expect(el.textContent).toContain("Restore standard machines");
+    const on = el.querySelector(".hq-side .hq-nav__item--on");
+    expect(on?.textContent).toBe("System tools");
+    expect(on?.getAttribute("aria-current")).toBe("page");
+  });
+
+  it("gives portrait a bar of places, with the place's pages as chips", async () => {
+    const el = await mount(admin, true);
+    expect(texts(el, ".hq-bar .hq-place")).toEqual(["Studios", "Standard", "Machinery"]);
+    // One page in Studios: no chips.
+    expect(el.querySelector(".hq-bar .hq-chips")).toBeNull();
+    await click(byText(el, ".hq-bar .hq-place", "Machinery"));
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Bug reports", "Data", "System tools"]);
+    expect(el.querySelector(".hq-bar .hq-place--on")?.textContent).toBe("Machinery");
+    await click(byText(el, ".hq-bar .hq-chip", "Bug reports"));
+    expect(el.querySelector(".hq-bar .hq-chip--on")?.textContent).toBe("Bug reports");
+    expect(el.textContent).toContain("What people told us");
+    await click(byText(el, ".hq-bar .hq-place", "Standard"));
+    expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Machines", "Standard template", "Waiting for review"]);
+    expect(el.textContent).toContain("Machine catalog");
+  });
+
+  it("searches studios, machines and people, and a pick opens the studio", async () => {
+    const el = await mount(admin, true);
+    await click(el.querySelector(".hq-side .hq-find"));
+    expect(el.querySelector(".hq-search")).toBeTruthy();
+    // The page is kept, hidden, while the search is open.
+    expect(el.querySelector<HTMLElement>(".hq-page")!.hidden).toBe(true);
+    expect(el.textContent).toContain("Type a studio");
+    await type(el, "leg");
+    expect(texts(el, ".hq-result__title")).toEqual(["Leg Press"]);
+    await type(el, "mordor");
+    expect(el.textContent).toContain("Nothing matches “mordor”.");
+    await type(el, "imrahil");
+    expect(texts(el, ".hq-result__title")).toEqual(["Imrahil"]);
+    expect(texts(el, ".hq-result__detail")).toEqual(["Head Trainer · Westlake"]);
+    await type(el, "westl");
+    await click(byText(el, ".hq-result", "WestlakeStudio · Independent · Mindbody site 29068, location 3"));
+    expect(el.querySelector(".hq-search")).toBeNull();
+    expect(el.querySelector<HTMLElement>(".hq-page")!.hidden).toBe(false);
+    const input = el.querySelector<HTMLInputElement>("#studio-name");
+    expect(input?.value).toBe("Westlake");
+  });
+
+  it("opens a machine the search found in the catalog's own editor", async () => {
+    const el = await mount(admin, true);
+    await click(el.querySelector(".hq-side .hq-find"));
+    await type(el, "leg press");
+    await click(el.querySelector(".hq-result"));
+    expect(el.querySelector(".adm-me")).not.toBeNull();
+    expect(el.querySelector(".hq-side .hq-nav__item--on")?.textContent).toBe("Machines");
+  });
+
+  it("opens the search with Ctrl K, and closes it with Escape, keeping the page", async () => {
+    const el = await mount(admin, true);
+    await click(byText(el, ".hq-side .hq-nav__item", "Standard template"));
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    });
+    await settle();
+    const input = el.querySelector<HTMLInputElement>(".hq-search__input")!;
+    expect(input).toBeTruthy();
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    await settle();
+    expect(el.querySelector(".hq-search")).toBeNull();
+    expect(el.textContent).toContain("The standard template");
   });
 
   it("refuses anyone who is not an administrator", async () => {
     const el = await mount(lead, false);
     expect(el.textContent).toContain("The Admins dashboard is for administrators and the founder.");
-    expect(navLabels(el)).toEqual([]);
+    expect(texts(el, ".hq-nav__item")).toEqual([]);
+    expect(el.querySelector(".hq-find")).toBeNull();
   });
 });

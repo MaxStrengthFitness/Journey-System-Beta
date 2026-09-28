@@ -74,6 +74,8 @@ export interface AdminStudiosTabProps {
   onRefresh?: (
     collectionName: "studios" | "networks" | "trainers",
   ) => Promise<void>;
+  /** The studio to open on — the Admins search's pick (Sep 28 2026). */
+  initialStudioId?: string | null;
 }
 
 /** Applies a plan from registry.ts as one atomic batch. */
@@ -100,9 +102,12 @@ export function AdminStudiosTab({
   clients,
   isAdmin,
   onRefresh,
+  initialStudioId,
 }: AdminStudiosTabProps) {
   const [selectedId, setSelectedId] = useState<string | null>(
-    studios[0]?.id ?? null,
+    initialStudioId && studios.some((s) => s.id === initialStudioId)
+      ? initialStudioId
+      : (studios[0]?.id ?? null),
   );
   const [clientCounts, setClientCounts] = useState<Record<string, number | null>>({});
   const { success: toastSuccess } = useToast();
