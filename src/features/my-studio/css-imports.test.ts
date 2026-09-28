@@ -49,6 +49,7 @@ const HOSTS = [
   "features/openings/ui/NextDaysPart.tsx",
   "features/openings/ui/NewRegularPart.tsx",
   "features/openings/ui/WhoseChips.tsx",
+  "features/openings/ui/WhosInPart.tsx",
 ] as const;
 
 /**

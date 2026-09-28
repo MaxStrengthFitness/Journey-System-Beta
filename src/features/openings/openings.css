@@ -329,6 +329,67 @@
 }
 
 /* ------------------------------------------------------------------ *
+ * Who's usually in: each person's agreed week, in name order
+ * ------------------------------------------------------------------ */
+
+.op-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+@container op-page (min-width: 760px) {
+  .op-people { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+/* Team's header-strip card: one border, the radius, a tinted head. */
+.op-person {
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  overflow: hidden;
+}
+.op-person__head {
+  padding: 10px 14px;
+  background: var(--st-surface-2);
+  border-bottom: 1px solid var(--st-border);
+}
+/* A person's name: never cut short. */
+.op-person__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--st-ink);
+  overflow-wrap: anywhere;
+}
+.op-person__body {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+}
+.op-person__body .stw-read { margin: 0; }
+
+/* The button voice (look.test.ts): 14px, bold, sentence case, 40px. */
+.op-btn {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.op-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ *
  * A time's sheet, in the Context Panel
  * ------------------------------------------------------------------ */
 

@@ -124,6 +124,16 @@ describe("Openings in My Studio", () => {
     await click(tab("Openings"));
     expect(tab("Openings")?.getAttribute("aria-selected")).toBe("true");
     expect(tab("The usual week")?.getAttribute("aria-selected")).toBe("true");
+    const parts = [...document.querySelectorAll<HTMLButtonElement>('[aria-label="Openings"] [role="tab"]')].map((b) => b.textContent);
+    expect(parts).toEqual(["The usual week", "Next 7 days", "A new regular time", "Who's usually in"]);
+    // Every part mounts in the real shell, over a database with nothing in it.
+    await click(tab("Next 7 days"));
+    await click(tab("A new regular time"));
+    expect(h.textContent).toContain("Safe to show a client");
+    await click(tab("Who's usually in"));
+    expect(h.textContent).toContain("Lee Leader");
+    expect(rememberedOpeningsPart()).toBe("who");
+    await click(tab("The usual week"));
     // Nothing has been built for Solon yet: said, not an empty grid.
     expect(h.textContent).toContain("The usual week is built early each Sunday. The first one comes this Sunday.");
     expect(rememberedMyStudioSection()).toBe("openings");

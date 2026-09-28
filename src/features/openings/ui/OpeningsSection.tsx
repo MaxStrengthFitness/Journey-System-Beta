@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarClock, CalendarDays, CalendarPlus } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, Users } from "lucide-react";
 import type { Studio, Trainer } from "../../../types";
 import { ContextPanel } from "../../relay/board/ContextPanel";
 import { useRelay } from "../../relay/board/RelayContext";
@@ -11,6 +11,7 @@ import { useOpeningsData } from "./useOpeningsData";
 import { UsualWeekPart } from "./UsualWeekPart";
 import { NextDaysPart } from "./NextDaysPart";
 import { NewRegularPart } from "./NewRegularPart";
+import { WhosInPart } from "./WhosInPart";
 import "../../relay/planner.css";
 import "../../relay/board/relay.css";
 import "../openings.css";
@@ -53,6 +54,7 @@ const PARTS: { id: OpeningsPart; label: string; icon: typeof CalendarDays }[] = 
   { id: "usual", label: "The usual week", icon: CalendarDays },
   { id: "next", label: "Next 7 days", icon: CalendarClock },
   { id: "offer", label: "A new regular time", icon: CalendarPlus },
+  { id: "who", label: "Who's usually in", icon: Users },
 ];
 
 export function OpeningsSection({ studio, authTrainer, trainers }: OpeningsSectionProps) {
@@ -115,6 +117,7 @@ function Openings({ studio, authTrainer, trainers }: OpeningsSectionProps) {
                 {part === "usual" && <UsualWeekPart />}
                 {part === "next" && <NextDaysPart />}
                 {part === "offer" && <NewRegularPart />}
+                {part === "who" && <WhosInPart />}
               </div>
             </div>
             <ContextPanel content={panel} onClose={closePanel} />

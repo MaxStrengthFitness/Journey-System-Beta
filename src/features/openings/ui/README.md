@@ -18,7 +18,7 @@ same question itself: a menu is not a gate.
 
 Its parts are Relay's light second level (`.pl__subbar`), not a second row of
 tabs: **The usual week** (it opens here) · **Next 7 days** · **A new regular
-time**. They wrap onto a second line rather than scroll sideways, and their
+time** · **Who's usually in**. They wrap onto a second line rather than scroll sideways, and their
 words never hide. Each iPad remembers the part it was
 on (`part-memory.ts`, forgotten at sign-out). The parts are a leave scope, so
 typing in one (a mark's note, the marks phase) is asked about before another
@@ -46,6 +46,7 @@ client at the iPad.
 | `NextDaysPart.tsx` | Next 7 days: `nextDays`' lines, a tap for who, "booked again from" |
 | `NewRegularPart.tsx` | A new regular time: `offers`, "Safe to show a client", every offer ending `OFFER_FOOT` |
 | `WhoseChips.tsx` | "With you · Anyone · With Sam": whose times, remembered on the iPad |
+| `WhosInPart.tsx` | Who's usually in: everyone who works here, in name order, each with their agreed week read only |
 | `part-memory.ts` | Which part this iPad was on, and whose times; how a door from elsewhere opens a part |
 | `openings.css` (one folder up) | The section's own look, on My Studio's `--st-*` tokens |
 | `test-shell.tsx` | Test helpers only: the Relay shell's doors, and a summary folded from the core's fixtures |
@@ -117,9 +118,48 @@ on their own times ("With you"), everyone else on "Anyone". A door that
 arrives with a count of the studio's free slots (Team's line) sets "Anyone":
 `showOpenings("next", { kind: "anyone" })` before `openMyStudioSection("openings")`.
 
+## Who's usually in
+
+AJ, Sep 27 2026: "schedules are open to all". A colleague's profile can't be
+opened today, so the read-only `ColleagueStandingWeek` card had nowhere to be
+seen; Openings is where colleagues' weeks become reachable. Everyone who works
+at the studio (`data.team`, the standing weeks' own `teamWeeks`) is listed in
+name order, each with their AGREED week, read only: where it stands ("Agreed
+by Lee Leader on Sep 1."), each day's blocks and regulars, and the days away
+that haven't ended. A proposal nobody has agreed reads "No agreed week yet";
+the week's note stays the leader's; nothing is ranked and no count sits beside
+a name (no "4 days · 9 regulars").
+
+It draws `ColleagueStandingWeek`'s pure parts (`daysOf`, `blocksLabel`,
+`teamWeekSentence`, `upcomingAway`, `awayLabel`) from the one read of the
+studio's weeks the section already holds, not the card itself: the card reads
+one trainer's week per card, so a list of them would be a read per person.
+A regular shows as "a regular" until "Show the regulars' names".
+
 ## Client names only after a tap
 
 A line of the next 7 days is a button: its sentence (`lineSentence`) names no
 client; a tap shows `lineDetail` (who, whose regular, what happened) and then
 "Check it in Mindbody before you promise it." A new regular time names no
-client at all, which is why it says "Safe to show a client".
+client at all, which is why it says "Safe to show a client". Who's usually in
+names a regular only after "Show the regulars' names".
+
+## Tests
+
+- `OpeningsSection.render.test.tsx`: the usual week drawn from a summary the
+  Sunday job would write (the core's fixtures folded by `foldSummary`), a
+  time's sheet, a mark shown read-only, and every way the summary can't be
+  used (loading, never built, failed, a cache with no copy, an old one, a
+  document of another version, not linked); the one sentence before four
+  weeks; no week agreed; a trainer's view and a leader's.
+- `NextDaysPart.render.test.tsx`: Next 7 days and A new regular time, with
+  every read the part makes faked at `firebase/firestore`: a client name only
+  after a tap, "booked again from" and its one read, the chips, cancellations
+  only with nothing agreed, not linked, and never an open slot off a read
+  still loading, failed, answered by the cache alone, or offline; the offers,
+  the coming weeks read or not, and the foot.
+- `WhosInPart.render.test.tsx`: the people in name order, their agreed weeks
+  read only, the days away, names after a tap, and a failed read.
+- `MyStudioOpenings.render.test.tsx`: the real `MyStudioView`: the sections'
+  order, who sees Openings, every part mounting in the shell, a door from
+  another section, and sign-out forgetting the part.

@@ -153,6 +153,7 @@ const NAME_CLASSES = [
   "op-sheet__line", // a time's sheet: who is usually in, by name
   "op-line__text", // a line of the next 7 days (a trainer), and after a tap a client
   "op-offer__meta", // who could take a time for good
+  "op-person__name", // a person on Openings' Who's usually in
 ] as const;
 
 describe("names in My Studio", () => {
@@ -239,6 +240,7 @@ const TAP_CLASSES = [
   "op-cell", // a time of Openings' usual week
   "op-chip", // Openings' day picker and whose times
   "op-line", // a line of the next 7 days, tapped to show who
+  "op-btn", // Who's usually in: show the regulars' names
 ] as const;
 
 const px =(v: string) => (/^\d+(?:\.\d+)?px$/.test(v.trim()) ? parseFloat(v) : null);
@@ -298,6 +300,7 @@ const BUTTON_CLASSES = [
   "tj-open",
   "tj-done__toggle",
   "wl__btn",
+  "op-btn",
 ] as const;
 const CHIP_CLASSES = ["stq__kind", "sh__chip", "rls__chip", "ne__kind", "op-chip"] as const;
 
@@ -439,6 +442,7 @@ describe("My Studio's type", () => {
       [".tm-card", ".tm-card__head"], // a person's week
       [".tc", ".tc > .rl-h"], // open loops, the vault
       [".stm__panel", ".stm__head"], // the standing duties and their seven days
+      [".op-person", ".op-person__head"], // a person's agreed week on Openings
     ];
     for (const [card, head] of cards) {
       const c = RULES.find((r) => r.selectors.includes(card));
