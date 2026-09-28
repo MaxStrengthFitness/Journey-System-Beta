@@ -20,7 +20,7 @@
   plus the quick cards' and scripts' own, which the test reads from
   `academy/content`). **Movements take the Academy's names; a unit keeps its
   floor name** (the room's question 1, default). Nothing in the database
-  changes; aliases head office can edit are a later round and need AJ's OK.
+  changes for these; head office's own names came in wave 2 (§0.4).
 - **`exact` is the safe subset.** An exact alias makes a top match, so only a
   name that means one movement is exact: FileMaker's "extension" is the Leg
   Extension on its grid, but three other movements have the word, so it only

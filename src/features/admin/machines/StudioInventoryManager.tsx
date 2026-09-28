@@ -30,30 +30,54 @@ import { seedStandardSet } from "../equipment/seed";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Loader2, Wrench, CheckCircle2, Sparkles, ShieldAlert,
-  ArrowUpDown, GripVertical, RotateCcw, Check, X, Pencil,
+  Plus, Search, Loader2, Wrench, ShieldAlert, Library,
+  ArrowUpDown, ArrowUp, ArrowDown, GripVertical, RotateCcw, Check, X, Pencil,
 } from "lucide-react";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { useToast } from "../../../contexts/ToastContext";
-import { RosterStatus } from "../../../types/machines";
 import { StudioMachineEditor } from "./StudioMachineEditor";
 import type { EditScope } from "../../../lib/machine-template";
 import { AdminBadge, AdminButton, AdminNotice } from "../primitives";
 import { outOfServiceLineOf, outOfServiceOfEntry } from "../../catalog/out-of-service";
 import { OutOfServiceDialog } from "./OutOfServiceDialog";
+import { AddFromMsfDialog } from "./AddFromMsfDialog";
+import { addableFromMsf, moveInOrder, onFloor, orderForNewMachine, orderReach } from "./floor-editor";
 import "../admin.css";
 
 /**
- * STUDIO INVENTORY MANAGER — what THIS location actually has.
+ * THE FLOOR EDITOR — what THIS location actually has, in the order it is
+ * walked. (Its file name is older than the name.)
  *
- * Round: Machine Creator & Studio Roster, Sep 2026.
+ * Round: Machine Creator & Studio Roster, Sep 2026; wave 2 of the Machine
+ * Catalog room, Sep 28 2026 (Catalog R5, AJ's "all yes").
  *
- * Studio owners and studio leaders pick their equipment from the global
- * catalog and add machines the catalog has never heard of. Writes go to
- * studios/{studioId}/roster/{machineId}; tenancy is enforced by that path in
- * firestore.rules, so a trainer at one location cannot touch another's roster.
+ * ONE FLOOR EDITOR. Learning → Catalog → {studio}'s floor → Edit our floor,
+ * My Studio → Machines and Operations → Floor open the same screen
+ * (my-studio/MachinesSection, which draws this list), and the Admins
+ * dashboard's studio page reaches the same list at admin scope. Never a
+ * second editor (CLAUDE.md).
  *
- * A roster entry is either:
+ * What a studio's leaders do here:
+ *
+ *   the walking order   Walking order: move a machine up or down, or drag
+ *                       it; one batch of `order` 1..n on Save, the sequence
+ *                       the Catalog, the Journey grid and the session walk
+ *   out of service      asks why (OutOfServiceDialog), and Back in service
+ *   add from MSF        the MSF machines not on the floor (AddFromMsfDialog):
+ *                       the standard's first; a machine added joins the end
+ *                       of a walking order the studio keeps
+ *   a new machine       the studio machine editor (StudioMachineEditor)
+ *                       until the Machine Codex's Guided forge exists
+ *   each machine        Open (the caller's door), its set-up, We don't have
+ *                       this
+ *
+ * The list is the FLOOR: what is on the roster and not switched off. What
+ * could join it is in Add from MSF, not dimmed in the list (it used to be,
+ * with "We have this").
+ *
+ * Writes go to studios/{studioId}/roster/{machineId}; tenancy is enforced by
+ * that path in firestore.rules, so a trainer at one location cannot touch
+ * another's roster. A roster entry is either:
  *   source 'catalog' — inherits the catalog entry, overrides any field
  *   source 'custom'  — the studio's own definition, with `basedOn` lineage
  *
@@ -61,22 +85,29 @@ import "../admin.css";
  * bespoke leg press still rolls up against every other leg press in network
  * reporting instead of becoming its own incomparable island.
  */
+
 /**
- * One draggable row in reorder mode.
+ * One row in walking-order mode.
  *
- * Deliberately plainer than the cards in the normal list: while you are
+ * Deliberately plainer than the rows in the normal list: while you are
  * putting twenty machines in order, the badges, switches and maintenance
  * controls are noise, and every one of them is another tap target competing
- * with the drag. Position number on the left, name, handle on the right.
+ * with the drag. Position number on the left, the name, then up, down and the
+ * drag handle — the buttons for a finger that would rather tap than drag
+ * (wave 2), each 40px.
  */
 function SortableFloorRow({
   machineId,
   name,
   position,
+  count,
+  onMove,
 }: {
   machineId: string;
   name: string;
   position: number;
+  count: number;
+  onMove: (delta: -1 | 1) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: machineId });
@@ -86,14 +117,34 @@ function SortableFloorRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "flex items-center gap-3 rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)] px-3 py-1",
+        "flex items-center gap-2 rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)] px-3 py-1",
         isDragging && "opacity-80 shadow-lg",
       )}
     >
       <span className="w-6 shrink-0 text-center text-xs font-black tabular-nums text-[var(--adm-ink-muted)]">
         {position}
       </span>
-      <span className="adm-row__name min-w-0 flex-1">{name}</span>
+      <span className="adm-row__name min-w-0 flex-1 break-words">{name}</span>
+      <AdminButton
+        size="sm"
+        variant="quiet"
+        iconOnly
+        aria-label={`Move ${name} up`}
+        disabled={position === 1}
+        onClick={() => onMove(-1)}
+      >
+        <ArrowUp className="h-4 w-4" aria-hidden />
+      </AdminButton>
+      <AdminButton
+        size="sm"
+        variant="quiet"
+        iconOnly
+        aria-label={`Move ${name} down`}
+        disabled={position === count}
+        onClick={() => onMove(1)}
+      >
+        <ArrowDown className="h-4 w-4" aria-hidden />
+      </AdminButton>
       <button
         type="button"
         className="flex h-10 w-10 shrink-0 cursor-grab items-center justify-center rounded-lg text-[var(--adm-ink-muted)] active:cursor-grabbing"
@@ -121,14 +172,14 @@ export function StudioInventoryManager({
   studioName?: string;
   /**
    * My Studio round (Sep 2026): the same list for a trainer — the floor as
-   * it is, with nothing that writes (no reorder, no standard set, no custom
-   * machine, no We have this / We don't). The rules refuse those writes to a
+   * it is, with nothing that writes (no walking order, no Add from MSF, no
+   * new machine, no We don't have this). The rules refuse those writes to a
    * trainer anyway; this keeps the button off the screen.
    */
   readOnly?: boolean;
   /** A line under a machine's name: "No longer in the MSF standard", a submission's state. */
   flags?: Record<string, string>;
-  /** Every card gets an Open button that hands the machine to the caller (My Studio's door). */
+  /** Every row gets an Open button that hands the machine to the caller (My Studio's door). */
   onOpenMachine?: (machineId: string) => void;
   /** The caller draws its own panel title. */
   hideHeading?: boolean;
@@ -163,14 +214,16 @@ export function StudioInventoryManager({
     { kind: "new" } | { kind: "entry"; machineId: string } | null
   >(null);
   /**
-   * Reorder mode. Null when off; otherwise the machine ids in the order the
-   * user is currently dragging them into. Held as a draft rather than written
-   * per-drag so twenty small writes become one batch.
+   * Walking-order mode. Null when off; otherwise the machine ids in the order
+   * the leader is putting them into. Held as a draft rather than written per
+   * move so twenty small writes become one batch.
    */
   const [reorderIds, setReorderIds] = useState<string[] | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
   /** The machine whose reason for being out of service is being asked for. */
   const [askingOut, setAskingOut] = useState<{ machineId: string; name: string } | null>(null);
+  /** Add from MSF is open (wave 2). */
+  const [adding, setAdding] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -182,63 +235,96 @@ export function StudioInventoryManager({
     [rosterEntries],
   );
 
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return machines.filter(
-      (m) =>
-        (!q || m.name.toLowerCase().includes(q)) &&
-        // Read-only is the floor, not the picker: what is not on the roster
-        // is nobody's to add from here.
-        (!readOnly || rosteredIds.has(m.machineId)),
-    );
-  }, [machines, search, readOnly, rosteredIds]);
-
-  const ownedCount = machines.filter(
-    (m) => rosteredIds.has(m.machineId) && m.rosterStatus !== "inactive",
-  ).length;
-
   /**
    * The floor, in the order trainers will see it. `machines` arrives already
    * sorted by resolveMachineOrder, so this is the current effective order
    * whether or not anybody has ever set one explicitly.
    */
-  const floorInOrder = useMemo(
-    () =>
-      machines.filter(
-        (m) => rosteredIds.has(m.machineId) && m.rosterStatus !== "inactive",
-      ),
-    [machines, rosteredIds],
+  const floorInOrder = useMemo(() => onFloor(machines, rosteredIds), [machines, rosteredIds]);
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return floorInOrder.filter((m) => !q || m.name.toLowerCase().includes(q));
+  }, [floorInOrder, search]);
+
+  const ownedCount = floorInOrder.length;
+
+  const addable = useMemo(
+    () => addableFromMsf({ machines, rosterEntries, catalog }),
+    [machines, rosterEntries, catalog],
   );
 
   if (!studioId) {
     return <AdminNotice tone="info">Select a studio to manage its equipment.</AdminNotice>;
   }
 
-  /** Add a catalog machine to this roster, or flip its status. */
-  const setRosterStatus = async (machineId: string, status: RosterStatus) => {
+  const floorName = studioName ?? "this studio";
+
+  /**
+   * Take a machine off the floor (switched off), keeping its local set-up.
+   * The entry is already there, so only its status changes, as a path with
+   * updateDoc: what the machine IS (`source`, `basedOn`) is written when an
+   * entry is created and never by an edit (docs/KNOWN-TRAPS.md, the Local
+   * set-up trap; wave 2 stopped this button re-writing them). Any reason it
+   * was out of service goes with it.
+   */
+  const switchOff = async (machineId: string) => {
     setBusy(machineId);
     try {
-      const isCustom = rosterEntries.find(
-        (e) => e.machineId === machineId && e.source === "custom",
-      );
-      await setDoc(
-        doc(db, "studios", studioId, "roster", machineId),
-        {
-          machineId,
-          studioId,
-          status,
-          ...(isCustom ? {} : { source: "catalog", basedOn: machineId }),
-          // A machine leaving the floor, or coming back to it, takes any
-          // reason it was out of service with it (wave 2, Sep 28 2026).
-          outOfService: deleteField(),
-          updatedAt: serverTimestamp(),
-          updatedBy: auth.currentUser?.uid ?? null,
-        },
-        { merge: true },
-      );
+      await updateDoc(doc(db, "studios", studioId, "roster", machineId), {
+        status: "inactive",
+        outOfService: deleteField(),
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid ?? null,
+      });
     } catch (err) {
       console.error(err);
       toastError("Could not update the roster. Studio leads and admins only.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * Put an MSF machine on the floor, or one this studio switched off back on
+   * (Add from MSF, wave 2). It joins the end of a walking order the studio
+   * keeps (floor-editor.ts). A machine the roster has never had is created,
+   * identity and all; one it switched off only has its status changed, and
+   * comes back with its local set-up.
+   */
+  const addToFloor = async (machineId: string) => {
+    setBusy(machineId);
+    const order = orderForNewMachine(rosterEntries);
+    const place = order !== null ? { order } : {};
+    const stamp = { updatedAt: serverTimestamp(), updatedBy: auth.currentUser?.uid ?? null };
+    try {
+      const ref = doc(db, "studios", studioId, "roster", machineId);
+      if (rosteredIds.has(machineId)) {
+        await updateDoc(ref, { status: "active", outOfService: deleteField(), ...place, ...stamp });
+      } else {
+        await setDoc(
+          ref,
+          { machineId, studioId, source: "catalog", basedOn: machineId, status: "active", ...place, ...stamp },
+          { merge: true },
+        );
+      }
+      toastSuccess(`${byId[machineId]?.name ?? "The machine"} is on ${floorName}'s floor.`);
+    } catch (err) {
+      console.error(err);
+      toastError("Could not add it. Studio leads and admins only.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Remove entirely — only safe for equipment never used in a session. */
+  const removeFromRoster = async (machineId: string) => {
+    setBusy(machineId);
+    try {
+      await deleteDoc(doc(db, "studios", studioId, "roster", machineId));
+    } catch (err) {
+      console.error(err);
+      toastError("Could not remove that machine.");
     } finally {
       setBusy(null);
     }
@@ -299,22 +385,8 @@ export function StudioInventoryManager({
     }
   };
 
-  /** Remove entirely — only safe for equipment never used in a session. */
-  const removeFromRoster = async (machineId: string) => {
-    setBusy(machineId);
-    try {
-      await deleteDoc(doc(db, "studios", studioId, "roster", machineId));
-    } catch (err) {
-      console.error(err);
-      toastError("Could not remove that machine.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** Onboarding shortcut: adopt everything flagged inStandardSet. */
   /**
-   * Save the dragged order.
+   * Save the walking order.
    *
    * Writes `order` on each roster document, 1..n, in one batch. This is the
    * ONE ordering mechanism as of Sep 12 2026: the Catalog, the client
@@ -394,6 +466,7 @@ export function StudioInventoryManager({
     setReorderIds(arrayMove(reorderIds, from, to));
   };
 
+  /** Every machine of the MSF standard not on the floor, in one tap (Add from MSF). */
   const adoptStandardSet = async () => {
     setBusy("__standard__");
     try {
@@ -404,7 +477,7 @@ export function StudioInventoryManager({
       const { added, alreadyPresent } = await seedStandardSet(studioId, catalog);
       toastSuccess(
         added > 0
-          ? `Added ${added} machines to ${studioName ?? "this studio"}.`
+          ? `Added ${added} machines to ${floorName}.`
           : alreadyPresent > 0
             ? `${studioName ?? "This studio"} already has every standard machine.`
             : "Nothing in the catalog qualifies for the standard set.",
@@ -495,19 +568,16 @@ export function StudioInventoryManager({
               variant="quiet"
               onClick={() => setReorderIds(floorInOrder.map((m) => m.machineId))}
             >
-              <ArrowUpDown className="h-4 w-4" aria-hidden /> Reorder
+              <ArrowUpDown className="h-4 w-4" aria-hidden /> Walking order
             </AdminButton>
           )}
-          <AdminButton
-            variant="quiet"
-            onClick={adoptStandardSet}
-            busy={busy === "__standard__"}
-          >
-            {busy !== "__standard__" && <Sparkles className="h-4 w-4" aria-hidden />}
-            Add standard set
+          <AdminButton variant="quiet" onClick={() => setAdding(true)}>
+            <Library className="h-4 w-4" aria-hidden /> Add from MSF
           </AdminButton>
+          {/* Through the studio machine editor until the Machine Codex's
+              Guided forge exists (wave 2, Catalog R5). */}
           <AdminButton variant="primary" onClick={() => setEditing({ kind: "new" })}>
-            <Plus className="h-4 w-4" aria-hidden /> Custom machine
+            <Plus className="h-4 w-4" aria-hidden /> New machine
           </AdminButton>
             </>
           )}
@@ -528,14 +598,13 @@ export function StudioInventoryManager({
       )}
 
       {reorderIds ? (
-        /* REORDER MODE. Only machines actually in service, unfiltered and in
-           order - dragging inside a filtered list moves a row to a position
-           that does not exist once the filter clears. Search is hidden above
-           for the same reason. */
+        /* WALKING-ORDER MODE. Only machines actually in service, unfiltered
+           and in order - moving inside a filtered list moves a row to a
+           position that does not exist once the filter clears. Search is
+           hidden above for the same reason. */
         <div className="flex flex-col gap-3">
           <p className="text-sm text-[var(--adm-ink-muted)]">
-            Drag to set the order trainers see. This is the sequence used by the
-            Catalog, the client&rsquo;s Journey grid and the Active Session.
+            Move each machine to where it is walked, or drag it. {orderReach(floorName)}
           </p>
           <DndContext
             sensors={sensors}
@@ -550,6 +619,8 @@ export function StudioInventoryManager({
                     machineId={machineId}
                     name={byId[machineId]?.name ?? machineId}
                     position={i + 1}
+                    count={reorderIds.length}
+                    onMove={(delta) => setReorderIds((ids) => (ids ? moveInOrder(ids, i, delta) : ids))}
                   />
                 ))}
               </div>
@@ -581,8 +652,6 @@ export function StudioInventoryManager({
            last button cut off. 42rem is the buttons plus a readable name. */
         <div className="adm-rows @container overflow-hidden rounded-[10px] border border-[var(--adm-border)] bg-[var(--adm-surface)]">
           {visible.map((m) => {
-            const rostered = rosteredIds.has(m.machineId);
-            const owned = rostered && m.rosterStatus !== "inactive";
             const out = m.rosterStatus === "maintenance";
             // Why, and who set it: only on a machine that IS out of service,
             // and never guessed for one set out of service before reasons.
@@ -593,10 +662,7 @@ export function StudioInventoryManager({
             return (
               <div
                 key={m.machineId}
-                className={cn(
-                  "flex flex-col gap-3 px-3.5 py-3 @2xl:flex-row @2xl:items-center @2xl:justify-between",
-                  !owned && "opacity-60",
-                )}
+                className="flex flex-col gap-3 px-3.5 py-3 @2xl:flex-row @2xl:items-center @2xl:justify-between"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -637,7 +703,7 @@ export function StudioInventoryManager({
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  {onOpenMachine && rostered && (
+                  {onOpenMachine && (
                     <AdminButton size="sm" variant="quiet" onClick={() => onOpenMachine(m.machineId)}>
                       Open
                     </AdminButton>
@@ -645,7 +711,7 @@ export function StudioInventoryManager({
                   {/* The door that did not exist. A custom machine could
                       not be edited at all once saved, and a catalog
                       machine's local copy could only override its name. */}
-                  {rostered && !readOnly && (
+                  {!readOnly && (
                     <AdminButton
                       variant="quiet"
                       size="sm"
@@ -657,7 +723,7 @@ export function StudioInventoryManager({
                   )}
                   {/* Out of service asks why (wave 2, Sep 28 2026); back in
                       service is one tap and takes the reason off with it. */}
-                  {owned && !readOnly && (
+                  {!readOnly && (
                     out ? (
                       <AdminButton
                         variant="quiet"
@@ -678,26 +744,17 @@ export function StudioInventoryManager({
                       </AdminButton>
                     )
                   )}
-
-                  {readOnly ? null : owned ? (
+                  {!readOnly && (
                     <AdminButton
                       variant="ghost" size="sm"
                       busy={busy === m.machineId}
                       onClick={() =>
                         m.source === "custom"
                           ? removeFromRoster(m.machineId)
-                          : setRosterStatus(m.machineId, "inactive")
+                          : switchOff(m.machineId)
                       }
                     >
                       {busy !== m.machineId && "We don't have this"}
-                    </AdminButton>
-                  ) : (
-                    <AdminButton
-                      variant="quiet" size="sm"
-                      busy={busy === m.machineId}
-                      onClick={() => setRosterStatus(m.machineId, "active")}
-                    >
-                      {busy !== m.machineId && <><CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> We have this</>}
                     </AdminButton>
                   )}
                 </div>
@@ -713,6 +770,17 @@ export function StudioInventoryManager({
           busy={busy === askingOut.machineId}
           onCancel={() => setAskingOut(null)}
           onConfirm={(reason) => void takeOutOfService(askingOut.machineId, reason)}
+        />
+      )}
+
+      {adding && (
+        <AddFromMsfDialog
+          studioName={floorName}
+          addable={addable}
+          busy={busy}
+          onAdd={(machineId) => void addToFloor(machineId)}
+          onAddStandard={() => void adoptStandardSet()}
+          onClose={() => setAdding(false)}
         />
       )}
     </div>
