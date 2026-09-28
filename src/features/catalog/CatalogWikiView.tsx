@@ -27,7 +27,6 @@ import { CommentsPanel } from "../comments";
 import {
   MachineDatabase,
   NetworkNotes,
-  ScopeSwitch,
   ShareToggle,
   setMachineOffer,
   setNoteOffer,
