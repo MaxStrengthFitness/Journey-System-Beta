@@ -11,23 +11,32 @@ import { createRoot, type Root } from "react-dom/client";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const writes = vi.hoisted(() => ({ updates: [] as { path: string; data: unknown }[] }));
+const writes = vi.hoisted(() => ({ updates: [] as { path: string; data: unknown }[], sets: [] as { path: string; data: Record<string, unknown> }[] }));
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "t-ioreth" } }, functions: {} }));
-vi.mock("firebase/firestore", () => ({
+vi.mock("firebase/firestore", () => {
+  /** Firestore refuses undefined anywhere in a write; so does this one. */
+  const hasUndefined = (v: unknown): boolean =>
+    v === undefined || (Array.isArray(v) ? v.some(hasUndefined) : v !== null && typeof v === "object" && Object.values(v).some(hasUndefined));
+  return {
   doc: (...parts: unknown[]) => ({ path: parts.filter((p) => typeof p === "string").join("/") }),
   collection: (...parts: unknown[]) => ({ path: parts.filter((p) => typeof p === "string").join("/") }),
   updateDoc: async (ref: { path: string }, data: unknown) => {
+    if (hasUndefined(data)) throw new Error("Unsupported field value: undefined");
     writes.updates.push({ path: ref.path, data });
   },
   addDoc: async () => ({ id: "n1" }),
-  setDoc: async () => {},
+  setDoc: async (ref: { path: string }, data: Record<string, unknown>) => {
+    if (hasUndefined(data)) throw new Error("Unsupported field value: undefined");
+    writes.sets.push({ path: ref.path, data });
+  },
   deleteField: () => "__delete__",
   serverTimestamp: () => "__now__",
   Timestamp: { now: () => new Date(), fromDate: (d: Date) => d },
   increment: (n: number) => n,
   FieldPath: class {},
   writeBatch: () => ({ set() {}, update() {}, delete() {}, commit: async () => {} }),
-}));
+  };
+});
 
 import { ToastProvider } from "../../../contexts/ToastContext";
 import { Board } from "./Board";
@@ -35,7 +44,9 @@ import { RelayProvider, type RelayContextValue } from "./RelayContext";
 import { nowContext, type NowSession } from "./now-context";
 import { resetSnoozes } from "./next-up";
 import { readTracked, resetTracked } from "./tracked";
-import { BEREGOND, IORETH, MABLUNG, TODAY, ask, booking, row, template } from "./fixtures";
+import { resetShiftCards } from "./shift-cards";
+import { BEREGOND, GLORFINDEL, IORETH, MABLUNG, TODAY, ask, booking, row, template } from "./fixtures";
+import type { TaskRow } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
 
 let root: Root | null = null;
@@ -44,7 +55,9 @@ let host: HTMLElement | null = null;
 beforeEach(() => {
   resetSnoozes();
   resetTracked();
+  resetShiftCards();
   writes.updates = [];
+  writes.sets = [];
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -114,7 +127,9 @@ function relayValue(over: Partial<RelayContextValue> = {}): RelayContextValue {
   };
 }
 
-async function render(props: { requests?: ReturnType<typeof ask>[]; relay?: Partial<RelayContextValue> } = {}) {
+async function render(
+  props: { requests?: ReturnType<typeof ask>[]; relay?: Partial<RelayContextValue>; rows?: TaskRow[]; unknown?: boolean } = {},
+) {
   const actions = fakeActions();
   const relay = relayValue(props.relay);
   host = document.createElement("div");
@@ -130,6 +145,7 @@ async function render(props: { requests?: ReturnType<typeof ask>[]; relay?: Part
               row(wipe, "cp", "open", { machineName: "Chest Press" }),
               row(wipe, "cr", "done", { machineName: "Compound Row" }),
               row(towels, undefined),
+              ...(props.rows ?? []),
             ]}
             jobs={[]}
             requests={props.requests ?? []}
@@ -138,6 +154,7 @@ async function render(props: { requests?: ReturnType<typeof ask>[]; relay?: Part
             onOpenJob={() => {}}
             loading={false}
             behind={(door) => <p data-behind={door}>Lanes behind {door}</p>}
+            unknown={props.unknown}
           />
         </RelayProvider>
       </ToastProvider>,
@@ -320,4 +337,118 @@ describe("the Board", () => {
     expect(h.querySelector(".rbd-lens")?.textContent).toContain("Relay isn't saying how busy the floor is");
     expect(h.querySelector('[aria-label="Relay\'s pick"]')).toBeNull();
   });
+  /* Opening and Close out (phase 6). */
+
+  const card = (name: string) => document.querySelector(`.rsc[aria-label="${name}"]`);
+  const button = (scope: ParentNode | null | undefined, words: string) =>
+    [...(scope ?? document).querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === words);
+  const dayDone = (over: Partial<RelayContextValue> = {}) => ({
+    now: nowContext([mySession("x", "Barliman Butterbur", "14:40"), mySession("y", "Adelard Took", "15:30")], at("16:10"), TODAY),
+    ...over,
+  });
+
+  it("opens the day with what's waiting, each line with its door, and Got it folds it for the day", async () => {
+    const { h, relay } = await render({
+      relay: { now: nowContext([mySession("x", "Barliman Butterbur", "14:40")], at("13:30"), TODAY), openRelayTab: vi.fn() },
+      requests: [
+        ask("cover", { kind: "cover", title: "Cover for Farmer Maggot at 4:20", createdBy: MABLUNG }),
+        ask("hugo", { kind: "handoff", title: "Finish Hugo's report", createdBy: BEREGOND, forId: IORETH.id, forName: IORETH.name }),
+      ],
+    });
+    const opening = card("Opening");
+    expect([...opening!.querySelectorAll(".rsc__t")].map((t) => t.textContent)).toEqual([
+      "One thing is handed to you.",
+      "Mablung needs cover: Cover for Farmer Maggot at 4:20.",
+      "One session today, at 2:40 PM with Barliman Butterbur.",
+    ]);
+    await click(button(opening, "Tracker"));
+    expect(relay.openRelayTab).toHaveBeenCalledWith("mine");
+    await click(button(opening, "Got it"));
+    expect(card("Opening")).toBeNull();
+    const line = h.querySelector(".rsc-line");
+    expect(line?.textContent).toContain("Opening · done at 1:30 PM");
+    await click(button(line, "Show again"));
+    expect(card("Opening")).not.toBeNull();
+  });
+
+  it("draws no Opening card when there is nothing it can stand behind", async () => {
+    await render({ relay: { now: nowContext([], at("07:00"), TODAY) }, rows: [] });
+    expect(card("Opening")).toBeNull();
+  });
+
+  it("closes out once the last session has ended: what's left, each handed on with its Undo", async () => {
+    const once = template("sign-card", {
+      scope: "personal",
+      ownerId: IORETH.id,
+      kind: "facility",
+      target: { kind: "facility" },
+      category: "ops",
+      title: "Sign the birthday card",
+      recurrence: { type: "once", onDate: TODAY },
+    });
+    await render({
+      relay: { ...dayDone(), openRelayTab: vi.fn() },
+      rows: [row(once, undefined)],
+      requests: [
+        ask("hugo", { kind: "handoff", title: "Finish Hugo's report", createdBy: BEREGOND, forId: IORETH.id, forName: IORETH.name }),
+        ask("pin", { title: "Spare seat pin", createdBy: MABLUNG, claimedBy: IORETH }),
+      ],
+    });
+    const close = card("Close out");
+    expect(close?.textContent).toContain("hand on what's left");
+    expect([...close!.querySelectorAll(".rsc__row .rsc__t")].map((t) => t.firstChild?.textContent)).toEqual([
+      "Finish Hugo's report",
+      "Spare seat pin",
+      "Sign the birthday card",
+    ]);
+
+    await click(button(close, "Back to the board"));
+    expect(writes.updates).toContainEqual({ path: "studios/s1/taskRequests/hugo", data: { forId: "__delete__", forName: "__delete__" } });
+    await click(button(document, "Undo"));
+    expect(writes.updates).toContainEqual({ path: "studios/s1/taskRequests/hugo", data: { forId: IORETH.id, forName: IORETH.name } });
+
+    await click(button(close, "Hand back"));
+    expect(writes.updates).toContainEqual({ path: "studios/s1/taskRequests/pin", data: { claimedBy: null, claimedAt: null } });
+
+    await click(button(close, "Move to tomorrow"));
+    expect(writes.sets).toHaveLength(1);
+    expect(writes.sets[0].path).toBe(`trainers/${IORETH.id}/taskTemplates/sign-card`);
+    expect(writes.sets[0].data.recurrence).toEqual({ type: "once", onDate: "2026-09-29" });
+    await click(button(document, "Undo"));
+    expect(writes.sets[1].data.recurrence).toEqual({ type: "once", onDate: TODAY });
+  });
+
+  it("asks the team to take a chore a leader named you on, and drafts the day in facts", async () => {
+    const chore = template("closing-wipe", { title: "Lumbar Extension wipe" });
+    const { relay } = await render({
+      relay: dayDone({ openCapture: vi.fn() }),
+      rows: [row(chore, "lu", "open", { machineName: "Lumbar Extension", instance: { assignedTo: IORETH, assignedBy: GLORFINDEL } as never })],
+    });
+    const close = card("Close out");
+    await click(button(close, "Ask the team"));
+    expect(relay.openCapture).toHaveBeenCalledWith(expect.objectContaining({ destination: "floor", askKind: "help" }));
+    expect(close?.querySelector(".rsc__draft")?.textContent).toBe(
+      "Monday, September 28. 2 sessions on your schedule today, the last ending at 4:00 PM.",
+    );
+    await click(button(close, "Got it"));
+    expect(card("Close out")).toBeNull();
+    expect(document.querySelector(".rsc-line")?.textContent).toContain("Close out · done at 4:10 PM");
+  });
+
+  it("never says nothing is left when a read failed", async () => {
+    await render({ relay: dayDone(), unknown: true });
+    expect(card("Close out")?.textContent).toContain("Some of today's list couldn't be loaded");
+    expect(card("Close out")?.textContent).not.toContain("Nothing is left open");
+  });
+
+  it("says when Close out opens, and previews it early", async () => {
+    const { h } = await render();
+    const line = h.querySelector(".rsc-line");
+    expect(line?.textContent).toContain("Close out · opens at 4:00 PM, when your last session ends");
+    await click(button(line, "Preview"));
+    expect(card("Close out")?.textContent).toContain("a preview · it opens at 4:00 PM");
+    await click(button(card("Close out"), "Close"));
+    expect(card("Close out")).toBeNull();
+  });
 });
+

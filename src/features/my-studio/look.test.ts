@@ -153,6 +153,8 @@ const NAME_CLASSES = [
   "rbd-undo__t", // what Undo takes back (a job's name)
   "rwho__name", // a trainer on a leader's Who? faces
   "rtk-box__t", // the Tracker's Tracking box: the job's name
+  "rsc__t", // Opening and Close out: what is waiting, what is left (a job's or a client's name)
+  "rsc-line__t", // the line that says when each card is
   "rtk-list__t", // a list's name in the Tracker's rail
   "rtk-meta", // who put a job on your list, by name
   "sh__group-title", // a machine group or a duty
@@ -246,6 +248,7 @@ const TAP_CLASSES = [
   "rwho__span",
   "rwho__pop-item",
   "rtk-list", // the Tracker's lists
+  "rsc-btn", // Opening and Close out
   "ne__suggest-use",
   "rls__chip",
   "sh__chip",
@@ -344,6 +347,7 @@ const BUTTON_CLASSES = [
   "rbd-undo__btn",
   "rwho__face",
   "rtk-list",
+  "rsc-btn",
   "tj-open",
   "tj-done__toggle",
   "wl__btn",

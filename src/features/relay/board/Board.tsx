@@ -21,11 +21,13 @@ import { cn } from "../../../lib/utils";
 import { useToast } from "../../../contexts/ToastContext";
 import { notify } from "../../notifications";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
-import { reopenRequest, setRequestFor, type TaskRequest } from "../../studio-tasks/requests";
+import { reopenRequest, setRequestClaim, setRequestFor, type TaskRequest } from "../../studio-tasks/requests";
 import type { ClientTaskAction, TaskRow } from "../../studio-tasks/types";
 import type { TaskActions } from "../../studio-tasks/useTaskActions";
 import { studioRoster } from "../../studio-tasks/initiatives";
-import { repeatPlanForward } from "../../studio-tasks/recurrence";
+import { addDays, repeatPlanForward } from "../../studio-tasks/recurrence";
+import { saveTaskTemplate } from "../../studio-tasks/mutations";
+import { buildTracker } from "../tracker";
 import { joinJob, leaveJob } from "../jobs/mutations";
 import type { TeamJob } from "../jobs/types";
 import { forgetOnSignOut } from "../../sign-out/memory";
@@ -54,6 +56,18 @@ import {
 import { useCardActions } from "./card-actions";
 import { untrack, useTracked } from "./tracked";
 import { JustNow } from "./JustNow";
+import {
+  closeoutAt,
+  closeoutItems,
+  dayDraft,
+  foldShiftCard,
+  foldedAt,
+  openingLines,
+  shiftCardNow,
+  unfoldShiftCard,
+  type CloseoutItem,
+} from "./shift-cards";
+import { CloseOutCard, OpeningCard, ShiftCardsLine, type ShiftLinePart } from "./ShiftCards";
 import "./board.css";
 
 /**
@@ -68,6 +82,9 @@ import "./board.css";
  *   Right now      one sentence with its proof, and the door it opens
  *                  (right-now.ts). Tap another door and the Board follows
  *                  you until "Back to Relay's pick" or your next gap.
+ *   Opening, Close out  a small card under it at the start and the end of
+ *                  your day (shift-cards.ts, phase 6): what's waiting, and
+ *                  what's left to hand on.
  *   Five doors     Floor work · Desk work · Help a teammate · From
  *                  leadership · Mine, each saying how many and how long
  *                  (doors.ts).
@@ -126,9 +143,25 @@ export interface BoardProps {
   loading: boolean;
   /** What sits behind each door: the Floor's own lanes, drawn by the host. */
   behind: (door: DoorId) => ReactNode;
+  /** Asks closed recently, for the day so far on Close out. */
+  resolved?: TaskRequest[];
+  /** One of today's reads failed, so an empty list is unknown, never "nothing". */
+  unknown?: boolean;
 }
 
-export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpenClientTask, loading, behind }: BoardProps) {
+export function Board({
+  rows,
+  jobs,
+  requests,
+  actions,
+  author,
+  onOpenJob,
+  onOpenClientTask,
+  loading,
+  behind,
+  resolved = [],
+  unknown = false,
+}: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
   const { success: toastSuccess, error: toastError } = useToast();
@@ -358,6 +391,129 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
     }
   };
 
+  /*
+   * OPENING AND CLOSE OUT (phase 6): two small cards at the top of the Board,
+   * at the start and the end of the trainer's day, from the Tracker's own
+   * lists (shift-cards.ts). "Got it" folds one for the day on this iPad.
+   */
+  const tracker = useMemo(
+    () =>
+      buildTracker({
+        rows,
+        templates: [],
+        requests,
+        resolved,
+        jobs,
+        followUps: [],
+        uid: relay.uid,
+        trainerId: author?.id ?? null,
+        todayKey: now.todayKey,
+        closingMin: now.hours.closing,
+      }),
+    [rows, requests, resolved, jobs, relay.uid, author?.id, now.todayKey, now.hours.closing],
+  );
+  const card = shiftCardNow(now);
+  const [foldTick, setFoldTick] = useState(0);
+  const [preview, setPreview] = useState(false);
+  const folds = useMemo(() => {
+    void foldTick;
+    return {
+      opening: foldedAt(relay.studioId, now.todayKey, "opening"),
+      closeout: foldedAt(relay.studioId, now.todayKey, "closeout"),
+    };
+  }, [relay.studioId, now.todayKey, foldTick]);
+  const fold = (which: "opening" | "closeout") => {
+    foldShiftCard(relay.studioId, now.todayKey, which, now.nowMin);
+    setFoldTick((t) => t + 1);
+  };
+  const unfold = (which: "opening" | "closeout") => {
+    unfoldShiftCard(relay.studioId, now.todayKey, which);
+    setFoldTick((t) => t + 1);
+  };
+  const opening = useMemo(
+    () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length }) : []),
+    [card, now, rows, requests, me, tracker.handed.length],
+  );
+  const showOpening = card === "opening" && folds.opening === null && opening.length > 0;
+  const closeAt = closeoutAt(now);
+  const showCloseout = (card === "closeout" && folds.closeout === null) || (preview && card !== "closeout");
+  const leftOpen = useMemo(() => closeoutItems(tracker, now.todayKey), [tracker, now.todayKey]);
+  const draft = useMemo(() => dayDraft({ now, done: tracker.done }), [now, tracker.done]);
+
+  const goFromOpening = (go: DoorId | "tracker") => {
+    if (go === "tracker") relay.openRelayTab?.("mine");
+    else chooseDoor(go);
+  };
+
+  /** Close out's hand-on: the write each kind has always had, with its Undo. */
+  const handOn = async (item: CloseoutItem) => {
+    const studioId = relay.studioId;
+    try {
+      if (item.kind === "handed-ask" && studioId) {
+        const was = { id: item.request.forId ?? author?.id ?? "", name: item.request.forName ?? author?.name ?? "You" };
+        await setRequestFor({ studioId, requestId: item.request.id, person: null });
+        offerUndo("Back on the board, for anyone to take.", () => setRequestFor({ studioId, requestId: item.request.id, person: was }));
+      } else if (item.kind === "taken-ask" && studioId && author) {
+        await setRequestClaim({ studioId, requestId: item.request.id, author, claimed: false });
+        offerUndo(`Handed back "${item.title}".`, () => setRequestClaim({ studioId, requestId: item.request.id, author, claimed: true }));
+      } else if (item.kind === "job" && author) {
+        await leaveJob(item.job, author);
+        offerUndo(`You stepped off "${item.title}".`, () => joinJob(item.job, author));
+      } else if (item.kind === "chore") {
+        relay.openCapture({
+          destination: "floor",
+          askKind: "help",
+          text: `Can anyone take this? ${item.title}\nMy name is on it, and I can't get to it today.`,
+        });
+      } else if (item.kind === "todo" && item.once && studioId && relay.uid) {
+        const location = { scope: "personal" as const, studioId, ownerId: relay.uid };
+        const template = item.row.template;
+        const onDate = template.recurrence.onDate ?? now.todayKey;
+        await saveTaskTemplate({
+          location,
+          template: { ...template, recurrence: { ...template.recurrence, onDate: addDays(now.todayKey, 1) } },
+          author,
+          isNew: false,
+        });
+        offerUndo(`Moved "${item.title}" to tomorrow.`, () =>
+          saveTaskTemplate({ location, template: { ...template, recurrence: { ...template.recurrence, onDate } }, author, isNew: false }),
+        );
+      }
+    } catch (err) {
+      console.warn("[relay] close out failed:", err);
+      toastError("Could not change that. Check your connection.");
+    }
+  };
+
+  /* The line at the foot of Later today: when each card is, and a way back to it. */
+  const lineParts: ShiftLinePart[] = [];
+  if (folds.opening !== null) {
+    lineParts.push({
+      key: "opening",
+      card: "opening",
+      text: `Opening · done at ${minutesToClock(folds.opening)}`,
+      action: "Show again",
+      onAction: () => unfold("opening"),
+    });
+  }
+  if (card === "closeout" && folds.closeout !== null) {
+    lineParts.push({
+      key: "closeout",
+      card: "closeout",
+      text: `Close out · done at ${minutesToClock(folds.closeout)}`,
+      action: "Show again",
+      onAction: () => unfold("closeout"),
+    });
+  } else if (card !== "closeout" && now.phase !== "closed" && closeAt > now.nowMin && !preview) {
+    lineParts.push({
+      key: "closeout",
+      card: "closeout",
+      text: `Close out · opens at ${minutesToClock(closeAt)}${now.sessions.length ? ", when your last session ends" : ""}`,
+      action: "Preview",
+      onAction: () => setPreview(true),
+    });
+  }
+
   const later = laterToday(now);
   const emptyFloor = emptyPrompt(now.gapMinutes, now.next?.clientName.split(" ")[0] ?? null);
   // Behind Mine: everything with this trainer's name on it, passed-over ones included.
@@ -386,6 +542,21 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
           </button>
         )}
       </div>
+
+      {showOpening && <OpeningCard lines={opening} onGo={goFromOpening} onFold={() => fold("opening")} />}
+      {showCloseout && (
+        <CloseOutCard
+          items={leftOpen}
+          draft={draft}
+          opensAt={card === "closeout" ? null : minutesToClock(closeAt)}
+          unknown={unknown}
+          loading={loading}
+          todayKey={now.todayKey}
+          actions={actions}
+          onHandOn={(item) => void handOn(item)}
+          onFold={() => (card === "closeout" ? fold("closeout") : setPreview(false))}
+        />
+      )}
 
       <div className="rbd-doors" role="group" aria-label="Doors">
         {DOOR_ORDER.map((id) => {
@@ -500,22 +671,27 @@ export function Board({ rows, jobs, requests, actions, author, onOpenJob, onOpen
           <TeamToday rows={rows} />
         </aside>
 
-        {later.length > 0 && (
+        {(later.length > 0 || lineParts.length > 0) && (
           <section className="rbd-later" aria-label="Later today">
-            <h2 className="rbd-h">
-              Later today<span className="rbd-h__sub">fitted to your gaps</span>
-            </h2>
-            <ul className="rbd-later__list">
-              {later.map((r) => (
-                <li key={r.key} className="rbd-later__row">
-                  <span className="rbd-later__time">{r.time}</span>
-                  <span className="rbd-later__t">
-                    {r.what}
-                    {r.sub && <span className="rbd-later__s">{r.sub}</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {later.length > 0 && (
+              <>
+                <h2 className="rbd-h">
+                  Later today<span className="rbd-h__sub">fitted to your gaps</span>
+                </h2>
+                <ul className="rbd-later__list">
+                  {later.map((r) => (
+                    <li key={r.key} className="rbd-later__row">
+                      <span className="rbd-later__time">{r.time}</span>
+                      <span className="rbd-later__t">
+                        {r.what}
+                        {r.sub && <span className="rbd-later__s">{r.sub}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <ShiftCardsLine parts={lineParts} />
           </section>
         )}
       </div>

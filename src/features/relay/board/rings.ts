@@ -7,9 +7,12 @@
  * the Relay room (Sep 28 2026), and with it the store: the Board says the
  * same thing in words ("Team today · by chore": "Opening chores · all 12
  * done"), and the Floor work door names the current phase's chores ("Mid
- * chores 9 of 14"). Always the whole studio's work, never a person's count.
+ * chores 9 of 14"). Always the whole studio's work, never a person's count:
+ * a trainer's own to-dos (the personal tier, which reached the Board with the
+ * studio's rows) are not the studio's chores and are not counted (Sep 28
+ * 2026; until then one private to-do made "Mid chores 1 of 4" out of 3).
  */
-import type { TaskRow, TaskShift } from "../../studio-tasks/types";
+import { taskScopeOf, type TaskRow, type TaskShift } from "../../studio-tasks/types";
 import type { ShiftPhase } from "./now-context";
 
 export type RingPhase = Exclude<ShiftPhase, "closed">;
@@ -37,7 +40,7 @@ export function shiftRings(rows: TaskRow[]): Ring[] {
     closing: { done: 0, total: 0 },
   };
   for (const r of rows) {
-    if (r.kind === "client") continue;
+    if (r.kind === "client" || taskScopeOf(r.template) === "personal") continue;
     const ring = tally[ringOfShift(r.shift)];
     ring.total += 1;
     if (r.status !== "open") ring.done += 1;

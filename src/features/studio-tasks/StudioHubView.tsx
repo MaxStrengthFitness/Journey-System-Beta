@@ -514,6 +514,8 @@ export function StudioHubView({
             onOpenClientTask={onOpenClientTask}
             loading={loading && rows.length === 0}
             behind={behind}
+            resolved={recentlyResolved}
+            unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
           />
         ) : (
           <>

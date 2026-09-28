@@ -19,6 +19,8 @@
      rbd   the Board: Right now, the doors, the dealt card, Also fits, Later
            today, Team today, what sits behind the open door, and Undo
      rwho  Who? — a leader's faces on the dealt card
+     rsc   Opening and Close out: the two small cards at the start and the
+           end of the day, and their line at the foot of Later today
 
    Widths follow the Board's own box, not the screen's (a container query on
    .rbd): with the Context Panel open beside it on a landscape iPad the Board
@@ -682,3 +684,97 @@
 .rjn__kudos--mine { cursor: default; color: var(--st-hero-text); border-color: transparent; background: var(--st-hero-fill); }
 .rjn__kudos--mine svg { fill: currentColor; }
 .rjn__kudos-n { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ *
+ * Opening and Close out (phase 6): two small cards at the top of the
+ * Board, and one line at the foot of Later today that says when each is.
+ * The rules are shift-cards.ts. Quiet on purpose: the dealt card is still
+ * the one place to look, so these are a hairline card, not a fill.
+ * ------------------------------------------------------------------ */
+
+.rsc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+.rsc__head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.rsc .rsc__title { flex: 1 1 12rem; margin: 0; }
+.rsc .rsc__sub { margin: 0.375rem 0 0; }
+.rsc__ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--st-surface-2);
+  color: var(--st-ink-2);
+}
+.rsc__list { list-style: none; margin: 0; padding: 0; }
+.rsc__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  min-height: 48px;
+  padding: 0.25rem 0;
+}
+.rsc__row + .rsc__row { border-top: 1px solid var(--st-border); }
+/* What is waiting, or what is left: a whole name, wrapped, never cut. */
+.rsc__t {
+  flex: 1 1 14rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--st-ink);
+  overflow-wrap: anywhere;
+}
+.rsc__s { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
+.rsc__none { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-muted); }
+.rsc__draft { margin: 0; font-size: 14px; line-height: 1.6; color: var(--st-ink-2); overflow-wrap: anywhere; }
+
+.rsc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rsc-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rsc-btn--go { border-color: transparent; background: transparent; color: var(--st-live); padding: 0 10px; }
+
+.rsc-line {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+.rsc-line__part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-height: 52px;
+  padding: 0.375rem 0.5rem 0.375rem 0.875rem;
+}
+.rsc-line__part + .rsc-line__part { border-top: 1px solid var(--st-border); }
+.rsc-line__t { flex: 1 1 12rem; min-width: 0; font-size: 14px; font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
