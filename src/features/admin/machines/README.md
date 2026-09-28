@@ -134,6 +134,10 @@ read that before changing anything here. The short list:
 
 - Never re-mint `machineId`, or `MachineSettingField.key`. Both are foreign keys.
 - Write overrides with `updateDoc`, never `setDoc` merge.
+- An edit never writes what a machine is (`source`, `basedOn`) or `status`.
+  Local set-up did, and a studio's own machine vanished from the floor
+  (`equipment/clone.ts`, `localSetupUpdate`; Sep 28 2026). It is for a Max
+  Strength machine only: a studio's own is changed in `StudioMachineEditor`.
 - Compute overrides from the whole draft, not from the save patch.
 - `isStandardSetMachine` treats an absent flag as in-the-set.
 - Don't let a blank definition guess a region or a movement pattern.

@@ -75,9 +75,9 @@ import "./my-studio.css";
  *   The machine's door         the Context Panel beside the list: this
  *                              studio's standard settings (the Studio setup
  *                              card, the same one the Catalog page shows),
- *                              the floor's notes, local set-up, upkeep, and
- *                              "Offer to the MSF catalog" on the studio's
- *                              own machines.
+ *                              the floor's notes, local set-up on a Max
+ *                              Strength machine, upkeep, and "Offer to the
+ *                              MSF catalog" on the studio's own machines.
  *   Shared by other studios    machines other MSF studios built and listed;
  *                              a leader adopts one as a copy (machine-db).
  *
@@ -491,7 +491,11 @@ function MachineDoor({
       </section>
 
       <section className="ms__door-actions">
-        {canLead && (
+        {/* A Max Strength machine's only: a studio's own machine, or a copy
+            of another studio's, has no catalog machine to set up locally, and
+            saving Local set-up on one took it off the floor (Sep 28 2026).
+            Its name and set-up are Edit on the floor list. */}
+        {canLead && entry.source === "catalog" && (
           <AdminButton variant="quiet" onClick={() => setLocalSetup(true)}>
             Local set-up
           </AdminButton>
@@ -524,8 +528,8 @@ function MachineDoor({
           studioId={studioId}
           machineId={entry.machineId}
           catalogName={catalogName}
-          catalog={catalogEntry as never}
-          entry={entry as never}
+          catalog={catalogEntry}
+          entry={entry}
           onClose={() => setLocalSetup(false)}
         />
       )}

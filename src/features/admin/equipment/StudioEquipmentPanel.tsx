@@ -251,13 +251,19 @@ export function StudioEquipmentPanel({
                         Upkeep
                       </AdminButton>
                     )}
-                    <AdminButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditing(row.entry.machineId)}
-                    >
-                      Local setup
-                    </AdminButton>
+                    {/* A Max Strength machine's only, as on My Studio's
+                        door: saving it on the studio's own machine took the
+                        machine off the floor (Sep 28 2026). That one is
+                        Edit, under "Add, retire or build a machine". */}
+                    {row.entry.source === "catalog" && (
+                      <AdminButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditing(row.entry.machineId)}
+                      >
+                        Local setup
+                      </AdminButton>
+                    )}
                   </span>
                 }
               />
@@ -299,8 +305,8 @@ export function StudioEquipmentPanel({
           studioId={studioId}
           machineId={editingRow.entry.machineId}
           catalogName={catalogById[editingRow.entry.machineId]?.name ?? editingRow.name}
-          catalog={catalogById[editingRow.entry.machineId] as any}
-          entry={editingRow.entry as any}
+          catalog={catalogById[editingRow.entry.machineId]}
+          entry={editingRow.entry}
           onClose={() => setEditing(null)}
         />
       )}

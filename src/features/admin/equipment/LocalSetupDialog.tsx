@@ -9,10 +9,17 @@
  *
  * The rule it enforces lives in clone.ts: an edit equal to the inherited
  * value is not stored, because storing it would silently freeze that field.
+ *
+ * And it writes those four fields and nothing else (clone.ts,
+ * localSetupUpdate), with updateDoc: a box left blank is deleted, and what
+ * the machine is and whether it is in service are never written from here.
+ * Until Sep 28 2026 it merged a whole roster document in, which took a
+ * studio's own machine off the floor, put a machine that was out of service
+ * back in service, and kept anything cleared.
  */
 
 import { useState } from "react";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import type { MachineCatalogEntry, StudioMachineRosterEntry } from "../../../types/machines";
 import { useToast } from "../../../contexts/ToastContext";
@@ -28,7 +35,7 @@ import {
   AdminNotice,
   AdminTextarea,
 } from "../primitives";
-import { buildClone, isPlainAdoption, pruneOverrides } from "./clone";
+import { isPlainAdoption, localSetupUpdate, pruneOverrides } from "./clone";
 
 export function LocalSetupDialog({
   studioId,
@@ -41,23 +48,25 @@ export function LocalSetupDialog({
   studioId: string;
   machineId: string;
   catalogName: string;
-  catalog?: MachineCatalogEntry;
-  entry?: StudioMachineRosterEntry;
+  /** The catalog machine it follows, when the catalog has it. */
+  catalog?: MachineCatalogEntry | null;
+  /** The roster entry: the dialog edits one, it never creates one. */
+  entry: StudioMachineRosterEntry;
   onClose: () => void;
 }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const existingOverrides =
-    entry && entry.source === "catalog" ? (entry.overrides ?? {}) : {};
+    entry.source === "catalog" ? (entry.overrides ?? {}) : {};
 
   const [localName, setLocalName] = useState(
     (existingOverrides.name as string | undefined) ?? "",
   );
-  const [notes, setNotes] = useState(entry?.studioNotes ?? "");
+  const [notes, setNotes] = useState(entry.studioNotes ?? "");
   const [serialNumber, setSerialNumber] = useState(
-    entry?.unit?.serialNumber ?? "",
+    entry.unit?.serialNumber ?? "",
   );
   const [manufacturer, setManufacturer] = useState(
-    entry?.unit?.manufacturer ?? "",
+    entry.unit?.manufacturer ?? "",
   );
   const [saving, setSaving] = useState(false);
 
@@ -66,25 +75,23 @@ export function LocalSetupDialog({
   } as any);
 
   const save = async () => {
+    const update = localSetupUpdate({
+      entry,
+      catalog: catalog ?? {},
+      local: { localName, notes, serialNumber, manufacturer },
+    });
+    if (update.ok === false) {
+      toastError(update.reason);
+      return;
+    }
     setSaving(true);
     try {
-      const payload = buildClone({
-        studioId,
-        catalogId: machineId,
-        catalog: catalog ?? {},
-        local: {
-          localName,
-          notes,
-          serialNumber,
-          manufacturer,
-        },
-        authorUid: auth.currentUser?.uid ?? null,
+      await updateDoc(doc(db, "studios", studioId, "roster", machineId), {
+        ...update.set,
+        ...Object.fromEntries(update.clear.map((field) => [field, deleteField()])),
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid ?? null,
       });
-      await setDoc(
-        doc(db, "studios", studioId, "roster", machineId),
-        { ...payload, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
       toastSuccess(`${catalogName} updated for this studio.`);
       onClose();
     } catch (err) {
@@ -97,6 +104,46 @@ export function LocalSetupDialog({
       setSaving(false);
     }
   };
+
+  // A studio's own machine, or a copy of another studio's, has no catalog
+  // machine behind it, and its name lives in its own definition. Neither door
+  // offers Local set-up on one; this is the net under them, because saving
+  // here once rewrote such a machine as a copy of a catalog machine that does
+  // not exist, and the floor dropped it (Sep 28 2026).
+  if (entry.source === "custom") {
+    return (
+      <div
+        className="adm-scrim adm"
+        role="presentation"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          className="adm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Local setup for ${catalogName}`}
+          style={{ maxWidth: 560 }}
+        >
+          <div className="adm-dialog__body">
+            <h3 className="adm-dialog__title">{catalogName}</h3>
+            <p className="adm-dialog__text">
+              This is the studio&apos;s own machine rather than a Max Strength
+              one, so there is nothing to set up locally. Change its name and
+              set-up with Edit on the floor list. What a trainer walking up
+              should know goes in the floor&apos;s notes.
+            </p>
+          </div>
+          <div className="adm-dialog__foot">
+            <AdminButton variant="primary" onClick={onClose}>
+              Close
+            </AdminButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

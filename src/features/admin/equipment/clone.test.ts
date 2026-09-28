@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { MachineDefinition } from "../../../types/machines";
 import { ADDITIVE_DEFINITION_FIELDS } from "../../../lib/resolve-machine";
 import {
+  LOCAL_SETUP_FIELDS,
   REPLACING_SAFETY_FIELDS,
-  buildClone,
   describeOverrides,
   isPlainAdoption,
+  localSetupUpdate,
   overriddenSafetyFields,
   pruneOverrides,
+  type LocalMetadata,
 } from "./clone";
 
 const catalog = {
@@ -74,65 +76,61 @@ describe("pruneOverrides", () => {
   });
 });
 
-describe("buildClone", () => {
-  const base = { studioId: "solon", catalogId: "m-leg-press", catalog };
+describe("localSetupUpdate", () => {
+  const base = { entry: { source: "catalog" as const }, catalog };
+  const update = (local: LocalMetadata) => {
+    const u = localSetupUpdate({ ...base, local });
+    if (u.ok === false) throw new Error(u.reason);
+    return u;
+  };
 
-  it("stays a catalog entry so it keeps inheriting and keeps rolling up", () => {
-    // source "custom" would split this machine off the network leaderboard
-    // and stop Academy corrections reaching it. A cloned template is still
-    // that template.
-    const entry = buildClone(base);
-    expect(entry.source).toBe("catalog");
-    expect(entry.basedOn).toBe("m-leg-press");
-    expect(entry.machineId).toBe("m-leg-press");
+  it("sets or clears the four fields it shows, and touches nothing else", () => {
+    // Not `source`, `basedOn`, `machineId`, `studioId` or `status`: writing
+    // those took a studio's own machine off the floor and put a machine that
+    // was out of service back in service (Sep 28 2026).
+    const u = update({ localName: "Hoist Leg Press", notes: "Pin sticks." });
+    expect([...Object.keys(u.set), ...u.clear].sort()).toEqual([...LOCAL_SETUP_FIELDS].sort());
   });
 
-  it("writes no overrides key at all for a plain adoption", () => {
-    const entry = buildClone(base);
-    expect("overrides" in entry).toBe(false);
+  it("clears every field for a plain adoption", () => {
+    expect(update({})).toEqual({ ok: true, set: {}, clear: [...LOCAL_SETUP_FIELDS] });
   });
 
   it("uses a local name as a name override", () => {
-    const entry = buildClone({
-      ...base,
-      local: { localName: "Imagine Strength Leg Press" },
+    expect(update({ localName: "Imagine Strength Leg Press" }).set).toEqual({
+      "overrides.name": "Imagine Strength Leg Press",
     });
-    expect(entry.overrides).toEqual({ name: "Imagine Strength Leg Press" });
   });
 
-  it("ignores a local name identical to the catalog's", () => {
-    const entry = buildClone({ ...base, local: { localName: " LEG PRESS " } });
-    expect("overrides" in entry).toBe(false);
+  it("clears a local name identical to the catalog's, so a future rename still reaches it", () => {
+    const u = update({ localName: " LEG PRESS " });
+    expect(u.set).toEqual({});
+    expect(u.clear).toContain("overrides.name");
   });
 
-  it("records local metadata without touching the definition", () => {
-    const entry = buildClone({
-      ...base,
-      local: {
-        notes: "Seat replaced March 2026; pin sticks on the 90lb stack.",
-        serialNumber: "IS-4471",
-        manufacturer: "Imagine Strength",
-      },
-    });
-    expect(entry.studioNotes).toContain("Seat replaced");
-    expect(entry.unit).toEqual({
+  it("records the unit and the note without touching the definition", () => {
+    const u = update({
+      notes: "Seat replaced March 2026; pin sticks on the 90lb stack.",
       serialNumber: "IS-4471",
       manufacturer: "Imagine Strength",
     });
-    expect("overrides" in entry).toBe(false);
-  });
-
-  it("omits the unit entirely when nothing was given", () => {
-    expect("unit" in buildClone(base)).toBe(false);
-  });
-
-  it("trims whitespace-only metadata away", () => {
-    const entry = buildClone({
-      ...base,
-      local: { notes: "   ", serialNumber: "  " },
+    expect(u.set).toEqual({
+      studioNotes: "Seat replaced March 2026; pin sticks on the 90lb stack.",
+      "unit.serialNumber": "IS-4471",
+      "unit.manufacturer": "Imagine Strength",
     });
-    expect("studioNotes" in entry).toBe(false);
-    expect("unit" in entry).toBe(false);
+    expect(u.clear).toEqual(["overrides.name"]);
+  });
+
+  it("clears whitespace-only boxes rather than storing them", () => {
+    const u = update({ notes: "   ", serialNumber: "  ", manufacturer: "Hoist" });
+    expect(u.set).toEqual({ "unit.manufacturer": "Hoist" });
+    expect(u.clear).toEqual(["overrides.name", "studioNotes", "unit.serialNumber"]);
+  });
+
+  it("refuses a studio's own machine: its name is its own definition's", () => {
+    const u = localSetupUpdate({ entry: { source: "custom" }, catalog: {}, local: { localName: "The Sled" } });
+    expect(u.ok).toBe(false);
   });
 });
 
