@@ -254,9 +254,9 @@ describe("My Studio → Studio, when the Mindbody sync needs attention", () => {
     expect(h.textContent).not.toContain("open Operations → Mindbody.");
   });
 
-  it("names Operations → Insights → Hours for the session length", async () => {
+  it("names Operations → Team → Hours for the session length", async () => {
     const h = await openStudio(lead);
-    expect(h.textContent).toContain("the slot Operations → Insights → Hours counts");
+    expect(h.textContent).toContain("the slot Operations → Team → Hours counts");
     expect(h.textContent).not.toMatch(/Operations → Hours/);
   });
 });

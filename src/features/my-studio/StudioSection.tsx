@@ -214,7 +214,7 @@ interface HoursForm {
   closing: string;
   close: string;
   deepCleanDays: string;
-  /** The booked length of a session — what Operations → Insights → Hours counts (Operations round). */
+  /** The booked length of a session — what Operations → Team → Hours counts (Operations round). */
   sessionMinutes: string;
 }
 
@@ -249,7 +249,7 @@ function HoursPanel({ canEdit }: { canEdit: boolean }) {
       deepCleanIntervalDays: days,
       sessionMinutes: slot,
     });
-    toastSuccess("Saved — the Now Bar, the rings and Operations → Insights → Hours follow it.");
+    toastSuccess("Saved — the Now Bar, the rings and Operations → Team → Hours follow it.");
   }, { label: "the studio's day" });
 
   const bad = [form.value.open, form.value.mid, form.value.closing, form.value.close].some(
@@ -313,7 +313,7 @@ function HoursPanel({ canEdit }: { canEdit: boolean }) {
           </AdminField>
           <AdminField
             label="A session is"
-            hint={`Minutes per booked session — the slot Operations → Insights → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
+            hint={`Minutes per booked session — the slot Operations → Team → Hours counts. Default ${DEFAULT_SESSION_MINUTES}.`}
             htmlFor="ms-session-minutes"
           >
             <AdminInput

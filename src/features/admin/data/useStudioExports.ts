@@ -3,7 +3,7 @@
  *
  * Round: Settings tiers & Task Board, Sep 2026. (Operations round, Sep 19:
  * "no payroll on the app for now" — the sessions CSV keeps its shape and
- * loses the word; the on-screen totals are Operations → Insights → Hours.)
+ * loses the word; the on-screen totals are Operations → Team → Hours.)
  *
  * Lifted verbatim out of TrainerControlHubView, where these three exports sat
  * behind a trainer-visible "Data & Reports" tab. They are admin work now (D):

@@ -132,7 +132,7 @@ export function AdminDataReportsTab({
           <ExportCard
             icon={FileSpreadsheet}
             title="Sessions by trainer"
-            description="Every completed session in the range with trainer, studio, client, date and type. The totals are on Operations → Insights → Hours; this is the sheet behind them, for anything done outside the app."
+            description="Every completed session in the range with trainer, studio, client, date and type. The totals are on Operations → Team → Hours; this is the sheet behind them, for anything done outside the app."
             onDownload={handleExportPayroll}
             busy={isExportingPayroll}
           />
