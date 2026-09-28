@@ -153,7 +153,9 @@ export function MyStudioView({
    * first.
    */
   const chooseRef = useRef(choose);
-  chooseRef.current = choose;
+  useEffect(() => {
+    chooseRef.current = choose;
+  });
   useEffect(() => onMyStudioSectionRequest((next) => chooseRef.current(next)), []);
 
   const todayKey = studioDateKey(new Date()) ?? "";

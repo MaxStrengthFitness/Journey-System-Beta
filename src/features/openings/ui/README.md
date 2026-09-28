@@ -49,6 +49,7 @@ client at the iPad.
 | `WhosInPart.tsx` | Who's usually in: everyone who works here, in name order, each with their agreed week read only |
 | `part-memory.ts` | Which part this iPad was on, and whose times; how a door from elsewhere opens a part |
 | `openings.css` (one folder up) | The section's own look, on My Studio's `--st-*` tokens |
+| `index.ts` | The one door for another feature: the section, the data hook and the live reads, and `showOpenings` |
 | `test-shell.tsx` | Test helpers only: the Relay shell's doors, and a summary folded from the core's fixtures |
 
 ## The data hook — `useOpeningsData`
@@ -77,8 +78,13 @@ the sheet opens (the reads are the summary, held for a day, the weeks and the
 marks; nothing waits for them, so it never slows the Wrap-up):
 
 ```ts
+import { useOpeningsData, useNextSevenDays, useComingWeeks } from "../features/openings/ui";
+
 const data = useOpeningsData({ studio: activeStudio, trainers, authTrainer });
 ```
+
+It is an ordinary import (the section is not lazily loaded), so the
+new-version rules (`lazy-screens.test.ts`) are untouched.
 
 and then call the core with it, never a rule of its own.
 
