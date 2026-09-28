@@ -20,10 +20,20 @@
  *      leader's outcome is never overwritten.
  *   4. Write clients/{id}.renewal only where it changed, and the names each
  *      studio's Mindbody uses (config/renewalsSeen) for the settings screen.
+ *   5. Client states (wave 2, Sep 28 2026): for each studio whose cutover
+ *      date has come, each active client's state, the studio's Journey
+ *      summary and the Hub's All stars (server/journey-step.ts), in its own
+ *      batches and its own catch: a failure there never touches 1 to 4.
  *
  * FIXED WINDOWS. Bookings from 90 days back to 30 ahead and workouts from the
  * last 90 days: the cost stays flat as history grows. (The leaderboard job
  * reads every exercise log ever written, every night; this one must not.)
+ *
+ * A LEADER'S "DIDN'T COME" (wave 2, Sep 28 2026): every studio's booking
+ * marks from the same 90 days (`studios/{s}/bookingMarks`, by `day`, a few a
+ * week), so a booking a leader marked is a no-show in tonight's attendance,
+ * never a visit (lib/booking-state.ts, renewals/attendance.ts). A studio
+ * whose marks can't be read is read without them, and the log says so.
  *
  * NOTHING HERE CONTACTS ANYONE, and nothing writes to Mindbody: every
  * Mindbody call is a GET (server/mindbody-client.ts).
@@ -41,7 +51,7 @@ import { buildMasterSyncPatchWith, type MasterSyncFound } from "../src/lib/mindb
 import { DEFAULT_FIRST_SYNC_MAX, firstSyncOrder, needsFirstSync } from "../src/lib/first-booking-sync.ts";
 import { mapContractRecords, mapServiceRecords } from "../src/lib/mindbody-commercial-map.ts";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, studioDateKey, studioTodayKey } from "../src/lib/studio-time.ts";
-import { loggedSessions } from "../src/lib/booking-state.ts";
+import { bookingMarks, loggedSessions, type BookingMarks } from "../src/lib/booking-state.ts";
 import { cutoverOf } from "../src/lib/client-coverage.ts";
 import { buildRenewalSnapshot, sameSnapshot, stableStringify } from "../src/features/renewals/engine.ts";
 import {
@@ -71,6 +81,7 @@ import {
 } from "../src/features/renewals/job-plan.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
+import { runJourneyStep, type JourneyStepSummary } from "./journey-step.ts";
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;
@@ -106,6 +117,8 @@ export interface RenewalsRunSummary {
   firstSyncFailures: number;
   mindbodyCalls: number;
   bySituation: Record<string, number>;
+  /** Step 5: the client states, the Journey summaries and All stars; null when the step failed as a whole. */
+  journey?: JourneyStepSummary | null;
 }
 
 interface StudioRun {
@@ -203,7 +216,8 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     .get();
   const schedulesByClient = new Map<string, ScheduleEntry[]>();
   schedulesSnap.docs.forEach((d) => {
-    const row = d.data() as ScheduleEntry;
+    // The id travels with the row: a leader's mark is keyed by it.
+    const row = { ...(d.data() as ScheduleEntry), id: d.id };
     if (!row.clientId) return;
     const list = schedulesByClient.get(row.clientId) ?? [];
     list.push(row);
@@ -224,22 +238,45 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     `Read ${studioDocs.length} studios, ${schedulesSnap.size} bookings and ${sessionsSnap.size} workouts in the window.`,
   );
 
-  const build = (run: StudioRun, client: Client): RenewalSnapshot => {
+  // Every studio's "didn't come" marks in the window, even under --only-studio:
+  // a client's booking at another location is marked there.
+  const marksSince = new Date(now.getTime() - 92 * DAY_MS).toISOString().slice(0, 10);
+  const markRows: Array<{ id: string; noShow?: unknown }> = [];
+  for (const studio of allStudioDocs) {
+    try {
+      const snap = await db.collection(`studios/${studio.id}/bookingMarks`).where("day", ">=", marksSince).get();
+      snap.docs.forEach((d) => markRows.push({ id: d.id, noShow: d.get("noShow") }));
+    } catch (err: any) {
+      log(`The "didn't come" marks at ${typeof studio.name === "string" ? studio.name : studio.id} couldn't be read, so tonight reads its bookings without them: ${err?.message || err}`);
+    }
+  }
+  const marks: BookingMarks | null = bookingMarks(markRows);
+  if (markRows.length > 0) log(`${markRows.length} booking${markRows.length === 1 ? "" : "s"} marked "didn't come" in the window.`);
+
+  // One client's attendance tonight: what her snapshot is built from, and
+  // (step 5) the visit days her rhythm is measured from.
+  const attendanceOf = (run: { tz: string; today: string }, client: Client) => {
     const schedules = schedulesByClient.get(client.id!) ?? [];
+    const sessions = sessionsByClient.get(client.id!) ?? [];
+    return [
+      // A booking is a visit when Journey logged a session that day (AJ,
+      // Sep 24 2026); attendance.ts says what an unlogged one is.
+      ...attendanceFromSchedules(schedules, now, run.tz, {
+        logged: loggedSessions(sessions, run.tz),
+        cutoverOf: (studioId) => cutoverOf(cutovers, studioId),
+        marks,
+      }),
+      ...attendanceFromSessions(sessions, run.tz, run.today),
+    ];
+  };
+
+  const build = (run: StudioRun, client: Client): RenewalSnapshot => {
     const sessions = sessionsByClient.get(client.id!) ?? [];
     return buildRenewalSnapshot({
       client,
       settings: run.settings,
       today: run.today,
-      attendance: [
-        // A booking is a visit when Journey logged a session that day (AJ,
-        // Sep 24 2026); attendance.ts says what an unlogged one is.
-        ...attendanceFromSchedules(schedules, now, run.tz, {
-          logged: loggedSessions(sessions, run.tz),
-          cutoverOf: (studioId) => cutoverOf(cutovers, studioId),
-        }),
-        ...attendanceFromSessions(sessions, run.tz, run.today),
-      ],
+      attendance: attendanceOf(run, client),
       sessionFeel: feelFromSessions(sessions, run.tz),
       machineNames,
       attendanceSince: run.attendanceSince,
@@ -537,12 +574,46 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
     );
   }
 
+  /* ================= 5. Client states, the Journey summary and All stars ================= */
+  // After the snapshots on purpose: the states are worked out from tonight's.
+  // Its own catch: nothing here can take the snapshots or the outcomes down.
+  try {
+    summary.journey = await runJourneyStep({
+      db,
+      studios: runs.map((run) => ({
+        id: run.id,
+        name: run.name,
+        tz: run.tz,
+        today: run.today,
+        live: run.live,
+        breakDays: run.settings.breakDays,
+        nameIndex: run.nameIndex,
+        clients: run.clients,
+        snapshots: run.snapshots,
+      })),
+      allStudios: allStudioDocs.map((s) => ({
+        id: s.id,
+        name: typeof s.name === "string" ? s.name : s.id,
+        journeyCutoverDate: cutoverOf(cutovers, s.id),
+      })),
+      bookingsByClient: schedulesByClient,
+      visitDaysOf: (run, client) => attendanceOf(run, client).filter((r) => r.kind === "visit").map((r) => r.day),
+      now,
+      dryRun,
+      log,
+    });
+  } catch (err: any) {
+    summary.journey = null;
+    log(`Client states: the step failed, and tonight's snapshots stand: ${err?.message || err}`);
+  }
+
   log(
     `Done${dryRun ? " (dry run — nothing written)" : ""}. ${summary.clients} clients, ` +
       `${summary.snapshotsWritten} snapshots ${dryRun ? "would change" : "written"}, ` +
       `${summary.outcomesWritten} outcomes ${dryRun ? "would be recorded" : "recorded"}, ` +
       `${summary.firstSyncs} first-booking syncs (${summary.firstSyncFailures} failed), ` +
-      `${summary.pulls} Mindbody pulls (${summary.mindbodyCalls} calls, ${summary.pullFailures} failed). ` +
+      `${summary.pulls} Mindbody pulls (${summary.mindbodyCalls} calls, ${summary.pullFailures} failed), ` +
+      `${summary.journey ? `${summary.journey.statesWritten} client states ${dryRun ? "would change" : "written"} at ${summary.journey.studios} studio${summary.journey.studios === 1 ? "" : "s"}` : "no client states"}. ` +
       `Situations: ${Object.entries(summary.bySituation)
         .map(([k, v]) => `${k} ${v}`)
         .join(", ")}.`,

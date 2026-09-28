@@ -46,6 +46,7 @@ import { recentQuarters } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
 import { AdminButton, AdminHeader, AdminScreen } from "../primitives";
 import { useSessionsInRange } from "../sessions-range";
+import { useBookingMarks } from "../attention/booking-marks";
 import { useWeekSchedule } from "../changes/useWeekSchedule";
 import { BriefEmpty, BriefSection } from "../overview/brief-pieces";
 import { useStudioJourneys } from "../journey/useStudioJourneys";
@@ -92,11 +93,13 @@ export function TeamWeekPage({ studio, studios, clients, trainers, authTrainer }
   const startMs = useMemo(() => studioDayBoundsForKey(lastMonday, tz).start.getTime(), [lastMonday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
   const logged = useMemo(() => (sessions.loading || sessions.failed || sessions.truncated ? null : loggedSessions(sessions.sessions, tz)), [sessions, tz]);
+  // A leader's "didn't come" is not a trainer's logging gap (wave 2).
+  const marks = useBookingMarks(studioId, lastMonday, lastSunday);
   const weeks = useMemo(() => {
     const byKey = new Map<string, TrainerWeek>();
-    for (const w of teamWeek(lastWeek.entries, logged, lastMonday, lastSunday, trainers, now, tz)) byKey.set(w.key, w);
+    for (const w of teamWeek(lastWeek.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks)) byKey.set(w.key, w);
     return byKey;
-  }, [lastWeek.entries, logged, lastMonday, lastSunday, trainers, now, tz]);
+  }, [lastWeek.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks]);
   const weekRead = lastWeek.loading || sessions.loading ? "loading" : lastWeek.failed ? "failed" : "ready";
 
   /* ---- recognition ---- */

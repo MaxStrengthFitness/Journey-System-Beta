@@ -12,10 +12,13 @@
  * WHAT EACH RULE REFUSES TO SAY (the pins "Some lines give false comfort"):
  *
  *   - "Needs you" counts only what a leader can clear on the page (AJ's
- *     question 3, default: "Yes. Everything else becomes a door"). A
- *     session nobody logged is not cleared here — its trainer logs it, and a
- *     "didn't come" mark is not built (it needs AJ's OK) — so it is a door
- *     and a clause in the bottom line, never a count that cannot go down.
+ *     question 3, default: "Yes. Everything else becomes a door"). Since
+ *     wave 2 (AJ, Sep 28 2026: "all yes") that includes a session nobody
+ *     logged: a leader who asked and learned she didn't come marks it
+ *     ("Didn't come", attention/booking-marks.ts), and it clears by itself
+ *     when its trainer logs the workout. For someone who can't mark at this
+ *     studio it stays a door and a clause, never a count that cannot go down
+ *     (`unloggedInNeeds`).
  *   - The bottom line says the day "looks steady" only when every read
  *     behind it answered. An unread schedule, an unread day's logging, a
  *     client whose renewal timing is unknown and a nightly record that has
@@ -128,6 +131,8 @@ export interface BottomLineInput {
   catchCount: number | null;
   /** Finished sessions with nothing logged; null when unknown. */
   neverLogged: number | null;
+  /** Those sessions are Needs-you rows (the reader may mark "didn't come" here), not a door. */
+  unloggedInNeeds?: boolean;
   week: WeekReadState;
   renewalUnknown: number;
   nightly: Pick<NightlyRead, "stale" | "lastChangedAt">;
@@ -159,7 +164,13 @@ export function bottomLine(i: BottomLineInput): BottomLine {
   if (i.week === "loading") parts.push("Today's bookings are still being read.");
   else if (i.week !== "ready") parts.push("Today's bookings couldn't be read, so the floor is unknown.");
   else if (i.neverLogged === null) parts.push("Today's logging couldn't be read, so what was done is unknown.");
-  else if (i.neverLogged > 0) parts.push(`${countWord(i.neverLogged)} of today's finished ${i.neverLogged === 1 ? "sessions has" : "sessions have"} no workout logged yet.`);
+  else if (i.neverLogged > 0) {
+    parts.push(
+      `${countWord(i.neverLogged)} of today's finished ${i.neverLogged === 1 ? "sessions has" : "sessions have"} no workout logged yet${
+        i.unloggedInNeeds ? ": ask on the floor, then its trainer logs it or you mark it didn't come" : ""
+      }.`,
+    );
+  }
 
   if (i.renewalUnknown > 0) {
     parts.push(`Renewal timing is unknown for ${i.renewalUnknown === 1 ? "one client" : `${i.renewalUnknown} clients`}, so nothing here calls them on track.`);
@@ -175,7 +186,9 @@ export function bottomLine(i: BottomLineInput): BottomLine {
   if (allKnown && i.neverLogged === 0) parts.push("The rest of the day looks steady.");
 
   const rules = [
-    `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note), and nothing else. A session nobody logged is its trainer's to log, so it is a door, not a count.`,
+    i.unloggedInNeeds
+      ? `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note, or mark a session nobody logged "didn't come"), and nothing else. A session its trainer logs later clears by itself.`
+      : `Needs you: ${i.needs} ${i.needs === 1 ? "row" : "rows"} you can clear on this page (acknowledge, take a gesture, review a note), and nothing else. A session nobody logged is its trainer's to log, so it is a door, not a count.`,
     `Catch today: ${i.catchCount === null ? "unknown until today's bookings are read" : `${i.catchCount} ${i.catchCount === 1 ? "client" : "clients"}`} in the studio today with a reason to see them in person: a renewal talk, back after a break, early sessions, a milestone, or leaving with nothing booked.`,
     "An unread schedule, an unread day's logging, a client whose renewal timing is unknown and a nightly record that stopped changing are each named here, never counted as fine.",
     "Written by rules each time the page reads. Never typed by hand.",

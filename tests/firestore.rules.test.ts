@@ -4741,4 +4741,268 @@ describe("marks on a time", () => {
       }
     });
   });
+
+  // -- WAVE 2 OPERATIONS (Sep 28 2026; AJ: "all yes"). Each part of the
+  // wave's Operations data, written the way the app writes it, by every kind
+  // of person the rules name. Nobody here has a role claim on the token, so
+  // each reads its role from its trainer document: the costliest path.
+  describe("wave 2 operations", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+    type Db = ReturnType<typeof as>;
+
+    async function seedPeople() {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+          setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+        await person("franchiseX", "FranchiseOwner", "studioB");
+        await person("adminX", "Admin", "studioB");
+        await person("headA", "HeadTrainer", "studioA");
+        await person("leaderA", "StudioLeader", "studioA");
+        await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+        await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+        await person("headB", "HeadTrainer", "studioB");
+      });
+    }
+
+    const LEADERS = ["ownerA", "headA", "leaderA", "grantA", "franchiseX", "adminX"];
+
+    // -- A leader's "didn't come" on a booking nobody logged.
+    describe("booking marks", () => {
+      const markRef = (db: Db, studioId: string, bookingId: string) => doc(db, "studios", studioId, "bookingMarks", bookingId);
+      /** What the app writes (attention/booking-marks.ts markDoc). */
+      const mark = (uid: string, over: Record<string, unknown> = {}) => ({
+        noShow: true,
+        clientId: "client-eowyn",
+        day: "2026-09-28",
+        markedBy: { id: uid, name: `Person ${uid}` },
+        markedAt: serverTimestamp(),
+        ...over,
+      });
+
+      it("lets the studio's leaders, franchise owners and administrators mark, read and take back", async () => {
+        await seedPeople();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(setDoc(markRef(db, "studioA", `b-${uid}`), mark(uid)));
+          await assertSucceeds(getDoc(markRef(db, "studioA", `b-${uid}`)));
+          await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "bookingMarks"), where("day", ">=", "2026-09-21"), where("day", "<=", "2026-09-28"))));
+          await assertSucceeds(deleteDoc(markRef(db, "studioA", `b-${uid}`)));
+        }
+      });
+
+      it("lets everyone who works there read the marks, and no one but a leader write one", async () => {
+        await seedPeople();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+          await setDoc(doc(ctx.firestore(), "studios", "studioA", "bookingMarks", "b1"), { ...mark("ownerA"), markedAt: new Date() });
+        });
+        for (const uid of ["trainerA", "guestA"]) {
+          const db = as(uid);
+          await assertSucceeds(getDoc(markRef(db, "studioA", "b1")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "bookingMarks")));
+          await assertFails(setDoc(markRef(db, "studioA", "b2"), mark(uid)));
+          await assertFails(deleteDoc(markRef(db, "studioA", "b1")));
+        }
+        for (const uid of ["trainerB", "headB"]) {
+          const db = as(uid);
+          await assertFails(getDoc(markRef(db, "studioA", "b1")));
+          await assertFails(setDoc(markRef(db, "studioA", "b2"), mark(uid)));
+          await assertFails(deleteDoc(markRef(db, "studioA", "b1")));
+        }
+        const out = testEnv.unauthenticatedContext().firestore();
+        await assertFails(getDoc(markRef(out, "studioA", "b1")));
+      });
+
+      it("holds the mark's shape, and signs it as the person marking, now", async () => {
+        const db = as("ownerA");
+        const refused: Record<string, unknown>[] = [
+          mark("ownerA", { markedBy: { id: "headA", name: "Head A" } }),
+          mark("ownerA", { markedBy: { id: "ownerA" } }),
+          mark("ownerA", { markedBy: { id: "ownerA", name: "x".repeat(121) } }),
+          mark("ownerA", { markedBy: { id: "ownerA", name: "Owner A", role: "Admin" } }),
+          mark("ownerA", { noShow: false }),
+          mark("ownerA", { noShow: "yes" }),
+          mark("ownerA", { clientId: "" }),
+          mark("ownerA", { clientId: 7 }),
+          mark("ownerA", { day: "28/09/2026" }),
+          mark("ownerA", { day: "2026-13-01" }),
+          mark("ownerA", { markedAt: new Date("2026-01-01T12:00:00Z") }),
+          mark("ownerA", { note: "she texted" }),
+          { noShow: true, clientId: "client-eowyn", day: "2026-09-28", markedBy: { id: "ownerA", name: "Owner A" } },
+        ];
+        for (const data of refused) await assertFails(setDoc(markRef(db, "studioA", "b1"), data));
+        await assertSucceeds(setDoc(markRef(db, "studioA", "b1"), mark("ownerA")));
+      });
+
+      it("follows Demo Mode's rule: everyone signed in leads the practice studio", async () => {
+        const db = as("trainerB");
+        await assertSucceeds(setDoc(markRef(db, "demo-studio", "b1"), mark("trainerB")));
+        await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "b1")));
+      });
+    });
+
+    // -- A client's case: the leaders' to open and run; its owner may change
+    // the next step, the due day, the outcome and the reason.
+    describe("cases", () => {
+      const caseRef = (db: Db, studioId: string, clientId: string) => doc(db, "studios", studioId, "cases", clientId);
+      /** What the app writes when a leader opens a case (journey/case-store.ts newCaseDoc). */
+      const opened = (uid: string, over: Record<string, unknown> = {}) => ({
+        clientId: "eowyn",
+        clientName: "Éowyn Rohan",
+        owner: { id: "trainerA", name: "Trainer A" },
+        nextStep: "Phone her after Thursday's shift.",
+        dueOn: "2026-10-01",
+        outcome: "open",
+        openedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        ...over,
+      });
+      /** A case a leader opened last week, owned by Trainer A. */
+      const seedCase = (studioId = "studioA", over: Record<string, unknown> = {}) =>
+        testEnv.withSecurityRulesDisabled(async (ctx) => {
+          await setDoc(doc(ctx.firestore(), "studios", studioId, "cases", "eowyn"), {
+            clientId: "eowyn",
+            clientName: "Éowyn Rohan",
+            owner: { id: "trainerA", name: "Trainer A" },
+            nextStep: "Ask Trainer A",
+            dueOn: "2026-09-30",
+            outcome: "open",
+            openedAt: new Date("2026-09-21T12:00:00Z"),
+            updatedAt: new Date("2026-09-21T12:00:00Z"),
+            updatedBy: "ownerA",
+            ...over,
+          });
+        });
+      /** Only what changed, stamped (case-store.ts saveCase). */
+      const stamped = (uid: string, over: Record<string, unknown>) => ({ ...over, updatedAt: serverTimestamp(), updatedBy: uid });
+
+      it("lets the studio's leaders, franchise owners and administrators open, read, change and reopen a case", async () => {
+        await seedPeople();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened(uid)));
+          await assertSucceeds(getDoc(caseRef(db, "studioA", "eowyn")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "cases")));
+          // Hand it to someone else, close it with a reason, and take the reason back out.
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { owner: { id: "headA", name: "Head A" } })));
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { outcome: "lost", reason: "Moved to Minas Tirith" })));
+          await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { outcome: "paused", reason: deleteField() })));
+          // Reopened: a new owner, step and openedAt.
+          await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened(uid, { owner: { id: "trainerA", name: "Trainer A" } })));
+          await assertFails(deleteDoc(caseRef(db, "studioA", "eowyn")));
+        }
+      });
+
+      it("lets the case's owner read theirs, find it by owner.id, and change the step, the day, the outcome and the reason — nothing else", async () => {
+        await seedCase();
+        const db = as("trainerA");
+        await assertSucceeds(getDoc(caseRef(db, "studioA", "eowyn")));
+        await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "cases"), where("owner.id", "==", "trainerA"))));
+        await assertSucceeds(getDocs(query(collection(db, "studios", "studioA", "cases"), where("owner.id", "==", "trainerA"), where("outcome", "==", "open"))));
+        await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { nextStep: "Called her: back Tuesday", dueOn: null })));
+        await assertSucceeds(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { outcome: "paused", reason: "Knee surgery, back in November" })));
+        // Never the owner, the name or when it opened; never unsigned; never a new case; never a delete.
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { owner: { id: "trainerB", name: "Trainer B" } })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { clientName: "Someone else" })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("trainerA", { openedAt: serverTimestamp() })));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), { nextStep: "unsigned" }));
+        await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped("ownerA", { nextStep: "signed as someone else" })));
+        await assertFails(setDoc(caseRef(db, "studioA", "faramir"), opened("trainerA", { clientId: "faramir" })));
+        await assertFails(deleteDoc(caseRef(db, "studioA", "eowyn")));
+      });
+
+      it("keeps a case from anyone else: a colleague who doesn't own it, another studio, or someone signed out", async () => {
+        await seedPeople();
+        await seedCase();
+        for (const uid of ["guestA", "trainerB", "headB"]) {
+          const db = as(uid);
+          await assertFails(getDoc(caseRef(db, "studioA", "eowyn")));
+          await assertFails(getDocs(collection(db, "studios", "studioA", "cases")));
+          await assertFails(updateDoc(caseRef(db, "studioA", "eowyn"), stamped(uid, { nextStep: "Mine now" })));
+          await assertFails(setDoc(caseRef(db, "studioA", "faramir"), opened(uid, { clientId: "faramir" })));
+        }
+        // Trainer A reads only their own: not the studio's whole list.
+        await assertFails(getDocs(collection(as("trainerA"), "studios", "studioA", "cases")));
+        const out = testEnv.unauthenticatedContext().firestore();
+        await assertFails(getDoc(caseRef(out, "studioA", "eowyn")));
+      });
+
+      it("holds the case's shape", async () => {
+        const db = as("ownerA");
+        const refused: Record<string, unknown>[] = [
+          opened("ownerA", { clientId: "faramir" }),
+          opened("ownerA", { clientName: "x".repeat(121) }),
+          opened("ownerA", { owner: { id: "", name: "Nobody" } }),
+          opened("ownerA", { owner: { id: "trainerA" } }),
+          opened("ownerA", { owner: { id: "trainerA", name: "Trainer A", role: "Admin" } }),
+          opened("ownerA", { nextStep: "x".repeat(501) }),
+          opened("ownerA", { dueOn: "next week" }),
+          opened("ownerA", { outcome: "won" }),
+          opened("ownerA", { reason: "y".repeat(301) }),
+          opened("ownerA", { updatedBy: "trainerA" }),
+          opened("ownerA", { updatedAt: new Date("2026-01-01T12:00:00Z") }),
+          opened("ownerA", { openedAt: new Date("2026-01-01T12:00:00Z") }),
+          opened("ownerA", { notes: "extra" }),
+        ];
+        for (const data of refused) await assertFails(setDoc(caseRef(db, "studioA", "eowyn"), data));
+        await assertSucceeds(setDoc(caseRef(db, "studioA", "eowyn"), opened("ownerA", { dueOn: null, reason: "Asked by the front desk" })));
+      });
+
+      it("fits the fullest case inside the rules' budget, for the owner and for every leader", async () => {
+        await seedPeople();
+        const fullest = { nextStep: "n".repeat(500), dueOn: "2026-12-31", outcome: "paused", reason: "r".repeat(300) };
+        await seedCase("studioA", { clientName: "c".repeat(120), owner: { id: "grantA", name: "g".repeat(120) } });
+        await assertSucceeds(updateDoc(caseRef(as("grantA"), "studioA", "eowyn"), stamped("grantA", fullest)));
+        for (const uid of LEADERS) {
+          await assertSucceeds(setDoc(caseRef(as(uid), "studioA", "eowyn"), opened(uid, { ...fullest, clientName: "c".repeat(120), owner: { id: "grantA", name: "g".repeat(120) } })));
+        }
+      });
+    });
+
+    // -- What the nightly job writes: client states and the Journey summary for
+    // the studio's leaders; All stars (and the older watch documents) for
+    // everyone who works there. Nobody writes any of it from the app.
+    describe("the night's states", () => {
+      async function seedNight() {
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+          const db = ctx.firestore();
+          await setDoc(doc(db, "studios", "studioA", "clientStates", "eowyn"), { state: "drifting", since: "2026-09-24", reasons: ["a", "b"] });
+          await setDoc(doc(db, "studios", "studioA", "watch", "journey"), { v: 1, asOf: "2026-09-28", counts: { drifting: 1 } });
+          await setDoc(doc(db, "studios", "studioA", "watch", "hubMarks"), { allStars: [{ clientId: "eomer", weeksWithVisit: 26, perWeek: 2 }] });
+          await setDoc(doc(db, "studios", "studioA", "watch", "openings"), { v: 1 });
+        });
+      }
+
+      it("lets the studio's leaders read the client states and the summary, and nobody write them", async () => {
+        await seedPeople();
+        await seedNight();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "clientStates")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "journey")));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "clientStates", "eowyn"), { state: "steady" }));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "watch", "journey"), { v: 1 }));
+        }
+      });
+
+      it("keeps the states and the summary from a trainer, while All stars and the other watch documents stay theirs to read", async () => {
+        await seedPeople();
+        await seedNight();
+        for (const uid of ["trainerA", "guestA"]) {
+          const db = as(uid);
+          await assertFails(getDoc(doc(db, "studios", "studioA", "clientStates", "eowyn")));
+          await assertFails(getDocs(collection(db, "studios", "studioA", "clientStates")));
+          await assertFails(getDoc(doc(db, "studios", "studioA", "watch", "journey")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "hubMarks")));
+          await assertSucceeds(getDoc(doc(db, "studios", "studioA", "watch", "openings")));
+          await assertFails(setDoc(doc(db, "studios", "studioA", "watch", "hubMarks"), { allStars: [] }));
+        }
+        for (const uid of ["trainerB", "headB"]) {
+          await assertFails(getDoc(doc(as(uid), "studios", "studioA", "watch", "hubMarks")));
+          await assertFails(getDoc(doc(as(uid), "studios", "studioA", "watch", "journey")));
+        }
+      });
+    });
+  });
 });

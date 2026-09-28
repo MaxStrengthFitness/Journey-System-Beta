@@ -17,7 +17,7 @@
 
 import type { ScheduleEntry } from "../../../types";
 import { studioDateKey, toDate } from "../../../lib/studio-time";
-import { bookingState, type LoggedSessions } from "../../../lib/booking-state";
+import { bookingState, type BookingMarks, type LoggedSessions } from "../../../lib/booking-state";
 
 /* ==================================================================== *
  * Day filtering
@@ -84,12 +84,15 @@ export interface FloorSummary {
  * The day's shape. `logged` is `loggedSessions(...)` over the studio's
  * Journey sessions for the day (`lib/booking-state`); `null` when they could
  * not be read, which leaves finished slots unknown rather than unlogged.
+ * `marks` are the leaders' "didn't come" (wave 2): a marked booking is a
+ * no-show, never unresolved.
  */
 export function summariseFloor(
   entries: ScheduleEntry[],
   now: Date,
   logged: LoggedSessions | null,
   tz?: string,
+  marks?: BookingMarks | null,
 ): FloorSummary {
   let completed = 0;
   let upcoming = 0;
@@ -108,7 +111,7 @@ export function summariseFloor(
       clientKeys.add(e.clientId || e.mindbodyClientId || e.clientName || "?");
     }
 
-    switch (bookingState(e, logged, now, tz)) {
+    switch (bookingState(e, logged, now, tz, marks)) {
       case "completed":
         completed += 1;
         break;
@@ -184,10 +187,11 @@ export function attentionItems(
   now: Date,
   logged: LoggedSessions | null,
   tz?: string,
+  marks?: BookingMarks | null,
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   for (const e of entries) {
-    const state = bookingState(e, logged, now, tz);
+    const state = bookingState(e, logged, now, tz, marks);
     const kind: AttentionKind | null =
       state === "no-show" ? "no-show" : state === "cancelled" ? "cancelled" : state === "never-logged" ? "unresolved" : null;
     if (!kind) continue;

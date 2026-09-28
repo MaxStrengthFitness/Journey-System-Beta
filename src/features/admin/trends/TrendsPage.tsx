@@ -48,7 +48,7 @@ export function TrendsPage({ studio, studios, clients, trainers, authTrainer }: 
     () => [
       renewalOutcomesLine(thisTally, thisQ.label),
       longerPackageLine(thisTally, lastTally),
-      j.ready ? startGroupsLine(startGroups(j.entries, j.today, j.tz)) : { id: "starts", title: "Start groups", say: "Reading the studio's clients…", min: "", ready: false },
+      j.ready ? startGroupsLine(startGroups(j.entries, j.today, j.tz, j.lines.lapsedDays), j.lines.lapsedDays) : { id: "starts", title: "Start groups", say: "Reading the studio's clients…", min: "", ready: false },
       j.ready ? studioRhythmLine(j.entries) : { id: "rhythm", title: "Studio rhythm", say: "Reading the studio's clients…", min: "", ready: false },
       lostReasonsLine(now_.loading || now_.error ? null : now_.rows),
       WIN_BACK_LINE,

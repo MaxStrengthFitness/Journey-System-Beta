@@ -15,6 +15,8 @@
  *     A booking nobody logged is "not logged in Journey", never "didn't
  *     happen" — before a studio's cutover its trainers may still be on
  *     FileMaker. A read of the sessions that failed makes those UNKNOWN.
+ *     A booking a leader marked "didn't come" (wave 2, the booking marks)
+ *     is "didn't come": off the not-logged count and off the trainer's.
  *   - A cancellation less than a day before its start is late (Openings'
  *     own rule, openings/room.ts `cancellationOf`), and one with no stamp
  *     is said to have none.
@@ -24,7 +26,7 @@
  *     couldn't be read is "can't tell", never "not read".
  */
 import type { ScheduleEntry } from "../../../types";
-import { bookingState, isStaffBlock, type LoggedSessions } from "../../../lib/booking-state";
+import { bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../../lib/booking-state";
 import { studioDateKey, toDate } from "../../../lib/studio-time";
 import { addDays, weekdayOf } from "../../client-history/model";
 import { cancellationOf } from "../../openings/room";
@@ -53,6 +55,8 @@ export interface DayFacts {
   done: number | null;
   /** Finished with nothing logged. Null when unknown. */
   notLogged: number | null;
+  /** A leader marked it "didn't come" (or Mindbody said No-Show). */
+  noShow: number;
   /** Still to come (or on the floor). */
   toCome: number;
   cancelled: number;
@@ -62,8 +66,8 @@ export interface DayFacts {
 }
 
 /** One studio day's facts from the week's bookings and what Journey logged. */
-export function dayFacts(entries: readonly ScheduleEntry[], day: string, logged: LoggedSessions | null, now: Date, tz?: string): DayFacts {
-  const f: DayFacts = { day, label: WEEKDAY[weekdayOf(day)], booked: 0, done: logged ? 0 : null, notLogged: logged ? 0 : null, toCome: 0, cancelled: 0, late: 0, unstamped: 0 };
+export function dayFacts(entries: readonly ScheduleEntry[], day: string, logged: LoggedSessions | null, now: Date, tz?: string, marks?: BookingMarks | null): DayFacts {
+  const f: DayFacts = { day, label: WEEKDAY[weekdayOf(day)], booked: 0, done: logged ? 0 : null, notLogged: logged ? 0 : null, noShow: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0 };
   for (const b of entries) {
     if (isStaffBlock(b) || studioDateKey(b.startTime, tz) !== day) continue;
     if (b.status === "Cancelled") {
@@ -74,9 +78,10 @@ export function dayFacts(entries: readonly ScheduleEntry[], day: string, logged:
       continue;
     }
     f.booked += 1;
-    const state = bookingState(b, logged, now, tz);
+    const state = bookingState(b, logged, now, tz, marks);
     if (state === "completed") f.done = (f.done ?? 0) + 1;
     else if (state === "never-logged") f.notLogged = (f.notLogged ?? 0) + 1;
+    else if (state === "no-show") f.noShow += 1;
     else if (state === "upcoming" || state === "in-progress") f.toCome += 1;
   }
   return f;
@@ -86,6 +91,7 @@ export interface WeekTotals {
   booked: number;
   done: number | null;
   notLogged: number | null;
+  noShow: number;
   toCome: number;
   cancelled: number;
   late: number;
@@ -93,9 +99,10 @@ export interface WeekTotals {
 }
 
 export function totals(days: readonly DayFacts[]): WeekTotals {
-  const t: WeekTotals = { booked: 0, done: 0, notLogged: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0 };
+  const t: WeekTotals = { booked: 0, done: 0, notLogged: 0, noShow: 0, toCome: 0, cancelled: 0, late: 0, unstamped: 0 };
   for (const d of days) {
     t.booked += d.booked;
+    t.noShow += d.noShow;
     t.toCome += d.toCome;
     t.cancelled += d.cancelled;
     t.late += d.late;
@@ -152,6 +159,7 @@ export function reviewLine(t: WeekTotals, x: ReviewExtras): string {
   if (t.booked === 0) parts.push("Nothing was booked.");
   else if (t.done === null) parts.push(`${plural(t.booked, "session was", "sessions were")} booked; what was logged couldn't be read.`);
   else parts.push(`${t.done} of ${plural(t.booked, "booked session was", "booked sessions were")} logged as done in Journey${t.notLogged ? `, and ${t.notLogged} ${t.notLogged === 1 ? "has" : "have"} no workout logged` : ""}.`);
+  if (t.noShow > 0) parts.push(`${plural(t.noShow, "client", "clients")} didn't come, as a leader marked.`);
   if (t.late > 0) parts.push(`${plural(t.late, "cancellation came", "cancellations came")} less than a day before the session.`);
   parts.push(`${plural(x.crossed, "client", "clients")} crossed a line and started slipping; ${plural(x.back, "client", "clients")} booked again after a gap.`);
   if (x.renewals === null) parts.push("The week's renewal outcomes couldn't be read.");
@@ -201,6 +209,7 @@ export function teamWeek(
   trainers: readonly TrainerLike[],
   now: Date,
   tz?: string,
+  marks?: BookingMarks | null,
 ): TrainerWeek[] {
   const out = new Map<string, TrainerWeek>();
   for (const b of entries) {
@@ -213,7 +222,7 @@ export function teamWeek(
     const key = known?.id ?? name.toLowerCase();
     const row = out.get(key) ?? { key, trainerId: known?.id ?? null, name, booked: 0, notLogged: logged ? 0 : null, missing: [] };
     row.booked += 1;
-    if (logged && bookingState(b, logged, now, tz) === "never-logged") {
+    if (logged && bookingState(b, logged, now, tz, marks) === "never-logged") {
       row.notLogged = (row.notLogged ?? 0) + 1;
       row.missing.push({ clientId: b.clientId ?? null, clientName: (b.clientName ?? "").trim() || "A client", day, startMs: toDate(b.startTime)?.getTime() ?? 0 });
     }
@@ -228,6 +237,7 @@ export function dayLine(d: DayFacts): string {
   if (d.booked === 0 && d.cancelled === 0) return "nothing booked";
   const bits = [d.done === null ? `${d.booked} booked` : d.toCome > 0 ? `${d.booked} booked, ${d.toCome} to come` : `${d.done} of ${d.booked} logged`];
   if (d.notLogged) bits.push(`${d.notLogged} not logged`);
+  if (d.noShow) bits.push(`${d.noShow} didn't come`);
   if (d.late) bits.push(`${d.late} late cancel${d.late === 1 ? "" : "s"}`);
   return bits.join(" · ");
 }

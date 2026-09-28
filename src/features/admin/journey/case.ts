@@ -12,48 +12,66 @@
  *   q7  the usual trainer owns a case, and after CASE_ESCALATE_DAYS with no
  *       step it comes to the leader.
  *
- * WHAT IS NOT STORED (the case fields — owner, next step, due date, outcome
- * and reason on the attendance watchlist — need AJ's OK, and "Booked again"
- * set by the sync is a sync change): so this file works the case OUT of what
- * is already known, and nothing here is written.
+ * TWO KINDS OF CASE, one answer:
  *
- *   owner      her usual trainer: the renewal snapshot's `primaryTrainerId`
- *              (who coached most of her visits over the last 90 days), else
- *              "a leader". Handing it on needs the owner field: not built.
- *   next step  written by rules from her state and whether the owner is in
- *              today (the week's bookings).
- *   due        the day she crossed the line (states.ts `since`) plus
- *              CASE_ESCALATE_DAYS. Journey can't record a step yet, so past
- *              that day the case says it is the leader's AND to check with
- *              the owner first — never that nobody did anything.
- *   outcome    only the one Journey can see by itself: she booked again
- *              (Back). Away, Not reached and Lost are a leader's words and
- *              need the outcome field: not built.
+ *   worked out   no case is stored for her: the owner is her usual trainer
+ *                (the renewal snapshot's `primaryTrainerId`, who coached most
+ *                of her visits over the last 90 days), else "a leader"; the
+ *                next step is written by rules from her state and whether the
+ *                owner is in today; it is the leader's once the day she
+ *                crossed the line (states.ts `since`) is CASE_ESCALATE_DAYS
+ *                behind — and, since nothing records a step on a worked-out
+ *                case, the page says to check with the owner first.
+ *   stored       wave 2 (AJ, Sep 28 2026: "all yes"): a leader opened it
+ *                (case-store.ts, studios/{s}/cases/{clientId}): the owner, the
+ *                next step, the due day, the outcome and its reason are what
+ *                the team wrote. "After 3 days with no step it comes to the
+ *                leader" is worked out from `updatedAt` — any change by the
+ *                owner or a leader is a step. A step left empty reads the
+ *                rules' own.
+ *
+ * "BOOKED AGAIN" IS WORKED OUT ON READ, never set by the sync (the sync is
+ * the Mindbody integration): a case still open whose client has a booking
+ * Journey can see reads "Booked again", and offers to close it; a worked-out
+ * case closes the same way by itself (Back).
  */
-import { addDays } from "../../client-history/model";
+import { addDays, daysBetween } from "../../client-history/model";
+import type { CaseOutcome, StoredCase } from "./case-store";
 import type { ClientJourney, JourneyState } from "./states";
 
 /** After this many days with no step recorded, a case is the leader's (AJ's question 7, default). */
 export const CASE_ESCALATE_DAYS = 3;
 
 export interface CaseOwnerInput {
-  /** Her usual trainer, when last night's record names one Journey knows. */
-  trainer: { id: string; name: string } | null;
+  /** Her usual trainer, when last night's record names one Journey knows; `uid` is their sign-in id (a stored owner's id). */
+  trainer: { id: string; name: string; uid?: string | null } | null;
   /** Their first and last booking today ("in 7:00 AM – 3:00 PM"), or null when not in today. */
   inToday: string | null;
 }
 
+export interface StoredCaseInput {
+  stored: StoredCase | null;
+  /** The studio day of `stored.updatedAt`, worked out on the studio's clock by the caller. */
+  updatedOn: string | null;
+}
+
 export interface CaseView {
-  /** She is a case: slipping or lapsed, or due back with nothing booked. */
+  /** Someone should act: slipping or lapsed (worked out), or a stored case still open. */
   open: boolean;
+  /** A case is stored for her (a leader opened one). */
+  stored: boolean;
   owner: { id: string | null; name: string; usual: boolean };
   nextStep: string;
-  /** When the case becomes the leader's if nobody has caught her, yyyy-mm-dd. */
+  /** When the case becomes the leader's if nobody has caught her (worked out), or the day the team set (stored), yyyy-mm-dd. */
   dueDay: string | null;
-  /** Past the due day. */
+  /** It is the leader's now. */
   leaders: boolean;
-  /** "Booked again" — the one outcome Journey sees by itself. */
-  outcome: "booked-again" | null;
+  /** Why it is the leader's, in words, when it is. */
+  leadersWhy: string | null;
+  /** "Booked again" — worked out from her bookings or stored; paused and lost are the team's words. */
+  outcome: CaseOutcome | null;
+  /** Booked again, worked out on read, on a case still open in the store: offer to close it. */
+  bookedAgainOnRead: boolean;
   outcomeWords: string;
 }
 
@@ -64,55 +82,91 @@ const dayWords = (day: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" });
 };
 
-export function caseOf(j: ClientJourney, who: CaseOwnerInput, today: string): CaseView {
-  const owner = who.trainer ? { id: who.trainer.id, name: who.trainer.name, usual: true } : { id: null, name: "A leader", usual: false };
+/** Is this a state a leader would open a case for? */
+export function caseWorthy(state: JourneyState): boolean {
+  return OPEN.has(state);
+}
+
+/** The next step the rules would write for her (a stored case's empty step reads this). */
+function ruleStep(j: ClientJourney, owner: { usual: boolean; name: string }, first: string, dueDay: string | null, inToday: string | null): string {
+  switch (j.state) {
+    case "drifting":
+      return inToday
+        ? `${first} is in today (${inToday}): ask if they know why. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`
+        : `Ask ${owner.usual ? first : "her usual trainer"} next time they're in. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`;
+    case "at-risk":
+      return `${owner.usual ? first : "A leader"} phones her ${inToday ? "today" : "the next day they're in"} (a person, not the app) and writes a note on her profile about how it went.`;
+    case "lapsed":
+      return "A note on file. If she comes by, someone catches her in person; one call from the person who knows her best is fine.";
+    case "back":
+      return "Welcome her back. Booking again closed the case by itself.";
+    case "away":
+      return j.why.includes("until") ? "Nothing to do until she's due back." : "Nothing to do; ask when she expects to be back next time someone speaks with her.";
+    case "new":
+      return "Book her next two before she leaves, and find her a standing slot.";
+    case "settling":
+      return `Nothing to do. ${owner.usual ? first : "Her trainer"} is building her rhythm.`;
+    case "steady":
+      return "Nothing to do. She's in her own rhythm.";
+    default:
+      return j.unknownWhy === "bookings-unread"
+        ? "Nothing can be judged until her bookings are read. Check Setup → Mindbody."
+        : j.unknownWhy === "too-new"
+          ? "Nothing to judge yet. Her rhythm is measured once six visits over four weeks are on record."
+          : "Nothing can be judged until last night's record reaches her.";
+  }
+}
+
+export function caseOf(j: ClientJourney, who: CaseOwnerInput, today: string, store: StoredCaseInput = { stored: null, updatedOn: null }): CaseView {
+  const s = store.stored;
+  const usualUid = who.trainer ? who.trainer.uid || who.trainer.id : null;
+
+  /* ---- a stored case: what the team wrote ---- */
+  if (s) {
+    const usual = Boolean(usualUid && s.owner.id === usualUid);
+    const owner = { id: s.owner.id, name: s.owner.name || "Someone on the team", usual };
+    const first = owner.name.split(" ")[0];
+    const booked = j.nextBooking !== null;
+    const bookedAgainOnRead = s.outcome === "open" && booked;
+    const open = s.outcome === "open" && !bookedAgainOnRead;
+    const quiet = store.updatedOn ? daysBetween(store.updatedOn, today) : null;
+    const leaders = open && quiet !== null && quiet > CASE_ESCALATE_DAYS;
+    const nextStep = s.nextStep.trim() || ruleStep(j, owner, first, s.dueOn, usual ? who.inToday : null);
+    const outcome: CaseOutcome | null = bookedAgainOnRead ? "booked-again" : s.outcome === "open" ? null : s.outcome;
+    const reason = s.reason ? ` ${s.reason.trim().replace(/\.?$/, ".")}` : "";
+    const outcomeWords = bookedAgainOnRead
+      ? `Booked again: Journey sees her next booking on ${dayWords(j.nextBooking as string)}. Close the case when you're happy she's back.`
+      : s.outcome === "booked-again"
+        ? `Closed: booked again.${reason}`
+        : s.outcome === "paused"
+          ? `Paused.${reason || " No reason written."}`
+          : s.outcome === "lost"
+            ? `Lost.${reason || " No reason written."}`
+            : "Open. Booked again closes it: Journey notices the booking from Mindbody, and the case offers to close.";
+    return {
+      open,
+      stored: true,
+      owner,
+      nextStep,
+      dueDay: s.dueOn,
+      leaders,
+      leadersWhy: leaders && store.updatedOn ? `No step recorded since ${dayWords(store.updatedOn)}, so it's the leader's now. Check with ${first} first.` : null,
+      outcome,
+      bookedAgainOnRead,
+      outcomeWords,
+    };
+  }
+
+  /* ---- worked out: nothing stored ---- */
+  const owner = who.trainer ? { id: who.trainer.uid || who.trainer.id, name: who.trainer.name, usual: true } : { id: null, name: "A leader", usual: false };
   const first = owner.usual ? owner.name.split(" ")[0] : "A leader";
   const open = OPEN.has(j.state);
   const dueDay = open && j.since ? addDays(j.since, CASE_ESCALATE_DAYS) : null;
   const leaders = Boolean(dueDay && today > dueDay);
-  const inToday = who.inToday;
-
-  let nextStep: string;
-  switch (j.state) {
-    case "drifting":
-      nextStep = inToday
-        ? `${first} is in today (${inToday}): ask if they know why. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`
-        : `Ask ${owner.usual ? first : "her usual trainer"} next time they're in. If nobody knows by ${dueDay ? dayWords(dueDay) : "the third day"}, ${owner.usual ? first : "a leader"} phones her (a person, not the app) and writes a note on her profile about how it went.`;
-      break;
-    case "at-risk":
-      nextStep = `${owner.usual ? first : "A leader"} phones her ${inToday ? "today" : "the next day they're in"} (a person, not the app) and writes a note on her profile about how it went.`;
-      break;
-    case "lapsed":
-      nextStep = "A note on file. If she comes by, someone catches her in person; one call from the person who knows her best is fine.";
-      break;
-    case "back":
-      nextStep = "Welcome her back. Booking again closed the case by itself.";
-      break;
-    case "away":
-      nextStep = j.why.includes("until") ? "Nothing to do until she's due back." : "Nothing to do; ask when she expects to be back next time someone speaks with her.";
-      break;
-    case "new":
-      nextStep = "Book her next two before she leaves, and find her a standing slot.";
-      break;
-    case "settling":
-      nextStep = `Nothing to do. ${owner.usual ? first : "Her trainer"} is building her rhythm.`;
-      break;
-    case "steady":
-      nextStep = "Nothing to do. She's in her own rhythm.";
-      break;
-    default:
-      nextStep =
-        j.unknownWhy === "bookings-unread"
-          ? "Nothing can be judged until her bookings are read. Check Setup → Mindbody."
-          : j.unknownWhy === "too-new"
-            ? "Nothing to judge yet. Her rhythm is measured once six visits over four weeks are on record."
-            : "Nothing can be judged until last night's record reaches her.";
-  }
-  if (open && leaders) {
-    nextStep = `${nextStep} It's past ${dayWords(dueDay as string)}, so it's the leader's now. Journey can't record a step yet, so check with ${owner.usual ? first : "the team"} first.`;
-  }
-
-  const outcome = j.state === "back" ? "booked-again" : null;
+  let nextStep = ruleStep(j, owner, first, dueDay, who.inToday);
+  const leadersWhy = open && leaders ? `It's past ${dayWords(dueDay as string)}, so it's the leader's now. No case is stored for her, so check with ${owner.usual ? first : "the team"} first.` : null;
+  if (leadersWhy) nextStep = `${nextStep} ${leadersWhy}`;
+  const outcome: CaseOutcome | null = j.state === "back" ? "booked-again" : null;
   const outcomeWords = outcome ? "Booked again: the case closed by itself when Journey saw the booking from Mindbody." : open ? "Booked again closes the case by itself. Journey notices the booking from Mindbody." : "";
-  return { open, owner, nextStep, dueDay, leaders, outcome, outcomeWords };
+  return { open, stored: false, owner, nextStep, dueDay, leaders, leadersWhy, outcome, bookedAgainOnRead: false, outcomeWords };
 }

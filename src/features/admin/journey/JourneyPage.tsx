@@ -12,7 +12,8 @@
  *                     Lapsed, and beside the line Away · Back · Unknown, each
  *                     a count and a button (question 4: the names kept, on
  *                     leader screens only — Operations is leaders' only)
- *   the lenses        All clients · Renewal window · New
+ *   the lenses        All clients · Renewal window · New (to the studio's
+ *                     own Settling in line: the studio settings, wave 2)
  *   this week         who crossed a line in the last seven days, and who
  *                     booked again (who moved toward steady needs yesterday's
  *                     states, which aren't stored: not claimed)
@@ -34,8 +35,9 @@ import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
 import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { useMinuteClock } from "../shell/useMinuteClock";
 import { LENSES, listFor, stateCounts, thisWeek, type JourneyEntry, type JourneyLens } from "./journey-list";
-import { BESIDE_STATES, LINE_STATES, NEW_MAX, SETTLING_MAX, LAPSED_DAYS, STATE_NAMES, isSlipping, type JourneyState } from "./states";
+import { BESIDE_STATES, LINE_STATES, STATE_NAMES, isSlipping, multipleWords, type JourneyLines, type JourneyState } from "./states";
 import { useStudioJourneys } from "./useStudioJourneys";
+import { OUTCOME_WORDS } from "./case-store";
 import "../shell/ops.css";
 
 export interface JourneyPageProps {
@@ -47,28 +49,29 @@ export interface JourneyPageProps {
   onOpenClient?: (clientId: string) => void;
 }
 
-const CAPTION: Record<JourneyState, (breakDays: number) => string> = {
-  new: () => `sessions 1–${NEW_MAX}`,
-  settling: () => `sessions ${NEW_MAX + 1}–${SETTLING_MAX}`,
+/** What each stop's caption says, from the studio's own lines (Setup → Rules has where each came from). */
+const CAPTION: Record<JourneyState, (breakDays: number, lines: JourneyLines) => string> = {
+  new: (_, l) => `sessions 1–${l.newMax}`,
+  settling: (_, l) => `sessions ${l.newMax + 1}–${l.settlingMax}`,
   steady: () => "in their own rhythm",
-  drifting: () => "twice their usual gap, nothing booked",
+  drifting: (_, l) => `${multipleWords(l.driftMultiple).toLowerCase()} their usual gap, nothing booked`,
   "at-risk": (d) => `past the studio's ${d}-day line`,
-  lapsed: () => `${LAPSED_DAYS}+ days, nothing booked`,
+  lapsed: (_, l) => `${l.lapsedDays}+ days, nothing booked`,
   away: () => "a reason and a return date",
   back: () => "booked again after a gap",
   unknown: () => "can't be judged yet",
 };
 
-const LIST_SAYS: Partial<Record<JourneyState, string>> = {
-  drifting: "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
-  "at-risk": "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
-  lapsed: "Closest to the line first.",
-  away: "Soonest back first. A known reason is not a risk.",
-  back: "Booked again after crossing a line. Booking again closes the case by itself.",
-  new: "Sessions 1 to 10, from a total that may be quoted: a client whose history is before Journey is never called new.",
-  settling: "Sessions 11 to 24.",
-  steady: "Nothing to do: in their own rhythm.",
-  unknown: "Unknown is its own group, so a failed or thin read never looks steady.",
+const LIST_SAYS: Record<JourneyState, (lines: JourneyLines) => string> = {
+  drifting: () => "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
+  "at-risk": () => "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
+  lapsed: () => "Closest to the line first.",
+  away: () => "Soonest back first. A known reason is not a risk.",
+  back: () => "Booked again after crossing a line. Booking again closes the case by itself.",
+  new: (l) => `Sessions 1 to ${l.newMax}, from a total that may be quoted: a client whose history is before Journey is never called new.`,
+  settling: (l) => `Sessions ${l.newMax + 1} to ${l.settlingMax}.`,
+  steady: () => "Nothing to do: in their own rhythm.",
+  unknown: () => "Unknown is its own group, so a failed or thin read never looks steady.",
 };
 
 const UNKNOWN_GROUP: Record<string, string> = {
@@ -96,7 +99,10 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
     j.nightly.lastChangedAt ? `visits from the nightly record of ${formatStudioDate(j.nightly.lastChangedAt, { weekday: "short", month: "short", day: "numeric" }, j.tz)}` : "no nightly record yet",
     j.week.readAt ? `bookings read ${formatStudioTime(new Date(j.week.readAt), j.tz)}` : j.week.loading ? "bookings: reading…" : "bookings couldn't be read",
     "each client judged against their own rhythm",
-  ].join(" · ");
+    j.night.fresh ? `states from last night's run${j.night.at ? ` at ${formatStudioTime(j.night.at, j.tz)}` : ""}, checked against today's bookings` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const stop = (s: JourneyState) => (
     <button
@@ -108,7 +114,7 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
     >
       <span className="ops-stop__n">{reading ? "…" : counts[s]}</span>
       <span className="ops-stop__name">{STATE_NAMES[s]}</span>
-      <span className="ops-stop__cap">{CAPTION[s](j.breakDays)}</span>
+      <span className="ops-stop__cap">{CAPTION[s](j.breakDays, j.lines)}</span>
     </button>
   );
 
@@ -130,8 +136,14 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
             : "There is no nightly record for this studio yet, so every client reads Unknown."}
         </AdminNotice>
       )}
-      {j.settingsFailed && <AdminNotice tone="warn">The studio's settings couldn't be read just now, so At risk uses Max Strength's 14 days.</AdminNotice>}
+      {j.settingsFailed && <AdminNotice tone="warn">The studio's renewal settings couldn't be read just now, so At risk uses Max Strength's 14 days.</AdminNotice>}
+      {j.linesFailed && (
+        <AdminNotice tone="warn">Part of the studio's settings couldn't be read just now, so a line may be Max Strength's or the app's default rather than the studio's own. Setup → Rules says which.</AdminNotice>
+      )}
       {j.week.failed && <AdminNotice tone="warn">The week's bookings couldn't be read just now: anyone past a line reads Unknown, never slipping, until they are.</AdminNotice>}
+      {j.cases.failed && (
+        <AdminNotice tone="warn">The studio's cases couldn't be read just now, so each case here is the one Journey works out, not the one the team wrote.</AdminNotice>
+      )}
 
       <div className="ops-line-strip" role="group" aria-label="Client states">
         <div className="ops-line-strip__groups" aria-hidden="true">
@@ -148,15 +160,17 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
           <button key={s} type="button" className={cn("ops-bchip", state === s && "ops-bchip--on")} aria-pressed={state === s} onClick={() => setState(s)}>
             <b>{reading ? "…" : counts[s]}</b>
             <span>{STATE_NAMES[s]}</span>
-            <em>{CAPTION[s](j.breakDays)}</em>
+            <em>{CAPTION[s](j.breakDays, j.lines)}</em>
           </button>
         ))}
       </div>
 
       {!reading && (
         <p className="ops-quiet">
-          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.back.length} booked again after a gap. Who moved
-          toward steady needs yesterday's states, which Journey doesn't keep yet.
+          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.back.length} booked again after a gap.{" "}
+          {week.towardSteady === null
+            ? "Who moved toward steady needs last night's states, which haven't reached this page."
+            : `${week.towardSteady.length} moved back toward steady after slipping.`}
         </p>
       )}
 
@@ -166,15 +180,15 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
             {STATE_NAMES[state]}
           </h2>
           <span className="ops-badge">{reading ? "…" : list.length}</span>
-          {lens !== "all" && <span className="ops-sec__sub">{lens === "renewal" ? "in their renewal window" : "in their first 24 sessions"}</span>}
+          {lens !== "all" && <span className="ops-sec__sub">{lens === "renewal" ? "in their renewal window" : `in their first ${j.lines.settlingMax} sessions`}</span>}
         </header>
-        <p className="ops-quiet">{LIST_SAYS[state]}</p>
+        <p className="ops-quiet">{LIST_SAYS[state](j.lines)}</p>
         <div className="ops-sec__card">
           {reading ? (
             <p className="ops-sec__empty">Reading the studio's clients…</p>
           ) : list.length === 0 ? (
             <p className="ops-sec__empty">
-              No {STATE_NAMES[state].toLowerCase()} clients{lens === "renewal" ? " in their renewal window" : lens === "new" ? " in their first 24 sessions" : ""}. That's a real count, not a missing read.
+              No {STATE_NAMES[state].toLowerCase()} clients{lens === "renewal" ? " in their renewal window" : lens === "new" ? ` in their first ${j.lines.settlingMax} sessions` : ""}. That's a real count, not a missing read.
             </p>
           ) : state === "unknown" ? (
             Object.entries(groupBy(list, (e) => e.journey.unknownWhy ?? "")).map(([why, rows]) => (
@@ -215,6 +229,20 @@ function groupBy<T>(rows: T[], keyOf: (r: T) => string): Record<string, T[]> {
   return out;
 }
 
+/** "Case: Beregond owns it, due Thu, Oct 1" — a stored case in a row (wave 2). */
+function caseLine(e: JourneyEntry): string {
+  const c = e.case;
+  if (c.bookedAgainOnRead) return "case: booked again, ready to close";
+  if (c.outcome && c.outcome !== "booked-again") return `case: ${OUTCOME_WORDS[c.outcome].toLowerCase()}`;
+  if (c.outcome === "booked-again") return "case: closed, booked again";
+  return `case: ${c.owner.name.split(" ")[0]} owns it${c.dueDay ? `, due ${shortDay(c.dueDay)}` : ""}`;
+}
+
+function shortDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 function JourneyRows({ rows, onOpenClient }: { rows: JourneyEntry[]; onOpenClient?: (clientId: string) => void }) {
   return (
     <ul className="ops-jr-list">
@@ -226,6 +254,7 @@ function JourneyRows({ rows, onOpenClient }: { rows: JourneyEntry[]; onOpenClien
             <span className="ops-jr-row__meta">
               {[
                 e.usual ? (e.usualInToday ? `${e.usual.name.split(" ")[0]} is in today, ${e.usualInToday}` : `usually with ${e.usual.name.split(" ")[0]}`) : null,
+                e.case.stored ? caseLine(e) : null,
                 e.watch === "snoozed" ? "snoozed" : e.watch === "dismissed" ? "dismissed: someone knows why" : null,
                 e.case.leaders ? "the leader's now" : null,
               ]

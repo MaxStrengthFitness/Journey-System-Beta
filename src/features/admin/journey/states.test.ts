@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RenewalSnapshot } from "../../renewals/types";
-import { DRIFT_MIN_DAYS, LAPSED_DAYS, NEW_MAX, countStates, driftLine, journeyOf, stageOf, type JourneyInput } from "./states";
+import { resolveAll } from "../../studio-settings/resolve";
+import { APP_LINES, countStates, driftLine, journeyOf, linesOf, sameLines, stageOf, type JourneyInput } from "./states";
 
 const TODAY = "2026-09-28";
 
@@ -24,22 +25,46 @@ const input = (extra: Partial<JourneyInput> = {}): JourneyInput => ({
   today: TODAY,
   breakDays: 14,
   nightlyStale: false,
+  lines: APP_LINES,
   ...extra,
 });
 
 describe("the lines", () => {
+  it("takes the app's own lines from the settings' registry, and nowhere else", () => {
+    expect(APP_LINES).toEqual({ driftMultiple: 2, driftMinDays: 7, lapsedDays: 45, newMax: 10, settlingMax: 24 });
+  });
+
   it("drifts at twice her usual gap, never under a week", () => {
-    expect(driftLine(3.5)).toBe(7);
-    expect(driftLine(2)).toBe(DRIFT_MIN_DAYS);
-    expect(driftLine(7)).toBe(14);
+    expect(driftLine(3.5, APP_LINES)).toBe(7);
+    expect(driftLine(2, APP_LINES)).toBe(APP_LINES.driftMinDays);
+    expect(driftLine(7, APP_LINES)).toBe(14);
+  });
+
+  it("drifts at the studio's own multiple and least", () => {
+    expect(driftLine(3.5, { driftMultiple: 3, driftMinDays: 7 })).toBe(11);
+    expect(driftLine(2, { driftMultiple: 2, driftMinDays: 10 })).toBe(10);
   });
 
   it("puts a quotable total on the stages", () => {
-    expect(stageOf(4)).toBe("new");
-    expect(stageOf(NEW_MAX)).toBe("new");
-    expect(stageOf(11)).toBe("settling");
-    expect(stageOf(25)).toBeNull();
-    expect(stageOf(null)).toBeNull();
+    expect(stageOf(4, APP_LINES)).toBe("new");
+    expect(stageOf(APP_LINES.newMax, APP_LINES)).toBe("new");
+    expect(stageOf(11, APP_LINES)).toBe("settling");
+    expect(stageOf(25, APP_LINES)).toBeNull();
+    expect(stageOf(null, APP_LINES)).toBeNull();
+  });
+
+  it("puts the stages at the studio's own sessions", () => {
+    const lines = { ...APP_LINES, newMax: 5, settlingMax: 30 };
+    expect(stageOf(6, lines)).toBe("settling");
+    expect(stageOf(30, lines)).toBe("settling");
+    expect(stageOf(31, lines)).toBeNull();
+  });
+
+  it("reads the five out of the resolved settings: the studio's own, then head office's, then the app's", () => {
+    const lines = linesOf(resolveAll({ studio: { lapsedDays: 60 }, company: { lapsedDays: 30, driftMultiple: 2.5, newMax: 8 } }));
+    expect(lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, newMax: 8, settlingMax: 24 });
+    expect(sameLines(lines, { ...lines })).toBe(true);
+    expect(sameLines(lines, APP_LINES)).toBe(false);
   });
 });
 
@@ -70,7 +95,7 @@ describe("journeyOf", () => {
     expect(lapsed.state).toBe("lapsed");
     expect(lapsed.crossed).toBe("lapse-line");
     expect(lapsed.daysSince).toBe(49);
-    expect(lapsed.why).toContain(`past the ${LAPSED_DAYS}-day line`);
+    expect(lapsed.why).toContain(`past the ${APP_LINES.lapsedDays}-day line`);
   });
 
   it("is Back when she booked again after crossing a line", () => {
@@ -119,6 +144,27 @@ describe("journeyOf", () => {
   it("is Unknown with no nightly record, or one that has stopped changing", () => {
     expect(journeyOf(input({ snapshot: null })).unknownWhy).toBe("no-record");
     expect(journeyOf(input({ nightlyStale: true })).unknownWhy).toBe("stale-record");
+  });
+
+  it("holds a client to the studio's own lines", () => {
+    // Twelve days out, nothing booked, usually every 3–4 days: Drifting at twice (7 days) …
+    const out = { lastVisit: "2026-09-16", next: { state: "none" as const, day: null } };
+    expect(journeyOf(input(out)).state).toBe("drifting");
+    // … but not at a studio that drifts at four times her gap (14 days).
+    const patient = journeyOf(input({ ...out, lines: { ...APP_LINES, driftMultiple: 4 } }));
+    expect(patient.state).toBe("steady");
+    expect(patient.driftDays).toBe(14);
+    // A studio that calls it lapsed at 30 days, past its own 14-day At-risk line.
+    const lapsed = journeyOf(input({ lastVisit: "2026-08-25", next: { state: "none", day: null }, lines: { ...APP_LINES, lapsedDays: 30 } }));
+    expect(lapsed.state).toBe("lapsed");
+    expect(lapsed.since).toBe("2026-09-24");
+    expect(lapsed.why).toContain("past the 30-day line");
+    // The drifting proof names the studio's own multiple.
+    const drifting = journeyOf(input({ ...out, lines: { ...APP_LINES, driftMultiple: 3 } }));
+    expect(drifting.state).toBe("drifting");
+    expect(drifting.proof).toContain("three times her usual gap is 11 days");
+    // New and Settling in at the studio's own sessions.
+    expect(journeyOf(input({ quotableTotal: 12, lines: { ...APP_LINES, newMax: 12 } })).why).toBe("At session 12 of her first 12.");
   });
 
   it("counts every state, the empty ones as zero", () => {

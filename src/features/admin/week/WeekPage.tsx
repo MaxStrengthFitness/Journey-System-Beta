@@ -33,6 +33,7 @@ import { tallyOutcomes } from "../../renewals/rates";
 import { useOutcomes } from "../../renewals/useOutcomes";
 import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
 import { useSessionsInRange } from "../sessions-range";
+import { useBookingMarks } from "../attention/booking-marks";
 import { ChangesView } from "../changes/ChangesView";
 import { useStudioWeek } from "../changes/useStudioWeek";
 import { useWeekSchedule } from "../changes/useWeekSchedule";
@@ -114,7 +115,9 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
   const startMs = useMemo(() => studioDayBoundsForKey(lastMonday, tz).start.getTime(), [lastMonday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
   const logged = useMemo(() => (sessions.loading || sessions.failed || sessions.truncated ? null : loggedSessions(sessions.sessions, tz)), [sessions, tz]);
-  const days = useMemo(() => weekFrom(lastMonday).map((d) => dayFacts(week.entries, d, logged, now, tz)), [lastMonday, week.entries, logged, now, tz]);
+  // The leaders' "didn't come" on last week's bookings (wave 2): a marked one is didn't come, never not logged.
+  const marks = useBookingMarks(studioId, lastMonday, lastSunday);
+  const days = useMemo(() => weekFrom(lastMonday).map((d) => dayFacts(week.entries, d, logged, now, tz, marks.marks)), [lastMonday, week.entries, logged, now, tz, marks.marks]);
   const t = totals(days);
   const coverage = useCoverageRecord(studioId, [lastMonday.slice(0, 7), lastSunday.slice(0, 7)]);
   const cov = readInFull(days, coverage);
@@ -126,7 +129,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
   const line = reviewLine(t, { crossed: crossed.length, back: back.length, renewals: tally, coverage: cov, renewalUnknown: renewalUnknownCount(j.nightly) });
 
   // The team, from the week's bookings: each trainer's facts, in name order, never ranked (review.ts).
-  const team = useMemo(() => teamWeek(week.entries, logged, lastMonday, lastSunday, trainers, now, tz), [week.entries, logged, lastMonday, lastSunday, trainers, now, tz]);
+  const team = useMemo(() => teamWeek(week.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks), [week.entries, logged, lastMonday, lastSunday, trainers, now, tz, marks.marks]);
 
   return (
     <AdminScreen>
@@ -139,6 +142,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
         sentence={reading ? "Reading last week…" : line}
         rules={[
           "Done means logged: a booking counts as done when Journey logged a session for that client that day. Not logged is never \"didn't happen\".",
+          "Didn't come is a leader's mark on a session nobody logged, made on Today after asking. A session logged later for that day beats it.",
           "A cancellation less than a day before its session is late (Openings' own rule).",
           "Who crossed a line comes from the Journey: their last visit plus the line. Who moved toward steady needs yesterday's states, which Journey doesn't keep yet.",
           "Written by rules each time the page reads. Never typed by hand.",
@@ -149,6 +153,7 @@ function LastWeek({ studio, studios, clients, trainers, authTrainer, onOpenClien
       <BriefSection id="happened" title="What happened" sub="booked sessions logged as done, by day">
         {week.loading ? <BriefEmpty>Reading last week…</BriefEmpty> : <DayCells days={days} today={j.today} />}
         {logged === null && !sessions.loading && <p className="ops-sec__note">The week's sessions couldn't be read in full, so what was logged is unknown.</p>}
+        {marks.failed && <p className="ops-sec__note">The leaders' "didn't come" marks couldn't be read just now, so a marked session may show as not logged.</p>}
       </BriefSection>
 
       <BriefSection id="clients" title="Clients" sub="how they moved" door={<Door label="Journey" to="journey" onOpen={onOpen} />}>
@@ -242,7 +247,8 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
   const startMs = useMemo(() => studioDayBoundsForKey(monday, tz).start.getTime(), [monday, tz]);
   const sessions = useSessionsInRange({ studioId, startMs });
   const logged = useMemo(() => (sessions.loading || sessions.failed || sessions.truncated ? null : loggedSessions(sessions.sessions, tz)), [sessions, tz]);
-  const days = useMemo(() => weekFrom(monday).map((d) => dayFacts(week.entries, d, logged, now, tz)), [monday, week.entries, logged, now, tz]);
+  const marks = useBookingMarks(studioId, monday, todayKey);
+  const days = useMemo(() => weekFrom(monday).map((d) => dayFacts(week.entries, d, logged, now, tz, marks.marks)), [monday, week.entries, logged, now, tz, marks.marks]);
   const t = totals(days);
   const changes = useStudioWeek(studioId, todayKey, tz);
   const sentence = week.loading
@@ -253,7 +259,7 @@ function ThisWeek({ studio, onOpenClient }: WeekPageProps) {
         ? `${t.booked} booked this week, ${t.toCome} still to come; what was logged so far couldn't be read.`
         : t.booked - t.toCome === 0
           ? `Nothing booked this week has finished yet. ${t.toCome} still to come.`
-          : `${t.done} of the ${t.booked - t.toCome} booked sessions so far ${t.done === 1 ? "is" : "are"} logged as done${t.notLogged ? `, ${t.notLogged} not logged yet` : ""}. ${t.toCome} still to come this week.`;
+          : `${t.done} of the ${t.booked - t.toCome} booked sessions so far ${t.done === 1 ? "is" : "are"} logged as done${t.notLogged ? `, ${t.notLogged} not logged yet` : ""}${t.noShow ? `, ${t.noShow} didn't come` : ""}. ${t.toCome} still to come this week.`;
 
   return (
     <AdminScreen>

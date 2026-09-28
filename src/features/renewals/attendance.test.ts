@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { attendanceFromSchedules, attendanceFromSessions, feelFromSessions } from "./attendance";
-import { loggedSessions } from "../../lib/booking-state";
+import { bookingMarks, loggedSessions } from "../../lib/booking-state";
 import { cutoverOf } from "../../lib/client-coverage";
 
 const TZ = "America/New_York";
@@ -89,6 +89,22 @@ describe("attendance", () => {
         journey([]),
       );
       expect(rows.map((r) => r.kind)).toEqual(["cancelled", "no-show", "booked"]);
+    });
+
+    it("reads a booking a leader marked \"didn't come\" as a no-show, before the cutover as after it (wave 2)", () => {
+      const marks = bookingMarks([{ id: "b-before", noShow: true }, { id: "b-after", noShow: true }, { id: "b-logged", noShow: true }]);
+      const rows = attendanceFromSchedules(
+        [{ ...at("2026-09-08T13:00:00Z"), id: "b-before" }, { ...at("2026-09-10T13:00:00Z"), id: "b-after" }, { ...at("2026-09-09T13:00:00Z"), id: "b-logged" }],
+        now,
+        TZ,
+        { ...journey([{ clientId: "c1", status: "Completed", startTime: "2026-09-09T13:04:00Z" }]), marks },
+      );
+      // Before the cutover it would have been a visit; after it, nothing. A day with a session logged stays a visit, whatever was marked.
+      expect(rows.map((r) => [r.day, r.kind])).toEqual([
+        ["2026-09-08", "no-show"],
+        ["2026-09-10", "no-show"],
+        ["2026-09-09", "visit"],
+      ]);
     });
   });
 

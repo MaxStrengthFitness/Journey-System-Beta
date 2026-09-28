@@ -5,15 +5,24 @@
  * The redesign's Operations room, phase 4 (Sep 28 2026). One pass over what
  * the page already holds: the roster (each client's nightly snapshot), the
  * week's bookings as the server answered them, the studio's package table
- * and renewal settings, the trainers and the watchlist. Each client's facts
+ * and renewal settings, the trainers, the watchlist and the stored cases
+ * (wave 2, case-store.ts). Each client's facts
  * come from the Client Directory's ONE row model (client-directory/row.ts),
  * so Last in and Next here are the directory's own; her state from
  * states.ts; her case from case.ts. No read per client.
  *
  *   the lenses        All clients · Renewal window (the renewal pipeline's
  *                     own lanes: talk now, before the charge, coming up) ·
- *                     New (her first 24 sessions, from a total that may be
- *                     quoted)
+ *                     New (her first sessions to the studio's Settling in
+ *                     line, 24 by default, from a total that may be quoted)
+ *   the night         wave 2: when last night's states are TODAY's and were
+ *                     worked out with the studio's lines as they are now
+ *                     (nightly.ts `summaryIsFresh`), each client's is used —
+ *                     her rhythm measured from her visits, since when, and
+ *                     what she was — unless the page knows something the
+ *                     night didn't (a visit since, a new booking, or her
+ *                     booking here gone: `nightStillHolds`); then her state
+ *                     is worked out here, still with the night's rhythm
  *   the order         slipping lists read "catchable first": clients a leader
  *                     has already answered (snoozed, dismissed) last, then
  *                     those whose usual trainer is in today, then the closest
@@ -29,7 +38,9 @@ import { laneOf } from "../../renewals/pipeline";
 import type { RenewalSettings, RenewalSnapshot } from "../../renewals/types";
 import { watchState, type WatchState, type WatchlistEntry } from "../attention/attention";
 import { caseOf, type CaseView } from "./case";
-import { BESIDE_STATES, LINE_STATES, SETTLING_MAX, isSlipping, journeyOf, type ClientJourney, type JourneyState } from "./states";
+import type { StoredCase } from "./case-store";
+import { journeyOfDoc, nightStillHolds, rhythmOfDoc, summaryIsFresh, type ClientStateDoc, type JourneySummary } from "./nightly";
+import { BESIDE_STATES, LINE_STATES, isSlipping, journeyOf, type ClientJourney, type JourneyLines, type JourneyState } from "./states";
 
 export type JourneyLens = "all" | "renewal" | "new";
 
@@ -45,12 +56,18 @@ export interface JourneyEntry {
   row: DirectoryRow;
   journey: ClientJourney;
   case: CaseView;
+  /** The case a leader stored for her (wave 2), or null: the case is then worked out. */
+  storedCase: StoredCase | null;
+  /** What last night's run knew of her state (wave 2): since when, and what it was; null when no fresh night covers her. */
+  night: { since: string; was: JourneyState | null } | null;
+  /** Her state is the night's own (the page knew nothing newer); false when worked out here. */
+  fromNight: boolean;
   /** In the renewal pipeline's live lanes (talk now, before the charge, coming up). */
   inRenewalWindow: boolean;
-  /** Her first 24 sessions, from a total that may be quoted. */
+  /** Her first sessions to the studio's Settling in line, from a total that may be quoted. */
   early: boolean;
-  /** Her usual trainer, when last night's record names one Journey knows. */
-  usual: { id: string; name: string } | null;
+  /** Her usual trainer, when last night's record names one Journey knows; `uid` is their sign-in id. */
+  usual: { id: string; name: string; uid: string } | null;
   /** "7:00 AM – 3:00 PM" when her usual trainer has bookings today; null otherwise. */
   usualInToday: string | null;
   watch: WatchState;
@@ -74,7 +91,13 @@ export interface StudioJourneysInput {
   kaizen?: readonly KaizenRosterEntry[] | null;
   settings: Pick<RenewalSettings, "breakDays" | "horizonMonths" | "chargeWarnDays" | "chargeWarnMinBanked" | "conversationAtSessionsLeft">;
   nightlyStale: boolean;
+  /** The studio's five lines (studio-settings: its own, else Max Strength's default, else the app's). */
+  lines: JourneyLines;
   watchlist: ReadonlyMap<string, WatchlistEntry>;
+  /** The studio's stored cases by client (wave 2); absent or null while unread, and every case is worked out. */
+  cases?: ReadonlyMap<string, StoredCase> | null;
+  /** Last night's states and their summary (wave 2); used only while the summary is today's with today's lines. */
+  stored?: { summary: Pick<JourneySummary, "asOf" | "lines" | "breakDays"> | null; states: ReadonlyMap<string, ClientStateDoc> } | null;
 }
 
 const homeOf = (c: Client): string | null => c.homeStudioId || (c as { studioId?: string }).studioId || null;
@@ -129,34 +152,48 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
   });
   const rows = new Map(buildDirectoryRows(home, ctx).map((r) => [r.id, r]));
   const settings = i.settings as RenewalSettings;
+  const nightFresh = Boolean(i.stored && summaryIsFresh(i.stored.summary, i.today, i.lines, i.settings.breakDays));
+  const horizonEnd = addDays(i.today, 6);
   const out: JourneyEntry[] = [];
   for (const client of home) {
     const row = rows.get(client.id as string);
     if (!row) continue;
     const snapshot = (client.renewal as RenewalSnapshot | undefined) ?? null;
-    const journey = journeyOf({
+    const doc = nightFresh ? (i.stored?.states.get(client.id as string) ?? null) : null;
+    const lastVisit = row.lastIn.state === "known" ? row.lastIn.day : null;
+    const live = journeyOf({
       active: true,
       snapshot,
-      lastVisit: row.lastIn.state === "known" ? row.lastIn.day : null,
+      lastVisit,
       next: { state: row.next.state, day: row.next.day },
       quotableTotal: row.total.state === "known" ? row.total.value : null,
       today: i.today,
       breakDays: i.settings.breakDays,
       nightlyStale: i.nightlyStale,
+      lines: i.lines,
+      // The night measured her rhythm from her visits; the page can only estimate it from her pace.
+      ...(doc ? { rhythm: rhythmOfDoc(doc) } : {}),
     });
+    const holds = Boolean(doc && nightStillHolds(doc, { lastVisit, next: { state: row.next.state, day: row.next.day, source: row.next.source }, horizonEnd }));
+    const journey = holds && doc ? journeyOfDoc(doc, i.today, i.lines) : live;
+    const night = doc && doc.state === journey.state ? { since: doc.since, was: doc.was } : null;
     const trainer = trainerById(i.trainers, snapshot?.primaryTrainerId);
-    const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName } : null;
+    const usual = trainer?.id ? { id: trainer.id, name: trainer.fullName, uid: trainer.authUid || trainer.id } : null;
     const usualInToday = i.weekReady ? shiftToday(i.weekEntries, trainer, i.today, i.tz) : null;
     const lane = snapshot ? laneOf(snapshot, null, settings, i.today) : null;
     const entry = i.watchlist.get(client.id as string) ?? null;
+    const stored = i.cases?.get(client.id as string) ?? null;
     out.push({
       id: client.id as string,
       client,
       row,
       journey,
-      case: caseOf(journey, { trainer: usual, inToday: usualInToday }, i.today),
+      case: caseOf(journey, { trainer: usual, inToday: usualInToday }, i.today, { stored, updatedOn: stored?.updatedAt ? studioDateKey(stored.updatedAt, i.tz) : null }),
+      storedCase: stored,
+      night,
+      fromNight: holds,
       inRenewalWindow: lane === "talk-now" || lane === "before-charge" || lane === "coming-up",
-      early: row.total.state === "known" && row.total.value !== null && row.total.value <= SETTLING_MAX,
+      early: row.total.state === "known" && row.total.value !== null && row.total.value <= i.lines.settlingMax,
       usual,
       usualInToday,
       watch: watchState(entry ?? undefined, i.today),
@@ -204,18 +241,28 @@ export function listFor(entries: readonly JourneyEntry[], state: JourneyState, l
 }
 
 /**
- * THIS WEEK, from what can be derived without a stored history: who crossed
- * a line in the last seven days (the day they crossed it is their last visit
- * plus the line), and who booked again after one. Who moved toward steady
- * needs yesterday's states, which aren't stored (the nightly job writing
- * them waits for AJ's OK), so it isn't claimed.
+ * THIS WEEK: who crossed a line in the last seven days (the day they
+ * crossed it is their last visit plus the line), and who booked again after
+ * one. Who moved toward steady needs yesterday's states: since wave 2 the
+ * nightly job keeps each client's `since` and `was`, so it is said when last
+ * night's states cover the studio (a client back in her rhythm, or booked
+ * again, who was slipping or lapsed before), and not claimed otherwise.
  */
-export function thisWeek(entries: readonly JourneyEntry[], today: string): { startedSlipping: JourneyEntry[]; lapsedThisWeek: JourneyEntry[]; back: JourneyEntry[] } {
+export function thisWeek(
+  entries: readonly JourneyEntry[],
+  today: string,
+): { startedSlipping: JourneyEntry[]; lapsedThisWeek: JourneyEntry[]; back: JourneyEntry[]; towardSteady: JourneyEntry[] | null } {
   const from = addDays(today, -6);
   const crossed = (e: JourneyEntry) => Boolean(e.journey.since && e.journey.since >= from && e.journey.since <= today);
+  // Who moved toward steady needs yesterday's states: the night's `was` (wave 2). Null when no night covers anyone.
+  const covered = entries.some((e) => e.night !== null);
+  const slipped: ReadonlySet<JourneyState> = new Set(["drifting", "at-risk", "lapsed"]);
   return {
     startedSlipping: entries.filter((e) => isSlipping(e.journey.state) && crossed(e)),
     lapsedThisWeek: entries.filter((e) => e.journey.state === "lapsed" && crossed(e)),
     back: entries.filter((e) => e.journey.state === "back"),
+    towardSteady: covered
+      ? entries.filter((e) => e.night && (e.journey.state === "steady" || e.journey.state === "back") && e.night.was !== null && slipped.has(e.night.was) && e.night.since >= from && e.night.since <= today)
+      : null,
   };
 }
