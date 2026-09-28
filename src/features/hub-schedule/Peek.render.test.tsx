@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Client } from "../../types";
+import type { FordEntry } from "../ford/types";
 import { loggedSessions } from "../../lib/booking-state";
 import { buildDirectoryRows } from "../client-directory/row";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient, makeContext } from "../client-directory/fixtures";
@@ -25,6 +26,8 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
+  ford = undefined;
+  stars = undefined;
 });
 
 const client = makeClient({
@@ -37,6 +40,24 @@ const client = makeClient({
   priorityNote: "Pacemaker: no chest-compression machines",
 } as Partial<Client> & { id: string });
 const booking = makeBooking({ clientId: "rosie", start: eastern(TODAY, "16:00"), trainerId: "t-me", trainerName: "Sam Rivera" });
+
+/** Get to know (wave 2 hub): a FORD detail whose day comes round this week. */
+const HARVEST = {
+  id: "f-harvest",
+  clientId: "rosie",
+  studioId: "westlake",
+  pillar: "recreation",
+  body: "Judging the Bywater harvest fair on Friday",
+  subject: "the harvest fair",
+  eventDate: eastern("2026-10-02", "00:00"),
+  recurrence: "none",
+  occurredAt: eastern("2026-09-20", "10:00"),
+  isArchived: false,
+} as unknown as FordEntry;
+
+let ford: ((id: string) => readonly FordEntry[] | null) | undefined;
+/** All stars (wave 2 hub): the nightly marks, handed to the engine. */
+let stars: ((id: string) => { clientId: string; weeksIn: number; perWeek: number } | null) | undefined;
 
 function entry() {
   const rows = buildDirectoryRows([client], makeContext({ schedules: [booking] }));
@@ -51,6 +72,8 @@ function entry() {
     studios: STUDIOS,
     logged: loggedSessions([]),
     criticalFor: () => [],
+    fordFor: ford,
+    allStarOf: stars,
     myIds: ["t-me"],
     myName: "Sam Rivera",
   })[0];
@@ -113,5 +136,33 @@ describe("the peek", () => {
 
   it("is centred when it can't sit beside the card (here the card has no box)", () => {
     expect(mount().el.querySelector(".hp")?.getAttribute("data-mode")).toBe("center");
+  });
+
+  it("says what to ask about, last, with its ✎ (wave 2 hub)", () => {
+    ford = (id) => (id === "rosie" ? [HARVEST] : []);
+    const { el } = mount();
+    const lines = [...el.querySelectorAll(".hp-lines li")];
+    expect(lines.map((l) => l.textContent)).toEqual([
+      "No liability waiver signed in Mindbody.",
+      "Ask about: Judging the Bywater harvest fair on Friday — Friday, Oct 2 (Recreation, noted Sep 20).",
+    ]);
+    expect(lines[1].querySelector(".hs-g")?.getAttribute("data-family")).toBe("get-to-know");
+  });
+
+  it("says she is an all star, in one sentence under the marks, only when the nightly marks name her (wave 2 hub)", () => {
+    expect(mount().el.querySelector(".hp-star")).toBeNull();
+    act(() => root?.unmount());
+    host?.remove();
+    stars = (id) => (id === "rosie" ? { clientId: id, weeksIn: 25, perWeek: 2 } : null);
+    const { el } = mount();
+    expect(el.querySelector(".hp-star")?.textContent).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+  });
+
+  it("says, quietly, when her FORD couldn't be checked", () => {
+    ford = () => null;
+    const { el } = mount();
+    expect([...el.querySelectorAll(".hp-notes li")].map((n) => n.textContent)).toContain(
+      "Couldn’t check FORD for something to ask about — her FORD page has it.",
+    );
   });
 });

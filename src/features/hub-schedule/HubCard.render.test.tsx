@@ -24,6 +24,7 @@ import { loggedSessions, type LoggedSessions } from "../../lib/booking-state";
 import { momentsToday, type MomentsTodayInput, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import type { Client, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import type { FordEntry } from "../ford/types";
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -87,6 +88,7 @@ function mount({
   newToJourney = false,
   usualService = null,
   bookingOver = {},
+  ford,
   onOpen = () => {},
 }: {
   hm: string;
@@ -100,6 +102,8 @@ function mount({
   newToJourney?: boolean;
   usualService?: string | null;
   bookingOver?: Record<string, unknown>;
+  /** The Hub's one FORD read (wave 2 hub), handed to the engine. */
+  ford?: (clientId: string) => readonly FordEntry[] | null;
   onOpen?: (id: string, anchor: HTMLElement) => void;
 }) {
   // One card at a time: a second mount in a test replaces the first.
@@ -122,6 +126,7 @@ function mount({
     studios: [],
     logged,
     criticalFor: () => criticalNotes,
+    fordFor: ford,
     myIds: [],
   };
   const entry = c ? momentsToday(input).find((e) => e.clientId === c.id) ?? null : null;
@@ -296,6 +301,22 @@ describe("the card's words and marks come from the Hub's one engine", () => {
     const c = mount({ hm: "15:00", bookingOver: { endTime: at("15:45"), serviceName: "New Client Consultation" } });
     expect(c.text).toContain("3:00 – 3:45 PM");
     expect(c.card.querySelector('.hs-g[aria-label="Consultation"]')).toBeTruthy();
+  });
+
+  it("Get to know is the ✎ alone: 'Something to ask about', and the detail's words nowhere on the card (wave 2 hub)", () => {
+    const words = "Her grandson Hamson moves into Bag End on Saturday";
+    const moving = { id: "f1", clientId: "c1", studioId: "solon", pillar: "family", body: words, subject: "the move", eventDate: at("00:00", "2026-09-26"), recurrence: "none", occurredAt: at("10:00", "2026-09-01"), isArchived: false } as unknown as FordEntry;
+    const plainClient = { id: "c1", firstName: "Bell", lastName: "Gamgee" } as unknown as Client;
+    const c = mount({ hm: "15:00", who: plainClient, ford: () => [moving] });
+    const glyph = c.card.querySelector('.hs-g[data-family="get-to-know"]');
+    expect(glyph?.getAttribute("aria-label")).toBe("Something to ask about");
+    expect(glyph?.querySelector(".hs-g-word")).toBeNull();
+    expect(c.card.outerHTML).not.toContain("Bag End");
+    expect(c.card.outerHTML).not.toContain("the move");
+    // A finished card goes quiet: the ✎ leaves with every other mark.
+    const done = session("Completed", "11:02");
+    const quiet = mount({ hm: "11:00", who: plainClient, ford: () => [moving], logged: loggedSessions([done]), workoutSession: done });
+    expect(quiet.card.querySelector('.hs-g[data-family="get-to-know"]')).toBeNull();
   });
 
   it("draws Mindbody's 'Unavailable' as time that isn't a session: never a button, never counted as her", () => {

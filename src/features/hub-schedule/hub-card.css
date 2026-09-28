@@ -246,6 +246,13 @@
   color: var(--eq-ok);
 }
 
+/* Get to know (wave 2 hub): blue, as the Key has it; its shape (the speech
+   bubble) is what tells it from Welcome. */
+.hs-g[data-family="get-to-know"] {
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+}
+
 .hs-g[data-family="more"] {
   background: var(--eq-surface-2);
   color: var(--eq-ink-2);

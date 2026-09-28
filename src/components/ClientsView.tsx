@@ -30,6 +30,7 @@ import {
   calendarLabelKey,
   studioDayBoundsForKey,
   studioDateKey,
+  studioTodayKey,
 } from "../lib/studio-time";
 import {
   safeToDate,
@@ -58,6 +59,8 @@ import { LoadBoundary } from "../features/new-version/LoadBoundary";
 import { LoadingArea } from "./LoadingMark";
 import type { HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
+import { useHubFord } from "../features/hub-opportunities/use-hub-ford";
+import { useHubMarks } from "../features/hub-opportunities/use-hub-marks";
 import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
 import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
@@ -431,6 +434,32 @@ export function ClientsView({
   );
 
   /*
+   * Who may read the studio's own records here: the people who work at it,
+   * franchise owners and administrators — the app's one mirror of the rules'
+   * writesForStudio (standing-week/present.ts). The standing weeks, the
+   * FORD details and the nightly marks below are each read only for them,
+   * so no read the rules refuse is ever opened.
+   */
+  const readsStudio = mayReadWeeks(authTrainer, activeStudioId);
+  const studioToday = studioTodayKey(currentTime);
+
+  /*
+   * GET TO KNOW (wave 2 hub, Sep 28 2026; AJ: "all yes"): the studio's FORD,
+   * ONE collection group read once per studio visit (use-hub-ford.ts), for
+   * every day on the strip. The engine asks each booked client's details
+   * about her booking's day; FORD's words stay off the grid.
+   */
+  const hubFord = useHubFord(readsStudio ? activeStudioId : null, studioToday);
+
+  /*
+   * ALL STARS (wave 2 hub; AJ's Hub question 6): the nightly renewals job's
+   * word, one document read once per studio visit (use-hub-marks.ts). The
+   * iPad never counts 26 weeks; missing, stale (three days) or unreadable
+   * marks say nothing.
+   */
+  const hubMarks = useHubMarks(readsStudio ? activeStudioId : null, studioToday, currentTime);
+
+  /*
    * THE DAY'S MOMENTS (calm Hub round, Sep 28 2026): every client booked on
    * the day on screen, worked out ONCE by the same engine the Opportunities
    * list reads (features/hub-opportunities). The cards, their marks and the
@@ -449,6 +478,8 @@ export function ClientsView({
     uid: auth.currentUser?.uid ?? null,
     trainers: sortedTrainers,
     criticalFor: criticalNotes.notesFor,
+    fordFor: hubFord.fordFor,
+    allStarOf: hubMarks.allStarOf,
   });
 
   /** The day's usual service: a card names its own only when it isn't this one. */
@@ -602,7 +633,7 @@ export function ClientsView({
    * hatches nothing (off-hours.ts). Read only by someone Openings would let
    * read them (mayReadWeeks, the one rule), so no refused listener is opened.
    */
-  const standingWeeks = useStandingWeeks(mayReadWeeks(authTrainer, activeStudioId) ? activeStudioId : null);
+  const standingWeeks = useStandingWeeks(readsStudio ? activeStudioId : null);
   const weeks = React.useMemo(() => weeksByTrainer(standingWeeks.docs), [standingWeeks.docs]);
   const gridWeekday = weekdayOf(gridDayKey);
   const frameOf = React.useCallback(
@@ -664,7 +695,8 @@ export function ClientsView({
   /*
    * THE TOP (calm Hub round, Sep 28 2026; AJ: the top bar "is very jumbled").
    * The week with each day's count and a dot for a day to celebrate, then on
-   * Schedule the day in words and the list's own five chips. features/hub-schedule.
+   * Schedule the day in words and the list's own chips (six since Get to
+   * know, wave 2 hub; a zero is never drawn). features/hub-schedule.
    */
   const stripKeys = carouselDays.map((d) => calendarLabelKey(d));
   const stripKeysKey = stripKeys.join("|");

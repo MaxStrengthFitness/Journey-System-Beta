@@ -12,9 +12,13 @@ import {
   ALL_STAR_MIN_WEEKS,
   ALL_STAR_PER_WEEK,
   ALL_STAR_WEEKS,
+  HUB_MARKS_MAX_AGE_MS,
+  HUB_MARKS_WATCH_ID,
+  allStarMarkWords,
   allStarStanding,
   allStarWindow,
   allStarWords,
+  readHubMarks,
   type AllStarInput,
 } from "./all-stars";
 
@@ -112,5 +116,85 @@ describe("the words", () => {
     expect(allStarWords(ask({ visitDays: visits(3) }))).toBe("All star: in 26 of the last 26 weeks, about three times a week.");
     expect(allStarWords(ask({ visitDays: visits(1) }))).toBeNull();
     expect(allStarWords(ask({ owned: NO_WINDOW }))).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The nightly marks (wave 2 hub): the renewals job's document,
+ * studios/{s}/watch/hubMarks, read by the Hub. The iPad recomputes nothing:
+ * it says the job's word, or nothing.
+ * ------------------------------------------------------------------ */
+
+describe("the nightly marks", () => {
+  const NOW = new Date("2026-09-28T13:00:00Z");
+  const LAST_NIGHT = new Date("2026-09-28T07:10:00Z");
+  const doc = (over: Record<string, unknown> = {}) => ({
+    computedAt: LAST_NIGHT,
+    allStars: [
+      { clientId: "hamfast", weeksWithVisit: 25, perWeek: 2 },
+      { clientId: "lobelia", weeksWithVisit: 26, perWeek: 3.1 },
+    ],
+    ...over,
+  });
+
+  it("is the document the job writes, and three days is the most it may be trusted", () => {
+    expect(HUB_MARKS_WATCH_ID).toBe("hubMarks");
+    expect(HUB_MARKS_MAX_AGE_MS).toBe(3 * 24 * 60 * 60 * 1000);
+  });
+
+  it("names last night's all stars, their weeks and their pace to the nearest quarter", () => {
+    const read = readHubMarks(doc(), NOW);
+    expect(read.state).toBe("ok");
+    if (read.state !== "ok") return;
+    expect([...read.allStars.values()]).toEqual([
+      { clientId: "hamfast", weeksIn: 25, perWeek: 2 },
+      { clientId: "lobelia", weeksIn: 26, perWeek: 3 },
+    ]);
+    expect(read.computedAt).toEqual(LAST_NIGHT);
+  });
+
+  it("reads the date however it was written: a Timestamp, milliseconds, an ISO string, { seconds }", () => {
+    const stamp = { toDate: () => LAST_NIGHT };
+    for (const computedAt of [stamp, LAST_NIGHT.getTime(), LAST_NIGHT.toISOString(), { seconds: LAST_NIGHT.getTime() / 1000 }]) {
+      expect(readHubMarks(doc({ computedAt }), NOW).state).toBe("ok");
+    }
+  });
+
+  it("falls silent once the marks are more than three days old", () => {
+    const old = new Date(NOW.getTime() - HUB_MARKS_MAX_AGE_MS - 60_000);
+    expect(readHubMarks(doc({ computedAt: old }), NOW)).toEqual({ state: "stale", computedAt: old });
+    const justInside = new Date(NOW.getTime() - HUB_MARKS_MAX_AGE_MS + 60_000);
+    expect(readHubMarks(doc({ computedAt: justInside }), NOW).state).toBe("ok");
+  });
+
+  it("says nothing from a document it can't read: no date, no list, a date far in the future", () => {
+    expect(readHubMarks(null, NOW)).toEqual({ state: "unreadable" });
+    expect(readHubMarks(doc({ computedAt: undefined }), NOW)).toEqual({ state: "unreadable" });
+    expect(readHubMarks(doc({ computedAt: "not a date" }), NOW)).toEqual({ state: "unreadable" });
+    expect(readHubMarks(doc({ allStars: "hamfast" }), NOW)).toEqual({ state: "unreadable" });
+    expect(readHubMarks(doc({ computedAt: new Date("2026-10-05T00:00:00Z") }), NOW)).toEqual({ state: "unreadable" });
+  });
+
+  it("drops a row the rule wouldn't stand behind, and says nothing about her", () => {
+    const read = readHubMarks(
+      doc({
+        allStars: [
+          { clientId: "hamfast", weeksWithVisit: 25, perWeek: 2 },
+          { clientId: "short", weeksWithVisit: 23, perWeek: 2 },
+          { clientId: "slow", weeksWithVisit: 26, perWeek: 1.8 },
+          { clientId: "", weeksWithVisit: 26, perWeek: 2 },
+          { clientId: "odd", weeksWithVisit: 25.5, perWeek: 2 },
+          "rosie",
+          null,
+        ],
+      }),
+      NOW,
+    );
+    expect(read.state === "ok" ? [...read.allStars.keys()] : null).toEqual(["hamfast"]);
+  });
+
+  it("says the job's word with its proof", () => {
+    expect(allStarMarkWords({ clientId: "hamfast", weeksIn: 25, perWeek: 2 })).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+    expect(allStarMarkWords({ clientId: "lobelia", weeksIn: 26, perWeek: 3 })).toBe("All star: in 26 of the last 26 weeks, about three times a week.");
   });
 });

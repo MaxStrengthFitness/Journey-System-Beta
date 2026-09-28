@@ -9,8 +9,9 @@
  *               something to celebrate, Mindbody's Keep), Today when you are
  *               elsewhere, and two small doors: Tasks (Relay) and the Key.
  *   DaySummary  Schedule only: the day in words ("Monday, Sep 28 · 57
- *               sessions · 5 trainers") and the Opportunities list's own five
- *               chips. A chip lights its cards on the grid (the spotlight);
+ *               sessions · 5 trainers") and the Opportunities list's own
+ *               chips (six since Get to know, wave 2 hub; a zero is never
+ *               drawn). A chip lights its cards on the grid (the spotlight);
  *               the bar then says what it shows, steps to the next card, and
  *               opens the same group as a list. At its end, for someone with
  *               a column that day, Focus: Me | Everyone (hub cherry round) —
@@ -31,6 +32,7 @@ import {
   FileSignature,
   KeyRound,
   ListChecks,
+  MessageCircle,
   PartyPopper,
   RefreshCw,
   Sparkles,
@@ -52,6 +54,7 @@ const FAMILY_ICON: Record<MomentFamily, Icon> = {
   welcome: Sparkles,
   celebrate: PartyPopper,
   renew: RefreshCw,
+  "get-to-know": MessageCircle,
 };
 
 function FamilyIcon({ family }: { family: MomentFamily }) {
@@ -230,6 +233,12 @@ const MARKS: ReadonlyArray<{ family: MomentFamily; icon: Icon; name: string; mea
   { family: "celebrate", icon: Award, name: "Milestone", means: "The 50th, 100th, 150th… session." },
   { family: "celebrate", icon: Cake, name: "Birthday", means: "Within a week either side. A decade is said aloud." },
   { family: "renew", icon: RefreshCw, name: "Renewal talk", means: "The Wrap-up says it’s time to talk about renewing." },
+  {
+    family: "get-to-know",
+    icon: MessageCircle,
+    name: "Ask about",
+    means: "Something from her FORD: a day that comes round this week, or something noted in the last two weeks. What it is stays in the peek and the list, never on the card.",
+  },
 ];
 
 const STATES: ReadonlyArray<{ state: string; name: string; means: string }> = [

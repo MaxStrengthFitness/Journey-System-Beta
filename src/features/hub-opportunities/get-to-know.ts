@@ -24,18 +24,23 @@
  *   - at most ONE per client: the soonest dated one, else the newest new one.
  *
  * On a shared screen the words stay off the grid (research-hub §7, rule 9):
- * the card would carry the glyph alone, and the chip and the sentence live
- * in the list and the peek, which a trainer opens on purpose.
+ * the card carries the glyph alone (its label too is only "Something to ask
+ * about"), and the chip and the sentence live in the list and the peek,
+ * which a trainer opens on purpose.
  *
- * UNWIRED, ON PURPOSE. It needs the studio's FORD details read once for the
- * Hub, and the one studio-wide FORD read Journey makes today — the Delight
- * queue's collection group query (ford/useClientFord.ts) — asks only for
- * details with an open gesture (`opportunity.status` idea or planned), so it
- * cannot give these. Any read that can (every detail at the studio; the
- * dated ones by `eventDate`, which misses an anniversary stored in an
- * earlier year; the new ones by `occurredAt`, which has no index) is a new
- * read shape, and a new one needs AJ's OK (the room's Needs OK: "one
- * read-only FORD read per studio"). What is built is what the read will feed.
+ * AJ's two open questions keep the design's defaults (wave 2 hub, Sep 28
+ * 2026): a dated detail that has just happened does not count ("How was the
+ * recital?" waits for the "new" reason, if it was noted lately), and a
+ * "Follow up next time" question does not count (it is the FORD page's Ask
+ * next, and the briefing's to take up).
+ *
+ * WIRED (wave 2 hub, Sep 28 2026; AJ: "all yes" to "one read of the studio's
+ * FORD details for the Hub"). The Hub reads the studio's FORD once per
+ * studio visit (use-hub-ford.ts over ford/hub-read.ts): ONE collection group
+ * query, the Delight queue's kind, asking for exactly the three reasons a
+ * detail can come up on the strip's days (`askReadWindow`). The engine asks
+ * each booked client's details about the booking's day (moments-today's
+ * `fordFor`), so nobody else's FORD is worked out.
  */
 import type { FordEntry, FordPillar } from "../ford/types";
 import { FORD_META } from "../ford/types";
@@ -47,6 +52,21 @@ import { addDays, daysBetween, weekdayOf } from "../client-history/model";
 export const ASK_DATED_DAYS = 7;
 /** A new detail is worth asking about for this many days after it was noted. */
 export const ASK_NEW_DAYS = 14;
+/** The days on the Hub's strip: today and the six after it (ClientsView's carousel). */
+export const HUB_STRIP_DAYS = 7;
+
+/**
+ * The mark's label on the grid (a card's glyph, its "+N", the Next 30
+ * minutes strip): never the detail's own words, which are for the list and
+ * the peek. A client stands next to the iPad.
+ */
+export const ASK_ABOUT_LABEL = "Something to ask about";
+
+/**
+ * What the peek and an opened row say when her FORD couldn't be checked (the
+ * Hub's read failed): unknown, never "nothing special".
+ */
+export const ASK_UNREAD_LINE = "Couldn’t check FORD for something to ask about — her FORD page has it.";
 
 export interface AskAbout {
   /** The FORD detail it came from. */
@@ -160,6 +180,21 @@ export function askAboutFor(details: ReadonlyArray<FordEntry>, day: string, tz?:
 }
 
 /**
+ * One studio read's details, by client: what the Hub hands the engine, so
+ * each booked client is asked about her own details and nobody else's.
+ */
+export function fordByClient(details: ReadonlyArray<FordEntry>): ReadonlyMap<string, FordEntry[]> {
+  const byClient = new Map<string, FordEntry[]>();
+  for (const e of details) {
+    if (!e?.clientId) continue;
+    const list = byClient.get(e.clientId) ?? [];
+    list.push(e);
+    byClient.set(e.clientId, list);
+  }
+  return byClient;
+}
+
+/**
  * One studio read's details, sorted into each booked client's one Ask about
  * for the day. `bookedIds` keeps it to the clients on the day: nobody else's
  * FORD is worked out, and nothing is said about them.
@@ -170,15 +205,9 @@ export function askAboutByClient(
   day: string,
   tz?: string,
 ): ReadonlyMap<string, AskAbout> {
-  const byClient = new Map<string, FordEntry[]>();
-  for (const e of details) {
-    if (!e?.clientId || !bookedIds.has(e.clientId)) continue;
-    const list = byClient.get(e.clientId) ?? [];
-    list.push(e);
-    byClient.set(e.clientId, list);
-  }
   const out = new Map<string, AskAbout>();
-  for (const [clientId, list] of byClient) {
+  for (const [clientId, list] of fordByClient(details)) {
+    if (!bookedIds.has(clientId)) continue;
     const ask = askAboutFor(list, day, tz);
     if (ask) out.set(clientId, ask);
   }
@@ -188,4 +217,28 @@ export function askAboutByClient(
 /** The window a dated detail is looked for in, for a read that wants to name it: [day, day + 6]. */
 export function askDatedWindow(day: string): { from: string; to: string } {
   return { from: day, to: addDays(day, ASK_DATED_DAYS - 1) };
+}
+
+/**
+ * The studio days the Hub's ONE FORD read must hold (wave 2 hub), for every
+ * day on its strip at once — today and the six after it — so flipping to
+ * Saturday needs no second read. The rule decides exactly; the read only has
+ * to hold everything it could pick:
+ *
+ *   - `datedFrom` … `datedUntil` (left out): a one-off day that comes round
+ *     within a week of any strip day, today to today + 12, with a day of
+ *     slack either side, because the FORD dialog stores a date at the iPad's
+ *     midnight and the rule reads it on the studio's day;
+ *   - `notedFrom`: noted in the two weeks up to any strip day, from
+ *     today - 13, with a day of slack;
+ *   - an annual day comes round every year, so the read holds every one,
+ *     whatever year it was stored in (the query's `recurrence` branch).
+ */
+export function askReadWindow(today: string): { datedFrom: string; datedUntil: string; notedFrom: string } {
+  const lastDated = addDays(today, HUB_STRIP_DAYS - 1 + ASK_DATED_DAYS - 1);
+  return {
+    datedFrom: addDays(today, -1),
+    datedUntil: addDays(lastDated, 2),
+    notedFrom: addDays(today, -(ASK_NEW_DAYS - 1) - 1),
+  };
 }

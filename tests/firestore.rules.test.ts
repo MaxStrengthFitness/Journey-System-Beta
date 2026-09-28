@@ -4380,4 +4380,113 @@ describe("marks on a time", () => {
       await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
     });
   });
+
+  // WAVE 2 HUB: the Hub's reads for Get to know and All stars (Sep 28 2026,
+  // docs/rounds/2026-09-28-hub-2.md). No rule changes: each read rides on
+  // the rules as they are, and these pin what the Hub relies on.
+  describe("wave 2 hub", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // WAVE 2 HUB: the Hub's one FORD read, exactly as src/features/ford/hub-read.ts
+    // makes it: ONE collection group query, the studio, then the three reasons
+    // (an annual day, a one-off day in the strip's two weeks, noted lately).
+    // `and` and `or` are imported here, so the file's imports stay as they were.
+    const WINDOW = {
+      datedFrom: new Date("2026-09-27T04:00:00Z"),
+      datedUntil: new Date("2026-10-12T04:00:00Z"),
+      notedFrom: new Date("2026-09-14T04:00:00Z"),
+    };
+    async function hubFordQuery(db: ReturnType<typeof as>, studioId: string | null) {
+      const { and, or } = await import("firebase/firestore");
+      const reasons = or(
+        where("recurrence", "==", "annual"),
+        and(where("eventDate", ">=", WINDOW.datedFrom), where("eventDate", "<", WINDOW.datedUntil)),
+        where("occurredAt", ">=", WINDOW.notedFrom),
+      );
+      return studioId === null
+        ? query(collectionGroup(db, "ford"), reasons, limit(1000))
+        : query(collectionGroup(db, "ford"), and(where("studioId", "==", studioId), reasons), limit(1000));
+    }
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        // WAVE 2 HUB: an administrator at another studio, and the grant at studio A.
+        await setDoc(doc(db, "trainers", "adminHub"), {
+          fullName: "Admin Hub",
+          initials: "AH",
+          role: "Admin",
+          primaryHomeStudioId: "studioB",
+          accessibleStudioIds: ["studioB"],
+        });
+        await setDoc(doc(db, "trainers", "grantedHub"), {
+          fullName: "Granted Hub",
+          initials: "GH",
+          role: "LifeTransformer",
+          primaryHomeStudioId: "studioB",
+          accessibleStudioIds: ["studioB"],
+          managedStudioIds: ["studioA"],
+        });
+        const detail = (clientId: string, studioId: string, over: Record<string, unknown> = {}) => ({
+          clientId,
+          studioId,
+          pillar: "family",
+          body: "A detail",
+          isPinned: false,
+          eventDate: null,
+          recurrence: "none",
+          occurredAt: new Date("2026-06-01T14:00:00Z"),
+          authorId: "trainerA",
+          isArchived: false,
+          ...over,
+        });
+        const ford = (clientId: string, id: string) => doc(db, "clients", clientId, "ford", id);
+        await setDoc(ford("clientHubA", "annual"), detail("clientHubA", "studioA", { recurrence: "annual", eventDate: new Date("2019-10-01T04:00:00Z") }));
+        await setDoc(ford("clientHubA", "dated"), detail("clientHubA", "studioA", { eventDate: new Date("2026-10-03T04:00:00Z") }));
+        await setDoc(ford("clientHubA", "news"), detail("clientHubA", "studioA", { occurredAt: new Date("2026-09-25T14:00:00Z") }));
+        await setDoc(ford("clientHubA", "standing"), detail("clientHubA", "studioA", { isPinned: true }));
+        await setDoc(ford("clientHubA", "past"), detail("clientHubA", "studioA", { eventDate: new Date("2026-08-01T04:00:00Z") }));
+        await setDoc(ford("clientHubB", "elsewhere"), detail("clientHubB", "studioB", { recurrence: "annual", eventDate: new Date("2020-10-02T04:00:00Z") }));
+      });
+    });
+
+    // WAVE 2 HUB: the people who work at the studio (home, the grant),
+    // its leaders and administrators may make it; it brings the three
+    // reasons and nothing else — not a standing fact, not a past day, not
+    // another studio's.
+    it("lets the people who work at the studio make the Hub's one FORD read, and it asks only for the three reasons", async () => {
+      for (const uid of ["trainerA", "ownerA", "grantedHub", "adminHub"]) {
+        const snap = await assertSucceeds(getDocs(await hubFordQuery(as(uid), "studioA")));
+        expect(snap.docs.map((d) => d.id).sort()).toEqual(["annual", "dated", "news"]);
+      }
+    });
+
+    // WAVE 2 HUB: rules are not filters. Another studio's trainer is refused,
+    // and so is the read without the studio, even for a trainer who works there.
+    it("refuses it to a trainer at another studio, and refuses it without the studio", async () => {
+      await assertFails(getDocs(await hubFordQuery(as("trainerB"), "studioA")));
+      await assertFails(getDocs(await hubFordQuery(as("trainerA"), null)));
+    });
+
+    // WAVE 2 HUB: All stars. The nightly renewals job writes
+    // studios/{s}/watch/hubMarks (the Admin SDK, past the rules); the Hub
+    // reads it by id. The existing `match /watch/{watchId}` covers it — read
+    // by the studio's people, franchise owners and administrators, written
+    // by nobody in the app — so no rule was added for it here.
+    it("lets the studio's people read its nightly marks, and nobody write them", async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "studios", "studioA", "watch", "hubMarks"), {
+          allStars: [{ clientId: "clientHubA", weeksWithVisit: 25, perWeek: 2 }],
+          computedAt: new Date("2026-09-28T07:10:00Z"),
+        });
+      });
+      const marks = (uid: string) => doc(as(uid), "studios", "studioA", "watch", "hubMarks");
+      for (const uid of ["trainerA", "ownerA", "grantedHub", "adminHub"]) {
+        await assertSucceeds(getDoc(marks(uid)));
+      }
+      await assertFails(getDoc(marks("trainerB")));
+      await assertFails(setDoc(marks("trainerA"), { allStars: [], computedAt: new Date() }));
+      await assertFails(setDoc(marks("adminHub"), { allStars: [], computedAt: new Date() }));
+    });
+  });
 });

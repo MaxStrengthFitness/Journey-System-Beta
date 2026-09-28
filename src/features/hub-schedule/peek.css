@@ -119,6 +119,16 @@
   color: var(--eq-ink-2);
 }
 
+/* All stars (wave 2 hub): one sentence, in the ink of the lines above it —
+   a fact about her rhythm, not a mark, so no glyph and no colour of its own. */
+.hp-star {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--eq-ink-2);
+}
+
 .hp-facts {
   padding-top: 10px;
   border-top: 1px solid var(--eq-border);

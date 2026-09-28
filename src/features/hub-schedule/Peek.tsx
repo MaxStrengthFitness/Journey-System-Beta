@@ -11,7 +11,7 @@
  * close button or Escape closes it, and the card gets its focus back.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
-import { Activity, AlertTriangle, Award, Cake, FileSignature, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, FileSignature, MessageCircle, Play, RefreshCw, Sparkles, Undo2, UserRound, X } from "lucide-react";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
 import { peekContent } from "./peek-model";
 import "./hub-card.css";
@@ -28,6 +28,7 @@ const GLYPH: Record<MomentKind, ComponentType<{ size?: number; strokeWidth?: num
   milestone: Award,
   birthday: Cake,
   renew: RefreshCw,
+  "ask-about": MessageCircle,
 };
 
 /** Wide enough to sit beside the card: an iPad on its side. */
@@ -144,6 +145,9 @@ export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, o
             })}
           </ul>
         )}
+
+        {/* All stars (wave 2 hub): the nightly marks' word, with its proof. */}
+        {content.star && <p className="hp-star">{content.star}</p>}
 
         <ul className="hp-facts">
           {content.facts.map((f) => (

@@ -227,6 +227,10 @@
   color: var(--eq-ok);
 }
 
+.hd-fam[data-family="get-to-know"] {
+  color: var(--eq-live-text);
+}
+
 .hd-sum[data-spot="true"] {
   background: var(--eq-live-fill);
 }

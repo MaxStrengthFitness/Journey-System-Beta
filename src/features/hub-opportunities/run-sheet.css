@@ -3,7 +3,8 @@
    Colour comes from equipment.tokens.css (light and dark); no hex below.
    One colour per family, one shape per family (research-hub §5): Read first
    crimson (the Critical note's own colour, as on the card), Watch plum,
-   Welcome blue, Celebrate orange, Renew green. Nothing tappable under 40px;
+   Welcome blue, Celebrate orange, Renew green, Get to know blue with its own
+   speech-bubble shape (wave 2 hub). Nothing tappable under 40px;
    names wrap, never cut. Insets are the shell's, never paid here.
    ========================================================================== */
 @import "../equipment/equipment.tokens.css";
@@ -232,6 +233,16 @@
 .ho-chip[data-family="renew"] {
   background: var(--eq-ok-fill);
   color: var(--eq-ok);
+}
+
+/* Get to know (wave 2 hub): blue, the speech bubble its own shape. Its words
+   are the trainer's (a FORD subject can run long), so this chip may wrap
+   rather than push the row wider than the screen. */
+.ho-chip[data-family="get-to-know"] {
+  background: var(--eq-live-fill);
+  color: var(--eq-live-text);
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .ho-open {

@@ -32,12 +32,23 @@
  *                (`canQuoteSessionNumber`), and a birthday within a week
  *                either side — "turns 80" only when the year is on file
  *   Renew        `renewalPromptDue`, in the Wrap-up's own words (`promptText`)
+ *   Get to know  the ✎ "Ask about" from FORD (get-to-know.ts): a detail whose
+ *                day comes round within the week, or noted in the last two
+ *                weeks, one per client, from the Hub's one FORD read (wave 2
+ *                hub, Sep 28 2026; `fordFor`, handed in as `criticalFor` is)
  *
- * No reads: the caller hands in the Hub's bookings, roster, sessions and
- * Critical notes, and the directory's rows for the facts (last in, left).
+ * All stars (wave 2 hub, AJ's Hub question 6) is not a moment: it is a
+ * section of the Sessions sort, after Regulars, and a sentence in the peek
+ * and the opened row, for a client the nightly marks name (`allStarOf`,
+ * all-stars.ts). The engine never counts her 26 weeks.
+ *
+ * No reads: the caller hands in the Hub's bookings, roster, sessions,
+ * Critical notes, FORD details and nightly marks, and the directory's rows
+ * for the facts (last in, left).
  */
 import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import type { FordEntry } from "../ford/types";
 import { clientDisplayName } from "../../lib/client-name";
 import { canQuoteSessionNumber, homeCutoverOf } from "../../lib/client-coverage";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
@@ -51,12 +62,14 @@ import { SESSION_MILESTONES } from "../admin/overview/moments";
 import { promptText, renewalPromptDue } from "../renewals/conversation";
 import { daysBetween, weekdayOf } from "../client-history/model";
 import { bookedWithMe, pastDayWords, type DirectoryRow } from "../client-directory/row";
+import { ASK_ABOUT_LABEL, askAboutFor } from "./get-to-know";
+import { ALL_STARS_LABEL, ALL_STAR_WEEKS, allStarMarkWords, type AllStarMark } from "./all-stars";
 
 /* ------------------------------------------------------------------ */
 /* Families and filters                                                */
 /* ------------------------------------------------------------------ */
 
-export type MomentFamily = "read-first" | "watch" | "welcome" | "celebrate" | "renew";
+export type MomentFamily = "read-first" | "watch" | "welcome" | "celebrate" | "renew" | "get-to-know";
 
 export type MomentKind =
   | "critical"
@@ -68,7 +81,8 @@ export type MomentKind =
   | "back"
   | "milestone"
   | "birthday"
-  | "renew";
+  | "renew"
+  | "ask-about";
 
 export interface Moment {
   family: MomentFamily;
@@ -85,8 +99,15 @@ export interface Moment {
   words?: string;
 }
 
-/** The Key's order when space runs out: Read first › Watch › Welcome › Celebrate › Renew. */
-const FAMILY_ORDER: Record<MomentFamily, number> = { "read-first": 0, watch: 1, welcome: 2, celebrate: 3, renew: 4 };
+/**
+ * The Key's order when space runs out: Read first › Watch › Welcome ›
+ * Celebrate › Renew › Get to know (research-hub §5), so on a busy card the ✎
+ * is the first to fold into "+N".
+ */
+const FAMILY_ORDER: Record<MomentFamily, number> = { "read-first": 0, watch: 1, welcome: 2, celebrate: 3, renew: 4, "get-to-know": 5 };
+
+/** Every family, in the Key's order. */
+export const MOMENT_FAMILIES: ReadonlyArray<MomentFamily> = ["read-first", "watch", "welcome", "celebrate", "renew", "get-to-know"];
 
 export type FilterId = "all" | MomentFamily;
 export const FILTERS: ReadonlyArray<{ id: FilterId; label: string }> = [
@@ -96,6 +117,7 @@ export const FILTERS: ReadonlyArray<{ id: FilterId; label: string }> = [
   { id: "welcome", label: "Welcome" },
   { id: "renew", label: "Renew" },
   { id: "watch", label: "Watch" },
+  { id: "get-to-know", label: "Get to know" },
 ];
 
 /** At most this many chips on a row (research-hub §7 rule 4). */
@@ -226,8 +248,20 @@ export interface RunSheetEntry {
   facts: Record<RunSortKey, Fact>;
   /** Her Critical notes could not be read: Read first may be missing. */
   criticalUnknown: boolean;
+  /**
+   * Her FORD could not be checked (the Hub's FORD read failed, or came back
+   * at its guard rail without any of hers): something to ask about may be
+   * missing, so nothing may say "nothing special".
+   */
+  askUnknown: boolean;
   /** The session number this booking will be, when it may be quoted. */
   sessionNumber: number | null;
+  /**
+   * The nightly marks name her an all star (wave 2 hub): her weeks, her pace
+   * and the sentence the peek and the opened row say. Null for everyone
+   * else — nothing ever says who isn't one.
+   */
+  allStar: { weeksIn: number; perWeek: number; words: string } | null;
   /**
    * Clinical history is on her record. Standing context, never a mark or a
    * filter (it would sit on most clients the studio has): the Hub's peek and
@@ -253,6 +287,18 @@ export interface MomentsTodayInput {
   logged: LoggedSessions | null;
   /** The Hub's one Critical read: a client's notes, or null when unread. */
   criticalFor: (clientId: string) => readonly JournalEntry[] | null;
+  /**
+   * The Hub's one FORD read (use-hub-ford.ts): a client's details, `[]` when
+   * read and none, null when unknown. Absent: Get to know is not in play (no
+   * read, or not answered yet), and nothing is said either way.
+   */
+  fordFor?: (clientId: string) => readonly FordEntry[] | null;
+  /**
+   * The nightly marks (use-hub-marks.ts): the all star the job named, or
+   * null. Absent when the marks are missing, stale or unreadable: then no
+   * one is one, and nothing is said.
+   */
+  allStarOf?: (clientId: string) => AllStarMark | null;
   myIds: ReadonlyArray<string>;
   myName?: string | null;
   trainerNameOf?: (trainerId: string) => string | null;
@@ -334,7 +380,9 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   };
   const moments: Moment[] = [];
   let criticalUnknown = false;
+  let askUnknown = false;
   let sessionNumber: number | null = null;
+  let allStar: RunSheetEntry["allStar"] = null;
   let clinicalOnFile = false;
 
   if (client && clientId) {
@@ -369,6 +417,25 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
         unknown: false,
         value: n,
       };
+    }
+
+    /* ---- All stars: the nightly marks' word, never counted here ---- */
+    // Her own section on the Sessions sort, after Regulars — unless today is
+    // a milestone, which is today's news and keeps its section. The claim is
+    // the job's (only where Journey holds every visit in the 26 weeks), so it
+    // stands even when her total can't be quoted.
+    const star = input.allStarOf?.(clientId) ?? null;
+    if (star) {
+      allStar = { weeksIn: star.weeksIn, perWeek: star.perWeek, words: allStarMarkWords(star) };
+      if (!milestone) {
+        const weeks = `in ${star.weeksIn} of the last ${ALL_STAR_WEEKS} weeks`;
+        facts.sessions = {
+          sentence: sessionNumber !== null ? `#${sessionNumber} \u00b7 ${weeks}` : `${weeks.charAt(0).toUpperCase()}${weeks.slice(1)}`,
+          bucket: "all-stars",
+          unknown: false,
+          value: sessionNumber,
+        };
+      }
     }
 
     /* ---- Welcome ---- */
@@ -470,6 +537,20 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     } else if (talk && renewal) {
       facts.left = { sentence: renewal.situation === "ended" ? "Package ended \u2014 talk today?" : "Renewal due \u2014 talk today?", bucket: "talk", unknown: false, value: null };
     }
+
+    /* ---- Get to know: the ✎ Ask about, from the Hub's one FORD read ---- */
+    // Asked about the booking's day, like every moment. The chip and the
+    // sentence are the list's and the peek's; on the grid the mark is a glyph
+    // whose label is only ASK_ABOUT_LABEL — FORD details never on the grid.
+    if (input.fordFor) {
+      const details = input.fordFor(clientId);
+      if (details === null) {
+        askUnknown = true;
+      } else {
+        const ask = askAboutFor(details, input.day, input.tz);
+        if (ask) moments.push({ family: "get-to-know", kind: "ask-about", chip: ask.chip, sentence: ask.sentence, words: ASK_ABOUT_LABEL });
+      }
+    }
   }
 
   moments.sort((a, b) => FAMILY_ORDER[a.family] - FAMILY_ORDER[b.family]);
@@ -490,7 +571,9 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
     moments,
     facts,
     criticalUnknown,
+    askUnknown,
     sessionNumber,
+    allStar,
     clinicalOnFile,
   };
 }
@@ -538,9 +621,9 @@ export function hasFamily(entry: RunSheetEntry, family: MomentFamily): boolean {
 }
 
 export function filterCounts(entries: ReadonlyArray<RunSheetEntry>): Record<FilterId, number> {
-  const out: Record<FilterId, number> = { all: entries.length, "read-first": 0, watch: 0, welcome: 0, celebrate: 0, renew: 0 };
+  const out: Record<FilterId, number> = { all: entries.length, "read-first": 0, watch: 0, welcome: 0, celebrate: 0, renew: 0, "get-to-know": 0 };
   for (const e of entries) {
-    for (const f of ["read-first", "watch", "welcome", "celebrate", "renew"] as const) if (hasFamily(e, f)) out[f] += 1;
+    for (const f of MOMENT_FAMILIES) if (hasFamily(e, f)) out[f] += 1;
   }
   return out;
 }
@@ -586,6 +669,8 @@ const SECTION_ORDER: Record<RunSortKey, Array<{ id: string; label: string; folde
     { id: "new", label: "New (1\u20133)" },
     { id: "building", label: "Building (4\u201349)" },
     { id: "regulars", label: "Regulars (50+)" },
+    // AJ's Hub question 6 (wave 2 hub): only for a client the nightly marks name.
+    { id: "all-stars", label: ALL_STARS_LABEL },
   ],
   left: [
     { id: "talk", label: "Talk about renewing" },

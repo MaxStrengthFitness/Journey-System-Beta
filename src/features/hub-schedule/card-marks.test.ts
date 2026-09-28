@@ -88,6 +88,23 @@ describe("your own column, in words (hub cherry round)", () => {
   });
 });
 
+describe("Get to know on the card (wave 2 hub): the ✎ alone, and the first to fold", () => {
+  const ask = m({ kind: "ask-about", family: "get-to-know", chip: "Ask: the recital · Sat", sentence: "Ask about: …", words: "Something to ask about" });
+
+  it("is a glyph alone, in anyone's column and in your own: FORD's words never on the grid", () => {
+    expect(sayableWord(ask)).toBeNull();
+    expect(sayableWord(ask, { yours: true })).toBeNull();
+    expect(cardMarks([ask]).glyphs).toEqual([{ kind: "ask-about", family: "get-to-know", word: null, label: "Something to ask about" }]);
+  });
+
+  it("keeps the two-glyph rule: behind two others it is part of the +N, labelled without the detail", () => {
+    const marks = cardMarks([waiver, milestone, ask]);
+    expect(marks.glyphs.map((g) => g.kind)).toEqual(["milestone", "waiver"]);
+    expect(marks.more).toBe(1);
+    expect(marks.moreLabel).toBe("Something to ask about");
+  });
+});
+
 describe("the day's usual service (AJ's Mindbody screenshots: it repeated on every block)", () => {
   const b = (serviceName: string, clientName = "Client") => ({ serviceName, clientName });
 

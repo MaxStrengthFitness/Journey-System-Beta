@@ -7,7 +7,20 @@
  */
 import { describe, expect, it } from "vitest";
 import type { FordEntry } from "../ford/types";
-import { ASK_DATED_DAYS, ASK_NEW_DAYS, askAboutByClient, askAboutFor, askDatedWindow, nextAnnualDay } from "./get-to-know";
+import { addDays } from "../client-history/model";
+import { studioDayKeyOf } from "../../lib/studio-time";
+import {
+  ASK_ABOUT_LABEL,
+  ASK_DATED_DAYS,
+  ASK_NEW_DAYS,
+  HUB_STRIP_DAYS,
+  askAboutByClient,
+  askAboutFor,
+  askDatedWindow,
+  askReadWindow,
+  fordByClient,
+  nextAnnualDay,
+} from "./get-to-know";
 
 const MONDAY = "2026-09-28";
 /** A studio day at the studio's midnight, the way the FORD dialog stores a date. */
@@ -115,5 +128,64 @@ describe("an annual day, from its digits", () => {
     expect(nextAnnualDay("2019-09-01", MONDAY)).toBe("2027-09-01");
     expect(nextAnnualDay("2024-02-29", "2027-02-01")).toBe("2027-03-01");
     expect(nextAnnualDay("not a day", MONDAY)).toBeNull();
+  });
+});
+
+describe("AJ's two open questions keep the design's defaults (wave 2 hub)", () => {
+  it("a dated detail that has just happened does not count", () => {
+    // The recital was Saturday; noted weeks ago, so it isn't news either.
+    const lastSaturday = detail({ clientId: "c", body: "Granddaughter's recital", subject: "the recital", eventDate: eastern("2026-09-26"), occurredAt: eastern("2026-09-01", "09:00") });
+    expect(askAboutFor([lastSaturday], MONDAY)).toBeNull();
+  });
+
+  it("a Follow up next time question does not count on its own", () => {
+    const followUp = detail({
+      clientId: "c",
+      body: "New walking boots",
+      occurredAt: eastern("2026-08-02", "09:00"),
+      followUp: "How did the boots do on the long walk?",
+      followUpAt: eastern("2026-09-27", "09:00"),
+    });
+    expect(askAboutFor([followUp], MONDAY)).toBeNull();
+  });
+});
+
+describe("the Hub's one FORD read (wave 2 hub)", () => {
+  it("says only 'Something to ask about' on the grid: the detail's words are the list's and the peek's", () => {
+    expect(ASK_ABOUT_LABEL).toBe("Something to ask about");
+  });
+
+  it("sorts one studio read's details by client", () => {
+    const rosie = detail({ clientId: "rosie", body: "The new puppy" });
+    const byClient = fordByClient([recital, retired, rosie, { ...rosie, id: "stray", clientId: "" }]);
+    expect([...byClient.keys()].sort()).toEqual(["hamfast", "melilot", "rosie"]);
+    expect(byClient.get("rosie")?.map((e) => e.id)).toEqual([rosie.id]);
+  });
+
+  it("covers every day on the strip at once: a week of days for each, two weeks of news, a day of slack", () => {
+    expect(HUB_STRIP_DAYS).toBe(7);
+    expect(askReadWindow(MONDAY)).toEqual({ datedFrom: "2026-09-27", datedUntil: "2026-10-12", notedFrom: "2026-09-14" });
+  });
+
+  it("holds everything the rule could pick on any strip day — the read never hides an answer", () => {
+    const { datedFrom, datedUntil, notedFrom } = askReadWindow(MONDAY);
+    // Details on every day around the strip: dated one-offs and news.
+    const around: FordEntry[] = [];
+    for (let i = -20; i <= 20; i++) {
+      const day = addDays(MONDAY, i);
+      around.push(detail({ clientId: `dated-${i}`, body: `Dated ${i}`, eventDate: eastern(day), occurredAt: eastern("2026-01-05", "09:00") }));
+      around.push(detail({ clientId: `noted-${i}`, body: `Noted ${i}`, occurredAt: eastern(day, "10:00") }));
+    }
+    const inRead = (e: FordEntry) => {
+      const dated = studioDayKeyOf(e.eventDate ?? null);
+      const noted = studioDayKeyOf(e.occurredAt ?? null);
+      return (dated !== null && dated >= datedFrom && dated < datedUntil) || (noted !== null && noted >= notedFrom);
+    };
+    for (let s = 0; s < HUB_STRIP_DAYS; s++) {
+      const day = addDays(MONDAY, s);
+      for (const e of around) {
+        if (askAboutFor([e], day)) expect(inRead(e), `${e.body} on ${day}`).toBe(true);
+      }
+    }
   });
 });

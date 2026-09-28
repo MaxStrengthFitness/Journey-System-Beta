@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import type { Client, ScheduleEntry } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import type { FordEntry } from "../ford/types";
 import { loggedSessions } from "../../lib/booking-state";
 import { buildDirectoryRows } from "../client-directory/row";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient, makeContext, makeSession } from "../client-directory/fixtures";
@@ -286,6 +287,108 @@ describe("the waiver: Mindbody's \"nw\" corner (AJ, Sep 28 2026)", () => {
       const entries = run([makeClient({ id: "s", isLiabilityReleased } as Partial<Client> & { id: string })], [makeBooking({ clientId: "s", start: today("16:00") })]);
       expect(kinds(entries[0])).not.toContain("waiver");
     }
+  });
+});
+
+describe("Get to know: the ✎ Ask about from FORD (wave 2 hub)", () => {
+  const fordDetail = (clientId: string, over: Partial<FordEntry> = {}): FordEntry =>
+    ({
+      id: `ford-${clientId}`,
+      clientId,
+      studioId: "westlake",
+      pillar: "family",
+      body: "Her granddaughter's recital on Thursday.",
+      subject: "the recital",
+      isPinned: false,
+      eventDate: eastern("2026-10-01", "00:00"),
+      recurrence: "none",
+      opportunity: null,
+      occurredAt: eastern("2026-09-10", "09:00"),
+      isArchived: false,
+      ...over,
+    }) as FordEntry;
+  const fordFor = (byClient: Record<string, FordEntry[]>) => (id: string) => byClient[id] ?? [];
+
+  it("is the last family in the Key's order, the chip and the sentence the trainer's words, the label only 'Something to ask about'", () => {
+    const busy = makeClient({ id: "b", sessionCount: 99, ...COMPLETE, renewal: { situation: "on-track", conversationDue: true, chargeWarning: false, renewalOnBooks: null, sessionsLeft: 2 } as never });
+    const [entry] = run([busy], [makeBooking({ clientId: "b", start: today("16:00") })], { fordFor: fordFor({ b: [fordDetail("b")] }) });
+    expect(entry.moments.map((m) => m.family)).toEqual(["celebrate", "renew", "get-to-know"]);
+    expect(entry.moments[2]).toEqual({
+      family: "get-to-know",
+      kind: "ask-about",
+      chip: "Ask: the recital · Thu",
+      sentence: "Ask about: Her granddaughter's recital on Thursday — Thursday, Oct 1 (Family, noted Sep 10).",
+      words: "Something to ask about",
+    });
+    expect(entry.askUnknown).toBe(false);
+    expect(filterCounts([entry])["get-to-know"]).toBe(1);
+  });
+
+  it("is asked about the booking's day: the day after the recital, nothing", () => {
+    const client = makeClient({ id: "r" });
+    const byClient = fordFor({ r: [fordDetail("r")] });
+    const friday = run([client], [makeBooking({ clientId: "r", start: eastern("2026-10-02", "09:00") })], { day: "2026-10-02", fordFor: byClient });
+    expect(kinds(friday[0])).not.toContain("ask-about");
+  });
+
+  it("an unknown FORD says so on the entry and claims nothing; with no read at all, nothing either way", () => {
+    const client = makeClient({ id: "u" });
+    const booking = [makeBooking({ clientId: "u", start: today("16:00") })];
+    const unknown = run([client], booking, { fordFor: () => null });
+    expect(unknown[0].askUnknown).toBe(true);
+    expect(kinds(unknown[0])).toEqual([]);
+    const noRead = run([client], booking);
+    expect(noRead[0].askUnknown).toBe(false);
+  });
+
+  it("asks only a booked client's own details", () => {
+    const entries = run([makeClient({ id: "a" }), makeClient({ id: "z" })], [makeBooking({ clientId: "a", start: today("16:00") })], {
+      fordFor: fordFor({ z: [fordDetail("z")] }),
+    });
+    expect(entries.map((e) => e.clientId)).toEqual(["a"]);
+    expect(kinds(entries[0])).toEqual([]);
+  });
+});
+
+describe("All stars: the nightly marks' word on the Sessions sort (wave 2 hub)", () => {
+  const star = (clientId: string, weeksIn = 25, perWeek = 2) => ({ clientId, weeksIn, perWeek });
+  const allStarOf = (...ids: string[]) => (id: string) => (ids.includes(id) ? star(id) : null);
+
+  it("gets her own section after Regulars, with her number and her weeks; everyone else keeps theirs", () => {
+    const entries = run(
+      [makeClient({ id: "a", sessionCount: 263, ...COMPLETE }), makeClient({ id: "r", sessionCount: 120, ...COMPLETE }), makeClient({ id: "b", sessionCount: 20, ...COMPLETE })],
+      [makeBooking({ clientId: "a", start: today("15:00") }), makeBooking({ clientId: "r", start: today("15:30") }), makeBooking({ clientId: "b", start: today("16:00") })],
+      { allStarOf: allStarOf("a") },
+    );
+    const a = entries.find((e) => e.clientId === "a")!;
+    expect(a.allStar).toEqual({ weeksIn: 25, perWeek: 2, words: "All star: in 25 of the last 26 weeks, about twice a week." });
+    expect(a.facts.sessions).toMatchObject({ sentence: "#264 · in 25 of the last 26 weeks", bucket: "all-stars", unknown: false });
+    expect(runSections(entries, "sessions").map((s) => [s.label, s.entries.map((e) => e.clientId)])).toEqual([
+      ["Building (4–49)", ["b"]],
+      ["Regulars (50+)", ["r"]],
+      ["All stars", ["a"]],
+    ]);
+    expect(entries.find((e) => e.clientId === "r")!.allStar).toBeNull();
+  });
+
+  it("a milestone today keeps its own section; she is still an all star in the peek", () => {
+    const [entry] = run([makeClient({ id: "a", sessionCount: 99, ...COMPLETE })], [makeBooking({ clientId: "a", start: today("15:00") })], { allStarOf: allStarOf("a") });
+    expect(entry.facts.sessions.bucket).toBe("milestone");
+    expect(entry.allStar?.words).toBe("All star: in 25 of the last 26 weeks, about twice a week.");
+  });
+
+  it("stands where her total can't be quoted: the job's claim is about the 26 weeks Journey holds", () => {
+    const [entry] = run([makeClient({ id: "m", sessionCount: 99, clientsNumberOfVisitsAtSite: 400 })], [makeBooking({ clientId: "m", start: today("15:00") })], {
+      allStarOf: allStarOf("m"),
+    });
+    expect(entry.sessionNumber).toBeNull();
+    expect(entry.facts.sessions).toMatchObject({ sentence: "In 25 of the last 26 weeks", bucket: "all-stars", unknown: false, value: null });
+  });
+
+  it("with no marks (missing, stale, unreadable), nobody is one and nothing is said", () => {
+    const [entry] = run([makeClient({ id: "a", sessionCount: 263, ...COMPLETE })], [makeBooking({ clientId: "a", start: today("15:00") })]);
+    expect(entry.allStar).toBeNull();
+    expect(entry.facts.sessions.bucket).toBe("regulars");
   });
 });
 
