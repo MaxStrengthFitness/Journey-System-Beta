@@ -100,6 +100,11 @@ export interface AdaptOptions {
    * machineId (wave 2, Sep 28 2026; features/catalog/out-of-service.ts).
    */
   outOfService?: Record<string, OutOfService>;
+  /**
+   * Which model each unit is, from its roster entry, keyed by machineId
+   * (wave 2, Catalog R4; features/catalog/models.ts).
+   */
+  modelIds?: Record<string, string>;
 }
 
 /**
@@ -203,6 +208,7 @@ export function fromResolvedMachine(
     ...(machine.rosterStatus === "maintenance" && opts.outOfService?.[id]
       ? { outOfService: opts.outOfService[id] }
       : {}),
+    ...(opts.modelIds?.[id] ? { modelId: opts.modelIds[id] } : {}),
 
     // The document's own MuscleId fields win; contentId supplies the in-repo
     // default so a studio's copy of a catalog machine still lights up.

@@ -3,6 +3,7 @@ import { WikiBadge, accentForPattern, accentStyle } from "../wiki";
 import { useWikiPageGuard } from "../wiki/page-guard";
 import { abbr as academyAbbr } from "../routine-builder/academy";
 import { presetLine, type Preset } from "./floor-index";
+import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
 import { outOfServiceShort } from "./out-of-service";
 import type { CatalogMachine } from "./types";
@@ -32,10 +33,15 @@ export interface FloorRowProps {
   preset: Preset;
   /** Relay's care record flags it. False while flags are unknown. */
   flagged: boolean;
+  /**
+   * Which maker's model the unit is (wave 2, Catalog R4): only the record its
+   * roster entry names, read. Null or absent says nothing, never a guess.
+   */
+  model?: MachineModel | null;
   onOpen: () => void;
 }
 
-export function FloorRow({ walk, machine, preset, flagged, onOpen }: FloorRowProps) {
+export function FloorRow({ walk, machine, preset, flagged, model, onOpen }: FloorRowProps) {
   // A row leaves the index for a page, so it asks about typing there first.
   const guard = useWikiPageGuard();
   const movement = movementOf(machine);
@@ -70,6 +76,7 @@ export function FloorRow({ walk, machine, preset, flagged, onOpen }: FloorRowPro
               </span>
             )}
           </span>
+          {model && <span className="mcat-row__model">{modelName(model)}</span>}
           {movementLine && <span className="mcat-row__movement">{movementLine}</span>}
           <span className={`mcat-row__preset${quiet ? " mcat-row__preset--none" : ""}`}>{presetLine(preset)}</span>
           {(outOfService || flagged || machine.neverToFailure || machine.requiresHandoff) && (

@@ -140,6 +140,37 @@ describe("a machine page, mounted", () => {
     expect(badge?.className).toContain("wk__badge--warn");
   });
 
+  it("says the unit's model in the box, and a movement's models under their own heading (wave 2, R4)", async () => {
+    const model = { id: "h", brand: "Hoist", model: "ROC-IT Leg Press", movementId: "m-leg-press", dials: [], notes: "" };
+    await act(async () => {
+      root.render(
+        <UnsavedChangesProvider>
+          <WikiShell crumbs={[{ label: "Catalog" }]}>
+            <MachineArticle
+              machine={chestPress}
+              model={model}
+              models={<p data-testid="models">Two models</p>}
+              related={[]}
+              onOpenMachine={() => {}}
+              figure={null}
+              isOpen={() => false}
+              setOpen={() => {}}
+            />
+          </WikiShell>
+        </UnsavedChangesProvider>,
+      );
+    });
+    expect(host.querySelector(".wk__aside")?.textContent).toContain("Hoist ROC-IT Leg Press");
+    expect(host.querySelector("#models")?.textContent).toContain("Models");
+    expect(host.querySelector("[data-testid='models']")?.textContent).toBe("Two models");
+  });
+
+  it("has no Model line and no Models heading when nothing is known", async () => {
+    await mount(<Page onOpenMachine={() => {}} />);
+    expect(host.querySelector(".wk__aside")?.textContent).not.toContain("Model");
+    expect(host.querySelector("#models")).toBeNull();
+  });
+
   it("keeps an old out of service with no reason to its badge, and says nothing it doesn't know", async () => {
     await mount(<Page machine={{ ...chestPress, rosterStatus: "maintenance" }} onOpenMachine={() => {}} />);
     expect(host.querySelector(".mcat-oos")).toBeNull();

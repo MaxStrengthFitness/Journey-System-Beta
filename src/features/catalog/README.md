@@ -139,6 +139,20 @@ administrators in the catalog editor, not in code. The round is
   when and where it goes back in (`.mcat-oos`), and Find finds a unit by its
   reason. Only a unit that IS out of service says a reason; one set out of
   service before reasons existed keeps just its badge.
+- **The model tier, read side** (Catalog R4; `models.ts`,
+  `useMachineModels.ts`, `MovementModels.tsx`). The record is the Machine
+  Codex's: `machineModels/{modelId}` `{ brand, model, movementId, dials?,
+  notes?, updatedAt, updatedBy }` (administrators write, everyone signed in
+  reads: the Codex's rules), and `modelId` on a studio's roster entry. Brand
+  and model show on every floor row (`.mcat-row__model`, the body lens's rows
+  too) and in the unit's box ("Model"); a movement's page in All MSF lists its
+  models (`MovementModels`: name, dials, note — never how many floors have
+  one). **Never a guess**: a unit says a model only when its entry names one
+  by id and that record was read. **Nothing until the collection exists**:
+  the floor reads the collection only when one of its units names a model,
+  All MSF only while a page is open, and an unreadable read draws nothing.
+  Find knows a unit by its model's name, and the model's maker filters the
+  floor where the studio recorded none on the unit.
 
 > **Read this first (Sep 17 2026).** This document is the spec and build notes
 > for the **pre-wiki** Catalog screen. The Wiki Redesign (Sep 10 2026) replaced

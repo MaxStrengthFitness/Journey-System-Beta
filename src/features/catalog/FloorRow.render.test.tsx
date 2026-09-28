@@ -116,6 +116,20 @@ describe("a unit on the floor, mounted", () => {
     expect(host.querySelector(".mcat-row__why")?.textContent).toBe("A new cable is on order · Glorfindel");
   });
 
+  it("says which maker's model the unit is, when it is known (wave 2, R4)", async () => {
+    const model = { id: "hoist-rocit-lp", brand: "Hoist", model: "ROC-IT Leg Press", movementId: "m-leg-press", dials: [], notes: "" };
+    await mount(
+      <FloorRow walk={2} machine={machine({ id: "m-leg-press", name: "LEG PRESS", modelId: model.id })} preset={SET} flagged={false} model={model} onOpen={() => {}} />,
+    );
+    expect(host.querySelector(".mcat-row__model")?.textContent).toBe("Hoist ROC-IT Leg Press");
+  });
+
+  it("says nothing about a model it doesn't know", async () => {
+    await mount(<FloorRow walk={2} machine={machine({ id: "m-leg-press", name: "LEG PRESS" })} preset={SET} flagged={false} onOpen={() => {}} />);
+    expect(host.querySelector(".mcat-row__model")).toBeNull();
+    expect(host.textContent).not.toMatch(/model|unknown/i);
+  });
+
   it("never says a reason for a unit that is back in service", async () => {
     const outOfService = { reason: "A new cable is on order", by: { uid: "u", name: "Glorfindel" }, at: 0 };
     await mount(<FloorRow walk={1} machine={machine({ rosterStatus: "active", outOfService })} preset={SET} flagged={false} onOpen={() => {}} />);

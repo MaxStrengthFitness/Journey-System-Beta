@@ -48,7 +48,9 @@ import { FloorRow } from "./FloorRow";
 import { flagLineOf, floorSentence, presetOf } from "./floor-index";
 import { MachineArticle, type FoundOnPage } from "./MachineArticle";
 import { MachineFigure } from "./MachineFigure";
+import { modelForUnit, modelName, modelsById } from "./models";
 import { movementOf } from "./names";
+import { useMachineModels } from "./useMachineModels";
 import { StudioNotesCard } from "./StudioNotesCard";
 import { StudioSetupCard } from "./StudioSetupCard";
 import { useCatalogMachines } from "./useCatalogMachines";
@@ -399,10 +401,28 @@ export function CatalogWikiView({
     return new Set(Object.keys(care.byMachineId).filter((id) => care.byMachineId[id]?.flag));
   }, [care.loading, care.error, care.byMachineId]);
 
+  /*
+   * The model tier (wave 2, Catalog R4): which maker's model each unit is.
+   * Read only when a unit on this floor names a model, and drawn only when the
+   * records could be read: until the collection exists, nothing is said.
+   */
+  const floorNamesAModel = floorMachines.some((m) => Boolean(m.modelId));
+  const modelsRead = useMachineModels(floorNamesAModel);
+  const modelRecords = useMemo(() => modelsById(modelsRead), [modelsRead]);
+  const modelOf = (m: CatalogMachine) => modelForUnit(m.modelId, modelRecords);
+  const unitModels = useMemo(() => {
+    const out: Record<string, { name: string; brand: string }> = {};
+    for (const m of floorMachines) {
+      const model = modelForUnit(m.modelId, modelRecords);
+      if (model) out[m.id] = { name: modelName(model), brand: model.brand };
+    }
+    return out;
+  }, [floorMachines, modelRecords]);
+
   /* Find (Catalog R1): every name a machine goes by, over this floor. */
   const findUnits = useMemo(
-    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds }),
-    [floorMachines, makers, flaggedIds],
+    () => findUnitsFrom(floorMachines, { makers, flagged: flaggedIds, models: unitModels }),
+    [floorMachines, makers, flaggedIds, unitModels],
   );
   // The body's parts, for Find's "Muscles" (Catalog R3): "lats" opens the body lens.
   const findRegions = useMemo(() => {
@@ -546,6 +566,7 @@ export function CatalogWikiView({
           setOpen={setOpen}
           flag={careFlag ? flagLineOf(careFlag) : null}
           preset={presetOf(selected, settingsByMachineId[selected.id])}
+          model={modelOf(selected)}
           onOpenMachine={openMachine}
           related={related}
           /* The panel reads machineTrends/{id} only once the foldable is open,
@@ -708,6 +729,7 @@ export function CatalogWikiView({
           onRegion={setRegionId}
           presetFor={(m) => presetOf(m, settingsByMachineId[m.id])}
           flaggedIds={flaggedIds}
+          modelFor={modelOf}
           onOpenMachine={openMachine}
           onOpenMovement={openMovement}
         />
@@ -807,6 +829,7 @@ export function CatalogWikiView({
               machine={m}
               preset={presetOf(m, settingsByMachineId[m.id])}
               flagged={Boolean(flaggedIds?.has(m.id))}
+              model={modelOf(m)}
               onOpen={() => openMachine(m.id)}
             />
           ))}

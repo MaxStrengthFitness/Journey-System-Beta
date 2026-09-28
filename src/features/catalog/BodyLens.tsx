@@ -13,6 +13,7 @@ import {
 } from "./body-lens";
 import { FloorRow } from "./FloorRow";
 import type { FloorState, Preset } from "./floor-index";
+import type { MachineModel } from "./models";
 import type { CatalogMachine } from "./types";
 
 /**
@@ -44,6 +45,8 @@ export interface BodyLensProps {
   presetFor: (machine: CatalogMachine) => Preset;
   /** Relay's flags; null while unknown. */
   flaggedIds: ReadonlySet<string> | null;
+  /** Each unit's model, where known (wave 2, Catalog R4), as every floor row shows it. */
+  modelFor?: (machine: CatalogMachine) => MachineModel | null;
   onOpenMachine: (id: string) => void;
   /** An MSF movement this floor does not have: its page in All MSF. */
   onOpenMovement: (movementId: string) => void;
@@ -57,6 +60,7 @@ export function BodyLens({
   onRegion,
   presetFor,
   flaggedIds,
+  modelFor,
   onOpenMachine,
   onOpenMovement,
 }: BodyLensProps) {
@@ -79,6 +83,7 @@ export function BodyLens({
       machine={m}
       preset={presetFor(m)}
       flagged={Boolean(flaggedIds?.has(m.id))}
+      model={modelFor?.(m) ?? null}
       onOpen={() => onOpenMachine(m.id)}
     />
   );

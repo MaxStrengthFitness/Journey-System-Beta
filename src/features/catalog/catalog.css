@@ -19,6 +19,7 @@
                       .mcat-flag*   Relay's flag on the unit (R2)
                       .mcat-oos*    out of service, why and who (wave 2)
                       .mcat-ntf*    the Academy's never-to-failure rule (R2)
+     MovementModels   .mcat-models* a movement's models (wave 2, R4)
      CatalogLenses    .mcat-lens*   the three ways in (R3)
      BodyLens         .mcat-body*   the body, on the app's anatomy model (R3)
 
@@ -458,6 +459,15 @@
   overflow-wrap: anywhere;
 }
 
+/* Which maker's model the unit is (wave 2, Catalog R4): read with the name. */
+.mcat-row__model {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--wk-ink-2);
+  overflow-wrap: anywhere;
+}
+
 /* The preset: where the unit's dials sit, as a trainer reads it walking up. */
 .mcat-row__preset {
   font-size: 12px;
@@ -556,6 +566,53 @@
 .mcat-oos__where {
   font-size: 12px;
   color: var(--wk-ink-2);
+}
+
+/* ── A movement's models (wave 2, Catalog R4) ────────────────────────────
+   Each maker's machine for a movement, on its page in All MSF machines: one
+   card, a row per model, every line wrapping. */
+.mcat-models {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+  overflow: hidden;
+}
+
+.mcat-models__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  padding: 0.625rem 0.875rem;
+}
+
+.mcat-models__item + .mcat-models__item {
+  border-top: 1px solid var(--wk-border);
+}
+
+.mcat-models__name {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+
+.mcat-models__dials {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--wk-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.mcat-models__note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--wk-ink-muted);
+  overflow-wrap: anywhere;
 }
 
 /* ── Never to failure: the Academy's stop rule, first on the page ─────── */

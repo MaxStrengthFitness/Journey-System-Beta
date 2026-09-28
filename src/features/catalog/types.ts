@@ -35,6 +35,12 @@ export interface CatalogMachine {
    * service before reasons existed, which reads as it always did.
    */
   outOfService?: OutOfService | null;
+  /**
+   * Which maker's model this unit is (wave 2, Catalog R4): the roster
+   * entry's `modelId`, a `machineModels` record's id. Absent when the studio
+   * hasn't said, and then nothing about a model is shown (never a guess).
+   */
+  modelId?: string;
 
   // ── the figure ───────────────────────────────────────────────────
   anatomy: MachineAnatomy;

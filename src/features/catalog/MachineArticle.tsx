@@ -3,6 +3,7 @@ import {
   Activity,
   BookOpen,
   ClipboardList,
+  Factory,
   Layers,
   MessageSquareQuote,
   OctagonAlert,
@@ -34,6 +35,7 @@ import {
 } from "../wiki";
 import { CATEGORY_LABEL, abbr as academyAbbr, categoryOf } from "../routine-builder/academy";
 import { presetLine, type FlagLine, type Preset } from "./floor-index";
+import { modelName, type MachineModel } from "./models";
 import { floorNameHidesMovement, movementOf } from "./names";
 import { outOfServiceLineOf } from "./out-of-service";
 import type { CatalogMachine } from "./types";
@@ -132,6 +134,16 @@ export interface MachineArticleProps {
   flag?: FlagLine | null;
   /** This unit's preset — where its dials sit — for a floor's page. */
   preset?: Preset;
+  /**
+   * Which maker's model this unit is, for a floor's page (wave 2, Catalog
+   * R4): a "Model" line in the box. Null or absent: nothing (never a guess).
+   */
+  model?: MachineModel | null;
+  /**
+   * A movement's models, for its page in All MSF machines (wave 2, Catalog
+   * R4): a MovementModels, drawn under "Models" only when the host has any.
+   */
+  models?: ReactNode;
 
   /** Slotted cards, owned by features/studio-tasks. See the note above. */
   playbook?: ReactNode;
@@ -181,6 +193,8 @@ export function MachineArticle({
   academy,
   flag,
   preset,
+  model,
+  models,
   playbook,
   studioSetup,
   studioNotes,
@@ -208,6 +222,8 @@ export function MachineArticle({
     ...(preset
       ? [{ label: "Preset", icon: <SlidersHorizontal size={11} aria-hidden />, value: presetLine(preset) }]
       : []),
+    // Which maker's model the unit is (wave 2, Catalog R4), where it is known.
+    ...(model ? [{ label: "Model", icon: <Factory size={11} aria-hidden />, value: modelName(model) }] : []),
     { label: "Class", icon: <Activity size={11} aria-hidden />, value: machine.kinematicClassification },
     { label: "Posture", icon: <Target size={11} aria-hidden />, value: machine.executionPosture },
     { label: "Setup", icon: <Settings2 size={11} aria-hidden />, value: machine.setupGap },
@@ -347,6 +363,14 @@ export function MachineArticle({
           icon={<Users size={13} aria-hidden />}
         >
           <WikiCues items={machine.contraindicatedFor} />
+        </WikiSection>
+      )}
+
+      {/* A movement's models (wave 2, Catalog R4): each maker's machine for
+          it, on its All MSF page, once the model records exist. */}
+      {models && (
+        <WikiSection id="models" title="Models" icon={<Factory size={13} aria-hidden />}>
+          {models}
         </WikiSection>
       )}
 

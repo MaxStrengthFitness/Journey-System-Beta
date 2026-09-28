@@ -97,7 +97,7 @@ Session screens still use the app-wide machine list (AppContent's `machines`), n
 | `hooks.ts` | The collection-group reads, and naming a studio from its own document |
 | `mutations.ts` + test | Adopt, the three offers (and taking them back), and an administrator's decision |
 | `offers.ts` + test, `ShareReviewPanel.tsx` + test, `share-review.css` | The Admins dashboard's Waiting for review (on the `--adm-*` tokens) |
-| `MachineDatabase.tsx` | The All MSF machines scope: index, page, search |
+| `MachineDatabase.tsx` + `MachineDatabase.render.test.tsx` | The All MSF machines scope: index, page, search. Since wave 2 of the Machine Catalog room (Sep 28 2026) a movement's page lists its models (`features/catalog/MovementModels`, read only while a page is open, nothing until the records can be read) |
 | `NetworkNotes.tsx` | "From other MSF studios", on every machine page |
 | `ScopeSwitch.tsx`, `ShareToggle.tsx` + test | The two controls (the switch's four states since Sep 28 2026) |
 | `machine-db.css` | On the wiki's `--wk-*` tokens |
