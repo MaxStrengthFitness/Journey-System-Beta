@@ -430,7 +430,7 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
       if (!milestone) {
         const weeks = `in ${star.weeksIn} of the last ${ALL_STAR_WEEKS} weeks`;
         facts.sessions = {
-          sentence: sessionNumber !== null ? `#${sessionNumber} · ${weeks}` : `${weeks.charAt(0).toUpperCase()}${weeks.slice(1)}`,
+          sentence: sessionNumber !== null ? `#${sessionNumber} \u00b7 ${weeks}` : `${weeks.charAt(0).toUpperCase()}${weeks.slice(1)}`,
           bucket: "all-stars",
           unknown: false,
           value: sessionNumber,
@@ -538,10 +538,10 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
       facts.left = { sentence: renewal.situation === "ended" ? "Package ended \u2014 talk today?" : "Renewal due \u2014 talk today?", bucket: "talk", unknown: false, value: null };
     }
 
-    /* ---- Get to know: the \u270e Ask about, from the Hub's one FORD read ---- */
+    /* ---- Get to know: the ✎ Ask about, from the Hub's one FORD read ---- */
     // Asked about the booking's day, like every moment. The chip and the
     // sentence are the list's and the peek's; on the grid the mark is a glyph
-    // whose label is only ASK_ABOUT_LABEL \u2014 FORD details never on the grid.
+    // whose label is only ASK_ABOUT_LABEL — FORD details never on the grid.
     if (input.fordFor) {
       const details = input.fordFor(clientId);
       if (details === null) {
