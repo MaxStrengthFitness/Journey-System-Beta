@@ -1277,3 +1277,116 @@
 .snc-confirm__text { margin: 0; color: var(--cx-ink); font-size: 14px; }
 .snc-confirm__failure { margin: 0; color: var(--cx-warn); font-size: 14px; font-weight: 700; }
 .snc-more { display: grid; gap: 10px; min-width: 0; padding-top: 12px; border-top: 1px solid var(--cx-line); }
+
+/* ------------------------------------------------------------------ *
+ * THE JOURNAL (the second wave of the Relay room, Sep 28 2026): Write's
+ * six types, the shelves, a typed note's template, a hunch's evidence,
+ * the Studio shelf, the day logs and On this day. Prefix jn. On the
+ * Studio Hub's --st-* tokens, 44px to touch, names wrap and are never cut.
+ * ------------------------------------------------------------------ */
+
+.jn-write { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 0 1rem 0.75rem; }
+.jn-write__h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
+.jn-write__sub { font-weight: 500; color: var(--st-ink-muted); }
+.jn-write__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 6px; }
+.jn-type {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid var(--st-border);
+  border-radius: 12px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.jn-type:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.jn-type:disabled { opacity: 0.6; cursor: default; }
+.jn-type__h { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--st-live); }
+.jn-type__tpl { font-size: 11px; line-height: 1.35; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+
+.jn-shelves { padding-bottom: 0.5rem; }
+.jn-shelf__sub { font-weight: 500; color: var(--st-ink-muted); }
+
+.jn-tpl { display: flex; flex-direction: column; gap: 0.625rem; margin-top: 1rem; }
+.jn-tpl__h { display: inline-flex; align-items: center; gap: 6px; }
+.jn-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.jn-field__l { margin: 0; font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
+.jn-ta {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.jn-ta:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.jn-sample { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.jn-num {
+  width: 5.5rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.jn-unit { flex: 0 1 16rem; }
+.jn-hint { font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); }
+.jn-private { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); }
+.jn-private > svg { flex: none; margin-top: 2px; }
+.jn-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.jn-hunch { display: flex; flex-direction: column; gap: 0.625rem; margin-top: 1rem; padding: 0.875rem; border: 1px solid var(--st-border); border-radius: 12px; background: var(--st-surface); }
+.jn-hunch__state { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 800; color: var(--st-ink-2); }
+.jn-hunch__state--ready { color: var(--st-done); }
+.jn-evi { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--st-border); }
+.jn-evi__item { display: flex; align-items: flex-start; gap: 8px; padding: 0.5rem 0; border-bottom: 1px solid var(--st-border); }
+.jn-evi__t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; line-height: 1.4; color: var(--st-ink); overflow-wrap: anywhere; }
+.jn-evi__s { font-size: 12px; color: var(--st-ink-muted); }
+.jn-evi__add { display: flex; flex-direction: column; gap: 8px; }
+.jn-icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-ink-muted);
+  cursor: pointer;
+}
+.jn-icon-btn:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+
+.jn-studio { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; padding: 0.875rem; border: 1px solid var(--st-border); border-radius: 12px; background: var(--st-surface-2); }
+.jn-studio__h { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 800; color: var(--st-ink); }
+.jn-studio__lede { margin: 0; font-size: 12px; line-height: 1.45; color: var(--st-ink-2); }
+.jn-studio__draft { display: flex; flex-direction: column; gap: 4px; padding: 0.625rem 0.75rem; border: 1px dashed var(--st-border-strong); border-radius: 10px; background: var(--st-surface); }
+.jn-studio__t { font-size: 14px; font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+.jn-studio__s { font-size: 14px; line-height: 1.45; color: var(--st-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.jn-view { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
+.jn-view__k { display: inline-flex; align-items: center; gap: 6px; }
+.jn-view__t { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.3; color: var(--st-ink); overflow-wrap: anywhere; }
+.jn-dl { display: flex; flex-direction: column; gap: 0.625rem; margin: 0; }
+.jn-dl > div { display: flex; flex-direction: column; gap: 2px; }
+.jn-dl dt { font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
+.jn-dl dd { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.jn-carry { margin: 0; padding-left: 1.25rem; font-size: 14px; line-height: 1.5; color: var(--st-ink); }
+.jn-draft { margin: 0; font-size: 14px; line-height: 1.55; color: var(--st-ink-2); }
+.jn-otd__lede { padding-top: 0; }

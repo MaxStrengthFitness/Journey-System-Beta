@@ -21,6 +21,8 @@
      rwho  Who? — a leader's faces on the dealt card
      rsc   Opening and Close out: the two small cards at the start and the
            end of the day, and their line at the foot of Later today
+     rsy   Since you were in: the notice board at the top of the side
+           column (the second wave, Sep 28 2026)
 
    Widths follow the Board's own box, not the screen's (a container query on
    .rbd): with the Context Panel open beside it on a landscape iPad the Board
@@ -427,6 +429,7 @@
 .rbd-team__row + .rbd-team__row { border-top: 1px solid var(--st-border); }
 .rbd-team__t { font-weight: 700; color: var(--st-ink); overflow-wrap: anywhere; }
 .rbd-team__t .rbd-mute { font-weight: 500; }
+.rbd-team__more { margin: 0.375rem 0 0; font-size: 12px; color: var(--st-ink-muted); }
 
 /* ------------------------------------------------------------------ *
  * Behind the open door: the Floor's lanes, and Mine's list
@@ -741,6 +744,28 @@
 .rsc__none { margin: 0; font-size: 14px; line-height: 1.5; color: var(--st-ink-muted); }
 .rsc__draft { margin: 0; font-size: 14px; line-height: 1.6; color: var(--st-ink-2); overflow-wrap: anywhere; }
 
+/* The Journal's day log on the two cards (the second wave, Sep 28 2026):
+   Opening's things to carry, Close out's one line for yourself. */
+.rsc__carry { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 0.25rem; }
+.rsc__carry-list { margin: 0; padding-left: 1.25rem; font-size: 14px; line-height: 1.5; color: var(--st-ink); }
+.rsc__carry-line { overflow-wrap: anywhere; }
+.rsc__field { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.rsc__field-l { font-size: 12px; font-weight: 800; color: var(--st-ink-2); }
+.rsc__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--st-border);
+  border-radius: 10px;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.rsc__input:focus-visible { outline: 2px solid var(--st-live); outline-offset: 1px; }
+.rsc__private { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); }
+.rsc__private > svg { flex: none; margin-top: 2px; }
+
 .rsc-btn {
   display: inline-flex;
   align-items: center;
@@ -802,3 +827,111 @@
   cursor: pointer;
 }
 .rbd-ask:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ *
+ * Since you were in (the second wave of the Relay room, Sep 28 2026):
+ * the notice board at the top of the side column. A filled dot is new
+ * since you were in, a hollow one seen; leadership wears a seal, never a
+ * colour of alarm. Names wrap and are never cut.
+ * ------------------------------------------------------------------ */
+
+.rsy {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--st-border);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+  overflow: hidden;
+}
+.rsy__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.625rem;
+  padding: 0.625rem 0.875rem 0.5rem;
+  background: var(--st-surface-2);
+  border-bottom: 1px solid var(--st-border);
+}
+.rsy__head .rsy__title { margin: 0; }
+.rsy__count { font-size: 12px; font-weight: 800; color: var(--st-live); }
+.rsy__count--zero { color: var(--st-ink-muted); font-weight: 700; }
+
+.rsy__list { list-style: none; margin: 0; padding: 0; }
+.rsy__item { display: flex; flex-direction: column; gap: 0.375rem; padding: 0 0.625rem 0.375rem 0; }
+.rsy__item + .rsy__item { border-top: 1px solid var(--st-border); }
+.rsy__tap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.625rem 0 0.25rem 0.875rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rsy__tap:focus-visible { outline: 2px solid var(--st-live); outline-offset: -2px; }
+.rsy__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.3rem;
+  border: 2px solid var(--st-border-strong);
+  border-radius: 999px;
+  background: transparent;
+}
+.rsy__item--new .rsy__dot { border-color: var(--st-live); background: var(--st-live); }
+.rsy__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rsy__k {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.375rem;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--st-ink-2);
+  overflow-wrap: anywhere;
+}
+.rsy__k > svg { flex: none; color: var(--st-ink-muted); }
+.rsy__who { font-weight: 800; color: var(--st-ink); overflow-wrap: anywhere; }
+.rsy__seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--st-live-fill);
+  color: var(--st-live);
+  font-size: 11px;
+  font-weight: 800;
+}
+.rsy__when { font-size: 12px; font-weight: 500; color: var(--st-ink-muted); }
+.rsy__t { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--st-ink); overflow-wrap: anywhere; }
+.rsy__item:not(.rsy__item--new) .rsy__t { font-weight: 600; color: var(--st-ink-2); }
+.rsy__s { font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+.rsy__s--unknown { color: var(--st-ink-2); }
+.rsy__lines { display: flex; flex-direction: column; gap: 2px; }
+.rsy__line { font-size: 14px; line-height: 1.35; color: var(--st-ink); overflow-wrap: anywhere; }
+.rsy__quiet { margin: 0; padding: 0.625rem 0.875rem; font-size: 14px; line-height: 1.45; color: var(--st-ink-2); }
+.rsy__foot { display: flex; justify-content: flex-end; padding: 0.25rem 0.5rem 0.5rem; border-top: 1px solid var(--st-border); }
+.rsy__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--st-border-strong);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rsy__all:disabled { color: var(--st-ink-muted); cursor: default; }
+.rsy__all:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }

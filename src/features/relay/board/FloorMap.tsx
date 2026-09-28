@@ -9,14 +9,18 @@ import type { TaskActions } from "../../studio-tasks/useTaskActions";
 import { useRelay } from "./RelayContext";
 import {
   DEFAULT_DEEP_CLEAN_DAYS,
+  DEFAULT_WIPE_AFTER_SESSIONS,
   HEAT_WORD,
   deepSentence,
   groupFloor,
+  wantsWipeSentence,
   wearOf,
+  weeklyMaintenanceLine,
   wipeSentence,
   type MachineCare,
   type MachineWear,
 } from "./machine-care";
+import { useStudioSettings } from "../../studio-settings";
 import { clearMachineFlag, flagMachine, recordCare, useMachineCare } from "./machine-care-store";
 
 /**
@@ -37,7 +41,17 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
   const { activeStudio } = useActiveStudio();
   const { machines, loading: machinesLoading } = useStudioMachines(relay.studioId, { bridgeWhenRosterEmpty: true });
   const care = useMachineCare(relay.studioId);
-  const deepDays = activeStudio?.deepCleanIntervalDays ?? DEFAULT_DEEP_CLEAN_DAYS;
+  /*
+   * THE STUDIO'S OWN CLEANING LOG (the second wave, Sep 28 2026): the deep
+   * clean's interval, the wipe-after number and the weekly maintenance day
+   * are the studio's settings (features/studio-settings: its own, else Max
+   * Strength's default, else the app's). The studio document goes in, so
+   * its deepCleanIntervalDays still answers until the settings hold one.
+   */
+  const settings = useStudioSettings(relay.studioId, activeStudio);
+  const deepDays = settings.value("deepCleanDays") ?? DEFAULT_DEEP_CLEAN_DAYS;
+  const wipeAfter = settings.value("wipeAfterSessions") ?? DEFAULT_WIPE_AFTER_SESSIONS;
+  const weekly = weeklyMaintenanceLine(settings.value("weeklyMaintenanceDay"), relay.now.todayKey);
 
   const tiles = useMemo(() => {
     const list = machines.length
@@ -49,9 +63,9 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
   const now = Date.now();
   const wear = useMemo(() => {
     const out: Record<string, MachineWear> = {};
-    for (const g of tiles) for (const m of g.machines) out[m.id] = wearOf(m.id, { sessions: relay.sessions, care: care.byMachineId[m.id], now, deepCleanDays: deepDays });
+    for (const g of tiles) for (const m of g.machines) out[m.id] = wearOf(m.id, { sessions: relay.sessions, care: care.byMachineId[m.id], now, deepCleanDays: deepDays, wipeAfterSessions: wipeAfter });
     return out;
-  }, [tiles, relay.sessions, care.byMachineId, now, deepDays]);
+  }, [tiles, relay.sessions, care.byMachineId, now, deepDays, wipeAfter]);
 
   const rowsFor = (machineId: string) => rows.filter((r) => r.machineId === machineId && r.kind === "machine");
 
@@ -59,22 +73,28 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
     relay.openPanel({
       kicker: "Machine",
       title: m.name,
-      body: <CareSheet machineId={m.id} machineName={m.name} rows={rowsFor(m.id)} actions={actions} deepDays={deepDays} />,
+      body: <CareSheet machineId={m.id} machineName={m.name} rows={rowsFor(m.id)} actions={actions} deepDays={deepDays} wipeAfter={wipeAfter} />,
       tall: true,
     });
   };
 
   const flagged = Object.values(care.byMachineId).filter((c) => c.flag).length;
   const hot = Object.values(wear).filter((w) => w.heat >= 2).length;
+  const wantWipe = Object.values(wear).filter((w) => w.wantsWipe).length;
 
   return (
     <section className="fm" aria-label="The floor">
       <header className="rl-h">
         <h2 className="rl-h__title">The floor</h2>
         <span className="rl-h__sub">
-          {care.error ? care.error : hot || flagged ? [hot ? `${hot} running hot` : null, flagged ? `${flagged} flagged` : null].filter(Boolean).join(" · ") : "Warm tiles want a wipe"}
+          {care.error
+            ? care.error
+            : wantWipe || hot || flagged
+              ? [wantWipe ? `${wantWipe} ${wantWipe === 1 ? "wants" : "want"} a wipe` : null, hot && !wantWipe ? `${hot} running hot` : null, flagged ? `${flagged} flagged` : null].filter(Boolean).join(" · ")
+              : `A machine wants a wipe after ${wipeAfter} ${wipeAfter === 1 ? "session" : "sessions"}`}
         </span>
       </header>
+      {weekly && <p className="fm__weekly">{weekly}</p>}
       {machinesLoading && tiles.length === 0 ? (
         <p className="sh__loading">Loading the floor…</p>
       ) : tiles.length === 0 ? (
@@ -90,9 +110,9 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
                   <button
                     key={m.id}
                     type="button"
-                    className={cn("fm__tile", `fm__tile--heat${w.heat}`, w.flag && "fm__tile--flagged", w.deepDue && "fm__tile--deep")}
+                    className={cn("fm__tile", `fm__tile--heat${w.heat}`, w.flag && "fm__tile--flagged", w.deepDue && "fm__tile--deep", w.wantsWipe && "fm__tile--wipe")}
                     onClick={() => open(m)}
-                    aria-label={`${m.name}: ${HEAT_WORD[w.heat].toLowerCase()}, ${w.touches} since the last wipe${w.flag ? ", flagged" : ""}`}
+                    aria-label={`${m.name}: ${HEAT_WORD[w.heat].toLowerCase()}, ${w.touches} since the last wipe${w.wantsWipe ? ", wants a wipe" : ""}${w.flag ? ", flagged" : ""}`}
                   >
                     <span className="fm__name">{m.name}</span>
                     <span className="fm__facts">
@@ -113,13 +133,13 @@ export function FloorMap({ rows, actions }: { rows: TaskRow[]; actions: TaskActi
   );
 }
 
-function CareSheet({ machineId, machineName, rows, actions, deepDays }: { machineId: string; machineName: string; rows: TaskRow[]; actions: TaskActions; deepDays: number }) {
+function CareSheet({ machineId, machineName, rows, actions, deepDays, wipeAfter }: { machineId: string; machineName: string; rows: TaskRow[]; actions: TaskActions; deepDays: number; wipeAfter: number }) {
   const relay = useRelay();
   const { activeStudio } = useActiveStudio();
   const { success: toastSuccess, error: toastError } = useToast();
   const care = useMachineCare(relay.studioId);
   const record: MachineCare | undefined = care.byMachineId[machineId];
-  const w = wearOf(machineId, { sessions: relay.sessions, care: record, now: Date.now(), deepCleanDays: deepDays });
+  const w = wearOf(machineId, { sessions: relay.sessions, care: record, now: Date.now(), deepCleanDays: deepDays, wipeAfterSessions: wipeAfter });
   const [flagging, setFlagging] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -178,6 +198,7 @@ function CareSheet({ machineId, machineName, rows, actions, deepDays }: { machin
         <Droplets size={14} aria-hidden /> {HEAT_WORD[w.heat]} · {w.touches} {w.touches === 1 ? "session" : "sessions"} since the last wipe
       </p>
       <p className="fm__line">{wipeSentence(w, record)}</p>
+      {wantsWipeSentence(w, wipeAfter) && <p className="fm__line fm__line--due">{wantsWipeSentence(w, wipeAfter)}</p>}
       <p className={cn("fm__line", w.deepDue && "fm__line--due")}>{deepSentence(w, deepDays)}</p>
 
       {w.flag && (

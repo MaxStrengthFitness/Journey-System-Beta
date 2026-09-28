@@ -5307,4 +5307,192 @@ describe("marks on a time", () => {
       await assertSucceeds(getDoc(doc(trainer, "machines", "m-leg-press")));
     });
   });
+
+  // -- WAVE 2 RELAY (Sep 28 2026, AJ: "all yes"): the Relay room's second
+  // wave. Each block in firestore.rules headed "WAVE 2 RELAY:" is held here.
+  describe("wave 2 relay", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // -- the last-seen marker: studios/{s}/lastSeen/{uid}, the person's own.
+    describe("the last-seen marker", () => {
+      const marker = () => ({ at: serverTimestamp(), updatedAt: serverTimestamp() });
+
+      it("lets a trainer set and read their own marker, at a studio, and nobody else's", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "studios", "studioA", "lastSeen", "trainerA");
+        await assertSucceeds(setDoc(ref, marker()));
+        await assertSucceeds(getDoc(ref));
+        await assertSucceeds(setDoc(ref, marker()));
+        // Someone else's: neither read nor written, even at their own studio.
+        const other = as("trainerB");
+        await assertFails(getDoc(doc(other, "studios", "studioA", "lastSeen", "trainerA")));
+        await assertFails(setDoc(doc(other, "studios", "studioA", "lastSeen", "trainerA"), marker()));
+        await assertFails(getDocs(collection(other, "studios", "studioA", "lastSeen")));
+      });
+
+      it("holds the two server times and nothing else", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "studios", "studioA", "lastSeen", "trainerA");
+        await assertFails(setDoc(ref, { at: new Date("2026-01-01T12:00:00Z"), updatedAt: serverTimestamp() }));
+        await assertFails(setDoc(ref, { ...marker(), studioId: "studioA" }));
+        await assertFails(setDoc(ref, { at: serverTimestamp() }));
+      });
+    });
+
+    // -- a cover ask keeps its time: `coverAt` on studios/{s}/taskRequests.
+    // No rule changed (the ask restricts no keys); held here so a later
+    // tightening of that rule remembers the field.
+    describe("a cover ask that keeps its time", () => {
+      const coverAsk = (over: Record<string, unknown> = {}) => ({
+        studioId: "studioA",
+        kind: "cover",
+        title: "Cover Hamfast Gamgee at 4:00 PM",
+        sessionDate: "2026-09-28",
+        coverAt: Date.parse("2026-09-28T16:00:00-04:00"),
+        dueOn: "2026-09-28",
+        createdBy: { id: "trainerA", name: "Trainer A" },
+        createdAt: serverTimestamp(),
+        claimedBy: null,
+        claimedAt: null,
+        status: "open",
+        replyCount: 0,
+        priority: "urgent",
+        expiresAt: new Date("2026-09-28T20:00:00Z"),
+        ...over,
+      });
+
+      it("lets a trainer post a cover with its time, and a teammate take it", async () => {
+        const mine = as("trainerA");
+        await assertSucceeds(setDoc(doc(mine, "studios", "studioA", "taskRequests", "cover1"), coverAsk()));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), "trainers", "trainerA2"), {
+            fullName: "Trainer A2",
+            initials: "A2",
+            role: "LifeTransformer",
+            primaryHomeStudioId: "studioA",
+            accessibleStudioIds: ["studioA"],
+          });
+        });
+        const teammate = as("trainerA2");
+        await assertSucceeds(
+          updateDoc(doc(teammate, "studios", "studioA", "taskRequests", "cover1"), {
+            claimedBy: { id: "trainerA2", name: "Trainer A2" },
+            claimedAt: serverTimestamp(),
+          }),
+        );
+        // Still posted as yourself only.
+        await assertFails(
+          setDoc(doc(teammate, "studios", "studioA", "taskRequests", "cover2"), coverAsk({ createdBy: { id: "trainerA", name: "Trainer A" } })),
+        );
+      });
+    });
+
+    // -- the Journal's notes: trainers/{uid}/notes may carry noteType,
+    // fields and hunch beside everything a note always held.
+    describe("the Journal's notes", () => {
+      const journalNote = (over: Record<string, unknown> = {}) => ({
+        title: "Pullover",
+        body: "",
+        kind: "note",
+        folderId: null,
+        clientIds: [],
+        clientNames: {},
+        pinned: false,
+        sharedWith: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        ...over,
+      });
+      const hunch = (over: Record<string, unknown> = {}) => ({
+        claim: "The Leg Curl stalls when the seat is set from memory.",
+        how: "6 sessions set from memory, checked against the card.",
+        need: 6,
+        unit: "sessions",
+        ...over,
+      });
+
+      it("lets a trainer write typed notes and hunches of their own, and nobody else", async () => {
+        const mine = as("trainerA");
+        const ref = (id: string) => doc(mine, "trainers", "trainerA", "notes", id);
+        await assertSucceeds(
+          setDoc(ref("m1"), journalNote({ noteType: "machine", fields: { machine: "Pullover", noticed: "Shorter arms reach better.", setting: "Seat pin 4." } })),
+        );
+        await assertSucceeds(setDoc(ref("t1"), journalNote({ title: "Leg Curl", noteType: "trend", fields: {}, hunch: hunch() })));
+        // Evidence goes on one piece at a time, and a hunch can be retired.
+        await assertSucceeds(
+          updateDoc(ref("t1"), { "hunch.evidence": arrayUnion({ id: "e1", at: 1, text: "Tuesday", clientId: null }), updatedAt: serverTimestamp() }),
+        );
+        await assertSucceeds(updateDoc(ref("t1"), { "hunch.retiredAt": Date.now(), updatedAt: serverTimestamp() }));
+        // A note written before the Journal still saves as it always did.
+        await assertSucceeds(setDoc(ref("old"), journalNote({ kind: "injury", title: "Knee plan" })));
+        // Someone else's tree, never.
+        const other = as("trainerB");
+        await assertFails(setDoc(doc(other, "trainers", "trainerA", "notes", "planted"), journalNote({ noteType: "personal", fields: { what: "x" } })));
+      });
+
+      it("keeps the shape: six types, three answers, a hunch's own keys and its limits", async () => {
+        const ref = (id: string) => doc(as("trainerA"), "trainers", "trainerA", "notes", id);
+        await assertFails(setDoc(ref("b1"), journalNote({ noteType: "diary" })));
+        await assertFails(setDoc(ref("b2"), journalNote({ noteType: "client", fields: { a: "1", b: "2", c: "3", d: "4" } })));
+        await assertFails(setDoc(ref("b3"), journalNote({ noteType: "trend", hunch: hunch({ need: 0 }) })));
+        await assertFails(setDoc(ref("b4"), journalNote({ noteType: "trend", hunch: hunch({ unit: "weeks" }) })));
+        await assertFails(setDoc(ref("b5"), journalNote({ noteType: "trend", hunch: { ...hunch(), secret: true } })));
+        await assertFails(setDoc(ref("b6"), journalNote({ noteType: "machine", extra: "not a note field" })));
+      });
+    });
+
+    // -- the day log: studios/{s}/dayLogs/{uid}_{day}, the trainer's own.
+    describe("the day log", () => {
+      const dayLog = (uid: string, over: Record<string, unknown> = {}) => ({
+        uid,
+        studioId: "studioA",
+        day: "2026-09-28",
+        carry: ["Slow down at the door"],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        ...over,
+      });
+
+      it("lets a trainer keep and read their own day's log, and list their own, and nobody else", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "studios", "studioA", "dayLogs", "trainerA_2026-09-28");
+        await assertSucceeds(setDoc(ref, dayLog("trainerA")));
+        await assertSucceeds(
+          setDoc(
+            ref,
+            {
+              uid: "trainerA",
+              studioId: "studioA",
+              day: "2026-09-28",
+              facts: ["Monday, September 28.", "5 sessions on your schedule today."],
+              line: { what: "Covered Rosie", soWhat: "", nowWhat: "Leave the same kind of notes" },
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          ),
+        );
+        await assertSucceeds(getDoc(ref));
+        // A day with no log yet reads as nothing there, not a refusal.
+        await assertSucceeds(getDoc(doc(mine, "studios", "studioA", "dayLogs", "trainerA_2026-09-29")));
+        await assertSucceeds(getDocs(query(collection(mine, "studios", "studioA", "dayLogs"), where("uid", "==", "trainerA"))));
+        // Nobody else: not a leader, not a colleague.
+        const owner = as("ownerA");
+        await assertFails(getDoc(doc(owner, "studios", "studioA", "dayLogs", "trainerA_2026-09-28")));
+        await assertFails(getDocs(collection(owner, "studios", "studioA", "dayLogs")));
+        await assertFails(setDoc(doc(owner, "studios", "studioA", "dayLogs", "trainerA_2026-09-28"), dayLog("trainerA")));
+      });
+
+      it("pins the id to the person and the day, and keeps the shape", async () => {
+        const mine = as("trainerA");
+        const at = (id: string) => doc(mine, "studios", "studioA", "dayLogs", id);
+        await assertFails(setDoc(at("trainerA_2026-09-27"), dayLog("trainerA")));
+        await assertFails(setDoc(at("trainerB_2026-09-28"), dayLog("trainerB")));
+        await assertFails(setDoc(at("trainerA_2026-09-28"), dayLog("trainerA", { studioId: "studioB" })));
+        await assertFails(setDoc(at("trainerA_2026-09-28"), dayLog("trainerA", { carry: ["1", "2", "3", "4"] })));
+        await assertFails(setDoc(at("trainerA_2026-09-28"), dayLog("trainerA", { line: { what: "x", mood: "y" } })));
+        await assertFails(setDoc(at("trainerA_2026-09-28"), dayLog("trainerA", { updatedAt: new Date("2026-01-01T00:00:00Z") })));
+        await assertFails(setDoc(at("trainerA_2026-09-28"), dayLog("trainerA", { score: 9 })));
+      });
+    });
+  });
 });

@@ -402,3 +402,62 @@ describe("the working log", () => {
     expect(logIsFull([])).toBe(false);
   });
 });
+
+describe("the Journal's typed notes (the second wave, Sep 28 2026)", () => {
+  it("leaves a note written before exactly as it was: no type, no answers, nothing new on its save", () => {
+    const fields = noteFields(blankDraft(), null);
+    expect(fields).not.toHaveProperty("noteType");
+    expect(fields).not.toHaveProperty("fields");
+    expect(fields).not.toHaveProperty("hunch");
+    const old = noteFromDoc("old", { title: "Knee plan", body: "b", kind: "injury", clientIds: [], clientNames: {}, pinned: false, folderId: null, sharedWith: null });
+    expect(old).toMatchObject({ noteType: null, fields: null, hunch: null, kind: "injury" });
+    expect(draftChanged(draftFromNote(old), draftFromNote(old))).toBe(false);
+  });
+
+  it("starts a typed note with its template, and saves its type, its answers and the kind its type keeps", () => {
+    const d = blankDraft({ id: "c1", name: "Barliman Butterbur" }, "client");
+    expect(d).toMatchObject({ noteType: "client", kind: "note", fields: { who: "Barliman Butterbur" } });
+    const fields = noteFields({ ...d, fields: { ...d.fields, noticed: "Calmer on the Leg Press first." } }, null);
+    expect(fields).toMatchObject({ noteType: "client", fields: { who: "Barliman Butterbur", noticed: "Calmer on the Leg Press first." }, title: "Barliman Butterbur" });
+    const research = noteFields({ ...blankDraft(null, "research"), fields: { source: "MSF Academy reading list" } }, null);
+    expect(research).toMatchObject({ kind: "research", title: "MSF Academy reading list" });
+  });
+
+  it("saves a hunch's claim and sample, never its evidence (that is added on its own)", () => {
+    const d = { ...blankDraft(null, "trend"), hunch: { claim: "The Leg Curl stalls when the seat is set from memory.", how: "6 sessions", need: 6, unit: "sessions" as const } };
+    const fields = noteFields(d, null);
+    expect(fields.hunch).toEqual({ claim: d.hunch.claim, how: "6 sessions", need: 6, unit: "sessions", evidence: [], retiredAt: null });
+    expect(fields.title).toBe(d.hunch.claim);
+  });
+
+  it("reads a typed note back, answers and hunch included", () => {
+    const n = noteFromDoc("t", {
+      title: "Leg Curl",
+      body: "",
+      kind: "note",
+      clientIds: [],
+      clientNames: {},
+      pinned: false,
+      folderId: null,
+      sharedWith: null,
+      noteType: "trend",
+      hunch: { claim: "Stalls from memory", how: "6 sessions", need: 6, unit: "sessions", evidence: [{ id: "e1", at: 5, text: "Tue" }] },
+    });
+    expect(n.noteType).toBe("trend");
+    expect(n.hunch?.evidence).toHaveLength(1);
+    expect(draftFromNote(n).hunch).toEqual({ claim: "Stalls from memory", how: "6 sessions", need: 6, unit: "sessions" });
+  });
+
+  it("asks for a line before a typed note saves, and keeps a personal note and a hunch to their author", () => {
+    const empty = blankDraft(null, "machine");
+    expect(validateNoteDraft(empty).map((p) => p.field)).toContain("type");
+    const personal = { ...blankDraft({ id: "c1", name: "Marigold" }, "personal"), fields: { what: "Rushed her set-up." }, share: true };
+    expect(validateNoteDraft(personal).map((p) => p.field)).toContain("share");
+  });
+
+  it("finds a typed note by its answers, and a copy carries them", () => {
+    const n = note("m", { noteType: "machine", fields: { machine: "Pullover", setting: "Seat pin 4" } });
+    expect(noteMatches(n, "seat pin", () => "")).toBe(true);
+    expect(sharedFields({ ...draftFromNote(n), title: "" }, "c1", { id: "u", name: "Ioreth" }).body).toContain("Seat pin 4");
+  });
+});

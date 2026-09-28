@@ -33,6 +33,7 @@ import { jobTopic } from "../jobs/jobs";
 import type { TeamJob } from "../jobs/types";
 import { nextUpItems, scoreNextUp, type NextUpInput, type NextUpItem, type NextUpScored } from "./next-up";
 import { RING_LABEL, shiftRings, type RingPhase } from "./rings";
+import { coverAtOf, coverIsLater, coverTimeOf, neededWords } from "./cover";
 
 export type DoorId = "floor" | "desk" | "help" | "lead" | "mine";
 
@@ -63,6 +64,11 @@ export interface BoardScored {
   score: number;
   why: string[];
   fits: boolean | null;
+  /**
+   * A cover ask's kept time, when it is needed today and nobody has it:
+   * "needed at 4:20 PM" (./cover.ts; the second wave, Sep 28 2026).
+   */
+  needed?: string | null;
 }
 
 export interface BoardInput extends NextUpInput {
@@ -116,20 +122,43 @@ function scoreItem(item: BoardItem, input: BoardInput): BoardScored {
     const fresh = postedToday(item.request, input.todayKey);
     return { item, score: fresh ? 50 : 0, why: fresh ? ["posted today"] : [], fits: null };
   }
-  return scoreNextUp(item, input) as NextUpScored & BoardScored;
+  const scored = scoreNextUp(item, input) as NextUpScored & BoardScored;
+  // A cover ask that keeps its time (the second wave): needed today, it says
+  // when; needed on a later day, it doesn't press on today.
+  const t = item.kind === "ask" ? coverTimeOf(item.request) : null;
+  if (t && item.kind === "ask") {
+    if (t.day > input.todayKey) {
+      if (item.request.priority === "urgent") scored.score -= 30;
+      scored.why = [...scored.why.filter((w) => w !== "urgent"), neededWords(t, input.todayKey)];
+    } else if (!item.request.claimedBy) {
+      scored.needed = neededWords(t, input.todayKey);
+    }
+  }
+  return scored;
+}
+
+/** Help's order: covers needed today, soonest first, before everything else. */
+function helpRank(s: BoardScored, todayKey: string): number {
+  const t = s.item.kind === "ask" && !s.item.request.claimedBy ? coverTimeOf(s.item.request) : null;
+  return t && t.day === todayKey ? 0 : 1;
 }
 
 /**
  * A door's deck, best fit first, without what this trainer passed over this
- * shift phase (next-up.ts's snooze: module memory, nothing written).
+ * shift phase (next-up.ts's snooze: module memory, nothing written). Behind
+ * Help a teammate, the covers needed today come first, by the time they are
+ * needed (./cover.ts).
  */
 export function deckFor(door: DoorId, input: BoardInput): BoardScored[] {
   const snoozed = input.snoozed ?? new Set<string>();
+  const coverAt = (s: BoardScored) => (s.item.kind === "ask" ? coverAtOf(s.item.request) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER);
   return boardItems(input)
     .filter((i) => doorOf(i, input) === door && !snoozed.has(i.id))
     .map((i) => scoreItem(i, input))
     .sort(
       (a, b) =>
+        (door === "help" ? helpRank(a, input.todayKey) - helpRank(b, input.todayKey) : 0) ||
+        (door === "help" && helpRank(a, input.todayKey) === 0 ? coverAt(a) - coverAt(b) : 0) ||
         b.score - a.score ||
         millis((b.item as { request?: TaskRequest }).request?.createdAt) - millis((a.item as { request?: TaskRequest }).request?.createdAt) ||
         a.item.title.localeCompare(b.item.title),
@@ -178,7 +207,16 @@ export function doorFaces(input: BoardInput, phase: RingPhase | "closed"): Recor
   const ring = phase === "closed" ? null : shiftRings(input.rows).find((r) => r.phase === phase) ?? null;
   const floorSub = ring && ring.total > 0 ? `${RING_LABEL[ring.phase]} chores ${ring.done} of ${ring.total}` : null;
 
-  const coverOpen = by.help.some((i) => i.kind === "ask" && i.request.kind === "cover" && !i.request.claimedBy);
+  // A cover needed today (or with no kept time) presses; one for a later day doesn't.
+  const openCovers = by.help.filter(
+    (i): i is Extract<BoardItem, { kind: "ask" }> =>
+      i.kind === "ask" && i.request.kind === "cover" && !i.request.claimedBy && !coverIsLater(i.request, input.todayKey),
+  );
+  const coverOpen = openCovers.length > 0;
+  const soonest = openCovers
+    .map((i) => coverTimeOf(i.request))
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .sort((a, b) => a.at - b.at)[0];
   const clientTasks = by.desk.filter((i) => i.kind === "client").length;
   const leadToday = by.lead.some((i) => i.kind === "initiative" && postedToday(i.request, input.todayKey));
   const handed = by.mine.filter((i) => i.kind === "ask").length;
@@ -199,7 +237,7 @@ export function doorFaces(input: BoardInput, phase: RingPhase | "closed"): Recor
     help: face(
       "help",
       plural(by.help.length, "ask", "asks"),
-      coverOpen ? "cover needed" : by.help.length ? "from teammates" : null,
+      coverOpen ? (soonest ? `cover ${neededWords(soonest, input.todayKey)}` : "cover needed") : by.help.length ? "from teammates" : null,
       coverOpen,
     ),
     lead: face("lead", plural(by.lead.length, "initiative", "initiatives"), leadToday ? "new today" : null),
@@ -249,12 +287,14 @@ export function whereOf(item: BoardItem): string {
 }
 
 /**
- * Time pressure in words — orange, never red: "cover needed", "overdue",
- * "due today". Null when nothing presses.
+ * Time pressure in words — orange, never red: "needed at 4:20 PM" (a cover
+ * that keeps its time), "cover needed", "overdue", "due today". Null when
+ * nothing presses; a cover for a later day doesn't.
  */
-export function pressureOf(scored: Pick<BoardScored, "item" | "why">): string | null {
+export function pressureOf(scored: Pick<BoardScored, "item" | "why" | "needed">): string | null {
   const { item, why } = scored;
-  if (item.kind === "ask" && item.request.kind === "cover" && !item.request.claimedBy) return "cover needed";
+  if (scored.needed) return scored.needed;
+  if (item.kind === "ask" && item.request.kind === "cover" && !item.request.claimedBy && coverAtOf(item.request) === null) return "cover needed";
   if (why.includes("overdue")) return "overdue";
   if (why.includes("due today")) return "due today";
   return null;

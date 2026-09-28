@@ -37,9 +37,11 @@ import { useRelay } from "./RelayContext";
 import { emptyPrompt, snoozedIds, unsnooze } from "./next-up";
 import { SwipeRow } from "./SwipeRow";
 import { FACES_SHOWN, NAME_SPANS, namedLine, whoFaces, type NameSpan, type WhoFace } from "./who";
-import { RING_LABEL, RING_PHASES, shiftRings } from "./rings";
+import { shiftRings } from "./rings";
+import { teamTodayLines } from "./team-today";
 import { minutesToClock } from "./now-context";
 import { floorLoad, laterToday, rightNow } from "./right-now";
+import { coverTimeOf, coverToName } from "./cover";
 import {
   DOOR_LABEL,
   DOOR_ORDER,
@@ -70,6 +72,7 @@ import {
   type CloseoutItem,
 } from "./shift-cards";
 import { CloseOutCard, OpeningCard, ShiftCardsLine, type ShiftLinePart } from "./ShiftCards";
+import type { DayLogPatch, DayLogRead } from "../notes/day-log-store";
 import "./board.css";
 
 /**
@@ -149,6 +152,27 @@ export interface BoardProps {
   resolved?: TaskRequest[];
   /** One of today's reads failed, so an empty list is unknown, never "nothing". */
   unknown?: boolean;
+  /**
+   * The top of the side column: Since you were in (./SinceYouWereIn.tsx),
+   * drawn by the host, which holds the reads it needs (the second wave of
+   * the Relay room, Sep 28 2026).
+   */
+  around?: ReactNode;
+  /** Answers kept in the Playbook today, for Team today's "Asks answered" line. */
+  keptToday?: number;
+  /**
+   * The studio's quiet-floor number: `quietFloorSessions` from
+   * features/studio-settings, read by the host (Sep 28 2026). Absent, the
+   * app's default.
+   */
+  quietFloorSessions?: number;
+  /**
+   * Today's day log (the Journal, the second wave): Opening's things to
+   * carry and Close out's line, read by the host (notes/day-log-store).
+   */
+  dayLog?: DayLogRead;
+  /** Save part of today's day log (private to the trainer). Absent: the cards keep no log. */
+  onSaveDayLog?: (patch: DayLogPatch, isNew: boolean) => Promise<void>;
 }
 
 export function Board({
@@ -163,6 +187,11 @@ export function Board({
   behind,
   resolved = [],
   unknown = false,
+  around,
+  keptToday = 0,
+  quietFloorSessions,
+  dayLog,
+  onSaveDayLog,
 }: BoardProps) {
   const relay = useRelay();
   const { now } = relay;
@@ -213,7 +242,8 @@ export function Board({
   /* Right now. */
   const [seenAtMount] = useState(() => seenInitiatives(relay.studioId));
   const load = useMemo(() => floorLoad(relay.schedules, now.todayKey, now.nowMin), [relay.schedules, now.todayKey, now.nowMin]);
-  const coverAsk = requests.find((r) => r.status === "open" && r.kind === "cover" && !r.claimedBy && !me.has(r.createdBy.id)) ?? null;
+  // The soonest cover needed today (a kept time), or one with no time; never one for a later day.
+  const coverAsk = coverToName(requests, me, now.todayKey, Date.now());
   const handedFrom = requests.filter((r) => r.status === "open" && r.forId && me.has(r.forId) && !r.claimedBy).map((r) => r.createdBy.name);
   const initiative =
     requests.find((r) => r.status === "open" && r.kind === "initiative" && postedToday(r, now.todayKey) && !seenAtMount.has(r.id)) ?? null;
@@ -224,6 +254,7 @@ export function Board({
     coverAsk: coverAsk ? { who: coverAsk.createdBy.name, title: coverAsk.title } : null,
     handedFrom,
     newInitiative: initiative ? { who: initiative.createdBy.name, title: initiative.title } : null,
+    quietFloorSessions,
   });
   // Opened on an initiative once: the next visit on this iPad moves on.
   useEffect(() => {
@@ -441,10 +472,14 @@ export function Board({
     setFoldTick((t) => t + 1);
   };
   const opening = useMemo(
-    () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length }) : []),
+    () => (card === "opening" ? openingLines({ now, rows, requests, me, handed: tracker.handed.length, todayKey: now.todayKey }) : []),
     [card, now, rows, requests, me, tracker.handed.length],
   );
-  const showOpening = card === "opening" && folds.opening === null && opening.length > 0;
+  // The day log (the second wave): Opening shows for the things to carry even
+  // with nothing else waiting, when the host keeps a log.
+  // undefined while it loads; null when there is none yet (or it couldn't be read: a save merges, and loses nothing written today on another iPad but what it replaces).
+  const log = dayLog?.state === "ready" ? dayLog.log : dayLog?.state === "failed" ? null : undefined;
+  const showOpening = card === "opening" && folds.opening === null && (opening.length > 0 || Boolean(onSaveDayLog));
   const closeAt = closeoutAt(now);
   const showCloseout = (card === "closeout" && folds.closeout === null) || (preview && card !== "closeout");
   const leftOpen = useMemo(() => closeoutItems(tracker, now.todayKey), [tracker, now.todayKey]);
@@ -526,7 +561,13 @@ export function Board({
     });
   }
 
-  const later = laterToday(now);
+  // Teammates' covers needed later today, at the time they are needed (the second wave).
+  const laterCovers = requests
+    .filter((r) => r.status === "open" && r.kind === "cover" && !r.claimedBy && !me.has(r.createdBy.id))
+    .map((r) => ({ r, t: coverTimeOf(r) }))
+    .filter((x): x is { r: TaskRequest; t: NonNullable<typeof x.t> } => x.t !== null && x.t.day === now.todayKey)
+    .map(({ r, t }) => ({ key: r.id, min: t.min, who: r.createdBy.name, title: r.title }));
+  const later = laterToday(now, 4, laterCovers);
   const emptyFloor = emptyPrompt(now.gapMinutes, now.next?.clientName.split(" ")[0] ?? null);
   // Behind Mine: everything with this trainer's name on it, passed-over ones included.
   const mineDeck = useMemo(() => (door === "mine" ? deckFor("mine", { ...input, snoozed: new Set() }) : []), [door, input]);
@@ -555,7 +596,15 @@ export function Board({
         )}
       </div>
 
-      {showOpening && <OpeningCard lines={opening} onGo={goFromOpening} onFold={() => fold("opening")} />}
+      {showOpening && (
+        <OpeningCard
+          lines={opening}
+          onGo={goFromOpening}
+          onFold={() => fold("opening")}
+          carry={log === undefined ? null : log?.carry ?? []}
+          onSaveCarry={onSaveDayLog ? (carry) => onSaveDayLog({ carry }, log === null) : undefined}
+        />
+      )}
       {showCloseout && (
         <CloseOutCard
           items={leftOpen}
@@ -567,6 +616,8 @@ export function Board({
           actions={actions}
           onHandOn={(item) => void handOn(item)}
           onFold={() => (card === "closeout" ? fold("closeout") : setPreview(false))}
+          dayLog={log}
+          onSaveDay={onSaveDayLog ? (line) => onSaveDayLog({ facts: draft, line }, log === null) : undefined}
         />
       )}
 
@@ -679,8 +730,9 @@ export function Board({
         </section>
 
         <aside className="rbd-notices" aria-label="Around the studio">
+          {around}
           <JustNow studioId={relay.studioId} />
-          <TeamToday rows={rows} />
+          <TeamToday rows={rows} answered={resolved} keptToday={keptToday} />
         </aside>
 
         {(later.length > 0 || lineParts.length > 0) && (
@@ -1131,39 +1183,35 @@ function initialsOf(name: string): string {
  * ------------------------------------------------------------------ */
 
 /**
- * "Opening chores · 12 of 12 done". The rings the Floor used to draw, as
- * three lines: the studio's recurring work for each part of the day, never
- * a person's count.
+ * "Wipe-down round · 12 of 19", "Deep clean · nobody on it yet", "Opening
+ * walk-through · all 12 done by 6:48 AM", "Asks answered · 2 today, 1 kept in
+ * the Playbook". The studio's work today, one line a chore (team-today.ts;
+ * by chore since the second wave of the Relay room, Sep 28 2026: it was three
+ * lines by part of the day). A name only ever says who is on an open chore;
+ * nobody is counted.
  */
-export function TeamToday({ rows }: { rows: TaskRow[] }) {
+export function TeamToday({ rows, answered = [], keptToday = 0 }: { rows: TaskRow[]; answered?: TaskRequest[]; keptToday?: number }) {
   const relay = useRelay();
-  const rings = shiftRings(rows);
-  if (rings.every((r) => r.total === 0)) return null;
-  const opensAt = (phase: string) =>
-    phase === "closing" && relay.now.nowMin < relay.now.hours.closing ? ` · opens at ${minutesToClock(relay.now.hours.closing)}` : "";
+  const { lines, more } = teamTodayLines({ rows, answered, keptToday, todayKey: relay.now.todayKey });
+  if (lines.length === 0) return null;
+  const closingLater = relay.now.nowMin < relay.now.hours.closing && shiftRings(rows).some((r) => r.phase === "closing" && r.total > 0);
   return (
     <section className="rbd-team" aria-label="Team today">
       <h3 className="rbd-h rbd-h--small">
         Team today<span className="rbd-h__sub">by chore</span>
       </h3>
       <ul className="rbd-team__list">
-        {RING_PHASES.map((phase) => {
-          const r = rings.find((x) => x.phase === phase)!;
-          if (r.total === 0) return null;
-          return (
-            <li key={phase} className="rbd-team__row">
-              <span className="rbd-team__t">
-                {RING_LABEL[phase]} chores
-                <span className="rbd-mute">
-                  {" "}
-                  · {r.closed ? `all ${r.total} done` : `${r.done} of ${r.total}`}
-                  {!r.closed && opensAt(phase)}
-                </span>
-              </span>
-            </li>
-          );
-        })}
+        {lines.map((l) => (
+          <li key={l.key} className="rbd-team__row">
+            <span className="rbd-team__t">
+              {l.label}
+              <span className="rbd-mute"> · {l.state}</span>
+            </span>
+          </li>
+        ))}
       </ul>
+      {more > 0 && <p className="rbd-team__more">{more === 1 ? "and 1 more chore" : `and ${more} more chores`}, behind Floor work.</p>}
+      {closingLater && <p className="rbd-team__more">Closing chores open at {minutesToClock(relay.now.hours.closing)}.</p>}
     </section>
   );
 }

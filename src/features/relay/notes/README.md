@@ -94,3 +94,7 @@ AJ: notes "can be built about a client over time … and finally publish the pla
 | `SharedNotesCard.tsx` | Goals → Plans from the team, in the client profile (with Jot a note) |
 | `notes.css` | On the Studio Hub's `--st-*` tokens |
 | `../intent.ts` | The profile's request to open the Planner at a note |
+
+## The Journal (the second wave of the Relay room, Sep 28 2026)
+
+AJ: "all yes". The tab reads **Journal**: six typed notes with three short lines each (`journal.ts`: Client · Machine · Protocol · Research · Trend · Personal), their shelves, **hunches** (a Trend note: a claim, the sample that would show it, evidence added one piece at a time with `arrayUnion`, "not enough data yet" until it is met, three open at once), the **Studio shelf** (the studio's Playbook: Machine, Protocol and Research notes, and a met hunch, go there as a COPY that never names a client), **Day logs** and **On this day**. New OPTIONAL fields on the same private notes (`noteType`, `fields`, `hunch`): a note written before has none and reads and saves exactly as it did. Where each type may go is q8's default: personal never, client onto its record, machine and protocol to the Studio shelf. The **day log** (`day-log.ts`, `day-log-store.ts`) is `studios/{s}/dayLogs/{uid}_{day}`: Opening's things to carry and Close out's facts and one line for yourself, read and written only by that person. Rules: "WAVE 2 RELAY: the Journal's notes" and "WAVE 2 RELAY: the day log"; index: dayLogs (uid, day desc). Pieces: `JournalPieces.tsx` (+ render test).

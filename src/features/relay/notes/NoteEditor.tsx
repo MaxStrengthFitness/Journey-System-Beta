@@ -7,7 +7,10 @@ import { useClientDoc, useClientSearch, useClientsAtStudio, useSharedCopy } from
 import { peopleAtStudio, TeamShareCard } from "./TeamShareCard";
 import { writesForStudioPerRules } from "../../learning/permissions";
 import { studioDateKey } from "../../../lib/studio-time";
-import { appendNoteLog, removeNoteLog, saveNote } from "./mutations";
+import { appendHunchEvidence, appendNoteLog, putOnStudioShelf, removeHunchEvidence, removeNoteLog, saveNote, setHunchRetired } from "./mutations";
+import { NOTE_TEMPLATES, canGoOnStudioShelf } from "./journal";
+import { HunchPanel, StudioShelfCard, TemplateEditor } from "./JournalPieces";
+import type { HunchEvidence } from "./types";
 import { applyFormat, toggleCheck, type FormatAction } from "./format";
 import { NoteBody, NoteToolbar } from "./NoteBody";
 import { NoteSources } from "./NoteSources";
@@ -155,7 +158,10 @@ export function NoteEditor({
   // Classify after writing (Relay): the kind is suggested from the links and
   // the words until the author picks one. A new note follows the suggestion
   // live; a saved one is offered it.
-  const [kindChosen, setKindChosen] = useState<boolean>(() => Boolean(saved && saved.kind !== "note"));
+  // A Journal type (the second wave) IS the note's kind: nothing is suggested over it.
+  const [kindChosen, setKindChosen] = useState<boolean>(
+    () => Boolean(saved && saved.kind !== "note") || Boolean((restored?.draft ?? baseline).noteType),
+  );
 
   // The saved note changed underneath — this trainer's own save coming back,
   // or an edit on another iPad. Follow it, unless something has been typed
@@ -386,6 +392,66 @@ export function NoteEditor({
     }
   };
 
+  /* --------------------------- the Journal ------------------------- */
+
+  const template = draft.noteType ? NOTE_TEMPLATES[draft.noteType] : null;
+
+  /** A piece of evidence for a saved hunch: one array element, written at once. */
+  const addEvidence = async (entry: HunchEvidence): Promise<boolean> => {
+    setJotBusy(true);
+    setError(null);
+    try {
+      await appendHunchEvidence(uid, noteId, entry);
+      return true;
+    } catch (err) {
+      console.warn("[journal] evidence failed:", err);
+      setError(noteErrorMessage(err, "save"));
+      return false;
+    } finally {
+      setJotBusy(false);
+    }
+  };
+
+  const removeEvidence = async (entry: HunchEvidence) => {
+    setJotBusy(true);
+    setError(null);
+    try {
+      await removeHunchEvidence(uid, noteId, entry);
+    } catch (err) {
+      console.warn("[journal] evidence remove failed:", err);
+      setError(noteErrorMessage(err, "save"));
+    } finally {
+      setJotBusy(false);
+    }
+  };
+
+  const retireHunch = async (retired: boolean) => {
+    setJotBusy(true);
+    setError(null);
+    try {
+      await setHunchRetired(uid, noteId, retired ? Date.now() : null);
+    } catch (err) {
+      console.warn("[journal] retire failed:", err);
+      setError(noteErrorMessage(err, "save"));
+    } finally {
+      setJotBusy(false);
+    }
+  };
+
+  /** A copy on the Studio shelf (the Playbook), signed with the Auth uid. */
+  const putOnShelf = async (): Promise<boolean> => {
+    if (!saved || !activeStudioId) return false;
+    setError(null);
+    try {
+      const id = await putOnStudioShelf(activeStudioId, saved, { id: uid, name: authTrainer?.fullName ?? "A trainer" });
+      return id !== null;
+    } catch (err) {
+      console.warn("[journal] studio shelf failed:", err);
+      setError("Couldn't put it on the Studio shelf. Check your connection and try again.");
+      return false;
+    }
+  };
+
   const foldJot = (entry: NoteLogEntry) => {
     edit({ body: foldIntoBody(draftRef.current.body, entry).slice(0, NOTE_BODY_MAX) });
     setMode("write");
@@ -430,9 +496,10 @@ export function NoteEditor({
     const pane = el.closest(".ne__scroll") as HTMLElement | null;
     const top = pane?.scrollTop ?? 0;
     el.style.height = "auto";
-    el.style.height = `${Math.max(el.scrollHeight + 2, 288)}px`;
+    // A typed note's body is the "more, if you want" under its three lines: shorter.
+    el.style.height = `${Math.max(el.scrollHeight + 2, draft.noteType ? 96 : 288)}px`;
     if (pane && pane.scrollTop !== top) pane.scrollTop = top;
-  }, [draft.body]);
+  }, [draft.body, draft.noteType]);
 
   const problemFor = (field: NoteProblem["field"]) => problems.find((p) => p.field === field)?.message;
 
@@ -451,7 +518,7 @@ export function NoteEditor({
       <h3 className="ne__label" id={`ne-file-${noteId}`}>
         <FolderOpen size={13} aria-hidden /> File it
       </h3>
-      {!kindChosen && suggested !== "note" && (
+      {!draft.noteType && !kindChosen && suggested !== "note" && (
         <p className="ne__suggest">
           <Sparkles size={13} aria-hidden />
           {saved && draft.kind !== suggested ? (
@@ -468,7 +535,7 @@ export function NoteEditor({
           )}
         </p>
       )}
-      <div className="ne__kinds" role="group" aria-label="What kind of note">
+      {!draft.noteType && <div className="ne__kinds" role="group" aria-label="What kind of note">
         {NOTE_KINDS.map((k) => (
           <button
             key={k}
@@ -483,7 +550,7 @@ export function NoteEditor({
             {NOTE_KIND_LABEL[k]}
           </button>
         ))}
-      </div>
+      </div>}
       <div className="ne__row">
         <label className="ne__field">
           <span className="ne__label">Folder</span>
@@ -666,9 +733,33 @@ export function NoteEditor({
             )}
           </section>
 
+          {draft.noteType && (
+            <TemplateEditor
+              noteId={noteId}
+              draft={draft}
+              disabled={busy !== null}
+              problem={problemFor("type")}
+              onFields={(fields) => edit({ fields })}
+              onHunch={(hunch) => edit({ hunch })}
+            />
+          )}
+          {draft.noteType === "trend" && saved?.hunch && (
+            <HunchPanel
+              hunch={saved.hunch}
+              clients={linkedClients}
+              busy={jotBusy || busy !== null}
+              onAdd={addEvidence}
+              onRemove={(e) => void removeEvidence(e)}
+              onRetire={(retired) => void retireHunch(retired)}
+            />
+          )}
+          {draft.noteType === "trend" && !saved && (
+            <p className="ne__hint">Save the hunch, then add evidence each time you see it.</p>
+          )}
+
           <div className="ne__body-head">
             <span className="ne__label">
-              <NotebookPen size={13} aria-hidden /> The note
+              <NotebookPen size={13} aria-hidden /> {draft.noteType ? "More, if you want" : "The note"}
             </span>
             <div className="rk-seg ne__mode" role="group" aria-label="Write or read">
               <button type="button" aria-pressed={mode === "write"} onClick={() => setMode("write")}>
@@ -695,7 +786,9 @@ export function NoteEditor({
                 value={draft.body}
                 maxLength={NOTE_BODY_MAX}
                 placeholder={
-                  draft.kind === "injury"
+                  draft.noteType
+                    ? "Anything the three lines don't hold. Optional."
+                    : draft.kind === "injury"
                     ? "What happened, what to avoid, what to load instead, and when to check again."
                     : draft.kind === "retention"
                       ? "What keeps them coming — and what might not. The next conversation to have."
@@ -734,11 +827,24 @@ export function NoteEditor({
             <div>
               <h3 className="ne__publish-title">Publish</h3>
               <p className="ne__publish-lede">
-                Private until you say otherwise. Choose who reads it; saving publishes, and every save republishes. Working notes always stay with you.
+                {template
+                  ? template.vis
+                  : "Private until you say otherwise. Choose who reads it; saving publishes, and every save republishes. Working notes always stay with you."}
               </p>
             </div>
           </div>
 
+          {saved && canGoOnStudioShelf(saved) && activeStudioId && (
+            <StudioShelfCard
+              note={saved}
+              dirty={dirty}
+              studioName={activeStudioName || "this studio"}
+              canWrite={canShareHere}
+              onPut={putOnShelf}
+            />
+          )}
+
+          {(!template || template.shares.record) && (
           <section className={`ne__share${draft.share ? " ne__share--on" : ""}`} aria-labelledby={`ne-share-${noteId}`}>
             <div className="ne__share-head">
               <Share2 size={16} aria-hidden />
@@ -779,7 +885,9 @@ export function NoteEditor({
             )}
             {problemFor("share") && <p className="ne__problem">{problemFor("share")}</p>}
           </section>
+          )}
 
+          {(!template || template.shares.colleagues) && (
           <TeamShareCard
             value={draft.teamShare}
             savedValue={saved?.teamShare ?? null}
@@ -794,6 +902,7 @@ export function NoteEditor({
             problem={problemFor("team")}
             networkStudios={networkStudios}
           />
+          )}
 
           {saved && (
             <div className="ne__danger">

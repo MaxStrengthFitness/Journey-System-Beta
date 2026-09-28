@@ -75,6 +75,52 @@ export interface NoteLogEntry {
   clientId: string | null;
 }
 
+/* ------------------------------------------------------------------ *
+ * THE JOURNAL (the second wave of the Relay room, Sep 28 2026; AJ: "all
+ * yes"): six note types with small templates, their shelves, and hunches
+ * that wait for evidence. New OPTIONAL fields on the same private notes:
+ * a note written before has none and reads exactly as it did. The rules
+ * and the words are ./journal.ts.
+ * ------------------------------------------------------------------ */
+
+/** A journal entry's type: AJ's six ("machines, clients, protocol, research, trends, personal"). */
+export type NoteType = "client" | "machine" | "protocol" | "research" | "trend" | "personal";
+
+export const NOTE_TYPES: NoteType[] = ["client", "machine", "protocol", "research", "trend", "personal"];
+
+/** A typed note's three template answers, keyed by the template's own keys (./journal.ts). */
+export type NoteFields = Partial<Record<string, string>>;
+
+/** One piece of evidence for a hunch: dated, and about a client when it was. */
+export interface HunchEvidence {
+  id: string;
+  /** ms since epoch (written inside an array, where server timestamps aren't allowed). */
+  at: number;
+  text: string;
+  clientId: string | null;
+}
+
+/**
+ * A hunch — a Trend note (research-relay §4.6, after Hollow Knight's
+ * "defeat N more"): a pattern the trainer thinks they see, with the sample
+ * that would show it (`need` of a `unit`), and the evidence gathered so far.
+ * Private until its sample is met; then it may be written up for the
+ * Studio shelf. At most three open at once: a hunch holds a slot until its
+ * sample is met or it is retired.
+ */
+export interface Hunch {
+  /** What I think. */
+  claim: string;
+  /** How I'll know: the named sample, in words. */
+  how: string;
+  need: number;
+  unit: "clients" | "sessions";
+  /** Evidence so far, oldest first; added one at a time (arrayUnion). */
+  evidence: HunchEvidence[];
+  /** ms since epoch, when retired; null while it is open. */
+  retiredAt: number | null;
+}
+
 /** trainers/{uid}/noteFolders/{folderId} */
 export interface NoteFolder {
   id: string;
@@ -111,6 +157,12 @@ export interface TrainerNote {
    * at a studio (Planner rework) — see ./team-share.ts. Null: not shared.
    */
   teamShare: TeamShare | null;
+  /** The Journal's type (the second wave). Null on a note written before, or a plain one. */
+  noteType?: NoteType | null;
+  /** A typed note's template answers. */
+  fields?: NoteFields | null;
+  /** A Trend note's hunch. */
+  hunch?: Hunch | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -151,6 +203,12 @@ export interface NoteDraft {
   links: NoteLink[];
   /** The colleague share it should have once saved, or null. */
   teamShare: TeamShare | null;
+  /** The Journal's type, or null for a plain note (and every note written before). */
+  noteType?: NoteType | null;
+  /** A typed note's template answers. */
+  fields?: NoteFields;
+  /** A Trend note's claim, how it will show, and its sample; the evidence is added on its own. */
+  hunch?: Pick<Hunch, "claim" | "how" | "need" | "unit"> | null;
 }
 
 /* Limits. Mirrored in firestore.rules (trainerNoteValid, sharedNoteValid). */
@@ -163,3 +221,11 @@ export const NOTE_LINK_URL_MAX = 500;
 export const NOTE_LINK_TITLE_MAX = 120;
 export const NOTE_LOG_MAX = 100;
 export const NOTE_LOG_TEXT_MAX = 2000;
+/* The Journal (the second wave). Mirrored in firestore.rules ("WAVE 2 RELAY: the Journal's notes"). */
+export const NOTE_FIELD_MAX = 2000;
+export const HUNCH_CLAIM_MAX = 500;
+export const HUNCH_HOW_MAX = 1000;
+export const HUNCH_NEED_MAX = 50;
+export const HUNCH_EVIDENCE_MAX = 60;
+/** Three hunches open at once keeps them honest (research-relay G19). */
+export const HUNCH_SLOTS = 3;

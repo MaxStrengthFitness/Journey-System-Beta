@@ -230,6 +230,15 @@ export interface TaskRequest {
   machineId?: string;
   /** Studio-local 'YYYY-MM-DD', for cover requests. */
   sessionDate?: string;
+  /**
+   * A COVER ASK KEEPS ITS TIME (the second wave of the Relay room, Sep 28
+   * 2026; AJ: "all yes"): the session's start, ms since epoch, beside its
+   * studio day in `sessionDate`. The Board's Help door sorts cover asks by
+   * it and says "needed at 4:20 PM"; the ask comes down when the session
+   * starts (`expiresAt`). Absent on every other ask, and on a cover posted
+   * with no time.
+   */
+  coverAt?: number;
 
   /*
    * RELAY (Sep 2026). A hand-off names ONE person; the board still shows it
@@ -337,11 +346,18 @@ export interface CreateRequestInput {
   clientId?: string;
   machineId?: string;
   sessionDate?: string;
+  /** A cover ask's session start, ms since epoch (see TaskRequest.coverAt). */
+  coverAt?: number;
   /** Initiatives only. */
   target?: InitiativeTarget;
   priority?: RequestPriority;
   /** Defaults to "none" - most asks stand until dealt with. */
   expiry?: ExpiryChoice;
+  /**
+   * An exact moment it stops mattering, ms since epoch, in place of `expiry`:
+   * a cover ask comes down when its session starts.
+   */
+  expiresAtMs?: number;
   /** Relay: see TaskRequest. */
   forId?: string;
   forName?: string;
@@ -357,7 +373,10 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
   if (!studioId) throw new Error("No active studio — cannot post a request.");
   if (!title.trim()) throw new Error("A request needs something to say.");
 
-  const expiresAt = expiryInstant(input.expiry ?? "none");
+  const expiresAt =
+    typeof input.expiresAtMs === "number" && Number.isFinite(input.expiresAtMs)
+      ? new Date(input.expiresAtMs)
+      : expiryInstant(input.expiry ?? "none");
 
   const ref = await addDoc(requestsRef(studioId), {
     studioId,
@@ -367,6 +386,7 @@ export async function createRequest(input: CreateRequestInput): Promise<string> 
     ...(input.clientId ? { clientId: input.clientId } : {}),
     ...(input.machineId ? { machineId: input.machineId } : {}),
     ...(input.sessionDate ? { sessionDate: input.sessionDate } : {}),
+    ...(typeof input.coverAt === "number" && Number.isFinite(input.coverAt) ? { coverAt: input.coverAt } : {}),
     // Only on an initiative. Writing an empty target on a question would make
     // every request look like one to topicOf(). Written through
     // targetForWrite so a blank choice is left out rather than sent as

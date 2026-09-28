@@ -371,6 +371,10 @@
   background: var(--st-flag-fill); color: var(--st-flag);
   font-size: 11px; font-weight: 800; letter-spacing: 0.06em; }
 
+/* When a cover is needed (it keeps its time since Sep 28 2026): time
+   pressure in words, the deep orange the Board uses, never red. */
+.stq__needed { font-weight: 800; color: var(--st-hero-text); }
+
 .stq__reacts { display: flex; flex-wrap: wrap; gap: 4px;
   padding: 0 0.875rem 0.6rem 3.25rem; }
 

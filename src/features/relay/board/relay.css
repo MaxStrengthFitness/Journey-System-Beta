@@ -500,6 +500,9 @@
 .fm__heat--2, .fm__heat--3 { color: var(--st-hero-text); }
 .fm__line { margin: 0; font-size: 14px; color: var(--st-ink-2); }
 .fm__line--due { color: var(--st-flag); font-weight: 700; }
+/* The studio's own cleaning log (Sep 28 2026): a machine used past the studio's wipe-after number, and the weekly maintenance day. */
+.fm__tile--wipe { border-color: var(--st-hero); }
+.fm__weekly { margin: 0 0 0.75rem; padding: 0.625rem 0.875rem; border: 1px solid var(--st-border); border-radius: var(--st-radius); background: var(--st-surface-2); font-size: 14px; font-weight: 700; color: var(--st-ink); }
 .fm__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .fm__actions .pl__btn { min-height: 48px; }
 .fm__flagbox {

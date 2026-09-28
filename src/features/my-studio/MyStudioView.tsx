@@ -111,6 +111,8 @@ const SECTIONS: (HeaderSection & { tier?: "leads" | "weeks" | "reads" })[] = [
 export interface MyStudioViewProps {
   authTrainer?: Trainer | null;
   clients?: Client[];
+  /** Whether `clients` has answered (AppContent's useStudioRoster): Since you were in waits on it. */
+  rosterStatus?: "loading" | "ready" | "error";
   trainers?: Trainer[];
   /** The Calendar's rows (AppContent's useLiveSchedule): the header's clock. */
   schedules?: ScheduleEntry[];
@@ -126,6 +128,7 @@ const NONE: never[] = [];
 export function MyStudioView({
   authTrainer,
   clients,
+  rosterStatus,
   trainers,
   schedules,
   sessions,
@@ -257,6 +260,7 @@ export function MyStudioView({
       uid: auth.currentUser?.uid ?? null,
       trainers: trainers ?? NONE,
       clients: clients ?? NONE,
+      rosterStatus,
       schedules: schedules ?? NONE,
       sessions: sessions ?? NONE,
       machines: machines ?? NONE,
@@ -276,6 +280,7 @@ export function MyStudioView({
       authTrainer,
       trainers,
       clients,
+      rosterStatus,
       schedules,
       sessions,
       machines,

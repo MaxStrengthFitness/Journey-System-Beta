@@ -454,3 +454,18 @@ record until it's answered", and "Answered lately" keeps a closed question's
 answer on screen). No rules change: `journalEntries` pins only the author and
 the client, and `taskRequests` restricts no keys.
 
+
+## A cover ask keeps its time (the second wave of the Relay room, Sep 28 2026)
+
+AJ approved one more field on a request: `taskRequests.coverAt`, a cover
+ask's session start (ms since epoch), beside its studio day in
+`sessionDate`. The Ask sheet's Cover me writes it when a time is given
+(`relay/board/ask.ts`, through `relay/board/cover.ts` `coverInstant`), and
+the ask's `expiresAt` is that same moment, so it comes down when the
+session starts. This lane sorts two covers by it (`board.ts` `buildBoard`,
+after heat, kind and claim) and says "needed at 4:20 PM" on the card; the
+Board's Help door deals today's covers soonest first and keeps a cover for a
+later day from pressing on today. A cover posted before the field, or with
+no time, reads as it always did. No rules change: `taskRequests` restricts
+no keys (the "wave 2 relay" rules tests hold a cover posted with its time
+and taken by a teammate).

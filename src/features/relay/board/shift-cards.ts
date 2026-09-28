@@ -38,6 +38,7 @@ import { forgetOnSignOut } from "../../sign-out/memory";
 import { minutesToClock, studioMinutesNow, type NowContext } from "./now-context";
 import { shiftRings } from "./rings";
 import type { DoorId } from "./doors";
+import { coverIsLater } from "./cover";
 
 export type ShiftCard = "opening" | "closeout";
 
@@ -94,6 +95,8 @@ export interface OpeningInput {
   me: ReadonlySet<string>;
   /** How many things are handed to you (the Tracker's Handed to you). */
   handed: number;
+  /** The studio's day: a cover needed on a later day (a kept time) waits for its day. */
+  todayKey?: string;
 }
 
 /**
@@ -116,7 +119,14 @@ export function openingLines(input: OpeningInput): OpeningLine[] {
   if (input.handed > 0) {
     out.push({ key: "handed", text: input.handed === 1 ? "One thing is handed to you." : `${input.handed} things are handed to you.`, go: "tracker" });
   }
-  const covers = input.requests.filter((r) => r.status === "open" && r.kind === "cover" && !r.claimedBy && !input.me.has(r.createdBy.id));
+  const covers = input.requests.filter(
+    (r) =>
+      r.status === "open" &&
+      r.kind === "cover" &&
+      !r.claimedBy &&
+      !input.me.has(r.createdBy.id) &&
+      !(input.todayKey && coverIsLater(r, input.todayKey)),
+  );
   if (covers.length === 1) {
     out.push({ key: "cover", text: `${firstName(covers[0].createdBy.name)} needs cover: ${covers[0].title}.`, go: "help" });
   } else if (covers.length > 1) {

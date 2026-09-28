@@ -74,6 +74,9 @@ import { JobSheet } from "../relay/jobs/JobSheet";
 import { isOnJob, isUpForGrabs, jobTopic } from "../relay/jobs/jobs";
 import { GlanceBand, type GlanceCounts } from "../relay/GlanceBand";
 import { Board } from "../relay/board/Board";
+import { SinceYouWereIn } from "../relay/board/SinceYouWereIn";
+import { useStudioSettings } from "../studio-settings";
+import { saveDayLog, useDayLog, type DayLogPatch } from "../relay/notes/day-log-store";
 import { jobsBehind, type DoorId } from "../relay/board/doors";
 import { ShiftRings } from "../relay/board/ShiftRings";
 import { FloorMap } from "../relay/board/FloorMap";
@@ -188,7 +191,7 @@ export function StudioHubView({
     loading: requestsLoading,
     failed: requestsFailed,
   } = useStudioRequests(activeStudioId ?? null);
-  const { search, stale } = usePlaybook(activeStudioId ?? null);
+  const { search, stale, entries: playbookEntries } = usePlaybook(activeStudioId ?? null);
   /*
    * TEAM JOBS (Planner rework, Sep 2026) — one piece of work several people
    * share. Posting is a leader's act — of THIS studio, as the teamJobs rules
@@ -198,6 +201,26 @@ export function StudioHubView({
   const leadsJobs = leadsHere(authTrainer, activeStudioId);
   const teamJobs = useTeamJobs(activeStudioId ?? null);
   const relay = useRelayMaybe();
+  /*
+   * THE STUDIO'S OWN NUMBERS (Sep 28 2026, AJ: "all yes, let the admins
+   * assign the default within the app"): the quiet floor Right now measures
+   * by — the studio's own, else Max Strength's default, else the app's
+   * (features/studio-settings). Only inside Relay, where the Board reads it.
+   */
+  const settings = useStudioSettings(relay ? (activeStudioId ?? null) : null, activeStudio);
+  const quietFloor = settings.value("quietFloorSessions");
+  /*
+   * TODAY'S DAY LOG (the Journal, the second wave): Opening's things to
+   * carry and Close out's line, at studios/{s}/dayLogs/{uid}_{day}, the
+   * trainer's own. The Auth uid, which the rules pin.
+   */
+  const dayLogUid = auth.currentUser?.uid ?? null;
+  const dayLogDay = relay?.now.todayKey ?? studioDateKey(new Date()) ?? "";
+  const dayLog = useDayLog(relay ? (activeStudioId ?? null) : null, dayLogUid, dayLogDay);
+  const saveTodaysLog = async (patch: DayLogPatch, isNew: boolean) => {
+    if (!activeStudioId || !dayLogUid || !dayLogDay) throw new Error("Sign in and pick a studio first.");
+    await saveDayLog({ studioId: activeStudioId, uid: dayLogUid, day: dayLogDay, patch, isNew });
+  };
   const [composingJob, setComposingJob] = useState(false);
   const [openJobKey, setOpenJobKey] = useState<string | null>(null);
   const openJob: TeamJob | null = useMemo(
@@ -219,6 +242,17 @@ export function StudioHubView({
   const actions = useTaskActions({ author, onNeedsNote: setNoteRow });
 
   const todayKey = studioDateKey(new Date()) ?? "";
+
+  /** Answers the team kept in the Playbook today: Team today's "Asks answered" line. */
+  const keptToday = useMemo(
+    () =>
+      playbookEntries.filter((e) => {
+        if (!e.sourceRequestId || e.retiredAt) return false;
+        const at = (e.createdAt as { toMillis?: () => number } | undefined)?.toMillis?.();
+        return typeof at === "number" && studioDateKey(new Date(at)) === todayKey;
+      }).length,
+    [playbookEntries, todayKey],
+  );
 
   const roster = useMemo(
     () => studioRoster(trainers ?? [], activeStudioId ?? null),
@@ -517,6 +551,11 @@ export function StudioHubView({
             behind={behind}
             resolved={recentlyResolved}
             unknown={Boolean(tasksError) || requestsFailed || Boolean(teamJobs.error)}
+            keptToday={keptToday}
+            quietFloorSessions={quietFloor ?? undefined}
+            dayLog={dayLog}
+            onSaveDayLog={saveTodaysLog}
+            around={<SinceYouWereIn rows={rows} jobs={teamJobs.jobs} resolved={recentlyResolved} playbook={playbookEntries} />}
           />
         ) : (
           <>

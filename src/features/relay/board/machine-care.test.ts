@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deepSentence, groupFloor, heatOf, wearOf, wipeSentence, type MachineCare } from "./machine-care";
+import { DEFAULT_WIPE_AFTER_SESSIONS, deepSentence, groupFloor, heatOf, wantsWipeSentence, wearOf, weeklyMaintenanceLine, wipeSentence, type MachineCare } from "./machine-care";
 
 const NOW = Date.parse("2026-09-16T18:00:00Z");
 const ago = (min: number) => NOW - min * 60_000;
@@ -83,5 +83,29 @@ describe("groupFloor", () => {
     expect(groups.map((g) => g.label)).toEqual(["Horizontal Push", "Horizontal Pull", "Quad Dominant", "Other equipment"]);
     // The chest press had no pattern of its own and borrowed the anatomy map's.
     expect(groups[0].machines[0].name).toBe("Chest Press");
+  });
+});
+
+describe("the studio's own cleaning log (Sep 28 2026)", () => {
+  it("wants a wipe once the studio's number of sessions used a machine since its last wipe", () => {
+    const sessions = [session(["lp"], 90), session(["lp"], 60), session(["lp"], 30)];
+    expect(DEFAULT_WIPE_AFTER_SESSIONS).toBe(4);
+    expect(wearOf("lp", { sessions, care: null, now: NOW }).wantsWipe).toBe(false);
+    const two = wearOf("lp", { sessions, care: null, now: NOW, wipeAfterSessions: 2 });
+    expect(two.wantsWipe).toBe(true);
+    expect(wantsWipeSentence(two, 2)).toBe("Wants a wipe: 3 sessions since the last one (this studio wipes after 2).");
+    expect(wantsWipeSentence(wearOf("lp", { sessions, care: null, now: NOW }), 4)).toBeNull();
+  });
+
+  it("counts a daily deep clean at 1 day", () => {
+    const yesterday = wearOf("lp", { sessions: [], care: care({ lastDeepCleanAt: NOW - 86_400_000 }), now: NOW, deepCleanDays: 1 });
+    expect(yesterday.deepDue).toBe(true);
+  });
+
+  it("puts the weekly maintenance line on the studio's day for it, and nowhere else", () => {
+    // Sep 28 2026 is a Monday (1).
+    expect(weeklyMaintenanceLine(1, "2026-09-28")).toBe("Weekly maintenance today: Monday is this studio's day for it.");
+    expect(weeklyMaintenanceLine(3, "2026-09-28")).toBeNull();
+    expect(weeklyMaintenanceLine(null, "2026-09-28")).toBeNull();
   });
 });
