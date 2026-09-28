@@ -4,7 +4,9 @@ Round: Learning + Planner, Sep 2026. AJ asked for this:
 
 > "studio should 100% be able to make machines and add them to the database but I think we just need to have a overall all MSF machines, then studios can adopt machines from this machine database and then studios can also grab information submitted by other studios about the machine and read the catalog"
 
-He chose **the studio picks, each time**: a "Share with all MSF studios" switch on each machine, each note and each tip. Anything not switched on stays with its studio.
+He chose **the studio picks, each time**: a switch on each machine, each note and each tip. Anything not switched on stays with its studio.
+
+**Since Sep 28 2026 sharing waits for an administrator.** AJ: sharing with all MSF studios "should submit to admins first for review, we can review in admin dashboard". The switch now reads **Offer to all MSF studios**: a tap OFFERS the thing (`shareStatus: "pending"`), and it reaches no other studio until an administrator shares it from the Admins dashboard → **Waiting for review** (`ShareReviewPanel`). See "Offer, then an administrator decides" below.
 
 ## What a trainer sees
 
@@ -22,20 +24,35 @@ The Learning Overview links to All MSF machines under the Catalog's tiles, and L
 
 ## The rules
 
-| What | Where it lives | Who switches Share |
+| What | Where it lives | Who offers it (and takes it back) |
 | --- | --- | --- |
-| A studio's own machine | `studios/{s}/roster/{id}` (`source: "custom"`) → `shared`, `sharedStudioName` | The studio's leaders (the roster rule) |
-| The studio's note on a machine | `studios/{s}/wiki/machine__{id}` (overlay) → `shared`, `sharedKeys`, `studioName` | Anyone at the studio (they can already edit it) |
-| A playbook tip | `studios/{s}/playbook/{id}` → `shared`, `sharedKeys`, `studioName` | Its author, or a leader (the playbook rule) |
+| A studio's own machine | `studios/{s}/roster/{id}` (`source: "custom"`) → `shareStatus`, `sharedStudioName`; `shared` once decided | The studio's leaders (the roster rule) |
+| The studio's note on a machine | `studios/{s}/wiki/machine__{id}` (overlay) → `shareStatus`, `sharedKeys`, `studioName`; `shared` once decided | Anyone at the studio (they can already edit it) |
+| A playbook tip | `studios/{s}/playbook/{id}` → `shareStatus`, `sharedKeys`, `studioName`; `shared` once decided | Its author, or a leader (the playbook rule) |
 
-- **Nothing is copied to share it.** The studio's own document is marked. Switching Share off takes it out of every other studio's view at once.
+Only an **administrator** sets `shared` to true, and only an administrator decides an offer (`shareStatus` "approved" or "declined", `shareReviewedBy`, `shareReviewedAt`, and an optional `shareReviewNote` of up to 300 characters the studio reads beside its switch). firestore.rules says so in `shareDecisionOk`, cheapest check first: a write that neither publishes nor decides passes on its fields alone, and only a publish or a decision asks `isSuperAdmin()` (the other way round ran out of Firestore's 1000-expression budget).
+
+- **Nothing is copied to share it.** The studio's own document is marked. Taking it back (an offer withdrawn, or a shared thing no longer shared) takes it out of every other studio's view at once, and needs no administrator.
 - **Other studios read it with collection-group queries.** They filter on `shared == true` (plus, for notes and tips, `sharedKeys array-contains` the machine's lineage). The `{path=**}` rules in `firestore.rules` pass only a query filtered on `shared == true`, so nothing unshared can be listed.
-- **Unshared stays with the studio, in the rules too.** A studio's own `playbook` and `wiki` are readable by the people who work at or run it (`writesForStudio`), administrators and franchise owners. Before the review they were readable by any signed-in user, so "not shared" was only true of the lists.
+- **Unshared stays with the studio, in the rules too.** A studio's own `playbook` and `wiki` are readable by the people who work at or run it (`writesForStudio`), administrators and franchise owners. Before the review they were readable by any signed-in user, so "not shared" was only true of the lists. Since Sep 28 2026 the same holds for the rest of a studio's machine knowledge: its `roster` (custom definitions and overrides), its Studio notes (`machineNotes`) and its set-up (`studioMachineSettings`, which only its leaders may change). A machine an administrator shared stays readable by all, through the `{path=**}/roster` rule.
 - **Credit comes from the path.** A shared item's studio is the one its path names (`studios/{s}/…`), never the `studioId` field the writer filled in, and its name is that studio's own name from `studios/{s}` (`useStudioNameOf` in `hooks.ts`). The roster rule also refuses a `studioId` that isn't the path's.
 - **Only a studio's own machine can be listed** (`rosterShareValid`, `rosterWriteValid`):
   - an MSF machine is already in the database;
   - a copy adopted from another studio is listed by its original, and stays a copy: an update can't drop `adoptedFrom` and list it in the same write.
 - **Notes and tips never carry a client.** The rules already refused `clientId` on both collections, which is what makes it safe to show them to every studio.
+
+## Offer, then an administrator decides (Sep 28 2026)
+
+| The switch says | What it means | A tap |
+| --- | --- | --- |
+| Offer to all MSF studios | Not offered | offers it |
+| Offered · waiting for review | Waiting on the Admins dashboard; "An administrator reads it before other studios see it. Tap to withdraw it." | withdraws the offer |
+| Shared with all MSF studios | An administrator shared it | stops sharing it |
+| Offer again | An administrator decided against it; their note, if any, under the switch | offers it again |
+
+- `ShareToggle` reads the state from the document itself (`shareStateOf`), and `tapOffers` says what a tap does, so the three call sites in the Catalog can't disagree.
+- **The Admins dashboard → Waiting for review** (`ShareReviewPanel`, `offers.ts`) lists every offer across studios, oldest first, each whole: what it is, whose (the studio the PATH names), who offered it and when, and what it says. **Share with every studio** or **Don't share** (with an optional note). It reads once when the tab opens, with Refresh: three collection-group reads filtered on `shareStatus == "pending"`, which only administrators may run and which carry no index of their own (the Enterprise edition builds none), so each scans that small collection group. A failed read says it can't tell, never "Nothing waiting".
+- **Only the first share is reviewed.** Something an administrator shared stays shared when its studio edits it, or a teammate taps "worked for me too" on a tip. Whether every later edit should go back for review is AJ's to say.
 
 ## Adopting
 
@@ -78,8 +95,9 @@ Session screens still use the app-wide machine list (AppContent's `machines`), n
 | `database.ts` + test | The list, grouping, search, counts, adoption plans, sharing keys |
 | `network.ts` + test | Reading shared notes and tips, and what the section shows |
 | `hooks.ts` | The collection-group reads, and naming a studio from its own document |
-| `mutations.ts` | Adopt, and the three share switches |
+| `mutations.ts` + test | Adopt, the three offers (and taking them back), and an administrator's decision |
+| `offers.ts` + test, `ShareReviewPanel.tsx` + test, `share-review.css` | The Admins dashboard's Waiting for review (on the `--adm-*` tokens) |
 | `MachineDatabase.tsx` | The All MSF machines scope: index, page, search |
 | `NetworkNotes.tsx` | "From other MSF studios", on every machine page |
-| `ScopeSwitch.tsx`, `ShareToggle.tsx` | The two controls |
+| `ScopeSwitch.tsx`, `ShareToggle.tsx` + test | The two controls (the switch's four states since Sep 28 2026) |
 | `machine-db.css` | On the wiki's `--wk-*` tokens |

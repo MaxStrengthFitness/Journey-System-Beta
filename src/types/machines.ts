@@ -575,6 +575,13 @@ interface RosterEntryBase {
   sharedStudioName?: string;
   sharedAt?: any;
   sharedBy?: string;
+  /**
+   * Sharing waits for an administrator (AJ, Sep 28 2026): the studio offers
+   * ("pending"), and an administrator shares it ("approved", with `shared`
+   * true) or doesn't ("declined", with a short note). See features/machine-db.
+   */
+  shareStatus?: "pending" | "approved" | "declined";
+  shareReviewNote?: string;
 }
 
 /** Where an adopted machine came from: another studio's shared machine. */
@@ -693,6 +700,9 @@ export interface ResolvedMachine extends MachineDefinition {
 
   /** Listed in the MSF machine database (custom machines only). */
   shared?: boolean;
+  /** Where the studio's offer to list it stands (Sep 28 2026). */
+  shareStatus?: "pending" | "approved" | "declined";
+  shareReviewNote?: string;
   /** Copied from another studio's shared machine. */
   adoptedFrom?: AdoptedFrom;
 }

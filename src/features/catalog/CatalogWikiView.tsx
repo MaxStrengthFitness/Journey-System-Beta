@@ -42,10 +42,11 @@ import {
   NetworkNotes,
   ScopeSwitch,
   ShareToggle,
-  setMachineShared,
-  setNoteShared,
-  setTipShared,
+  setMachineOffer,
+  setNoteOffer,
+  setTipOffer,
   sharedKeysFor,
+  tapOffers,
   type CatalogScope,
 } from "../machine-db";
 import { abbr } from "../routine-builder/academy";
@@ -259,7 +260,12 @@ export function CatalogWikiView({
     setSharing(key);
     try {
       await work();
-      toastSuccess(on ? "Shared with every MSF studio." : "No longer shared with other studios.");
+      // Sharing waits for an administrator since Sep 28 2026 (AJ).
+      toastSuccess(
+        on
+          ? "Offered. An administrator reads it before other MSF studios see it."
+          : "Taken back. Other studios don't see it.",
+      );
     } catch (err) {
       console.error("Failed to change sharing:", err);
       toastError("Could not change sharing. Check your connection.");
@@ -652,11 +658,11 @@ export function CatalogWikiView({
                 renderAction={(entry) =>
                   activeStudioId && canShareTip(entry.authorId) ? (
                     <ShareToggle
-                      shared={entry.shared === true}
+                      item={entry}
                       busy={sharing === `t:${entry.id}`}
                       onToggle={() =>
-                        runShare(`t:${entry.id}`, entry.shared !== true, () =>
-                          setTipShared(activeStudioId, entry.id, entry.shared !== true, {
+                        runShare(`t:${entry.id}`, tapOffers(entry), () =>
+                          setTipOffer(activeStudioId, entry.id, tapOffers(entry), {
                             keys: sharedKeysFor(entry.machineIds, catalogMachines),
                             studioName,
                           }),
@@ -708,11 +714,11 @@ export function CatalogWikiView({
               headerAction={
                 overlay && author && activeStudioId ? (
                   <ShareToggle
-                    shared={overlay.shared === true}
+                    item={overlay}
                     busy={sharing === `n:${overlay.id}`}
                     onToggle={() =>
-                      runShare(`n:${overlay.id}`, overlay.shared !== true, () =>
-                        setNoteShared(activeStudioId, overlay.id, overlay.shared !== true, {
+                      runShare(`n:${overlay.id}`, tapOffers(overlay), () =>
+                        setNoteOffer(activeStudioId, overlay.id, tapOffers(overlay), {
                           keys: sharedKeysFor([selected.id], catalogMachines),
                           studioName,
                         }),
@@ -753,18 +759,20 @@ export function CatalogWikiView({
                   {studioName}'s own machine.
                 </p>
                 <ShareToggle
-                  shared={selected.shared === true}
+                  item={selected}
                   busy={sharing === `m:${selected.id}`}
                   onToggle={() =>
-                    runShare(`m:${selected.id}`, selected.shared !== true, () =>
-                      setMachineShared(activeStudioId, selected.id, selected.shared !== true, studioName),
+                    runShare(`m:${selected.id}`, tapOffers(selected), () =>
+                      setMachineOffer(activeStudioId, selected.id, tapOffers(selected), studioName),
                     )
                   }
                 />
                 <p className="mdb-adopt__why">
                   {selected.shared
                     ? "Listed in All MSF machines: every studio can read it, and add a copy to their floor."
-                    : "Share it to list it in All MSF machines, where every studio can read it and add a copy to their floor."}
+                    : selected.shareStatus === "pending"
+                      ? "Offered to All MSF machines. An administrator reads it first; then every studio can read it and add a copy to their floor."
+                      : "Offer it to All MSF machines, where every studio can read it and add a copy to their floor once an administrator has read it."}
                 </p>
               </section>
             ) : undefined

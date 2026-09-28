@@ -7,8 +7,9 @@
 export { MachineDatabase } from "./MachineDatabase";
 export { NetworkNotes } from "./NetworkNotes";
 export { ScopeSwitch, type CatalogScope } from "./ScopeSwitch";
-export { ShareToggle } from "./ShareToggle";
+export { ShareToggle, shareStateOf, tapOffers, type ShareState, type Shareable } from "./ShareToggle";
+export { ShareReviewPanel } from "./ShareReviewPanel";
 export {
   sharedKeysFor,
 } from "./database";
-export { setMachineShared, setNoteShared, setTipShared } from "./mutations";
+export { decideOffer, setMachineOffer, setNoteOffer, setTipOffer, type OfferKind } from "./mutations";

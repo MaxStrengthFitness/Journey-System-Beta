@@ -72,9 +72,25 @@
 .mdb-share:disabled { opacity: 0.55; cursor: default; }
 .mdb-share:focus-visible { outline: 2px solid var(--wk-focus-ring); outline-offset: 2px; }
 
+/* The switch, and one line under it when there is something to know: an
+   offer waiting for an administrator, or the note that came back with a
+   "not shared" (Sep 28 2026). */
+.mdb-share-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  max-width: 100%;
+}
+.mdb-share-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wk-ink-2);
+}
+
 /* Inside a studio note's header row the switch sits at the end. */
-.wk__studio-head .mdb-share { margin-left: 0.25rem; }
-.wk__studio-head .wk__studio-edit + .mdb-share { margin-left: 0.375rem; }
+.wk__studio-head .mdb-share-wrap { margin-left: 0.25rem; }
+.wk__studio-head .wk__studio-edit + .mdb-share-wrap { margin-left: 0.375rem; }
 
 /* ── the card above a machine page ────────────────────────────────────── */
 

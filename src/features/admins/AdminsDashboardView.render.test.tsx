@@ -105,13 +105,25 @@ const clickNav = async (el: HTMLElement, label: string) => {
 };
 
 describe("the Admins dashboard", () => {
-  it("lists the seven, and opens each", async () => {
+  it("lists the eight, and opens each", async () => {
     const el = await mount(admin, true);
-    expect(navLabels(el)).toEqual(["All locations", "Catalog", "Standard template", "Limbo", "System tools", "Bug reports", "Data"]);
+    expect(navLabels(el)).toEqual([
+      "All locations",
+      "Catalog",
+      "Standard template",
+      "Waiting for review",
+      "Limbo",
+      "System tools",
+      "Bug reports",
+      "Data",
+    ]);
     await clickNav(el, "Catalog");
     expect(el.textContent).toContain("Machine catalog");
     await clickNav(el, "Standard template");
     expect(el.textContent).toContain("The standard template");
+    // AJ, Sep 28 2026: sharing with all MSF studios waits for an administrator here.
+    await clickNav(el, "Waiting for review");
+    expect(el.textContent).toContain("Nothing reaches another studio until you share it.");
     await clickNav(el, "Limbo");
     await clickNav(el, "System tools");
     await clickNav(el, "Bug reports");

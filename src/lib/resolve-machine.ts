@@ -352,6 +352,8 @@ export function resolveMachine(
     // The MSF machine database (Learning + Planner round): carried through
     // untouched, so the Catalog can show and toggle them.
     ...(entry.shared === true ? { shared: true } : {}),
+    ...(entry.shareStatus ? { shareStatus: entry.shareStatus } : {}),
+    ...(entry.shareReviewNote ? { shareReviewNote: entry.shareReviewNote } : {}),
     ...(entry.source === "custom" && entry.adoptedFrom ? { adoptedFrom: entry.adoptedFrom } : {}),
   };
 }

@@ -133,6 +133,9 @@ export interface StudioWikiDoc {
   shared?: boolean;
   sharedKeys?: string[];
   studioName?: string;
+  /** Where an offer to share it stands: an administrator decides (Sep 28 2026, features/machine-db). */
+  shareStatus?: "pending" | "approved" | "declined";
+  shareReviewNote?: string;
 }
 
 export interface StudioWikiDraft {

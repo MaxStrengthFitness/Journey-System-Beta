@@ -216,6 +216,8 @@ export function fromResolvedMachine(
     // The MSF machine database — see features/machine-db.
     comparisonKey: machine.comparisonKey || id,
     shared: machine.shared === true,
+    shareStatus: machine.shareStatus,
+    shareReviewNote: machine.shareReviewNote,
     adoptedFrom: machine.adoptedFrom ?? null,
   };
 }

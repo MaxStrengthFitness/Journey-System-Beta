@@ -15,15 +15,18 @@
  * up here before it is handed to its leader. Admins work one studio at a
  * time for now too.
  *
- * Seven tabs: All locations · Catalog · Standard template · Limbo ·
- * System tools · Bug reports · Data. Each is the screen it was on
+ * Eight tabs: All locations · Catalog · Standard template · Waiting for
+ * review · Limbo · System tools · Bug reports · Data. Waiting for review
+ * joined on Sep 28 2026 (AJ: sharing with all MSF studios "should submit to
+ * admins first for review, we can review in admin dashboard":
+ * features/machine-db/ShareReviewPanel). The rest are each the screen it was on
  * Operations (features/admin/…), moved, not rewritten; the standard
  * template is the standard set beside the company routines, the two things
  * a new studio adopts in one step. The third position on the app-mode
  * switch (Trainer · Operations · Admin), administrators and the founder.
  */
 import { useState, type ReactNode } from "react";
-import { Bug, Building2, ClipboardList, Database, Download, Dumbbell, Inbox, ShieldCheck } from "lucide-react";
+import { Bug, Building2, ClipboardList, Database, Download, Dumbbell, Inbox, Share2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Client, FranchiseNetwork, Machine, Studio, Trainer } from "../../types";
 import { AdminStudiosTab } from "../admin/studios/AdminStudiosTab";
@@ -35,6 +38,7 @@ import { AdminBugReportsTab } from "../admin/bugs/AdminBugReportsTab";
 import { AdminDataReportsTab } from "../admin/data";
 import { AdminField, AdminNotice, AdminSelect } from "../admin/primitives";
 import { StandardTemplateTab } from "./StandardTemplateTab";
+import { ShareReviewPanel } from "../machine-db/ShareReviewPanel";
 import "../admin/admin.css";
 
 export interface AdminsDashboardViewProps {
@@ -51,12 +55,13 @@ export interface AdminsDashboardViewProps {
   onReorderTrainers?: () => void;
 }
 
-export type AdminsTab = "locations" | "catalog" | "template" | "limbo" | "system" | "bugs" | "data";
+export type AdminsTab = "locations" | "catalog" | "template" | "offers" | "limbo" | "system" | "bugs" | "data";
 
 const TABS: Array<{ id: AdminsTab; label: string; icon: ReactNode; group: "standard" | "tools" }> = [
   { id: "locations", label: "All locations", icon: <Building2 className="w-4 h-4" />, group: "standard" },
   { id: "catalog", label: "Catalog", icon: <Dumbbell className="w-4 h-4" />, group: "standard" },
   { id: "template", label: "Standard template", icon: <ClipboardList className="w-4 h-4" />, group: "standard" },
+  { id: "offers", label: "Waiting for review", icon: <Share2 className="w-4 h-4" />, group: "standard" },
   { id: "limbo", label: "Limbo", icon: <Inbox className="w-4 h-4" />, group: "tools" },
   { id: "system", label: "System tools", icon: <Database className="w-4 h-4" />, group: "tools" },
   { id: "bugs", label: "Bug reports", icon: <Bug className="w-4 h-4" />, group: "tools" },
@@ -133,6 +138,7 @@ export function AdminsDashboardView({ authTrainer, studios, networks, trainers, 
         {tab === "locations" && <AdminStudiosTab authTrainer={authTrainer} studios={studios} networks={networks} trainers={trainers} clients={clients} isAdmin={isAdmin} onRefresh={onRefresh} />}
         {tab === "catalog" && <AdminMachinesTab isAdmin={isAdmin} />}
         {tab === "template" && <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />}
+        {tab === "offers" && <ShareReviewPanel studios={studios} trainers={trainers} />}
         {tab === "limbo" && <AdminLimboQueue studios={studios} clients={clients} />}
         {tab === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} />}
         {tab === "bugs" && <AdminBugReportsTab studios={studios} />}

@@ -64,6 +64,9 @@ export interface CatalogMachine {
   comparisonKey?: string;
   /** This studio listed it in the database (its own machines only). */
   shared?: boolean;
+  /** Where the studio's offer to list it stands: an administrator decides (Sep 28 2026). */
+  shareStatus?: "pending" | "approved" | "declined";
+  shareReviewNote?: string;
   /** Copied from another studio's shared machine. */
   adoptedFrom?: { studioId: string; machineId: string; studioName: string } | null;
 }

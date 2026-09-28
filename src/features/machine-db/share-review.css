@@ -1,0 +1,70 @@
+/* ==========================================================================
+   WAITING FOR REVIEW — the Admins dashboard's list of what studios offered
+   to every MSF studio (ShareReviewPanel, Sep 28 2026). It sits among the
+   Operations kit's panels, so it takes their --adm-* tokens (admin.tokens.css)
+   rather than Learning's --wk-*; no hex value here.
+   ========================================================================== */
+
+.mdb-review {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mdb-review__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 14px;
+}
+.mdb-review__item + .mdb-review__item {
+  border-top: 1px solid var(--adm-border);
+}
+.mdb-review__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* A title is read whole: it wraps, never cut short. */
+.mdb-review__title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.mdb-review__by {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--adm-ink-muted);
+}
+.mdb-review__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  background: var(--adm-surface-2);
+}
+.mdb-review__body p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.mdb-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.mdb-review__quiet {
+  margin: 0;
+  padding: 1rem 14px;
+  font-size: 14px;
+  color: var(--adm-ink-muted);
+}
+.mdb-review__pad {
+  padding: 0.875rem 14px;
+}
