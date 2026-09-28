@@ -439,6 +439,18 @@ service cloud.firestore {
      * reads them (features/renewals/settings.ts), so this only has to keep
      * out shapes that could never be right.
      */
+    /* THE STUDIO SETTINGS (Sep 28 2026, AJ: "let the admins assign the default
+       within the app"; features/studio-settings). One `values` map of plain
+       numbers (or null for a weekday's "none"), who saved it (the Auth uid)
+       and when. Which keys exist and what is usable is the app's registry and
+       resolve.ts; the rules hold the shape and who may write. */
+    function studioSettingsValid(d) {
+      return d.keys().hasOnly(['values', 'updatedAt', 'updatedBy'])
+          && d.values is map
+          && d.values.size() <= 40
+          && d.updatedBy == request.auth.uid;
+    }
+
     function renewalSettingsValid(d) {
       return d.keys().hasOnly([
                'conversationAtSessionsLeft', 'chargeWarnDays', 'chargeWarnMinBanked',
@@ -2250,13 +2262,16 @@ service cloud.firestore {
       // Reads are scoped to the studio, unlike roster/machineNotes: prices are
       // commercial, and this round's rule is that new collections do not copy
       // the open-read posture.
+      // The studio's own settings (config/settings, Sep 28 2026) are read by
+      // the same people as its renewal settings and written by the same
+      // leaders; the company's defaults are system/studioDefaults.
       match /config/{configId} {
         allow read: if isAuthenticated()
                     && renewalsReadable(studioId, getRole(), callerTrainer());
         allow create, update: if isAuthenticated()
-                    && configId == 'renewals'
-                    && renewalsManageable(studioId, getRole(), callerTrainer())
-                    && renewalSettingsValid(request.resource.data);
+                    && ((configId == 'renewals' && renewalSettingsValid(request.resource.data))
+                        || (configId == 'settings' && studioSettingsValid(request.resource.data)))
+                    && renewalsManageable(studioId, getRole(), callerTrainer());
         allow delete: if false;
       }
 
@@ -3161,6 +3176,16 @@ service cloud.firestore {
       allow read: if isSuperAdmin();
       allow create: if isAuthenticated();
       allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    // Max Strength's defaults for the studio settings (Sep 28 2026, AJ: "let
+    // the admins assign the default within the app"): every signed-in person
+    // reads them, since every studio falls back to them; administrators write
+    // them from Admins -> Standard -> Studio defaults.
+    match /system/studioDefaults {
+      allow read: if isAuthenticated();
+      allow create, update: if isSuperAdmin() && studioSettingsValid(request.resource.data);
       allow delete: if false;
     }
 

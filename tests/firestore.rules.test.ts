@@ -4324,4 +4324,60 @@ describe("marks on a time", () => {
       await assertSucceeds(setDoc(markRef(db, "studioA", "6-0530"), mark(uid, { weekday: 6, time: "05:30", note: "q".repeat(200) })));
     }
   });
+
+  // -- THE STUDIO SETTINGS (Sep 28 2026, AJ: "let the admins assign the
+  // default within the app"): Max Strength's defaults are administrators',
+  // a studio's own are its leaders', and each document holds one `values`
+  // map, who saved it and when.
+  describe("the studio settings", () => {
+    const settingsBy = (uid: string, values: Record<string, unknown>) => ({
+      values,
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+    });
+
+    async function seedSettingsAdmin() {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), "trainers", "adminX"), {
+          fullName: "Admin X",
+          initials: "AX",
+          role: "Admin",
+          primaryHomeStudioId: "studioA",
+          accessibleStudioIds: ["studioA"],
+        });
+      });
+    }
+
+    it("lets only an administrator set Max Strength's defaults, and everyone signed in read them", async () => {
+      await seedSettingsAdmin();
+      const admin = testEnv.authenticatedContext("adminX", { email: "adminx@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+      await assertSucceeds(setDoc(doc(admin, "system", "studioDefaults"), settingsBy("adminX", { quietFloorSessions: 3 })));
+      await assertSucceeds(getDoc(doc(trainer, "system", "studioDefaults")));
+      await assertFails(setDoc(doc(trainer, "system", "studioDefaults"), settingsBy("trainerA", { quietFloorSessions: 1 })));
+      await assertFails(setDoc(doc(owner, "system", "studioDefaults"), settingsBy("ownerA", { quietFloorSessions: 1 })));
+      // Signed as someone else, or with anything beside the three fields.
+      await assertFails(setDoc(doc(admin, "system", "studioDefaults"), settingsBy("trainerA", { quietFloorSessions: 3 })));
+      await assertFails(
+        setDoc(doc(admin, "system", "studioDefaults"), { ...settingsBy("adminX", { quietFloorSessions: 3 }), note: "extra" }),
+      );
+      await assertFails(deleteDoc(doc(admin, "system", "studioDefaults")));
+    });
+
+    it("lets a studio's leaders set its own settings, and the people who work there read them", async () => {
+      const owner = testEnv.authenticatedContext("ownerA", { email: "ownera@test.com" }).firestore();
+      const trainer = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+      const outsider = testEnv.authenticatedContext("trainerB", { email: "trainerb@test.com" }).firestore();
+      const ref = (db: typeof owner, studio: string) => doc(db, "studios", studio, "config", "settings");
+      await assertSucceeds(setDoc(ref(owner, "studioA"), settingsBy("ownerA", { lapsedDays: 60 })));
+      await assertSucceeds(setDoc(ref(owner, "studioA"), settingsBy("ownerA", { lapsedDays: 60, quietFloorSessions: 1 }), { merge: true }));
+      await assertSucceeds(getDoc(ref(trainer, "studioA")));
+      await assertFails(getDoc(ref(outsider, "studioA")));
+      await assertFails(setDoc(ref(trainer, "studioA"), settingsBy("trainerA", { lapsedDays: 30 })));
+      await assertFails(setDoc(ref(owner, "studioB"), settingsBy("ownerA", { lapsedDays: 30 })));
+      // Any other config document keeps its own rule: nothing but renewals and settings.
+      await assertFails(setDoc(doc(owner, "studios", "studioA", "config", "other"), settingsBy("ownerA", {})));
+    });
+  });
 });

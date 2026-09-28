@@ -1,0 +1,96 @@
+/**
+ * THE STUDIO SETTINGS' ONE ANSWER — the studio's own, then Max Strength's
+ * default, then the app's; an unusable value is skipped, never bent into one
+ * nobody chose (Sep 28 2026).
+ */
+import { describe, expect, it } from "vitest";
+import { SETTINGS } from "./registry";
+import { formatSetting, parseSetting, resolveAll, resolveSetting, usable } from "./resolve";
+
+describe("resolveSetting", () => {
+  it("takes the studio's own first, then head office's, then the app's", () => {
+    expect(resolveSetting("quietFloorSessions", { studio: { quietFloorSessions: 3 }, company: { quietFloorSessions: 1 } })).toEqual({
+      key: "quietFloorSessions",
+      value: 3,
+      source: "studio",
+    });
+    expect(resolveSetting("quietFloorSessions", { studio: {}, company: { quietFloorSessions: 1 } })).toMatchObject({ value: 1, source: "company" });
+    expect(resolveSetting("quietFloorSessions", { studio: null, company: null })).toMatchObject({ value: 2, source: "app" });
+  });
+
+  it("skips a value that isn't usable instead of bending it", () => {
+    // Out of range, the wrong type, a fraction where a whole number belongs.
+    expect(resolveSetting("lapsedDays", { studio: { lapsedDays: 5 }, company: { lapsedDays: 60 } })).toMatchObject({ value: 60, source: "company" });
+    expect(resolveSetting("lapsedDays", { studio: { lapsedDays: "45" }, company: null })).toMatchObject({ value: 45, source: "app" });
+    expect(resolveSetting("driftMinDays", { studio: { driftMinDays: 7.5 }, company: null })).toMatchObject({ value: 7, source: "app" });
+    // A multiple keeps one decimal place.
+    expect(resolveSetting("driftMultiple", { studio: { driftMultiple: 2.5 }, company: null })).toMatchObject({ value: 2.5, source: "studio" });
+    expect(resolveSetting("driftMultiple", { studio: { driftMultiple: 2.55 }, company: null })).toMatchObject({ value: 2, source: "app" });
+  });
+
+  it("reads the studio's deep clean from its own document until the settings hold one", () => {
+    expect(resolveSetting("deepCleanDays", { studio: null, company: { deepCleanDays: 10 }, studioDoc: { deepCleanIntervalDays: 7 } })).toMatchObject({
+      value: 7,
+      source: "studio",
+    });
+    expect(resolveSetting("deepCleanDays", { studio: { deepCleanDays: 3 }, company: null, studioDoc: { deepCleanIntervalDays: 7 } })).toMatchObject({
+      value: 3,
+      source: "studio",
+    });
+    expect(resolveSetting("deepCleanDays", { studio: null, company: { deepCleanDays: 10 }, studioDoc: {} })).toMatchObject({ value: 10, source: "company" });
+  });
+
+  it("lets a weekday be none on purpose", () => {
+    expect(resolveSetting("weeklyMaintenanceDay", { studio: { weeklyMaintenanceDay: null }, company: { weeklyMaintenanceDay: 1 } })).toMatchObject({
+      value: null,
+      source: "studio",
+    });
+    expect(resolveSetting("weeklyMaintenanceDay", { studio: {}, company: { weeklyMaintenanceDay: 1 } })).toMatchObject({ value: 1, source: "company" });
+    expect(resolveSetting("weeklyMaintenanceDay", { studio: { weeklyMaintenanceDay: 9 }, company: null })).toMatchObject({ value: null, source: "app" });
+  });
+});
+
+describe("resolveAll", () => {
+  it("keeps Settling in after New, falling back together when a layer breaks it", () => {
+    const broken = resolveAll({ studio: { newMax: 30, settlingMax: 24 }, company: { newMax: 8, settlingMax: 20 } });
+    expect([broken.newMax.value, broken.settlingMax.value]).toEqual([8, 20]);
+    expect(broken.newMax.source).toBe("company");
+    // Without the studio's layer, the app's New (10) and head office's Settling in (12) agree.
+    const mixed = resolveAll({ studio: { newMax: 30 }, company: { settlingMax: 12 } });
+    expect([mixed.newMax.value, mixed.settlingMax.value]).toEqual([10, 12]);
+    expect([mixed.newMax.source, mixed.settlingMax.source]).toEqual(["app", "company"]);
+    // Broken at every layer: the app's own pair.
+    const allBroken = resolveAll({ studio: { newMax: 30, settlingMax: 20 }, company: { newMax: 20, settlingMax: 12 } });
+    expect([allBroken.newMax.value, allBroken.settlingMax.value]).toEqual([10, 24]);
+    expect(allBroken.newMax.source).toBe("app");
+    const fine = resolveAll({ studio: { newMax: 5, settlingMax: 12 }, company: null });
+    expect([fine.newMax.value, fine.settlingMax.value, fine.newMax.source]).toEqual([5, 12, "studio"]);
+  });
+
+  it("answers every setting in the registry, each with a reader", () => {
+    const all = resolveAll({ studio: null, company: null });
+    for (const def of SETTINGS) {
+      expect(all[def.key]).toMatchObject({ key: def.key, value: def.appDefault, source: "app" });
+      expect(def.readers.length).toBeGreaterThan(0);
+      // The app's own default is always usable, or the fallback would be a lie.
+      expect(usable(def, def.appDefault)).toBe(def.appDefault);
+    }
+  });
+});
+
+describe("parseSetting and formatSetting", () => {
+  it("turns an editor's text into a value, a clear, or a sentence", () => {
+    expect(parseSetting("quietFloorSessions", "3")).toEqual({ value: 3 });
+    expect(parseSetting("quietFloorSessions", "  ")).toEqual({ clear: true });
+    expect(parseSetting("quietFloorSessions", "13")).toEqual({ error: "Enter a number between 0 and 12 (a whole number)." });
+    expect(parseSetting("driftMultiple", "2.5")).toEqual({ value: 2.5 });
+    expect(parseSetting("weeklyMaintenanceDay", "none")).toEqual({ value: null });
+    expect(parseSetting("weeklyMaintenanceDay", "1")).toEqual({ value: 1 });
+  });
+
+  it("shows a weekday by its name", () => {
+    expect(formatSetting("weeklyMaintenanceDay", 1)).toBe("Monday");
+    expect(formatSetting("weeklyMaintenanceDay", null)).toBe("None");
+    expect(formatSetting("lapsedDays", 45)).toBe("45");
+  });
+});
