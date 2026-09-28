@@ -106,12 +106,17 @@ has a one-tap cause:
 > that has data filled out for it** … I'm not sure if it even interacts with
 > the catalog at all."
 
-**That is the legacy-shape problem, not an editor bug** — see the first trap
-below. Admin → System tools → *Restore standard machines* rewrites the catalog
-documents into the shape the editor reads. Until it is run, every machine
-opens near-empty and the editor looks broken when it is not. **If AJ reports
-the editor as clunky, ask whether that has been run before designing
-anything.**
+**That was the legacy-shape problem, not an editor bug** — see the first
+trap below. Admin → System tools → *Restore standard machines* rewrote the
+catalog documents into the shape the editor reads; it was taken out on Sep 28
+2026 (AJ: "we dont need to restore standard machine button, a machine just
+needs to be able to be marked as a standard machine, a task only by admins"),
+because it wrote the generated file over every catalog document and undid an
+administrator's corrections with it. A machine that still opens near-empty is
+a document in the old shape: fill it in the editor (what is saved is what
+the floor reads), and **check the document's shape before designing
+anything.** Marking a machine as a standard machine is the **Standard
+machine** switch on its own page in this editor (wave 2, Sep 28 2026).
 
 What he wants it to become, and where each piece stands:
 
@@ -147,4 +152,9 @@ read that before changing anything here. The short list:
 `src/data/machine-definitions.ts` holds all twenty and is **generated** — run
 `npx tsx scripts/generate-machine-definitions.ts` from the repo root rather than
 hand-editing it. The prose is the MSF Academy's, lifted verbatim from
-`docs/msf-academy/Set Up Machines/`.
+`docs/msf-academy/Set Up Machines/`. It is the SEED and the fallback (Demo
+Mode, tests), never the live catalog: since Sep 28 2026 nothing in the app
+writes it into `machines/{id}`, and a correction to the live catalog is made
+in this editor. AJ's ruling of Sep 28 2026 on the codex source check's
+nineteen line corrections: administrators make them here, in the catalog
+editor, not in code.

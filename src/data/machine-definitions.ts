@@ -12,12 +12,14 @@
  * from data/machine-anatomy-map.ts, data/machine-database.ts and
  * data/default-machines.ts.
  *
- * This replaces data/default-machines.ts as what "Restore standard machines"
- * writes. That file is the LEGACY `Machine` shape, and seeding it is why
- * opening Edit on a catalog machine showed an empty form: the documents had
- * `targetMuscles` as one string and `settingOptions` as bare labels, while
- * the editor reads `musculature`, `settingFields` and the biomechanics
- * template. It is kept only for the fields nothing else carries.
+ * This replaced data/default-machines.ts as the catalog's seed. That file is
+ * the LEGACY `Machine` shape, and seeding it is why opening Edit on a catalog
+ * machine showed an empty form: the documents had `targetMuscles` as one
+ * string and `settingOptions` as bare labels, while the editor reads
+ * `musculature`, `settingFields` and the biomechanics template. It is kept
+ * only for the fields nothing else carries. Nothing writes this file into
+ * the live catalog: "Restore standard machines" did until Sep 28 2026, and
+ * the catalog is changed in the catalog editor now.
  *
  * Blanks are deliberate. A field the sources do not actually state is left
  * empty so the editor can ask for it — never filled with something plausible.

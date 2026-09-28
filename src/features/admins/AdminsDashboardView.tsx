@@ -114,7 +114,6 @@ export interface AdminsDashboardViewProps {
   isAdmin: boolean;
   activeStudioId: string | null;
   onRefresh?: (collectionName: "studios" | "networks" | "trainers") => Promise<void>;
-  onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
 }
 
@@ -177,7 +176,6 @@ function AdminsShell({
   isAdmin,
   activeStudioId,
   onRefresh,
-  onRestoreMachines,
   onReorderTrainers,
 }: AdminsDashboardViewProps) {
   const [page, setPage] = useState<AdminsPage>(ADMINS_START);
@@ -499,7 +497,7 @@ function AdminsShell({
             {page === "data" && (
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />
             )}
-            {page === "system" && <AdminSystemToolsTab onRestoreMachines={onRestoreMachines} onReorderTrainers={onReorderTrainers} />}
+            {page === "system" && <AdminSystemToolsTab onReorderTrainers={onReorderTrainers} />}
           </UnsavedChangesScope>
         </div>
       </div>

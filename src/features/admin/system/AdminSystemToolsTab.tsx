@@ -11,6 +11,17 @@
  * recoverable: the one that was not — "Wipe and re-initialize" — left on
  * Sep 20 2026 for scripts/purge-database.ts, where a dry run is possible.
  *
+ * "Restore standard machines" left on Sep 28 2026 (wave 2 of the Machine
+ * Catalog room). AJ: "we dont need to restore standard machine button, a
+ * machine just needs to be able to be marked as a standard machine, a task
+ * only by admins". It wrote the generated file (data/machine-definitions.ts)
+ * over the live catalog documents, merging, so it also undid every
+ * correction an administrator had made in the catalog editor since. The
+ * catalog is changed in the catalog editor now, and a machine is marked as
+ * a standard machine on its own page there ("Standard machine"). The
+ * generated file stays the seed and fallback it is everywhere else; nothing
+ * writes it into the catalog any more.
+ *
  * On the admin kit as of Sep 2026. This screen was written before the kit
  * existed and used shadcn's semantic tokens — bg-card, border-border,
  * text-foreground — which is a perfectly good system, just not the one the
@@ -23,7 +34,6 @@ import {
   Calculator,
   Database,
   ListOrdered,
-  RotateCcw,
 } from "lucide-react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../../firebase";
@@ -38,7 +48,6 @@ import {
 } from "../primitives";
 
 export interface AdminSystemToolsTabProps {
-  onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
 }
 
@@ -81,7 +90,6 @@ function ToolRow({
 }
 
 export function AdminSystemToolsTab({
-  onRestoreMachines,
   onReorderTrainers,
 }: AdminSystemToolsTabProps) {
   const { success: toastSuccess, error: toastError } = useToast();
@@ -125,7 +133,7 @@ export function AdminSystemToolsTab({
       <AdminHeader
         icon={<Database className="w-5 h-5" />}
         title="System tools"
-        subtitle="Restore and reset. The last one cannot be undone."
+        subtitle="Two tools that act on the whole app. Both are safe to run again."
       />
 
       <AdminPanel title="Everyday" flush>
@@ -144,13 +152,6 @@ export function AdminSystemToolsTab({
           action={rebuilding ? "Counting…" : "Rebuild"}
           onClick={rebuilding ? undefined : handleRebuildRollups}
         />
-        <ToolRow
-          icon={RotateCcw}
-          title="Restore standard machines"
-          detail="Re-writes the 20 standard machine definitions to factory defaults. Merges rather than replaces, so studio-specific settings survive."
-          action="Restore"
-          onClick={onRestoreMachines}
-        />
         </AdminRows>
       </AdminPanel>
 
@@ -163,8 +164,8 @@ export function AdminSystemToolsTab({
         service account, where a dry run is possible and a half-finished
         delete can be resumed.
 
-        The three tools above are all recoverable, which is why the divider
-        and the hazard styling left with the panel.
+        The tools above are all recoverable, which is why the divider and the
+        hazard styling left with the panel.
       */}
     </AdminScreen>
   );

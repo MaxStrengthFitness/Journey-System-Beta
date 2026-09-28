@@ -77,7 +77,6 @@ interface Props {
    * implemented here because they act on the app as a whole and their
    * confirmation modals already live in AppContent.
    */
-  onRestoreMachines?: () => void;
   onReorderTrainers?: () => void;
   /** Opens My Studio, in trainer mode (the doors to Team, Studio and Openings). */
   onOpenStudioTasks?: () => void;
@@ -175,7 +174,6 @@ function OperationsShell({
   onUpdateStudio,
   onUpdateClient,
   onNavigateProfile,
-  onRestoreMachines,
   onReorderTrainers,
   onOpenStudioTasks,
   // The studio the APP is in: where My Studio opens (ops.studioId is null
@@ -187,8 +185,7 @@ function OperationsShell({
   void onUpdateStudio;
   void onUpdateClient;
   // The system tools moved to the Admins dashboard (features/admins); the
-  // callbacks stay on the props so AppContent's call site needs no change.
-  void onRestoreMachines;
+  // callback stays on the props so AppContent's call site needs no change.
   void onReorderTrainers;
   const ops = useOperationsScope();
   const activeStudioId = ops.studioId;

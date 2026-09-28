@@ -185,7 +185,11 @@ describe("the Admins dashboard", () => {
     await click(byText(el, ".hq-side .hq-nav__item", "Data"));
     expect(el.textContent).toContain("An administrator exports any studio's data");
     await click(byText(el, ".hq-side .hq-nav__item", "System tools"));
-    expect(el.textContent).toContain("Restore standard machines");
+    expect(el.textContent).toContain("Rebuild trainer rollups");
+    // Gone on Sep 28 2026 (AJ): a machine is marked as a standard machine on
+    // its own page in the catalog editor, and nothing writes the generated
+    // file into the catalog any more.
+    expect(el.textContent).not.toContain("Restore standard machines");
     const on = el.querySelector(".hq-side .hq-nav__item--on");
     expect(on?.textContent).toBe("System tools");
     expect(on?.getAttribute("aria-current")).toBe("page");

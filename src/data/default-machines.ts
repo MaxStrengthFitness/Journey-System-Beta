@@ -1,10 +1,12 @@
 /**
  * The 20 standard MSF machines, as the app knows them before Firestore answers.
  *
- * useMachines merges this list with the `machines` collection BY ID, and
- * Operations -> System Tools -> "Restore standard machines" writes it back to
- * Firestore. It lived inside AppContent.tsx (264 lines of data in the middle
- * of the app shell) until the beta-prep trim, Sep 17 2026.
+ * useMachines merges this list with the `machines` collection BY ID. Nothing
+ * writes it to Firestore: "Restore standard machines" wrote the catalog from
+ * data/machine-definitions.ts until it was taken out on Sep 28 2026 (AJ: a
+ * machine is marked as a standard machine in the catalog editor instead).
+ * It lived inside AppContent.tsx (264 lines of data in the middle of the app
+ * shell) until the beta-prep trim, Sep 17 2026.
  *
  * A TRAP WORTH KNOWING: every `name` here is UPPERCASE ("LEG PRESS"), while
  * the starting-weight table in lib/consultation-utils.ts is keyed in Title
