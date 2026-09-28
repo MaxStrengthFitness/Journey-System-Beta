@@ -17,14 +17,26 @@
  * THE COMMAND CENTER (the Admins room of the redesign, Sep 28 2026 — AJ's
  * pick). One shell instead of a strip of seven tabs:
  *
- *   - the pages sit in PLACES (nav.ts): a sidebar in landscape, two levels
- *     at most, and a bar of places in portrait with the place's pages as
- *     chips under it — nothing runs off the side of a portrait iPad;
+ *   - four PLACES (nav.ts): Home · Studios · Standard · Machinery. A sidebar
+ *     in landscape, two levels at most, and a bar of places in portrait with
+ *     the place's pages as chips under it — nothing runs off the side of a
+ *     portrait iPad;
+ *   - Home first: what needs you, from conditions that clear themselves
+ *     (home/needs.ts), the network and the standard in a sentence each;
+ *   - Studios: every studio grouped by what Journey knows, and a page per
+ *     studio (studios/); The machinery adds the Mindbody sync check across
+ *     every studio (machinery/);
  *   - one header: the app's own. Each page's title sits in the page;
  *   - a search across every studio, the machine catalog and everyone with
  *     an account (search.ts), opened at the top of the page so the page
  *     underneath keeps any typing;
  *   - every screen that was a tab is still here, moved not rewritten.
+ *
+ * What it reads of its own, once when it opens and again on Check again:
+ * each real studio's sync lease, Limbo, the newest hundred bug reports and
+ * the machines studios offered the catalog — the reads its pages already
+ * make. No listener of its own but the machine catalog, no timer, and no
+ * Mindbody call.
  *
  * Moving between pages asks the leave question first (features/
  * unsaved-changes): a catalog machine mid-edit or a studio's half-typed
@@ -42,6 +54,7 @@ import {
   Download,
   Dumbbell,
   GitPullRequest,
+  House,
   Inbox,
   Network,
   RefreshCw,
@@ -70,7 +83,12 @@ import { StudioPage, type StudioTab } from "./studios/StudioPage";
 import { FranchisesPage } from "./studios/FranchisesPage";
 import { SyncCheck } from "./machinery/SyncCheck";
 import { useStudioLeases } from "./machinery/useStudioLeases";
-import { syncRowOf } from "./machinery/sync-check";
+import { syncRowOf, syncRows } from "./machinery/sync-check";
+import { AdminsHome } from "./home/AdminsHome";
+import { useHomeSignals } from "./home/useHomeSignals";
+import { needItems, type NeedDoor } from "./home/needs";
+import { networkSentence, standardSentence } from "./home/sentences";
+import { StudioDefaultsCard } from "./standard/StudioDefaultsCard";
 import { HqStatus } from "./kit";
 import { isDemoStudio } from "../demo-mode/is-demo";
 import {
@@ -102,6 +120,7 @@ export interface AdminsDashboardViewProps {
 }
 
 const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
+  home: <House aria-hidden="true" />,
   studios: <Building2 aria-hidden="true" />,
   franchises: <Network aria-hidden="true" />,
   machines: <Dumbbell aria-hidden="true" />,
@@ -115,6 +134,7 @@ const PAGE_ICON: Record<AdminsNavPage, ReactNode> = {
 };
 
 const PLACE_ICON: Record<AdminsPlace, ReactNode> = {
+  home: <House aria-hidden="true" />,
   studios: <Building2 aria-hidden="true" />,
   standard: <BookOpenCheck aria-hidden="true" />,
   machinery: <Cog aria-hidden="true" />,
@@ -187,11 +207,26 @@ function AdminsShell({
     [studios],
   );
   const { leases, checkedAt } = useStudioLeases(realStudioIds, checkSeq);
-  const checkAgain = useCallback(() => setCheckSeq((n) => n + 1), []);
   const syncOf = useCallback(
     (studio: Studio) => syncRowOf(studio, studios, leases[studio.id ?? ""], checkedAt ?? Date.now()),
     [studios, leases, checkedAt],
   );
+
+  // What Home reads besides the leases — Limbo, the bug reports, the machines
+  // studios offered the catalog — once when the dashboard opens, again on
+  // Check again, and again when Limbo or Bug reports changes something
+  // (home/useHomeSignals.ts). The sidebar's counts come from the same reads.
+  const [signalsSeq, setSignalsSeq] = useState(0);
+  const signals = useHomeSignals(signalsSeq);
+  const recount = useCallback(() => setSignalsSeq((n) => n + 1), []);
+  const checkAgain = useCallback(() => {
+    setCheckSeq((n) => n + 1);
+    setSignalsSeq((n) => n + 1);
+  }, []);
+  const counts: Partial<Record<AdminsNavPage, number>> = {
+    ...(signals.limbo.state === "ok" && signals.limbo.entries.length ? { limbo: signals.limbo.entries.length } : {}),
+    ...(signals.bugs.state === "ok" ? { bugs: signals.bugs.reports.filter((r) => r.status === "open").length || undefined } : {}),
+  };
 
   /** Every move between pages asks first: the page it leaves may hold typing. */
   const go = useCallback(
@@ -245,6 +280,18 @@ function AdminsShell({
 
   const openStudio = studios.find((s) => s.id === focus.studioId) ?? null;
 
+  // Home: what needs you, the network and the standard, all from the reads above.
+  const now = checkedAt ?? Date.now();
+  const allSync = useMemo(() => syncRows(studios, leases, now), [studios, leases, now]);
+  const needs = useMemo(
+    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, now }),
+    [studios, networks, allSync, signals, now],
+  );
+  const openDoor = (door: NeedDoor) => {
+    if ("action" in door) checkAgain();
+    else go({ page: door.page, studioId: door.studioId ?? null, tab: door.tab ?? null });
+  };
+
   const current = navKeyOf(page);
   const place = placeOf(page);
   const placePages = pagesOf(place);
@@ -259,6 +306,11 @@ function AdminsShell({
     >
       {PAGE_ICON[item.page]}
       <span className="hq-nav__label">{item.label}</span>
+      {counts[item.page] ? (
+        <span className="hq-nav__count" aria-label={`${counts[item.page]} waiting`}>
+          {counts[item.page]}
+        </span>
+      ) : null}
     </button>
   );
 
@@ -280,8 +332,8 @@ function AdminsShell({
         </div>
         {findButton}
         {ADMINS_NAV.map((group) => (
-          <nav key={group.place} aria-label={group.label}>
-            <div className="hq-nav__group">{group.label}</div>
+          <nav key={group.place} aria-label={group.label ?? "Home"}>
+            {group.label ? <div className="hq-nav__group">{group.label}</div> : null}
             {group.items.map(navButton)}
           </nav>
         ))}
@@ -315,6 +367,7 @@ function AdminsShell({
                   onClick={() => go({ page: item.page })}
                 >
                   {item.label}
+                  {counts[item.page] ? <span className="hq-chip__count">{counts[item.page]}</span> : null}
                 </button>
               ))}
             </div>
@@ -334,6 +387,19 @@ function AdminsShell({
 
         <div className="hq-page" hidden={searchOpen}>
           <UnsavedChangesScope scope={pagesScope}>
+            {page === "home" && (
+              <AdminsHome
+                items={needs.items}
+                more={needs.more}
+                checkedAt={checkedAt}
+                network={networkSentence(studios, networks, allSync, new Date(now))}
+                standard={standardSentence({ loading: catalog.loading, failed: catalog.failed, machines: catalog.catalog }, signals.offers)}
+                onDoor={openDoor}
+                onCheckAgain={checkAgain}
+                onOpenStudios={() => go({ page: "studios" })}
+                onOpenMachines={() => go({ page: "machines" })}
+              />
+            )}
             {page === "studios" && (
               <StudiosRoom
                 authTrainer={authTrainer}
@@ -401,7 +467,10 @@ function AdminsShell({
                   onBack={() => go({ page: "machines" })}
                 />
               ) : (
-                <AdminMachinesTab isAdmin={isAdmin} />
+                <div className="flex flex-col gap-4">
+                  <StudioDefaultsCard studios={studios} catalog={catalog.catalog} />
+                  <AdminMachinesTab isAdmin={isAdmin} />
+                </div>
               ))}
             {page === "template" && (
               <StandardTemplateTab authTrainer={authTrainer} studios={studios} activeStudioId={activeStudioId} isAdmin={isAdmin} />
@@ -409,7 +478,7 @@ function AdminsShell({
             {/* THE REVIEW QUEUE MOUNTS HERE: replace the placeholder below with
                 the queue from features/machine-db/ when it lands. */}
             {page === "review" && <ReviewQueuePlaceholder onOpenMachines={() => go({ page: "machines" })} />}
-            {page === "limbo" && <AdminLimboQueue studios={studios} clients={clients} />}
+            {page === "limbo" && <AdminLimboQueue studios={studios} clients={clients} onChanged={recount} />}
             {page === "sync" && (
               <SyncCheck
                 studios={studios}
@@ -419,7 +488,7 @@ function AdminsShell({
                 onOpenStudio={(studioId) => go({ page: "studio", studioId, tab: "mindbody" })}
               />
             )}
-            {page === "bugs" && <AdminBugReportsTab studios={studios} />}
+            {page === "bugs" && <AdminBugReportsTab studios={studios} onChanged={recount} />}
             {page === "data" && (
               <AdminsDataPage studios={studios} trainers={trainers} clients={clients} activeStudioId={activeStudioId} />
             )}

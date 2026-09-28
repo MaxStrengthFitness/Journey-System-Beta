@@ -23,9 +23,10 @@
  * built beside this room; until it is mounted the page says so.
  */
 
-export type AdminsPlace = "studios" | "standard" | "machinery";
+export type AdminsPlace = "home" | "studios" | "standard" | "machinery";
 
 export type AdminsPage =
+  | "home"
   | "studios"
   | "studio"
   | "franchises"
@@ -49,13 +50,14 @@ export interface AdminsNavItem {
 
 export interface AdminsNavGroup {
   place: AdminsPlace;
-  /** The group's name in the sidebar. */
-  label: string;
+  /** The group's name in the sidebar; Home has none, it is one item. */
+  label: string | null;
   items: AdminsNavItem[];
 }
 
 /** The sidebar, top to bottom, and each place's chips in portrait. */
 export const ADMINS_NAV: readonly AdminsNavGroup[] = [
+  { place: "home", label: null, items: [{ page: "home", label: "Home" }] },
   {
     place: "studios",
     label: "Studios",
@@ -88,13 +90,14 @@ export const ADMINS_NAV: readonly AdminsNavGroup[] = [
 
 /** The places of the portrait bar, and the page each opens on. */
 export const ADMINS_PLACES: readonly { place: AdminsPlace; label: string; opens: AdminsNavPage }[] = [
+  { place: "home", label: "Home", opens: "home" },
   { place: "studios", label: "Studios", opens: "studios" },
   { place: "standard", label: "Standard", opens: "machines" },
   { place: "machinery", label: "Machinery", opens: "limbo" },
 ];
 
-/** Where the Admins dashboard opens. */
-export const ADMINS_START: AdminsNavPage = "studios";
+/** Where the Admins dashboard opens: what needs you. */
+export const ADMINS_START: AdminsNavPage = "home";
 
 /** The sidebar item a page lights: a studio's own page lights All studios. */
 export function navKeyOf(page: AdminsPage): AdminsNavPage {

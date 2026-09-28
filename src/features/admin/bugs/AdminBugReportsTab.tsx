@@ -45,15 +45,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { Bug, Copy, RefreshCw, TriangleAlert } from "lucide-react";
 import { db } from "../../../firebase";
 import type { Studio } from "../../../types";
@@ -81,20 +73,12 @@ import {
   filterReports,
   orderReports,
   reportAsText,
-  toReportView,
-  type RawReport,
   type ReportFilter,
   type ReportStatus,
   type ReportView,
 } from "./reportView";
+import { REPORTS_PAGE as PAGE, fetchRecentReports } from "./fetch-reports";
 import "../../admins/admins.css";
-
-/**
- * Enough to triage from without reading the whole collection. A beta feedback
- * inbox grows forever and nobody works a backlog past the first hundred; if
- * one is ever needed, the fix is a cursor, not a bigger number.
- */
-const PAGE = 100;
 
 const STATUS_TONE: Record<ReportStatus, "live" | "warn" | "ok" | "neutral"> = {
   open: "live",
@@ -122,18 +106,7 @@ export function AdminBugReportsTab({ studios, onChanged }: Props) {
     setLoading(true);
     setFailed(false);
     try {
-      const snap = await getDocs(
-        query(
-          collection(db, "bug_reports"),
-          orderBy("createdAt", "desc"),
-          limit(PAGE),
-        ),
-      );
-      setRaw(
-        snap.docs.map((d, i) =>
-          toReportView({ id: d.id, ...(d.data() as RawReport) }, i),
-        ),
-      );
+      setRaw(await fetchRecentReports());
     } catch (err) {
       // Said on the screen, in words, with Try again — not in a technical
       // toast over it.

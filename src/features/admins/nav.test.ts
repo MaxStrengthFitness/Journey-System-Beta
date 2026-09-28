@@ -5,6 +5,13 @@ describe("the Admins dashboard's map", () => {
   it("never has more than four places, so the portrait bar fits", () => {
     expect(ADMINS_PLACES.length).toBeLessThanOrEqual(4);
     expect(ADMINS_NAV.map((g) => g.place)).toEqual(ADMINS_PLACES.map((p) => p.place));
+    expect(ADMINS_PLACES.map((p) => p.label)).toEqual(["Home", "Studios", "Standard", "Machinery"]);
+  });
+
+  it("opens on Home: what needs you", () => {
+    expect(ADMINS_START).toBe("home");
+    expect(labelOf("home")).toBe("Home");
+    expect(pagesOf("home").map((i) => i.page)).toEqual(["home"]);
   });
 
   it("lists every page once, under exactly one place", () => {

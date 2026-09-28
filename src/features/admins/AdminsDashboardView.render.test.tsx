@@ -146,6 +146,7 @@ describe("the Admins dashboard", () => {
     const el = await mount(admin, true);
     expect(texts(el, ".hq-side .hq-nav__group")).toEqual(["Studios", "The MSF standard", "The machinery"]);
     expect(texts(el, ".hq-side .hq-nav__item")).toEqual([
+      "Home",
       "All studios",
       "Franchises",
       "Machines",
@@ -157,7 +158,11 @@ describe("the Admins dashboard", () => {
       "Data",
       "System tools",
     ]);
-    // It opens on All studios, grouped by what Journey knows.
+    // It opens on Home: nothing waits in this empty Firestore.
+    expect(el.textContent).toContain("Nothing needs you right now.");
+    expect(el.textContent).toContain("2 studios. No cutover date yet: Solon and Westlake.");
+    expect(el.textContent).toContain("2 machines in the standard set, of 2 in the MSF catalog.");
+    await click(byText(el, ".hq-side .hq-nav__item", "All studios"));
     expect(el.textContent).toContain("grouped by what Journey knows today");
     await click(byText(el, ".hq-side .hq-nav__item", "Franchises"));
     expect(el.textContent).toContain("A franchise groups studios under one owner");
@@ -186,7 +191,10 @@ describe("the Admins dashboard", () => {
 
   it("gives portrait a bar of places, with the place's pages as chips", async () => {
     const el = await mount(admin, true);
-    expect(texts(el, ".hq-bar .hq-place")).toEqual(["Studios", "Standard", "Machinery"]);
+    expect(texts(el, ".hq-bar .hq-place")).toEqual(["Home", "Studios", "Standard", "Machinery"]);
+    // Home is one page: no chips.
+    expect(el.querySelector(".hq-bar .hq-chips")).toBeNull();
+    await click(byText(el, ".hq-bar .hq-place", "Studios"));
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["All studios", "Franchises"]);
     await click(byText(el, ".hq-bar .hq-place", "Machinery"));
     expect(texts(el, ".hq-bar .hq-chip")).toEqual(["Limbo", "Mindbody sync", "Bug reports", "Data", "System tools"]);
@@ -236,6 +244,7 @@ describe("the Admins dashboard", () => {
 
   it("opens a studio from All studios, says its sync on its Mindbody tab, and comes back", async () => {
     const el = await mount(admin, true);
+    await click(byText(el, ".hq-side .hq-nav__item", "All studios"));
     expect(el.querySelector('.hq-row__open[aria-label="Open Solon"]')?.textContent).toContain("Hasn't pulled yet");
     await click(el.querySelector('.hq-row__open[aria-label="Open Solon"]'));
     expect(el.querySelector<HTMLInputElement>("#studio-name")?.value).toBe("Solon");
