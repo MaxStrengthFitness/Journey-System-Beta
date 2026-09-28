@@ -122,5 +122,7 @@ describe("nothing sorts by studioMachineSettings again", () => {
       `These sort by studioMachineSettings.order, which no UI writes. ` +
         `Use the roster: useStudioMachines(studioId).byId[machineId]?.order.`,
     ).toEqual([]);
-  });
+    // It reads every file under src/: under a busy PC (the rules emulator
+    // beside the suite) that took 8.5s on Sep 28 2026, over the 5s default.
+  }, 30_000);
 });

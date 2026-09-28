@@ -11,7 +11,16 @@
      beneath them (My Studio -> Studio -> This studio's settings; the deep
      clean moved there).
    - The Hub: Get to know and All stars switched on.
-   - The rooms' wave 2 as merged (see the round document).
+   - Admins: the Activity record, Studio defaults, Opening a studio and
+     Launches, bug-report replies, Home's Take it / Snooze / Dismiss.
+   - Operations: the Journey's lines from the settings, a leader's "didn't
+     come", the case stored, and the nightly renewals job's new step 5
+     (client states, the Journey summary, All stars), from tonight's run.
+   - Codex: machine format v2, the model record, the Sep 21 rule with Compare.
+   - Catalog: no Restore standard machines, the Standard machine switch, a
+     reason on Out of service, the model tier, aliases, the floor editor.
+   - Relay: Since you were in, cover asks that keep their time, the quiet
+     floor and the machines' care from the settings, the Journal.
 
  No Mindbody call and no Cloud Functions change (prepare refuses one). New
  indexes and rules: the rules only ADD what the new app needs, so they go
@@ -279,5 +288,5 @@ Must $push 'the push (Render deploys from it). The indexes and rules are deploye
 Log "GOLIVE COMPLETE. master = $((& git --no-optional-locks rev-parse --short origin/master).Trim())." 'Green'
 Log 'When Render shows the deploy Live, reload Journey on every iPad and front-desk computer.' 'Green'
 Log 'Then an administrator can set Max Strength defaults on Admins -> Standard -> Studio defaults (until then every studio runs on the app defaults),' 'Green'
-Log 'and walk the wave 2 rounds of docs/ops/TESTING-CHECKLIST.md (from Round 32): nothing from tonight has been seen on an iPad yet.' 'Green'
+Log 'and walk Rounds 32 to 38 of docs/ops/TESTING-CHECKLIST.md: nothing from wave 2 has been seen on an iPad yet.' 'Green'
 exit 0

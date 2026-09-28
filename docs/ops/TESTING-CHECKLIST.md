@@ -2387,6 +2387,99 @@ this round has been seen on an iPad yet: render tests only.
 - [ ] **Stale says nothing.** A `computedAt` four days old: no section, no
   line.
 
+## Round 34 — The Admins dashboard, second wave · *Sep 28 2026, branch `redesign/admins-2`*
+
+The round document is `docs/rounds/2026-09-28-admins-2.md`. **Deploy the
+indexes and rules first** (ship-wave2 does). As an **administrator**, iPad
+portrait and landscape. Render tests only so far.
+
+- [ ] Standard → Studio defaults: set A quiet floor to 3, save, Reload keeps
+  it; empty it, back to 2; Lapsed after 7 is refused in words.
+- [ ] A studio's Team → Change role: says what happens; the line appears in
+  its Activity tab; no Change role on your own row.
+- [ ] Machinery → Activity: administrators listed; each filter shows only its
+  kind.
+- [ ] Add a studio: three screens; Create opens its Setup with the checklist;
+  it shows on Launches.
+- [ ] Checklist: tick, skip with a reason, put back, add and remove an item;
+  due dates count back from the opening day.
+- [ ] Bug reports → Reply; the reporter sees it on Settings with the new
+  status words.
+- [ ] Home → More: Take it, Snooze (Undo), Dismiss (asks why); Set aside →
+  Bring it back; Couldn't check has no More.
+
+## Round 35 — Operations, wave 2 · *Sep 28 2026, branch `redesign/operations-2`*
+
+The round document is `docs/rounds/2026-09-28-operations-2.md`. **Deploy the
+two indexes and the rules first** (ship-wave2 does). Sign in as a studio
+leader.
+
+- [ ] **Setup → Rules** lists Drifting, Drifting's least, Lapsed, New and
+  Settling in, each saying "This studio's own", "Max Strength's default" or
+  "The app's default". Change one on My Studio → Studio: Rules and the
+  Journey follow.
+- [ ] **Today → Needs you** lists a finished session nobody logged. **Didn't
+  come** clears it; it appears under the bottom line with **Take back**,
+  which brings it back.
+- [ ] **Week → Last week** says "didn't come" for a marked session, not "not
+  logged".
+- [ ] After the nightly job runs: **Clients → Journey**'s header says "states
+  from last night's run"; the this-week line says who moved back toward
+  steady.
+- [ ] A trainer can't open another trainer's case; a stored case shows "case:
+  … owns it" on the Journey.
+
+## Round 36 — The Machine Codex, second round · *Sep 28 2026, branch `redesign/codex-2`*
+
+The round document is `docs/rounds/2026-09-28-codex-2.md`. **Deploy the rules
+first** (ship-wave2 does). As an **administrator**, then a **studio leader**.
+
+- [ ] Admins → Standard → Machines → Models → New model: Hoist, ROC-IT Leg
+  Press, the Leg Press, Start from its dials, Record.
+- [ ] A studio leader: My Studio → Machines → Leg Press → Edit → Codex: at the
+  machine → Which model this unit is → Hoist ROC-IT; Save.
+- [ ] Same screen, Safety: Take off this unit… on a warning — the button
+  stays grey until a reason is typed; take it off, Save; the warning is gone
+  from that studio's Catalog page only.
+- [ ] Admins → Standard → Machines → Leg Press → Compare: the removed line,
+  its reason, name and date; Every studio lists the rest.
+- [ ] Put it back, Save: Compare shows no removal.
+- [ ] Portrait and landscape: nothing under 40px, no name cut short.
+
+## Round 37 — The Machine Catalog, wave 2 · *Sep 28 2026, branch `redesign/catalog-2`*
+
+The round document is `docs/rounds/2026-09-28-catalog-2.md`. **Deploy the
+rules first** (ship-wave2 does). As an **administrator**, then a **studio
+leader**, portrait and landscape.
+
+- [ ] Admins → Machinery → System tools has no Restore standard machines.
+- [ ] Admins → Standard → Machines → open a machine: Standard machine switch;
+  taking it out asks; the Standard template agrees.
+- [ ] Other names on the Lumbar: add "Bad Back Box"; Learning → Catalog →
+  Find opens LUMBAR by it; "low back" is refused.
+- [ ] My Studio → Machines: Out of service asks why; the Catalog's row and
+  page say why and who; Back in service clears it.
+- [ ] Walking order: up/down and drag, Save; the Catalog walks in that order.
+- [ ] Add from MSF: the standard first; a machine added lands at the end of
+  the walk.
+- [ ] No model shows anywhere until an administrator records one.
+
+## Round 38 — The Relay room, second wave · *Sep 28 2026, branch `redesign/relay-2`*
+
+The round document is `docs/rounds/2026-09-28-relay-2.md`. **Deploy the index
+and rules first** (ship-wave2 does). As a **Life Transformer**, portrait and
+landscape.
+
+- [ ] Since you were in: dots on what's new, a tap marks one seen, Mark all
+  read; new clients this week, or "couldn't check".
+- [ ] Cover me with a time: "needed at 4:20 PM" on Help, soonest first; gone
+  at the session's start.
+- [ ] Change the quiet floor and the cleaning settings on My Studio → Studio:
+  Right now and the Floor Map follow.
+- [ ] Journal: write each of the six types; a hunch takes evidence and, once
+  met, goes on the Studio shelf; Opening's things to carry and Close out's
+  line land in Day logs.
+
 ---
 
 ## Findings log
@@ -2446,4 +2539,9 @@ Screenshot:
 | 31 — The Relay room (Sep 28) | 26 | | |
 | 32 — The studio settings (Sep 28) | 8 | | |
 | 33 — The Hub, wave 2 (Sep 28) | 11 | | |
-| **Total** | **563** | | |
+| 34 — The Admins dashboard, second wave (Sep 28) | 7 | | |
+| 35 — Operations, wave 2 (Sep 28) | 5 | | |
+| 36 — The Machine Codex, second round (Sep 28) | 6 | | |
+| 37 — The Machine Catalog, wave 2 (Sep 28) | 7 | | |
+| 38 — The Relay room, second wave (Sep 28) | 4 | | |
+| **Total** | **592** | | |

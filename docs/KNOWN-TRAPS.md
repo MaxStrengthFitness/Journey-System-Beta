@@ -477,8 +477,9 @@ looked empty.** `machines/{id}` was seeded by Operations → System Tools →
 "Restore standard machines" from `data/default-machines.ts`, the legacy
 `Machine` type (`targetMuscles` as one comma string, `settingOptions` as bare
 labels, nothing for the biomechanics template), while the editor reads
-`MachineDefinition`. About 6 of 60 inputs filled. The seeder now writes
-`data/machine-definitions.ts`. **If a machine ever opens sparse again, check
+`MachineDefinition`. About 6 of 60 inputs filled. The seeder wrote
+`data/machine-definitions.ts` until Sep 28 2026, when AJ took the button
+out; a correction to the live catalog is made in the catalog editor. **If a machine ever opens sparse again, check
 the document's shape before blaming the form.**
 
 **`emptyMachineDefinition()` must not guess the taxonomy.** It used to default
