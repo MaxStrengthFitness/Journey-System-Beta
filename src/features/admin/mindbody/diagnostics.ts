@@ -39,6 +39,7 @@
  */
 
 import type { Studio, Trainer } from "../../../types";
+import { DEFAULT_INTERVAL_MINUTES } from "../syncPolicy";
 
 export type MindbodyStatus = "healthy" | "degraded" | "error" | "offline";
 
@@ -87,8 +88,14 @@ export interface StudioDiagnosis {
 export const LAG_INTERVALS = 1;
 /** ...and before it is stalled. */
 export const STALL_INTERVALS = 3;
-/** Used when a studio has never had an interval set. Matches syncPolicy. */
-export const DEFAULT_INTERVAL_MINUTES = 15;
+/**
+ * Used when a studio has never had an interval set: syncPolicy's own, so the
+ * two can't drift. They did: this said 15 ("Matches syncPolicy") after the
+ * cost plan made the pull every 30 minutes (Sep 26 2026), so Operations ->
+ * Mindbody and My Studio -> Studio said "every 15 minutes" and called a
+ * studio lagging halfway to its real next pull (found Sep 28 2026).
+ */
+export { DEFAULT_INTERVAL_MINUTES };
 
 /**
  * Severity order for the studio list. Misconfiguration outranks staleness

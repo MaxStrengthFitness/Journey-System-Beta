@@ -186,3 +186,20 @@ describe("Operations -> Mindbody's Sync", () => {
     expect(fake.commits).toEqual([]);
   });
 });
+
+describe("Operations -> Mindbody's sync settings (AJ, Sep 28 2026: administrators only)", () => {
+  it("shows a studio leader how often the studio syncs, and nothing to change it with", () => {
+    expect(host.querySelector("#mb-auto")).toBeNull();
+    expect(host.querySelector("#mb-interval")).toBeNull();
+    expect(host.textContent).toContain("Administrators set how often a studio asks Mindbody, because it changes the Mindbody bill.");
+    expect(host.textContent).toContain("30 minutes");
+  });
+
+  it("gives an administrator the two controls", async () => {
+    await act(async () => {
+      root.render(<AdminMindbodyTab studios={[solon]} trainers={[]} clients={[]} activeStudioId="solon" company />);
+    });
+    expect(host.querySelector("#mb-auto")).not.toBeNull();
+    expect(host.querySelector("#mb-interval")).not.toBeNull();
+  });
+});

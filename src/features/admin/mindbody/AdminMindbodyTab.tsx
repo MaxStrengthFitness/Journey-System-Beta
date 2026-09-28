@@ -136,6 +136,11 @@ const SYNC_WORD = {
 
 const INTERVALS = [5, 15, 30, 60, 120, 240];
 
+/** "30 minutes", "1 hour", "2 hours". */
+function intervalLabel(m: number): string {
+  return m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? "" : "s"}`;
+}
+
 export function AdminMindbodyTab({
   studios,
   trainers,
@@ -537,44 +542,70 @@ export function AdminMindbodyTab({
               </AdminReadOnly>
             </AdminField>
 
-            <AdminField
-              label="Automatic sync"
-              htmlFor="mb-auto"
-              hint="Off means the schedule only refreshes when someone pulls it."
-            >
-              <AdminSelect
-                id="mb-auto"
-                value={selected.autoSyncEnabled === false ? "off" : "on"}
-                onChange={(e) =>
-                  patchStudio({ autoSyncEnabled: e.target.value === "on" })
-                }
-              >
-                <option value="on">On</option>
-                <option value="off">Off</option>
-              </AdminSelect>
-            </AdminField>
-            <AdminField
-              label="Every"
-              htmlFor="mb-interval"
-              hint="Checks today and tomorrow this often during opening hours, and the whole month once each morning. Refresh on any iPad always checks through next week."
-            >
-              <AdminSelect
-                id="mb-interval"
-                value={String(selectedRow.intervalMinutes)}
-                disabled={selected.autoSyncEnabled === false}
-                onChange={(e) =>
-                  patchStudio({
-                    syncIntervalMinutes: parseInt(e.target.value, 10),
-                  })
-                }
-              >
-                {INTERVALS.map((m) => (
-                  <option key={m} value={m}>
-                    {m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? "" : "s"}`}
-                  </option>
-                ))}
-              </AdminSelect>
-            </AdminField>
+            {/* How often a studio asks Mindbody is administrators' alone
+                (AJ, Sep 28 2026: "yes" to administrators only). It changes
+                the Mindbody bill, and it had no editor on My Studio ->
+                Studio, so a studio leader here was a second editor of the
+                studio's own record. firestore.rules refuses anyone else. */}
+            {company ? (
+              <>
+                <AdminField
+                  label="Automatic sync"
+                  htmlFor="mb-auto"
+                  hint="Off means the schedule only refreshes when someone pulls it."
+                >
+                  <AdminSelect
+                    id="mb-auto"
+                    value={selected.autoSyncEnabled === false ? "off" : "on"}
+                    onChange={(e) =>
+                      patchStudio({ autoSyncEnabled: e.target.value === "on" })
+                    }
+                  >
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                  </AdminSelect>
+                </AdminField>
+                <AdminField
+                  label="Every"
+                  htmlFor="mb-interval"
+                  hint="Checks today and tomorrow this often during opening hours, and the whole month once each morning. Refresh on any iPad always checks through next week."
+                >
+                  <AdminSelect
+                    id="mb-interval"
+                    value={String(selectedRow.intervalMinutes)}
+                    disabled={selected.autoSyncEnabled === false}
+                    onChange={(e) =>
+                      patchStudio({
+                        syncIntervalMinutes: parseInt(e.target.value, 10),
+                      })
+                    }
+                  >
+                    {INTERVALS.map((m) => (
+                      <option key={m} value={m}>
+                        {intervalLabel(m)}
+                      </option>
+                    ))}
+                  </AdminSelect>
+                </AdminField>
+              </>
+            ) : (
+              <>
+                <AdminField
+                  label="Automatic sync"
+                  hint="Administrators set how often a studio asks Mindbody, because it changes the Mindbody bill."
+                >
+                  <AdminReadOnly>{selected.autoSyncEnabled === false ? "Off" : "On"}</AdminReadOnly>
+                </AdminField>
+                <AdminField
+                  label="Every"
+                  hint="Checks today and tomorrow this often during opening hours, and the whole month once each morning. Refresh on any iPad always checks through next week."
+                >
+                  <AdminReadOnly>
+                    {selected.autoSyncEnabled === false ? "Not while automatic sync is off" : intervalLabel(selectedRow.intervalMinutes)}
+                  </AdminReadOnly>
+                </AdminField>
+              </>
+            )}
 
             <AdminField label="Pull from" htmlFor="mb-from">
               <AdminInput
