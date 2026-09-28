@@ -3,6 +3,7 @@ import {
   MachineDefinition,
   MachineDefinitionField,
   MachineSettingField,
+  RemovedSafetyLine,
   ResolvedMachine,
   StudioMachineRosterEntry,
 } from "../types/machines";
@@ -84,6 +85,53 @@ export function safetyLineKey(field: keyof MachineDefinition, entry: unknown): s
     return typeof part === "string" ? part.trim() : "";
   }
   return "";
+}
+
+/** The safety lists, as a runtime set: the additive fields. */
+const SAFETY_FIELD_SET = new Set<string>([...ADDITIVE_STRING_FIELDS, ...Object.keys(ADDITIVE_KEYED_FIELDS)]);
+
+/** A reason worth the name: at least this many characters, not counting spaces. */
+export const MIN_REMOVAL_REASON = 3;
+
+/**
+ * The removal records that apply to this catalog definition (the Sep 21
+ * rule): each names a safety list, a line that list still holds, and a
+ * reason of at least MIN_REMOVAL_REASON characters. One per line. Pure, and
+ * the one answer the merge, the write gate and Compare share.
+ */
+export function validRemovals(
+  base: Partial<MachineDefinition> | null | undefined,
+  list: unknown,
+): RemovedSafetyLine[] {
+  if (!Array.isArray(list)) return [];
+  const out: RemovedSafetyLine[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Partial<RemovedSafetyLine>;
+    const field = typeof r.field === "string" ? r.field : "";
+    const line = typeof r.line === "string" ? r.line.trim() : "";
+    const reason = typeof r.reason === "string" ? r.reason.trim() : "";
+    if (!SAFETY_FIELD_SET.has(field) || !line || reason.length < MIN_REMOVAL_REASON) continue;
+    const key = `${field}\u0000${line.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    const inBase = ((base?.[field as keyof MachineDefinition] as unknown[]) ?? []).some(
+      (e) => safetyLineKey(field as keyof MachineDefinition, e).toLowerCase() === line.toLowerCase(),
+    );
+    if (!inBase) continue;
+    seen.add(key);
+    out.push({
+      field: field as RemovedSafetyLine["field"],
+      line,
+      reason,
+      by: {
+        uid: typeof r.by?.uid === "string" ? r.by.uid : "",
+        name: typeof r.by?.name === "string" ? r.by.name : "",
+      },
+      at: typeof r.at === "string" ? r.at : "",
+    });
+  }
+  return out;
 }
 
 /** Union preserving catalog order first, then studio additions, deduped. */
@@ -173,10 +221,18 @@ function mergeKeyedRecords(base: unknown, extra: unknown): unknown[] {
  * kind — set-up's entry, preload and starting-load rule are three separate
  * judgements — and so are its switches and its per-dial rules (keyed by the
  * dial's key). They merge per key for the same reason.
+ *
+ * THE SEP 21 RULE (built Sep 28 2026) lets a studio change anything on its
+ * own copy, the method included — so `musculature` and `execution` became
+ * bags a studio can write to. `musculature`'s three lists merge per key, and
+ * `execution` one level deeper (its two turnarounds are objects of their
+ * own): a studio rewording one cue must not stop inheriting head office's
+ * later correction to never-to-failure.
  */
 const MERGED_FLAT_FIELDS = [
   "universalBaseline",
   "defaultSettings",
+  "musculature",
   "setUp",
   "dialRules",
   "getSet",
@@ -193,10 +249,20 @@ const MERGED_COLUMN_FIELDS = [
   "bodyTypeAdjustments",
 ] as const satisfies readonly (keyof MachineDefinition)[];
 
+/**
+ * A bag whose values may themselves be bags: `execution` (its turnarounds).
+ * Merged per key, and a key whose catalog and studio values are both plain
+ * objects merges per key again; a list (the key cues) replaces whole.
+ */
+const MERGED_NESTED_FIELDS = [
+  "execution",
+] as const satisfies readonly (keyof MachineDefinition)[];
+
 /** Every field whose override merges per key rather than replacing. */
 export const MERGED_DEFINITION_FIELDS: readonly (keyof MachineDefinition)[] = [
   ...MERGED_FLAT_FIELDS,
   ...MERGED_COLUMN_FIELDS,
+  ...MERGED_NESTED_FIELDS,
 ];
 
 function isMergedFlatField(key: string): boolean {
@@ -207,7 +273,13 @@ function isMergedColumnField(key: string): boolean {
   return (MERGED_COLUMN_FIELDS as readonly string[]).includes(key);
 }
 
+function isMergedNestedField(key: string): boolean {
+  return (MERGED_NESTED_FIELDS as readonly string[]).includes(key);
+}
+
 type Bag = Record<string, unknown>;
+
+const isBag = (v: unknown): v is Bag => !!v && typeof v === "object" && !Array.isArray(v);
 
 /** One level: studio keys win, catalog keys survive where the studio was silent. */
 function mergeFlat(base: unknown, extra: unknown): Bag {
@@ -221,6 +293,18 @@ function mergeColumns(base: unknown, extra: unknown): Bag {
   const out: Bag = { ...b };
   for (const key of Object.keys(e)) {
     out[key] = mergeFlat(b[key], e[key]);
+  }
+  return out;
+}
+
+/** Per key, and per key again where both sides hold an object. */
+function mergeNested(base: unknown, extra: unknown): Bag {
+  const b = (base as Bag) ?? {};
+  const e = (extra as Bag) ?? {};
+  const out: Bag = { ...b };
+  for (const key of Object.keys(e)) {
+    if (e[key] === undefined) continue;
+    out[key] = isBag(b[key]) && isBag(e[key]) ? mergeFlat(b[key], e[key]) : e[key];
   }
   return out;
 }
@@ -265,6 +349,22 @@ export function pruneMergedField(
         v[key],
       ) as Bag | undefined;
       if (inner) out[key] = inner;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+
+  if (isMergedNestedField(field)) {
+    const b = (base as Bag) ?? {};
+    const v = value as Bag;
+    const out: Bag = {};
+    for (const key of Object.keys(v)) {
+      if (isBag(v[key]) && isBag(b[key])) {
+        const inner = pruneMergedField("universalBaseline", b[key], v[key]) as Bag | undefined;
+        if (inner) out[key] = inner;
+        continue;
+      }
+      if (sameLoose(v[key], b[key])) continue;
+      out[key] = v[key];
     }
     return Object.keys(out).length ? out : undefined;
   }
@@ -338,27 +438,62 @@ export function mergeMachineDefinition(
   const merged: MachineDefinition = { ...base };
   const overriddenFields: MachineDefinitionField[] = [];
 
+  // THE SEP 21 RULE: the catalog's safety lines this copy does without, each
+  // with its reason. Only a removal that names a line the catalog still has
+  // applies; one head office has since taken out itself is moot, and a
+  // record with no reason is ignored rather than trusted (the write refuses
+  // it anyway). The removed line leaves this unit and nothing else.
+  const removals = validRemovals(base, overrides.removedSafety);
+  const removedKeys = new Map<string, Set<string>>();
+  for (const r of removals) {
+    const set = removedKeys.get(r.field) ?? new Set<string>();
+    set.add(r.line.trim().toLowerCase());
+    removedKeys.set(r.field, set);
+  }
+  const keep = (field: string, list: unknown[]): unknown[] => {
+    const gone = removedKeys.get(field);
+    if (!gone) return list;
+    return list.filter((e) => !gone.has(safetyLineKey(field as keyof MachineDefinition, e).toLowerCase()));
+  };
+  for (const field of removedKeys.keys()) {
+    merged[field as MachineDefinitionField] = keep(field, (base[field as keyof MachineDefinition] as unknown[]) ?? []) as never;
+    if (!overriddenFields.includes(field as MachineDefinitionField)) overriddenFields.push(field as MachineDefinitionField);
+  }
+  if (removals.length) merged.removedSafety = removals;
+  else delete merged.removedSafety;
+
   for (const [key, value] of Object.entries(overrides)) {
     // An explicitly-undefined key means "inherit", not "clear".
     if (value === undefined) continue;
+    // Bookkeeping, applied above.
+    if (key === "removedSafety") continue;
 
     const field = key as MachineDefinitionField;
-    overriddenFields.push(field);
+    if (!overriddenFields.includes(field)) overriddenFields.push(field);
 
     if (isAdditiveStringField(key)) {
-      merged[field] = unionStrings(
-        base[field] as string[],
-        value as string[],
+      merged[field] = keep(
+        key,
+        unionStrings(base[field] as string[], value as string[]),
       ) as never;
       continue;
     }
 
     if (isAdditiveKeyedField(key)) {
-      merged[field] = unionKeyed(
-        key,
-        base[field] as unknown[],
-        value as unknown[],
-      ) as never;
+      // A studio rewording one of the catalog's own lines removes it first
+      // (with a reason), so its own line with the same words may stand — but
+      // a verbatim copy of the removed line (an override written before the
+      // Sep 21 rule stored the catalog's lines too) does not bring it back.
+      const baseList = (base[field] as unknown[]) ?? [];
+      const gone = removedKeys.get(key);
+      const studio = (Array.isArray(value) ? value : []).filter((e) => {
+        if (!gone) return true;
+        const k = safetyLineKey(field, e).toLowerCase();
+        if (!gone.has(k)) return true;
+        const was = baseList.find((b) => safetyLineKey(field, b).toLowerCase() === k);
+        return !sameLoose(e, was);
+      });
+      merged[field] = unionKeyed(key, keep(key, baseList), studio) as never;
       continue;
     }
 
@@ -374,6 +509,11 @@ export function mergeMachineDefinition(
 
     if (isMergedColumnField(key)) {
       merged[field] = mergeColumns(base[field], value) as never;
+      continue;
+    }
+
+    if (isMergedNestedField(key)) {
+      merged[field] = mergeNested(base[field], value) as never;
       continue;
     }
 

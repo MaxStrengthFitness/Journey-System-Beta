@@ -36,6 +36,8 @@ vi.mock("firebase/firestore", () => ({
     next({ docs: models.docs });
     return () => {};
   },
+  // The signed-in person's name, for a removed safety line's record.
+  getDoc: async () => ({ exists: () => true, data: () => ({ fullName: "Éowyn" }) }),
   serverTimestamp: () => "now",
   deleteField: () => "__delete__",
   setDoc: async (t: { path: string }, data: Record<string, unknown>) => {
@@ -189,6 +191,40 @@ describe("a studio's copy of a catalog machine", () => {
 
     expect(writes[0].data.overrides).toEqual({});
     expect(toasts[0]).toContain("follows the Max Strength standard exactly");
+  });
+});
+
+describe("a copy without one of Max Strength's safety lines (the Sep 21 rule)", () => {
+  it("writes the removal record with its reason and the signed-in person, and no copy of the list", async () => {
+    const el = await mount({ entry: rosterEntry, resolved: legPress, catalogEntry: legPress });
+    // The name comes from the trainer record, read once.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    const safety = el.querySelector("#machine-section-safety") as HTMLElement;
+    const first = legPress.clinicalWarnings[0];
+    await act(async () =>
+      [...safety.querySelectorAll("button")].find((b) => /Take off this unit/.test(b.textContent ?? ""))!.click(),
+    );
+    const why = safety.querySelector("textarea[id^='why-clinicalWarnings']") as HTMLTextAreaElement;
+    await type(why, "Our older unit has no end stop.");
+    await act(async () =>
+      [...safety.querySelectorAll("button")].find((b) => /Take it off this unit/.test(b.textContent ?? ""))!.click(),
+    );
+    await save(el);
+
+    expect(writes).toHaveLength(1);
+    const overrides = writes[0].data.overrides as Record<string, any>;
+    expect(overrides.removedSafety).toHaveLength(1);
+    expect(overrides.removedSafety[0]).toMatchObject({
+      field: "clinicalWarnings",
+      line: first,
+      reason: "Our older unit has no end stop.",
+      by: { uid: "leader", name: "Éowyn" },
+    });
+    // The list itself is not stored: the studio added nothing to it.
+    expect(overrides.clinicalWarnings).toBeUndefined();
+    expect(toasts[0]).toContain("does without 1 of its safety line");
   });
 });
 

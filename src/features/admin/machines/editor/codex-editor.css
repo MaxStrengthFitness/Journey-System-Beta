@@ -26,6 +26,31 @@
   border: 2px dotted var(--adm-ink-faint);
 }
 
+/* ── Max Strength's safety lines on a copy (the Sep 21 rule) ────── */
+
+.adm-mx__safetyline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--adm-border);
+}
+
+.adm-mx__safetyline:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.adm-mx__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 10px;
+}
+
 /* ── Sources ─────────────────────────────────────────────────────── */
 
 .adm-mx__srcline .adm-grid {

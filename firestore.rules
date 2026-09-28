@@ -1355,13 +1355,48 @@ service cloud.firestore {
           || (d.get('source', '') == 'custom' && !('adoptedFrom' in d));
     }
 
+    /* WAVE 2 CODEX: one catalog safety line a studio's copy does without
+       (the Sep 21 rule, built Sep 28 2026; AJ: "Yes studios need to be able
+       to customize their stuff safety is definitely a worry but are
+       trusted"). It must say WHY: at least 3 characters of reason, at most
+       300 (lib/machine-template.ts holds the same numbers, and its test
+       reads them from here). Who and when travel with it for Compare; the
+       app stamps them. */
+    function removedLineValid(e) {
+      return e is map
+          && e.get('reason', '') is string
+          && e.get('reason', '').trim().size() >= 3
+          && e.get('reason', '').size() <= 300;
+    }
+
+    /* WAVE 2 CODEX: every removal record on a copy's overrides, checked one
+       place at a time (a rule cannot loop), so the list is capped at 10 —
+       MAX_REMOVED_SAFETY in lib/machine-template.ts; change them together.
+       An empty list costs one check per place and reads nothing. */
+    function removedSafetyValid(l) {
+      return l is list && l.size() <= 10
+          && (l.size() < 1 || removedLineValid(l[0]))
+          && (l.size() < 2 || removedLineValid(l[1]))
+          && (l.size() < 3 || removedLineValid(l[2]))
+          && (l.size() < 4 || removedLineValid(l[3]))
+          && (l.size() < 5 || removedLineValid(l[4]))
+          && (l.size() < 6 || removedLineValid(l[5]))
+          && (l.size() < 7 || removedLineValid(l[6]))
+          && (l.size() < 8 || removedLineValid(l[7]))
+          && (l.size() < 9 || removedLineValid(l[8]))
+          && (l.size() < 10 || removedLineValid(l[9]));
+    }
+
     /* WAVE 2 CODEX: the Codex fields on a roster entry (Sep 28 2026). The
        unit's model, when named, is a model id (machineModels/{id}), set by
-       the studio's leaders. Pure map lookups: no document is read, so the
-       roster rule asks this before anything that calls get(). */
+       the studio's leaders; and a removed catalog safety line carries a
+       reason (the Sep 21 rule: a removed safety line without one is
+       refused). Pure map lookups: no document is read, so the roster rule
+       asks this before anything that calls get(). */
     function rosterCodexValid(d) {
-      return !('modelId' in d)
-          || (d.modelId is string && d.modelId.size() > 0 && d.modelId.size() <= 100);
+      return (!('modelId' in d)
+              || (d.modelId is string && d.modelId.size() > 0 && d.modelId.size() <= 100))
+          && removedSafetyValid(d.get('overrides', {}).get('removedSafety', []));
     }
 
     /* ...and a copy stays a copy: an update can't drop `adoptedFrom` and list

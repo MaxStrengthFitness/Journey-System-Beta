@@ -146,17 +146,10 @@ describe("completeness", () => {
     expect(b.percent).toBeGreaterThanOrEqual(a.percent);
   });
 
-  it("locks the method sections for a studio and no one else", () => {
-    const studio = sectionStates(legPress, "studio");
-    const admin = sectionStates(legPress, "admin");
-    const locked = studio.filter((s) => s.locked).map((s) => s.id);
-    // Musculature and execution are the company's; the baseline and the
-    // dials are the studio's own hardware.
-    expect(locked).toContain("musculature");
-    expect(locked).toContain("execution");
-    expect(locked).not.toContain("baseline");
-    expect(locked).not.toContain("dials");
-    expect(admin.every((s) => !s.locked)).toBe(true);
+  it("locks no section for anyone — a studio may change anything on its own copy (the Sep 21 rule)", () => {
+    for (const scope of ["studio", "admin", "catalog"] as const) {
+      expect(sectionStates(legPress, scope).every((s) => !s.locked)).toBe(true);
+    }
   });
 
   it("gives every section at least one check", () => {

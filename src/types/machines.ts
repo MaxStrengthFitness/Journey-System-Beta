@@ -673,8 +673,34 @@ export interface LineSource {
 }
 
 /**
+ * A catalog safety line a studio took off ITS copy, and why — the Sep 21
+ * rule, built Sep 28 2026 (AJ: "Yes studios need to be able to customize
+ * their stuff safety is definitely a worry but are trusted").
+ *
+ * Lives only in a roster entry's `overrides` (never on the catalog, never
+ * on a studio's own machine, which inherits nothing to remove). The line
+ * leaves that unit's page and nowhere else; head office reads every one in
+ * Compare with the reason, who and when. A removal without a reason is
+ * refused at the write (lib/machine-template.ts, scopeOverrides) and in
+ * firestore.rules.
+ */
+export interface RemovedSafetyLine {
+  /** Which safety list it was on. */
+  field: SafetyListField;
+  /** The line's words, or a checkpoint's title / a stop rule's words / a watch-out's condition. */
+  line: string;
+  /** "This unit has no seat belt." At least three characters. */
+  reason: string;
+  /** The Auth uid, and the name as it read then. */
+  by: { uid: string; name: string };
+  /** ISO time. Firestore refuses serverTimestamp() inside a list. */
+  at: string;
+}
+
+/**
  * The safety lists. On a studio's copy they are ADDITIVE: the studio's own
- * lines are added to the catalog's (lib/resolve-machine.ts).
+ * lines are added to the catalog's (lib/resolve-machine.ts), and one of the
+ * catalog's lines leaves the copy only with a reason (`RemovedSafetyLine`).
  */
 export type SafetyListField =
   | "clinicalWarnings"
@@ -795,6 +821,13 @@ export interface MachineDefinition {
    * for being a copy of its page.
    */
   modelId?: string;
+
+  /**
+   * On a studio's copy only (a roster entry's `overrides`): the catalog's
+   * safety lines this unit does without, each with its reason, who and when
+   * (the Sep 21 rule). On a resolved machine: the removals that applied.
+   */
+  removedSafety?: RemovedSafetyLine[];
 }
 
 /** Every key on MachineDefinition, for override bookkeeping. */

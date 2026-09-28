@@ -3,7 +3,7 @@ import { deleteField, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../firebase";
 import { useToast } from "../../../contexts/ToastContext";
 import type { MachineCatalogEntry, MachineDefinition } from "../../../types/machines";
-import { Layers } from "lucide-react";
+import { GitCompare, Layers } from "lucide-react";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 import { AdminButton } from "../primitives";
@@ -42,6 +42,7 @@ export function CatalogMachineEditor({
   catalogSize,
   onBack,
   onOpenModels,
+  onOpenCompare,
 }: {
   /** Absent for a new machine. */
   machine?: MachineCatalogEntry;
@@ -50,6 +51,8 @@ export function CatalogMachineEditor({
   onBack: () => void;
   /** The models of this movement (Codex R2). Absent: no door to them. */
   onOpenModels?: (movementId: string) => void;
+  /** Every studio's differences from this machine (Codex R5). Absent: no door. */
+  onOpenCompare?: () => void;
 }) {
   const { success: toastSuccess } = useToast();
   const isNew = !machine;
@@ -126,10 +129,19 @@ export function CatalogMachineEditor({
       movementId={machine?.id}
       models={models}
       extraActions={(guard) =>
-        machine && onOpenModels ? (
-          <AdminButton variant="quiet" onClick={() => guard(() => onOpenModels(machine.id))}>
-            <Layers className="w-4 h-4" /> Models
-          </AdminButton>
+        machine ? (
+          <>
+            {onOpenCompare && (
+              <AdminButton variant="quiet" onClick={() => guard(onOpenCompare)}>
+                <GitCompare className="w-4 h-4" /> Compare
+              </AdminButton>
+            )}
+            {onOpenModels && (
+              <AdminButton variant="quiet" onClick={() => guard(() => onOpenModels(machine.id))}>
+                <Layers className="w-4 h-4" /> Models
+              </AdminButton>
+            )}
+          </>
         ) : null
       }
     />

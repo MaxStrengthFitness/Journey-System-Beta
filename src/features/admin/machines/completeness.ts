@@ -1,5 +1,5 @@
 import type { MachineDefinition, MachineDefinitionField } from "../../../types/machines";
-import { tierOf, type EditScope } from "../../../lib/machine-template";
+import { canEdit, type EditScope } from "../../../lib/machine-template";
 
 /**
  * HOW FINISHED IS THIS MACHINE — per section, in plain English.
@@ -287,8 +287,11 @@ export function sectionStates(
       done: total - gaps.length,
       total,
       gaps,
-      // A section is locked when this scope may edit none of its fields.
-      locked: s.fields.every((f) => tierOf(f) === "method" && scope === "studio"),
+      // A section is locked when this scope may edit none of its fields —
+      // which, since the Sep 21 rule (a studio may change anything on its
+      // own copy), is no section for anyone. Asked of the boundary rather
+      // than decided here, so a future rule changes it in one place.
+      locked: s.fields.every((f) => !canEdit(scope, f)),
     };
   });
 }

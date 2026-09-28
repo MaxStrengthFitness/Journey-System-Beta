@@ -44,7 +44,22 @@ This is the second reason never to re-mint a `machineId` (the first being
 orphaned `exerciseLogs`): re-minting silently splits one machine's population
 in two, and nothing fails loudly when it happens.
 
-## What a studio may change
+## What a studio may change — the Sep 21 rule (built Sep 28 2026)
+
+**A studio may change anything on its own copy, safety included** (AJ: "Yes
+studios need to be able to customize their stuff safety is definitely a worry but
+are trusted"). A change reaches that studio's floor only. Taking one of Max
+Strength's safety lines off needs a **reason** (at least 3 characters): the editor
+asks for it in place (`editor/safety-removal.tsx`), the record carries who and
+when (`overrides.removedSafety`), and a removal without one is refused by
+`scopeOverrides` and by firestore.rules (`removedSafetyValid`, at most 10).
+Head office sees every studio's differences, and every reason, in **Compare**
+(`compare/`, a catalog machine's Compare button; administrators only). A safety
+list on a copy is stored as the studio's additions only; `execution` and
+`musculature` merge per key now that a studio may write them.
+
+The tiers below still say whose words a field is (and how Compare groups a
+difference); they no longer decide what a studio may write.
 
 `src/lib/machine-template.ts` is the one answer, and it is a product rule, not a
 technical one: **Max Strength owns the method, a studio owns its hardware.**

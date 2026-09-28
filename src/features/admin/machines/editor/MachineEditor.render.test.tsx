@@ -113,7 +113,7 @@ describe("MachineEditor", () => {
     expect(el.textContent).toContain("Needs");
   });
 
-  it("shows a studio the method but gives it no inputs", async () => {
+  it("gives a studio inputs on the method of its own copy (the Sep 21 rule)", async () => {
     const { el } = await mount({
       value: legPress,
       standard: legPress,
@@ -121,15 +121,11 @@ describe("MachineEditor", () => {
       whose: "Solon's copy",
     });
     const text = el.textContent ?? "";
-    expect(text).toContain("Set by Max Strength");
-    // The cadence is READABLE — a leader setting up a client needs it — and
-    // it is not an input.
-    expect(text).toContain("Execution and cadence");
-
+    // AJ, Sep 21 / Sep 27 2026: a studio may change anything on its own copy.
+    expect(text).not.toContain("Set by Max Strength");
+    expect(text).toContain("only this floor reads the change");
     const execSection = el.querySelector("#machine-section-execution")!;
-    expect(execSection.querySelectorAll("input, select, textarea")).toHaveLength(0);
-
-    // Its own hardware stays editable.
+    expect(execSection.querySelectorAll("input, select, textarea").length).toBeGreaterThan(0);
     const baseline = el.querySelector("#machine-section-baseline")!;
     expect(baseline.querySelectorAll("textarea").length).toBeGreaterThan(0);
   });
@@ -170,7 +166,7 @@ describe("MachineEditor", () => {
     expect(notice!.textContent).toContain("Never to failure");
   });
 
-  it("saves only the diff, and strips the method out of a studio's write", async () => {
+  it("saves only the diff: the method a studio left alone stays out of its write", async () => {
     const { el, saves } = await mount({
       value: legPress,
       standard: legPress,
@@ -202,9 +198,106 @@ describe("MachineEditor", () => {
     const patch = saves[0];
     // Only what moved.
     expect(Object.keys(patch)).toEqual(["universalBaseline"]);
-    // And never the company's method, whatever the draft was holding.
+    // The method nobody touched is not rewritten with what it already said.
     expect(patch.execution).toBeUndefined();
     expect(patch.musculature).toBeUndefined();
     expect(patch.movementPattern).toBeUndefined();
+  });
+});
+
+describe("one of Max Strength's safety lines on a studio's copy (the Sep 21 rule)", () => {
+  const faramir = { uid: "uid-faramir", name: "Faramir" };
+
+  async function mountCopy(actor?: { uid: string; name: string }) {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    const saves: { patch: Partial<MachineDefinition>; draft: MachineDefinition }[] = [];
+    await act(async () => {
+      root!.render(
+        <StrictMode>
+          <MachineEditor
+            value={legPress}
+            standard={legPress}
+            scope="studio"
+            whose="Solon's copy"
+            backLabel="The floor"
+            onBack={() => {}}
+            onSave={async (patch, draft) => {
+              saves.push({ patch, draft });
+            }}
+            actor={actor}
+          />
+        </StrictMode>,
+      );
+    });
+    return { el: host!, saves };
+  }
+
+  const buttons = (el: HTMLElement, text: RegExp) =>
+    [...el.querySelectorAll("button")].filter((b) => text.test(b.textContent ?? ""));
+
+  it("takes a line off only once a reason is written, and records who and when", async () => {
+    const { el, saves } = await mountCopy(faramir);
+    const safety = el.querySelector("#machine-section-safety") as HTMLElement;
+    const first = legPress.clinicalWarnings[0];
+    expect(safety.textContent).toContain(first);
+
+    await act(async () => buttons(safety, /Take off this unit/)[0].click());
+    const take = buttons(safety, /Take it off this unit/)[0] as HTMLButtonElement;
+    expect(take.disabled).toBe(true);
+
+    const why = safety.querySelector("textarea[id^='why-clinicalWarnings']") as HTMLTextAreaElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(why, "Our unit has no end stop to lock against.");
+      why.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(take.disabled).toBe(false);
+    await act(async () => take.click());
+
+    // Taken off: listed with its reason and a way back.
+    expect(safety.textContent).toContain("Taken off this unit");
+    expect(safety.textContent).toContain("Why: Our unit has no end stop to lock against.");
+    expect(buttons(safety, /Put it back/)).toHaveLength(1);
+
+    await act(async () => buttons(el, /Save changes/)[0].click());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    expect(saves).toHaveLength(1);
+    const draft = saves[0].draft;
+    expect(draft.clinicalWarnings).not.toContain(first);
+    expect(draft.removedSafety).toHaveLength(1);
+    expect(draft.removedSafety![0]).toMatchObject({
+      field: "clinicalWarnings",
+      line: first,
+      reason: "Our unit has no end stop to lock against.",
+      by: faramir,
+    });
+  });
+
+  it("puts a line back, record and all", async () => {
+    const { el } = await mountCopy(faramir);
+    const safety = el.querySelector("#machine-section-safety") as HTMLElement;
+    await act(async () => buttons(safety, /Take off this unit/)[0].click());
+    const why = safety.querySelector("textarea[id^='why-clinicalWarnings']") as HTMLTextAreaElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(why, "Not on this model.");
+      why.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => buttons(safety, /Take it off this unit/)[0].click());
+    await act(async () => buttons(safety, /Put it back/)[0].click());
+    expect(safety.textContent).not.toContain("Taken off this unit");
+    expect(safety.textContent).toContain(legPress.clinicalWarnings[0]);
+  });
+
+  it("does not offer to take a line off when it cannot say who is asking", async () => {
+    const { el } = await mountCopy(undefined);
+    const safety = el.querySelector("#machine-section-safety") as HTMLElement;
+    expect(buttons(safety, /Take off this unit/)).toHaveLength(0);
+    // The lines are still shown as Max Strength's.
+    expect(safety.textContent).toContain("From Max Strength");
   });
 });

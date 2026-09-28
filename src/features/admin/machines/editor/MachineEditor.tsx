@@ -13,9 +13,11 @@ import { sameValue } from "../../formState";
 import { useDirtyForm } from "../../useDirtyForm";
 import type { MachineDefinition } from "../../../../types/machines";
 import {
+  RemovedSafetyError,
   canEdit,
   scopeOverrides,
   tierOf,
+  unexplainedRemovals,
   type EditScope,
 } from "../../../../lib/machine-template";
 import { SECTIONS, completeness, describeGaps, sectionStates } from "../completeness";
@@ -112,6 +114,12 @@ export interface MachineEditorProps {
    * picker is not shown (a host that has not read them).
    */
   models?: ModelWithId[];
+  /**
+   * Who is editing — the Auth uid and a name — for the record a removed
+   * safety line carries (the Sep 21 rule). Absent: taking one of Max
+   * Strength's safety lines off a copy is not offered.
+   */
+  actor?: { uid: string; name: string };
 }
 
 export function MachineEditor({
@@ -128,6 +136,7 @@ export function MachineEditor({
   extraActions,
   movementId,
   models,
+  actor,
 }: MachineEditorProps) {
   // Stable identity or the form adopts on every render — useDirtyForm's own
   // warning, and the reason StudioDetailsForm memoises its external too.
@@ -141,13 +150,15 @@ export function MachineEditor({
   const form = useDirtyForm<MachineDefinition>(
     external,
     async (patch) => {
-      // The last gate. The editor already hides what a studio may not touch, so
-      // in normal use this removes nothing — which is the point of having it.
       // The Codex format's lists lose any row added and never filled first.
-      await onSave(
-        scopeOverrides(scope, tidyCodexLists(patch)),
-        tidyCodexLists(draftRef.current) as MachineDefinition,
-      );
+      const draft = tidyCodexLists(draftRef.current) as MachineDefinition;
+      // THE SEP 21 RULE: on a copy, one of Max Strength's safety lines comes
+      // off only with a reason. The save bar names the line; the edits stay.
+      if (standard && scope !== "catalog") {
+        const unexplained = unexplainedRemovals(standard, draft);
+        if (unexplained.length) throw new RemovedSafetyError(unexplained);
+      }
+      await onSave(scopeOverrides(scope, tidyCodexLists(patch)), draft);
     },
     // The SAVED name: "You have unsaved changes to Leg Press", even while the
     // name itself is what is being retyped.
@@ -238,14 +249,14 @@ export function MachineEditor({
 
       {notice}
 
-      {scope === "studio" && standard && (
+      {scope !== "catalog" && standard && (
         <AdminNotice tone="info">
-          This is your studio&apos;s copy. The setup, the body-type adjustments and
-          the dials are yours — change them to match the machine in your room.
-          The musculature, the cadence and the cues are Max Strength&apos;s, and
-          every location reads the same ones. Anything you leave alone keeps
-          following the standard, so a correction from head office still reaches
-          you.
+          {scope === "admin" ? "This is the studio's copy." : "This is your studio's copy."} Anything
+          on it can change to fit the machine in the room, and only this floor reads the change.
+          Anything left alone keeps following the Max Strength standard, so a correction from head
+          office still reaches it. One of Max Strength&apos;s safety lines comes off only with a
+          reason — head office sees every difference, and every reason, when it compares the
+          studios&apos; machines.
         </AdminNotice>
       )}
 
@@ -338,6 +349,7 @@ export function MachineEditor({
               readOnly: sectionReadOnly,
               changed,
               revert,
+              actor,
             };
             return (
               <AdminPanel
@@ -375,6 +387,7 @@ export function MachineEditor({
               scope,
               movementId,
               models,
+              actor,
             };
             const Body = c.Body;
             return (

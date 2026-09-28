@@ -4466,5 +4466,63 @@ describe("marks on a time", () => {
       // A trainer still cannot write the roster at all.
       await assertFails(updateDoc(doc(as("trainerA"), "studios", "studioA", "roster", "m-leg-press"), { modelId: "mm-hoist-roc-it-leg-press" }));
     });
+
+    // The Sep 21 rule: a studio may take one of the catalog's safety lines
+    // off its own copy, and a removed line without a reason is refused.
+    const removal = (uid: string, extra: Record<string, unknown> = {}) => ({
+      field: "clinicalWarnings",
+      line: "Knees never lock out at the end stop.",
+      reason: "This unit has no end stop to lock against.",
+      by: { uid, name: "Théoden" },
+      at: "2026-09-28T15:00:00.000Z",
+      ...extra,
+    });
+
+    it("lets a studio's leaders take a catalog safety line off their copy only with a reason", async () => {
+      await seedCodexPeople();
+      const entry = doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press");
+      await assertSucceeds(updateDoc(entry, { overrides: { removedSafety: [removal("ownerA")] } }));
+      await assertFails(updateDoc(entry, { overrides: { removedSafety: [removal("ownerA", { reason: "" })] } }));
+      await assertFails(updateDoc(entry, { overrides: { removedSafety: [removal("ownerA", { reason: "  x  " })] } }));
+      await assertFails(updateDoc(entry, { overrides: { removedSafety: [removal("ownerA", { reason: "r".repeat(301) })] } }));
+      const { reason: _r, ...noReason } = removal("ownerA");
+      await assertFails(updateDoc(entry, { overrides: { removedSafety: [noReason] } }));
+      // A second, good record beside a bad one is still refused.
+      await assertFails(
+        updateDoc(entry, { overrides: { removedSafety: [removal("ownerA"), removal("ownerA", { line: "Breathe freely.", reason: "" })] } }),
+      );
+      // An administrator inside the studio follows the same record.
+      await assertSucceeds(
+        updateDoc(doc(as("adminCodex"), "studios", "studioA", "roster", "m-leg-press"), {
+          overrides: { removedSafety: [removal("adminCodex")] },
+        }),
+      );
+      // Putting every line back leaves no record.
+      await assertSucceeds(updateDoc(entry, { overrides: {} }));
+    });
+
+    it("holds a copy to ten removed safety lines, each checked, inside the rules' budget", async () => {
+      await seedCodexPeople();
+      const entry = doc(as("ownerA"), "studios", "studioA", "roster", "m-leg-press");
+      const ten = Array.from({ length: 10 }, (_, i) =>
+        removal("ownerA", { line: `Warning ${i}`, reason: `Reason ${i}: `.padEnd(300, "y") }),
+      );
+      // The fullest write the app makes, by a studio owner with no role on the token.
+      await assertSucceeds(updateDoc(entry, { modelId: "mm-hoist-roc-it-leg-press", overrides: { removedSafety: ten } }));
+      await assertFails(updateDoc(entry, { overrides: { removedSafety: [...ten, removal("ownerA", { line: "Warning 10" })] } }));
+      // The tenth place is checked too.
+      await assertFails(
+        updateDoc(entry, { overrides: { removedSafety: [...ten.slice(0, 9), removal("ownerA", { line: "Warning 9", reason: "" })] } }),
+      );
+    });
+
+    it("lets an administrator read every studio's copy of a machine for Compare, and nobody else", async () => {
+      await seedCodexPeople();
+      const byLineage = (db: ReturnType<typeof as>) =>
+        getDocs(query(collectionGroup(db, "roster"), where("basedOn", "==", "m-leg-press")));
+      await assertSucceeds(byLineage(as("adminCodex")));
+      await assertFails(byLineage(as("ownerA")));
+      await assertFails(byLineage(as("trainerA")));
+    });
   });
 });

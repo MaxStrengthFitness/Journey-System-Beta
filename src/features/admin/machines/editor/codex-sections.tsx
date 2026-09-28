@@ -26,6 +26,8 @@ import type { SectionProps } from "./sections";
 import type { EditScope } from "../../../../lib/machine-template";
 import type { ModelWithId } from "../../../machine-codex/models";
 import { ModelPicker } from "../models/ModelPicker";
+import { InheritedSafety } from "./safety-removal";
+import { splitSafety } from "./safety-edit";
 import "./codex-editor.css";
 
 /**
@@ -126,21 +128,50 @@ function useLine(p: CodexSectionProps) {
   };
 }
 
-/** A safety list on a copy: the standard's entries stay; the studio adds below. */
+/**
+ * A safety list on a copy: Max Strength's entries this unit keeps (drawn by
+ * InheritedSafety, where one comes off only with a reason), and the studio's
+ * own below them. On the standard or a studio's own machine: the plain list.
+ */
 function additive<T extends object>(
   p: CodexSectionProps,
   field: "stopRules" | "watchOuts",
-  keyOf: (t: T) => string,
-): { inherited: T[]; own: T[]; write: (next: T[]) => void } {
-  const inherited = ((p.standard?.[field] as unknown as T[] | undefined) ?? []);
+): { kept: T[]; own: T[]; write: (next: T[]) => void } {
   const mine = ((p.value[field] as unknown as T[] | undefined) ?? []);
-  const inheritedKeys = new Set(inherited.map((t) => keyOf(t).trim().toLowerCase()));
-  const own = p.standard ? mine.filter((t) => !inheritedKeys.has(keyOf(t).trim().toLowerCase())) : mine;
+  if (!p.standard) return { kept: [], own: mine, write: (next) => p.set(field, next as never) };
+  const { inherited, own } = splitSafety(field, mine, p.standard[field] as unknown[] | undefined);
   return {
-    inherited: p.standard ? inherited : [],
-    own,
-    write: (next) => p.set(field, (p.standard ? [...inherited, ...next] : next) as never),
+    kept: inherited as T[],
+    own: own as T[],
+    write: (next) => p.set(field, [...(inherited as T[]), ...next] as never),
   };
+}
+
+/** Max Strength's entries of one list, on a copy, with Take off / Put it back. */
+function CatalogSafety({
+  p,
+  field,
+  describe,
+}: {
+  p: CodexSectionProps;
+  field: "stopRules" | "watchOuts";
+  describe: (e: unknown) => string;
+}) {
+  if (!p.standard) return null;
+  return (
+    <InheritedSafety
+      field={field}
+      value={p.value}
+      standard={p.standard}
+      describe={describe}
+      readOnly={p.readOnly || !p.canWrite(field)}
+      actor={p.actor}
+      onChange={(list, records) => {
+        p.set(field, list as never);
+        p.set("removedSafety", (records.length ? records : undefined) as never);
+      }}
+    />
+  );
 }
 
 // ── 1. At the machine ────────────────────────────────────────────────
@@ -164,8 +195,8 @@ const LOWER_TURN_OPTIONS: { value: string; label: string }[] = [
 
 function AtTheMachine(p: CodexSectionProps) {
   const line = useLine(p);
-  const stop = additive<CodexStopRule>(p, "stopRules", (t) => t.text ?? "");
-  const watch = additive<CodexWatchOut>(p, "watchOuts", (t) => t.condition ?? "");
+  const stop = additive<CodexStopRule>(p, "stopRules");
+  const watch = additive<CodexWatchOut>(p, "watchOuts");
   const sw: CodexSwitches = p.value.switches ?? {};
   const swLocked = p.readOnly || !p.canWrite("switches");
   const setSwitch = (key: keyof CodexSwitches, v: unknown) =>
@@ -238,15 +269,24 @@ function AtTheMachine(p: CodexSectionProps) {
         locked={p.readOnly || !p.canWrite("stopRules")}
         changed={p.standard ? p.changed("stopRules") : false}
       >
-        <RecordList
-          items={stop.own}
-          inherited={stop.inherited}
-          inheritedNote="From Max Strength — stays whatever you add"
-          fields={STOP_FIELDS}
-          onChange={stop.write}
-          readOnly={p.readOnly || !p.canWrite("stopRules")}
-          addLabel="Add a stop rule"
-        />
+        <div className="adm-me__stack">
+          <CatalogSafety
+            p={p}
+            field="stopRules"
+            describe={(e) => {
+              const r = e as CodexStopRule;
+              return r.why ? `${r.text} ${r.why}` : r.text;
+            }}
+          />
+          <RecordList
+            items={stop.own}
+            fields={STOP_FIELDS}
+            onChange={stop.write}
+            readOnly={p.readOnly || !p.canWrite("stopRules")}
+            addLabel="Add a stop rule"
+            empty={stop.kept.length ? "Nothing of your own added" : "Not written yet"}
+          />
+        </div>
       </FieldShell>
 
       <FieldShell
@@ -255,15 +295,24 @@ function AtTheMachine(p: CodexSectionProps) {
         locked={p.readOnly || !p.canWrite("watchOuts")}
         changed={p.standard ? p.changed("watchOuts") : false}
       >
-        <RecordList
-          items={watch.own}
-          inherited={watch.inherited}
-          inheritedNote="From Max Strength — stays whatever you add"
-          fields={WATCH_FIELDS}
-          onChange={watch.write}
-          readOnly={p.readOnly || !p.canWrite("watchOuts")}
-          addLabel="Add a watch-out"
-        />
+        <div className="adm-me__stack">
+          <CatalogSafety
+            p={p}
+            field="watchOuts"
+            describe={(e) => {
+              const w = e as CodexWatchOut;
+              return `${w.condition}: ${w.action}`;
+            }}
+          />
+          <RecordList
+            items={watch.own}
+            fields={WATCH_FIELDS}
+            onChange={watch.write}
+            readOnly={p.readOnly || !p.canWrite("watchOuts")}
+            addLabel="Add a watch-out"
+            empty={watch.kept.length ? "Nothing of your own added" : "Not written yet"}
+          />
+        </div>
       </FieldShell>
 
       <FieldShell
@@ -783,9 +832,11 @@ export function tidyCodexLists(def: Partial<MachineDefinition>): Partial<Machine
     if (!(key in out)) return;
     const v = out[key];
     if (!Array.isArray(v)) return;
-    // Emptied: undefined, which the catalog write turns into a delete and a
-    // studio's override simply leaves out.
-    (out as Record<string, unknown>)[key] = cleanList(v as object[], part as never);
+    // Emptied stays EMPTY, never undefined: on a copy an empty safety list
+    // is how the write gate sees that Max Strength's lines were taken off
+    // (and checks each has its reason); undefined would read as "untouched"
+    // and lose the removal.
+    (out as Record<string, unknown>)[key] = cleanList(v as object[], part as never) ?? [];
   };
   tidy("stopRules", "text");
   tidy("watchOuts", "condition");

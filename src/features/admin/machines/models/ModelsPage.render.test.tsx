@@ -41,6 +41,8 @@ vi.mock("../../../../contexts/ToastContext", () => ({
 const { MACHINE_DEFINITION_LIST } = await import("../../../../data/machine-definitions");
 const { ModelsPage } = await import("./ModelsPage");
 
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 let host: HTMLDivElement | null = null;
 let root: Root | null = null;
 

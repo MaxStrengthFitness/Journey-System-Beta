@@ -13,6 +13,8 @@ import { codexLinesIn, tidyCodexLists } from "./codex-sections";
 
 const legPress = MACHINE_DEFINITIONS["m-leg-press"] as MachineDefinition;
 
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 let host: HTMLDivElement | null = null;
 let root: Root | null = null;
 
@@ -131,14 +133,32 @@ describe("the Codex sections", () => {
     expect(sources[0].path).toBeTruthy();
   });
 
-  it("gives a studio its dial letters but not the method's rules (the boundary per field)", async () => {
+  it("gives a studio its dial letters and, on its own copy, the rules too (the Sep 21 rule)", async () => {
     const { el } = await mount({ value: legPress, standard: legPress, scope: "studio", whose: "Solon's copy" });
     const section = el.querySelector("#machine-section-codex-machine")! as HTMLElement;
-    // The unit's letter is an input…
     expect(section.querySelector('input[placeholder="G, P, SP"]')).toBeTruthy();
-    // …the rule it is set against is not, while the method is Max Strength's.
     const rulePlaceholder = "The footplate meets the end stop just before the knees straighten.";
-    expect(section.querySelector(`textarea[placeholder="${rulePlaceholder}"]`)).toBeNull();
+    expect(section.querySelector(`textarea[placeholder="${rulePlaceholder}"]`)).toBeTruthy();
+  });
+
+  it("keeps a copy's stop rules from Max Strength beside its own, each off only with a reason", async () => {
+    const standard: MachineDefinition = { ...legPress, stopRules: [{ text: "The knees never lock out." }] };
+    const { el, saves } = await mount({
+      value: standard,
+      standard,
+      scope: "studio",
+      whose: "Solon's copy",
+      actor: { uid: "uid-eowyn", name: "Éowyn" },
+    });
+    const section = el.querySelector("#machine-section-codex-machine")! as HTMLElement;
+    expect(section.textContent).toContain("The knees never lock out.");
+    await click(buttonNamed(section, /Take off this unit/));
+    const why = section.querySelector("textarea[id^='why-stopRules']") as HTMLTextAreaElement;
+    await type(why, "This unit's end stop is a hard pin.");
+    await click(buttonNamed(section, /Take it off this unit/));
+    await save(el);
+    expect(saves[0].draft.stopRules).toEqual([]);
+    expect(saves[0].draft.removedSafety?.[0]).toMatchObject({ field: "stopRules", line: "The knees never lock out." });
   });
 
   it("turns to prose in the read view", async () => {
@@ -150,14 +170,14 @@ describe("the Codex sections", () => {
 });
 
 describe("tidyCodexLists", () => {
-  it("drops blank records and an emptied list", () => {
+  it("drops blank records, and an emptied list stays empty", () => {
     expect(
       tidyCodexLists({
         stopRules: [{ text: "  " }, { text: "Stop at lock-out." }],
         faults: [{ fault: "" }],
         rep: { path: "x", moments: [{ moment: "up", say: "" }] },
       }),
-    ).toEqual({ stopRules: [{ text: "Stop at lock-out." }], faults: undefined, rep: { path: "x" } });
+    ).toEqual({ stopRules: [{ text: "Stop at lock-out." }], faults: [], rep: { path: "x" } });
   });
 
   it("leaves a patch that never touched a list alone", () => {

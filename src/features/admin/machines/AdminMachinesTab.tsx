@@ -3,6 +3,7 @@ import { Dumbbell, Info, Layers, Loader2 } from "lucide-react";
 import { CatalogList } from "./CatalogList";
 import { CatalogMachineEditor } from "./CatalogMachineEditor";
 import { ModelsPage } from "./models/ModelsPage";
+import { MachineCompare } from "./compare/MachineCompare";
 import { SubmissionsQueue } from "../catalog/SubmissionsQueue";
 import { SubmissionReview } from "../catalog/SubmissionReview";
 import type { CatalogSubmissionDoc } from "../../my-studio/floor";
@@ -44,8 +45,21 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
     // The model records (Codex R2): every maker's model of every movement,
     // or one movement's, opened from that machine's page.
     | { kind: "models"; movementId?: string; from?: MachineCatalogEntry }
+    // Every studio's differences from one machine (Codex R5, the Sep 21 rule).
+    | { kind: "compare"; machine: MachineCatalogEntry }
     | null
   >(null);
+
+  if (open?.kind === "compare") {
+    const machine = catalog.find((m) => m.id === open.machine.id) ?? open.machine;
+    return (
+      <MachineCompare
+        machine={machine}
+        backLabel={machine.name}
+        onBack={() => setOpen({ kind: "machine", machine })}
+      />
+    );
+  }
 
   if (open?.kind === "models") {
     const from = open.from;
@@ -92,6 +106,7 @@ export function AdminMachinesTab({ isAdmin }: { isAdmin: boolean }) {
         onOpenModels={(movementId) =>
           setOpen({ kind: "models", movementId, from: live ?? undefined })
         }
+        onOpenCompare={live && isAdmin ? () => setOpen({ kind: "compare", machine: live }) : undefined}
       />
     );
   }

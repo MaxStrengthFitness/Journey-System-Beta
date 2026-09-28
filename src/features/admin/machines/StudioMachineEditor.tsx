@@ -14,6 +14,7 @@ import { pruneOverrides } from "../equipment/clone";
 import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 import { useMachineModels } from "../../machine-codex/models-store";
+import { useSignedInPerson } from "../../machine-codex/who";
 
 /**
  * EDITING A STUDIO'S OWN MACHINE.
@@ -97,6 +98,8 @@ export function StudioMachineEditor({
   // The model records, for "Which model this unit is" (Codex R2).
   const { models } = useMachineModels();
   const movementId = catalogEntry?.id ?? (basedOn || undefined);
+  // Who is editing, for a removed safety line's record (the Sep 21 rule).
+  const actor = useSignedInPerson();
 
   const save = async (
     patch: Partial<MachineDefinition>,
@@ -149,9 +152,12 @@ export function StudioMachineEditor({
 
     // A catalog machine's local copy. The stored value is the DIFFERENCE from
     // the standard, computed from the whole draft rather than from this
-    // sitting's patch, so overrides made earlier survive.
+    // sitting's patch, so overrides made earlier survive. Given the standard,
+    // the gate refuses one of its safety lines gone without a reason (the
+    // Sep 21 rule) and keeps each safety list as the studio's additions.
     if (!catalogEntry) throw new Error("This machine's catalog entry is missing.");
-    const scoped = scopeOverrides(scope, draft as Partial<MachineDefinition>);
+    const standard = definitionOf(catalogEntry);
+    const scoped = scopeOverrides(scope, draft as Partial<MachineDefinition>, standard);
     const overrides = stripUndefined(pruneOverrides(catalogEntry, scoped));
 
     const ref = doc(db, "studios", studioId, "roster", catalogEntry.id);
@@ -172,13 +178,19 @@ export function StudioMachineEditor({
     if (entry) await updateDoc(ref, body);
     else await setDoc(ref, body);
 
-    const changedFields = Object.keys(overrides) as (keyof MachineDefinition)[];
+    const changedFields = (Object.keys(overrides) as (keyof MachineDefinition)[]).filter(
+      (f) => f !== "removedSafety",
+    );
+    const removed = overrides.removedSafety?.length ?? 0;
+    const parts: string[] = [];
+    if (changedFields.length) parts.push(`differs from the standard on ${describeFields(changedFields)}`);
+    if (removed) {
+      parts.push(`does without ${removed} of its safety ${removed === 1 ? "line" : "lines"}, each with its reason`);
+    }
     toastSuccess(
-      changedFields.length === 0
+      parts.length === 0
         ? `${name} now follows the Max Strength standard exactly.`
-        : `${name} saved. ${
-            studioName ?? "This studio"
-          } differs from the standard on ${describeFields(changedFields)}; everything else still follows it.`,
+        : `${name} saved. ${studioName ?? "This studio"} ${parts.join(", and ")}; everything else still follows it.`,
     );
   };
 
@@ -198,6 +210,7 @@ export function StudioMachineEditor({
       isNew={isNew}
       movementId={movementId}
       models={models}
+      actor={actor}
       unit={
         <>
           {isNew && (
