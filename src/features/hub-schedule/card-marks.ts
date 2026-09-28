@@ -10,8 +10,8 @@
  *   - Read first (the Critical triangle) has a slot of its own beside the
  *     name. It is the only red on the grid.
  *   - Then at most TWO glyphs, in the Key's order (Watch › Welcome ›
- *     Celebrate › Renew), and "+N" for the rest. The +N and every glyph are
- *     explained in words in the peek, never in a hover.
+ *     Celebrate › Renew › Get to know), and "+N" for the rest. The +N and
+ *     every glyph are explained in words in the peek, never in a hover.
  *   - A glyph may carry a WORD beside it on a roomy card, but only a word
  *     that is fine to say with the client standing at the iPad: "100th",
  *     "turns 80", "1st session", "back", "Consult". A Pulse flag, a waiver or
@@ -88,6 +88,10 @@ export function sayableWord(m: Moment, { yours = false }: SayableOptions = {}): 
     case "first-with-trainer":
       // In your column the trainer is you.
       return yours ? "first with you" : null;
+    case "ask-about":
+      // FORD is a client's home life: never on the grid, not even in your own
+      // column (wave 2 hub). The ✎ alone; the words are the peek's and the list's.
+      return null;
     default:
       return null;
   }

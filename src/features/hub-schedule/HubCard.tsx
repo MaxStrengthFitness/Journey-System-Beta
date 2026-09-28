@@ -29,7 +29,7 @@
  * only the first. The words are still only ones fine to say out loud.
  */
 import type { ComponentType } from "react";
-import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, RefreshCw, Sparkles, Undo2 } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { Client, WorkoutSession } from "../../types";
 import { isStaffBlock, type LoggedSessions } from "../../lib/booking-state";
 import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
@@ -53,6 +53,8 @@ export const GLYPH: Record<MomentKind, ComponentType<{ size?: number; strokeWidt
   milestone: Award,
   birthday: Cake,
   renew: RefreshCw,
+  // Get to know (wave 2 hub): the ✎ alone, its label "Something to ask about".
+  "ask-about": MessageCircle,
 };
 
 /**

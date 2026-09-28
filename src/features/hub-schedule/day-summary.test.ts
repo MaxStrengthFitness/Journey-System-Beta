@@ -1,7 +1,7 @@
 /**
  * The Hub's day summary: each day's count with zero left out, a dot for a day
- * with something to celebrate, the list's own five chips, and the
- * spotlight's words.
+ * with something to celebrate, the list's own chips (six since Get to know),
+ * and the spotlight's words.
  */
 import { describe, expect, it } from "vitest";
 import type { Moment, RunSheetEntry } from "../hub-opportunities/moments-today";
@@ -44,17 +44,18 @@ describe("the chips and the spotlight", () => {
       { family: "celebrate", kind: "birthday" },
     ]),
     entry("rosie", [{ family: "celebrate", kind: "birthday" }, { family: "renew", kind: "renew" }]),
-    entry("estella", [{ family: "watch", kind: "waiver" }, { family: "welcome", kind: "early-session" }]),
-    entry("hama", []),
+    entry("estella", [{ family: "watch", kind: "waiver" }, { family: "welcome", kind: "early-session" }, { family: "get-to-know", kind: "ask-about" }]),
+    entry("hama", [{ family: "get-to-know", kind: "ask-about" }]),
+    entry("lobelia", []),
   ];
 
-  it("offers the list's own five families, in its order", () => {
-    expect(SUMMARY_FAMILIES.map((f) => f.label)).toEqual(["Read first", "Celebrate", "Welcome", "Renew", "Watch"]);
+  it("offers the list's own families, in its order: six since Get to know (wave 2 hub)", () => {
+    expect(SUMMARY_FAMILIES.map((f) => f.label)).toEqual(["Read first", "Celebrate", "Welcome", "Renew", "Watch", "Get to know"]);
   });
 
   it("draws a chip only for a family with anyone in it, counting people", () => {
-    expect(summaryChips(entries).map((c) => `${c.label} ${c.count}`)).toEqual(["Read first 1", "Celebrate 2", "Welcome 1", "Renew 1", "Watch 1"]);
-    expect(summaryChips([entry("hama", [])])).toEqual([]);
+    expect(summaryChips(entries).map((c) => `${c.label} ${c.count}`)).toEqual(["Read first 1", "Celebrate 2", "Welcome 1", "Renew 1", "Watch 1", "Get to know 2"]);
+    expect(summaryChips([entry("lobelia", [])])).toEqual([]);
   });
 
   it("says what the spotlight shows, in words", () => {
@@ -62,5 +63,6 @@ describe("the chips and the spotlight", () => {
     expect(spotWords(entries, "watch")).toBe("1 to watch: 1 waiver to sign");
     expect(spotWords(entries, "read-first")).toBe("1 to read first");
     expect(spotWords(entries, "renew")).toBe("1 for a renewal talk");
+    expect(spotWords(entries, "get-to-know")).toBe("2 to ask about");
   });
 });

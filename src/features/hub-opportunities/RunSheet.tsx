@@ -13,13 +13,19 @@
  * The engine is moments-today.ts; this file only draws it. Reads: none of
  * its own beyond the studio's package table (the one document the profile
  * and the directory read, so "left" says their number). The bookings, the
- * roster, the sessions and the Critical notes are the Hub's.
+ * roster, the sessions, the Critical notes and the FORD details are the
+ * Hub's.
  *
- * Out of scope this round: FORD "Get to know" (it needs a studio-scoped
- * read), surgery or away from dated notes (the same), "Show on schedule".
+ * Get to know (wave 2 hub, Sep 28 2026): the ✎ "Ask about" is a chip ("Ask:
+ * the recital · Sat"), a filter, and a sentence under "Something to say".
+ * When the Hub's FORD read couldn't answer for a client, the line under the
+ * chips says so once, and her opened row says so rather than "Nothing
+ * special today."
+ *
+ * Out of scope: surgery or away from dated notes, "Show on schedule".
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, RefreshCw, Sparkles, Undo2 } from "lucide-react";
+import { Activity, AlertTriangle, Award, Cake, ChevronDown, ChevronRight, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import { formatStudioTime } from "../../lib/studio-time";
 import {
   FILTERS,
@@ -34,6 +40,7 @@ import {
   type RunSheetEntry,
   type RunSortKey,
 } from "./moments-today";
+import { ASK_UNREAD_LINE } from "./get-to-know";
 import "./run-sheet.css";
 
 export interface RunSheetProps {
@@ -100,6 +107,7 @@ const ICON: Record<MomentKind, React.ComponentType<{ size?: number; "aria-hidden
   milestone: Award,
   birthday: Cake,
   renew: RefreshCw,
+  "ask-about": MessageCircle,
 };
 
 function Chip({ m }: { m: Moment }) {
@@ -140,8 +148,12 @@ function OpenedRow({ entry, onOpenProfile, onStartSession }: { entry: RunSheetEn
   ];
   type Line = { key: string; text: string; muted?: boolean };
   const say: Line[] = entry.moments
-    .filter((m) => m.family === "welcome" || m.family === "celebrate" || m.family === "renew")
+    .filter((m) => m.family === "welcome" || m.family === "celebrate" || m.family === "renew" || m.family === "get-to-know")
     .map((m) => ({ key: m.kind, text: m.sentence }));
+  // Her FORD couldn't be checked: never "Nothing special today" on a guess.
+  if (entry.askUnknown) {
+    say.push({ key: "ford-unread", text: ASK_UNREAD_LINE, muted: true });
+  }
   const watch: Line[] = entry.moments.filter((m) => m.family === "read-first" || m.family === "watch").map((m) => ({ key: m.kind, text: m.sentence }));
   if (entry.criticalUnknown) {
     watch.push({ key: "unread", text: "Couldn\u2019t check her critical notes \u2014 her briefing shows them." });
@@ -197,6 +209,7 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
   const sections = useMemo(() => runSections(filtered, memory.sort, reversed), [filtered, memory.sort, reversed]);
   const sortMeta = RUN_SORTS.find((s) => s.id === memory.sort)!;
   const unreadCritical = scoped.filter((e) => e.criticalUnknown).length;
+  const unreadFord = scoped.filter((e) => e.askUnknown).length;
 
   const tapSort = (id: RunSortKey) => {
     if (id === memory.sort) setReversed((r) => !r);
@@ -237,7 +250,8 @@ export function RunSheet({ day, entries, onOpenProfile, onStartSession, request 
       <p className="ho-line">
         {`${sortMeta.label}: ${reversed ? "reversed" : sortMeta.words}. `}
         {memory.scope === "mine" ? "Mine: booked with you today, or coached by you in the last 60 days. " : ""}
-        {unreadCritical > 0 ? `Couldn\u2019t check ${unreadCritical === 1 ? "one client\u2019s" : `${unreadCritical} clients\u2019`} critical notes \u2014 their briefings show them.` : ""}
+        {unreadCritical > 0 ? `Couldn\u2019t check ${unreadCritical === 1 ? "one client\u2019s" : `${unreadCritical} clients\u2019`} critical notes \u2014 their briefings show them. ` : ""}
+        {unreadFord > 0 ? `Couldn\u2019t check FORD for ${unreadFord === 1 ? "one client" : `${unreadFord} clients`}, so something to ask about may be missing.` : ""}
       </p>
 
       <div className="ho-scroll" role="region" aria-label="Clients booked on this day">

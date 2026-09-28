@@ -34,6 +34,7 @@ not finished.
 | Post-session | The sweep. Unfiled captures come back as cards with four big buttons (`FordSweep`) |
 | Client profile → Notes & Profile → FORD | The page: what is coming up (the Mindbody birthday included), what is unfiled, the four pillars with their bands, and going above and beyond (`page/FordPage`) — see "The FORD page" below |
 | Operations → Delight queue | Every gesture the studio owes, across every client, in date order (`DelightQueue`) — with row actions since the Operations round (Sep 19): Take it, Hand it to… (the studio's people, by Auth uid), Done with what happened, Pass; a passed one-off files under "Passed — still open"; a switch shows what is done. Every write is `setGestureStatus`, the client record's own writer |
+| The Hub → Get to know | The ✎ "Ask about" beside the day's booked clients (wave 2 hub, Sep 28 2026): a detail whose day comes round within the week, or noted in the last two weeks, one per client, from ONE read of the studio's FORD per studio visit (`hub-read.ts`; the rule and the screens are `hub-opportunities/`). The glyph alone on the grid; the words in the peek and the Opportunities list. Read only, never a write |
 
 ## Where the data sits, and why
 
@@ -243,6 +244,7 @@ moved it.
 | `ford-write.ts` | Every write. All of them swallow their errors — a failed detail is a lost sentence; a hard failure mid-session is a lost client |
 | `ford-rollup.ts` | Pure functions over an array: the summary, grouping, upcoming dates, the `client.events` adapter |
 | `useClientFord.ts` | One client's details, and the studio-wide Delight queue. Reports `status`: `loading` · `ready` · `failed` · `denied` |
+| `hub-read.ts` | The third query shape (wave 2 hub, Sep 28 2026): the Hub's ONE read for Get to know — a collection group query on `studioId` and (`recurrence == "annual"` · `eventDate` inside the strip's two weeks · `occurredAt` in the last two weeks), capped at 1,000, one `getDocs`. Kept out of `useClientFord.ts` so the Hub's first download doesn't carry that file. Its indexes are `ford` (studioId, recurrence), (studioId, eventDate) and (studioId, occurredAt), collection group scope; the rules are unchanged. `hub-read.test.ts` holds the query's shape; `tests/firestore.rules.test.ts` → "wave 2 hub" holds who may make it |
 | `read-status.ts` | What a FORD read that did not come back is, and the sentence a screen shows instead of its empty state |
 | `ford.tokens.css` | Colour. Pillars get identity, never status — see the note at the top of the file |
 | `ford.css` | The floor's capture and sweep, the Delight queue, the briefing row and the detail dialog. The FORD page draws from the codex kit and `page/ford-page.css`. **Every component that draws with it imports it** (`ford-css.test.ts`, phase 19) |
@@ -358,6 +360,10 @@ moved it.
   `firebase deploy --only firestore:indexes` has run, the queue says so rather
   than rendering empty — an empty queue would read as "nobody has anything
   coming up".
+- **So does the Hub's Get to know read** (wave 2 hub). The database is the
+  Enterprise edition: without its two new indexes the read still answers, by
+  scanning every FORD document in the company, billed by the byte. Deploy
+  the indexes before the app that makes the read.
 - **Colour by urgency, never by pillar.** The app already teaches a trainer
   that orange is the live thing, blue is actionable and crimson is a set that
   needs work. Four more saturated colours would turn the screen into a paint

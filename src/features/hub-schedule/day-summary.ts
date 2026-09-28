@@ -8,10 +8,11 @@
  *     count"): each day's bookings, and one small dot when the day holds
  *     something to celebrate. A day with nothing booked shows no number:
  *     zero is left out, never drawn as "0";
- *   - the FAMILY CHIPS: the Opportunities list's own five filters, in its
- *     order and with its words ("Celebrate 3"), so the two layers read the
- *     same. A tap lights the matching cards on the grid (the spotlight) and
- *     the bar says what it is showing, in words.
+ *   - the FAMILY CHIPS: the Opportunities list's own filters, in its order
+ *     and with its words ("Celebrate 3"), so the two layers read the same —
+ *     six since Get to know (wave 2 hub), zero never drawn. A tap lights the
+ *     matching cards on the grid (the spotlight) and the bar says what it is
+ *     showing, in words ("Showing 2 to ask about on the grid").
  */
 import type { ScheduleEntry } from "../../types";
 import { isStaffBlock } from "../../lib/booking-state";
@@ -97,6 +98,7 @@ const KIND_WORDS: Record<MomentKind, [string, string]> = {
   milestone: ["milestone", "milestones"],
   birthday: ["birthday", "birthdays"],
   renew: ["renewal talk", "renewal talks"],
+  "ask-about": ["to ask about", "to ask about"],
 };
 
 const FAMILY_WORDS: Record<MomentFamily, string> = {
@@ -105,7 +107,11 @@ const FAMILY_WORDS: Record<MomentFamily, string> = {
   welcome: "to welcome",
   celebrate: "to celebrate",
   renew: "for a renewal talk",
+  "get-to-know": "to ask about",
 };
+
+/** Families of one kind: the head says it all ("2 to ask about"), no breakdown after it. */
+const ONE_KIND: ReadonlySet<MomentFamily> = new Set(["read-first", "renew", "get-to-know"]);
 
 /**
  * What the spotlight shows, in words: "3 to celebrate: 2 birthdays, 1
@@ -118,7 +124,7 @@ export function spotWords(entries: ReadonlyArray<RunSheetEntry>, family: MomentF
     for (const m of e.moments) if (m.family === family) kinds.set(m.kind, (kinds.get(m.kind) ?? 0) + 1);
   }
   const head = `${people.length} ${FAMILY_WORDS[family]}`;
-  if (kinds.size <= 1 && (family === "read-first" || family === "renew")) return head;
+  if (kinds.size <= 1 && ONE_KIND.has(family)) return head;
   const parts = [...kinds.entries()].map(([k, n]) => `${n} ${KIND_WORDS[k][n === 1 ? 0 : 1]}`);
   return parts.length > 0 ? `${head}: ${parts.join(", ")}` : head;
 }

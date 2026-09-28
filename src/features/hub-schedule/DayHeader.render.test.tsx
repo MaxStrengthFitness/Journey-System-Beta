@@ -169,4 +169,26 @@ describe("the Key", () => {
     expect(text).toContain("No waiver signed.");
     expect(text).toContain("Not working.");
   });
+
+  it("explains the ✎ Ask about, and says its words stay off the card (wave 2 hub)", () => {
+    render(<KeySheet open onClose={() => {}} />);
+    const row = [...document.querySelectorAll(".hd-key-list li")].find((li) => li.textContent?.startsWith("Ask about."));
+    expect(row?.textContent).toContain("never on the card");
+    expect(row?.querySelector(".hs-g")?.getAttribute("data-family")).toBe("get-to-know");
+  });
+});
+
+describe("the chips, with Get to know (wave 2 hub)", () => {
+  it("draws its chip after the others, and lights its cards", () => {
+    const { el, calls } = summary({
+      chips: [
+        { id: "celebrate", label: "Celebrate", count: 3 },
+        { id: "get-to-know", label: "Get to know", count: 2 },
+      ],
+    });
+    expect([...el.querySelectorAll(".hd-chip")].map((c) => c.textContent)).toEqual(["Celebrate 3", "Get to know 2"]);
+    expect(el.querySelectorAll(".hd-chip")[1].querySelector(".hd-fam")?.getAttribute("data-family")).toBe("get-to-know");
+    act(() => btn(el, "Get to know")!.click());
+    expect(calls.spot).toEqual(["get-to-know"]);
+  });
 });

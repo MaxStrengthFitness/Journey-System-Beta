@@ -3,7 +3,9 @@
  *
  * Two hooks, one file, because they are the same data at two zoom levels and
  * keeping the query shapes side by side is the only way the indexes stay
- * honest.
+ * honest. The third shape is the Hub's Get to know read (wave 2 hub, Sep 28
+ * 2026): `hub-read.ts`, kept apart only so the Hub's first download doesn't
+ * carry this file.
  */
 
 import { useEffect, useMemo, useState } from "react";

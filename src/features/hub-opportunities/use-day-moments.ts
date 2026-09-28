@@ -11,8 +11,9 @@
  * Reads: none of its own beyond the studio's package table
  * (`useRenewalSettings`, `studios/{s}/config/renewals`), the one document the
  * profile and the directory read, so "left" says their number. The bookings,
- * the roster, the sessions and the Critical notes are the Hub's. No read per
- * client, ever.
+ * the roster, the sessions, the Critical notes and the FORD details (Get to
+ * know, wave 2 hub: `use-hub-ford.ts`, once per studio visit) are the Hub's.
+ * No read per client, ever.
  *
  * Eager on purpose: ClientsView is in the first bundle and the grid needs it
  * on the first paint. Nothing here imports a stylesheet or a screen.
@@ -20,6 +21,7 @@
 import { useMemo } from "react";
 import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
+import type { FordEntry } from "../ford/types";
 import { isStaffBlock, loggedSessions, type LoggedSessions } from "../../lib/booking-state";
 import { myTrainerIds } from "../../lib/live-session";
 import { studioTodayKey } from "../../lib/studio-time";
@@ -43,6 +45,8 @@ export interface DayMomentsProps {
   trainers: ReadonlyArray<Trainer>;
   /** The Hub's one Critical read: her notes, or null when unread. */
   criticalFor: (clientId: string) => readonly JournalEntry[] | null;
+  /** The Hub's one FORD read (`useHubFord().fordFor`): absent while Get to know isn't in play. */
+  fordFor?: (clientId: string) => readonly FordEntry[] | null;
 }
 
 export interface DayMoments {
@@ -73,6 +77,7 @@ export function useDayMoments({
   uid,
   trainers,
   criticalFor,
+  fordFor,
 }: DayMomentsProps): DayMoments {
   const today = studioTodayKey(now);
   const myIds = useMemo(() => myTrainerIds(authTrainer, uid ?? null), [authTrainer, uid]);
@@ -116,6 +121,7 @@ export function useDayMoments({
       studios: studios ?? [],
       logged,
       criticalFor,
+      fordFor,
       myIds,
       myName: authTrainer?.fullName ?? null,
       trainerNameOf,
@@ -124,5 +130,5 @@ export function useDayMoments({
     const byClientId = new Map<string, RunSheetEntry>();
     for (const e of entries) if (e.clientId) byClientId.set(e.clientId, e);
     return { entries, byClientId, input, logged };
-  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, criticalFor]);
+  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, criticalFor, fordFor]);
 }

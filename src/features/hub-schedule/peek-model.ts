@@ -14,12 +14,14 @@
  *   - where she is: last in, her package (left in contract, extras beside
  *     it), each with "can't tell" rather than a guess;
  *   - standing context, quietly: clinical history on file (the dot that left
- *     the card), and a Critical read that couldn't be checked.
+ *     the card), and a Critical read or a FORD read that couldn't be checked.
  *
  * Words on the peek are for the trainer who opened it; the grid itself shows
- * marks only (clients stand next to the iPad).
+ * marks only (clients stand next to the iPad). Get to know's sentence (wave 2
+ * hub, "Ask about: …") is one of the lines, in the Key's order: last.
  */
 import { ordinal, type MomentFamily, type MomentKind, type RunSheetEntry } from "../hub-opportunities/moments-today";
+import { ASK_UNREAD_LINE } from "../hub-opportunities/get-to-know";
 
 export interface PeekLine {
   kind: MomentKind;
@@ -64,6 +66,7 @@ export function peekContent(entry: RunSheetEntry, sessionNumber: number | null =
   ];
   const notes: string[] = [];
   if (entry.criticalUnknown) notes.push("Couldn’t check her critical notes — her briefing shows them.");
+  if (entry.askUnknown) notes.push(ASK_UNREAD_LINE);
   if (entry.clinicalOnFile) notes.push("Clinical history on file — her briefing has it.");
   return {
     name: entry.name,

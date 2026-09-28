@@ -33,6 +33,7 @@ import { RunSheet } from "./RunSheet";
 import { useDayMoments, type DayMomentsProps } from "./use-day-moments";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient } from "../client-directory/fixtures";
 import type { Trainer } from "../../types";
+import type { FordEntry } from "../ford/types";
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -173,5 +174,39 @@ describe("RunSheet", () => {
     expect(chips(host, "ruth")).toEqual(["Turns 80 today"]);
     await click(button(host, ".ho-seg-btn", "Sessions"));
     expect(sentence(host, "ruth")).toBe("#101");
+  });
+});
+
+describe("RunSheet: Get to know (wave 2 hub)", () => {
+  const PARTY = {
+    id: "f-party",
+    clientId: "harold",
+    studioId: "westlake",
+    pillar: "recreation",
+    body: "Hosting the Hobbiton party on Wednesday",
+    subject: "the party",
+    eventDate: eastern("2026-09-30", "00:00"),
+    recurrence: "none",
+    occurredAt: eastern("2026-09-01", "10:00"),
+    isArchived: false,
+  } as unknown as FordEntry;
+
+  it("is a chip, a filter with its count, and a sentence under Something to say", async () => {
+    const { host } = await mount({ fordFor: (id) => (id === "harold" ? [PARTY] : []) });
+    expect(chips(host, "harold")).toEqual(["Ask: the party · Wed"]);
+    expect([...host.querySelectorAll(".ho-filter")].map((f) => f.textContent)).toEqual(["All 3", "Celebrate 1", "Get to know 1"]);
+    await click(button(host, ".ho-filter", "Get to know"));
+    expect(rows(host)).toEqual(["harold"]);
+    await click(host.querySelector('.ho-row[data-client-id="harold"] .ho-rowbtn'));
+    expect(host.querySelector(".ho-open")?.textContent).toContain("Ask about: Hosting the Hobbiton party on Wednesday — Wednesday, Sep 30 (Recreation, noted Sep 1).");
+  });
+
+  it("a FORD read that couldn't answer says so once, and her row never says 'Nothing special today'", async () => {
+    const { host } = await mount({ fordFor: () => null });
+    expect(host.querySelector(".ho-line")?.textContent).toContain("Couldn’t check FORD for 3 clients, so something to ask about may be missing.");
+    await click(host.querySelector('.ho-row[data-client-id="harold"] .ho-rowbtn'));
+    const opened = host.querySelector(".ho-open")?.textContent ?? "";
+    expect(opened).toContain("Couldn’t check FORD for something to ask about — her FORD page has it.");
+    expect(opened).not.toContain("Nothing special today.");
   });
 });
