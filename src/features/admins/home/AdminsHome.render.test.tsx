@@ -141,8 +141,8 @@ describe("Home's Take it, Snooze and Dismiss", () => {
     const onMark = vi.fn(async () => {});
     const el = withMarks(onMark);
     const rows = [...el.querySelectorAll(".hq-need")];
-    expect(rows[1].querySelector('[aria-label^="Take, snooze or dismiss"]')).toBeNull();
-    await click(rows[0].querySelector('[aria-label^="Take, snooze or dismiss"]'));
+    expect(rows[1].querySelector('[aria-label^="More: "]')).toBeNull();
+    await click(rows[0].querySelector('[aria-label^="More: "]'));
     await click(button(el, "Take it"));
     expect(onMark).toHaveBeenCalledWith(syncKey, { state: "taken" });
   });
@@ -153,7 +153,7 @@ describe("Home's Take it, Snooze and Dismiss", () => {
     const el = withMarks(undefined, onClearMark, taken);
     expect(el.querySelector(".hq-need__taken")?.textContent).toBe(" · Taken by Faramir");
     expect(el.querySelector("h1")?.textContent).toBe("2 things need you.");
-    await click(el.querySelector('[aria-label^="Take, snooze or dismiss"]'));
+    await click(el.querySelector('[aria-label^="More: "]'));
     await click(button(el, "Let it go"));
     expect(onClearMark).toHaveBeenCalledWith(syncKey);
   });
@@ -162,7 +162,7 @@ describe("Home's Take it, Snooze and Dismiss", () => {
     const onMark = vi.fn(async () => {});
     const onClearMark = vi.fn(async () => {});
     const el = withMarks(onMark, onClearMark);
-    await click(el.querySelector('[aria-label^="Take, snooze or dismiss"]'));
+    await click(el.querySelector('[aria-label^="More: "]'));
     await click(button(el, "Snooze…"));
     expect(el.textContent).toContain("Snooze it until when? It comes back sooner if it changes.");
     await click(button(el, "For a week"));
@@ -175,7 +175,7 @@ describe("Home's Take it, Snooze and Dismiss", () => {
   it("asks why before a dismiss, with three reasons or one of your own", async () => {
     const onMark = vi.fn(async () => {});
     const el = withMarks(onMark);
-    await click(el.querySelector('[aria-label^="Take, snooze or dismiss"]'));
+    await click(el.querySelector('[aria-label^="More: "]'));
     await click(button(el, "Dismiss…"));
     expect(el.textContent).toContain("Why dismiss it? It comes back if it changes.");
     expect(button(el, "Dismiss")!.disabled).toBe(true);

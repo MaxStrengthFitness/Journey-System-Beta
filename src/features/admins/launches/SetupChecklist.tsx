@@ -245,7 +245,7 @@ export function SetupChecklist({ studio, studios, trainers, byName, onStageChang
               </AdminButton>
             ) : null}
             {item.state === "skipped" ? (
-              <AdminButton size="sm" busy={acting} onClick={() => void run(key, () => unskipItem(who, item))} aria-label={`Put ${item.title} back`}>
+              <AdminButton size="sm" busy={acting} onClick={() => void run(key, () => unskipItem(who, item))} aria-label={`Put it back: ${item.title}`}>
                 Put it back
               </AdminButton>
             ) : null}

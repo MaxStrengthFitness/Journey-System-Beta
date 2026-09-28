@@ -329,7 +329,7 @@ describe("a studio's checklist", () => {
     state.items.edoras = { cutover: { block: "mindbody", title: "x", doneAt: null, doneBy: { uid: "u", name: "Idril" }, skipReason: "Later." } };
     const el = await mount(checklist(studios[0]));
     expect(el.textContent).toContain("Idril: “Later.”");
-    await click(el.querySelector('[aria-label="Put Journey cutover date set back"]'));
+    await click(el.querySelector('[aria-label="Put it back: Journey cutover date set"]'));
     expect(state.writes[0]).toEqual({ op: "delete", path: "studios/edoras/setupItems/cutover" });
   });
 

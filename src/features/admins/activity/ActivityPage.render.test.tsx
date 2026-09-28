@@ -124,8 +124,8 @@ describe("Machinery → Activity", () => {
       "FaramirSystem Administrator · you",
       "ImrahilFounder / Overseer",
     ]);
-    expect(panel.querySelector('[aria-label="Change Faramir\'s role"]')).toBeNull();
-    expect(panel.querySelector('[aria-label="Change Beregond\'s role"]')).not.toBeNull();
+    expect(panel.querySelector('[aria-label="Change role: Faramir"]')).toBeNull();
+    expect(panel.querySelector('[aria-label="Change role: Beregond"]')).not.toBeNull();
     // A replaced account and Demo Mode's people are not administrators here.
     expect(administratorsOf(trainers, studios).map((t) => t.fullName)).toEqual(["Beregond", "Faramir", "Imrahil"]);
   });
@@ -165,7 +165,7 @@ describe("Machinery → Activity", () => {
   it("changes a role from the administrators, then records it as an admin grant", async () => {
     const onRolesChanged = vi.fn();
     const el = await mount(onRolesChanged);
-    await click(el.querySelector('[aria-label="Change Beregond\'s role"]'));
+    await click(el.querySelector('[aria-label="Change role: Beregond"]'));
     const dialog = document.querySelector<HTMLElement>('[role="alertdialog"][aria-label="Change Beregond\'s role"]')!;
     expect(dialog).toBeTruthy();
     const save = button(dialog, "Save the role")!;

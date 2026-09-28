@@ -161,7 +161,7 @@ export function AdminsHome({
               size="sm"
               variant="ghost"
               aria-expanded={open}
-              aria-label={`Take, snooze or dismiss: ${item.say}`}
+              aria-label={`More: take, snooze or dismiss “${item.say}”`}
               onClick={() => {
                 setTray(open ? null : { key, mode: "menu" });
                 setReason("");

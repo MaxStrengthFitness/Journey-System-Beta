@@ -96,7 +96,7 @@ export function ActivityPage({ studios, trainers, authTrainer, onRolesChanged }:
                   say={<span>{home ? `Home studio: ${home}` : "No home studio in the list"}</span>}
                   action={
                     me ? undefined : (
-                      <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change ${t.fullName || "this person"}'s role`}>
+                      <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change role: ${t.fullName || "this person"}`}>
                         Change role
                       </AdminButton>
                     )

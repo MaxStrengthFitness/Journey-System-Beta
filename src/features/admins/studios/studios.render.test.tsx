@@ -263,8 +263,8 @@ describe("a studio's page", () => {
     const changed = vi.fn();
     const el = await mount(page({ onRefresh: changed }));
     await click(button(el, "Team"));
-    expect(el.querySelector('[aria-label="Change Ada Admin\'s role"]')).toBeNull();
-    await click(el.querySelector('[aria-label="Change Beregond\'s role"]'));
+    expect(el.querySelector('[aria-label="Change role: Ada Admin"]')).toBeNull();
+    await click(el.querySelector('[aria-label="Change role: Beregond"]'));
     const dialog = document.querySelector<HTMLElement>('[role="alertdialog"][aria-label="Change Beregond\'s role"]')!;
     expect(dialog.textContent).toContain("Now: Life Transformer.");
     const select = dialog.querySelector<HTMLSelectElement>("#hq-role-choice")!;

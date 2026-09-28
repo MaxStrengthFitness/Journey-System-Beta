@@ -91,7 +91,7 @@ export function StudioTeam({
                 }
                 action={
                   isMe(t) ? undefined : (
-                    <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change ${t.fullName || "this person"}'s role`}>
+                    <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change role: ${t.fullName || "this person"}`}>
                       Change role
                     </AdminButton>
                   )

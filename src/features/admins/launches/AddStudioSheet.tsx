@@ -128,16 +128,28 @@ export function AddStudioSheet({
   const network = networks.find((n) => n.id === draft.networkId) ?? null;
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
+  // Cancel (the button, or Escape) drops what was typed: the next Add a studio starts clean.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) onClose();
+      if (e.key === "Escape" && !saving) {
+        setDraft(EMPTY);
+        setStep(0);
+        setFailure(null);
+        onClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, saving, onClose]);
 
   if (!open) return null;
+
+  const cancel = () => {
+    if (saving) return;
+    reset();
+    onClose();
+  };
 
   const canContinue = step === 0 ? Boolean(draft.name.trim()) : step === 1 ? !problem : true;
   const name = draft.name.trim() || "the studio";
@@ -181,7 +193,8 @@ export function AddStudioSheet({
       className="adm-scrim adm"
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose();
+        // A tap beside the sheet closes it only while nothing is typed: typing is never lost to a slip.
+        if (e.target === e.currentTarget && !typed) cancel();
       }}
     >
       <div className="adm-dialog hq-sheet" role="dialog" aria-modal="true" aria-label="Add a studio">
@@ -203,7 +216,13 @@ export function AddStudioSheet({
           {step === 0 ? (
             <>
               <AdminField label="Studio name" required htmlFor="hq-new-name">
-                <AdminInput id="hq-new-name" value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Max Strength Chardon" />
+                <AdminInput
+                  id="hq-new-name"
+                  autoFocus
+                  value={draft.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="e.g. Max Strength Chardon"
+                />
               </AdminField>
               <AdminField label="Time zone" htmlFor="hq-new-tz">
                 <AdminSelect id="hq-new-tz" value={draft.timezone} onChange={(e) => set("timezone", e.target.value)}>
@@ -324,7 +343,7 @@ export function AddStudioSheet({
         </div>
 
         <div className="adm-dialog__foot hq-sheet__foot">
-          <AdminButton variant="ghost" onClick={onClose} disabled={saving}>
+          <AdminButton variant="ghost" onClick={cancel} disabled={saving}>
             <X className="w-3.5 h-3.5" aria-hidden="true" />
             Cancel
           </AdminButton>

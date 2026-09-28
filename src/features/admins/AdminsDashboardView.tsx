@@ -35,8 +35,17 @@
  * What it reads of its own, once when it opens and again on Check again:
  * each real studio's sync lease, Limbo, the newest hundred bug reports and
  * the machines studios offered the catalog — the reads its pages already
- * make. No listener of its own but the machine catalog, no timer, and no
- * Mindbody call.
+ * make — and, since the second wave, Home's marks (adminHome, a handful of
+ * documents). No listener of its own but the machine catalog, no timer, and
+ * no Mindbody call.
+ *
+ * THE SECOND WAVE (Sep 28 2026, AJ "all yes" to the room's new data): Home's
+ * Take it / Snooze / Dismiss (home/home-marks.ts), Studios → Launches and a
+ * studio's opening and setup checklist (launches/), Standard → Studio
+ * defaults (standard/SettingDefaultsPage.tsx), Machinery → Activity and a
+ * studio's Activity tab (activity/, with logActivity for any admin action),
+ * Change role on a studio's Team, and a reply on a bug report. Each page
+ * reads its own data when it opens, never on the dashboard's opening.
  *
  * Moving between pages asks the leave question first (features/
  * unsaved-changes): a catalog machine mid-edit or a studio's half-typed
