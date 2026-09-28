@@ -136,7 +136,7 @@ describe("the usual week, drawn from the summary", () => {
     expect(cell("1-0800")?.getAttribute("aria-current")).toBe("true");
   });
 
-  it("shows a mark read-only, first, and says so when the marks can't be read", async () => {
+  it("shows a mark first, and says so when the marks can't be read", async () => {
     fake.marks = [{ id: "2-1030", data: { weekday: 2, time: "10:30", mark: "full", by: { id: "uid-pat", name: "Pat Moss" }, at: new Date("2026-11-02T15:00:00Z") } }];
     await mount();
     expect(cell("2-1030")?.textContent).toContain("Marked");
@@ -145,8 +145,10 @@ describe("the usual week, drawn from the summary", () => {
     const lines = [...sheet.querySelectorAll(".op-sheet__line--lead")].map((l) => l.textContent);
     expect(lines[0]).toBe("The bookings disagree: room in 8 of the last 8 Tuesdays.");
     expect(lines[1]).toBe("Marked Always full by Pat, Nov 2.");
-    // Nothing on the sheet sets or changes a mark yet.
-    expect(sheet.querySelectorAll("button, input, textarea")).toHaveLength(0);
+    // Setting, changing and removing a mark is the marks phase's (MarkThisTime.render.test.tsx):
+    // the sheet opens on the mark's two doors, with nothing to type into until one is tapped.
+    expect([...sheet.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Change the mark", "Remove the mark"]);
+    expect(sheet.querySelectorAll("input, textarea")).toHaveLength(0);
   });
 
   it("says it can't tell about marks when they can't be read, never that there are none", async () => {

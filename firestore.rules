@@ -2134,6 +2134,50 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // MARKS ON A TIME (Openings round, Sep 27 2026;
+      // docs/rounds/2026-09-27-openings.md, "Marks: how a person disagrees"
+      // and the data, part 3). One document per half-hour of the week,
+      // openingsMarks/{weekday-HHMM} ("1-0800" is Monday 8:00): a person's
+      // word on that time, "full" (Always full) or "room" (Usually has room),
+      // with an optional note of up to 200 characters. A mark sits beside the
+      // numbers on Openings and never replaces them; it comes up for review
+      // after 60 days, and nothing drops on its own.
+      //
+      // Anyone who works at the studio (and franchise owners and
+      // administrators) reads the marks, and sets, changes, keeps or removes
+      // one, as the notes rule has it: any trainer may close a thread and any
+      // trainer may reopen it. Always AS THEMSELVES: `by.id` is the caller's
+      // Auth uid and `at` is this write's time, so a mark can be neither
+      // written in someone else's name nor backdated. A change, and a Keep at
+      // the review, sign the mark again as the person making them. The id is
+      // the weekday and the time the document holds, so one time has one mark.
+      // Limits match src/features/openings/marks.ts (`markForWrite`, written
+      // by openings/ui/marks-store.ts).
+      //
+      // Who may write asks coverageWriterAllowed: the same people as
+      // writesForStudio, with the caller resolved once (the whole-read
+      // record's function; its answer is "works here, or runs it, or above").
+      match /openingsMarks/{markKey} {
+        function openingsMarkValid(d) {
+          return d.keys().hasOnly(['weekday', 'time', 'mark', 'note', 'by', 'at'])
+              && d.keys().hasAll(['weekday', 'time', 'mark', 'by', 'at'])
+              && d.weekday is int && d.weekday >= 1 && d.weekday <= 6
+              && d.time is string && d.time.matches('^([01][0-9]|2[0-3]):[03]0$')
+              && markKey == string(d.weekday) + '-' + d.time.replace(':', '')
+              && d.mark in ['full', 'room']
+              && (!('note' in d) || (d.note is string && d.note.size() <= 200))
+              && d.by is map && d.by.keys().hasOnly(['id', 'name'])
+              && d.by.id == request.auth.uid
+              && d.by.name is string && d.by.name.size() <= 120
+              && d.at == request.time;
+        }
+
+        allow read: if isAuthenticated() && writesForStudio(studioId);
+        allow create, update: if isAuthenticated() && coverageWriterAllowed(studioId)
+                              && openingsMarkValid(request.resource.data);
+        allow delete: if isAuthenticated() && coverageWriterAllowed(studioId);
+      }
+
       // RENEWAL SETTINGS (Renewals round, Sep 2026).
       //
       //   config/renewals      the studio's thresholds and package table.

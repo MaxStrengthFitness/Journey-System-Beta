@@ -3935,3 +3935,232 @@ describe("the whole-read record", () => {
     }
   });
 });
+
+// ── MARKS ON A TIME (Openings round, Sep 27 2026) ───────────────────────
+//
+// studios/{s}/openingsMarks/{weekday-HHMM}: a person's word on a time of the
+// usual week, "full" (Always full) or "room" (Usually has room), with a short
+// note. Anyone who works at the studio (and franchise owners and
+// administrators) sets, changes, keeps or removes one, always as themselves
+// and at the server's time. The app writes it through
+// src/features/openings/ui/marks-store.ts (`markForWrite` in marks.ts).
+// docs/rounds/2026-09-27-openings.md, "Marks: how a person disagrees".
+describe("marks on a time", () => {
+  const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+  const markRef = (db: ReturnType<typeof as>, studioId: string, key: string) => doc(db, "studios", studioId, "openingsMarks", key);
+  /** What the app writes: the time, the word, the note when there is one, who, and the server's time. */
+  const mark = (uid: string, over: Record<string, unknown> = {}) => ({
+    weekday: 1,
+    time: "08:00",
+    mark: "full",
+    note: "The rotation's regulars",
+    by: { id: uid, name: `Person ${uid}` },
+    at: serverTimestamp(),
+    ...over,
+  });
+  const without = (data: Record<string, unknown>, key: string) => {
+    const out = { ...data };
+    delete out[key];
+    return out;
+  };
+  const seedMark = (studioId: string, key: string, data: Record<string, unknown>) =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "studios", studioId, "openingsMarks", key), data);
+    });
+  /** Owner A's mark on Monday 8:00, set two months ago: the one a colleague changes, keeps or removes. */
+  const seedOld = (studioId = "studioA") =>
+    seedMark(studioId, "1-0800", {
+      weekday: 1,
+      time: "08:00",
+      mark: "full",
+      note: "Always taken",
+      by: { id: "ownerA", name: "Owner A" },
+      at: new Date("2026-07-20T12:00:00Z"),
+    });
+
+  // Every kind of person the docs name, seeded only where a test needs them.
+  // None has a role claim on the token, so each reads its role from its
+  // trainer document: the costliest path through the rules.
+  async function seedPeople() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+      await person("franchiseX", "FranchiseOwner", "studioB");
+      await person("adminX", "Admin", "studioB");
+      await person("headA", "HeadTrainer", "studioA");
+      await person("leaderA", "StudioLeader", "studioA");
+      await person("guestA", "LifeTransformer", "studioB", { activeGuestStudioIds: ["studioA"] });
+      await person("grantA", "LifeTransformer", "studioB", { managedStudioIds: ["studioA"] });
+      await person("headB", "HeadTrainer", "studioB");
+    });
+  }
+
+  it("lets a trainer at the studio set a mark, read the studio's marks, change it and remove it", async () => {
+    const db = as("trainerA");
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA")));
+    const snap = await assertSucceeds(getDoc(markRef(db, "studioA", "1-0800")));
+    expect(snap.data()?.mark).toBe("full");
+    await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+    // Changed to the other word, the note taken out: the write replaces the mark.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), without(mark("trainerA", { mark: "room" }), "note")));
+    await assertSucceeds(deleteDoc(markRef(db, "studioA", "1-0800")));
+  });
+
+  it("lets anyone who works there change, keep or remove a colleague's mark, signing it as themselves", async () => {
+    const db = as("trainerA");
+    // Keep at the review: the same word and note, signed again by the person keeping it, today.
+    await seedOld();
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { note: "Always taken" })));
+    // Changed by a colleague.
+    await seedOld();
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { mark: "room", note: "Two regulars moved to 7:00" })));
+    // Removed by a colleague.
+    await seedOld();
+    await assertSucceeds(deleteDoc(markRef(db, "studioA", "1-0800")));
+  });
+
+  it("never lets a mark be written in someone else's name, or left signed by its old author", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { by: { id: "ownerA", name: "Owner A" } })));
+    // A colleague's mark, changed but still carrying their name and date.
+    await seedOld();
+    await assertFails(updateDoc(markRef(db, "studioA", "1-0800"), { mark: "room" }));
+    await assertFails(updateDoc(markRef(db, "studioA", "1-0800"), { note: "Changed under their name", at: serverTimestamp() }));
+    // A change that signs it again is theirs to make.
+    await assertSucceeds(updateDoc(markRef(db, "studioA", "1-0800"), { mark: "room", by: { id: "trainerA", name: "Trainer A" }, at: serverTimestamp() }));
+  });
+
+  it("never lets a mark be backdated or dated ahead", async () => {
+    const db = as("trainerA");
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2026-01-01T12:00:00Z") })));
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2030-01-01T12:00:00Z") })));
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: "today" })));
+    // Kept, but backdated so it stays fresh for longer.
+    await seedOld();
+    await assertFails(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { at: new Date("2026-07-20T12:00:00Z") })));
+  });
+
+  it("holds the id to the time the mark is about", async () => {
+    const db = as("trainerA");
+    const refused: [string, Record<string, unknown>][] = [
+      // The id names another time than the fields.
+      ["1-0800", { weekday: 2 }],
+      ["1-0830", {}],
+      ["2-0800", {}],
+      ["1-800", { time: "8:00" }],
+      ["mon-0800", {}],
+      // Not a weekday of the usual week (Sundays are left out), or not one at all.
+      ["0-0800", { weekday: 0 }],
+      ["7-0800", { weekday: 7 }],
+      ["1-0800", { weekday: 1.5 }],
+      ["1-0800", { weekday: "1" }],
+      // Not a half-hour.
+      ["1-0815", { time: "08:15" }],
+      ["1-2400", { time: "24:00" }],
+      ["1-0800", { time: 800 }],
+    ];
+    for (const [key, over] of refused) {
+      await assertFails(setDoc(markRef(db, "studioA", key), mark("trainerA", over)));
+    }
+    // The last half-hour of a Saturday is a time like any other.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "6-2330"), mark("trainerA", { weekday: 6, time: "23:30" })));
+  });
+
+  it("holds the mark's shape", async () => {
+    const db = as("trainerA");
+    const refused: Record<string, unknown>[] = [
+      mark("trainerA", { mark: "closed" }),
+      mark("trainerA", { mark: "a regular" }),
+      mark("trainerA", { note: "x".repeat(201) }),
+      mark("trainerA", { note: 42 }),
+      mark("trainerA", { note: null }),
+      mark("trainerA", { by: "trainerA" }),
+      mark("trainerA", { by: { id: "trainerA" } }),
+      mark("trainerA", { by: { id: "trainerA", name: "x".repeat(121) } }),
+      mark("trainerA", { by: { id: "trainerA", name: "Trainer A", role: "Admin" } }),
+      // Nothing about a client, and nothing else beside the mark.
+      mark("trainerA", { clientName: "Judy Smith" }),
+      mark("trainerA", { expiresOn: "2026-12-01" }),
+      without(mark("trainerA"), "by"),
+      without(mark("trainerA"), "at"),
+      without(mark("trainerA"), "mark"),
+      without(mark("trainerA"), "weekday"),
+      without(mark("trainerA"), "time"),
+    ];
+    for (const data of refused) {
+      await assertFails(setDoc(markRef(db, "studioA", "1-0800"), data));
+    }
+    // A note of exactly 200 characters, and no note at all, are both fine.
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), mark("trainerA", { note: "x".repeat(200) })));
+    await assertSucceeds(setDoc(markRef(db, "studioA", "1-0800"), without(mark("trainerA"), "note")));
+  });
+
+  it("refuses a trainer or a leader from another studio, reading or writing, and anyone signed out", async () => {
+    await seedPeople();
+    await seedOld();
+    for (const uid of ["trainerB", "headB"]) {
+      const elsewhere = as(uid);
+      await assertFails(getDoc(markRef(elsewhere, "studioA", "1-0800")));
+      await assertFails(getDocs(collection(elsewhere, "studios", "studioA", "openingsMarks")));
+      await assertFails(setDoc(markRef(elsewhere, "studioA", "1-0800"), mark(uid)));
+      await assertFails(setDoc(markRef(elsewhere, "studioA", "2-0800"), mark(uid, { weekday: 2 })));
+      await assertFails(deleteDoc(markRef(elsewhere, "studioA", "1-0800")));
+    }
+    const out = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(markRef(out, "studioA", "1-0800")));
+    await assertFails(setDoc(markRef(out, "studioA", "2-0800"), mark("nobody", { weekday: 2 })));
+    await assertFails(deleteDoc(markRef(out, "studioA", "1-0800")));
+    // Their own studio's marks are theirs.
+    await assertSucceeds(setDoc(markRef(as("trainerB"), "studioB", "1-0800"), mark("trainerB")));
+  });
+
+  // Who: a trainer, the studio's leaders (a studio owner, a head trainer, a
+  // studio leader, a trainer with the grant), a guest trainer, a franchise
+  // owner and an administrator, each on create, update and delete.
+  it("lets everyone who works there, runs it, or is above it set, change and remove a mark", async () => {
+    await seedPeople();
+    for (const uid of ["trainerA", "ownerA", "headA", "leaderA", "grantA", "guestA", "franchiseX", "adminX"]) {
+      const db = as(uid);
+      await assertSucceeds(setDoc(markRef(db, "studioA", "3-1030"), mark(uid, { weekday: 3, time: "10:30" })));
+      await assertSucceeds(setDoc(markRef(db, "studioA", "3-1030"), mark(uid, { weekday: 3, time: "10:30", mark: "room" })));
+      await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+      await assertSucceeds(deleteDoc(markRef(db, "studioA", "3-1030")));
+    }
+  });
+
+  it("follows Demo Mode's own rule: everyone signed in has the run of the practice studio", async () => {
+    const db = as("trainerB");
+    await assertSucceeds(setDoc(markRef(db, "demo-studio", "1-0800"), mark("trainerB")));
+    await assertSucceeds(getDocs(collection(db, "studios", "demo-studio", "openingsMarks")));
+    await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "1-0800")));
+  });
+
+  // The 1,000-expression budget (a request that runs out comes back
+  // PERMISSION_DENIED, like a refusal). The costliest marks the app writes:
+  // the longest note and name, over a colleague's mark that already holds
+  // both (an update checks the new document whole), by every kind of writer,
+  // none with a role on the token; a new mark; a removal; and the read of the
+  // whole collection.
+  it("fits the fullest mark, set, changed and removed, inside the rules' budget for every writer", async () => {
+    await seedPeople();
+    for (const uid of ["guestA", "grantA", "headA", "leaderA", "trainerA", "ownerA", "franchiseX", "adminX"]) {
+      const db = as(uid);
+      const fullest = mark(uid, { weekday: 6, time: "19:30", mark: "room", note: "y".repeat(200), by: { id: uid, name: "n".repeat(120) } });
+      await seedMark("studioA", "6-1930", {
+        weekday: 6,
+        time: "19:30",
+        mark: "full",
+        note: "z".repeat(200),
+        by: { id: "ownerA", name: "o".repeat(120) },
+        at: new Date("2026-07-20T12:00:00Z"),
+      });
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-1930"), fullest));
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-1930"), { ...fullest, mark: "full" }));
+      await assertSucceeds(getDocs(collection(db, "studios", "studioA", "openingsMarks")));
+      await assertSucceeds(deleteDoc(markRef(db, "studioA", "6-1930")));
+      // A new mark on a time nobody has marked.
+      await assertSucceeds(setDoc(markRef(db, "studioA", "6-0530"), mark(uid, { weekday: 6, time: "05:30", note: "q".repeat(200) })));
+    }
+  });
+});
