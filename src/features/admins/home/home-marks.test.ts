@@ -14,6 +14,7 @@ import {
   type HomeMark,
 } from "./home-marks";
 import { needItems, type NeedInputs, type NeedItem } from "./needs";
+import { NO_LAUNCHES } from "./overdue-setup";
 
 const need = (id: string, condition: string, say = `${id} needs you.`): NeedItem => ({
   id,
@@ -54,6 +55,7 @@ describe("a mark's key is the condition", () => {
       limbo: { state: "ok", entries: [] },
       bugs: { state: "ok", reports },
       offers: { state: "ok", pending: [] },
+      launches: NO_LAUNCHES,
       now: 0,
     });
     const before = needItems(input([report("b2"), report("b1")])).items[0];

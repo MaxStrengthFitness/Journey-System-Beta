@@ -3,6 +3,7 @@ import type { FranchiseNetwork, LimboEntry, Studio } from "../../../types";
 import type { ReportView } from "../../admin/bugs/reportView";
 import { syncRows, type LeaseRead } from "../machinery/sync-check";
 import { MAX_NEEDS, needItems, needsHeadline, type NeedInputs } from "./needs";
+import { NO_LAUNCHES, type OverdueRead } from "./overdue-setup";
 import { networkSentence, standardSentence } from "./sentences";
 
 const tz = "America/New_York";
@@ -46,6 +47,7 @@ const base = (): NeedInputs => ({
     reports: [report("b1", "open", now - 2 * 86_400_000, "Timer froze after the Wrap-up"), report("b2", "open", now - 86_400_000, "Leg Press seat setting missing on the briefing", "Idril"), report("b3", "fixed", now, "Old one")],
   },
   offers: { state: "ok", pending: [{ id: "o1", machineName: "Hip Thrust (Nautilus)", studioName: "Solon", submittedAt: now - 3 * 86_400_000 }] },
+  launches: NO_LAUNCHES,
   now,
 });
 
@@ -92,6 +94,7 @@ describe("what needs you", () => {
       limbo: { state: "ok", entries: [] },
       bugs: { state: "ok", reports: [report("b3", "fixed", now, "Old one")] },
       offers: { state: "ok", pending: [] },
+      launches: NO_LAUNCHES,
       now,
     };
     expect(needItems(calm).items).toEqual([]);

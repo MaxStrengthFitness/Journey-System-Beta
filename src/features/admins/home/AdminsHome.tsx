@@ -25,7 +25,7 @@
  * again" reads those documents again. Nothing asks Mindbody anything.
  */
 import { useState, type ReactNode } from "react";
-import { Bug, CircleHelp, GitPullRequest, Inbox, Network, RefreshCw, Settings2, Undo2 } from "lucide-react";
+import { Bug, CircleHelp, GitPullRequest, Inbox, Network, RefreshCw, Rocket, Settings2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
 import { AdminButton, AdminInput, AdminNotice, AdminPanel, AdminScreen } from "../../admin/primitives";
@@ -39,6 +39,7 @@ import "../admins.css";
 const ICON: Record<string, ReactNode> = {
   "sync-failing": <RefreshCw aria-hidden="true" />,
   "mindbody-setup": <Settings2 aria-hidden="true" />,
+  "launch-overdue": <Rocket aria-hidden="true" />,
   registry: <Network aria-hidden="true" />,
   limbo: <Inbox aria-hidden="true" />,
   offers: <GitPullRequest aria-hidden="true" />,
