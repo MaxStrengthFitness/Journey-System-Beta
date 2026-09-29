@@ -4,6 +4,7 @@ import {
   BookOpen,
   ClipboardList,
   Factory,
+  History,
   Layers,
   MessageSquareQuote,
   OctagonAlert,
@@ -178,6 +179,13 @@ export interface MachineArticleProps {
    * document is never read for a trainer who does not ask for it.
    */
   trends?: ReactNode;
+  /**
+   * What changed on the standard — a MachineChangeLog (catalog wave 3, Sep
+   * 29 2026). Folded and closed by default like trends, and for the same
+   * reason: the log is read when the fold is opened, never for a trainer who
+   * did not ask. A studio's own machine has no standard, so no log.
+   */
+  changes?: ReactNode;
 
   /** Which foldables are open, persisted per section by the host. */
   isOpen: (id: string, fallback: boolean) => boolean;
@@ -204,6 +212,7 @@ export function MachineArticle({
   extraBadges,
   comments,
   trends,
+  changes,
   isOpen,
   setOpen,
 }: MachineArticleProps) {
@@ -445,6 +454,17 @@ export function MachineArticle({
           {...fold("trends", false)}
         >
           {trends}
+        </WikiFoldable>
+      )}
+
+      {changes && (
+        <WikiFoldable
+          id="changes"
+          title="What changed"
+          icon={<History size={13} aria-hidden />}
+          {...fold("changes", false)}
+        >
+          {changes}
         </WikiFoldable>
       )}
 

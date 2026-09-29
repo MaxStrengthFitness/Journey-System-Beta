@@ -1902,6 +1902,31 @@ service cloud.firestore {
         allow create: if isAuthenticated() && isAnyAuthenticatedTrainer();
         allow update, delete: if false;
       }
+
+      // CATALOG WAVE 3: the standard's change log (Sep 29 2026; the Codex's
+      // question 1). One document per save of the catalog editor - who, when
+      // and which DEFINITION FIELDS, never the values (they are on the
+      // machine). Written only by recordMachineChange
+      // (features/machine-codex/change-log-store.ts), signed with the Auth
+      // uid and the server's time; read on the machine's Catalog page by
+      // anyone signed in. Append-only: an audit trail anyone can edit is not
+      // an audit trail. Administrators write it because only they can write
+      // the machine it records.
+      function machineChangeValid(d) {
+        return d.keys().hasOnly(['at', 'by', 'kind', 'fields'])
+            && d.keys().hasAll(['at', 'by', 'kind', 'fields'])
+            && d.at == request.time
+            && d.by is map && d.by.keys().hasOnly(['uid', 'name']) && d.by.keys().hasAll(['uid', 'name'])
+            && d.by.uid == request.auth.uid
+            && d.by.name is string && d.by.name.size() > 0 && d.by.name.size() <= 120
+            && d.kind in ['created', 'edited']
+            && d.fields is list && d.fields.size() <= 80;
+      }
+      match /changes/{changeId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isSuperAdmin() && machineChangeValid(request.resource.data);
+        allow update, delete: if false;
+      }
     }
 
     // WAVE 2 CODEX: the model record (Codex R2, Sep 28 2026; AJ approved

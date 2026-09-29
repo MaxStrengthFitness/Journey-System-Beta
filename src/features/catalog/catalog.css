@@ -20,6 +20,7 @@
                       .mcat-oos*    out of service, why and who (wave 2)
                       .mcat-ntf*    the Academy's never-to-failure rule (R2)
      MovementModels   .mcat-models* a movement's models (wave 2, R4)
+     MachineChangeLog .mcat-changes* what changed on the standard (wave 3)
      CatalogLenses    .mcat-lens*   the three ways in (R3)
      BodyLens         .mcat-body*   the body, on the app's anatomy model (R3)
 
@@ -861,5 +862,42 @@
 }
 .mcat-floor-edit__where {
   font-size: 13px;
+  color: var(--wk-ink-muted);
+}
+
+/* ── What changed: a standard machine's change log (wave 3, Sep 29 2026) ── */
+/* The models' list, in the same shape: one sentence a save, newest first. */
+.mcat-changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--wk-border);
+  border-radius: var(--wk-radius);
+  background: var(--wk-surface);
+}
+.mcat-changes__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  padding: 0.625rem 0.875rem;
+}
+.mcat-changes__item + .mcat-changes__item {
+  border-top: 1px solid var(--wk-border);
+}
+.mcat-changes__what {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--wk-ink);
+  overflow-wrap: anywhere;
+}
+.mcat-changes__when {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--wk-ink-muted);
+}
+.mcat-changes__empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--wk-ink-muted);
 }

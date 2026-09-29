@@ -23,6 +23,7 @@ import { abbr } from "../routine-builder/academy";
 import { fromLegacyMachine } from "../catalog/adapters";
 import { dedupeMachines } from "../catalog/machine-identity";
 import { MachineArticle } from "../catalog/MachineArticle";
+import { MachineChangeLogRead } from "../catalog/MachineChangeLog";
 import { MachineFigure } from "../catalog/MachineFigure";
 import { MovementModels } from "../catalog/MovementModels";
 import { modelsOfMovement } from "../catalog/models";
@@ -364,6 +365,13 @@ export function MachineDatabase({
           }
           notice={notice}
           models={movementModels.length > 0 ? <MovementModels models={movementModels} /> : undefined}
+          changes={
+            // What changed on the standard (catalog wave 3): a catalog
+            // machine's own log; a studio's shared machine has none.
+            e.origin === "msf" ? (
+              <MachineChangeLogRead catalogId={e.machine.id} active={isOpen("changes", false)} />
+            ) : undefined
+          }
           academy={{
             onOpenCard: card && onOpenAcademy ? () => onOpenAcademy(e.machine.id, "card", e.machine.name) : undefined,
             onOpenScript:

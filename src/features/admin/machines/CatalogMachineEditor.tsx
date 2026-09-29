@@ -10,6 +10,7 @@ import { MachineEditor } from "./editor/MachineEditor";
 import { definitionOf, emptyMachineDefinition, stripUndefined } from "./definition-defaults";
 import { AdminButton } from "../primitives";
 import { useMachineModels } from "../../machine-codex/models-store";
+import { recordMachineChange } from "../../machine-codex/change-log-store";
 
 /**
  * EDITING THE STANDARD — the Max Strength catalog entry itself.
@@ -139,6 +140,12 @@ export function CatalogMachineEditor({
       },
       { merge: true },
     );
+
+    // The change log (catalog wave 3, Sep 29 2026): which definition
+    // fields this save wrote, signed, after the machine's own write has
+    // landed. Not awaited and never throwing: the correction is what
+    // matters, and a log that couldn't be written must not block it.
+    void recordMachineChange(id, isNew ? "created" : "edited", Object.keys(changes));
 
     toastSuccess(
       isNew

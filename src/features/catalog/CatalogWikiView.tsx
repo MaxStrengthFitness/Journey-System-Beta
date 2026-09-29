@@ -48,6 +48,7 @@ import { findOnFloor, findUnitsFrom, type FindHit } from "./find";
 import { FloorRow } from "./FloorRow";
 import { flagLineOf, floorSentence, presetOf } from "./floor-index";
 import { MachineArticle, type FoundOnPage } from "./MachineArticle";
+import { MachineChangeLogRead } from "./MachineChangeLog";
 import { MachineFigure } from "./MachineFigure";
 import { modelForUnit, modelName, modelsById } from "./models";
 import { movementOf, movementsWithAliases } from "./names";
@@ -589,6 +590,13 @@ export function CatalogWikiView({
           /* The panel reads machineTrends/{id} only once the foldable is open,
              and the read is cached per machine for the session. */
           trends={<MachineTrendsPanel machineId={selected.id} active={isOpen("trends", false)} />}
+          changes={
+            // A standard machine's log (wave 3): the catalog document behind
+            // this unit. A studio's own machine has no standard, so no log.
+            selected.isStudioCustom ? undefined : (
+              <MachineChangeLogRead catalogId={selected.comparisonKey ?? selected.id} active={isOpen("changes", false)} />
+            )
+          }
           academy={{
             onOpenCard:
               card && onOpenAcademy
