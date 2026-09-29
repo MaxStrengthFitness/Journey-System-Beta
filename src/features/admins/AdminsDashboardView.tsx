@@ -99,6 +99,8 @@ import { AdminsHome } from "./home/AdminsHome";
 import { useHomeSignals } from "./home/useHomeSignals";
 import { needItems, type NeedDoor } from "./home/needs";
 import { useHomeMarks } from "./home/useHomeMarks";
+import { launchingIds, overdueSetup } from "./home/overdue-setup";
+import { useSetupData } from "./launches/useSetupData";
 import { clearHomeMark, setHomeMark } from "./home/home-marks-store";
 import { staleMarkKeys, type HomeMarkState } from "./home/home-marks";
 import { studioTodayKey } from "../../lib/studio-time";
@@ -310,9 +312,16 @@ function AdminsShell({
   // Home: what needs you, the network and the standard, all from the reads above.
   const now = checkedAt ?? Date.now();
   const allSync = useMemo(() => syncRows(studios, leases, now), [studios, leases, now]);
+  // The studios opening: their checklists, the two small reads Launches
+  // makes, read here too so Home can say what is overdue (the third wave,
+  // Sep 29 2026; home/overdue-setup.ts). Usually no studio is opening, and
+  // then nothing is read.
+  const launching = useMemo(() => launchingIds(studios), [studios]);
+  const setupData = useSetupData(launching, signalsSeq);
+  const launches = useMemo(() => overdueSetup(studios, trainers, setupData, new Date(now)), [studios, trainers, setupData, now]);
   const needs = useMemo(
-    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, now }),
-    [studios, networks, allSync, signals, now],
+    () => needItems({ studios, networks, sync: allSync, limbo: signals.limbo, bugs: signals.bugs, offers: signals.offers, launches, now }),
+    [studios, networks, allSync, signals, launches, now],
   );
   const openDoor = (door: NeedDoor) => {
     if ("action" in door) checkAgain();
@@ -332,8 +341,9 @@ function AdminsShell({
     if (signals.limbo.state === "ok") kinds.add("limbo");
     if (signals.offers.state === "ok") kinds.add("offers");
     if (signals.bugs.state === "ok") kinds.add("bugs");
+    if (launches.state === "ok") kinds.add("launch-overdue");
     return kinds;
-  }, [allSync, signals]);
+  }, [allSync, signals, launches]);
   useEffect(() => {
     if (homeMarks.state !== "ok") return;
     const stale = staleMarkKeys(homeMarks.marks, [...needs.items, ...needs.more], settledKinds, today);

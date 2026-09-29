@@ -28,6 +28,8 @@ import { limboGroups } from "../../admin/limbo/limbo-groups";
 import type { SyncRow } from "../machinery/sync-check";
 import type { AdminsPage } from "../nav";
 import type { PendingOffer, ReadState } from "./useHomeSignals";
+import type { OverdueRead } from "./overdue-setup";
+import { dayLabel } from "../studios/stages";
 
 export type NeedTone = "watch" | "unknown" | "live";
 
@@ -62,6 +64,8 @@ export interface NeedInputs {
   limbo: { state: ReadState; entries: readonly LimboEntry[] };
   bugs: { state: ReadState; reports: readonly ReportView[] };
   offers: { state: ReadState; pending: readonly PendingOffer[] };
+  /** The studios opening whose setup checklist has an item past its due day (overdue-setup.ts). */
+  launches: OverdueRead;
   now: number;
 }
 
@@ -130,7 +134,41 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
     });
   }
 
-  // 3. Franchise listings that disagree with the studios.
+  // 3. A studio opening with a setup item past its due day (the third wave, Sep 29 2026).
+  if (input.launches.state === "ok" && input.launches.studios.length > 0) {
+    const late = input.launches.studios;
+    const first = late[0];
+    const oldest = first.items[0];
+    const leads = first.leaders.length
+      ? `${names(first.leaders)} ${first.leaders.length === 1 ? "leads" : "lead"} ${first.name}.`
+      : `Nobody leads ${first.name} yet.`;
+    out.push({
+      id: "launch-overdue",
+      kind: "Launches",
+      tone: "watch",
+      say:
+        late.length === 1
+          ? first.items.length === 1
+            ? `${first.name}'s setup item “${oldest.title}” was due ${dayLabel(oldest.dueOn)}.`
+            : `${first.name} has ${first.items.length} setup items overdue; the oldest, “${oldest.title}”, was due ${dayLabel(oldest.dueOn)}.`
+          : `${late.length} studios opening have setup items overdue: ${names(late.map((s) => s.name))}.`,
+      proof:
+        late.length === 1
+          ? `${leads} Tick it, skip it with a reason, or move the opening day.`
+          : `The oldest is ${first.name}'s “${oldest.title}”, due ${dayLabel(oldest.dueOn)}. ${leads}`,
+      door:
+        late.length === 1
+          ? { label: `Open ${first.name}'s setup`, page: "studio", studioId: first.studioId, tab: "setup" }
+          : { label: "Open Launches", page: "launches" },
+      clears: "Clears itself when each item is done or skipped, or the opening day moves.",
+      condition: late
+        .flatMap((s) => s.items.map((i) => `${s.studioId}:${i.id}`))
+        .sort()
+        .join(","),
+    });
+  }
+
+  // 4. Franchise listings that disagree with the studios.
   const orphans = findOrphans(input.networks as FranchiseNetwork[], input.studios as Studio[]);
   if (hasOrphans(orphans)) {
     const count = orphans.danglingStudioIds.reduce((n, d) => n + d.studioIds.length, 0) + orphans.strandedStudios.length + orphans.oneSidedLinks.length;
@@ -217,6 +255,7 @@ export function needItems(input: NeedInputs): { items: NeedItem[]; more: NeedIte
   const unknownSync = input.sync.filter((r) => r.kind === "unknown").map((r) => `${r.name}'s sync`);
   const unknownReads = [
     ...unknownSync,
+    ...input.launches.unread.map((name) => `${name}'s setup checklist`),
     ...(input.limbo.state === "failed" ? ["Limbo"] : []),
     ...(input.offers.state === "failed" ? ["the machines offered to the catalog"] : []),
     ...(input.bugs.state === "failed" ? ["the bug reports"] : []),

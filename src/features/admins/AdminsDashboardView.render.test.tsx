@@ -114,14 +114,14 @@ const settle = async () => {
   });
 };
 
-async function mount(who: Trainer, isAdmin: boolean) {
+async function mount(who: Trainer, isAdmin: boolean, list: Studio[] = studios) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
     root!.render(
       <StrictMode>
-        <AdminsDashboardView authTrainer={who} studios={studios} networks={[]} trainers={[who, imrahil]} clients={[]} machines={[]} isAdmin={isAdmin} activeStudioId="solon" />
+        <AdminsDashboardView authTrainer={who} studios={list} networks={[]} trainers={[who, imrahil]} clients={[]} machines={[]} isAdmin={isAdmin} activeStudioId="solon" />
       </StrictMode>,
     );
   });
@@ -333,6 +333,20 @@ describe("the Admins dashboard", () => {
     const el = await mount(admin, true);
     expect(el.textContent).toContain("Nothing needs you right now.");
     expect(homeState.deleted).toContain("adminHome/bugs--oldhash");
+  });
+
+  it("says on Home which setup items of a studio opening are overdue, with a door to its setup (the third wave, Sep 29 2026)", async () => {
+    // Opened long ago and still Setting up: every block's due day has passed,
+    // and this empty Firestore holds no ticks, no floor and no leader there.
+    const mentor = { id: "mentor", name: "Mentor", timezone: "America/New_York", stage: "setting-up", openingDay: "2026-01-05" } as unknown as Studio;
+    const el = await mount(admin, true, [...studios, mentor]);
+    // Two: its missing Site ID is the Mindbody set-up item, and its checklist this one.
+    expect(el.textContent).toContain("2 things need you.");
+    expect(el.textContent).toMatch(/Mentor has \d+ setup items overdue; the oldest, “Business email, phone and address”, was due Mon, Sep 15, 2025\./);
+    expect(el.textContent).toContain("Nobody leads Mentor yet. Tick it, skip it with a reason, or move the opening day.");
+    await click(byText(el, ".hq-need__door button", "Open Mentor's setup"));
+    expect(el.textContent).toContain("Setup checklist");
+    expect(el.textContent).toContain("Mentor");
   });
 
   it("refuses anyone who is not an administrator", async () => {
