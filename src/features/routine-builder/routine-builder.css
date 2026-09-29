@@ -66,8 +66,7 @@
 
 .rb-head__title {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   flex: 0 1 auto;
   font-family: var(--rb-font-display);
   font-style: italic;
@@ -76,7 +75,7 @@
   letter-spacing: 0.02em;
   font-size: 0.95rem;
   color: var(--rb-ink);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .rb-head__count {
@@ -308,9 +307,8 @@
   letter-spacing: 0.02em;
   font-size: 0.85rem;
   color: var(--rb-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .rb-row__meta {
@@ -425,9 +423,8 @@
 .rb-warn__pair {
   color: var(--rb-ink-2);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .rb-warn__chev { flex: 0 0 auto; margin-left: auto; opacity: 0.7; transition: transform 120ms ease; }
 .rb-warn__chev--open { transform: rotate(180deg); }
@@ -663,9 +660,8 @@
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* ── Rotation / B-routine panel ─────────────────────────────────────────── */

@@ -687,10 +687,9 @@
   font-size: 12px;
   font-weight: 800;
   color: var(--cal-ink-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 14ch;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .hist-avatar--unknown { background: var(--cal-surface-3); color: var(--cal-ink-muted); }
 .hist-time {
@@ -941,9 +940,8 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--cal-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .hsd-set__tag {
   padding: 1px 5px;

@@ -155,7 +155,9 @@
   font-weight: 600;
   line-height: 16px;
   color: var(--eq-ink-muted);
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* The strip has a line of its own for the marks: each says its word. */

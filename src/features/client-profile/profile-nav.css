@@ -187,9 +187,11 @@
   text-transform: uppercase;
   /* Names are never truncated (CLAUDE.md). Two words wrap rather than clip,
      which is why the button is a column and 48px tall rather than 40px. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .psub__meta {
