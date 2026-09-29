@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ackWords,
   FIRST_VISIT_WINDOW_DAYS,
   heartsLine,
   isAfterMarker,
@@ -216,6 +217,38 @@ describe("the notices", () => {
     expect(newCount).toBe(4);
     const first = notices[0];
     expect(first.kind === "announcement" && first.role).toBe("Studio Leader");
+  });
+
+  it("keeps a notice that asks \"I've read it\" new until this person answers, whatever the marker or a tap says (Relay's third wave)", () => {
+    const base = {
+      now: NOW,
+      seenAt: NOW,
+      newClients: known(),
+      machines: [],
+      playbook: [],
+      hearts: [],
+      readKeys: new Set(["ann:asks"]),
+    };
+    const asks = { id: "asks", title: "Read the new closing checklist", createdAt: NOW - 86_400_000, asksRead: true };
+    const plain = { id: "plain", title: "New towels", createdAt: NOW - 86_400_000 };
+    const before = sinceNotices({ ...base, announcements: [asks, plain] });
+    expect(before.notices.map((n) => [n.key, n.isNew, n.kind === "announcement" ? n.ack.state : null])).toEqual([
+      ["ann:asks", true, "asking"],
+      ["ann:plain", false, "not-asked"],
+    ]);
+    expect(before.newCount).toBe(1);
+    const after = sinceNotices({ ...base, announcements: [asks, plain], acked: new Map([["asks", NOW - 3_600_000]]) });
+    const n = after.notices[0];
+    expect(n.isNew).toBe(false);
+    expect(n.kind === "announcement" && n.ack).toEqual({ state: "acked", at: NOW - 3_600_000 });
+    expect(after.newCount).toBe(0);
+  });
+
+  it("says when you said you'd read it, and nothing on a notice that didn't ask", () => {
+    expect(ackWords({ state: "acked", at: at("2026-09-28T14:12:00Z") }, TODAY)).toBe("You said you'd read it · today at 10:12 AM");
+    expect(ackWords({ state: "acked", at: null }, TODAY)).toBe("You said you'd read it");
+    expect(ackWords({ state: "asking" }, TODAY)).toBeNull();
+    expect(ackWords({ state: "not-asked" }, TODAY)).toBeNull();
   });
 
   it("keeps a notice tapped as seen on this iPad hollow, and leaves out a new-clients notice with nothing to say", () => {

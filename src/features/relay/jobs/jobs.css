@@ -218,3 +218,14 @@
 @media (prefers-reduced-motion: reduce) {
   .tj-chev { transition: none; }
 }
+
+/* When it was taken and when it was finished (Relay's third wave, Sep 29 2026). */
+.tj-card__times,
+.tj-sheet__times {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--st-ink-muted);
+  overflow-wrap: anywhere;
+}

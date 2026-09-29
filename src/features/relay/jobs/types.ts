@@ -60,6 +60,14 @@ export interface JobPart {
   doneAt?: unknown;
 }
 
+/** One person's claim on a job: who, and when they took it. */
+export interface JobClaim {
+  name: string;
+  /** The trainer document's id, beside the uid the key carries. */
+  trainerId?: string | null;
+  at?: unknown;
+}
+
 /** studios/{studioId}/teamJobs/{jobId} */
 export interface TeamJob {
   id: string;
@@ -81,6 +89,14 @@ export interface TeamJob {
   openToAll: boolean;
 
   parts: Record<string, JobPart>;
+
+  /**
+   * When each person took it (Relay's third wave, Sep 29 2026): keyed by the
+   * claimant's SIGN-IN uid, written one key at a time by joinJob and removed
+   * by leaveJob. A leader naming someone is not a claim, so a named person
+   * has no entry until they take it themselves. Optional: older jobs have none.
+   */
+  claims?: Record<string, JobClaim>;
 
   /** Studio-local 'YYYY-MM-DD', or null for "whenever". */
   /** Relay (Sep 2026): about how long, for Next up's gap fitting. Optional. */

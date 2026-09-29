@@ -58,7 +58,21 @@ export interface UseHubAnnouncementsResult {
   /** Of those, the ones this trainer has not opened yet. */
   unread: HubAnnouncement[];
   unreadCount: number;
+  /**
+   * The announcements this person said they'd read (Relay's third wave):
+   * id → when (ms), or null while the stamp is on its way. Theirs alone,
+   * from the same announcementReads/{uid} document as the read-marks.
+   */
+  acked: ReadonlyMap<string, number | null>;
 }
+
+const NO_ACKS: ReadonlyMap<string, number | null> = new Map();
+
+const millisOf = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  const t = v as { toMillis?: () => number } | null | undefined;
+  return t && typeof t.toMillis === "function" ? t.toMillis() : null;
+};
 
 export function useHubAnnouncements(
   trainer: Trainer | null | undefined,
@@ -102,16 +116,24 @@ export function useHubAnnouncements(
      company the way a stamp on the shared announcement was. */
   const uid = auth.currentUser?.uid ?? null;
   const [readIds, setReadIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [acked, setAcked] = useState<ReadonlyMap<string, number | null>>(NO_ACKS);
   useEffect(() => {
     setReadIds(new Set());
+    setAcked(NO_ACKS);
     if (!trainer || !uid) return;
     return onSnapshot(
       doc(db, "announcementReads", uid),
       (snap) => {
-        const ids = (snap.exists() ? (snap.data()?.ids as Record<string, unknown> | undefined) : undefined) ?? {};
+        const data = snap.exists() ? snap.data() : undefined;
+        const ids = (data?.ids as Record<string, unknown> | undefined) ?? {};
         setReadIds(new Set(Object.keys(ids).filter((k) => ids[k] === true)));
+        const acks = (data?.acks as Record<string, unknown> | undefined) ?? {};
+        setAcked(new Map(Object.keys(acks).map((k) => [k, millisOf(acks[k])])));
       },
-      () => setReadIds(new Set()),
+      () => {
+        setReadIds(new Set());
+        setAcked(NO_ACKS);
+      },
     );
   }, [trainer, uid]);
 
@@ -122,7 +144,24 @@ export function useHubAnnouncements(
     [announcements, trainer, uid, readIds],
   );
 
-  return { announcements, unread, unreadCount: unread.length };
+  return { announcements, unread, unreadCount: unread.length, acked };
+}
+
+/**
+ * "I've read it" (Relay's third wave, Sep 29 2026; Relay q7): this person
+ * says they have read a notice that asked. One merge write of one map key
+ * on their own announcementReads/{uid}, stamped with the server's time.
+ * Private: the poster never counts these, and nobody is pinged. A failed
+ * write leaves the notice asking, the safe direction to fail.
+ */
+export async function ackAnnouncement(announcementId: string): Promise<void> {
+  const readerId = auth.currentUser?.uid;
+  if (!readerId || !announcementId) return;
+  await setDoc(
+    doc(db, "announcementReads", readerId),
+    { acks: { [announcementId]: serverTimestamp() }, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 /**

@@ -6,6 +6,7 @@
  */
 
 import { addDays, weekdayOf } from "../../studio-tasks/recurrence";
+import { formatStudioTime, studioDateKey } from "../../../lib/studio-time";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
 import {
   JOB_DETAIL_MAX,
@@ -15,6 +16,7 @@ import {
   JOB_PART_LABEL_MAX,
   JOB_TITLE_MAX,
   type JobAbout,
+  type JobClaim,
   type JobDraft,
   type JobPart,
   type JobStatus,
@@ -213,6 +215,16 @@ export function jobFromDoc(id: string, studioId: string, d: Record<string, unkno
       doneAt: p.doneAt,
     };
   }
+  const claims: Record<string, JobClaim> = {};
+  const rawClaims = data.claims && typeof data.claims === "object" ? (data.claims as Record<string, Record<string, unknown>>) : {};
+  for (const [uid, c] of Object.entries(rawClaims)) {
+    if (!c || typeof c !== "object") continue;
+    claims[uid] = {
+      name: str(c.name, 80) || "A trainer",
+      trainerId: typeof c.trainerId === "string" ? c.trainerId : null,
+      at: c.at,
+    };
+  }
   const assignees = uniqueActors(Array.isArray(data.assignees) ? (data.assignees as TaskAuthor[]) : []);
   const status: JobStatus = data.status === "done" || data.status === "cancelled" ? data.status : "open";
   return {
@@ -226,6 +238,7 @@ export function jobFromDoc(id: string, studioId: string, d: Record<string, unkno
     assigneeIds: assignees.map((a) => a.id),
     openToAll: assignees.length === 0 ? true : data.openToAll === true,
     parts,
+    ...(Object.keys(claims).length ? { claims } : {}),
     dueOn: typeof data.dueOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.dueOn) ? data.dueOn : null,
     requiresNote: data.requiresNote === true,
     notifyOnDone: data.notifyOnDone !== false,
@@ -361,6 +374,72 @@ export function contributors(job: Pick<TeamJob, "parts">): TaskAuthor[] {
 /** How many parts each person ticked. */
 export function partsBy(job: Pick<TeamJob, "parts">, trainerId: string): number {
   return Object.values(job.parts).filter((p) => p.doneBy?.id === trainerId).length;
+}
+
+/* ------------------------------------------------------------------ *
+ * When it was taken and when it was finished (Relay's third wave, Sep 29 2026)
+ * ------------------------------------------------------------------ */
+
+export interface ClaimEntry {
+  uid: string;
+  name: string;
+  trainerId: string | null;
+  /** ms since epoch, or null while the stamp is still on its way. */
+  at: number | null;
+}
+
+const millisOf = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.getTime();
+  const t = v as { toMillis?: () => number } | null | undefined;
+  return t && typeof t.toMillis === "function" ? t.toMillis() : null;
+};
+
+/** Who took the job, earliest first; a claim with no time yet comes last. */
+export function claimEntries(job: Pick<TeamJob, "claims">): ClaimEntry[] {
+  return Object.entries(job.claims ?? {})
+    .map(([uid, c]) => ({ uid, name: c.name || "A trainer", trainerId: c.trainerId ?? null, at: millisOf(c.at) }))
+    .sort((a, b) => (a.at ?? Number.MAX_SAFE_INTEGER) - (b.at ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name));
+}
+
+/** "10:12 AM" today; "Yesterday, 10:12 AM"; "Sep 27, 10:12 AM" further back. */
+export function whenWords(ms: number, todayKey: string): string {
+  const day = studioDateKey(new Date(ms)) ?? "";
+  const time = formatStudioTime(new Date(ms));
+  if (!day || day === todayKey) return time;
+  const words = dayWords(day, todayKey);
+  return `${cap(words)}, ${time}`;
+}
+
+/**
+ * The job's timings in one line — "Claimed by Sam 10:12 AM · done 10:40 AM"
+ * — or null when nobody has claimed it and it isn't finished. `me` is every
+ * id the reader goes by (the Auth uid and the trainer id), so their own claim
+ * reads "you". A finisher who never claimed it is named on the done half.
+ */
+export function jobTimesLine(
+  job: Pick<TeamJob, "claims" | "status" | "completedBy" | "completedAt">,
+  me: (string | null | undefined)[],
+  todayKey: string,
+): string | null {
+  const mine = new Set(me.filter(Boolean) as string[]);
+  const isMe = (...ids: (string | null | undefined)[]) => ids.some((id) => id && mine.has(id));
+  const claims = claimEntries(job);
+  const claimWords = claims.map((c) => {
+    const name = isMe(c.uid, c.trainerId) ? "you" : c.name.split(" ")[0] || c.name;
+    return c.at === null ? name : `${name} ${whenWords(c.at, todayKey)}`;
+  });
+  const doneAt = job.status === "done" ? millisOf(job.completedAt) : null;
+  const finisher = job.status === "done" ? job.completedBy : null;
+  const finisherClaimed = finisher ? claims.some((c) => c.uid === finisher.id || c.trainerId === finisher.id) : false;
+  const finisherName = finisher ? (isMe(finisher.id) ? "you" : finisher.name.split(" ")[0] || finisher.name) : null;
+  const doneWords =
+    job.status === "done"
+      ? `done${doneAt !== null ? ` ${whenWords(doneAt, todayKey)}` : ""}${finisherName && !finisherClaimed ? ` by ${finisherName}` : ""}`
+      : null;
+  if (claimWords.length === 0 && !doneWords) return null;
+  if (claimWords.length === 0) return cap(doneWords!);
+  return `Claimed by ${claimWords.join(", ")}${doneWords ? ` · ${doneWords}` : ""}`;
 }
 
 export function jobErrorMessage(err: unknown): string {

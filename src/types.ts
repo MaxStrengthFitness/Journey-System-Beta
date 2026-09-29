@@ -1886,6 +1886,12 @@ export interface HubAnnouncement {
   priority: "low" | "medium" | "high"; // Treated as urgency
   readBy?: string[];
   /**
+   * The poster asks everyone to say "I've read it" (Relay's third wave,
+   * Sep 29 2026; Relay q7). Each person's answer is theirs alone, in
+   * announcementReads/{uid}.acks, never on the notice.
+   */
+  asksRead?: boolean;
+  /**
    * A page in Learning the announcement points at — a machine, an Academy
    * topic, card or script, a studio's page (Learning + Planner round). The
    * bell's card opens it. Read it with parseLearningRef.

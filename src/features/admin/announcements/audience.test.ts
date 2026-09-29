@@ -10,11 +10,11 @@ import {
   millis,
   resolveAudience,
   trainerStudioIds,
+  type AnnouncementDraft,
+  type NetworkOption,
   unreadFor,
   validateDraft,
   visibleAnnouncements,
-  type AnnouncementDraft,
-  type NetworkOption,
 } from "./audience";
 
 const NETWORKS: NetworkOption[] = [
@@ -623,5 +623,15 @@ describe("audienceLabel", () => {
     expect(
       audienceLabel({ studioId: "s9" } as HubAnnouncement, STUDIOS, NETWORKS),
     ).toBe("Austin");
+  });
+});
+
+describe("asking everyone to say they've read it (Relay's third wave)", () => {
+  it("writes asksRead only when the poster asked, so an older notice reads as it did", () => {
+    const author = { id: "t-aj", fullName: "AJ Jurgens" };
+    const base = { ...EMPTY_DRAFT, title: "Closing checklist", shortContent: "On the wall", longContent: "", scope: "universal" as const };
+    expect("asksRead" in announcementBody(base, author, [], "24h", new Date("2026-09-29T12:00:00Z"))).toBe(false);
+    expect(announcementBody({ ...base, asksRead: false }, author, [], "24h", new Date("2026-09-29T12:00:00Z")).asksRead).toBeUndefined();
+    expect(announcementBody({ ...base, asksRead: true }, author, [], "24h", new Date("2026-09-29T12:00:00Z")).asksRead).toBe(true);
   });
 });

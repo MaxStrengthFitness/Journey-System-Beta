@@ -328,6 +328,21 @@ export interface SinceAnnouncement {
   asksRead?: boolean;
 }
 
+/**
+ * Where a notice that asks stands with this person: it asks until they
+ * answer, and their answer is theirs alone (announcementReads/{uid}.acks).
+ */
+export type NoticeAck =
+  | { state: "not-asked" }
+  | { state: "asking" }
+  | { state: "acked"; at: number | null };
+
+/** "You said you'd read it · today at 10:12 AM" (the time only once the stamp has landed). */
+export function ackWords(ack: NoticeAck, todayKey: string): string | null {
+  if (ack.state !== "acked") return null;
+  return ack.at === null ? "You said you'd read it" : `You said you'd read it · ${whenWords(ack.at, todayKey)}`;
+}
+
 export interface SinceMachine {
   machineId: string;
   name: string;
@@ -358,7 +373,7 @@ export interface SinceHeart {
 }
 
 export type SinceNotice =
-  | { kind: "announcement"; key: string; at: number | null; isNew: boolean; announcement: SinceAnnouncement; role: string | null }
+  | { kind: "announcement"; key: string; at: number | null; isNew: boolean; announcement: SinceAnnouncement; role: string | null; ack: NoticeAck }
   | { kind: "new-clients"; key: string; at: number | null; isNew: boolean; clients: NewClients }
   | { kind: "out-of-service"; key: string; at: number | null; isNew: boolean; machine: SinceMachine }
   | { kind: "playbook"; key: string; at: number | null; isNew: boolean; entry: SincePlaybookEntry }
@@ -377,6 +392,8 @@ export interface SinceInput {
   hearts: readonly SinceHeart[];
   /** Notices tapped as seen on this iPad this session. */
   readKeys: ReadonlySet<string>;
+  /** Announcements this person said they'd read: id → when (ms), null while the stamp is on its way. */
+  acked?: ReadonlyMap<string, number | null>;
 }
 
 /** Was this after the marker (or, on a first visit, in the last week)? */
@@ -402,7 +419,14 @@ export function sinceNotices(input: SinceInput): { notices: SinceNotice[]; newCo
   for (const a of anns) {
     const key = `ann:${a.id}`;
     const at = millisOf(a.createdAt);
-    out.push({ kind: "announcement", key, at, isNew: fresh(key, at), announcement: a, role: input.roleOf?.(a.authorId) ?? null });
+    const ack: NoticeAck = !a.asksRead
+      ? { state: "not-asked" }
+      : input.acked?.has(a.id)
+        ? { state: "acked", at: input.acked.get(a.id) ?? null }
+        : { state: "asking" };
+    // A notice that asks stays new until this person answers: a tap or the
+    // marker doesn't stand in for "I've read it".
+    out.push({ kind: "announcement", key, at, isNew: ack.state === "asking" || fresh(key, at), announcement: a, role: input.roleOf?.(a.authorId) ?? null, ack });
   }
 
   const nc = input.newClients;

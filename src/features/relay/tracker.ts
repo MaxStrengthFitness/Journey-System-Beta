@@ -16,7 +16,8 @@
  *     Now            your own to-dos for today, and anything you took on
  *                    the Board that is due today or overdue
  *     Follow-ups     your clients' birthdays and the dates they mentioned,
- *                    in the next two weeks (board/mine.ts)
+ *                    in the next two weeks (board/mine.ts), and the clients
+ *                    whose case you own (my-cases.ts; Relay's third wave)
  *     Closing        your own to-dos for the end of the day (the closing
  *                    shift, or a time from Closing on) — Things 3's "This
  *                    Evening"
@@ -41,6 +42,7 @@ import type { TeamJob } from "./jobs/types";
 import { upcomingTimed, type Upcoming } from "./reminders/reminders";
 import { addDays } from "../studio-tasks/recurrence";
 import { isGrowthRow, type FollowUp } from "./board/mine";
+import type { MyCaseRow } from "./my-cases";
 import { clockToMinutes } from "./board/now-context";
 import { studioDateKey } from "../../lib/studio-time";
 
@@ -73,6 +75,8 @@ export interface DoneEntry {
   where: "Your list" | "Floor" | "Asks" | "Team jobs";
   /** Your own to-do, so the Done list can reopen it (a tick taken back). */
   row?: TaskRow;
+  /** A team job, so the Done list can say when it was claimed and finished. */
+  job?: TeamJob;
 }
 
 export interface TrackerInput {
@@ -85,6 +89,8 @@ export interface TrackerInput {
   /** Open and recently closed team jobs. */
   jobs: TeamJob[];
   followUps: FollowUp[];
+  /** The cases this trainer owns, open, in reading order (my-cases.ts). */
+  cases?: MyCaseRow[];
   /** The Auth uid and the trainer document id: the two differ on older accounts. */
   uid: string | null;
   trainerId: string | null;
@@ -98,6 +104,7 @@ export interface Tracker {
   now: TaskRow[];
   nowTaken: TakenItem[];
   followUps: FollowUp[];
+  cases: MyCaseRow[];
   closing: TaskRow[];
   coming: Upcoming[];
   comingTaken: TakenItem[];
@@ -204,7 +211,7 @@ export function buildTracker(input: TrackerInput): Tracker {
     if (j.status !== "done" || !isMe(j.completedBy?.id)) continue;
     const at = millis(j.completedAt);
     if ((j.closedOn ?? dayOfMillis(at)) !== input.todayKey) continue;
-    done.push({ key: `job:${j.id}`, at: at || null, what: j.title, where: "Team jobs" });
+    done.push({ key: `job:${j.id}`, at: at || null, what: j.title, where: "Team jobs", job: j });
   }
   done.sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || a.what.localeCompare(b.what));
 
@@ -213,6 +220,7 @@ export function buildTracker(input: TrackerInput): Tracker {
     now,
     nowTaken,
     followUps: input.followUps,
+    cases: input.cases ?? [],
     closing,
     coming,
     comingTaken,
@@ -220,7 +228,7 @@ export function buildTracker(input: TrackerInput): Tracker {
     someday,
     done,
     counts: {
-      today: handed.length + now.length + nowTaken.length + input.followUps.length + closing.length,
+      today: handed.length + now.length + nowTaken.length + input.followUps.length + (input.cases?.length ?? 0) + closing.length,
       coming: coming.length + comingTaken.length,
       anytime: anytime.length,
       someday: someday.length,

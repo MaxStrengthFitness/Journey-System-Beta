@@ -5,7 +5,7 @@ import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { useStudioMachines } from "../../../hooks/useStudioMachines";
 import { homeCutoverOf } from "../../../lib/client-coverage";
 import { ROLE_LABELS, type UserRole } from "../../../types";
-import { useHubAnnouncements } from "../../notifications/useHubAnnouncements";
+import { ackAnnouncement, useHubAnnouncements } from "../../notifications/useHubAnnouncements";
 import type { TaskRequest } from "../../studio-tasks/requests";
 import type { TaskRow } from "../../studio-tasks/types";
 import type { PlaybookEntry } from "../../studio-tasks/playbook";
@@ -14,6 +14,7 @@ import { useRelay } from "./RelayContext";
 import { useMachineCare } from "./machine-care-store";
 import { tapNotice, tappedKeys, useLastSeen } from "./last-seen";
 import {
+  ackWords,
   heartsLine,
   machineLine,
   millisOf,
@@ -49,16 +50,27 @@ export interface SinceYouWereInProps {
   /** Asks answered lately (useStudioRequests' recentlyResolved). */
   resolved: TaskRequest[];
   playbook: PlaybookEntry[];
-  /** Extra actions on an announcement (the "I've read it" button). */
-  announcementAction?: (announcement: { id: string; asksRead?: boolean; authorId?: string }) => ReactNode;
 }
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
-export function SinceYouWereIn({ rows, jobs, resolved, playbook, announcementAction }: SinceYouWereInProps) {
+export function SinceYouWereIn({ rows, jobs, resolved, playbook }: SinceYouWereInProps) {
   const relay = useRelay();
   const { studios } = useActiveStudio();
-  const { announcements } = useHubAnnouncements(relay.authTrainer);
+  const { announcements, acked } = useHubAnnouncements(relay.authTrainer);
+  const [acking, setAcking] = useState<string | null>(null);
+  const ack = async (id: string) => {
+    setAcking(id);
+    try {
+      await ackAnnouncement(id);
+      tapNotice(relay.studioId, `ann:${id}`);
+      setTick((t) => t + 1);
+    } catch (err) {
+      console.warn("[relay] I've read it failed:", err);
+    } finally {
+      setAcking(null);
+    }
+  };
   const { machines: floor, rosterEntries } = useStudioMachines(relay.studioId);
   const care = useMachineCare(relay.studioId);
   const last = useLastSeen(relay.studioId, relay.uid);
@@ -148,8 +160,9 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook, announcementAct
       playbook,
       hearts,
       readKeys: tappedKeys(relay.studioId),
+      acked,
     });
-  }, [tick, last.seenAt, announcements, relay.trainers, newClients, machines, playbook, hearts, relay.studioId]);
+  }, [tick, last.seenAt, announcements, acked, relay.trainers, newClients, machines, playbook, hearts, relay.studioId]);
 
   return (
     <SinceBoard
@@ -165,7 +178,8 @@ export function SinceYouWereIn({ rows, jobs, resolved, playbook, announcementAct
         setTick((t) => t + 1);
       }}
       onMarkAll={last.markAllRead}
-      announcementAction={announcementAction}
+      onAck={(id) => void ack(id)}
+      acking={acking}
     />
   );
 }
@@ -184,7 +198,8 @@ export function SinceBoard({
   me,
   onTap,
   onMarkAll,
-  announcementAction,
+  onAck,
+  acking = null,
 }: {
   notices: SinceNotice[];
   newCount: number;
@@ -195,7 +210,10 @@ export function SinceBoard({
   me: ReadonlySet<string>;
   onTap: (key: string) => void;
   onMarkAll: () => void;
-  announcementAction?: SinceYouWereInProps["announcementAction"];
+  /** "I've read it" on a notice that asks (Relay's third wave). */
+  onAck?: (announcementId: string) => void;
+  /** The notice whose "I've read it" is on its way. */
+  acking?: string | null;
 }) {
   const since = typeof seenAt === "number" ? whenWords(seenAt, todayKey) : seenAt === null ? "this week" : null;
   return (
@@ -223,7 +241,18 @@ export function SinceBoard({
                 <span className="rsy__dot" aria-hidden />
                 <span className="rsy__body">{noticeBody(n, todayKey, me)}</span>
               </button>
-              {n.kind === "announcement" && announcementAction?.(n.announcement)}
+              {n.kind === "announcement" && n.ack.state === "asking" && onAck && (
+                <button
+                  type="button"
+                  className="rsy__ack"
+                  disabled={acking === n.announcement.id}
+                  onClick={() => onAck(n.announcement.id)}
+                >
+                  <CheckCheck size={16} aria-hidden />
+                  {acking === n.announcement.id ? "Saving…" : "I've read it"}
+                </button>
+              )}
+              {n.kind === "announcement" && n.ack.state === "acked" && <span className="rsy__acked">{ackWords(n.ack, todayKey)}</span>}
             </li>
           ))}
         </ul>

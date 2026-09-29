@@ -5495,6 +5495,110 @@ describe("marks on a time", () => {
       });
     });
   });
+  describe("relay's third wave", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // -- a claim on a team job: claims.{uid}, the floor's own stamp of when it took it.
+    describe("claim times on team jobs", () => {
+      const seedJob = async () => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), "studios", "studioA", "teamJobs", "claimed"), {
+            studioId: "studioA",
+            title: "Deep clean",
+            detail: "",
+            category: "ops",
+            about: { kind: "facility" },
+            assignees: [],
+            assigneeIds: [],
+            openToAll: true,
+            parts: {},
+            dueOn: null,
+            requiresNote: false,
+            notifyOnDone: true,
+            status: "open",
+            closingNote: null,
+            completedBy: null,
+            closedOn: null,
+            createdBy: { id: "ownerA", name: "Owner A" },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        });
+      };
+
+      it("lets the floor stamp its claim when it joins, and remove it when it steps off", async () => {
+        await seedJob();
+        const trainer = as("trainerA");
+        const ref = doc(trainer, "studios", "studioA", "teamJobs", "claimed");
+        await assertSucceeds(
+          updateDoc(ref, {
+            assignees: arrayUnion({ id: "trainerA", name: "Trainer A" }),
+            assigneeIds: arrayUnion("trainerA"),
+            "claims.trainerA": { name: "Trainer A", trainerId: "trainerA", at: serverTimestamp() },
+            updatedAt: serverTimestamp(),
+          }),
+        );
+        await assertSucceeds(
+          updateDoc(ref, {
+            assignees: arrayRemove({ id: "trainerA", name: "Trainer A" }),
+            assigneeIds: arrayRemove("trainerA"),
+            "claims.trainerA": deleteField(),
+            updatedAt: serverTimestamp(),
+          }),
+        );
+        // A claim is still not a way to rewrite the job.
+        await assertFails(updateDoc(ref, { "claims.trainerA": { name: "Trainer A", at: serverTimestamp() }, title: "Other", updatedAt: serverTimestamp() }));
+        // Nor can someone from another studio stamp one.
+        const elsewhere = as("trainerB");
+        await assertFails(
+          updateDoc(doc(elsewhere, "studios", "studioA", "teamJobs", "claimed"), {
+            "claims.trainerB": { name: "Trainer B", at: serverTimestamp() },
+            updatedAt: serverTimestamp(),
+          }),
+        );
+      });
+    });
+
+    // -- "I've read it": announcementReads/{uid}.acks, the person's own, beside their read-marks.
+    describe("announcements that ask \"I've read it\"", () => {
+      it("lets a person say they've read a notice in their own record, as a merge beside their read-marks, and nobody else's", async () => {
+        const mine = as("trainerA");
+        const ref = doc(mine, "announcementReads", "trainerA");
+        await assertSucceeds(setDoc(ref, { ids: { n1: true }, updatedAt: serverTimestamp() }, { merge: true }));
+        await assertSucceeds(setDoc(ref, { acks: { n1: serverTimestamp() }, updatedAt: serverTimestamp() }, { merge: true }));
+        await assertSucceeds(setDoc(ref, { acks: { n2: serverTimestamp() }, updatedAt: serverTimestamp() }, { merge: true }));
+        await assertSucceeds(getDoc(ref));
+        // Someone else's record: neither.
+        await assertFails(setDoc(doc(mine, "announcementReads", "trainerB"), { acks: { n1: serverTimestamp() } }, { merge: true }));
+        await assertFails(getDoc(doc(mine, "announcementReads", "trainerB")));
+        // The shape: a map, and nothing beyond ids, acks and updatedAt.
+        await assertFails(setDoc(ref, { acks: "n1" }, { merge: true }));
+        await assertFails(setDoc(ref, { acks: { n1: serverTimestamp() }, count: 1 }, { merge: true }));
+      });
+
+      it("keeps a notice's own document free of any reader's answer: only the poster's fields change", async () => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), "hub_announcements", "asks1"), {
+            title: "Read the new closing checklist",
+            shortContent: "On the wall by the desk.",
+            longContent: "",
+            authorId: "ownerA",
+            authorName: "Owner A",
+            studioId: "studioA",
+            targetScope: "studio",
+            isActive: true,
+            priority: "low",
+            asksRead: true,
+            createdAt: serverTimestamp(),
+          });
+        });
+        const reader = as("trainerA");
+        await assertSucceeds(getDoc(doc(reader, "hub_announcements", "asks1")));
+        await assertFails(updateDoc(doc(reader, "hub_announcements", "asks1"), { ackedBy: ["trainerA"] }));
+        await assertFails(updateDoc(doc(reader, "hub_announcements", "asks1"), { asksRead: false }));
+      });
+    });
+  });
 });
 
 // ---- Catalog wave 3 (Sep 29 2026): the standard's change log ---------------

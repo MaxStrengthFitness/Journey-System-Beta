@@ -3243,7 +3243,9 @@ service cloud.firestore {
       //
       // Posting and editing the job itself is a leader's act. The FLOOR may
       // touch exactly the fields that doing the work needs -- ticking parts
-      // (one map key at a time), joining or leaving, closing and reopening --
+      // (one map key at a time), joining or leaving (which stamps or removes
+      // the joiner's own `claims.{uid}`: when it was taken, Relay's third
+      // wave, Sep 29 2026), closing and reopening --
       // and may not cancel a job or touch one a leader has called off. Nothing here locks the work to the people named
       // on it, on purpose: anyone at the studio can finish it.
       //
@@ -3265,7 +3267,8 @@ service cloud.firestore {
                            (
                              request.resource.data.diff(resource.data).affectedKeys()
                                .hasOnly(['parts', 'assignees', 'assigneeIds', 'status', 'closedOn',
-                                         'closingNote', 'completedBy', 'completedAt', 'updatedAt', 'kudos'])
+                                         'closingNote', 'completedBy', 'completedAt', 'updatedAt', 'kudos',
+                                         'claims'])
                              && request.resource.data.status != 'cancelled'
                              && resource.data.status != 'cancelled'
                              && writesForStudio(studioId)
@@ -3589,11 +3592,15 @@ service cloud.firestore {
     // announcement's readBy: every iPad in the company watches every
     // announcement, so a stamp there reached all of them. Only the person
     // reads or writes theirs; it holds a map of announcement ids and a time.
+    // RELAY'S THIRD WAVE (Sep 29 2026, q7): `acks` beside `ids` -- the
+    // notices this person said "I've read it" to, id -> the server's time,
+    // private in the same way. The poster never counts them.
     match /announcementReads/{uid} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
       allow create, update: if isAuthenticated() && request.auth.uid == uid
-                    && request.resource.data.keys().hasOnly(['ids', 'updatedAt'])
-                    && request.resource.data.ids is map;
+                    && request.resource.data.keys().hasOnly(['ids', 'updatedAt', 'acks'])
+                    && (!('ids' in request.resource.data) || request.resource.data.ids is map)
+                    && (!('acks' in request.resource.data) || request.resource.data.acks is map);
       allow delete: if false;
     }
 

@@ -15,7 +15,10 @@ const fake = vi.hoisted(() => ({
   marker: null as number | null,
   markerFails: false,
   sets: [] as { path: string; data: Record<string, unknown> }[],
-  announcements: [] as { id: string; title: string; authorId?: string; authorName?: string; createdAt?: unknown; shortContent?: string }[],
+  announcements: [] as { id: string; title: string; authorId?: string; authorName?: string; createdAt?: unknown; shortContent?: string; asksRead?: boolean }[],
+  acked: new Map<string, number | null>(),
+  acks: [] as string[],
+  ackFails: false,
 }));
 
 vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "t-ioreth" } }, functions: {} }));
@@ -48,7 +51,11 @@ vi.mock("./machine-care-store", () => ({
   }),
 }));
 vi.mock("../../notifications/useHubAnnouncements", () => ({
-  useHubAnnouncements: () => ({ announcements: fake.announcements, unread: [], unreadCount: 0 }),
+  useHubAnnouncements: () => ({ announcements: fake.announcements, unread: [], unreadCount: 0, acked: fake.acked }),
+  ackAnnouncement: async (id: string) => {
+    if (fake.ackFails) throw new Error("unavailable");
+    fake.acks.push(id);
+  },
 }));
 
 import { SinceYouWereIn } from "./SinceYouWereIn";
@@ -66,6 +73,9 @@ beforeEach(() => {
   fake.marker = Date.parse("2026-09-27T21:00:00Z");
   fake.markerFails = false;
   fake.sets = [];
+  fake.acked = new Map();
+  fake.acks = [];
+  fake.ackFails = false;
   fake.announcements = [
     { id: "a1", title: "Closed Monday, Oct 12 for the holiday", authorId: GLORFINDEL.id, authorName: GLORFINDEL.name, createdAt: Date.parse("2026-09-28T13:02:00Z") },
   ];
@@ -161,6 +171,31 @@ describe("Since you were in", () => {
     expect(text()).toContain("Couldn't check when you were last in, so nothing is marked new.");
     expect(text()).toContain("All read");
     expect(fake.sets).toEqual([]);
+  });
+
+  it("offers I've read it on a notice that asks, writes it as this person's own, and says so once it lands (Relay's third wave)", async () => {
+    fake.announcements = [
+      { id: "asks", title: "Read the new closing checklist", authorId: GLORFINDEL.id, authorName: GLORFINDEL.name, createdAt: Date.parse("2026-09-20T13:02:00Z"), asksRead: true },
+    ];
+    await render();
+    // Older than the marker, but it asks: still new, and the button is there.
+    expect(text()).toContain("2 new");
+    await act(async () => button(/I've read it/)!.click());
+    expect(fake.acks).toEqual(["asks"]);
+    // The hook's next snapshot carries the ack; the notice then says so and stops asking.
+    fake.acked = new Map([["asks", Date.parse(`${TODAY}T14:12:00-04:00`)]]);
+    await render();
+    expect(text()).toContain("You said you'd read it · today at 2:12 PM");
+    expect(button(/I've read it/)).toBeUndefined();
+    expect(text()).toContain("1 new");
+  });
+
+  it("leaves a notice asking when I've read it couldn't be saved", async () => {
+    fake.announcements = [{ id: "asks", title: "Read the new closing checklist", authorId: GLORFINDEL.id, createdAt: Date.parse("2026-09-28T13:02:00Z"), asksRead: true }];
+    fake.ackFails = true;
+    await render();
+    await act(async () => button(/I've read it/)!.click());
+    expect(button(/I've read it/)).toBeTruthy();
   });
 
   it("says it is checking while the studio's clients load, never that nobody is new", async () => {

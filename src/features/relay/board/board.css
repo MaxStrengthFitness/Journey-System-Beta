@@ -935,3 +935,25 @@
 }
 .rsy__all:disabled { color: var(--st-ink-muted); cursor: default; }
 .rsy__all:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+
+/* "I've read it" on a notice that asks (Relay's third wave, Sep 29 2026). */
+.rsy__ack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-left: 1.625rem;
+  align-self: flex-start;
+  border: 1px solid var(--st-live);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-live);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rsy__ack:disabled { color: var(--st-ink-muted); border-color: var(--st-border-strong); cursor: default; }
+.rsy__ack:focus-visible { outline: 2px solid var(--st-live); outline-offset: 2px; }
+.rsy__acked { margin-left: 1.625rem; font-size: 12px; font-weight: 700; color: var(--st-done); }

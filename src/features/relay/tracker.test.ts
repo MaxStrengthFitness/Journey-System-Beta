@@ -42,6 +42,14 @@ describe("the Tracker, by when", () => {
     ]);
   });
 
+  it("counts the cases you own under Today and hands them through in the order given", () => {
+    const c = { key: "case:c-hugo", due: "overdue" as const, when: "Overdue — was due yesterday", step: "No next step yet — add one", case: {} as never };
+    const t = buildTracker(input({ cases: [c] }));
+    expect(t.cases).toEqual([c]);
+    expect(t.counts.today).toBe(1);
+    expect(buildTracker(input()).cases).toEqual([]);
+  });
+
   it("finds your name by the older id as well as the Auth uid", () => {
     const t = buildTracker(input({ uid: "auth-uid", requests: [ask("a", { forId: IORETH.id })] }));
     expect(t.handed).toHaveLength(1);

@@ -3,6 +3,7 @@ import { Check, ClipboardCheck, Hand, LogOut, RotateCcw, Trash2, UserPlus, X } f
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "../../../contexts/ToastContext";
 import { studioDateKey } from "../../../lib/studio-time";
+import { auth } from "../../../firebase";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
 import { Avatar, PeoplePicker, Toggle, type Person } from "../kit";
 import {
@@ -12,6 +13,7 @@ import {
   isUpForGrabs,
   jobErrorMessage,
   jobProgress,
+  jobTimesLine,
   jobTiming,
   peopleLine,
   sortedParts,
@@ -94,6 +96,7 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
     const timing = jobTiming(job, todayKey);
     const isOpen = job.status === "open";
     const noteProblem = closeProblem(job, note);
+    const times = jobTimesLine(job, [auth.currentUser?.uid, me?.id], todayKey);
 
     return (
       <>
@@ -116,6 +119,8 @@ export function JobSheet({ job, open, onOpenChange, me, canLead, people, onOpenC
             )}
             <span className="rk-tag">Posted by {job.createdBy.name}</span>
           </div>
+
+          {times && <p className="tj-sheet__times">{times}</p>}
 
           {job.detail && <p className="tj-sheet__detail">{job.detail}</p>}
 

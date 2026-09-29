@@ -74,6 +74,8 @@ export interface AnnouncementDraft {
   networkId?: string;
   /** A Learning page it points at (Learning + Planner round). */
   learningLink?: StoredLearningRef | null;
+  /** Ask everyone to say "I've read it" (Relay's third wave, Sep 29 2026). */
+  asksRead?: boolean;
 }
 
 /** The networks a composer can address, and the studios in each. */
@@ -228,6 +230,8 @@ export function announcementBody(
     ...resolveAudience(draft, networks),
     // Only when set: Firestore refuses undefined values.
     ...(draft.learningLink ? { learningLink: draft.learningLink } : {}),
+    // Only when asked for, so an older notice reads exactly as it did.
+    ...(draft.asksRead ? { asksRead: true } : {}),
     expiresAt: expiryFor(lifespan, now),
     isActive: true,
     readBy: [],

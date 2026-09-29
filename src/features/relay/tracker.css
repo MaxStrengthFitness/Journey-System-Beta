@@ -101,3 +101,6 @@
 
 /* Who put it there, and by when: plain words, not the capitals of a label. */
 .rtk-meta { font-size: 12px; line-height: 1.4; color: var(--st-ink-muted); overflow-wrap: anywhere; }
+
+/* A case of yours past its day (Relay's third wave, Sep 29 2026). */
+.pl__task--late .rtk-meta { color: var(--st-flag); font-weight: 700; }

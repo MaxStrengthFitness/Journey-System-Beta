@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Gift,
   Hand,
+  HeartHandshake,
   Layers,
   Plus,
   Repeat,
@@ -28,7 +29,7 @@ import { TaskNoteDialog } from "../studio-tasks/TaskNoteDialog";
 import { taskScopeOf, type ClientTaskAction, type TaskRow, type TaskTemplate } from "../studio-tasks/types";
 import { taskMeta } from "./my-tasks";
 import { clockLabel, reminderPreset } from "../studio-tasks/task-wizard";
-import { dayWords } from "./jobs/jobs";
+import { dayWords, jobTimesLine } from "./jobs/jobs";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import { leadsHere } from "./leads";
 import { useRelayMaybe } from "./board/RelayContext";
@@ -43,6 +44,11 @@ import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
 import { joinJob, leaveJob } from "./jobs/mutations";
 import { JobSheet } from "./jobs/JobSheet";
+import type { TeamJob } from "./jobs/types";
+import { myCaseRows, type MyCaseRow } from "./my-cases";
+import { useMyCases } from "./useMyCases";
+import { MyCaseEditor } from "./MyCaseEditor";
+import type { StoredCase } from "../admin/journey/case-store";
 import { buildTracker, TRACKER_LISTS, type HandedItem, type TakenItem, type TrackerList } from "./tracker";
 import { minutesToClock, shiftHoursOf, studioMinutesNow } from "./board/now-context";
 import { trackedChipWords, untrack, useTracked } from "./board/tracked";
@@ -139,6 +145,12 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     () => (relay ? followUpsOf(clients ?? [], trainerId, todayKey) : []),
     [relay, clients, trainerId, todayKey],
   );
+  // The cases this trainer owns (Relay's third wave): by the Auth uid, which
+  // is what the case's owner.id holds and what the rules pin.
+  const myCases = useMyCases(relay ? (activeStudioId ?? null) : null, ownerId);
+  const caseRows = useMemo(() => myCaseRows(myCases.cases, todayKey), [myCases.cases, todayKey]);
+  const [openCaseId, setOpenCaseId] = useState<string | null>(null);
+  const openCase: StoredCase | null = myCases.cases.find((c) => c.clientId === openCaseId) ?? null;
 
   const tracker = useMemo(
     () =>
@@ -149,12 +161,13 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
         resolved: requests.recentlyResolved,
         jobs: teamJobs.jobs,
         followUps,
+        cases: caseRows,
         uid: ownerId,
         trainerId,
         todayKey,
         closingMin: hours.closing,
       }),
-    [rows, templates, requests.open, requests.recentlyResolved, teamJobs.jobs, followUps, ownerId, trainerId, todayKey, hours.closing],
+    [rows, templates, requests.open, requests.recentlyResolved, teamJobs.jobs, followUps, caseRows, ownerId, trainerId, todayKey, hours.closing],
   );
   const repeating = useMemo(() => templates.filter((t) => taskScopeOf(t) === "personal" && t.active !== false), [templates]);
 
@@ -335,6 +348,37 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     );
   };
 
+  /** A client whose case you own: her next step and its day, with the small editor (Relay's third wave). */
+  const caseRow = (c: MyCaseRow) => (
+    <li className={`pl__task${c.due === "overdue" ? " pl__task--late" : ""}`} key={c.key}>
+      <div className="pl__task-main">
+        <span className="pl__task-title">
+          <HeartHandshake size={14} aria-hidden /> {c.case.clientName || "A client"}
+        </span>
+        <span className="rtk-meta">
+          {c.when} · {c.step}
+        </span>
+      </div>
+      <div className="rtk-acts">
+        <button type="button" className="pl__btn pl__btn--primary" onClick={() => setOpenCaseId(c.case.clientId)}>
+          Next step
+        </button>
+        {onOpenClientTask && (
+          <button type="button" className="pl__btn" onClick={() => onOpenClientTask(c.case.clientId)}>
+            <ExternalLink size={14} aria-hidden />
+            Open
+          </button>
+        )}
+      </div>
+    </li>
+  );
+
+  /** "Claimed by you 10:12 AM · done 10:40 AM" under a team job (Relay's third wave). */
+  const jobTimes = (job: TeamJob) => {
+    const line = jobTimesLine(job, [ownerId, trainerId], todayKey);
+    return line ? <span className="rtk-meta rtk-meta--times">{line}</span> : null;
+  };
+
   const handedRow = (h: HandedItem) => {
     if (h.kind === "ask") {
       const r = h.request;
@@ -402,6 +446,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
             {`${h.from.split(" ")[0]} put your name on it`}
             {h.job.dueOn ? ` · by ${dayWords(h.job.dueOn, todayKey)}` : ""}
           </span>
+          {jobTimes(h.job)}
         </div>
         <div className="rtk-acts">
           <button type="button" className="pl__btn pl__btn--primary" onClick={() => setOpenJobId(h.job.id)}>
@@ -423,6 +468,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           {t.kind === "ask" ? "You took it on the Board" : "A team job you're on"}
           {t.due ? ` · ${t.due < todayKey ? "was due" : "due"} ${dayWords(t.due, todayKey)}` : ""}
         </span>
+        {t.kind === "job" && jobTimes(t.job)}
       </div>
       <div className="rtk-acts">
         {t.kind === "ask" ? (
@@ -465,8 +511,8 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
 
   // An empty list is said only once every read has answered: a read still
   // on its way is "loading", and a failed one is unknown, never "nothing".
-  const readsFailed = Boolean(error) || requests.failed || Boolean(teamJobs.error);
-  const settling = loading || requests.loading || teamJobs.loading;
+  const readsFailed = Boolean(error) || requests.failed || Boolean(teamJobs.error) || myCases.failed;
+  const settling = loading || requests.loading || teamJobs.loading || myCases.loading;
   const empty = (title: string, body: string) =>
     readsFailed ? null : settling ? (
       <p className="sh__loading">Loading…</p>
@@ -500,13 +546,13 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           )}
         {t.now.length + t.nowTaken.length > 0 &&
           section("rtk-now", "Now", Sun, t.now.length + t.nowTaken.length, [...t.now.map(personalRow), ...t.nowTaken.map(takenRow)])}
-        {t.followUps.length > 0 &&
+        {t.followUps.length + t.cases.length > 0 &&
           section(
             "rtk-followups",
             "Follow-ups",
             Gift,
-            t.followUps.length,
-            t.followUps.map((f) => (
+            t.followUps.length + t.cases.length,
+            [...t.cases.map(caseRow), ...t.followUps.map((f) => (
               <li className="pl__task pl__task--ahead" key={f.key}>
                 <span className="pl__when">
                   <span className="pl__when-day">{dayWords(f.date, todayKey)}</span>
@@ -539,8 +585,10 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                   )}
                 </div>
               </li>
-            )),
-            "Your clients' birthdays and dates they mentioned, in the next two weeks.",
+            ))],
+            t.cases.length > 0
+              ? "The clients whose case you own, then birthdays and dates they mentioned in the next two weeks. A case's next step and day are yours to change; the leader sees them on Operations."
+              : "Your clients' birthdays and dates they mentioned, in the next two weeks.",
           )}
         {t.closing.length > 0 &&
           section(
@@ -645,6 +693,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                   {d.row && d.at ? `${minutesToClock(studioMinutesNow(new Date(d.at)))} · ` : ""}
                   {d.where}
                 </span>
+                {d.job && jobTimes(d.job)}
               </div>
             </li>
           )),
@@ -785,6 +834,15 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
         author={author}
         clients={clients}
         openWith={intent}
+      />
+
+      <MyCaseEditor
+        studioId={activeStudioId ?? null}
+        theCase={openCase}
+        open={openCaseId !== null}
+        onOpenChange={(o) => !o && setOpenCaseId(null)}
+        todayKey={todayKey}
+        onOpenClient={onOpenClientTask ? (id) => onOpenClientTask(id) : undefined}
       />
 
       <JobSheet
