@@ -200,7 +200,7 @@ export default function AccessRequestView({
                     <span className="text-xs uppercase tracking-wider text-action font-black block">
                       Account Signed In
                     </span>
-                    <span className="text-sm font-bold text-slate-200 block truncate">
+                    <span className="text-sm font-bold text-slate-200 block [overflow-wrap:anywhere]">
                       {authenticatedUser.displayName || authenticatedUser.email || "Unknown User"}
                     </span>
                   </div>

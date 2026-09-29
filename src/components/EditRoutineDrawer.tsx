@@ -898,7 +898,7 @@ function PresetPillRow({
                 onClick={() => onUse(p)}
                 className="flex items-center gap-1 hover:text-cyan"
               >
-                <span className="truncate max-w-32">{p.name}</span>
+                <span className="min-w-0 max-w-32 text-left [overflow-wrap:anywhere]">{p.name}</span>
                 <span className="text-muted-foreground font-mono normal-case">
                   ({p.machineIds.length})
                 </span>

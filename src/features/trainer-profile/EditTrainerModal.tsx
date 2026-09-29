@@ -638,7 +638,7 @@ export function EditTrainerModal({
                               />
                             )}
                           </span>
-                          <span className="font-extrabold text-foreground truncate">
+                          <span className="font-extrabold text-foreground min-w-0 [overflow-wrap:anywhere]">
                             {s.fullName}
                           </span>
                         </span>
@@ -797,7 +797,7 @@ export function EditTrainerModal({
                           />
                           <label
                             htmlFor={`access-${s.id}`}
-                            className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 truncate"
+                            className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 min-w-0 [overflow-wrap:anywhere]"
                           >
                             {s.name}
                             {isPrimary && (
@@ -845,7 +845,7 @@ export function EditTrainerModal({
                           />
                           <label
                             htmlFor={`guest-${s.id}`}
-                            className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 truncate"
+                            className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none flex-1 min-w-0 [overflow-wrap:anywhere]"
                           >
                             {s.name}
                           </label>

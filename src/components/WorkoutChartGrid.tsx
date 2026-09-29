@@ -574,7 +574,7 @@ export function WorkoutChartGrid({
                       <div className="flex items-center gap-1.5 overflow-hidden">
                         <span
                           className={cn(
-                            "text-[11px] font-black uppercase tracking-tighter leading-none truncate px-1.5 py-0.5 rounded-lg border shrink-0 inline-block max-w-37.5 items-center justify-between",
+                            "text-[11px] font-black uppercase tracking-tighter leading-tight whitespace-normal [overflow-wrap:anywhere] px-1.5 py-0.5 rounded-lg border shrink-0 inline-block max-w-37.5 items-center justify-between",
                             getMuscleGroupColor(machine.name),
                           )}
                         >
