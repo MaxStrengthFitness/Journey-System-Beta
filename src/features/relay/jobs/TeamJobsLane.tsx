@@ -3,16 +3,9 @@ import { ChevronDown, ClipboardList, Hand, Plus } from "lucide-react";
 import { studioDateKey } from "../../../lib/studio-time";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
 import { Avatars } from "../kit";
-import {
-  dueLabel,
-  isOnJob,
-  isUpForGrabs,
-  jobProgress,
-  jobTiming,
-  peopleLine,
-  sortJobs,
-} from "./jobs";
+import { dueLabel, isOnJob, isUpForGrabs, jobProgress, jobTimesLine, jobTiming, peopleLine, sortJobs } from "./jobs";
 import { joinJob } from "./mutations";
+import { auth } from "../../../firebase";
 import type { TeamJob } from "./types";
 import "../kit.css";
 import "./jobs.css";
@@ -166,6 +159,7 @@ function JobCard({
   const timing = jobTiming(job, todayKey);
   const isOpen = job.status === "open";
   const pct = Math.round((progress.done / Math.max(1, progress.total)) * 100);
+  const times = jobTimesLine(job, [auth.currentUser?.uid, me?.id], todayKey);
 
   return (
     <article
@@ -195,6 +189,7 @@ function JobCard({
             </span>
           </span>
         ) : null}
+        {times && <span className="tj-card__times">{times}</span>}
         <span className="tj-card__foot">
           <Avatars names={job.assignees.map((a) => a.name)} />
           <span className="tj-card__people">

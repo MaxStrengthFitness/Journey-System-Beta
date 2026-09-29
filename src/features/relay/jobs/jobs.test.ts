@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   blankJobDraft,
+  claimEntries,
   closeProblem,
+  jobTimesLine,
+  whenWords,
   contributors,
   dayWords,
   dueLabel,
@@ -277,5 +280,59 @@ describe("jobSummary", () => {
       TODAY,
     );
     expect(s).toBe("Priya and Marcus are on it, due Friday. 3 clients to tick off. Closing it needs a message.");
+  });
+});
+
+describe("when a job was taken and when it was finished (Relay's third wave)", () => {
+  // TODAY is a Wednesday, Sep 16 2026; times are Eastern (the suite runs under TZ=America/New_York).
+  const at = (iso: string) => ({ toMillis: () => new Date(iso).getTime() });
+  const claims = {
+    "u-priya": { name: "Priya Shah", trainerId: PRIYA.id, at: at("2026-09-16T10:12:00-04:00") },
+    "u-marcus": { name: "Marcus Bell", trainerId: MARCUS.id, at: at("2026-09-16T10:30:00-04:00") },
+  };
+
+  it("reads claims from the document, defensively, and leaves them off when there are none", () => {
+    const j = jobFromDoc("j", "s1", { title: "x", claims: { "u-priya": { name: "Priya Shah", trainerId: PRIYA.id, at: 5 }, bad: null, "u-x": { at: 1 } } });
+    expect(j.claims).toEqual({ "u-priya": { name: "Priya Shah", trainerId: PRIYA.id, at: 5 }, "u-x": { name: "A trainer", trainerId: null, at: 1 } });
+    expect(jobFromDoc("j", "s1", { title: "x" }).claims).toBeUndefined();
+  });
+
+  it("lists claims earliest first, a stamp still on its way last", () => {
+    const entries = claimEntries({ claims: { ...claims, "u-aj": { name: "AJ Jurgens", at: undefined } } });
+    expect(entries.map((c) => [c.name, c.at !== null])).toEqual([
+      ["Priya Shah", true],
+      ["Marcus Bell", true],
+      ["AJ Jurgens", false],
+    ]);
+  });
+
+  it("says the time alone today, and the day before it on another day", () => {
+    expect(whenWords(new Date("2026-09-16T10:12:00-04:00").getTime(), TODAY)).toBe("10:12 AM");
+    expect(whenWords(new Date("2026-09-15T16:05:00-04:00").getTime(), TODAY)).toBe("Yesterday, 4:05 PM");
+    expect(whenWords(new Date("2026-09-10T09:00:00-04:00").getTime(), TODAY)).toBe("Sep 10, 9:00 AM");
+  });
+
+  it("writes the line in plain words: claimed by whom and when, then done when", () => {
+    expect(jobTimesLine(job({ claims }), ["u-aj", AJ.id], TODAY)).toBe("Claimed by Priya 10:12 AM, Marcus 10:30 AM");
+    expect(
+      jobTimesLine(job({ claims, status: "done", completedBy: PRIYA, completedAt: at("2026-09-16T10:40:00-04:00") }), [], TODAY),
+    ).toBe("Claimed by Priya 10:12 AM, Marcus 10:30 AM · done 10:40 AM");
+  });
+
+  it("calls the reader 'you' by either id, and names a finisher who never claimed it", () => {
+    expect(jobTimesLine(job({ claims }), ["u-priya"], TODAY)).toBe("Claimed by you 10:12 AM, Marcus 10:30 AM");
+    expect(jobTimesLine(job({ claims }), [PRIYA.id], TODAY)).toBe("Claimed by you 10:12 AM, Marcus 10:30 AM");
+    expect(
+      jobTimesLine(job({ claims, status: "done", completedBy: AJ, completedAt: at("2026-09-16T10:40:00-04:00") }), [], TODAY),
+    ).toBe("Claimed by Priya 10:12 AM, Marcus 10:30 AM · done 10:40 AM by AJ");
+    expect(jobTimesLine(job({ status: "done", completedBy: AJ, completedAt: at("2026-09-16T10:40:00-04:00") }), [AJ.id], TODAY)).toBe(
+      "Done 10:40 AM by you",
+    );
+  });
+
+  it("says nothing for a job nobody has claimed and nobody has finished, and no time for a stamp on its way", () => {
+    expect(jobTimesLine(job(), [], TODAY)).toBeNull();
+    expect(jobTimesLine(job({ claims: { "u-priya": { name: "Priya Shah" } } }), [], TODAY)).toBe("Claimed by Priya");
+    expect(jobTimesLine(job({ status: "done", completedBy: null }), [], TODAY)).toBe("Done");
   });
 });

@@ -5495,4 +5495,68 @@ describe("marks on a time", () => {
       });
     });
   });
+  describe("relay's third wave", () => {
+    const as = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+    // -- a claim on a team job: claims.{uid}, the floor's own stamp of when it took it.
+    describe("claim times on team jobs", () => {
+      const seedJob = async () => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), "studios", "studioA", "teamJobs", "claimed"), {
+            studioId: "studioA",
+            title: "Deep clean",
+            detail: "",
+            category: "ops",
+            about: { kind: "facility" },
+            assignees: [],
+            assigneeIds: [],
+            openToAll: true,
+            parts: {},
+            dueOn: null,
+            requiresNote: false,
+            notifyOnDone: true,
+            status: "open",
+            closingNote: null,
+            completedBy: null,
+            closedOn: null,
+            createdBy: { id: "ownerA", name: "Owner A" },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        });
+      };
+
+      it("lets the floor stamp its claim when it joins, and remove it when it steps off", async () => {
+        await seedJob();
+        const trainer = as("trainerA");
+        const ref = doc(trainer, "studios", "studioA", "teamJobs", "claimed");
+        await assertSucceeds(
+          updateDoc(ref, {
+            assignees: arrayUnion({ id: "trainerA", name: "Trainer A" }),
+            assigneeIds: arrayUnion("trainerA"),
+            "claims.trainerA": { name: "Trainer A", trainerId: "trainerA", at: serverTimestamp() },
+            updatedAt: serverTimestamp(),
+          }),
+        );
+        await assertSucceeds(
+          updateDoc(ref, {
+            assignees: arrayRemove({ id: "trainerA", name: "Trainer A" }),
+            assigneeIds: arrayRemove("trainerA"),
+            "claims.trainerA": deleteField(),
+            updatedAt: serverTimestamp(),
+          }),
+        );
+        // A claim is still not a way to rewrite the job.
+        await assertFails(updateDoc(ref, { "claims.trainerA": { name: "Trainer A", at: serverTimestamp() }, title: "Other", updatedAt: serverTimestamp() }));
+        // Nor can someone from another studio stamp one.
+        const elsewhere = as("trainerB");
+        await assertFails(
+          updateDoc(doc(elsewhere, "studios", "studioA", "teamJobs", "claimed"), {
+            "claims.trainerB": { name: "Trainer B", at: serverTimestamp() },
+            updatedAt: serverTimestamp(),
+          }),
+        );
+      });
+    });
+  });
 });

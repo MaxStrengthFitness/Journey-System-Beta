@@ -11,12 +11,13 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   serverTimestamp,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { auth, db } from "../../../firebase";
 import { studioDateKey } from "../../../lib/studio-time";
 import { notify } from "../../notifications";
 import type { TaskAuthor } from "../../studio-tasks/mutations";
@@ -97,11 +98,20 @@ export async function setJobPeople(args: {
   );
 }
 
-/** "I'll take it" / "I'll help" — the floor adding itself. */
+/**
+ * The key a claim is stored under: the signed-in uid, which is what a rule
+ * pins a person to (the two ids differ on older accounts). Without one the
+ * trainer id stands in, so a join never fails for want of a stamp.
+ */
+const claimKey = (me: TaskAuthor): string => auth.currentUser?.uid ?? me.id;
+
+/** "I'll take it" / "I'll help" — the floor adding itself, stamped with when. */
 export async function joinJob(job: TeamJob, me: TaskAuthor): Promise<void> {
   await updateDoc(teamJobRef(job.studioId, job.id), {
     assignees: arrayUnion(who(me)),
     assigneeIds: arrayUnion(me.id),
+    // One map key, never the whole map (two iPads joining at once).
+    [`claims.${claimKey(me)}`]: { name: who(me).name, trainerId: me.id, at: serverTimestamp() },
     updatedAt: serverTimestamp(),
   });
   // The poster hears that an up-for-grabs job was picked up: that is the
@@ -128,6 +138,7 @@ export async function leaveJob(job: TeamJob, me: TaskAuthor): Promise<void> {
   await updateDoc(teamJobRef(job.studioId, job.id), {
     assignees: arrayRemove(...(stored.length ? stored : [who(me)])),
     assigneeIds: arrayRemove(me.id),
+    [`claims.${claimKey(me)}`]: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

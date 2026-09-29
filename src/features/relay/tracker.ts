@@ -73,6 +73,8 @@ export interface DoneEntry {
   where: "Your list" | "Floor" | "Asks" | "Team jobs";
   /** Your own to-do, so the Done list can reopen it (a tick taken back). */
   row?: TaskRow;
+  /** A team job, so the Done list can say when it was claimed and finished. */
+  job?: TeamJob;
 }
 
 export interface TrackerInput {
@@ -204,7 +206,7 @@ export function buildTracker(input: TrackerInput): Tracker {
     if (j.status !== "done" || !isMe(j.completedBy?.id)) continue;
     const at = millis(j.completedAt);
     if ((j.closedOn ?? dayOfMillis(at)) !== input.todayKey) continue;
-    done.push({ key: `job:${j.id}`, at: at || null, what: j.title, where: "Team jobs" });
+    done.push({ key: `job:${j.id}`, at: at || null, what: j.title, where: "Team jobs", job: j });
   }
   done.sort((a, b) => (b.at ?? 0) - (a.at ?? 0) || a.what.localeCompare(b.what));
 

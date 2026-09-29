@@ -238,6 +238,31 @@ describe("the Tracker", () => {
     expect(state.adds).toEqual([]);
   });
 
+  it("says when a team job was claimed and finished, in plain words, under the job (Relay's third wave)", async () => {
+    const at = (iso: string) => ({ toMillis: () => new Date(iso).getTime() });
+    state.jobs = [
+      job("cards", {
+        title: "Birthday cards",
+        assignees: [IORETH],
+        assigneeIds: [IORETH.id],
+        createdBy: GLORFINDEL,
+        claims: { [state.uid]: { name: IORETH.name, trainerId: IORETH.id, at: at(`${TODAY}T10:12:00-04:00`) } },
+      }),
+      job("mirrors", {
+        title: "Mirrors",
+        status: "done",
+        closedOn: TODAY,
+        completedBy: IORETH,
+        completedAt: at(`${TODAY}T10:40:00-04:00`),
+        claims: { [state.uid]: { name: IORETH.name, trainerId: IORETH.id, at: at(`${TODAY}T10:12:00-04:00`) } },
+      }),
+    ];
+    await render();
+    expect(inSection("rtk-handed")?.textContent).toContain("Claimed by you 10:12 AM");
+    await click(list("Done"));
+    expect(inSection("rtk-done")?.textContent).toContain("Claimed by you 10:12 AM · done 10:40 AM");
+  });
+
   it("asks the team to take a chore a leader named you on (only a leader may take the name off)", async () => {
     const chore = template("closing-wipe", { title: "Lumbar Extension wipe" });
     state.rows = [row(chore, "lu", "open", { machineName: "Lumbar Extension", instance: { assignedTo: IORETH, assignedBy: GLORFINDEL } as never })];

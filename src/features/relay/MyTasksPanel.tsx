@@ -28,7 +28,7 @@ import { TaskNoteDialog } from "../studio-tasks/TaskNoteDialog";
 import { taskScopeOf, type ClientTaskAction, type TaskRow, type TaskTemplate } from "../studio-tasks/types";
 import { taskMeta } from "./my-tasks";
 import { clockLabel, reminderPreset } from "../studio-tasks/task-wizard";
-import { dayWords } from "./jobs/jobs";
+import { dayWords, jobTimesLine } from "./jobs/jobs";
 import { formatStudioDate, studioDateKey } from "../../lib/studio-time";
 import { leadsHere } from "./leads";
 import { useRelayMaybe } from "./board/RelayContext";
@@ -43,6 +43,7 @@ import { studioRoster } from "../studio-tasks/initiatives";
 import { useTeamJobs } from "./jobs/useTeamJobs";
 import { joinJob, leaveJob } from "./jobs/mutations";
 import { JobSheet } from "./jobs/JobSheet";
+import type { TeamJob } from "./jobs/types";
 import { buildTracker, TRACKER_LISTS, type HandedItem, type TakenItem, type TrackerList } from "./tracker";
 import { minutesToClock, shiftHoursOf, studioMinutesNow } from "./board/now-context";
 import { trackedChipWords, untrack, useTracked } from "./board/tracked";
@@ -335,6 +336,12 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
     );
   };
 
+  /** "Claimed by you 10:12 AM · done 10:40 AM" under a team job (Relay's third wave). */
+  const jobTimes = (job: TeamJob) => {
+    const line = jobTimesLine(job, [ownerId, trainerId], todayKey);
+    return line ? <span className="rtk-meta rtk-meta--times">{line}</span> : null;
+  };
+
   const handedRow = (h: HandedItem) => {
     if (h.kind === "ask") {
       const r = h.request;
@@ -402,6 +409,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
             {`${h.from.split(" ")[0]} put your name on it`}
             {h.job.dueOn ? ` · by ${dayWords(h.job.dueOn, todayKey)}` : ""}
           </span>
+          {jobTimes(h.job)}
         </div>
         <div className="rtk-acts">
           <button type="button" className="pl__btn pl__btn--primary" onClick={() => setOpenJobId(h.job.id)}>
@@ -423,6 +431,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
           {t.kind === "ask" ? "You took it on the Board" : "A team job you're on"}
           {t.due ? ` · ${t.due < todayKey ? "was due" : "due"} ${dayWords(t.due, todayKey)}` : ""}
         </span>
+        {t.kind === "job" && jobTimes(t.job)}
       </div>
       <div className="rtk-acts">
         {t.kind === "ask" ? (
@@ -645,6 +654,7 @@ export function MyTasksPanel({ authTrainer, clients, trainers, onOpenClientTask 
                   {d.row && d.at ? `${minutesToClock(studioMinutesNow(new Date(d.at)))} · ` : ""}
                   {d.where}
                 </span>
+                {d.job && jobTimes(d.job)}
               </div>
             </li>
           )),
