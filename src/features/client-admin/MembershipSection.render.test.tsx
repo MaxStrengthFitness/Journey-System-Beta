@@ -517,3 +517,35 @@ describe("MembershipSection — the section", () => {
     expect(classes.filter((c) => /\btext-(xs|sm|base|lg|\[)|\b(?:bg|text|border)-(?:slate|sky|amber|rose|red|emerald)-/.test(c))).toEqual([]);
   });
 });
+
+/*
+ * HER FIRST DAY AT THE STUDIO (Sep 29 2026). Every date the app can infer
+ * for when she started is only an upper bound, so a person sets the day
+ * once, through the ONE form; until then the card says what the app is
+ * going on, and where it came from.
+ */
+describe("MembershipSection — her first day at the studio", () => {
+  it("says the guess and its source until a person sets the day, then saves the day through the one form", async () => {
+    const probe: Probe = {};
+    const host = await mount(<Harness c={client({ firstAppointmentDate: "2020-01-15T15:00:00Z" })} probe={probe} />);
+    const card = host.querySelector<HTMLElement>('#account-first-day')!;
+    expect(card).not.toBeNull();
+    expect(card.textContent).toContain("Not set · the best guess is Jan 15, 2020");
+    expect(card.textContent).toContain("Until it is set, the app goes by the first visit Mindbody has.");
+
+    await click(buttons(host).find((b) => b.getAttribute("aria-label") === "Edit First day at the studio"));
+    await typeInto(fieldByLabel(host, "The day she first trained here"), "2014-09-08");
+    expect(probe.form?.isDirty("firstStudioDay")).toBe(true);
+    expect(probe.form?.formData.firstStudioDay).toBe("2014-09-08");
+    // Where the Save bar says it is.
+    expect(probe.form?.where.map((w) => w.label)).toContain("First day at the studio");
+  });
+
+  it("shows a set day as set by a person, and reads only for someone who may not edit", async () => {
+    const host = await mount(<Harness c={client({ firstStudioDay: "2014-09-08" })} canEdit={false} />);
+    const card = host.querySelector<HTMLElement>('#account-first-day')!;
+    expect(card.textContent).toContain("Sep 8, 2014");
+    expect(card.textContent).toContain("Set by a person; anniversaries count from this day.");
+    expect(buttons(host).find((b) => b.getAttribute("aria-label") === "Edit First day at the studio")).toBeUndefined();
+  });
+});

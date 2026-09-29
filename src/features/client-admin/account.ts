@@ -57,6 +57,7 @@ import { clientLegalName } from "../../lib/client-name";
 import { waiverState } from "../../lib/client-waiver";
 import { formatMindbodyDate, toDateSafe, type FirestoreDateLike } from "../../lib/mindbody-dates";
 import { daysUntilBirthday } from "../../lib/hub-markers";
+import { resolveClientSince, statedFirstDay, type ClientSinceSource } from "../../lib/client-since";
 import {
   COVERAGE_CAVEAT,
   type HistoryCoverage,
@@ -149,6 +150,54 @@ export function ageAndBirthday(
     turns: age === null ? null : daysUntil === 0 ? age : age + 1,
     daysUntil,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Her first day at the studio                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What the "First day at the studio" card says (Sep 29 2026).
+ *
+ * The anniversary rule: every date Journey can infer for when she started
+ * (her first session in Journey, Mindbody's first visit, when Mindbody made
+ * her record, her first package) is only an upper bound, so a person is
+ * asked to SET the day, once, and the app reads it before every inferred
+ * one (`lib/client-since.ts`, source "stated"). The card shows the day when
+ * it is set, and otherwise the best guess with where it came from, so the
+ * person setting it knows what the app is going on today.
+ */
+export interface FirstDayView {
+  /** The set day, `YYYY-MM-DD`, or null. */
+  day: string | null;
+  /** "Mar 3, 2019", or null. */
+  words: string | null;
+  /** With no day set: what the app infers today, or null when it can infer nothing. */
+  guess: { words: string; from: string } | null;
+}
+
+const GUESS_WORDS: Record<ClientSinceSource, string> = {
+  stated: "set on the profile",
+  firstSession: "the first session Journey recorded",
+  firstAppointment: "the first visit Mindbody has",
+  mindbodyCreated: "the day Mindbody made the record",
+  commercial: "the first package on file",
+  journey: "the day Journey first saw the record",
+};
+
+export function firstDayView(
+  client: Pick<Client, "firstStudioDay" | "firstSessionDate" | "firstAppointmentDate" | "mindbodyCreatedAt" | "createdAt" | "mindbodyContracts" | "mindbodyMemberships" | "priorHistory">,
+  coverage: HistoryCoverage,
+): FirstDayView {
+  const stated = statedFirstDay(client);
+  if (stated) {
+    const key = client.firstStudioDay as string;
+    return { day: key, words: dayWords(key), guess: null };
+  }
+  const since = resolveClientSince(client, { coverage });
+  if (!since) return { day: null, words: null, guess: null };
+  const words = since.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return { day: null, words: null, guess: { words, from: GUESS_WORDS[since.source] } };
 }
 
 /* ------------------------------------------------------------------ */

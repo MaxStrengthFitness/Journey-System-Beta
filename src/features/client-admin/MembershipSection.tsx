@@ -40,6 +40,7 @@
  */
 import { useMemo } from "react";
 import {
+  CalendarCheck,
   CalendarClock,
   ChevronDown,
   FileCheck,
@@ -95,7 +96,7 @@ import {
   type ContractTermRow,
   type PaymentKind,
 } from "./contract";
-import { isMindbodyLinked, membershipTimeline, onFileFacts, packageView, tierSourceLine, type SessionsSplit } from "./account";
+import { firstDayView, isMindbodyLinked, membershipTimeline, onFileFacts, packageView, tierSourceLine, type SessionsSplit } from "./account";
 import "./client-admin.css";
 
 export interface MembershipSectionProps {
@@ -421,6 +422,68 @@ function OnFileCard({ client, pronouns: p }: { client: Client; pronouns: Pronoun
 }
 
 /* ------------------------------------------------------------------ */
+/* Her first day at the studio                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The one place her first day is set (Sep 29 2026). Every other date is a
+ * guess from the record; this is what a person knows. It writes
+ * `firstStudioDay` through the ONE form, so the Save bar names it
+ * ("Account · First day at the studio"), and "Client since", the codex
+ * Story and Operations → Month's anniversaries all read it first.
+ */
+function FirstDayCard({
+  client,
+  form,
+  coverage,
+  canEdit,
+  pronouns: p,
+}: Pick<MembershipSectionProps, "client" | "coverage" | "canEdit" | "pronouns"> & { form: FormPart }) {
+  const { formData, updateField, isDirty, revision } = form;
+  const raw = formData.firstStudioDay;
+  const value = typeof raw === "string" ? raw : "";
+  const view = firstDayView({ ...client, firstStudioDay: value || null }, coverage);
+  const read = view.words ? (
+    <FactList>
+      <Fact label="First day" source="Set by a person; anniversaries count from this day.">
+        {view.words}
+      </Fact>
+    </FactList>
+  ) : (
+    <FactList>
+      <Fact label="First day" source={view.guess ? `Until it is set, the app goes by ${view.guess.from}.` : "The app has no date to go on yet."}>
+        <span className="cadm-missing">{view.guess ? `Not set · the best guess is ${view.guess.words}` : "Not set"}</span>
+      </Fact>
+    </FactList>
+  );
+  return (
+    <ReadEdit
+      label="First day at the studio"
+      icon={CalendarCheck}
+      canEdit={canEdit}
+      dirty={isDirty("firstStudioDay")}
+      revision={revision}
+      id="account-first-day"
+      read={read}
+      edit={
+        <div className="cadm-edit">
+          <div className="cadm-edit__grid">
+            <TextInput
+              label={`The day ${p.subject} first trained here`}
+              type="date"
+              value={value}
+              onChange={(v) => updateField("firstStudioDay", v || null)}
+              hint={view.guess ? `The app's guess is ${view.guess.words} (${view.guess.from}). The day ${p.subject} first trained here is usually earlier.` : `Her anniversaries count from this day.`}
+            />
+          </div>
+          <Meta>Nothing is saved until you tap Save changes on the bar at the bottom.</Meta>
+        </div>
+      }
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* How she found us                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -605,6 +668,7 @@ export function MembershipSection(props: MembershipSectionProps) {
         <div className="cadm-side">
           <TrainAtCard client={client} form={form} studios={studios} canEdit={canEdit} pronouns={p} />
           <OnFileCard client={client} pronouns={p} />
+          <FirstDayCard client={client} form={form} coverage={coverage} canEdit={canEdit} pronouns={p} />
           <FoundUsCard form={form} canEdit={canEdit} pronouns={p} />
         </div>
       </div>

@@ -197,6 +197,7 @@ export type StoryClient = Pick<
   | "goalHistory"
   | "pedigreeHistory"
   | "priorHistory"
+  | "firstStudioDay"
   | "firstSessionDate"
   | "firstAppointmentDate"
   | "firstAppointmentDateSource"
@@ -968,6 +969,8 @@ export function storySince(
   const firstSession = instantDay(client.firstSessionDate, tz);
 
   const sure = earliest([
+    // A day a person set (Account, Sep 29 2026) is the surest date there is.
+    asDay(client.firstStudioDay ?? null),
     asDay(prior?.from ?? null),
     visit?.authoritative ? visit.day : null,
     coverage === "complete" && !prior ? firstSession : null,

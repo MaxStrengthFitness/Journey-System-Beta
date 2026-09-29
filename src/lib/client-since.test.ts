@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientSinceLabel, resolveClientSince } from "./client-since";
+import { clientSinceLabel, earliestKnownDate, resolveClientSince, statedFirstDay } from "./client-since";
 
 const ts = (iso: string) => ({ toDate: () => new Date(iso) });
 
@@ -60,6 +60,32 @@ describe("clientSinceLabel", () => {
     // ...and Journey's first session over the Journey document's createdAt.
     const both = { firstSessionDate: ts("2026-09-02T15:00:00"), createdAt: ts("2026-08-01T12:00:00") };
     expect(resolveClientSince(both, { coverage: "partial" })?.source).toBe("firstSession");
+  });
+
+  /*
+   * The first day a person set (Sep 29 2026). Every inferred date is only an
+   * upper bound, so the stated day wins outright, whatever the coverage, and
+   * it is read as a calendar day (never the previous evening in Ohio).
+   */
+  it("takes the day a person set over every inferred one, as a calendar day", () => {
+    const client = {
+      firstStudioDay: "2014-09-08",
+      firstSessionDate: ts("2026-09-02T15:00:00"),
+      firstAppointmentDate: ts("2015-03-01T15:00:00"),
+      priorHistory: { sessions: 400, through: "2026-08-31", source: "filemaker" },
+    };
+    for (const coverage of ["partial", "unknown", "complete"] as const) {
+      const since = resolveClientSince(client, { coverage });
+      expect(since).toMatchObject({ source: "stated", fromMindbody: true });
+      expect(since?.date.getFullYear()).toBe(2014);
+      expect(since?.date.getMonth()).toBe(8);
+      expect(since?.date.getDate()).toBe(8);
+    }
+    expect(clientSinceLabel(client, { coverage: "partial" })).toEqual({ label: "Client since", value: "Sep 2014", source: "stated" });
+    expect(statedFirstDay({ firstStudioDay: "2014-02-30" })).toBeNull();
+    expect(statedFirstDay({ firstStudioDay: "1980-01-01" })).toBeNull();
+    expect(statedFirstDay({ firstStudioDay: "" })).toBeNull();
+    expect(earliestKnownDate({ firstStudioDay: "2014-09-08", createdAt: ts("2026-08-01T12:00:00") })?.getFullYear()).toBe(2014);
   });
 
   it("still labels a Journey-only date as Journey's", () => {

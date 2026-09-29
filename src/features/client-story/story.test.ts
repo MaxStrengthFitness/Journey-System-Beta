@@ -662,6 +662,12 @@ describe("buildStory — the other clients", () => {
     expect(storyTabHint({ client, coverage: "partial", tz: TZ })).toBe("since 2016");
   });
 
+  it("(J) the day a person set on Account is her start, before every inferred date (Sep 29 2026)", () => {
+    const client: StoryClient = { firstStudioDay: "2014-09-08", firstAppointmentDate: new Date(Date.UTC(2016, 4, 2)), firstSessionDate: noon("2026-09-20") };
+    expect(storySince(client, "partial", TZ)).toEqual({ kind: "client", day: "2014-09-08" });
+    expect(storyTabHint({ client, coverage: "partial", tz: TZ })).toBe("since 2014");
+  });
+
   it("(J) a prior record with no first day says since at least, never a later contract as her start", () => {
     const client: StoryClient = {
       priorHistory: { sessions: 200, through: "2026-09-01", source: "paper" },

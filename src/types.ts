@@ -941,6 +941,14 @@ export interface Client {
   firstSessionDate?: any;
   /** The raw Mindbody string, kept beside the parsed date it came from. */
   firstSessionDateRaw?: string;
+  /**
+   * Her first day at the studio, `YYYY-MM-DD`, as a person set it on Notes &
+   * Profile -> Account (Sep 29 2026). The one start date that is not an
+   * upper bound: `lib/client-since.ts` reads it before every inferred one, so
+   * "Client since" and her anniversaries (Operations -> Month) come from it.
+   * Absent means nobody has set it, and the inferred chain answers.
+   */
+  firstStudioDay?: string | null;
   /** Most recent session date, denormalised for the directory's column. */
   lastSessionDate?: string;
   discoveryNotes?: string;

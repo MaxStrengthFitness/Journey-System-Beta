@@ -192,6 +192,7 @@ export const RECORD_ANCHORS = [
   "account-mindbody-notes",
   "account-on-file",
   "account-membership",
+  "account-first-day",
   "account-train-at",
   "account-found-us",
   "account-fine-print",

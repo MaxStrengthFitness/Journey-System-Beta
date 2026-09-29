@@ -59,7 +59,16 @@ export const SESSION_MILESTONES = [50, 100, 150, 200, 250, 300, 400, 500, 750, 1
 export const MOMENTS_HORIZON_DAYS = 7;
 
 /** Which client field each "client since" source reads, so a date-only string can be read as text. */
-const SINCE_FIELD: Record<string, string> = { firstSession: "firstSessionDate", firstAppointment: "firstAppointmentDate", mindbodyCreated: "mindbodyCreatedAt" };
+const SINCE_FIELD: Record<string, string> = { stated: "firstStudioDay", firstSession: "firstSessionDate", firstAppointment: "firstAppointmentDate", mindbodyCreated: "mindbodyCreatedAt" };
+
+/** Where a client's first day came from, in the proof's words (shared with Operations -> Month). */
+export const SINCE_SOURCE_WORDS: Record<string, string> = {
+  stated: "set on their profile",
+  firstSession: "their first session",
+  firstAppointment: "their first appointment",
+  mindbodyCreated: "when Mindbody first knew them",
+  commercial: "their first package",
+};
 
 const nameOf = (c: Client) => clientDisplayName(c, "A client");
 
@@ -205,7 +214,7 @@ export function moments(input: MomentsInput): MomentsSummary {
       name: nameOf(client),
       day: anniversary,
       sentence: `${years} year${years === 1 ? "" : "s"} with the studio.`,
-      proof: `First seen ${prettyDay(startDay)} (${since.source === "firstSession" ? "their first session" : since.source === "firstAppointment" ? "their first appointment" : "when Mindbody first knew them"}).${booked && booked.length > 0 ? "" : " Not booked this week."}`,
+      proof: `${since.source === "stated" ? "First day" : "First seen"} ${prettyDay(startDay)} (${SINCE_SOURCE_WORDS[since.source] ?? "when Mindbody first knew them"}).${booked && booked.length > 0 ? "" : " Not booked this week."}`,
       needsOwner: false,
     });
   }

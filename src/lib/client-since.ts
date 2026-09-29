@@ -53,6 +53,12 @@ export interface ClientSinceHistory {
 
 export type ClientSinceSource =
   /**
+   * A person said so: `firstStudioDay`, her first day at the studio, set on
+   * Notes & Profile → Account (Sep 29 2026). A stated day outranks every
+   * inferred one, because each of those is only an upper bound.
+   */
+  | "stated"
+  /**
    * First workout recorded IN JOURNEY. For a new client it is her first
    * session; for a migrating one it is the day Journey first saw her, which
    * is why it competes with Mindbody's dates rather than outranking them.
@@ -80,6 +86,8 @@ export interface ClientSince {
 
 /** Narrow structural type so this stays testable without the full Client. */
 interface ClientSinceInput {
+  /** Her first day at the studio, `YYYY-MM-DD`, as a person set it (Sep 29 2026). */
+  firstStudioDay?: string | null;
   firstSessionDate?: any;
   firstAppointmentDate?: any;
   mindbodyCreatedAt?: any;
@@ -119,6 +127,18 @@ function earliestCommercialDate(client: ClientSinceInput): Date | null {
   return best;
 }
 
+/** `firstStudioDay` as a Date at local noon, or null when it isn't a real day. */
+export function statedFirstDay(client: Pick<ClientSinceInput, "firstStudioDay"> | null | undefined): Date | null {
+  const raw = client?.firstStudioDay;
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const d = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(d.getTime()) || d.getFullYear() < 1990) return null;
+  // A day that doesn't exist (Feb 30) rolls over; refuse it rather than move it.
+  const [y, m, day] = raw.split("-").map(Number);
+  if (d.getFullYear() !== y || d.getMonth() + 1 !== m || d.getDate() !== day) return null;
+  return d;
+}
+
 /**
  * Best available start date, with provenance.
  *
@@ -147,6 +167,13 @@ export function resolveClientSince(
   history?: ClientSinceHistory,
 ): ClientSince | null {
   if (!client) return null;
+
+  // A day a person set wins outright: it is the one date that is not an
+  // upper bound (the anniversary rule, Sep 29 2026). Read as a calendar day
+  // at noon so the date trap (a date-only string read as UTC is the previous
+  // evening in Ohio) can't move it.
+  const stated = statedFirstDay(client);
+  if (stated) return { date: stated, source: "stated", fromMindbody: true };
 
   const sessionProves =
     !history || (history.coverage === "complete" && !priorHistoryOf(client));
@@ -205,6 +232,7 @@ export function earliestKnownDate(client: ClientSinceInput | null | undefined): 
     if (!d || Number.isNaN(d.getTime()) || d.getFullYear() < 1990) return;
     if (!best || d.getTime() < best.getTime()) best = d;
   };
+  consider(statedFirstDay(client));
   consider(toDate(client.firstSessionDate));
   consider(toDate(client.firstAppointmentDate));
   consider(toDate(client.mindbodyCreatedAt));

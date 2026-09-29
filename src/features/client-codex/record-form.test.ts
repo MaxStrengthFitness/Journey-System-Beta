@@ -76,6 +76,7 @@ describe("FIELD_HOME", () => {
     expect(FIELD_HOME.experienceLevel).toMatchObject({ page: "body", anchor: "body-training-story" });
     expect(FIELD_HOME.clinicalFlags).toMatchObject({ page: "body", anchor: "body-watchouts" });
     expect(FIELD_HOME.globalNotes).toMatchObject({ page: "goals", anchor: "goals-why" });
+    expect(FIELD_HOME.firstStudioDay).toMatchObject({ page: "account", anchor: "account-first-day", label: "First day at the studio" });
     expect(FIELD_HOME.goalHistory).toMatchObject({ page: "goals", anchor: "goals-now" });
     expect(FIELD_HOME.nickname).toMatchObject({ page: "account", anchor: "account-contact" });
     expect(FIELD_HOME.contractTierOverride).toMatchObject({ page: "account", anchor: "account-membership" });

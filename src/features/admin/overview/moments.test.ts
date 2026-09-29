@@ -81,6 +81,12 @@ describe("moments — milestones", () => {
     expect(m.rows[0]).toMatchObject({ kind: "milestone", day: "2026-09-23", sentence: "2 years with the studio." });
     expect(m.rows[0].proof).toContain("Not booked this week.");
   });
+  it("a first day a person set wins, and the proof says so (Sep 29 2026)", () => {
+    const c = client("a", "Ann", { firstStudioDay: "2019-09-23", firstAppointmentDate: "2021-01-05" });
+    const m = moments({ delight: [], datedNotes: [], clients: [c], weekEntries: [], today: TODAY, tz: TZ });
+    expect(m.rows[0]).toMatchObject({ kind: "milestone", day: "2026-09-23", sentence: "7 years with the studio." });
+    expect(m.rows[0].proof).toContain("First day Mon, Sep 23 (set on their profile).");
+  });
   it("a Journey createdAt is not a business date, so no anniversary comes from it", () => {
     const c = client("a", "Ann", { createdAt: "2025-09-23T12:00:00Z" });
     expect(moments({ delight: [], datedNotes: [], clients: [c], weekEntries: [], today: TODAY, tz: TZ }).rows).toHaveLength(0);

@@ -82,8 +82,9 @@ export const RECORD_FORM_KEYS = [
   "address",
   "emergencyContactName",
   "emergencyContactPhone",
-  // Account · Membership (the tier lock), and where they can train
+  // Account · Membership (the tier lock), her first day, and where they can train
   "contractTierOverride",
+  "firstStudioDay",
   "approvedCrossTrainStudioIds",
   // Account · How they found us
   "leadSource",
@@ -120,6 +121,7 @@ const THE_WHY: FieldHome = { page: "goals", anchor: "goals-why", label: "The why
 const WORKING_TOWARD: FieldHome = { page: "goals", anchor: "goals-now", label: "Working toward" };
 const CONTACT: FieldHome = { page: "account", anchor: "account-contact", label: "Contact" };
 const MEMBERSHIP: FieldHome = { page: "account", anchor: "account-membership", label: "Membership" };
+const FIRST_DAY: FieldHome = { page: "account", anchor: "account-first-day", label: "First day at the studio" };
 const TRAIN_AT: FieldHome = { page: "account", anchor: "account-train-at", label: "Where they can train" };
 const FOUND_US: FieldHome = { page: "account", anchor: "account-found-us", label: "How they found us" };
 
@@ -158,6 +160,7 @@ export const FIELD_HOME: Readonly<Record<RecordFormKey, FieldHome>> = {
   emergencyContactName: CONTACT,
   emergencyContactPhone: CONTACT,
   contractTierOverride: MEMBERSHIP,
+  firstStudioDay: FIRST_DAY,
   approvedCrossTrainStudioIds: TRAIN_AT,
   leadSource: FOUND_US,
   referredBy: FOUND_US,
