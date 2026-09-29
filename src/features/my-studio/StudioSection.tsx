@@ -22,6 +22,7 @@ import { mayOpenOperations } from "../admin/operations-access";
 import { leadsHere } from "../relay/leads";
 import { mayReadWeeks } from "../standing-week/present";
 import { StudioSettingsPanel } from "../studio-settings/StudioSettingsPanel";
+import { StudioActivityPanel } from "./StudioActivityPanel";
 import "../admin/admin.css";
 import "./my-studio.css";
 
@@ -55,6 +56,10 @@ import "./my-studio.css";
  *                     Operations → Renewals only points here since the
  *                     Operations round)
  *   Announcements     the studio's own notices, pinned to this studio
+ *   Activity          what head office changed here from the Admins
+ *                     dashboard, read-only, the studio tier only (the
+ *                     Admins room's third wave, Sep 29 2026 —
+ *                     StudioActivityPanel over features/admins/activity)
  *
  * Everything writes only the diff to studios/{id} (or the renewal config /
  * hub_announcements), and firestore.rules scopes each write to the studio
@@ -136,6 +141,11 @@ export function StudioSection({ authTrainer, trainers }: StudioSectionProps) {
       <RenewalsPanel studioId={studioId} studioName={studio.name} canEdit={canEdit} />
 
       <StudioAnnouncements authTrainer={authTrainer ?? null} studioId={studioId} studioName={studio.name} canEdit={canEdit} />
+
+      {/* What head office changed here, for the studio tier only: the rules
+          let a studio's leaders read their own studio's Activity record and
+          refuse everyone else (the Admins room's third wave, Sep 29 2026). */}
+      {canEdit ? <StudioActivityPanel studioId={studioId} studioName={studio.name} /> : null}
     </div>
   );
 }

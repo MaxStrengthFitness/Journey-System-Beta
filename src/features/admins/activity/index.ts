@@ -8,6 +8,7 @@
  * See activity.ts for what an entry is, and ../README.md.
  */
 export { logActivity } from "./log-activity";
+export { useStudioActivityLive } from "./useStudioActivityLive";
 export {
   ACTIVITY_KINDS,
   KIND_WORDS,
