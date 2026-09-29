@@ -441,9 +441,8 @@
   font-size: 12px;
   font-weight: 800;
   color: var(--cal-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   line-height: 1.2;
 }
 .cal-board__track {
@@ -610,9 +609,9 @@
   font-size: 12px;
   font-weight: 800;
   color: var(--cal-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 .cal-lane__count {
   font-size: 13px;
@@ -663,10 +662,9 @@
   font-size: 10px;
   font-weight: 800;
   color: var(--cal-ink);
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .cal-block__time {
   font-size: 9px;

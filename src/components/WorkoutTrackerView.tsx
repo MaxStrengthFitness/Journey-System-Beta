@@ -3652,7 +3652,7 @@ export function WorkoutTrackerView({
                             key={machineId}
                             className="flex items-center justify-between gap-3 rounded-2xl border-2 border-slate-200 dark:border-slate-800 px-3 py-2"
                           >
-                            <span className="text-sm font-bold truncate">{name}</span>
+                            <span className="text-sm font-bold min-w-0 [overflow-wrap:anywhere]">{name}</span>
                             <div
                               className="flex gap-1 shrink-0"
                               role="group"

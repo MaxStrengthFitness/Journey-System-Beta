@@ -158,7 +158,7 @@ export function PerformanceEntryDialog({
               <Zap className="w-5 h-5 text-sky-500" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black italic uppercase tracking-tight leading-none truncate">
+              <h2 className="text-xl font-black italic uppercase tracking-tight leading-tight [overflow-wrap:anywhere]">
                 {machine.name}
               </h2>
               <div className="flex items-center gap-2 mt-1">

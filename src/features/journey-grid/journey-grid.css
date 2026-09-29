@@ -1198,10 +1198,9 @@ div.jg-today { cursor: default; }
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* The settings are TILES, not chips: label on top, value big underneath.
@@ -1568,7 +1567,7 @@ div.jg-today { cursor: default; }
 .jg-nb__next {
   grid-area: next;
   appearance: none;
-  height: 46px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1637,15 +1636,15 @@ div.jg-today { cursor: default; }
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 @media (max-width: 899px) {
   .jg-nb--bar .jg-nb__controls .jg-nb__sp { display: none; }
   .jg-nb--bar .jg-nb__controls { gap: 8px 10px; }
   /* Full width, and the loudest thing on the bar. */
-  .jg-nb--bar .jg-nb__next { width: 100%; height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+  .jg-nb--bar .jg-nb__next { width: 100%; min-height: 48px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
 }
 
 /* ---- zone 2 · the grid rail ------------------------------------------ *
@@ -2188,7 +2187,7 @@ div.jg-today { cursor: default; }
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 54px;
+  min-height: 54px;
   padding: 0 10px 0 12px;
   background: var(--jg-surface);
   border-bottom: 1px solid var(--jg-border);
@@ -2203,9 +2202,8 @@ div.jg-today { cursor: default; }
   font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .jg-sbar__meta {
   display: flex;
@@ -2571,8 +2569,8 @@ div.jg-today { cursor: default; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 6px 12px;
   border: 1px dashed var(--jg-border-strong);
   border-radius: var(--jg-radius-sm);
   background: transparent;
@@ -2586,7 +2584,7 @@ div.jg-today { cursor: default; }
   touch-action: manipulation;
 }
 .jg-order__add svg { color: var(--jg-live-text); flex: none; }
-.jg-order__add span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jg-order__add span { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .jg-order__add:active { background: var(--jg-live-fill); }
 
 /* ==========================================================================
@@ -2635,7 +2633,7 @@ div.jg-today { cursor: default; }
 .jg-nb--side .jg-nb__outin { width: 100%; }
 .jg-nb--side .jg-nb__quality { width: 100%; }
 .jg-nb--side .jg-nb__qbtn { flex: 1; }
-.jg-nb--side .jg-nb__next { width: 100%; height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
+.jg-nb--side .jg-nb__next { width: 100%; min-height: 50px; background: var(--jg-live); color: var(--jg-live-on); border-color: var(--jg-live); }
 /* Beside a 312px Now bar the rail has ~700px, not the viewport: keep the
    Key popover, never the inline legend. */
 .jg-stage--side .jg-rail__legend { display: none; }
@@ -2643,13 +2641,6 @@ div.jg-today { cursor: default; }
 
 /* Names are never truncated (CLAUDE.md). The Now Bar's machine, the Next
    button's machine and the session bar's client wrap onto a second line
-   instead of ending in an ellipsis; each sits in a flex row that grows. */
-.jg-nb__name,
-.jg-nb__nextname,
-.jg-sbar__name {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: break-word;
-  line-height: 1.1;
-}
+   instead of ending in an ellipsis (their own rules say so since Sep 29
+   2026; this was an override until then), and each sits in a row that
+   grows: min-height, never height. */

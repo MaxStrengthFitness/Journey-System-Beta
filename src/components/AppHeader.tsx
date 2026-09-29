@@ -82,8 +82,9 @@ export function AppHeader({
             // the leg of its N) and the tops of tall caps were shaved off
             // even when the name fit. The trailing padding gives the slant
             // room to land; the taller line box stops the vertical clip.
-            // Ellipsis behaviour for long names is unchanged.
-            "font-display italic text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left truncate pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
+            // Names are never truncated (CLAUDE.md, Sep 29 2026): a long name
+            // wraps onto a second line within the cap instead of ellipsising.
+            "font-display italic text-xs sm:text-lg md:text-xl leading-tight uppercase justify-center transition-opacity text-left whitespace-normal [overflow-wrap:anywhere] min-h-10 pe-[0.22em] max-w-[14ch] sm:max-w-[20ch] lg:max-w-[28ch]",
             isLight ? "text-ink-l3" : "text-white",
             onStudioClick
               ? "hover:opacity-75 cursor-pointer"

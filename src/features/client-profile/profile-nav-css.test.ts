@@ -66,12 +66,15 @@ describe("profile-nav.css: the wrap variant", () => {
     expect(stripComments(BASE)).not.toContain("data-wrap");
   });
 
-  it("leaves the base label clipping on one line and the base meta at 9.5px uppercase", () => {
-    // Programming's and the Activity Archive's look, pinned. Moving them to
-    // the wrap variant is its own change, with its own look at an iPad.
+  it("lets the base label wrap rather than clip, and keeps the base meta at 9.5px uppercase", () => {
+    // Programming's and the Activity Archive's look, pinned. Until Sep 29
+    // 2026 the base label clipped on one line while its comment said "two
+    // words wrap rather than clip"; the code now matches the comment (names
+    // are never truncated, CLAUDE.md), and the button is still 48px.
     const label = ruleBody(BASE, ".psub__label");
-    expect(label).toContain("white-space: nowrap");
-    expect(label).toContain("overflow: hidden");
+    expect(label).toContain("white-space: normal");
+    expect(label).toContain("overflow-wrap: anywhere");
+    expect(label).not.toContain("overflow: hidden");
     const meta = ruleBody(BASE, ".psub__meta");
     expect(meta).toContain("font-size: 9.5px");
     expect(meta).toContain("text-transform: uppercase");
