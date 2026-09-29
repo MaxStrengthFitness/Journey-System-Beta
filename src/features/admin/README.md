@@ -20,7 +20,9 @@ company tier to the Admins dashboard (`src/features/admins/`), which mounts
 this folder's screens too — moved, not rewritten. The redesign's Operations
 room (Sep 28 2026, `docs/rounds/2026-09-28-operations.md`) put the nine under
 **five destinations — Today · Week · Clients · Team · Setup** — each tab's
-screen mounted as it was. `shell/places.ts` is the list.
+screen mounted as it was, and **Month** joined them on Sep 29 2026 (Today ·
+Week · Month · Clients · Team · Setup: "what do I need to worry about
+today, this week and this month"). `shell/places.ts` is the list.
 
 | Destination → page | Folder or file |
 | --- | --- |
@@ -28,6 +30,7 @@ screen mounted as it was. `shell/places.ts` is the list.
 | Today (was Overview) | `overview/` — the brief (`TodayBrief.tsx`; `brief.ts` the bottom line, the nightly record, Catch today and since yesterday; `floor.ts` the day's arithmetic), `changes/` (the week's cancellations and moves; `useStudioWeek.ts` the week as the server answered it), `attention/` (the watchlist, acknowledgements and, since wave 2, a leader's "didn't come" on a session nobody logged: `booking-marks.ts`) |
 | Clients → Journey (was the Overview's attendance watch) | `journey/` — `JourneyPage.tsx`, the rhythm (`rhythm.ts`), the states (`states.ts`), the case (`case.ts`), the studio's Journey in one pass (`journey-list.ts`, `useStudioJourneys.ts`), and her journey and case on the client page (`JourneyCase.tsx`). Read `journey/README.md` |
 | Week → Last week · This week so far · Week ahead | `week/` — `WeekPage.tsx` draws all three: the Monday review (a bottom line by rules, day by day, who crossed a line and who came back, the renewals decided, the team in name order, the trust line), this week so far (with the Changes view, `changes/ChangesView.tsx`) and the next seven days. `review.ts` is the pure half (the week's days, done means logged, late cancellations, the bottom line, how many days were read in full, each trainer's week); `useCoverageRecord.ts` reads the whole-read record's month documents |
+| Month | `month/` — `MonthPage.tsx`: a given month's renewals (by the day the package effectively ends), birthdays, anniversaries (from her first day, a guessed one said to be a guess) and the MIA list (the Journey's Drifting · At risk · Lapsed, as of today); `month.ts` is the pure half. Read its README first |
 | Clients → Renewals | `renewals/` (the engine is `src/features/renewals/`) |
 | Clients → Moments (was Delight queue) | `src/features/ford/` (drawn by the shell) |
 | Clients → Trends (was Insights) | `trends/` — `TrendsPage.tsx`, the quarter's lines (`trends.ts`: renewal outcomes, a longer package, start groups, studio rhythm, lost reasons, and the two that wait for stored history), each with its named minimum, then `insights/AdminInsightsTab.tsx` below (By trainer in name order, never ranked) |
