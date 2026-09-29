@@ -2480,6 +2480,64 @@ landscape.
   met, goes on the Studio shelf; Opening's things to carry and Close out's
   line land in Day logs.
 
+## Round 39 — Operations → Month, and a client's first day · *Sep 29 2026, branch `ops-month`*
+
+The round document is `docs/rounds/2026-09-29-month-and-first-day.md`. Nothing to deploy first. As a **Studio Leader**, portrait and landscape.
+
+- [ ] Operations → Month opens on this month: the sentence, then Renewals, Birthdays, Anniversaries and MIA, each with a count and rows grouped by day; a row opens the client inside Operations and Back returns.
+- [ ] ‹ and › move a month at a time, "This month" comes back; a year each way and the arrow greys.
+- [ ] Renewals: a package ending in the month with its lane word and next step; "N clients' timing unknown" in the header when a snapshot is unknown.
+- [ ] Birthdays: "Turns 70 on Wed, Oct 14." marked as a decade; the header counts who has no date of birth.
+- [ ] Anniversaries: a client with no first day set reads "A guess: first seen …" with the nudge; set her first day on Notes & Profile → Account → First day at the studio, save; the row now says "set on their profile" and the header's guess count drops.
+- [ ] MIA: the same clients as Clients → Journey's Drifting, At risk and Lapsed; "as of today" when another month is open; nothing listed while the Journey is still reading.
+- [ ] Account → First day at the studio: unset says the app's guess and its source; Edit, pick a day, the Save bar names "Account · First day at the studio"; the profile header's "Client since" follows; a reader who may not edit sees no Edit.
+- [ ] In portrait the Month tab sits between Week and Clients; in landscape it is in the sidebar.
+
+## Round 40 — Names wrap · *Sep 29 2026, branch `names-wrap`*
+
+Portrait first, then landscape. A client with a long name (three words, 30+ characters) and a studio with a long name.
+
+- [ ] The top strip's studio name wraps to two lines, never "…".
+- [ ] The live session bar shows her whole name; the Now Bar's machine name and the next machine's name wrap.
+- [ ] The Hub's day view and the calendar's blocks, lanes and the week's board show whole names.
+- [ ] Activity Archive → Sessions: the trainer's name on a row is whole; the session pop-up's machine names wrap.
+- [ ] My Profile → Today, Recently coached, My clients: whole client names.
+- [ ] Notes & Profile's sub-tabs: two-word labels wrap rather than cut.
+
+## Round 41 — The Admins dashboard, third wave · *Sep 29 2026, branch `redesign/admins-3`*
+
+Nothing to deploy first. iPad portrait and landscape.
+
+- [ ] As an administrator: set a studio's stage to Setting up with an opening day two weeks out; Home → What needs you names its overdue items, who leads it, and Open {studio}'s setup lands on the checklist; tick one, Check again, the item's count drops; Snooze it, then tick another: it comes back.
+- [ ] Two studios opening late: one item, "2 studios opening…", Open Launches.
+- [ ] As a studio leader at that studio: My Studio → Studio → Activity lists the changes Admins made there, newest first; make one from Admins on another iPad and watch it land; as a trainer, the panel isn't there.
+
+## Round 42 — Operations, wave 3 · *Sep 29 2026, branch `redesign/operations-3`*
+
+Nothing to deploy first. As a **Studio Leader**, then as the trainer named.
+
+- [ ] Open a client from Operations → Clients → Journey; as a leader, Open a case (her usual trainer is the owner), type a step, Save; switch tabs mid-typing and see the leave question.
+- [ ] As the owner (not a leader), change the step and see the owner control read-only.
+- [ ] Mark a finished booking "Didn't come" on Operations → Today, then see the Hub card say "Didn't come" (not "Not logged") and the client's Activity Archive → Calendar show a ring on the day with "didn't come" under the month; Take back the mark and both go.
+
+## Round 43 — The Machine Catalog, wave 3 · *Sep 29 2026, branch `redesign/catalog-3`*
+
+**Deploy the rules first** (ship-sep29 does). Portrait and landscape, light and dark.
+
+- [ ] As a leader, Learning → Catalog: under the floor, "Edit our floor"; tap it: My Studio opens on Machines; Back to Learning: the Catalog is where you left it.
+- [ ] Typing in a Studio note, then Edit our floor: the leave question, and Keep editing stays.
+- [ ] As a Life Transformer: no door, on a full floor and on an empty one. An empty floor for a leader: Edit our floor, then Open All MSF machines.
+- [ ] As an administrator, change a catalog machine's starting weight in Admins → Standard → Machines and save; the machine's Catalog page (the floor's and All MSF's) shows "What changed", folded; open it: "{you} changed the starting weight." newest first.
+- [ ] A machine never saved since Sep 29: "No changes recorded. The log began on Sep 29, 2026…", never "never changed"; a trainer reads the same fold and can't edit or remove one; a studio's own machine has no fold.
+
+## Round 44 — The Relay room, third wave · *Sep 29 2026, branch `redesign/relay-3`*
+
+**Deploy the rules first** (ship-sep29 does). As a **Life Transformer**, portrait and landscape.
+
+- [ ] Team jobs: tap "I'll take it" on an up-for-grabs job; the card and the sheet say "Claimed by you 10:12 AM"; on a second iPad the same job says "Claimed by Sam 10:12 AM". Close it: "· done 10:40 AM". Step off: the claim line goes.
+- [ ] As a leader on Operations → Clients → Journey, open a case and name the trainer as owner; on that trainer's Relay → Tracker → Today → Follow-ups the case appears with its day and next step; "Next step" opens the editor; change the step and the day, Save; the leader's page shows the change. Set Paused with a reason: it leaves the trainer's list.
+- [ ] As a leader, post a notice with "Ask everyone to say they've read it" ticked. As a trainer, Relay → Board → Since you were in: the notice is new and shows "I've read it"; Mark all read leaves it new; tap "I've read it": "You said you'd read it · today at …" and the count drops. A notice posted without the tick shows no button.
+
 ---
 
 ## Findings log
@@ -2544,4 +2602,10 @@ Screenshot:
 | 36 — The Machine Codex, second round (Sep 28) | 6 | | |
 | 37 — The Machine Catalog, wave 2 (Sep 28) | 7 | | |
 | 38 — The Relay room, second wave (Sep 28) | 4 | | |
-| **Total** | **592** | | |
+| 39 — Operations → Month, and a client's first day (Sep 29) | 8 | | |
+| 40 — Names wrap (Sep 29) | 6 | | |
+| 41 — The Admins dashboard, third wave (Sep 29) | 3 | | |
+| 42 — Operations, wave 3 (Sep 29) | 3 | | |
+| 43 — The Machine Catalog, wave 3 (Sep 29) | 5 | | |
+| 44 — The Relay room, third wave (Sep 29) | 3 | | |
+| **Total** | **620** | | |
