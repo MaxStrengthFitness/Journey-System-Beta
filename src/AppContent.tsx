@@ -273,6 +273,7 @@ import { useClientMutations } from "./hooks/useClientMutations";
 // Learning tab itself is lazy-loaded): the link format the bell, search and
 // notes share.
 import { parseLearningRef, type LearningRef } from "./features/learning/ref";
+import { rememberMyStudioSection } from "./features/my-studio/section-memory";
 import { AppBottomBar } from "./components/AppBottomBar";
 import { StatusBarStrip } from "./features/home-screen/StatusBarStrip";
 
@@ -1764,6 +1765,13 @@ export default function AppContent({
                     trainers={trainers}
                     jump={learningJump}
                     onJumpHandled={clearLearningJump}
+                    // The Catalog's "Edit our floor": the ONE floor editor is
+                    // My Studio → Machines, so the door remembers the section
+                    // and opens My Studio (Catalog R5's door, Sep 29 2026).
+                    onOpenFloorEditor={() => {
+                      rememberMyStudioSection("machines");
+                      setCurrentView("studio-tasks");
+                    }}
                   />
                 )}
                 {currentView === "studio-tasks" &&

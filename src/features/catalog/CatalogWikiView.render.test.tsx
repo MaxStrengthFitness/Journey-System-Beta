@@ -416,6 +416,37 @@ describe("a floor that is not there is never the MSF standard", () => {
     expect(host.querySelector(".mcat-find__top .wk__hit-meta")?.textContent).toBe("LP · Not on Solon's floor");
   });
 
+  // ── Edit our floor: a door to the ONE floor editor (Catalog R5's door) ──
+  const leader = { id: "t-lead", fullName: "Elrond Peredhel", role: "StudioLeader", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as never;
+  const trainer = { id: "t-lt", fullName: "Bergil Guard", role: "LifeTransformer", primaryHomeStudioId: "solon", accessibleStudioIds: ["solon"] } as never;
+  const doors = () => [...host.querySelectorAll(".mcat-door")].filter((b) => b.textContent === "Edit our floor");
+
+  it("offers Edit our floor to someone who leads here, under the floor, and it opens the editor's door", async () => {
+    let opened = 0;
+    await mount({ authTrainer: leader, onOpenFloorEditor: () => (opened += 1) });
+    expect(doors()).toHaveLength(1);
+    expect(host.querySelector(".mcat-floor-edit__where")?.textContent).toContain("My Studio → Machines");
+    await click(doors()[0]);
+    expect(opened).toBe(1);
+  });
+
+  it("offers it on an empty floor too, beside the door to All MSF", async () => {
+    fx.floor = "empty";
+    await mount({ authTrainer: leader, onOpenFloorEditor: () => {} });
+    expect(doors()).toHaveLength(1);
+    expect([...host.querySelectorAll(".mcat-door")].map((b) => b.textContent)).toEqual(["Edit our floor", "Open All MSF machines"]);
+  });
+
+  it("draws no door for a trainer, nor for a leader with nowhere to go, nor while typing in Find", async () => {
+    await mount({ authTrainer: trainer, onOpenFloorEditor: () => {} });
+    expect(doors()).toHaveLength(0);
+    await mount({ authTrainer: leader });
+    expect(doors()).toHaveLength(0);
+    await mount({ authTrainer: leader, onOpenFloorEditor: () => {} });
+    await type("leg");
+    expect(doors()).toHaveLength(0);
+  });
+
   it("opens a machine linked from elsewhere in All MSF when the floor is empty", async () => {
     fx.floor = "empty";
     await mount({ openMachineId: "m-leg-press", onOpenedMachine: () => {} });

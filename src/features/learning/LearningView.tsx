@@ -69,6 +69,13 @@ export interface LearningViewProps {
   /** A page to open, from outside the tab. Cleared once honoured. */
   jump: LearningRef | null;
   onJumpHandled: () => void;
+  /**
+   * The Catalog's door to the floor editor, My Studio → Machines (Catalog
+   * R5's door, Sep 29 2026). AppContent remembers the section and opens My
+   * Studio; here it goes through the leave question first, like every other
+   * way out of a page. Absent: the Catalog draws no door.
+   */
+  onOpenFloorEditor?: () => void;
 }
 
 export function LearningView({
@@ -79,6 +86,7 @@ export function LearningView({
   trainers,
   jump,
   onJumpHandled,
+  onOpenFloorEditor,
 }: LearningViewProps) {
   const { activeStudioId, activeStudio } = useActiveStudio();
 
@@ -241,6 +249,7 @@ export function LearningView({
                 onViewChange("academy");
               })
             }
+            onOpenFloorEditor={onOpenFloorEditor ? () => through(onOpenFloorEditor) : undefined}
           />
         )}
         {view === "academy" && (

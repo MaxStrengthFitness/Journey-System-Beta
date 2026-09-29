@@ -177,6 +177,20 @@ administrators in the catalog editor, not in code. The round is
 > `useLayoutMode`, `accents`. Sections 2–5 and 9–10 below describe components
 > that **no longer exist**; they are kept as design history.
 >
+### 0.5 Wave 3 (Sep 29 2026): the door, the change log
+
+- **Edit our floor** (Catalog R5's last piece). Under the floor, and on an
+  empty floor beside the door to All MSF, a button for someone who leads here
+  (`leadsHere`, `features/relay/leads.ts`): it opens **My Studio → Machines**,
+  the ONE editor of a studio's floor, by remembering the section
+  (`my-studio/section-memory.ts`) and switching to My Studio — AppContent's
+  `onOpenFloorEditor`, through Learning's leave question. The Catalog draws
+  no editor of its own and no door for a trainer.
+- **What changed** on a standard machine (the Codex's change log): read on
+  the machine's page from `machines/{id}/changes`, written only by the
+  catalog editor's save (`features/machine-codex/change-log.ts`). See that
+  README.
+
 > **Still true and still load-bearing:** §1.1 and §11.1 (studio notes are
 > studio-scoped, never written to the shared `machines/{id}` doc), §4.1 (the
 > adapter), §6 (the anatomy model as a shared component), and the files that
