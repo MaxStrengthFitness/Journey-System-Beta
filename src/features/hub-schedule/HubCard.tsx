@@ -31,7 +31,7 @@
 import type { ComponentType } from "react";
 import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, MessageCircle, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { Client, WorkoutSession } from "../../types";
-import { isStaffBlock, type LoggedSessions } from "../../lib/booking-state";
+import { isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
 import { isDefaultService } from "../../lib/hub-markers";
 import { clientDisplayName } from "../../lib/client-name";
@@ -95,6 +95,8 @@ export interface HubCardProps {
   workoutSession?: WorkoutSession | null;
   /** `loggedSessions` over the Hub's session stream; null while unknown. */
   logged?: LoggedSessions | null;
+  /** The day's "didn't come" marks (`useBookingMarks().marks`); null when not read. A marked booking reads "Didn't come", never "Not logged". */
+  noShows?: BookingMarks | null;
   /** The Hub's minute clock. */
   now?: Date;
   /** The roster is still loading: a booking naming a client we don't hold YET is pending, not "Not synced". */
@@ -121,6 +123,7 @@ export function HubCard({
   usualService = null,
   workoutSession = null,
   logged = null,
+  noShows = null,
   now = new Date(),
   rosterLoading = false,
   dimmed = false,
@@ -149,6 +152,7 @@ export function HubCard({
 
   const cardState = hubCardState(
     {
+      id: booking?.id ?? null,
       clientId: client?.id ?? booking?.clientId ?? null,
       startTime: booking?.startTime || booking?.StartDateTime || booking?.date,
       endTime: booking?.endTime || booking?.EndDateTime,
@@ -156,7 +160,7 @@ export function HubCard({
     },
     logged,
     now,
-    { sessionOpen: workoutSession?.status === "In-Progress" },
+    { sessionOpen: workoutSession?.status === "In-Progress", marks: noShows },
   );
   const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client;
@@ -164,6 +168,8 @@ export function HubCard({
   /* A finished slot nobody logged. Only on a linked card: one with no
      profile already says why nothing could be logged. */
   const isNotLogged = cardState === "not-logged" && !isUnlinked;
+  /* A leader marked it "didn't come" (Operations wave 3): a fact, said as quietly as "Not logged". */
+  const isDidntCome = cardState === "didnt-come" && !isUnlinked;
   const isDone = cardState === "done";
 
   const name = client ? clientDisplayName(client, booking?.clientName || "Client") : (booking?.clientName || "Reservation").trim();
@@ -248,12 +254,18 @@ export function HubCard({
           )}
           {!isUnlinked && numberText && ` · ${numberText}`}
         </span>
-        {!isUnlinked && (isNotLogged || restParts.length > 0) && (
+        {!isUnlinked && (isNotLogged || isDidntCome || restParts.length > 0) && (
           <span className="hs-card-rest">
             {isNotLogged && (
               <>
                 {" · "}
                 <strong title="No Journey session was completed for this client today">Not logged</strong>
+              </>
+            )}
+            {isDidntCome && (
+              <>
+                {" · "}
+                <strong title="Marked as a no-show">Didn't come</strong>
               </>
             )}
             {restParts.length > 0 && ` · ${restParts.join(" · ")}`}

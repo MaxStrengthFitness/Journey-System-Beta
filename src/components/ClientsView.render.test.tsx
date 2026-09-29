@@ -73,6 +73,18 @@ vi.mock("../features/hub-opportunities/use-hub-marks", () => ({
     return studioId ? { status: "ready", allStarOf: hub.allStarOf } : { status: "off" };
   },
 }));
+/* The day's "didn't come" marks (Operations wave 3): which studio and day were asked for, and the marks handed out. */
+const marksRead = vi.hoisted(() => ({ calls: [] as Array<[string | null, string, string]>, ids: [] as string[] }));
+vi.mock("../features/admin/attention/booking-marks", async () => {
+  const { bookingMarks } = await import("../lib/booking-state");
+  return {
+    useBookingMarks: (studioId: string | null, from: string, to: string) => {
+      marksRead.calls.push([studioId, from, to]);
+      const rows = marksRead.ids.map((id) => ({ id, noShow: true }));
+      return { rows, marks: studioId ? bookingMarks(rows) : null, loading: false, failed: false };
+    },
+  };
+});
 vi.mock("../features/renewals/useRenewalSettings", async () => {
   const { DEFAULT_RENEWAL_SETTINGS } = await import("../features/renewals/settings");
   const state = { settings: DEFAULT_RENEWAL_SETTINGS, saved: true, ownPackageTable: false, forStudioId: "westlake", loading: false, error: null };
@@ -397,6 +409,34 @@ describe("the Hub: Get to know", () => {
  * ALL STARS (wave 2 hub; AJ's Hub question 6): the nightly renewals job's
  * word, one document read once per studio visit. The iPad counts nothing.
  * ------------------------------------------------------------------ */
+
+describe("the Hub: \"didn't come\" (Operations wave 3)", () => {
+  afterEach(() => {
+    marksRead.ids = [];
+  });
+
+  it("reads the day's marks once, for the day on screen, for someone who works at the studio, and for nobody else", () => {
+    mount();
+    expect(marksRead.calls[marksRead.calls.length - 1]).toEqual(["westlake", "2026-09-28", "2026-09-28"]);
+    act(() => root?.unmount());
+    host?.remove();
+    mount({ ...trainer("t-grimbold", "Grimbold"), primaryHomeStudioId: "solon" });
+    expect(marksRead.calls[marksRead.calls.length - 1][0]).toBeNull();
+  });
+
+  it("a marked booking's card says 'Didn't come', never 'Not logged'; an unmarked one still says 'Not logged'", () => {
+    vi.setSystemTime(at("12:00")); // every morning slot over
+    const bella = SCHEDULES[1].id; // Belladonna, 9:30 with Ioreth, nothing logged
+    marksRead.ids = [bella];
+    const { el } = mount();
+    const marked = cardOf(el, "Belladonna");
+    expect(marked?.textContent).toContain("Didn't come");
+    expect(marked?.textContent).not.toContain("Not logged");
+    const estella = cardOf(el, "Estella");
+    expect(estella?.textContent).toContain("Not logged");
+    expect(estella?.textContent).not.toContain("Didn't come");
+  });
+});
 
 describe("the Hub: All stars", () => {
   it("reads the nightly marks for someone who works at the studio, and for nobody else", () => {

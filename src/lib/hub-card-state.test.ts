@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WorkoutSession } from "../types";
-import { loggedSessions, type BookingLike } from "./booking-state";
+import { bookingMarks, loggedSessions, type BookingLike } from "./booking-state";
 import { hubCardRecedes, hubCardState, sessionsByClientDay } from "./hub-card-state";
 
 const TZ = "America/New_York";
@@ -49,6 +49,17 @@ describe("hubCardState — the card stays live until the booking is done", () =>
     expect(hubCardState(booking("11:00"), null, NOW, { tz: TZ })).toBe("past");
   });
 
+  it("reads a leader's 'didn't come' as its own quiet state, never 'not logged' (Operations wave 3)", () => {
+    const marks = bookingMarks([{ id: "b1", noShow: true }]);
+    expect(hubCardState(booking("11:00", { id: "b1" }), nothing, NOW, { tz: TZ, marks })).toBe("didnt-come");
+    expect(hubCardRecedes("didnt-come")).toBe(true);
+    // A session logged that day still beats the mark: done means logged.
+    expect(hubCardState(booking("11:00", { id: "b1" }), logged(session({ startTime: at(DAY, "11:02") })), NOW, { tz: TZ, marks })).toBe("done");
+    // Unmarked, or the marks not read: as before.
+    expect(hubCardState(booking("11:00", { id: "b2" }), nothing, NOW, { tz: TZ, marks })).toBe("not-logged");
+    expect(hubCardState(booking("11:00", { id: "b1" }), nothing, NOW, { tz: TZ })).toBe("not-logged");
+  });
+
   it("keeps a slot in progress live even while the sessions are still loading", () => {
     expect(hubCardState(booking("11:45"), null, NOW, { tz: TZ })).toBe("live");
   });
@@ -58,8 +69,8 @@ describe("hubCardState — the card stays live until the booking is done", () =>
     expect(hubCardState(booking("11:45"), nothing, NOW, { sessionOpen: true, tz: TZ })).toBe("in-session");
   });
 
-  it("a Mindbody no-show or a cancellation recedes and says nothing", () => {
-    expect(hubCardState(booking("09:00", { status: "No-Show" }), nothing, NOW, { tz: TZ })).toBe("past");
+  it("a cancellation recedes and says nothing; a Mindbody no-show reads 'didn't come', as a leader's mark does", () => {
+    expect(hubCardState(booking("09:00", { status: "No-Show" }), nothing, NOW, { tz: TZ })).toBe("didnt-come");
     expect(hubCardState(booking("09:00", { status: "Cancelled" }), nothing, NOW, { tz: TZ })).toBe("past");
   });
 });

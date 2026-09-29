@@ -20,7 +20,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HubCard } from "./HubCard";
-import { loggedSessions, type LoggedSessions } from "../../lib/booking-state";
+import { bookingMarks, loggedSessions, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { momentsToday, type MomentsTodayInput, type RunSheetEntry } from "../hub-opportunities/moments-today";
 import type { Client, WorkoutSession } from "../../types";
 import type { JournalEntry } from "../../types/journal";
@@ -80,6 +80,7 @@ function mount({
   hm,
   day = DAY,
   logged = NOTHING_LOGGED,
+  marks = null,
   workoutSession = null,
   withClient = true,
   who = client,
@@ -94,6 +95,7 @@ function mount({
   hm: string;
   day?: string;
   logged?: LoggedSessions | null;
+  marks?: BookingMarks | null;
   workoutSession?: WorkoutSession | null;
   withClient?: boolean;
   who?: Client;
@@ -145,6 +147,7 @@ function mount({
           usualService={usualService}
           workoutSession={workoutSession}
           logged={logged}
+          noShows={marks}
           now={NOW}
           onOpen={onOpen}
         />
@@ -162,6 +165,7 @@ function mount({
       clinical: !!card.querySelector('[aria-label="Clinical history on file"]'),
     },
     notLogged: (card.textContent || "").includes("Not logged"),
+    didntCome: (card.textContent || "").includes("Didn't come"),
     inSession: !!card.querySelector('[aria-label="Session in progress"]'),
     /** The triangle's words, when a Critical note put it there. */
     critical: card.querySelector('.hs-tri[aria-label^="Critical:"]')?.getAttribute("aria-label") ?? null,
@@ -221,6 +225,18 @@ describe("the Hub card on the floor", () => {
     expect(c.faded).toBe(true);
     expect(c.flags).toEqual(NO_FLAGS);
     expect(c.notLogged).toBe(true);
+  });
+
+  it("reads a leader's 'didn't come' mark as a quiet 'Didn't come', never 'Not logged' (Operations wave 3)", () => {
+    const marks = bookingMarks([{ id: "b-marked", noShow: true }]);
+    const c = mount({ hm: "10:00", marks, bookingOver: { id: "b-marked" } });
+    expect(c.faded).toBe(true);
+    expect(c.flags).toEqual(NO_FLAGS);
+    expect(c.didntCome).toBe(true);
+    expect(c.notLogged).toBe(false);
+    const other = mount({ hm: "10:00", marks, bookingOver: { id: "b-other" } });
+    expect(other.notLogged).toBe(true);
+    expect(other.didntCome).toBe(false);
   });
 
   it("says nothing when the sessions could not be read: receded, never 'Not logged'", () => {

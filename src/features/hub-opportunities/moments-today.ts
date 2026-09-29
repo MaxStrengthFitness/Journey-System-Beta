@@ -53,7 +53,7 @@ import { clientDisplayName } from "../../lib/client-name";
 import { canQuoteSessionNumber, homeCutoverOf } from "../../lib/client-coverage";
 import { priorHistoryOf, type HistoryCoverage } from "../../lib/prior-history";
 import { canClaimGap, dayAfter, ownedWindow } from "../../lib/history-claims";
-import { bookingState, isStaffBlock, type LoggedSessions } from "../../lib/booking-state";
+import { bookingState, isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { getClientAlertState } from "../../lib/client-alerts";
 import { waiverState } from "../../lib/client-waiver";
 import { criticalNotesOn } from "../../lib/hub-critical-notes";
@@ -285,6 +285,8 @@ export interface MomentsTodayInput {
   studios?: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }> | null;
   /** `loggedSessions(...)` over the Hub's sessions, or null when unknown. */
   logged: LoggedSessions | null;
+  /** The day's "didn't come" marks (`useBookingMarks().marks`), or null when not read: a marked booking is "didn't come", never "not logged" (Operations wave 3). */
+  marks?: BookingMarks | null;
   /** The Hub's one Critical read: a client's notes, or null when unread. */
   criticalFor: (clientId: string) => readonly JournalEntry[] | null;
   /**
@@ -365,8 +367,8 @@ export function buildEntry(bookings: ScheduleEntry[], input: MomentsTodayInput, 
   const endText = formatStudioTime(new Date(end), input.tz);
   // "9:20 \u2013 9:40 AM"; the start keeps its AM/PM only when the slot crosses noon.
   const timeText = `${startText.slice(-2) === endText.slice(-2) ? startText.replace(/ [AP]M$/, "") : startText} \u2013 ${endText}`;
-  const state = bookingState(booking, input.logged, input.now, input.tz);
-  const stateText = state === "completed" ? "done" : state === "never-logged" ? "not logged" : state === "in-progress" ? "now" : null;
+  const state = bookingState(booking, input.logged, input.now, input.tz, input.marks ?? null);
+  const stateText = state === "completed" ? "done" : state === "never-logged" ? "not logged" : state === "no-show" ? "didn't come" : state === "in-progress" ? "now" : null;
   const withText = withWords(booking, input, myIdSet);
   const name = client ? clientDisplayName(client, booking.clientName || "Client") : (booking.clientName || "Client").trim();
 
