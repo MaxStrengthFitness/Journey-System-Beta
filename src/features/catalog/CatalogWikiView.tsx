@@ -23,6 +23,7 @@ import { usePlaybook } from "../studio-tasks/usePlaybook";
 import { useMachineCare } from "../relay/board/machine-care-store";
 import { useAcademyCards, useAcademyScripts } from "../academy/useAcademyContent";
 import { canWriteStudioPages, leadsStudioPerRules } from "../learning/permissions";
+import { leadsHere } from "../relay/leads";
 import { CommentsPanel } from "../comments";
 import {
   MachineDatabase,
@@ -47,6 +48,7 @@ import { findOnFloor, findUnitsFrom, type FindHit } from "./find";
 import { FloorRow } from "./FloorRow";
 import { flagLineOf, floorSentence, presetOf } from "./floor-index";
 import { MachineArticle, type FoundOnPage } from "./MachineArticle";
+import { MachineChangeLogRead } from "./MachineChangeLog";
 import { MachineFigure } from "./MachineFigure";
 import { modelForUnit, modelName, modelsById } from "./models";
 import { movementOf, movementsWithAliases } from "./names";
@@ -194,6 +196,14 @@ export interface CatalogWikiViewProps {
     focus: "card" | "script",
     machineName: string,
   ) => void;
+  /**
+   * The door to the floor editor (Catalog R5's last piece, Sep 29 2026):
+   * My Studio → Machines, the ONE editor of a studio's floor. Owned by
+   * AppContent because it is a screen switch (it remembers the section,
+   * then opens My Studio). Offered only to someone who leads here
+   * (`leadsHere`); absent, no door is drawn at all. Never a second editor.
+   */
+  onOpenFloorEditor?: () => void;
 }
 
 export function CatalogWikiView({
@@ -206,6 +216,7 @@ export function CatalogWikiView({
   openScope,
   onOpenedScope,
   onOpenAcademy,
+  onOpenFloorEditor,
 }: CatalogWikiViewProps) {
   const { activeStudioId, activeStudio, isAdmin } = useActiveStudio();
   const {
@@ -269,6 +280,10 @@ export function CatalogWikiView({
   const studioName = activeStudio?.name ?? "this studio";
   // firestore.rules: roster writes are isSuperAdmin() || the studio's leaders.
   const canManageFloor = canWriteStudioPages(authTrainer ?? null, activeStudioId);
+  // The floor editor's door: for someone who runs this studio (leadsHere is
+  // the one answer), and only when the host gave us somewhere to go.
+  const floorEditorDoor =
+    onOpenFloorEditor && leadsHere(authTrainer ?? null, activeStudioId) ? onOpenFloorEditor : null;
   const uid = auth.currentUser?.uid ?? null;
   const [sharing, setSharing] = useState<string | null>(null);
 
@@ -575,6 +590,13 @@ export function CatalogWikiView({
           /* The panel reads machineTrends/{id} only once the foldable is open,
              and the read is cached per machine for the session. */
           trends={<MachineTrendsPanel machineId={selected.id} active={isOpen("trends", false)} />}
+          changes={
+            // A standard machine's log (wave 3): the catalog document behind
+            // this unit. A studio's own machine has no standard, so no log.
+            selected.isStudioCustom ? undefined : (
+              <MachineChangeLogRead catalogId={selected.comparisonKey ?? selected.id} active={isOpen("changes", false)} />
+            )
+          }
           academy={{
             onOpenCard:
               card && onOpenAcademy
@@ -815,6 +837,11 @@ export function CatalogWikiView({
               ? "A studio leader adds them on My Studio → Machines. Every MSF machine is in All MSF machines."
               : "Select a studio to see its equipment."}
           </p>
+          {activeStudioId && floorEditorDoor && (
+            <button type="button" className="mcat-door" onClick={floorEditorDoor}>
+              Edit our floor
+            </button>
+          )}
           {activeStudioId && (
             <button type="button" className="mcat-door" onClick={openAllMsf}>
               Open All MSF machines
@@ -837,6 +864,18 @@ export function CatalogWikiView({
             />
           ))}
         </ol>
+      )}
+
+      {/* The one editor of the floor is My Studio → Machines: this is a door
+          to it, for someone who leads here, under the floor they would edit
+          (Catalog R5's door, Sep 29 2026). Trainers see no door. */}
+      {floorState === "ready" && !findResult && floorEditorDoor && (
+        <div className="mcat-floor-edit">
+          <button type="button" className="mcat-door" onClick={floorEditorDoor}>
+            Edit our floor
+          </button>
+          <span className="mcat-floor-edit__where">On My Studio → Machines: the walking order, what is on the floor, each unit's set-up.</span>
+        </div>
       )}
     </WikiShell>
   );

@@ -5496,3 +5496,83 @@ describe("marks on a time", () => {
     });
   });
 });
+
+// ---- Catalog wave 3 (Sep 29 2026): the standard's change log ---------------
+// machines/{id}/changes/{changeId}, written by the catalog editor's save
+// (features/machine-codex/change-log-store.ts recordMachineChange), read on
+// the machine's Catalog page by anyone signed in, never edited or removed.
+// docs/rounds/2026-09-29-catalog-3.md.
+describe("catalog wave 3: a machine's change log", () => {
+  const ctx = (uid: string) => testEnv.authenticatedContext(uid, { email: `${uid.toLowerCase()}@test.com` }).firestore();
+
+  async function seed() {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      const person = (id: string, role: string, home: string, over: Record<string, unknown> = {}) =>
+        setDoc(doc(db, "trainers", id), { fullName: id, initials: "XX", role, primaryHomeStudioId: home, accessibleStudioIds: [home], ...over });
+      await person("adminC3", "Admin", "studioA");
+      await person("founderC3", "Founder", "studioB");
+      await person("leaderC3", "StudioLeader", "studioA");
+      await person("ownerC3", "FranchiseOwner", "studioB");
+      await person("trainerC3", "LifeTransformer", "studioA");
+      await setDoc(doc(db, "machines", "m-leg-press"), { id: "m-leg-press", name: "LEG PRESS", status: "active", schemaVersion: 1 });
+      await setDoc(doc(db, "machines", "m-leg-press", "changes", "c0"), {
+        at: new Date("2026-09-29T14:00:00Z"),
+        by: { uid: "adminC3", name: "adminC3" },
+        kind: "created",
+        fields: [],
+      });
+    });
+  }
+
+  const entry = (uid: string, over: Record<string, unknown> = {}) => ({
+    at: serverTimestamp(),
+    by: { uid, name: `Person ${uid}` },
+    kind: "edited",
+    fields: ["stopRules", "baselineLoad"],
+    ...over,
+  });
+  const changes = (db: ReturnType<typeof ctx>) => collection(db, "machines", "m-leg-press", "changes");
+
+  it("lets an administrator or the founder append a signed entry, and nobody else", async () => {
+    await seed();
+    await assertSucceeds(addDoc(changes(ctx("adminC3")), entry("adminC3")));
+    await assertSucceeds(addDoc(changes(ctx("founderC3")), entry("founderC3", { kind: "created", fields: [] })));
+    await assertFails(addDoc(changes(ctx("leaderC3")), entry("leaderC3")));
+    await assertFails(addDoc(changes(ctx("ownerC3")), entry("ownerC3")));
+    await assertFails(addDoc(changes(ctx("trainerC3")), entry("trainerC3")));
+  });
+
+  it("is read by anyone signed in, whole", async () => {
+    await seed();
+    for (const uid of ["trainerC3", "leaderC3", "ownerC3", "adminC3"]) {
+      await assertSucceeds(getDocs(changes(ctx(uid))));
+      await assertSucceeds(getDoc(doc(ctx(uid), "machines", "m-leg-press", "changes", "c0")));
+    }
+    await assertFails(getDocs(collection(testEnv.unauthenticatedContext().firestore(), "machines", "m-leg-press", "changes")));
+  });
+
+  it("pins the entry to the signed-in person and the server's time, and keeps the shape", async () => {
+    await seed();
+    const admin = ctx("adminC3");
+    await assertFails(addDoc(changes(admin), entry("adminC3", { by: { uid: "founderC3", name: "Founder" } })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { at: new Date("2026-01-01T00:00:00Z") })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { kind: "moved" })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { fields: "stopRules" })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { fields: Array.from({ length: 81 }, () => "name") })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { by: { uid: "adminC3", name: "" } })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { by: { uid: "adminC3", name: "A", email: "a@b.c" } })));
+    await assertFails(addDoc(changes(admin), entry("adminC3", { before: { baselineLoad: 40 } })));
+    const { fields: _dropped, ...noFields } = entry("adminC3");
+    void _dropped;
+    await assertFails(addDoc(changes(admin), noFields));
+  });
+
+  it("is never edited or removed, not even by an administrator", async () => {
+    await seed();
+    const ref = doc(ctx("adminC3"), "machines", "m-leg-press", "changes", "c0");
+    await assertFails(updateDoc(ref, { fields: ["name"] }));
+    await assertFails(setDoc(ref, entry("adminC3")));
+    await assertFails(deleteDoc(ref));
+  });
+});

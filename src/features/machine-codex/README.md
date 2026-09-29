@@ -86,7 +86,24 @@ dials and stacks every unit of one maker's model shares, written once.
 | --- | --- |
 | `format.ts` | The one reader of the format: `CODEX_LEAVES`, `switchesOf` + `switchWords`, `presetOf` + `presetLine` (the preset strip), `stopLinesOf` (never to failure with its reason, then the stop rules), `methodLines` (every method line with its source), `sourceLabel`, `sourceCoverage` + `coverageSentence`. Pure. |
 | `models.ts` | The model record: `modelIdFor` (minted once), `modelLabel`, `modelProblems` (what stops a save, named), `modelDocument` (exactly the shape), `dialsFromMovement`, `modelsFor`, `dialSummary`. Pure. |
+| `change-log.ts`, `change-log-store.ts` | The standard's change log: the record and its sentence (pure), then the one writer and the read. |
 | `models-store.ts` | Its reads — `useMachineModels` (live, for the editors), `fetchMachineModels` / `useMachineModelsOnce` (once a session, for a screen that only names a model; a failed read stays failed) — and its one write, `saveMachineModel`. |
+
+## The change log (catalog wave 3, Sep 29 2026)
+
+`machines/{id}/changes/{changeId}` = `{ at, by: { uid, name }, kind: "created" |
+"edited", fields: [...] }` — one document per save of the catalog editor, the
+DEFINITION FIELDS it wrote and never their values (they are on the machine).
+`change-log.ts` is the record (`changedFields`, `changeDocument`, `changesOf`,
+`changeSentence` in `FIELD_LABELS`' words, `changeWhen`); `change-log-store.ts`
+is its one writer, `recordMachineChange` (signed by `who.ts`, after the
+machine's own write, never throwing, never awaited by the save), and its read,
+one `getDocs` with no `orderBy` (no index) sorted on the iPad, once per page
+open while the fold is open. Read on the machine's Catalog page — the floor's
+and All MSF's — as **What changed** (`catalog/MachineChangeLog.tsx`) by anyone
+signed in; created by administrators only; never updated or deleted (the rules
+say so). An empty log says the record began on Sep 29 2026, never "never
+changed". A studio's own machine has no standard, so no log.
 
 ## How a studio's copy merges
 
