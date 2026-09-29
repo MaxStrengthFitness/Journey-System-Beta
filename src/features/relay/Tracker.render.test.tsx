@@ -19,6 +19,8 @@ const state = vi.hoisted(() => ({
   open: [] as unknown[],
   resolved: [] as unknown[],
   jobs: [] as unknown[],
+  cases: [] as unknown[],
+  casesFailed: false,
   failed: false,
   updates: [] as { path: string; data: Record<string, unknown> }[],
   adds: [] as { path: string; data: Record<string, unknown> }[],
@@ -69,6 +71,13 @@ vi.mock("../studio-tasks/useTaskActions", () => ({
 // only need to say whether they are open.
 vi.mock("../studio-tasks/TaskManager", () => ({ TaskManager: () => null }));
 vi.mock("../studio-tasks/TaskNoteDialog", () => ({ TaskNoteDialog: () => null }));
+vi.mock("./useMyCases", () => ({
+  useMyCases: () => ({ cases: state.cases, loading: false, failed: state.casesFailed }),
+}));
+vi.mock("./MyCaseEditor", () => ({
+  MyCaseEditor: ({ open, theCase }: { open: boolean; theCase: { clientName: string } | null }) =>
+    open ? <div role="dialog">{theCase?.clientName}'s case</div> : null,
+}));
 vi.mock("./jobs/JobSheet", () => ({
   JobSheet: ({ open, job }: { open: boolean; job: { title: string } | null }) => (open ? <div role="dialog">{job?.title}</div> : null),
 }));
@@ -127,7 +136,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(`${TODAY}T14:18:00-04:00`));
   resetTracked();
   forgetPersonalMemory();
-  Object.assign(state, { uid: IORETH.id, rows: [], templates: [], open: [], resolved: [], jobs: [], failed: false, updates: [], adds: [], calls: [] });
+  Object.assign(state, { uid: IORETH.id, rows: [], templates: [], open: [], resolved: [], jobs: [], cases: [], casesFailed: false, failed: false, updates: [], adds: [], calls: [] });
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -394,6 +403,29 @@ describe("the Tracker", () => {
     });
     expect(state.updates.find((u) => u.path === "journalEntries/root-1")?.data).toMatchObject({ resolvedAt: expect.anything() });
     act(() => footRoot.unmount());
+  });
+
+  it("lists the cases you own under Follow-ups, overdue first, and opens the small editor (Relay's third wave)", async () => {
+    const stored = (clientId: string, clientName: string, dueOn: string | null, nextStep = "") => ({
+      clientId, clientName, owner: { id: IORETH.id, name: IORETH.name }, nextStep, dueOn, outcome: "open", reason: null, openedAt: null, updatedAt: null, updatedBy: null,
+    });
+    state.cases = [stored("c-odo", "Odo Proudfoot", "2026-10-01", "Ask about the knee"), stored("c-hugo", "Hugo Bracegirdle", "2026-09-27")];
+    await render();
+    const followUps = inSection("rtk-followups");
+    expect(followUps?.textContent).toContain("Follow-ups");
+    const rows = [...(followUps?.querySelectorAll(".pl__task") ?? [])].map((li) => li.textContent ?? "");
+    expect(rows[0]).toContain("Hugo Bracegirdle");
+    expect(rows[0]).toContain("Overdue — was due yesterday · No next step yet — add one");
+    expect(rows[1]).toContain("Odo Proudfoot");
+    expect(rows[1]).toContain("Due Thursday · Ask about the knee");
+    await click(button(followUps, "Next step"));
+    expect(document.querySelector('[role="dialog"]')?.textContent).toBe("Hugo Bracegirdle's case");
+  });
+
+  it("never calls Follow-ups empty when the cases read failed", async () => {
+    state.casesFailed = true;
+    await render();
+    expect(document.body.textContent).not.toContain("Nothing on your list today");
   });
 
   it("says so kindly when Today really is empty", async () => {
