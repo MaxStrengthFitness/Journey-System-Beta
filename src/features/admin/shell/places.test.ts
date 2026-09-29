@@ -17,8 +17,15 @@ import { forgetPersonalMemory } from "../../sign-out/memory";
 afterEach(() => resetOperationsMemory());
 
 describe("the five destinations", () => {
-  it("are Today, Week, Clients, Team and Setup, in that order (AJ's question 1: Setup, never Studio)", () => {
-    expect(OPS_PAGES.map((p) => p.label)).toEqual(["Today", "Week", "Clients", "Team", "Setup"]);
+  it("are Today, Week, Month, Clients, Team and Setup, in that order (AJ's question 1: Setup, never Studio; Month since Sep 29 2026)", () => {
+    expect(OPS_PAGES.map((p) => p.label)).toEqual(["Today", "Week", "Month", "Clients", "Team", "Setup"]);
+  });
+
+  it("Month is one page, like Today: today, this week, this month (AJ, Sep 29 2026)", () => {
+    expect(defaultSub("month")).toBeNull();
+    expect(resolvePlace({ page: "month", sub: "anything" })).toEqual({ page: "month", sub: null });
+    expect(placeLabel({ page: "month", sub: null })).toBe("Month");
+    expect(DOOR_PLACE.month).toEqual({ page: "month", sub: null });
   });
 
   it("put Renewals and Moments under Clients, the team this week and Hours under Team, and the setting-up screens under Setup", () => {

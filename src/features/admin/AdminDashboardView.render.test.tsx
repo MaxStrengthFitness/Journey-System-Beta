@@ -192,13 +192,13 @@ const openSetupPages = async (el: HTMLElement) => {
   }
 };
 
-const FIVE = ["Today", "Week", "Clients", "Team", "Setup"];
+const FIVE = ["Today", "Week", "Month", "Clients", "Team", "Setup"];
 
 describe("the Operations shell", () => {
   it("offers five destinations for a studio's leader, with the pages inside them, and opens on Today", async () => {
     const el = await mount(lead, false);
     expect(tabLabels(el)).toEqual(FIVE);
-    expect(sideLabels(el)).toEqual(["Today", "Week", "Last week", "This week so far", "Week ahead", "Clients", "Journey", "Renewals", "Moments", "Trends", "Team", "This week", "Hours", "Setup"]);
+    expect(sideLabels(el)).toEqual(["Today", "Week", "Last week", "This week so far", "Week ahead", "Month", "Clients", "Journey", "Renewals", "Moments", "Trends", "Team", "This week", "Hours", "Setup"]);
     expect(el.querySelector(".ops-side [aria-current='page']")?.textContent).toBe("Today");
     expect(el.textContent).toContain("Today · Solon");
     // "Looking at" says where, even with nothing to choose.

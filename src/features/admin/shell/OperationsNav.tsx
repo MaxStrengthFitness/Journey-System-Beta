@@ -21,7 +21,7 @@
  * press either.
  */
 import { Fragment, type ReactNode } from "react";
-import { Building2, CalendarRange, ChevronDown, ChevronRight, ChevronUp, Download, Dumbbell, KeyRound, Megaphone, ScrollText, SlidersHorizontal, Sunrise, Users, UsersRound, Zap } from "lucide-react";
+import { Building2, CalendarDays, CalendarRange, ChevronDown, ChevronRight, ChevronUp, Download, Dumbbell, KeyRound, Megaphone, ScrollText, SlidersHorizontal, Sunrise, Users, UsersRound, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOperationsScope } from "../scope-context";
 import { OPS_PAGES, pageDef, type OpsPage, type OpsPlace } from "./places";
@@ -30,6 +30,7 @@ import "./ops.css";
 export const PAGE_ICON: Record<OpsPage, ReactNode> = {
   today: <Sunrise className="w-[19px] h-[19px]" aria-hidden />,
   week: <CalendarRange className="w-[19px] h-[19px]" aria-hidden />,
+  month: <CalendarDays className="w-[19px] h-[19px]" aria-hidden />,
   clients: <UsersRound className="w-[19px] h-[19px]" aria-hidden />,
   team: <Users className="w-[19px] h-[19px]" aria-hidden />,
   setup: <SlidersHorizontal className="w-[19px] h-[19px]" aria-hidden />,

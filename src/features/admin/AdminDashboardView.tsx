@@ -16,6 +16,7 @@ import { TeamWeekPage } from "./team/TeamWeekPage";
 import { AdminRenewalsTab } from "./renewals/AdminRenewalsTab";
 import { AdminFloorTab } from "./floor/AdminFloorTab";
 import { WeekPage } from "./week/WeekPage";
+import { MonthPage } from "./month/MonthPage";
 import { RulesPage } from "./journey/RulesPage";
 import { JourneyPage } from "./journey/JourneyPage";
 import { OperationsScopeProvider, PickOneStudio, scopeKey, useOperationsScope } from "./scope-context";
@@ -358,6 +359,13 @@ function OperationsShell({
             onOpenClient={openClient}
             onOpen={(to) => go(DOOR_PLACE[to])}
           />
+        ) : (
+          noStudio
+        );
+      case "month":
+        if (ops.scope.kind === "all") return <PickOneStudio what="The month" />;
+        return studio ? (
+          <MonthPage key={tabKey} studio={studio} studios={studios} clients={clients} trainers={trainers} authTrainer={authTrainer} onOpenClient={openClient} />
         ) : (
           noStudio
         );

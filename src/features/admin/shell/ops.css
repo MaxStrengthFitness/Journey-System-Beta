@@ -1533,3 +1533,36 @@
   font-size: 14px;
   color: var(--adm-ink-muted);
 }
+
+/* ---------- Month ------------------------------------------------------ */
+
+/* Which month: the arrows, the month in words, and This month when away from it. */
+.ops-month-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.ops-month-nav__label {
+  margin: 0;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-month-nav__now {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+
+/* A month row's head: the name and its badge on one line, wrapping when they must. */
+.ops-month-row__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}

@@ -9,6 +9,9 @@
  *   Today     the brief: what needs you, who to catch, what changed
  *   Week      last week's review, this week so far (with its
  *             cancellations and moves), the week ahead (phase 5)
+ *   Month     a given month's renewals, birthdays and anniversaries, and
+ *             who is MIA today (Sep 29 2026, AJ: "what do I need to
+ *             worry about today, this week and this month")
  *   Clients   the Journey (where each client is, against her own rhythm;
  *             phase 4), Renewals, Moments (the Delight queue) and Trends
  *             (the quarter's lines over the Insights screen; phase 5)
@@ -30,7 +33,7 @@
  * destination's first page), so a remembered place never opens nothing.
  */
 
-export type OpsPage = "today" | "week" | "clients" | "team" | "setup";
+export type OpsPage = "today" | "week" | "month" | "clients" | "team" | "setup";
 
 export interface OpsSubDef {
   id: string;
@@ -59,6 +62,7 @@ export const OPS_PAGES: readonly OpsPageDef[] = [
       { id: "ahead", label: "Week ahead" },
     ],
   },
+  { id: "month", label: "Month", subs: [] },
   {
     id: "clients",
     label: "Clients",
@@ -110,7 +114,7 @@ const isPage = (v: unknown): v is OpsPage => typeof v === "string" && OPS_PAGES.
  * first. Setup opens on its own list, so it has no default page.
  */
 export function defaultSub(page: OpsPage): string | null {
-  if (page === "setup" || page === "today") return null;
+  if (page === "setup" || page === "today" || page === "month") return null;
   return pageDef(page).subs[0]?.id ?? null;
 }
 
@@ -122,6 +126,7 @@ export function defaultSub(page: OpsPage): string | null {
 export function resolvePlace(place: Partial<OpsPlace> | null | undefined): OpsPlace {
   const page = isPage(place?.page) ? place.page : "today";
   if (page === "today") return HOME_PLACE;
+  if (page === "month") return { page, sub: null };
   const def = pageDef(page);
   const sub = typeof place?.sub === "string" && def.subs.some((s) => s.id === place.sub) ? place.sub : defaultSub(page);
   return { page, sub };
@@ -167,11 +172,12 @@ export const LEGACY_TAB_PLACE: Record<LegacyTab, OpsPlace> = {
  * A DOOR on one page to another: every old tab id, the week's changes
  * (Today's "All changes"), the Journey and the team this week.
  */
-export type OpsDoor = LegacyTab | "week" | "journey" | "team";
+export type OpsDoor = LegacyTab | "week" | "month" | "journey" | "team";
 
 export const DOOR_PLACE: Record<OpsDoor, OpsPlace> = {
   ...LEGACY_TAB_PLACE,
   week: { page: "week", sub: "now" },
+  month: { page: "month", sub: null },
   journey: { page: "clients", sub: "journey" },
   team: { page: "team", sub: "week" },
 };
