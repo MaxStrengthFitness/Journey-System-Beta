@@ -197,6 +197,39 @@ export function useStudioCases(studioId: string | null): CasesRead {
   return state;
 }
 
+export interface ClientCaseRead {
+  stored: StoredCase | null;
+  loading: boolean;
+  /** The read failed (refused or offline): nothing can be said about a stored case. */
+  failed: boolean;
+}
+
+const NO_CASE: ClientCaseRead = { stored: null, loading: false, failed: false };
+
+/**
+ * ONE client's case — the owner's read (the case form, wave 3). The studio's
+ * collection read is refused to anyone but its leaders, so a trainer who owns
+ * a case reads the one document the rules let them see. Off (`enabled`
+ * false) when the collection read already answers.
+ */
+export function useClientCase(studioId: string | null, clientId: string | null, enabled: boolean): ClientCaseRead {
+  const on = Boolean(enabled && studioId && clientId);
+  const [state, setState] = useState<ClientCaseRead>(on ? { stored: null, loading: true, failed: false } : NO_CASE);
+  useEffect(() => {
+    if (!on) {
+      setState(NO_CASE);
+      return;
+    }
+    setState({ stored: null, loading: true, failed: false });
+    return onSnapshot(
+      doc(db, "studios", studioId as string, CASES, clientId as string),
+      (snap) => setState({ stored: snap.exists() ? parseCase(snap.id, snap.data() as Record<string, unknown>) : null, loading: false, failed: false }),
+      () => setState({ stored: null, loading: false, failed: true }),
+    );
+  }, [on, studioId, clientId]);
+  return state;
+}
+
 const signedIn = (): string => {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error("Sign in again to save: the app can't tell who is changing this.");

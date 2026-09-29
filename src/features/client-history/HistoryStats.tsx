@@ -201,6 +201,8 @@ export interface HistoryLegendProps {
   booked?: boolean;
   cancelled?: boolean;
   moved?: boolean;
+  /** A leader's "didn't come" is drawn (Operations wave 3). */
+  didntCome?: boolean;
   /**
    * The read of her bookings (bookings.ts). While it loads, or when it
    * failed, the calendar draws no booking layer and this says so in one line —
@@ -213,6 +215,7 @@ export function HistoryLegend({
   booked = false,
   cancelled = false,
   moved = false,
+  didntCome = false,
   bookingsStatus = "idle",
 }: HistoryLegendProps = {}) {
   return (
@@ -248,6 +251,14 @@ export function HistoryLegend({
             <BookingGlyph kind="moved" />
           </span>{" "}
           Moved
+        </span>
+      )}
+      {didntCome && (
+        <span className="hist-legend__item">
+          <span className="hist-swatch hist-swatch--glyph" aria-hidden>
+            <BookingGlyph kind="didnt-come" />
+          </span>{" "}
+          Didn't come
         </span>
       )}
       {bookingsStatus === "loading" && (

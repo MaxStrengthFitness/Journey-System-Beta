@@ -455,6 +455,8 @@ export interface DayCellModel {
   cancelled: boolean;
   /** A booking left this day for another. */
   moved: boolean;
+  /** A leader marked a booking this day "didn't come" (Operations wave 3). */
+  didntCome: boolean;
   /** Every booking mark on this day, soonest first — the cell's spoken label reads them. */
   bookings: BookingMark[];
 }
@@ -493,6 +495,7 @@ export interface YearModel {
   booked: number;
   cancelled: number;
   moved: number;
+  didntCome: number;
   /** Every day of the year is after today: drawn only because she is booked in it. */
   ahead: boolean;
 }
@@ -512,7 +515,7 @@ export interface BuildCalendarInput {
   cadence: CadenceStats;
   today: DayKey;
   /**
-   * Her bookings, as bookings.ts reads them: still to come, cancelled, moved.
+   * Her bookings, as bookings.ts reads them: still to come, cancelled, moved, didn't come.
    * The range runs forward to the month of the last one. None: the calendar
    * draws the past only, as it always did.
    */
@@ -587,6 +590,7 @@ export function buildCalendar({ days, events, cadence, today, bookings }: BuildC
         booked: marks.some((mark) => mark.kind === "booked"),
         cancelled: marks.some((mark) => mark.kind === "cancelled"),
         moved: marks.some((mark) => mark.kind === "moved"),
+        didntCome: marks.some((mark) => mark.kind === "didnt-come"),
         bookings: marks,
       });
     }
@@ -640,6 +644,7 @@ export function buildCalendar({ days, events, cadence, today, bookings }: BuildC
         booked: marks.filter((mark) => mark.kind === "booked").length,
         cancelled: marks.filter((mark) => mark.kind === "cancelled").length,
         moved: marks.filter((mark) => mark.kind === "moved").length,
+        didntCome: marks.filter((mark) => mark.kind === "didnt-come").length,
         ahead: yearStart > today,
       };
     });

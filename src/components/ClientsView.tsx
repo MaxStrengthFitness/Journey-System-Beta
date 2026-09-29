@@ -61,6 +61,7 @@ import type { HubLayer } from "../features/hub-opportunities/LayerSwitch";
 import { useDayMoments } from "../features/hub-opportunities/use-day-moments";
 import { useHubFord } from "../features/hub-opportunities/use-hub-ford";
 import { useHubMarks } from "../features/hub-opportunities/use-hub-marks";
+import { useBookingMarks } from "../features/admin/attention/booking-marks";
 import { HubCard, cardTime } from "../features/hub-schedule/HubCard";
 import { HubGrid, type GridBlock, type GridColumn } from "../features/hub-schedule/HubGrid";
 import { trainerDayFrame, weeksByTrainer } from "../features/hub-schedule/off-hours";
@@ -460,6 +461,16 @@ export function ClientsView({
   const hubMarks = useHubMarks(readsStudio ? activeStudioId : null, studioToday, currentTime);
 
   /*
+   * "DIDN'T COME" (Operations room, wave 3, Sep 29 2026): a leader's mark on
+   * a booking nobody logged (studios/{s}/bookingMarks, read by
+   * lib/booking-state as a no-show). ONE listener, for the day on screen —
+   * never per card, never per client. Unread or refused, the marks are null
+   * and a finished slot reads as it did before the mark.
+   */
+  const dayKeyOnScreen = calendarLabelKey(selectedDate);
+  const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, dayKeyOnScreen, dayKeyOnScreen);
+
+  /*
    * THE DAY'S MOMENTS (calm Hub round, Sep 28 2026): every client booked on
    * the day on screen, worked out ONCE by the same engine the Opportunities
    * list reads (features/hub-opportunities). The cards, their marks and the
@@ -472,6 +483,7 @@ export function ClientsView({
     clients,
     sessions,
     sessionsKnown,
+    marks: bookingMarks.marks,
     studios: cutoverStudios,
     activeStudioId,
     authTrainer,
@@ -668,6 +680,7 @@ export function ClientsView({
         rosterLoading={rosterLoading}
         workoutSession={workoutSession}
         logged={logged}
+        noShows={bookingMarks.marks}
         now={currentTime}
         open={activePeek?.blockKey === block.key}
         onOpen={(clientId, anchor) => setPeek({ clientId, blockKey: block.key, day: gridDayKey, anchor })}
@@ -747,10 +760,10 @@ export function ClientsView({
           const clientObj = findClientForSession(session);
           const workoutSession = workoutSessionFor(session, clientObj);
           const state = hubCardState(
-            { clientId: clientObj?.id ?? session.clientId ?? null, startTime: session.startTime || session.StartDateTime || session.date, endTime: session.endTime || session.EndDateTime, status: session.status },
+            { id: session.id ?? null, clientId: clientObj?.id ?? session.clientId ?? null, startTime: session.startTime || session.StartDateTime || session.date, endTime: session.endTime || session.EndDateTime, status: session.status },
             logged,
             currentTime,
-            { sessionOpen: workoutSession?.status === "In-Progress" },
+            { sessionOpen: workoutSession?.status === "In-Progress", marks: bookingMarks.marks },
           );
           return { item: { block: b, clientObj }, span: b.span, state, mine: b.columnId === myColumnId, order: gridColumns.findIndex((c) => c.id === b.columnId) };
         }),

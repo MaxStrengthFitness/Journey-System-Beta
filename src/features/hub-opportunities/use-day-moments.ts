@@ -24,7 +24,7 @@ import type { Client, ScheduleEntry, Trainer, WorkoutSession } from "../../types
 import type { JournalEntry } from "../../types/journal";
 import type { FordEntry } from "../ford/types";
 import type { AllStarMark } from "./all-stars";
-import { isStaffBlock, loggedSessions, type LoggedSessions } from "../../lib/booking-state";
+import { isStaffBlock, loggedSessions, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { myTrainerIds } from "../../lib/live-session";
 import { studioTodayKey } from "../../lib/studio-time";
 import { useRenewalSettings } from "../renewals/useRenewalSettings";
@@ -40,6 +40,8 @@ export interface DayMomentsProps {
   clients: ReadonlyArray<Client>;
   sessions: ReadonlyArray<WorkoutSession>;
   sessionsKnown: boolean;
+  /** The day's "didn't come" marks (`useBookingMarks().marks`); null when not read. */
+  marks?: BookingMarks | null;
   studios?: ReadonlyArray<{ id?: string; name?: string; journeyCutoverDate?: string | null }>;
   activeStudioId: string | null;
   authTrainer: Trainer | null;
@@ -75,6 +77,7 @@ export function useDayMoments({
   clients,
   sessions,
   sessionsKnown,
+  marks = null,
   studios,
   activeStudioId,
   authTrainer,
@@ -125,6 +128,7 @@ export function useDayMoments({
       rowsById: new Map(rows.map((r) => [r.id, r])),
       studios: studios ?? [],
       logged,
+      marks,
       criticalFor,
       fordFor,
       allStarOf,
@@ -136,5 +140,5 @@ export function useDayMoments({
     const byClientId = new Map<string, RunSheetEntry>();
     for (const e of entries) if (e.clientId) byClientId.set(e.clientId, e);
     return { entries, byClientId, input, logged };
-  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, criticalFor, fordFor, allStarOf]);
+  }, [day, today, now, schedules, clients, clientsById, studios, activeStudioId, sessionsKnown, sessions, packageIndex, myIds, authTrainer?.fullName, trainerNames, logged, marks, criticalFor, fordFor, allStarOf]);
 }

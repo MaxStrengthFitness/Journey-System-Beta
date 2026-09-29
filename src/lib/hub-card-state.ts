@@ -20,9 +20,13 @@
  *   not-logged  the slot (plus five minutes) is over and nothing was logged.
  *               Recedes, with a quiet "Not logged" — AJ, Sep 24: a grey card
  *               with no word would read as done when it is not.
+ *   didnt-come  a leader marked it "didn't come" (studios/{s}/bookingMarks,
+ *               Operations room wave 3, Sep 29 2026), or Mindbody said
+ *               No-Show. Recedes, with a quiet "Didn't come" — a no-show is
+ *               a fact the floor may say, and it is not "Not logged".
  *   past        over, and nothing to claim: the sessions could not be read (a
- *               failed read is unknown, never "not logged"), a Mindbody
- *               no-show, a cancellation. Recedes and says nothing.
+ *               failed read is unknown, never "not logged"), a cancellation.
+ *               Recedes and says nothing.
  *
  * One floor-only exception to the per-client-per-day rule (AJ, Sep 24): a card
  * never recedes as done BEFORE ITS OWN START. A client booked twice in a day
@@ -32,23 +36,24 @@
  * arrives. Once its start has passed, the rule stands.
  *
  * PURE. The Hub hands in what it already holds: the app's live session
- * stream, indexed once, and its minute clock.
+ * stream, indexed once, its minute clock, and the day's marks
+ * (`useBookingMarks`, one listener for the day on screen) when it read them.
  */
 import type { WorkoutSession } from "../types";
 import { sessionDayKey } from "../features/client-history/model";
-import { bookingState, type BookingLike, type LoggedSessions, type SessionLike } from "./booking-state";
+import { bookingState, type BookingLike, type BookingMarks, type LoggedSessions, type SessionLike } from "./booking-state";
 import { toDate } from "./studio-time";
 
-export type HubCardState = "live" | "in-session" | "done" | "not-logged" | "past";
+export type HubCardState = "live" | "in-session" | "done" | "not-logged" | "didnt-come" | "past";
 
 export function hubCardState(
   booking: BookingLike,
   logged: LoggedSessions | null,
   now: Date,
-  { sessionOpen = false, tz }: { sessionOpen?: boolean; tz?: string } = {},
+  { sessionOpen = false, tz, marks = null }: { sessionOpen?: boolean; tz?: string; marks?: BookingMarks | null } = {},
 ): HubCardState {
   if (sessionOpen) return "in-session";
-  switch (bookingState(booking, logged, now, tz)) {
+  switch (bookingState(booking, logged, now, tz, marks)) {
     case "upcoming":
     case "in-progress":
       return "live";
@@ -58,6 +63,8 @@ export function hubCardState(
     }
     case "never-logged":
       return "not-logged";
+    case "no-show":
+      return "didnt-come";
     default:
       return "past";
   }
@@ -65,7 +72,7 @@ export function hubCardState(
 
 /** Does the card fade and hide its flags? Everything that is over. */
 export function hubCardRecedes(state: HubCardState): boolean {
-  return state === "done" || state === "not-logged" || state === "past";
+  return state === "done" || state === "not-logged" || state === "didnt-come" || state === "past";
 }
 
 /**

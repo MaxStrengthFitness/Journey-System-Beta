@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, History, List as ListIcon, PlusCircle } from "lucide-react";
 import type { ClientEvent, ExerciseLog, Routine, ScheduleEntry, Trainer } from "../../types";
-import { loggedSessions } from "../../lib/booking-state";
+import { loggedSessions, type BookingMarks } from "../../lib/booking-state";
 import { HistoryCalendar } from "./HistoryCalendar";
 import { NO_BOOKINGS, bookingLayer, type BookingsStatus } from "./bookings";
 import { HistoryList } from "./HistoryList";
@@ -62,6 +62,13 @@ export interface HistoryViewProps {
    * legend says so in one line. Defaults to "ready" when `bookings` is given.
    */
   bookingsStatus?: BookingsStatus;
+  /**
+   * The studio's "didn't come" marks (Operations wave 3; `useBookingMarks`
+   * in the tab), or null when not read, and whose studio they are: a marked
+   * booking on a past day is drawn as "didn't come".
+   */
+  marks?: BookingMarks | null;
+  marksStudioId?: string | null;
   defaultView?: HistoryViewMode;
   /**
    * Controlled mode. The Activity Archive promotes Calendar and List to its own
@@ -114,6 +121,8 @@ export function HistoryView({
   timeZone,
   bookings,
   bookingsStatus = bookings ? "ready" : "idle",
+  marks = null,
+  marksStudioId = null,
   defaultView = "calendar",
   view: viewProp,
   onViewChange,
@@ -160,9 +169,9 @@ export function HistoryView({
   const layer = useMemo(
     () =>
       bookingsStatus === "ready" && bookings
-        ? bookingLayer({ rows: bookings, now: new Date(nowMs), tz: timeZone, logged, rosterNames })
+        ? bookingLayer({ rows: bookings, now: new Date(nowMs), tz: timeZone, logged, rosterNames, marks, marksStudioId })
         : NO_BOOKINGS,
-    [bookingsStatus, bookings, nowMs, timeZone, logged, rosterNames],
+    [bookingsStatus, bookings, nowMs, timeZone, logged, rosterNames, marks, marksStudioId],
   );
   const years = useMemo(
     () => buildCalendar({ days, events: timeline, cadence, today, bookings: layer }),
@@ -173,6 +182,7 @@ export function HistoryView({
       booked: years.some((y) => y.booked > 0),
       cancelled: years.some((y) => y.cancelled > 0),
       moved: years.some((y) => y.moved > 0),
+      didntCome: years.some((y) => y.didntCome > 0),
     }),
     [years],
   );
@@ -341,6 +351,7 @@ export function HistoryView({
                 booked={drawn.booked}
                 cancelled={drawn.cancelled}
                 moved={drawn.moved}
+                didntCome={drawn.didntCome}
                 bookingsStatus={bookingsStatus}
               />
               <HistoryCalendar

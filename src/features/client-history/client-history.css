@@ -485,7 +485,8 @@
 .hist-cell--away .hist-cell__mark { color: var(--hist-away-ink); }
 
 .hist-glyph { display: block; flex: 0 0 auto; overflow: visible; }
-.hist-glyph path {
+.hist-glyph path,
+.hist-glyph circle {
   fill: none;
   stroke: currentColor;
   stroke-width: 2;

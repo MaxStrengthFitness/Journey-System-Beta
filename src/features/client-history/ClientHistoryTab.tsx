@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Client, ExerciseLog, Machine, Routine, Trainer } from "../../types";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
+import { useBookingMarks } from "../admin/attention/booking-marks";
 import { HistoryView, type HistoryViewMode } from "./HistoryView";
 import { LogPastSessionDialog } from "./LogPastSessionDialog";
 import { SessionDetailDialog } from "./SessionDetailDialog";
@@ -91,6 +92,13 @@ export function ClientHistoryTab({
     return bookingsReadFrom(toVisitDays(own, timeZone, today).days);
   }, [history.status, history.sessions, clientId, timeZone, today]);
   const bookings = useClientBookings(clientId, readFrom, !disabled, timeZone);
+  /*
+   * The studio's "didn't come" marks over the same days (Operations room,
+   * wave 3, Sep 29 2026): ONE listener on studios/{s}/bookingMarks from the
+   * first day drawn to today, for the studio the iPad is in — never a read
+   * per booking. Unread or refused: null, and nothing is taken as marked.
+   */
+  const noShows = useBookingMarks(disabled ? null : activeStudioId, readFrom ?? "", today);
   // Nothing asked yet because her sessions are still arriving: still loading.
   const bookingsStatus =
     bookings.status === "idle" && history.status === "loading" && !disabled ? "loading" : bookings.status;
@@ -118,6 +126,8 @@ export function ClientHistoryTab({
         timeZone={timeZone}
         bookings={bookings.rows}
         bookingsStatus={bookingsStatus}
+        marks={noShows.marks}
+        marksStudioId={activeStudioId}
         view={view}
         onViewChange={onViewChange}
         hideHeader={hideHeader}

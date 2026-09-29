@@ -220,6 +220,7 @@ three things a session cannot say. `bookings.ts` is the pure half.
 | **Booked** (blue outline) | a booking whose start is later than now — today's later bookings too | Read through `lib/booking-state.ts`, never from `status` alone: a booking on a day Journey logged a session for her is done, not still to come |
 | **Cancelled** (×) | status "Cancelled" **and** a `cancelledAt` stamp | Read as a reschedule only for a REAL rebook, by the Operations Changes list's own rule (`admin/changes/changes.ts`, `changesForDay` and `isRealRebook`), not a second one |
 | **Moved** (→) | `movedFromDay` names the day | Marks the day the booking LEFT and says where it lives now. A new time on the same day is not a move |
+| **Didn't come** (○) | a leader marked the booking "didn't come" (`studios/{s}/bookingMarks`, Operations room wave 3, Sep 29 2026) | Read through `lib/booking-state.ts` (a no-show), never from `status`: a session Journey logged that day still beats the mark. The tab reads the marks with ONE listener over the days drawn (`useBookingMarks`, the studio the iPad is in), and a mark is applied only to a booking at that studio, because the two Mindbody sites number appointments on their own |
 
 **A cancellation from before the stamps is never drawn.** Until about Sep 16
 2026 an old sweep marked every past booking "Cancelled" on every sync, and
@@ -291,7 +292,7 @@ sessions yet still gets the empty state, not her upcoming bookings.
 
 ```
 model.ts               pure: day keys, cadence, calendar + list models, summaries (41 tests)
-bookings.ts            pure: her bookings as calendar marks (booked, cancelled,
+bookings.ts            pure: her bookings as calendar marks (booked, cancelled, didn't come,
                        moved), where the read starts, the words under a month
                        (30 tests, calendar-with-bookings included)
 session-edits.ts       pure: the edit stamp, the machine-vote delta, who owns the

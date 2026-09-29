@@ -5,21 +5,34 @@
  * §6.3, "the case pane"): her state and why, the proof, what we know, the
  * next step with its owner and when it becomes the leader's, and the outcome.
  * Worked out by the pure rules (states.ts, case.ts) from what Operations
- * already holds; nothing about the case is stored (the case fields wait for
- * AJ's OK), so it offers no "Take it" or "Hand to…".
+ * already holds, and read from the stored case when a leader opened one
+ * (case-store.ts, wave 2).
  *
- * What a leader CAN do here writes what the attendance watch always wrote
- * (studios/{s}/watchlist): Snooze ("remind me again"), Dismiss ("I know why
- * they're out"), and Back on the watch (the disposition deleted).
+ * THE CASE FORM (wave 3, Sep 29 2026; CaseForm.tsx): a leader opens a case
+ * and changes its owner, next step, due day, outcome and reason; the owner
+ * changes their own four; everyone else reads. A trainer who owns a case
+ * can't read the studio's collection (the rules), so when that read failed
+ * and the person isn't a leader, the one document is read here
+ * (`useClientCase`) and her case worked out again from it.
+ *
+ * What a leader CAN also do here writes what the attendance watch always
+ * wrote (studios/{s}/watchlist): Snooze ("remind me again"), Dismiss ("I
+ * know why they're out"), and Back on the watch (the disposition deleted).
  */
-import { useState } from "react";
-import type { Client } from "../../../types";
+import { useMemo, useState } from "react";
+import type { Client, Trainer } from "../../../types";
+import { studioDateKey } from "../../../lib/studio-time";
+import { leadsHere } from "../../relay/leads";
 import { chipText, situationSentence } from "../../renewals/sentences";
 import type { RenewalSnapshot } from "../../renewals/types";
 import { AdminBadge, AdminButton } from "../primitives";
 import { SnoozeChooser } from "../overview/pieces";
 import { clearWatch, writeWatch } from "../attention/useAttention";
 import { dismissal, snooze } from "../attention/attention";
+import { caseOf } from "./case";
+import { caseRights, ownerChoices } from "./case-form";
+import { useClientCase } from "./case-store";
+import { CaseForm } from "./CaseForm";
 import type { JourneyEntry } from "./journey-list";
 import { STATE_NAMES, type JourneyState } from "./states";
 import "../shell/ops.css";
@@ -41,8 +54,42 @@ const dayWords = (day: string) => {
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 };
 
-export function JourneyCase({ entry, studioId, today, me }: { entry: JourneyEntry; studioId: string; today: string; me: { id: string; name: string } }) {
-  const { journey: j, case: c } = entry;
+/** A stamp's studio day in words, or null when there is no readable stamp. */
+const stampWords = (at: Date | null, tz?: string): string | null => {
+  const key = at ? studioDateKey(at, tz) : null;
+  return key ? dayWords(key) : null;
+};
+
+export interface JourneyCaseProps {
+  entry: JourneyEntry;
+  studioId: string;
+  today: string;
+  /** The signed-in person: Auth uid and name (what the watchlist and a case are signed with). */
+  me: { id: string; name: string };
+  /** The studio's timezone, for the day a stored case was last changed. */
+  tz?: string;
+  /** Who works here (the owner choices) and who is asking (the rights). Without them the case is read-only. */
+  trainers?: readonly Trainer[];
+  authTrainer?: Trainer | null;
+  /** The studio's cases couldn't be read (a non-leader): the one document is read here instead. */
+  casesFailed?: boolean;
+}
+
+export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], authTrainer = null, casesFailed = false }: JourneyCaseProps) {
+  const { journey: j } = entry;
+  const leads = leadsHere(authTrainer, studioId);
+  // The owner's read, only when the leaders' read was refused.
+  const own = useClientCase(studioId, entry.id, casesFailed && !leads && Boolean(authTrainer));
+  const stored = entry.storedCase ?? own.stored;
+  const c = useMemo(
+    () =>
+      own.stored && !entry.storedCase
+        ? caseOf(j, { trainer: entry.usual, inToday: entry.usualInToday }, today, { stored: own.stored, updatedOn: own.stored.updatedAt ? studioDateKey(own.stored.updatedAt, tz) : null })
+        : entry.case,
+    [own.stored, entry.storedCase, entry.case, entry.usual, entry.usualInToday, j, today, tz],
+  );
+  const rights = caseRights({ leads, uid: me.id || null, stored });
+  const choices = useMemo(() => ownerChoices(trainers, studioId, stored?.owner ?? null), [trainers, studioId, stored?.owner]);
   const snapshot = (entry.client.renewal as RenewalSnapshot | undefined) ?? null;
   const [snoozing, setSnoozing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,6 +152,16 @@ export function JourneyCase({ entry, studioId, today, me }: { entry: JourneyEntr
           </div>
         )}
       </dl>
+      {stored && (
+        <p className="ops-quiet">
+          Case opened{stampWords(stored.openedAt, tz) ? ` on ${stampWords(stored.openedAt, tz)}` : ""}
+          {stampWords(stored.updatedAt, tz) ? `, last changed ${stampWords(stored.updatedAt, tz)}` : ""}.
+        </p>
+      )}
+      {casesFailed && !leads && own.failed && <p className="ops-quiet">Her stored case couldn't be read on this iPad, so the case above is worked out by the rules.</p>}
+      {authTrainer && !own.loading && (
+        <CaseForm studioId={studioId} clientId={entry.id} clientName={entry.row.name.display} stored={stored} view={c} rights={rights} choices={choices} />
+      )}
       {(c.open || entry.watch !== "watching") && (
         <div className="ops-case__acts">
           {entry.watch === "watching" ? (
