@@ -3567,11 +3567,15 @@ service cloud.firestore {
     // announcement's readBy: every iPad in the company watches every
     // announcement, so a stamp there reached all of them. Only the person
     // reads or writes theirs; it holds a map of announcement ids and a time.
+    // RELAY'S THIRD WAVE (Sep 29 2026, q7): `acks` beside `ids` -- the
+    // notices this person said "I've read it" to, id -> the server's time,
+    // private in the same way. The poster never counts them.
     match /announcementReads/{uid} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
       allow create, update: if isAuthenticated() && request.auth.uid == uid
-                    && request.resource.data.keys().hasOnly(['ids', 'updatedAt'])
-                    && request.resource.data.ids is map;
+                    && request.resource.data.keys().hasOnly(['ids', 'updatedAt', 'acks'])
+                    && (!('ids' in request.resource.data) || request.resource.data.ids is map)
+                    && (!('acks' in request.resource.data) || request.resource.data.acks is map);
       allow delete: if false;
     }
 

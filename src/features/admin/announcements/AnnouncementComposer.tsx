@@ -377,6 +377,23 @@ export function AnnouncementComposer({
           </AdminField>
 
           <AdminField
+            label="Ask everyone to say they've read it"
+            htmlFor="ann-asks-read"
+            hint="A notice that asks stays marked new on each person's Relay until they tap “I've read it”. Their answer is theirs alone: nobody is counted, and nobody is pinged."
+          >
+            <label className="flex min-h-[44px] items-center gap-3 text-sm">
+              <input
+                id="ann-asks-read"
+                type="checkbox"
+                className="h-5 w-5"
+                checked={draft.asksRead === true}
+                onChange={(e) => set("asksRead", e.target.checked)}
+              />
+              Yes, ask everyone
+            </label>
+          </AdminField>
+
+          <AdminField
             label="Comes down after"
             htmlFor="ann-lifespan"
             hint="It stops appearing on its own. Nobody has to remember."
@@ -434,6 +451,7 @@ export function AnnouncementComposer({
                   <AdminBadge>{a.type ?? "news"}</AdminBadge>
                 </div>
                 <p className="adm-ann-short">{a.shortContent}</p>
+                {a.asksRead && <AdminBadge tone="neutral">Asks everyone to say they've read it</AdminBadge>}
                 {parseLearningRef(a.learningLink) && (
                   <p className="adm-ann-short">
                     Links to {LEARNING_KIND_LABEL[parseLearningRef(a.learningLink)!.kind].toLowerCase()}:{" "}
