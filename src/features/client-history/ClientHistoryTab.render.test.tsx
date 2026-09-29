@@ -27,6 +27,9 @@ const fake = vi.hoisted(() => ({
   sessions: {} as Record<string, Record<string, unknown>[]>,
   /** Every getDocs, held open until a test answers it. */
   reads: [] as Read[],
+  /** The studio's "didn't come" marks (Operations wave 3), and every listener asked for them. */
+  marks: [] as Array<Record<string, unknown> & { id: string }>,
+  markReads: [] as any[],
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, auth: { currentUser: null } }));
@@ -37,12 +40,19 @@ vi.mock("../../contexts/ActiveStudioContext", () => ({
 
 vi.mock("firebase/firestore", () => ({
   Timestamp: { fromDate: (d: Date) => ({ __date: d }) },
-  collection: (_db: unknown, path: string) => ({ __collection: path }),
+  collection: (_db: unknown, ...path: string[]) => ({ __collection: path.join("/") }),
   query: (coll: any, ...constraints: any[]) => ({ ...coll, constraints }),
   where: (field: string, op: string, value: unknown) => ({ type: "where", field, op, value }),
   orderBy: (field: string, dir: string) => ({ type: "orderBy", field, dir }),
   limit: (n: number) => ({ type: "limit", n }),
-  onSnapshot: (q: any, _opts: unknown, next: (snap: unknown) => void) => {
+  onSnapshot: (q: any, a: unknown, b: unknown) => {
+    const next = (typeof a === "function" ? a : b) as (snap: unknown) => void;
+    if (q.__collection.endsWith("/bookingMarks")) {
+      fake.markReads.push(q);
+      const docs = fake.marks.map((m) => ({ id: m.id, data: () => m }));
+      next({ metadata: { fromCache: false }, docs, size: docs.length, docChanges: () => docs });
+      return () => {};
+    }
     const clientId = q.constraints.find((c: any) => c.field === "clientId")?.value;
     const docs = (fake.sessions[clientId] ?? []).map((s) => ({ id: String(s.id), data: () => s }));
     next({ metadata: { fromCache: false }, docs, size: docs.length, docChanges: () => docs });
@@ -146,6 +156,8 @@ beforeEach(() => {
     c2: [session("c2", "2026-08-05")],
   };
   fake.reads = [];
+  fake.marks = [];
+  fake.markReads = [];
 });
 
 afterEach(async () => {
@@ -159,6 +171,33 @@ afterEach(async () => {
 
 const legend = () => host?.querySelector(".hist-legend")?.textContent ?? "";
 const cell = (day: string) => host!.querySelector<HTMLElement>(`[data-day="${day}"]`);
+
+describe("ClientHistoryTab — a leader's \"didn't come\" on the calendar (Operations wave 3)", () => {
+  it("reads the studio's marks once, over the days drawn, and draws a marked past booking as didn't come", async () => {
+    fake.marks = [{ id: "missed", noShow: true, clientId: "c1", day: "2026-09-22", markedBy: { id: "lead", name: "Lead" }, markedAt: null }];
+    await render("c1");
+    for (const read of readsFor("c1")) await settle(read, answer([booking("missed", "c1", "2026-09-22"), booking("tue", "c1", "2026-09-29")]));
+    const markReads = fake.markReads.filter((q) => q.__collection === "studios/solon/bookingMarks");
+    expect(markReads.length).toBeGreaterThan(0);
+    for (const q of markReads) {
+      expect(q.constraints).toEqual([
+        { type: "where", field: "day", op: ">=", value: "2026-08-31" },
+        { type: "where", field: "day", op: "<=", value: "2026-09-24" },
+      ]);
+    }
+    expect(cell("2026-09-22")?.className).toContain("hist-cell--changed");
+    expect(cell("2026-09-22")?.getAttribute("aria-label")).toContain("didn't come");
+    expect(legend()).toContain("Didn't come");
+    expect(cell("2026-09-29")?.className).toContain("hist-cell--booked");
+  });
+
+  it("an unmarked past booking is not drawn, as before", async () => {
+    await render("c1");
+    for (const read of readsFor("c1")) await settle(read, answer([booking("quiet", "c1", "2026-09-22")]));
+    expect(cell("2026-09-22")?.className).not.toContain("hist-cell--changed");
+    expect(legend()).not.toContain("Didn't come");
+  });
+});
 
 describe("ClientHistoryTab — the read of her bookings", () => {
   it("asks for this client's bookings from the Monday before the first month drawn, with no upper bound", async () => {

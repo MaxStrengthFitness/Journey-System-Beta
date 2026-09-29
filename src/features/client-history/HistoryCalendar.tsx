@@ -50,7 +50,7 @@ function cellClass(cell: DayCellModel): string {
     cell.hasMarker ? "hist-cell--marker" : "",
     // A visit's fill wins over the outline: the day has happened.
     cell.booked && cell.state !== "visit" ? "hist-cell--booked" : "",
-    cell.cancelled || cell.moved ? "hist-cell--changed" : "",
+    cell.cancelled || cell.moved || cell.didntCome ? "hist-cell--changed" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -78,20 +78,27 @@ function dayLabel(cell: DayCellModel, monthName: string, year: number, timeZone?
  * the head of its line under the month. An SVG rather than a text character,
  * so it is the same crisp shape at every cell size on every iPad.
  */
-export function BookingGlyph({ kind, className = "" }: { kind: "cancelled" | "moved"; className?: string }) {
+export function BookingGlyph({ kind, className = "" }: { kind: "cancelled" | "moved" | "didnt-come"; className?: string }) {
   return (
     <svg viewBox="0 0 10 10" className={`hist-glyph ${className}`} aria-hidden focusable="false">
-      {kind === "cancelled" ? <path d="M2.2 2.2 7.8 7.8M7.8 2.2 2.2 7.8" /> : <path d="M1.5 5h6.6M5.4 2.3 8.1 5 5.4 7.7" />}
+      {kind === "cancelled" ? (
+        <path d="M2.2 2.2 7.8 7.8M7.8 2.2 2.2 7.8" />
+      ) : kind === "moved" ? (
+        <path d="M1.5 5h6.6M5.4 2.3 8.1 5 5.4 7.7" />
+      ) : (
+        /* Didn't come: an empty ring — the slot was there, nobody filled it. */
+        <circle cx="5" cy="5" r="3.2" />
+      )}
     </svg>
   );
 }
 
-/** The corner mark: a cancellation outranks a move when a day has both (the words name both). */
+/** The corner mark: a cancellation outranks a move, a move a "didn't come", when a day has more than one (the words name each). */
 function CellMark({ cell }: { cell: DayCellModel }) {
-  if (!cell.cancelled && !cell.moved) return null;
+  if (!cell.cancelled && !cell.moved && !cell.didntCome) return null;
   return (
     <span className="hist-cell__mark" aria-hidden>
-      <BookingGlyph kind={cell.cancelled ? "cancelled" : "moved"} />
+      <BookingGlyph kind={cell.cancelled ? "cancelled" : cell.moved ? "moved" : "didnt-come"} />
     </span>
   );
 }

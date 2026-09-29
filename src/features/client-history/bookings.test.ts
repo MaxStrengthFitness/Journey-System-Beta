@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEntry } from "../../types";
-import { loggedSessions } from "../../lib/booking-state";
+import { bookingMarks, loggedSessions } from "../../lib/booking-state";
 import { wallClockToInstant } from "../../lib/studio-time";
 import {
   bookingLayer,
@@ -81,6 +81,47 @@ describe("bookingLayer — booked days still to come", () => {
   it("draws a restored booking as booked: its cancellation stamp was cleared", () => {
     const { marks } = layer([row({ id: "back", status: "Scheduled", cancelledAt: null, cancelSource: null })]);
     expect(kinds(marks)).toEqual(["booked@2026-09-29"]);
+  });
+});
+
+describe("bookingLayer — a leader's \"didn't come\" (Operations wave 3)", () => {
+  const noShows = bookingMarks([{ id: "missed", noShow: true }]);
+
+  it("draws a marked booking on a past day as didn't come, with the mark's own line", () => {
+    const { marks } = layer([row({ id: "missed", day: "2026-09-22", hm: "15:00" }), row({ id: "came", day: "2026-09-17" })], {
+      logged: loggedSessions([], NY),
+      marks: noShows,
+      marksStudioId: "solon",
+    });
+    expect(kinds(marks)).toEqual(["didnt-come@2026-09-22"]);
+    expect(marks[0].trainer).toBe("Giovanni");
+    expect(bookingLine(marks[0], 2026, { tz: NY })).toBe("Sep 22 · didn't come");
+    expect(bookingLines(marks, 2026, NY)[0].id).toBe("didnt-come:missed:2026-09-22");
+  });
+
+  it("draws nothing off a mark when the marks weren't read, or belong to another studio", () => {
+    const rows = [row({ id: "missed", day: "2026-09-22", hm: "15:00" })];
+    expect(layer(rows, { logged: loggedSessions([], NY) }).marks).toEqual([]);
+    expect(layer(rows, { logged: loggedSessions([], NY), marks: noShows, marksStudioId: "westlake" }).marks).toEqual([]);
+    // A row naming no studio is taken as the marks' studio's.
+    expect(kinds(layer([row({ id: "missed", day: "2026-09-22", hm: "15:00", studioId: undefined })], { logged: loggedSessions([], NY), marks: noShows, marksStudioId: "westlake" }).marks)).toEqual(["didnt-come@2026-09-22"]);
+  });
+
+  it("a session logged that day beats the mark: done means logged", () => {
+    const trained = [{ id: "s1", clientId: "c1", status: "Completed", date: "2026-09-22", startTime: at("2026-09-22", "15:02").toISOString() }] as unknown as HistorySession[];
+    const { marks } = layer([row({ id: "missed", day: "2026-09-22", hm: "15:00" })], { logged: loggedSessions(trained, NY), marks: noShows, marksStudioId: "solon" });
+    expect(marks).toEqual([]);
+  });
+
+  it("counts on the calendar: the cell, the year and the legend's flag", () => {
+    const { marks: layerMarks } = layer([row({ id: "missed", day: "2026-09-22", hm: "15:00" })], { logged: loggedSessions([], NY), marks: noShows, marksStudioId: "solon" });
+    const sessions = [{ id: "s0", clientId: "c1", status: "Completed", date: "2026-09-10" }] as unknown as HistorySession[];
+    const days = toVisitDays(sessions, NY, TODAY).days;
+    const years = buildCalendar({ days, events: [], cadence: computeCadence(days, TODAY), today: TODAY, bookings: { marks: layerMarks, lastDay: "2026-09-22" } });
+    expect(years[0].didntCome).toBe(1);
+    const cell = years[0].months.flatMap((m) => m.cells).find((c) => c?.key === "2026-09-22");
+    expect(cell?.didntCome).toBe(true);
+    expect(cell?.cancelled).toBe(false);
   });
 });
 

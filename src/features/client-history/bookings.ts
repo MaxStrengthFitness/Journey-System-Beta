@@ -42,13 +42,19 @@
  * PURE: no React, no Firestore. Days are studio day keys (yyyy-mm-dd).
  */
 import type { ScheduleEntry } from "../../types";
-import { bookingState, type LoggedSessions } from "../../lib/booking-state";
+import { bookingState, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { formatStudioTime, studioDateKey, toDate } from "../../lib/studio-time";
 import { changesForDay, weekStartOf } from "../admin/changes/changes";
 import { shortNameOf } from "../calendar/trainer-tone";
 import { monthKeyOf, shortDate, weekdayOf, type DayKey, type VisitDay } from "./model";
 
-export type BookingMarkKind = "booked" | "cancelled" | "moved";
+/**
+ * "didnt-come" (Operations room, wave 3, Sep 29 2026): a leader marked the
+ * booking "didn't come" (studios/{s}/bookingMarks), and lib/booking-state
+ * reads it as a no-show. Drawn on the day it was for, as a fact the calendar
+ * may say; a session logged that day still beats the mark (done means logged).
+ */
+export type BookingMarkKind = "booked" | "cancelled" | "moved" | "didnt-come";
 
 export interface BookingMark {
   kind: BookingMarkKind;
@@ -121,21 +127,35 @@ export interface BookingLayerInput {
   logged: LoggedSessions | null;
   /** Trainer id to full name, from the roster. */
   rosterNames?: ReadonlyMap<string, string>;
+  /**
+   * The studio's "didn't come" marks (`useBookingMarks().marks`), or null when
+   * not read: nothing is then taken as marked. Marks are a STUDIO's, keyed by
+   * Mindbody's appointment id, and the two sites number appointments on their
+   * own, so a mark is applied only to a booking at `marksStudioId` (a row
+   * naming no studio is taken as that studio's).
+   */
+  marks?: BookingMarks | null;
+  marksStudioId?: string | null;
 }
 
 /** Every mark her bookings put on the calendar, soonest first. */
-export function bookingLayer({ rows, now, tz, logged, rosterNames }: BookingLayerInput): BookingLayer {
+export function bookingLayer({ rows, now, tz, logged, rosterNames, marks: noShows = null, marksStudioId = null }: BookingLayerInput): BookingLayer {
   const all = [...rows];
   const dayOf = (value: unknown) => studioDateKey(toDate(value as Parameters<typeof toDate>[0]), tz);
   const marks: BookingMark[] = [];
+  const marksFor = (row: ScheduleEntry): BookingMarks | null =>
+    noShows && (!marksStudioId || !row.studioId || row.studioId === marksStudioId) ? noShows : null;
 
-  // BOOKED — still to come, as booking-state reads it.
+  // BOOKED — still to come, as booking-state reads it — and DIDN'T COME, a
+  // leader's mark on a day that has passed (a logged session outranks it).
   for (const row of all) {
-    if (bookingState(row, logged, now, tz) !== "upcoming") continue;
+    const state = bookingState(row, logged, now, tz, marksFor(row));
+    if (state !== "upcoming" && state !== "no-show") continue;
     const start = toDate(row.startTime);
     const day = start ? studioDateKey(start, tz) : null;
     if (!start || !day) continue;
-    marks.push({ kind: "booked", id: idOf(row), day, start, trainer: bookingTrainerName(row, rosterNames), to: null });
+    const kind: BookingMarkKind = state === "no-show" ? "didnt-come" : "booked";
+    marks.push({ kind, id: idOf(row), day, start, trainer: bookingTrainerName(row, rosterNames), to: null });
   }
 
   // CANCELLED and MOVED — the Changes list's rule, asked about each day a
@@ -179,7 +199,7 @@ export function bookingLayer({ rows, now, tz, logged, rosterNames }: BookingLaye
   return { marks, lastDay };
 }
 
-const KIND_ORDER: Record<BookingMarkKind, number> = { cancelled: 0, moved: 1, booked: 2 };
+const KIND_ORDER: Record<BookingMarkKind, number> = { cancelled: 0, moved: 1, booked: 2, "didnt-come": 3 };
 
 /**
  * The first studio day the booking read needs: the Monday on or before the
@@ -218,6 +238,7 @@ export interface BookingLine {
  *   Sep 20 · cancelled
  *   Sep 23 · cancelled, rebooked Fri Sep 25
  *   Sep 18 · moved to Tue Sep 22
+ *   Sep 20 · didn't come
  *
  * `year` is the month card's year, so a date in another year says which. A
  * day with two cancellations or moves gives each its time, so the two lines
@@ -241,6 +262,7 @@ export function bookingLine(mark: BookingMark, year: number, opts: { tz?: string
     return `${dayWithWeekday(mark.day, year)} · ${time} · booked${mark.trainer ? ` with ${mark.trainer}` : ""}`;
   }
   const when = opts.withTime ? `${shortDate(mark.day, year)} · ${time}` : shortDate(mark.day, year);
+  if (mark.kind === "didnt-come") return `${when} · didn't come`;
   if (mark.kind === "moved") {
     return mark.to ? `${when} · moved to ${dayWithWeekday(mark.to.day, year)}` : `${when} · moved`;
   }
