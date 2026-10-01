@@ -18,6 +18,7 @@ import {
   SETTINGS,
   SETTING_BY_KEY,
   formatSetting,
+  inactiveProblem,
   parseSetting,
   resolveSetting,
   usable,
@@ -96,13 +97,21 @@ export function pairProblem(form: DefaultsForm): string | null {
   return `Settling in must end after New: New runs to session ${n}, so Settling in has to be more than ${n}.`;
 }
 
-/** The first problem on the page, box by box and then the pair, or null when it can be saved. */
+/** The other pair (the inactive round, Oct 1 2026): Inactive must come after Lapsed, on what studios would get. */
+export function inactivePairProblem(form: DefaultsForm): string | null {
+  const l = effective("lapsedDays", form.lapsedDays);
+  const i = effective("inactiveDays", form.inactiveDays);
+  if (typeof l !== "number" || typeof i !== "number") return null;
+  return inactiveProblem(l, i);
+}
+
+/** The first problem on the page, box by box and then the pairs, or null when it can be saved. */
 export function formProblem(form: DefaultsForm): string | null {
   for (const d of SETTINGS) {
     const p = fieldProblem(d.key, form[d.key]);
     if (p) return `${settingName(d.key)}: ${p}`;
   }
-  return pairProblem(form);
+  return pairProblem(form) ?? inactivePairProblem(form);
 }
 
 /** What a save writes: only the boxes that changed, a cleared one taken back to the app's value. */

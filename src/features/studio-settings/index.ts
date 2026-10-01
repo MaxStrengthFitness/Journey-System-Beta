@@ -8,6 +8,7 @@ export {
   resolveAll,
   resolveSetting,
   formatSetting,
+  inactiveProblem,
   parseSetting,
   usable,
   SOURCE_PHRASE,

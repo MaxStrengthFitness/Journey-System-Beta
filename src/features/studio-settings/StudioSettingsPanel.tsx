@@ -7,7 +7,7 @@ import type { Studio } from "../../types";
 import { AdminField, AdminGrid, AdminInput, AdminNotice, AdminPanel, AdminSelect, SaveBar } from "../admin/primitives";
 import { useDirtyForm } from "../admin/useDirtyForm";
 import { GROUP_LABEL, GROUP_ORDER, SETTINGS, WEEKDAY_NAMES, type SettingDef, type SettingKey } from "./registry";
-import { SOURCE_PHRASE, formatSetting, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
+import { SOURCE_PHRASE, formatSetting, inactiveProblem, parseSetting, resolveAll, resolveSetting, usable, type SettingValue } from "./resolve";
 import { saveStudioSettings, type SettingsPatch } from "./store";
 import { useStudioSettings } from "./useStudioSettings";
 import "../admin/admin.css";
@@ -80,6 +80,12 @@ export function StudioSettingsPanel({ studioId, studio, canEdit }: StudioSetting
         const newMax = resolveSetting("newMax", layers).value ?? 0;
         const settlingMax = resolveSetting("settlingMax", layers).value ?? 0;
         if (settlingMax <= newMax) throw new Error("Settling in has to end after New.");
+      }
+      // Inactive must still come after Lapsed (the inactive round, Oct 1 2026), asked the same way.
+      if ("lapsedDays" in out || "inactiveDays" in out) {
+        const layers = { studio: applyPatch(settings.studioValues, out), company: settings.companyValues };
+        const problem = inactiveProblem(resolveSetting("lapsedDays", layers).value, resolveSetting("inactiveDays", layers).value);
+        if (problem) throw new Error(problem);
       }
       await saveStudioSettings(studioId, out);
       if (out.deepCleanDays === "clear" && legacyDeep !== undefined) {

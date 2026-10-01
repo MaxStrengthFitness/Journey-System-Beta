@@ -91,7 +91,48 @@ export function resolveAll(layers: SettingLayers): Record<SettingKey, ResolvedSe
     out.newMax = pair[0];
     out.settlingMax = pair[1];
   }
+  const pair = inactivePastLapsed(layers, out.lapsedDays, out.inactiveDays);
+  out.lapsedDays = pair.lapsed;
+  out.inactiveDays = pair.inactive;
   return out;
+}
+
+/**
+ * The second rule across two settings (the inactive round, Oct 1 2026):
+ * Inactive comes after Lapsed. An Inactive that isn't past the Lapsed line in
+ * force is skipped, never bent: the next layer down answers (Max Strength's,
+ * then the app's 90). When none is past it (a Lapsed set later than every
+ * Inactive beneath it), the pair falls back together to the layer beneath the
+ * studio's, else to the app's own pair, as New and Settling in do.
+ */
+export function inactivePastLapsed(
+  layers: SettingLayers,
+  lapsed: ResolvedSetting,
+  inactive: ResolvedSetting,
+): { lapsed: ResolvedSetting; inactive: ResolvedSetting } {
+  const line = lapsed.value ?? 0;
+  if ((inactive.value ?? 0) > line) return { lapsed, inactive };
+  const def = SETTING_BY_KEY.inactiveDays;
+  const company = inactive.source === "studio" ? layerValue(def, layers.company) : undefined;
+  if (typeof company === "number" && company > line) return { lapsed, inactive: { key: "inactiveDays", value: company, source: "company" } };
+  const app = def.appDefault ?? 0;
+  if (inactive.source !== "app" && app > line) return { lapsed, inactive: { key: "inactiveDays", value: app, source: "app" } };
+  // No Inactive beneath is past this Lapsed line: drop the pair to the layer beneath the studio's.
+  const withoutStudio: SettingLayers = { ...layers, studio: omit(layers.studio, ["lapsedDays", "inactiveDays"]) };
+  const l = resolveSetting("lapsedDays", withoutStudio);
+  const i = resolveSetting("inactiveDays", withoutStudio);
+  if ((i.value ?? 0) > (l.value ?? 0)) return { lapsed: l, inactive: i };
+  return {
+    lapsed: { key: "lapsedDays", value: SETTING_BY_KEY.lapsedDays.appDefault, source: "app" },
+    inactive: { key: "inactiveDays", value: def.appDefault, source: "app" },
+  };
+}
+
+/** May this pair stand: Inactive past Lapsed? (The editors ask before they save.) */
+export function inactiveProblem(lapsedDays: SettingValue, inactiveDays: SettingValue): string | null {
+  if (typeof lapsedDays !== "number" || typeof inactiveDays !== "number") return null;
+  if (inactiveDays > lapsedDays) return null;
+  return `Inactive has to come after Lapsed: Lapsed is at ${lapsedDays} days, so Inactive has to be more than ${lapsedDays}.`;
 }
 
 function omit(values: SettingValues | null, keys: SettingKey[]): SettingValues | null {
