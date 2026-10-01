@@ -309,12 +309,18 @@ The web service does not touch Firestore (`docs/business/does-this-scale.md` §1
 **Two limits to note.** Neither is a cost:
 
 - **The token bucket.** Every call shares one Mindbody rate limiter of 5 a second (`server/mindbody-client.ts:99-102`). That is fine unless many studios' month pulls pile up at 10:00, 14:00 and 18:00.
-- **Cron memory.** Both cron jobs load company-wide windows into memory on 512 MB instances:
-  - renewals: `server/renewals-job.ts:171-194`
-  - machine trends: `server/machine-trends-job.ts:201-205`
-  - **When they outgrow 512 MB**: trends at roughly 10–20 studios, renewals at 20–40.
-  - **The fix**: move them to `1c-2g` and later `2c-4g`, billed by the minute (the table allows $7–$12 a month for this).
-  - **Trends must be rebuilt by ~50 studios.** Machine trends needs to be rewritten to work one studio at a time before about 50 studios, because 90 days of every set would not fit even in 4 GB.
+- **Cron memory (fixed Oct 1 2026, `oct1/job-memory`).** Both cron jobs run on 512 MB instances. Until Oct 1 both loaded the whole company into memory first, and were estimated to run out at roughly 430–1,100 active clients company-wide (the four studios had about 700). They now read **one studio at a time, only the fields they use**, and keep company-wide sums as small running totals (`docs/KNOWN-TRAPS.md`, "Jobs read per studio with select"). What they write is unchanged.
+  - **Measured** on a generated company (live heap after a collection, dry runs, about 155 bookings and sets per client):
+
+    | Job | Before | After |
+    | --- | --- | --- |
+    | Weekly machine trends | ~0.34 MB per active client, company-wide | ~0.02 MB per active client company-wide (the running totals), plus ~0.03 MB per client of the studio being read (its eight weeks of bookings for Openings) |
+    | Nightly renewals | ~0.19 MB per client, company-wide | ~0.03 MB per client **of the studio being read**; almost nothing grows with the company |
+
+  - **Headroom.** Node, the Firebase SDK and gRPC take about 60–90 MB of the 512, which leaves roughly 300 MB of heap to be safe with. The trends job then holds about **15,000 clients who trained in the last 90 days** (about 50 studios of 300) before it needs `1c-2g`; a past client costs it a few hundred bytes. The scale target (100 studios of 300) would want `1c-2g` for that one weekly run, about a dollar a month. The renewals job no longer grows with the company: a single studio would need several thousand clients to matter.
+  - **Watch it in Render's log.** Each job now prints the heap's peak after each studio and for the run ("Solon: memory peak 41.2 MB heap used (process 120.3 MB now; the instance has 512 MB)." and "Memory: the run's peak was 63.0 MB of heap"). When the run's peak passes about 300 MB, move the job to `1c-2g` (billed by the minute; the table allows $7–$12 a month for this).
+  - **Cost side effect.** The renewals job's old reads of every booking and every workout in a window had no index on the Enterprise database and scanned both whole collections every night; it now reads by client on indexes that already exist. The trends job's one 90-day read of `exerciseLogs` by `createdAt` is still that unindexed shape (streamed now, so it no longer costs memory): an index on `createdAt` would make it a range read, and is AJ's call.
+  - **Not changed:** the Cloud Function `recalcTrainerWindows` (256 MiB, about 0.19 MB a client by the Sep 27 estimate). Functions deploy separately with the Firebase CLI and need AJ's OK.
 
 ### 6. The small lines
 
