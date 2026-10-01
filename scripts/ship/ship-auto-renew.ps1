@@ -1,13 +1,13 @@
 <#
  ship-auto-renew.ps1  -  auto-renewal decided in one place, to master
- SCRIPT-VERSION: v1  (Sep 26 2026: its own release; lean-sync went live on
- Sep 25 without it)
+ SCRIPT-VERSION: v2  (Oct 1 2026: the round brought onto master's a6c58935 as
+ oct1/auto-renew; v1 was for auto-renew-checkbox, Sep 26)
 
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-auto-renew.ps1 prepare
    powershell -ExecutionPolicy Bypass -File .\scripts\ship\ship-auto-renew.ps1 golive
 
  WHAT IS ON THE BRANCH
-   auto-renew-checkbox (docs/rounds/2026-09-25-auto-renew.md is the round):
+   oct1/auto-renew (docs/rounds/2026-09-25-auto-renew.md is the round):
    whether a client's contract renews by itself is decided in one place -
    Mindbody's contract flag, else a trainer's "On auto-renewal" box on the
    profile, else the package's answer, else the studio's answer ("Packages at
@@ -27,7 +27,7 @@
  its restore tag is the commit BEFORE lean-sync, so rerunning it for this
  round would ship nothing new and name the wrong restore point.
 
- BEFORE prepare: THE PROJECT FOLDER IS ON auto-renew-checkbox
+ BEFORE prepare: THE PROJECT FOLDER IS ON oct1/auto-renew
    Ask Claude to switch it (the worktree is removed first; git will not have
    one branch in two folders). The branch must contain master: golive only
    fast-forwards.
@@ -39,8 +39,8 @@
           counts), the production build. Records what it tested.
  golive   only what prepare tested. Checks the restore tag is free (or is
           master as it is now), deploys firestore.rules, tags
-          restore/2026-09-26-before-auto-renew at master as it is now, then
-          pushes auto-renew-checkbox to master: RENDER DEPLOYS THE APP. Its
+          restore/2026-10-01-before-auto-renew at master as it is now, then
+          pushes oct1/auto-renew to master: RENDER DEPLOYS THE APP. Its
           last lines are the one step it cannot do for you: switching each
           corporate studio's auto-renewal answer to No, before that night's
           renewals run.
@@ -61,10 +61,10 @@ $LogFile = Join-Path $Root 'logs\ship-auto-renew.log'
 # What prepare tested: "<branch sha> <origin/master sha>". golive reads it.
 $PreparedFile = Join-Path $Root 'logs\ship-auto-renew.prepared'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogFile) | Out-Null
-$Branch = 'auto-renew-checkbox'
-$RestoreTag = 'restore/2026-09-26-before-auto-renew'
+$Branch = 'oct1/auto-renew'
+$RestoreTag = 'restore/2026-10-01-before-auto-renew'
 # 4 since the client codex: AppContent.tsx x2, clinical-review/charts.tsx,
-# EditTrainerModal.tsx. Measured 4 on auto-renew-checkbox, Sep 26 2026.
+# EditTrainerModal.tsx. Measured 4 on oct1/auto-renew, Oct 1 2026.
 $TscBaseline = 4
 $Started = Get-Date
 
@@ -223,7 +223,7 @@ if ($tagOnGitHub) {
 }
 
 Write-Host ''
-Write-Host 'This deploys firestore.rules to production, then pushing auto-renew-checkbox to master deploys the app on Render.' -ForegroundColor Yellow
+Write-Host 'This deploys firestore.rules to production, then pushing oct1/auto-renew to master deploys the app on Render.' -ForegroundColor Yellow
 Write-Host 'From then on every studio that has not answered reads as auto-renewing (the standard), until someone sets it.' -ForegroundColor Yellow
 if ((Read-Host 'Type GO to deploy the rules and push') -ne 'GO') { Log 'Nothing deployed, nothing pushed.' 'Yellow'; exit 0 }
 

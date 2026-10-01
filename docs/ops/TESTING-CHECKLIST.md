@@ -2547,7 +2547,7 @@ Nothing to deploy first. As a **Studio Leader**, then as the trainer named.
 - [ ] Team jobs: tap "I'll take it" on an up-for-grabs job; the card and the sheet say "Claimed by you 10:12 AM"; on a second iPad the same job says "Claimed by Sam 10:12 AM". Close it: "· done 10:40 AM". Step off: the claim line goes.
 - [ ] As a leader on Operations → Clients → Journey, open a case and name the trainer as owner; on that trainer's Relay → Tracker → Today → Follow-ups the case appears with its day and next step; "Next step" opens the editor; change the step and the day, Save; the leader's page shows the change. Set Paused with a reason: it leaves the trainer's list.
 - [ ] As a leader, post a notice with "Ask everyone to say they've read it" ticked. As a trainer, Relay → Board → Since you were in: the notice is new and shows "I've read it"; Mark all read leaves it new; tap "I've read it": "You said you'd read it · today at …" and the count drops. A notice posted without the tick shows no button.
-## Round 45 — Auto-renewal: the studio's answer and the box on the profile · *Sep 25 2026, branch `auto-renew-checkbox`*
+## Round 45 — Auto-renewal: the studio's answer and the box on the profile · *built Sep 25 2026 on `auto-renew-checkbox`, brought onto master Oct 1 2026 as `oct1/auto-renew`*
 
 Auto-renewal is decided in one order: Mindbody's contract, else a trainer's
 mark on the profile, else the package's answer, else the studio's, else yes.
@@ -2556,9 +2556,19 @@ morning after the first nightly run** (before it, the profile says "Auto-renewal
 can be marked here after tonight's renewal run" instead of the box), as a
 studio leader, portrait and landscape.
 
+- [ ] **Go-live day, before that night's renewals run: the corporate studios
+  say No.** As a studio leader (or an administrator) at Westlake, then
+  Strongsville, then Willoughby: My Studio → Studio → Renewals → the first
+  panel, **Auto-renewal** → "Packages at {studio} renew automatically" →
+  **No, billing ends when the payments finish** → Save. Solon stays Yes (pick
+  "Yes, they renew automatically" and Save, so it is answered rather than
+  the standard).
 - [ ] **The studio's answer.** My Studio → Studio → Renewals: the first panel
   is **Auto-renewal**. At a corporate studio it reads **No**; at a franchise
-  studio, Yes. A studio that never answered says so in a warning.
+  studio, Yes. A studio that never answered says so in a warning, and
+  Operations → Clients → Renewals says so too, with a door to My Studio.
+- [ ] **Trainers read it, locked.** Signed in as a Life Transformer, the same
+  panel shows the answer and cannot be changed.
 - [ ] **The box starts on the inherited answer.** On a monthly client whose
   Mindbody contract hasn't said (Account → the package): **On auto-renewal**,
   ticked at a Yes studio and unticked at a No one, with a sentence saying
@@ -2572,6 +2582,14 @@ studio leader, portrait and landscape.
   save: no box, "Payments finish" on the card, no "Auto-renews" anywhere on
   the card (the contract history included), and no "Before the charge" for
   her on Operations → Renewals the next morning.
+- [ ] **Every screen about her agrees at once** (Oct 1 2026). Mark a monthly
+  client with a before-the-charge warning **Not on auto-renewal** and save,
+  then, without waiting for the night: her Hub card has no "Renewal due",
+  the Hub's Opportunities list has no "Renewal talk" for her, the Wrap-up
+  after her session asks nothing about the charge, and opening her inside
+  Operations (and her Journey case, if she has one) says "billing ends",
+  not "auto-renews". The lists (Today, Week, Month, the pipeline) catch up
+  after the nightly run.
 
 ---
 
@@ -2643,4 +2661,5 @@ Screenshot:
 | 42 — Operations, wave 3 (Sep 29) | 3 | | |
 | 43 — The Machine Catalog, wave 3 (Sep 29) | 5 | | |
 | 44 — The Relay room, third wave (Sep 29) | 3 | | |
-| **Total** | **620** | | |
+| 45 — Auto-renewal: the studio's answer and the box (Oct 1) | 7 | | |
+| **Total** | **627** | | |

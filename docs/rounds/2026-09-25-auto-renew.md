@@ -1,8 +1,10 @@
 # Auto-renewal: the studio's answer and the box on the profile — Sep 25 2026
 
-Branch `auto-renew-checkbox`, off `lean-sync` at `1ccb5d7`. One commit per
-phase, each typechecked on its own so it can be reverted alone. Not pushed;
-not deployed.
+Built on branch `auto-renew-checkbox`, off `lean-sync` at `1ccb5d7`. One
+commit per phase, each typechecked on its own so it can be reverted alone.
+**Brought onto master on Oct 1 2026 as `oct1/auto-renew`** (off master's
+`a6c58935`, the seven commits cherry-picked, then one fix and the docs: see
+"Onto master, Oct 1" at the end). Not pushed; not deployed.
 
 ## What AJ said
 
@@ -161,22 +163,25 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
 ## Shipping notes, in order
 
 1. **Its own release: `scripts/ship/ship-auto-renew.ps1`**, `prepare` then
-   `golive`, from the project folder on `auto-renew-checkbox`. `lean-sync`
-   went live on Sep 25 without this round (master `1ccb5d7`), so
-   `ship-lean-sync.ps1` is not the way: it would ship nothing new, and its
-   restore tag is the commit before lean-sync. `prepare` checks the
+   `golive`, from the project folder on **`oct1/auto-renew`** (script v2,
+   Oct 1). `lean-sync` went live on Sep 25 without this round (master
+   `1ccb5d7`), so `ship-lean-sync.ps1` is not the way: it would ship nothing
+   new, and its restore tag is the commit before lean-sync. `prepare` checks the
    typecheck count, the suite in Eastern time, `npm run test:rules` and the
    build. `golive` deploys **the rules first**: `renewalSettingsValid` checks
    the whole merged document, so under the old rules the first save of the
    studio's answer is refused, and once it is stored every later
    renewal-settings save at that studio would be. It then tags
-   `restore/2026-09-26-before-auto-renew` at master as it is, and pushes. If
+   `restore/2026-10-01-before-auto-renew` at master as it is, and pushes. If
    that tag already names another commit, it stops before deploying
    anything.
 2. **The same day, right after the push and before that night's renewals
    run**, a leader or an administrator opens **My Studio → Studio → Renewals**
-   at each **corporate** studio (AJ names which), sets "Packages at {studio}
-   renew automatically" to **No**, and saves. Operations → Renewals and the
+   at each **corporate** studio — Westlake, Strongsville and Willoughby —
+   sets "Packages at {studio} renew automatically" to **No, billing ends when
+   the payments finish**, and saves; at Solon (franchise) picks **Yes, they
+   renew automatically** and saves, so it is answered rather than the
+   standard. Operations → Clients → Renewals and the
    panel itself flag a studio that hasn't answered. `ship-auto-renew.ps1
    golive` can't do this for you; it prints it as its last lines, after the
    push.
@@ -250,7 +255,7 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
   a failed settings read works out no live renewal, and the fallback is
   `renewalOf(client)`, never the raw stored snapshot.
 - **The iPad walkthrough** (Round 17's "After your last payment", and a new
-  Round 20) follows the studio's answer, and shipping note 3 says which
+  Round 20, Round 45 since Oct 1) follows the studio's answer, and shipping note 3 says which
   clients show the "after tonight's run" note.
 
 ## The review's fixes (round 3)
@@ -286,7 +291,7 @@ is one pure call (`renewalOf`), covered by `auto-renew.test.ts`.
 
 ## Undo
 
-To roll back the app, push `restore/2026-09-26-before-auto-renew` to master
+To roll back the app, push `restore/2026-10-01-before-auto-renew` to master
 (ask Claude); `ship-auto-renew.ps1 golive` makes it at master as it was just
 before the push, so it takes back this round and nothing else. That is safe:
 the app before this round drops the studio's key when it reads the settings,
@@ -297,8 +302,9 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
 
 ## Open questions for AJ
 
-1. Which of the four studios (Westlake, Strongsville, Willoughby, Solon) are
-   the corporate ones? Each is switched to No on go-live day.
+1. ~~Which of the four studios are the corporate ones?~~ Answered by Oct 1:
+   Westlake, Strongsville and Willoughby are corporate and are switched to
+   No on go-live day; Solon (franchise) stays Yes.
 2. A mark belongs to the contract it was made on; on her next contract the box
    goes back to the studio's answer. OK?
 3. Every tick or untick is kept for that client, even when it matches the
@@ -328,3 +334,60 @@ saved — or first delete the key from each `studios/{s}/config/renewals`.
     auto-renews (the lock is there because Mindbody's reading is wrong for
     her, and paid in full means nothing more is charged). Before this round
     a lock over a contract Mindbody showed running still warned. OK?
+
+## Onto master, Oct 1 2026
+
+Master had moved on by about 320 commits (the studio settings, the packages
+screen, the Wrap-up, Operations' rooms, the rules' third wave) while this
+round waited, so it was brought across rather than merged: branch
+`oct1/auto-renew` off `origin/master` at `a6c58935`, the seven commits
+cherry-picked in order, conflicts settled in master's favour, then one fix
+commit and this note.
+
+- **Where the studio's answer lives.** It stays in the studio's renewal
+  settings (`studios/{s}/config/renewals`, My Studio → Studio → Renewals →
+  Auto-renewal, its leaders), not in master's studio settings registry: that
+  registry is plain numbers with head office's default beneath them, and this
+  is a yes or no that sits with the package table it overrides. The
+  standard (ON) is still `STUDIO_AUTO_RENEW_DEFAULT`. Whether head office
+  should be able to set Max Strength's default answer from Admins → Standard
+  → Studio defaults is a question for AJ, not built.
+- **What the cherry-picks met.** `VictoryHUDScreen` is now `WrapUpScreen`
+  (the prompt reads `renewalOf`; its three tests moved to
+  `WrapUpScreen.render.test.tsx`); the package card's `packageView` gained
+  master's `split` (left in the contract and extra) before the staged mark;
+  the record form keeps both `autoRenewMark` and master's `firstStudioDay`;
+  the package card lost its own door to Sessions before Journey on master,
+  and keeps it that way. `renewsAutomatically` on the package table was
+  master's already and is reused.
+- **The review that was cut off, finished.** The whole diff read again
+  against master. Three single-client places master added since read last
+  night's snapshot as it was, so a "Not on auto-renewal" mark or a
+  paid-in-full lock didn't reach them until the night: the Hub's
+  Opportunities layer ("Renewal talk · Auto-renews with about 16 sessions
+  banked" stayed while the Hub card's "Renewal due" had gone), a client
+  opened inside Operations, and the Journey case drawer. All three read
+  `renewalOf(client)` now, and the Run-sheet has a test. The lists (Today,
+  Week, Month, the pipeline, Relay's lanes) still follow the nightly run.
+  Checked and right as built: the nightly job (`server/renewals-job.ts`)
+  reads each client whole and the studio's settings through
+  `normalizeRenewalSettings`, so it decides with the mark, the lock, the
+  package and the studio; nothing writes `undefined` (the settings patch
+  writes the studio's answer only when it is a yes or a no, the mark spreads
+  its optional names); nothing writes a whole client (the mark goes through
+  the codex record form's diff); the rules let only the studio's leaders,
+  franchise owners and administrators (`renewalsManageable`) save the
+  studio's answer, and a trainer at the client's home studio tick the box,
+  never a cross-train visitor.
+- `scripts/ship/ship-auto-renew.ps1` is v2: branch `oct1/auto-renew`,
+  restore tag `restore/2026-10-01-before-auto-renew`. The iPad walkthrough is
+  Round 45 of `docs/ops/TESTING-CHECKLIST.md`.
+
+| | Oct 1 2026, `oct1/auto-renew` |
+| --- | --- |
+| Typecheck | 4 (baseline) |
+| Suite | 8,360 passing in 596 files (`TZ=America/New_York npx vitest run --dir src`, in a worktree on AJ's PC); master `a6c58935` was 8,256 in 590 |
+| Rules tests | 266 passing on the local emulator (260 on master); AJ's `npm run test:rules` is the one that counts |
+| Build | clean |
+| Case duplicates | none |
+| `firestore.rules` | changed: one key, `packagesRenewAutomatically` (a yes or no), in `renewalSettingsValid`. Deploy it before the app |
