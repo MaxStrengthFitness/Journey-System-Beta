@@ -44,10 +44,11 @@ describe("messages name today's places", () => {
     expect(source).toContain("Add it from Notes & Profile → Notes.");
   });
 
-  it("the Hub card's button says it opens past sessions", () => {
+  it("the Hub's search draws the Directory's rows, not cards with a History door of their own (hub fixes, Oct 1 2026)", () => {
     const source = read("components/ClientsView.tsx");
     expect(source).not.toMatch(/>History<\/span>/);
-    expect(source).toMatch(/>Past sessions<\/span>/);
+    expect(source).not.toMatch(/Previous Session/);
+    expect(source).toContain("<SearchResults");
   });
 
   it("the progress report's closing box does not borrow the Wrap-up's name", () => {
@@ -76,24 +77,24 @@ describe("buttons land where they say", () => {
     expect(task).not.toContain("has no screen of its own");
   });
 
-  it("the Hub card's Past sessions opens Sessions, handed off only once the move is agreed", () => {
+  it("the peek's Log past session opens the Activity Archive, handed off only once the move is agreed (hub fixes, Oct 1 2026)", () => {
     const hub = read("components/ClientsView.tsx");
     expect(hub).toContain("const guardLeave = useLeaveGuard();");
-    // The button whose label is Past sessions, from its guard to its move.
-    const label = hub.indexOf(">Past sessions</span>");
-    const start = hub.lastIndexOf("guardLeave(() => {", label);
-    expect(start).toBeGreaterThan(-1);
+    // The door that replaced the old search card's Past sessions: the peek's
+    // Log past session, from its guard to its move.
+    const at = hub.indexOf("onLogPast={(id) => {");
+    expect(at).toBeGreaterThan(-1);
+    const start = hub.indexOf("guardLeave(() => {", at);
+    expect(start).toBeGreaterThan(at);
     const move = 'setView("profile");';
     const end = hub.indexOf(move, start);
     expect(end).toBeGreaterThan(start);
-    expect(end).toBeLessThan(label);
     const door = hub.slice(start, end + move.length);
-    expect(door).toContain("onSelectClient(client.id!);");
-    expect(door).toContain('openProfileAt(client.id!, { tab: "clinical", view: "sessions" });');
+    expect(door).toContain("onSelectClient(id);");
+    expect(door).toContain('openProfileAt(id, { tab: "clinical", view: "calendar" });');
     // Nowhere else in the Hub writes a handoff outside the guard.
     expect(hub.split("openProfileAt(").length - 1).toBe(1);
   });
-
   it("leaving a progress report hands off to the Activity Archive's Reports", () => {
     const back = between("const backToRecord = () =>", "if (!reportClient)");
     expect(back).toContain("guardLeave(");

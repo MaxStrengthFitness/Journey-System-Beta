@@ -1,11 +1,4 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Users,
-  History,
-  Play,
-  Loader2,
-} from "lucide-react";
 import { motion } from "motion/react";
 import {
   collection,
@@ -35,15 +28,8 @@ import {
   studioDateKey,
   studioTodayKey,
 } from "../lib/studio-time";
-import {
-  safeToDate,
-  getMillis,
-  parseSessionDate,
-} from "../lib/utils";
+import { safeToDate, getMillis } from "../lib/utils";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { openProfileAt } from "../features/client-profile/profile-nav";
 import { useLeaveGuard } from "../features/unsaved-changes";
 import { LoadBoundary } from "../features/new-version/LoadBoundary";
@@ -75,6 +61,11 @@ import { peekState } from "../features/hub-schedule/peek-model";
 import { trainerLookup } from "../features/client-history/trainers";
 import type { HistorySession } from "../features/client-history/model";
 import { clientDisplayName } from "../lib/client-name";
+import { myTrainerIds } from "../lib/live-session";
+import { useDirectoryContext } from "../features/client-directory/use-directory-context";
+import { buildDirectoryRows } from "../features/client-directory/row";
+import { buildNameIndex, searchNames, type MatchTier } from "../features/client-directory/search";
+import { SearchResults } from "../features/client-directory/SearchResults";
 
 /*
  * THE OPPORTUNITIES LAYER (Sep 27 2026): fetched the first time it is
@@ -97,6 +88,9 @@ const SessionDetailDialog = React.lazy(() =>
 /** One empty list, so a missing schedule doesn't look new on every render. */
 const NO_SCHEDULES: any[] = [];
 const NO_MACHINES: Machine[] = [];
+const NO_STUDIOS: ReadonlyArray<{ id?: string; journeyCutoverDate?: string | null }> = [];
+/** The Directory's own order for a name match: exact, then by first name, last name, a nickname, close. */
+const MATCH_ORDER: MatchTier[] = ["exact", "first-prefix", "last-prefix", "alias", "close"];
 
 export function ClientsView({
   clients,
@@ -115,7 +109,10 @@ export function ClientsView({
   onRetrySchedule,
   cutoverStudios,
   machines = NO_MACHINES,
+  schedulesFetchedAt = null,
 }: {
+  /** When the held bookings were last read (useLiveSchedule's lastFetchedAt): the search rows' "Next" says so, as the Directory's does. */
+  schedulesFetchedAt?: number | null;
   /** The studio's machines, for Edit session's pop-up (the Activity Archive's own). */
   machines?: Machine[];
   clients: Client[];
@@ -320,20 +317,54 @@ export function ClientsView({
     // into or out of Demo Mode must ask again, in the new realm.
   }, [searchTerm, activeStudioId, authTrainer?.id]);
 
-  const filteredClients = clients.filter((c) =>
-    `${c.firstName} ${c.lastName}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
+  /*
+   * THE SEARCH'S ROWS (hub fixes, Oct 1 2026): the Client Directory's own row
+   * model and name matcher over the studio list and the names Firestore
+   * found, from the Directory's own context — so Last in · Next · Left say
+   * here exactly what they say on the Directory and the profile. The old
+   * cards read only the last day's sessions ("Previous session: No history"
+   * for a client with 54).
+   */
+  const searchMyIds = React.useMemo(() => myTrainerIds(authTrainer, auth.currentUser?.uid ?? null), [authTrainer]);
+  const { ctx: directoryCtx } = useDirectoryContext({
+    now: currentTime,
+    today: studioToday,
+    studios: cutoverStudios ?? NO_STUDIOS,
+    activeStudioId: activeStudioId || null,
+    schedules: schedules ?? null,
+    schedulesFetchedAt,
+    sessions,
+    sessionsKnown,
+    myIds: searchMyIds,
+    myName: authTrainer?.fullName ?? null,
+    trainers: sortedTrainers,
+  });
+  const searching = searchTerm.trim().length > 0;
+  const searchPool = React.useMemo(
+    () => (searching ? Array.from(new Map([...clients, ...dbSearchResults].filter((c) => c.id).map((c) => [c.id as string, c])).values()) : []),
+    [searching, clients, dbSearchResults],
   );
-
-  // Merge local filtered clients of today and dynamic DB search results uniquely by client ID
-  const mergedSearchClients = Array.from(
-    new Map(
-      [...filteredClients, ...dbSearchResults].map((c) => [c.id, c]),
-    ).values(),
+  const searchAllRows = React.useMemo(() => (searching ? buildDirectoryRows(searchPool, directoryCtx) : []), [searching, searchPool, directoryCtx]);
+  const searchResult = React.useMemo(
+    () =>
+      searchNames(
+        buildNameIndex(searchAllRows.map((r) => ({ id: r.id, first: r.name.first, nickname: r.name.nickname, last: r.name.last }))),
+        searchTerm,
+      ),
+    [searchAllRows, searchTerm],
   );
-
-  const now = new Date();
+  const searchMatches = searchResult.matches;
+  const searchRows = React.useMemo(
+    () =>
+      searchAllRows
+        .filter((r) => searchMatches.has(r.id))
+        .sort(
+          (a, b) =>
+            MATCH_ORDER.indexOf(searchMatches.get(a.id)!.tier) - MATCH_ORDER.indexOf(searchMatches.get(b.id)!.tier) ||
+            a.name.display.localeCompare(b.name.display),
+        ),
+    [searchAllRows, searchMatches],
+  );
 
   /**
    * Your own column: by your trainer id only (hub fixes, Oct 1 2026). It
@@ -502,26 +533,6 @@ export function ClientsView({
 
   /** The day's usual service: a card names its own only when it isn't this one. */
   const usualService = React.useMemo(() => usualServiceOf(todaysSchedules), [todaysSchedules]);
-
-  const getClientSessions = (client: Client) => {
-    const clientName = `${client.firstName} ${client.lastName}`;
-    const next = schedules
-      .filter((s) => {
-        const d = safeToDate(s.startTime);
-        return (
-          (s.clientId === client.id ||
-            s.clientName.toLowerCase() === clientName.toLowerCase()) &&
-          d &&
-          d > now &&
-          s.status !== "Cancelled"
-        );
-      })
-      .sort((a, b) => getMillis(a.startTime) - getMillis(b.startTime))[0];
-    const last = sessions
-      .filter((s) => s.clientId === client.id)
-      .sort((a, b) => parseSessionDate(b.date) - parseSessionDate(a.date))[0];
-    return { next, last };
-  };
 
   /*
    * THE COLUMNS (hub fixes, Oct 1 2026; features/hub-schedule/columns.ts).
@@ -1030,189 +1041,21 @@ export function ClientsView({
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-950 p-6">
-            <div className="flex items-center gap-3 mb-8">
-              {isSearchingDb ? (
-                <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
-              ) : (
-                <Search className="w-6 h-6 text-sky-500" />
-              )}
-              <h3 className="text-xl font-black uppercase tracking-widest text-foreground dark:text-white">
-                Client Directory{" "}
-                <span className="text-muted-foreground ml-2">
-                  ({mergedSearchClients.length})
-                </span>
-              </h3>
-            </div>
-            <div className="space-y-4 max-w-5xl">
-              {mergedSearchClients.map((client) => {
-                const { next, last } = getClientSessions(client);
-                const clientName = `${client.firstName} ${client.lastName}`;
-
-                return (
-                  <motion.div
-                    key={client.id}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <Card className="group hover:border-primary/50 transition-all cursor-pointer overflow-hidden rounded-3xl">
-                      <CardContent className="p-0">
-                        <div className="flex flex-col lg:flex-row p-6 gap-6">
-                          <div
-                            className="flex flex-col gap-2 cursor-pointer grow min-w-50"
-                            onClick={() => {
-                              onSelectClient(client.id!);
-                              setView("profile");
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
-                                {clientName}
-                              </h3>
-                              {client.isActive ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-none font-black text-[11px] uppercase">
-                                  Active
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="secondary"
-                                  className="font-black text-[11px] uppercase"
-                                >
-                                  Inactive
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex gap-4 text-[11px] font-bold text-muted-foreground uppercase">
-                              <span>{client.height}</span>
-                              <span>•</span>
-                              <span>{client.weight || "--"} LBS</span>
-                              <span>•</span>
-                              <span className="text-primary">
-                                {client.remainingSessions} SESSIONS
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 grow-2">
-                            {/* Last Session Info */}
-                            <div className="bg-white dark:bg-bg-dark p-4 rounded-2xl border border-border/50 flex flex-col justify-between">
-                              <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                                Previous Session
-                              </p>
-                              {last ? (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-black">
-                                    {new Date(last.date).toLocaleDateString(
-                                      [],
-                                      {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      },
-                                    )}
-                                  </p>
-                                  <p className="text-[11px] font-bold text-muted-foreground uppercase italic">
-                                    TR: {last.trainerInitials}
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="text-xs font-bold text-muted-foreground/30 uppercase italic">
-                                  No history
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Next Session Info */}
-                            <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 flex flex-col justify-between">
-                              <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-1">
-                                Next Scheduled
-                              </p>
-                              {next ? (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-black text-primary">
-                                    {safeToDate(
-                                      next.startTime,
-                                    )?.toLocaleDateString([], {
-                                      month: "short",
-                                      day: "numeric",
-                                    })}{" "}
-                                    @{" "}
-                                    {safeToDate(
-                                      next.startTime,
-                                    )?.toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
-                                  </p>
-                                  <p className="text-[11px] font-black text-primary/70 uppercase italic">
-                                    TR: {next.trainerName}
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="text-xs font-bold text-muted-foreground/30 uppercase italic">
-                                  Not scheduled
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                              variant="outline"
-                              className="h-20 w-20 px-1.5 rounded-2xl font-black flex flex-col gap-1 border-2 shadow-sm dark:shadow-none uppercase group-hover:border-primary/20"
-                              onClick={() => {
-                                // The client's history lives on their profile:
-                                // Activity Archive -> Sessions. The label says
-                                // what it opens ("History" until the voice
-                                // review follow-up); it wraps to two lines
-                                // inside the 80px square rather than truncate,
-                                // which is what the narrower padding is for.
-                                // The handoff is written only if the move goes
-                                // ahead, as Relay's tasks and Back to Reports
-                                // do: asked about unsaved typing and told to
-                                // stay, a handoff left in storage would send
-                                // the next visit to this client to Sessions
-                                // instead of Journey. The client and the view
-                                // inside are guarded too; the gate runs them
-                                // straight through while it is leaving.
-                                guardLeave(() => {
-                                  onSelectClient(client.id!);
-                                  openProfileAt(client.id!, { tab: "clinical", view: "sessions" });
-                                  setView("profile");
-                                });
-                              }}
-                            >
-                              <History className="w-6 h-6" />
-                              <span className="text-[11px] leading-tight text-center whitespace-normal">Past sessions</span>
-                            </Button>
-                            <Button
-                              className="h-20 w-20 rounded-2xl font-black flex flex-col gap-1 shadow-lg shadow-primary/20 uppercase"
-                              onClick={() => {
-                                onSelectClient(client.id!);
-                                setView("workouts");
-                              }}
-                            >
-                              <Play className="w-6 h-6 fill-current" />
-                              <span className="text-[11px]">Start</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-              {mergedSearchClients.length === 0 && !isSearchingDb && (
-                <div className="py-20 text-center border-2 border-dashed rounded-3xl bg-muted/10 opacity-50">
-                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-xs font-black uppercase">
-                    No client matches "{searchTerm}"
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          /* The header's search, as the Client Directory's own rows (hub
+             fixes, Oct 1 2026): Last in · Next · Left in its words, from its
+             context. A tap opens the profile; each row keeps a Start. */
+          <SearchResults
+            term={searchTerm}
+            rows={searchRows}
+            matches={searchMatches}
+            searching={isSearchingDb}
+            onOpen={(id) => onSelectClient(id)}
+            onStart={(id) => {
+              // The Hub's own path to a session.
+              onSelectClient(id);
+              setView("workouts");
+            }}
+          />
         )}
       </div>
 

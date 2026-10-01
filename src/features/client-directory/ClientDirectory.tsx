@@ -37,17 +37,12 @@ import type { Client, KaizenRosterEntry, ScheduleEntry, Studio, Trainer, Workout
 import { NAME_SEARCH_PROPS } from "../../lib/name-search-input";
 import { queryStudioIds, realmStudioIds } from "../../lib/tenancy";
 import { myTrainerIds } from "../../lib/live-session";
-import { formatStudioDate, formatStudioTime, studioDateKey, studioTodayKey } from "../../lib/studio-time";
-import { SCHEDULE_STALE_MS } from "../../lib/schedule-window";
+import { formatStudioDate, studioTodayKey } from "../../lib/studio-time";
 import { LoadingArea } from "../../components/LoadingMark";
-import { KaizenToggle } from "../trainer-profile/KaizenToggle";
-import { KaizenMark } from "../trainer-profile/KaizenMark";
 import "../trainer-profile/trainer-profile.tokens.css";
-import { useRenewalSettings } from "../renewals/useRenewalSettings";
-import { buildPackageNameIndex } from "../renewals/settings";
-import { buildDirectoryRows, prepareDirectory, type DirectoryRow } from "./row";
+import { buildDirectoryRows, type DirectoryRow } from "./row";
 import { SORTS, SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey, type SortSpec } from "./buckets";
-import { buildNameIndex, searchNames, type NameMatch, type Range } from "./search";
+import { buildNameIndex, searchNames } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
 import {
   MINE_DEFINITION,
@@ -62,17 +57,14 @@ import {
   type ViewId,
 } from "./views";
 import { rosterCutWords } from "../../lib/studio-roster";
+import { DirectoryRowView, type DirectoryMark, type ExtraColumn } from "./DirectoryRowView";
+import { useDirectoryContext } from "./use-directory-context";
 import "./client-directory.css";
 
-/** How long the held bookings may go unread before "Nothing booked" is no longer said. */
-export const BOOKINGS_FRESH_MS = 2 * SCHEDULE_STALE_MS;
+export type { DirectoryMark } from "./DirectoryRowView";
 
-/** A mark in the attention gutter. The seam for note marks; nothing draws one yet. */
-export interface DirectoryMark {
-  kind: "note" | "critical";
-  /** The accessible label: "2 open notes you haven't marked off, 1 critical." */
-  label: string;
-}
+/** How long the held bookings may go unread before "Nothing booked" is no longer said (use-directory-context.ts). */
+export { BOOKINGS_FRESH_MS } from "./use-directory-context";
 
 export interface ClientDirectoryProps {
   clients: Client[];
@@ -111,7 +103,6 @@ export interface ClientDirectoryProps {
 }
 
 type Scope = "studio" | "all";
-type ExtraColumn = "total" | "age" | "height";
 const EXTRA_COLUMNS: ExtraColumn[] = ["total", "age", "height"];
 const COLUMN_WORDS: Record<string, string> = {
   client: "Client",
@@ -176,92 +167,6 @@ function useStudiosNameQuery(term: string, studioIds: string[], enabled: boolean
 /* ------------------------------------------------------------------ */
 /* Small pieces                                                        */
 /* ------------------------------------------------------------------ */
-
-/** A field's text with the matched letters marked. */
-function Highlighted({ text, ranges }: { text: string; ranges?: Range[] }) {
-  if (!ranges || ranges.length === 0) return <>{text}</>;
-  const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
-  const parts: React.ReactNode[] = [];
-  let at = 0;
-  sorted.forEach(([s, e], i) => {
-    if (s < at) return;
-    if (s > at) parts.push(text.slice(at, s));
-    parts.push(<mark key={i}>{text.slice(s, e)}</mark>);
-    at = e;
-  });
-  if (at < text.length) parts.push(text.slice(at));
-  return <>{parts}</>;
-}
-
-function NameLine({ row, match }: { row: DirectoryRow; match: NameMatch | null }) {
-  const { first, nickname, last } = row.name;
-  return (
-    <span className="cd-name-text">
-      {first && <Highlighted text={first} ranges={match?.ranges.first} />}
-      {nickname && (
-        <>
-          {" \u201c"}
-          <Highlighted text={nickname} ranges={match?.ranges.nickname} />
-          {"\u201d"}
-        </>
-      )}
-      {match?.alias && !nickname && <span className="cd-why-match">{` (${match.alias})`}</span>}
-      {last && (
-        <>
-          {" "}
-          <Highlighted text={last} ranges={match?.ranges.last} />
-        </>
-      )}
-    </span>
-  );
-}
-
-/** A cell's value, its second line, and — for an unknown — the reason on a tap. */
-function Cell({
-  value,
-  sub,
-  reason,
-  state,
-  sorted,
-  label,
-  extra = false,
-}: {
-  value: string;
-  sub: string | null;
-  reason: string | null;
-  state: string;
-  sorted: boolean;
-  label: string;
-  extra?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const explain = !!reason && (state === "unknown" || state === "before-journey" || state === "nothing-recorded" || state === "none");
-  return (
-    <div className={extra ? "cd-cell cd-x" : "cd-cell"} data-state={state} data-sorted={sorted ? "true" : "false"} data-col={label}>
-      {explain ? (
-        <button
-          type="button"
-          className="cd-why cd-hit-target"
-          aria-expanded={open}
-          aria-label={`${label}: ${value}. Why?`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((v) => !v);
-          }}
-        >
-          <span className="cd-val">{value}</span>
-          <span className="cd-why-mark" aria-hidden="true">
-            i
-          </span>
-        </button>
-      ) : (
-        <span className="cd-val">{value}</span>
-      )}
-      {sub && <span className="cd-sub">{sub}</span>}
-      {open && reason && <span className="cd-reason">{reason}</span>}
-    </div>
-  );
-}
 
 function kaizenLine(entry: KaizenRosterEntry, tz?: string): string {
   const review = entry.reviewBy ? formatStudioDate(entry.reviewBy as never, { month: "short", day: "numeric" }, tz, "") : "";
@@ -368,23 +273,22 @@ export function ClientDirectory({
     if (live && live.length > 0) return live;
     return [...(kaizenClientIds ?? [])].map((clientId) => ({ clientId, clientName: "", reason: "Other", addedAt: null, addedByTrainerId: "" }) as KaizenRosterEntry);
   }, [liveAuthTrainer, kaizenClientIds]);
-  const trainerNames = useMemo(() => new Map(trainers.map((t) => [t.id, t.nickname?.trim() || t.fullName])), [trainers]);
 
-  /* ---- the studio's package table: the profile's own read ---- */
-  const renewalSettings = useRenewalSettings(activeStudioId);
-  const packageIndex = useMemo(() => {
-    if (renewalSettings.loading || renewalSettings.error || renewalSettings.forStudioId !== activeStudioId) return null;
-    return buildPackageNameIndex(renewalSettings.settings);
-  }, [renewalSettings.loading, renewalSettings.error, renewalSettings.forStudioId, renewalSettings.settings, activeStudioId]);
-
-  /* ---- freshness ---- */
-  const bookingsFresh = schedulesFetchedAt !== null && now.getTime() - schedulesFetchedAt <= BOOKINGS_FRESH_MS;
-  const bookingsAsOf =
-    schedulesFetchedAt === null
-      ? null
-      : studioDateKey(new Date(schedulesFetchedAt)) === today
-        ? formatStudioTime(new Date(schedulesFetchedAt))
-        : `${formatStudioDate(new Date(schedulesFetchedAt), { weekday: "short" })} ${formatStudioTime(new Date(schedulesFetchedAt))}`;
+  /* ---- what every row is worked out against: the one context, shared with the Hub's search ---- */
+  const { ctx, bookingsFresh, bookingsAsOf } = useDirectoryContext({
+    now,
+    today,
+    studios: studioList,
+    activeStudioId,
+    schedules: schedules ?? null,
+    schedulesFetchedAt,
+    sessions: sessions ?? null,
+    sessionsKnown,
+    kaizen,
+    myIds,
+    myName: authTrainer?.fullName ?? null,
+    trainers,
+  });
 
   /* ---- the other studios' query path ---- */
   // The realm rule: inside Demo Mode there is no "all my studios" to offer.
@@ -398,26 +302,6 @@ export function ClientDirectory({
   );
 
   /* ---- the rows ---- */
-  const ctx = useMemo(
-    () =>
-      prepareDirectory({
-        today,
-        now,
-        studios: studioList,
-        activeStudioId,
-        schedules: schedules ?? null,
-        bookingsFresh,
-        bookingsAsOf,
-        recentSessions: sessionsKnown ? sessions : null,
-        packageIndex,
-        packageStudioId: activeStudioId,
-        kaizen,
-        myIds,
-        myName: authTrainer?.fullName ?? null,
-        trainerNameOf: (id) => trainerNames.get(id) ?? null,
-      }),
-    [today, now, studioList, activeStudioId, schedules, bookingsFresh, bookingsAsOf, sessionsKnown, sessions, packageIndex, kaizen, myIds, authTrainer?.fullName, trainerNames],
-  );
 
   // This studio's clients, and anyone booked here (a visitor). The selected
   // client from elsewhere, which AppContent also carries, is not one of them.
@@ -692,81 +576,22 @@ export function ClientDirectory({
                   const ident = identityLine(row, view, lead, scope);
                   const mark = marks?.get(row.id) ?? null;
                   return (
-                    <div key={row.id} className="cd-grid cd-row" data-client-id={row.id} style={gridVars}>
-                      <button
-                        type="button"
-                        className="cd-open"
-                        aria-label={`Open ${row.name.display}. Last in: ${row.lastIn.text}. Next: ${row.next.text}. Left: ${row.left.text}.`}
-                        onClick={() => onSelectClient(row.id)}
-                      />
-                      {showGutter && (
-                        <div className="cd-gutter" title={mark?.label}>
-                          {mark ? "\u25cf" : null}
-                        </div>
-                      )}
-                      <div className="cd-avatar" aria-hidden="true">
-                        {row.name.initials}
-                      </div>
-                      <div className="cd-client">
-                        <div className="cd-name">
-                          <NameLine row={row} match={match} />
-                          {/* The Kaizen Roster toggle, as the old directory had it (the
-                              only place a trainer adds a client from the client's
-                              side), now 40px. Without the live trainer document it
-                              is the read-only mark: the toggle rewrites the whole
-                              roster, and from a stale copy that would drop entries. */}
-                          {liveAuthTrainer ? (
-                            <span className="cd-kaizen cd-hit-target" onClick={(e) => e.stopPropagation()}>
-                              <KaizenToggle trainer={liveAuthTrainer} client={row.client} variant="icon" className="h-10 w-10 border-none bg-transparent" />
-                            </span>
-                          ) : row.kaizen ? (
-                            <span className="cd-kaizen">
-                              <KaizenMark quiet size={15} title="On your Kaizen Roster" />
-                            </span>
-                          ) : null}
-                          {row.badges.map((b) => (
-                            <span key={b} className="cd-badge">
-                              {b}
-                            </span>
-                          ))}
-                          {match?.why && <span className="cd-why-match">{match.why}</span>}
-                        </div>
-                        {(lead || ident) && (
-                          <div className="cd-ident">
-                            {lead && <strong>{lead}</strong>}
-                            {lead && ident ? " \u00b7 " : ""}
-                            {ident}
-                          </div>
-                        )}
-                      </div>
-                      <Cell label="Last in" value={row.lastIn.text} sub={row.lastIn.sub} reason={row.lastIn.reason} state={row.lastIn.state} sorted={sort.key === "lastIn"} />
-                      <Cell label="Next" value={row.next.text} sub={row.next.sub} reason={row.next.reason} state={row.next.state} sorted={sort.key === "next"} />
-                      <Cell label="Left" value={row.left.text} sub={row.left.sub} reason={row.left.reason} state={row.left.state} sorted={sort.key === "left"} />
-                      {wide.has("total") && (
-                        <Cell extra label="Total" value={row.total.text} sub={row.total.sub} reason={row.total.reason} state={row.total.state} sorted={sort.key === "total"} />
-                      )}
-                      {wide.has("age") && <Cell extra label="Age" value={row.age.text} sub={null} reason={null} state={row.age.value === null ? "unknown" : "known"} sorted={sort.key === "age"} />}
-                      {wide.has("height") && (
-                        <Cell extra label="Height" value={row.height.text} sub={null} reason={null} state={row.height.inches === null ? "unknown" : "known"} sorted={sort.key === "height"} />
-                      )}
-                      {showStart && (
-                        <div>
-                          {row.today && (
-                            <button
-                              type="button"
-                              className="cd-start cd-hit-target"
-                              aria-label={`Start ${row.name.goesBy}\u2019s session`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onStartSession?.(row.id);
-                              }}
-                            >
-                              Start
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <DirectoryRowView
+                      key={row.id}
+                      row={row}
+                      match={match}
+                      gridVars={gridVars}
+                      showGutter={showGutter}
+                      mark={mark}
+                      lead={lead}
+                      ident={ident}
+                      wide={wide}
+                      sortKey={sort.key}
+                      liveAuthTrainer={liveAuthTrainer ?? null}
+                      showStart={showStart}
+                      onSelect={onSelectClient}
+                      onStart={onStartSession}
+                    />
                   );
                 })}
               </section>
