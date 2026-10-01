@@ -38,7 +38,7 @@ import { clientDisplayName } from "../../lib/client-name";
 import { safeToDate } from "../../lib/utils";
 import { zonedHM } from "../../lib/studio-time";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
-import { cardMarks } from "./card-marks";
+import { cardMarks, cornerNumber } from "./card-marks";
 import "./hub-card.css";
 
 /** One shape per kind of mark (the Key's). The Next 30 minutes strip draws with the same. */
@@ -193,17 +193,16 @@ export function HubCard({
   const serviceName: string = booking?.serviceName || booking?.sessionType || "";
   const consult = entry?.moments.some((m) => m.kind === "consult") ?? false;
   const service = serviceName && serviceName.trim() !== usualService && !isDefaultService(serviceName) && !consult ? serviceName : null;
-  // The milestone glyph says the number ("100th"): the corner doesn't repeat it.
-  const numberSaid = marks.glyphs.some((g) => g.kind === "milestone");
-
   const kind = isPending ? "pending" : isUnknown ? "unknown" : isUnlinked ? "unlinked" : "client";
   const interactive = kind === "client";
 
-  /* The time and her number are never cut: a clipped "#212" reads as "#2",
-     a confident wrong number (hub cherry round — found when your column
-     started saying more). The words after them ("Not logged", "New to
-     Journey", the service) give way first, with an ellipsis. */
-  const numberText = sessionNumber !== null && sessionNumber > 3 && !numberSaid ? `#${sessionNumber}` : null;
+  /* Her number, in the card's top-right corner, quietly (AJ, Oct 1 2026: "i
+     do wish the top right of the card said what session number they were
+     on in a very subtle manner"): only where it may be quoted, never on a
+     card with no profile, never a placeholder (card-marks, cornerNumber).
+     It is never cut: a clipped "#212" reads as "#2", a confident wrong
+     number (hub cherry round). */
+  const numberText = isUnlinked ? null : cornerNumber(sessionNumber, marks);
   const restParts: string[] = [];
   if (!numberText && newToJourney && !recedes) restParts.push("New to Journey");
   if (service) restParts.push(service);
@@ -239,7 +238,17 @@ export function HubCard({
       }}
     >
       <div className="hs-card-top">
-        <span className="hs-card-name">{name}</span>
+        {/* The name and, after it at the right, her number. The name has the
+            room: when both don't fit on one line, the number moves under it
+            rather than make the name wrap, and the name is never cut. */}
+        <span className="hs-card-head">
+          <span className="hs-card-name">{name}</span>
+          {numberText && (
+            <span className="hs-card-num" aria-label={`Session ${numberText.slice(1)}`}>
+              {numberText}
+            </span>
+          )}
+        </span>
         {/* LOUD, and the only red on the grid: read this before the session.
             The words are in the label, whole; the note itself is first on the
             client's briefing and in the peek. */}
@@ -277,7 +286,6 @@ export function HubCard({
               {time}
             </>
           )}
-          {!isUnlinked && numberText && ` · ${numberText}`}
         </span>
         {!isUnlinked && (isNotLogged || isDidntCome || restParts.length > 0) && (
           <span className="hs-card-rest">

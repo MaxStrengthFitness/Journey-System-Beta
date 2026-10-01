@@ -110,9 +110,35 @@
   min-width: 0;
 }
 
+/* The name and her number (AJ, Oct 1 2026: the number in the top right "in a
+   very subtle manner"). A wrapping row, so the NAME has the room: the number
+   sits at the right of the name's line when both fit, and drops under it
+   when they don't, rather than make the name wrap. The Critical triangle
+   keeps its own slot outside this row, at the far right. */
+.hs-card-head {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+}
+
+.hs-card-num {
+  flex: none;
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 17px;
+  font-variant-numeric: tabular-nums;
+  /* Quiet, but still read at arm's length: the muted ink (5.8:1), not the faint. */
+  color: var(--eq-ink-muted);
+  white-space: nowrap;
+}
+
 /* Whole, wrapping onto a second line: never "Lobelia S…" (research-hub §6.0). */
 .hs-card-name {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   font-size: 14px;
   font-weight: 700;

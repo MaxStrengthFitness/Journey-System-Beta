@@ -172,6 +172,21 @@ export function bookingSessionNumber(
 }
 
 /**
+ * HER NUMBER IN THE CORNER (AJ, Oct 1 2026: "i do wish the top right of the
+ * card said what session number they were on in a very subtle manner").
+ * "#43" in the card's top-right, beside the name, in quiet ink — only where
+ * the number may be quoted (`bookingSessionNumber`, through history-claims'
+ * rule), from #4 (1–3 are the Welcome glyph's to say), and not when the
+ * milestone glyph already says it ("100th"). Otherwise nothing: never a
+ * placeholder. It used to ride on the second line after the time.
+ */
+export function cornerNumber(sessionNumber: number | null | undefined, marks: Pick<CardMarks, "glyphs">): string | null {
+  if (typeof sessionNumber !== "number" || !Number.isFinite(sessionNumber) || sessionNumber <= 3) return null;
+  if (marks.glyphs.some((g) => g.kind === "milestone")) return null;
+  return `#${Math.trunc(sessionNumber)}`;
+}
+
+/**
  * "New to Journey" (AJ, Sep 22 2026): Journey holds no session of hers yet
  * and can't quote her number, because her story began before the studio
  * moved onto Journey. True, and it never claims she is new to the STUDIO.

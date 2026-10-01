@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Moment } from "../hub-opportunities/moments-today";
-import { CARD_MAX_GLYPHS, cardMarks, sayableWord, usualServiceOf } from "./card-marks";
+import { CARD_MAX_GLYPHS, cardMarks, cornerNumber, sayableWord, usualServiceOf } from "./card-marks";
 
 const m = (over: Partial<Moment> & Pick<Moment, "kind" | "family">): Moment => ({ chip: over.kind, sentence: over.kind, ...over });
 
@@ -119,5 +119,28 @@ describe("the day's usual service (AJ's Mindbody screenshots: it repeated on eve
   it("claims nothing from a single booking or an empty day", () => {
     expect(usualServiceOf([b("1:1 Strength Training")])).toBeNull();
     expect(usualServiceOf([])).toBeNull();
+  });
+});
+
+describe("her number in the corner (AJ, Oct 1 2026: \"in a very subtle manner\")", () => {
+  it("says #N from 4, only where it may be quoted, and never a placeholder", () => {
+    expect(cornerNumber(43, cardMarks([]))).toBe("#43");
+    expect(cornerNumber(4, cardMarks([]))).toBe("#4");
+    expect(cornerNumber(3, cardMarks([]))).toBeNull();
+    expect(cornerNumber(null, cardMarks([]))).toBeNull();
+    expect(cornerNumber(undefined, cardMarks([]))).toBeNull();
+    expect(cornerNumber(Number.NaN, cardMarks([]))).toBeNull();
+  });
+
+  it("leaves it to the milestone glyph when that already says it", () => {
+    expect(cornerNumber(100, cardMarks([milestone]))).toBeNull();
+    // Folded into "+N", the milestone doesn't say it on the card: the corner does.
+    expect(cornerNumber(100, cardMarks([waiver, pulse, milestone]))).toBe("#100");
+  });
+
+  it("keeps the triangle's own slot whatever the number", () => {
+    const marks = cardMarks([critical, back]);
+    expect(marks.critical).toBe("Critical: no overhead press");
+    expect(cornerNumber(212, marks)).toBe("#212");
   });
 });

@@ -382,12 +382,23 @@ describe("your own column, in words", () => {
     expect([...theirs.querySelectorAll(".hs-g-word")].map((w) => w.textContent)).toEqual(["100th"]);
   });
 
-  it("keeps the time and her number together, apart from the words that may give way", () => {
+  it("puts her number in the top-right corner, beside the name, and off the time's line (AJ, Oct 1 2026)", () => {
     const c = card(false, []);
-    expect(c.querySelector(".hs-card-when")?.textContent).toBe("3:00 · #264");
+    expect(c.querySelector(".hs-card-when")?.textContent).toBe("3:00");
+    const num = c.querySelector<HTMLElement>(".hs-card-top .hs-card-num");
+    expect(num?.textContent).toBe("#264");
+    expect(num?.getAttribute("aria-label")).toBe("Session 264");
+    // In the same row as the name, after it; the triangle keeps its own slot outside that row.
+    expect(num?.parentElement?.className).toBe("hs-card-head");
+    expect(num?.previousElementSibling?.className).toBe("hs-card-name");
     const late = mount({ hm: "10:00", sessionNumber: 264 });
-    expect(late.card.querySelector(".hs-card-when")?.textContent).toContain("#264");
-    expect(late.card.querySelector(".hs-card-rest")?.textContent).toBe(" · Not logged");
+    expect(late.card.querySelector(".hs-card-num")?.textContent).toBe("#264");
+    expect(late.card.querySelector(".hs-card-when")?.textContent).not.toContain("#");
+  });
+
+  it("shows no number, and no placeholder, where it may not be quoted", () => {
+    expect(mount({ hm: "15:00", sessionNumber: null }).card.querySelector(".hs-card-num")).toBeNull();
+    expect(mount({ hm: "15:00", sessionNumber: 3 }).card.querySelector(".hs-card-num")).toBeNull();
   });
 });
 

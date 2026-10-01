@@ -300,6 +300,10 @@ export function KeySheet({ open, onClose }: { open: boolean; onClose: () => void
             );
           })}
         </ul>
+        <p className="hd-key-note">
+          <strong>#43</strong> in a card’s top-right corner is the session this booking will be, shown only where Journey holds her
+          whole story or someone wrote the rest down. Sessions 1 to 3 are the Welcome mark’s to say.
+        </p>
         <h3 className="hd-key-h">On the grid</h3>
         <ul className="hd-key-list">
           {STATES.map((row) => (
