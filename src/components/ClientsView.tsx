@@ -65,7 +65,7 @@ import { Peek } from "../features/hub-schedule/Peek";
 import { countsByDay, spotWords, stripDays, summaryChips } from "../features/hub-schedule/day-summary";
 import { hasFamily, momentsToday, type FilterId, type MomentFamily } from "../features/hub-opportunities/moments-today";
 import { rememberMyStudioSection } from "../features/my-studio/section-memory";
-import { bookingSessionNumber, cardMarks, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
+import { bookingSessionNumber, cardMarks, cardRestWords, isNewToJourney, usualServiceOf } from "../features/hub-schedule/card-marks";
 import { yourDay } from "../features/hub-schedule/your-day";
 import { nextHalfHour, stripOpen } from "../features/hub-schedule/next-half-hour";
 import { NextStrip, type NextStripItem } from "../features/hub-schedule/NextStrip";
@@ -815,11 +815,20 @@ export function ClientsView({
                 const booking: any = block.booking;
                 const start = safeToDate(booking.startTime || booking.StartDateTime || booking.date);
                 const end = safeToDate(booking.endTime || booking.EndDateTime);
+                const peekNumber = bookingSessionNumber(entry, entry.client, booking, dayMoments.input);
                 return (
                   <Peek
                     entry={entry}
-                    sessionNumber={bookingSessionNumber(entry, entry.client, booking, dayMoments.input)}
+                    sessionNumber={peekNumber}
                     timeText={cardTime(start, end, { span: true })}
+                    // What the card may leave out on a narrow column, in full (hub fixes, Oct 1 2026).
+                    extras={cardRestWords({
+                      booking,
+                      moments: entry.moments,
+                      numberShown: peekNumber !== null && peekNumber > 0,
+                      newToJourney: isNewToJourney(entry, entry.client),
+                      usualService,
+                    })}
                     anchor={activePeek.anchor}
                     onClose={() => setPeek(null)}
                     onOpenProfile={(id) => {

@@ -17,6 +17,8 @@
  * quoted, and Mindbody's "Unavailable" is time that isn't a session.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HubCard } from "./HubCard";
@@ -390,10 +392,28 @@ describe("your own column, in words", () => {
     expect(num?.getAttribute("aria-label")).toBe("Session 264");
     // In the same row as the name, after it; the triangle keeps its own slot outside that row.
     expect(num?.parentElement?.className).toBe("hs-card-head");
-    expect(num?.previousElementSibling?.className).toBe("hs-card-name");
+    expect(num?.nextElementSibling?.className).toBe("hs-card-name");
     const late = mount({ hm: "10:00", sessionNumber: 264 });
     expect(late.card.querySelector(".hs-card-num")?.textContent).toBe("#264");
     expect(late.card.querySelector(".hs-card-when")?.textContent).not.toContain("#");
+  });
+
+  it("never cuts its second line: the state word sits with the time, and the rest shows whole or not at all (hub fixes, Oct 1 2026)", () => {
+    const late = mount({ hm: "10:00", sessionNumber: 264 });
+    // "Not logged" is in the part that never shrinks, beside the time.
+    expect(late.card.querySelector(".hs-card-when")?.textContent).toBe("10:00 · Not logged");
+    expect(late.card.querySelector(".hs-card-when .hs-card-state")?.textContent).toBe("Not logged");
+    expect(late.card.querySelector(".hs-card-rest")).toBeNull();
+    // "New to Journey" is a whole part, never a cut string.
+    const fresh = mount({ hm: "15:00", newToJourney: true });
+    expect([...fresh.card.querySelectorAll(".hs-card-rest .hs-card-part")].map((p) => p.textContent)).toEqual([" · New to Journey"]);
+    // The stylesheet never ellipsises the line: a part that doesn't fit drops whole.
+    const css = readFileSync(resolve(__dirname, "hub-card.css"), "utf8");
+    const rest = css.match(/\.hs-card-rest\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rest).not.toMatch(/text-overflow/);
+    expect(rest).toMatch(/flex-wrap:\s*wrap/);
+    expect(css.match(/\.hs-card-part\s*\{([^}]*)\}/)?.[1] ?? "").toMatch(/flex:\s*none/);
+    expect(css).not.toMatch(/text-overflow:\s*ellipsis/);
   });
 
   it("shows no number, and no placeholder, where it may not be quoted", () => {

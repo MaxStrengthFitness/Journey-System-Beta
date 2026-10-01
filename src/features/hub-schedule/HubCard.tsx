@@ -33,12 +33,11 @@ import { Activity, AlertTriangle, Award, Cake, Check, CloudOff, FileSignature, M
 import type { Client, WorkoutSession } from "../../types";
 import { isStaffBlock, type BookingMarks, type LoggedSessions } from "../../lib/booking-state";
 import { hubCardRecedes, hubCardState } from "../../lib/hub-card-state";
-import { isDefaultService } from "../../lib/hub-markers";
 import { clientDisplayName } from "../../lib/client-name";
 import { safeToDate } from "../../lib/utils";
 import { zonedHM } from "../../lib/studio-time";
 import type { MomentKind, RunSheetEntry } from "../hub-opportunities/moments-today";
-import { cardMarks, cornerNumber } from "./card-marks";
+import { cardMarks, cardRestWords, cornerNumber } from "./card-marks";
 import "./hub-card.css";
 
 /** One shape per kind of mark (the Key's). The Next 30 minutes strip draws with the same. */
@@ -190,9 +189,6 @@ export function HubCard({
 
   const name = client ? clientDisplayName(client, booking?.clientName || "Client") : (booking?.clientName || "Reservation").trim();
   const marks = recedes || isUnlinked ? cardMarks(null) : cardMarks(entry?.moments, undefined, { yours: wordy });
-  const serviceName: string = booking?.serviceName || booking?.sessionType || "";
-  const consult = entry?.moments.some((m) => m.kind === "consult") ?? false;
-  const service = serviceName && serviceName.trim() !== usualService && !isDefaultService(serviceName) && !consult ? serviceName : null;
   const kind = isPending ? "pending" : isUnknown ? "unknown" : isUnlinked ? "unlinked" : "client";
   const interactive = kind === "client";
 
@@ -203,9 +199,7 @@ export function HubCard({
      It is never cut: a clipped "#212" reads as "#2", a confident wrong
      number (hub cherry round). */
   const numberText = isUnlinked ? null : cornerNumber(sessionNumber, marks);
-  const restParts: string[] = [];
-  if (!numberText && newToJourney && !recedes) restParts.push("New to Journey");
-  if (service) restParts.push(service);
+  const restParts = cardRestWords({ booking, moments: entry?.moments, numberShown: !!numberText, newToJourney, recedes, usualService });
 
   return (
     <div
@@ -238,16 +232,16 @@ export function HubCard({
       }}
     >
       <div className="hs-card-top">
-        {/* The name and, after it at the right, her number. The name has the
-            room: when both don't fit on one line, the number moves under it
-            rather than make the name wrap, and the name is never cut. */}
+        {/* Her number floats at the right of the name's first line (first in
+            the source, so it takes that line); the name flows beside it,
+            whole, and is never cut (hub-card.css). */}
         <span className="hs-card-head">
-          <span className="hs-card-name">{name}</span>
           {numberText && (
             <span className="hs-card-num" aria-label={`Session ${numberText.slice(1)}`}>
               {numberText}
             </span>
           )}
+          <span className="hs-card-name">{name}</span>
         </span>
         {/* LOUD, and the only red on the grid: read this before the session.
             The words are in the label, whole; the note itself is first on the
@@ -286,22 +280,35 @@ export function HubCard({
               {time}
             </>
           )}
+          {/* What happened, beside the time and never cut (hub fixes, Oct 1
+              2026: it was cut to "Didn…"). It never competes with the marks:
+              a card that is over has dropped them. */}
+          {isNotLogged && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="No Journey session was completed for this client today">
+                Not logged
+              </strong>
+            </>
+          )}
+          {isDidntCome && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="Marked as a no-show">
+                Didn't come
+              </strong>
+            </>
+          )}
         </span>
-        {!isUnlinked && (isNotLogged || isDidntCome || restParts.length > 0) && (
+        {/* The rest ("New to Journey", a service) says less when space is
+            short: each part shows WHOLE or not at all, never "New to Jo…"
+            (hub fixes, Oct 1 2026). The peek says them in full. */}
+        {!isUnlinked && restParts.length > 0 && (
           <span className="hs-card-rest">
-            {isNotLogged && (
-              <>
-                {" · "}
-                <strong title="No Journey session was completed for this client today">Not logged</strong>
-              </>
-            )}
-            {isDidntCome && (
-              <>
-                {" · "}
-                <strong title="Marked as a no-show">Didn't come</strong>
-              </>
-            )}
-            {restParts.length > 0 && ` · ${restParts.join(" · ")}`}
+            <span className="hs-card-rest-lead" aria-hidden />
+            {restParts.map((part) => (
+              <span key={part} className="hs-card-part">{` · ${part}`}</span>
+            ))}
           </span>
         )}
 

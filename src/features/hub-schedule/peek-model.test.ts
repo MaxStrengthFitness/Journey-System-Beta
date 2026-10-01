@@ -68,6 +68,11 @@ describe("the peek", () => {
     expect(peek.notes).toEqual(["Clinical history on file — her briefing has it."]);
   });
 
+  it("says in full what a narrow card may leave out (hub fixes, Oct 1 2026)", () => {
+    const peek = peekContent(entryFor(belladonna, [booking]), null, { extras: ["New to Journey", "InBody Scan"] });
+    expect(peek.subtitle).toBe("4:00 – 4:30 PM · with you · New to Journey · InBody Scan");
+  });
+
   it("gives no number when it may not be quoted", () => {
     const migrating = makeClient({ id: "mentha", firstName: "Mentha", lastName: "Brandybuck", clientsNumberOfVisitsAtSite: 250 });
     const peek = peekContent(entryFor(migrating, [makeBooking({ clientId: "mentha", start: eastern(TODAY, "16:00") })]));

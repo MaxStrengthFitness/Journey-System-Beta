@@ -58,9 +58,18 @@ function numberWords(n: number | null): string | null {
   return n === 1 ? "her first session" : `her ${ordinal(n)} session`;
 }
 
-export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber): PeekContent {
+export interface PeekOptions {
+  /**
+   * What the card may leave out when space is short, said here in full
+   * (hub fixes, Oct 1 2026): "new to Journey", a service that isn't the
+   * day's usual one.
+   */
+  extras?: ReadonlyArray<string>;
+}
+
+export function peekContent(entry: RunSheetEntry, sessionNumber: number | null = entry.sessionNumber, opts: PeekOptions = {}): PeekContent {
   const critical = entry.moments.find((m) => m.family === "read-first");
-  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber)].filter(Boolean).join(" · ");
+  const subtitle = [entry.timeText, entry.withText, numberWords(sessionNumber), ...(opts.extras ?? [])].filter(Boolean).join(" · ");
   const lines: PeekLine[] = entry.moments
     .filter((m) => m.family !== "read-first")
     .map((m) => ({ kind: m.kind, family: m.family, text: m.sentence }));

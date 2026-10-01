@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Moment } from "../hub-opportunities/moments-today";
-import { CARD_MAX_GLYPHS, cardMarks, cornerNumber, sayableWord, usualServiceOf } from "./card-marks";
+import { CARD_MAX_GLYPHS, cardMarks, cardRestWords, cornerNumber, sayableWord, usualServiceOf } from "./card-marks";
 
 const m = (over: Partial<Moment> & Pick<Moment, "kind" | "family">): Moment => ({ chip: over.kind, sentence: over.kind, ...over });
 
@@ -142,5 +142,22 @@ describe("her number in the corner (AJ, Oct 1 2026: \"in a very subtle manner\")
     const marks = cardMarks([critical, back]);
     expect(marks.critical).toBe("Critical: no overhead press");
     expect(cornerNumber(212, marks)).toBe("#212");
+  });
+});
+
+describe("the words that may give way on a narrow card (hub fixes, Oct 1 2026)", () => {
+  const base = { booking: { serviceName: "1:1 Strength Training" }, moments: [], numberShown: false, newToJourney: false, usualService: "1:1 Strength Training" };
+  it("are whole parts, in order, for the card to show or drop and the peek to say", () => {
+    expect(cardRestWords({ ...base, newToJourney: true, booking: { serviceName: "InBody Scan" } })).toEqual(["New to Journey", "InBody Scan"]);
+  });
+  it("say 'New to Journey' only in the number's place, and not on a card that is over", () => {
+    expect(cardRestWords({ ...base, newToJourney: true, numberShown: true })).toEqual([]);
+    expect(cardRestWords({ ...base, newToJourney: true, recedes: true })).toEqual([]);
+  });
+  it("never repeat the day's usual service, a default one, or a consult's", () => {
+    expect(cardRestWords(base)).toEqual([]);
+    expect(cardRestWords({ ...base, booking: { serviceName: "Training Session" } })).toEqual([]);
+    const consult = m({ kind: "consult", family: "welcome", chip: "Consult" });
+    expect(cardRestWords({ ...base, booking: { serviceName: "New Client Consultation" }, moments: [consult] })).toEqual([]);
   });
 });

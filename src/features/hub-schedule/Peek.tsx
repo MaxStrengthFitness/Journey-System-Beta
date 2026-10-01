@@ -43,6 +43,8 @@ export interface PeekProps {
   sessionNumber: number | null;
   /** The tapped booking's own time, when it isn't her first of the day. */
   timeText?: string | null;
+  /** What the card may leave out when space is short ("New to Journey", a service), said here in full. */
+  extras?: ReadonlyArray<string>;
   /** The card that was tapped: the peek sits beside it, and gives it focus back. */
   anchor: HTMLElement | null;
   onClose: () => void;
@@ -64,8 +66,8 @@ function besideCard(anchor: HTMLElement | null, height: number): Place {
   return { mode: "beside", top, left };
 }
 
-export function Peek({ entry, sessionNumber, timeText = null, anchor, onClose, onOpenProfile, onStartSession }: PeekProps) {
-  const content = peekContent(timeText ? { ...entry, timeText } : entry, sessionNumber);
+export function Peek({ entry, sessionNumber, timeText = null, extras, anchor, onClose, onOpenProfile, onStartSession }: PeekProps) {
+  const content = peekContent(timeText ? { ...entry, timeText } : entry, sessionNumber, { extras });
   const panel = useRef<HTMLDivElement | null>(null);
   const [place, setPlace] = useState<Place>({ mode: "center" });
 
