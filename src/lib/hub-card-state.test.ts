@@ -87,6 +87,29 @@ describe("hubCardState — booked twice in a day (AJ, Sep 24)", () => {
   });
 });
 
+describe("hubCardState — a session left open (hub fixes, Oct 1 2026)", () => {
+  const open = (heartbeat: string) => ({ status: "In-Progress", lastHeartbeatAt: at(DAY, heartbeat), createdAt: at(DAY, "09:00") });
+
+  it("a running session, in or past its slot, is in session", () => {
+    expect(hubCardState(booking("11:45"), nothing, NOW, { tz: TZ, session: open("11:58") })).toBe("in-session");
+    expect(hubCardState(booking("11:00"), nothing, NOW, { tz: TZ, session: open("11:20") })).toBe("in-session");
+  });
+
+  it("one gone quiet for an hour (the app's one staleness rule) is left open, and recedes", () => {
+    expect(hubCardState(booking("09:00"), nothing, NOW, { tz: TZ, session: open("09:25") })).toBe("left-open");
+    expect(hubCardRecedes("left-open")).toBe(true);
+  });
+
+  it("uses the same 60 minutes as the Active Session's unfinished-session question", () => {
+    expect(hubCardState(booking("10:30"), nothing, NOW, { tz: TZ, session: open("11:01") })).toBe("in-session");
+    expect(hubCardState(booking("10:30"), nothing, NOW, { tz: TZ, session: open("11:00") })).toBe("left-open");
+  });
+
+  it("a finished session is not an open one: the booking's own state answers", () => {
+    expect(hubCardState(booking("11:00"), logged(session({ startTime: at(DAY, "11:02") })), NOW, { tz: TZ, session: { status: "Completed" } })).toBe("done");
+  });
+});
+
 describe("hubCardRecedes", () => {
   it("fades what is over and nothing else", () => {
     expect(hubCardRecedes("live")).toBe(false);

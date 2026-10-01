@@ -713,7 +713,7 @@ export function ClientsView({
             { id: session.id ?? null, clientId: clientObj?.id ?? session.clientId ?? null, startTime: session.startTime || session.StartDateTime || session.date, endTime: session.endTime || session.EndDateTime, status: session.status },
             logged,
             currentTime,
-            { sessionOpen: workoutSession?.status === "In-Progress", marks: bookingMarks.marks },
+            { session: workoutSession, marks: bookingMarks.marks },
           );
           return { item: { block: b, clientObj }, span: b.span, state, mine: b.columnId === myColumnId, order: gridColumns.findIndex((c) => c.id === b.columnId) };
         }),

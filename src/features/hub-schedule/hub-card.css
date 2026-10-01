@@ -64,6 +64,13 @@
   opacity: 0.62;
 }
 
+/* Left open (hub fixes, Oct 1 2026): a session started and gone quiet for an
+   hour. It recedes like any card that is over, and its edge is plum, the
+   app's caution, so it reads apart from "done" — never the red kaizen mark. */
+.hs-card[data-state="left-open"] {
+  border-left-color: var(--eq-warn);
+}
+
 /* No Max Strength profile yet: the next sync links it. Inert. */
 .hs-card[data-kind="unlinked"] {
   border-style: dashed;

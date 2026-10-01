@@ -173,7 +173,7 @@ export function HubCard({
     },
     logged,
     now,
-    { sessionOpen: workoutSession?.status === "In-Progress", marks: noShows },
+    { session: workoutSession, marks: noShows },
   );
   const recedes = hubCardRecedes(cardState);
   const isUnlinked = !client;
@@ -296,6 +296,17 @@ export function HubCard({
               {" · "}
               <strong className="hs-card-state" title="Marked as a no-show">
                 Didn't come
+              </strong>
+            </>
+          )}
+          {/* A session open but gone quiet for an hour (the staleness rule;
+              hub fixes, Oct 1 2026): never "In session" all day. Quiet ink,
+              never the red kaizen mark; the peek offers to resume or close it. */}
+          {cardState === "left-open" && !isUnlinked && (
+            <>
+              {" · "}
+              <strong className="hs-card-state" title="A session was started and not finished, and has gone quiet for over an hour">
+                Left open
               </strong>
             </>
           )}

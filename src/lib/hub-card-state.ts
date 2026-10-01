@@ -12,9 +12,10 @@
  * to what happened to a booking, and this is only how the floor draws it.
  *
  *   live        ahead, or in its slot with nothing finished: every flag shown.
- *   in-session  a Journey session is open for this client that day: live,
- *               tinted, pulsing — past the slot too, because a session left
- *               open is still going.
+ *   in-session  a Journey session is open and running for this client that
+ *               day: live, tinted, pulsing — past its slot too while it runs.
+ *   left-open   a session is open but has gone quiet (the staleness rule,
+ *               below): recedes, with a quiet "Left open" (Oct 1 2026).
  *   done        a Journey session was completed that day (or Mindbody marked
  *               it). Recedes, flags hidden.
  *   not-logged  the slot (plus five minutes) is over and nothing was logged.
@@ -43,15 +44,45 @@ import type { WorkoutSession } from "../types";
 import { sessionDayKey } from "../features/client-history/model";
 import { bookingState, type BookingLike, type BookingMarks, type LoggedSessions, type SessionLike } from "./booking-state";
 import { toDate } from "./studio-time";
+import { isSessionValid } from "./utils";
 
-export type HubCardState = "live" | "in-session" | "done" | "not-logged" | "didnt-come" | "past";
+export type HubCardState = "live" | "in-session" | "left-open" | "done" | "not-logged" | "didnt-come" | "past";
+
+/**
+ * LEFT OPEN (hub fixes, Oct 1 2026; AJ: "this seems like it could lead to
+ * issues lets fix this"). A session left open used to read "In session" all
+ * day. Now the app's ONE staleness rule decides (`isSessionValid`, lib/utils:
+ * no heartbeat for 60 minutes, the rule the Active Session's "unfinished
+ * session" question and the profile's notice already use, through
+ * lib/live-session's `splitInProgress`): still beating, it is "in-session";
+ * gone quiet, "left-open" — a quiet card that says "Left open", and the peek
+ * offers the existing ways to resume it or close it.
+ */
+export interface OpenSessionLike {
+  status?: string;
+  lastHeartbeatAt?: unknown;
+  createdAt?: unknown;
+}
 
 export function hubCardState(
   booking: BookingLike,
   logged: LoggedSessions | null,
   now: Date,
-  { sessionOpen = false, tz, marks = null }: { sessionOpen?: boolean; tz?: string; marks?: BookingMarks | null } = {},
+  {
+    sessionOpen = false,
+    session = null,
+    tz,
+    marks = null,
+  }: {
+    /** A session is open and running (kept for callers that know no more). */
+    sessionOpen?: boolean;
+    /** Her newest Journey session on the booking's day, if any: judged by the staleness rule. */
+    session?: OpenSessionLike | null;
+    tz?: string;
+    marks?: BookingMarks | null;
+  } = {},
 ): HubCardState {
+  if (session?.status === "In-Progress") return isSessionValid(session, now.getTime()) ? "in-session" : "left-open";
   if (sessionOpen) return "in-session";
   switch (bookingState(booking, logged, now, tz, marks)) {
     case "upcoming":
@@ -72,7 +103,7 @@ export function hubCardState(
 
 /** Does the card fade and hide its flags? Everything that is over. */
 export function hubCardRecedes(state: HubCardState): boolean {
-  return state === "done" || state === "not-logged" || state === "didnt-come" || state === "past";
+  return state === "done" || state === "not-logged" || state === "didnt-come" || state === "left-open" || state === "past";
 }
 
 /**

@@ -416,6 +416,20 @@ describe("your own column, in words", () => {
     expect(css).not.toMatch(/text-overflow:\s*ellipsis/);
   });
 
+  it("says 'Left open' on a session gone quiet for an hour, never 'In session' all day (hub fixes, Oct 1 2026)", () => {
+    const left = { ...session("In-Progress", "09:02"), lastHeartbeatAt: at("09:40") } as WorkoutSession;
+    const c = mount({ hm: "09:00", workoutSession: left });
+    expect(c.card.dataset.state).toBe("left-open");
+    expect(c.faded).toBe(true);
+    expect(c.card.querySelector(".hs-card-when .hs-card-state")?.textContent).toBe("Left open");
+    expect(c.text).not.toContain("In session");
+    // Still beating: in session, past its slot too.
+    const running = { ...session("In-Progress", "11:02"), lastHeartbeatAt: at("11:55") } as WorkoutSession;
+    const r = mount({ hm: "11:00", workoutSession: running });
+    expect(r.card.dataset.state).toBe("in-session");
+    expect(r.text).toContain("In session");
+  });
+
   it("shows no number, and no placeholder, where it may not be quoted", () => {
     expect(mount({ hm: "15:00", sessionNumber: null }).card.querySelector(".hs-card-num")).toBeNull();
     expect(mount({ hm: "15:00", sessionNumber: 3 }).card.querySelector(".hs-card-num")).toBeNull();

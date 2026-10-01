@@ -371,6 +371,12 @@
   background: var(--eq-live-fill);
 }
 
+.hd-swatch[data-state="left-open"] {
+  border-left: 4px solid var(--eq-warn);
+  background: var(--eq-surface-2);
+  opacity: 0.62;
+}
+
 .hd-swatch[data-state="done"] {
   background: var(--eq-surface-2);
   opacity: 0.62;

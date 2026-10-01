@@ -254,6 +254,11 @@ const MARKS: ReadonlyArray<{ family: MomentFamily; icon: Icon; name: string; mea
 const STATES: ReadonlyArray<{ state: string; name: string; means: string }> = [
   { state: "live", name: "Coming up", means: "Every mark shows until the session is done." },
   { state: "in-session", name: "In session", means: "A Journey session is open for her." },
+  {
+    state: "left-open",
+    name: "Left open",
+    means: "A session was started and has gone quiet for over an hour (the app’s one rule for an unfinished session). Tap it to resume it or close it.",
+  },
   { state: "done", name: "Done or not logged", means: "It steps back and goes quiet. “Not logged” says nobody pressed End Session." },
   { state: "unlinked", name: "Not synced yet", means: "No Max Strength profile yet; the next Mindbody sync links it." },
   {
