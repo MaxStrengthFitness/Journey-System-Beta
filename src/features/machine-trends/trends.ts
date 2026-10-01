@@ -1,5 +1,5 @@
 /**
- * Machine trends — the pure aggregation behind the weekly job
+ * Machine trends — the pure aggregationggregation behind the weekly job
  * (server/machine-trends-job.ts). Nothing in here touches Firestore, so the
  * cron can bundle it and a screen can import it, and it is tested on plain
  * objects (trends.test.ts).
@@ -229,18 +229,49 @@ interface ClientOnMachine {
  * Build the trends from performed sets. `logs` should already be limited to the
  * window (the job's one range query) and ordered oldest → newest, so the last
  * settings snapshot seen per client is their current one.
+ *
+ * The same as feeding every log to `createTrendsAccumulator` in order and
+ * asking for the result, which is how it is built.
  */
 export function buildMachineTrends(
   logs: readonly TrendLogInput[],
   clients: ReadonlyMap<string, TrendClientInput>,
 ): MachineTrendsResult {
+  const acc = createTrendsAccumulator(clients);
+  for (const log of logs) acc.add(log);
+  return acc.result();
+}
+
+/** The trends, one set at a time (see createTrendsAccumulator). */
+export interface TrendsAccumulator {
+  /** One set, in the window's order (oldest first). */
+  add(log: TrendLogInput): void;
+  /** The trends of every set added so far. Ask once, at the end. */
+  result(): MachineTrendsResult;
+}
+
+/**
+ * The streaming form of `buildMachineTrends` (job memory, Oct 1 2026). The
+ * weekly job no longer holds 90 days of every set in memory: it streams the
+ * window's sets through this, one at a time, and keeps only what the
+ * aggregation needs - per machine, one small row per client, the set counts
+ * per setting value, and the distinct sessions (as numbers, not ids).
+ *
+ * Fed the same sets in the same order, it gives exactly what
+ * `buildMachineTrends` gives (trends-stream.test.ts holds it to the version
+ * that held every set).
+ */
+export function createTrendsAccumulator(clients: ReadonlyMap<string, TrendClientInput>): TrendsAccumulator {
   const perMachine = new Map<string, Map<string, ClientOnMachine>>();
-  const sessionsPerMachine = new Map<string, Set<string>>();
+  // Distinct sessions per machine, counted on a number per session: one copy
+  // of each session id for the whole run instead of one per machine.
+  const sessionNumber = new Map<unknown, number>();
+  const sessionsPerMachine = new Map<string, Set<number>>();
   const setValuesPerMachine = new Map<string, Map<string, Map<string, number>>>();
   let droppedSets = 0;
 
-  for (const log of logs) {
-    if (!isPerformedLog(log)) continue;
+  const add = (log: TrendLogInput): void => {
+    if (!isPerformedLog(log)) return;
     /*
      * DEMO MODE (Sep 20 2026). The weekly job reads `exerciseLogs` across the
      * WHOLE COMPANY -- it has no studio filter, by design, because "how this
@@ -254,13 +285,13 @@ export function buildMachineTrends(
      * counts. It also keeps the demo studio out of the k-anonymous cells --
      * six demo clients at one height would be enough to form one.
      */
-    if (isDemoRecord(log)) continue;
+    if (isDemoRecord(log)) return;
     const clientId = log.clientId ?? null;
     const machineId = log.machineId ?? null;
     const load = parseLoad(log.weight);
     if (!clientId || !machineId || load == null) {
       droppedSets += 1;
-      continue;
+      return;
     }
 
     let byClient = perMachine.get(machineId);
@@ -292,7 +323,13 @@ export function buildMachineTrends(
         sessions = new Set();
         sessionsPerMachine.set(machineId, sessions);
       }
-      sessions.add(log.sessionId);
+      // The same equality a Set of the ids would use (SameValueZero), on one number per session.
+      let n = sessionNumber.get(log.sessionId);
+      if (n === undefined) {
+        n = sessionNumber.size;
+        sessionNumber.set(log.sessionId, n);
+      }
+      sessions.add(n);
     }
 
     if (snapshot) {
@@ -310,91 +347,95 @@ export function buildMachineTrends(
         perValue.set(value, (perValue.get(value) ?? 0) + 1);
       }
     }
-  }
+  };
 
-  const machines: Record<string, MachineTrend> = {};
-  for (const [machineId, byClient] of perMachine) {
-    const rows = [...byClient.values()];
-    const bests = rows.map((r) => r.best);
+  const result = (): MachineTrendsResult => {
+    const machines: Record<string, MachineTrend> = {};
+    for (const [machineId, byClient] of perMachine) {
+      const rows = [...byClient.values()];
+      const bests = rows.map((r) => r.best);
 
-    const settings: Record<string, Record<string, SettingValueTrend>> = {};
-    const setCounts = setValuesPerMachine.get(machineId) ?? new Map<string, Map<string, number>>();
-    const clientsByKeyValue = new Map<string, Map<string, ClientOnMachine[]>>();
-    for (const row of rows) {
-      for (const [key, value] of Object.entries(row.settings)) {
-        let perValue = clientsByKeyValue.get(key);
-        if (!perValue) {
-          perValue = new Map();
-          clientsByKeyValue.set(key, perValue);
+      const settings: Record<string, Record<string, SettingValueTrend>> = {};
+      const setCounts = setValuesPerMachine.get(machineId) ?? new Map<string, Map<string, number>>();
+      const clientsByKeyValue = new Map<string, Map<string, ClientOnMachine[]>>();
+      for (const row of rows) {
+        for (const [key, value] of Object.entries(row.settings)) {
+          let perValue = clientsByKeyValue.get(key);
+          if (!perValue) {
+            perValue = new Map();
+            clientsByKeyValue.set(key, perValue);
+          }
+          const list = perValue.get(value) ?? [];
+          list.push(row);
+          perValue.set(value, list);
         }
-        const list = perValue.get(value) ?? [];
-        list.push(row);
-        perValue.set(value, list);
       }
-    }
-    for (const [key, perValue] of clientsByKeyValue) {
-      const out: Record<string, SettingValueTrend> = {};
-      for (const [value, list] of perValue) {
-        const byHeight: Record<string, number> = {};
-        for (const r of list) {
-          if (r.heightIn == null) continue;
-          const k = String(r.heightIn);
-          byHeight[k] = (byHeight[k] ?? 0) + 1;
+      for (const [key, perValue] of clientsByKeyValue) {
+        const out: Record<string, SettingValueTrend> = {};
+        for (const [value, list] of perValue) {
+          const byHeight: Record<string, number> = {};
+          for (const r of list) {
+            if (r.heightIn == null) continue;
+            const k = String(r.heightIn);
+            byHeight[k] = (byHeight[k] ?? 0) + 1;
+          }
+          out[value] = {
+            clients: list.length,
+            sets: setCounts.get(key)?.get(value) ?? 0,
+            medianBest: medianOrNull(list.map((r) => r.best)),
+            byHeight,
+          };
         }
-        out[value] = {
+        settings[key] = out;
+      }
+
+      const byHeight: Record<string, StudioTrend> = {};
+      const heightGroups = new Map<number, ClientOnMachine[]>();
+      for (const r of rows) {
+        if (r.heightIn == null) continue;
+        const list = heightGroups.get(r.heightIn) ?? [];
+        list.push(r);
+        heightGroups.set(r.heightIn, list);
+      }
+      for (const [inches, list] of heightGroups) {
+        byHeight[String(inches)] = {
           clients: list.length,
-          sets: setCounts.get(key)?.get(value) ?? 0,
+          sets: list.reduce((a, r) => a + r.sets, 0),
           medianBest: medianOrNull(list.map((r) => r.best)),
-          byHeight,
         };
       }
-      settings[key] = out;
-    }
 
-    const byHeight: Record<string, StudioTrend> = {};
-    const heightGroups = new Map<number, ClientOnMachine[]>();
-    for (const r of rows) {
-      if (r.heightIn == null) continue;
-      const list = heightGroups.get(r.heightIn) ?? [];
-      list.push(r);
-      heightGroups.set(r.heightIn, list);
-    }
-    for (const [inches, list] of heightGroups) {
-      byHeight[String(inches)] = {
-        clients: list.length,
-        sets: list.reduce((a, r) => a + r.sets, 0),
-        medianBest: medianOrNull(list.map((r) => r.best)),
+      const studios: Record<string, StudioTrend> = {};
+      const studioGroups = new Map<string, ClientOnMachine[]>();
+      for (const r of rows) {
+        const list = studioGroups.get(r.studioId) ?? [];
+        list.push(r);
+        studioGroups.set(r.studioId, list);
+      }
+      for (const [studioId, list] of studioGroups) {
+        studios[studioId] = {
+          clients: list.length,
+          sets: list.reduce((a, r) => a + r.sets, 0),
+          medianBest: medianOrNull(list.map((r) => r.best)),
+        };
+      }
+
+      machines[machineId] = {
+        machineId,
+        clients: rows.length,
+        sets: rows.reduce((a, r) => a + r.sets, 0),
+        sessions: sessionsPerMachine.get(machineId)?.size ?? 0,
+        load: distributionOf(bests),
+        settings,
+        byHeight,
+        studios,
       };
     }
 
-    const studios: Record<string, StudioTrend> = {};
-    const studioGroups = new Map<string, ClientOnMachine[]>();
-    for (const r of rows) {
-      const list = studioGroups.get(r.studioId) ?? [];
-      list.push(r);
-      studioGroups.set(r.studioId, list);
-    }
-    for (const [studioId, list] of studioGroups) {
-      studios[studioId] = {
-        clients: list.length,
-        sets: list.reduce((a, r) => a + r.sets, 0),
-        medianBest: medianOrNull(list.map((r) => r.best)),
-      };
-    }
+    return { machines, droppedSets };
+  };
 
-    machines[machineId] = {
-      machineId,
-      clients: rows.length,
-      sets: rows.reduce((a, r) => a + r.sets, 0),
-      sessions: sessionsPerMachine.get(machineId)?.size ?? 0,
-      load: distributionOf(bests),
-      settings,
-      byHeight,
-      studios,
-    };
-  }
-
-  return { machines, droppedSets };
+  return { add, result };
 }
 
 /** A log's settings snapshot with every key and value normalised; null when nothing usable is in it. */

@@ -70,8 +70,6 @@ export function buildCompany(
   clients: Iterable<CompanyClientRecord & { id: string }>,
   now: Date,
 ): CompanyBuild {
-  const builtAt = now.toISOString();
-
   const byStudio = new Map<string, Map<string, FitClientRecord>>();
   for (const c of clients) {
     if (!c.id || !c.homeStudioId) continue;
@@ -80,12 +78,42 @@ export function buildCompany(
     roster.set(c.id, c);
   }
 
+  const acc = createCompanyAccumulator(now);
+  for (const studio of studios) acc.addStudio(studio, byStudio.get(studio.studioId) ?? new Map<string, FitClientRecord>());
+  return acc.result();
+}
+
+/** The company tier, one studio at a time (see createCompanyAccumulator). */
+export interface CompanyAccumulator {
+  /**
+   * One studio's index and its own clients (those whose home it is: a row
+   * counts once, at her home studio). Studios in the order `buildCompany`
+   * would take them.
+   */
+  addStudio(studio: StudioFitDocs, roster: ReadonlyMap<string, FitClientRecord>): void;
+  /** Every studio added so far, built. Ask once, at the end. */
+  result(): CompanyBuild;
+}
+
+/**
+ * The streaming form of `buildCompany` (job memory, Oct 1 2026). The weekly
+ * job no longer reads every client in the company, with her machine stats and
+ * InBody summary, to build this: it reads one studio's index and that studio's
+ * clients, hands them here, and lets them go before the next studio. What is
+ * kept between studios is what the build needs - each set-up as a sample and
+ * a subject, never the client record.
+ *
+ * Given the same studios in the same order, each with the clients whose home
+ * it is, it gives exactly what `buildCompany` gives (company-stream.test.ts).
+ */
+export function createCompanyAccumulator(now: Date): CompanyAccumulator {
+  const builtAt = now.toISOString();
   const samplesOf = new Map<string, Map<string, FitSample[]>>(); // machineId → studioId → samples
   const subjectsOf = new Map<string, FitAuditSubject[]>();
   let rowsSkipped = 0;
   const contributing = new Set<string>();
 
-  for (const studio of studios) {
+  const addStudio = (studio: StudioFitDocs, roster: ReadonlyMap<string, FitClientRecord>): void => {
     /*
      * DEMO MODE (Sep 20 2026). The company tier pools every studio's fit
      * index, and its cells are k-anonymous at five clients -- six demo
@@ -93,8 +121,7 @@ export function buildCompany(
      * real trainer then reads would be partly about people who do not exist.
      * Skipped whole, at the studio, so no demo row can reach a sample.
      */
-    if (isDemoStudioId(studio.studioId)) continue;
-    const roster = byStudio.get(studio.studioId) ?? new Map<string, FitClientRecord>();
+    if (isDemoStudioId(studio.studioId)) return;
     for (const doc of studio.docs) {
       if (!doc?.machineId || !doc.rows) continue;
       const withStudio = { ...doc, studioId: studio.studioId };
@@ -108,8 +135,20 @@ export function buildCompany(
       perStudio.set(studio.studioId, [...(perStudio.get(studio.studioId) ?? []), ...samples]);
       subjectsOf.set(doc.machineId, [...(subjectsOf.get(doc.machineId) ?? []), ...subjects]);
     }
-  }
+  };
 
+  const result = (): CompanyBuild => build(samplesOf, subjectsOf, contributing, rowsSkipped, builtAt);
+
+  return { addStudio, result };
+}
+
+function build(
+  samplesOf: Map<string, Map<string, FitSample[]>>,
+  subjectsOf: Map<string, FitAuditSubject[]>,
+  contributing: Set<string>,
+  rowsSkipped: number,
+  builtAt: string,
+): CompanyBuild {
   const blocks: CompanyBuild["blocks"] = {};
   let heldBack = 0;
   const reports: CompanyBuild["reports"] = {};
