@@ -2281,6 +2281,49 @@ describe("Firestore Security Rules", () => {
     });
   });
 
+  // Second studio (Oct 1 2026): Admins → Studios → a studio → Team → Studios
+  // writes only the lists that change, with arrayUnion / arrayRemove. No rule
+  // changed for it: these pin what the control relies on.
+  it("lets an administrator give a trainer a second studio and take them off it, and nobody else at that studio", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "trainers", "adminZ"), {
+        fullName: "Admin Z",
+        initials: "AZ",
+        role: "Admin",
+        primaryHomeStudioId: "studioA",
+        accessibleStudioIds: ["studioA"],
+      });
+      await setDoc(doc(ctx.firestore(), "trainers", "leaderB"), {
+        fullName: "Leader B",
+        initials: "LB",
+        role: "StudioLeader",
+        primaryHomeStudioId: "studioB",
+        accessibleStudioIds: ["studioB"],
+      });
+    });
+    const admin = testEnv.authenticatedContext("adminZ", { email: "adminz@test.com" }).firestore();
+    const self = testEnv.authenticatedContext("trainerA", { email: "trainera@test.com" }).firestore();
+    const leaderB = testEnv.authenticatedContext("leaderB", { email: "leaderb@test.com" }).firestore();
+    const trainerA = doc(admin, "trainers", "trainerA");
+
+    // Nobody adds themselves, and another studio's leader can't add them either.
+    await assertFails(updateDoc(doc(self, "trainers", "trainerA"), { accessibleStudioIds: arrayUnion("studioB") }));
+    await assertFails(updateDoc(doc(leaderB, "trainers", "trainerA"), { accessibleStudioIds: arrayUnion("studioB") }));
+    // The administrator can.
+    await assertSucceeds(updateDoc(trainerA, { accessibleStudioIds: arrayUnion("studioB") }));
+    // Studio B's leader, whose studio it is, still can't take a person whose home is A off it:
+    // that stays with administrators, owners and the person's home-studio leaders.
+    await assertFails(updateDoc(doc(leaderB, "trainers", "trainerA"), { accessibleStudioIds: arrayRemove("studioB") }));
+    // The administrator takes them off, the grant with it; the home studio and the record stay.
+    await assertSucceeds(updateDoc(trainerA, { accessibleStudioIds: arrayRemove("studioB"), managedStudioIds: arrayRemove("studioB") }));
+    let after: Record<string, unknown> | undefined;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      after = (await getDoc(doc(ctx.firestore(), "trainers", "trainerA"))).data();
+    });
+    expect(after?.accessibleStudioIds).toEqual(["studioA"]);
+    expect(after?.primaryHomeStudioId).toBe("studioA");
+  });
+
   // Cost round (Sep 2026): a role claim on the token is read before the
   // document, so an Admin claim with no trainer document is still an admin,
   // and a LifeTransformer claim never reaches admin-only writes.

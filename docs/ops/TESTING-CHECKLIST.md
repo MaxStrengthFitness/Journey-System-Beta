@@ -2591,6 +2591,18 @@ studio leader, portrait and landscape.
   not "auto-renews". The lists (Today, Week, Month, the pipeline) catch up
   after the nightly run.
 
+## Round 46 — A second studio, and taking someone off a team · *Oct 1 2026, branch `oct1/second-studio`*
+
+**Nothing to deploy first** (no rules, index or function change). As a **System Administrator**, portrait and landscape. Use a test trainer, not a real one.
+
+- [ ] Admins → Studios → Solon → Team: every row has **Studios**; every row but yours has **Change role** beside it. Nothing is cut short in portrait.
+- [ ] Tap Studios on a trainer whose home is Solon: "Where {name} works", "Home studio: Solon.", "Also works at · Home studio only.". Add a studio lists every real studio but Solon (never Demo Mode). Choose Westlake, tap Add: Westlake shows "to add" and the sentences say they join the team at Westlake. Save studios.
+- [ ] Admins → Studios → Westlake → Team: the trainer is listed, "Also works here". Westlake → Activity: "Added {name} to Westlake's team: also works there." with your name. Solon's Activity has no line for it.
+- [ ] On the trainer's own iPad, sign out and in: the studio picker offers Westlake.
+- [ ] Back on Westlake → Team → Studios for the same trainer: **Take off Westlake's team**; the sentences say they come off the team and nothing they did is deleted. Cancel: nothing changes. Do it again and Save: they leave Westlake's Team list, stay on Solon's, and Westlake's Activity says "Took {name} off Westlake's team."
+- [ ] Studios on someone whose home is the studio you're on: no Take off button; the dialog says it is their home studio and to change it first on Operations → Setup → People & access.
+- [ ] Open Studios and change nothing: Save studios stays greyed out. Add a studio, then Remove it again: greyed out again.
+
 ---
 
 ## Findings log
