@@ -180,6 +180,13 @@
   white-space: nowrap;
 }
 
+/* The day's first label (hub fixes, Oct 1 2026): centred on its line at the
+   very top, its top half sat under the sticky trainer row and "9 AM" was cut
+   in half, upright and on its side. It sits just below its line instead. */
+.hs-tick[data-first="true"] {
+  transform: translateY(2px);
+}
+
 .hs-tick[data-hour="false"] {
   font-weight: 600;
   font-size: 10px;

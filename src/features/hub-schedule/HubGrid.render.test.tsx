@@ -6,6 +6,8 @@
  * the day it is.
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { HubGrid, type GridBlock, type GridColumn, type HubGridProps } from "./HubGrid";
@@ -111,6 +113,24 @@ describe("the Hub grid", () => {
 
   it("says an empty day in words", () => {
     expect(mount({ blocks: [] }).querySelector(".hs-empty")?.textContent).toBe("Nobody is booked on this day.");
+  });
+
+  it("says nothing on an empty day whose bookings weren't read (hub fixes, Oct 1 2026)", () => {
+    expect(mount({ blocks: [], emptyWords: null }).querySelector(".hs-empty")).toBeNull();
+  });
+
+  it("sets the day's first time label below its line, so the trainer row never cuts it in half (hub fixes, Oct 1 2026)", () => {
+    const el = mount();
+    const ticks = [...el.querySelectorAll<HTMLElement>(".hs-tick")];
+    expect(ticks[0].textContent).toBe("9 AM");
+    expect(px(ticks[0].style.top)).toBe(0);
+    expect(ticks[0].dataset.first).toBe("true");
+    // Only the first: every other label stays centred on its line.
+    expect(ticks.slice(1).every((tk) => tk.dataset.first === undefined)).toBe(true);
+    // And the stylesheet moves it: centred (-50%) its top half sat under the sticky head.
+    const css = readFileSync(resolve(__dirname, "hub-grid.css"), "utf8");
+    const rule = css.match(/\.hs-tick\[data-first="true"\]\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toMatch(/transform:\s*translateY\(\s*[0-9.]+px\s*\)/);
   });
 });
 

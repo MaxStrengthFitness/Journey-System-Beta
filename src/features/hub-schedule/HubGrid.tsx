@@ -84,6 +84,9 @@ export interface HubGridProps {
 
 export const NOBODY_BOOKED = "Nobody is booked on this day.";
 
+/** A time label this close to the top of the day would be half under the trainer row: it sits below its line. */
+export const FIRST_TICK_PX = 10;
+
 /**
  * One line above the grid, in place, when the day's bookings couldn't be read
  * (hub fixes, Oct 1 2026): what happened, that it is trying again, and Try
@@ -195,7 +198,17 @@ export function HubGrid({ dayKey, columns, blocks, nowMin, renderCard, frameOf, 
             {layout.ticks
               .filter((tk) => !tk.edge)
               .map((tk) => (
-                <span key={tk.min} className="hs-tick" data-hour={tk.hour ? "true" : "false"} style={{ top: tk.y }}>
+                <span
+                  key={tk.min}
+                  className="hs-tick"
+                  data-hour={tk.hour ? "true" : "false"}
+                  // The first label sits at the very top of the day: centred on
+                  // its line, its top half would hide under the sticky trainer
+                  // row ("9 AM" cut in half, hub fixes Oct 1 2026), so it sits
+                  // just below its line instead.
+                  data-first={tk.y < FIRST_TICK_PX ? "true" : undefined}
+                  style={{ top: tk.y }}
+                >
                   {tk.hour ? clockWords(tk.min) : `:30`}
                 </span>
               ))}
