@@ -1626,6 +1626,7 @@ export default function AppContent({
                     }
                     activeStudioId={activeStudioId}
                     cutoverStudios={studios}
+                    machines={machines}
                     authTrainer={authTrainer}
                     onSelectClient={(id) => {
                       setSelectedClientId(id);

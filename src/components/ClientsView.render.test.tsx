@@ -90,6 +90,14 @@ vi.mock("../features/renewals/useRenewalSettings", async () => {
   const state = { settings: DEFAULT_RENEWAL_SETTINGS, saved: true, ownPackageTable: false, forStudioId: "westlake", loading: false, error: null };
   return { useRenewalSettings: () => state };
 });
+/* Edit session opens the Activity Archive's own pop-up (hub fixes, Oct 1 2026): stood in for, to see what it is handed. */
+vi.mock("../features/client-history/SessionDetailDialog", () => ({
+  SessionDetailDialog: (p: { initialSessions: Array<{ id: string }>; clientId: string; onClose: () => void }) => (
+    <div className="stub-session-dialog" data-client={p.clientId}>
+      {p.initialSessions.map((s) => s.id).join(",")}
+    </div>
+  ),
+}));
 // The screen's entrance animation is not what is under test.
 vi.mock("motion/react", async () => {
   const R = await import("react");
@@ -410,6 +418,73 @@ describe("the Hub: columns by trainer id", () => {
   it("has no Unassigned column when every booking has its trainer", () => {
     const { el } = mount();
     expect([...el.querySelectorAll(".hs-colhead strong")].map((h) => h.textContent)).not.toContain("Unassigned");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * THE PEEK SAYS WHAT HAPPENED (hub fixes, Oct 1 2026; AJ: "if its a
+ * logged session i like the idea of switching 'start session' to 'edit
+ * session'"), and its main button follows it.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: the peek follows what happened", () => {
+  const peekButtons = () => [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].map((b) => b.textContent);
+
+  it("a logged booking says so, with its machines, and offers Edit session: the Activity Archive's own pop-up for that day's session", async () => {
+    vi.setSystemTime(at("12:00"));
+    const done = { id: "s-laura", clientId: "laura", status: "Completed", hostedAtStudioId: "westlake", startTime: at("11:02"), date: "2026-09-28", createdAt: at("11:02"), sessionMachineIds: ["a", "b", "c", "d", "e", "f", "g"] };
+    const { el, calls } = mount(IO, { sessions: [...SESSIONS, done] });
+    act(() => cardOf(el, "Laura Grubb")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Logged · 7 machines");
+    expect(peekButtons()).toEqual(["Open profile", "Edit session"]);
+    await act(async () => {
+      [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Edit session")!.click();
+    });
+    for (let i = 0; i < 50 && !document.querySelector(".stub-session-dialog"); i++) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+    }
+    const dialog = document.querySelector<HTMLElement>(".stub-session-dialog");
+    expect(dialog?.textContent).toBe("s-laura");
+    expect(dialog?.dataset.client).toBe("laura");
+    expect(calls.views).toEqual([]);
+  });
+
+  it("a session running says In session and opens it; a 'didn't come' offers no Start", () => {
+    const { el } = mount();
+    act(() => cardOf(el, "Hamfast Gamgee")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("In session");
+    expect(peekButtons()).toEqual(["Open profile", "Open session"]);
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    act(() => root?.unmount());
+    host?.remove();
+    vi.setSystemTime(at("12:00"));
+    marksRead.ids = [SCHEDULES[1].id];
+    const again = mount();
+    act(() => cardOf(again.el, "Belladonna Took")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Didn't come");
+    expect(peekButtons()).toEqual(["Open profile"]);
+    marksRead.ids = [];
+  });
+
+  it("a booking over and not logged offers Log past session, on her Activity Archive", () => {
+    vi.setSystemTime(at("12:00"));
+    const { el, calls } = mount();
+    act(() => cardOf(el, "Estella Bolger")!.click());
+    expect(document.querySelector(".hp-state")?.textContent).toBe("Not logged");
+    act(() => [...document.querySelectorAll<HTMLButtonElement>(".hp-btn")].find((b) => b.textContent === "Log past session")!.click());
+    expect(calls.selected).toEqual(["estella"]);
+    expect(calls.views).toEqual(["profile"]);
+  });
+
+  it("a booking coming up still offers Start session", () => {
+    const { el } = mount();
+    act(() => cardOf(el, "Laura Grubb")!.click());
+    expect(document.querySelector(".hp-state")).toBeNull();
+    expect(peekButtons()).toEqual(["Open profile", "Start session"]);
   });
 });
 

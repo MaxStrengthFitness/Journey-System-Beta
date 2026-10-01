@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { queryStudioIds } from "../lib/tenancy";
-import { Client, Trainer, View, WorkoutSession } from "../types";
+import { Client, Machine, Trainer, View, WorkoutSession } from "../types";
 import { isFuzzyNameMatch } from "../lib/sync-utils";
 import { bookingDay, isStaffBlock, loggedSessions } from "../lib/booking-state";
 import { sessionsByClientDay } from "../lib/hub-card-state";
@@ -71,6 +71,9 @@ import { nextHalfHour, stripOpen } from "../features/hub-schedule/next-half-hour
 import { NextStrip, type NextStripItem } from "../features/hub-schedule/NextStrip";
 import { focusColumnId, readFocus, writeFocus, type HubFocus } from "../features/hub-schedule/focus";
 import { hubCardState } from "../lib/hub-card-state";
+import { peekState } from "../features/hub-schedule/peek-model";
+import { trainerLookup } from "../features/client-history/trainers";
+import type { HistorySession } from "../features/client-history/model";
 import { clientDisplayName } from "../lib/client-name";
 
 /*
@@ -81,8 +84,19 @@ import { clientDisplayName } from "../lib/client-name";
  */
 const RunSheet = React.lazy(() => import("../features/hub-opportunities/RunSheet"));
 
+/*
+ * EDIT SESSION (hub fixes, Oct 1 2026; AJ: "switching 'start session' to
+ * 'edit session'"): the Activity Archive's OWN session pop-up, fetched the
+ * first time it is opened — never a second editor. Inside a LoadBoundary
+ * (lazy-screens.test.ts).
+ */
+const SessionDetailDialog = React.lazy(() =>
+  import("../features/client-history/SessionDetailDialog").then((m) => ({ default: m.SessionDetailDialog })),
+);
+
 /** One empty list, so a missing schedule doesn't look new on every render. */
 const NO_SCHEDULES: any[] = [];
+const NO_MACHINES: Machine[] = [];
 
 export function ClientsView({
   clients,
@@ -100,7 +114,10 @@ export function ClientsView({
   scheduleDayState,
   onRetrySchedule,
   cutoverStudios,
+  machines = NO_MACHINES,
 }: {
+  /** The studio's machines, for Edit session's pop-up (the Activity Archive's own). */
+  machines?: Machine[];
   clients: Client[];
   trainers: Trainer[];
   sortedTrainers: Trainer[];
@@ -172,6 +189,9 @@ export function ClientsView({
   const [peek, setPeek] = useState<{ clientId: string; blockKey: string; day: string; anchor: HTMLElement | null } | null>(null);
   /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
   const [focus, setFocus] = useState<HubFocus>(() => readFocus());
+  /** Edit session from the peek: the day's logged session, in the Activity Archive's own pop-up. */
+  const [editing, setEditing] = useState<{ key: number; clientId: string; homeStudioId?: string; session: HistorySession } | null>(null);
+  const trainerFor = React.useMemo(() => trainerLookup(sortedTrainers), [sortedTrainers]);
 
   /*
    * The Hub's minute clock. It also ticks the moment Journey comes back on
@@ -816,10 +836,44 @@ export function ClientsView({
                 const start = safeToDate(booking.startTime || booking.StartDateTime || booking.date);
                 const end = safeToDate(booking.endTime || booking.EndDateTime);
                 const peekNumber = bookingSessionNumber(entry, entry.client, booking, dayMoments.input);
+                /* What happened, by the card's own rule, and the button that
+                   follows it (hub fixes, Oct 1 2026; peek-model's peekState). */
+                const daySession = workoutSessionFor(booking, entry.client);
+                const peekCardState = hubCardState(
+                  { id: booking.id ?? null, clientId: entry.client?.id ?? booking.clientId ?? null, startTime: booking.startTime || booking.StartDateTime || booking.date, endTime: booking.endTime || booking.EndDateTime, status: booking.status },
+                  logged,
+                  currentTime,
+                  { session: daySession, marks: bookingMarks.marks },
+                );
+                const loggedSession = peekCardState === "done" && daySession?.status === "Completed" && daySession.id ? daySession : null;
+                const peekView = peekState(peekCardState, {
+                  machines: Array.isArray(loggedSession?.sessionMachineIds) ? loggedSession!.sessionMachineIds!.length : null,
+                  loggedSessionHeld: !!loggedSession,
+                });
                 return (
                   <Peek
                     entry={entry}
                     sessionNumber={peekNumber}
+                    state={peekView}
+                    onEditSession={
+                      loggedSession
+                        ? (id) => {
+                            setPeek(null);
+                            setEditing({ key: Date.now(), clientId: id, homeStudioId: entry.client?.homeStudioId, session: loggedSession as unknown as HistorySession });
+                          }
+                        : undefined
+                    }
+                    onLogPast={(id) => {
+                      // Her Activity Archive, where Log past session is: the
+                      // Hub search card's own door (Past sessions), asked
+                      // through the leave gate first.
+                      setPeek(null);
+                      guardLeave(() => {
+                        onSelectClient(id);
+                        openProfileAt(id, { tab: "clinical", view: "calendar" });
+                        setView("profile");
+                      });
+                    }}
                     timeText={cardTime(start, end, { span: true })}
                     // What the card may leave out on a narrow column, in full (hub fixes, Oct 1 2026).
                     extras={cardRestWords({
@@ -845,6 +899,26 @@ export function ClientsView({
                   />
                 );
               })()}
+
+            {/* Edit session (hub fixes, Oct 1 2026): the Activity Archive's own
+                pop-up for that day's session — its edit stamp, its rules. */}
+            {editing && (
+              <LoadBoundary kind="screen" resetKey={`hub-edit-${editing.key}`}>
+                <React.Suspense fallback={null}>
+                  <SessionDetailDialog
+                    key={editing.key}
+                    initialSessions={[editing.session]}
+                    onClose={() => setEditing(null)}
+                    clientId={editing.clientId}
+                    machines={machines}
+                    trainerFor={trainerFor}
+                    trainers={sortedTrainers}
+                    activeStudioId={activeStudioId}
+                    clientHomeStudioId={editing.homeStudioId}
+                  />
+                </React.Suspense>
+              </LoadBoundary>
+            )}
 
             {/* A failed read is unknown, never empty: with some clients'
                 Critical notes unread, a card without the triangle proves
