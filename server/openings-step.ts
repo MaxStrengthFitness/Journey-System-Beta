@@ -240,6 +240,8 @@ export interface OpeningsStepOptions {
   log?: (line: string) => void;
   /** Only these studio ids (the scripts' --studio). Every linked studio when absent. */
   only?: readonly string[];
+  /** Told when each studio is done, read or skipped (the weekly job logs its memory then). */
+  afterStudio?: (studioName: string) => void;
 }
 
 const textOf = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -540,50 +542,55 @@ export async function runOpeningsStep(options: OpeningsStepOptions): Promise<Ope
   const queued: { studio: OpeningsStudio; result: OpeningsStudioResult; doc: OpeningsSummary; bytes: number }[] = [];
 
   for (const studio of linked) {
-    const result: OpeningsStudioResult = { studioId: studio.id, name: studio.name, outcome: "skipped" };
-    results.push(result);
-    const skip = (reason: string) => {
-      result.reason = reason;
-      log(`  ${studio.name}: SKIPPED, ${reason}; last week's is kept.`);
-    };
-
-    // The reads and the fold fail for different reasons, and the log says which.
-    let read: StudioRead;
     try {
-      read = await readStudio(db, studio, trainers, now);
-    } catch (err) {
-      skip(`a read failed: ${messageOf(err)}`);
-      continue;
-    }
-    result.bookingsRead = read.bookings.length;
-    if (read.previousState === "unreadable") {
-      log(`  ${studio.name}: last Sunday's summary couldn't be read, so older weeks use only the agreed weeks as they are now.`);
-    }
-    let built: BuiltDocument;
-    try {
-      built = buildDocument(read.input);
-    } catch (err) {
-      skip(`the summary couldn't be built: ${messageOf(err)}`);
-      continue;
-    }
+      const result: OpeningsStudioResult = { studioId: studio.id, name: studio.name, outcome: "skipped" };
+      results.push(result);
+      const skip = (reason: string) => {
+        result.reason = reason;
+        log(`  ${studio.name}: SKIPPED, ${reason}; last week's is kept.`);
+      };
 
-    result.weeksCounted = built.weeksCounted;
-    result.bytes = built.bytes;
-    const about =
-      `${plural(read.bookings.length, "booking", "bookings")} read, ${built.weeksCounted} of ${read.window.mondays.length} weeks counted ` +
-      `(${read.window.first} to ${read.window.last}), ${kib(built.bytes)}`;
-    if (built.refused) {
-      result.reason = built.refused;
-      log(`  ${studio.name}: ${about} — SKIPPED: ${built.refused}; last week's is kept.`);
-      continue;
+      // The reads and the fold fail for different reasons, and the log says which.
+      let read: StudioRead;
+      try {
+        read = await readStudio(db, studio, trainers, now);
+      } catch (err) {
+        skip(`a read failed: ${messageOf(err)}`);
+        continue;
+      }
+      result.bookingsRead = read.bookings.length;
+      if (read.previousState === "unreadable") {
+        log(`  ${studio.name}: last Sunday's summary couldn't be read, so older weeks use only the agreed weeks as they are now.`);
+      }
+      let built: BuiltDocument;
+      try {
+        built = buildDocument(read.input);
+      } catch (err) {
+        skip(`the summary couldn't be built: ${messageOf(err)}`);
+        continue;
+      }
+
+      result.weeksCounted = built.weeksCounted;
+      result.bytes = built.bytes;
+      const about =
+        `${plural(read.bookings.length, "booking", "bookings")} read, ${built.weeksCounted} of ${read.window.mondays.length} weeks counted ` +
+        `(${read.window.first} to ${read.window.last}), ${kib(built.bytes)}`;
+      if (built.refused) {
+        result.reason = built.refused;
+        log(`  ${studio.name}: ${about} — SKIPPED: ${built.refused}; last week's is kept.`);
+        continue;
+      }
+      if (dryRun) {
+        result.outcome = "dry-run";
+        log(`  ${studio.name}: ${about} — would be written.`);
+        continue;
+      }
+      queued.push({ studio, result, doc: built.doc, bytes: built.bytes });
+      log(`  ${studio.name}: ${about}.`);
+    } finally {
+      // How much heap this studio took (the weekly job logs it: job memory, Oct 1 2026).
+      options.afterStudio?.(studio.name);
     }
-    if (dryRun) {
-      result.outcome = "dry-run";
-      log(`  ${studio.name}: ${about} — would be written.`);
-      continue;
-    }
-    queued.push({ studio, result, doc: built.doc, bytes: built.bytes });
-    log(`  ${studio.name}: ${about}.`);
   }
 
   // Their own batches: the job's main commit has already gone out.
