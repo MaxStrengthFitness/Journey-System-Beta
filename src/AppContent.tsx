@@ -584,7 +584,7 @@ export default function AppContent({
    * booked visitor from elsewhere. Replaced the booking-window roster on
    * Sep 16 2026 — see src/lib/studio-roster.ts for what that got wrong.
    */
-  const { clients: rosterClients, status: rosterStatus } = useStudioRoster(
+  const { clients: rosterClients, status: rosterStatus, cut: rosterCut } = useStudioRoster(
     activeStudioId,
     isDataReady,
     schedules,
@@ -1601,6 +1601,7 @@ export default function AppContent({
                     liveAuthTrainer={liveAuthTrainer}
                     uid={user?.uid ?? null}
                     rosterStatus={rosterStatus}
+                    rosterCut={rosterCut}
                     schedules={schedules}
                     schedulesFetchedAt={schedulesFetchedAt}
                     sessions={sessions}

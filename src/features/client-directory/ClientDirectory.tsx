@@ -61,6 +61,7 @@ import {
   viewCounts,
   type ViewId,
 } from "./views";
+import { rosterCutWords } from "../../lib/studio-roster";
 import "./client-directory.css";
 
 /** How long the held bookings may go unread before "Nothing booked" is no longer said. */
@@ -88,6 +89,12 @@ export interface ClientDirectoryProps {
   kaizenClientIds?: Set<string>;
   uid?: string | null;
   rosterStatus?: "loading" | "ready" | "error";
+  /**
+   * The studio's client list stopped at its limit (useStudioRoster's `cut`;
+   * hub fixes, Oct 1 2026): said in words, and a typed name is also asked
+   * of Firestore, so nobody past the cut is out of reach.
+   */
+  rosterCut?: boolean;
   /** The bookings AppContent holds (useLiveSchedule). */
   schedules?: ReadonlyArray<ScheduleEntry> | null;
   /** When they were last read (useLiveSchedule's lastFetchedAt), epoch ms. */
@@ -306,6 +313,7 @@ export function ClientDirectory({
   kaizenClientIds,
   uid,
   rosterStatus = "ready",
+  rosterCut = false,
   schedules = null,
   schedulesFetchedAt = null,
   sessions = null,
@@ -420,7 +428,7 @@ export function ClientDirectory({
 
   const parsedForQuery = useMemo(() => parseQuery(deferredSearch, { words: new Map() }), [deferredSearch]);
   const firstNameWord = parsedForQuery.nameText.split(/\s+/)[0] ?? "";
-  const queryEnabled = (scope === "all" && canSearchAll) || !rosterReady;
+  const queryEnabled = (scope === "all" && canSearchAll) || !rosterReady || rosterCut;
   const remote = useStudiosNameQuery(firstNameWord, queryIds, queryEnabled && firstNameWord.length > 0);
 
   const scopeClients = useMemo(() => {
@@ -642,6 +650,7 @@ export function ClientDirectory({
           <span>{bookingsAsOf ? `bookings as of ${bookingsAsOf}` : "bookings not loaded yet"}</span>
           {bookingsAsOf && !bookingsFresh && <span className="cd-warn">{"Bookings haven\u2019t been read lately, so a next booking may be missing."}</span>}
           {rosterStatus === "loading" && rows.length > 0 && <span className="cd-warn">{"Still loading this studio\u2019s clients \u2014 the list may be incomplete."}</span>}
+          {rosterCut && <span className="cd-warn">{rosterCutWords()}</span>}
           {rosterStatus === "error" && <span className="cd-warn">{"Couldn\u2019t load this studio\u2019s clients \u2014 retrying. The list may be incomplete."}</span>}
           {scope === "all" && !typedName && <span>Type a name to search all your studios.</span>}
           {remote.searching && <span>Searching your studios{"\u2026"}</span>}

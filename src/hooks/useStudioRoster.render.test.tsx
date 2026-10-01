@@ -246,3 +246,17 @@ describe("useStudioRoster", () => {
     expect(latest!.status).toBe("ready");
   });
 });
+
+describe("useStudioRoster: the cut is never silent (hub fixes, Oct 1 2026)", () => {
+  it("says when the listener stopped at its limit, and not before", async () => {
+    await mount("solon", []);
+    await settle();
+    expect(latest!.cut).toBe(false);
+
+    for (let i = 0; i < 1500; i++) clients.push({ id: `bulk-${i}`, homeStudioId: "willoughby", firstName: "Former" });
+    await mount("willoughby", []);
+    await settle();
+    expect(latest!.studioCount).toBe(1501);
+    expect(latest!.cut).toBe(true);
+  });
+});

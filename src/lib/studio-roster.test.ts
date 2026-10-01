@@ -7,7 +7,10 @@ import {
   chunk,
   isPermissionError,
   isQuotaError,
+  STUDIO_ROSTER_LIMIT,
   mergeRoster,
+  rosterCutWords,
+  rosterIsCut,
   visitorIdsToFetch,
 } from "./studio-roster";
 
@@ -80,5 +83,18 @@ describe("error shapes", () => {
     expect(isPermissionError({ code: "permission-denied" })).toBe(true);
     expect(isPermissionError(new Error("Missing or insufficient permissions."))).toBe(true);
     expect(isPermissionError(null)).toBe(false);
+  });
+});
+
+describe("the roster's cut (hub fixes, Oct 1 2026): never silent", () => {
+  it("is cut only at the limit", () => {
+    expect(rosterIsCut(STUDIO_ROSTER_LIMIT - 1)).toBe(false);
+    expect(rosterIsCut(STUDIO_ROSTER_LIMIT)).toBe(true);
+    expect(rosterIsCut(0)).toBe(false);
+    expect(rosterIsCut(Number.NaN)).toBe(false);
+  });
+
+  it("says so in words, with the number", () => {
+    expect(rosterCutWords()).toBe("This studio has more than 1,500 clients on file, and this list holds 1,500 of them. Search by name finds anyone it's missing.");
   });
 });

@@ -61,6 +61,22 @@ The cherry on top adds no read: the focus column, the strip and the switch work 
 
 Wave 2 hub (Sep 28 2026) adds **the studio's FORD, once per studio visit**, for Get to know — ONE collection group query, read by the engine's side (`hub-opportunities/use-hub-ford.ts` over `ford/hub-read.ts`) — and **the nightly marks**, for All stars — ONE document by id (`hub-opportunities/use-hub-marks.ts`, `studios/{s}/watch/hubMarks`), both only for someone who works at the studio (`mayReadWeeks`, asked once in ClientsView as `readsStudio`, the same answer the standing weeks' listener asks).
 
+## The roster's scope (hub fixes, Oct 1 2026)
+
+Every iPad watches every client whose home is the studio (`useStudioRoster`, one listener on `clients where homeStudioId == <studio>`), cut at `STUDIO_ROSTER_LIMIT` (1,500) in no particular order. Until Oct 1 the cut was silent: a console warning. Now the hook says so (`cut`), the Client Directory says it in words (`rosterCutWords`), and a typed name is also asked of Firestore there, so nobody past the cut is out of reach. The Hub's cards don't need the cut lifted: a booked client the listener didn't hold is read by id as a visitor.
+
+The listener's scope was left as it is, on purpose. Narrowing it to "clients who matter to the Hub" (active ones, or those booked in the window) would take clients away from screens that need every one:
+
+- **The Client Directory** lists the studio's clients, inactive ones included (All · Mine · Kaizen · In today, the sorts and the descriptions), and trusts the roster for the current studio.
+- **My Profile → My clients**, **Relay's Since you were in** and **the auto-sync** (`useAutoSync`) read the same list.
+- **The Hub's search** (the header's box) filters the roster before it asks Firestore by name prefix.
+
+What a later fix needs, before a historical import (FileMaker) adds years of former clients with the same `homeStudioId`:
+
+1. A field the listener can filter on that the sync keeps true, e.g. `isActive` or a "seen in the last N months" day the nightly job writes, with the composite index (`homeStudioId`, that field). Production is Enterprise edition, which builds no index by itself.
+2. Every reader above moved to ask for the rest: the Directory's All view and the descriptions by a server query (it already has `useStudiosNameQuery` for names), My clients and Since you were in by their own bounded reads.
+3. The rules unchanged: a narrower query of the same collection proves itself the same way.
+
 ## Out of scope (and why)
 
 - **Surgery or away from dated notes**: not asked for in wave 2. Its FORD half could ride on Get to know's read; the dated notes need a journal read of their own.
