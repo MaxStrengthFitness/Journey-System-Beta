@@ -65,6 +65,7 @@ function fakeDb(collections: Record<string, Docs>) {
     const query = {
       where: () => query,
       orderBy: () => query,
+      select: () => query,
       limit: () => query,
       get: async () => {
         const docs = Object.entries(store[path] ?? {}).map(([id, data]) => ({
