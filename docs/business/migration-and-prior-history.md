@@ -157,6 +157,18 @@ new; with no count she is "unknown". Before Sep 26 the date alone answered
 "complete", on the belief that every schedule pull carried the count; it does
 not (`lib/prior-history.ts`).
 
+**Mindbody's count includes the sessions Journey logged** (hub fixes, Oct 1
+2026). Every Journey session was booked in Mindbody, so a client who started
+on Journey reached six visits after about five sessions and, the next time the
+webhook refreshed her count, read as "partial" and lost her "#N" on the Hub.
+The line is now drawn on the visits Journey can't account for: Mindbody's count
+less Journey's own sessions (`client.sessionCount`, which with no prior record
+is exactly what Journey can see), and only once she has a Journey session
+(`visitsBeforeJourney`). A Journey count that is stale or unknown takes off
+less, so the mistake it can make is the cautious one. Known limits: a visit
+count Mindbody refreshed long ago, and Journey sessions on the other Mindbody
+site, take off a few sessions too many; a prior record outranks both.
+
 This also retires `machineStatsBackfilledAt` as a gate. That marker existed
 because `machineStats` only counts sessions since the running total existed —
 true for a migration client, and those clients no longer get a number quoted at

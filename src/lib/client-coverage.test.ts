@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { coverageOfClient, cutoverOf, homeCutoverOf } from "./client-coverage";
+import { canQuoteSessionNumber, coverageOfClient, cutoverOf, homeCutoverOf } from "./client-coverage";
 import { NEW_CLIENT_MAX_VISITS } from "./prior-history";
 
 /*
@@ -115,6 +115,61 @@ describe("coverageOfClient and Mindbody's visit count", () => {
     expect(coverageOfClient({ clientsNumberOfVisitsAtSite: -1 as number }, null)).toBe("unknown");
     expect(coverageOfClient({ clientsNumberOfVisitsAtSite: 4.5 }, null)).toBe("unknown");
     expect(coverageOfClient({ clientsNumberOfVisitsAtSite: undefined }, null)).toBe("unknown");
+  });
+});
+
+/*
+ * HUB FIXES, Oct 1 2026: Mindbody's count includes the sessions Journey
+ * logged, so a client who started on Journey lost her "#N" after about six
+ * sessions once the webhook refreshed her count. Journey's own sessions are
+ * taken off before the new-client line is drawn.
+ */
+describe("coverageOfClient: Mindbody's visits Journey itself logged are not prior history", () => {
+  const CUTOVER = "2026-09-01";
+  // Started on Journey on Sep 8; Mindbody counts her consultation as a visit
+  // too, and the webhook keeps her count current: Journey's sessions + 1.
+  const startedOnJourney = (sessions: number) => ({
+    firstSessionDate: "2026-09-08",
+    sessionCount: sessions,
+    clientsNumberOfVisitsAtSite: sessions + 1,
+  });
+
+  it.each([3, 6, 20])("a brand-new client after %i sessions is still her whole story, and her number may be quoted", (n) => {
+    const c = startedOnJourney(n);
+    const coverage = coverageOfClient(c, CUTOVER);
+    expect(coverage).toBe("complete");
+    expect(canQuoteSessionNumber({ ...c, priorHistory: undefined }, coverage)).toBe(true);
+  });
+
+  it("with a no-show and an intro session on top, still new", () => {
+    expect(coverageOfClient({ firstSessionDate: "2026-09-08", sessionCount: 20, clientsNumberOfVisitsAtSite: 24 }, CUTOVER)).toBe("complete");
+  });
+
+  it("a FileMaker client with a prior record is judged by the record, never by the count", () => {
+    const filemaker = {
+      firstSessionDate: "2026-09-08",
+      sessionCount: 412,
+      clientsNumberOfVisitsAtSite: 420,
+      priorHistory: { sessions: 400, through: "2026-08-31", source: "filemaker" },
+    };
+    const coverage = coverageOfClient(filemaker, CUTOVER);
+    expect(coverage).toBe("partial");
+    // A person wrote the rest down, so her total may be quoted.
+    expect(canQuoteSessionNumber(filemaker, coverage)).toBe(true);
+  });
+
+  it("a client with Mindbody visits before Journey and no prior record is never called new", () => {
+    const longTime = { firstSessionDate: "2026-09-08", sessionCount: 6, clientsNumberOfVisitsAtSite: 300 };
+    const coverage = coverageOfClient(longTime, CUTOVER);
+    expect(coverage).toBe("partial");
+    expect(canQuoteSessionNumber({ ...longTime, priorHistory: undefined }, coverage)).toBe(false);
+    // Just over the line: 3 Journey sessions, 9 visits before them.
+    expect(coverageOfClient({ firstSessionDate: "2026-09-08", sessionCount: 3, clientsNumberOfVisitsAtSite: 12 }, CUTOVER)).toBe("partial");
+  });
+
+  it("takes nothing off without a Journey session behind the count, or with Journey's count unknown", () => {
+    expect(coverageOfClient({ sessionCount: 6, clientsNumberOfVisitsAtSite: 7 }, CUTOVER)).toBe("partial");
+    expect(coverageOfClient({ firstSessionDate: "2026-09-08", clientsNumberOfVisitsAtSite: 7 }, CUTOVER)).toBe("partial");
   });
 });
 

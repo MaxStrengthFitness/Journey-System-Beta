@@ -243,6 +243,14 @@ export interface CoverageInput {
    * the date trap in CLAUDE.md.
    */
   firstJourneyDay?: string | null;
+  /**
+   * Journey's own count of her sessions (`client.sessionCount`), which with
+   * no prior record is exactly what Journey can SEE. Mindbody's visit count
+   * includes every session Journey logged too (each one was booked there),
+   * so the visits Journey can't account for are `mindbodyVisits` minus this
+   * (hub fixes, Oct 1 2026). Null or absent when unknown.
+   */
+  journeySessions?: number | null;
 }
 
 /**
@@ -281,7 +289,9 @@ export function historyCoverage(
    *
    * It decides only whether Journey CAN be holding her whole story. Above
    * the threshold it cannot: Journey is months old and she has been coming
-   * longer than that.
+   * longer than that. The threshold is measured on the visits Journey can't
+   * account for, the count less Journey's own sessions (visitsBeforeJourney,
+   * below; hub fixes, Oct 1 2026), because Mindbody counts those too.
    *
    * Known limit: the count is per Mindbody SITE and the four studios span
    * two, so a client who cross-trains from the other site can read low here.
@@ -289,7 +299,7 @@ export function historyCoverage(
    */
   const visits = client?.mindbodyVisits;
   if (typeof visits === "number" && Number.isInteger(visits) && visits >= 0) {
-    return visits <= NEW_CLIENT_MAX_VISITS ? "complete" : "partial";
+    return visitsBeforeJourney(visits, client) <= NEW_CLIENT_MAX_VISITS ? "complete" : "partial";
   }
   /*
    * Mindbody has said nothing, so this client has never been synced - and a
@@ -304,6 +314,42 @@ export function historyCoverage(
    * genuinely new client then reads complete from it.
    */
   return "unknown";
+}
+
+/**
+ * THE VISITS JOURNEY CAN'T ACCOUNT FOR (hub fixes, Oct 1 2026).
+ *
+ * Mindbody's lifetime count at the site includes the sessions Journey itself
+ * logged: every one was booked in Mindbody. So a client who started on
+ * Journey read "partial" after about six sessions, the next time the webhook
+ * or a sync refreshed her count, and lost her "#N" on the Hub card (the cost
+ * plan's known limit, Sep 26 2026). Her visits BEFORE Journey are the count
+ * less Journey's own sessions; the new-client line is drawn on those.
+ *
+ * Only Journey's own sessions are taken off, and only once she has one
+ * (`firstJourneyDay`): a count with no Journey session behind it is all
+ * before Journey. With no prior record (the only way this is reached),
+ * `sessionCount` is exactly what Journey can see. The answer errs the safe
+ * way wherever it can:
+ *   - a Journey count that is stale or unknown takes off less, or nothing,
+ *     so she reads "partial" (cautious), never "complete";
+ *   - Mindbody also counts a no-show or a consult as a visit, which the
+ *     five-visit slop already covers.
+ * Known limits: a visit count Mindbody refreshed long ago, set against
+ * today's Journey count, takes off sessions it never counted; the booking
+ * webhook carries the count on most bookings, so the gap is a few sessions
+ * at most. And the count is per Mindbody site: a client whose Journey
+ * sessions were on the other site has those taken off too. A prior record,
+ * once anyone writes one, outranks all of this.
+ */
+export function visitsBeforeJourney(
+  visits: number,
+  client: Pick<CoverageInput, "journeySessions" | "firstJourneyDay"> | null | undefined,
+): number {
+  const journey = client?.journeySessions;
+  if (!client?.firstJourneyDay) return visits;
+  if (typeof journey !== "number" || !Number.isFinite(journey) || journey <= 0) return visits;
+  return Math.max(0, visits - Math.trunc(journey));
 }
 
 /** What a screen says instead of a confident figure. */
