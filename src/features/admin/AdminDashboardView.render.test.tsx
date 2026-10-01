@@ -370,6 +370,49 @@ describe("People & access' door to My Studio → Team", () => {
 });
 
 /*
+ * THE REALM RULE, held by the shell (Oct 1 2026): from inside Demo Mode you
+ * see Demo Mode and nothing else. Seen on the live app: an administrator in
+ * Demo Mode had every real studio's sync row on Setup → Mindbody, and an
+ * announcement composer that started on Everyone and offered every studio.
+ */
+describe("an administrator inside Demo Mode", () => {
+  const westlake = { id: "westlake", name: "Westlake", timezone: "America/New_York", mindbodySiteId: "29068", mindbodyMode: "live" } as unknown as Studio;
+  const everyStudio = [...studios, westlake, demoStudio];
+
+  it("Setup → Mindbody shows Demo Mode's row and no real studio's", async () => {
+    const el = await mount(admin, true, DEMO_STUDIO_ID, everyStudio);
+    await openSetupPages(el);
+    await clickSide(el, "Mindbody");
+    const page = el.querySelector(".ops-page")?.textContent ?? "";
+    expect(page).toContain("Demo Mode");
+    expect(page).not.toContain("Solon");
+    expect(page).not.toContain("Westlake");
+  });
+
+  it("Setup → Announcements addresses Demo Mode alone: no Everyone, no studio picker", async () => {
+    const el = await mount(admin, true, DEMO_STUDIO_ID, everyStudio);
+    await openSetupPages(el);
+    await clickSide(el, "Announcements");
+    expect(el.textContent).toContain("Post an announcement");
+    expect(el.querySelector("#ann-scope")).toBeNull();
+    expect(el.querySelector("#ann-studio")).toBeNull();
+    const options = [...el.querySelectorAll("option")].map((o) => o.textContent ?? "");
+    expect(options.some((o) => o.includes("Solon") || o.includes("Westlake"))).toBe(false);
+  });
+
+  it("outside Demo Mode the same administrator is offered every real studio and never Demo Mode", async () => {
+    const el = await mount(admin, true, "solon", everyStudio);
+    await openSetupPages(el);
+    await clickSide(el, "Announcements");
+    const scope = el.querySelector<HTMLSelectElement>("#ann-scope");
+    expect(scope).toBeTruthy();
+    expect(scope!.value).toBe("universal");
+    await clickSide(el, "Mindbody");
+    expect(el.querySelector(".ops-page")?.textContent ?? "").not.toContain("Demo Mode");
+  });
+});
+
+/*
  * THE SHELL'S OWN GATE (sign-out round, Sep 24 2026). AppContent sends anyone
  * who may not open Operations to the Hub before this is drawn; the shell
  * refuses on its own as well, so no other door can open it for them.

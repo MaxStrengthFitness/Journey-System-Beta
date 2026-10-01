@@ -17,6 +17,7 @@ import { Client, Studio } from "../types";
 import { handleFirestoreError, OperationType } from "../lib/firestore-errors";
 import { canSaveNewClient, newClientPayload } from "../lib/consultation-answers";
 import { cn } from "@/lib/utils";
+import { studiosInRealm } from "../features/demo-mode/access";
 
 // Reusing Select component since it's already implemented in other files or can be imported.
 // If it's not imported here, we'll do native select.
@@ -65,6 +66,10 @@ export function CreateClientModal({
   const [duplicateWarning, setDuplicateWarning] = useState<Client | null>(null);
 
   const canSave = canSaveNewClient({ firstName, lastName, homeStudioId });
+
+  // The realm rule (Oct 1 2026): inside Demo Mode the only home studio on
+  // offer is Demo Mode, and from anywhere else Demo Mode is never offered.
+  const homeStudioChoices = studiosInRealm(studios, activeStudioId);
 
   const executeSave = async (force: boolean = false) => {
     if (!canSave) return;
@@ -298,7 +303,7 @@ export function CreateClientModal({
                   <option value="" disabled>
                     Select Studio
                   </option>
-                  {studios.map((s) => (
+                  {homeStudioChoices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>

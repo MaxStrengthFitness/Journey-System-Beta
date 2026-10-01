@@ -6,6 +6,7 @@ import {
   dedupeById,
   queryStudioIds,
   readableStudioIds,
+  realmStudioIds,
 } from "./tenancy";
 
 function trainer(over: Partial<Trainer> = {}): Trainer {
@@ -116,6 +117,47 @@ describe("queryStudioIds", () => {
     expect(queryStudioIds(trainer({ primaryHomeStudioId: "" }), null)).toEqual(
       [],
     );
+  });
+});
+
+/*
+ * THE REALM RULE (Oct 1 2026): from inside Demo Mode you see Demo Mode and
+ * nothing else; from anywhere else you do not see it at all. Seen on the live
+ * app: the header's Search clients, typed inside Demo Mode, listed 22 real
+ * clients, because the demo studio is in nobody's readable list and the
+ * query fell through to every studio the trainer stands in.
+ */
+describe("queryStudioIds and the Demo Mode realm", () => {
+  const solonLead = trainer({
+    primaryHomeStudioId: "solon",
+    accessibleStudioIds: ["solon", "westlake", "strongsville", "willoughby"],
+  });
+
+  it("REGRESSION: inside Demo Mode asks about Demo Mode alone, never the real studios", () => {
+    expect(queryStudioIds(solonLead, "demo-studio")).toEqual(["demo-studio"]);
+  });
+
+  it("inside Demo Mode, even 'all my studios' is Demo Mode alone", () => {
+    expect(queryStudioIds(solonLead, "demo-studio", { includeAll: true })).toEqual(["demo-studio"]);
+  });
+
+  it("inside Demo Mode with no trainer profile loaded yet, still Demo Mode alone", () => {
+    expect(queryStudioIds(null, "demo-studio")).toEqual(["demo-studio"]);
+  });
+
+  it("outside Demo Mode never names it, even for someone whose record lists it", () => {
+    const listed = trainer({ primaryHomeStudioId: "solon", accessibleStudioIds: ["solon", "demo-studio", "westlake"] });
+    expect(queryStudioIds(listed, null)).toEqual(["solon", "westlake"]);
+    expect(queryStudioIds(listed, "solon", { includeAll: true })).toEqual(["solon", "westlake"]);
+    expect(queryStudioIds(listed, "elsewhere")).toEqual(["solon", "westlake"]);
+  });
+
+  it("realmStudioIds: Demo Mode alone inside it; every readable studio but Demo Mode outside", () => {
+    const listed = trainer({ primaryHomeStudioId: "solon", accessibleStudioIds: ["demo-studio", "westlake"] });
+    expect(realmStudioIds(listed, "demo-studio")).toEqual(["demo-studio"]);
+    expect(realmStudioIds(listed, "solon")).toEqual(["solon", "westlake"]);
+    expect(realmStudioIds(null, "demo-studio")).toEqual(["demo-studio"]);
+    expect(realmStudioIds(null, null)).toEqual([]);
   });
 });
 

@@ -36,6 +36,8 @@
  */
 
 import type { Trainer } from "../types";
+import { DEMO_STUDIO_ID } from "../features/demo-mode/constants";
+import { isDemoStudioId } from "../features/demo-mode/is-demo";
 
 /** Firestore's cap on the number of values in an `in` clause. */
 export const MAX_IN_VALUES = 30;
@@ -96,7 +98,13 @@ export function queryStudioIds(
   activeStudioId: string | null | undefined,
   { includeAll = false }: { includeAll?: boolean } = {},
 ): string[] {
-  const all = readableStudioIds(trainer);
+  // THE REALM RULE (Demo Mode README; Oct 1 2026). From inside Demo Mode the
+  // only studio a query may name is Demo Mode, "all" included: the demo
+  // studio is in nobody's readable list, so the old fall-through below
+  // widened a search typed inside Demo Mode to every real studio the trainer
+  // stands in. From anywhere else the demo studio is never named.
+  if (isDemoStudioId(activeStudioId ?? null)) return [DEMO_STUDIO_ID];
+  const all = realmStudioIds(trainer, activeStudioId);
   if (!includeAll && activeStudioId && all.includes(activeStudioId)) {
     return [activeStudioId];
   }
@@ -105,6 +113,21 @@ export function queryStudioIds(
     return [activeStudioId];
   }
   return capStudioIds(all);
+}
+
+/**
+ * The studios this trainer may read, kept to the realm they are standing in
+ * (`studiosInRealm` for ids): inside Demo Mode, Demo Mode alone; anywhere
+ * else, every readable studio but Demo Mode. A screen that offers "all my
+ * studios" asks this, never `readableStudioIds`, so the choice never appears
+ * inside Demo Mode and never reaches into it from outside.
+ */
+export function realmStudioIds(
+  trainer: Parameters<typeof readableStudioIds>[0],
+  activeStudioId: string | null | undefined,
+): string[] {
+  if (isDemoStudioId(activeStudioId ?? null)) return [DEMO_STUDIO_ID];
+  return readableStudioIds(trainer).filter((id) => !isDemoStudioId(id));
 }
 
 /** Merge parallel snapshots into one list, newest write per id winning. */

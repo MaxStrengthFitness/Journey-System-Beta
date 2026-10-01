@@ -272,7 +272,9 @@ export function ClientsView({
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+    // The studio is a dependency too: a search left typed while switching
+    // into or out of Demo Mode must ask again, in the new realm.
+  }, [searchTerm, activeStudioId, authTrainer?.id]);
 
   const filteredClients = clients.filter((c) =>
     `${c.firstName} ${c.lastName}`

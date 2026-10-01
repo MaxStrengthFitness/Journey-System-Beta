@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Trainer, Studio, FranchiseNetwork, Client, WorkoutSession, Machine, ScheduleEntry } from "../../types";
 import { ChevronLeft } from "lucide-react";
 import "./admin.css";
@@ -9,6 +9,8 @@ import { AdminDataReportsTab } from "./data";
 import { OverviewPage, type OverviewLink } from "./overview/OverviewPage";
 import { AdminStaffTab } from "./staff/AdminStaffTab";
 import { AdminAnnouncementsTab } from "./announcements/AdminAnnouncementsTab";
+import { announcementReach } from "./announcements/reach";
+import { studiosInRealm } from "../demo-mode/access";
 import { AdminMindbodyTab } from "./mindbody/AdminMindbodyTab";
 import { TrendsPage } from "./trends/TrendsPage";
 import { AdminHoursTab } from "./hours/AdminHoursTab";
@@ -91,6 +93,18 @@ interface Props {
  */
 export function AdminDashboardView(props: Props) {
   /*
+   * THE REALM RULE, once for every page (Oct 1 2026): from inside Demo Mode
+   * Operations knows Demo Mode and nothing else; from anywhere else it does
+   * not know Demo Mode at all. `operationsStudios` already held the scope to
+   * it, but the pages were handed the app's whole studio list beside the
+   * scope, so an administrator in Demo Mode saw every real studio's sync row
+   * on Setup → Mindbody and every real studio in the announcement composer.
+   */
+  const realmStudios = useMemo(
+    () => studiosInRealm(props.studios, props.activeStudioId ?? null),
+    [props.studios, props.activeStudioId],
+  );
+  /*
    * The shell holds itself to the same rule as the menu and the route
    * (sign-out round, Sep 24 2026): studio leaders and above, or anyone inside
    * Demo Mode. AppContent already sends everyone else to the Hub; this is so
@@ -112,12 +126,12 @@ export function AdminDashboardView(props: Props) {
   return (
     <OperationsScopeProvider
       authTrainer={props.authTrainer}
-      studios={props.studios}
+      studios={realmStudios}
       networks={props.networks}
       isAdmin={props.isAdmin}
       activeStudioId={props.activeStudioId ?? null}
     >
-      <OperationsShell {...props} />
+      <OperationsShell {...props} studios={realmStudios} />
     </OperationsScopeProvider>
   );
 }
@@ -452,17 +466,27 @@ function OperationsShell({
                 onRefresh={onRefresh}
               />
             );
-          case "announcements":
+          case "announcements": {
+            // A studio's leader addresses the studios they run; an owner adds
+            // their network; administrators everyone. Inside Demo Mode, Demo
+            // Mode alone (the realm rule, `announcements/reach.ts`).
+            const reach = announcementReach({
+              isAdmin,
+              isOwnerTier,
+              allStudios: studios,
+              readable: ops.readable,
+              activeStudioId: appStudioId ?? activeStudioId ?? null,
+            });
             return (
               <AdminAnnouncementsTab
                 authTrainer={authTrainer}
-                // A studio's leader addresses the studios they run; an owner adds
-                // their network; administrators everyone.
-                studios={isAdmin ? studios : ops.readable}
-                networks={networks}
-                scopes={isAdmin ? ["universal", "network", "studio"] : isOwnerTier ? ["network", "studio"] : ["studio"]}
+                studios={reach.studios}
+                networks={reach.networks ? networks : []}
+                scopes={reach.scopes}
+                fixedStudioId={reach.fixedStudioId}
               />
             );
+          }
           case "mindbody":
             return ops.scope.kind === "all" && !isAdmin ? (
               <PickOneStudio what="Mindbody" />

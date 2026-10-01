@@ -34,6 +34,7 @@ import type {
 import { AdminHeader, AdminScreen } from "../primitives";
 import { AnnouncementComposer } from "./AnnouncementComposer";
 import { millis, type AnnouncementScope, type NetworkOption } from "./audience";
+import { addressedTo } from "./reach";
 
 interface Props {
   authTrainer: Trainer;
@@ -47,6 +48,12 @@ interface Props {
    * their network, and administrators everything).
    */
   scopes?: AnnouncementScope[];
+  /**
+   * Inside Demo Mode (the realm rule, Oct 1 2026; `reach.ts`): the audience is
+   * this studio alone, the picker is not drawn, and the live list is only the
+   * notices addressed to it.
+   */
+  fixedStudioId?: string;
 }
 
 export function AdminAnnouncementsTab({
@@ -54,6 +61,7 @@ export function AdminAnnouncementsTab({
   studios,
   networks,
   scopes = ["universal", "network", "studio"],
+  fixedStudioId,
 }: Props) {
   const [all, setAll] = useState<HubAnnouncement[]>([]);
 
@@ -83,8 +91,9 @@ export function AdminAnnouncementsTab({
         const expires = millis(a.expiresAt);
         return expires === 0 || expires >= now;
       })
+      .filter((a) => !fixedStudioId || addressedTo(a, fixedStudioId))
       .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
-  }, [all]);
+  }, [all, fixedStudioId]);
 
   const networkOptions: NetworkOption[] = useMemo(
     () =>
@@ -113,6 +122,7 @@ export function AdminAnnouncementsTab({
         studios={studios}
         networks={networkOptions}
         scopes={scopes}
+        fixedStudioId={fixedStudioId}
         published={live}
         title="Post an announcement"
         subtitle="Pick the audience before you write. It is the part people get wrong."
