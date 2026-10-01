@@ -45,6 +45,7 @@ export const STATE_TONE: Record<JourneyState, "ok" | "warn" | "neutral" | "live"
   drifting: "warn",
   "at-risk": "warn",
   lapsed: "neutral",
+  inactive: "neutral",
   away: "neutral",
   back: "ok",
   unknown: "neutral",

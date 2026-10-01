@@ -41,6 +41,7 @@ import { caseOf, type CaseView } from "./case";
 import type { StoredCase } from "./case-store";
 import { journeyOfDoc, nightStillHolds, rhythmOfDoc, summaryIsFresh, type ClientStateDoc, type JourneySummary } from "./nightly";
 import { BESIDE_STATES, LINE_STATES, isSlipping, journeyOf, type ClientJourney, type JourneyLines, type JourneyState } from "./states";
+import type { InactiveMark } from "./inactive";
 
 export type JourneyLens = "all" | "renewal" | "new";
 
@@ -98,6 +99,8 @@ export interface StudioJourneysInput {
   cases?: ReadonlyMap<string, StoredCase> | null;
   /** Last night's states and their summary (wave 2); used only while the summary is today's with today's lines. */
   stored?: { summary: Pick<JourneySummary, "asOf" | "lines" | "breakDays"> | null; states: ReadonlyMap<string, ClientStateDoc> } | null;
+  /** The studio's leaders' inactive marks by client (inactive.ts); absent or null while unread. */
+  marks?: ReadonlyMap<string, InactiveMark> | null;
 }
 
 const homeOf = (c: Client): string | null => c.homeStudioId || (c as { studioId?: string }).studioId || null;
@@ -161,6 +164,7 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
     const snapshot = (client.renewal as RenewalSnapshot | undefined) ?? null;
     const doc = nightFresh ? (i.stored?.states.get(client.id as string) ?? null) : null;
     const lastVisit = row.lastIn.state === "known" ? row.lastIn.day : null;
+    const mark = i.marks?.get(client.id as string) ?? null;
     const live = journeyOf({
       active: true,
       snapshot,
@@ -173,8 +177,12 @@ export function studioJourneys(i: StudioJourneysInput): JourneyEntry[] {
       lines: i.lines,
       // The night measured her rhythm from her visits; the page can only estimate it from her pace.
       ...(doc ? { rhythm: rhythmOfDoc(doc) } : {}),
+      mark,
     });
-    const holds = Boolean(doc && nightStillHolds(doc, { lastVisit, next: { state: row.next.state, day: row.next.day, source: row.next.source }, horizonEnd }));
+    // A leader's mark (or one taken back since the night) is the page's to read: her state is worked out here.
+    const holds = Boolean(
+      doc && !mark && doc.inactiveKind !== "manual" && nightStillHolds(doc, { lastVisit, next: { state: row.next.state, day: row.next.day, source: row.next.source }, horizonEnd }),
+    );
     const journey = holds && doc ? journeyOfDoc(doc, i.today, i.lines) : live;
     const night = doc && doc.state === journey.state ? { since: doc.since, was: doc.was } : null;
     const trainer = trainerById(i.trainers, snapshot?.primaryTrainerId);
@@ -233,6 +241,8 @@ export function listFor(entries: readonly JourneyEntry[], state: JourneyState, l
         byName(a, b)
       );
     }
+    // Inactive: the most recent first, the likeliest win-backs.
+    if (state === "inactive") return (b.journey.inactive?.since ?? b.journey.since ?? "").localeCompare(a.journey.inactive?.since ?? a.journey.since ?? "") || byName(a, b);
     if (state === "away") return (a.client.renewal?.awayUntil ?? "9999").localeCompare(b.client.renewal?.awayUntil ?? "9999") || byName(a, b);
     if (state === "new" || state === "settling") return (a.row.total.value ?? 0) - (b.row.total.value ?? 0) || byName(a, b);
     if (state === "unknown") return (UNKNOWN_ORDER[a.journey.unknownWhy ?? ""] ?? 9) - (UNKNOWN_ORDER[b.journey.unknownWhy ?? ""] ?? 9) || byName(a, b);

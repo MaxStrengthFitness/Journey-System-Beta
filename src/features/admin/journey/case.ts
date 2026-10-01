@@ -98,6 +98,10 @@ function ruleStep(j: ClientJourney, owner: { usual: boolean; name: string }, fir
       return `${owner.usual ? first : "A leader"} phones her ${inToday ? "today" : "the next day they're in"} (a person, not the app) and writes a note on her profile about how it went.`;
     case "lapsed":
       return "A note on file. If she comes by, someone catches her in person; one call from the person who knows her best is fine.";
+    case "inactive":
+      return j.inactive?.kind === "manual"
+        ? "Nothing to chase: a leader marked her inactive. If a win-back is worth trying, open a case and name who reaches out (a person, not the app)."
+        : "A win-back, if it's worth one: the person who knows her best reaches out once (a person, not the app) and writes a note on her profile about how it went.";
     case "back":
       return "Welcome her back. Booking again closed the case by itself.";
     case "away":

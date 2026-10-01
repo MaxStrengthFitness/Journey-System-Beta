@@ -179,7 +179,7 @@ describe("the nightly job's Journey step", () => {
       "studios/edoras/config": { settings: { values: { lapsedDays: 60 } } },
     });
     await run(db);
-    expect(store["studios/edoras/watch"].journey.lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, newMax: 10, settlingMax: 24 });
+    expect(store["studios/edoras/watch"].journey.lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, inactiveDays: 90, newMax: 10, settlingMax: 24 });
   });
 
   it("writes nothing on a dry run, and says what it would have", async () => {

@@ -57,6 +57,7 @@ const CAPTION: Record<JourneyState, (breakDays: number, lines: JourneyLines) => 
   drifting: (_, l) => `${multipleWords(l.driftMultiple).toLowerCase()} their usual gap, nothing booked`,
   "at-risk": (d) => `past the studio's ${d}-day line`,
   lapsed: (_, l) => `${l.lapsedDays}+ days, nothing booked`,
+  inactive: (_, l) => `${l.inactiveDays}+ days, or marked by a leader`,
   away: () => "a reason and a return date",
   back: () => "booked again after a gap",
   unknown: () => "can't be judged yet",
@@ -66,6 +67,8 @@ const LIST_SAYS: Record<JourneyState, (lines: JourneyLines) => string> = {
   drifting: () => "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
   "at-risk": () => "Catchable first: their usual trainer is in today. A client a leader already answered is last.",
   lapsed: () => "Closest to the line first.",
+  inactive: (l) =>
+    `Out of the way, never deleted: inactive by herself after ${l.inactiveDays} days with nothing booked, or marked by a leader. The most recent first, the likeliest win-backs. A booking makes her active again.`,
   away: () => "Soonest back first. A known reason is not a risk.",
   back: () => "Booked again after crossing a line. Booking again closes the case by itself.",
   new: (l) => `Sessions 1 to ${l.newMax}, from a total that may be quoted: a client whose history is before Journey is never called new.`,
@@ -149,8 +152,8 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
         <div className="ops-line-strip__groups" aria-hidden="true">
           <span>Starting</span>
           <span>Settled</span>
-          <span>Slipping away</span>
-          <span>Gone</span>
+          <span>MIA</span>
+          <span>Inactive</span>
         </div>
         <div className="ops-line-strip__stops">{LINE_STATES.map(stop)}</div>
       </div>
