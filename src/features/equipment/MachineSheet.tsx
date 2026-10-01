@@ -71,6 +71,8 @@ export interface MachineSheetProps {
   clientSettings: Record<string, ClientMachineSetting>;
   author: MutationAuthor | null;
   sessionId?: string | null;
+  /** The running session's number and day, carried on a note written here (client-notes/session-link.ts). */
+  sessionLink?: { sessionNumber: number | null; sessionDay: string | null } | null;
   onClose: () => void;
   onError?: (message: string) => void;
   /** Toast-worthy confirmation, so the sheet can stay open after a save. */
@@ -99,6 +101,7 @@ export function MachineSheet({
   clientSettings,
   author,
   sessionId,
+  sessionLink = null,
   onClose,
   onError,
   onSaved,
@@ -129,8 +132,10 @@ export function MachineSheet({
       studioId: activeStudioId || activeStudio?.id || "",
       origin: "in_session",
       sessionId: sessionId ?? null,
+      sessionNumber: sessionId ? (sessionLink?.sessionNumber ?? null) : null,
+      sessionDay: sessionId ? (sessionLink?.sessionDay ?? null) : null,
     }),
-    [activeStudioId, activeStudio, sessionId],
+    [activeStudioId, activeStudio, sessionId, sessionLink?.sessionNumber, sessionLink?.sessionDay],
   );
 
   const alerts = useMemo(

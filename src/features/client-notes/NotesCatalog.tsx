@@ -38,7 +38,14 @@ import type { JournalEntry } from "../../types/journal";
 import type { JournalAuthor } from "../../hooks/useClientJournal";
 import type { HistoryCoverage } from "../../lib/prior-history";
 import { LoadingArea } from "../../components/LoadingMark";
-import { EMPTY_FILTER, NOTES_PAGE_CATEGORIES, buildCatalog, type CatalogFilter, type NoteCategory } from "./note-catalog";
+import {
+  EMPTY_FILTER,
+  NOTES_PAGE_CATEGORIES,
+  buildCatalog,
+  machinesWithNotes,
+  type CatalogFilter,
+  type NoteCategory,
+} from "./note-catalog";
 import { THREAD_ZONE_META, zoneOf, type NoteThread } from "./threads";
 import type { NoteDismissals } from "./dismissals";
 import { briefingStatusOf, hiddenCriticalThreads } from "./record-selectors";
@@ -82,6 +89,13 @@ export interface NotesCatalogProps {
   intent?: { key: unknown; request: CatalogIntent } | null;
   /** Called once a request has been acted on (or found nothing to open). */
   onIntentHandled?: () => void;
+  /**
+   * The line under a note written in a session ("From session #12 · Sep 30",
+   * client-notes/session-link.ts), or null. With `onOpenSession`, the line is
+   * a button that opens that session (FileMaker parity, Oct 1 2026).
+   */
+  sessionLabelOf?: (entry: JournalEntry) => string | null;
+  onOpenSession?: (sessionId: string) => void;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -105,6 +119,8 @@ export function NotesCatalog({
   coverage,
   intent = null,
   onIntentHandled,
+  sessionLabelOf,
+  onOpenSession,
 }: NotesCatalogProps) {
   const [filter, setFilter] = useState<CatalogFilter>(EMPTY_FILTER);
   // One standing or resolved row open at a time.
@@ -122,7 +138,9 @@ export function NotesCatalog({
   const criticalIds = useMemo(() => new Set(criticalEntries.map((e) => e.id)), [criticalEntries]);
   const headsUpIds = useMemo(() => new Set(headsUpEntries.map((e) => e.id)), [headsUpEntries]);
 
-  const filtered = !!filter.category || !!filter.search.trim();
+  const filtered = !!filter.category || !!filter.search.trim() || !!filter.machineId;
+  // The machines she has notes about: the machine filter's choices (Oct 1 2026).
+  const noteMachines = useMemo(() => machinesWithNotes(threads, machines), [threads, machines]);
   const hidden = useMemo(
     () => (filtered ? hiddenCriticalThreads(threads, keptIds, criticalIds) : []),
     [filtered, threads, keptIds, criticalIds],
@@ -240,6 +258,30 @@ export function NotesCatalog({
           {countsKnown ? <span className="nx-pick__count">{countOf(c.id)}</span> : null}
         </button>
       ))}
+      {/* One machine's notes, with the sessions they came from (FileMaker
+          parity, Oct 1 2026). Only the machines she has notes about; none,
+          no control. A native select: a long floor reads better as a list. */}
+      {noteMachines.length > 0 ? (
+        <label className="nx-machine">
+          <span className="nx-machine__label">Machine</span>
+          <select
+            className="nx-machine__select"
+            value={filter.machineId ?? ""}
+            data-testid="notes-machine-filter"
+            onChange={(e) => {
+              const machineId = e.target.value || null;
+              setFilter((f) => ({ ...f, machineId }));
+            }}
+          >
+            <option value="">Every machine</option>
+            {noteMachines.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {onOpenFord ? (
         <button
           type="button"
@@ -281,6 +323,8 @@ export function NotesCatalog({
         expanded={expandedId === t.id}
         onToggle={() => setExpandedId((cur) => (cur === t.id ? null : t.id))}
         author={author}
+        sessionLabelOf={sessionLabelOf}
+        onOpenSession={onOpenSession}
       />
     ));
 
@@ -323,6 +367,8 @@ export function NotesCatalog({
                   briefing={briefingStatusOf(t, briefingCtx)}
                   onHush={onHush ? () => onHush(t) : undefined}
                   onRestore={onRestore ? () => onRestore(t) : undefined}
+                  sessionLabelOf={sessionLabelOf}
+                  onOpenSession={onOpenSession}
                 />
               ))}
             </div>

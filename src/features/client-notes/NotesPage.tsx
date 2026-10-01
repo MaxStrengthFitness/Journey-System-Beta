@@ -35,10 +35,16 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Info, PenLine } from "lucide-react";
-import { auth } from "../../firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../firebase";
 import { useToast } from "../../contexts/ToastContext";
-import type { Client, Machine } from "../../types";
-import type { JournalDraft } from "../../types/journal";
+import type { Client, Machine, Trainer, WorkoutSession } from "../../types";
+import type { JournalDraft, JournalEntry } from "../../types/journal";
+import { canQuoteSessionNumber } from "../../lib/client-coverage";
+import { SessionDetailDialog } from "../client-history/SessionDetailDialog";
+import { trainerLookup } from "../client-history/trainers";
+import type { HistorySession } from "../client-history/model";
+import { sessionLinkLabel } from "./session-link";
 import {
   HEADS_UP_WINDOW_DAYS,
   createJournalEntry,
@@ -98,9 +104,14 @@ export interface NotesPageProps {
   onOpenFord: () => void;
   /** A one-shot request from a door, with a key that is new per move. */
   intent?: { key: unknown; request: NotesIntent } | null;
+  /** Who coached each session, for the session pop-up a note opens. */
+  trainers?: Trainer[];
+  /** The studio the iPad is in: stamped on a set added in the session pop-up. */
+  activeStudioId?: string | null;
 }
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const NO_TRAINERS: Trainer[] = [];
 
 export function NotesPage({
   client,
@@ -119,6 +130,8 @@ export function NotesPage({
   fordDoorCount,
   onOpenFord,
   intent = null,
+  trainers = NO_TRAINERS,
+  activeStudioId = null,
 }: NotesPageProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [composeOpen, setComposeOpen] = useState(false);
@@ -175,6 +188,46 @@ export function NotesPage({
     const box = composeRef.current?.querySelector("textarea");
     if (box && typeof box.focus === "function") box.focus({ preventScroll: true });
   }, [composeOpen, focusTick]);
+
+  /* ------------------------ the session a note is from ------------------------ *
+   * FileMaker parity, Oct 1 2026 (AJ: "if made within a session it should
+   * link that session"). The line under a note written in a session, from
+   * the note's own fields or the sessions the tab already streams; the
+   * number only past the session-number gate. A tap opens the session in
+   * Activity Archive's pop-up, read from the stream, or ONCE from the
+   * server for an older session the stream doesn't hold. */
+  const quotable = canQuoteSessionNumber(client, coverage);
+  const sessionsById = useMemo(() => {
+    const m = new Map<string, WorkoutSession>();
+    for (const s of journal.recentSessions ?? []) if (s.id) m.set(s.id, s);
+    return m;
+  }, [journal.recentSessions]);
+  const sessionLabelOf = useCallback(
+    (entry: JournalEntry) => sessionLinkLabel(entry, entry.sessionId ? sessionsById.get(entry.sessionId) : null, quotable, today),
+    [sessionsById, quotable, today],
+  );
+  const [openedSession, setOpenedSession] = useState<{ key: number; sessions: HistorySession[] } | null>(null);
+  const onOpenSession = useCallback(
+    async (sessionId: string) => {
+      const held = sessionsById.get(sessionId);
+      if (held) {
+        setOpenedSession({ key: Date.now(), sessions: [held] });
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, "sessions", sessionId));
+        if (!snap.exists()) {
+          toastError("That session is no longer in Journey.");
+          return;
+        }
+        setOpenedSession({ key: Date.now(), sessions: [{ id: snap.id, ...snap.data() } as HistorySession] });
+      } catch {
+        toastError("Could not open that session. Check your connection and try again.");
+      }
+    },
+    [sessionsById, toastError],
+  );
+  const trainerFor = useMemo(() => trainerLookup(trainers), [trainers]);
 
   /* --------------------------- the briefing line --------------------------- */
 
@@ -344,7 +397,23 @@ export function NotesPage({
         coverage={coverage}
         intent={catalogIntent}
         onIntentHandled={() => setCatalogIntent(null)}
+        sessionLabelOf={sessionLabelOf}
+        onOpenSession={clientId ? (id) => void onOpenSession(id) : undefined}
       />
+
+      {openedSession && clientId ? (
+        <SessionDetailDialog
+          key={openedSession.key}
+          initialSessions={openedSession.sessions}
+          onClose={() => setOpenedSession(null)}
+          clientId={clientId}
+          machines={machines}
+          trainerFor={trainerFor}
+          trainers={trainers}
+          activeStudioId={activeStudioId}
+          clientHomeStudioId={client.homeStudioId}
+        />
+      ) : null}
 
       <div className="nx-fordline">
         <p className="nx-fordline__text">

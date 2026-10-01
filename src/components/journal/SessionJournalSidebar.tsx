@@ -60,6 +60,8 @@ import { FORD_READ_NOTICE } from "../../features/ford/read-status";
 import { NoteSweep } from "../../features/client-notes/NoteSweep";
 import { discardUnfiledEntry, fileUnfiledEntry } from "../../features/client-notes/file-unfiled";
 import { splitUnfiled } from "../../features/client-notes/note-catalog";
+import { sessionLinkOf } from "../../features/client-notes/session-link";
+import { studioTodayKey } from "../../lib/studio-time";
 import { PulseQuickLog } from "../../features/subjective-report";
 import type { SessionNoteDraft } from "../../features/client-notes/session-draft";
 // Its FORD notice draws with ford.css; a component imports the stylesheet it
@@ -162,7 +164,9 @@ export function SessionJournalSidebar({
     await createJournalEntry(clientId, studioId, author, {
       ...draft,
       origin: "in_session",
-      sessionId: session.id ?? null,
+      // The session's id, number and day (client-notes/session-link.ts), so
+      // Notes says "From session #12 · Sep 30" and opens it.
+      ...sessionLinkOf(session, studioTodayKey()),
     });
   };
 

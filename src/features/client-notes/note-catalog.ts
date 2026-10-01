@@ -380,11 +380,39 @@ export function noteCardLabel(
 export interface CatalogFilter {
   category: NoteCategory | null;
   search: string;
+  /**
+   * One machine (FileMaker parity, Oct 1 2026): only threads with a note
+   * about it, the root or any update. Like the search, it narrows the
+   * category counts too. Null is every machine.
+   */
+  machineId?: string | null;
   /** The Resolved zone is unfolded. It never changes what is counted. */
   showResolved: boolean;
 }
 
-export const EMPTY_FILTER: CatalogFilter = { category: null, search: "", showResolved: false };
+export const EMPTY_FILTER: CatalogFilter = { category: null, search: "", machineId: null, showResolved: false };
+
+/** A thread is about a machine when any of its entries is. */
+export function threadIsAboutMachine(thread: NoteThread, machineId: string): boolean {
+  return thread.entries.some((e) => e.machineId === machineId);
+}
+
+/**
+ * The machines a client has notes about, for the Notes page's machine
+ * filter: each once, named as this floor names it, in name order. A machine
+ * the floor no longer lists keeps a plain name rather than vanishing, so its
+ * notes can still be found.
+ */
+export function machinesWithNotes(
+  threads: readonly NoteThread[],
+  machines: readonly { id?: string; name: string }[],
+): { id: string; name: string }[] {
+  const ids = new Set<string>();
+  for (const t of threads) for (const e of t.entries) if (e.machineId) ids.add(e.machineId);
+  return [...ids]
+    .map((id) => ({ id, name: machines.find((m) => m.id === id)?.name ?? "A machine no longer on the floor" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /**
  * The category chips on the Notes page, in the owner's order: every category
@@ -493,6 +521,7 @@ export function buildCatalog(
     // Search reads every entry of the thread — its updates, and who wrote
     // each one — so a coach's name finds the threads they added to as well.
     if (!threadMatchesSearch(t, filter.search)) continue;
+    if (filter.machineId && !threadIsAboutMachine(t, filter.machineId)) continue;
     const cat = threadCategoryOf(t);
     byCategory.get(cat)!.push(t);
     if (!filter.category || filter.category === cat) kept.push(t);

@@ -38,6 +38,7 @@ const fake = vi.hoisted(() => ({
   adds: [] as { path: string; data: any }[],
   sets: [] as { path: string; data: any }[],
   updates: [] as { path: string; data: any }[],
+  gets: [] as string[],
 }));
 
 vi.mock("firebase/firestore", async (importOriginal) => {
@@ -65,8 +66,23 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     writeBatch: () => ({ update() {}, set() {}, delete() {}, commit: async () => {} }),
     deleteField: () => ({ __delete: true }),
     serverTimestamp: () => ({ __server: true }),
+    // A session the tab's stream doesn't hold, read once on the tap that opens it.
+    getDoc: async (ref: any) => {
+      fake.gets.push(ref.__path);
+      return ref.__path === "sessions/s-old"
+        ? { id: "s-old", exists: () => true, data: () => ({ clientId: "c1", status: "Completed", date: "2025-03-02", sessionNumber: 40 }) }
+        : { id: "x", exists: () => false, data: () => undefined };
+    },
   };
 });
+
+// The session pop-up is Activity Archive's, with its own mounted tests; here
+// it is a stub that says which session it was opened on (Oct 1 2026).
+vi.mock("../client-history/SessionDetailDialog", () => ({
+  SessionDetailDialog: (p: any) => (
+    <div data-testid="session-popup" data-session={p.initialSessions.map((s: any) => s.id).join(",")} />
+  ),
+}));
 
 import { ToastProvider } from "../../contexts/ToastContext";
 import { NotesPage, type NotesPageProps } from "./NotesPage";
@@ -571,5 +587,80 @@ describe("NotesPage — empty, failed and large", () => {
     );
     expect(composer.textContent).not.toContain("which only the client’s home studio can read");
     expect(buttonIn(composer, "Open FORD")).toBeDefined();
+  });
+});
+
+describe("Notes — the session a note was written in, and one machine's notes (FileMaker parity, Oct 1 2026)", () => {
+  // Written on the floor: the link carries the session's number and day.
+  const fromSession = entry({
+    id: "from-s12",
+    kind: "coaching",
+    origin: "in_session",
+    importance: "elevated",
+    machineId: "m-leg",
+    sessionId: "s-12",
+    sessionNumber: 12,
+    sessionDay: "2026-09-20",
+    body: "Had to assist on the last few reps.",
+    occurredAt: day("2026-09-20"),
+  } as Partial<JournalEntry> & { id: string });
+  // An older note: only the id, and a session the tab's stream doesn't hold.
+  const olderLink = entry({
+    id: "from-old",
+    kind: "preference",
+    importance: "elevated",
+    sessionId: "s-old",
+    body: "Likes the fan on high.",
+    occurredAt: day("2026-09-18"),
+  });
+  const LIST = [crit, eq1, pref1, fromSession, olderLink];
+  const held = { id: "s-12", clientId: "c1", status: "Completed", date: "2026-09-20", sessionNumber: 12 } as WorkoutSession;
+
+  beforeEach(() => {
+    fake.gets.length = 0;
+  });
+
+  it("says which session a note came from, and the line opens that session", async () => {
+    const host = await mount(propsFor(LIST, { journal: journalOf(LIST, { recentSessions: [held] }) }));
+    const line = host.querySelector('[data-testid="from-session-from-s12"]');
+    expect(line?.textContent).toBe("From session #12 · Sep 20");
+    expect(line?.tagName).toBe("BUTTON");
+    // A note written outside a session says nothing of the kind.
+    expect(host.querySelector('[data-testid="from-session-crit"]')).toBeNull();
+
+    await click(line);
+    expect(host.ownerDocument.querySelector('[data-testid="session-popup"]')?.getAttribute("data-session")).toBe("s-12");
+    // Held by the stream: no read.
+    expect(fake.gets).toEqual([]);
+  });
+
+  it("reads an older session once, on the tap, when the stream doesn't hold it", async () => {
+    const host = await mount(propsFor(LIST, { journal: journalOf(LIST, { recentSessions: [held] }) }));
+    const line = host.querySelector('[data-testid="from-session-from-old"]');
+    expect(line?.textContent).toBe("From a session");
+    await click(line);
+    expect(fake.gets).toEqual(["sessions/s-old"]);
+    expect(host.ownerDocument.querySelector('[data-testid="session-popup"]')?.getAttribute("data-session")).toBe("s-old");
+  });
+
+  it("never quotes Journey's session number for a migrating client nobody recorded a total for", async () => {
+    const host = await mount(propsFor(LIST, { coverage: "partial", journal: journalOf(LIST, { recentSessions: [held] }) }));
+    expect(host.querySelector('[data-testid="from-session-from-s12"]')?.textContent).toBe("From the session on Sep 20");
+  });
+
+  it("filters to one machine's notes, from the machines she has notes about", async () => {
+    const host = await mount(propsFor(LIST));
+    const select = host.querySelector<HTMLSelectElement>('[data-testid="notes-machine-filter"]')!;
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Every machine", "Leg Press"]);
+    await act(async () => {
+      select.value = "m-leg";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    const text = host.querySelector('[data-testid="notes-catalog"]')!.textContent ?? "";
+    expect(text).toContain("Had to assist on the last few reps.");
+    expect(text).toContain("Right knee: stop at 90°");
+    expect(text).not.toContain("Fan on, no music.");
+    expect(text).not.toContain("Likes the fan on high.");
   });
 });

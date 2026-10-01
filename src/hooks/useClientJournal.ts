@@ -195,6 +195,11 @@ export async function createJournalEntry(
     // (features/client-notes/threads.ts). Written by addThreadUpdate.
     threadId: draft.threadId ?? null,
     sessionId: draft.sessionId ?? null,
+    // The session's number and day ride with the link (FileMaker parity,
+    // Oct 1 2026; client-notes/session-link.ts). Only on a linked note.
+    ...(draft.sessionId
+      ? { sessionNumber: draft.sessionNumber ?? null, sessionDay: draft.sessionDay ?? null }
+      : {}),
     origin: draft.origin,
     authorId: author.id,
     authorInitials: author.initials,

@@ -35,6 +35,8 @@ export interface SetupPromptDialogProps {
   clientSettings: Record<string, ClientMachineSetting>;
   author: MutationAuthor | null;
   sessionId?: string | null;
+  /** The running session's number and day, carried on a note written here (client-notes/session-link.ts). */
+  sessionLink?: { sessionNumber: number | null; sessionDay: string | null } | null;
   onClose: () => void;
   /** Fired after a successful save, so the caller can continue into the HUD. */
   onSaved?: () => void;
@@ -57,6 +59,7 @@ export function SetupPromptDialog({
   clientSettings,
   author,
   sessionId,
+  sessionLink = null,
   onClose,
   onSaved,
   onError,
@@ -84,8 +87,10 @@ export function SetupPromptDialog({
       studioId: activeStudioId || activeStudio?.id || "",
       origin: "in_session",
       sessionId: sessionId ?? null,
+      sessionNumber: sessionId ? (sessionLink?.sessionNumber ?? null) : null,
+      sessionDay: sessionId ? (sessionLink?.sessionDay ?? null) : null,
     }),
-    [activeStudioId, activeStudio, sessionId],
+    [activeStudioId, activeStudio, sessionId, sessionLink?.sessionNumber, sessionLink?.sessionDay],
   );
 
   if (!equipment) return null;

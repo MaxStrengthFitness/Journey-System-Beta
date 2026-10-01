@@ -100,7 +100,19 @@ export interface JournalEntry {
    * assembled, and `thread-write.ts`, which is the one place they are written.
    */
   threadId?: string | null;
+  /** The session the note was written in, when it was written in one. */
   sessionId: string | null;
+  /**
+   * THE SESSION LINK (FileMaker parity, Oct 1 2026). Written with `sessionId`
+   * by the live session's note writers: the session's number as stored on it
+   * and its studio day (yyyy-mm-dd), so the Notes page can say "From session
+   * #12 · Sep 30" with no read per note. Older notes have only `sessionId`;
+   * the page then looks the session up in the sessions it already holds.
+   * A number is shown only past the session-number gate (history-claims).
+   * `features/client-notes/session-link.ts` writes and reads them.
+   */
+  sessionNumber?: number | null;
+  sessionDay?: string | null;
 
   origin: JournalOrigin;
 
@@ -176,6 +188,9 @@ export type JournalDraft = Pick<
   effectiveUntil?: Date | null;
   repeat?: "yearly" | null;
   sessionId?: string | null;
+  /** With `sessionId`: the session's number and studio day, so a note says where it was written without a read. */
+  sessionNumber?: number | null;
+  sessionDay?: string | null;
 };
 
 /* ------------------------------------------------------------------ */

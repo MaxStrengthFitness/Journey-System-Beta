@@ -213,6 +213,7 @@ import { WrapUpScreen } from "./WrapUpScreen";
 import { ConsultationSetupWizard } from "./ConsultationSetupWizard";
 import { ageOnFile, demographicsPatch } from "../lib/consultation-answers";
 import { studioTodayKey } from "../lib/studio-time";
+import { sessionLinkOf } from "../features/client-notes/session-link";
 
 import { clientDisplayName, clientFirstName } from "../lib/client-name";
 import { PerformanceEntryDialog } from "../features/tracker/PerformanceEntryDialog";
@@ -1496,7 +1497,9 @@ export function WorkoutTrackerView({
               importance: "standard",
               machineId: null,
               focusId: null,
-              sessionId: docRef.id,
+              // Linked to the session it opened, with its number and day
+              // (client-notes/session-link.ts).
+              ...sessionLinkOf({ id: docRef.id, sessionNumber: nextNum, date }, date),
               origin: "pre_session",
             },
           );
@@ -2042,7 +2045,7 @@ export function WorkoutTrackerView({
             importance: "elevated",
             machineId: null,
             focusId: null,
-            sessionId: currentSession.id ?? null,
+            ...sessionLinkOf(currentSession, studioTodayKey()),
             origin: "post_session",
           },
         ).then(
@@ -2171,7 +2174,7 @@ export function WorkoutTrackerView({
           importance: d?.importance ?? importance,
           machineId: d?.aboutMachine ? d?.machineId ?? null : null,
           focusId: null,
-          sessionId: snap.session.id ?? null,
+          ...sessionLinkOf(snap.session, studioTodayKey()),
           origin: "in_session",
         },
       ),
@@ -2203,7 +2206,7 @@ export function WorkoutTrackerView({
               profileNote?.importance && profileNote.importance !== "standard" ? (profileNote.effectiveUntil ?? null) : null,
             machineId: null,
             focusId: null,
-            sessionId: snap.session.id ?? null,
+            ...sessionLinkOf(snap.session, studioTodayKey()),
             origin: "post_session",
           },
         ),
@@ -3463,6 +3466,7 @@ export function WorkoutTrackerView({
               : null
           }
           sessionId={currentSession?.id || null}
+          sessionLink={sessionLinkOf(currentSession, studioTodayKey())}
           onClose={() => setSetupPromptMachineId(null)}
           onError={toastError}
           clientHomeStudioId={selectedClient?.homeStudioId ?? null}
@@ -3518,6 +3522,7 @@ export function WorkoutTrackerView({
             : null
         }
         sessionId={currentSession?.id || null}
+        sessionLink={sessionLinkOf(currentSession, studioTodayKey())}
         onClose={() => setSheetMachineId(null)}
         onError={toastError}
       />

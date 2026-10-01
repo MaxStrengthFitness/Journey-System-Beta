@@ -12,6 +12,7 @@ import {
   isNextTrainerNoteOfSessions,
   isUnfiled,
   journalBodyOf,
+  machinesWithNotes,
   matchesSearch,
   monthKeyOf,
   noteCardLabel,
@@ -285,6 +286,28 @@ describe("buildCatalog", () => {
     const before = threads.map((t) => t.id);
     build();
     expect(threads.map((t) => t.id)).toEqual(before);
+  });
+});
+
+describe("one machine's notes (FileMaker parity, Oct 1 2026)", () => {
+  const TODAY = "2026-09-20";
+  const legRoot = entry({ kind: "equipment", machineId: "m-leg", body: "Seat 7." });
+  const chestRoot = entry({ kind: "coaching", body: "Count her in." });
+  // An update about the leg press puts its thread on the leg press too.
+  const chestUpd = entry({ threadId: chestRoot.id, machineId: "m-leg", body: "On the leg press today she was fine." });
+  const plain = entry({ kind: "preference", body: "Fan on." });
+  const threads = assembleThreads([legRoot, chestRoot, chestUpd, plain]);
+
+  it("keeps the threads with any note about the machine, and counts the chips under it", () => {
+    const c = buildCatalog(threads, { ...EMPTY_FILTER, machineId: "m-leg" }, TODAY);
+    expect(c.matched).toBe(2);
+    expect(c.tiles.find((t) => t.id === "preference")?.count).toBe(0);
+    expect(buildCatalog(threads, EMPTY_FILTER, TODAY).matched).toBe(3);
+  });
+
+  it("offers the machines she has notes about, named by the floor, each once", () => {
+    expect(machinesWithNotes(threads, [{ id: "m-leg", name: "Leg Press" }])).toEqual([{ id: "m-leg", name: "Leg Press" }]);
+    expect(machinesWithNotes(threads, [])).toEqual([{ id: "m-leg", name: "A machine no longer on the floor" }]);
   });
 });
 
