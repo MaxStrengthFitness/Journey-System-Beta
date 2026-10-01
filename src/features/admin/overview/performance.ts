@@ -92,76 +92,126 @@ const median = (values: number[]): number => {
   return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-interface SetPoint {
-  ms: number;
-  day: string;
-  weight: number;
-  reps: number;
+/**
+ * One client on one machine: every usable set's time, weight and reps, in
+ * the order they arrived (three plain number lists, not an object a set: the
+ * weekly job streams 90 days of every client's sets through this). Only the
+ * latest set's day is kept, since it is the only day a row reports.
+ */
+interface Series {
+  studioId: string;
+  ms: number[];
+  weight: number[];
+  reps: number[];
+  /** The latest set: the greatest time, and of equal times the last to arrive (a stable sort's last). */
+  latest: number;
+  latestDay: string;
 }
 
 /**
  * The drops, grouped by the studio the set was logged at. `clientHomes`
  * fills in the studio for older logs that carry none.
+ *
+ * The same as feeding every log to `createPerformanceAccumulator` in order
+ * and asking for the result, which is how it is built.
  */
 export function performanceDrops(
   logs: PerformanceLogInput[],
   opts: { now: Date; clientHomes?: Map<string, string | null> },
 ): Record<string, PerformanceRow[]> {
+  const acc = createPerformanceAccumulator(opts);
+  for (const log of logs) acc.add(log);
+  return acc.result();
+}
+
+/** The performance watch, one set at a time (see createPerformanceAccumulator). */
+export interface PerformanceAccumulator {
+  add(log: PerformanceLogInput): void;
+  /** The drops of every set added so far, by studio. Ask once, at the end. */
+  result(): Record<string, PerformanceRow[]>;
+}
+
+/**
+ * The streaming form of `performanceDrops` (job memory, Oct 1 2026): the
+ * weekly job streams the window's sets through it rather than holding them
+ * all. In any order, fed the same sets in the same order, it gives exactly
+ * what the version that held every set gave (performance-stream.test.ts):
+ * the sets are ordered by time with ties kept in arrival order, the latest
+ * set is the last of them, and its studio is the last set's to arrive.
+ */
+export function createPerformanceAccumulator(opts: { now: Date; clientHomes?: Map<string, string | null> }): PerformanceAccumulator {
   const nowMs = opts.now.getTime();
   const recentSince = nowMs - RECENT_DAYS * 86_400_000;
-  const series = new Map<string, { studioId: string; points: SetPoint[] }>();
+  const series = new Map<string, Series>();
 
-  for (const log of logs) {
-    if (!log.clientId || !log.machineId) continue;
-    if (!isPerformedLog(log)) continue;
-    if (log.isStaticHold || log.isTSC) continue;
+  const add = (log: PerformanceLogInput): void => {
+    if (!log.clientId || !log.machineId) return;
+    if (!isPerformedLog(log)) return;
+    if (log.isStaticHold || log.isTSC) return;
     const reps = num(log.reps ?? log.outcomeReps);
     const weight = num(log.weight);
-    if (reps === null || weight === null || reps < 0) continue;
+    if (reps === null || weight === null || reps < 0) return;
     const ms = millis(log.createdAt) ?? (log.date ? Date.parse(`${log.date.slice(0, 10)}T12:00:00Z`) : NaN);
-    if (!Number.isFinite(ms)) continue;
+    if (!Number.isFinite(ms)) return;
     const day = dayOf(log);
-    if (!day) continue;
+    if (!day) return;
     const studioId = log.studioId || log.homeStudioId || opts.clientHomes?.get(log.clientId) || null;
-    if (!studioId) continue;
+    if (!studioId) return;
     const key = `${log.clientId}|${log.machineId}`;
     let entry = series.get(key);
     if (!entry) {
-      entry = { studioId, points: [] };
+      entry = { studioId, ms: [], weight: [], reps: [], latest: -1, latestDay: day };
       series.set(key, entry);
     }
-    // The studio of the LATEST set wins for the row's home; set below.
-    entry.points.push({ ms, day, weight, reps });
+    // The studio of the LATEST set to arrive wins for the row's home.
+    const at = entry.ms.length;
+    entry.ms.push(ms);
+    entry.weight.push(weight);
+    entry.reps.push(reps);
+    if (entry.latest < 0 || ms >= entry.ms[entry.latest]) {
+      entry.latest = at;
+      entry.latestDay = day;
+    }
     entry.studioId = studioId;
-  }
+  };
 
-  const out: Record<string, PerformanceRow[]> = {};
-  for (const [key, entry] of series) {
-    const points = entry.points.sort((a, b) => a.ms - b.ms);
-    const latest = points[points.length - 1];
-    if (!latest || latest.ms < recentSince) continue;
-    const earlier = points.slice(0, -1).filter((p) => Math.abs(p.weight - latest.weight) < 0.5).slice(-MIN_PRIOR_SETS);
-    if (earlier.length < MIN_PRIOR_SETS) continue;
-    const med = median(earlier.map((p) => p.reps));
-    if (med <= 0) continue;
-    const drop = (med - latest.reps) / med;
-    if (drop < DROP_FRACTION) continue;
-    const [clientId, machineId] = key.split("|");
-    (out[entry.studioId] ??= []).push({
-      clientId,
-      machineId,
-      weight: latest.weight,
-      reps: latest.reps,
-      medianReps: med,
-      priorSets: earlier.length,
-      day: latest.day,
-      drop: Math.round(drop * 100) / 100,
-    });
-  }
-  for (const studioId of Object.keys(out)) {
-    out[studioId] = out[studioId].sort((a, b) => b.drop - a.drop || a.day.localeCompare(b.day)).slice(0, MAX_ROWS_PER_STUDIO);
-  }
-  return out;
+  const result = (): Record<string, PerformanceRow[]> => {
+    const out: Record<string, PerformanceRow[]> = {};
+    for (const [key, entry] of series) {
+      const latest = entry.latest;
+      if (latest < 0 || entry.ms[latest] < recentSince) continue;
+      const latestWeight = entry.weight[latest];
+      // Every other set at that weight, by time (ties in arrival order), the last five.
+      const near: number[] = [];
+      for (let i = 0; i < entry.ms.length; i += 1) {
+        if (i !== latest && Math.abs(entry.weight[i] - latestWeight) < 0.5) near.push(i);
+      }
+      const earlier = near.sort((a, b) => entry.ms[a] - entry.ms[b] || a - b).slice(-MIN_PRIOR_SETS);
+      if (earlier.length < MIN_PRIOR_SETS) continue;
+      const med = median(earlier.map((i) => entry.reps[i]));
+      if (med <= 0) continue;
+      const latestReps = entry.reps[latest];
+      const drop = (med - latestReps) / med;
+      if (drop < DROP_FRACTION) continue;
+      const [clientId, machineId] = key.split("|");
+      (out[entry.studioId] ??= []).push({
+        clientId,
+        machineId,
+        weight: latestWeight,
+        reps: latestReps,
+        medianReps: med,
+        priorSets: earlier.length,
+        day: entry.latestDay,
+        drop: Math.round(drop * 100) / 100,
+      });
+    }
+    for (const studioId of Object.keys(out)) {
+      out[studioId] = out[studioId].sort((a, b) => b.drop - a.drop || a.day.localeCompare(b.day)).slice(0, MAX_ROWS_PER_STUDIO);
+    }
+    return out;
+  };
+
+  return { add, result };
 }
 
 export function performanceWatchDocument(

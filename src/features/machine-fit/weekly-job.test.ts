@@ -18,7 +18,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runMachineTrends } from "../../../server/machine-trends-job";
+import { LOG_FIELDS, runMachineTrends } from "../../../server/machine-trends-job";
+import { buildMachineTrends, type TrendClientInput, type TrendLogInput } from "../machine-trends/trends";
+import { performanceDrops, type PerformanceLogInput } from "../admin/overview/performance";
 import { buildDocument, openingsReport, readOpeningsStudios, readOpeningsTrainers, readStudio } from "../../../server/openings-step";
 import { cellFor, readSummary } from "../openings/summary-doc";
 import { usualWeek } from "../openings/usual";
@@ -70,6 +72,10 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
       select: () => query,
       limit: () => query,
       get: async () => snapshot(path),
+      // The Admin SDK's stream, which the job reads the window's sets and the clients through.
+      stream: async function* () {
+        yield* snapshot(path).docs;
+      },
       doc: (id: string) => docRef(path, id),
     };
     return query;
@@ -87,6 +93,8 @@ function fakeDb(collections: Record<string, Docs>, opts: { failOn?: string; fail
 
   const db = {
     collection,
+    // Machine fit reads the clients a studio's rows name by id, with a field mask (ignored here).
+    getAll: async (...refs: unknown[]) => Promise.all(refs.filter((r): r is ReturnType<typeof docRef> => typeof (r as { get?: unknown })?.get === "function").map((r) => r.get())),
     batch: () => {
       const ops: Array<() => void> = [];
       const paths: string[] = [];
@@ -537,5 +545,60 @@ describe("the Openings report (scripts/openings-report.ts)", () => {
     // The seeder's rows carry no webhook stamp.
     expect(report).toMatchObject({ rows: 8, webhook: 0 });
     expect(written).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Job memory (Oct 1 2026): the window's sets are read with only
+ * LOG_FIELDS. A field the trends or the watch read but the list leaves out
+ * would be silently missing from every set, so this holds that a set cut
+ * down to LOG_FIELDS gives the same trends and the same drops as the whole
+ * document, with every field either rule reads present and junk beside it.
+ * ------------------------------------------------------------------ */
+
+describe("the weekly job reads only the fields it uses", () => {
+  it("gives the same trends and drops from sets cut down to LOG_FIELDS as from whole ones", () => {
+    const DAY = 86_400_000;
+    const whole: Array<TrendLogInput & PerformanceLogInput & Record<string, unknown>> = [];
+    for (let i = 0; i < 600; i += 1) {
+      whole.push({
+        clientId: `c${i % 23}`,
+        machineId: `m${i % 4}`,
+        sessionId: `s${Math.floor(i / 5)}`,
+        studioId: i % 7 === 0 ? null : i % 11 === 0 ? "demo-studio" : "solon",
+        homeStudioId: i % 5 === 0 ? "westlake" : null,
+        hostedAtStudioId: i % 13 === 0 ? "demo-studio" : null,
+        clientHomeStudioId: i % 17 === 0 ? "demo-studio" : null,
+        isDemo: i % 19 === 0,
+        outcome: i % 9 === 0 ? "practice" : i % 10 === 0 ? null : "performed",
+        reps: i % 6 === 0 ? null : i % 29 === 0 ? 3 : 10,
+        seconds: i % 6 === 0 ? 40 : null,
+        outcomeReps: i % 6 === 0 ? 8 : null,
+        outcomeTut: i % 12 === 0 ? 60 : null,
+        isTSC: i % 31 === 0,
+        isStaticHold: i % 37 === 0,
+        weight: i % 8 === 0 ? "100 lb" : 100,
+        machineSettings: { Seat: String(3 + (i % 3)), "Chest Pad": i % 2 ? "2.0" : "02" },
+        createdAt: NOW.getTime() - (600 - i) * (DAY / 8),
+        date: new Date(NOW.getTime() - (600 - i) * (DAY / 8)).toISOString().slice(0, 10),
+        // What the job never reads.
+        notes: "a long note ".repeat(20),
+        trainerName: "Sam Lee",
+        repQuality: 2,
+      });
+    }
+    const cut = whole.map((l) => Object.fromEntries(LOG_FIELDS.filter((f) => f in l).map((f) => [f, l[f]])) as TrendLogInput & PerformanceLogInput);
+    const clients = new Map<string, TrendClientInput>(Array.from({ length: 23 }, (_, i) => [`c${i}`, { id: `c${i}`, height: "5'8\"", homeStudioId: "solon", isActive: true }]));
+    const homes = new Map<string, string | null>(Array.from({ length: 23 }, (_, i) => [`c${i}`, i % 2 ? "solon" : null]));
+    expect(JSON.stringify(buildMachineTrends(cut, clients))).toBe(JSON.stringify(buildMachineTrends(whole, clients)));
+    const drops = performanceDrops(whole, { now: NOW, clientHomes: homes });
+    expect(Object.keys(drops).length).toBeGreaterThan(0);
+    expect(JSON.stringify(performanceDrops(cut, { now: NOW, clientHomes: homes }))).toBe(JSON.stringify(drops));
+  });
+
+  it("names every field of a set that the trends, the outcome rule, the Demo rule and the watch read", () => {
+    // The interfaces' own fields, and the Demo rule's studio fields (demo-mode/is-demo.ts).
+    const read = ["clientId", "machineId", "sessionId", "weight", "machineSettings", "studioId", "homeStudioId", "clientHomeStudioId", "hostedAtStudioId", "isDemo", "outcome", "reps", "seconds", "outcomeReps", "outcomeTut", "isTSC", "isStaticHold", "createdAt", "date"];
+    expect([...LOG_FIELDS].sort()).toEqual([...read].sort());
   });
 });

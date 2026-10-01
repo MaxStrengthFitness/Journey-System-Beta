@@ -92,6 +92,15 @@ a whole set-up, and how many clients. It is built from the per-studio
 - **One range query.** `exerciseLogs.createdAt >= now − 90 days`, oldest
   first. A log stamped with a string date (one old writer did that) is simply
   outside the window; nothing is guessed.
+- **Streamed, never held** (job memory, Oct 1 2026). The job reads that query
+  one set at a time (`eachDoc`), with only `LOG_FIELDS`, into
+  `createTrendsAccumulator` — the streaming form `buildMachineTrends` is built
+  on, held to a copy of the old function in `trends-stream.test.ts`. A field
+  the trends start reading goes on `LOG_FIELDS` in
+  `server/machine-trends-job.ts`, or the job never sees it
+  (`weekly-job.test.ts` checks the list). Machine fit's company tier is built
+  one studio at a time (`server/machine-fit-company.ts`). See
+  `docs/KNOWN-TRAPS.md`, "Jobs read per studio with select".
 - **A machine with no sets this window AND no fit block loses its document**,
   so a stale trend never outlives its window.
 

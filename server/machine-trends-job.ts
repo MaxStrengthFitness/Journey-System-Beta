@@ -46,14 +46,28 @@
  * studio it can't build keeps last week's document. It asks Mindbody nothing.
  * scripts/run-machine-trends.ts --only openings runs it alone.
  *
- * READS PER RUN: every client (the trends use the active ones; a past
- * client's settings are still evidence of how a body fits a machine) + logs
- * in the window + the small machineFit indexes + 0 sessions. Machines are not
- * read at all: the machine ids come from the logs and the indexes. Openings
- * adds the studios, the trainers and, per linked studio, its eight weeks of
- * bookings, at most three months of its whole-read record, its standing weeks
- * and last Sunday's summary (about 13,000 small reads a week across the four
- * studios; openings-step.ts has the table).
+ * READS PER RUN: every client, three small fields of each (the trends use the
+ * active ones' height and home; the performance watch every client's home) +
+ * logs in the window + the small machineFit indexes and the clients their rows
+ * name + 0 sessions. Machines are not read at all: the machine ids come from
+ * the logs and the indexes. Openings adds the studios, the trainers and, per
+ * linked studio, its eight weeks of bookings, at most three months of its
+ * whole-read record, its standing weeks and last Sunday's summary (about
+ * 13,000 small reads a week across the four studios; openings-step.ts has the
+ * table).
+ *
+ * MEMORY (Oct 1 2026; server/job-memory.ts). The job runs on a 512 MB
+ * instance and used to hold the whole company: every client record with her
+ * machine stats, and every set of the window. Now the window's sets are
+ * STREAMED, one at a time, with only the fields the trends and the watch read
+ * (`LOG_FIELDS`), into running totals (createTrendsAccumulator,
+ * createPerformanceAccumulator); the clients are three fields each; and
+ * machine fit reads one studio's index and its clients at a time
+ * (machine-fit-company.ts). What it writes is exactly what it wrote before:
+ * the totals are held to the old functions in trends-stream.test.ts,
+ * performance-stream.test.ts and company-stream.test.ts. The log says the
+ * heap's peak after the sets, after each studio's fit and each studio's
+ * Openings, so Render's log shows the headroom.
  *
  * NOTHING HERE CONTACTS ANYONE.
  */
@@ -61,16 +75,54 @@
 import { Timestamp, type Firestore, type WriteBatch } from "firebase-admin/firestore";
 import {
   DEFAULT_WINDOW_DAYS,
-  buildMachineTrends,
+  createTrendsAccumulator,
   type MachineTrend,
   type TrendClientInput,
   type TrendLogInput,
 } from "../src/features/machine-trends/trends.ts";
-import { buildCompany, type CompanyBuild, type CompanyClientRecord } from "../src/features/machine-fit/company.ts";
+import type { CompanyBuild } from "../src/features/machine-fit/company.ts";
 import type { CompanyFitBlock } from "../src/features/machine-fit/fit-index.ts";
-import { readStudioFitDocs } from "./machine-fit-company.ts";
-import { performanceDrops, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/overview/performance.ts";
+import { buildCompanyFit } from "./machine-fit-company.ts";
+import { createPerformanceAccumulator, performanceWatchDocument, type PerformanceLogInput } from "../src/features/admin/overview/performance.ts";
 import { runOpeningsStep } from "./openings-step.ts";
+import { INSTANCE_MB, eachDoc, memoryWatch } from "./job-memory.ts";
+
+/**
+ * Every field of a set the trends (TrendLogInput, isPerformedLog,
+ * isDemoRecord) and the performance watch (PerformanceLogInput) read. A field
+ * left off this list is a field those rules silently stop seeing: add it here
+ * when either of them starts reading one.
+ */
+export const LOG_FIELDS = [
+  // Whose set, on what, in which session, at which studio.
+  "clientId",
+  "machineId",
+  "sessionId",
+  "studioId",
+  "homeStudioId",
+  "hostedAtStudioId",
+  "clientHomeStudioId",
+  "isDemo",
+  // What happened (lib/set-outcome.ts).
+  "outcome",
+  "reps",
+  "seconds",
+  "outcomeReps",
+  "outcomeTut",
+  "isTSC",
+  "isStaticHold",
+  // The load, the set-up and when.
+  "weight",
+  "machineSettings",
+  "createdAt",
+  "date",
+] as const;
+
+/** The client fields the trends and the watch read: everyone's home, the active ones' height. */
+const CLIENT_FIELDS = ["isActive", "height", "homeStudioId"] as const;
+
+/** How often, in sets, the heap is sampled while the window streams in. */
+const SAMPLE_EVERY = 2_000;
 
 const DAY_MS = 86_400_000;
 const BATCH_LIMIT = 400;
@@ -182,52 +234,58 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
   const windowStart = since.toISOString().slice(0, 10);
   const windowEnd = now.toISOString().slice(0, 10);
   log(`Window: ${windowStart} → ${windowEnd} (${windowDays} days)${dryRun ? " — DRY RUN" : ""}.`);
+  const memory = memoryWatch();
 
-  // 1. Clients. The trends use the ACTIVE ones (height and home studio are what
-  //    the breakdowns need) exactly as before. Machine fit uses everyone: a
-  //    past client's seat is still evidence of where that build sits. Only
-  //    the fields either step reads are fetched.
-  const clientsSnap = await db
-    .collection("clients")
-    .select("isActive", "height", "homeStudioId", "gender", "wingspan", "weight", "dateOfBirth", "age", "inbodySummary", "machineStats")
-    .get();
+  // 1. Clients, three fields each, streamed. The trends use the ACTIVE ones
+  //    (height and home studio are what the breakdowns need) exactly as
+  //    before; the performance watch, everyone's home. Machine fit reads its
+  //    own, a studio at a time (step 5).
   const clients = new Map<string, TrendClientInput>();
-  const fitClients: (CompanyClientRecord & { id: string })[] = [];
   const clientHomes = new Map<string, string | null>();
-  clientsSnap.docs.forEach((d) => {
+  for await (const d of eachDoc(db.collection("clients").select(...CLIENT_FIELDS))) {
     const c = d.data() as Record<string, unknown>;
     const height = typeof c.height === "string" ? c.height : null;
     const homeStudioId = typeof c.homeStudioId === "string" ? c.homeStudioId : null;
     clientHomes.set(d.id, homeStudioId);
     if (c.isActive === true) clients.set(d.id, { id: d.id, height, homeStudioId, isActive: true });
-    fitClients.push({
-      id: d.id,
-      height,
-      homeStudioId,
-      gender: typeof c.gender === "string" ? c.gender : null,
-      wingspan: typeof c.wingspan === "string" ? c.wingspan : null,
-      weight: typeof c.weight === "string" || typeof c.weight === "number" ? c.weight : null,
-      dateOfBirth: typeof c.dateOfBirth === "string" ? c.dateOfBirth : null,
-      age: typeof c.age === "number" ? c.age : null,
-      inbodySummary: (c.inbodySummary as CompanyClientRecord["inbodySummary"]) ?? null,
-      machineStats: (c.machineStats as CompanyClientRecord["machineStats"]) ?? null,
-    });
-  });
-  log(`${clients.size} active clients (${fitClients.length} on record).`);
+  }
+  log(`${clients.size} active clients (${clientHomes.size} on record).`);
 
   // 2. The window's sets, oldest first, so the LAST settings snapshot per client is the current one.
   //    createdAt is a Timestamp on every writer but one (LogPastSessionDialog wrote an ISO string until
   //    this round); a string never matches a Timestamp range, so those old rows are simply outside the window.
-  const logsSnap = await db
+  //    STREAMED (job memory, Oct 1 2026): each set goes into the running totals and is let go; the one
+  //    query and its order are as before. The watch (step 7) is caught on its own, so a set it can't take
+  //    stops the watch, never the trends.
+  const trends = createTrendsAccumulator(clients);
+  const performance = createPerformanceAccumulator({ now, clientHomes });
+  let performanceError: unknown = null;
+  const logStudioIds = new Set<string>();
+  let logCount = 0;
+  const logsQuery = db
     .collection("exerciseLogs")
     .where("createdAt", ">=", Timestamp.fromDate(since))
     .orderBy("createdAt", "asc")
-    .get();
-  const logs: TrendLogInput[] = logsSnap.docs.map((d) => d.data() as TrendLogInput);
-  log(`${logs.length} exercise logs in the window.`);
+    .select(...LOG_FIELDS);
+  for await (const d of eachDoc(logsQuery)) {
+    const l = d.data() as TrendLogInput & PerformanceLogInput;
+    logCount += 1;
+    trends.add(l);
+    if (performanceError === null) {
+      try {
+        performance.add(l);
+        if (l.studioId) logStudioIds.add(l.studioId);
+      } catch (err) {
+        performanceError = err ?? new Error("the performance watch could not take a set");
+      }
+    }
+    if (logCount % SAMPLE_EVERY === 0) memory.sample();
+  }
+  log(`${logCount} exercise logs in the window.`);
+  log(memory.line("Clients and the window's sets"));
 
   // 3. Aggregate — pure, tested.
-  const { machines, droppedSets } = buildMachineTrends(logs, clients);
+  const { machines, droppedSets } = trends.result();
   const machineIds = Object.keys(machines).sort();
   log(`${machineIds.length} machines with performed sets; ${droppedSets} sets dropped (no client, machine or load).`);
 
@@ -241,10 +299,10 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
     if (fit && typeof fit === "object") previousFit[d.id] = fit;
   });
 
-  // 5. Machine fit's company tier. Caught: the trends must not be lost to it.
+  // 5. Machine fit's company tier, a studio at a time. Caught: the trends must not be lost to it.
   let company: CompanyBuild | null = null;
   try {
-    company = buildCompany(await readStudioFitDocs(db, log), fitClients, now);
+    company = await buildCompanyFit(db, now, log, (studioId) => log(memory.line(`Machine fit, ${studioId}`)));
     const blockIds = Object.keys(company.blocks);
     log(
       `Machine fit: ${blockIds.length} machines, ` +
@@ -326,10 +384,11 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
   //    studio anyone calls home, or any set was logged at, gets a document.
   let watch: MachineTrendsRunSummary["watch"] = null;
   try {
-    const drops = performanceDrops(logs as PerformanceLogInput[], { now, clientHomes });
+    if (performanceError !== null) throw performanceError;
+    const drops = performance.result();
     const studioIds = new Set<string>();
     for (const home of clientHomes.values()) if (home) studioIds.add(home);
-    for (const l of logs as PerformanceLogInput[]) if (l.studioId) studioIds.add(l.studioId);
+    for (const id of logStudioIds) studioIds.add(id);
     for (const id of Object.keys(drops)) studioIds.add(id);
     let rowCount = 0;
     for (const studioId of [...studioIds].sort()) {
@@ -352,7 +411,7 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
   //    studio it can't build keeps last week's document.
   let openings: MachineTrendsRunSummary["openings"] = null;
   try {
-    const step = await runOpeningsStep({ db, now, dryRun, log });
+    const step = await runOpeningsStep({ db, now, dryRun, log, afterStudio: (name) => log(memory.line(`  Openings, ${name}`)) });
     openings = {
       studios: step.studios.length,
       written: dryRun ? step.studios.filter((s) => s.outcome === "dry-run").length : step.written,
@@ -378,13 +437,14 @@ export async function runMachineTrends(options: MachineTrendsRunOptions): Promis
       `${retire.length} retired` +
       (company ? `; ${Object.keys(company.reports).length} Kaizen reports, ${reportsRetired} retired.` : "."),
   );
+  log(`Memory: the run's peak was ${memory.runPeakMb()} MB of heap; the instance has ${INSTANCE_MB} MB.`);
 
   return {
     windowDays,
     windowStart,
     windowEnd,
     clientsRead: clients.size,
-    logsRead: logs.length,
+    logsRead: logCount,
     droppedSets,
     machinesWritten: documentIds.length,
     machinesRetired: retire.length,

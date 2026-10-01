@@ -36,7 +36,7 @@ The conversation is due at the studio's threshold (10 sessions left by default).
 | `use*.ts` | Firestore reads and writes. Nothing else here touches Firebase |
 | `*.tsx` | Trainer surfaces: the Renewal card, the log dialog, the briefing line, the Hub lane, My renewals |
 | `../admin/renewals/` | Operations → Renewals: the Pipeline, the Renewal Brief, Outcomes, Settings |
-| `server/renewals-job.ts` | The nightly job (Render cron `journey-cron-renewals`, 06:30 UTC); `scripts/run-renewals.ts` runs it from the PC, as a dry run by default |
+| `server/renewals-job.ts` | The nightly job (Render cron `journey-cron-renewals`, 06:30 UTC); `scripts/run-renewals.ts` runs it from the PC, as a dry run by default. One studio at a time since Oct 1 2026 (job memory): a first look to choose tonight's first syncs and pulls across the company, then each studio's pulls, snapshots, outcomes, writes and client states; a client's bookings and workouts read by client on existing indexes (`docs/KNOWN-TRAPS.md`, "Jobs read per studio with select") |
 
 ## Data
 
