@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ENGINE_VERSION,
   buildRenewalSnapshot,
   computePace,
   mindbodyDayKey,
@@ -178,10 +179,16 @@ describe("the two clocks", () => {
     expect(ends.chargeWarning).toBe(false);
     expect(ends.conversationDue).toBe(renews.conversationDue);
 
-    // Mindbody hasn't said: warn, rather than miss a real charge.
+    // Mindbody hasn't said, the package is matched and the studio never
+    // answered: the standard is ON (AJ, Sep 25 2026), so it warns — and says
+    // the answer is the standard, not the studio's.
     const unknown = withFlag(undefined);
-    expect(unknown.autoRenews).toBeNull();
+    expect(unknown.autoRenews).toBe(true);
+    expect(unknown.autoRenewsFrom).toBe("default");
+    expect(unknown.autoRenewsInherited).toEqual({ renews: true, from: "default" });
     expect(unknown.chargeWarning).toBe(true);
+    expect(renews.autoRenewsFrom).toBe("mindbody");
+    expect(ends.autoRenewsFrom).toBe("mindbody");
   });
 
   it("is on track at exactly twice a week", () => {
@@ -211,6 +218,169 @@ describe("the two clocks", () => {
     );
     expect(snap.sessionsLeft).toBe(9);
     expect(snap.conversationDue).toBe(true);
+  });
+});
+
+describe("auto-renew, decided in one place (AJ, Sep 25 2026)", () => {
+  // A Committed client banking sessions, the charge inside a 60-day window.
+  const build = (
+    over: { settings?: Partial<RenewalSettings>; client?: Partial<Client>; contract?: Partial<MindbodyContract> } = {},
+  ) =>
+    buildRenewalSnapshot(
+      input({
+        settings: { ...DEFAULT_RENEWAL_SETTINGS, chargeWarnDays: 60, ...over.settings },
+        client: client({
+          mindbodyContracts: {
+            "9001": contract({ id: 9001, startDate: START, endDate: CHARGE, upcomingAutopayEvents: [], ...over.contract }),
+          },
+          mindbodyServices: { a: service(1, "96 Sessions - 2X Week", 20) },
+          ...over.client,
+        }),
+        attendance: visitsAt(1, "2026-06-01"),
+      }),
+    );
+  const mark = (renews: boolean, contractId = "9001") => ({
+    autoRenewMark: { renews, contractId, setAt: "2026-09-10T15:00:00.000Z", setById: "uid-aj", setByName: "AJ" },
+  });
+
+  it("writes version 2", () => {
+    expect(ENGINE_VERSION).toBe(2);
+    expect(build().version).toBe(2);
+  });
+
+  it("at a studio switched OFF: billing just ends — still banks, no warning, the conversation as usual", () => {
+    const on = build();
+    const off = build({ settings: { packagesRenewAutomatically: false } });
+    expect(off.autoRenews).toBe(false);
+    expect(off.autoRenewsFrom).toBe("studio");
+    expect(off.autoRenewsInherited).toEqual({ renews: false, from: "studio" });
+    expect(off.situation).toBe("will-bank");
+    expect(off.chargeWarning).toBe(false);
+    expect(off.conversationDue).toBe(on.conversationDue);
+    expect(on.chargeWarning).toBe(true);
+  });
+
+  it("lets a package's own answer win over the studio's", () => {
+    const packages = DEFAULT_RENEWAL_SETTINGS.packages.map((p) =>
+      p.key === "committed" ? { ...p, renewsAutomatically: true } : p,
+    );
+    const snap = build({ settings: { packagesRenewAutomatically: false, packages } });
+    expect(snap.autoRenews).toBe(true);
+    expect(snap.autoRenewsFrom).toBe("package");
+    expect(snap.chargeWarning).toBe(true);
+  });
+
+  it("lets a trainer's mark on THIS contract win over the studio, and remembers the answer without it", () => {
+    const snap = build({ settings: { packagesRenewAutomatically: true }, client: mark(false) });
+    expect(snap.autoRenews).toBe(false);
+    expect(snap.autoRenewsFrom).toBe("client");
+    expect(snap.autoRenewsInherited).toEqual({ renews: true, from: "studio" });
+    expect(snap.situation).toBe("will-bank");
+    expect(snap.chargeWarning).toBe(false);
+  });
+
+  it("ignores a mark made on another contract", () => {
+    const snap = build({ settings: { packagesRenewAutomatically: true }, client: mark(false, "1234") });
+    expect(snap.autoRenews).toBe(true);
+    expect(snap.autoRenewsFrom).toBe("studio");
+    expect(snap.chargeWarning).toBe(true);
+  });
+
+  it("puts Mindbody's own flag over a trainer's mark: Mindbody owns contracts", () => {
+    const snap = build({ contract: { isAutoRenewing: true }, client: mark(false) });
+    expect(snap.autoRenews).toBe(true);
+    expect(snap.autoRenewsFrom).toBe("mindbody");
+    expect(snap.autoRenewsInherited).toEqual({ renews: true, from: "mindbody" });
+  });
+
+  it("gives a contract the table doesn't recognise no answer, even at a studio that is ON", () => {
+    const snap = build({
+      settings: { packagesRenewAutomatically: true },
+      client: { mindbodyServices: { a: service(1, "10 Pack", 20, { count: 10 }) } },
+    });
+    expect(snap.packageKey).toBeNull();
+    expect(snap.autoRenews).toBeNull();
+    expect(snap.autoRenewsFrom).toBeNull();
+    expect(snap.autoRenewsInherited).toBeNull();
+    expect(snap.situation).toBe("unknown");
+    expect(snap.chargeWarning).toBe(false);
+    // A mark answers it.
+    const marked = build({
+      settings: { packagesRenewAutomatically: true },
+      client: { mindbodyServices: { a: service(1, "10 Pack", 20, { count: 10 }) }, ...mark(true) },
+    });
+    expect(marked.autoRenews).toBe(true);
+    expect(marked.autoRenewsFrom).toBe("client");
+    expect(marked.autoRenewsInherited).toBeNull();
+  });
+
+  it("claims no renewal under a coach's paid-in-full or banked-sessions lock over a running contract", () => {
+    const lock = (payment: "pif" | "sessions-only" | "monthly") => ({
+      contractTierOverride: { term: 12 as const, payment, setAt: "2026-09-10T15:00:00.000Z", setByName: "AJ" },
+    });
+    for (const payment of ["pif", "sessions-only"] as const) {
+      // Mindbody's flag and a mark included: the lock is there because Mindbody's reading is wrong for her.
+      const snap = build({ contract: { isAutoRenewing: true }, client: { ...lock(payment), ...mark(true) } });
+      expect(snap.paymentMode, payment).toBe("monthly");
+      expect(snap.autoRenews, payment).toBeNull();
+      expect(snap.autoRenewsFrom, payment).toBeNull();
+      // The answer without her lock or her mark: what renewalOf rebuilds from once the lock comes off.
+      expect(snap.autoRenewsInherited, payment).toEqual({ renews: true, from: "mindbody" });
+      // No "Auto-renews" claim, and no "before the charge" warning: nothing bills, so no charge is coming.
+      expect(snap.situation, payment).toBe("will-bank");
+      expect(snap.chargeWarning, payment).toBe(false);
+    }
+    const studioOn = build({ settings: { packagesRenewAutomatically: true }, client: lock("pif") });
+    expect(studioOn.autoRenews).toBeNull();
+    expect(studioOn.autoRenewsInherited).toEqual({ renews: true, from: "studio" });
+    expect(studioOn.chargeWarning).toBe(false);
+    // A monthly lock still bills: the order as ever, and its warning.
+    const monthly = build({ client: lock("monthly") });
+    expect(monthly.autoRenewsFrom).toBe("default");
+    expect(monthly.chargeWarning).toBe(true);
+  });
+
+  it("never brings a warning back under a lock where Mindbody, the studio, the package or a mark said no", () => {
+    const pif = {
+      contractTierOverride: { term: 12 as const, payment: "pif" as const, setAt: "2026-09-10T15:00:00.000Z", setByName: "AJ" },
+    };
+    const noPackage = DEFAULT_RENEWAL_SETTINGS.packages.map((p) =>
+      p.key === "committed" ? { ...p, renewsAutomatically: false } : p,
+    );
+    const cases: Array<[string, Parameters<typeof build>[0]]> = [
+      ["Mindbody no", { contract: { isAutoRenewing: false } }],
+      ["studio OFF", { settings: { packagesRenewAutomatically: false } }],
+      ["package no", { settings: { packages: noPackage } }],
+      ["mark no", { client: mark(false) }],
+    ];
+    for (const [name, over] of cases) {
+      // Without the lock: the "no" switches the warning off.
+      const bare = build(over);
+      expect(bare.autoRenews, name).toBe(false);
+      expect(bare.chargeWarning, name).toBe(false);
+      // With it: no answer, and still no warning.
+      const locked = build({ ...over, client: { ...over?.client, ...pif } });
+      expect(locked.autoRenews, name).toBeNull();
+      expect(locked.situation, name).toBe("will-bank");
+      expect(locked.chargeWarning, name).toBe(false);
+    }
+  });
+
+  it("says nothing of auto-renew for a package paid in full, whatever a mark says", () => {
+    const snap = buildRenewalSnapshot(
+      input({
+        client: client({
+          mindbodyContracts: {},
+          mindbodyServices: { a: service(1, "144 PIF", 100, { count: 144 }) },
+          ...mark(false),
+        }),
+        attendance: visitsAt(2, "2026-06-01"),
+      }),
+    );
+    expect(snap.paymentMode).toBe("prepaid");
+    expect(snap.autoRenews).toBeNull();
+    expect(snap.autoRenewsFrom).toBeNull();
+    expect(snap.autoRenewsInherited).toBeNull();
   });
 });
 

@@ -569,8 +569,10 @@ describe("AccountPage — the page", () => {
     const host = await mount(<Harness c={carol()} go={go} />);
     const lede = host.querySelector(".cx-page-lede")?.textContent ?? "";
     expect(lede).toBe(
-      "Her contact details as Mindbody knows them, then her membership. The nickname and how she found us are edited here; everything else changes in Mindbody and arrives with the next sync.",
+      "Her contact details as Mindbody knows them, then her membership. The nickname, how she found us, where she can train and the tier lock are changed here, and whether she is on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.",
     );
+    // The box below says auto-renewal is changed in Mindbody; the lede agrees.
+    expect(lede).not.toMatch(/auto-renewal[^;]*changed here/);
     expect(lede).not.toContain("Carol");
     // A client typed into Journey: her details are typed here, not synced.
     const him = await mount(<Harness c={sam()} />);

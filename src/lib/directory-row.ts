@@ -23,6 +23,9 @@ export interface DirectoryPackageRead {
   nextSession: string | null;
 }
 
+/** An auto-renew answer about HER contract, not a package's or the studio's (renewals/auto-renew.ts). */
+const CONTRACT_SAYS = new Set<string>(["mindbody", "client"]);
+
 const MODE_WORD: Record<string, string> = {
   monthly: "monthly",
   prepaid: "paid in full",
@@ -41,7 +44,11 @@ export function directoryPackageRead(client: Client, today?: string): DirectoryP
     if (typeof r.sessionsLeft === "number") {
       sessionsLeft = `${r.sessionsLeft} left`;
       sessionsLeftTone = r.sessionsLeft <= 3 ? "low" : "ok";
-    } else if (r.paymentMode === "monthly" && r.autoRenews) {
+    } else if (r.paymentMode === "monthly" && r.autoRenews === true && CONTRACT_SAYS.has(r.autoRenewsFrom ?? "mindbody")) {
+      // Stands in for an unknown count only where HER contract is known to
+      // renew: Mindbody said so, or a trainer marked her. A studio's default
+      // is not a confident claim about her (Sep 25 2026). A version-1
+      // snapshot (no source) carried Mindbody's flag alone.
       sessionsLeft = "Auto-renews";
       sessionsLeftTone = "ok";
     }

@@ -205,6 +205,41 @@ describe("read first, watch and renew", () => {
     expect(entries[0].moments.find((m) => m.family === "watch")?.sentence).toBe("Pulse: Sleep");
     expect(entries[0].moments.find((m) => m.family === "renew")?.sentence).toBe("Renewal: 3 left. Talk about it today?");
   });
+
+  // Auto-renewal (Oct 1 2026): the Run-sheet reads her renewal through
+  // renewalOf, so a trainer's "not on auto-renewal" mark on the profile stops
+  // the before-the-charge talk at once, as on the Hub card and the Wrap-up.
+  it("a before-the-charge renewal follows the profile's auto-renewal mark", () => {
+    const warning = {
+      version: 2,
+      cycleKey: "9001",
+      clientContractId: "9001",
+      situation: "will-bank",
+      paymentMode: "monthly",
+      chargeDate: "2026-10-20",
+      bankedAtCharge: 16,
+      sessionsLeft: 30,
+      chargeWarning: true,
+      conversationDue: false,
+      renewalOnBooks: null,
+      autoRenews: true,
+      autoRenewsFrom: "studio",
+      autoRenewsInherited: { renews: true, from: "studio" },
+      flags: [],
+      dataGaps: [],
+    } as never;
+    const booking = [makeBooking({ clientId: "c", start: today("16:00") })];
+    const renews = run([makeClient({ id: "c", renewal: warning })], booking);
+    expect(renews[0].moments.find((m) => m.family === "renew")?.sentence).toBe(
+      "Auto-renews with about 16 sessions banked. Talk about it today?",
+    );
+    const marked = makeClient({
+      id: "c",
+      renewal: warning,
+      autoRenewMark: { renews: false, contractId: "9001", setAt: "2026-09-25T14:00:00.000Z" },
+    });
+    expect(run([marked], booking)[0].moments.some((m) => m.family === "renew")).toBe(false);
+  });
 });
 
 describe("noise rules", () => {

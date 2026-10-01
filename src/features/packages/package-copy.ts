@@ -10,11 +10,14 @@
  *     Sep 24: "does not guarantee monthly payers"), so it says "when you pay
  *     in full".
  *   - After the last payment: sessions never expire, anywhere (AJ, Sep 24);
- *     whether a package renews by itself is each studio's answer, per
- *     package (renewals/settings.ts `renewsAutomatically`). Until a studio
- *     answers, the screen says the studio will explain; it never claims
- *     auto-renew where it isn't on. The conversation before the last payment
- *     is AJ's answer to "what happens after the last payment".
+ *     whether a package renews by itself is the package's own answer, else
+ *     the studio's, else the standard ON (AJ, Sep 25: on at the franchise
+ *     studios, off at the corporate ones, on by default). lineup() fills
+ *     every tier's `renewsAutomatically` in (renewals/auto-renew.ts,
+ *     packageRenews), so a prospect hears what a client on the package
+ *     reads; the paid-once view passes "no" (PackagesPanel). The
+ *     conversation before the last payment is AJ's answer to "what happens
+ *     after the last payment".
  *   - "Only by coming in, or cancelling inside 24 hours": AJ, Sep 24
  *     (proposal: "You only lose a session if you cancel within 24 hours").
  *   - The mission line: docs/msf-academy, Academy 1 - Introduction, Mission.
@@ -147,13 +150,14 @@ export const SESSION_USE_RULE =
   "A session is only used by coming in, or by cancelling with less than 24 hours’ notice.";
 
 /**
- * What time away does to this package. Where the studio said the package
- * renews by itself, the renewal at the last payment is said out loud: the
- * new package's payments begin while unused sessions carry on (the
- * "charged while sessions are banked" case in docs/business/renewals.md).
- * Where it doesn't, the payments simply finish. Where the studio hasn't
- * said, nothing is implied about what follows: the after-the-last-payment
- * card says the studio will explain.
+ * What time away does to this package. Where the package renews by itself,
+ * the renewal at the last payment is said out loud: the new package's
+ * payments begin while unused sessions carry on (the "charged while sessions
+ * are banked" case in docs/business/renewals.md). Where it doesn't, the
+ * payments simply finish. The last branch — no answer at all — is only a
+ * fallback now, for a tier that bypassed lineup() (which always answers):
+ * nothing is implied, and the after-the-last-payment card says the studio
+ * will explain.
  */
 export function lifeHappensSentence(s: Stretch, t: PackageTier, visits: number | null): string {
   const pace = timesAWeek(visits);

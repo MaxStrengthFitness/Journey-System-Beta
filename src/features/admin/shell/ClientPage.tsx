@@ -18,8 +18,10 @@
  *                                          bookings as the server answered
  *                                          them, and the studio's package
  *                                          table
- *   the renewal line                       last night's snapshot, in the
- *                                          renewals' own words (sentences.ts)
+ *   the renewal line                       last night's snapshot through
+ *                                          renewalOf (her auto-renewal mark
+ *                                          applied now), in the renewals'
+ *                                          own words (sentences.ts)
  *   her journey and her case               the Journey's rules (journey/),
  *                                          for a client whose home is this
  *                                          studio (phase 4)
@@ -38,6 +40,7 @@ import { buildDirectoryRow, prepareDirectory, type DirectoryRow } from "../../cl
 import { buildPackageNameIndex } from "../../renewals/settings";
 import { chipText, paceSentence, situationSentence } from "../../renewals/sentences";
 import type { RenewalSnapshot } from "../../renewals/types";
+import { renewalOf } from "../../renewals/auto-renew";
 import { useRenewalSettings } from "../../renewals/useRenewalSettings";
 import { AdminButton, AdminNotice } from "../primitives";
 import { JourneyCase } from "../journey/JourneyCase";
@@ -135,7 +138,9 @@ export function ClientPage(props: ClientPageProps) {
   const client = plain.client;
   const row = entry?.row ?? plain.row;
   const today = journeys.today || plain.today;
-  const renewal = (client?.renewal as RenewalSnapshot | undefined) ?? null;
+  // Last night's snapshot with her auto-renewal mark and the lock applied as
+  // they are now (renewals/auto-renew.ts): one client, so renewalOf.
+  const renewal: RenewalSnapshot | null = useMemo(() => renewalOf(client), [client]);
   const me = { id: auth.currentUser?.uid ?? authTrainer.authUid ?? authTrainer.id ?? "", name: authTrainer.fullName };
 
   return (

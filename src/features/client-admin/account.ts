@@ -48,10 +48,20 @@
  * Pronoun-aware only where a sentence needs one; the text is otherwise the
  * record's. Pure: account.test.ts, run with TZ=America/New_York.
  */
-import type { Client, ContractTierOverride, Studio } from "../../types";
+import type { AutoRenewMark, Client, ContractTierOverride, Studio } from "../../types";
 import type { RenewalSituation } from "../renewals/types";
-import { SITUATION_TONE, billingEndPhrase, chipText, dayLabel, paceSentence, situationSentence } from "../renewals/sentences";
+import {
+  SITUATION_TONE,
+  autoRenewSourceWords,
+  billingEndPhrase,
+  chipText,
+  dayLabel,
+  paceSentence,
+  situationSentence,
+} from "../renewals/sentences";
 import { mindbodyDayKey } from "../renewals/engine";
+import { isAutoRenewMark, liveMindbodyFlag, lockSaysNothingBills, markFor, renewalOf } from "../renewals/auto-renew";
+import { formatStudioDate } from "../../lib/studio-time";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { clientLegalName } from "../../lib/client-name";
 import { waiverState } from "../../lib/client-waiver";
@@ -481,7 +491,8 @@ export function tierSourceLine(tier: Pick<ContractTier, "source" | "evidence">):
   return tier.evidence?.trim() || TIER_SOURCE_TEXT[tier.source];
 }
 
-export type PackageClient = Pick<Client, "mindbodyContracts" | "mindbodyServices"> & Partial<Pick<Client, "renewal" | "contractTierOverride">>;
+export type PackageClient = Pick<Client, "mindbodyContracts" | "mindbodyServices"> &
+  Partial<Pick<Client, "renewal" | "contractTierOverride" | "autoRenewMark">>;
 
 /**
  * What Mindbody says she holds right now: every pricing option with sessions
@@ -586,7 +597,12 @@ export function extraWords(split: Pick<SessionsSplit, "extra">): string | null {
 /**
  * The package card's words. `pendingOverride` is the lock as the form holds
  * it (a staged lock shows before it is saved); the record's is Mindbody's
- * reading only when there is no lock.
+ * reading only when there is no lock. `pendingMark` is the auto-renewal box
+ * as the form holds it, so a staged untick reads "Billing ends" before Save
+ * (renewals/auto-renew.ts, renewalOf). The lock goes into that decision too:
+ * a paid-in-full or banked-sessions lock claims no renewal ("Payments
+ * finish"), staged or saved, so the card never says "Auto-renews" under
+ * "paid in full".
  */
 export function packageView(
   client: PackageClient,
@@ -594,10 +610,11 @@ export function packageView(
   today: string,
   /** Left in the contract and extra (`sessionsSplit`); left out, the on-hand total speaks. */
   split?: SessionsSplit | null,
+  pendingMark: AutoRenewMark | null = client.autoRenewMark ?? null,
 ): PackageView {
   const tier = resolveContractTier({ ...client, contractTierOverride: pendingOverride });
   const detected = resolveContractTier({ ...client, contractTierOverride: null });
-  const r = client.renewal ?? null;
+  const r = renewalOf({ ...client, autoRenewMark: pendingMark, contractTierOverride: pendingOverride });
 
   const headline = tier.term ? PACKAGE_NAME[tier.term] : tier.label;
   const terms = tier.term
@@ -650,9 +667,10 @@ export function packageView(
   let when = "No end date on file";
   if (r?.chargeDate) {
     const est = r.chargeDateSource === "estimate" ? " (estimated)" : "";
-    // Mindbody's own flag: "Billing ends" when it won't renew, and neither
-    // word when it hasn't said (renewals/sentences.ts, billingEndPhrase).
-    when = `${r.autoRenews === true ? "Renews" : cap(billingEndPhrase(r.autoRenews))} ${dayLabel(r.chargeDate, today)}${est}`;
+    // The decided answer (renewals/auto-renew.ts), in every renewal screen's
+    // words: "Auto-renews", "Billing ends", or neither when there is no
+    // answer (renewals/sentences.ts, billingEndPhrase).
+    when = `${cap(billingEndPhrase(r.autoRenews))} ${dayLabel(r.chargeDate, today)}${est}`;
   } else if (r?.runOutDate) {
     when = `Runs out around ${dayLabel(r.runOutDate, today)} (estimated)`;
   } else if (contractEnd) {
@@ -689,6 +707,246 @@ export function packageView(
     gap: gap && gap !== status ? gap : null,
     tone: tabTone(r?.situation),
     worked: !!r,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Auto-renewal: the box on the package card                           */
+/* ------------------------------------------------------------------ */
+
+/** The box's label. */
+export const AUTO_RENEW_LABEL = "On auto-renewal";
+/** The second answer, offered beside the box only when Journey can't tell (`pair`). */
+export const AUTO_RENEW_NO_LABEL = "Not on auto-renewal";
+/**
+ * Clears a mark, so the inherited answer applies again. Named by what it
+ * does: that answer may be the package's, the studio's, the standard, or
+ * none at all, so the button never names one.
+ */
+export const AUTO_RENEW_CLEAR_LABEL = "Remove this mark";
+
+export interface AutoRenewView {
+  /**
+   * pick   the box: this reader may mark her, and Mindbody hasn't said
+   * line   the answer in words, no box: Mindbody has said, or this reader
+   *        may not change the record
+   * note   only a sentence: the box arrives after tonight's renewal run
+   * null   nothing: no monthly contract with a charge date (paid in full,
+   *        banked sessions, no package), or a paid-in-full or banked-sessions
+   *        lock, staged or saved
+   */
+  kind: "pick" | "line" | "note" | null;
+  /** Whether the box shows ticked: the decided answer, with the staged mark. */
+  pressed: boolean;
+  /** The decided answer with the staged mark; null = Journey can't tell. */
+  answer: boolean | null;
+  /**
+   * Two answers, "On auto-renewal" and "Not on auto-renewal", instead of one
+   * box: there is no inherited answer (Mindbody hasn't said, and the package
+   * isn't matched), so an unticked box would read as "no" while saving
+   * nothing. Each shows pressed only once it is the answer.
+   */
+  pair: boolean;
+  /** The sentence under the box, or the line itself. */
+  source: string | null;
+  metas: string[];
+  /** "Remove this mark" is offered: a mark for this contract is saved or staged. */
+  canClear: boolean;
+  /**
+   * What "Remove this mark" stages: null, or — when the saved mark was made
+   * on an earlier contract — that saved mark itself. The decision already
+   * ignores it, so removing a tap only undoes the tap: the form is clean
+   * again, and the record of the earlier contract's mark is kept.
+   */
+  clearTo: AutoRenewMark | null;
+  /** The contract a tap marks. */
+  contractId: string | null;
+}
+
+const NO_AUTO_RENEW_VIEW: AutoRenewView = {
+  kind: null,
+  pressed: false,
+  answer: null,
+  pair: false,
+  source: null,
+  metas: [],
+  canClear: false,
+  clearTo: null,
+  contractId: null,
+};
+
+/** "Sep 25, 2026" — the studio's day of a mark's ISO time. */
+function markDay(mark: AutoRenewMark): string {
+  return formatStudioDate(mark.setAt, { month: "short", day: "numeric", year: "numeric" }, undefined, "");
+}
+
+/** "Marked by AJ · Sep 25, 2026", "Marked Sep 25, 2026". */
+function markStamp(mark: AutoRenewMark): string {
+  const who = mark.setByName?.trim();
+  const day = markDay(mark);
+  if (who) return joinDots([`Marked by ${who}`, day]);
+  return day ? `Marked ${day}` : "Marked on the profile";
+}
+
+function sameMark(a: AutoRenewMark | null | undefined, b: AutoRenewMark | null | undefined): boolean {
+  if (!a || !b) return (a ?? null) === (b ?? null);
+  return a === b || (a.renews === b.renews && a.contractId === b.contractId && a.setAt === b.setAt);
+}
+
+/**
+ * Every word of the package card's auto-renewal box (Sep 25 2026; AJ: "just
+ * allow trainers to mark a check box on a profile if the client is on auto
+ * renewal"). The box says what the decided answer is WITH the form's staged
+ * mark (renewals/auto-renew.ts, renewalOf), and where it came from, so a
+ * trainer ticks it only when the inherited answer is wrong for her.
+ *
+ * `client` is the saved record; `pendingMark` and `pendingOverride` are the
+ * form's. Pure; account.test.ts holds every state.
+ */
+export function autoRenewView({
+  client,
+  pendingMark,
+  pendingOverride,
+  canEdit,
+  pronouns: p,
+  studioName,
+}: {
+  client: Partial<Pick<Client, "renewal" | "autoRenewMark" | "mindbodyContracts" | "contractTierOverride">>;
+  pendingMark: AutoRenewMark | null;
+  pendingOverride: ContractTierOverride | null;
+  canEdit: boolean;
+  pronouns: Pronouns;
+  studioName: string | null | undefined;
+}): AutoRenewView {
+  // A lock that says paid in full or banked sessions: nothing bills, so
+  // nothing renews, and the decision says none (auto-renew.ts, step 1). No
+  // box to contradict it. Below, the form's lock is the one read, so a lock
+  // staged to come off shows the answer it will have.
+  if (lockSaysNothingBills(pendingOverride)) return NO_AUTO_RENEW_VIEW;
+  const record = { ...client, contractTierOverride: pendingOverride };
+  const saved = renewalOf(record);
+  if (!saved || saved.paymentMode !== "monthly" || !saved.chargeDate || !saved.clientContractId) return NO_AUTO_RENEW_VIEW;
+  const contractId = saved.clientContractId;
+  const is = agree(p, "is", "are");
+  const isNot = agree(p, "isn't", "aren't");
+  const label = (renews: boolean) => (renews ? AUTO_RENEW_LABEL : AUTO_RENEW_NO_LABEL);
+  const line = (text: string, pressed: boolean): AutoRenewView => ({
+    kind: "line",
+    pressed,
+    answer: pressed,
+    pair: false,
+    source: text,
+    metas: [],
+    canClear: false,
+    clearTo: null,
+    contractId,
+  });
+  // Mindbody owns contracts: where it has said, the box is its answer, in words.
+  const mindbodyLine = (renews: boolean) =>
+    canEdit
+      ? line(`${label(renews)} · Mindbody's contract says so. Change it in Mindbody.`, renews)
+      : line(`${label(renews)} · ${autoRenewSourceWords("mindbody")}`, renews);
+
+  // A snapshot from before this round: its flag was Mindbody's alone.
+  if (!(typeof saved.version === "number" && saved.version >= 2)) {
+    const mb = liveMindbodyFlag(client.mindbodyContracts, contractId) ?? (typeof saved.autoRenews === "boolean" ? saved.autoRenews : undefined);
+    if (typeof mb === "boolean") return mindbodyLine(mb);
+    if (!canEdit) return NO_AUTO_RENEW_VIEW;
+    return {
+      kind: "note",
+      pressed: false,
+      answer: null,
+      pair: false,
+      source: null,
+      metas: ["Auto-renewal can be marked here after tonight's renewal run."],
+      canClear: false,
+      clearTo: null,
+      contractId,
+    };
+  }
+
+  const pending = renewalOf({ ...record, autoRenewMark: pendingMark }) ?? saved;
+  if (pending.autoRenewsFrom === "mindbody" && typeof pending.autoRenews === "boolean") return mindbodyLine(pending.autoRenews);
+
+  const savedMark = isAutoRenewMark(client.autoRenewMark) ? client.autoRenewMark : null;
+  const savedHere = savedMark !== null && savedMark.contractId === contractId;
+
+  if (!canEdit) {
+    if (typeof saved.autoRenews !== "boolean") return NO_AUTO_RENEW_VIEW;
+    const words =
+      saved.autoRenewsFrom === "client" && savedHere
+        ? markStamp(savedMark).replace(/^Marked/, "marked")
+        : autoRenewSourceWords(saved.autoRenewsFrom);
+    return line(joinDots([label(saved.autoRenews), words]), saved.autoRenews);
+  }
+
+  const pendingHere = markFor(pendingMark, contractId);
+  const staged = !sameMark(pendingMark, savedMark);
+  const studio = studioName?.trim() || null;
+  const inherited = pending.autoRenewsInherited ?? null;
+  const pkg = pending.packageLabel?.split(" · ")[0]?.trim() || "this package";
+  const tickHint = `Untick if ${p.subject} ${isNot} on auto-renewal.`;
+  const untickHint = `Tick if ${p.subject} ${is} on auto-renewal.`;
+  const unmatched = "Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings";
+  // Where a cleared mark goes back to, in the Brief's and the Card's words
+  // (sentences.ts): the package's, the studio's, the standard — or nothing.
+  const backTo = autoRenewSourceWords(inherited?.from);
+
+  let source: string;
+  if (staged) {
+    source = pendingHere
+      ? "Tap Save changes on the bar to keep it."
+      : inherited && backTo
+        ? `Back to ${backTo} when you save.`
+        : `Back to no answer when you save: ${unmatched}.`;
+  } else if (savedHere) {
+    source = `${markStamp(savedMark)}.`;
+  } else if (!inherited) {
+    source = `Journey can't tell: ${unmatched}. Tap one once you know whether ${p.subject} ${is} on auto-renewal.`;
+  } else if (inherited.from === "package") {
+    source = inherited.renews
+      ? `${studio ?? "The studio"} set ${pkg} to renew automatically, so this starts ticked. ${tickHint}`
+      : `${studio ?? "The studio"} set ${pkg} not to renew by itself, so this starts unticked. ${untickHint}`;
+  } else if (inherited.from === "studio") {
+    const whose = studio ? `${studio}'s` : "The studio's";
+    source = inherited.renews
+      ? `${whose} packages renew automatically, so this starts ticked. ${tickHint}`
+      : `${whose} packages don't renew by themselves, so this starts unticked. ${untickHint}`;
+  } else {
+    // "default": the studio never answered, so the standard (ON) — never
+    // credited to the studio as its own answer.
+    source = inherited.renews
+      ? `${studio ?? "The studio"} hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. ${tickHint}`
+      : `${studio ?? "The studio"} hasn't said whether its packages renew by themselves. The standard is no, so this starts unticked. ${untickHint}`;
+  }
+
+  const metas = [
+    `This tells Journey's renewal screens what Mindbody is set to. It doesn't change ${p.possessive} billing: auto-renewal itself is changed in Mindbody.`,
+  ];
+  // A mark from an earlier contract is shown, never used (auto-renew.ts).
+  if (savedMark && !savedHere && !pendingHere) {
+    const who = savedMark.setByName?.trim();
+    metas.push(`${who ? `${who}'s mark` : "The last mark"} was for the contract before this one.`);
+  }
+  // Saved, and the stored nightly snapshot still says otherwise: the lists
+  // catch up tonight. "Saved" is the RECORD — its own lock, not the form's —
+  // so a lock only staged to come off never claims a catch-up.
+  if (!staged && (client.renewal?.autoRenews ?? null) !== (renewalOf(client)?.autoRenews ?? null)) {
+    metas.push("The renewal lists catch up tonight.");
+  }
+
+  const answer = typeof pending.autoRenews === "boolean" ? pending.autoRenews : null;
+  return {
+    kind: "pick",
+    pressed: answer === true,
+    answer,
+    pair: !inherited,
+    source,
+    metas,
+    canClear: pendingHere,
+    // Removing a tap over an earlier contract's saved mark puts that mark back.
+    clearTo: client.autoRenewMark && !markFor(client.autoRenewMark, contractId) ? client.autoRenewMark : null,
+    contractId,
   };
 }
 
@@ -766,12 +1024,20 @@ function eraTile(prior: PriorHistory | null, coverage: HistoryCoverage): Timelin
  * the prior record's sessions, or — with no record and a story Journey does
  * not hold whole — a "Before Journey" tile, so the list is never read as
  * her whole history. Month labels are Mindbody's UTC days.
+ *
+ * `lock` is the tier lock as the form holds it: under one that says paid in
+ * full or banked sessions, nothing bills, so a running or coming contract's
+ * tile never says "Auto-renews" beside the card's "Payments finish"
+ * (renewals/auto-renew.ts, step 1). An ended contract's tile keeps
+ * Mindbody's record of it.
  */
 export function membershipTimeline(
   rows: readonly ContractTermRow[],
   prior: PriorHistory | null,
   coverage: HistoryCoverage,
+  lock: ContractTierOverride | null = null,
 ): TimelineTile[] {
+  const nothingBills = lockSaysNothingBills(lock);
   const era = eraTile(prior, coverage);
   const ordered = [...rows].sort((a, b) => {
     const at = a.start?.getTime() ?? null;
@@ -795,7 +1061,7 @@ export function membershipTimeline(
       pills: [
         row.tier?.term ? `${row.tier.term} mo` : null,
         row.kind === "paid-in-full" ? "Paid in full" : null,
-        row.autoRenews ? "Auto-renews" : null,
+        row.autoRenews && !(nothingBills && (row.status === "active" || row.status === "upcoming")) ? "Auto-renews" : null,
         row.boughtOnline ? "Bought online" : null,
       ].filter((p): p is string => !!p),
       sessions:
@@ -886,14 +1152,15 @@ export function accountGlance(
   // the slot says what the page says — typed in Journey, not linked.
   const linked = isMindbodyLinked(client);
   const waiver = waiverState(client);
-  const r = client.renewal ?? null;
+  // With her auto-renewal mark applied, so the slot says what the card says.
+  const r = renewalOf(client);
 
   let renewal: string | null = null;
   if (r && (r.situation === "ended" || r.situation === "lapsed")) {
     renewal = chipText(r, today);
   } else if (r && typeof r.sessionsLeft === "number") {
     const est = r.sessionsLeftSource === "estimate" ? " (estimated)" : "";
-    const renews = r.chargeDate ? `${r.autoRenews === true ? "renews" : billingEndPhrase(r.autoRenews)} ${dayLabel(r.chargeDate, today)}` : null;
+    const renews = r.chargeDate ? `${billingEndPhrase(r.autoRenews)} ${dayLabel(r.chargeDate, today)}` : null;
     renewal = joinDots([`${plural(r.sessionsLeft, "session")} left${est}`, renews]);
   }
 
@@ -953,7 +1220,10 @@ export function accountLede(
   const how = !canEdit
     ? `Read only here: ${p.possessive} home studio keeps the record.`
     : linked
-      ? `The nickname and how ${p.subject} found us are edited here; everything else changes in Mindbody and arrives with the next sync.`
+      ? // Auto-renewal is NOTED here, never changed: the box below says its
+        // billing is changed in Mindbody (autoRenewView), so the lede must not
+        // say otherwise.
+        `The nickname, how ${p.subject} found us, where ${p.subject} can train and the tier lock are changed here, and whether ${p.subject} ${agree(p, "is", "are")} on auto-renewal is noted here for Journey's renewal screens; everything else changes in Mindbody and arrives with the next sync.`
       : `Mindbody does not hold ${p.object} yet, so ${p.possessive} details are typed here until ${p.subject} ${agree(p, "is", "are")} linked.`;
   return `${opening} ${how}`;
 }

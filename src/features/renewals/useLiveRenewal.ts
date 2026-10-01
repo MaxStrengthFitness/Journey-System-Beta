@@ -47,6 +47,7 @@ import {
   feelFromSessions,
 } from "./attendance";
 import { useRenewalSettings } from "./useRenewalSettings";
+import { renewalOf } from "./auto-renew";
 import type { RenewalSettings, RenewalSnapshot } from "./types";
 
 const DAY_MS = 86_400_000;
@@ -66,7 +67,10 @@ export interface LiveRenewalState {
   live: RenewalSnapshot | null;
   /** What the nightly job last stored. */
   stored: RenewalSnapshot | null;
-  /** The best available: live when ready, else stored. */
+  /**
+   * The best available: live when ready, else the stored one with the
+   * client's auto-renew mark applied (auto-renew.ts, renewalOf).
+   */
   snapshot: RenewalSnapshot | null;
   settings: RenewalSettings;
   loading: boolean;
@@ -79,7 +83,7 @@ export function useLiveRenewal(
 ): LiveRenewalState {
   const enabled = options.enabled !== false;
   // Only listens while the screen that needs it is open.
-  const { settings, loading: settingsLoading } = useRenewalSettings(
+  const { settings, loading: settingsLoading, error: settingsError } = useRenewalSettings(
     enabled ? client?.homeStudioId ?? null : null,
   );
   const [inputs, setInputs] = useState<Inputs | null>(null);
@@ -155,8 +159,10 @@ export function useLiveRenewal(
 
   const live = useMemo(() => {
     // Wait for the studio's own thresholds: a snapshot worked out against the
-    // defaults for a moment would flash the wrong answer.
-    if (!client || !inputs || inputs.clientId !== client.id || settingsLoading) return null;
+    // defaults for a moment would flash the wrong answer. A settings read that
+    // FAILED is unknown, never the defaults: a studio that switched
+    // auto-renewal off must never be worked out as the standard ON.
+    if (!client || !inputs || inputs.clientId !== client.id || settingsLoading || settingsError) return null;
     const tz = getActiveTimeZone();
     const now = new Date();
     const today = studioTodayKey(now, tz);
@@ -176,13 +182,17 @@ export function useLiveRenewal(
       attendanceSince: attendanceSinceOf(inputs.earliestBooking, tz),
       lastVisitHint: client.renewal?.lastVisitDate ?? null,
     });
-  }, [client, inputs, settings, settingsLoading, options.machineNames]);
+  }, [client, inputs, settings, settingsLoading, settingsError, options.machineNames]);
 
   const stored = client?.renewal ?? null;
+  // The fallback still carries a saved auto-renew mark and a Mindbody flag
+  // that landed today (auto-renew.ts, renewalOf) — the one a cross-train
+  // visitor sees, whom the rules refuse the studio's settings.
+  const fallback = useMemo(() => renewalOf(client), [client]);
   return {
     live,
     stored,
-    snapshot: live ?? stored,
+    snapshot: live ?? fallback,
     settings,
     loading: loading || (enabled && settingsLoading),
     error,

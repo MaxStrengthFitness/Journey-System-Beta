@@ -158,6 +158,25 @@ describe("whether a package renews by itself (packages screen, Sep 24 2026)", ()
   });
 });
 
+describe("whether the studio's packages renew by themselves (Sep 25 2026)", () => {
+  it("keeps the studio's yes or no", () => {
+    expect(normalizeRenewalSettings({ packagesRenewAutomatically: true }).packagesRenewAutomatically).toBe(true);
+    expect(normalizeRenewalSettings({ packagesRenewAutomatically: false }).packagesRenewAutomatically).toBe(false);
+  });
+
+  it("drops anything that isn't a yes or a no: absent is 'not answered', which reads as ON", () => {
+    for (const odd of ["yes", "no", 1, 0, null]) {
+      const s = normalizeRenewalSettings({ packagesRenewAutomatically: odd });
+      expect("packagesRenewAutomatically" in s, String(odd)).toBe(false);
+    }
+    expect("packagesRenewAutomatically" in normalizeRenewalSettings(undefined)).toBe(false);
+  });
+
+  it("leaves the standard settings unanswered", () => {
+    expect("packagesRenewAutomatically" in DEFAULT_RENEWAL_SETTINGS).toBe(false);
+  });
+});
+
 describe("hasOwnPackageTable", () => {
   it("is false for no document, or one that saved only a threshold", () => {
     expect(hasOwnPackageTable(undefined)).toBe(false);

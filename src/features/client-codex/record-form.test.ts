@@ -80,6 +80,8 @@ describe("FIELD_HOME", () => {
     expect(FIELD_HOME.goalHistory).toMatchObject({ page: "goals", anchor: "goals-now" });
     expect(FIELD_HOME.nickname).toMatchObject({ page: "account", anchor: "account-contact" });
     expect(FIELD_HOME.contractTierOverride).toMatchObject({ page: "account", anchor: "account-membership" });
+    // The auto-renewal box sits on the package card, beside the lock (Sep 25 2026).
+    expect(FIELD_HOME.autoRenewMark).toEqual({ page: "account", anchor: "account-membership", label: "Membership" });
     // The studios she may also train at are their own card (phase 16), so Show lands on them.
     expect(FIELD_HOME.approvedCrossTrainStudioIds).toEqual({
       page: "account",
@@ -147,7 +149,7 @@ describe("seedForm", () => {
 
   it("seeds a checklist, a date, the history and the lock only when the record has them", () => {
     const bare = seedForm(client());
-    for (const k of ["smartChecks", "goalTargetDate", "goalHistory", "contractTierOverride"]) {
+    for (const k of ["smartChecks", "goalTargetDate", "goalHistory", "contractTierOverride", "autoRenewMark"]) {
       expect(k in bare, k).toBe(false);
     }
     const full = seedForm(client({ smartChecks: null, goalTargetDate: "2026-11-26", goalHistory: [] }));
@@ -271,6 +273,19 @@ describe("nextDirty", () => {
     d = nextDirty(d, "smartChecks", { s: true, m: true, a: false, r: false, t: false }, c);
     d = nextDirty(d, "contractTierOverride", { term: 12, payment: "monthly" }, c);
     expect(d.size).toBe(0);
+  });
+
+  it("counts an untick of the auto-renewal box as a change: it is an object, never a bare false", () => {
+    const c = client();
+    const untick = { renews: false, contractId: "k1", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-aj" };
+    expect(nextDirty(none, "autoRenewMark", untick, c).has("autoRenewMark")).toBe(true);
+    // "Remove this mark" over a record that has none: clean.
+    expect(nextDirty(none, "autoRenewMark", null, c).size).toBe(0);
+    // The saved mark over itself: clean.
+    const saved = client({ autoRenewMark: untick });
+    expect(nextDirty(new Set(["autoRenewMark"]), "autoRenewMark", saved.autoRenewMark, saved).size).toBe(0);
+    // A bare false would have been "nothing" — the trap the object avoids.
+    expect(sameValue(false, undefined)).toBe(true);
   });
 
   it("hands back the same set when nothing changed", () => {

@@ -10,6 +10,23 @@ describe("directoryPackageRead", () => {
     expect(directoryPackageRead({ renewal: { packageLabel: "6-Month", paymentMode: "monthly", autoRenews: true, sessionsLeft: null } } as any).sessionsLeft).toBe("Auto-renews");
     expect(directoryPackageRead({ renewal: { packageLabel: "6-Month", paymentMode: "prepaid", sessionsLeft: 2 } } as any).sessionsLeftTone).toBe("low");
   });
+  it("says auto-renews only on her own contract's answer — Mindbody's or a trainer's mark — never on a default (Sep 25 2026)", () => {
+    const read = (autoRenewsFrom?: string) =>
+      directoryPackageRead({
+        renewal: {
+          packageLabel: "6-Month",
+          paymentMode: "monthly",
+          autoRenews: true,
+          sessionsLeft: null,
+          ...(autoRenewsFrom ? { autoRenewsFrom } : {}),
+        },
+      } as any).sessionsLeft;
+    expect(read("mindbody")).toBe("Auto-renews");
+    expect(read("client")).toBe("Auto-renews");
+    // A version-1 snapshot: its flag was Mindbody's.
+    expect(read()).toBe("Auto-renews");
+    for (const from of ["studio", "package", "default"]) expect(read(from), from).toBe("Unknown");
+  });
   it("is honest when there is no snapshot", () => {
     const r = directoryPackageRead({ packageTier: "None" } as any);
     expect(r.membership).toBe("No package on file");

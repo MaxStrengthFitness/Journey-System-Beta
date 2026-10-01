@@ -77,6 +77,7 @@ import {
 } from "../../lib/routine-utils";
 import { hubMarkers } from "../../lib/hub-markers";
 import { renewalPromptDue } from "../renewals/conversation";
+import { renewalOf } from "../renewals/auto-renew";
 import { BriefingRenewalLine } from "../renewals/BriefingRenewalLine";
 import { AppHeader } from "../../components/AppHeader";
 import { useTheme } from "../../components/ThemeProvider";
@@ -455,7 +456,9 @@ export function BriefingScreen({
     carried.length +
     markers.length +
     activeJournalFocuses.length;
-  const hasBefore = beforeCount > 0 || renewalPromptDue(client.renewal);
+  // With her auto-renewal mark applied (auto-renew.ts), as the line below reads it.
+  const renewalNow = useMemo(() => renewalOf(client), [client]);
+  const hasBefore = beforeCount > 0 || renewalPromptDue(renewalNow);
 
   /* When each routine last ran — a different date from the last session's. */
   const lastRunA = useMemo(() => lastRunOfRoutine(sessions, routines, "A"), [sessions, routines]);

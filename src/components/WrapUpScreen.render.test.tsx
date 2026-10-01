@@ -1241,3 +1241,66 @@ describe("Next: her next booking, and the door to Times with room", () => {
     expect((host.querySelector('textarea[aria-label="Profile note"]') as HTMLTextAreaElement).value).toBe("Asked about Tuesdays");
   });
 });
+
+/*
+ * Auto-renewal (Sep 25 2026): the post-session prompt reads the client's
+ * renewal with her auto-renewal mark applied (renewals/auto-renew.ts,
+ * renewalOf), so a trainer's "not on auto-renewal" on the profile stops the
+ * before-the-charge prompt at once, before tonight's run rewrites the lists.
+ */
+describe("the renewal prompt follows the auto-renewal mark", () => {
+  const warning = {
+    version: 2,
+    cycleKey: "9001",
+    clientContractId: "9001",
+    situation: "will-bank",
+    paymentMode: "monthly",
+    chargeDate: "2026-10-20",
+    chargeDateSource: "mindbody",
+    bankedAtCharge: 16,
+    sessionsLeft: 30,
+    chargeWarning: true,
+    conversationDue: false,
+    renewalOnBooks: null,
+    autoRenews: true,
+    autoRenewsFrom: "studio",
+    autoRenewsInherited: { renews: true, from: "studio" },
+    flags: [],
+    dataGaps: [],
+  } as any;
+
+  function RenewalScreen({ who }: { who: Partial<Client> }) {
+    return (
+      <WrapUpScreen
+        client={{ ...client, renewal: warning, ...who } as Client}
+        session={session}
+        logs={[]}
+        lines={[]}
+        journey={{ enough: false, pct: null, machines: 0, since: null, byGroup: [], standout: null } as any}
+        schedules={[]}
+        authTrainer={trainer}
+        onDose={vi.fn()}
+        onLeave={vi.fn()}
+        machines={[]}
+      />
+    );
+  }
+
+  it("asks before the charge while the package renews", async () => {
+    const host = await mount(<RenewalScreen who={{}} />);
+    expect(buttonByText(host, "Auto-renews with about 16 sessions banked. Talk about it today?")).toBeTruthy();
+  });
+
+  it("asks nothing once a trainer marked her not on auto-renewal for this contract", async () => {
+    const autoRenewMark = { renews: false, contractId: "9001", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-jane" };
+    const host = await mount(<RenewalScreen who={{ autoRenewMark }} />);
+    expect(host.textContent).not.toContain("Talk about it today?");
+    expect(buttonByText(host, "Renewal conversation")).toBeTruthy();
+  });
+
+  it("still asks when the mark was made on another contract", async () => {
+    const autoRenewMark = { renews: false, contractId: "8000", setAt: "2026-09-25T14:00:00.000Z" };
+    const host = await mount(<RenewalScreen who={{ autoRenewMark }} />);
+    expect(buttonByText(host, "Talk about it today?")).toBeTruthy();
+  });
+});

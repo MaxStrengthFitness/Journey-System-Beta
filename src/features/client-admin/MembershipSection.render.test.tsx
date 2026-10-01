@@ -232,7 +232,7 @@ describe("MembershipSection — the package", () => {
     expect(text).toContain("sessions left");
     expect(text).not.toContain("(estimated)");
     expect(text).toContain("11 payments to go");
-    expect(text).toContain("Renews Jan 1, 2027");
+    expect(text).toContain("Auto-renews Jan 1, 2027");
     expect(text).toContain("Worked out each night · Operations → Renewals");
     expect(text).toContain("Comes 2× a week");
     expect(pkg(host).getAttribute("data-tone")).toBe("ok");
@@ -332,6 +332,251 @@ describe("MembershipSection — the package", () => {
     expect(probe.form!.formData.contractTierOverride).toBeNull();
     expect([...probe.form!.dirty]).toEqual(["contractTierOverride"]);
     expect(pkg(host).querySelector(".cx-big")?.textContent).toBe("Committed");
+  });
+});
+
+/*
+ * Auto-renewal (Sep 25 2026; AJ: "just allow trainers to mark a check box on
+ * a profile if the client is on auto renewal"). The box is the kit's Pick on
+ * the package card, written through the record's one form as a stamped mark
+ * bound to the contract (renewals/auto-renew.ts). Every word is account.ts
+ * autoRenewView; here the mount proves the taps, the form and the card agree.
+ */
+describe("MembershipSection — auto-renewal", () => {
+  /** A version-2 snapshot of contract "k", as tonight's run writes it: the studio never answered. */
+  const v2 = (over: Partial<RenewalSnapshot> = {}) =>
+    renewal({
+      version: 2,
+      clientContractId: "k",
+      autoRenews: true,
+      autoRenewsFrom: "default",
+      autoRenewsInherited: { renews: true, from: "default" },
+      ...over,
+    });
+  const box = (host: HTMLElement) => pkg(host).querySelector<HTMLButtonElement>(".cadm-renew .cx-pick");
+  const renewText = (host: HTMLElement) => pkg(host).querySelector<HTMLElement>(".cadm-renew")?.textContent ?? "";
+  const BILLING =
+    "This tells Journey's renewal screens what Mindbody is set to. It doesn't change her billing: auto-renewal itself is changed in Mindbody.";
+
+  it("starts ticked on the standard answer, and says where that came from and what it doesn't change", async () => {
+    const host = await mount(<Harness c={client({ renewal: v2() })} />);
+    const b = box(host)!;
+    expect(b.textContent).toBe("On auto-renewal");
+    expect(b.getAttribute("aria-pressed")).toBe("true");
+    expect(b.classList.contains("cx-pick")).toBe(true);
+    expect(pkg(host).querySelector('.cadm-renew[role="group"][aria-label="Auto-renewal"]')).not.toBeNull();
+    expect(renewText(host)).toContain(
+      "Solon hasn't said whether its packages renew by themselves. The standard is yes, so this starts ticked. Untick if she isn't on auto-renewal.",
+    );
+    expect(renewText(host)).toContain(BILLING);
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
+    // One box: there is an answer, so no second "Not on auto-renewal" to pick.
+    expect(pkg(host).querySelectorAll(".cadm-renew .cx-pick")).toHaveLength(1);
+  });
+
+  it("stages a stamped mark on a tap, named with the Auth uid; a second tap pins yes; Remove this mark makes it clean", async () => {
+    const probe: Probe = {};
+    const host = await mount(<Harness c={client({ renewal: v2() })} probe={probe} />);
+    await click(box(host));
+    expect(probe.form!.formData.autoRenewMark).toEqual({
+      renews: false,
+      contractId: "k",
+      setAt: expect.any(String),
+      setById: "uid-aj",
+      setByName: "AJ",
+    });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    expect(probe.form!.where).toEqual([{ page: "account", anchor: "account-membership", label: "Membership" }]);
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("false");
+    expect(pkg(host).textContent).toContain("Unsaved");
+    // The card reads the staged answer before Save.
+    expect(pkg(host).textContent).toContain("Billing ends Jan 1, 2027");
+    expect(renewText(host)).toContain("Tap Save changes on the bar to keep it.");
+
+    // Tapping back with nothing saved pins "yes": still a change to save.
+    await click(box(host));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: true, contractId: "k", setById: "uid-aj" });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+
+    // "Remove this mark": nothing of her own, and nothing to save.
+    const clear = buttonByText(host, "Remove this mark")!;
+    expect(clear.classList.contains("cx-btn")).toBe(true);
+    await click(clear);
+    expect(probe.form!.formData.autoRenewMark).toBeNull();
+    expect(probe.form!.count).toBe(0);
+    expect(pkg(host).textContent).not.toContain("Unsaved");
+  });
+
+  it("names who marked a saved answer, and when (the studio's day)", async () => {
+    const saved = {
+      renews: false,
+      contractId: "k",
+      setAt: "2026-09-25T14:00:00.000Z",
+      setById: "uid-aj",
+      setByName: "AJ",
+    };
+    const probe: Probe = {};
+    const c = client({ renewal: v2({ autoRenews: false, autoRenewsFrom: "client" }), autoRenewMark: saved } as Partial<Client>);
+    const host = await mount(<Harness c={c} probe={probe} />);
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("false");
+    expect(renewText(host)).toContain("Marked by AJ · Sep 25, 2026.");
+    expect(pkg(host).textContent).toContain("Billing ends Jan 1, 2027");
+    // Tapping twice lands back on the saved mark itself: clean.
+    await click(box(host));
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    await click(box(host));
+    expect(probe.form!.formData.autoRenewMark).toBe(saved);
+    expect(probe.form!.count).toBe(0);
+  });
+
+  it("shows Mindbody's own answer as a line, with no box to tick", async () => {
+    const c = client({
+      renewal: v2({ autoRenewsFrom: "mindbody", autoRenewsInherited: { renews: true, from: "mindbody" } }),
+      mindbodyContracts: {
+        k: { ...client().mindbodyContracts!.k, isAutoRenewing: true },
+      },
+    } as Partial<Client>);
+    const host = await mount(<Harness c={c} />);
+    expect(box(host)).toBeNull();
+    expect(pkg(host).querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
+      "On auto-renewal · Mindbody's contract says so. Change it in Mindbody.",
+    );
+  });
+
+  it("gives a reader who may not edit the answer in words, and no box", async () => {
+    const saved = { renews: false, contractId: "k", setAt: "2026-09-25T14:00:00.000Z", setById: "uid-aj", setByName: "AJ" };
+    const c = client({ renewal: v2({ autoRenews: false, autoRenewsFrom: "client" }), autoRenewMark: saved } as Partial<Client>);
+    const host = await mount(<Harness c={c} canEdit={false} />);
+    expect(box(host)).toBeNull();
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
+    expect(pkg(host).querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
+      "Not on auto-renewal · marked by AJ · Sep 25, 2026",
+    );
+  });
+
+  it("has no box for a package paid in full, or once a paid-in-full lock is staged", async () => {
+    const pif = client({
+      mindbodyContracts: {},
+      mindbodyServices: { p: { serviceId: "p", name: "96 PIF", remaining: 60, count: 96 } },
+      renewal: v2({ paymentMode: "prepaid", chargeDate: null, autoRenews: null, autoRenewsFrom: null, autoRenewsInherited: null }),
+    } as unknown as Partial<Client>);
+    let host = await mount(<Harness c={pif} />);
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+
+    host = await mount(<Harness c={client({ renewal: v2() })} />);
+    expect(box(host)).not.toBeNull();
+    await click(buttonByText(host, "Lock the tier"));
+    await click(buttonByText(host, "12 mo · paid in full"));
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+  });
+
+  it("offers both answers when Journey can't tell, neither pressed, and picking one stages it", async () => {
+    const probe: Probe = {};
+    const unmatched = v2({ autoRenews: null, autoRenewsFrom: null, autoRenewsInherited: null });
+    const host = await mount(<Harness c={client({ renewal: unmatched })} probe={probe} />);
+    const picks = () => Array.from(pkg(host).querySelectorAll<HTMLButtonElement>(".cadm-renew .cx-pick"));
+    const pressed = () => picks().map((b) => [b.textContent, b.getAttribute("aria-pressed")]);
+    // Never an unticked box that reads as "no" while saving nothing.
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "false"],
+    ]);
+    expect(renewText(host)).toContain(
+      "Journey can't tell: Mindbody hasn't said, and this contract isn't matched to a package in Renewal settings. Tap one once you know whether she is on auto-renewal.",
+    );
+    expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
+    expect(probe.form!.count).toBe(0);
+
+    await click(buttonByText(host, "Not on auto-renewal"));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: false, contractId: "k", setById: "uid-aj" });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "true"],
+    ]);
+    expect(pkg(host).textContent).toContain("Billing ends Jan 1, 2027");
+
+    await click(buttonByText(host, "On auto-renewal"));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: true, contractId: "k" });
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "true"],
+      ["Not on auto-renewal", "false"],
+    ]);
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+
+    // Removing the mark goes back to no answer, said as such.
+    await click(buttonByText(host, "Remove this mark"));
+    expect(probe.form!.count).toBe(0);
+    expect(pressed()).toEqual([
+      ["On auto-renewal", "false"],
+      ["Not on auto-renewal", "false"],
+    ]);
+  });
+
+  it("claims no renewal under a saved paid-in-full lock, not even on the contract history, and offers no box to contradict it", async () => {
+    // Mindbody's contract says auto-renewing: the lock is there because that reading is wrong for her.
+    const locked = client({
+      // As the engine stores it under the lock: no answer, and no warning.
+      renewal: v2({ autoRenews: null, autoRenewsFrom: null, autoRenewsInherited: { renews: true, from: "mindbody" }, chargeWarning: false }),
+      mindbodyContracts: { k: { ...client().mindbodyContracts!.k, isAutoRenewing: true } },
+      contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-15T00:00:00Z", setByName: "AJ" },
+    } as Partial<Client>);
+    const host = await mount(<Harness c={locked} />);
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+    expect(pkg(host).textContent).toContain("Payments finish Jan 1, 2027");
+    // The whole card, the contract history's tiles included.
+    expect(pkg(host).querySelector('[data-testid="contract-timeline"]')).not.toBeNull();
+    expect(pkg(host).textContent).not.toContain("Auto-renews");
+    // Taking the lock off: Mindbody's answer, in a line, and on the tile again.
+    await click(buttonByText(host, "Use Mindbody's"));
+    expect(pkg(host).querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
+      "On auto-renewal · Mindbody's contract says so. Change it in Mindbody.",
+    );
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+    expect(pkg(host).querySelector('[data-testid="contract-timeline"]')!.textContent).toContain("Auto-renews");
+  });
+
+  it("shows the box a lock staged to come off leaves, and claims no catch-up for what isn't saved", async () => {
+    const locked = client({
+      renewal: v2({ autoRenews: null, autoRenewsFrom: null, chargeWarning: false }),
+      contractTierOverride: { term: 12, payment: "pif", setAt: "2026-09-15T00:00:00Z", setByName: "AJ" },
+    } as Partial<Client>);
+    const host = await mount(<Harness c={locked} />);
+    expect(pkg(host).querySelector(".cadm-renew")).toBeNull();
+    await click(buttonByText(host, "Use Mindbody's"));
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(pkg(host).textContent).toContain("Auto-renews Jan 1, 2027");
+    expect(renewText(host)).not.toContain("The renewal lists catch up tonight.");
+  });
+
+  it("puts an earlier contract's saved mark back when a tap over it is removed: clean, and the mark kept", async () => {
+    const earlier = { renews: false, contractId: "old", setAt: "2026-01-02T14:00:00.000Z", setById: "uid-aj", setByName: "AJ" };
+    const probe: Probe = {};
+    const host = await mount(<Harness c={client({ renewal: v2(), autoRenewMark: earlier } as Partial<Client>)} probe={probe} />);
+    const NOTE = "AJ's mark was for the contract before this one.";
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(renewText(host)).toContain(NOTE);
+    await click(box(host));
+    expect(probe.form!.formData.autoRenewMark).toMatchObject({ renews: false, contractId: "k" });
+    expect([...probe.form!.dirty]).toEqual(["autoRenewMark"]);
+    // "Remove this mark" undoes the tap, and only the tap.
+    await click(buttonByText(host, "Remove this mark"));
+    expect(probe.form!.formData.autoRenewMark).toBe(earlier);
+    expect(probe.form!.count).toBe(0);
+    expect(probe.form!.isDirty("autoRenewMark")).toBe(false);
+    expect(pkg(host).textContent).not.toContain("Unsaved");
+    expect(box(host)!.getAttribute("aria-pressed")).toBe("true");
+    expect(buttonByText(host, "Remove this mark")).toBeUndefined();
+    expect(renewText(host)).toContain(NOTE);
+    expect(renewText(host)).not.toContain("when you save");
+  });
+
+  it("says the box arrives after tonight's run on a snapshot from before it", async () => {
+    const host = await mount(<Harness c={client({ renewal: renewal({ clientContractId: "k", autoRenews: null }) })} />);
+    expect(box(host)).toBeNull();
+    expect(renewText(host)).toBe("Auto-renewal can be marked here after tonight's renewal run.");
   });
 });
 

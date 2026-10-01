@@ -30,7 +30,7 @@ export interface PackageRowForm {
   prepayRatePerSession: string;
   /** Mindbody names, one per line. */
   namesText: string;
-  /** Renews by itself when the payments finish: "yes", "no", or "" (not said). */
+  /** Renews by itself when the payments finish: "yes", "no", or "" (same as the studio). */
   renews: "" | "yes" | "no";
 }
 
@@ -43,6 +43,11 @@ export interface RenewalSettingsForm {
   lostAfterDays: string;
   payAsYouGoCountsAs: "retained" | "lost";
   pauseDuringAwayEvents: "yes" | "no";
+  /**
+   * Packages at this studio renew automatically: "yes", "no", or "" (not
+   * answered yet, which reads as yes — auto-renew.ts).
+   */
+  packagesRenewAutomatically: "" | "yes" | "no";
   packages: PackageRowForm[];
   extraNamesText: string;
 }
@@ -78,6 +83,8 @@ export function settingsToForm(s: RenewalSettings): RenewalSettingsForm {
     lostAfterDays: numText(s.lostAfterDays),
     payAsYouGoCountsAs: s.payAsYouGoCountsAs,
     pauseDuringAwayEvents: s.pauseDuringAwayEvents ? "yes" : "no",
+    packagesRenewAutomatically:
+      s.packagesRenewAutomatically === true ? "yes" : s.packagesRenewAutomatically === false ? "no" : "",
     packages: s.packages.map(packageToRow),
     extraNamesText: s.extraSessionNames.join("\n"),
   };
@@ -135,6 +142,12 @@ export function formToSettings(form: RenewalSettingsForm): {
     lostAfterDays: parseNumber(form.lostAfterDays),
     payAsYouGoCountsAs: form.payAsYouGoCountsAs === "lost" ? "lost" : "retained",
     pauseDuringAwayEvents: form.pauseDuringAwayEvents !== "no",
+    // Absent until the studio answers: "not answered" is not "yes".
+    ...(form.packagesRenewAutomatically === "yes"
+      ? { packagesRenewAutomatically: true }
+      : form.packagesRenewAutomatically === "no"
+        ? { packagesRenewAutomatically: false }
+        : {}),
     packages: form.packages.map(rowToPackage),
     extraSessionNames: parseNames(form.extraNamesText),
   };
@@ -172,7 +185,14 @@ export function settingsPatchFromForm(
     else if (key === "extraNamesText") out.extraSessionNames = parsed.extraSessionNames;
     else if (key === "payAsYouGoCountsAs") out.payAsYouGoCountsAs = parsed.payAsYouGoCountsAs;
     else if (key === "pauseDuringAwayEvents") out.pauseDuringAwayEvents = parsed.pauseDuringAwayEvents;
-    else (out as Record<string, unknown>)[key] = parsed[key as keyof RenewalSettings];
+    else if (key === "packagesRenewAutomatically") {
+      // Only an answer is written, never undefined (Firestore refuses it).
+      // The form offers "not answered" only while nothing is saved, so going
+      // back to it is never a change to send.
+      if (typeof parsed.packagesRenewAutomatically === "boolean") {
+        out.packagesRenewAutomatically = parsed.packagesRenewAutomatically;
+      }
+    } else (out as Record<string, unknown>)[key] = parsed[key as keyof RenewalSettings];
   }
   return out;
 }

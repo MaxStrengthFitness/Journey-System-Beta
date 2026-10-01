@@ -201,6 +201,37 @@ const baseClient = (over: Partial<Client> = {}): Client =>
     ...over,
   }) as Client;
 
+/**
+ * A monthly contract's renewal as tonight's run writes it (version 2, Sep 25
+ * 2026): the auto-renewal box on Account needs a charge date and the
+ * contract it is marked on.
+ */
+const monthlyRenewal = {
+  version: 2,
+  situation: "on-track",
+  cycleKey: "k",
+  clientContractId: "k",
+  packageKey: "committed",
+  packageLabel: "Committed · 12 months",
+  paymentMode: "monthly",
+  chargeDate: "2027-01-01",
+  chargeDateSource: "mindbody",
+  autoRenews: true,
+  autoRenewsFrom: "default",
+  autoRenewsInherited: { renews: true, from: "default" },
+  sessionsLeft: 40,
+  sessionsLeftSource: "mindbody",
+  sessionsOnHand: 8,
+  paymentsLeft: 4,
+  pacePerWeek: 2,
+  conversationDue: false,
+  chargeWarning: false,
+  renewalOnBooks: null,
+  flags: [],
+  dataGaps: [],
+  focusDate: "2027-01-01",
+} as unknown as Client["renewal"];
+
 const criticalNote = {
   id: "crit1",
   clientId: "c1",
@@ -1057,6 +1088,30 @@ describe("ClientCodex — the one Save bar", () => {
     expect(updates[0].data).toEqual({ isRetired: true, wingspan: "61", lastUpdatedBy: "t-ann" });
   });
 
+  it("saves an auto-renewal untick as one stamped mark and who changed it — never the renewal snapshot", async () => {
+    const host = await mount(baseClient({ renewal: monthlyRenewal }), homeTrainer, "account");
+    const account = panel(host, "account");
+    const box = account.querySelector<HTMLButtonElement>(".cadm-renew .cx-pick")!;
+    expect(box.getAttribute("aria-pressed")).toBe("true");
+    await click(box);
+    expect(saveBar(host)?.textContent).toContain("1 unsaved change · Account · Membership");
+    await click(buttonIn(saveBar(host)!, "Save changes"));
+    const updates = fake.writes.filter((w) => w.op === "update");
+    expect(updates).toHaveLength(1);
+    expect(updates[0].path).toBe("clients/c1");
+    expect(updates[0].data).toEqual({
+      autoRenewMark: {
+        renews: false,
+        contractId: "k",
+        setAt: expect.any(String),
+        setById: "uid-ann",
+        setByName: "Ann Trainer",
+      },
+      lastUpdatedBy: "t-ann",
+    });
+    expect("renewal" in updates[0].data).toBe(false);
+  });
+
   it("keeps every edit when the save is refused, and says where the record is kept", async () => {
     fake.updateError = { code: "permission-denied" };
     const host = await mount(baseClient(), homeTrainer, "ford");
@@ -1306,7 +1361,7 @@ describe("ClientCodex — a new snapshot of the record", () => {
 
 describe("ClientCodex — read only", () => {
   it("gives a cross-train reader the pages read only, with the reason, and no Save bar", async () => {
-    const host = await mount(baseClient(), crossTrainer);
+    const host = await mount(baseClient({ renewal: monthlyRenewal }), crossTrainer);
     expect(host.querySelector(".psub-context")?.textContent).toBe(
       "Read only here · Westlake keeps this record. Notes you write still save.",
     );
@@ -1315,10 +1370,14 @@ describe("ClientCodex — read only", () => {
     // (phase 16), offers them no editor: no nickname, no identity, no lock,
     // no studio to approve, no Edit on how she found us.
     const account = panel(host, "account");
-    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Use Mindbody's"]) {
+    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Use Mindbody's", "On auto-renewal", "Not on auto-renewal", "Remove this mark"]) {
       expect(buttonIn(account, text), text).toBeUndefined();
     }
     expect(account.querySelectorAll("input, textarea, select, .cx-pick")).toHaveLength(0);
+    // The auto-renewal answer reads as words for them (the rules refuse their write).
+    expect(account.querySelector('[data-testid="auto-renew-line"]')?.textContent).toBe(
+      "On auto-renewal · the standard answer (the studio hasn't set one)",
+    );
     // The fine print is readable (the client document is); the Migration Hub
     // is for a reader who may change the record.
     expect(host.querySelector("#account-fine-print")).not.toBeNull();
@@ -1351,10 +1410,10 @@ describe("ClientCodex — read only", () => {
   });
 
   it("gives a trainer at the home studio live editors and no context line", async () => {
-    const host = await mount();
+    const host = await mount(baseClient({ renewal: monthlyRenewal }));
     await visitAll(host);
     const account = panel(host, "account");
-    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Migration Hub (OCR)"]) {
+    for (const text of ["Set a nickname", "Edit", "Lock the tier", "Migration Hub (OCR)", "On auto-renewal"]) {
       expect(buttonIn(account, text), text).toBeDefined();
     }
     // The studios she may also train at are picks for them.

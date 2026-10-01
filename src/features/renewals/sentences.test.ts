@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+  autoRenewSourceWords,
+  autoRenewWordsOf,
   bankedAtChargeNote,
   billingEndPhrase,
+  chargeDateLine,
   chipText,
   dayLabel,
   paceLabel,
@@ -80,11 +83,19 @@ describe("sentences", () => {
       "Auto-renews Nov 14 with about 16 sessions still banked",
     );
     expect(situationSentence(snap({ situation: "will-run-out", runOutDate: "2026-10-03" }), TODAY)).toBe(
-      "Out of sessions around Oct 3, 6 weeks before billing ends",
+      "Out of sessions around Oct 3, 6 weeks before it renews",
     );
     expect(
       situationSentence(snap({ situation: "away", awayReason: "Snowbird", awayUntil: "2027-04-01" }), TODAY),
     ).toBe("Snowbird until Apr 1, 2027 · clocks paused");
+  });
+
+  it("says how far a run-out falls short in the decided answer's words, never 'billing ends' beside 'Auto-renews'", () => {
+    const runOut = (autoRenews: boolean | null) =>
+      situationSentence(snap({ situation: "will-run-out", runOutDate: "2026-10-03", autoRenews }), TODAY);
+    expect(runOut(true)).toBe("Out of sessions around Oct 3, 6 weeks before it renews");
+    expect(runOut(false)).toBe("Out of sessions around Oct 3, 6 weeks before billing ends");
+    expect(runOut(null)).toBe("Out of sessions around Oct 3, 6 weeks before the payments finish");
   });
 
   it("says 'billing ends' rather than 'auto-renews' when Mindbody says it won't", () => {
@@ -109,11 +120,42 @@ describe("sentences", () => {
     expect(note(true)).toBe(
       "About 16 sessions. Sessions never expire, so they carry over — decide in Mindbody whether the renewal should wait.",
     );
+    // The answer may be the studio's or a trainer's mark, not the contract's.
     expect(note(false)).toBe(
-      "About 16 sessions. Sessions never expire, so they carry over. The contract doesn't auto-renew, so no new package is charged on top of them.",
+      "About 16 sessions. Sessions never expire, so they carry over. Not on auto-renewal, so no new package is charged on top of them.",
     );
     expect(note(null)).toBe(
       "About 16 sessions. Sessions never expire, so they carry over — check in Mindbody whether the contract auto-renews and, if it does, whether the renewal should wait.",
+    );
+  });
+
+  it("names where an auto-renew answer came from, never crediting a studio that hasn't answered", () => {
+    expect(autoRenewSourceWords("mindbody")).toBe("Mindbody's contract");
+    expect(autoRenewSourceWords("client")).toBe("marked on the profile");
+    expect(autoRenewSourceWords("package")).toBe("the package's answer");
+    expect(autoRenewSourceWords("studio")).toBe("the studio's answer");
+    expect(autoRenewSourceWords("default")).toBe("the standard answer (the studio hasn't set one)");
+    expect(autoRenewSourceWords(null)).toBeNull();
+    expect(autoRenewSourceWords(undefined)).toBeNull();
+  });
+
+  it("gives a charge date its estimate and its answer's source together", () => {
+    expect(chargeDateLine(snap({ chargeDateSource: "estimate", autoRenewsFrom: "studio" }), TODAY)).toBe(
+      "Nov 14 (estimated) · the studio's answer",
+    );
+    expect(chargeDateLine(snap({ chargeDateSource: "mindbody", autoRenewsFrom: "client" }), TODAY)).toBe(
+      "Nov 14 · marked on the profile",
+    );
+    expect(chargeDateLine(snap({ chargeDateSource: "estimate", autoRenews: null, autoRenewsFrom: null }), TODAY)).toBe(
+      "Nov 14 (estimated)",
+    );
+    expect(chargeDateLine(snap({ chargeDateSource: "mindbody", autoRenews: null, autoRenewsFrom: null }), TODAY)).toBe("Nov 14");
+    expect(chargeDateLine(snap({ chargeDate: null }), TODAY)).toBe("");
+    // A version-1 snapshot has no source: its flag was Mindbody's own.
+    expect(autoRenewWordsOf(snap({ autoRenews: true }))).toBe("Mindbody's contract");
+    expect(autoRenewWordsOf(snap({ autoRenews: null }))).toBeNull();
+    expect(autoRenewWordsOf(snap({ autoRenews: true, autoRenewsFrom: "default" }))).toBe(
+      "the standard answer (the studio hasn't set one)",
     );
   });
 

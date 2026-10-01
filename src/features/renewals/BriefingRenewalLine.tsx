@@ -16,9 +16,12 @@ import { studioTodayKey } from "../../lib/studio-time";
 import { chipText } from "./sentences";
 import { latestLine, renewalPromptDue } from "./conversation";
 import { useRenewalCycle } from "./useRenewalCycle";
+import { renewalOf } from "./auto-renew";
 
 export function BriefingRenewalLine({ client }: { client: Client }) {
-  const s = client.renewal ?? null;
+  // With her auto-renewal mark applied, so a client marked "not on
+  // auto-renewal" reads "billing ends" and gets no before-the-charge prompt.
+  const s = renewalOf(client);
   const { cycle } = useRenewalCycle(s ? client.homeStudioId : null, s?.cycleKey ?? null);
   const today = studioTodayKey();
   const latest = latestLine(cycle, today);

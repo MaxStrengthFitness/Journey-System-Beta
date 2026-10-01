@@ -57,7 +57,7 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
   const studioId = activeStudioId && manageable.some((s) => s.id === activeStudioId) ? activeStudioId : null;
   const studio = studios.find((s) => s.id === studioId) ?? null;
 
-  const { settings, loading, error } = useRenewalSettings(studioId);
+  const { settings, loading, error, forStudioId } = useRenewalSettings(studioId);
   const namesSeen = useRenewalNamesSeen(studioId);
   const [view, setView] = useState<RenewalsView>("pipeline");
   // Mindbody names the package table doesn't recognize yet: those clients
@@ -66,6 +66,12 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
     () => (namesSeen ? unmatchedNames(namesSeen.names ?? {}, buildPackageNameIndex(settings)).length : 0),
     [namesSeen, settings],
   );
+  // A studio that hasn't answered whether its packages renew reads as ON (AJ,
+  // Sep 25 2026: on by default, off at the corporate studios). Said here, as
+  // a door to My Studio → Studio → Renewals — the one editor of the answer.
+  // Never while the read is loading or failed: unknown is not "unanswered".
+  const autoRenewUnanswered =
+    !loading && !error && forStudioId === studioId && settings.packagesRenewAutomatically === undefined;
   // The Brief keeps the client as it was when opened; its own numbers are
   // worked out live (useLiveRenewal), so nothing on it goes stale.
   const [briefClient, setBriefClient] = useState<Client | null>(null);
@@ -121,13 +127,16 @@ export function AdminRenewalsTab({ authTrainer, studios, activeStudioId, trainer
             </button>
           </div>
 
-          <AdminNotice tone={toMatch > 0 ? "warn" : "info"}>
+          <AdminNotice tone={toMatch > 0 || autoRenewUnanswered ? "warn" : "info"}>
             <SlidersHorizontal className="w-4 h-4 shrink-0" />
             <div className="flex-1">
+              {autoRenewUnanswered
+                ? `${studio.name} hasn't said whether its packages renew automatically, so they read as renewing. `
+                : ""}
               {toMatch > 0
                 ? `${toMatch} Mindbody package name${toMatch === 1 ? "" : "s"} ${toMatch === 1 ? "is" : "are"} waiting to be matched, so those clients cannot be placed in the pipeline. `
                 : ""}
-              When to talk, the package table and name matching are set on <b>My Studio → Studio</b>, not here.
+              Auto-renewal, when to talk, the package table and name matching are set on <b>My Studio → Studio</b>, not here.
             </div>
             {onOpenMyStudio && (
               <AdminButton size="sm" variant="quiet" onClick={onOpenMyStudio}>

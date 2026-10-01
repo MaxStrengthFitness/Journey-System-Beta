@@ -185,7 +185,8 @@ function cleanPackage(raw: any, index: number): PackageTier | null {
     paymentAmount,
     prepayRatePerSession,
     mindbodyNames: cleanNames(raw.mindbodyNames, MAX_NAMES_PER_PACKAGE),
-    // Kept only when the studio answered; a row that never did stays as it was.
+    // Kept only when the studio answered for this package; a row that never
+    // did is "same as the studio" (auto-renew.ts) and stays as it was.
     ...(typeof raw.renewsAutomatically === "boolean" ? { renewsAutomatically: raw.renewsAutomatically } : {}),
   };
 }
@@ -244,6 +245,11 @@ export function normalizeRenewalSettings(raw: unknown): RenewalSettings {
       d.extraSessionNames === undefined
         ? DEFAULT_RENEWAL_SETTINGS.extraSessionNames
         : cleanNames(d.extraSessionNames, 40),
+    // Kept only when the studio answered: absent is "hasn't said", which
+    // reads as ON (auto-renew.ts), and a stray "yes" is not an answer.
+    ...(typeof d.packagesRenewAutomatically === "boolean"
+      ? { packagesRenewAutomatically: d.packagesRenewAutomatically }
+      : {}),
   };
 }
 

@@ -642,6 +642,27 @@ export interface ContractTierOverride {
   note?: string;
 }
 
+/**
+ * See Client.autoRenewMark. An OBJECT, never a bare boolean: the codex record
+ * form counts `false` as "nothing", so an untick over an empty field would
+ * never be saved (docs/KNOWN-TRAPS.md, The client profile).
+ */
+export interface AutoRenewMark {
+  /** Is she on auto-renewal? */
+  renews: boolean;
+  /**
+   * The contract it was marked on: the renewal snapshot's `clientContractId`,
+   * which is Mindbody's ClientContract id (the `mindbodyContracts` key). A
+   * mark for any other contract is ignored (features/renewals/auto-renew.ts).
+   */
+  contractId: string;
+  /** ISO time of the tap, `new Date().toISOString()`. */
+  setAt: string;
+  /** The Auth uid of whoever marked it, as the tier lock names it. */
+  setById?: string;
+  setByName?: string;
+}
+
 export interface Client {
   id?: string;
   mindbodyId?: string;
@@ -967,6 +988,17 @@ export interface Client {
    * is removed. Never written by a sync. See features/client-admin/contract.ts.
    */
   contractTierOverride?: ContractTierOverride | null;
+  /**
+   * A trainer's answer to "is she on auto-renewal?" for ONE contract, marked
+   * on the profile's package card (Sep 25 2026; AJ: "allow trainers to mark a
+   * check box on a profile if the client is on auto renewal"). Used only while
+   * Mindbody's contract hasn't said; it beats the package's and the studio's
+   * answer. Journey owns it: never written by a sync, never inside `renewal`.
+   * Read by the renewal engine (nightly and live), `renewalOf` and the package
+   * card — see features/renewals/auto-renew.ts. Null or absent: no answer of
+   * her own.
+   */
+  autoRenewMark?: AutoRenewMark | null;
   /**
    * The first InBody scan against the latest (Renewals round, Sep 2026).
    * Rewritten by the app with every scan saved, corrected or removed; the

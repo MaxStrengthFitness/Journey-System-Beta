@@ -454,11 +454,6 @@ service cloud.firestore {
       return !(key in d) || (d[key] is number && d[key] >= lo && d[key] <= hi);
     }
 
-    /**
-     * studios/{s}/config/renewals. The app cleans every value again when it
-     * reads them (features/renewals/settings.ts), so this only has to keep
-     * out shapes that could never be right.
-     */
     /* THE STUDIO SETTINGS (Sep 28 2026, AJ: "let the admins assign the default
        within the app"; features/studio-settings). One `values` map of plain
        numbers (or null for a weekday's "none"), who saved it (the Auth uid)
@@ -471,12 +466,23 @@ service cloud.firestore {
           && d.updatedBy == request.auth.uid;
     }
 
+    /**
+     * studios/{s}/config/renewals. The app cleans every value again when it
+     * reads them (features/renewals/settings.ts), so this only has to keep
+     * out shapes that could never be right.
+     *
+     * packagesRenewAutomatically (Sep 25 2026): whether the studio's packages
+     * renew by themselves - on at the franchise studios, off at the corporate
+     * ones, on by default. Absent means not answered, which the app reads as
+     * on. The whole merged document is checked, so an app that writes this
+     * key needs this rule deployed first.
+     */
     function renewalSettingsValid(d) {
       return d.keys().hasOnly([
                'conversationAtSessionsLeft', 'chargeWarnDays', 'chargeWarnMinBanked',
                'horizonMonths', 'breakDays', 'lostAfterDays', 'payAsYouGoCountsAs',
-               'pauseDuringAwayEvents', 'packages', 'extraSessionNames',
-               'updatedAt', 'updatedBy'])
+               'pauseDuringAwayEvents', 'packagesRenewAutomatically', 'packages',
+               'extraSessionNames', 'updatedAt', 'updatedBy'])
           && numberWithin(d, 'conversationAtSessionsLeft', 0, 60)
           && numberWithin(d, 'chargeWarnDays', 0, 180)
           && numberWithin(d, 'chargeWarnMinBanked', 1, 100)
@@ -485,6 +491,7 @@ service cloud.firestore {
           && numberWithin(d, 'lostAfterDays', 0, 365)
           && (!('payAsYouGoCountsAs' in d) || d.payAsYouGoCountsAs in ['retained', 'lost'])
           && (!('pauseDuringAwayEvents' in d) || d.pauseDuringAwayEvents is bool)
+          && (!('packagesRenewAutomatically' in d) || d.packagesRenewAutomatically is bool)
           && (!('packages' in d) ||
               (d.packages is list && d.packages.size() >= 1 && d.packages.size() <= 12))
           && (!('extraSessionNames' in d) ||

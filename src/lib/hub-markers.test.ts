@@ -90,6 +90,26 @@ describe("hubMarkers", () => {
     const client = { renewal: { situation: "active", conversationDue: true, renewalOnBooks: null } } as any;
     expect(hubMarkers({ client, sessionNumber: 40, today })).toEqual([{ kind: "renewal", label: "Renewal due" }]);
   });
+
+  it("drops a before-the-charge renewal once a trainer marked her not on auto-renewal (Sep 25 2026)", () => {
+    const renewal = {
+      version: 2,
+      situation: "will-bank",
+      paymentMode: "monthly",
+      clientContractId: "9001",
+      chargeWarning: true,
+      conversationDue: false,
+      renewalOnBooks: null,
+      autoRenews: true,
+      autoRenewsFrom: "studio",
+      autoRenewsInherited: { renews: true, from: "studio" },
+    };
+    expect(hubMarkers({ client: { renewal } as any, sessionNumber: 40, today })).toEqual([
+      { kind: "renewal", label: "Renewal due" },
+    ]);
+    const autoRenewMark = { renews: false, contractId: "9001", setAt: "2026-09-25T14:00:00.000Z" };
+    expect(hubMarkers({ client: { renewal, autoRenewMark } as any, sessionNumber: 40, today })).toEqual([]);
+  });
 });
 
 describe("isDefaultService", () => {

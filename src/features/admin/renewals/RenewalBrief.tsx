@@ -41,6 +41,7 @@ import {
   bankedAtChargeNote,
   billingEndPhrase,
   capitalize,
+  chargeDateLine,
   dayLabel,
   paceSentence,
   situationSentence,
@@ -344,7 +345,9 @@ export function RenewalBrief({
                     name={s.paymentMode === "monthly" || s.chargeDate ? capitalize(billingEndPhrase(s.autoRenews)) : "Package"}
                     meta={
                       s.chargeDate
-                        ? `${dayLabel(s.chargeDate, today)}${s.chargeDateSource === "estimate" ? " (estimated)" : ""}`
+                        ? // The date, whether it is estimated, and where the auto-renew
+                          // answer came from: "Nov 14 (estimated) · the studio's answer".
+                          chargeDateLine(s, today)
                         : s.paymentMode === "prepaid"
                           ? "Paid in full — no auto-renew"
                           : s.paymentMode === "sessions-only"

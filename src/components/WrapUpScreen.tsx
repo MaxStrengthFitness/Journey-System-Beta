@@ -26,6 +26,7 @@ import { ArrowLeft, CalendarCheck2, CalendarClock, CalendarSearch, CalendarX2, C
 import {
   LogConversationDialog,
   promptText,
+  renewalOf,
   renewalPromptDue,
 } from "../features/renewals";
 import { getBroadMuscleGroup } from "../lib/clinical-review-utils";
@@ -451,7 +452,10 @@ export function WrapUpScreen({
   const [showRenewal, setShowRenewal] = useState(false);
   const [renewalLogged, setRenewalLogged] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const renewalDue = renewalPromptDue(client.renewal);
+  // Her renewal with her auto-renewal mark applied (auto-renew.ts): a
+  // client marked "not on auto-renewal" gets no before-the-charge prompt.
+  const renewal = useMemo(() => renewalOf(client), [client]);
+  const renewalDue = renewalPromptDue(renewal);
   // Whether the packages card is possible at all, before anything is read:
   // a live package, an away pause or a running contract says no here.
   const preliminaryPackages = useMemo(
@@ -895,7 +899,7 @@ export function WrapUpScreen({
               </button>
               {/* Always reachable while a package is on file ("there's not
                   really a good way to open it"); loud only when due. */}
-              {client.renewal?.cycleKey && (
+              {renewal?.cycleKey && (
                 <button
                   type="button"
                   onClick={() => setShowRenewal(true)}
@@ -909,7 +913,7 @@ export function WrapUpScreen({
                   {renewalLogged
                     ? "Renewal conversation saved ✓"
                     : renewalDue
-                      ? promptText(client.renewal)
+                      ? promptText(renewal)
                       : "Renewal conversation"}
                 </button>
               )}
@@ -1009,7 +1013,7 @@ export function WrapUpScreen({
         open={showRenewal}
         onClose={() => setShowRenewal(false)}
         client={client}
-        snapshot={client.renewal ?? null}
+        snapshot={renewal}
         trainer={authTrainer}
         onSaved={() => setRenewalLogged(true)}
       />

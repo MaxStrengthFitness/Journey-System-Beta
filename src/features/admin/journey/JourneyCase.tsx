@@ -25,6 +25,7 @@ import { studioDateKey } from "../../../lib/studio-time";
 import { leadsHere } from "../../relay/leads";
 import { chipText, situationSentence } from "../../renewals/sentences";
 import type { RenewalSnapshot } from "../../renewals/types";
+import { renewalOf } from "../../renewals/auto-renew";
 import { AdminBadge, AdminButton } from "../primitives";
 import { SnoozeChooser } from "../overview/pieces";
 import { clearWatch, writeWatch } from "../attention/useAttention";
@@ -90,7 +91,8 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
   );
   const rights = caseRights({ leads, uid: me.id || null, stored });
   const choices = useMemo(() => ownerChoices(trainers, studioId, stored?.owner ?? null), [trainers, studioId, stored?.owner]);
-  const snapshot = (entry.client.renewal as RenewalSnapshot | undefined) ?? null;
+  // Her renewal with the auto-renewal mark and the lock applied now (renewals/auto-renew.ts).
+  const snapshot: RenewalSnapshot | null = renewalOf(entry.client);
   const [snoozing, setSnoozing] = useState(false);
   const [busy, setBusy] = useState(false);
   const run = async (work: () => Promise<void>) => {
