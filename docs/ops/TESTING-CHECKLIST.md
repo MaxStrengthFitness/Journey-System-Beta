@@ -2615,6 +2615,24 @@ Nothing to deploy but the push. As a **Life Transformer**, then a **studio leade
 - [ ] Notes → the Machine filter lists only the machines she has notes about; pick one: only those notes, each with its session line. "Every machine" brings everything back.
 - [ ] The Journey tab grid and the live session grid look exactly as before: no marks on session numbers or cells; a machine with notes still shows its note flag.
 
+## Round 48 — Inactive: active, then MIA, then Inactive · *Oct 1 2026, branch `oct1/inactive`*
+
+**Deploy the rules first** (`npm run test:rules`, then `firebase deploy --only firestore:rules`; no index). As a **studio leader**, then a **Life Transformer** at the same studio, portrait and landscape. `docs/rounds/2026-10-01-inactive.md`.
+
+- [ ] My Studio → Studio → This studio's settings: "Where a client is" has **Inactive after … days**, from Max Strength's default (90). Type 40 (below Lapsed's 45) and save: refused, "Inactive has to come after Lapsed". Type 120 and save; clear it again. Admins → Standard → Studio defaults has the same row, and refuses a Lapsed of 100 while Inactive is empty (the app's 90).
+- [ ] Operations → Clients → Journey: the strip reads Starting · Settled · **MIA** · **Inactive** over seven stops (two rows of four and three in portrait); nothing is cut short. MIA's counts are as before.
+- [ ] Tap **Inactive**: its own list. A client past 90 days with nothing booked says "Inactive by herself · since …" and the line she crossed. "no win-back case yet" under a client with no case.
+- [ ] Open a Drifting client (inside Operations). Under her journey, **Active or inactive** says "Active: not marked inactive." Tap **Mark inactive**: six reasons, each a 44px tap; Save waits for a reason. Pick Moved away, write a note, tap **Mark inactive**. She leaves Drifting and is on Inactive as "Marked inactive · since today", the reason, the note and your name.
+- [ ] Type a note in the mark and tap another Operations tab: the leave warning asks first.
+- [ ] On her row on Inactive, tap **Mark active again**: she is back in her state by the rules. Mark her inactive again, then **Change the reason** on her client page.
+- [ ] On an inactive client's page, the case form's **Open a case** opens a win-back case; the Inactive row then says who owns it.
+- [ ] Her profile → Notes & Profile → Account: the same panel, between Contact and Membership, with Mark inactive / Mark active again.
+- [ ] Operations → Month: MIA unchanged; its line counts who went inactive this month and is still inactive.
+- [ ] As the **trainer**: her Account panel says she is marked inactive, by whom and why, and "Only a leader of this studio marks a client inactive or active again." No buttons.
+- [ ] As the trainer, the Client Directory: All leaves her out; an **Inactive N** chip shows her on a tap with a line saying what Inactive means; the bottom line says how many are out of the way. Untap; type her name: she is found, with **Inactive** on her row.
+- [ ] Book her in Mindbody (a test client): after the next sync she is Back on the Journey, on the Directory's All, and on the Hub's grid for that day.
+- [ ] The next morning, the nightly job's log on Render: each live studio's line counts "N inactive (N marked by a leader)", and the first look says "N inactive, left out of the monthly sweep".
+
 ---
 
 ## Findings log

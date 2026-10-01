@@ -14,7 +14,7 @@ vi.mock("../../../firebase", () => ({ db: {}, auth: { currentUser: { uid: "lead"
 
 const NOW = new Date("2026-09-28T13:00:00Z"); // Monday 9 AM Eastern
 const eastern = (day: string, hm: string) => new Date(`${day}T${hm}:00-04:00`);
-const failures = vi.hoisted(() => ({ week: false, cases: [] as Array<Record<string, unknown>> }));
+const failures = vi.hoisted(() => ({ week: false, cases: [] as Array<Record<string, unknown>>, marks: [] as Array<Record<string, unknown>>, deleted: [] as string[] }));
 
 vi.mock("firebase/firestore", () => {
   const ref = (...parts: unknown[]) => {
@@ -45,6 +45,7 @@ vi.mock("firebase/firestore", () => {
     if (path === "schedules") return snap([booking("b1", "hamfast", "t-ber", "2026-09-28", "11:00"), booking("b2", "rosie", "t-mab", "2026-10-01", "10:00")]);
     if (path === "studios/westlake/watchlist") return snap([{ id: "halbarad", clientId: "halbarad", snoozedUntil: "2026-10-05", dismissedAt: null }]);
     if (path === "studios/westlake/cases") return snap(failures.cases);
+    if (path === "studios/westlake/inactiveMarks") return snap(failures.marks);
     return snap([]);
   };
   return {
@@ -66,7 +67,9 @@ vi.mock("firebase/firestore", () => {
       return () => clearTimeout(t);
     },
     setDoc: async () => {},
-    deleteDoc: async () => {},
+    deleteDoc: async (r: { path: string }) => {
+      failures.deleted.push(r.path);
+    },
     serverTimestamp: () => new Date(),
   };
 });
@@ -119,6 +122,8 @@ afterEach(() => {
   host = null;
   failures.week = false;
   failures.cases = [];
+  failures.marks = [];
+  failures.deleted = [];
   vi.useRealTimers();
 });
 
@@ -217,6 +222,41 @@ describe("Clients → Journey", () => {
     alert.mockRestore();
     expect(stop(el, "Drifting").querySelector(".ops-stop__n")?.textContent).toBe("0");
     expect(el.textContent).toContain("anyone past a line reads Unknown, never slipping");
+  });
+
+  it("lists Inactive on its own: which kind, since when and why, with Mark active again for a leader's mark (Oct 1 2026)", async () => {
+    failures.marks = [
+      { id: "otho", clientId: "otho", reason: "moved", note: "Moved to the Shire", day: "2026-09-22", markedBy: { id: "lead", name: "Glorfindel Lord" }, markedAt: new Date("2026-09-22T14:00:00Z") },
+    ];
+    const gone = [
+      ...clients,
+      // Last in June 20, nothing booked: past the 90-day line on Sep 18.
+      client("lobelia", "Lobelia", "Sackville", { lastVisitDate: "2026-06-20" }),
+      // Marked inactive by a leader on the 22nd, last in the 15th.
+      client("otho", "Otho", "Sackville", { lastVisitDate: "2026-09-15" }),
+    ];
+    const opened: string[] = [];
+    const el = await mount(gone, (id) => opened.push(id));
+    expect(stop(el, "Inactive").querySelector(".ops-stop__n")?.textContent).toBe("2");
+    // MIA keeps its own count: neither is Drifting, At risk or Lapsed.
+    expect(stop(el, "Drifting").querySelector(".ops-stop__n")?.textContent).toBe("3");
+    // This week: Otho, marked on the 22nd; Lobelia crossed the line on the 18th, before the week.
+    expect(el.textContent).toContain("0 lapsed, 1 went inactive");
+    await press(stop(el, "Inactive"));
+    const rows = [...el.querySelectorAll(".ops-inrow")];
+    expect(rows.map((r) => r.querySelector(".ops-inrow__name")?.textContent)).toEqual(["Otho Sackville", "Lobelia Sackville"]);
+    expect(rows[0].textContent).toContain("Marked inactive · since Tue, Sep 22");
+    expect(rows[0].textContent).toContain("Moved away: Moved to the Shire. Marked by Glorfindel Lord.");
+    expect(rows[1].textContent).toContain("Inactive by herself · since Fri, Sep 18");
+    expect(rows[1].textContent).toContain("past the studio's 90-day line");
+    expect(rows[1].textContent).toContain("no win-back case yet");
+    // Only a leader's mark can be taken back here; the line's own needs a booking.
+    expect(rows[1].querySelector("button[aria-label^='Mark']")).toBeNull();
+    await press(rows[0].querySelector<HTMLButtonElement>("button[aria-label='Mark Otho Sackville active again']")!);
+    expect(failures.deleted).toEqual(["studios/westlake/inactiveMarks/otho"]);
+    // A row opens her inside Operations, where the case form opens a win-back case.
+    await press(rows[1].querySelector<HTMLButtonElement>(".ops-inrow__open")!);
+    expect(opened).toEqual(["lobelia"]);
   });
 
   it("with a nightly record that stopped changing, every client is Unknown and the page says why", async () => {

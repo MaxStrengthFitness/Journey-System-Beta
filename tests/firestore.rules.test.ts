@@ -5125,6 +5125,89 @@ describe("marks on a time", () => {
         }
       });
     });
+
+    // -- The inactive round (Oct 1 2026): a leader's inactive mark. Leaders
+    // mark, change and take back; everyone who works there reads.
+    describe("inactive marks", () => {
+      const markRef = (db: Db, studioId: string, clientId: string) => doc(db, "studios", studioId, "inactiveMarks", clientId);
+      /** What the app writes (journey/inactive.ts inactiveMarkDoc). */
+      const mark = (uid: string, over: Record<string, unknown> = {}) => ({
+        clientId: "eowyn",
+        reason: "moved",
+        note: "Moved to Denver",
+        day: "2026-10-01",
+        markedBy: { id: uid, name: `Person ${uid}` },
+        markedAt: serverTimestamp(),
+        ...over,
+      });
+
+      it("lets the studio's leaders, franchise owners and administrators mark, change, read and take back", async () => {
+        await seedPeople();
+        for (const uid of LEADERS) {
+          const db = as(uid);
+          await assertSucceeds(setDoc(markRef(db, "studioA", "eowyn"), mark(uid)));
+          await assertSucceeds(setDoc(markRef(db, "studioA", "eowyn"), mark(uid, { reason: "cost" })));
+          await assertSucceeds(getDoc(markRef(db, "studioA", "eowyn")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "inactiveMarks")));
+          await assertSucceeds(deleteDoc(markRef(db, "studioA", "eowyn")));
+        }
+      });
+
+      it("lets everyone who works there read the marks, and no one but a leader mark or take one back", async () => {
+        await seedPeople();
+        await testEnv.withSecurityRulesDisabled(async (ctx) => {
+          await setDoc(doc(ctx.firestore(), "studios", "studioA", "inactiveMarks", "eowyn"), { ...mark("ownerA"), markedAt: new Date() });
+        });
+        for (const uid of ["trainerA", "guestA"]) {
+          const db = as(uid);
+          await assertSucceeds(getDoc(markRef(db, "studioA", "eowyn")));
+          await assertSucceeds(getDocs(collection(db, "studios", "studioA", "inactiveMarks")));
+          await assertFails(setDoc(markRef(db, "studioA", "theodred"), mark(uid, { clientId: "theodred" })));
+          await assertFails(setDoc(markRef(db, "studioA", "eowyn"), mark(uid)));
+          await assertFails(deleteDoc(markRef(db, "studioA", "eowyn")));
+        }
+        // A leader of another studio is a stranger here.
+        for (const uid of ["trainerB", "headB"]) {
+          const db = as(uid);
+          await assertFails(getDoc(markRef(db, "studioA", "eowyn")));
+          await assertFails(getDocs(collection(db, "studios", "studioA", "inactiveMarks")));
+          await assertFails(setDoc(markRef(db, "studioA", "theodred"), mark(uid, { clientId: "theodred" })));
+          await assertFails(deleteDoc(markRef(db, "studioA", "eowyn")));
+        }
+        const out = testEnv.unauthenticatedContext().firestore();
+        await assertFails(getDoc(markRef(out, "studioA", "eowyn")));
+      });
+
+      it("holds the mark's shape, and signs it as the person marking, now", async () => {
+        const db = as("ownerA");
+        const refused: Record<string, unknown>[] = [
+          mark("ownerA", { markedBy: { id: "headA", name: "Head A" } }),
+          mark("ownerA", { markedBy: { id: "ownerA" } }),
+          mark("ownerA", { markedBy: { id: "ownerA", name: "x".repeat(121) } }),
+          mark("ownerA", { reason: "bored" }),
+          mark("ownerA", { reason: "" }),
+          mark("ownerA", { note: "" }),
+          mark("ownerA", { note: "x".repeat(301) }),
+          mark("ownerA", { note: 7 }),
+          mark("ownerA", { clientId: "theodred" }),
+          mark("ownerA", { day: "10/01/2026" }),
+          mark("ownerA", { day: "2026-13-01" }),
+          mark("ownerA", { markedAt: new Date("2026-01-01T12:00:00Z") }),
+          mark("ownerA", { state: "inactive" }),
+          { clientId: "eowyn", reason: "moved", day: "2026-10-01", markedBy: { id: "ownerA", name: "Owner A" } },
+        ];
+        for (const data of refused) await assertFails(setDoc(markRef(db, "studioA", "eowyn"), data));
+        await assertSucceeds(setDoc(markRef(db, "studioA", "eowyn"), mark("ownerA")));
+        const { note: _note, ...withoutNote } = mark("ownerA");
+        await assertSucceeds(setDoc(markRef(db, "studioA", "eowyn"), withoutNote));
+      });
+
+      it("follows Demo Mode's rule: everyone signed in leads the practice studio", async () => {
+        const db = as("trainerB");
+        await assertSucceeds(setDoc(markRef(db, "demo-studio", "eowyn"), mark("trainerB")));
+        await assertSucceeds(deleteDoc(markRef(db, "demo-studio", "eowyn")));
+      });
+    });
   });
 
   // -- WAVE 2 CODEX (Sep 28 2026; AJ approved the Machine Codex's new data

@@ -3,10 +3,32 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildDirectoryRow } from "./row";
-import { DEFAULT_SORT, SORT_STORE_PREFIX, inView, isMine, readSavedSort, saveSort, viewCounts } from "./views";
+import { DEFAULT_SORT, SORT_STORE_PREFIX, inView, inactiveHow, isMine, readSavedSort, saveSort, viewCounts } from "./views";
 import { TODAY, eastern, makeBooking, makeClient, makeContext } from "./fixtures";
 
 const ME = ["t-me", "uid-me"];
+
+describe("Inactive (Oct 1 2026)", () => {
+  const ctx = makeContext({ schedules: [makeBooking({ clientId: "back", start: eastern("2026-09-29", "09:00"), trainerId: "t-me" })] });
+  const rowOf = (id: string, renewal: Record<string, unknown> | null, extra: Record<string, unknown> = {}) =>
+    buildDirectoryRow(makeClient({ id, ...(renewal ? { lastSessionDate: renewal.lastVisitDate as string, renewal: renewal as never } : {}), ...extra }), ctx);
+  const mark = { day: "2026-09-20" };
+
+  it("says how a row is inactive: a leader's mark, past the line, or Mindbody's own", () => {
+    expect(inactiveHow(rowOf("marked", { lastVisitDate: "2026-09-10" }), mark, TODAY, 90)).toBe("manual");
+    expect(inactiveHow(rowOf("gone", { lastVisitDate: "2026-06-01", situation: "on-track" }), null, TODAY, 90)).toBe("automatic");
+    expect(inactiveHow(rowOf("mb", null, { isActive: false }), null, TODAY, 90)).toBe("mindbody");
+  });
+
+  it("never calls her inactive when she is booked, Away, short of the line, or can't be judged", () => {
+    expect(inactiveHow(rowOf("back", { lastVisitDate: "2026-06-01" }), mark, TODAY, 90)).toBeNull();
+    expect(inactiveHow(rowOf("away", { lastVisitDate: "2026-06-01", situation: "away" }), null, TODAY, 90)).toBeNull();
+    expect(inactiveHow(rowOf("lapsed", { lastVisitDate: "2026-08-01" }), null, TODAY, 90)).toBeNull();
+    expect(inactiveHow(rowOf("norecord", null, { lastSessionDate: "2026-05-01" }), null, TODAY, 90)).toBeNull();
+    // She visited after the mark: it no longer holds.
+    expect(inactiveHow(rowOf("visited", { lastVisitDate: "2026-09-25" }), mark, TODAY, 90)).toBeNull();
+  });
+});
 
 describe("Mine", () => {
   it("counts coached, logged, top trainer, primary trainer, booked with me and Kaizen", () => {

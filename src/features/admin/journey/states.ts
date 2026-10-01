@@ -50,6 +50,14 @@
  *     `next` is "none" only off a fresh read, and "unknown" is never nothing.
  *     A client past a line whose bookings couldn't be read is Unknown, never
  *     Steady.
+ *
+ * INACTIVE, THE END OF THE LINE (the inactive round, Oct 1 2026; AJ: "a
+ * client is active>MIA>inactive"). After Lapsed: past the studio's
+ * `inactiveDays` (90 by default, always past Lapsed: resolve.ts) with nothing
+ * booked, on Lapsed's own evidence, so a client Journey can't judge stays
+ * Unknown and Away is never made Inactive by itself; or a leader's mark
+ * (`mark`, inactive.ts), which holds until she visits after the day it was
+ * made. A booking makes either kind active again: she reads Back.
  */
 import { addDays, daysBetween } from "../../client-history/model";
 import type { RenewalSnapshot } from "../../renewals/types";
@@ -58,11 +66,15 @@ import type { RenewalSnapshot } from "../../renewals/types";
 import { SETTING_BY_KEY, type SettingKey } from "../../studio-settings/registry";
 import { resolveAll, type ResolvedSetting } from "../../studio-settings/resolve";
 import { rhythmFromSnapshot, rhythmProof, type Rhythm, type RhythmResult } from "./rhythm";
+import { markHolds, markReasonWords, pastInactiveLine, type InactiveMark } from "./inactive";
 
-export type JourneyState = "new" | "settling" | "steady" | "drifting" | "at-risk" | "lapsed" | "away" | "back" | "unknown";
+export type JourneyState = "new" | "settling" | "steady" | "drifting" | "at-risk" | "lapsed" | "inactive" | "away" | "back" | "unknown";
 
-/** The line, in its order. */
-export const LINE_STATES: readonly JourneyState[] = ["new", "settling", "steady", "drifting", "at-risk", "lapsed"];
+/** The line, in its order: active, then MIA (Drifting · At risk · Lapsed), then Inactive. */
+export const LINE_STATES: readonly JourneyState[] = ["new", "settling", "steady", "drifting", "at-risk", "lapsed", "inactive"];
+
+/** MIA, as the leaders say it (Operations → Month's list, and the Journey's): Drifting · At risk · Lapsed. */
+export const MIA_STATES: readonly JourneyState[] = ["drifting", "at-risk", "lapsed"];
 /** Beside the line. */
 export const BESIDE_STATES: readonly JourneyState[] = ["away", "back", "unknown"];
 
@@ -73,15 +85,17 @@ export const STATE_NAMES: Record<JourneyState, string> = {
   drifting: "Drifting",
   "at-risk": "At risk",
   lapsed: "Lapsed",
+  inactive: "Inactive",
   away: "Away",
   back: "Back",
   unknown: "Unknown",
 };
 
 /**
- * THE FIVE LINES a studio may set for itself (wave 2, Sep 28 2026). Their
- * values are the studio settings' (features/studio-settings/registry.ts:
- * `driftMultiple`, `driftMinDays`, `lapsedDays`, `newMax`, `settlingMax`).
+ * THE LINES a studio may set for itself (wave 2, Sep 28 2026; Inactive since
+ * Oct 1 2026). Their values are the studio settings' (features/studio-
+ * settings/registry.ts: `driftMultiple`, `driftMinDays`, `lapsedDays`,
+ * `inactiveDays`, `newMax`, `settlingMax`).
  */
 export interface JourneyLines {
   /** Drifting: this many times her usual gap… (the attendance watch's rule before the Journey took it over). */
@@ -90,6 +104,8 @@ export interface JourneyLines {
   driftMinDays: number;
   /** Lapsed: this many days since her last visit, with nothing booked. */
   lapsedDays: number;
+  /** Inactive: this many days since her last visit, with nothing booked (always past Lapsed). */
+  inactiveDays: number;
   /** New: sessions 1 to this many (a total that may be quoted). */
   newMax: number;
   /** Settling in: to this many sessions. */
@@ -98,8 +114,8 @@ export interface JourneyLines {
 
 export type LineKey = keyof JourneyLines;
 
-/** The five, in the order Setup → Rules reads them. */
-export const LINE_KEYS: readonly LineKey[] = ["driftMultiple", "driftMinDays", "lapsedDays", "newMax", "settlingMax"];
+/** The lines, in the order Setup → Rules reads them. */
+export const LINE_KEYS: readonly LineKey[] = ["driftMultiple", "driftMinDays", "lapsedDays", "inactiveDays", "newMax", "settlingMax"];
 
 const lineValue = (all: Record<SettingKey, ResolvedSetting>, key: LineKey): number => {
   const v = all[key]?.value;
@@ -112,6 +128,7 @@ export function linesOf(all: Record<SettingKey, ResolvedSetting>): JourneyLines 
     driftMultiple: lineValue(all, "driftMultiple"),
     driftMinDays: lineValue(all, "driftMinDays"),
     lapsedDays: lineValue(all, "lapsedDays"),
+    inactiveDays: lineValue(all, "inactiveDays"),
     newMax: lineValue(all, "newMax"),
     settlingMax: lineValue(all, "settlingMax"),
   };
@@ -134,7 +151,18 @@ export function multipleWords(m: number): string {
   return m === 2 ? "Twice" : m === 3 ? "Three times" : `${m} times`;
 }
 
-export type LineCrossed = "twice-usual" | "studio-line" | "lapse-line" | "due-back" | null;
+export type LineCrossed = "twice-usual" | "studio-line" | "lapse-line" | "due-back" | "inactive-line" | "marked" | null;
+
+/** How she became Inactive: past the studio's line by herself, or a leader's mark. */
+export type InactiveKind = "automatic" | "manual";
+
+export interface InactiveInfo {
+  kind: InactiveKind;
+  /** The day she became Inactive: her last visit plus the line, or the day she was marked. */
+  since: string;
+  /** The leader's mark, when it is one. */
+  mark: InactiveMark | null;
+}
 
 export type UnknownWhy = "no-record" | "stale-record" | "no-visit" | "bookings-unread" | "too-new";
 
@@ -157,6 +185,8 @@ export interface JourneyInput {
   lines: JourneyLines;
   /** A rhythm measured some other way (from visit days); by default, from the snapshot. */
   rhythm?: RhythmResult;
+  /** A leader's inactive mark for her at this studio (inactive.ts), when there is one. */
+  mark?: InactiveMark | null;
 }
 
 export interface ClientJourney {
@@ -180,6 +210,8 @@ export interface ClientJourney {
   why: string;
   /** What backs it. */
   proof: string;
+  /** Inactive: how, and since when (null, or absent, for every other state). */
+  inactive?: InactiveInfo | null;
 }
 
 const dayWords = (day: string, today: string) => {
@@ -217,6 +249,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
     nextBooking: i.next.state === "booked" ? i.next.day : null,
     crossed: null as LineCrossed,
     since: null as string | null,
+    inactive: null as InactiveInfo | null,
   };
   const unknown = (why: UnknownWhy, sentence: string, proof: string, rhythmWhy: string | null = null): ClientJourney => ({
     ...base,
@@ -230,6 +263,41 @@ export function journeyOf(i: JourneyInput): ClientJourney {
     why: sentence,
     proof,
   });
+
+  /* ---- A leader's mark (the inactive round): Inactive until she books, or visits after the day it was made ---- */
+  const mark = i.mark ?? null;
+  if (mark && markHolds(mark, i.lastVisit)) {
+    const r = i.rhythm ?? (i.snapshot ? rhythmFromSnapshot(i.snapshot) : null);
+    const markRhythm = r && r.measured === true ? r.rhythm : null;
+    const marked = `Marked inactive${mark.markedBy.name ? ` by ${mark.markedBy.name}` : ""} on ${dayWords(mark.day, i.today)}`;
+    const last = i.lastVisit ? `last visit ${dayWords(i.lastVisit, i.today)}` : "no visit on record";
+    const markCommon = {
+      ...base,
+      judged: markRhythm !== null,
+      rhythm: markRhythm,
+      rhythmWhy: r && r.measured === false ? r.why : null,
+      unknownWhy: null as UnknownWhy | null,
+      daysSince: i.lastVisit ? daysBetween(i.lastVisit, i.today) : null,
+      driftDays: markRhythm ? driftLine(markRhythm.gapDays, i.lines) : null,
+    };
+    if (i.next.state === "booked") {
+      return {
+        ...markCommon,
+        state: "back",
+        why: `${marked} (${markReasonWords(mark)}), and booked again since: she's back.`,
+        proof: `${last} · ${i.next.day ? `next booking ${dayWords(i.next.day, i.today)}` : "booked"}`,
+      };
+    }
+    return {
+      ...markCommon,
+      state: "inactive",
+      crossed: "marked",
+      since: mark.day,
+      why: `${marked}: ${markReasonWords(mark)}.`,
+      proof: `${last} · ${i.next.state === "none" ? "nothing booked" : "next booking unknown"}`,
+      inactive: { kind: "manual", since: mark.day, mark },
+    };
+  }
 
   if (!i.snapshot) return unknown("no-record", "No nightly record for her yet, so her visits can't be judged.", "Last night's record hasn't reached her.");
   if (i.nightlyStale) return unknown("stale-record", "The nightly record has stopped changing, so her rhythm isn't judged from it.", "The studio's nightly record hasn't changed in days.");
@@ -300,6 +368,19 @@ export function journeyOf(i: JourneyInput): ClientJourney {
 
   /* ---- The lines she crossed with nothing booked ---- */
   if (nothingBooked) {
+    // Inactive by herself: past the studio's Inactive line (always past Lapsed), on Lapsed's own evidence.
+    if (pastInactiveLine(daysSince, true, L.inactiveDays)) {
+      const since = addDays(i.lastVisit as string, L.inactiveDays);
+      return {
+        ...common,
+        state: "inactive",
+        crossed: "inactive-line",
+        since,
+        why: `${daysText(daysSince)} since her last visit, past the studio's ${L.inactiveDays}-day line, and nothing is booked: inactive by herself.`,
+        proof: `${lastText} · nothing booked${withRhythm}`,
+        inactive: { kind: "automatic", since, mark: null },
+      };
+    }
     if (daysSince >= L.lapsedDays) {
       return {
         ...common,
@@ -333,7 +414,7 @@ export function journeyOf(i: JourneyInput): ClientJourney {
   }
 
   /* ---- A line crossed, and her bookings unread: nothing can be said ---- */
-  const crossedLine = daysSince >= L.lapsedDays || daysSince >= i.breakDays || (drift !== null && daysSince >= drift);
+  const crossedLine = daysSince >= L.inactiveDays || daysSince >= L.lapsedDays || daysSince >= i.breakDays || (drift !== null && daysSince >= drift);
   if (crossedLine && i.next.state === "unknown") {
     return {
       ...unknown("bookings-unread", `${daysText(daysSince)} since her last visit, and whether anything is booked couldn't be read, so whether she is slipping can't be said.`, `${lastText} · next booking unknown${withRhythm}`, rhythmWhy),

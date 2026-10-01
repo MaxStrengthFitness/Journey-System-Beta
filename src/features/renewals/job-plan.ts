@@ -31,6 +31,17 @@
  *
  * A past client (no visit or booking in the window) is never polled: a sale
  * event or a new booking wakes them.
+ *
+ * INACTIVE CLIENTS DROP OUT OF THE SWEEP (the inactive round, Oct 1 2026).
+ * "Active" above was sticky: the snapshot carries her last visit forward
+ * night after night (engine.ts `lastVisitHint`), so `lastVisitDate` never
+ * empties, and a client who stopped coming a year ago stayed "active" and was
+ * pulled every month for ever. Now a client the Journey calls Inactive (past
+ * the studio's Inactive line with nothing booked, as last night's state has
+ * it, or a leader's mark that still holds: `sweepsPast`) is not pulled for
+ * reasons 2 and 3. A sale event (0) still wakes her, and a new booking makes
+ * her active again: she is booked, so she is no longer swept past, and her
+ * first booking's sync (lib/first-booking-sync.ts) is untouched.
  */
 
 import { mindbodyDayKey } from "./engine";
@@ -40,6 +51,7 @@ import type { Client } from "../../types";
 import { mindbodyIdOf } from "../../lib/mindbody-id";
 import { toDateSafe } from "../../lib/mindbody-dates";
 import type { RenewalNamesSeen, RenewalSnapshot } from "./types";
+import { markHolds } from "../admin/journey/inactive";
 
 /** Near the end of a package, the morning-of pull waits at least this long between pulls. */
 export const NEAR_END_REFRESH_DAYS = 7;
@@ -105,12 +117,15 @@ export function pullRank(params: {
   loggedSincePull?: number;
   /** The studio's "start the conversation at (sessions left)". */
   conversationAt?: number;
+  /** The Journey calls her Inactive tonight (`sweepsPast`): no monthly pull, no never-pulled pull. */
+  inactive?: boolean;
 }): number | null {
   const { client, current, today } = params;
   if (!mindbodyIdOf(client)) return null;
   const pulled = mindbodyDayKey(client.mindbodyServicesSyncedAt);
   const age = pulled ? daysBetween(pulled, today) : null;
-  const active = Boolean(current.lastVisitDate || current.nextBookingDate);
+  // `lastVisitDate` is carried forward night after night, so it alone never lets a client go: Inactive does.
+  const active = Boolean(current.lastVisitDate || current.nextBookingDate) && !params.inactive;
 
   // 0. Mindbody said so: a sale, contract or membership event since the last pull.
   const changedAt = toDateSafe(client.mindbodyCommercialChangedAt);
@@ -130,6 +145,25 @@ export function pullRank(params: {
   // 3. A month since the last pull, and still training here.
   if (active && age >= STALE_AFTER_DAYS) return 3;
   return null;
+}
+
+/**
+ * Is she out of tonight's sweep? Inactive by the Journey's rule, read from
+ * what tonight holds: last night's state says she went inactive by herself
+ * (an `automatic` kind; a manual one is the mark's to say), or a leader's
+ * mark still holds (no visit after the day it was made). Never with a booking
+ * ahead: a new booking makes her active again.
+ */
+export function sweepsPast(i: {
+  /** Last night's stored state for her: its state and, when Inactive, which kind. */
+  stored: { state: string; inactiveKind?: string | null } | null;
+  /** A leader's mark at her home studio, when there is one. */
+  mark: { day: string } | null;
+  current: Pick<RenewalSnapshot, "lastVisitDate" | "nextBookingDate">;
+}): boolean {
+  if (i.current.nextBookingDate) return false;
+  if (i.mark && markHolds(i.mark, i.current.lastVisitDate ?? null)) return true;
+  return Boolean(i.stored && i.stored.state === "inactive" && i.stored.inactiveKind !== "manual");
 }
 
 /**

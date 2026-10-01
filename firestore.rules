@@ -2902,6 +2902,41 @@ service cloud.firestore {
       }
 
       /*
+       * THE INACTIVE ROUND: a leader's inactive mark (Oct 1 2026; AJ:
+       * "manually set clients inactive", by studio leaders). One document per
+       * client (features/admin/journey/inactive-store.ts): the reason from
+       * the pick list, an optional note, the studio day it was marked, and
+       * who marked it (the Auth uid) at the server's time. Its own
+       * collection: never a whole-client write, and never the nightly job's
+       * clientStates (the job reads these through the Admin SDK). Read by
+       * everyone who works at the studio (the Client Directory leaves an
+       * inactive client out of All; her profile says so); marked, changed and
+       * taken back (deleted: Mark active again) by its leaders, franchise
+       * owners and administrators. The cheap field checks come before the
+       * one that reads the trainer.
+       */
+      match /inactiveMarks/{clientId} {
+        function inactiveMarkValid(d) {
+          return d.keys().hasOnly(['clientId', 'reason', 'note', 'day', 'markedBy', 'markedAt'])
+              && d.keys().hasAll(['clientId', 'reason', 'day', 'markedBy', 'markedAt'])
+              && d.clientId == clientId
+              && d.reason in ['moved', 'health', 'cost', 'schedule', 'break', 'other']
+              && (!('note' in d) || (d.note is string && d.note.size() > 0 && d.note.size() <= 300))
+              && d.day is string && d.day.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+              && d.markedBy is map
+              && d.markedBy.keys().hasOnly(['id', 'name'])
+              && d.markedBy.id == request.auth.uid
+              && d.markedBy.name is string && d.markedBy.name.size() <= 120
+              && d.markedAt == request.time;
+        }
+        allow read: if isAuthenticated() && wave2WorksHere(studioId);
+        allow create, update: if isAuthenticated()
+                              && inactiveMarkValid(request.resource.data)
+                              && wave2Leads(studioId);
+        allow delete: if isAuthenticated() && wave2Leads(studioId);
+      }
+
+      /*
        * MACHINE CARE (Relay, Sep 2026) -- one document per machine: when it
        * was last wiped and deep cleaned, by whom, and a flag. Written from
        * the Floor Map's care sheet by anyone who works at the studio; a wipe

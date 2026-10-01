@@ -4,18 +4,31 @@
 
 ## The page (phase 4)
 
-**Clients → Journey** (`JourneyPage.tsx`): the state strip (New · Settling in · Steady · Drifting · At risk · Lapsed, each a count and a button), Away · Back · Unknown beside the line, the lenses (All clients · Renewal window · New), a "this week" line, and the picked state's list. A slipping list reads catchable first: clients a leader already answered (snoozed, dismissed) last, then those whose usual trainer is in today, then the closest to the line. Unknown's list is grouped by why. Under the line's lists, **Too new to judge** names who can't be judged yet, with why.
+**Clients → Journey** (`JourneyPage.tsx`): the state strip (New · Settling in · Steady · Drifting · At risk · Lapsed · Inactive, each a count and a button, under Starting · Settled · **MIA** · **Inactive** since Oct 1 2026), Away · Back · Unknown beside the line, the lenses (All clients · Renewal window · New), a "this week" line, and the picked state's list. A slipping list reads catchable first: clients a leader already answered (snoozed, dismissed) last, then those whose usual trainer is in today, then the closest to the line. Unknown's list is grouped by why. Under the line's lists, **Too new to judge** names who can't be judged yet, with why.
 
 A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a client of this studio carries **her journey and her case** there (`JourneyCase.tsx`): why, proof, what we know (the renewal line, the snapshot's own flags such as missed sessions, and the watchlist's answer), the next step with its owner and the day it becomes the leader's, and the outcome. The list stays mounted behind her, so Back is exact (a master–detail layout was the research's sketch for landscape; one client page for every door is what was built, so Today, the Journey and Moments open her the same way).
 
 **Today's Slipping away** reads the same rule (`studioJourneys`, drifting and at risk, catchable first) with Snooze and Dismiss, and a door here. The old attendance watch (`overview/questions.ts` `attendanceQuestion`, `attention/AttendanceWatchView.tsx`) is gone: one rule for "slipping", not two that could disagree. Its snooze, dismiss and back-again stay (`attention/`), on the Journey's rows and the case.
+
+## Inactive — the end of the line (Oct 1 2026)
+
+AJ: *"a client is active>MIA>inactive and studios can customize time or manually set clients inactive and also view the mia list and inactive list to possibly work on retention or win backs."* The round is `docs/rounds/2026-10-01-inactive.md`.
+
+- **Inactive by herself**: past the studio's `inactiveDays` (90 by default, always past Lapsed) since her last visit, nothing booked as read, on Lapsed's own evidence: a client Journey can't judge stays Unknown, and Away is never made Inactive by itself.
+- **Marked inactive**: a leader's mark (`studios/{s}/inactiveMarks/{clientId}`: the reason from the pick list, an optional note, signed and dated), which holds until she visits after the day it was made. Leaders, franchise owners and administrators mark and take back; everyone who works there reads.
+- **A booking makes either kind active again**: she reads Back.
+- **The Inactive list** is its own list (Inactive on the strip): each row says which kind, since when and why, and its win-back case; **Mark active again** on a leader's mark. A win-back case is the case form on the client page, as for any client. Renewals' "lost" list is separate and untouched.
+- **The mark panel** (`InactiveMark.tsx`) is on the client page inside Operations (under her journey) and on her profile's Account page (for her home studio, `client-admin/StandingCard.tsx`).
+- **The nightly job** writes Inactive with `inactiveKind` (automatic or manual) from the marks it reads, and leaves Inactive clients out of the monthly Mindbody sweep (`renewals/job-plan.ts` `sweepsPast`).
+- **Out of the way, never deleted**: the Client Directory's All leaves them out behind an "Inactive N" chip (`client-directory/views.ts` `inactiveHow`); search still finds them.
 
 ## The rules (pure, tested)
 
 | File | What it answers |
 | --- | --- |
 | `rhythm.ts` | Her **usual gap**, and the least it takes to say one: six visits over four weeks. `rhythmFromVisits` is the research's rule (the median of her last six gaps in the last twelve weeks), for the nightly job once AJ says yes to it storing states. `rhythmFromSnapshot` is what a screen says today from last night's renewal snapshot: 7 ÷ her pace, the minimum checked on an estimate of the visits behind it (pace × observed weeks, at most eight). Below the minimum: "too new to judge". |
-| `states.ts` | Her **state**, one of nine, with its sentence, its proof, the line she crossed and the day she crossed it (`journeyOf`). |
+| `states.ts` | Her **state**, one of ten, with its sentence, its proof, the line she crossed and the day she crossed it (`journeyOf`); for Inactive, which kind and since when (`inactive`). |
+| `inactive.ts` / `inactive-store.ts` / `InactiveMark.tsx` | **Inactive** (Oct 1 2026): a leader's mark (the reasons, the document, when it holds: until she visits after it), its one writer and reads (one shared listener per studio, one document for a client), and the panel that marks and takes back. |
 | `case.ts` | Her **case**: owner (her usual trainer, the snapshot's `primaryTrainerId`, else a leader), next step (always a person; q6: a phone call counts as in person, noted afterwards on her profile), the day it becomes the leader's (`CASE_ESCALATE_DAYS`, 3, q7), and the one outcome Journey sees by itself: booked again. **A stored case** (wave 2) is read first: what the team wrote, with "the leader's after 3 days with no step" counted from its `updatedAt`, and "Booked again" worked out on read from her bookings on a case still open (it offers to close; it is never written by the sync). |
 | `case-store.ts` | The stored case, `studios/{s}/cases/{clientId}` (wave 2, AJ: "all yes"): `{ clientId, clientName, owner: { id: <Auth uid>, name }, nextStep, dueOn, outcome: open · booked-again · paused · lost, reason?, openedAt, updatedAt, updatedBy }` — exactly that shape, because Relay reads a trainer's own cases with `where('owner.id', '==', uid)` (the cases index). `useStudioCases` is the leaders' read (one small collection); `openCase` writes a new case whole; `saveCase` sends only what changed (`casePatch`), a cleared reason removed. The rules: the studio's leaders read and write every case, the owner reads theirs and may change the step, the day, the outcome and the reason, and nothing is ever deleted. |
 | `case-form.ts` / `CaseForm.tsx` | **The case form** (wave 3, Sep 29 2026): on the client page inside Operations, under the case. `caseRights` mirrors the rules — a leader of the studio opens a case and changes every field; the case's owner (by sign-in uid) changes the next step, the due day, the outcome and the reason, never the owner; everyone else reads. `ownerChoices` is everyone who works here (`lib/who-works-here.ts`), stored by `authUid` (else the trainer id), the stored owner kept when they've left. `startingDraft` is what a new case starts from: her usual trainer, the rules' due day, open, an EMPTY step (an empty step reads the rules' own everywhere, so the leader types only when they have something to say). The form is the admin kit's: `useDirtyForm` (so the leave warning covers typed text), only the diff written through `saveCase` / `casePatch`, a Save bar that never blocks; a new case goes whole through `openCase`. Nothing here deletes a case: an outcome closes it, and a leader setting it back to Open reopens it (`openedAt` kept). A non-leader owner can't read the studio's cases collection, so `useClientCase` reads their one document and `JourneyCase` works her case out again from it. |
@@ -25,10 +38,11 @@ A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a
 
 ### The states, in the order they are decided
 
+0. **Inactive, marked** (Oct 1 2026) — a leader's mark that still holds (no visit after the day it was made); booked, she reads **Back**.
 1. **Unknown** — no nightly record for her, or the studio's record has stopped changing (`overview/brief.ts`, three quiet days).
 2. **Away** — Mindbody's away event (Vacation, Snowbird, Medical) on last night's snapshot, with its reason and return date. The date passing with nothing booked is **At risk** ("was due back on …"); booked again, **Back**; bookings unread, Unknown.
 3. **Unknown**, no visit on record — her last visit isn't known, so no gap can be measured. **Never Lapsed off an unknown.** (New or Settling in if her total may be quoted.)
-4. With **nothing booked** (the bookings were read): **Lapsed** at the studio's `lapsedDays` (45 by default), **At risk** at the studio's own number (`breakDays`, "Warn me when a client has not visited for (days)"), **Drifting** at the studio's `driftMultiple` of her usual gap (twice by default), never under its `driftMinDays` (7 by default).
+4. With **nothing booked** (the bookings were read): **Inactive** by herself at the studio's `inactiveDays` (90 by default, always past Lapsed), **Lapsed** at the studio's `lapsedDays` (45 by default), **At risk** at the studio's own number (`breakDays`, "Warn me when a client has not visited for (days)"), **Drifting** at the studio's `driftMultiple` of her usual gap (twice by default), never under its `driftMinDays` (7 by default).
 5. **Unknown**, bookings unread — past a line, and whether anything is booked couldn't be read. Never Steady.
 6. **Back** — booked again after crossing a line.
 7. **New** (sessions 1 to the studio's `newMax`, 10 by default) or **Settling in** (to its `settlingMax`, 24 by default) — only from a total that may be quoted (`lib/client-coverage` `canQuoteSessionNumber`, through the Client Directory's row): a twelve-year client nobody has recorded a total for is never New.
@@ -42,6 +56,7 @@ A client tapped anywhere opens inside Operations (`shell/ClientPage.tsx`), and a
 | At risk | the studio's `breakDays` (default 14) | the studio's renewal settings, My Studio → Studio → Renewals |
 | Drifting | `driftMultiple` (2) × the usual gap, never under `driftMinDays` (7) | the studio settings |
 | Lapsed | `lapsedDays` (45) | the studio settings |
+| Inactive | `inactiveDays` (90, always past Lapsed), or a leader's mark | the studio settings; `studios/{s}/inactiveMarks` |
 | New, Settling in | `newMax` (10), `settlingMax` (24) | the studio settings |
 | A usual gap | `MIN_RHYTHM_VISITS` 6 over `MIN_RHYTHM_WEEKS` 4 | named constants, the same at every studio |
 

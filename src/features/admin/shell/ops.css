@@ -888,7 +888,7 @@
 
 .ops-line-strip__groups {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 1fr;
+  grid-template-columns: 2fr 1fr 3fr 1fr;
   gap: 8px;
   font-size: 10.5px;
   font-weight: 800;
@@ -899,7 +899,7 @@
 
 .ops-line-strip__stops {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -909,7 +909,7 @@
   }
 
   .ops-line-strip__stops {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -953,6 +953,11 @@
 
 .ops-stop--lapsed {
   border-top-color: var(--adm-ink-faint);
+}
+
+.ops-stop--inactive {
+  border-top-color: var(--adm-border-strong);
+  border-top-style: dashed;
 }
 
 .ops-stop--on {
@@ -1188,6 +1193,127 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Active or inactive (the inactive round, Oct 1 2026): a client's standing and a leader's mark. */
+.ops-inactive {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+}
+
+.ops-inactive__said {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ops-inactive__k {
+  margin-right: 6px;
+  font-weight: 800;
+}
+
+.ops-inactive__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-inactive__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ops-inactive__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ops-inactive__reasons > legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.ops-inactive__reason {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--adm-border-strong);
+  border-radius: 10px;
+  background: var(--adm-surface);
+  color: var(--adm-ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.ops-inactive__reason[aria-pressed="true"] {
+  border-color: var(--adm-live);
+  background: var(--adm-live-fill);
+  color: var(--adm-live-text);
+}
+
+.ops-inactive__reason:focus-visible,
+.ops-inrow__open:focus-visible {
+  outline: 2px solid var(--adm-focus-ring);
+  outline-offset: 2px;
+}
+
+/* The Inactive list (Clients → Journey): a row a client, with how, since when and why. */
+.ops-inrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.ops-inrow:last-child {
+  border-bottom: 0;
+}
+
+.ops-inrow__open {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 44px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--adm-ink);
+  text-align: left;
+}
+
+.ops-inrow__name {
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.ops-inrow__how {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-ink-2);
+}
+
+.ops-inrow__why {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--adm-ink-muted);
+  overflow-wrap: anywhere;
 }
 
 /* The case form (wave 3): the admin kit's fields, two to a row where there is room. */

@@ -66,11 +66,13 @@ import {
   journeyOf,
   sameLines,
   type ClientJourney,
+  type InactiveKind,
   type JourneyLines,
   type JourneyState,
   type LineCrossed,
   type UnknownWhy,
 } from "./states";
+import type { InactiveMark } from "./inactive";
 
 export const CLIENT_STATES = "clientStates";
 export const JOURNEY_WATCH_ID = "journey";
@@ -106,6 +108,8 @@ export interface ClientStateDoc {
   nextBooked: string | null;
   /** Her next booking is at this studio (a screen can check it against the week it reads). */
   nextBookedHere: boolean;
+  /** Inactive (the inactive round, Oct 1 2026): by herself past the line, or a leader's mark; null in every other state. */
+  inactiveKind: InactiveKind | null;
 }
 
 export interface JourneySummary {
@@ -150,6 +154,8 @@ export interface NightStudioInput {
   lines: JourneyLines;
   /** Last night's stored states, by client. */
   previous: ReadonlyMap<string, ClientStateDoc>;
+  /** The studio's leaders' inactive marks, by client (studios/{s}/inactiveMarks, read whole). */
+  marks?: ReadonlyMap<string, InactiveMark>;
 }
 
 export interface NightStudioResult {
@@ -197,13 +203,14 @@ export function stateDocOf(j: ClientJourney, previous: ClientStateDoc | null, to
     lastVisit: j.lastVisit,
     nextBooked: j.nextBooking,
     nextBookedHere: j.nextBooking ? nextBookedHere : false,
+    inactiveKind: j.state === "inactive" && j.inactive ? j.inactive.kind : null,
   };
 }
 
 /** Two stored states say the same thing (the write stamp aside): an unchanged client isn't written again. */
 export function sameStateDoc(a: ClientStateDoc | null | undefined, b: ClientStateDoc | null | undefined): boolean {
   if (!a || !b) return false;
-  const keys: Array<keyof ClientStateDoc> = ["state", "since", "was", "usualGapDays", "rhythmVisits", "rhythmWhy", "judged", "crossed", "unknownWhy", "lastVisit", "nextBooked", "nextBookedHere"];
+  const keys: Array<keyof ClientStateDoc> = ["state", "since", "was", "usualGapDays", "rhythmVisits", "rhythmWhy", "judged", "crossed", "unknownWhy", "lastVisit", "nextBooked", "nextBookedHere", "inactiveKind"];
   if (keys.some((k) => (a[k] ?? null) !== (b[k] ?? null))) return false;
   const same = (x: readonly unknown[] | undefined, y: readonly unknown[] | undefined) => (x ?? []).length === (y ?? []).length && (x ?? []).every((v, i) => v === (y ?? [])[i]);
   return same(a.reasons, b.reasons) && same(a.rhythmGaps, b.rhythmGaps);
@@ -260,6 +267,7 @@ export function nightStudio(i: NightStudioInput): NightStudioResult {
       nightlyStale: false,
       lines: i.lines,
       rhythm,
+      mark: i.marks?.get(id) ?? null,
     });
     journeys.push(journey);
     const next = nextBookingAt(i.bookingsByClient.get(id), nowMs);
@@ -292,7 +300,7 @@ export function nightStudio(i: NightStudioInput): NightStudioResult {
  * ------------------------------------------------------------------ */
 
 const STATE_SET: ReadonlySet<string> = new Set(ALL_STATES);
-const CROSSED: ReadonlySet<string> = new Set(["twice-usual", "studio-line", "lapse-line", "due-back"]);
+const CROSSED: ReadonlySet<string> = new Set(["twice-usual", "studio-line", "lapse-line", "due-back", "inactive-line", "marked"]);
 const UNKNOWN_WHY: ReadonlySet<string> = new Set(["no-record", "stale-record", "no-visit", "bookings-unread", "too-new"]);
 
 const dayOrNull = (v: unknown): string | null => (typeof v === "string" && DAY_KEY.test(v) ? v : null);
@@ -319,6 +327,8 @@ export function parseStateDoc(data: Record<string, unknown> | null | undefined):
     lastVisit: dayOrNull(data.lastVisit),
     nextBooked: dayOrNull(data.nextBooked),
     nextBookedHere: data.nextBookedHere === true,
+    // An inactive state with no kind written is the line's own (the job writes the kind with the state).
+    inactiveKind: data.state === "inactive" ? (data.inactiveKind === "manual" ? "manual" : "automatic") : null,
   };
 }
 
@@ -375,6 +385,8 @@ export function journeyOfDoc(d: ClientStateDoc, today: string, lines: JourneyLin
     driftDays: rhythm ? driftLine(rhythm.gapDays, lines) : null,
     why: d.reasons[0] ?? "",
     proof: d.reasons[1] ?? "",
+    // A manual mark is never read back from the night: a screen with a mark works her state out itself (journey-list.ts).
+    inactive: d.state === "inactive" ? { kind: d.inactiveKind ?? "automatic", since: d.since, mark: null } : null,
   };
 }
 

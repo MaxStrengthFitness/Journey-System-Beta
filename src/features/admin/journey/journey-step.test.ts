@@ -179,7 +179,7 @@ describe("the nightly job's Journey step", () => {
       "studios/edoras/config": { settings: { values: { lapsedDays: 60 } } },
     });
     await run(db);
-    expect(store["studios/edoras/watch"].journey.lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, newMax: 10, settlingMax: 24 });
+    expect(store["studios/edoras/watch"].journey.lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, inactiveDays: 90, newMax: 10, settlingMax: 24 });
   });
 
   it("writes nothing on a dry run, and says what it would have", async () => {
@@ -209,6 +209,25 @@ describe("the nightly job's Journey step", () => {
     expect(store["studios/edoras/watch"]).toBeUndefined();
     expect(store["studios/rohan-west/watch"].journey).toMatchObject({ clients: 1 });
     expect(lines.join("\n")).toContain("Edoras: client states skipped tonight");
+  });
+
+  it("writes a leader's mark as a manual Inactive, never touching the mark (Oct 1 2026)", async () => {
+    const mark = { clientId: "eowyn", reason: "health", note: "Knee surgery", day: "2026-09-26", markedBy: { id: "uid-l", name: "Glorfindel" }, markedAt: new Date() };
+    const { db, store, writes } = world({ "studios/edoras/inactiveMarks": { eowyn: mark } });
+    const lines: string[] = [];
+    await run(db, { log: (l) => lines.push(l) });
+    expect(store["studios/edoras/clientStates"].eowyn).toMatchObject({ state: "inactive", inactiveKind: "manual", crossed: "marked", since: "2026-09-26" });
+    expect(store["studios/edoras/clientStates"].eomer).toMatchObject({ state: "steady", inactiveKind: null });
+    expect(store["studios/edoras/watch"].journey.counts).toMatchObject({ inactive: 1, steady: 1 });
+    expect(writes.some((w) => w.path.includes("inactiveMarks"))).toBe(false);
+    expect(lines.join("\n")).toContain("1 inactive (1 marked by a leader)");
+  });
+
+  it("skips a studio whose marks can't be read, rather than dropping a leader's Inactive", async () => {
+    const { db, store } = world({}, { reads: ["studios/edoras/inactiveMarks"] });
+    const summary = await run(db);
+    expect(summary).toMatchObject({ studios: 0, skipped: 1 });
+    expect(store["studios/edoras/clientStates"]).toBeUndefined();
   });
 
   it("leaves All stars as they were when the sessions can't be read, and still writes the states", async () => {

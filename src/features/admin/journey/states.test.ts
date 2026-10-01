@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RenewalSnapshot } from "../../renewals/types";
 import { resolveAll } from "../../studio-settings/resolve";
 import { APP_LINES, countStates, driftLine, journeyOf, linesOf, sameLines, stageOf, type JourneyInput } from "./states";
+import type { InactiveMark } from "./inactive";
 
 const TODAY = "2026-09-28";
 
@@ -31,7 +32,7 @@ const input = (extra: Partial<JourneyInput> = {}): JourneyInput => ({
 
 describe("the lines", () => {
   it("takes the app's own lines from the settings' registry, and nowhere else", () => {
-    expect(APP_LINES).toEqual({ driftMultiple: 2, driftMinDays: 7, lapsedDays: 45, newMax: 10, settlingMax: 24 });
+    expect(APP_LINES).toEqual({ driftMultiple: 2, driftMinDays: 7, lapsedDays: 45, inactiveDays: 90, newMax: 10, settlingMax: 24 });
   });
 
   it("drifts at twice her usual gap, never under a week", () => {
@@ -62,7 +63,7 @@ describe("the lines", () => {
 
   it("reads the five out of the resolved settings: the studio's own, then head office's, then the app's", () => {
     const lines = linesOf(resolveAll({ studio: { lapsedDays: 60 }, company: { lapsedDays: 30, driftMultiple: 2.5, newMax: 8 } }));
-    expect(lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, newMax: 8, settlingMax: 24 });
+    expect(lines).toEqual({ driftMultiple: 2.5, driftMinDays: 7, lapsedDays: 60, inactiveDays: 90, newMax: 8, settlingMax: 24 });
     expect(sameLines(lines, { ...lines })).toBe(true);
     expect(sameLines(lines, APP_LINES)).toBe(false);
   });
@@ -172,5 +173,83 @@ describe("journeyOf", () => {
     expect(counts.steady).toBe(1);
     expect(counts.drifting).toBe(1);
     expect(counts.lapsed).toBe(0);
+    expect(counts.inactive).toBe(0);
+  });
+});
+
+describe("Inactive, the end of the line (Oct 1 2026)", () => {
+  const nothing = { state: "none" as const, day: null };
+  const mark = (extra: Partial<InactiveMark> = {}): InactiveMark => ({
+    clientId: "eowyn",
+    reason: "moved",
+    note: null,
+    day: "2026-09-20",
+    markedBy: { id: "uid-leader", name: "Beregond Leader" },
+    markedAt: null,
+    ...extra,
+  });
+
+  it("walks the line: Lapsed at 45 days, Inactive by herself at the studio's 90, nothing booked", () => {
+    // 89 days out: still Lapsed.
+    expect(journeyOf(input({ lastVisit: "2026-07-01", next: nothing })).state).toBe("lapsed");
+    // 90 days out: Inactive, since the day she crossed the line.
+    const j = journeyOf(input({ lastVisit: "2026-06-30", next: nothing }));
+    expect(j.state).toBe("inactive");
+    expect(j.crossed).toBe("inactive-line");
+    expect(j.since).toBe("2026-09-28");
+    expect(j.inactive).toEqual({ kind: "automatic", since: "2026-09-28", mark: null });
+    expect(j.why).toBe("90 days since her last visit, past the studio's 90-day line, and nothing is booked: inactive by herself.");
+  });
+
+  it("holds a client to the studio's own Inactive line", () => {
+    const lines = { ...APP_LINES, inactiveDays: 120 };
+    expect(journeyOf(input({ lastVisit: "2026-06-30", next: nothing, lines })).state).toBe("lapsed");
+    expect(journeyOf(input({ lastVisit: "2026-05-31", next: nothing, lines })).state).toBe("inactive");
+  });
+
+  it("reads Back when she books again after going inactive by herself", () => {
+    const j = journeyOf(input({ lastVisit: "2026-05-01", next: { state: "booked", day: "2026-10-02" } }));
+    expect(j.state).toBe("back");
+    expect(j.inactive).toBeNull();
+  });
+
+  it("never makes Away inactive by herself, however long she has been gone", () => {
+    const away = snap({ situation: "away", awayReason: "Snowbird", awayUntil: "2026-12-01" } as Partial<RenewalSnapshot>);
+    expect(journeyOf(input({ snapshot: away, lastVisit: "2026-05-01", next: nothing })).state).toBe("away");
+  });
+
+  it("stays Unknown when Journey can't judge her, never Inactive off what it doesn't know", () => {
+    // No last visit on record (her history is before the bookings began syncing).
+    expect(journeyOf(input({ lastVisit: null, next: nothing })).state).toBe("unknown");
+    // Last night's record hasn't reached her, or has stopped changing.
+    expect(journeyOf(input({ snapshot: null, lastVisit: "2026-05-01", next: nothing })).state).toBe("unknown");
+    expect(journeyOf(input({ nightlyStale: true, lastVisit: "2026-05-01", next: nothing })).state).toBe("unknown");
+    // Her bookings couldn't be read: whether she is inactive can't be said.
+    const unread = journeyOf(input({ lastVisit: "2026-05-01", next: { state: "unknown", day: null } }));
+    expect(unread.state).toBe("unknown");
+    expect(unread.unknownWhy).toBe("bookings-unread");
+  });
+
+  it("is Inactive when a leader marked her, whatever the lines say, signed and dated", () => {
+    const j = journeyOf(input({ lastVisit: "2026-09-12", next: nothing, mark: mark({ note: "Back in the spring" }) }));
+    expect(j.state).toBe("inactive");
+    expect(j.crossed).toBe("marked");
+    expect(j.since).toBe("2026-09-20");
+    expect(j.inactive?.kind).toBe("manual");
+    expect(j.inactive?.mark?.reason).toBe("moved");
+    expect(j.why).toBe("Marked inactive by Beregond Leader on Sun, Sep 20: Moved away: Back in the spring.");
+    // A person said so: even with no nightly record, or Away, or bookings unread.
+    expect(journeyOf(input({ snapshot: null, lastVisit: null, next: nothing, mark: mark() })).state).toBe("inactive");
+    expect(journeyOf(input({ lastVisit: "2026-09-12", next: { state: "unknown", day: null }, mark: mark() })).state).toBe("inactive");
+  });
+
+  it("reads Back when a marked client books again, and lets the rules decide once she visits after the mark", () => {
+    const booked = journeyOf(input({ lastVisit: "2026-09-12", next: { state: "booked", day: "2026-10-01" }, mark: mark() }));
+    expect(booked.state).toBe("back");
+    expect(booked.why).toContain("booked again since: she's back");
+    // She came in on the 26th, after the mark of the 20th: the mark no longer holds.
+    const visited = journeyOf(input({ lastVisit: "2026-09-26", next: { state: "booked", day: "2026-09-30" }, mark: mark() }));
+    expect(visited.state).toBe("steady");
+    expect(visited.inactive).toBeNull();
   });
 });

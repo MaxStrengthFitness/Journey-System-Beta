@@ -27,6 +27,7 @@ export type SettingKey =
   | "driftMultiple"
   | "driftMinDays"
   | "lapsedDays"
+  | "inactiveDays"
   | "newMax"
   | "settlingMax"
   | "deepCleanDays"
@@ -129,6 +130,22 @@ export const SETTINGS: readonly SettingDef[] = [
     appDefault: 45,
     help: "A client with nothing booked this long after her last visit is Lapsed. A client Journey can't judge yet is never Lapsed.",
     readers: ["features/admin/journey/states.ts"],
+  },
+  {
+    // The inactive round, Oct 1 2026. AJ: "studios can customize time or
+    // manually set clients inactive"; the 90 days with nothing booked was
+    // his pick ("I like your idea"). It must be past the Lapsed line:
+    // resolve.ts skips a value that isn't, and both editors refuse one.
+    key: "inactiveDays",
+    group: "journey",
+    label: "Inactive after",
+    unit: "days since her last visit, with nothing booked",
+    kind: "days",
+    min: 30,
+    max: 730,
+    appDefault: 90,
+    help: "A client with nothing booked this long after her last visit becomes Inactive by herself, and the nightly job stops asking Mindbody about her packages every month. It must be more than Lapsed's. A booking makes her active again; a client Journey can't judge is never made Inactive.",
+    readers: ["features/admin/journey/states.ts", "features/renewals/job-plan.ts", "features/client-directory/views.ts"],
   },
   {
     key: "newMax",

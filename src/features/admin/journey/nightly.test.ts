@@ -159,6 +159,33 @@ describe("one studio's night", () => {
     expect(night.allStars).toEqual([{ clientId: "eomer", weeksWithVisit: 26, perWeek: 2 }]);
   });
 
+  it("writes Inactive, by herself past the line or a leader's mark, with which it is (Oct 1 2026)", () => {
+    // Erkenbrand: last in June 20, nothing booked: past the 90-day line. Elfhelm: marked by a leader.
+    const gone = client("erkenbrand", "Erkenbrand");
+    const marked = client("elfhelm", "Elfhelm");
+    const night = nightStudio(
+      input({
+        clients: [gone, marked, eowyn],
+        snapshots: new Map([
+          ["erkenbrand", snap({ lastVisitDate: "2026-06-20" })],
+          ["elfhelm", snap({ lastVisitDate: "2026-09-10" })],
+          ["eowyn", snap({ lastVisitDate: "2026-09-24" })],
+        ]),
+        bookingsByClient: bookings,
+        visitDaysByClient: visits,
+        marks: new Map([["elfhelm", { clientId: "elfhelm", reason: "moved", note: null, day: "2026-09-15", markedBy: { id: "uid-l", name: "Leader" }, markedAt: null }]]),
+      }),
+    );
+    expect(night.states.get("erkenbrand")).toMatchObject({ state: "inactive", inactiveKind: "automatic", crossed: "inactive-line", since: "2026-09-18" });
+    expect(night.states.get("elfhelm")).toMatchObject({ state: "inactive", inactiveKind: "manual", crossed: "marked", since: "2026-09-15" });
+    expect(night.states.get("eowyn")!.inactiveKind).toBeNull();
+    expect(night.summary.counts.inactive).toBe(2);
+    // Read back: the kind survives, and a document from before the round reads as the line's own.
+    expect(parseStateDoc(JSON.parse(JSON.stringify(night.states.get("elfhelm"))))!.inactiveKind).toBe("manual");
+    expect(parseStateDoc({ state: "inactive", since: TODAY, reasons: ["a", "b"] })!.inactiveKind).toBe("automatic");
+    expect(parseStateDoc({ state: "steady", since: TODAY, reasons: ["a", "b"], inactiveKind: "manual" })!.inactiveKind).toBeNull();
+  });
+
   it("works out no All stars at all when the logged sessions couldn't be read", () => {
     const night = nightStudio(input({ clients: [eowyn], snapshots, loggedDaysByClient: null }));
     expect(night.allStars).toBeNull();

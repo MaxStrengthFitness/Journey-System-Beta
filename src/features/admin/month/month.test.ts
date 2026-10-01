@@ -201,6 +201,21 @@ describe("the MIA list", () => {
     expect(m.unknown).toBe(1);
     expect(m.rows[2].proof).toContain("snoozed");
     expect(m.rows[0].proof).toContain("usually with Beregond Guard");
+    expect(m.wentInactive).toBe(0);
+  });
+
+  it("keeps Inactive off the MIA list, and counts who went inactive in the month shown (Oct 1 2026)", () => {
+    const entries = studioJourneys(
+      base([
+        client("lobelia", "Lobelia", {}, { lastVisitDate: "2026-06-20" }), // past the 90-day line on Sep 18
+        client("otho", "Otho", {}, { lastVisitDate: "2026-05-01" }), // past it on Jul 30
+      ]),
+    );
+    expect(entries.map((e) => e.journey.state)).toEqual(["inactive", "inactive"]);
+    const m = monthMia(entries, "2026-09-28");
+    expect(m.rows).toEqual([]);
+    expect(m.wentInactive).toBe(1);
+    expect(monthMia(entries, "2026-09-28", "2026-07").wentInactive).toBe(1);
   });
 });
 
@@ -209,11 +224,11 @@ describe("the month in one sentence, and the days", () => {
     const empty = { rows: [], unknown: 0, notTalked: 0 };
     const i = { month: "2026-10", today: TODAY, renewals: { rows: [1, 2] as never, unknown: 0, notTalked: 0 }, birthdays: { rows: [1] as never, noDate: 0 }, anniversaries: { ...empty, guessed: 0, noDate: 0 }, mia: null };
     expect(monthSentence(i)).toBe("October will have 2 renewals, 1 birthday and 0 anniversaries. The MIA list is still being worked out.");
-    expect(monthSentence({ ...i, month: "2026-09", mia: { rows: [1, 2, 3] as never, counts: { drifting: 1, "at-risk": 1, lapsed: 1 }, unknown: 2 } })).toBe(
+    expect(monthSentence({ ...i, month: "2026-09", mia: { rows: [1, 2, 3] as never, counts: { drifting: 1, "at-risk": 1, lapsed: 1 }, unknown: 2, wentInactive: 0 } })).toBe(
       "September has 2 renewals, 1 birthday and 0 anniversaries. 3 clients are MIA today, and 2 can't be judged yet.",
     );
-    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0 } })).toContain("August had");
-    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0 } })).toContain("1 client is MIA today.");
+    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0, wentInactive: 0 } })).toContain("August had");
+    expect(monthSentence({ ...i, month: "2026-08", mia: { rows: [1] as never, counts: { drifting: 1, "at-risk": 0, lapsed: 0 }, unknown: 0, wentInactive: 0 } })).toContain("1 client is MIA today.");
   });
 
   it("groups rows by day in day order", () => {

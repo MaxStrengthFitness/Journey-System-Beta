@@ -56,6 +56,7 @@ const LINE_NAMES: Record<LineKey, string> = {
   driftMultiple: "Drifting",
   driftMinDays: "Drifting's least",
   lapsedDays: "Lapsed",
+  inactiveDays: "Inactive",
   newMax: "New",
   settlingMax: "Settling in",
 };
@@ -99,6 +100,7 @@ export function RulesPage({ studio, onOpenMyStudio }: RulesPageProps) {
     driftMultiple: `Drifting: ${multipleWords(lines.driftMultiple).toLowerCase()} her usual gap between visits, with nothing booked.`,
     driftMinDays: `However short her usual gap, Drifting waits at least ${lines.driftMinDays} days.`,
     lapsedDays: `Lapsed: ${lines.lapsedDays} days since her last visit, with nothing booked. A client Journey can't judge yet is never Lapsed.`,
+    inactiveDays: `Inactive: ${lines.inactiveDays} days since her last visit, with nothing booked, or marked inactive by a leader. A booking makes her active again; a client Journey can't judge yet is never made Inactive by herself.`,
     newMax: `New: sessions 1 to ${lines.newMax}, and only from a total that may be quoted — a client whose history is before Journey is never called new.`,
     settlingMax: `Settling in: sessions ${lines.newMax + 1} to ${lines.settlingMax}.`,
   };

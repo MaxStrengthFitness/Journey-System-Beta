@@ -23,6 +23,7 @@ Until then every one of these was a constant in the code: "2 sessions or fewer i
 | --- | --- | --- | --- |
 | `quietFloorSessions` | Relay | 2 | Relay's Right now |
 | `driftMultiple`, `driftMinDays`, `lapsedDays`, `newMax`, `settlingMax` | Where a client is | 2, 7, 45, 10, 24 | Operations → Clients → Journey (`admin/journey/states.ts`) |
+| `inactiveDays` (Oct 1 2026) | Where a client is | 90 (30 to 730, and always past `lapsedDays`: `resolve.ts` skips one that isn't and both editors refuse it) | The Journey's Inactive line (`admin/journey/states.ts`), the nightly sweep (`renewals/job-plan.ts`) and the Client Directory's All (`client-directory/views.ts`); `docs/rounds/2026-10-01-inactive.md` |
 | `deepCleanDays`, `wipeAfterSessions`, `weeklyMaintenanceDay` | The machines' care | 14, 4, none | Relay's Floor Map (`relay/board/machine-care.ts`) |
 | `inbodyEverySessions` (Oct 1 2026) | InBody scans | 50 (4 to 200) | The briefing's Before you start and the InBody card (`inbody/due.ts`), for the client's HOME studio; a client's own `inbodyEvery` comes first |
 

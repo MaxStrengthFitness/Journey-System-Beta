@@ -22,6 +22,7 @@
  * the one place that draws it (AJ, Sep 26 2026: "take this off the header of the profile, leave it in the profile section").
  */
 import { AccountPage as AccountArea } from "../../client-admin/AccountPage";
+import { StandingCard } from "../../client-admin/StandingCard";
 import type { CodexPageProps } from "../codex-data";
 
 export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
@@ -47,6 +48,8 @@ export function AccountPage({ data, form, go, hosts }: CodexPageProps) {
       onOpenMigrationHub={hosts.onOpenMigrationHub}
       priorHistoryDoor={hosts.priorHistoryDoor ?? null}
       split={hosts.sessionsSplit ?? null}
+      // Active or inactive (the inactive round, Oct 1 2026): her home studio's leaders mark it; one document read.
+      standing={<StandingCard client={client} trainer={authTrainer} today={today} />}
     />
   );
 }

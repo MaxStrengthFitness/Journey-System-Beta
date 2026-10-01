@@ -5,6 +5,7 @@ import {
   fieldProblem,
   formOf,
   formProblem,
+  inactivePairProblem,
   ownLine,
   pairProblem,
   patchOf,
@@ -51,6 +52,14 @@ describe("Studio defaults: the form", () => {
     );
     expect(pairProblem({ ...form, newMax: "30", settlingMax: "40" })).toBeNull();
     expect(formProblem({ ...form, lapsedDays: "7" })).toBe("Lapsed after: Enter a number between 14 and 365 (a whole number).");
+  });
+
+  it("keeps Inactive after Lapsed, reading an empty box as the app's value (Oct 1 2026)", () => {
+    const form = formOf(null);
+    expect(inactivePairProblem(form)).toBeNull();
+    // A Lapsed of 100 is past the app's Inactive of 90.
+    expect(formProblem({ ...form, lapsedDays: "100" })).toBe("Inactive has to come after Lapsed: Lapsed is at 100 days, so Inactive has to be more than 100.");
+    expect(inactivePairProblem({ ...form, lapsedDays: "100", inactiveDays: "120" })).toBeNull();
   });
 });
 

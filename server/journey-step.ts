@@ -36,9 +36,13 @@
  * booking in the window, tonight's snapshots and the attendance behind them):
  *
  *   1. Max Strength's defaults, `system/studioDefaults`, once a run;
- *   2. per live studio: its own settings (`studios/{s}/config/settings`) and
+ *   2. per live studio: its own settings (`studios/{s}/config/settings`),
  *      last night's states (`studios/{s}/clientStates`, one small
- *      collection — `since` and `was` carry from them);
+ *      collection — `since` and `was` carry from them) and its leaders'
+ *      inactive marks (`studios/{s}/inactiveMarks`, one small collection, the
+ *      inactive round, Oct 1 2026: a marked client is written Inactive with
+ *      `inactiveKind: "manual"`, one past the studio's Inactive line
+ *      `"automatic"`; the marks themselves are never written here);
  *   3. per live studio, its clients' sessions of the last 26 weeks and two
  *      days at every studio Journey knows (a client may train at another
  *      location), thirty clients a query on the existing (clientId,
@@ -71,6 +75,7 @@ import type { RenewalSnapshot } from "../src/features/renewals/types.ts";
 import { resolveAll, type SettingValues } from "../src/features/studio-settings/resolve.ts";
 import { addDays, sessionDayKey } from "../src/features/client-history/model.ts";
 import { linesOf } from "../src/features/admin/journey/states.ts";
+import { INACTIVE_MARKS, parseInactiveMark, type InactiveMark } from "../src/features/admin/journey/inactive.ts";
 import {
   ALL_STARS_READ_DAYS,
   CLIENT_STATES,
@@ -197,6 +202,42 @@ export async function readCompanyDefaults(db: Firestore, log: (line: string) => 
   }
 }
 
+/** Who the nightly sweep may pass by at a studio (job-plan.ts `sweepsPast`): last night's states and the leaders' marks. */
+export interface SweepFacts {
+  stored: ReadonlyMap<string, { state: string; inactiveKind: string | null }>;
+  marks: ReadonlyMap<string, InactiveMark>;
+}
+
+/**
+ * The inactive round (Oct 1 2026): what the renewals job's first look needs
+ * to leave Inactive clients out of the monthly Mindbody sweep — last night's
+ * states (only `state` and `inactiveKind` travel) and the studio's inactive
+ * marks, a small collection each, no index. Null when either read fails: the
+ * sweep then runs as it did before (a pull too many, never a client lost).
+ */
+export async function readSweepFacts(db: Firestore, studioId: string, studioName: string, log: (line: string) => void): Promise<SweepFacts | null> {
+  try {
+    const [statesSnap, marksSnap] = await Promise.all([
+      db.collection(`studios/${studioId}/${CLIENT_STATES}`).select("state", "inactiveKind").get(),
+      db.collection(`studios/${studioId}/${INACTIVE_MARKS}`).get(),
+    ]);
+    const stored = new Map<string, { state: string; inactiveKind: string | null }>();
+    for (const d of statesSnap.docs) {
+      const state = d.get("state");
+      if (typeof state === "string") stored.set(d.id, { state, inactiveKind: typeof d.get("inactiveKind") === "string" ? d.get("inactiveKind") : null });
+    }
+    const marks = new Map<string, InactiveMark>();
+    for (const d of marksSnap.docs) {
+      const m = parseInactiveMark(d.id, d.data() as Record<string, unknown>);
+      if (m) marks.set(d.id, m);
+    }
+    return { stored, marks };
+  } catch (err: any) {
+    log(`${studioName}: who is Inactive couldn't be read, so tonight's Mindbody sweep includes everyone as before: ${err?.message || err}`);
+    return null;
+  }
+}
+
 /** The line for a run in which no studio has gone live. */
 export const NONE_LIVE_LINE = "Client states: no studio has gone live yet (set the Journey cutover date on My Studio -> Studio), so none are written.";
 
@@ -232,11 +273,19 @@ export async function runJourneyStudio(options: JourneyStudioOptions, summary: J
     const clientIds = studio.clients.map((c) => c.id).filter((id): id is string => typeof id === "string" && id !== "");
     const logged = await readLoggedDays(db, clientIds, options.allStudios, options.tzOf, now, log, studio.name);
 
-    // 2. The studio's own settings and last night's states.
-    const [settingsSnap, statesSnap] = await Promise.all([
+    // 2. The studio's own settings, last night's states and its leaders'
+    // inactive marks (one small collection each). A failed read skips the
+    // studio: a manual Inactive is never dropped because its mark went unread.
+    const [settingsSnap, statesSnap, marksSnap] = await Promise.all([
       db.doc(`studios/${studio.id}/config/settings`).get(),
       db.collection(`studios/${studio.id}/${CLIENT_STATES}`).get(),
+      db.collection(`studios/${studio.id}/${INACTIVE_MARKS}`).get(),
     ]);
+    const marks = new Map<string, InactiveMark>();
+    for (const d of marksSnap.docs) {
+      const m = parseInactiveMark(d.id, d.data() as Record<string, unknown>);
+      if (m) marks.set(d.id, m);
+    }
     const lines = linesOf(resolveAll({ studio: settingsSnap.exists ? valuesOf(settingsSnap.data() as Record<string, unknown>) : null, company: options.company, studioDoc: null }));
     const previous = new Map<string, ClientStateDoc>();
     const stored: Array<{ id: string; ref: DocumentReference }> = [];
@@ -265,6 +314,7 @@ export async function runJourneyStudio(options: JourneyStudioOptions, summary: J
       breakDays: studio.breakDays,
       lines,
       previous,
+      marks,
     });
 
     const stamp = FieldValue.serverTimestamp();
@@ -297,7 +347,7 @@ export async function runJourneyStudio(options: JourneyStudioOptions, summary: J
     const c = night.summary.counts;
     log(
       `${studio.name}: ${night.summary.clients} client states (${changed} ${dryRun ? "would change" : "changed"}, ${removed} ${dryRun ? "would be removed" : "removed"}): ` +
-        `${c.drifting} drifting, ${c["at-risk"]} at risk, ${c.lapsed} lapsed, ${c.unknown} unknown; ` +
+        `${c.drifting} drifting, ${c["at-risk"]} at risk, ${c.lapsed} lapsed, ${c.inactive ?? 0} inactive (${marks.size} marked by a leader), ${c.unknown} unknown; ` +
         `${night.allStars === null ? "All stars not worked out tonight" : `${night.allStars.length} all star${night.allStars.length === 1 ? "" : "s"}`}.`,
     );
   } catch (err: any) {

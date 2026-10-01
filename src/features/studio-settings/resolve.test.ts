@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { SETTINGS } from "./registry";
-import { formatSetting, parseSetting, resolveAll, resolveSetting, usable } from "./resolve";
+import { formatSetting, inactiveProblem, parseSetting, resolveAll, resolveSetting, usable } from "./resolve";
 
 describe("resolveSetting", () => {
   it("takes the studio's own first, then head office's, then the app's", () => {
@@ -107,5 +107,47 @@ describe("parseSetting and formatSetting", () => {
     expect(formatSetting("weeklyMaintenanceDay", 1)).toBe("Monday");
     expect(formatSetting("weeklyMaintenanceDay", null)).toBe("None");
     expect(formatSetting("lapsedDays", 45)).toBe("45");
+  });
+});
+
+describe("Inactive after Lapsed (the inactive round, Oct 1 2026)", () => {
+  it("is 90 days by default, past the Lapsed line", () => {
+    const all = resolveAll({ studio: null, company: null });
+    expect(all.inactiveDays).toEqual({ key: "inactiveDays", value: 90, source: "app" });
+    expect(all.lapsedDays.value).toBe(45);
+  });
+
+  it("takes a studio's own Inactive when it is past the Lapsed line", () => {
+    const all = resolveAll({ studio: { inactiveDays: 120 }, company: { inactiveDays: 100 } });
+    expect(all.inactiveDays).toMatchObject({ value: 120, source: "studio" });
+  });
+
+  it("skips an Inactive that isn't past Lapsed, never bending it, and the next layer answers", () => {
+    // The studio's 60 isn't past its own Lapsed of 60: head office's 100 answers.
+    const a = resolveAll({ studio: { lapsedDays: 60, inactiveDays: 60 }, company: { inactiveDays: 100 } });
+    expect(a.lapsedDays).toMatchObject({ value: 60, source: "studio" });
+    expect(a.inactiveDays).toMatchObject({ value: 100, source: "company" });
+    // Head office's 50 isn't past the Lapsed of 60 either: the app's 90.
+    const b = resolveAll({ studio: { lapsedDays: 60 }, company: { inactiveDays: 50 } });
+    expect(b.inactiveDays).toMatchObject({ value: 90, source: "app" });
+    // An out-of-range value is skipped as any other is.
+    expect(resolveAll({ studio: { inactiveDays: 10 }, company: null }).inactiveDays).toMatchObject({ value: 90, source: "app" });
+  });
+
+  it("drops the pair together when nothing beneath is past a late Lapsed line", () => {
+    // A studio's Lapsed of 120 with no Inactive past it anywhere: the pair beneath the studio's.
+    const a = resolveAll({ studio: { lapsedDays: 120 }, company: { lapsedDays: 50, inactiveDays: 80 } });
+    expect(a.lapsedDays).toMatchObject({ value: 50, source: "company" });
+    expect(a.inactiveDays).toMatchObject({ value: 80, source: "company" });
+    // And the app's own pair when that one breaks the rule too.
+    const b = resolveAll({ studio: { lapsedDays: 120 }, company: { lapsedDays: 100 } });
+    expect(b.lapsedDays).toMatchObject({ value: 45, source: "app" });
+    expect(b.inactiveDays).toMatchObject({ value: 90, source: "app" });
+  });
+
+  it("says why a pair can't stand, in words", () => {
+    expect(inactiveProblem(45, 90)).toBeNull();
+    expect(inactiveProblem(60, 60)).toBe("Inactive has to come after Lapsed: Lapsed is at 60 days, so Inactive has to be more than 60.");
+    expect(inactiveProblem(null, 90)).toBeNull();
   });
 });

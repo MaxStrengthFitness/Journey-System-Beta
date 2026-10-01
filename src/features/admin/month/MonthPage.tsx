@@ -86,7 +86,7 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
   );
   const birthdays = useMemo(() => monthBirthdays(clients, month), [clients, month]);
   const anniversaries = useMemo(() => monthAnniversaries(clients, month, cutover, j.tz), [clients, month, cutover, j.tz]);
-  const mia = useMemo(() => (j.ready ? monthMia(j.entries, j.today) : null), [j.ready, j.entries, j.today]);
+  const mia = useMemo(() => (j.ready ? monthMia(j.entries, j.today, month) : null), [j.ready, j.entries, j.today, month]);
 
   const sentence = monthSentence({ month, today: j.today, renewals, birthdays, anniversaries, mia });
   const past = month < thisMonth;
@@ -192,6 +192,8 @@ export function MonthPage({ studio, studios, clients, trainers, authTrainer, onO
                 `as of today${past ? ", not the month shown" : ""}`,
                 `${mia.counts.drifting} drifting · ${mia.counts["at-risk"]} at risk · ${mia.counts.lapsed} lapsed`,
                 mia.unknown > 0 ? `${mia.unknown} can't be judged yet` : null,
+                // The inactive round (Oct 1 2026): not MIA, so counted beside it; the list is Clients → Journey → Inactive.
+                `${mia.wentInactive} went inactive in ${monthLabel(month).split(" ")[0]} and ${mia.wentInactive === 1 ? "is" : "are"} still inactive (Clients → Journey → Inactive)`,
               ]
                 .filter(Boolean)
                 .join(" · ")

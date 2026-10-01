@@ -15,6 +15,10 @@
  *      end of a package on a day they train, never pulled, or a month stale
  *      (features/renewals/job-plan.ts) — inside a nightly budget, and rebuild
  *      those snapshots. Only at studios that have gone live (studioIsLive).
+ *      A client the Journey calls Inactive (last night's state, or a leader's
+ *      mark that still holds) is left out of the never-pulled and monthly
+ *      reasons (the inactive round, Oct 1 2026: `sweepsPast`), read in the
+ *      first look from two small collections a live studio.
  *   3. Record how packages ended (renewed, upgraded, downgraded, lost) on
  *      their renewal cycles — features/renewals/outcomes.ts decides; a
  *      leader's outcome is never overwritten.
@@ -106,6 +110,7 @@ import {
   pullRank,
   sessionsLoggedSince,
   studioIsLive,
+  sweepsPast,
 } from "../src/features/renewals/job-plan.ts";
 import type { Client, ScheduleEntry, WorkoutSession } from "../src/types.ts";
 import type { RenewalCycle, RenewalSettings, RenewalSnapshot } from "../src/features/renewals/types.ts";
@@ -113,6 +118,7 @@ import {
   NONE_LIVE_LINE,
   emptyJourneySummary,
   readCompanyDefaults,
+  readSweepFacts,
   runJourneyStudio,
   type JourneyStepSummary,
 } from "./journey-step.ts";
@@ -441,9 +447,17 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
         due.push({ run, c, id: c.id!, firstDay });
       }
 
+      // Who the Journey calls Inactive (the inactive round, Oct 1 2026): last
+      // night's states and the leaders' marks. They drop out of the monthly
+      // sweep (job-plan.ts sweepsPast); a failed read leaves everyone in it.
+      const sweep = await readSweepFacts(db, studio.id, run.name, log);
+      let passedBy = 0;
+
       // 2's candidates, ranked on the snapshot stored data gives (job-plan.ts).
       for (const c of clients) {
         const current = snapshots.get(c.id!)!;
+        const inactive = sweep ? sweepsPast({ stored: sweep.stored.get(c.id!) ?? null, mark: sweep.marks.get(c.id!) ?? null, current }) : false;
+        if (inactive) passedBy++;
         const rank = pullRank({
           client: c,
           current,
@@ -459,10 +473,14 @@ export async function runRenewals(options: RenewalsRunOptions): Promise<Renewals
             run.tz,
           ),
           conversationAt: run.settings.conversationAtSessionsLeft,
+          inactive,
         });
         if (rank !== null) candidates.push({ run, id: c.id!, rank, focusDate: current.focusDate });
       }
-      log(`${run.name}, first look: ${clients.length} clients, ${history.bookingCount} bookings and ${history.sessionCount} workouts in the window.`);
+      log(
+        `${run.name}, first look: ${clients.length} clients, ${history.bookingCount} bookings and ${history.sessionCount} workouts in the window` +
+          `${sweep ? `; ${passedBy} inactive, left out of the monthly sweep` : ""}.`,
+      );
       log(memory.line(`${run.name}, first look`));
     }
   }
