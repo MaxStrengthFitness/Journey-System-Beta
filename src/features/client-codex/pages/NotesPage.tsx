@@ -21,6 +21,7 @@ import { useMemo } from "react";
 import { NotesPage as NotesArea } from "../../client-notes/NotesPage";
 import type { NotesIntent } from "../../client-notes/notes-intent";
 import { fordStudioIdOf } from "../../ford/ford-write";
+import { useActiveStudio } from "../../../contexts/ActiveStudioContext";
 import { Page } from "../kit";
 import { fordCountOf, type CodexPageProps } from "../codex-data";
 
@@ -33,6 +34,8 @@ export function NotesPage({
   intent?: { key: unknown; request: NotesIntent } | null;
 }) {
   const { client, access, journal, notes, dismissals, machines, author, today, coverage, pronouns, ford } = data;
+  // Stamped on a set added in the session pop-up a note opens (Oct 1 2026).
+  const { activeStudioId } = useActiveStudio();
   const doorCount = useMemo(
     () => fordCountOf({ readable: access.fordReadable, ford, client }, notes),
     [access.fordReadable, ford, client, notes],
@@ -64,6 +67,8 @@ export function NotesPage({
         fordDoorCount={doorCount}
         onOpenFord={() => go("ford")}
         intent={intent}
+        trainers={data.trainers}
+        activeStudioId={activeStudioId}
       />
     </Page>
   );

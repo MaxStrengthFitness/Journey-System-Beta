@@ -26,13 +26,13 @@ import { useDirtyForm } from "../../admin/useDirtyForm";
 import { isDemoStudio } from "../../demo-mode/is-demo";
 import {
   GROUP_LABEL,
+  GROUP_ORDER,
   SETTINGS,
   WEEKDAY_NAMES,
   formatSetting,
   saveCompanyDefaults,
   useCompanyDefaults,
   type SettingDef,
-  type SettingGroup,
   type SettingValues,
 } from "../../studio-settings";
 import { studioSettingsRef } from "../../studio-settings/store";
@@ -79,7 +79,6 @@ function useStudiosOwnSettings(studioIds: readonly string[]): Record<string, Own
   return reads;
 }
 
-const GROUP_ORDER: SettingGroup[] = ["relay", "journey", "care"];
 
 export function SettingDefaultsPage({ studios, authTrainer }: { studios: Studio[]; authTrainer: Trainer }) {
   const company = useCompanyDefaults();

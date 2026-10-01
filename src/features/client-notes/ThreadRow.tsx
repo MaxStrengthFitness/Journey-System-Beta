@@ -15,6 +15,7 @@
  */
 import React from "react";
 import type { Machine } from "../../types";
+import type { JournalEntry } from "../../types/journal";
 import type { JournalAuthor } from "../../hooks/useClientJournal";
 import { noteCardLabel } from "./note-catalog";
 import { NoteRootIcon } from "./NoteCategoryChips";
@@ -33,6 +34,9 @@ export interface ThreadRowProps {
   expanded: boolean;
   onToggle: () => void;
   author: JournalAuthor | null;
+  /** The opened card's "From session" line and its door (NoteThreadCard). */
+  sessionLabelOf?: (entry: JournalEntry) => string | null;
+  onOpenSession?: (sessionId: string) => void;
 }
 
 /** The note's first line with words on it — a row's text. */
@@ -44,7 +48,17 @@ export function firstLineOf(body: string | null | undefined): string {
   return "";
 }
 
-export function ThreadRow({ thread, zone, machines, today, expanded, onToggle, author }: ThreadRowProps) {
+export function ThreadRow({
+  thread,
+  zone,
+  machines,
+  today,
+  expanded,
+  onToggle,
+  author,
+  sessionLabelOf,
+  onOpenSession,
+}: ThreadRowProps) {
   const root = thread.root;
   const machine = root.machineId ? machines.find((m) => m.id === root.machineId)?.name?.trim() || null : null;
   const line = firstLineOf(root.body);
@@ -71,7 +85,15 @@ export function ThreadRow({ thread, zone, machines, today, expanded, onToggle, a
       </button>
       {expanded ? (
         <div className="nx-row-open">
-          <NoteThreadCard thread={thread} machines={machines} author={author} today={today} defaultOpen />
+          <NoteThreadCard
+            thread={thread}
+            machines={machines}
+            author={author}
+            today={today}
+            defaultOpen
+            sessionLabelOf={sessionLabelOf}
+            onOpenSession={onOpenSession}
+          />
         </div>
       ) : null}
     </>

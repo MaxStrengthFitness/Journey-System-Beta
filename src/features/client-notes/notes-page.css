@@ -236,6 +236,32 @@
   color: inherit;
 }
 
+/* One machine's notes (FileMaker parity, Oct 1 2026). The label stays
+   beside the select; a long machine name wraps the row, never clips. */
+.nx-machine {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  color: var(--eq-ink-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.nx-machine__select {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--eq-border-strong);
+  background: var(--eq-surface-2);
+  color: var(--eq-ink);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 /* The door leaves the page, so it looks like a way out, not a filter. */
 .nx-door {
   background: var(--eq-surface);
@@ -689,6 +715,39 @@
 
 .nt-upd__by {
   font-weight: 700;
+}
+
+/* The session a note was written in, and the door to it (FileMaker parity,
+   Oct 1 2026). A quiet line, 40px tall because it is a tap; it wraps rather
+   than cuts. */
+.nt-from {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-self: start;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--eq-border);
+  border-radius: 10px;
+  background: var(--eq-surface-2);
+  color: var(--eq-live-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.nt-from--text {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--eq-ink-muted);
+  cursor: default;
 }
 
 .nt-meta {

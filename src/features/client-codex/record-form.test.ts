@@ -76,6 +76,8 @@ describe("FIELD_HOME", () => {
     expect(FIELD_HOME.experienceLevel).toMatchObject({ page: "body", anchor: "body-training-story" });
     expect(FIELD_HOME.clinicalFlags).toMatchObject({ page: "body", anchor: "body-watchouts" });
     expect(FIELD_HOME.globalNotes).toMatchObject({ page: "goals", anchor: "goals-why" });
+    // Her own number of sessions between InBody scans lives on the InBody card (Oct 1 2026).
+    expect(FIELD_HOME.inbodyEvery).toMatchObject({ page: "body", anchor: "body-inbody", label: "InBody" });
     expect(FIELD_HOME.firstStudioDay).toMatchObject({ page: "account", anchor: "account-first-day", label: "First day at the studio" });
     expect(FIELD_HOME.goalHistory).toMatchObject({ page: "goals", anchor: "goals-now" });
     expect(FIELD_HOME.nickname).toMatchObject({ page: "account", anchor: "account-contact" });

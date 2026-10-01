@@ -31,9 +31,10 @@ export type SettingKey =
   | "settlingMax"
   | "deepCleanDays"
   | "wipeAfterSessions"
-  | "weeklyMaintenanceDay";
+  | "weeklyMaintenanceDay"
+  | "inbodyEverySessions";
 
-export type SettingGroup = "relay" | "journey" | "care";
+export type SettingGroup = "relay" | "journey" | "care" | "inbody";
 
 export type SettingKind =
   /** A whole number between min and max. */
@@ -74,7 +75,11 @@ export const GROUP_LABEL: Record<SettingGroup, string> = {
   relay: "Relay",
   journey: "Where a client is (Operations → Clients → Journey)",
   care: "The machines' care (Relay's Floor Map)",
+  inbody: "InBody scans (the briefing and the InBody card)",
 };
+
+/** The order the editors show the groups in. */
+export const GROUP_ORDER: readonly SettingGroup[] = ["relay", "journey", "care", "inbody"];
 
 export const SETTINGS: readonly SettingDef[] = [
   {
@@ -180,6 +185,20 @@ export const SETTINGS: readonly SettingDef[] = [
     appDefault: null,
     help: "The day each week the studio does its machine maintenance, or none.",
     readers: ["features/relay/board/machine-care.ts"],
+  },
+  {
+    // FileMaker parity, Oct 1 2026. AJ: "up to the studio or even that
+    // client" -- a client's own number (clients/{id}.inbodyEvery) comes first.
+    key: "inbodyEverySessions",
+    group: "inbody",
+    label: "An InBody scan is due after",
+    unit: "sessions since the last one",
+    kind: "count",
+    min: 4,
+    max: 200,
+    appDefault: 50,
+    help: "The briefing's Before you start says a client is due an InBody once this many sessions have passed since her last scan. A client can have her own number on Body & Pulse → InBody.",
+    readers: ["features/inbody/due.ts"],
   },
 ];
 

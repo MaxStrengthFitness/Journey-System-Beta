@@ -56,6 +56,10 @@ vi.mock("firebase/firestore", async (importOriginal) => {
     docs: rows.map(({ id, ...data }) => ({ id: String(id), data: () => data })),
     size: rows.length,
     empty: rows.length === 0,
+    // A document listener (the studio settings, since the InBody due line,
+    // Oct 1 2026) reads the same answer as "no such document".
+    exists: () => false,
+    data: () => undefined,
   });
   return {
     ...real,
@@ -759,5 +763,33 @@ describe("Body & Pulse — on our floor", () => {
     expect(card).toContain("Not in her routines");
     expect(card).toContain("0 of 2 machines set up");
     expect(card).not.toContain("Loading her routines");
+  });
+});
+
+describe("Body & Pulse — when an InBody is due (FileMaker parity, Oct 1 2026)", () => {
+  it("says it first on the InBody card, from the journal's sessions, and her own number goes through the one form", async () => {
+    const host = await mount();
+    const card = host.querySelector("#body-inbody")!;
+    const due = card.querySelector('[data-testid="inbody-due"]')!;
+    // No scan, and Journey holds her whole story: counted from her first session.
+    expect(due.textContent).toContain("4 sessions and no scan yet. Due in 46 sessions (every 50).");
+    expect(due.textContent).toContain("Counted against the studio's number.");
+
+    await click(buttonIn(due, "Edit"));
+    await click(buttonIn(due, "Not for her"));
+    expect(card.querySelector('[data-testid="inbody-due"]')!.textContent).toContain("InBody reminders are off for this client.");
+    // Unsaved until the Save bar saves it: nothing was written by the tap.
+    expect(fake.gets.filter((p) => p.startsWith("clients"))).toEqual([]);
+
+    await click(buttonIn(due, "Her own number"));
+    const box = due.querySelector<HTMLInputElement>('input[type="number"]')!;
+    expect(box.value).toBe("50");
+  });
+
+  it("counts nothing while her sessions are still loading: an unread list is not an empty one", async () => {
+    const host = await mount({ sessionsState: "loading" });
+    const due = host.querySelector('#body-inbody [data-testid="inbody-due"]')!;
+    expect(due.textContent).toContain("Counting her sessions…");
+    expect(due.textContent).not.toContain("0 sessions");
   });
 });

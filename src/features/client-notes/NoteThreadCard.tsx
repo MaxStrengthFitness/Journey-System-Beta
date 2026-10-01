@@ -33,10 +33,10 @@
  * An imported record is somebody else's: no update, no close, no ⋯.
  */
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, Dumbbell, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronRight, Dumbbell, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import type { Machine } from "../../types";
-import { IMPORTANCE_META, toDate } from "../../types/journal";
+import { IMPORTANCE_META, toDate, type JournalEntry } from "../../types/journal";
 import type { JournalAuthor } from "../../hooks/useClientJournal";
 import { studioDateKey } from "../../lib/studio-time";
 import { LOUDNESS_TONE } from "../rating/Loudness";
@@ -65,6 +65,15 @@ export interface NoteThreadCardProps {
   onHush?: () => void;
   /** "Show it again". */
   onRestore?: () => void;
+  /**
+   * The line under a note written in a session — "From session #12 · Sep 30"
+   * (client-notes/session-link.ts) — or null for one that wasn't. With
+   * `onOpenSession` it is a 40px button that opens that session (FileMaker
+   * parity, Oct 1 2026: AJ, "if made within a session it should link that
+   * session").
+   */
+  sessionLabelOf?: (entry: JournalEntry) => string | null;
+  onOpenSession?: (sessionId: string) => void;
 }
 
 type MenuState = "closed" | "menu" | "confirm";
@@ -137,6 +146,8 @@ export function NoteThreadCard({
   briefing = null,
   onHush,
   onRestore,
+  sessionLabelOf,
+  onOpenSession,
 }: NoteThreadCardProps) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [open, setOpen] = useState(defaultOpen);
@@ -287,6 +298,30 @@ export function NoteThreadCard({
       ) : null}
 
       <p className="nt-body">{root.body}</p>
+
+      {/* The session it was written in, and the door to it (Oct 1 2026). */}
+      {(() => {
+        const label = sessionLabelOf?.(root) ?? null;
+        if (!label || !root.sessionId) return null;
+        const sessionId = root.sessionId;
+        return onOpenSession ? (
+          <button
+            type="button"
+            className="nt-from"
+            data-testid={`from-session-${root.id}`}
+            onClick={() => onOpenSession(sessionId)}
+          >
+            <CalendarDays size={14} aria-hidden />
+            {label}
+            <ChevronRight size={14} aria-hidden />
+          </button>
+        ) : (
+          <p className="nt-from nt-from--text" data-testid={`from-session-${root.id}`}>
+            <CalendarDays size={14} aria-hidden />
+            {label}
+          </p>
+        );
+      })()}
 
       {updates.length > 0 ? (
         <>

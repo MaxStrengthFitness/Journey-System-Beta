@@ -2603,6 +2603,18 @@ studio leader, portrait and landscape.
 - [ ] Studios on someone whose home is the studio you're on: no Take off button; the dialog says it is their home studio and to change it first on Operations → Setup → People & access.
 - [ ] Open Studios and change nothing: Save studios stays greyed out. Add a studio, then Remove it again: greyed out again.
 
+## Round 47 — FileMaker parity: InBody due, and notes linked to their session · *Oct 1 2026, branch `oct1/filemaker-parity`*
+
+Nothing to deploy but the push. As a **Life Transformer**, then a **studio leader**, portrait and landscape. `docs/rounds/2026-10-01-filemaker-parity.md`.
+
+- [ ] A client with an InBody scan and more than 50 sessions after it: open her briefing. Before you start has one quiet line, "Due an InBody: N sessions since her last scan", and its count in the heading. Start session starts.
+- [ ] The same client, Notes & Profile → Body & Pulse → InBody: the card's first line says the same count and "Counted against the studio's number". Edit → "Her own number" → 12 → Save on the Save bar: the line says "this client's own number"; her briefing now counts against 12. Edit → "Not for her" → Save: the card says reminders are off and the briefing says nothing.
+- [ ] A migrating client with no scan in Journey: the card says "No InBody scan in Journey yet"; her briefing says nothing about InBody.
+- [ ] As a leader, My Studio → Studio → This studio's settings: "InBody scans" lists "An InBody scan is due after", from Max Strength's default; set 30 and save; a client at 35 sessions since her scan is now due. As an administrator, Admins → Standard → Studio defaults shows the same row beside the app's 50.
+- [ ] In a live session, write a note on the session note sheet, a note on a machine's sheet, and the Note for the next trainer; Finish. On her Notes & Profile → Notes each says "From session #N · today's date" (just "From the session on …" for a migrating client with no total recorded). Tap one: the session pop-up opens on that session, its notes and sets.
+- [ ] Notes → the Machine filter lists only the machines she has notes about; pick one: only those notes, each with its session line. "Every machine" brings everything back.
+- [ ] The Journey tab grid and the live session grid look exactly as before: no marks on session numbers or cells; a machine with notes still shows its note flag.
+
 ---
 
 ## Findings log

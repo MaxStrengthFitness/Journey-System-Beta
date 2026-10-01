@@ -41,6 +41,9 @@ export interface JournalContext {
   studioId: string;
   origin: JournalOrigin;
   sessionId?: string | null;
+  /** With `sessionId`: the session's number and day (client-notes/session-link.ts). */
+  sessionNumber?: number | null;
+  sessionDay?: string | null;
 }
 
 /**
@@ -73,6 +76,8 @@ async function fileToJournal(
         machineId,
         focusId: null,
         sessionId: ctx.sessionId ?? null,
+        sessionNumber: ctx.sessionNumber ?? null,
+        sessionDay: ctx.sessionDay ?? null,
         origin: ctx.origin,
       },
     );
