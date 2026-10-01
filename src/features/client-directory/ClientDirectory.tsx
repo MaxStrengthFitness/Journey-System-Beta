@@ -35,7 +35,7 @@ import { db } from "../../firebase";
 import { useActiveStudio } from "../../contexts/ActiveStudioContext";
 import type { Client, KaizenRosterEntry, ScheduleEntry, Studio, Trainer, WorkoutSession } from "../../types";
 import { NAME_SEARCH_PROPS } from "../../lib/name-search-input";
-import { queryStudioIds, readableStudioIds } from "../../lib/tenancy";
+import { queryStudioIds, realmStudioIds } from "../../lib/tenancy";
 import { myTrainerIds } from "../../lib/live-session";
 import { formatStudioDate, formatStudioTime, studioDateKey, studioTodayKey } from "../../lib/studio-time";
 import { SCHEDULE_STALE_MS } from "../../lib/schedule-window";
@@ -379,7 +379,8 @@ export function ClientDirectory({
         : `${formatStudioDate(new Date(schedulesFetchedAt), { weekday: "short" })} ${formatStudioTime(new Date(schedulesFetchedAt))}`;
 
   /* ---- the other studios' query path ---- */
-  const readable = readableStudioIds(authTrainer ?? null);
+  // The realm rule: inside Demo Mode there is no "all my studios" to offer.
+  const readable = realmStudioIds(authTrainer ?? null, activeStudioId);
   const canSearchAll = readable.length > 1;
   const rosterReady = rosterStatus === "ready";
   const typedName = deferredSearch.trim();

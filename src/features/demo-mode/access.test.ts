@@ -8,6 +8,8 @@ import {
 } from "./access";
 import { canManageRenewals, worksAt, leadsStudio } from "../renewals/permissions";
 import { operationsStudios } from "../admin/scope";
+import { queryStudioIds, realmStudioIds } from "../../lib/tenancy";
+import { announcementReach } from "../admin/announcements/reach";
 import type { Studio, Trainer } from "../../types";
 
 const trainer = (over: Partial<Trainer> = {}): Trainer =>
@@ -140,5 +142,40 @@ describe("the selection screen pulls Demo Mode out of the list", () => {
     const { demo, rest } = splitOutDemo([studio("solon"), studio("westlake")]);
     expect(demo).toBeNull();
     expect(rest).toHaveLength(2);
+  });
+});
+
+/*
+ * THE REALM RULE AT EVERY DOOR THAT LISTS STUDIOS (Oct 1 2026). Seen on the
+ * live app inside Demo Mode: Search clients listed real clients, Add Client
+ * offered the real studios, and Operations → Setup offered every studio to
+ * an announcement and showed every studio's Mindbody row. Each door now asks
+ * the realm; these pin the shared answers (the screens' own tests mount them).
+ */
+describe("the realm rule at the doors that list studios", () => {
+  const leader = trainer({ role: "StudioLeader", accessibleStudioIds: ["solon", "westlake"] });
+  const realStudios = [studio("solon"), studio("westlake")];
+  const withDemo = [...realStudios, studio(DEMO_STUDIO_ID)];
+
+  it("client search inside Demo Mode asks about Demo Mode alone", () => {
+    expect(queryStudioIds(leader, DEMO_STUDIO_ID)).toEqual([DEMO_STUDIO_ID]);
+    expect(queryStudioIds(leader, DEMO_STUDIO_ID, { includeAll: true })).toEqual([DEMO_STUDIO_ID]);
+    expect(realmStudioIds(leader, DEMO_STUDIO_ID)).toEqual([DEMO_STUDIO_ID]);
+  });
+
+  it("client search outside never reaches into Demo Mode", () => {
+    expect(queryStudioIds(leader, "solon", { includeAll: true })).not.toContain(DEMO_STUDIO_ID);
+  });
+
+  it("Add Client's home studio inside Demo Mode is Demo Mode alone", () => {
+    expect(studiosInRealm(withDemo, DEMO_STUDIO_ID).map((s) => s.id)).toEqual([DEMO_STUDIO_ID]);
+    expect(studiosInRealm(withDemo, "solon").map((s) => s.id)).toEqual(["solon", "westlake"]);
+  });
+
+  it("an announcement from inside Demo Mode reaches Demo Mode alone", () => {
+    const r = announcementReach({ isAdmin: true, isOwnerTier: true, allStudios: withDemo, readable: [studio(DEMO_STUDIO_ID)], activeStudioId: DEMO_STUDIO_ID });
+    expect(r.scopes).toEqual(["studio"]);
+    expect(r.fixedStudioId).toBe(DEMO_STUDIO_ID);
+    expect(r.studios.map((s) => s.id)).toEqual([DEMO_STUDIO_ID]);
   });
 });

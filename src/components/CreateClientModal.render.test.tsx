@@ -27,7 +27,15 @@ import { CreateClientModal } from "./CreateClientModal";
 const studios = [
   { id: "solon", name: "Solon" },
   { id: "westlake", name: "Westlake" },
+  { id: "demo-studio", name: "Demo Mode", isDemo: true },
 ] as Studio[];
+
+const studioOptions = (el: HTMLElement) => {
+  const select = [...el.querySelectorAll("select")].find((s) =>
+    [...s.options].some((o) => o.textContent?.includes("Select Studio")),
+  )!;
+  return [...select.options].map((o) => o.value).filter(Boolean);
+};
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -104,5 +112,33 @@ describe("CreateClientModal", () => {
     expect(el.textContent).toContain("Pick the studio they train at to save.");
     await act(async () => save.click());
     expect(addDoc).not.toHaveBeenCalled();
+  });
+
+  it("inside Demo Mode offers only Demo Mode as the home studio (the realm rule)", () => {
+    const el = mount(
+      <CreateClientModal
+        clients={[]}
+        studios={studios}
+        activeStudioId="demo-studio"
+        initialName="Bilbo Baggins"
+        onClose={() => {}}
+        onClientCreated={() => {}}
+      />,
+    );
+    expect(studioOptions(el)).toEqual(["demo-studio"]);
+  });
+
+  it("outside Demo Mode never offers Demo Mode", () => {
+    const el = mount(
+      <CreateClientModal
+        clients={[]}
+        studios={studios}
+        activeStudioId="westlake"
+        initialName="Grace Ahn"
+        onClose={() => {}}
+        onClientCreated={() => {}}
+      />,
+    );
+    expect(studioOptions(el)).toEqual(["solon", "westlake"]);
   });
 });
