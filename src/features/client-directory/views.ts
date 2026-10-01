@@ -20,6 +20,8 @@ import type { Client } from "../../types";
 import { isMyClient } from "../relay/board/mine";
 import type { DirectoryRow } from "./row";
 import { isSortKey, type SortDir, type SortSpec } from "./buckets";
+import { daysBetween } from "../client-history/model";
+import { markHolds, pastInactiveLine, type InactiveMark } from "../admin/journey/inactive";
 
 export type ViewId = "all" | "mine" | "kaizen" | "today";
 
@@ -70,6 +72,46 @@ export function viewCounts(rows: ReadonlyArray<DirectoryRow>, myIds: ReadonlyArr
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ */
+/* Inactive: out of the way, never deleted (Oct 1 2026)                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How a row is inactive, or null when she isn't (the inactive round, Oct 1
+ * 2026; AJ: active > MIA > inactive). All leaves an inactive client out by
+ * default, behind the "Inactive N" chip; a search still finds her, with the
+ * word on her row. The Journey's rule (admin/journey/states.ts) on the row's
+ * own facts, which are the facts the Journey reads:
+ *
+ *   manual      a leader's mark that still holds (no visit after the day it
+ *               was made), unless she is booked: a booking makes her active;
+ *   automatic   a known last visit past the studio's Inactive line
+ *               (`inactiveDays`), nothing booked as read, last night's record
+ *               there and not Away: never off what can't be judged;
+ *   mindbody    Mindbody itself says she is inactive (the row's own
+ *               "Inactive" badge since the directory round).
+ */
+export type InactiveHow = "manual" | "automatic" | "mindbody";
+
+export function inactiveHow(
+  row: Pick<DirectoryRow, "client" | "lastIn" | "next">,
+  mark: Pick<InactiveMark, "day"> | null,
+  today: string,
+  inactiveDays: number,
+): InactiveHow | null {
+  const client = row.client as Client;
+  if (client.isActive === false) return "mindbody";
+  const lastVisit = row.lastIn.state === "known" ? row.lastIn.day : null;
+  if (row.next.state === "booked") return null;
+  if (mark && markHolds(mark, lastVisit)) return "manual";
+  const record = client.renewal as { situation?: unknown } | undefined;
+  if (!record || record.situation === "away" || !lastVisit) return null;
+  return pastInactiveLine(daysBetween(lastVisit, today), row.next.state === "none", inactiveDays) ? "automatic" : null;
+}
+
+export const INACTIVE_DEFINITION = (inactiveDays: number) =>
+  `Inactive: marked inactive by a leader, past the studio’s ${inactiveDays}-day line with nothing booked, or inactive in Mindbody. Out of the way, never deleted; a booking makes her active again.`;
 
 /* ------------------------------------------------------------------ */
 /* The sort a trainer chose, remembered on this iPad                   */

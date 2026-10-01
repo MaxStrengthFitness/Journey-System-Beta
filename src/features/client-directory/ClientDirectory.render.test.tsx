@@ -33,6 +33,17 @@ vi.mock("../renewals/useRenewalSettings", async () => {
   return { useRenewalSettings: () => state };
 });
 
+// The leaders' inactive marks and the studio's settings (the inactive round, Oct 1 2026).
+const inactive = vi.hoisted(() => ({ marks: new Map<string, unknown>() }));
+vi.mock("../admin/journey/inactive-store", () => ({
+  useInactiveMarks: () => ({ marks: inactive.marks, loading: false, failed: false }),
+}));
+vi.mock("../studio-settings/useStudioSettings", async () => {
+  const { resolveAll } = await import("../studio-settings/resolve");
+  const all = resolveAll({ studio: null, company: null });
+  return { useStudioSettings: () => ({ all, loading: false, failed: false, value: (k: keyof typeof all) => all[k].value, source: () => "app", studioValues: null, companyValues: null }) };
+});
+
 import { ClientDirectory, type ClientDirectoryProps } from "./ClientDirectory";
 import { NOW, STUDIOS, TODAY, eastern, makeBooking, makeClient } from "./fixtures";
 import type { Trainer } from "../../types";
@@ -44,6 +55,7 @@ afterAll(() => {
   document.body.innerHTML = "";
 });
 beforeEach(() => {
+  inactive.marks = new Map();
   document.body.innerHTML = "";
   try {
     window.localStorage.clear();
@@ -121,6 +133,41 @@ async function click(el: Element | null | undefined) {
     (el as HTMLElement).click();
   });
 }
+
+describe("ClientDirectory: inactive clients, out of the way and never deleted (Oct 1 2026)", () => {
+  it("leaves an inactive client out of All behind an Inactive chip, shows her on a tap, and finds her by name with the word on her row", async () => {
+    inactive.marks = new Map([["nr", { clientId: "nr", reason: "moved", note: null, day: "2026-09-20", markedBy: { id: "uid-l", name: "Leader" }, markedAt: null }]]);
+    const gone = makeClient({
+      id: "lb",
+      firstName: "Lobelia",
+      lastName: "Sackville",
+      lastSessionDate: "2026-06-01",
+      renewal: { lastVisitDate: "2026-06-01", nextBookingDate: null, situation: "on-track" } as never,
+    });
+    const { host } = await mount({ clients: [...roster, gone] });
+    // Nancy Ruiz (a leader's mark) and Lobelia (past the 90-day line, nothing booked) are out of All.
+    expect(rowIds(host)).toEqual(["zp", "nk", "af", "ob"]);
+    const chip = [...host.querySelectorAll<HTMLButtonElement>(".cd-chip")].find((b) => b.textContent?.startsWith("Inactive"))!;
+    expect(chip.textContent).toBe("Inactive2");
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    expect(host.textContent).toContain("All 4 active clients are listed");
+    expect(host.textContent).toContain("2 inactive are out of the way");
+    await click(chip);
+    expect(rowIds(host)).toContain("nr");
+    expect(rowIds(host)).toContain("lb");
+    expect(host.textContent).toContain("past the studio’s 90-day line with nothing booked");
+    await click(chip);
+    // A search still finds her, and her row says Inactive.
+    await type(host, "ruiz");
+    expect(rowIds(host)).toEqual(["nr"]);
+    expect(row(host, "nr")?.querySelector(".cd-badge")?.textContent).toBe("Inactive");
+  });
+
+  it("draws no Inactive chip when nobody is inactive", async () => {
+    const { host } = await mount();
+    expect([...host.querySelectorAll(".cd-chip")].some((b) => b.textContent?.startsWith("Inactive"))).toBe(false);
+  });
+});
 
 describe("ClientDirectory", () => {
   it("mounts and lists every client, sorted by last in, with no '40 most recent'", async () => {

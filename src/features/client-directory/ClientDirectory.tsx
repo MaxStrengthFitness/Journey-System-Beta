@@ -50,17 +50,22 @@ import { SORTS, SORT_MENU, nextSortForTap, sectionRows, sortWords, type SortKey,
 import { buildNameIndex, searchNames, type NameMatch, type Range } from "./search";
 import { applyTokens, buildNameVocab, buildOccupationVocab, notOnFileWords, parseQuery, type Token } from "./tokens";
 import {
+  INACTIVE_DEFINITION,
   MINE_DEFINITION,
   TODAY_DEFINITION,
   TODAY_SORT,
   VIEWS,
   browserStorage,
   inView,
+  inactiveHow,
   readSavedSort,
   saveSort,
   viewCounts,
+  type InactiveHow,
   type ViewId,
 } from "./views";
+import { useInactiveMarks } from "../admin/journey/inactive-store";
+import { useStudioSettings } from "../studio-settings/useStudioSettings";
 import "./client-directory.css";
 
 /** How long the held bookings may go unread before "Nothing booked" is no longer said. */
@@ -430,14 +435,37 @@ export function ClientDirectory({
     return [...byId.values()];
   }, [studioClients, remote.results]);
 
-  const rows = useMemo(() => buildDirectoryRows(scopeClients, ctx), [scopeClients, ctx]);
+  /* ---- inactive: out of the way, never deleted (the inactive round, Oct 1 2026) ---- */
+  const [showInactive, setShowInactive] = useState(false);
+  const inactiveMarks = useInactiveMarks(activeStudioId);
+  const studioSettings = useStudioSettings(activeStudioId);
+  const inactiveDays = studioSettings.all.inactiveDays.value ?? 90;
+  const builtRows = useMemo(() => buildDirectoryRows(scopeClients, ctx), [scopeClients, ctx]);
+  // How each row is inactive. A client from another studio is judged by her own studio, so only this studio's marks count here.
+  const inactive = useMemo(() => {
+    const out = new Map<string, InactiveHow>();
+    if (studioSettings.loading) return out;
+    for (const r of builtRows) {
+      const how = inactiveHow(r, inactiveMarks.marks.get(r.id) ?? null, today, inactiveDays);
+      if (how) out.set(r.id, how);
+    }
+    return out;
+  }, [builtRows, inactiveMarks.marks, today, inactiveDays, studioSettings.loading]);
+  // The word on her row, wherever she shows (the row model already says it for Mindbody's own).
+  const rows = useMemo(
+    () => builtRows.map((r) => (inactive.has(r.id) && !r.badges.includes("Inactive") ? { ...r, badges: [...r.badges, "Inactive"] } : r)),
+    [builtRows, inactive],
+  );
+  const activeRows = useMemo(() => rows.filter((r) => !inactive.has(r.id)), [rows, inactive]);
   const nameIndex = useMemo(() => buildNameIndex(rows.map((r) => ({ id: r.id, first: r.name.first, nickname: r.name.nickname, last: r.name.last }))), [rows]);
   const occupations = useMemo(() => buildOccupationVocab(rows), [rows]);
   const nameVocab = useMemo(() => buildNameVocab(rows), [rows]);
-  const counts = useMemo(() => viewCounts(rows, myIds), [rows, myIds]);
-
   const parsed = useMemo(() => parseQuery(deferredSearch, occupations, { names: nameVocab, asOccupation }), [deferredSearch, occupations, nameVocab, asOccupation]);
-  const viewRows = useMemo(() => rows.filter((r) => inView(r, view, myIds)), [rows, view, myIds]);
+  // A search finds an inactive client too; otherwise she is shown only behind the Inactive chip.
+  const searching = parsed.tokens.length > 0 || !!parsed.nameText.trim();
+  const listed = showInactive || searching ? rows : activeRows;
+  const counts = useMemo(() => viewCounts(showInactive ? rows : activeRows, myIds), [showInactive, rows, activeRows, myIds]);
+  const viewRows = useMemo(() => listed.filter((r) => inView(r, view, myIds)), [listed, view, myIds]);
   const tokenFilter = useMemo(() => applyTokens(viewRows, parsed.tokens), [viewRows, parsed.tokens]);
   const nameResult = useMemo(() => searchNames(nameIndex, parsed.nameText), [nameIndex, parsed.nameText]);
   const shown = useMemo(
@@ -591,7 +619,20 @@ export function ClientDirectory({
               <span className="cd-chip-count">{counts[v.id]}</span>
             </button>
           ))}
+          {inactive.size > 0 && (
+            <button
+              type="button"
+              className="cd-chip"
+              aria-pressed={showInactive}
+              aria-label={showInactive ? `Showing ${inactive.size} inactive clients too. Tap to leave them out.` : `Show ${inactive.size} inactive clients`}
+              onClick={() => setShowInactive((v) => !v)}
+            >
+              <span>Inactive</span>
+              <span className="cd-chip-count">{inactive.size}</span>
+            </button>
+          )}
         </div>
+        {showInactive && <p className="cd-line">{INACTIVE_DEFINITION(inactiveDays)}</p>}
         {view === "mine" && <p className="cd-line">{MINE_DEFINITION}</p>}
         {view === "today" && <p className="cd-line">{TODAY_DEFINITION}</p>}
 
@@ -763,7 +804,13 @@ export function ClientDirectory({
               </section>
             ))
           )}
-          {total > 0 && view === "all" && !describing && <p className="cd-empty">{`All ${total} ${total === 1 ? "client" : "clients"} are listed \u2014 sorted on this iPad.`}</p>}
+          {total > 0 && view === "all" && !describing && (
+            <p className="cd-empty">
+              {showInactive || inactive.size === 0
+                ? `All ${total} ${total === 1 ? "client" : "clients"} are listed \u2014 sorted on this iPad.`
+                : `All ${total - inactive.size} active ${total - inactive.size === 1 ? "client" : "clients"} are listed \u2014 sorted on this iPad. ${inactive.size} inactive ${inactive.size === 1 ? "is" : "are"} out of the way: tap Inactive to show them, or search a name.`}
+            </p>
+          )}
         </div>
       )}
     </div>
