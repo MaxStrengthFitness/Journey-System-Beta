@@ -1273,7 +1273,10 @@ export default function AppContent({
               setCurrentView("clients");
             });
           }}
-          placeholder="Search clients"
+          // "Search", not "Search clients": upright the box is narrow and the
+          // placeholder read "Search clie" (AJ's iPad, Oct 1 2026). The label
+          // says the whole thing; the magnifier says the rest.
+          placeholder="Search"
           aria-label="Search clients"
           {...NAME_SEARCH_PROPS}
           className="h-10 pl-8 pr-8 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 border border-transparent text-sm font-medium text-foreground placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-cyan/60 focus-visible:border-cyan/40 focus-visible:bg-white dark:focus-visible:bg-slate-900"
