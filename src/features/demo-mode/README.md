@@ -148,6 +148,14 @@ at six call sites. `access.ts` has the list and the reasoning.
 else; from anywhere else you do not see it at all. That one rule is the whole
 demo boundary in Operations — no check in any of the nine tabs.
 
+**Every door that lists studios asks the realm** (Oct 1 2026, four leaks seen on
+the live app): `queryStudioIds` / `realmStudioIds` in `src/lib/tenancy.ts` for
+every client search (inside Demo Mode, Demo Mode alone, "all" included; outside,
+never Demo Mode), `studiosInRealm` for Add Client's home studio, the Operations
+shell handing its pages the realm's studios only (Setup → Mindbody), and
+`admin/announcements/reach.ts` for who an announcement may reach. My Profile's
+Coaching load is left as the person's own real counters, on purpose.
+
 ## Two leaks guarded elsewhere
 
 Two jobs read across the WHOLE COMPANY on purpose, so a studio-scoped guard
