@@ -25,9 +25,9 @@ import { useHubCriticalNotes } from "../hooks/useHubCriticalNotes";
 // ClientsView is in the initial bundle; pulling the barrel in here would drag
 // the whole Studio Hub UI in with it and defeat AppContent's lazy import.
 import { useStudioTasks } from "../features/studio-tasks/useStudioTasks";
+import { dayTitle, pickDay, shownDay, stripFrom } from "../features/hub-schedule/hub-day";
 import {
   zonedHM,
-  calendarLabelKey,
   studioDayBoundsForKey,
   studioDateKey,
   studioTodayKey,
@@ -133,7 +133,12 @@ export function ClientsView({
   const [dbSearchResults, setDbSearchResults] = useState<Client[]>([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  /**
+   * THE DAY ON SCREEN (hub fixes, Oct 1 2026): null follows today, so the
+   * Hub rolls over at the studio's midnight; a studio day key is a day the
+   * trainer picked on purpose and keeps (features/hub-schedule/hub-day.ts).
+   */
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   /** Schedule (the grid, unchanged) or Opportunities (the run-sheet). Always opens on Schedule. */
   const [layer, setLayer] = useState<HubLayer>("schedule");
@@ -148,10 +153,31 @@ export function ClientsView({
   /** Me (your own column, in words) or Everyone (every column alike); remembered on this iPad. */
   const [focus, setFocus] = useState<HubFocus>(() => readFocus());
 
+  /*
+   * The Hub's minute clock. It also ticks the moment Journey comes back on
+   * screen: an iPad asleep overnight runs no timers, and its first minute
+   * awake would otherwise still say yesterday (hub fixes, Oct 1 2026).
+   */
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
+    const tick = () => setCurrentTime(new Date());
+    const timer = setInterval(tick, 60000);
+    const onVisible = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("pageshow", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("pageshow", onVisible);
+    };
   }, []);
+
+  /** Today is the studio's Eastern day, from the minute clock; the day on screen follows it unless one was picked. */
+  const studioToday = studioTodayKey(currentTime);
+  const selectedKey = shownDay(pickedDay, studioToday);
 
   // Sync / search database in real-time when trainer searches on main screen
   useEffect(() => {
@@ -322,9 +348,7 @@ export function ClientsView({
   // viewer's midnight here while reading hours in studio time selected a window
   // offset from the studio's day, which scattered a normal 7am-8pm schedule
   // across every hour from 12 AM to 11:30 PM.
-  const { start: dateStart, end: dateEnd } = studioDayBoundsForKey(
-    calendarLabelKey(selectedDate),
-  );
+  const { start: dateStart, end: dateEnd } = studioDayBoundsForKey(selectedKey);
 
   const todaysSchedules = (schedules || [])
     .filter((s) => {
@@ -347,18 +371,10 @@ export function ClientsView({
    * horizontal scroll of its own and pushed the schedule down the screen;
    * seven fit without scrolling, which is what frees the row beside them for
    * the day's numbers. Anything further out is the Calendar tab's job.
+   * Built from the studio's today on every render (hub fixes, Oct 1 2026):
+   * it used to be built once, from the iPad's midnight, at mount.
    */
-  const carouselDays = React.useMemo(() => {
-    const days: Date[] = [];
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    for (let offset = 0; offset <= 6; offset++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + offset);
-      days.push(d);
-    }
-    return days;
-  }, []);
+  const stripKeys = stripFrom(studioToday);
 
   /**
    * STRICT resolution: a schedule block resolves to `clients/{mindbodyClientId}`
@@ -420,7 +436,6 @@ export function ClientsView({
    * so no read the rules refuse is ever opened.
    */
   const readsStudio = mayReadWeeks(authTrainer, activeStudioId);
-  const studioToday = studioTodayKey(currentTime);
 
   /*
    * GET TO KNOW (wave 2 hub, Sep 28 2026; AJ: "all yes"): the studio's FORD,
@@ -445,7 +460,7 @@ export function ClientsView({
    * never per card, never per client. Unread or refused, the marks are null
    * and a finished slot reads as it did before the mark.
    */
-  const dayKeyOnScreen = calendarLabelKey(selectedDate);
+  const dayKeyOnScreen = selectedKey;
   const bookingMarks = useBookingMarks(readsStudio ? activeStudioId : null, dayKeyOnScreen, dayKeyOnScreen);
 
   /*
@@ -455,7 +470,7 @@ export function ClientsView({
    * list can never disagree. No read per card.
    */
   const dayMoments = useDayMoments({
-    day: calendarLabelKey(selectedDate),
+    day: selectedKey,
     now: currentTime,
     schedules: schedules || NO_SCHEDULES,
     clients,
@@ -572,7 +587,7 @@ export function ClientsView({
    * first), at its own start and end in studio minutes: real lengths, so a
    * 45-minute consult is drawn as 45 minutes.
    */
-  const gridDayKey = calendarLabelKey(selectedDate);
+  const gridDayKey = selectedKey;
   const gridBlocks: GridBlock[] = [];
   todaysSchedules.forEach((s, i) => {
     const column = visibleTrainersList.find((t) => isTrainerMatch(s, t));
@@ -679,7 +694,7 @@ export function ClientsView({
   /** Open task rows for the SELECTED day, studio list + this trainer's own. */
   const { counts: taskCounts, loading: tasksLoading } = useStudioTasks(activeStudioId || null, {
     ownerId: auth.currentUser?.uid ?? null,
-    dateKey: calendarLabelKey(selectedDate),
+    dateKey: selectedKey,
   });
   const openTaskCount = tasksLoading ? null : Math.max(0, taskCounts.total - taskCounts.done);
 
@@ -689,9 +704,8 @@ export function ClientsView({
    * Schedule the day in words and the list's own chips (six since Get to
    * know, wave 2 hub; a zero is never drawn). features/hub-schedule.
    */
-  const stripKeys = carouselDays.map((d) => calendarLabelKey(d));
   const stripKeysKey = stripKeys.join("|");
-  const todayKey = calendarLabelKey(new Date());
+  const todayKey = studioToday;
   const bookingCounts = React.useMemo(() => countsByDay(schedules || NO_SCHEDULES), [schedules]);
   const celebrateDays = React.useMemo(() => {
     const out = new Set<string>();
@@ -796,10 +810,7 @@ export function ClientsView({
               }}
               days={strip}
               selected={gridDayKey}
-              onSelectDay={(key) => {
-                const date = carouselDays.find((d) => calendarLabelKey(d) === key);
-                if (date) setSelectedDate(date);
-              }}
+              onSelectDay={(key) => setPickedDay(pickDay(key, studioToday))}
               openTasks={openTaskCount}
               onOpenTasks={() => {
                 rememberMyStudioSection("relay");
@@ -809,7 +820,7 @@ export function ClientsView({
             />
             {layer === "schedule" && (
               <DaySummary
-                title={selectedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
+                title={dayTitle(selectedKey)}
                 sessions={preBookedCount}
                 trainers={gridColumns.filter((c) => c.count > 0).length}
                 chips={chips}
@@ -912,7 +923,7 @@ export function ClientsView({
               <LoadBoundary kind="screen" resetKey="hub-opportunities">
                 <React.Suspense fallback={<LoadingArea label={"Opening Opportunities\u2026"} />}>
                   <RunSheet
-                    day={calendarLabelKey(selectedDate)}
+                    day={selectedKey}
                     entries={dayMoments.entries}
                     request={listRequest}
                     onOpenProfile={(id) => onSelectClient(id)}

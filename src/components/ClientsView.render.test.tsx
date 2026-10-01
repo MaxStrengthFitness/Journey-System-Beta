@@ -329,6 +329,43 @@ describe("the Hub", () => {
   });
 });
 
+/* ------------------------------------------------------------------ *
+ * THE HUB'S DAY (hub fixes, Oct 1 2026): today is the studio's day, and a
+ * Hub left open overnight moves to the new today; a day picked on purpose
+ * stays picked.
+ * ------------------------------------------------------------------ */
+
+describe("the Hub: the day rolls over", () => {
+  const wake = () =>
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  const selected = (el: HTMLElement) => el.querySelector<HTMLElement>('.hd-day[aria-selected="true"]')?.textContent;
+
+  it("left open overnight on today, shows the new today when the iPad wakes", () => {
+    vi.setSystemTime(at("23:50"));
+    const { el } = mount();
+    expect(selected(el)).toBe("Mon 285");
+    expect(el.querySelectorAll(".hd-day")[0].textContent).toBe("Mon 285");
+    vi.setSystemTime(new Date("2026-09-29T06:10:00-04:00"));
+    wake();
+    expect(selected(el)).toBe("Tue 291");
+    // The strip starts at the new today.
+    expect(el.querySelectorAll(".hd-day")[0].textContent).toBe("Tue 291");
+    expect(el.querySelector(".hd-sum-words strong")?.textContent).toContain("Tuesday");
+  });
+
+  it("keeps a day the trainer picked on purpose", () => {
+    vi.setSystemTime(at("23:50"));
+    const { el } = mount();
+    act(() => el.querySelectorAll<HTMLButtonElement>(".hd-day")[2].click()); // Wednesday
+    expect(selected(el)).toBe("Wed 30");
+    vi.setSystemTime(new Date("2026-09-29T06:10:00-04:00"));
+    wake();
+    expect(selected(el)).toBe("Wed 30");
+  });
+});
+
 async function openOpportunities(el: HTMLElement) {
   await act(async () => {
     [...el.querySelectorAll<HTMLButtonElement>(".hl-btn")].find((b) => b.textContent === "Opportunities")!.click();
