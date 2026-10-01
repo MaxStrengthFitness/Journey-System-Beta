@@ -285,6 +285,7 @@ export function StudioPage({
         {tab === "team" && (
           <StudioTeam
             studio={studio}
+            studios={studios}
             trainers={trainers}
             clients={clients}
             authTrainer={authTrainer}

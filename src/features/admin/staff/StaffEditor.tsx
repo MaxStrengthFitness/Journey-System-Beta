@@ -266,8 +266,9 @@ export function StaffEditor({
             <AdminNotice tone="info">
               {row.name} already has an account
               {studioName(row.homeStudioId) ? ` at ${studioName(row.homeStudioId)}` : ""} and asked to work at{" "}
-              {studioName(askedFor) ?? "another studio"} too. Letting an existing account into another studio
-              isn't built yet, so this request can't be approved from here.
+              {studioName(askedFor) ?? "another studio"} too. This request can't be approved from here: an
+              administrator adds the studio on Admins → Studios →{" "}
+              {studioName(row.homeStudioId) ?? "their home studio"} → Team → Studios.
             </AdminNotice>
           </div>
         )}

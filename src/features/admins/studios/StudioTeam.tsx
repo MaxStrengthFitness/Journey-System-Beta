@@ -14,6 +14,11 @@
  * the Activity record with who made it (role-change.ts, RoleDialog.tsx).
  * Nobody changes their own role here. A studio's own leaders change their
  * team's roles on My Studio → Team, within the studio tier.
+ *
+ * Studios (Oct 1 2026, docs/rounds/2026-10-01-second-studio.md): beside
+ * Change role, where a person also works — give them a second studio, or take
+ * them off this studio's team (StudiosDialog.tsx, studio-membership.ts). The
+ * home studio is never taken away here; the dialog says what to do instead.
  */
 import { useMemo, useState } from "react";
 import { Users } from "lucide-react";
@@ -24,9 +29,11 @@ import { ProvisionalPanel } from "../../admin/provisional/ProvisionalPanel";
 import { HqRow, HqRows, HqStatus } from "../kit";
 import { roleLabel } from "./role-change";
 import { RoleDialog } from "./RoleDialog";
+import { StudiosDialog } from "./StudiosDialog";
 
 export function StudioTeam({
   studio,
+  studios = [],
   trainers,
   clients,
   authTrainer,
@@ -34,6 +41,8 @@ export function StudioTeam({
   onRolesChanged,
 }: {
   studio: Studio;
+  /** Every studio, for the Studios picker and the names in it. */
+  studios?: readonly Studio[];
   trainers: Trainer[];
   clients: Client[];
   authTrainer: Trainer;
@@ -43,6 +52,7 @@ export function StudioTeam({
 }) {
   const studioId = studio.id ?? "";
   const [changing, setChanging] = useState<Trainer | null>(null);
+  const [placing, setPlacing] = useState<Trainer | null>(null);
   const team = useMemo(
     () => whoWorksHere(trainers, studioId).slice().sort((a, b) => (a.fullName || "").localeCompare(b.fullName || "")),
     [trainers, studioId],
@@ -90,11 +100,16 @@ export function StudioTeam({
                   </>
                 }
                 action={
-                  isMe(t) ? undefined : (
-                    <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change role: ${t.fullName || "this person"}`}>
-                      Change role
+                  <>
+                    <AdminButton size="sm" onClick={() => setPlacing(t)} aria-label={`Studios: ${t.fullName || "this person"}`}>
+                      Studios
                     </AdminButton>
-                  )
+                    {isMe(t) ? null : (
+                      <AdminButton size="sm" onClick={() => setChanging(t)} aria-label={`Change role: ${t.fullName || "this person"}`}>
+                        Change role
+                      </AdminButton>
+                    )}
+                  </>
                 }
               />
             ))}
@@ -108,6 +123,14 @@ export function StudioTeam({
         studioName={studio.name}
         byName={authTrainer.fullName}
         onClose={() => setChanging(null)}
+        onSaved={onRolesChanged}
+      />
+      <StudiosDialog
+        person={placing}
+        studio={studio}
+        studios={studios.length ? studios : [studio]}
+        byName={authTrainer.fullName}
+        onClose={() => setPlacing(null)}
         onSaved={onRolesChanged}
       />
     </div>

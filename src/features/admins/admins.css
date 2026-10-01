@@ -932,6 +932,50 @@
   list-style: disc;
 }
 
+/* ---------- Where a person works (StudiosDialog) ------------------------- */
+
+.hq-studios {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+}
+.hq-studios__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--adm-ink-muted);
+}
+.hq-studios__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--adm-border);
+}
+.hq-studios__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--adm-ink);
+  overflow-wrap: anywhere;
+}
+.hq-studios__add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.hq-studios__add > :first-child {
+  flex: 1 1 200px;
+}
+
 /* ---------- A page held open for what is coming -------------------------- */
 
 .hq-held {
