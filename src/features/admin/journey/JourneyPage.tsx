@@ -32,7 +32,10 @@ import { Route } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Client, Studio, Trainer } from "../../../types";
 import { formatStudioDate, formatStudioTime } from "../../../lib/studio-time";
-import { AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { AdminButton, AdminHeader, AdminNotice, AdminScreen } from "../primitives";
+import { leadsHere } from "../../relay/leads";
+import { markReasonWords } from "./inactive";
+import { markActiveAgain } from "./inactive-store";
 import { useMinuteClock } from "../shell/useMinuteClock";
 import { LENSES, listFor, stateCounts, thisWeek, type JourneyEntry, type JourneyLens } from "./journey-list";
 import { BESIDE_STATES, LINE_STATES, STATE_NAMES, isSlipping, multipleWords, type JourneyLines, type JourneyState } from "./states";
@@ -144,6 +147,9 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
         <AdminNotice tone="warn">Part of the studio's settings couldn't be read just now, so a line may be Max Strength's or the app's default rather than the studio's own. Setup → Rules says which.</AdminNotice>
       )}
       {j.week.failed && <AdminNotice tone="warn">The week's bookings couldn't be read just now: anyone past a line reads Unknown, never slipping, until they are.</AdminNotice>}
+      {j.marks.failed && (
+        <AdminNotice tone="warn">The leaders' inactive marks couldn't be read just now, so a client a leader marked inactive reads by the rules alone until they are.</AdminNotice>
+      )}
       {j.cases.failed && (
         <AdminNotice tone="warn">The studio's cases couldn't be read just now, so each case here is the one Journey works out, not the one the team wrote.</AdminNotice>
       )}
@@ -170,7 +176,7 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
 
       {!reading && (
         <p className="ops-quiet">
-          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.back.length} booked again after a gap.{" "}
+          <b>This week:</b> {week.startedSlipping.length} crossed a line and started slipping, {week.lapsedThisWeek.length} lapsed, {week.inactiveThisWeek.length} went inactive, {week.back.length} booked again after a gap.{" "}
           {week.towardSteady === null
             ? "Who moved toward steady needs last night's states, which haven't reached this page."
             : `${week.towardSteady.length} moved back toward steady after slipping.`}
@@ -193,6 +199,8 @@ export function JourneyPage({ studio, studios, clients, trainers, authTrainer, o
             <p className="ops-sec__empty">
               No {STATE_NAMES[state].toLowerCase()} clients{lens === "renewal" ? " in their renewal window" : lens === "new" ? ` in their first ${j.lines.settlingMax} sessions` : ""}. That's a real count, not a missing read.
             </p>
+          ) : state === "inactive" ? (
+            <InactiveRows rows={list} studioId={studio.id as string} leads={leadsHere(authTrainer, studio.id)} onOpenClient={onOpenClient} />
           ) : state === "unknown" ? (
             Object.entries(groupBy(list, (e) => e.journey.unknownWhy ?? "")).map(([why, rows]) => (
               <div key={why} className="ops-jr-group">
@@ -244,6 +252,75 @@ function caseLine(e: JourneyEntry): string {
 function shortDay(day: string): string {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/**
+ * THE INACTIVE LIST (the inactive round, Oct 1 2026; AJ: "view the mia list
+ * and inactive list to possibly work on retention or win backs"). Each row
+ * says which kind it is, since when and why; a leader's mark can be taken
+ * back here (Mark active again). A win-back case is the client page's own
+ * case form, one tap in: no second case system. Renewals' "lost" list is
+ * its own list, untouched.
+ */
+export function InactiveRows({
+  rows,
+  studioId,
+  leads,
+  onOpenClient,
+}: {
+  rows: JourneyEntry[];
+  studioId: string;
+  leads: boolean;
+  onOpenClient?: (clientId: string) => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const takeBack = async (id: string) => {
+    setBusy(id);
+    setFailed(null);
+    try {
+      await markActiveAgain(studioId, id);
+    } catch {
+      setFailed(id);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <ul className="ops-jr-list" aria-label="Inactive clients">
+      {rows.map((e) => {
+        const inactive = e.journey.inactive ?? null;
+        const mark = inactive?.mark ?? null;
+        const since = inactive?.since ?? e.journey.since;
+        const how = inactive?.kind === "manual" ? "Marked inactive" : "Inactive by herself";
+        const why = mark ? `${markReasonWords(mark)}. Marked by ${mark.markedBy.name || "a leader"}.` : e.journey.why;
+        const meta = [e.usual ? `usually with ${e.usual.name.split(" ")[0]}` : null, e.case.stored ? caseLine(e) : "no win-back case yet"].filter(Boolean).join(" · ");
+        return (
+          <li key={e.id} className="ops-inrow">
+            <button type="button" className="ops-inrow__open" onClick={() => onOpenClient?.(e.id)} disabled={!onOpenClient}>
+              <span className="ops-inrow__name">{e.row.name.display}</span>
+              <span className="ops-inrow__how">
+                {how}
+                {since ? ` · since ${shortDay(since)}` : ""}
+              </span>
+              <span className="ops-inrow__why">{why}</span>
+              <span className="ops-inrow__why">{meta}</span>
+            </button>
+            {leads && mark && (
+              <AdminButton size="sm" busy={busy === e.id} onClick={() => void takeBack(e.id)} aria-label={`Mark ${e.row.name.display} active again`}>
+                Mark active again
+              </AdminButton>
+            )}
+            {failed === e.id && (
+              <p className="adm-hint adm-hint--error" role="alert">
+                Couldn't mark her active again. Check your connection and try again.
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 function JourneyRows({ rows, onOpenClient }: { rows: JourneyEntry[]; onOpenClient?: (clientId: string) => void }) {

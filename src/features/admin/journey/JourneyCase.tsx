@@ -34,6 +34,8 @@ import { caseOf } from "./case";
 import { caseRights, ownerChoices } from "./case-form";
 import { useClientCase } from "./case-store";
 import { CaseForm } from "./CaseForm";
+import { InactiveMarkPanel } from "./InactiveMark";
+import type { InactiveMark } from "./inactive";
 import type { JourneyEntry } from "./journey-list";
 import { STATE_NAMES, type JourneyState } from "./states";
 import "../shell/ops.css";
@@ -75,9 +77,11 @@ export interface JourneyCaseProps {
   authTrainer?: Trainer | null;
   /** The studio's cases couldn't be read (a non-leader): the one document is read here instead. */
   casesFailed?: boolean;
+  /** Her leader's inactive mark at this studio, and how its read went (the inactive round, Oct 1 2026). Absent: not drawn. */
+  inactiveMark?: { mark: InactiveMark | null; read: "ready" | "loading" | "failed" } | null;
 }
 
-export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], authTrainer = null, casesFailed = false }: JourneyCaseProps) {
+export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], authTrainer = null, casesFailed = false, inactiveMark = null }: JourneyCaseProps) {
   const { journey: j } = entry;
   const leads = leadsHere(authTrainer, studioId);
   // The owner's read, only when the leaders' read was refused.
@@ -155,6 +159,20 @@ export function JourneyCase({ entry, studioId, today, me, tz, trainers = [], aut
           </div>
         )}
       </dl>
+      {inactiveMark && (
+        <InactiveMarkPanel
+          studioId={studioId}
+          clientId={entry.id}
+          clientName={entry.row.name.display}
+          mark={inactiveMark.mark}
+          read={inactiveMark.read}
+          lastVisit={j.lastVisit}
+          automatic={j.state === "inactive" && j.inactive?.kind === "automatic" ? j.why : null}
+          leads={leads}
+          markerName={authTrainer?.fullName ?? me.name}
+          today={today}
+        />
+      )}
       {stored && (
         <p className="ops-quiet">
           Case opened{stampWords(stored.openedAt, tz) ? ` on ${stampWords(stored.openedAt, tz)}` : ""}

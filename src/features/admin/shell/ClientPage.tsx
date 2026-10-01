@@ -201,7 +201,20 @@ export function ClientPage(props: ClientPageProps) {
           </div>
 
           {entry && studio?.id ? (
-            <JourneyCase entry={entry} studioId={studio.id} today={today} me={me} tz={studio.timezone || undefined} trainers={trainers} authTrainer={authTrainer} casesFailed={journeys.cases.failed} />
+            <JourneyCase
+              entry={entry}
+              studioId={studio.id}
+              today={today}
+              me={me}
+              tz={studio.timezone || undefined}
+              trainers={trainers}
+              authTrainer={authTrainer}
+              casesFailed={journeys.cases.failed}
+              inactiveMark={{
+                mark: journeys.marks.marks.get(clientId) ?? null,
+                read: journeys.marks.loading ? "loading" : journeys.marks.failed ? "failed" : "ready",
+              }}
+            />
           ) : !journeys.ready ? (
             <p className="ops-quiet">Reading her journey…</p>
           ) : row.visitingFrom ? (

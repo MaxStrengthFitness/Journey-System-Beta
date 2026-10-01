@@ -353,6 +353,12 @@ export interface MonthMia {
   counts: Record<"drifting" | "at-risk" | "lapsed", number>;
   /** Clients the Journey can't judge: counted, never called fine. */
   unknown: number;
+  /**
+   * Clients Inactive today who went inactive in the month shown (past the
+   * studio's line, or marked by a leader, that month; the inactive round,
+   * Oct 1 2026). They are not MIA: the Inactive list is Clients → Journey's.
+   */
+  wentInactive: number;
 }
 
 const MIA_TONE: Record<string, MonthTone> = { drifting: "warn", "at-risk": "alert", lapsed: "warn" };
@@ -363,14 +369,20 @@ const MIA_TONE: Record<string, MonthTone> = { drifting: "warn", "at-risk": "aler
  * sooner she is caught the better. A client already answered (snoozed or
  * dismissed) keeps her place but says so.
  */
-export function monthMia(entries: readonly JourneyEntry[], today: string): MonthMia {
+export function monthMia(entries: readonly JourneyEntry[], today: string, month: string = today.slice(0, 7)): MonthMia {
   const counts = { drifting: 0, "at-risk": 0, lapsed: 0 };
   let unknown = 0;
+  let wentInactive = 0;
   const rows: MiaRow[] = [];
   for (const e of entries) {
     const state = e.journey.state;
     if (state === "unknown") {
       unknown += 1;
+      continue;
+    }
+    if (state === "inactive") {
+      const since = e.journey.inactive?.since ?? e.journey.since;
+      if (since && since.slice(0, 7) === month) wentInactive += 1;
       continue;
     }
     if (!MIA_STATES.includes(state)) continue;
@@ -392,7 +404,7 @@ export function monthMia(entries: readonly JourneyEntry[], today: string): Month
   }
   const order: Record<string, number> = { drifting: 0, "at-risk": 1, lapsed: 2 };
   rows.sort((a, b) => order[a.state] - order[b.state] || b.day.localeCompare(a.day) || a.name.localeCompare(b.name));
-  return { rows, counts, unknown };
+  return { rows, counts, unknown, wentInactive };
 }
 
 /* ------------------------------------------------------------------ *

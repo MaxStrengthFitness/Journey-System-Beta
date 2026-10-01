@@ -261,7 +261,7 @@ export function listFor(entries: readonly JourneyEntry[], state: JourneyState, l
 export function thisWeek(
   entries: readonly JourneyEntry[],
   today: string,
-): { startedSlipping: JourneyEntry[]; lapsedThisWeek: JourneyEntry[]; back: JourneyEntry[]; towardSteady: JourneyEntry[] | null } {
+): { startedSlipping: JourneyEntry[]; lapsedThisWeek: JourneyEntry[]; inactiveThisWeek: JourneyEntry[]; back: JourneyEntry[]; towardSteady: JourneyEntry[] | null } {
   const from = addDays(today, -6);
   const crossed = (e: JourneyEntry) => Boolean(e.journey.since && e.journey.since >= from && e.journey.since <= today);
   // Who moved toward steady needs yesterday's states: the night's `was` (wave 2). Null when no night covers anyone.
@@ -270,6 +270,8 @@ export function thisWeek(
   return {
     startedSlipping: entries.filter((e) => isSlipping(e.journey.state) && crossed(e)),
     lapsedThisWeek: entries.filter((e) => e.journey.state === "lapsed" && crossed(e)),
+    // Past the Inactive line, or marked by a leader, in the last seven days.
+    inactiveThisWeek: entries.filter((e) => e.journey.state === "inactive" && crossed(e)),
     back: entries.filter((e) => e.journey.state === "back"),
     towardSteady: covered
       ? entries.filter((e) => e.night && (e.journey.state === "steady" || e.journey.state === "back") && e.night.was !== null && slipped.has(e.night.was) && e.night.since >= from && e.night.since <= today)

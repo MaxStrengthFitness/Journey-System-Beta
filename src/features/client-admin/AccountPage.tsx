@@ -42,6 +42,7 @@
  * contract history, 1,700px down an iPad held upright, and AJ went looking
  * for it on Account and did not find it.
  */
+import type { ReactNode } from "react";
 import { ChevronRight, Pencil } from "lucide-react";
 import type { Client, Studio } from "../../types";
 import type { HistoryCoverage } from "../../lib/prior-history";
@@ -93,6 +94,13 @@ export interface AccountPageProps {
   split?: SessionsSplit | null;
   /** For ages and "synced 2 days ago"; the real clock when left out. */
   now?: Date;
+  /**
+   * Active or inactive (the inactive round, Oct 1 2026): her home studio's
+   * leaders mark her inactive here, everyone else reads it. Drawn by the
+   * codex page (StandingCard, which opens its own one-document read); left
+   * out, nothing is drawn.
+   */
+  standing?: ReactNode;
 }
 
 export function AccountPage({
@@ -111,6 +119,7 @@ export function AccountPage({
   priorHistoryDoor,
   split,
   now,
+  standing,
 }: AccountPageProps) {
   const lede = accountLede(client, canEdit, p);
   // Mindbody's notes belong to a client Mindbody holds; a typed-in client has
@@ -146,6 +155,8 @@ export function AccountPage({
             />
           ) : null}
         </div>
+
+        {standing ?? null}
 
         <MembershipSection
           client={client}
